@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import type { ResolvedProjectHome } from '../../project/home/home';
 import { resolveCatalogue } from '../definitions/resolved-catalogue';
-import { seedCatalogueForTesting } from '../definitions/testing-install';
+import { seedCatalogueForTesting } from '../../definitions/testing-install';
 import { createSpecificationScaffold } from '../scaffold';
 import { fingerprintCreateClientIntent, normalizeCreateClientIntent } from './intent';
 import { sha256Hex } from '../../hash';

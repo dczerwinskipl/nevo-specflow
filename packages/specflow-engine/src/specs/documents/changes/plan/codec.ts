@@ -4,12 +4,15 @@ import { sha256Hex } from '../../../../hash';
 import { exactKeys, isRecord } from '../../../durable/guards';
 import { validateDocumentPath, validateFolderPath } from '../../../document-rules';
 import { isExplicitSpecificationSlug } from '../../../model';
+import { isExecutionStatePath } from '../../../execution-paths';
 import { documentChangeError } from '../errors';
+import { containerDirectory, isReservedContainerPath, isTaskContainerId } from './container';
 import { DOCUMENT_BATCH_MAX_PATHS, DOCUMENT_PLAN_MAX_BYTES } from '../limits';
 import {
   DOCUMENT_CHANGE_ACTIONS,
   DOCUMENT_CHANGE_PLAN_VERSION,
   PLANNED_PATH_ROLES,
+  containerOfPlan,
   manifestPathOf,
   type DocumentChangeAction,
   type DocumentChangePlan,
@@ -26,6 +29,19 @@ const SPEC_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const DOCUMENT_ID = new RegExp(DOCUMENT_ID_PATTERN, 'u');
 const DERIVED_ID = /^u-[0-9a-f]{32}$/u;
 const CATALOGUE_ID = new RegExp(CATALOGUE_ID_PATTERN, 'u');
+/** The words of a `workflow` plan: one line of printable text (it becomes a commit subject). */
+export const WORKFLOW_SUMMARY_MAX_CHARACTERS = 100;
+const SUMMARY_FORBIDDEN = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u;
+
+function isSummary(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.trim() === value &&
+    value.length > 0 &&
+    Array.from(value).length <= WORKFLOW_SUMMARY_MAX_CHARACTERS &&
+    !SUMMARY_FORBIDDEN.test(value)
+  );
+}
 
 /** The evidence a journal keeps of a plan file: its hash (the payload key) and its size. */
 export interface PlanEvidence {
@@ -89,6 +105,7 @@ function canonicalPlan(plan: DocumentChangePlan): Record<string, unknown> {
     action: plan.action,
     specId: plan.specId,
     slug: plan.slug,
+    ...(plan.taskId !== undefined ? { taskId: plan.taskId } : {}),
     directory: plan.directory,
     paths: plan.paths.map((path) => ({
       path: path.path,
@@ -125,6 +142,7 @@ function canonicalPlan(plan: DocumentChangePlan): Record<string, unknown> {
         }
       : {}),
     ...(plan.removedFolder !== undefined ? { removedFolder: plan.removedFolder } : {}),
+    ...(plan.summary !== undefined ? { summary: plan.summary } : {}),
   };
 }
 
@@ -143,6 +161,7 @@ const PLAN_KEYS = [
   'action',
   'specId',
   'slug',
+  'taskId',
   'directory',
   'paths',
   'documents',
@@ -152,10 +171,22 @@ const PLAN_KEYS = [
   'templates',
   'registry',
   'removedFolder',
+  'summary',
 ] as const;
 
 function validatePlan(value: unknown): DocumentChangePlan {
-  if (!isRecord(value) || !exactKeys(value, PLAN_KEYS, ['registry', 'removedFolder'])) {
+  if (
+    !isRecord(value) ||
+    !exactKeys(value, PLAN_KEYS, ['taskId', 'registry', 'removedFolder', 'summary'])
+  ) {
+    throw invalid();
+  }
+
+  if (value.action === 'workflow') {
+    return validateWorkflowPlan(value);
+  }
+
+  if (value.summary !== undefined) {
     throw invalid();
   }
 
@@ -165,13 +196,20 @@ function validatePlan(value: unknown): DocumentChangePlan {
     typeof value.specId !== 'string' ||
     !SPEC_ID.test(value.specId) ||
     !isExplicitSpecificationSlug(value.slug) ||
-    value.directory !== 'specs/active/' + value.slug
+    (value.taskId !== undefined &&
+      (typeof value.taskId !== 'string' || !isTaskContainerId(value.taskId)))
   ) {
     throw invalid();
   }
 
+  const taskId = value.taskId;
+  const container = containerOfPlan(taskId === undefined ? {} : { taskId });
+  if (value.directory !== containerDirectory(value.slug, container)) {
+    throw invalid();
+  }
+
   const directory = value.directory;
-  const paths = validatePaths(value.paths, directory);
+  const paths = validatePaths(value.paths, directory, taskId);
   const documents = validateDocuments(value.documents);
   const removed = validateIds(value.removedDocumentIds);
   const allocated = validateIds(value.allocatedIds);
@@ -190,6 +228,7 @@ function validatePlan(value: unknown): DocumentChangePlan {
     action: value.action,
     specId: value.specId,
     slug: value.slug,
+    ...(taskId !== undefined ? { taskId } : {}),
     directory,
     paths,
     documents,
@@ -208,19 +247,107 @@ function validatePlan(value: unknown): DocumentChangePlan {
   return plan;
 }
 
+/**
+ * A `workflow` plan: the commit of paths the Specification execution store wrote. It belongs to the
+ * Specification (no Task, no registry, no documents), every path is execution state of it
+ * (`.execution/**`, `tasks/**`) and was `written` (or removed), and it carries its `summary`.
+ */
+function validateWorkflowPlan(value: Record<string, unknown>): DocumentChangePlan {
+  if (
+    value.version !== DOCUMENT_CHANGE_PLAN_VERSION ||
+    typeof value.specId !== 'string' ||
+    !SPEC_ID.test(value.specId) ||
+    !isExplicitSpecificationSlug(value.slug) ||
+    value.taskId !== undefined ||
+    value.registry !== undefined ||
+    value.removedFolder !== undefined ||
+    !isSummary(value.summary) ||
+    value.directory !== containerDirectory(value.slug, containerOfPlan({}))
+  ) {
+    throw invalid();
+  }
+
+  const directory = value.directory;
+  if (!Array.isArray(value.paths) || value.paths.length === 0) {
+    throw invalid();
+  }
+
+  const seen = new Set<string>();
+  const paths = (value.paths as unknown[]).map((entry): PlannedPath => {
+    if (
+      !isRecord(entry) ||
+      !exactKeys(entry, ['path', 'role', 'pre', 'post', 'source']) ||
+      typeof entry.path !== 'string' ||
+      entry.role !== 'document' ||
+      !entry.path.startsWith(directory + '/') ||
+      !isExecutionStatePath(entry.path.slice(directory.length + 1)) ||
+      seen.has(entry.path) ||
+      !isRecord(entry.source)
+    ) {
+      throw invalid();
+    }
+
+    seen.add(entry.path);
+    const pre = validateState(entry.pre);
+    const post = validateState(entry.post);
+    const kind = post === null ? 'none' : 'written';
+    if (!exactKeys(entry.source, ['kind']) || entry.source.kind !== kind) {
+      throw invalid();
+    }
+
+    return { path: entry.path, role: 'document', pre, post, source: { kind } };
+  });
+  for (const list of [
+    value.documents,
+    value.removedDocumentIds,
+    value.folders,
+    value.allocatedIds,
+    value.templates,
+  ]) {
+    if (!Array.isArray(list) || list.length > 0) {
+      throw invalid();
+    }
+  }
+
+  const plan: DocumentChangePlan = {
+    version: DOCUMENT_CHANGE_PLAN_VERSION,
+    action: 'workflow',
+    specId: value.specId,
+    slug: value.slug,
+    directory,
+    paths,
+    documents: [],
+    removedDocumentIds: [],
+    folders: [],
+    allocatedIds: [],
+    templates: [],
+    summary: value.summary,
+  };
+  if (JSON.stringify(canonicalPlan(plan)) !== JSON.stringify(value)) {
+    throw invalid();
+  }
+
+  return plan;
+}
+
 function isAction(value: unknown): value is DocumentChangeAction {
   return (
     typeof value === 'string' && (DOCUMENT_CHANGE_ACTIONS as readonly string[]).includes(value)
   );
 }
 
-function validatePaths(value: unknown, directory: string): PlannedPath[] {
+function validatePaths(
+  value: unknown,
+  directory: string,
+  taskId: string | undefined,
+): PlannedPath[] {
   if (!Array.isArray(value) || value.length > DOCUMENT_BATCH_MAX_PATHS) {
     throw invalid();
   }
 
   const seen = new Set<string>();
-  const manifest = manifestPathOf({ directory });
+  const container = containerOfPlan(taskId === undefined ? {} : { taskId });
+  const manifest = manifestPathOf({ directory, ...(taskId === undefined ? {} : { taskId }) });
   const result = (value as unknown[]).map((entry, index): PlannedPath => {
     if (!isRecord(entry) || !exactKeys(entry, ['path', 'role', 'pre', 'post', 'source'])) {
       throw invalid();
@@ -241,7 +368,8 @@ function validatePaths(value: unknown, directory: string): PlannedPath[] {
       }
     } else if (
       !entry.path.startsWith(directory + '/') ||
-      !validateDocumentPath(entry.path.slice(directory.length + 1)).ok
+      !validateDocumentPath(entry.path.slice(directory.length + 1)).ok ||
+      isReservedContainerPath(container, entry.path.slice(directory.length + 1))
     ) {
       throw invalid();
     }

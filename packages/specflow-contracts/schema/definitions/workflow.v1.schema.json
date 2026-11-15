@@ -38,7 +38,8 @@
     "title": {
       "type": "string",
       "minLength": 1,
-      "maxLength": 200
+      "maxLength": 200,
+      "pattern": "^[^\\r\\n]*\\S[^\\r\\n]*$"
     },
     "description": {
       "type": "string",
@@ -74,7 +75,7 @@
               "purpose",
               "transitions",
               "kind",
-              "executor"
+              "executors"
             ],
             "properties": {
               "id": {
@@ -84,7 +85,8 @@
               "title": {
                 "type": "string",
                 "minLength": 1,
-                "maxLength": 200
+                "maxLength": 200,
+                "pattern": "^[^\\r\\n]*\\S[^\\r\\n]*$"
               },
               "purpose": {
                 "type": "string",
@@ -118,7 +120,8 @@
                     "label": {
                       "type": "string",
                       "minLength": 1,
-                      "maxLength": 200
+                      "maxLength": 200,
+                      "pattern": "^[^\\r\\n]*\\S[^\\r\\n]*$"
                     },
                     "to": {
                       "anyOf": [
@@ -232,17 +235,23 @@
                 "type": "string",
                 "const": "work"
               },
-              "executor": {
-                "anyOf": [
-                  {
-                    "type": "string",
-                    "const": "agent"
-                  },
-                  {
-                    "type": "string",
-                    "const": "human"
-                  }
-                ]
+              "executors": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "agent"
+                    },
+                    {
+                      "type": "string",
+                      "const": "human"
+                    }
+                  ]
+                },
+                "minItems": 1,
+                "maxItems": 2,
+                "uniqueItems": true
               },
               "archetype": {
                 "type": "string",
@@ -263,6 +272,128 @@
               "produces": {
                 "type": "string",
                 "const": "tasks"
+              },
+              "entryGates": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "documentType"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200,
+                      "pattern": "^[^\\r\\n]*\\S[^\\r\\n]*$"
+                    },
+                    "type": {
+                      "type": "string",
+                      "const": "document"
+                    },
+                    "documentType": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                    },
+                    "scope": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "subject"
+                        },
+                        {
+                          "type": "string",
+                          "const": "specification"
+                        }
+                      ]
+                    },
+                    "requiredSections": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200,
+                        "pattern": "\\S"
+                      },
+                      "minItems": 1,
+                      "maxItems": 32,
+                      "uniqueItems": true
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "maxItems": 16
+              },
+              "exitGates": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "type",
+                    "documentType"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200,
+                      "pattern": "^[^\\r\\n]*\\S[^\\r\\n]*$"
+                    },
+                    "type": {
+                      "type": "string",
+                      "const": "document"
+                    },
+                    "documentType": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                    },
+                    "scope": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "subject"
+                        },
+                        {
+                          "type": "string",
+                          "const": "specification"
+                        }
+                      ]
+                    },
+                    "requiredSections": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200,
+                        "pattern": "\\S"
+                      },
+                      "minItems": 1,
+                      "maxItems": 32,
+                      "uniqueItems": true
+                    },
+                    "when": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                      },
+                      "minItems": 1,
+                      "maxItems": 16,
+                      "uniqueItems": true
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "maxItems": 16
               }
             },
             "additionalProperties": false
@@ -284,7 +415,8 @@
               "title": {
                 "type": "string",
                 "minLength": 1,
-                "maxLength": 200
+                "maxLength": 200,
+                "pattern": "^[^\\r\\n]*\\S[^\\r\\n]*$"
               },
               "purpose": {
                 "type": "string",
@@ -318,7 +450,8 @@
                     "label": {
                       "type": "string",
                       "minLength": 1,
-                      "maxLength": 200
+                      "maxLength": 200,
+                      "pattern": "^[^\\r\\n]*\\S[^\\r\\n]*$"
                     },
                     "to": {
                       "anyOf": [
@@ -455,7 +588,8 @@
           "label": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 200
+            "maxLength": 200,
+            "pattern": "^[^\\r\\n]*\\S[^\\r\\n]*$"
           },
           "feedback": {
             "anyOf": [

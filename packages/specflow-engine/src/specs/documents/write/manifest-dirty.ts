@@ -30,7 +30,7 @@ export type ManifestBaseline =
   | { readonly kind: 'head' };
 
 /** Actions that never change the registry (their planners produce no manifest path). */
-const NEVER_CHANGES_MANIFEST = new Set<string>(['save', 'save-all']);
+const NEVER_CHANGES_MANIFEST = new Set<string>(['save', 'save-all', 'workflow']);
 
 /**
  * The latest (highest `sequence`) non-terminal operation of this Specification in this checkout that

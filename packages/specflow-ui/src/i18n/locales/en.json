@@ -5,7 +5,6 @@
     "english": "English",
     "polish": "Polski",
     "retry": "Retry",
-    "selected": "Selected",
     "moreActions": "More actions",
     "notification": "Notification",
     "notificationsRegion": "Notifications ({{hotkey}})",
@@ -13,7 +12,6 @@
     "retrying": "Retrying…",
     "cancel": "Cancel",
     "close": "Close",
-    "clearSearch": "Clear search",
     "loading": "Loading…",
     "notImplemented": "Not implemented",
     "unknown": "Unknown",
@@ -23,7 +21,9 @@
       "show": "Show options",
       "noResults": "No results",
       "loading": "Loading"
-    }
+    },
+    "selected": "Selected",
+    "clearSearch": "Clear search"
   },
   "navigation": {
     "product": "Product navigation",
@@ -107,16 +107,12 @@
     "unavailableDescription": "The specification workspace is not supported by Runtime yet or could not be loaded.",
     "notFoundTitle": "Specification not found",
     "notFoundDescription": "Specification {{id}} could not be found.",
-    "executeGenericBlockedNotice": "Selected tasks cannot be executed at this time.",
     "noChangesNotice": "No changed files recorded for this view.",
     "viewOverview": "Overview",
     "viewDocuments": "Documents",
     "viewSessions": "Sessions",
     "viewChanges": "View changes",
     "viewRepository": "Repository",
-    "selectTask": "Select {{id}}",
-    "openTaskNewWindow": "Open in new window",
-    "taskActionsNamed": "Actions for {{id}}",
     "historyAriaLabel": "Activity history",
     "activityHistory": "Activity history",
     "activityHistoryEmptyTitle": "No history for this specification",
@@ -158,7 +154,6 @@
     "prReviewLink": "Review PR",
     "gitRefreshFailed": "Failed to refresh repository status",
     "gitStaleData": "Stale data · last checked 30 min ago",
-    "continueSessionHeading": "Continue session",
     "sessionActions": "Session actions",
     "openSessionAction": "Open session",
     "allSessionsLink": "All sessions",
@@ -172,13 +167,6 @@
     "tasksHeading": "Tasks",
     "tasksEmptyTitle": "No tasks yet",
     "tasksEmptyDescription": "Tasks appear here once the specification is prepared for work.",
-    "tasksInPreparation": "{{count}} in preparation",
-    "tasksProgressCount": "{{completed}} / {{total}} completed",
-    "selectedTasksCount": "{{count}} selected",
-    "executeWithAgent": "Execute with agent",
-    "executeSingleTask": "Execute 1 task",
-    "executeMultipleTasks": "Execute {{count}} tasks",
-    "tasksPreparingNotice": "Tasks are still being prepared. Open them to inspect scope; execution requires review completion.",
     "documentsHeading": "Documents",
     "allDocumentsLink": "All documents",
     "openFullDocument": "Open full document",
@@ -210,7 +198,6 @@
     "repoNone": "None",
     "backToSpecification": "Back to specification",
     "taskFullHistoryHeading": "Task history",
-    "executeModalTitle": "Execute selected tasks",
     "taskStatusPending": "Ready",
     "taskStatusInProgress": "In progress",
     "taskStatusCompleted": "Completed",
@@ -218,7 +205,16 @@
     "sessionStatusActive": "Active",
     "sessionStatusAttention": "Requires attention",
     "attentionViewTask": "View task",
-    "viewTasks": "Tasks"
+    "viewTasks": "Tasks",
+    "attentionNeedsAgent": "Needs an agent",
+    "attentionShowMore_one": "Show {{count}} more",
+    "attentionShowMore_other": "Show {{count}} more",
+    "attentionSession": "Session",
+    "answerSessionAction": "Answer",
+    "sessionsHeading": "Sessions",
+    "requiresAttentionHeading": "Requires attention",
+    "attentionShowMore_few": "Show {{count}} more",
+    "attentionShowMore_many": "Show {{count}} more"
   },
   "playground": {
     "title": "UI Playground",
@@ -372,7 +368,6 @@
     "currentPosition": "Current position",
     "nextPosition": "Next step",
     "completedPosition": "Last completed step",
-    "transitionTo": "To: {{target}}",
     "evidence": "Evidence",
     "waitingHuman": "Waiting for human action",
     "attempt": "Attempt {{count}}",
@@ -439,7 +434,9 @@
     "readerUnavailable": "No reader is available for this material.",
     "materialForbidden": "Access restricted",
     "restrictedMaterial": "Restricted material",
-    "historyTitle": "History"
+    "historyTitle": "History",
+    "historyInProgress": "In progress",
+    "transitionTo": "To: {{target}}"
   },
   "applicationNavigation": {
     "location": "Application location",
@@ -1210,8 +1207,8 @@
       },
       "noType": "No type",
       "fileMissing": "File missing",
-      "newDocument": "New document…",
-      "assignType": "Assign type…",
+      "newDocument": "New document",
+      "assignType": "Assign type",
       "removeRegistration": "Remove registration",
       "registrationRemoved": "Registration of {{name}} removed",
       "truncated": "Only the first entries are listed.",
@@ -1373,7 +1370,7 @@
       "title": "Not saved: {{name}} changed on disk",
       "body": "The file was changed outside this editor after you opened it. Nothing was overwritten and your changes are still here.",
       "copyMine": "Copy my version",
-      "loadDisk": "Load the version on disk…",
+      "loadDisk": "Load the version on disk",
       "copied": "Your version is on the clipboard. The editor shows the version on disk: merge your changes into it, then save.",
       "copyFailed": "Unable to copy. Select your text and copy it by hand.",
       "loadTitle": "Load the version on disk?",
@@ -1392,159 +1389,6 @@
     },
     "image": {
       "actualSize": "Actual size"
-    }
-  },
-  "documentReading": {
-    "outline": {
-      "label": "Contents",
-      "open": "Open contents",
-      "close": "Close contents",
-      "columnLabel": "Document contents and properties"
-    },
-    "properties": {
-      "label": "Properties"
-    }
-  },
-  "docs": {
-    "title": "Documentation",
-    "backToDocumentation": "Back to documentation",
-    "closeDocument": "Close document",
-    "notice": {
-      "notRegistered": "The workspace you were reading is no longer registered, so this is the documentation of {{projectFolder}}.",
-      "unavailable": "{{name}} is unavailable right now, so this is the documentation of {{projectFolder}}.",
-      "notInWorkspace": "{{title}} is not in {{workspace}}."
-    },
-    "skipped": {
-      "one": "1 document is skipped: it has errors",
-      "many_one": "{{count}} document is skipped: it has errors",
-      "many_few": "{{count}} documents are skipped: they have errors",
-      "many_many": "{{count}} documents are skipped: they have errors",
-      "many_other": "{{count}} documents are skipped: they have errors"
-    },
-    "tree": {
-      "label": "Documents",
-      "loading": "Loading documents",
-      "proposals": "Proposals"
-    },
-    "search": {
-      "label": "Search documentation",
-      "results": "Search results",
-      "loading": "Searching the documentation",
-      "count_one": "{{count}} document",
-      "count_few": "{{count}} documents",
-      "count_many": "{{count}} documents",
-      "count_other": "{{count}} documents",
-      "indexBuilding": "Word matches only for now: the search index is being built.",
-      "indexBuildingProgress": "Word matches only for now: the search index is being built ({{percent}}%).",
-      "includeProposals_one": "Include proposals ({{count}})",
-      "includeProposals_few": "Include proposals ({{count}})",
-      "includeProposals_many": "Include proposals ({{count}})",
-      "includeProposals_other": "Include proposals ({{count}})",
-      "includeProposalsAny": "Include proposals",
-      "proposalsHintLabel": "What are proposals?",
-      "proposalsHint": "Proposals are ideas and plans in folders marked as proposals; they are not current rules.",
-      "proposal": "Proposal",
-      "noMatches": "No matching documents",
-      "noMatchesHint": "Try other words, or browse the tree.",
-      "onlyProposals_one": "Nothing in the current documentation matches. {{count}} proposal does.",
-      "onlyProposals_few": "Nothing in the current documentation matches. {{count}} proposals do.",
-      "onlyProposals_many": "Nothing in the current documentation matches. {{count}} proposals do.",
-      "onlyProposals_other": "Nothing in the current documentation matches. {{count}} proposals do.",
-      "failed": "Search is unavailable right now."
-    },
-    "article": {
-      "fallbackTitle": "Document",
-      "loading": "Loading the document",
-      "copyLink": "Copy link",
-      "copyPath": "Copy path",
-      "linkCopied": "Link copied",
-      "pathCopied": "Path copied",
-      "copyFailed": "Could not copy to the clipboard",
-      "proposalNote": "This is a proposal, not a current rule. Search leaves proposals out unless you include them.",
-      "noIndex": "This is the project documentation of {{workspace}}; open a document in the list or search it.",
-      "properties": {
-        "path": "Path",
-        "type": "Type",
-        "status": "Status",
-        "summary": "Summary",
-        "id": "ID"
-      }
-    },
-    "related": {
-      "heading": "Related",
-      "inactive": "{{title}} (no longer current)",
-      "missing": "{{id}} (not found)",
-      "skipped": "{{id}} (skipped: it has errors)",
-      "skippedUnknown": "The reader skips this document because it has errors."
-    },
-    "reference": {
-      "linkNotOpened": "Link not opened",
-      "superseded": "Superseded document",
-      "imageNotShown": "Image not shown",
-      "image": "Image",
-      "reason": {
-        "superseded": "This document is no longer current, so the reader does not open it.",
-        "outside-docs": "The target is outside the documentation. The reader opens only documents.",
-        "folder": "This is a folder, not a document. Choose a document in the tree.",
-        "not-markdown": "This file is not a Markdown document, so the reader does not open it.",
-        "skipped": "The reader skips this document: {{error}}",
-        "missing": "There is no current document at this path in this workspace.",
-        "unsafe-scheme": "This is an unsafe link, so the reader does not open it.",
-        "image": "The reader does not load images from documents."
-      }
-    },
-    "state": {
-      "openSuccessor": "Open {{title}}",
-      "notAvailable": "This document is no longer available in this workspace",
-      "superseded": {
-        "title": "This document was superseded",
-        "description": "{{id}} is no longer current documentation, so it is not shown."
-      },
-      "deprecated": {
-        "title": "This document is deprecated",
-        "description": "{{id}} is no longer current documentation, so it is not shown."
-      },
-      "skipped": {
-        "title": "This document is skipped: it has errors"
-      },
-      "articleFailed": {
-        "title": "The document cannot be shown right now",
-        "description": "Reading it failed. Try again in a moment."
-      },
-      "notConfigured": {
-        "title": "No project documentation",
-        "description": "{{workspace}} has no documentation folder. The reader shows the Markdown documents under the folder set as <code>docs.root</code> in .nevo/config.yaml (docs/ by default).",
-        "descriptionRoot": "{{workspace}} has no documentation folder. The reader shows the Markdown documents under the folder set as <code>docs.root</code> in .nevo/config.yaml, here {{docsRoot}}/."
-      },
-      "empty": {
-        "title": "No documents yet",
-        "description": "The documentation folder of {{workspace}} has no current documents."
-      },
-      "allSkipped": {
-        "title": "Documentation files exist, but none passed validation",
-        "description": "The reader skips every document in {{workspace}} because each has errors. Fix them in the files below."
-      },
-      "unavailable": {
-        "title": "This workspace is unavailable right now",
-        "description": "The folder {{folder}} cannot be read, for example while its branch is being switched or after the folder was moved. Choose another workspace or try again."
-      },
-      "docsUnavailable": {
-        "title": "The documentation cannot be read right now",
-        "description": "Its settings could not be read, or this Runtime serves no project documentation. Try again in a moment."
-      },
-      "failed": {
-        "title": "The documentation cannot be shown right now",
-        "description": "Reading it failed. Try again in a moment."
-      },
-      "forbidden": {
-        "title": "No access to the project documentation",
-        "description": "Your role in this project does not include reading its documentation. Ask a project administrator for access."
-      }
-    },
-    "entry": {
-      "specification": {
-        "label": "Documentation"
-      }
     }
   },
   "sessions": {
@@ -1855,7 +1699,6 @@
     "older": "Load older messages",
     "loadingOlder": "Loading older messages…",
     "latest": "Return to latest messages",
-    "messageActions": "Message actions",
     "copy": {
       "action": "Copy message",
       "copied": "Copied",
@@ -2046,7 +1889,8 @@
       "title": "This session was deleted or does not exist",
       "description": "This session's history is no longer available.",
       "action": "Go to specifications"
-    }
+    },
+    "messageActions": "Message actions"
   },
   "sessionStart": {
     "heading": "New session",
@@ -2106,6 +1950,734 @@
   "sessionNaming": {
     "pending": "Naming…",
     "provisionalTitle": "New session"
+  },
+  "taskAuthoring": {
+    "section": {
+      "documents": "Documents",
+      "context": "Context",
+      "dependsOn": "Depends on"
+    },
+    "status": {
+      "draft": "Draft",
+      "in-progress": "In progress",
+      "ready": "Ready",
+      "waiting": "Waiting",
+      "blocked": "Blocked",
+      "completed": "Completed",
+      "abandoned": "Abandoned",
+      "on-hold": "On hold",
+      "cancelled": "Cancelled",
+      "broken": "Broken"
+    },
+    "tasks": {
+      "newTask": "New task",
+      "emptyDescription": "Create tasks now or after the breakdown step. Tasks can be created before the workflow starts.",
+      "draftLine": "Draft · needs approval",
+      "after": "after {{ids}}",
+      "actionsFailed": "Whether tasks can be created could not be loaded."
+    },
+    "newTask": {
+      "title": "New task",
+      "description": "Created as a draft in {{spec}}. Approve it to make it ready to start.",
+      "typeLegend": "Task type",
+      "typeDescription": "{{description}} Workflow: {{workflow}} ({{steps}}).",
+      "noTypes": "No task type is allowed for this specification, so no task can be created.",
+      "idLabel": "Task id",
+      "idDescription": "Lowercase letters, digits and dashes. It names the task folder and cannot be changed.",
+      "idInvalid": "Use lowercase letters, digits and dashes, starting with a letter or digit.",
+      "titleLabel": "Title",
+      "titleRequired": "Enter a title.",
+      "typeRequired": "Choose a task type.",
+      "summaryLabel": "Summary",
+      "summaryDescription": "One or two sentences for the task list. The task document (task.md) holds the detail.",
+      "dependsOnLegend": "Depends on (optional)",
+      "create": "Create draft"
+    },
+    "page": {
+      "draft": "Draft",
+      "draftNotice": "needs approval before it can start",
+      "onHold": "On hold",
+      "cancelled": "Cancelled",
+      "loadFailed": "What can be done with this task could not be loaded."
+    },
+    "lifecycle": {
+      "approve": "Approve",
+      "hold": "Put on hold",
+      "resume": "Resume",
+      "cancel": "Cancel task",
+      "remove": "Remove task",
+      "editDetails": "Edit details",
+      "reasonLabel": "Reason (optional)",
+      "keep": "Keep task",
+      "approveTitle": "Approve {{id}}",
+      "approveDescription": "Approving makes the task ready to start.",
+      "approveMissing_one": "{{count}} required context entry is missing: {{names}}",
+      "approveMissing_few": "{{count}} required context entries are missing: {{names}}",
+      "approveMissing_many": "{{count}} required context entries are missing: {{names}}",
+      "approveMissing_other": "{{count}} required context entries are missing: {{names}}",
+      "approveMissingBody": "You can approve it now, but the task cannot start until it is replaced or removed.",
+      "holdTitle": "Put {{id}} on hold",
+      "holdDescription": "The task cannot start while it is on hold. Resume it to continue.",
+      "cancelTitle": "Cancel {{id}}",
+      "cancelDescription": "A cancelled task is not delivered and cannot be resumed. Its documents and history stay readable.",
+      "removeTitle": "Remove {{id}}",
+      "removeDescription": "Removes the task, its folder and its documents. This cannot be undone."
+    },
+    "edit": {
+      "title": "Edit details of {{id}}",
+      "typeLabel": "Task type",
+      "typeHint": "The task type cannot be changed. To use another type, remove or cancel this task and create a new one.",
+      "save": "Save",
+      "conflictTitle": "Not saved: {{id}} changed since you opened it",
+      "conflictBody": "Your edits are kept. Copy them, then load the latest version.",
+      "sectionConflictBody": "The change was not saved. Load the latest version and make it again.",
+      "copyMine": "Copy my changes",
+      "loadLatest": "Load the latest version",
+      "copied": "Your changes are on the clipboard."
+    },
+    "documents": {
+      "newDocument": "New document",
+      "taskContent": "Task content",
+      "taskDocument": "Task document",
+      "fileMissing": "File missing",
+      "open": "Open {{name}}",
+      "actionsFor": "Actions for {{name}}",
+      "rename": "Rename",
+      "delete": "Delete document",
+      "readOnly": "The task documents cannot be changed: the specification is archived.",
+      "loadFailed": "The task documents could not be loaded.",
+      "newTitle": "New task document",
+      "pathLabel": "File name",
+      "pathDescription": "Relative to the task folder, for example notes.md.",
+      "typeLabel": "Document type",
+      "create": "Create document",
+      "renameTitle": "Rename {{name}}",
+      "nameLabel": "New name",
+      "renameConfirm": "Rename",
+      "deleteTitle": "Delete {{name}}",
+      "deleteDescription": "The file and its registration are removed. Context entries that name it stop resolving."
+    },
+    "context": {
+      "count_one": "{{count}} entry",
+      "count_few": "{{count}} entries",
+      "count_many": "{{count}} entries",
+      "count_other": "{{count}} entries",
+      "explanation": "Inputs this task needs before it starts, in the order they are read. task.md always comes first.",
+      "defaultNote": "No list is set yet, so this is the default context. The first change writes it out.",
+      "blocking_one": "{{count}} required entry is missing.",
+      "blocking_few": "{{count}} required entries are missing.",
+      "blocking_many": "{{count}} required entries are missing.",
+      "blocking_other": "{{count}} required entries are missing.",
+      "blockingBody": "The next step cannot start until they are replaced or removed.",
+      "kind": {
+        "task-document": "Task document",
+        "specification-document": "Specification document",
+        "project-document": "Project document",
+        "path": "Code path",
+        "instructions": "Instructions"
+      },
+      "required": "Required",
+      "optional": "Optional",
+      "alwaysFirst": "Always first",
+      "processArtifact": "Process artifact",
+      "awaited": "Awaited: {{ref}} is created earlier in the process. Needed when the step starts.",
+      "notFound": "Not found: {{ref}} was moved or deleted. Required, so the next step cannot start until you replace or remove it.",
+      "notRegistered": "Not registered: {{ref}} is not a document of this task. Required, so the next step cannot start until you replace or remove it.",
+      "showAll": "Show all {{count}} entries in order",
+      "showProblems": "Show only entries that need attention",
+      "add": "Add context",
+      "addSpecificationDocument": "Specification document",
+      "addProjectDocument": "Project document",
+      "addPath": "Code path",
+      "addInstructions": "Instructions",
+      "actionsFor": "Actions for {{name}}",
+      "whenStarts": "When the step starts",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "remove": "Remove from context",
+      "addTitle": {
+        "specification-document": "Add specification documents",
+        "project-document": "Add project documents",
+        "path": "Add a code path",
+        "instructions": "Add instructions"
+      },
+      "addDescription": "Added to the end of {{id}}'s context. You can reorder it later.",
+      "artifactLabel": "Created earlier in the process (for example by another task)",
+      "artifactDescription": "Needed before this task starts. It may not exist yet; until then it shows as awaited, without a warning. What this task produces is not context: it is an exit gate of the step that produces it.",
+      "specificationLegend": "Documents of {{spec}}",
+      "alreadyInContext": "already in context",
+      "documentIdLabel": "Document id",
+      "documentIdDescription": "The id it will be registered with. Until then it shows as awaited.",
+      "searchLabel": "Search project documentation",
+      "searching": "Searching…",
+      "noResults": "No documents match.",
+      "searchFailed": "The project documentation could not be searched.",
+      "results": "Results",
+      "pathLabel": "File, folder or glob",
+      "pathDescription": "Relative to the repository root.",
+      "instructionsLabel": "Instructions",
+      "requiredDescription": "The step does not start while it is missing.",
+      "optionalDescription": "Skipped and listed as omitted when it is missing.",
+      "noteLabel": "Why it is needed (optional)",
+      "confirm": "Add to context",
+      "nothingChosen": "Choose at least one document.",
+      "valueRequired": "Enter a value.",
+      "unresolvedEntry": "{{ref}} does not resolve.",
+      "awaitedEntry": "{{ref}} does not exist yet.",
+      "ownArtifactTitle": "Not added: this is the task's own document",
+      "ownArtifactBody": "Context lists what the task needs before it starts. {{ref}} is produced by this task, so it belongs to an exit gate of the step that produces it, for example “a findings document exists” before finishing.",
+      "notFoundOptional": "Not found: {{ref}} was moved or deleted. Optional, so the next step skips it."
+    },
+    "dependencies": {
+      "none": "No dependencies: the task can start as soon as it is approved.",
+      "add": "Add dependency",
+      "fixed": "Dependencies are fixed once the task has started.",
+      "remove": "Remove dependency",
+      "actionsFor": "Actions for {{id}}",
+      "dialogTitle": "Add dependencies to {{id}}",
+      "dialogDescription": "{{id}} becomes ready only when these tasks are done.",
+      "existing": "Already a dependency",
+      "confirm": "Add dependencies",
+      "legend": "Tasks",
+      "noCandidates": "There are no other tasks in this specification.",
+      "missingTask": "{{id}} is not a task of this specification any more.",
+      "unavailable": {
+        "would-create-cycle": "{{other}} already depends on {{id}}; adding it would create a cycle",
+        "cancelled": "Cancelled; it would never be done",
+        "broken": "Broken; restore its files first"
+      }
+    },
+    "refusal": {
+      "generic": "The change was not saved. Try again.",
+      "outcomeUnknown": "The answer was lost; the change may have been saved. Reload before trying again.",
+      "revisionConflict": "The task changed since you opened it.",
+      "taskExists": "A task with this id exists already. Choose another id.",
+      "typeNotAllowed": "This task type is not allowed for the specification any more.",
+      "definitionMissing": "The task type or its workflow is not defined any more.",
+      "contextUnresolved": "Some context entries do not resolve:",
+      "notRemovable": "The task cannot be removed now.",
+      "busy": "The specification is busy with another change. Try again in a moment.",
+      "specificationEnded": "The specification has ended; its tasks cannot be changed.",
+      "inputInvalid": "The task cannot be saved like this.",
+      "stateChanged": "The task changed in the meantime. Reload and try again.",
+      "documentPathConflict": "A document with this name exists already.",
+      "documentPathInvalid": "This file name is not allowed.",
+      "documentRevisionConflict": "The document changed since you opened it. Reload and try again.",
+      "documentProtected": "task.md is the task's main document: it cannot be renamed or deleted."
+    }
+  },
+  "workflowExecution": {
+    "now": {
+      "heading": "Now",
+      "workflow": "{{title}} · rev {{version}}",
+      "notStarted": "Not started",
+      "firstStep": "First step {{title}}",
+      "ready": "Ready to start",
+      "active": "Attempt {{attempt}} · in progress since {{since}} · started by {{actor}}",
+      "waitingNote": "Continues by itself when every task is done or cancelled",
+      "waitingFor_one": "Waiting for {{count}} of {{total}} task",
+      "waitingFor_few": "Waiting for {{count}} of {{total}} tasks",
+      "waitingFor_many": "Waiting for {{count}} of {{total}} tasks",
+      "waitingFor_other": "Waiting for {{count}} of {{total}} tasks",
+      "seeTasks": "See Tasks",
+      "attention": {
+        "tasks-stuck": "Tasks cannot go on by themselves: {{ids}}. Approve, resume or cancel them.",
+        "task-escalated": "A task asked for your decision: {{ids}}."
+      },
+      "cannotStart": "Cannot start yet",
+      "cannotStartTitle": "Cannot start",
+      "terminal": {
+        "completed": "Completed",
+        "abandoned": "Abandoned"
+      },
+      "abandonedBy": "{{at}} by {{actor}}",
+      "toFinishWith": "To finish with {{result}}:",
+      "returned": "Returned to this step",
+      "start": "Start {{step}}",
+      "finish": "Finish step",
+      "return": "Return to earlier step",
+      "finishKept": "Your finish is kept: result, feedback and artifacts stay as you left them. Finish step continues it.",
+      "postActionFailed": "Finished. Committing the workflow state failed ({{code}}); the changes stay uncommitted and Close includes them.",
+      "lastPrefix": "Last: {{step}} · ",
+      "alreadyFinished": "This step was already finished. What you can do now is shown below.",
+      "startWorkflow": "Start workflow",
+      "operations": "Workflow operations",
+      "history": "Workflow history",
+      "returnTo": "Return to {{step}}",
+      "finishAfterGate": "Finish step becomes available once this is met.",
+      "finishAfterTasks": "Finish step becomes available once every task is done or cancelled.",
+      "tasksOpen": "To finish with {{result}}, every task must be done or cancelled. Open: {{tasks}}.",
+      "tasksOpenDrafts": "To finish with {{result}}, leave out the open drafts of this step: untick {{tasks}} when you finish.",
+      "technicalStep": "Step {{step}} · {{title}} rev {{version}}",
+      "technical": "{{title}} rev {{version}}",
+      "openDocument": "Open {{name}}"
+    },
+    "blocker": {
+      "dependencies_one": "Waiting for {{count}} dependency",
+      "dependencies_few": "Waiting for {{count}} dependencies",
+      "dependencies_many": "Waiting for {{count}} dependencies",
+      "dependencies_other": "Waiting for {{count}} dependencies",
+      "unsatisfiable_one": "{{count}} dependency can never finish ({{ids}}); remove it or cancel this task.",
+      "unsatisfiable_few": "{{count}} dependencies can never finish ({{ids}}); remove them or cancel this task.",
+      "unsatisfiable_many": "{{count}} dependencies can never finish ({{ids}}); remove them or cancel this task.",
+      "unsatisfiable_other": "{{count}} dependencies can never finish ({{ids}}); remove them or cancel this task.",
+      "seeDependencies": "See Depends on",
+      "broken": "The task's files do not match its workflow record. Repair them before it can go on.",
+      "definitionChanged": "The workflow changed since this task started (it follows rev {{version}}); its next step is refused.",
+      "typeNotAllowed": "This task type is no longer allowed for the specification. Remove the task and create a new one with an allowed type, or cancel it.",
+      "definitionMissing": "The task type or its workflow is no longer defined.",
+      "notConfigured": "This specification has no workflow configured.",
+      "contextUnresolved_one": "{{count}} required context entry is missing",
+      "contextUnresolved_few": "{{count}} required context entries are missing",
+      "contextUnresolved_many": "{{count}} required context entries are missing",
+      "contextUnresolved_other": "{{count}} required context entries are missing",
+      "contextAwaited_one": "{{count}} required process artifact is awaited; it is created earlier in the process.",
+      "contextAwaited_few": "{{count}} required process artifacts are awaited; they are created earlier in the process.",
+      "contextAwaited_many": "{{count}} required process artifacts are awaited; they are created earlier in the process.",
+      "contextAwaited_other": "{{count}} required process artifacts are awaited; they are created earlier in the process.",
+      "seeContext": "See Context",
+      "entryGates": "Needed before the step starts:"
+    },
+    "gate": {
+      "noDocument": "none registered yet",
+      "fileMissing": "its file is missing",
+      "sectionsMissing": "missing sections: {{sections}}",
+      "unreadable": "cannot be read",
+      "metHidden": " (met)",
+      "unmetHidden": " (not met)",
+      "createDocument": "Create {{type}} document",
+      "openDocument": "Open document"
+    },
+    "finish": {
+      "title": "Finish {{step}}",
+      "description": "Attempt {{attempt}}. You are recorded as the person who finished it.",
+      "result": "Result",
+      "ends": "Ends the workflow",
+      "goesTo": "Goes to {{title}}",
+      "feedbackRequiredShort": "feedback required",
+      "gatesFor": "Needed to finish with {{result}}",
+      "gatesUnmet": "Finish is unavailable for this result until every item is met. Other results stay available.",
+      "rechecked": "Checked again when you came back; your result and feedback are as you left them.",
+      "documentChangePending": "A task document change is still being saved. Finish is available once it is saved.",
+      "tasksOpen": "This result completes the specification, so every task must be done or cancelled first. Open: {{tasks}}.",
+      "tasksStillOpen": "This result completes the specification, so every task must be done or cancelled. Still open: {{tasks}}.",
+      "untickToClose": "Untick {{tasks}} below to cancel them with this finish.",
+      "cancelToClose": "Cancel {{tasks}} in Tasks first.",
+      "tasksClosedByFinish": "Finishing cancels the drafts you unticked, so no task stays open and the specification completes.",
+      "tasksDocumentPending": "A document change of {{tasks}} is still being saved; this finish can close them once it is saved.",
+      "feedbackRequired": "Feedback (required)",
+      "feedbackOptional": "Feedback (optional)",
+      "feedbackNeeded": "This result needs feedback for the next step.",
+      "feedbackHint": "Shown to whoever works on the next step.",
+      "artifacts": "Artifacts (optional)",
+      "artifactsHint": "Documents that show the result, such as a review note.",
+      "attached": "Attached artifacts",
+      "removeArtifact": "Remove {{name}}",
+      "attach": "Attach document",
+      "keepsTasks": "This step has no drafts of its own; tasks created by hand stay as they are.",
+      "submit": "Finish step",
+      "finishing": "Finishing…",
+      "drafts": "Drafts this step proposed earlier",
+      "draftsHint": "Ticked drafts stay drafts after this finish; unticked ones are cancelled. Tasks created by hand are not affected.",
+      "draftNeeded": "{{kept}} still depends on {{draft}}: keep {{draft}}, or untick {{kept}} too."
+    },
+    "return": {
+      "title": "Return to an earlier step",
+      "descriptionActive": "Ends the current attempt of {{step}} without a result. The earlier step starts a new attempt.",
+      "description": "The earlier step starts a new attempt.",
+      "to": "Return to",
+      "reasonRequired": "Reason (required)",
+      "reasonOptional": "Reason (optional)",
+      "reasonHint": "Handed to the earlier step as its feedback.",
+      "submit": "Return to {{step}}"
+    },
+    "start": {
+      "title": "Start {{id}}",
+      "description": "Starting fixes the workflow this task follows until it ends. You confirm rev {{version}}; if it changes before you confirm, nothing starts and this dialog shows the new revision.",
+      "cannotStart": "This task cannot start.",
+      "changedTitle": "Not started: the workflow changed just now",
+      "changedBody": "You confirmed rev {{confirmed}}, but {{title}} is now rev {{version}}. Review it and confirm again.",
+      "typeNotAllowedTitle": "{{type}} is no longer allowed",
+      "typeNotAllowedBody": "{{type}} is no longer allowed for this specification. A task keeps its type, so remove this task and create a new one with an allowed type, or cancel it.",
+      "taskType": "Task type",
+      "workflow": "Workflow",
+      "workflowChanged": "{{title}} · rev {{from}} → rev {{to}}",
+      "firstStep": "First step",
+      "notNow": "Not now",
+      "confirm": "Start {{step}}",
+      "startWithVersion": "Start with rev {{version}}",
+      "change": "Change"
+    },
+    "exit": {
+      "group": {
+        "workflow": "Workflow",
+        "tasks": "Unfinished tasks",
+        "broken": "Broken tasks",
+        "writes": "Pending writes",
+        "state": "Workflow state"
+      },
+      "explanation": {
+        "workflow": "The specification workflow has not ended. A wait for tasks ends by itself once every task is done or cancelled.",
+        "tasks": "Finish, cancel or remove each one.",
+        "broken": "Their files do not match their workflow records. Repair or remove them.",
+        "writes": "A save or another change is still in progress; it settles by itself in a moment.",
+        "state": "The workflow state cannot be read. Check the specification's execution files."
+      },
+      "groupHeading": "{{title}} · {{count}}",
+      "more_one": "and {{count}} more",
+      "more_few": "and {{count}} more",
+      "more_many": "and {{count}} more",
+      "more_other": "and {{count}} more",
+      "seeWorkflow": "See workflow",
+      "goToTasks": "Go to Tasks",
+      "dismiss": "Dismiss",
+      "saving": "A task document is still being saved"
+    },
+    "close": {
+      "action": "Close specification",
+      "title": "Close {{title}}",
+      "blocked": "{{title}} cannot close yet: {{reasons}}.",
+      "abandonPrompt": "Not going to finish this work?",
+      "abandonInstead": "Abandon instead",
+      "ready": "Everything required is finished. Closing also runs the repository checks.",
+      "afterAbandon": "Abandoned: “{{reason}}” Closing records it as not delivered and runs the repository checks.",
+      "readyTitle": "Ready to close",
+      "readyBody": "The workflow is complete.",
+      "notDelivered": "Cancelled, not delivered",
+      "notDeliveredExplanation": "Recorded as not delivered when the specification closes.",
+      "previewFailed": "Close cannot start now",
+      "failed": "Not closed",
+      "notCompleted": "Close needs attention",
+      "status": {
+        "requires-resolution": "The branch needs a resolution before it can be integrated.",
+        "in-progress": "Close is still running.",
+        "recovery-required": "Close stopped part way and needs recovery."
+      },
+      "submit": "Close specification",
+      "reason": {
+        "waiting_one": "its workflow is waiting for {{count}} unfinished task",
+        "waiting_few": "its workflow is waiting for {{count}} unfinished tasks",
+        "waiting_many": "its workflow is waiting for {{count}} unfinished tasks",
+        "waiting_other": "its workflow is waiting for {{count}} unfinished tasks",
+        "workflow": "its workflow has not ended",
+        "unfinished_one": "{{count}} task is unfinished",
+        "unfinished_few": "{{count}} tasks are unfinished",
+        "unfinished_many": "{{count}} tasks are unfinished",
+        "unfinished_other": "{{count}} tasks are unfinished",
+        "broken_one": "{{count}} task is broken",
+        "broken_few": "{{count}} tasks are broken",
+        "broken_many": "{{count}} tasks are broken",
+        "broken_other": "{{count}} tasks are broken",
+        "saving_one": "{{count}} task document is still being saved",
+        "saving_few": "{{count}} task documents are still being saved",
+        "saving_many": "{{count}} task documents are still being saved",
+        "saving_other": "{{count}} task documents are still being saved",
+        "change": "a change is still being saved",
+        "state": "its workflow state cannot be read"
+      }
+    },
+    "abandon": {
+      "action": "Abandon specification",
+      "title": "Abandon {{title}}",
+      "description": "Ends the specification without delivering it. This cannot be undone.",
+      "blocked": "{{title}} cannot be abandoned yet: the items below are still running.",
+      "whatHappens": "What happens",
+      "endsWorkflow": "The {{workflow}} workflow ends as abandoned.",
+      "endsAttempts": "Active attempts end as abandoned; their work is kept:",
+      "cancelsTasks_one": "{{count}} unfinished task is cancelled, also when it has started: {{ids}}.",
+      "cancelsTasks_few": "{{count}} unfinished tasks are cancelled, including started ones: {{ids}}.",
+      "cancelsTasks_many": "{{count}} unfinished tasks are cancelled, including started ones: {{ids}}.",
+      "cancelsTasks_other": "{{count}} unfinished tasks are cancelled, including started ones: {{ids}}.",
+      "nothingDelivered": "Nothing is marked delivered. Documents, tasks and history stay readable.",
+      "reason": "Reason (required)",
+      "reasonHint": "Shown on the specification and in its history.",
+      "submit": "Abandon specification",
+      "endsWorkflowAt": "The {{workflow}} workflow ends as abandoned at {{step}}."
+    },
+    "refusal": {
+      "generic": "The workflow did not change. Try again.",
+      "outcomeUnknown": "The answer was lost; the change may have been made. Reload before trying again.",
+      "outcomeUnknownRetrySafe": "The answer was lost; the step may have finished. Finishing again with the same input is safe: nothing is recorded twice.",
+      "definitionChanged": "The workflow changed since you opened it. Review the new revision and confirm again.",
+      "stateChanged": "The workflow moved on in the meantime. What you can do now is shown.",
+      "gateUnsatisfied": "A required item is not met yet.",
+      "typeNotAllowed": "This task type is no longer allowed for the specification.",
+      "definitionMissing": "The task type or its workflow is no longer defined.",
+      "contextUnresolved": "A required context entry is missing.",
+      "taskBlocked": "The task cannot start yet: it waits for its dependencies or its status.",
+      "inputInvalid": "The workflow cannot accept this input.",
+      "returnNotAllowed": "The workflow cannot return to that step.",
+      "specificationEnded": "The specification has ended.",
+      "exitBlocked": "Something still holds the specification.",
+      "localConfigModified": "The worktree's local configuration (.nevo/local/config.yaml) was changed, added by hand or cannot be read. Move or delete it, then close again.",
+      "busy": "The specification is busy with another change. Try again in a moment.",
+      "draftConflict": "A draft you keep depends on a draft you unticked. Keep both, or untick both.",
+      "tasksOpen": "The specification cannot complete while tasks are open: {{tasks}}. Finish or cancel them first."
+    },
+    "time": {
+      "today": "Today {{time}}",
+      "yesterday": "Yesterday {{time}}"
+    },
+    "change": {
+      "added": "Adds step {{step}}",
+      "addedAfter": "Adds step {{step}} after {{after}}",
+      "removed": "Removes step {{step}}",
+      "renamed": "Renames step {{from}} to {{to}}",
+      "transitions": "Changes where {{step}} leads"
+    }
+  },
+  "taskOverview": {
+    "attention": {
+      "action": {
+        "review-tasks": "Review tasks",
+        "edit-context": "Edit context",
+        "edit-dependencies": "Edit dependencies",
+        "confirm-definition": "Review new revision",
+        "cancel-task": "Cancel task",
+        "restore-task": "Open task",
+        "satisfy-gate": "Open task",
+        "start-step": "Start step",
+        "return-to-step": "Return to earlier step"
+      },
+      "specification": "Specification",
+      "stuckTitle_one": "Resolve {{count}} blocking task",
+      "stuckTitle_other": "Resolve {{count}} blocking tasks",
+      "stuckReason": "Approve, resume or cancel them so the specification can finish",
+      "startFailed": "The step could not be started. Open the task to see what you can do now.",
+      "startNamed": "Start {{step}}",
+      "stuckTitle_few": "Resolve {{count}} blocking tasks",
+      "stuckTitle_many": "Resolve {{count}} blocking tasks"
+    },
+    "summary": {
+      "allTasks": "All tasks",
+      "count_one": "{{count}} task",
+      "count_other": "{{count}} tasks",
+      "more_one": "{{count}} more",
+      "more_other": "{{count}} more",
+      "openGroup": "{{group}}: open on the Tasks page",
+      "count_few": "{{count}} tasks",
+      "count_many": "{{count}} tasks",
+      "more_few": "{{count}} more",
+      "more_many": "{{count}} more"
+    },
+    "progress": {
+      "label": "Tasks {{progress}}",
+      "done": "{{completed}} of {{total}} done",
+      "cancelled_one": "{{count}} cancelled",
+      "cancelled_other": "{{count}} cancelled",
+      "ended_one": "{{count}} ended",
+      "ended_other": "{{count}} ended",
+      "onHold_one": "{{count}} on hold",
+      "onHold_other": "{{count}} on hold",
+      "barNote": "The bar counts every task except cancelled ones.",
+      "barNoteEnded": "The bar counts every task except cancelled and ended ones.",
+      "cancelled_few": "{{count}} cancelled",
+      "cancelled_many": "{{count}} cancelled",
+      "ended_few": "{{count}} ended",
+      "ended_many": "{{count}} ended",
+      "onHold_few": "{{count}} on hold",
+      "onHold_many": "{{count}} on hold"
+    },
+    "terminal": {
+      "allDone_one": "The task is done",
+      "allDone_other": "All {{count}} tasks done",
+      "cancelled_one": "{{count}} task cancelled",
+      "cancelled_other": "{{count}} tasks cancelled",
+      "done_one": "{{count}} done",
+      "done_other": "{{count}} done",
+      "allDone_few": "All {{count}} tasks done",
+      "allDone_many": "All {{count}} tasks done",
+      "cancelled_few": "{{count}} tasks cancelled",
+      "cancelled_many": "{{count}} tasks cancelled",
+      "done_few": "{{count}} done",
+      "done_many": "{{count}} done"
+    },
+    "stuck": {
+      "before": "It cannot continue now:",
+      "after": "and no other task is open.",
+      "cause": {
+        "draft": "is a draft",
+        "on-hold": "is on hold",
+        "broken": "is broken",
+        "dependency-unsatisfiable": "depends on a cancelled or ended task",
+        "active": "is in progress",
+        "waiting": "waits for other tasks",
+        "ready": "can start or continue"
+      }
+    },
+    "row": {
+      "attention": "Requires attention · {{reason}}",
+      "attentionOnly": "Requires attention",
+      "blocksSpecification": "the specification cannot continue until it moves",
+      "waitingFor": "Waiting for {{ids}}"
+    },
+    "page": {
+      "loading": "Loading tasks",
+      "failed": "The tasks could not be loaded.",
+      "filterLabel": "Filter tasks",
+      "filterPlaceholder": "Filter by id or title",
+      "blocking_one": "Blocking specification · {{count}} task",
+      "blocking_other": "Blocking specification · {{count}} tasks",
+      "nothingBlocks": "Nothing blocks the specification now",
+      "clearBlocking": "Clear filter: blocking specification",
+      "shown": "{{matched}} of {{total}} shown",
+      "noMatch": "No task matches the filter.",
+      "blocking_few": "Blocking specification · {{count}} tasks",
+      "blocking_many": "Blocking specification · {{count}} tasks"
+    }
+  },
+  "documentReading": {
+    "outline": {
+      "label": "Contents",
+      "open": "Open contents",
+      "close": "Close contents",
+      "columnLabel": "Document contents and properties"
+    },
+    "properties": {
+      "label": "Properties"
+    }
+  },
+  "docs": {
+    "title": "Documentation",
+    "backToDocumentation": "Back to documentation",
+    "closeDocument": "Close document",
+    "notice": {
+      "notRegistered": "The workspace you were reading is no longer registered, so this is the documentation of {{projectFolder}}.",
+      "unavailable": "{{name}} is unavailable right now, so this is the documentation of {{projectFolder}}.",
+      "notInWorkspace": "{{title}} is not in {{workspace}}."
+    },
+    "skipped": {
+      "one": "1 document is skipped: it has errors",
+      "many_one": "{{count}} document is skipped: it has errors",
+      "many_few": "{{count}} documents are skipped: they have errors",
+      "many_many": "{{count}} documents are skipped: they have errors",
+      "many_other": "{{count}} documents are skipped: they have errors"
+    },
+    "tree": {
+      "label": "Documents",
+      "loading": "Loading documents",
+      "proposals": "Proposals"
+    },
+    "search": {
+      "label": "Search documentation",
+      "results": "Search results",
+      "loading": "Searching the documentation",
+      "count_one": "{{count}} document",
+      "count_few": "{{count}} documents",
+      "count_many": "{{count}} documents",
+      "count_other": "{{count}} documents",
+      "indexBuilding": "Word matches only for now: the search index is being built.",
+      "indexBuildingProgress": "Word matches only for now: the search index is being built ({{percent}}%).",
+      "includeProposals_one": "Include proposals ({{count}})",
+      "includeProposals_few": "Include proposals ({{count}})",
+      "includeProposals_many": "Include proposals ({{count}})",
+      "includeProposals_other": "Include proposals ({{count}})",
+      "includeProposalsAny": "Include proposals",
+      "proposalsHintLabel": "What are proposals?",
+      "proposalsHint": "Proposals are ideas and plans in folders marked as proposals; they are not current rules.",
+      "proposal": "Proposal",
+      "noMatches": "No matching documents",
+      "noMatchesHint": "Try other words, or browse the tree.",
+      "onlyProposals_one": "Nothing in the current documentation matches. {{count}} proposal does.",
+      "onlyProposals_few": "Nothing in the current documentation matches. {{count}} proposals do.",
+      "onlyProposals_many": "Nothing in the current documentation matches. {{count}} proposals do.",
+      "onlyProposals_other": "Nothing in the current documentation matches. {{count}} proposals do.",
+      "failed": "Search is unavailable right now."
+    },
+    "article": {
+      "fallbackTitle": "Document",
+      "loading": "Loading the document",
+      "copyLink": "Copy link",
+      "copyPath": "Copy path",
+      "linkCopied": "Link copied",
+      "pathCopied": "Path copied",
+      "copyFailed": "Could not copy to the clipboard",
+      "proposalNote": "This is a proposal, not a current rule. Search leaves proposals out unless you include them.",
+      "noIndex": "This is the project documentation of {{workspace}}; open a document in the list or search it.",
+      "properties": {
+        "path": "Path",
+        "type": "Type",
+        "status": "Status",
+        "summary": "Summary",
+        "id": "ID"
+      }
+    },
+    "related": {
+      "heading": "Related",
+      "inactive": "{{title}} (no longer current)",
+      "missing": "{{id}} (not found)",
+      "skipped": "{{id}} (skipped: it has errors)",
+      "skippedUnknown": "The reader skips this document because it has errors."
+    },
+    "reference": {
+      "linkNotOpened": "Link not opened",
+      "superseded": "Superseded document",
+      "imageNotShown": "Image not shown",
+      "image": "Image",
+      "reason": {
+        "superseded": "This document is no longer current, so the reader does not open it.",
+        "outside-docs": "The target is outside the documentation. The reader opens only documents.",
+        "folder": "This is a folder, not a document. Choose a document in the tree.",
+        "not-markdown": "This file is not a Markdown document, so the reader does not open it.",
+        "skipped": "The reader skips this document: {{error}}",
+        "missing": "There is no current document at this path in this workspace.",
+        "unsafe-scheme": "This is an unsafe link, so the reader does not open it.",
+        "image": "The reader does not load images from documents."
+      }
+    },
+    "state": {
+      "openSuccessor": "Open {{title}}",
+      "notAvailable": "This document is no longer available in this workspace",
+      "superseded": {
+        "title": "This document was superseded",
+        "description": "{{id}} is no longer current documentation, so it is not shown."
+      },
+      "deprecated": {
+        "title": "This document is deprecated",
+        "description": "{{id}} is no longer current documentation, so it is not shown."
+      },
+      "skipped": {
+        "title": "This document is skipped: it has errors"
+      },
+      "articleFailed": {
+        "title": "The document cannot be shown right now",
+        "description": "Reading it failed. Try again in a moment."
+      },
+      "notConfigured": {
+        "title": "No project documentation",
+        "description": "{{workspace}} has no documentation folder. The reader shows the Markdown documents under the folder set as <code>docs.root</code> in .nevo/config.yaml (docs/ by default).",
+        "descriptionRoot": "{{workspace}} has no documentation folder. The reader shows the Markdown documents under the folder set as <code>docs.root</code> in .nevo/config.yaml, here {{docsRoot}}/."
+      },
+      "empty": {
+        "title": "No documents yet",
+        "description": "The documentation folder of {{workspace}} has no current documents."
+      },
+      "allSkipped": {
+        "title": "Documentation files exist, but none passed validation",
+        "description": "The reader skips every document in {{workspace}} because each has errors. Fix them in the files below."
+      },
+      "unavailable": {
+        "title": "This workspace is unavailable right now",
+        "description": "The folder {{folder}} cannot be read, for example while its branch is being switched or after the folder was moved. Choose another workspace or try again."
+      },
+      "docsUnavailable": {
+        "title": "The documentation cannot be read right now",
+        "description": "Its settings could not be read, or this Runtime serves no project documentation. Try again in a moment."
+      },
+      "failed": {
+        "title": "The documentation cannot be shown right now",
+        "description": "Reading it failed. Try again in a moment."
+      },
+      "forbidden": {
+        "title": "No access to the project documentation",
+        "description": "Your role in this project does not include reading its documentation. Ask a project administrator for access."
+      }
+    },
+    "entry": {
+      "specification": {
+        "label": "Documentation"
+      }
+    }
   },
   "workspacePicker": {
     "label": "Workspace",

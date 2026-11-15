@@ -161,6 +161,13 @@ A decision action may appear both as a convenient surface/header action and agai
 of a deliberate evidence-reading flow when both affordances invoke the same authoritative command
 and share pending/disabled state. Do not duplicate ordinary actions merely to fill space.
 
+### Action labels
+
+Action labels (buttons, menu items, header actions) carry **no trailing ellipsis**, also when the
+action opens a dialog or asks for confirmation: **New document**, **Remove task**, **Finish step**.
+Hidden actions are reached through the **More** icon button (`⋯`), which is a separate, kept pattern.
+Status and progress text for work in flight may end with an ellipsis (**Saving…**, **Loading…**).
+
 ## Loading and live state
 
 Give immediate feedback on an action. A "busy" indicator is shown only when something is

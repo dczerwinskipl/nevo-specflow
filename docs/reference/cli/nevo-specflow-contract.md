@@ -71,11 +71,15 @@ Run "nevo-specflow init"; it keeps the existing sections.` `start --demo` serves
 The [Specification CLI reference](specflow-specification-commands.md) owns the exact options and
 outputs of:
 
-- `specs create`, `list`, `resolve`, `recover` (an interrupted Create), `close`, `close-inspect`,
+- `specs create`, `list`, `resolve`, `recover` (an interrupted Create), `abandon`, `close`, `close-inspect`,
   `close-reconcile-scratch` (operator reconciliation of a removed conflict scratch before a new
   Worktree Close), `worktree close`, and `workspace close|inspect`;
 - `specs documents ...` (list, validate, add, folder, save, rename, move, delete, classify, status,
   flush, retry, abandon, resolve, recover);
+- `tasks list|inspect|create|edit|remove|status` and `workflow actions|start|finish|return`
+  ([Task and workflow commands](specflow-specification-commands.md#task-and-workflow-commands)),
+  plus `specs documents read` and the `--task <task-id>` scope of `specs documents list|read|add|folder|save|rename|move|delete|classify`
+  for the documents of a Task;
 - `commit` and `commit status`;
 - `definitions list|show|validate|install`
   ([Definitions commands](specflow-specification-commands.md#definitions-commands)).
@@ -87,7 +91,7 @@ are implemented; see [`nevo-specflow docs` commands](nevo-specflow-docs.md).
 
 ## Not implemented
 
-`status`, `workflow`, `install`, `update` and any other unlisted command are **not**
+`status`, `install`, `update` and any other unlisted command are **not**
 present — not in `--help`, not as hidden commands. They are future direction only.
 Product copy and docs must not describe them as available.
 

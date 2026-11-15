@@ -10,7 +10,7 @@ import { useSlowGitTestTimeouts } from '../support/platform';
 
 import { sha256Hex } from '../../src/hash';
 import { applyDocumentChange } from '../../src/specs/documents/api';
-import { getStableProjectCatalogue } from '../../src/specs/definitions';
+import { getStableProjectCatalogue } from '../../src/definitions';
 import { createSpecificationForTesting } from '../../src/testing';
 import { failure, documentsProject, removeTrackedRoots } from '../support/documents-fixture';
 import { noSleep } from '../support/document-writes';

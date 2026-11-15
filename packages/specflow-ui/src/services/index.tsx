@@ -31,6 +31,16 @@ import {
 } from '../features/specs/read-model/api';
 import { createRuntimeTaskApi, type TaskApi } from '../features/tasks/api';
 import {
+  createRuntimeTaskAuthoringApi,
+  workflowErrorCodes,
+  type TaskAuthoringApi,
+} from '../features/tasks/authoring/api';
+import {
+  closeErrorCodes,
+  createRuntimeWorkflowExecutionApi,
+  type WorkflowExecutionApi,
+} from '../features/tasks/execution/api';
+import {
   createRuntimeWorkspaceApi,
   workspacesReadOperation,
   type WorkspaceApi,
@@ -60,6 +70,10 @@ export interface SpecFlowAppServices {
   readonly specsOverviewApi: SpecsOverviewApi;
   readonly specificationApi: SpecificationApi;
   readonly taskApi: TaskApi;
+  /** Task authoring of a project Runtime: projections, Task commands, Task documents. */
+  readonly taskAuthoringApi: TaskAuthoringApi;
+  /** Manual workflow execution of a project Runtime: start, finish, return, abandon, Close. */
+  readonly workflowExecutionApi: WorkflowExecutionApi;
   /** The registered workspaces of the project (`GET /api/workspaces`, project and demo Runtime alike). */
   readonly workspaceApi: WorkspaceApi;
   /** The documentation of one registered workspace (`/api/workspaces/:workspaceId/docs…`). */
@@ -91,6 +105,8 @@ export interface SpecFlowServicesOptions {
   readonly specsOverviewApi?: SpecsOverviewApi;
   readonly specificationApi?: SpecificationApi;
   readonly taskApi?: TaskApi;
+  readonly taskAuthoringApi?: TaskAuthoringApi;
+  readonly workflowExecutionApi?: WorkflowExecutionApi;
   readonly workspaceApi?: WorkspaceApi;
   readonly docsApi?: DocsApi;
   readonly documentApi?: DocumentApi;
@@ -133,6 +149,19 @@ export function createSpecFlowAppServices(
     specsOverviewApi,
     specificationApi,
     taskApi: options.taskApi ?? createRuntimeTaskApi(runtimeHttp),
+    taskAuthoringApi:
+      options.taskAuthoringApi ??
+      createRuntimeTaskAuthoringApi(
+        createApiTransport(runtimeHttp, { operation: 'tasks', codes: workflowErrorCodes }),
+      ),
+    workflowExecutionApi:
+      options.workflowExecutionApi ??
+      createRuntimeWorkflowExecutionApi(
+        createApiTransport(runtimeHttp, {
+          operation: 'workflow',
+          codes: { ...workflowErrorCodes, ...closeErrorCodes },
+        }),
+      ),
     workspaceApi:
       options.workspaceApi ??
       createRuntimeWorkspaceApi(

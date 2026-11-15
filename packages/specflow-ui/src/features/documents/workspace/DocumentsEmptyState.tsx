@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Button, EmptyState, type IconGlyph } from '@nevo/ui';
 
-/** A start action offered in the empty area (New document…, Upload). */
+/** A start action offered in the empty area (New document, Upload). */
 export interface DocumentsEmptyStateAction {
   id: string;
   label: string;

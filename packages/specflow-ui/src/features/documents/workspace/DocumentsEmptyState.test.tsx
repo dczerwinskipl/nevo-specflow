@@ -24,7 +24,7 @@ describe('documents empty state', () => {
       <DocumentsEmptyState
         actions={[
           { id: 'documents-upload', label: 'Wgraj pliki', disabled: true, onPress: upload },
-          { id: 'documents-new-file', label: 'Nowy dokument…', icon: 'file', onPress: newDocument },
+          { id: 'documents-new-file', label: 'Nowy dokument', icon: 'file', onPress: newDocument },
         ]}
       />,
     );
@@ -34,10 +34,10 @@ describe('documents empty state', () => {
     expect(screen.queryByRole('list')).toBeNull();
     const [first, second] = screen.getAllByRole('button');
     // The primary comes first and is the only filled action.
-    expect(first!.textContent).toBe('Nowy dokument…');
+    expect(first!.textContent).toBe('Nowy dokument');
     expect(isPrimary(first!)).toBe(true);
     expect(isPrimary(second!)).toBe(false);
-    fireEvent.click(screen.getByRole('button', { name: 'Nowy dokument…' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Nowy dokument' }));
     expect(newDocument).toHaveBeenCalledOnce();
     // An action waiting for a running operation is disabled, not hidden.
     expect(screen.getByRole('button', { name: 'Wgraj pliki' }).hasAttribute('disabled')).toBe(true);

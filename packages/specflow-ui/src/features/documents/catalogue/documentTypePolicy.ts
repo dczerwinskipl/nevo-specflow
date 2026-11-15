@@ -61,7 +61,7 @@ type TreeDocument = DocumentTree['documents'][number];
 
 /**
  * The type title of every registered document (the row's tooltip, menu and accessible name). An
- * unclassified file has none: its row menu offers `Assign type…` and Expected documents name what
+ * unclassified file has none: its row menu offers `Assign type` and Expected documents name what
  * is still missing.
  */
 export function documentTrailingLabel(

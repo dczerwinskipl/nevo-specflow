@@ -12,6 +12,11 @@ import { createEngineDocumentWriteSource } from './write/engine-write-source';
 import { registerDocumentOperationList } from './write/operation-list';
 import { documentWriteEndpoint } from './write/routes';
 import type { DocumentWriteSource } from './write/write-source';
+import { taskDocumentRoutes } from './task/routes';
+import {
+  createEngineTaskDocumentSource,
+  type TaskDocumentSource,
+} from './task/task-document-source';
 
 export interface DocumentsFeatureDependencies {
   /** Production composition: the Engine is the source of record. */
@@ -29,6 +34,8 @@ export interface DocumentsFeatureDependencies {
   writeRoutes?: boolean;
   /** Explicit write source of the document write routes (tests). Wins over the Engine. */
   writeSource?: DocumentWriteSource;
+  /** Explicit source of the Task document routes (tests). Wins over the Engine. */
+  taskDocuments?: TaskDocumentSource;
   /** The Runtime's project when there is no Engine to read it from (demo); see `specScope`. */
   projectId?: ProjectIdSource;
   /** The document-operations list: the shared registry and the injectable clock and thresholds. */
@@ -63,6 +70,14 @@ export function createDocumentsFeature(
         (dependencies.engine ? createEngineDocumentWriteSource(dependencies.engine) : undefined);
       app.register(documentWriteEndpoint, {
         source: writeSource,
+        projectId,
+      });
+      // The documents of a Task: project mode only, like the Specification writes.
+      const taskDocuments =
+        dependencies.taskDocuments ??
+        (dependencies.engine ? createEngineTaskDocumentSource(dependencies.engine) : undefined);
+      app.register(taskDocumentRoutes, {
+        ...(taskDocuments ? { source: taskDocuments } : {}),
         projectId,
       });
       registerDocumentOperationList(app, {

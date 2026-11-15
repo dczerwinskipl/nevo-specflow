@@ -1,8 +1,9 @@
-import type { SpecificationManifest } from '../../../model';
+import type { ManifestDocument, SpecificationLocation } from '../../../model';
+import type { DocumentContainer } from './container';
 
-/** A regular file of the Specification directory as the reader observed it (manifest excluded). */
+/** A regular file of the container root as the reader observed it (registry file excluded). */
 export interface ObservedFile {
-  /** Relative to the Specification directory, `/` separators. */
+  /** Relative to the container root, `/` separators. */
   readonly path: string;
   /** The revision a client holds: the sha256 for files up to the content-hash limit. */
   readonly revision: string;
@@ -12,13 +13,26 @@ export interface ObservedFile {
 }
 
 /**
- * Everything a planner knows: the Specification's parsed manifest with its text, and the files on
- * disk. The planner reads nothing else and writes nothing; admission builds this from one manifest
- * read and one directory listing.
+ * What a planner knows of the container's registry file (`specification.yaml` or a Task's
+ * `task.yaml`): the Specification it belongs to and the registry. A Task has no explicit folders.
+ */
+export interface RegistryManifest {
+  readonly specId: string;
+  readonly slug: string;
+  readonly location: SpecificationLocation;
+  readonly documents: readonly ManifestDocument[];
+  readonly folders: readonly string[];
+}
+
+/**
+ * Everything a planner knows: the container, its parsed registry file with its text, and the files
+ * on disk. The planner reads nothing else and writes nothing; admission builds this from one
+ * registry read and one directory listing.
  */
 export interface PlanningSnapshot {
-  readonly manifest: SpecificationManifest;
-  /** The manifest bytes as read: the pre-image, and the base the registry rewrite preserves. */
+  readonly container: DocumentContainer;
+  readonly manifest: RegistryManifest;
+  /** The registry file bytes as read: the pre-image, and the base the registry rewrite preserves. */
   readonly manifestText: string;
   readonly files: readonly ObservedFile[];
 }

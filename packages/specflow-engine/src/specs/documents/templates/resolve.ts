@@ -1,6 +1,6 @@
 import type { SpecificationManifest } from '../../model';
 import { renderTemplate, templateValues } from '../../archetypes/template-renderer';
-import { getStableProjectCatalogue } from '../../definitions/catalogue-source';
+import { getStableProjectCatalogue } from '../../../definitions/process-catalogue';
 import { requireArchetype } from '../../definitions/archetype-lookup';
 import type { ProjectCatalogue } from '../../definitions/project-catalogue';
 import { TEMPLATE_TEXT_MAX_BYTES } from '../limits';

@@ -310,6 +310,11 @@ export function RoutedApplication({
 
                 return taskSource.getTask(...args);
               },
+              getTaskList: async (...args) => {
+                await wait();
+
+                return taskSource.getTaskList(...args);
+              },
             },
             documentApi: {
               getDocument: async (...args) => {

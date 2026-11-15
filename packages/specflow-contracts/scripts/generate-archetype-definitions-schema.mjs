@@ -2,15 +2,19 @@
 // Regenerates the committed JSON Schemas from the TypeBox definition types:
 //   schema/archetype-definitions.schema.json            (aggregate file, retired together with its callers)
 //   schema/definitions/<kind>.v<schemaVersion>.schema.json (one per definition kind)
+//   schema/task-resource/<file>.v<schemaVersion>.schema.json (tasks/index.yaml and task.yaml)
 // Run `pnpm --filter @nevo/specflow-contracts build` first: the script reads dist/.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import {
   DEFINITION_KINDS,
+  TASK_RESOURCE_FILES,
   definitionJsonSchemaFileName,
   serializeArchetypeDefinitionsJsonSchema,
   serializeDefinitionJsonSchema,
+  serializeTaskResourceJsonSchema,
+  taskResourceJsonSchemaFileName,
 } from '../dist/documents/index.js';
 
 const aggregate = fileURLToPath(
@@ -24,5 +28,13 @@ mkdirSync(directory, { recursive: true });
 for (const kind of DEFINITION_KINDS) {
   const target = fileURLToPath(new URL(definitionJsonSchemaFileName(kind), directory));
   writeFileSync(target, serializeDefinitionJsonSchema(kind));
+  console.log(`wrote ${target}`);
+}
+
+const taskResource = new URL('../schema/task-resource/', import.meta.url);
+mkdirSync(taskResource, { recursive: true });
+for (const file of TASK_RESOURCE_FILES) {
+  const target = fileURLToPath(new URL(taskResourceJsonSchemaFileName(file), taskResource));
+  writeFileSync(target, serializeTaskResourceJsonSchema(file));
   console.log(`wrote ${target}`);
 }

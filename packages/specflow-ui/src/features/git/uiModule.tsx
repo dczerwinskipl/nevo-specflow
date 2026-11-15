@@ -5,6 +5,7 @@ import {
   type SpecificationWorkSectionContext,
 } from '../specs';
 import { RepositorySection } from './contributions/specification-work/RepositorySection';
+import { message } from '../../i18n/message';
 
 function SpecificationRepository({ data, actions }: SpecificationWorkSectionContext) {
   if (!data.repoContext) {
@@ -45,8 +46,10 @@ export const gitUiModule: UiModule = {
           item,
           icon: 'branch',
           action: {
-            label: item.actionLabel,
-            labelKey: item.actionCode === 'git' ? 'specification.viewRepository' : undefined,
+            label:
+              item.actionCode === 'git'
+                ? message('specification.viewRepository')
+                : item.actionLabel,
             onClick: actions.openRepository,
           },
         }));

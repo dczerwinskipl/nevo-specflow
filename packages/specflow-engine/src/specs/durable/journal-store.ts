@@ -232,33 +232,44 @@ export async function withJournalLock<T>(
   return withProjectControlLock(
     context,
     async () => {
-      // Every ancestor is checked, including the journal's ignored local state.
-      let root = context.project.stateRoot;
-      const state = await lstat(root);
-      if (!state.isDirectory() || state.isSymbolicLink() || (await realpath(root)) !== root) {
-        throw kind.errors.invalid();
-      }
-
-      for (const segment of kind.relativeDir.split('/')) {
-        root = join(root, segment);
-        try {
-          await mkdir(root, { mode: 0o700 });
-        } catch (error) {
-          if (!isExists(error)) {
-            throw error;
-          }
-        }
-
-        const stat = await lstat(root);
-        if (!stat.isDirectory() || stat.isSymbolicLink() || (await realpath(root)) !== root) {
-          throw kind.errors.invalid();
-        }
-      }
+      await ensureJournalDirectory(context, kind);
 
       return action();
     },
     { waitMs: 25000 },
   );
+}
+
+/**
+ * The directory check of {@link withJournalLock} for a caller that holds the Project Home control
+ * lock already (the Specification execution store records its commits in its own lock section).
+ */
+export async function ensureJournalDirectory(
+  context: ResolvedProjectHome,
+  kind: JournalKindBase,
+): Promise<void> {
+  // Every ancestor is checked, including the journal's ignored local state.
+  let root = context.project.stateRoot;
+  const state = await lstat(root);
+  if (!state.isDirectory() || state.isSymbolicLink() || (await realpath(root)) !== root) {
+    throw kind.errors.invalid();
+  }
+
+  for (const segment of kind.relativeDir.split('/')) {
+    root = join(root, segment);
+    try {
+      await mkdir(root, { mode: 0o700 });
+    } catch (error) {
+      if (!isExists(error)) {
+        throw error;
+      }
+    }
+
+    const stat = await lstat(root);
+    if (!stat.isDirectory() || stat.isSymbolicLink() || (await realpath(root)) !== root) {
+      throw kind.errors.invalid();
+    }
+  }
 }
 
 /** Caller MUST hold the Project Home control lock. */

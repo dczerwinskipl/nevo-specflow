@@ -1,4 +1,5 @@
 import { sha256Hex } from '../../../hash';
+import { SPECIFICATION_CONTAINER, type DocumentContainer } from './plan/container';
 import type { DocumentWriteRequest, StructuralTarget } from './plan/request';
 
 /** Bumped when the canonical form changes, so an old fingerprint can never equal a new one. */
@@ -17,9 +18,21 @@ const FINGERPRINT_FORMAT = 1;
  * which is stored with the operation, so a replay returns the pinned content whatever the catalogue
  * says now. The catalogue revision is a precondition checked when a NEW operation is admitted and is
  * not part of the identity, as for Create.
+ *
+ * The Task whose documents the request changes is part of the identity (`taskId`); a request for
+ * the Specification's own documents has none, so its fingerprint is the one it always had.
  */
-export function fingerprintDocumentChange(request: DocumentWriteRequest): string {
-  return sha256Hex(JSON.stringify({ format: FINGERPRINT_FORMAT, ...canonicalRequest(request) }));
+export function fingerprintDocumentChange(
+  request: DocumentWriteRequest,
+  container: DocumentContainer = SPECIFICATION_CONTAINER,
+): string {
+  return sha256Hex(
+    JSON.stringify({
+      format: FINGERPRINT_FORMAT,
+      ...(container.kind === 'task' ? { taskId: container.taskId } : {}),
+      ...canonicalRequest(request),
+    }),
+  );
 }
 
 function canonicalRequest(request: DocumentWriteRequest): Record<string, unknown> {

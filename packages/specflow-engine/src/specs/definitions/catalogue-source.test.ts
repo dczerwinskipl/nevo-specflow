@@ -5,6 +5,7 @@ import {
   loadStableProjectCatalogue,
   type CatalogueSource,
 } from './catalogue-source';
+import { createDefaultDefinitionRegistry } from '../../definitions/shipped-registry';
 import { CATALOGUE_MEMO_MAX_HOMES, SIGNATURE_ENTRIES_MAX } from './limits';
 import { computeStatSignature } from './signature';
 import type { DefinitionSource } from './source';
@@ -22,12 +23,15 @@ function setup(options: { nowMs?: number } = {}) {
   const source = sampleProject();
   const clock = { nowMs: options.nowMs ?? LONG_AFTER_MS };
   const catalogues: CatalogueSource = createCatalogueSource({
+    registry,
     sourceFor: () => source,
     nowMs: () => clock.nowMs,
   });
 
   return { source, clock, catalogues };
 }
+
+const registry = createDefaultDefinitionRegistry();
 
 describe('catalogue source stat memo', () => {
   it('serves an unchanged tree from the memo without reading any file', async () => {
@@ -91,6 +95,7 @@ describe('catalogue source stat memo', () => {
   it('keeps one memo per Project Home and bounds the number of homes', async () => {
     const sources = new Map<string, MemoryDefinitionSource>();
     const catalogues = createCatalogueSource({
+      registry,
       sourceFor: (home) => {
         let found = sources.get(home);
         if (!found) {
@@ -146,6 +151,7 @@ describe('catalogue source stat memo', () => {
       const base = sampleProject();
       const enabled = { on: false };
       const catalogues = createCatalogueSource({
+        registry,
         sourceFor: () => churning(base, enabled),
         nowMs: () => LONG_AFTER_MS,
       });
@@ -166,6 +172,7 @@ describe('catalogue source stat memo', () => {
       const base = sampleProject();
       const enabled = { on: true };
       const catalogues = createCatalogueSource({
+        registry,
         sourceFor: () => churning(base, enabled),
         nowMs: () => LONG_AFTER_MS,
       });
@@ -363,6 +370,7 @@ describe('stable read for a mutation', () => {
     const base = sampleProject();
     const enabled = { on: true };
     const catalogues = createCatalogueSource({
+      registry,
       sourceFor: () => churning(base, enabled),
       nowMs: () => LONG_AFTER_MS,
     });
@@ -384,6 +392,7 @@ describe('stable read for a mutation', () => {
   it('refuses with CATALOGUE_STALE (catalogue-unstable) when the files never settle', async () => {
     const base = sampleProject();
     const catalogues = createCatalogueSource({
+      registry,
       sourceFor: () => churning(base, { on: true }),
       nowMs: () => LONG_AFTER_MS,
     });

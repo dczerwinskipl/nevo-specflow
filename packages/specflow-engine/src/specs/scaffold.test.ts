@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import goldenFixtures from './archetypes/fixtures/overview-golden.json';
 import { resolveCatalogue } from './definitions/resolved-catalogue';
-import { seedCatalogueForTesting } from './definitions/testing-install';
+import { seedCatalogueForTesting } from '../definitions/testing-install';
 import { TEXT_CONTENT_MAX_BYTES, deriveUnclassifiedDocumentId } from './documents';
 import {
   ADDED_DOCUMENTS_MAX_FILES,
@@ -88,7 +88,6 @@ describe('createSpecificationScaffold', () => {
           status: 'draft',
           priority: 10,
           created: '2026-10-24',
-          tasks: [],
           location: 'active',
         });
       }

@@ -25,7 +25,6 @@ const KNOWN_TOP_LEVEL_KEYS = new Set([
   'status',
   'priority',
   'created',
-  'tasks',
   'spec_id',
   'archetype',
   'documents',
@@ -47,7 +46,6 @@ export function serializeSpecificationManifest(
     status: manifest.status,
     ...(manifest.priority !== undefined ? { priority: manifest.priority } : {}),
     ...(manifest.created !== undefined ? { created: manifest.created } : {}),
-    tasks: manifest.tasks,
     spec_id: manifest.specId,
     archetype: {
       id: manifest.archetype.id,

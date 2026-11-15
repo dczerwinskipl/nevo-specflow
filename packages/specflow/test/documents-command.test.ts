@@ -39,7 +39,7 @@ function resultOf(
 
 interface Calls {
   readonly names: string[];
-  readonly writes: { specId: string; operationId: string; request: unknown }[];
+  readonly writes: { specId: string; operationId: string; request: unknown; taskId?: string }[];
 }
 
 function stubApi(overrides: Partial<DocumentsEngineApi> = {}): {
@@ -70,8 +70,29 @@ function stubApi(overrides: Partial<DocumentsEngineApi> = {}): {
         skippedEntries: 0,
       } as never),
     ),
-    write: record('write', (_engine, specId, operationId, request) => {
-      calls.writes.push({ specId, operationId, request });
+    readTaskTree: record('readTaskTree', (_engine, specId, taskId) =>
+      Promise.resolve({
+        specId,
+        taskId,
+        registryRevision: 'reg-1',
+        writable: true,
+        documents: [
+          {
+            id: 'task',
+            path: 'task.md',
+            type: 'task',
+            classification: 'registered',
+            required: true,
+            file: { revision: 'doc-1' },
+          },
+        ],
+      } as never),
+    ),
+    readContent: record('readContent', (_engine, _specId, documentId) =>
+      Promise.resolve({ id: documentId, content: '# Task text\n' } as never),
+    ),
+    write: record('write', (_engine, specId, operationId, request, taskId) => {
+      calls.writes.push({ specId, operationId, request, ...(taskId ? { taskId } : {}) });
 
       return Promise.resolve(resultOf());
     }),
@@ -182,6 +203,30 @@ describe('list and validate', () => {
     const result = await run(api, ['validate', SPEC, '--json']);
     expect(result.exit).toBe(1);
     expect(JSON.parse(result.out[0]!)).toMatchObject({ valid: false, complete: false });
+  });
+});
+
+describe('Task scope (--task)', () => {
+  it('lists and reads the documents of a Task, not of the Specification', async () => {
+    const { api, calls } = stubApi();
+    const list = await run(api, ['list', SPEC, '--task', 'build']);
+    expect(list.exit).toBe(0);
+    expect(list.out.join('\n')).toContain('task  task.md  task  doc-1  [required]');
+    expect(calls.names).not.toContain('readTree');
+
+    const read = await run(api, ['read', SPEC, 'task', '--task', 'build']);
+    expect(read.out).toEqual(['# Task text\n']);
+  });
+
+  it('writes to the Task when --task is given', async () => {
+    const { api, calls } = stubApi();
+    const result = await run(
+      api,
+      ['save', SPEC, 'task', '--task', 'build', '--expected-revision', 'doc-1', '--stdin'],
+      { readStdin: () => Promise.resolve('# New\n') },
+    );
+    expect(result.exit).toBe(0);
+    expect(calls.writes[0]).toMatchObject({ specId: SPEC, taskId: 'build' });
   });
 });
 

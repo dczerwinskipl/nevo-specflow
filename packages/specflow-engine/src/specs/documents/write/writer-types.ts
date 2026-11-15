@@ -56,6 +56,15 @@ export interface DocumentWriteDependencies {
     requested: readonly MutationResource[],
     self: ClaimSelf,
   ) => Promise<void>;
+  /**
+   * Whether the Specification execution store holds a pending change that writes a file of the
+   * Task's folder (D03). Consulted under the control lock for a change of a Task's documents.
+   */
+  readonly taskResourceChangePending: (
+    context: ResolvedProjectHome,
+    specId: string,
+    taskId: string,
+  ) => Promise<boolean>;
 }
 
 export interface DocumentWriteOptions extends DocumentAdmissionOptions {
@@ -82,6 +91,8 @@ export interface DocumentWriteOptions extends DocumentAdmissionOptions {
 export interface DocumentChangeResult {
   readonly operationId: string;
   readonly specId: string;
+  /** The Task whose documents changed; absent for the Specification's own documents. */
+  readonly taskId?: string;
   readonly slug: string;
   readonly action: DocumentChangeAction;
   /** Documents written or created, with their content hash and size (the revision of a text document). */
@@ -106,6 +117,7 @@ export function resultOf(
   return {
     operationId: journal.operationId,
     specId: journal.specId,
+    ...(plan.taskId !== undefined ? { taskId: plan.taskId } : {}),
     slug: journal.slug,
     action: journal.action,
     documents: plan.documents,

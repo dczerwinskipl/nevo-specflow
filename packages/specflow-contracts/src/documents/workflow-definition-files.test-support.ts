@@ -45,7 +45,7 @@ export const workflowFile = (): WorkflowDefinitionFile => ({
       id: 'implement',
       kind: 'work',
       title: 'Implement',
-      executor: 'agent',
+      executors: ['agent', 'human'],
       archetype: 'implementer',
       purpose: 'Make the change.',
       transitions: [{ id: 'done', to: { step: 'review' }, continuation: 'auto', session: 'fresh' }],
@@ -54,7 +54,7 @@ export const workflowFile = (): WorkflowDefinitionFile => ({
       id: 'review',
       kind: 'work',
       title: 'Review',
-      executor: 'agent',
+      executors: ['agent', 'human'],
       archetype: 'reviewer',
       purpose: 'Review the change.',
       transitions: [
@@ -101,6 +101,20 @@ export const invalidWorkflowFiles: [string, () => Json][] = [
   ['an unknown subject', () => ({ ...workflowFile(), subject: 'project' })],
   ['no steps', () => ({ ...workflowFile(), steps: [] })],
   ['a step without transitions', () => withStep({ ...workflowFile().steps[0], transitions: [] })],
+  [
+    'the single executor field',
+    () => {
+      const { executors: _executors, ...step } = workflowFile().steps[0] as { executors: unknown };
+
+      return withStep({ ...step, executor: 'agent' });
+    },
+  ],
+  ['no executors', () => withStep({ ...workflowFile().steps[0], executors: [] })],
+  [
+    'an executor class twice',
+    () => withStep({ ...workflowFile().steps[0], executors: ['agent', 'agent'] }),
+  ],
+  ['an unknown executor', () => withStep({ ...workflowFile().steps[0], executors: ['robot'] })],
   [
     'an unknown terminal',
     () =>
@@ -153,14 +167,14 @@ export const invalidWorkflowFiles: [string, () => Json][] = [
       }),
   ],
   [
-    'an executor on a wait step',
+    'executors on a wait step',
     () =>
       withStep({
         id: 'wait',
         kind: 'wait-for-tasks',
         title: 'Wait',
         purpose: 'Wait.',
-        executor: 'agent',
+        executors: ['agent'],
         transitions: [{ id: 'done', to: { terminal: 'completed' } }],
       }),
   ],

@@ -48,6 +48,11 @@ export function SpecificationTaskPage({
         backHref={backHref}
         stale={taskState.isError}
         onRetry={() => void taskState.refetch()}
+        reload={async () => {
+          const latest = await taskState.refetch();
+
+          return latest.data ? mapFullTaskResponse(latest.data) : undefined;
+        }}
       />
     );
   }

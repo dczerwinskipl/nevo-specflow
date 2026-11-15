@@ -2,10 +2,9 @@ import type { SpecsCollection } from '../model';
 import { queryOptions } from '@tanstack/react-query';
 import type { SpecsOverviewApi } from './api';
 
-export const specsOverviewKeys = {
-  all: ['specs-overview'] as const,
-  collection: (collection: SpecsCollection) => [...specsOverviewKeys.all, collection] as const,
-};
+import { specsOverviewKeys } from '../../read-model/queries';
+
+export { specsOverviewKeys };
 
 /** Every producer of this shared catalogue key validates before data enters the cache. */
 export function specsOverviewQueryOptions(api: SpecsOverviewApi, collection: SpecsCollection) {

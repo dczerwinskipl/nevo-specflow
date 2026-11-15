@@ -34,6 +34,13 @@ export type DocumentPathResult =
 /** Names reserved at the Specification root, ignoring case: never documents. */
 const RESERVED_ROOT_NAMES = ['specification.yaml', 'change.yaml'] as const;
 
+/**
+ * The folder of the Specification's Task resources (`tasks/index.yaml`, `tasks/<id>/...`), reserved
+ * ignoring case: no Specification document or folder lies in it, and the document tree never lists
+ * it. Task documents are the Task's own (`tasks/resource`).
+ */
+export const RESERVED_TASKS_FOLDER = 'tasks';
+
 const FORBIDDEN_CHARACTERS = /[\\:*?"<>|]/u;
 const CONTROL_CHARACTERS = /\p{Cc}/u;
 /** Control, format, line and paragraph separator characters (bidi overrides, C1, U+2028, zero width). */
@@ -74,6 +81,16 @@ export function isReservedRootName(name: string): boolean {
   const key = foldPathKey(name);
 
   return RESERVED_ROOT_NAMES.some((reserved) => reserved === key);
+}
+
+/** A path in the reserved Task folder, or the folder itself (`tasks`, `tasks/...`), ignoring case. */
+export function isInReservedTasksFolder(path: string): boolean {
+  return foldPathKey(path.split('/')[0] ?? '') === RESERVED_TASKS_FOLDER;
+}
+
+/** A path that is never a Specification document: a reserved root name or inside `tasks/`. */
+export function isReservedSpecificationPath(path: string): boolean {
+  return (!path.includes('/') && isReservedRootName(path)) || isInReservedTasksFolder(path);
 }
 
 /** Validate a file path. Folder depth (segments above the file) is at most {@link FOLDER_DEPTH_MAX}. */
@@ -152,7 +169,7 @@ function validate(path: string, kind: 'file' | 'folder'): DocumentPathResult {
     return fail('too-deep');
   }
 
-  if (segments.length === 1 && isReservedRootName(path)) {
+  if ((segments.length === 1 && isReservedRootName(path)) || isInReservedTasksFolder(path)) {
     return fail('reserved-name');
   }
 

@@ -1,3 +1,4 @@
+import type { BlockingTask } from '../tasks/tasks';
 import {
   providerOf,
   type AgentArchetype,
@@ -31,7 +32,7 @@ export interface AgentLaunch {
 export const ATTENTION_REASONS = [
   /** The transition waits for the owner by definition. */
   'owner-action',
-  /** The next step is done by a person. */
+  /** The next step is done by a person only (a human-only gate). */
   'human-step',
   /** The step's agent archetype is not defined (any more). */
   'archetype-missing',
@@ -39,7 +40,10 @@ export const ATTENTION_REASONS = [
   'provider-not-chosen',
   /** The provider to use has no model chosen in the archetype. */
   'model-missing',
-  /** The transition continues the Session, but the previous attempt ran in none. */
+  /**
+   * The transition continues the Session, but the previous attempt ran in none (for example a person
+   * did it by hand): the Engine never silently starts a fresh Session instead.
+   */
   'session-unavailable',
   /**
    * The Specification waits for its Tasks, but no open Task can progress without the owner: each
@@ -73,7 +77,7 @@ export type LaunchResolution =
 export function resolveAgentLaunch(
   archetypeId: string,
   archetype: AgentArchetype | undefined,
-  session: WorkflowTransition['session'],
+  session: WorkflowTransition['annotations']['session'],
   finishing: FinishingSession | undefined,
 ): LaunchResolution {
   if (!archetype) {
@@ -137,8 +141,13 @@ export type ContinuationDecision =
       readonly kind: 'attention';
       readonly step: string;
       readonly reason: AttentionReason;
-      /** For `task-escalated`: every escalated Task, in id order. */
+      /**
+       * For `task-escalated`: every escalated Task; for `tasks-stuck`: the Tasks to resolve
+       * (`blocking`). In id order.
+       */
       readonly taskIds?: readonly string[];
+      /** For `tasks-stuck`: each Task of `taskIds` with why it blocks (always set, possibly empty). */
+      readonly blocking?: readonly BlockingTask[];
       readonly archetype?: string;
       readonly provider?: string;
       /** What an owner start would launch, to prefill a quick start; absent when unresolved. */
@@ -162,19 +171,20 @@ export function resolveContinuation(input: ContinuationInput): ContinuationDecis
     return { kind: 'none', reason: 'terminal' };
   }
 
-  if (next.kind === 'wait-for-tasks') {
+  if (next.kind === 'wait') {
     return { kind: 'none', reason: 'waiting-for-tasks' };
   }
 
-  if (next.executor === 'human') {
+  // A step only a person may do; a step an agent may also do resolves the agent's launch.
+  if (!next.executors.includes('agent')) {
     return { kind: 'attention', step: next.id, reason: 'human-step' };
   }
 
-  const archetypeId = next.archetype ?? '';
+  const archetypeId = next.annotations.archetype ?? '';
   const resolution = resolveAgentLaunch(
     archetypeId,
     input.archetypes(archetypeId),
-    input.transition?.session ?? 'fresh',
+    input.transition?.annotations.session ?? 'fresh',
     input.finishing,
   );
   const automatic = input.transition?.continuation === 'auto';

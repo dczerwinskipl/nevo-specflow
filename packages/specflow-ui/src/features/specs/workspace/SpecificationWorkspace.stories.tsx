@@ -137,16 +137,16 @@ async function expectNothingUnavailable(canvasElement: HTMLElement) {
 }
 
 /**
- * Project mode, no Session yet: description, preparation block opening New Session, the inline
- * Tasks empty state and Documents. The created event alone keeps the history closed.
+ * Project mode, no Session yet: description, preparation block opening New Session and Documents.
+ * Without Tasks there is no Tasks summary (the Tasks page holds New task and the empty state). The
+ * created event alone keeps the history closed.
  */
 export const ProjectModeNoSession: Story = {
   args: { state: 'no-session', onNewSession: fn() },
   play: async ({ args, canvas, canvasElement, userEvent }) => {
-    await canvas.findByText('No tasks yet');
-    const tasks = canvasElement.querySelector('[data-empty-state]');
-    await expect(tasks?.getAttribute('data-empty-state')).toBe('inline');
-    await expect(canvasElement.querySelector('#tasks-heading')).not.toBeNull();
+    await canvas.findByRole('button', { name: 'Start session' });
+    await expect(canvasElement.querySelector('#tasks-summary-heading')).toBeNull();
+    await expect(canvas.queryByText('No tasks yet')).toBeNull();
     await expect(canvas.getByText(/Utrzymać kontekst pracy/u)).toBeVisible();
     await expect(canvas.getByRole('heading', { name: /Documents/u })).toBeVisible();
     await expectNothingUnavailable(canvasElement);
@@ -162,14 +162,12 @@ export const ProjectModeNoSession: Story = {
   },
 };
 
-/** Project mode with a Session: Continue session instead of the block; the history opens. */
+/** Project mode with a Session: the Sessions instead of the block; the history opens. */
 export const ProjectModeWithSession: Story = {
-  // Without Requires attention (h2) or the preparation block (h2) the section headings are h3 under
-  // the page h1: a known open item (see SpecificationSurface.stories PreparingTasks).
-  parameters: { a11y: { config: { rules: [{ id: 'heading-order', enabled: false }] } } },
   args: { state: 'with-session' },
   play: async ({ canvas, canvasElement }) => {
-    await canvas.findByText('No tasks yet');
+    await canvas.findByRole('heading', { name: 'Sessions' });
+    await expect(canvasElement.querySelector('#tasks-summary-heading')).toBeNull();
     await expect(canvasElement.querySelector('#resume-heading')).not.toBeNull();
     await expect(canvasElement.querySelector('#preparation-heading')).toBeNull();
     await expect(historyPanel(canvasElement)).toBeDefined();
@@ -182,7 +180,8 @@ export const ProjectModeWithSession: Story = {
 export const ProjectModeSessionsDisabled: Story = {
   args: { state: 'sessions-disabled' },
   play: async ({ canvas, canvasElement }) => {
-    await canvas.findByText('No tasks yet');
+    await canvas.findByText(/Sessions are turned off on this server\./u);
+    await expect(canvasElement.querySelector('#tasks-summary-heading')).toBeNull();
     await expect(canvas.getByText(/Sessions are turned off on this server\./u)).toBeVisible();
     await expect(canvas.queryByRole('button', { name: 'Start session' })).toBeNull();
     await expect(canvasElement.querySelector('#resume-heading')).toBeNull();

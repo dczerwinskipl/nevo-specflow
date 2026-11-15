@@ -1,7 +1,7 @@
 import { DEFINITION_PROBLEMS_MAX } from '@nevo/specflow-contracts/documents';
 import { describe, expect, it } from 'vitest';
 
-import { createDefaultDefinitionRegistry } from './kinds';
+import { createDefaultDefinitionRegistry } from '../../definitions/shipped-registry';
 import { loadDefinitions } from './loader';
 import { capProblems, resolveProjectCatalogue } from './project-catalogue';
 import {

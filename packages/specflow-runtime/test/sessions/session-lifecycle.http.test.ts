@@ -76,11 +76,14 @@ describe('managed Session lifecycle across the Runtime HTTP API', () => {
     const started = await post(session + '/turns', { requestId: randomUUID(), message: 'Hello' });
     expectBody(started, 202, sessionValidators.startResult);
     const { turnId } = started.json<StartTurnResult>();
+    // The SQLite worker persists the outcome and telemetry asynchronously: on a loaded Windows runner
+    // that exceeds the 1 s waitFor default (as in #142). The polls still pass as soon as it lands.
+    const settled = { timeout: 10_000, interval: 100 };
     await vi.waitFor(async () => {
       const current = await read(session);
       expectBody(current, 200, sessionValidators.snapshot);
       expect(current.json<SessionSnapshot>().entries.at(-1)?.kind).toBe('outcome');
-    });
+    }, settled);
 
     const work = await read(session + '/turns/' + turnId + '/work');
     expectBody(work, 200, sessionValidators.work);
@@ -102,7 +105,7 @@ describe('managed Session lifecycle across the Runtime HTTP API', () => {
       });
       expect(unchanged.statusCode).toBe(304);
       expect(unchanged.body).toBe('');
-    });
+    }, settled);
 
     const renamed = await post(session + '/rename', { requestId: randomUUID(), title: 'Release' });
     expectBody(renamed, 200, sessionValidators.sessionCommandResult);

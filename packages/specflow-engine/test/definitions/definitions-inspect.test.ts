@@ -11,7 +11,7 @@ import {
   showProjectDefinition,
   validateDefinitionsFolder,
   validateProjectDefinitions,
-} from '../../src/specs/definitions';
+} from '../../src/definitions';
 import type { SpecFlowEngine } from '../../src/application';
 
 let scratch: string;

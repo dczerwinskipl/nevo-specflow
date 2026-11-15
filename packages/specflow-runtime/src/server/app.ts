@@ -3,6 +3,7 @@ import cookie from '@fastify/cookie';
 import { join } from 'node:path';
 import { RuntimeInfoResponseSchema } from '@nevo/specflow-contracts/runtime';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { openWorkflow } from '@nevo/specflow-engine';
 import Fastify, {
   type FastifyInstance,
   type FastifyServerOptions,
@@ -17,7 +18,9 @@ import {
   type SessionDriver,
 } from '../features/sessions';
 import {
-  manifestWorkspaceTasks,
+  createEngineTaskProgress,
+  createEngineTaskSources,
+  createEngineWorkspaceTasks,
   createTasksFeature,
   type TasksFeatureDependencies,
 } from '../features/tasks';
@@ -26,7 +29,12 @@ import {
   createEngineWorkspaceDocuments,
   type DocumentsFeatureDependencies,
 } from '../features/documents';
-import { createDocsFeature, type DocsFeatureDependencies } from '../features/docs';
+import { createWorkflowFeature, type WorkflowFeatureDependencies } from '../features/workflow';
+import {
+  createDocsFeature,
+  openProjectDocumentLookup,
+  type DocsFeatureDependencies,
+} from '../features/docs';
 import { createSettingsFeature } from '../features/settings';
 import { createWorkspacesFeature } from '../features/workspaces';
 import {
@@ -57,6 +65,7 @@ import { registerRuntimeErrorHandler } from './error-handler';
 import { registerEndpointPolicy } from './endpoint-policy';
 import { registerOpenApi, registerOpenApiRoute } from './openapi';
 import { registerSharedContracts } from './shared-contracts';
+import { buildReferencedSchemaSerializer } from './serializer';
 import { serializeRuntimeRequest } from './logging';
 import { isRequestAtPublicOrigin } from './origin';
 import { registerRuntimeWebApp, type RuntimeWebApp } from './web-app';
@@ -69,6 +78,8 @@ export interface RuntimeAppDependencies {
   readonly demoScenarios?: boolean;
   readonly tasks?: TasksFeatureDependencies;
   readonly documents?: DocumentsFeatureDependencies;
+  /** Workflow action routes; the Engine of `specs` unless a backend is injected (tests). */
+  readonly workflow?: Pick<WorkflowFeatureDependencies, 'port'>;
   /** Project documentation search; the Runtime start supplies the project root in project mode. */
   readonly docs?: DocsFeatureDependencies;
   readonly sessions?: {
@@ -114,6 +125,8 @@ export const RUNTIME_FASTIFY_OPTIONS = {
       removeAdditional: false,
     },
   },
+  // Each response serializer resolves only the shared contracts it references.
+  schemaController: { compilersFactory: { buildSerializer: buildReferencedSchemaSerializer } },
 } satisfies FastifyServerOptions;
 
 export async function createRuntimeApp(
@@ -176,6 +189,25 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       : {}),
   };
   const engine = dependencies.specs?.engine;
+  const docsFeature = createDocsFeature({
+    ...(config.docs ? { configuration: config.docs } : {}),
+    // Demo data serves no project documentation.
+    ...(dependencies.docs && !demo ? { dependencies: dependencies.docs } : {}),
+    // `docs.view` is checked at the Engine's project; without an Engine the docs routes answer 503.
+    projectId: () => engine?.context.project.projectId,
+    ...(engine && !demo ? { engine } : {}),
+  });
+  // Project mode: the Engine's workflow operations, opened per request with the definitions and
+  // the documentation of each Specification's checkout (for `project-document` context
+  // references) as they are now.
+  const projectDocument = openProjectDocumentLookup(docsFeature.activeDocumentIds);
+  const taskEngine =
+    engine && !demo
+      ? {
+          engine,
+          openWorkflow: () => openWorkflow(engine, { projectDocument: projectDocument() }),
+        }
+      : undefined;
   const sessionsFeature = createSessionsFeature({
     ...(engine ? { engine } : {}),
     config: mode === 'project' ? config.sessions : undefined,
@@ -203,7 +235,11 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   const associationTargets =
     demo?.associationTargets ??
     dependencies.sessions?.targets ??
-    createEngineAssociationTargets(engine, dependencies.tasks?.definitions);
+    createEngineAssociationTargets(
+      engine,
+      dependencies.tasks?.definitions ??
+        (taskEngine ? createEngineTaskSources(taskEngine).definitions : undefined),
+    );
   const associations =
     demo?.sessionReferences ??
     createStoreSessionAssociations(sessionsFeature.runtime, associationTargets);
@@ -216,15 +252,17 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     demo
       ? demo.environment.state.catalogue.project.id
       : (engine?.context.project.projectId ?? dependencies.sessions?.storage?.projectId);
-  // Project mode: the Engine is the source of the workspace `tasks` (temporarily, the verified
-  // manifest) and `documents` sections, the Session association registry of the `sessions`
+  // Project mode: the Engine is the source of the workspace `tasks` (the Task resources and runs)
+  // and `documents` sections, the Session association registry of the `sessions`
   // section, and both feed the partial `activity` history, unless a contribution was injected (tests).
   const specContributions = dependencies.specs?.contributions ?? demo?.contributions;
   const contributions = demo
     ? specContributions
     : {
         ...specContributions,
-        ...(engine && !specContributions?.tasks ? { tasks: manifestWorkspaceTasks } : {}),
+        ...(taskEngine && !specContributions?.tasks
+          ? { tasks: createEngineWorkspaceTasks(taskEngine) }
+          : {}),
         ...(engine && !specContributions?.documents
           ? { documents: createEngineWorkspaceDocuments(engine) }
           : {}),
@@ -243,14 +281,6 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
             }
           : {}),
       };
-  const docsFeature = createDocsFeature({
-    ...(config.docs ? { configuration: config.docs } : {}),
-    // Demo data serves no project documentation.
-    ...(dependencies.docs && !demo ? { dependencies: dependencies.docs } : {}),
-    // `docs.view` is checked at the Engine's project; without an Engine the docs routes answer 503.
-    projectId: () => engine?.context.project.projectId,
-    ...(engine && !demo ? { engine } : {}),
-  });
   const productFeatures: readonly RuntimeFeature[] = [
     createSpecsFeature({
       ...(config.specs ? { config: config.specs } : {}),
@@ -259,6 +289,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
         overviewRepository: dependencies.specs?.overviewRepository ?? demo?.overviewRepository,
         workspaceRepository: dependencies.specs?.workspaceRepository ?? demo?.workspaceRepository,
         contributions,
+        ...(taskEngine ? { taskProgress: createEngineTaskProgress(taskEngine) } : {}),
         sessions: sessionReferences,
         projectId,
         // Close deletes a checkout only after the documentation index there is released (E9).
@@ -280,6 +311,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     }),
     createTasksFeature({
       ...(demo ? demo.taskSources : {}),
+      ...(taskEngine ? { engine: taskEngine } : {}),
       ...dependencies.tasks,
       sessions: dependencies.tasks?.sessions ?? sessionReferences,
       projectId,
@@ -297,6 +329,17 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       ...(dependencies.documents?.writeSource
         ? { writeSource: dependencies.documents.writeSource }
         : {}),
+      ...(dependencies.documents?.taskDocuments
+        ? { taskDocuments: dependencies.documents.taskDocuments }
+        : {}),
+    }),
+    createWorkflowFeature({
+      ...(engine ? { engine } : {}),
+      ...(taskEngine ? { openWorkflow: taskEngine.openWorkflow } : {}),
+      ...dependencies.workflow,
+      // The demo Runtime has no Engine and serves no workflow routes.
+      ...(demo ? { routes: false } : {}),
+      projectId,
     }),
     sessionsFeature,
     createSessionAssociationsFeature({

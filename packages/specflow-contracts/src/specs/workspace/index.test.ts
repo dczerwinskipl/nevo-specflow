@@ -16,7 +16,13 @@ function workspace() {
     sections: {
       tasks: {
         state: 'available',
-        data: { groups: [], completed: 0, total: 0, attention: [] },
+        data: {
+          groups: [],
+          completed: 0,
+          total: 0,
+          attention: [],
+          overview: { rows: [], compact: [] },
+        },
       },
       documents: { state: 'unavailable', reason: 'not_implemented' },
       sessions: { state: 'available', data: { items: [], attention: [] } },
@@ -24,7 +30,7 @@ function workspace() {
       repository: { state: 'available', data: { attention: [] } },
       changes: { state: 'unavailable', reason: 'not_implemented' },
     },
-    actions: { executeTasks: { available: false }, startSession: { available: false } },
+    actions: { startSession: { available: false } },
   };
 }
 

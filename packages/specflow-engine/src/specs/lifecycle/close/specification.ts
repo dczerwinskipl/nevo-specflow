@@ -10,6 +10,7 @@ import { settleArchivedLinkedConflict } from '../git/scratch';
 import { readCloseJournal } from '../journal/store';
 import { CloseOperationError, type CloseJournal } from '../model';
 import { reserveCloseOperation } from '../reservation';
+import { pruneUncommitted } from '../../uncommitted';
 import { advanceCloseIntegration } from './integration';
 
 export type CloseSpecificationResult =
@@ -106,8 +107,13 @@ export async function closeSpecification(
   });
   let journal = admission.journal;
   if (journal.stage === 'reserved') {
-    // TODO(specification-exit): connect real Specification exit gates/actions owned by future workflow slice here.
+    // The Specification exit gate (D07) admitted this Close in its reservation, under the lock.
     journal = await archiveSpecificationWithCommit(engine, request.operationId);
+    // The archive commit took the uncommitted execution state along: its ledger entries now equal
+    // HEAD (absent at the active path) and go. Best effort; any later prune removes them too.
+    await pruneUncommitted(engine, { workspaceId: journal.plan.source.workspaceId }).catch(
+      () => undefined,
+    );
   }
 
   if (journal.stage === 'archive-committed') {

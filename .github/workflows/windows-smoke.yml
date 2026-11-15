@@ -13,6 +13,7 @@ on:
     # tools/ci-windows-smoke-paths.mjs verifies these globs against sample changes.
     paths:
       - "packages/specflow-engine/src/specs/**"
+      - "packages/specflow-engine/src/definitions/**"
       - "packages/specflow-engine/src/git/**"
       - "packages/specflow-engine/src/version-control/**"
       - "packages/specflow-engine/src/project/**"

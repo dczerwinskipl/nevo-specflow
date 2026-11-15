@@ -11,6 +11,7 @@ import { useSpecsOverview } from './overview/data/useSpecsOverview';
 import { SpecsAccessDenied } from './overview/SpecsAccessDenied';
 import { SpecificationSurface } from './SpecificationSurface';
 import { specPrimaryLinkClassName } from './overview/rows/SpecPrimaryLink';
+import type { TaskSection } from './workspace/WorkspaceContext';
 
 export const specsForbiddenRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -225,6 +226,12 @@ function SpecsRouteScreen() {
   );
 }
 
+/** The Full Task section heading a Requires attention action lands on. */
+const TASK_SECTION_HEADINGS: Readonly<Record<TaskSection, string>> = {
+  context: 'task-context-heading',
+  dependencies: 'task-dependencies-heading',
+};
+
 function SpecificationRouteScreen() {
   const { specId } = specificationRoute.useParams();
   const { collection } = specificationRoute.useSearch();
@@ -242,13 +249,21 @@ function SpecificationRouteScreen() {
       )}
       onBack={() => void navigate({ to: '/', search: { collection } })}
 
-      onOpenTask={(taskId) => {
+      onOpenTask={(taskId, section) => {
         void navigate({
           to: '/specs/$specId/tasks/$taskId',
           params: { specId, taskId },
           search: { collection },
+          ...(section ? { hash: TASK_SECTION_HEADINGS[section] } : {}),
         });
       }}
+      onOpenTasks={(target) =>
+        void navigate({
+          to: '/specs/$specId/tasks',
+          params: { specId },
+          search: { collection, ...target },
+        })
+      }
       onOpenFullDocument={(documentId) => {
         void navigate({
           to: '/specs/$specId/documents/$documentId',

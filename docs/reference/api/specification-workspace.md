@@ -48,8 +48,8 @@ documentation workspace when entering the Specification. It comes from the regis
 the manifest.
 
 Normal `nevo-specflow start` uses project mode. The workspace identity (id, title, revision of the
-canonical manifest, `preparationState`) is read from the Engine-verified manifest. The `documents`
-section is `available` and lists the registered documents of the manifest whose file exists
+canonical manifest) is read from the Engine-verified manifest, `preparationState` from its Tasks
+(below). The `documents` section is `available` and lists the registered documents of the manifest whose file exists
 (`kind` is the document type id, `filename` the relative path, `revision` the content revision, `title`
 the derived title); unclassified and dangling entries are not part of it, the document tree
 (`reference.api.specification-documents`) shows them. When the documents of a readable
@@ -57,15 +57,16 @@ Specification cannot be read, only that section degrades to `unavailable` with r
 `source_unavailable`. The `sessions` section and the `startSession` action come from the Session
 association registry ([Project Sessions section](#project-sessions-section)). The `tasks` and
 `activity` sections and `specification.summary` are described below. The repository and change
-sections are `unavailable` with reason `not_implemented` and `executeTasks` is unavailable, because
-the Engine owns no verified projection of them yet. A bound specification whose canonical source cannot be read (unavailable workspace,
+sections are `unavailable` with reason `not_implemented`, because the Engine owns no verified
+projection of them yet. A bound specification whose canonical source cannot be read (unavailable workspace,
 missing or invalid manifest, registry or Git failure) and a Runtime without any source return
 `503 { "error": "specification_source_unavailable" }`; both cases share this body, so the UI cannot tell
 an outage from a missing adapter. Demonstration data is never substituted. The explicit `nevo-specflow start --demo`
 selects Runtime-owned demonstration repositories over the same endpoints.
 Demo Overview and Workspace derive from one consistent sample catalogue.
 
-This increment does **not** implement real project Tasks, mutations,
+This increment does **not** implement Specification mutations other than the Task commands
+([Task reads](task-reads.md#task-commands)),
 multi-project routing, or multi-worktree execution.
 Availability and action states describe only what actually exists.
 
@@ -87,13 +88,28 @@ Availability and action states describe only what actually exists.
   exists), in project and demo mode alike. Clients expand the summary into this document only; when
   it is absent they offer no expand action and never substitute another document (for example the
   first item).
-- `sections.tasks` (temporary source): a verified manifest `tasks: []` is `available` with
-  `{groups: [], completed: 0, total: 0, attention: []}`; a non-empty manifest list has no verified
-  schema and stays `unavailable` / `not_implemented`. The manifest `tasks` come from the same
-  manifest read as the identity (the Specification source hands them to the contribution). This rule is **temporary**: on the workflow
-  kernel Tasks live in `.execution/tasks/<id>.yaml` and the manifest `tasks` stays `[]`; when the
-  kernel merges, this section and `preparationState` move to the kernel Task source and the manifest
-  rule is deleted.
+- `sections.tasks` is one Engine read (`readExecution`) of the Specification's Task resources
+  (`tasks/index.yaml`, `tasks/<id>/task.yaml`), runs and action projections, presented in the
+  Runtime's dashboard grouping ([Task reads](task-reads.md#dashboard-grouping)), the same one the
+  Tasks page uses: non-empty groups in configured order, each with `summary` (`row` or `compact`)
+  and `collapsed`. Each row carries `type` (`{id, title}`, the title from the catalogue, the id
+  when the type is not defined), `dependsOn` (Task ids) and `attention: true` when an attention item
+  names the Task (its own, or the Specification's). `completed` and `total` are the Engine's
+  `TaskProgress`: `total` counts the Tasks that are neither cancelled nor ended without completing (a
+  broken Task included; on hold counts), `completed` those whose run completed; `cancelled`,
+  `ended` and `onHold` count those apart (absent in the demo Runtime). `attention` is the Engine's attention
+  projection ([Attention items](task-reads.md#attention-items)): `reason` is the item's message,
+  `code` its reason, with `stepTitle` (when a step resolves), `actor`, `action`, `taskIds` and, for
+  `tasks-stuck`, `blocking`; at most one Specification-level `tasks-stuck` item, never one per
+  draft. A broken Task's item has `priority` `critical`, so it comes before every other item. `overview` is the Overview's
+  summary: `rows` (each `row` group with its `count`, up to two `tasks` and `more`; a Task already
+  named by an attention item carries no `title`), `compact` (each `compact` group's `count`, for
+  example Done and Cancelled) and `stuck` (only while the Specification's wait cannot progress: each
+  blocking Task with its `title` and `cause`, Now's explanation). An execution the Engine cannot
+  read (also a busy project lock) makes only this section `unavailable` / `source_unavailable`.
+- `specification.preparationState` is the Engine's `TaskPreparation` of the same read: `empty`
+  without Tasks, `preparing` while a Task is a draft, else `prepared`. When the Tasks cannot be
+  read it stays `empty`.
 - `sections.activity` is `available` and a **partial** history with exactly two event kinds, newest
   first, at most 50 items counted **after** the per-Session authorization (hidden Sessions never
   shorten the visible history):
@@ -125,6 +141,14 @@ Availability and action states describe only what actually exists.
   `requiresAttention` -> `attention`, `ready` -> `quiet`, `authenticationRequired` ->
   `authenticationRequired`, `unavailable` -> `unknown`. `taskIds` come from the association.
   `title` is optional; the server never invents one (the UI shows its untitled label).
+- `sections.sessions.data.attention` lifts every non-archived Session of the Specification that
+  waits for the person's input (effective readiness `requiresAttention`), also one beyond the
+  bounded rows, into Requires attention: `id` `session-attention.<sessionId>`, `kind`
+  `session`, `targetId` the Session, `priority` `high`, `code` `session-input`, `actor` `owner` and
+  `action` `answer-session`. A shown row of such a Session has status `attention`, from the same
+  readiness, and clients skip it in the Sessions section: the Session appears once, in Requires
+  attention, instead. Like every Session reference, an
+  item is omitted when the caller may not view the Session.
 - Each row also carries `providerId`, `modelId?`, `updatedAt` and the catalogue titles
   `providerTitle?` / `modelTitle?` (absent when not listed), as in the Session list, so Continue
   session names the agent and its age without a provider catalogue read.

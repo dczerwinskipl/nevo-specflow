@@ -4,6 +4,7 @@ import {
   createSpecificationFromRequest,
   resumeInterruptedCreateOperation,
   projectCreatedSpecification,
+  abandonSpecification,
   closeSpecificationOperation,
   closeWorktreeOperation,
   closeWorkspaceOperation,
@@ -24,12 +25,17 @@ import { Command, InvalidArgumentError } from 'commander';
 
 import { createDocumentsCommand, type DocumentsCommandContext } from '../documents/command';
 import { engineAt } from '../engine-at';
+import { openExecution, reportingWorkflowRefusals } from '../execution-session';
+import { localOwner } from '../local-actor';
+import { abandonLines } from '../workflow/present';
 
 export interface SpecsCommandContext extends Partial<
   Omit<DocumentsCommandContext, 'cwd' | 'stdout'>
 > {
   readonly cwd: string;
   readonly stdout: (line: string) => void;
+  /** The OS user behind the owner actor of `abandon`; the installed user unless a test supplies one. */
+  readonly osUser?: string;
 }
 
 function summary(item: DiscoveredSpecification): Record<string, unknown> {
@@ -302,6 +308,47 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
         context.stdout('Outcome: ' + (result.outcome ?? result.status));
       }
     });
+
+  specs
+    .command('abandon')
+    .description(
+      'End a Specification without realizing it: its unfinished work is abandoned or cancelled (final); archive it with "specs close" afterwards',
+    )
+    .argument('<spec-id>', 'Canonical Specification UUID')
+    .requiredOption('--reason <text>', 'Why the Specification is abandoned (recorded)')
+    .option('--project-root <path>', 'Require this verified Project Home root')
+    .option('--yes', 'Confirm the abandon, which is final')
+    .option('--json', 'Output machine-readable result')
+    .action(
+      async (
+        specId: string,
+        options: { reason: string; projectRoot?: string; yes?: boolean; json?: boolean },
+      ) => {
+        if (!options.yes) {
+          throw new Error('Abandoning a Specification is final and requires --yes.');
+        }
+
+        const refusalOutput = {
+          stdout: context.stdout,
+          stderr: context.stderr ?? ((line: string) => process.stderr.write(line + '\n')),
+        };
+        await reportingWorkflowRefusals(refusalOutput, options.json, async () => {
+          const { workflow } = await openExecution(context.cwd, options.projectRoot);
+          const result = await abandonSpecification(workflow, {
+            specId,
+            reason: options.reason,
+            actor: localOwner(context.osUser),
+          });
+          if (options.json) {
+            output(context, result);
+          } else {
+            for (const line of abandonLines(result)) {
+              context.stdout(line);
+            }
+          }
+        });
+      },
+    );
 
   specs
     .command('close-reconcile-scratch')

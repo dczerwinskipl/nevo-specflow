@@ -25,7 +25,6 @@ const manifest: SpecificationManifest = {
   location: 'active',
   priority: 10,
   created: '2026-10-24',
-  tasks: [],
 };
 
 describe('serializeSpecificationManifest', () => {

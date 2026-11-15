@@ -1,5 +1,15 @@
 import type { QueryClient } from '@tanstack/react-query';
 
+/**
+ * The Specifications list caches (current and archive): data other features refresh (a Close
+ * moves a Specification to the archive).
+ */
+export const specsOverviewKeys = {
+  all: ['specs-overview'] as const,
+  collection: (collection: 'current' | 'archive') =>
+    [...specsOverviewKeys.all, collection] as const,
+};
+
 export const specificationKeys = {
   all: ['specifications'] as const,
   spec: (specId: string) => [...specificationKeys.all, specId] as const,

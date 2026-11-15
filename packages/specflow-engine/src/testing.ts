@@ -82,7 +82,7 @@ export {
 export {
   installDefinitionsForTesting,
   seedCatalogueForTesting,
-} from './specs/definitions/testing-install';
+} from './definitions/testing-install';
 
 // Internal verification surface for planned lifecycle operations; no transport mutations yet.
 export { previewCloseOperation, type CloseRequest } from './specs/lifecycle';

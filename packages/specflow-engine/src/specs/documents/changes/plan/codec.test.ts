@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { DocumentError } from '../../../document-rules';
 import { sha256Hex } from '../../../../hash';
 import { DOCUMENT_PLAN_MAX_BYTES } from '../limits';
-import { buildSnapshot, TEST_SLUG } from '../test-support';
+import { buildSnapshot, TEST_SLUG, TEST_SPEC_ID } from '../test-support';
 import {
   decodePlan,
   decodePlanWithEvidence,
@@ -125,6 +125,56 @@ describe('plan codec', () => {
     ],
   ])('rejects %s', (_name, change) => {
     expect(() => decodePlan(mutate(renamePlan(), change))).toThrow(DocumentError);
+  });
+
+  it('round-trips a workflow plan and keeps it to the execution state it commits', () => {
+    const state = { sha256: 'a'.repeat(64), bytes: 3 };
+    const workflow: DocumentChangePlan = {
+      version: 1,
+      action: 'workflow',
+      specId: TEST_SPEC_ID,
+      slug: TEST_SLUG,
+      directory: `specs/active/${TEST_SLUG}`,
+      paths: [
+        {
+          path: `${DIR}tasks/api/task.yaml`,
+          role: 'document',
+          pre: null,
+          post: state,
+          source: { kind: 'written' },
+        },
+        {
+          path: `${DIR}.execution/tasks/old.yaml`,
+          role: 'document',
+          pre: state,
+          post: null,
+          source: { kind: 'none' },
+        },
+      ],
+      documents: [],
+      removedDocumentIds: [],
+      folders: [],
+      allocatedIds: [],
+      templates: [],
+      summary: 'create task api',
+    };
+    expect(decodePlan(encodePlan(workflow).text)).toEqual(workflow);
+
+    const refused: readonly ((draft: Record<string, unknown>) => void)[] = [
+      (draft) => delete draft.summary,
+      (draft) => (draft.summary = 'two\nlines'),
+      (draft) => ((draft.paths as Record<string, unknown>[])[0]!.path = `${DIR}overview.md`),
+      (draft) => ((draft.paths as Record<string, unknown>[])[0]!.source = { kind: 'payload' }),
+      (draft) => (draft.taskId = 'api'),
+    ];
+    for (const change of refused) {
+      expect(() => decodePlan(mutate(workflow, change))).toThrow(DocumentError);
+    }
+
+    // A document plan neither carries a summary nor commits a path written by another writer.
+    expect(() => decodePlan(mutate(renamePlan(), (draft) => (draft.summary = 'x')))).toThrow(
+      DocumentError,
+    );
   });
 
   it('refuses to encode a plan with more paths than a batch holds', () => {

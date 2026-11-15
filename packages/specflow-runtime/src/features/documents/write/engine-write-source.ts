@@ -1,4 +1,5 @@
 import type {
+  CreateDocumentsInput,
   DocumentOperationResult,
   DocumentOperationStatus,
   FlushResult,
@@ -42,7 +43,7 @@ export interface EngineDocumentWriteOptions {
   >;
 }
 
-function written(result: DocumentChangeResult): WrittenDocument[] {
+export function written(result: DocumentChangeResult): WrittenDocument[] {
   return result.documents.map((document) => ({
     id: document.id,
     path: document.path,
@@ -52,7 +53,7 @@ function written(result: DocumentChangeResult): WrittenDocument[] {
 }
 
 /** The documents of a result that must name exactly the document that was saved. */
-function savedDocument(result: DocumentChangeResult): WrittenDocument {
+export function savedDocument(result: DocumentChangeResult): WrittenDocument {
   const [document] = written(result);
   // A save that wrote no document is a defect of the Engine, never a client error.
   if (!document) {
@@ -60,6 +61,30 @@ function savedDocument(result: DocumentChangeResult): WrittenDocument {
   }
 
   return document;
+}
+
+/** The Engine request of a create. A template entry is rendered by the Engine; nothing is guessed. */
+export function createRequestOf(input: CreateDocumentsInput) {
+  return {
+    action: 'create' as const,
+    documents: input.documents.map((entry) =>
+      'templateId' in entry
+        ? {
+            path: entry.path,
+            templateId: entry.templateId,
+            ...(entry.type !== undefined ? { type: entry.type } : {}),
+          }
+        : {
+            path: entry.path,
+            content: entry.content,
+            ...(entry.type !== undefined ? { type: entry.type } : {}),
+          },
+    ),
+    folders: input.folders ?? [],
+    ...(input.catalogueRevision !== undefined
+      ? { catalogueRevision: input.catalogueRevision }
+      : {}),
+  };
 }
 
 /** The production write source: a thin pass-through to the Engine, which owns every rule. */
@@ -123,35 +148,13 @@ export function createEngineDocumentWriteSource(
     },
 
     async create(specId, input) {
-      // A template entry is rendered by the Engine from the project catalogue; nothing is guessed here.
-      const documents = input.documents.map((entry) =>
-        'templateId' in entry
-          ? {
-              path: entry.path,
-              templateId: entry.templateId,
-              ...(entry.type !== undefined ? { type: entry.type } : {}),
-            }
-          : {
-              path: entry.path,
-              content: entry.content,
-              ...(entry.type !== undefined ? { type: entry.type } : {}),
-            },
-      );
-
       return operationResult(
         specId,
         await applyDocumentChange(
           engine,
           specId,
           input.operationId,
-          {
-            action: 'create',
-            documents,
-            folders: input.folders ?? [],
-            ...(input.catalogueRevision !== undefined
-              ? { catalogueRevision: input.catalogueRevision }
-              : {}),
-          },
+          createRequestOf(input),
           options.write,
         ),
       );

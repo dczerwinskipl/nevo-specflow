@@ -2,7 +2,7 @@
 // The package list comes from esbuild's metafile, so adding a bundled runtime
 // dependency cannot silently omit its license metadata.
 
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 
@@ -260,10 +260,21 @@ function resolveDependencyRoot(
         current = parent;
       }
     } catch {
-      // Optional/platform-specific dependency not installed for this build.
+      // Not resolvable through the package's `exports` (or not installed): see below.
     }
   }
 
+  // A package whose `exports` hide `package.json` and whose `require` target is missing (for
+  // example @upsetjs/venn.js 2.0.0, a dependency of mermaid) is still installed: find its folder
+  // on Node's own node_modules lookup path, as the resolver would before applying `exports`.
+  for (const lookup of require.resolve.paths(dependencyName) ?? []) {
+    const candidate = join(lookup, dependencyName);
+    if (existsSync(join(candidate, 'package.json'))) {
+      return realpathSync(candidate);
+    }
+  }
+
+  // Optional/platform-specific dependency not installed for this build.
   return undefined;
 }
 

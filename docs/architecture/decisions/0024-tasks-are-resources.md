@@ -11,7 +11,8 @@ summary: >
   created at its first start, which validates the live type and workflow and pins it. The Task Type is
   immutable. One Specification execution store owns every Task resource write; Task documents use the
   Documents capability, mutually exclusive with it. Context lists a Task's inputs. Close refuses
-  unfinished work and Abandon ends it for good. Workflow state is committed like documents.
+  unfinished work and Abandon ends it for good; a Specification completes only once no Task is open.
+  Workflow state is committed like documents.
 related:
   - adr.0015-specification-manifest-as-document-registry
   - adr.0018-engine-commit-policy-and-manual-commit
@@ -27,8 +28,8 @@ related:
 
 ## Status
 
-Current. Owner decisions of 2026-11-05 (F20) and of PR #137 (D03, D04, D06, D07, rounds 2–5),
-implemented. Amends [ADR 0015](0015-specification-manifest-as-document-registry.md) (a Task has its own
+Current. Owner decisions of 2026-11-05 (F20), of PR #137 (D03, D04, D06, D07, rounds 2–5) and
+decision A of 2026-11-15 (completion requires closed Tasks), implemented. Amends [ADR 0015](0015-specification-manifest-as-document-registry.md) (a Task has its own
 registry) and [ADR 0019](0019-workflow-kernel-and-automatic-continuation.md) decision 9 (where Task
 state lives, and that it is committed). Builds on
 [ADR 0023](0023-neutral-workflow-coordinator-and-manual-execution.md). Behaviour:
@@ -71,6 +72,15 @@ state lives, and that it is committed). Builds on
     ([ADR 0018](0018-engine-commit-policy-and-manual-commit.md)); with auto-commit off a finish commits
     them and Close and Abandon take the rest
     ([Workflow kernel](../workflow/workflow-kernel.md#commits-of-the-execution-state)).
+12. **Completion requires closed Tasks (owner decision A, 2026-11-15).** A Specification run may not
+    reach the terminal outcome `completed` while any Task is open: not cancelled and its run not
+    terminal. A draft, a Task that never started, a running, waiting or held one and a broken one are
+    open; a Task its own workflow ended (completed or abandoned) is closed. The rule is universal (any
+    Specification workflow, no step names) and prevents rather than recovers: the finish is refused
+    before any write (`WORKFLOW_TASKS_OPEN`, naming each open Task and why), and the action projection
+    shows that transition as `unavailable: tasks-open` from the same rule
+    ([Workflow kernel](../workflow/workflow-kernel.md#completion-requires-closed-tasks)). Abandon and
+    the replay of a recorded finish are not affected.
 
 ## Consequences
 
@@ -78,11 +88,16 @@ state lives, and that it is committed). Builds on
 - A definition changed between authoring and first start is caught by the start; no binding to
   maintain.
 - Close can no longer archive unfinished work; Abandon is the only way to end it undelivered.
+- A completed Specification has no open Task, so Close after a completion is held only by pending
+  writes, never by unfinished Tasks.
 - Context resolution for agents and path hints remain open
   ([E6 idea](../../ideas/specflow-engine/reusable-workflow-manual-execution/agent-assisted-execution.md)).
 
 ## Rejected
 
+- **Completing with open Tasks and letting Close catch them.** It records a delivered Specification
+  whose work is not done; the PR #137 review (part C) found it possible in a workflow without a wait
+  step.
 - **Creation-time binding with fingerprints and rebind.** The first start checks directly.
 - **Editable Task Type.** It would silently change a Task's workflow.
 - **A full-list Breakdown that cancels every unlisted draft.** It deletes manual drafts.

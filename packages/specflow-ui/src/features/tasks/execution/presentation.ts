@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next';
-import type { GateStatus, WorkflowActor } from '@nevo/specflow-contracts/workflow';
+import type { GateStatus, OpenTask, WorkflowActor } from '@nevo/specflow-contracts/workflow';
 
 /**
  * Who acted, as recorded: a person by the id the Runtime recorded (without the `local:` or `user:`
@@ -117,4 +117,14 @@ export function workflowChanges(
   }
 
   return changes;
+}
+
+/**
+ * The open Tasks a completion waits for, in running text (`api is in progress, screen waits for
+ * other tasks`), with the cause words of the stuck explanation.
+ */
+export function openTasksText(t: TFunction, tasks: readonly OpenTask[]): string {
+  return tasks
+    .map((task) => `${task.taskId} ${t(`taskOverview.stuck.cause.${task.cause}`)}`)
+    .join(', ');
 }

@@ -15,7 +15,9 @@ import {
   applyTaskEffects,
   blockingTasks,
   isTaskEscalated,
+  tasksOpenAtCompletion,
   tasksStuck,
+  TasksOpenError,
 } from '../tasks/tasks';
 import type { ExecutionTask, WorkflowActor, WorkflowRun, WorkflowSubject } from '../state/model';
 import { finishingSession } from './actors';
@@ -100,7 +102,10 @@ export function continuationOf(
  * does that, a wait step has no work); it completes as soon as every Task is closed, which can be
  * immediately. A wait step is never entered while a Task is still `draft` or on hold by its own
  * escalation: every Task must be approved or cancelled, and every escalation resolved, before
- * implementation is handed over, so that change is refused.
+ * implementation is handed over, so that change is refused. A Specification never ends
+ * `terminal completed` while a Task is open (`tasksOpenAtCompletion`, `WORKFLOW_TASKS_OPEN`), in any
+ * workflow, with or without a wait step. Both rules judge the state the change would produce (after
+ * the finish's `tasks`, `taskDecisions` and the transition's effects), before anything is written.
  */
 export function advance(
   context: AdvanceContext,
@@ -108,6 +113,18 @@ export function advance(
   definition: WorkflowDefinition,
   intent: WorkflowIntent,
 ): ContinuationDecision {
+  if (intent.kind === 'terminal') {
+    const open = tasksOpenAtCompletion(
+      subject,
+      intent,
+      context.set.tasks(),
+      context.set.brokenTasks(),
+    );
+    if (open.length > 0) {
+      throw new TasksOpenError(open);
+    }
+  }
+
   if (intent.kind === 'await-event') {
     assertTasksDecided(context, intent.step);
 

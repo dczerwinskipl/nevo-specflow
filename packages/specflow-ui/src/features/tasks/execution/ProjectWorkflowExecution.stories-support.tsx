@@ -43,7 +43,7 @@ import {
 export type WorkflowStoryScenario =
   TaskWorkflowScenario | 'start-drift' | 'spike-gate-round-trip' | SpecificationWorkflowScenario;
 
-const specScenarios: readonly string[] = ['waiting', 'close-blocked', 'abandoned'];
+const specScenarios: readonly string[] = ['waiting', 'close-blocked', 'abandoned', 'tasks-open'];
 
 export function refusal(code: string, data: Record<string, unknown> = {}) {
   return new ApiError({

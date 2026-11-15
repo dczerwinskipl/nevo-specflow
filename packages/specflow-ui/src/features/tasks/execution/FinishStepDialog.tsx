@@ -24,6 +24,7 @@ import {
 } from '@nevo/ui';
 import type { GateStatus, WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { GateList, type GateAction } from './GateList';
+import { openTasksText } from './presentation';
 import { workflowRefusalOf } from './refusal';
 import { WorkflowRefusalAlert } from './WorkflowRefusalAlert';
 
@@ -203,6 +204,13 @@ export function FinishStepDialog({
                   </Typography>
                 ) : null}
               </div>
+            ) : null}
+            {unavailable === 'tasks-open' && selected ? (
+              <InlineNote tone="attention" data-finish-tasks-open="">
+                {t('workflowExecution.finish.tasksOpen', {
+                  tasks: openTasksText(t, selected.openTasks ?? []),
+                })}
+              </InlineNote>
             ) : null}
             {unavailable === 'task-document-change' ? (
               <Typography as="p" variant="body-sm" className="text-content-secondary">

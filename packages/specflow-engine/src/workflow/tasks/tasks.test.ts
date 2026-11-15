@@ -13,8 +13,10 @@ import {
   decideTaskStatus,
   effectiveTaskTypes,
   materializeTasks,
+  openTasks,
   resolveTaskType,
   taskReadiness,
+  tasksOpenAtCompletion,
   tasksStuck,
   type MaterializeTasksInput,
   type TaskDecision,
@@ -459,6 +461,48 @@ describe('Task status, readiness and the wait', () => {
     expect(
       blockingTasks([ended(api, 'completed'), { ...screen, status: 'cancelled' }], []),
     ).toEqual([]);
+  });
+
+  it('names every open Task with why it is open; a cancelled or ended Task is closed', () => {
+    const third = ready(drafts([proposal('docs', ['screen'])], { existing: [api, screen] })[0]!);
+    expect(openTasks([api, screen], [])).toEqual([
+      { taskId: 'api', cause: 'ready' },
+      { taskId: 'screen', cause: 'waiting' },
+    ]);
+    expect(openTasks([started, screen, third], ['old'])).toEqual([
+      { taskId: 'api', cause: 'active' },
+      { taskId: 'docs', cause: 'waiting' },
+      { taskId: 'old', cause: 'broken' },
+      { taskId: 'screen', cause: 'waiting' },
+    ]);
+    expect(openTasks([draftApi, { ...screen, status: 'on-hold' }], [])).toEqual([
+      { taskId: 'api', cause: 'draft' },
+      { taskId: 'screen', cause: 'on-hold' },
+    ]);
+    expect(openTasks([{ ...api, status: 'cancelled' }, screen], [])).toEqual([
+      { taskId: 'screen', cause: 'dependency-unsatisfiable' },
+    ]);
+    // A Task whose own workflow ended it, completed or abandoned, is closed.
+    expect(openTasks([ended(api, 'abandoned'), { ...ended(screen, 'completed') }], [])).toEqual([]);
+  });
+
+  it('refuses only a Specification transition to terminal completed while Tasks are open', () => {
+    const completed = { kind: 'terminal', outcome: 'completed' } as const;
+    const spec = { kind: 'specification' } as const;
+    expect(tasksOpenAtCompletion(spec, completed, [api], [])).toEqual([
+      { taskId: 'api', cause: 'ready' },
+    ]);
+    expect(tasksOpenAtCompletion(spec, completed, [], ['api'])).toEqual([
+      { taskId: 'api', cause: 'broken' },
+    ]);
+    expect(
+      tasksOpenAtCompletion(spec, { kind: 'terminal', outcome: 'abandoned' }, [api], []),
+    ).toEqual([]);
+    expect(tasksOpenAtCompletion(spec, { kind: 'step' }, [api], [])).toEqual([]);
+    expect(tasksOpenAtCompletion({ kind: 'task' }, completed, [api], [])).toEqual([]);
+    expect(tasksOpenAtCompletion(spec, completed, [{ ...api, status: 'cancelled' }], [])).toEqual(
+      [],
+    );
   });
 
   it('closes the wait when every Task ended or was cancelled', () => {

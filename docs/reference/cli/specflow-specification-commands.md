@@ -233,6 +233,10 @@ run. Every command accepts `--project-root <path>` and `--json`.
   as `[x]`/`[ ] gate <id>: <label>, <document type> in <Task|Specification> (<why>)`. A start or finish that a
   gate refuses (`WORKFLOW_GATE_UNSATISFIED`) prints the unsatisfied gates the same way; `--json` adds
   `error.gate {phase, step, gates}`.
+- **Open Tasks.** A Specification finish into `terminal completed` while Tasks are open is refused
+  (`WORKFLOW_TASKS_OPEN`) and prints `open task <id>: <cause>` for each, with a hint to finish or cancel
+  them (or abandon); `--json` adds `error.openTasks [{taskId, cause}]`. `workflow actions` shows such a
+  transition as `unavailable: tasks-open`.
 - **Task text.** `tasks create` takes the first text of `task.md` from `--content-file` or `--stdin`. Later
   changes and extra Task documents use `specs documents ... --task <task-id>`.
 - **Specification exit.** `workflow actions <spec-id>` also prints whether `Close` and `Abandon` are available and,

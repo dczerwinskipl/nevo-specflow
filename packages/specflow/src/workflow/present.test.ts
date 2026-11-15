@@ -134,6 +134,40 @@ describe('actionLines', () => {
       '  [ ] gate findings: Findings written, research in Task build (document notes lacks: Findings)',
     ]);
   });
+
+  it('names the open Tasks under a completing transition they refuse', () => {
+    const projection = {
+      subject,
+      position: {
+        kind: 'active',
+        step: { id: 'acceptance' },
+        attempt: { number: 1, startedAt: 'now', actor: { class: 'human', details: {} } },
+      },
+      actions: {
+        finish: {
+          step: 'acceptance',
+          attempt: 1,
+          transitions: [
+            {
+              id: 'accepted',
+              feedback: 'optional',
+              unavailable: 'tasks-open',
+              openTasks: [
+                { taskId: 'api', cause: 'active' },
+                { taskId: 'screen', cause: 'waiting' },
+              ],
+            },
+          ],
+        },
+      },
+    } as unknown as ActionProjection;
+
+    expect(actionLines(projection).slice(-3)).toEqual([
+      'Action: finish "acceptance" attempt 1 (accepted, unavailable: tasks-open)',
+      '  open task api: active',
+      '  open task screen: waiting',
+    ]);
+  });
 });
 
 describe('finishLines', () => {

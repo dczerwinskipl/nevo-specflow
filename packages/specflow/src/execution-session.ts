@@ -2,11 +2,13 @@ import {
   GateUnsatisfiedError,
   TaskContextInvalidError,
   TaskContextUnresolvedError,
+  TasksOpenError,
   openWorkflow,
   type AwaitedContextEntry,
   type CloseBlocker,
   type GateStatus,
   type InvalidContextEntry,
+  type OpenTask,
   type SpecFlowEngine,
   type UnresolvedContextEntry,
   type WorkflowDependencies,
@@ -57,6 +59,8 @@ interface CodedError {
   readonly awaited?: readonly AwaitedContextEntry[];
   /** `WORKFLOW_INPUT_INVALID` of a Task create/edit: context entries that can never hold. */
   readonly invalidContext?: readonly InvalidContextEntry[];
+  /** `WORKFLOW_TASKS_OPEN`: the open Tasks a completion waits for, with why each is open. */
+  readonly openTasks?: readonly OpenTask[];
 }
 
 /**
@@ -89,6 +93,7 @@ function workflowRefusal(error: unknown): CodedError | undefined {
         ? { unresolved: error.unresolved, awaited: error.awaited }
         : {}),
       ...(error instanceof TaskContextInvalidError ? { invalidContext: error.invalidContext } : {}),
+      ...(error instanceof TasksOpenError ? { openTasks: error.openTasks } : {}),
     };
   }
 
@@ -112,6 +117,8 @@ const HINTS: Readonly<Record<string, string>> = {
     'The step is not allowed for the owner, or an agent attempt is still active.',
   WORKFLOW_GATE_UNSATISFIED:
     'Create or complete the documents the gates name (see "nevo-specflow workflow actions"), then repeat.',
+  WORKFLOW_TASKS_OPEN:
+    'Finish or cancel the open Tasks (see "nevo-specflow tasks list"), or abandon the Specification, then repeat.',
 };
 
 /**
@@ -157,6 +164,10 @@ export async function reportingWorkflowRefusals<T>(
       output.stderr(`  invalid context ${String(entry.index)}: ${entry.key} (${entry.reason})`);
     }
 
+    for (const task of refusal.openTasks ?? []) {
+      output.stderr(`  open task ${task.taskId}: ${task.cause}`);
+    }
+
     // A refused own-document artifact names the gate alternative (the message carries it too).
     const effectiveHint =
       refusal.invalidContext !== undefined
@@ -177,6 +188,7 @@ export async function reportingWorkflowRefusals<T>(
             ...(refusal.unresolved ? { unresolved: refusal.unresolved } : {}),
             ...(refusal.awaited && refusal.awaited.length > 0 ? { awaited: refusal.awaited } : {}),
             ...(refusal.invalidContext ? { invalidContext: refusal.invalidContext } : {}),
+            ...(refusal.openTasks ? { openTasks: refusal.openTasks } : {}),
             ...(effectiveHint ? { hint: effectiveHint } : {}),
           },
         }),

@@ -2201,6 +2201,8 @@
       "history": "Workflow history",
       "returnTo": "Return to {{step}}",
       "finishAfterGate": "Finish step becomes available once this is met.",
+      "finishAfterTasks": "Finish step becomes available once every task is done or cancelled.",
+      "tasksOpen": "To finish with {{result}}, every task must be done or cancelled. Open: {{tasks}}.",
       "technicalStep": "Step {{step}} · {{title}} rev {{version}}",
       "technical": "{{title}} rev {{version}}",
       "openDocument": "Open {{name}}"
@@ -2252,6 +2254,7 @@
       "gatesUnmet": "Finish is unavailable for this result until every item is met. Other results stay available.",
       "rechecked": "Checked again when you came back; your result and feedback are as you left them.",
       "documentChangePending": "A task document change is still being saved. Finish is available once it is saved.",
+      "tasksOpen": "This result completes the specification, so every task must be done or cancelled first. Open: {{tasks}}.",
       "feedbackRequired": "Feedback (required)",
       "feedbackOptional": "Feedback (optional)",
       "feedbackNeeded": "This result needs feedback for the next step.",
@@ -2398,7 +2401,8 @@
       "exitBlocked": "Something still holds the specification.",
       "localConfigModified": "The worktree's local configuration (.nevo/local/config.yaml) was changed, added by hand or cannot be read. Move or delete it, then close again.",
       "busy": "The specification is busy with another change. Try again in a moment.",
-      "draftConflict": "A draft you keep depends on a draft you unticked. Keep both, or untick both."
+      "draftConflict": "A draft you keep depends on a draft you unticked. Keep both, or untick both.",
+      "tasksOpen": "The specification cannot complete while tasks are open: {{tasks}}. Finish or cancel them first."
     },
     "time": {
       "today": "Today {{time}}",
@@ -2485,7 +2489,10 @@
         "draft": "is a draft",
         "on-hold": "is on hold",
         "broken": "is broken",
-        "dependency-unsatisfiable": "depends on a cancelled or ended task"
+        "dependency-unsatisfiable": "depends on a cancelled or ended task",
+        "active": "is in progress",
+        "waiting": "waits for other tasks",
+        "ready": "can start or continue"
       }
     },
     "row": {

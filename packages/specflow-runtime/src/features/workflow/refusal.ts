@@ -16,6 +16,7 @@ import {
   SpecificationExitBlockedError,
   TaskContextInvalidError,
   TaskContextUnresolvedError,
+  TasksOpenError,
   WorkspaceRegistryError,
   type OwnerActor,
 } from '@nevo/specflow-engine';
@@ -137,6 +138,11 @@ export function workflowFailure(error: unknown): WorkflowFailure | undefined {
         gates: toWire(error.gates),
       },
     });
+  }
+
+  // 409: the Specification completes once its open Tasks are done or cancelled.
+  if (error instanceof TasksOpenError) {
+    return failure(error.code, error.message, { openTasks: toWire(error.openTasks) });
   }
 
   if (!(error instanceof Error) || error.name !== 'WorkflowError') {

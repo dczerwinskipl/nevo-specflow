@@ -5317,10 +5317,78 @@
                                 {
                                   "type": "string",
                                   "enum": [
+                                    "tasks-open"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
                                     "gate-unsatisfied"
                                   ]
                                 }
                               ]
+                            },
+                            "openTasks": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": [
+                                  "taskId",
+                                  "cause"
+                                ],
+                                "properties": {
+                                  "taskId": {
+                                    "$ref": "#/components/schemas/TaskId"
+                                  },
+                                  "cause": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "draft"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "on-hold"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "broken"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "dependency-unsatisfiable"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "active"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "waiting"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "ready"
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                }
+                              },
+                              "maxItems": 1000
                             },
                             "gates": {
                               "type": "array",
@@ -8111,6 +8179,12 @@
               {
                 "type": "string",
                 "enum": [
+                  "WORKFLOW_TASKS_OPEN"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
                   "WORKFLOW_UNAVAILABLE"
                 ]
               },
@@ -8290,6 +8364,12 @@
                 "type": "string",
                 "enum": [
                   "WORKFLOW_GATE_UNSATISFIED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_TASKS_OPEN"
                 ]
               },
               {
@@ -8670,6 +8750,67 @@
                           "maxItems": 1000
                         }
                       }
+                    }
+                  }
+                }
+              },
+              "openTasks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "taskId",
+                    "cause"
+                  ],
+                  "properties": {
+                    "taskId": {
+                      "$ref": "#/components/schemas/TaskId"
+                    },
+                    "cause": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "draft"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "on-hold"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "broken"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "dependency-unsatisfiable"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "active"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "waiting"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "ready"
+                          ]
+                        }
+                      ]
                     }
                   }
                 }

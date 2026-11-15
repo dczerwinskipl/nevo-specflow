@@ -5,6 +5,7 @@ import {
   ProjectControlLockError,
   GateUnsatisfiedError,
   SpecificationExitBlockedError,
+  TasksOpenError,
   WORKFLOW_ERROR_CODES as ENGINE_ERROR_CODES,
   WorkflowError,
   type ActionProjection,
@@ -307,6 +308,28 @@ describe('workflow action routes', () => {
       code: 'WORKFLOW_EXIT_BLOCKED',
       error: 'WORKFLOW_EXIT_BLOCKED',
       details: { blockers },
+    });
+    await app.close();
+  });
+
+  it('answers a completion refused by open Tasks with 409 and the open Tasks', async () => {
+    const openTasks = [
+      { taskId: 'api', cause: 'active' as const },
+      { taskId: 'screen', cause: 'waiting' as const },
+    ];
+    const { port } = fakePort({ finish: () => Promise.reject(new TasksOpenError(openTasks)) });
+    const app = appWith(port);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/specs/${SPEC}/workflow/finish`,
+      payload: { step: 'acceptance', attempt: 1 },
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({
+      code: 'WORKFLOW_TASKS_OPEN',
+      details: { openTasks },
     });
     await app.close();
   });

@@ -41,6 +41,8 @@ export const WORKFLOW_ERROR_CODES = [
   'WORKFLOW_EXIT_BLOCKED',
   /** A declared entry or exit gate of the step does not hold; the error lists them (`gates`). */
   'WORKFLOW_GATE_UNSATISFIED',
+  /** A Specification cannot complete while Tasks are open; the error lists them (`openTasks`). */
+  'WORKFLOW_TASKS_OPEN',
 ] as const;
 export type WorkflowErrorCode = (typeof WORKFLOW_ERROR_CODES)[number];
 

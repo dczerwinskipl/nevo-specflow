@@ -1,5 +1,6 @@
 import { Alert } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
+import { openTasksText } from './presentation';
 import { workflowRefusalKey, workflowRefusalOf } from './refusal';
 
 /**
@@ -22,7 +23,7 @@ export function WorkflowRefusalAlert({
     <Alert role="alert" tone="danger" title={title}>
       {refusal.outcomeUnknown && retrySafe
         ? t('workflowExecution.refusal.outcomeUnknownRetrySafe')
-        : t(workflowRefusalKey(refusal))}
+        : t(workflowRefusalKey(refusal), { tasks: openTasksText(t, refusal.openTasks) })}
     </Alert>
   );
 }

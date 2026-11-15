@@ -8,6 +8,7 @@ import {
   LAUNCH_BLOCKERS,
   LaunchSchema,
   GateStatusSchema,
+  OpenTaskSchema,
   WorkflowActorSchema,
   WorkflowRunPositionSchema,
   WorkflowStepSchema,
@@ -230,6 +231,7 @@ export const WORKFLOW_ERROR_CODES = [
   'WORKFLOW_SPECIFICATION_BUSY',
   'WORKFLOW_EXIT_BLOCKED',
   'WORKFLOW_GATE_UNSATISFIED',
+  'WORKFLOW_TASKS_OPEN',
   'WORKFLOW_UNAVAILABLE',
   /** The project control lock (as in Close): only `CONTROL_LOCK_BUSY` is worth a retry. */
   'CONTROL_LOCK_BUSY',
@@ -246,7 +248,8 @@ const codes = Type.Unsafe<WorkflowErrorCode>(
 /**
  * A refused workflow command. `code` is the stable value clients branch on (`error` repeats it);
  * `message` is display-only text and may change. `details.blockers` lists what holds a Specification
- * (`WORKFLOW_EXIT_BLOCKED`).
+ * (`WORKFLOW_EXIT_BLOCKED`), `details.openTasks` the Tasks a completion waits for
+ * (`WORKFLOW_TASKS_OPEN`).
  */
 export const WorkflowErrorSchema = Type.Object(
   {
@@ -309,6 +312,11 @@ export const WorkflowErrorSchema = Type.Object(
             gates: Type.Array(GateStatusSchema),
           }),
         ),
+        /**
+         * `WORKFLOW_TASKS_OPEN`: a Specification transition to `terminal completed` refused while
+         * Tasks are open; every open Task and why it is open, in id order.
+         */
+        openTasks: Type.Optional(Type.Array(OpenTaskSchema)),
       }),
     ),
   },

@@ -1,5 +1,10 @@
 import { isHttpClientError } from '@nevo/http-client';
-import type { ExitBlocker, GateStatus, WorkflowError } from '@nevo/specflow-contracts/workflow';
+import type {
+  ExitBlocker,
+  GateStatus,
+  OpenTask,
+  WorkflowError,
+} from '@nevo/specflow-contracts/workflow';
 import { isApiError } from '../../../api';
 import { apiErrorCode } from '../../../shared/http/apiErrorCode';
 
@@ -17,6 +22,8 @@ export interface WorkflowRefusal {
   readonly blockers: readonly ExitBlocker[];
   /** A producing finish kept drafts that depend on drafts it cancels (`details.draftConflicts`). */
   readonly draftConflicts: NonNullable<Details['draftConflicts']>;
+  /** `WORKFLOW_TASKS_OPEN`: the open Tasks the Specification's completion waits for. */
+  readonly openTasks: readonly OpenTask[];
   /** The answer was lost: the request may have been applied. */
   readonly outcomeUnknown: boolean;
 }
@@ -42,6 +49,7 @@ export function workflowRefusalOf(error: unknown): WorkflowRefusal {
     gates: details?.gate?.gates ?? [],
     blockers: details?.blockers ?? closeBlockers ?? [],
     draftConflicts: details?.draftConflicts ?? [],
+    openTasks: details?.openTasks ?? [],
     outcomeUnknown: isApiError(error) && error.outcome === 'unknown',
   };
 }
@@ -67,6 +75,8 @@ export function workflowRefusalKey(refusal: WorkflowRefusal) {
       return 'workflowExecution.refusal.stateChanged';
     case 'WORKFLOW_GATE_UNSATISFIED':
       return 'workflowExecution.refusal.gateUnsatisfied';
+    case 'WORKFLOW_TASKS_OPEN':
+      return 'workflowExecution.refusal.tasksOpen';
     case 'WORKFLOW_TASK_TYPE_NOT_ALLOWED':
       return 'workflowExecution.refusal.typeNotAllowed';
     case 'WORKFLOW_DEFINITION_MISSING':

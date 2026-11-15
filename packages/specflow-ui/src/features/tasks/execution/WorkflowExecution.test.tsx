@@ -374,6 +374,91 @@ describe('manual workflow execution', () => {
       'Move or delete it, then close again.',
     );
   });
+  it('names the open Tasks that keep the Specification from completing, in Now and in Finish', () => {
+    renderWith(
+      <WorkflowNow
+        subject={{ specId: SPEC }}
+        projection={specificationWorkflowProjection('tasks-open')}
+        headingId="now"
+        links={{ tasks: vi.fn() }}
+        artifactOptions={[]}
+      />,
+    );
+    const open = `t-02 is in progress, ${TASK} waits for other tasks`;
+
+    expect(document.querySelector('[data-now-tasks-open]')?.textContent).toBe(
+      `To finish with Accepted, every task must be done or cancelled. Open: ${open}. See Tasks`,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Finish step' }));
+    fireEvent.click(screen.getByRole('radio', { name: /^Accepted/ }));
+
+    expect(
+      within(screen.getByRole('dialog')).getByText(
+        `This result completes the specification, so every task must be done or cancelled first. Open: ${open}.`,
+      ),
+    ).toBeTruthy();
+    expect(finishButton().disabled).toBe(true);
+  });
+
+  it('keeps Finish step off the Overview main actions while every result waits for open Tasks', () => {
+    renderWith(
+      <WorkflowNow
+        subject={{ specId: SPEC }}
+        projection={specificationWorkflowProjection('tasks-open')}
+        headingId="now"
+        links={{ tasks: vi.fn() }}
+        artifactOptions={[]}
+        overview={{ specId: SPEC }}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: 'Finish step' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'See Tasks' })).toBeTruthy();
+  });
+
+  it('explains a finish the Engine refused because Tasks are open', async () => {
+    const finish = vi.fn(() =>
+      Promise.reject(
+        refusal('WORKFLOW_TASKS_OPEN', 409, {
+          openTasks: [{ taskId: 't-02', cause: 'broken' }],
+        }),
+      ),
+    );
+    const projection = specificationWorkflowProjection('tasks-open');
+    const {
+      unavailable: _unavailable,
+      openTasks: _open,
+      ...transition
+    } = projection.actions.finish!.transitions[0]!;
+    renderWith(
+      <WorkflowNow
+        subject={{ specId: SPEC }}
+        projection={{
+          ...projection,
+          actions: {
+            ...projection.actions,
+            finish: {
+              ...projection.actions.finish!,
+              // The projection was read before the Task broke.
+              transitions: [transition],
+            },
+          },
+        }}
+        headingId="now"
+        links={{}}
+        artifactOptions={[]}
+      />,
+      { execution: fakeExecutionApi({ finish }) },
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Finish step' }));
+    fireEvent.click(screen.getByRole('radio', { name: /^Accepted/ }));
+    fireEvent.click(finishButton());
+
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'The specification cannot complete while tasks are open: t-02 is broken. Finish or cancel them first.',
+    );
+  });
+
   it('names the kept draft that still needs an unticked one when the Engine refuses the finish', async () => {
     const finish = vi.fn(() =>
       Promise.reject(

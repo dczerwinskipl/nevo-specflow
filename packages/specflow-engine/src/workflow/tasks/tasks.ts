@@ -510,16 +510,32 @@ export interface BlockingTask {
 }
 
 /**
- * The Tasks a person resolves so a stuck wait can progress, in id order: each draft, each Task on
- * hold, each broken Task, and each `ready` Task with a direct dependency that was cancelled or ended
- * without completing. A Task that only waits for other open Tasks is not listed (resolving those
- * moves it), nor is one whose only unsatisfiable dependencies are broken (the broken Task is listed).
+ * Why a Task is open (not closed, {@link isTaskClosed}): the {@link BLOCKING_TASK_CAUSES}, which only
+ * a person resolves, and the ones that progress by themselves: `active` (an attempt is running),
+ * `waiting` (`ready`, waiting for open dependencies) and `ready` (`ready` with its dependencies
+ * completed: it can start, or continue with its next step).
  */
-export function blockingTasks(
-  tasks: readonly ExecutionTask[],
-  broken: readonly string[],
-): BlockingTask[] {
-  const found: BlockingTask[] = broken.map((taskId) => ({ taskId, cause: 'broken' as const }));
+export const OPEN_TASK_CAUSES = [...BLOCKING_TASK_CAUSES, 'active', 'waiting', 'ready'] as const;
+export type OpenTaskCause = (typeof OPEN_TASK_CAUSES)[number];
+
+export interface OpenTask {
+  readonly taskId: string;
+  readonly cause: OpenTaskCause;
+}
+
+const BLOCKING: ReadonlySet<OpenTaskCause> = new Set(BLOCKING_TASK_CAUSES);
+
+const byTaskId = (left: { taskId: string }, right: { taskId: string }) =>
+  left.taskId < right.taskId ? -1 : left.taskId > right.taskId ? 1 : 0;
+
+/**
+ * Every open Task with why it is open, in id order: each broken Task, then by status (`draft`,
+ * `on-hold`), position (`active`) and readiness (`dependency-unsatisfiable` for a direct dependency
+ * that was cancelled or ended without completing, `waiting`, `ready`). A Task whose only
+ * unsatisfiable dependencies are broken is `waiting` (the broken Task is listed itself). Pure.
+ */
+export function openTasks(tasks: readonly ExecutionTask[], broken: readonly string[]): OpenTask[] {
+  const found: OpenTask[] = broken.map((taskId) => ({ taskId, cause: 'broken' as const }));
   for (const task of tasks) {
     if (isTaskClosed(task)) {
       continue;
@@ -530,6 +546,11 @@ export function blockingTasks(
       continue;
     }
 
+    if (taskPosition(task).state === 'active') {
+      found.push({ taskId: task.taskId, cause: 'active' });
+      continue;
+    }
+
     const readiness = taskReadiness(task, tasks);
     const closed =
       readiness.kind === 'dependencies'
@@ -537,14 +558,69 @@ export function blockingTasks(
             (id) => !broken.includes(id),
           )
         : [];
-    if (closed.length > 0) {
-      found.push({ taskId: task.taskId, cause: 'dependency-unsatisfiable' });
-    }
+    found.push({
+      taskId: task.taskId,
+      cause:
+        closed.length > 0
+          ? 'dependency-unsatisfiable'
+          : readiness.kind === 'dependencies'
+            ? 'waiting'
+            : 'ready',
+    });
   }
 
-  return found.sort((left, right) =>
-    left.taskId < right.taskId ? -1 : left.taskId > right.taskId ? 1 : 0,
-  );
+  return found.sort(byTaskId);
+}
+
+/**
+ * The Tasks a person resolves so a stuck wait can progress, in id order: each draft, each Task on
+ * hold, each broken Task, and each `ready` Task with a direct dependency that was cancelled or ended
+ * without completing. A Task that only waits for other open Tasks is not listed (resolving those
+ * moves it), nor is one whose only unsatisfiable dependencies are broken (the broken Task is listed).
+ */
+export function blockingTasks(
+  tasks: readonly ExecutionTask[],
+  broken: readonly string[],
+): BlockingTask[] {
+  return openTasks(tasks, broken).filter((task): task is BlockingTask => BLOCKING.has(task.cause));
+}
+
+/**
+ * Owner decision A (2026-11-15, ADR 0024): a Specification run reaches the terminal outcome
+ * `completed` only when no Task is open. Every open Task counts (a draft, one that never started, a
+ * running, waiting or held one, a broken one); a cancelled Task and one whose own run ended (completed
+ * or abandoned) are closed. Returns the open Tasks that refuse a Specification transition to `target`,
+ * none for any other subject or target. The finish (`advance`) and the action projection both ask it.
+ */
+export function tasksOpenAtCompletion(
+  subject: { readonly kind: 'specification' | 'task' },
+  target: { readonly kind: 'step' } | { readonly kind: 'terminal'; readonly outcome: string },
+  tasks: readonly ExecutionTask[],
+  broken: readonly string[],
+): OpenTask[] {
+  return subject.kind === 'specification' &&
+    target.kind === 'terminal' &&
+    target.outcome === 'completed'
+    ? openTasks(tasks, broken)
+    : [];
+}
+
+/**
+ * `WORKFLOW_TASKS_OPEN`: a Specification transition to `terminal completed` while Tasks are open
+ * (`openTasks`), refused before anything is written ({@link tasksOpenAtCompletion}).
+ */
+export class TasksOpenError extends WorkflowError {
+  readonly openTasks: readonly OpenTask[];
+
+  constructor(open: readonly OpenTask[]) {
+    super(
+      'WORKFLOW_TASKS_OPEN',
+      `The Specification cannot complete while Tasks are open: ${open
+        .map((task) => `${task.taskId} (${task.cause})`)
+        .join(', ')}. Finish or cancel them first; restore a broken Task from Git.`,
+    );
+    this.openTasks = open;
+  }
 }
 
 /**

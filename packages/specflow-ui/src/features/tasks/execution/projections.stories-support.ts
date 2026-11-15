@@ -307,7 +307,8 @@ export function taskResourceFor(scenario: TaskWorkflowScenario): TaskResourceFac
   };
 }
 
-export type SpecificationWorkflowScenario = 'waiting' | 'close-blocked' | 'abandoned';
+export type SpecificationWorkflowScenario =
+  'waiting' | 'close-blocked' | 'abandoned' | 'tasks-open';
 
 const specWorkflow = {
   workflowId: 'feature',
@@ -333,6 +334,10 @@ export const ABANDON_REASON =
 export function specificationWorkflowProjection(
   scenario: SpecificationWorkflowScenario,
 ): WorkflowActionProjection {
+  if (scenario === 'tasks-open') {
+    return tasksOpenProjection();
+  }
+
   const abandoned = scenario === 'abandoned';
 
   return {
@@ -377,6 +382,47 @@ export function specificationWorkflowProjection(
         close: abandoned ? allowed : { kind: 'blocked', blockers: [...closeBlockers] },
         abandon: abandoned ? unavailable('ended') : allowed,
       },
+    },
+  };
+}
+
+/**
+ * Acceptance, the step that completes the Specification, while Tasks are open: its one result is
+ * unavailable (`tasks-open`) and names them.
+ */
+function tasksOpenProjection(): WorkflowActionProjection {
+  return {
+    subject: { kind: 'specification', specId: SPEC },
+    workflow: specWorkflow,
+    position: {
+      kind: 'active',
+      step: { id: 'acceptance', title: 'Acceptance', kind: 'work', purpose: '' },
+      attempt: { number: 1, startedAt: '2026-11-14T09:30:00Z', actor: dominik },
+    },
+    actions: {
+      finish: {
+        step: 'acceptance',
+        attempt: 1,
+        transitions: [
+          {
+            id: 'accepted',
+            label: 'Accepted',
+            target: { kind: 'terminal', outcome: 'completed' },
+            feedback: 'optional',
+            unavailable: 'tasks-open',
+            openTasks: [
+              { taskId: 't-02', cause: 'active' },
+              { taskId: TASK, cause: 'waiting' },
+            ],
+          },
+        ],
+      },
+      return: { targets: [{ step: 'breakdown', title: 'Breakdown', feedback: 'optional' }] },
+    },
+    specification: {
+      createTask: allowed,
+      taskTypes: [],
+      exit: { close: { kind: 'blocked', blockers: [...closeBlockers] }, abandon: allowed },
     },
   };
 }

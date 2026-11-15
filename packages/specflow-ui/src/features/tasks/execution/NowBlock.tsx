@@ -4,7 +4,7 @@ import { AccentBlock, Icon, InlineNote, Typography, cn } from '@nevo/ui';
 import type { GateStatus, WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { GateList, type GateAction } from './GateList';
 import { InlineAction } from './InlineAction';
-import { actorLabel, formatWhen } from './presentation';
+import { actorLabel, formatWhen, openTasksText } from './presentation';
 import { StartBlockerLines, type NowLinks } from './StartBlockerLines';
 
 /** An icon inside running text: on the text line, no flex box that would shift the line. */
@@ -178,6 +178,13 @@ export function NowBlock({
           return gates.length > 0 ? [{ transition, gates }] : [];
         })
       : [];
+  // The results that would complete the Specification while Tasks are open, naming them.
+  const tasksOpen =
+    position.kind === 'active'
+      ? (projection.actions.finish?.transitions ?? []).filter(
+          (transition) => transition.unavailable === 'tasks-open',
+        )
+      : [];
 
   return (
     <AccentBlock aria-labelledby={headingId} role="region" data-workflow-now="">
@@ -243,6 +250,22 @@ export function NowBlock({
             </div>
           );
         })}
+        {tasksOpen.map((transition) => (
+          <InlineNote key={transition.id} tone="attention" data-now-tasks-open="">
+            {t('workflowExecution.now.tasksOpen', {
+              result: transition.label ?? transition.result ?? transition.id,
+              tasks: openTasksText(t, transition.openTasks ?? []),
+            })}
+            {links.tasks ? (
+              <>
+                {' '}
+                <InlineAction className="ml-1" onClick={links.tasks}>
+                  {t('workflowExecution.now.seeTasks')}
+                </InlineAction>
+              </>
+            ) : null}
+          </InlineNote>
+        ))}
         {showHandoff && handoff && position.kind !== 'terminal' ? (
           <div className="grid gap-1 border-l-2 border-border-default pl-3">
             <Typography as="p" variant="body-sm" className="text-content-secondary">

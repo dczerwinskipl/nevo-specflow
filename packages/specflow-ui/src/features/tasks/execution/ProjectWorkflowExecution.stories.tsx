@@ -20,6 +20,7 @@ const meta = {
         'waiting',
         'close-blocked',
         'abandoned',
+        'tasks-open',
       ],
     },
   },
@@ -38,6 +39,8 @@ export const TaskGateUnmet: Story = { tags: ['capture'], args: { scenario: 'spik
 export const TaskGateRoundTrip: Story = { args: { scenario: 'spike-gate-round-trip' } };
 export const SpecificationWaiting: Story = { tags: ['capture'], args: { scenario: 'waiting' } };
 export const SpecificationCloseBlocked: Story = { args: { scenario: 'close-blocked' } };
+/** Acceptance would complete the Specification while Tasks are open: Finish names them. */
+export const SpecificationTasksOpen: Story = { args: { scenario: 'tasks-open' } };
 export const SpecificationAbandoned: Story = {
   tags: ['capture'],
   args: { scenario: 'abandoned' },

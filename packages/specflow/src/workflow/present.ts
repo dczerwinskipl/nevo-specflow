@@ -170,6 +170,9 @@ export function actionLines(projection: ActionProjection): string[] {
           `${transition.feedback === 'required' ? ', feedback required' : ''}` +
           `${transition.unavailable ? `, unavailable: ${transition.unavailable}` : ''})`,
       );
+      lines.push(
+        ...(transition.openTasks ?? []).map((task) => `  open task ${task.taskId}: ${task.cause}`),
+      );
       lines.push(...(transition.gates ?? []).map((gate) => `  ${gateLine(gate)}`));
     }
   }

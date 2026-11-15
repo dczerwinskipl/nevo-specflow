@@ -229,6 +229,12 @@ export function WorkflowNow({
     finish.transitions.every((transition) =>
       (transition.gates ?? []).some((gate) => gate.status === 'unsatisfied'),
     );
+  // Every result completes the Specification while Tasks are open: Finish step waits in the menu.
+  const tasksBlockFinish =
+    overview !== undefined &&
+    finish !== undefined &&
+    finish.transitions.length > 0 &&
+    finish.transitions.every((transition) => transition.unavailable === 'tasks-open');
   const mainGateAction = gateBlocksFinish
     ? finish.transitions
         .flatMap((transition) => transition.gates ?? [])
@@ -244,7 +250,7 @@ export function WorkflowNow({
         <Button onClick={startNow} disabled={busy}>
           {startLabel}
         </Button>
-      ) : finish && !gateBlocksFinish ? (
+      ) : finish && !gateBlocksFinish && !tasksBlockFinish ? (
         <Button onClick={openFinish} disabled={busy}>
           {t('workflowExecution.now.finish')}
         </Button>
@@ -299,7 +305,7 @@ export function WorkflowNow({
               },
             ]
           : []),
-        ...(gateBlocksFinish
+        ...(gateBlocksFinish || tasksBlockFinish
           ? [
               {
                 id: 'finish',
@@ -313,6 +319,7 @@ export function WorkflowNow({
       {...(overview.onOpenHistory ? { onOpenHistory: overview.onOpenHistory } : {})}
       note={[
         ...(gateBlocksFinish ? [t('workflowExecution.now.finishAfterGate')] : []),
+        ...(tasksBlockFinish ? [t('workflowExecution.now.finishAfterTasks')] : []),
         ...(projection.workflow
           ? [
               t(

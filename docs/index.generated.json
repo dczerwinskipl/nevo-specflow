@@ -2150,7 +2150,7 @@
       "status": "current",
       "file": "docs/architecture/decisions/0024-tasks-are-resources.md",
       "read_when": [],
-      "summary": "A Task is a resource of its Specification: a folder under the reserved tasks/ folder with a manifest (task.yaml), a main document (task.md) and optional documents, listed in tasks/index.yaml, which alone says which Tasks exist. A Task exists before any workflow runs; its slim run record is created at its first start, which validates the live type and workflow and pins it. The Task Type is immutable. One Specification execution store owns every Task resource write; Task documents use the Documents capability, mutually exclusive with it. Context lists a Task's inputs. Close refuses unfinished work and Abandon ends it for good. Workflow state is committed like documents.",
+      "summary": "A Task is a resource of its Specification: a folder under the reserved tasks/ folder with a manifest (task.yaml), a main document (task.md) and optional documents, listed in tasks/index.yaml, which alone says which Tasks exist. A Task exists before any workflow runs; its slim run record is created at its first start, which validates the live type and workflow and pins it. The Task Type is immutable. One Specification execution store owns every Task resource write; Task documents use the Documents capability, mutually exclusive with it. Context lists a Task's inputs. Close refuses unfinished work and Abandon ends it for good; a Specification completes only once no Task is open. Workflow state is committed like documents.",
       "related": [
         "adr.0015-specification-manifest-as-document-registry",
         "adr.0018-engine-commit-policy-and-manual-commit",

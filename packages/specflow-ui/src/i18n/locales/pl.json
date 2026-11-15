@@ -2201,6 +2201,8 @@
       "history": "Historia przepływu",
       "returnTo": "Wróć do: {{step}}",
       "finishAfterGate": "Zakończenie kroku będzie dostępne, gdy ten warunek zostanie spełniony.",
+      "finishAfterTasks": "Zakończenie kroku będzie dostępne, gdy każde zadanie zostanie ukończone lub anulowane.",
+      "tasksOpen": "Aby zakończyć z wynikiem {{result}}, każde zadanie musi być ukończone lub anulowane. Otwarte: {{tasks}}.",
       "technicalStep": "Krok {{step}} · {{title}} wersja {{version}}",
       "technical": "{{title}} wersja {{version}}",
       "openDocument": "Otwórz {{name}}"
@@ -2252,6 +2254,7 @@
       "gatesUnmet": "Zakończenie z tym wynikiem jest niedostępne, dopóki każdy element nie zostanie spełniony. Pozostałe wyniki są dostępne.",
       "rechecked": "Sprawdzono ponownie po powrocie; wynik i uwagi są takie, jak je zostawiono.",
       "documentChangePending": "Zmiana dokumentu zadania jest jeszcze zapisywana. Zakończenie będzie dostępne po zapisaniu.",
+      "tasksOpen": "Ten wynik kończy specyfikację, więc najpierw każde zadanie musi być ukończone lub anulowane. Otwarte: {{tasks}}.",
       "feedbackRequired": "Uwagi (wymagane)",
       "feedbackOptional": "Uwagi (opcjonalne)",
       "feedbackNeeded": "Ten wynik wymaga uwag dla następnego kroku.",
@@ -2398,7 +2401,8 @@
       "exitBlocked": "Coś wciąż blokuje specyfikację.",
       "localConfigModified": "Lokalna konfiguracja worktree (.nevo/local/config.yaml) została zmieniona, dodana ręcznie albo nie da się jej odczytać. Przenieś ją lub usuń, a potem zamknij ponownie.",
       "busy": "Specyfikacja jest zajęta inną zmianą. Spróbuj za chwilę.",
-      "draftConflict": "Zachowany szkic zależy od szkicu, który odznaczono. Zachowaj oba albo odznacz oba."
+      "draftConflict": "Zachowany szkic zależy od szkicu, który odznaczono. Zachowaj oba albo odznacz oba.",
+      "tasksOpen": "Specyfikacja nie może się zakończyć, dopóki zadania są otwarte: {{tasks}}. Najpierw je ukończ lub anuluj."
     },
     "time": {
       "today": "Dziś {{time}}",
@@ -2485,7 +2489,10 @@
         "draft": "jest szkicem",
         "on-hold": "jest wstrzymane",
         "broken": "jest uszkodzone",
-        "dependency-unsatisfiable": "zależy od anulowanego lub zakończonego zadania"
+        "dependency-unsatisfiable": "zależy od anulowanego lub zakończonego zadania",
+        "active": "jest w toku",
+        "waiting": "czeka na inne zadania",
+        "ready": "może się rozpocząć lub kontynuować"
       }
     },
     "row": {

@@ -1164,9 +1164,10 @@ describe('filesystem workflow store: the Task set is the one the index lists', (
         actor: owner,
       });
     const before = await readFile(specificationPath(), 'utf8');
+    // A broken Task is open: its work is not known (owner decision A).
     await expect(accept()).rejects.toMatchObject({
-      code: 'WORKFLOW_INPUT_INVALID',
-      message: expect.stringContaining('screen') as unknown,
+      code: 'WORKFLOW_TASKS_OPEN',
+      openTasks: [{ taskId: 'screen', cause: 'broken' }],
     });
     expect(await readFile(specificationPath(), 'utf8')).toBe(before);
 

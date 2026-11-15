@@ -92,7 +92,8 @@ export interface FinishStepResult {
  * Specification waiting for its Tasks takes its `task-escalated` transition, or needs the owner's
  * attention (`task-escalated`) when it declares none. The finish itself succeeds. A Specification finish
  * that would enter a wait step while a Task is `draft` or escalated is refused (`advance`), and so is
- * one that would end the run `terminal completed` while a Task is broken (`executionTasks`). A Task
+ * one that would end the run `terminal completed` while a Task is open (`WORKFLOW_TASKS_OPEN`, owner
+ * decision A: a draft, one not started, a running, waiting or held one, or a broken one). A Task
  * that is not `ready` after its finish gets no continuation (`none {on-hold}`) and no attention.
  *
  * The exit gates of the step that apply to the taken transition (`when`) must hold
@@ -189,20 +190,6 @@ function recordFinish(
       throw new WorkflowError(
         'WORKFLOW_INPUT_INVALID',
         'Only a Specification step decides the status of Tasks.',
-      );
-    }
-
-    // A Specification completes only with every Task intact: a broken Task's work is not known.
-    const broken = context.set.brokenTasks();
-    if (
-      subject.kind === 'specification' &&
-      transition.target.kind === 'terminal' &&
-      transition.target.outcome === 'completed' &&
-      broken.length > 0
-    ) {
-      throw new WorkflowError(
-        'WORKFLOW_INPUT_INVALID',
-        `The Specification cannot complete while Tasks are broken: ${broken.join(', ')}; restore them from Git.`,
       );
     }
 

@@ -278,6 +278,17 @@ export const BlockingTaskSchema = Type.Object({
 });
 
 /**
+ * Why a Task is open: the blocking causes, and `active` (an attempt runs), `waiting` (ready, waits
+ * for open dependencies) and `ready` (can start or continue now). Mirrors the Engine's list.
+ */
+export const OPEN_TASK_CAUSES = [...BLOCKING_TASK_CAUSES, 'active', 'waiting', 'ready'] as const;
+export const OpenTaskSchema = Type.Object({
+  taskId: TaskIdSchema,
+  cause: literals(OPEN_TASK_CAUSES),
+});
+export type OpenTask = Static<typeof OpenTaskSchema>;
+
+/**
  * Why a subject needs a person: the continuation reasons, then `task-broken`,
  * `definition-changed` and the start blockers of an approved Task that has not started that a
  * person fixes. Never inferred from a status name.
@@ -420,9 +431,20 @@ export const WorkflowActionsSchema = Type.Object({
         Type.Intersect([
           WorkflowTransitionSchema,
           Type.Object({
+            /**
+             * Refused now: a Task document change is pending, Tasks are open (`tasks-open`: a
+             * Specification transition to `terminal completed`, `openTasks` names them), or an
+             * exit gate does not hold.
+             */
             unavailable: Type.Optional(
-              Type.Union([Type.Literal('task-document-change'), Type.Literal('gate-unsatisfied')]),
+              Type.Union([
+                Type.Literal('task-document-change'),
+                Type.Literal('tasks-open'),
+                Type.Literal('gate-unsatisfied'),
+              ]),
             ),
+            /** For `tasks-open`: every open Task and why it is open, in id order. */
+            openTasks: Type.Optional(array(OpenTaskSchema)),
             /** The exit gates that apply to the transition; absent when none do. */
             gates: Type.Optional(array(GateStatusSchema)),
           }),

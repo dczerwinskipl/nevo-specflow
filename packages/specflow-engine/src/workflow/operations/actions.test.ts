@@ -681,38 +681,122 @@ describe('the projection and the Task commands agree once the Specification ende
   });
 });
 
-// Characterization, not a decision: whether a Specification may complete while its Tasks are
-// unfinished is an open owner decision (PR #137 review, part C). This records today's behaviour.
-describe('a Specification completed by a workflow that does not wait for its Tasks (current behaviour)', () => {
-  it('keeps Close blocked by the unfinished Tasks, which can still be decided and run', async () => {
-    const dependencies = memoryDependencies(
-      await seedCatalogueWith((text) =>
-        text.replace(
-          /(id: approved\r?\n(?: {8}.*\r?\n)*? {8}to: \{ step: )implementation/u,
-          '$1acceptance',
-        ),
-      ),
-    );
-    await specificationWithTasks(dependencies);
-    await work(dependencies, specification, {}, owner);
+/** The seed workflow without its wait step: the reviewed breakdown goes straight to acceptance. */
+const withoutWait = () =>
+  seedCatalogueWith((text) =>
+    text.replace(
+      /(id: approved\r?\n(?: {8}.*\r?\n)*? {8}to: \{ step: )implementation/u,
+      '$1acceptance',
+    ),
+  );
+
+/** The owner's acceptance attempt, active, with {@link TWO_TASKS} approved and not started. */
+async function acceptingWithOpenTasks(): Promise<Dependencies> {
+  const dependencies = memoryDependencies(await withoutWait());
+  await specificationWithTasks(dependencies);
+  await startSpecification(dependencies, owner);
+
+  return dependencies;
+}
+
+const accept = (
+  dependencies: Dependencies,
+  input: Parameters<typeof finishStep>[1]['input'] = {},
+) =>
+  finishStep(dependencies, {
+    subject: specification,
+    step: 'acceptance',
+    attempt: 1,
+    input,
+    actor: owner,
+  });
+
+const acceptedTransition = async (dependencies: Dependencies) =>
+  (await project(dependencies, specification)).actions.finish?.transitions.find(
+    (transition) => transition.id === 'accepted',
+  );
+
+// Owner decision A (2026-11-15): a Specification completes only once no Task is open, in any
+// workflow (this one has no wait step). Abandon is the way to end it with open Tasks.
+describe('a Specification does not complete while its Tasks are open', () => {
+  it('projects tasks-open naming each open Task, and the finish refuses it before any write', async () => {
+    const dependencies = await acceptingWithOpenTasks();
+    const open = [
+      { taskId: 'api', cause: 'ready' },
+      { taskId: 'screen', cause: 'waiting' },
+    ];
+    expect(await acceptedTransition(dependencies)).toMatchObject({
+      unavailable: 'tasks-open',
+      openTasks: open,
+    });
+
+    const applied = dependencies.store.applied.length;
+    await expect(accept(dependencies)).rejects.toMatchObject({
+      code: 'WORKFLOW_TASKS_OPEN',
+      openTasks: open,
+    });
+    expect(dependencies.store.applied).toHaveLength(applied);
+    expect((await project(dependencies, specification)).position).toMatchObject({
+      kind: 'active',
+      step: { id: 'acceptance' },
+    });
+
+    // A running Task is open too.
+    await startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', actor: claude });
+    expect((await acceptedTransition(dependencies))?.openTasks).toEqual([
+      { taskId: 'api', cause: 'active' },
+      { taskId: 'screen', cause: 'waiting' },
+    ]);
+  });
+
+  it('completes once every Task is done or cancelled', async () => {
+    const dependencies = await acceptingWithOpenTasks();
+    await work(dependencies, task('api'));
+    await work(dependencies, task('api'), { result: 'pass' });
+    expect((await acceptedTransition(dependencies))?.openTasks).toEqual([
+      { taskId: 'screen', cause: 'ready' },
+    ]);
+    await decide(dependencies, 'screen', 'cancelled');
+
+    const transition = await acceptedTransition(dependencies);
+    expect(transition).not.toHaveProperty('unavailable');
+    expect(transition).not.toHaveProperty('openTasks');
+    await accept(dependencies);
     expect((await project(dependencies, specification)).position).toEqual({
       kind: 'terminal',
       outcome: 'completed',
     });
-
     expect(
-      closeBlockers(await readSpecificationExitState(dependencies, SPEC)).map((blocker) => [
-        blocker.kind,
-        blocker.subjectIds,
-      ]),
-    ).toEqual([['unfinished-tasks', ['api', 'screen']]]);
+      closeBlockers(await readSpecificationExitState(dependencies, SPEC)).filter(
+        (blocker) => blocker.kind === 'unfinished-tasks',
+      ),
+    ).toEqual([]);
+    // A repeated finish returns the recorded result.
+    await expect(accept(dependencies)).resolves.toMatchObject({ replayed: true });
+  });
 
-    // Edits and removal are final, but the Task's status and its run are not.
-    const projection = await expectEndedAgreement(dependencies, 'api');
-    expect(projection.task).toMatchObject({ hold: ALLOWED, cancel: ALLOWED });
-    expect(projection.actions.start).toMatchObject({ step: 'implement', firstStart: true });
-    await expect(
-      startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', actor: claude }),
-    ).resolves.toMatchObject({ kind: 'started' });
+  it('judges the Tasks as the finish leaves them: its own decisions may cancel the open ones', async () => {
+    const dependencies = await acceptingWithOpenTasks();
+    await accept(dependencies, {
+      taskDecisions: [
+        { taskId: 'api', status: 'cancelled' },
+        { taskId: 'screen', status: 'cancelled' },
+      ],
+    });
+
+    expect((await project(dependencies, specification)).position).toEqual({
+      kind: 'terminal',
+      outcome: 'completed',
+    });
+  });
+
+  it('abandon still ends a Specification with open Tasks', async () => {
+    const dependencies = await acceptingWithOpenTasks();
+    await abandonSpecification(dependencies, { specId: SPEC, reason: 'Dropped.', actor: owner });
+
+    expect((await project(dependencies, specification)).position).toMatchObject({
+      kind: 'terminal',
+      outcome: 'abandoned',
+    });
   });
 });

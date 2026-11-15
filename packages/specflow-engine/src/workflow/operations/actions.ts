@@ -34,7 +34,9 @@ import {
   resolveTaskType,
   taskDecisionRefusal,
   taskReadiness,
+  tasksOpenAtCompletion,
   unsatisfiableDependencies,
+  type OpenTask,
 } from '../tasks/tasks';
 import { continuationOf, waitDecision } from './advance';
 import { deriveAttention, startBlockerAttention } from './attention';
@@ -217,10 +219,13 @@ export interface WorkflowActions {
     readonly transitions: readonly (TransitionDescription & {
       /**
        * Taking it now is refused: an escalating Task transition writes the Task's `task.yaml`
-       * while one of its documents has a pending change (`WORKFLOW_TASK_BUSY`), or one of its exit
-       * gates does not hold (`WORKFLOW_GATE_UNSATISFIED`).
+       * while one of its documents has a pending change (`WORKFLOW_TASK_BUSY`), a Specification
+       * transition to `terminal completed` while Tasks are open (`tasks-open`, `WORKFLOW_TASKS_OPEN`),
+       * or one of its exit gates does not hold (`WORKFLOW_GATE_UNSATISFIED`).
        */
-      readonly unavailable?: 'task-document-change' | 'gate-unsatisfied';
+      readonly unavailable?: 'task-document-change' | 'tasks-open' | 'gate-unsatisfied';
+      /** For `tasks-open`: every open Task and why it is open, in id order. */
+      readonly openTasks?: readonly OpenTask[];
       /** The exit gates that apply to it (`when`), with their status now; absent when none do. */
       readonly gates?: readonly GateStatus[];
     })[];
@@ -609,16 +614,26 @@ async function finishTransitions(
     const gates = exitGatesFor(step, transition.result).flatMap(
       (gate) => statuses.get(gate.id) ?? [],
     );
+    // The finish asks the same rule (`advance`); it also counts the Tasks its own input changes.
+    const open = tasksOpenAtCompletion(
+      input.gates.subject,
+      transition.target,
+      input.tasks.tasks,
+      input.tasks.broken,
+    );
     const unavailable =
       input.documentChangePending && declared?.annotations.escalate
         ? ('task-document-change' as const)
-        : gates.some((gate) => gate.status === 'unsatisfied')
-          ? ('gate-unsatisfied' as const)
-          : undefined;
+        : open.length > 0
+          ? ('tasks-open' as const)
+          : gates.some((gate) => gate.status === 'unsatisfied')
+            ? ('gate-unsatisfied' as const)
+            : undefined;
 
     return {
       ...transition,
       ...(unavailable ? { unavailable } : {}),
+      ...(open.length > 0 ? { openTasks: open } : {}),
       ...(gates.length > 0 ? { gates } : {}),
     };
   });

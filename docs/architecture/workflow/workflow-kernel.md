@@ -291,7 +291,8 @@ steps:
   existing workflows.
 - **Inspection.** The action projection reports each gate as a `GateStatus` (`satisfied` or
   `unsatisfied`, with `scope` as link data): every finish transition lists the exit gates that apply to
-  it and is `unavailable: gate-unsatisfied` while one does not hold; a startable step lists its
+  it and is `unavailable: gate-unsatisfied` while one does not hold (unless it is `tasks-open`, see
+  "Completion requires closed Tasks"); a startable step lists its
   `entryGates`, and unsatisfied ones are the start blocker `gates-unsatisfied`. The inspection writes
   nothing.
 - **Authoritative check.** `finishStep` evaluates the exit gates of the taken transition inside the
@@ -343,8 +344,8 @@ it never becomes startable (`dependencies {waitingFor}`); and when nothing else 
 Specification gets `tasks-stuck`. The Engine never repairs it: restoring the files from Git makes the
 Task usable again. If the restored Task is already closed and no Task is open any more, no Task event
 will complete the wait, so the Specification keeps `tasks-stuck` and the owner returns it (for example
-to the breakdown). A Specification finish whose transition ends the run `terminal {completed}` is
-refused with `WORKFLOW_INPUT_INVALID` naming the broken Tasks while any Task is broken. A Specification
+to the breakdown). A broken Task is open, so a Specification never completes over it (see
+"Completion requires closed Tasks"). A Specification
 step's context lists the broken Tasks by id in `broken`, not in `existingTasks`; a `taskDecisions` entry
 naming one is refused with `WORKFLOW_INPUT_INVALID` (`Unknown Task`).
 
@@ -515,6 +516,37 @@ wait step `implementation`, to `breakdown` with `continuation: owner-action`, so
 move before the planner runs; that step's context lists every Task with its status and last status
 change. Resuming the Task (`on-hold → ready`) continues at `implement` with the escalation feedback in
 the handoff.
+
+### Completion requires closed Tasks
+
+Owner decision A (2026-11-15, [ADR 0024](../decisions/0024-tasks-are-resources.md) decision 12): a
+Specification run never reaches the terminal outcome `completed` while a Task is **open**, in any
+Specification workflow, with or without a wait step. Open is every Task that is not closed (its run
+is not terminal and it is not `cancelled`): a draft, an approved Task that never started, a running,
+waiting or held one, and a broken one (its work is not known). A Task whose own workflow ended it,
+completed or abandoned, is closed. The rule is `tasksOpenAtCompletion` (with `openTasks`) in
+`tasks/tasks.ts`; it never looks at step ids or names.
+
+- **Finish.** `advance` (`operations/advance.ts`) refuses a Specification decision whose intent is
+  `terminal {completed}` while Tasks are open, with `WORKFLOW_TASKS_OPEN` (`TasksOpenError`,
+  `openTasks: [{taskId, cause}]` in id order). Like the draft and escalation guard it judges the state
+  the change would produce, after the finish's `tasks`, its `taskDecisions` and the transition's
+  effects, so a finish that cancels the last open Tasks itself completes; and it runs before anything
+  is written, so the attempt stays active. A wait step's `tasks-finished` completes only with every
+  Task closed and `task-escalated` always leads to a step, so both pass. A repeated finish (F16
+  replay) returns the recorded result without asking the rule again. Abandon is not affected.
+- **Causes.** `cause` is one of `BLOCKING_TASK_CAUSES` (`draft`, `on-hold`, `broken`,
+  `dependency-unsatisfiable`, which only a person resolves) or `active` (an attempt runs), `waiting`
+  (`ready`, waiting for open dependencies) and `ready` (can start, or continue with its next step).
+  `blockingTasks` (the `tasks-stuck` explanation) is `openTasks` restricted to the blocking causes, so
+  both explanations use one model and one vocabulary.
+- **Projection.** The action projection asks the same rule on the current Tasks: such a transition is
+  `unavailable: tasks-open` with `openTasks` (it wins over `gate-unsatisfied`; meeting a gate would
+  not help). It does not know a finish's own decisions, so a finish that cancels the open Tasks may
+  still be accepted.
+- **No attention item.** Open Tasks are the Tasks' normal progress, not something to fix: the
+  Specification gets no attention item for them, and no Task gets one either. The Now block names them
+  (see [Workflow execution](../../product/specflow/ui/workflow-execution.md#dialogs)).
 
 ## Returns ("back to the table")
 

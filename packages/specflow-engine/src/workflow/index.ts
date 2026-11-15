@@ -191,7 +191,14 @@ export type {
 } from './state/model';
 export type { ExecutionChange, ExecutionSnapshot, Versioned, WorkflowStore } from './state/store';
 export type { TaskDecision, TaskDecisionStatus, TaskProposal, TaskReadiness } from './tasks/tasks';
-export { DraftConflictError, type DraftConflict } from './tasks/tasks';
+export {
+  DraftConflictError,
+  OPEN_TASK_CAUSES,
+  TasksOpenError,
+  type DraftConflict,
+  type OpenTask,
+  type OpenTaskCause,
+} from './tasks/tasks';
 // The neutral core's run model, as SpecFlow stores and returns it.
 export type {
   AttemptOutcome,

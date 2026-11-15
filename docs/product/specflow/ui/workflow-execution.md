@@ -93,6 +93,14 @@ opened by the header's history toggle.
   the unmet gates of the active step under "To finish". A gate action closes the dialog but keeps its
   draft (result, feedback, artifacts) and opens the document in the Secondary; Finish step reopens the
   dialog with the draft and evaluates the gates again.
+- **Open Tasks.** A result that completes the Specification is unavailable while any Task is open
+  (owner decision A, [ADR 0024](../../../architecture/decisions/0024-tasks-are-resources.md)): the
+  dialog names each open Task with why it is open ("t-02 is in progress, t-05 waits for other
+  tasks") and Finish stays disabled for that result. The Now block says the same for each such result
+  with **See Tasks**; on the Overview, when every result waits for open Tasks, Finish step moves to
+  the ⋯ menu, unavailable, with the reason. A refused finish (the Tasks changed after the projection
+  was read) shows the same explanation. Abandon remains the way to end a Specification with open
+  Tasks.
 - **Return to an earlier step.** The projection's allowed steps and the reason, required when the
   return requires it.
 - **First start of a Task** confirms what will be pinned: Task Type, workflow and revision, first step.

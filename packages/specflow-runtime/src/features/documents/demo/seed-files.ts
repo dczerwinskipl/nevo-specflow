@@ -51,7 +51,7 @@ export const specSeeds: Readonly<Record<string, SpecSeed>> = {
       {
         path: 'architecture.md',
         type: 'architecture',
-        text: text('Access policy - Architecture', 'Demonstration architecture analysis.'),
+        text: text('Architecture', 'Demonstration architecture analysis.'),
       },
       {
         path: 'notes/open-questions.md',
@@ -66,7 +66,7 @@ export const specSeeds: Readonly<Record<string, SpecSeed>> = {
       {
         path: 'behaviour.md',
         type: 'behaviour',
-        text: text('Review evidence - Behaviour', 'Demonstration scenarios.'),
+        text: text('Behaviour', 'Demonstration scenarios.'),
       },
       { path: 'evidence/screen.png', bytes: DEMO_PNG },
       { path: 'evidence/report.pdf', bytes: DEMO_BINARY },
@@ -95,9 +95,9 @@ export const specSeeds: Readonly<Record<string, SpecSeed>> = {
       {
         path: 'behaviour.md',
         type: 'behaviour',
-        text: text('Application shell - Behaviour', 'Demonstration scenarios.'),
+        text: text('Behaviour', 'Demonstration scenarios.'),
       },
-      { path: 'ux.md', type: 'ux', text: text('Application shell - UX', 'Demonstration flows.') },
+      { path: 'ux.md', type: 'ux', text: text('UX', 'Demonstration flows.') },
     ],
   },
 };

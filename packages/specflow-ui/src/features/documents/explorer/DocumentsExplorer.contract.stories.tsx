@@ -77,7 +77,8 @@ function Fixture({
   return (
     <NotificationProvider>
       <TooltipProvider>
-        <div style={{ width, padding: 8 }}>
+        {/* The pane content's vertical inset; the explorer's blocks carry the inline one. */}
+        <div style={{ width, paddingBlock: 8 }}>
           <DocumentsExplorer
             tree={value}
             active={current}

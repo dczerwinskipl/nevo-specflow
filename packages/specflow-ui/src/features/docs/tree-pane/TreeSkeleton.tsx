@@ -1,4 +1,5 @@
-import { Skeleton } from '@nevo/ui';
+import { Skeleton, cn } from '@nevo/ui';
+import { treePaneTextClassName } from '../../../shared/document-tree';
 
 const widths = [72, 56, 64, 48, 80, 60, 52];
 
@@ -13,7 +14,7 @@ export function TreeSkeleton({ label }: { label?: string }) {
       aria-busy="true"
       aria-label={label}
       aria-hidden={label ? undefined : true}
-      className="grid gap-2 px-2 pt-1"
+      className={cn('grid gap-2 pt-1', treePaneTextClassName)}
     >
       {widths.map((width, index) => (
         <Skeleton key={index} className="h-5" style={{ width: `${width}%` }} />

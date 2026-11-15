@@ -101,8 +101,7 @@ Unchanged geometry of [Documents editor mode](documents-editor-mode.md): tree in
 tree's scroll area, above the tree, so it scrolls away with it and costs nothing when empty.
 
 ```text
-[Documents                         ...]   header: New document / New folder / Upload files (menu)
- Single sign-on · Documents                context line (existing)
+[Documents                         ...]   header: New document… / New folder / Upload files (menu)
  ┌ ! Closing this specification will  ┐    attention Alert, only with Close-refusing issues
  │   be refused                       │
  │ • Two files differ only in letter  │
@@ -116,6 +115,7 @@ tree's scroll area, above the tree, so it scrolls away with it and costs nothing
  ──────────────────────────────────        divider (only when the region above exists)
  SPECIFICATION DOCUMENTS            (o)   root section header (no chevron); small spinner while an operation runs long
  [Search files                ] [filter]   search by name or path; type filter (multiple choice), only with 2+ types
+ ! 1 entry in the folder could not be read. attention note before the rows (skipped-entry; not a Close refusal)
    overview.md                             main file first: its type icon in the folders' chevron column,
                                            the name right after it, slightly stronger, room below
  v architecture
@@ -127,7 +127,7 @@ tree's scroll area, above the tree, so it scrolls away with it and costs nothing
  ! backend.md               File missing   (warning glyph and label in attention tone)
    behaviour.md                            tooltip: Behaviour
    ux.md                                   tooltip: UX
- 1 entry in the folder could not be read.  muted line (skipped-entry; not shown as a Close refusal)
+ i Only the first entries are listed.      quiet note after the last row (truncated)
 ```
 
 - **Wide (≥ 1080) and Compact (840-1079):** as above; Compact keeps the tree at 1/3. **The state label
@@ -145,8 +145,12 @@ two types, a multiple choice of types (with **No type** for unclassified files) 
 button that shows how many are chosen (**No type** last, apart). While a filter is on, the folders holding
 a match are open, a status line says how much is shown ("Showing 1 of 7 files") beside **Clear filters
 (n)**, the rows keep their indentation, and a missing file the filters hide is announced ("The filters hide
-1 missing file.") so a problem is never hidden silently. Nothing matching: the shared empty state with
-Clear filters. Expected documents and the Close issues above the tree are never filtered.
+1 missing file.") so a problem is never hidden silently. Nothing matching: the tree pane's shared empty
+search result (`TreeSearchEmpty`, the same as the documentation reader's) with Clear filters. Expected
+documents and the Close issues above the tree are never filtered. The search bar, the empty result and
+the order and tones of the tree's messages (status, attention notes, the list or the empty result, quiet
+notes) follow
+[Tree pane](../../../design-system/implementation/react/component-guidelines.md#tree-pane).
 
 **Rename refusal.** A refused name is shown at the field, over the rows below (the list does not shift),
 with the full text; the field keeps focus and the typed name.
@@ -194,10 +198,13 @@ never suggests refreshing when a refresh cannot help.
 - One attention Alert titled **Closing this specification will be refused**, one bullet per collision path
   and one generic bullet for the archive limit, then the remedy line. No action button: the fix happens on
   disk.
-- `skipped-entry` is **not** in that Alert: it is a neutral muted line after the last tree row, "N entries
-  in the folder could not be read." (count from `skippedEntries`). The contract is inconsistent on
+- `skipped-entry` is **not** in that Alert: it is an attention note (`InlineNote tone="attention"`; tree pane
+  message hierarchy, 2026-11-15: a read failure the reader may need to act on) at the top of the tree, under the search and
+  before the rows or the empty result, "N entries in the folder could not be read." (count from
+  `skippedEntries`). The contract is inconsistent on
   whether it refuses Close; until the contract settles it, it is not presented as a refusal. If it does refuse, the line moves into the Alert.
-- `truncated: true` adds a muted line after the last tree row: "Only the first entries are listed."
+- `truncated: true` adds a quiet note (`InlineNote`, info tone) after the last tree row: "Only the first
+  entries are listed."
 
 ### 3.6 New document, Assign type, Remove registration
 
@@ -451,8 +458,8 @@ You can add, remove or classify documents later.             body-md secondary
 | Saving                                   | -                                                      | Save `Saving…` disabled              | Discard disabled                                        |
 | Save refused                             | -                                                      | Alert per 5.2, draft kept            | per 5.2                                                 |
 | Image / binary                           | `image` / `file-binary` glyph                          | viewer / info + Download             | Download promoted; no Edit/Save                         |
-| Tree truncated                           | muted line after the last row                          | -                                    | -                                                       |
-| Skipped entries                          | neutral muted line after the last row                  | -                                    | -                                                       |
+| Tree truncated                           | quiet note after the last row                          | -                                    | -                                                       |
+| Skipped entries                          | attention note under the search, before the rows       | -                                    | -                                                       |
 | Revision conflict on save                | -                                                      | Alert, draft kept                    | Save unavailable until Copy my version / Load from disk |
 | Create: catalogue loading / failed       | -                                                      | -                                    | Create disabled with prerequisite / Alert with Retry    |
 | Create: unticked required suggestion     | -                                                      | -                                    | informational line, Create allowed                      |

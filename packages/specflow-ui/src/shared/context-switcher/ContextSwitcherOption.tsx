@@ -1,23 +1,26 @@
 import type { ComponentPropsWithRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Icon, Typography, cn } from '@nevo/ui';
-import { ContextSwitcherDetails, type ContextSwitcherDetail } from './ContextSwitcherDetails';
+import { ContextSwitcherStatus, type ContextSwitcherStatusValue } from './ContextSwitcherStatus';
 
 /**
- * One option of a context switcher's listbox: the name wrapping anywhere, its detail lines and, on
- * the selected one, "Selected" with a check. An `unavailable` option stays focusable and announced
- * (`aria-disabled`) with a muted name; the caller gives the reason as an `attention` detail and
- * ignores its activation.
+ * One option of a context switcher's listbox, the touch path to everything the trigger shortens:
+ * the name wrapping in full, its segments joined by " · " and wrapping, the same status slot as the
+ * trigger on its own line and, on the selected one, "Selected" with a check. An `unavailable` option
+ * stays focusable and announced (`aria-disabled`) with a muted name; the caller gives the reason as
+ * a `danger` status and ignores its activation.
  */
 export function ContextSwitcherOption({
   name,
-  details = [],
+  segments = [],
+  status,
   selected,
   unavailable = false,
   ...button
 }: {
   name: string;
-  details?: readonly ContextSwitcherDetail[];
+  segments?: readonly string[];
+  status?: ContextSwitcherStatusValue;
   selected: boolean;
   unavailable?: boolean;
 } & Omit<ComponentPropsWithRef<'button'>, 'children' | 'name' | 'role' | 'className'>) {
@@ -46,9 +49,17 @@ export function ContextSwitcherOption({
         >
           {name}
         </Typography>
-        <ContextSwitcherDetails
-          details={selected ? [...details, { text: t('common.selected') }] : details}
-        />
+        {segments.length ? (
+          <Typography as="span" variant="body-sm" className="block text-content-secondary">
+            {segments.join(' · ')}
+          </Typography>
+        ) : null}
+        {status ? <ContextSwitcherStatus status={status} /> : null}
+        {selected ? (
+          <Typography as="span" variant="body-sm" className="block text-content-secondary">
+            {t('common.selected')}
+          </Typography>
+        ) : null}
       </span>
       {selected ? <Icon name="check" size="sm" /> : null}
     </button>

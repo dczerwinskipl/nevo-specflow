@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { createMemoryHistory } from '@tanstack/react-router';
 import { createSpecFlowRouter } from '../router';
 import { createSpecFlowAppServices } from '../../services';
-import { isDocumentsLocation, isWithinSpecDocuments } from './routeScope';
+import {
+  isDocumentsLocation,
+  isSpecificationOverviewPath,
+  isWithinSpecDocuments,
+} from './routeScope';
 
 // The full paths the router hands to blockers, read from the application's real route tree.
 const router = createSpecFlowRouter(
@@ -42,5 +46,28 @@ describe('documents locations', () => {
     expect(isWithinSpecDocuments(a, other, 's')).toBe(false);
     expect(isWithinSpecDocuments(a, at('/specs/$specId', { specId: 's' }))).toBe(false);
     expect(isWithinSpecDocuments(a, a, 'x')).toBe(false);
+  });
+});
+
+describe('the scroll-restored screen', () => {
+  it('is the Specification Overview only', () => {
+    expect(isSpecificationOverviewPath('/specs/admission')).toBe(true);
+    expect(isSpecificationOverviewPath('/specs/admission/')).toBe(true);
+    expect(isSpecificationOverviewPath('/specs/new')).toBe(false);
+    expect(isSpecificationOverviewPath('/specs/admission/documents')).toBe(false);
+    expect(isSpecificationOverviewPath('/workspaces/main/docs/a')).toBe(false);
+    expect(isSpecificationOverviewPath('/')).toBe(false);
+  });
+
+  it('is what the router restores (and nothing else)', () => {
+    const restores = router.options.scrollRestoration;
+    if (typeof restores !== 'function') {
+      throw new Error('The router restores the scroll of chosen screens only.');
+    }
+
+    const at = (pathname: string) =>
+      restores({ location: { pathname } as Parameters<typeof restores>[0]['location'] });
+    expect(at('/specs/admission')).toBe(true);
+    expect(at('/workspaces/main/docs/a')).toBe(false);
   });
 });

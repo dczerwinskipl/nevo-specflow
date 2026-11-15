@@ -1,23 +1,20 @@
 import { useTranslation } from 'react-i18next';
-import { useRouterState } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { isHttpClientError } from '@nevo/http-client';
 import {
   Alert,
   AppContent,
   Button,
-  Typography,
   defineSecondaryStack,
   useWorkspaceCapabilities,
   type SecondaryData,
   type WorkspaceHeaderAction,
 } from '@nevo/ui';
 import {
-  ApplicationBackContent,
   ApplicationSessionBack,
   useApplicationCollection,
 } from '../../../app/navigation/ApplicationLocation';
-import { BackLink } from '../../../app/navigation/LocationLink';
+import { documentGutterClassName } from '../../../shared/document-reading/DocumentReadingColumns';
 import { translateNow } from '../../../i18n/message';
 import { useDocumentsApi } from '../useDocumentsApi';
 import { typeTitle } from '../catalogue/documentTypePolicy';
@@ -129,9 +126,6 @@ export function DocumentPane({ data }: { data: DocumentParams }) {
   const { supportsSplit } = useWorkspaceCapabilities();
   const collection = useApplicationCollection();
   const { t } = useTranslation();
-  const returnTo = useRouterState({
-    select: (routerState) => routerState.location.state.specflowDocumentReturnTo,
-  });
   // The workspace loads the document on screen once; the pane only reports its state.
   const record = useDocumentRecord();
   const tabs = useDocumentTabs();
@@ -216,30 +210,17 @@ export function DocumentPane({ data }: { data: DocumentParams }) {
     );
   }
 
-  // A document promoted from the Specification Overview preview returns there on narrow, where
-  // the stacked Back would otherwise only reveal the document tree.
-  const overviewReturn = !session && !supportsSplit && returnTo === 'overview';
-
   return (
     <AppContent className="h-full w-full">
       <div className="flex h-full min-h-0 flex-col">
         {session && (
-          <div className="shrink-0 px-4 py-3">
+          <div className={`shrink-0 py-3 ${documentGutterClassName}`}>
             <ApplicationSessionBack
               specId={data.specId}
               sessionId={session}
               collection={collection}
             />
           </div>
-        )}
-        {overviewReturn && (
-          <Typography as="div" variant="body-sm" className="shrink-0 px-4 py-3">
-            <BackLink to="/specs/$specId" params={{ specId: data.specId }} search={{ collection }}>
-              <ApplicationBackContent>
-                {t('applicationNavigation.specificationOverview')}
-              </ApplicationBackContent>
-            </BackLink>
-          </Typography>
         )}
         {closeFailed}
         {!supportsSplit && <SessionRecoveryNotice specId={data.specId} />}

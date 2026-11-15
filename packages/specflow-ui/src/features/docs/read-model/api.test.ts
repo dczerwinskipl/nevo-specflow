@@ -1,3 +1,4 @@
+import { DOCS_SEARCH_ANSWER_BUDGET_MS } from '@nevo/specflow-contracts/docs';
 import { HttpClientError, type HttpRequestClient } from '@nevo/http-client';
 import { describe, expect, it, vi } from 'vitest';
 import { createApiTransport, isApiError } from '../../../api';
@@ -48,6 +49,8 @@ describe('workspace documentation port', () => {
     expect(get).toHaveBeenCalledWith(`/api/workspaces/${ws}/docs/search`, {
       signal: undefined,
       params: { q: 'auth', limit: '5' },
+      // Above the Runtime's answer budget, so a slow answer is not shown as unavailable.
+      timeoutMs: DOCS_SEARCH_ANSWER_BUDGET_MS + 5_000,
     });
   });
 

@@ -26,6 +26,8 @@ import {
   sessionOf,
   type DocsReaderLocationState,
 } from './readerLocation';
+import { readerSearchOf, type DocsReaderSearch } from './readerSearch';
+import { useWriteReaderSearch } from './useWriteReaderSearch';
 import { useNarrowArticleStack } from './useNarrowArticleStack';
 
 /**
@@ -39,6 +41,7 @@ export function DocsReader({
   workspaceId,
   documentId,
   hash,
+  search,
   entry,
   historyEntry,
   tree,
@@ -48,6 +51,8 @@ export function DocsReader({
   workspaceId: string | undefined;
   documentId: string | undefined;
   hash: string | undefined;
+  /** The search the address holds (`?q=&proposals=1`): the search field shows it. */
+  search: DocsReaderSearch;
   entry: DocsReaderLocationState | undefined;
   /** The history entry of the address (it keys reading positions and the Narrow stack). */
   historyEntry: string;
@@ -57,7 +62,8 @@ export function DocsReader({
   const navigate = useNavigate();
   const router = useRouter();
   const notify = useNotify();
-  const workspaceLabels = useWorkspaceLabels();
+  const writeSearch = useWriteReaderSearch();
+  const workspaceLabels = useWorkspaceLabels(t('docs.title'));
   const { supportsSplit, measured } = useWorkspaceCapabilities();
   const [chrome] = useState(createArticleChromeStore);
   const list = current.workspaces.data;
@@ -95,6 +101,9 @@ export function DocsReader({
         to: '/workspaces/$workspaceId/docs/$documentId',
         params: { workspaceId, documentId: target },
         hash: hashOfSection(section),
+        // The entry left keeps its search, and the opened one carries it on: Back returns to the
+        // same list.
+        search: readerSearchOf(from),
         state: {
           docsReader: {
             ...session,
@@ -139,12 +148,20 @@ export function DocsReader({
         ...(title ? { notInWorkspace: title } : {}),
       },
     };
+    // The search does not depend on the workspace: it is kept and runs again in the new one.
+    const kept = readerSearchOf(router.state.location);
     void navigate(
       documentId === undefined
-        ? { to: '/workspaces/$workspaceId/docs', params: { workspaceId: next }, state }
+        ? {
+            to: '/workspaces/$workspaceId/docs',
+            params: { workspaceId: next },
+            search: kept,
+            state,
+          }
         : {
             to: '/workspaces/$workspaceId/docs/$documentId',
             params: { workspaceId: next, documentId },
+            search: kept,
             state,
           },
     );
@@ -167,6 +184,7 @@ export function DocsReader({
     void navigate({
       to: '/workspaces/$workspaceId/docs',
       params: { workspaceId },
+      search: readerSearchOf(router.state.location),
       state: { docsReader: session },
       replace: true,
     });
@@ -269,19 +287,19 @@ export function DocsReader({
           <AppWorkspace
             scroll="content"
             fit="available"
-            // Back already leaves the stacked article; a Close would repeat it.
-            stackedSecondaryClose="hide"
             primaryMaxPx={360}
             split="secondary"
             labels={{
               ...workspaceLabels,
-              backToPrimary: t('docs.backToDocumentation'),
               closeSecondary: t('docs.closeDocument'),
             }}
           >
             <AppWorkspace.Primary header={<WorkspaceHeader title={t('docs.title')} />}>
               <DocsTreePane
                 workspaceId={workspaceId}
+                historyEntry={historyEntry}
+                search={search}
+                onSearchChange={writeSearch}
                 sessionBack={
                   sessionId ? (
                     <ApplicationSessionBack

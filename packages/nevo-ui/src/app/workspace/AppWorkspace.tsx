@@ -224,6 +224,23 @@ export interface AppWorkspaceRegionProps {
   children: ReactNode;
 }
 
+/** The header Back of a subordinate screen: where it leads and the accessible name of that place. */
+export interface AppWorkspaceBack {
+  /** Names the parent: "Back to <parent>". Never a bare "Back". */
+  label: string;
+  onBack: () => void | Promise<unknown>;
+}
+
+export interface AppWorkspacePrimaryRegionProps extends AppWorkspaceRegionProps {
+  /**
+   * Marks a routed Primary as a subordinate (stacked) screen with a defined parent, for example an
+   * item's page under its collection. Stacked layouts show this Back, icon only, in place
+   * of the navigation trigger; split layouts ignore it (the location trail carries the way back).
+   * Omit it on root screens (peer areas of the navigation): they keep the navigation trigger.
+   */
+  back?: AppWorkspaceBack;
+}
+
 export interface AppWorkspaceSecondaryRegionProps extends AppWorkspaceRegionProps {
   /**
    * Controls whether the declarative/default Secondary is visible on split-capable layouts.
@@ -308,10 +325,19 @@ interface CommonAppWorkspaceProps {
   secondaryCloseBehavior?: 'page' | 'flow';
   /**
    * What the Secondary shows as its own close action when the layout is stacked. In a stack the
-   * Back action already leaves the Secondary, so `hide` removes the duplicate (the compact row loses
-   * its close item too). Split layouts always keep the close action. Default `show`.
+   * header Back already leaves the Secondary, so Back and Close never appear together there: the
+   * default `hide` removes the duplicate (the compact row loses its close item too). `show` is an
+   * explicit opt-in for a stacked surface whose Close means something Back does not. Split layouts
+   * always keep the close action. Default `hide`.
    */
   stackedSecondaryClose?: 'show' | 'hide';
+  /**
+   * Stacked layout: what the header Back of a Secondary at stack depth 1 does when the product
+   * parent of this visit is another routed surface rather than this workspace's Primary (a
+   * page opened from another area's overview returns there). Name the parent with
+   * `labels.backToPrimary`. Omit it to reveal Primary (the default). Deeper levels still pop.
+   */
+  stackedRootBack?: () => void | Promise<unknown>;
 }
 
 export type AppWorkspaceProps = CommonAppWorkspaceProps & {
@@ -363,7 +389,7 @@ interface WorkspaceLayoutState {
   splitter?: WorkspaceSplitterState;
 }
 
-function AppWorkspacePrimary(_props: AppWorkspaceRegionProps) {
+function AppWorkspacePrimary(_props: AppWorkspacePrimaryRegionProps) {
   return null;
 }
 
@@ -402,9 +428,11 @@ interface ComposedDefaultSecondary {
 
 function resolveComposedWorkspace(children: ReactNode): {
   primary: AppWorkspaceSurface;
+  primaryBack?: AppWorkspaceBack;
   defaultSecondary?: ComposedDefaultSecondary;
 } {
   let primary: AppWorkspaceSurface | undefined;
+  let primaryBack: AppWorkspaceBack | undefined;
   let defaultSecondary: ComposedDefaultSecondary | undefined;
 
   for (const child of flattenWorkspaceChildren(children)) {
@@ -413,8 +441,9 @@ function resolveComposedWorkspace(children: ReactNode): {
         throw new Error('AppWorkspace accepts only one AppWorkspace.Primary.');
       }
 
-      const props = child.props as AppWorkspaceRegionProps;
+      const props = child.props as AppWorkspacePrimaryRegionProps;
       primary = { header: props.header, content: props.children };
+      primaryBack = props.back;
     } else if (child.type === AppWorkspaceSecondary) {
       if (defaultSecondary) {
         throw new Error('AppWorkspace accepts only one AppWorkspace.Secondary.');
@@ -438,7 +467,7 @@ function resolveComposedWorkspace(children: ReactNode): {
     throw new Error('AppWorkspace requires AppWorkspace.Primary.');
   }
 
-  return { primary, defaultSecondary };
+  return { primary, primaryBack, defaultSecondary };
 }
 
 function useWorkspaceLayoutState(
@@ -1076,7 +1105,8 @@ function AppWorkspaceRoot({
   onSecondarySideChange,
   fit = 'content',
   secondaryCloseBehavior = 'flow',
-  stackedSecondaryClose = 'show',
+  stackedSecondaryClose = 'hide',
+  stackedRootBack,
   scroll = 'workspace',
 }: AppWorkspaceProps) {
   const staticSurfaces = resolveComposedWorkspace(children);
@@ -1224,8 +1254,15 @@ function AppWorkspaceRoot({
     [workspaceLayoutMode, primaryScrollOwner],
   );
   const labels = { ...defaultAppWorkspaceLabels, ...labelsProp };
+  // A subordinate routed screen leads back to its parent on a stacked layout; a root screen keeps
+  // the navigation trigger (never both, never replaced on a root screen).
+  const primaryBack = staticSurfaces.primaryBack;
   const primaryNavigationAction =
-    navigationMode === 'drawer' ? <NavigationAction label={labels.openNavigation} /> : undefined;
+    state.mode === 'stacked' && primaryBack ? (
+      <BackAction label={primaryBack.label} onBack={primaryBack.onBack} />
+    ) : navigationMode === 'drawer' ? (
+      <NavigationAction label={labels.openNavigation} />
+    ) : undefined;
   // Split layout: Back pops the active tab's own local stack (`canGoBack`) — full-session-screen-
   // structure.md §10.1 "Back pops inside the active tab before returning to its root". At a tab
   // root with the root-tab strip shown there is nothing local to pop: the strip owns switching
@@ -1259,7 +1296,11 @@ function AppWorkspaceRoot({
             ? backToParentLabel(secondaryParentTitle)
             : labels.backToPrimary
         }
-        onBack={secondaryPresentation.onBack}
+        onBack={
+          state.mode === 'stacked' && secondaryParentTitle === undefined && stackedRootBack
+            ? stackedRootBack
+            : secondaryPresentation.onBack
+        }
       />
     ) : undefined;
   // Split + tab strip: local depth is one row at the top of the tab panel, never a header Back —

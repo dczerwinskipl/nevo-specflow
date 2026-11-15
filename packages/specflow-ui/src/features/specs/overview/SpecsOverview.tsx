@@ -14,6 +14,7 @@ import {
 
 import { LoadingPresentation } from '../../../app/loading/LoadingPresentation';
 import { ViewPageTitle } from '../../../app/navigation/ApplicationLocation';
+import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
 import type { SpecsCollection, SpecsOverviewState, CurrentSpecTarget } from './model';
 import { SpecsOverviewCollection } from './SpecsOverviewCollection';
 import { SpecsOverviewEmpty } from './SpecsOverviewEmpty';
@@ -59,6 +60,7 @@ export function SpecsOverview({
   renderSpecificationLink,
 }: SpecsOverviewProps) {
   const { t } = useTranslation();
+  const workspaceLabels = useWorkspaceLabels(t('specifications.title'));
   const search = useCollectionSearch(state.collection);
   const projection =
     state.projection?.collection === state.collection ? state.projection : undefined;
@@ -74,16 +76,7 @@ export function SpecsOverview({
     empty && Boolean(onCreate) && state.collection === 'current' && !search.term;
 
   return (
-    <AppWorkspace
-      labels={{
-        backToPrimary: t('navigation.back'),
-        backToParent: (name: string) => t('navigation.backTo', { name }),
-        closeSecondary: t('navigation.closeSecondary'),
-        openNavigation: t('navigation.open'),
-      }}
-      split="primary"
-      fit="bounded"
-    >
+    <AppWorkspace labels={workspaceLabels} split="primary" fit="bounded">
       <AppWorkspace.Primary
         header={
           <SpecsOverviewHeader

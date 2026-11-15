@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { CommanderError } from 'commander';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { createProgram } from '../../src/cli/program.js';
+import { createProgram, parseFloors } from '../../src/cli/program.js';
 import { createFixtureProject, fm } from '../support/fixture.js';
 
 const project = createFixtureProject();
@@ -79,5 +79,14 @@ describe('nevo-docs launcher', () => {
       '# would create docs/architecture/decisions/0002-colons-everywhere.md',
     );
     expect(stdout.join('\n')).toContain('status: draft');
+  });
+});
+
+describe('eval --min-similarity', () => {
+  it('reads none and floors with 0 <= floor < 1, in order', () => {
+    expect(parseFloors('none, 0.5,0,0.52')).toEqual([null, 0.5, 0, 0.52]);
+    for (const invalid of ['1', '-0.1', 'x', '', '0.5,,0.6']) {
+      expect(() => parseFloors(invalid)).toThrow(/--min-similarity/);
+    }
   });
 });

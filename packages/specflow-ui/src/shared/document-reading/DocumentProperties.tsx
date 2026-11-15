@@ -1,4 +1,4 @@
-import { Collapsible, DescriptionList, Typography, hitAreaBlockClassName } from '@nevo/ui';
+import { Collapsible, DescriptionList, Typography, cn, hitAreaBlockClassName } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { FrontmatterProperty } from './frontmatter';
 
@@ -27,7 +27,14 @@ export function DocumentProperties({
       className="mb-2 min-w-0 border-b border-border-subtle"
     >
       <Collapsible>
-        <Collapsible.Trigger className={hitAreaBlockClassName}>
+        {/* The disclosure hangs its own padding outside the text edge: its chevron starts where the
+            document's text starts, and the hover fill extends past it. */}
+        <Collapsible.Trigger
+          className={cn(
+            hitAreaBlockClassName,
+            '-mx-control-padding-compact w-[calc(100%+2*var(--spacing-control-padding-compact))]',
+          )}
+        >
           <Typography as="span" variant="label-md">
             {label ?? t('documentReading.properties.label')}
           </Typography>

@@ -12,6 +12,7 @@ import {
   withoutSource,
   type DocsReaderLocationState,
 } from './readerLocation';
+import { readerSearchOf } from './readerSearch';
 
 /**
  * Layout of the reader's routes. It resolves the workspace the reader shows (the address, else the
@@ -37,13 +38,20 @@ export function DocsReaderLayout() {
   const settled = !onReader || current.redirectTo === undefined ? current.workspaceId : undefined;
   const tree = useDocsTree(settled);
   const hash = stripHash(location.hash);
+  // Every replace below keeps the search (a navigation without `search` drops it).
+  const search = readerSearchOf(location);
 
   // The address names the workspace shown: `/docs` and a fallback are replaced, the document,
-  // the section and the entry kept.
+  // the section and the entry kept. Both replaces below keep the entry's identity: it is the same
+  // visit (its reading position, its stack screen and the pane's scroll stay with it).
+  const historyEntry = historyEntryOf(location.state);
   const { redirectTo } = current;
   // A fallback says why in the pane; the intent of the entry is spent, so a replayed source must
   // not turn the fallback back into the workspace that was asked for.
-  const redirectEntry = current.notice ? withoutSource(entry) : entry;
+  const redirectEntry: DocsReaderLocationState = {
+    ...(current.notice ? withoutSource(entry) : entry),
+    entry: historyEntry,
+  };
   useEffect(() => {
     if (redirectTo === undefined || !onReader) {
       return;
@@ -54,6 +62,7 @@ export function DocsReaderLayout() {
         ? {
             to: '/workspaces/$workspaceId/docs',
             params: { workspaceId: redirectTo },
+            search,
             state: { docsReader: redirectEntry },
             replace: true,
           }
@@ -61,6 +70,7 @@ export function DocsReaderLayout() {
             to: '/workspaces/$workspaceId/docs/$documentId',
             params: { workspaceId: redirectTo, documentId },
             hash,
+            search,
             state: { docsReader: redirectEntry },
             replace: true,
           },
@@ -91,6 +101,7 @@ export function DocsReaderLayout() {
 
     const next: DocsReaderLocationState = {
       ...sessionOf(entry),
+      entry: historyEntry,
       ...(pickedMissing && entry?.notInWorkspace ? { notInWorkspace: entry.notInWorkspace } : {}),
     };
     void navigate(
@@ -98,6 +109,7 @@ export function DocsReaderLayout() {
         ? {
             to: '/workspaces/$workspaceId/docs',
             params: { workspaceId: settled },
+            search,
             state: { docsReader: next },
             replace: true,
           }
@@ -105,6 +117,7 @@ export function DocsReaderLayout() {
             to: '/workspaces/$workspaceId/docs/$documentId',
             params: { workspaceId: settled, documentId },
             hash,
+            search,
             state: { docsReader: next },
             replace: true,
           },
@@ -122,8 +135,9 @@ export function DocsReaderLayout() {
         workspaceId={settled}
         documentId={settled !== undefined && !pickedMissing ? documentId : undefined}
         hash={hash}
+        search={search}
         entry={entry}
-        historyEntry={historyEntryOf(location.state)}
+        historyEntry={historyEntry}
         tree={tree}
       />
     </AppWorkspaceProvider>

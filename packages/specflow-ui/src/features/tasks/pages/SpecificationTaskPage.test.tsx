@@ -48,7 +48,6 @@ function renderTask(options: { error?: HttpClientError; seedDetail?: boolean } =
       <SpecificationTaskPage
         specId={specId}
         taskId={taskId}
-        collection="archive"
         taskState={taskState}
         onBack={() => undefined}
       />

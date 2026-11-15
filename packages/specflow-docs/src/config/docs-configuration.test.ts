@@ -38,6 +38,33 @@ describe('parseDocsConfiguration', () => {
     expect(parse(undefined, { ai: { embeddings: endpoint } }).embeddings).toEqual(endpoint);
   });
 
+  it('reads an optional minSimilarity, the local value winning over the project value', () => {
+    expect(parse({ ai: { embeddings: endpoint } }).embeddings).not.toHaveProperty('minSimilarity');
+    expect(
+      parse(
+        { ai: { embeddings: { ...endpoint, minSimilarity: 0.4 } } },
+        { ai: { embeddings: { minSimilarity: 0 } } },
+      ).embeddings,
+    ).toEqual({ ...endpoint, minSimilarity: 0 });
+  });
+
+  it.each([1, -0.1, '0.5', Number.NaN])('rejects minSimilarity %j', (minSimilarity) => {
+    expect(() => parse(undefined, { ai: { embeddings: { ...endpoint, minSimilarity } } })).toThrow(
+      /local\.yaml: ai\.embeddings\.minSimilarity must be a number with 0 <= minSimilarity < 1/,
+    );
+  });
+
+  it('keeps a queryInstruction verbatim, its trailing separator included', () => {
+    const queryInstruction =
+      'Instruct: Given a web search query, retrieve relevant passages that answer the query\nQuery: ';
+    expect(
+      parse(undefined, { ai: { embeddings: { ...endpoint, queryInstruction } } }).embeddings,
+    ).toEqual({ ...endpoint, queryInstruction });
+    expect(() =>
+      parse(undefined, { ai: { embeddings: { ...endpoint, queryInstruction: ' ' } } }),
+    ).toThrow(/ai\.embeddings\.queryInstruction must be a non-empty string/);
+  });
+
   it('defaults the protocol: baseUrl and model are a complete endpoint', () => {
     const { baseUrl, model } = endpoint;
     expect(parse(undefined, { ai: { embeddings: { baseUrl, model } } }).embeddings).toEqual(

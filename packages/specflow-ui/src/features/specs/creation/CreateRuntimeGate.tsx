@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { Alert, Button } from '@nevo/ui';
-import { ApplicationContextLine } from '../../../app/navigation/ApplicationLocation';
+import { FlowParentBack } from '../../../app/navigation/ApplicationLocation';
 import { runtimeKeys, useRuntimeMode } from '../../../app/useRuntimeMode';
 import { CreateShell } from './CreateShell';
 
@@ -14,15 +14,18 @@ import { CreateShell } from './CreateShell';
 export function CreateFallback({
   specId,
   view,
+  sessionsDisabled,
   children,
 }: {
   specId?: string;
   view?: 'new-session' | 'new-specification';
+  /** A Session start refused because Sessions are off: the way back is the Overview. */
+  sessionsDisabled?: boolean;
   children: ReactNode;
 }) {
   return (
     <CreateShell specId={specId} containerClassName="grid gap-6">
-      {view && <ApplicationContextLine className="mb-0" specId={specId} view={view} />}
+      {view && <FlowParentBack specId={specId} view={view} sessionsDisabled={sessionsDisabled} />}
       {children}
     </CreateShell>
   );

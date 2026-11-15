@@ -514,7 +514,7 @@ export const ResponsiveDirtyDocument: Story = {
     await invokeDocumentAction(canvas, userEvent, 'Pokaż podgląd');
     await expect(canvas.getByText(/Retained position/)).toBeVisible();
     await invokeDocumentAction(canvas, userEvent, 'Edytuj dokument');
-    await userEvent.click(canvas.getByRole('button', { name: 'Wróć do listy dokumentów' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Wróć do: Dokumenty' }));
     await expect(
       canvas.queryByRole('textbox', { name: 'Treść specification.md' }),
     ).not.toBeInTheDocument();
@@ -547,7 +547,7 @@ export const OpeningADocumentFromTheTreeMovesFocusToItsHeading: Story = {
   play: async ({ canvas, userEvent }) => {
     for (const width of [1440, 390]) {
       await viewport(width, 900);
-      const back = canvas.queryByRole('button', { name: 'Wróć do listy dokumentów' });
+      const back = canvas.queryByRole('button', { name: 'Wróć do: Dokumenty' });
       if (back) {
         await userEvent.click(back);
       }
@@ -680,7 +680,7 @@ const openFromTree = async (
   name: RegExp,
 ) => {
   // A visit that started wide opened the main file by itself; stacked, the tree is behind it.
-  const back = canvas.queryByRole('button', { name: 'Wróć do listy dokumentów' });
+  const back = canvas.queryByRole('button', { name: 'Wróć do: Dokumenty' });
   if (back) {
     await userEvent.click(back);
   }
@@ -741,7 +741,7 @@ export const MultiTabNarrow: Story = {
   play: async ({ canvas, userEvent }) => {
     await viewport(390, 844);
     await openFromTree(canvas, userEvent, /^specification.md/);
-    await userEvent.click(await canvas.findByRole('button', { name: 'Wróć do listy dokumentów' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'Wróć do: Dokumenty' }));
     await openFromTree(canvas, userEvent, /^plan.md/);
     const switcher = await canvas.findByRole('button', { name: /plan.md, otwarte: 2/ });
     await expect(canvas.queryByRole('tab')).toBeNull();
@@ -753,7 +753,7 @@ export const MultiTabNarrow: Story = {
     // A tab switch follows the route inside the open stacked screen: it is not rebuilt.
     await expect(document.querySelector('[data-workspace-surface="secondary"]')).toBe(stacked);
     // Back returns to the tree without closing anything.
-    await userEvent.click(canvas.getByRole('button', { name: 'Wróć do listy dokumentów' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Wróć do: Dokumenty' }));
     await openFromTree(canvas, userEvent, /^plan.md/);
     await canvas.findByRole('button', { name: /plan.md, otwarte: 2/ });
   },
@@ -782,7 +782,7 @@ export const NarrowHeaderHasContentsAndNoDuplicateClose: Story = {
   play: async ({ canvas, userEvent }) => {
     await viewport(390, 844);
     await openFromTree(canvas, userEvent, /^plan.md/);
-    await canvas.findByRole('button', { name: 'Wróć do listy dokumentów' });
+    await canvas.findByRole('button', { name: 'Wróć do: Dokumenty' });
     await expect(canvas.queryByRole('button', { name: 'Zamknij wszystkie dokumenty' })).toBeNull();
     const icon = await canvas.findByRole('button', { name: 'Otwórz spis treści' });
     await userEvent.click(icon);
@@ -791,7 +791,7 @@ export const NarrowHeaderHasContentsAndNoDuplicateClose: Story = {
     await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull());
     await waitFor(() => expect(document.activeElement).toHaveTextContent('Etap 3'));
     // Plain text has no contents.
-    await userEvent.click(canvas.getByRole('button', { name: 'Wróć do listy dokumentów' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Wróć do: Dokumenty' }));
     await openFromTree(canvas, userEvent, /^CLIENT.TXT/);
     await canvas.findByRole('textbox', { name: 'Treść notes/CLIENT.TXT' });
     await expect(canvas.queryByRole('button', { name: 'Otwórz spis treści' })).toBeNull();
@@ -835,7 +835,7 @@ export const ContentsSheetKeepsALongTitleInsideTheScreen: Story = {
   play: async ({ canvas, userEvent }) => {
     for (const width of [390, 320]) {
       await viewport(width, 800);
-      const back = canvas.queryByRole('button', { name: 'Wróć do listy dokumentów' });
+      const back = canvas.queryByRole('button', { name: 'Wróć do: Dokumenty' });
       if (back) {
         await userEvent.click(back);
       }
@@ -898,7 +898,7 @@ export const ShortCreateAndBranch: Story = {
       canvas.getByRole('button', { name: 'Utwórz specyfikację' }),
     );
     await userEvent.click(canvas.getByRole('button', { name: 'Zmień sposób pracy' }));
-    await userEvent.click(canvas.getByRole('link', { name: 'Wszystkie specyfikacje' }));
+    await userEvent.click(canvas.getByRole('link', { name: 'Wróć do: Specyfikacje' }));
     await expect(within(document.body).getByRole('alertdialog')).toBeVisible();
     await userEvent.click(within(document.body).getByRole('button', { name: 'Kontynuuj' }));
     await userEvent.click(canvas.getByRole('button', { name: /Samodzielnie/ }));
@@ -1089,7 +1089,7 @@ export const SessionContextRoundTrip: Story = {
     );
     // The way back is read only now: the Documents list's own link unmounts when the main file
     // opens, and the open document's pane shows the link the reader actually uses.
-    await userEvent.click(await canvas.findByRole('link', { name: 'Wróć do sesji' }));
+    await userEvent.click(await canvas.findByRole('link', { name: 'Wróć do: Sesja' }));
     await expect(await canvas.findByRole('textbox', { name: 'Wiadomość' })).toHaveValue(
       'Zachowany szkic wiadomości',
     );

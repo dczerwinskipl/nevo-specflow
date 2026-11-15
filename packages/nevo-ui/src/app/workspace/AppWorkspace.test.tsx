@@ -780,7 +780,7 @@ describe('AppWorkspace stacked Secondary header (unchanged by the split breadcru
     );
   }
 
-  it('keeps Back and the panel close in the header and renders no split breadcrumb row', async () => {
+  it('keeps Back without the panel close in the header and renders no split breadcrumb row', async () => {
     render(
       <AppWorkspaceProvider>
         <AppShell navigation={<div>Nav</div>}>
@@ -816,12 +816,13 @@ describe('AppWorkspace stacked Secondary header (unchanged by the split breadcru
       within(live!).getAllByRole('button', { name: 'Back: Item', hidden: true }),
     ).not.toHaveLength(0);
     expect(within(live!).queryByRole('button', { name: 'Back', hidden: true })).toBeNull();
+    // Back and Close never appear together on a stacked layout.
     expect(
-      within(live!).getByRole('button', {
+      within(live!).queryByRole('button', {
         name: 'Close secondary content',
         hidden: true,
       }),
-    ).toBeTruthy();
+    ).toBeNull();
     // Mobile keeps its own navigation: header Back, no breadcrumb row, the 56px header (no rail).
     expect(document.querySelector('[data-workspace-breadcrumbs]')).toBeNull();
     expect(document.querySelector('[data-workspace-tab-rail]')).toBeNull();

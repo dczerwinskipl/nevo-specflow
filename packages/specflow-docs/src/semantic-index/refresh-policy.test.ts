@@ -1,12 +1,20 @@
+import { refreshIndex, type EmbeddingProvider } from '@nevo/ai-semantic-search';
 import {
   createFakeEmbeddingProvider,
   createInMemoryVectorStore,
+  type FakeEmbeddingProvider,
 } from '@nevo/ai-semantic-search/testing';
 import type { DocsIndexActivity } from '@nevo/specflow-contracts/docs';
 import { describe, expect, it } from 'vitest';
 
+import type { DocsChunk } from './chunk-source';
 import { cacheNotIgnoredReason } from './reasons';
-import { endpointFailureReason, identityChangedForRead, type IndexVectors } from './refresh-policy';
+import {
+  endpointFailureReason,
+  identityChangedForRead,
+  refreshForRead,
+  type IndexVectors,
+} from './refresh-policy';
 import { createIndexWrites } from './write-admission';
 
 const vectors = (activity: DocsIndexActivity): IndexVectors => {
@@ -16,6 +24,7 @@ const vectors = (activity: DocsIndexActivity): IndexVectors => {
     store: createInMemoryVectorStore(),
     writes: createIndexWrites(() => Promise.resolve(undefined)),
     providers: { query: provider, documents: provider },
+    providersAbortedBy: () => ({ query: provider, documents: provider }),
     activity: () => Promise.resolve(activity),
   };
 };
@@ -77,5 +86,192 @@ describe('catch-up start', () => {
     );
     expect(reason).toEqual(refusal);
     expect(starts).toBe(0);
+  });
+});
+
+/**
+ * A document provider whose embedding waits until `open()` or until its signal aborts, which it
+ * answers like the HTTP adapter does: a timeout failure, at once.
+ */
+function gatedDocuments(inner: FakeEmbeddingProvider) {
+  let open!: () => void;
+  const gate = new Promise<'open'>((resolve) => (open = () => resolve('open')));
+  let reached!: () => void;
+  const waiting = new Promise<void>((resolve) => (reached = resolve));
+  const documentsAbortedBy = (signal: AbortSignal): EmbeddingProvider => ({
+    ...inner,
+    probe: () => inner.probe(),
+    embed: async (texts, purpose) => {
+      reached();
+      const aborted = new Promise<'aborted'>((resolve) => {
+        if (signal.aborted) {
+          resolve('aborted');
+        }
+
+        signal.addEventListener('abort', () => resolve('aborted'), { once: true });
+      });
+
+      return (await Promise.race([gate, aborted])) === 'aborted'
+        ? { ok: false, failure: { code: 'timeout', message: 'aborted' } }
+        : inner.embed(texts, purpose);
+    },
+  });
+
+  return { documentsAbortedBy, open, waiting };
+}
+
+/**
+ * A query provider whose probe answers only once its signal aborts (a hanging endpoint); `probing`
+ * is called when the probe starts.
+ */
+function hangingProbe(
+  inner: FakeEmbeddingProvider,
+  signal: AbortSignal,
+  probing: () => void,
+): EmbeddingProvider {
+  return {
+    ...inner,
+    embed: (texts, purpose) => inner.embed(texts, purpose),
+    probe: () =>
+      new Promise((resolve) => {
+        probing();
+        signal.addEventListener(
+          'abort',
+          () =>
+            resolve({ ok: false, latencyMs: 0, failure: { code: 'timeout', message: 'aborted' } }),
+          { once: true },
+        );
+      }),
+  };
+}
+
+const chunks: DocsChunk[] = [1, 2, 3].map((n) => ({
+  id: `guide#s${String(n)}`,
+  unitId: 'guide',
+  headingPath: ['Guide', `Section ${String(n)}`],
+  sectionId: `s${String(n)}`,
+  startLine: n,
+  text: `Section ${String(n)} text`,
+  embeddingText: `Guide section ${String(n)} text`,
+  contentHash: `hash-${String(n)}`,
+  metadata: { file: 'docs/guide.md', title: 'Guide', status: 'current', proposal: false },
+}));
+
+describe('read-time refresh with a deadline', () => {
+  const setup = () => {
+    const provider = createFakeEmbeddingProvider();
+    const gated = gatedDocuments(provider);
+    const store = createInMemoryVectorStore();
+    let starts = 0;
+    let activityReads = 0;
+    const indexVectors: IndexVectors = {
+      store,
+      writes: createIndexWrites(() => Promise.resolve(undefined)),
+      providers: { query: provider, documents: provider },
+      providersAbortedBy: (signal) => ({
+        query: provider,
+        documents: gated.documentsAbortedBy(signal),
+      }),
+      catchUp: {
+        running: () => Promise.resolve(undefined),
+        start: () => {
+          starts += 1;
+
+          return Promise.resolve('the Runtime started updating it in the background');
+        },
+      },
+      activity: () => {
+        activityReads += 1;
+
+        return Promise.resolve(updating);
+      },
+    };
+
+    return {
+      provider,
+      gated,
+      store,
+      indexVectors,
+      starts: () => starts,
+      activityReads: () => activityReads,
+    };
+  };
+
+  it('aborts an inline embedding at the deadline, answers index-building and starts the catch-up once without a second probe', async () => {
+    const { provider, gated, store, indexVectors, starts, activityReads } = setup();
+    const deadline = new AbortController();
+
+    const pending = refreshForRead(indexVectors, chunks, true, 'index', deadline.signal);
+    await gated.waiting;
+    deadline.abort();
+    const reason = await pending;
+
+    expect(reason?.code).toBe('index-building');
+    expect(reason?.message).toContain('3 changed chunks');
+    expect(reason?.message).toContain('time budget; the Runtime started updating it');
+    expect(starts()).toBe(1);
+    // The only endpoint call is the probe before the refresh; the abort is no endpoint failure.
+    expect(provider.calls).toHaveLength(1);
+    expect(activityReads()).toBe(0);
+    // Nothing was written and the writer is released: the next refresh takes it and completes.
+    expect((await store.readManifest()).status).toBe('missing');
+    expect(await refreshIndex({ chunks, provider, store })).toMatchObject({ status: 'refreshed' });
+  });
+
+  it('answers no reason when the inline embedding finishes before the deadline', async () => {
+    const { gated, store, indexVectors, starts } = setup();
+    const deadline = new AbortController();
+
+    const pending = refreshForRead(indexVectors, chunks, true, 'index', deadline.signal);
+    await gated.waiting;
+    gated.open();
+
+    expect(await pending).toBeUndefined();
+    expect(starts()).toBe(0);
+    expect(
+      await refreshIndex({ chunks, provider: indexVectors.providers.documents, store }),
+    ).toMatchObject({
+      status: 'current',
+    });
+  });
+
+  it('aborts a probe still running at the deadline and answers index-building, not endpoint-unreachable', async () => {
+    const { provider, indexVectors, starts, activityReads } = setup();
+    const deadline = new AbortController();
+    let started!: () => void;
+    const probeStarted = new Promise<void>((resolve) => (started = resolve));
+    const probing = {
+      ...indexVectors,
+      providersAbortedBy: (signal: AbortSignal) => ({
+        query: hangingProbe(provider, signal, started),
+        documents: provider,
+      }),
+    };
+
+    const pending = refreshForRead(probing, chunks, true, 'index', deadline.signal);
+    await probeStarted;
+    deadline.abort();
+    const reason = await pending;
+
+    expect(reason?.code).toBe('index-building');
+    expect(reason?.message).toContain('time budget');
+    expect(starts()).toBe(1);
+    expect(activityReads()).toBe(0);
+    expect(provider.calls).toEqual([]);
+  });
+
+  it('names the index command when no catch-up is available', async () => {
+    const { gated, indexVectors } = setup();
+    const { catchUp: _, ...withoutCatchUp } = indexVectors;
+    const deadline = new AbortController();
+
+    const pending = refreshForRead(withoutCatchUp, chunks, true, 'index', deadline.signal);
+    await gated.waiting;
+    deadline.abort();
+
+    expect(await pending).toMatchObject({
+      code: 'index-building',
+      message: expect.stringContaining('time budget; run `index`.') as unknown,
+    });
   });
 });

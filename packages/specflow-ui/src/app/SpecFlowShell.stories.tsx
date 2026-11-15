@@ -61,7 +61,15 @@ export function RoutedApplication({
   specsStatus?: 401 | 403;
   integrationDto?: boolean;
   navigationScenario?:
-    'attention' | 'partial' | 'stale' | 'unavailable' | 'long' | 'identity' | 'revoked';
+    | 'attention'
+    | 'partial'
+    | 'stale'
+    | 'stale-keyed'
+    | 'context-failed'
+    | 'unavailable'
+    | 'long'
+    | 'identity'
+    | 'revoked';
   cancelNavigation?: boolean;
   catalogueFailure?: 'wrong-collection' | 'invalid-progress';
   navigationFailure?: boolean;
@@ -116,6 +124,7 @@ export function RoutedApplication({
       if (navigationScenario) {
         fixture = {
           ...fixture,
+          ...(navigationScenario === 'stale-keyed' ? { key: 'ADM-7' } : {}),
           ...(navigationScenario === 'long'
             ? {
                 title:
@@ -154,11 +163,19 @@ export function RoutedApplication({
       }
 
       query.setQueryData(specificationKeys.detail(id), fixture);
-      if (navigationScenario === 'stale') {
+      if (navigationScenario === 'stale' || navigationScenario === 'stale-keyed') {
         query
           .getQueryCache()
           .find({ queryKey: specificationKeys.detail(id), exact: true })
           ?.setState({ status: 'error', error: new Error('Refresh unavailable') });
+      }
+
+      // The Specification's information could not be read at all (no snapshot to keep).
+      if (navigationScenario === 'context-failed') {
+        query
+          .getQueryCache()
+          .find({ queryKey: specificationKeys.detail(id), exact: true })
+          ?.setState({ status: 'error', data: undefined, error: new Error('Unavailable') });
       }
 
       if (navigationScenario === 'revoked') {
@@ -463,6 +480,8 @@ export const Default: Story = {
         'attention',
         'partial',
         'stale',
+        'stale-keyed',
+        'context-failed',
         'unavailable',
         'long',
         'identity',
@@ -780,6 +799,21 @@ export const NavigationUnavailable: Story = {
 export const NavigationLongNames: Story = {
   args: { path: '/specs/admission?collection=current', navigationScenario: 'long' },
   tags: ['integration'],
+  play: async ({ canvas }) => {
+    // A long Specification title stays on one line, cut at the end, and is announced in full.
+    const trigger = await canvas.findByRole('button', {
+      name: /Current specification Very long specification identity/,
+    });
+    const name = trigger.querySelector<HTMLElement>('[data-context-switcher-name="end"]');
+    await waitFor(
+      () => (name && name.scrollWidth > name.clientWidth ? name : null),
+      'Long title must be cut on one line',
+    );
+    const height = trigger.getBoundingClientRect().height;
+    if (height !== 56 && height !== 72) {
+      throw new Error(`Switcher must be 56 or 72 px high, got ${height}`);
+    }
+  },
 };
 export const NavigationIdentity: Story = {
   args: { path: '/specs/admission?collection=current', navigationScenario: 'identity' },
@@ -1124,9 +1158,137 @@ export const MobileNavigation: Story = {
       name: 'Deterministic admission and execution boundaries',
       level: 1,
     });
-    await userEvent.click(canvas.getByRole('link', { name: 'All specifications' }));
+    // Overview is a peer area: no Back in its body, the navigation trigger stays and the list is
+    // reached from the navigation.
+    if (canvasElement.querySelector('[data-flow-back]')) {
+      throw new Error('A peer area must not show a Back in its body.');
+    }
+
+    await userEvent.click(await canvas.findByRole('button', { name: 'Open navigation' }));
+    const reopened = await waitFor(
+      () =>
+        canvasElement.ownerDocument.querySelector<HTMLElement>(
+          'nav[aria-label="Product navigation"]',
+        ),
+      'The navigation must reopen from the Overview.',
+    );
+    const list = [...reopened.querySelectorAll<HTMLAnchorElement>('a')].find(
+      (link) => link.textContent?.trim() === 'Specifications',
+    );
+    if (!list) {
+      throw new Error('The Specifications list stays reachable from the navigation.');
+    }
+
+    await userEvent.click(list);
     await canvas.findByRole('radio', { name: 'Current' });
   },
+};
+
+/**
+ * Peer areas of a Specification on a phone: the header keeps the navigation trigger and the body
+ * has no Back (interaction-model.md "Back and Close").
+ */
+const peerAreaHasNoBodyBack: Story['play'] = async ({ canvas, canvasElement }) => {
+  // Documents opens its main file over the tree on a phone: the tree's header stays underneath.
+  await canvas.findAllByRole('button', { name: 'Open navigation', hidden: true });
+  // The screen has settled once its level-1 title is there (the Back would render with it).
+  await canvas.findByRole('heading', { level: 1, hidden: true });
+  if (canvasElement.querySelector('[data-flow-back]')) {
+    throw new Error('A peer area must not show a Back in its body.');
+  }
+
+  if (canvas.queryByRole('link', { name: /^Back to |All specifications|Specification overview/ })) {
+    throw new Error('A peer area must not link back from its body.');
+  }
+};
+
+/**
+ * The Narrow header carries the Specification's key and the context notice in full (it wraps to a
+ * second line, never cut off), since the body of a peer area has no context line.
+ */
+const narrowNoticeInFull =
+  (notice: string, { key, lines = 1 }: { key?: string; lines?: 1 | 2 } = {}): Story['play'] =>
+  async ({ canvas, canvasElement }) => {
+    const status = await waitFor(
+      () =>
+        [
+          ...canvasElement.querySelectorAll<HTMLElement>('[data-narrow-identity] [role="status"]'),
+        ].find((element) => element.textContent === notice) ?? null,
+      `The Narrow header must show "${notice}".`,
+    );
+    if (
+      status.scrollHeight > status.clientHeight + 1 ||
+      status.scrollWidth > status.clientWidth + 1
+    ) {
+      throw new Error('The context notice must not be cut off.');
+    }
+
+    // body-sm is 16 px per line; the 56 px header holds the 20 px title and two such lines.
+    const shownLines = Math.round(status.getBoundingClientRect().height / 16);
+    if (shownLines !== lines) {
+      throw new Error(`The notice must take ${lines} line(s), not ${shownLines}.`);
+    }
+
+    const identity = status.closest<HTMLElement>('[data-narrow-identity]')!;
+    if (identity.getBoundingClientRect().height > 56) {
+      throw new Error('The header identity must fit the 56 px header.');
+    }
+
+    let box = identity.parentElement;
+    while (box && getComputedStyle(box).overflow === 'visible') {
+      box = box.parentElement;
+    }
+
+    const clipped = box?.getBoundingClientRect();
+    const own = identity.getBoundingClientRect();
+    if (clipped && (own.top < clipped.top - 0.5 || own.bottom > clipped.bottom + 0.5)) {
+      throw new Error('The header box must not clip the identity.');
+    }
+
+    if (key) {
+      await canvas.findByText(`· ${key}`);
+    }
+  };
+
+export const NavigationStaleNarrow: Story = {
+  tags: ['contract'],
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  args: {
+    path: '/specs/admission/sessions?collection=current',
+    navigationScenario: 'stale-keyed',
+    locale: 'pl',
+  },
+  play: narrowNoticeInFull('Kontekst może być nieaktualny', { key: 'ADM-7' }),
+};
+/** The longer notice next to header actions (Documents): it wraps to a second line, in full. */
+export const NavigationUnavailableNarrow: Story = {
+  tags: ['contract'],
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  args: {
+    path: '/specs/admission/documents?collection=current',
+    navigationScenario: 'context-failed',
+    locale: 'en',
+  },
+  play: narrowNoticeInFull("Couldn't load information about this specification.", { lines: 2 }),
+};
+
+export const PeerAreaSessionsNarrow: Story = {
+  tags: ['contract'],
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  args: { path: '/specs/admission/sessions?collection=current' },
+  play: peerAreaHasNoBodyBack,
+};
+export const PeerAreaDocumentsNarrow: Story = {
+  tags: ['contract'],
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  args: { path: '/specs/admission/documents?collection=current' },
+  play: peerAreaHasNoBodyBack,
+};
+export const PeerAreaChangesNarrow: Story = {
+  tags: ['contract'],
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  args: { path: '/specs/admission/changes?collection=current&source=base' },
+  play: peerAreaHasNoBodyBack,
 };
 
 async function waitFor<T>(read: () => T | null | false, message: string): Promise<T> {

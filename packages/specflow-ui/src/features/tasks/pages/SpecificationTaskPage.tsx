@@ -14,15 +14,15 @@ import { mapFullTaskResponse } from '../read-model/model';
 import type { useSpecificationTask } from '../useSpecificationTask';
 import {
   ApplicationLocationIdentity,
-  ApplicationContextLine,
   ViewPageTitle,
 } from '../../../app/navigation/ApplicationLocation';
+import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
 
 export interface SpecificationTaskPageProps {
   readonly specId: string;
   readonly taskId: string;
-  readonly collection: 'current' | 'archive';
   readonly taskState: ReturnType<typeof useSpecificationTask>;
+  /** Returns to the Task's parent, the Specification's Tasks (the route resolves it). */
   readonly onBack: () => void;
 }
 
@@ -30,12 +30,15 @@ export interface SpecificationTaskPageProps {
 export function SpecificationTaskPage({
   specId,
   taskId,
-  collection,
   taskState,
   onBack,
 }: SpecificationTaskPageProps) {
   const { t } = useTranslation();
-  const backHref = `/specs/${encodeURIComponent(specId)}?collection=${collection}`;
+  const workspaceLabels = useWorkspaceLabels(taskId);
+  const back = {
+    label: t('navigation.backTo', { parent: t('specification.viewTasks') }),
+    onBack,
+  };
   if (
     taskState.data?.task.id === taskId &&
     !(taskState.isError && [401, 403, 404, 409].includes(taskState.errorStatus ?? 0))
@@ -44,8 +47,7 @@ export function SpecificationTaskPage({
       <FullTaskWorkspace
         task={mapFullTaskResponse(taskState.data)}
         specId={specId}
-        onBack={onBack}
-        backHref={backHref}
+        back={back}
         stale={taskState.isError}
         onRetry={() => void taskState.refetch()}
         reload={async () => {
@@ -58,16 +60,9 @@ export function SpecificationTaskPage({
   }
 
   return (
-    <AppWorkspace
-      split="primary"
-      labels={{
-        backToPrimary: t('navigation.back'),
-        backToParent: (name: string) => t('navigation.backTo', { name }),
-        closeSecondary: t('navigation.closeSecondary'),
-        openNavigation: t('navigation.open'),
-      }}
-    >
+    <AppWorkspace split="primary" labels={workspaceLabels}>
       <AppWorkspace.Primary
+        back={back}
         header={
           <WorkspaceHeader
             title={t('specification.viewTasks')}
@@ -86,7 +81,6 @@ export function SpecificationTaskPage({
         <AppContent className="w-content-xwide max-w-full">
           <AppWorkspaceBody scroll="area" contentClassName="py-6">
             <AppContentContainer align="start" size="full">
-              <ApplicationContextLine specId={specId} view="task" />
               <ViewPageTitle>{t('specification.viewTasks')}</ViewPageTitle>
               {taskState.isPending ? (
                 <LoadingPresentation

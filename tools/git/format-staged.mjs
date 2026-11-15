@@ -47,6 +47,31 @@ const lintFiles = stagedFiles.filter(
   (file) => jsTsPattern.test(file) && !file.includes('.generated.'),
 );
 
+// Windows limits a command line to 32K characters; large commits (merges) exceed it.
+const MAX_ARGS_LENGTH = 8000;
+
+function batches(files) {
+  const result = [];
+  let current = [];
+  let length = 0;
+  for (const file of files) {
+    if (current.length > 0 && length + file.length + 1 > MAX_ARGS_LENGTH) {
+      result.push(current);
+      current = [];
+      length = 0;
+    }
+
+    current.push(file);
+    length += file.length + 1;
+  }
+
+  if (current.length > 0) {
+    result.push(current);
+  }
+
+  return result;
+}
+
 function ownerOf(file) {
   let dir = path.dirname(file).split(path.sep).join('/');
   for (;;) {
@@ -78,23 +103,25 @@ if (lintFiles.length > 0) {
   }
 
   for (const [owner, files] of byOwner) {
-    try {
-      const cwd = owner === '.' ? root : path.join(root, owner);
-      const args =
-        owner === '.'
-          ? [eslintBin, '-c', 'eslint.config.mjs', '--fix', ...files]
-          : [eslintBin, '--fix', ...files];
-      execFileSync(process.execPath, args, { cwd, stdio: 'inherit' });
-    } catch (error) {
-      console.error(`ESLint autofix failed in ${owner}.`);
-      process.exit(error.status ?? 1);
+    const cwd = owner === '.' ? root : path.join(root, owner);
+    for (const batch of batches(files)) {
+      try {
+        const args =
+          owner === '.'
+            ? [eslintBin, '-c', 'eslint.config.mjs', '--fix', ...batch]
+            : [eslintBin, '--fix', ...batch];
+        execFileSync(process.execPath, args, { cwd, stdio: 'inherit' });
+      } catch (error) {
+        console.error(`ESLint autofix failed in ${owner}.`);
+        process.exit(error.status ?? 1);
+      }
     }
   }
 }
 
-if (prettierFiles.length > 0) {
+for (const batch of batches(prettierFiles)) {
   try {
-    execFileSync(process.execPath, [prettierBin, '--write', ...prettierFiles], {
+    execFileSync(process.execPath, [prettierBin, '--write', ...batch], {
       cwd: root,
       stdio: 'inherit',
     });
@@ -106,6 +133,6 @@ if (prettierFiles.length > 0) {
 
 // Re-stage the formatted files.
 const reAddFiles = Array.from(new Set([...lintFiles, ...prettierFiles]));
-if (reAddFiles.length > 0) {
-  execFileSync('git', ['add', '--', ...reAddFiles], { cwd: root });
+for (const batch of batches(reAddFiles)) {
+  execFileSync('git', ['add', '--', ...batch], { cwd: root });
 }

@@ -133,8 +133,9 @@ export const NarrowTransitionsStayAligned: Story = {
       'Back',
       await sampleTransition(canvasElement, click('Back: Todo details')),
     );
-    const close = await sampleTransition(canvasElement, click('Close secondary content'));
-    assertCleanTransition('Close', close);
+    // Back and Close never appear together on a stacked layout: the depth-1 Back leaves the stack.
+    const close = await sampleTransition(canvasElement, click('Back'));
+    assertCleanTransition('Leave', close);
     const exiting = close.filter((f) =>
       f.surfaces.some(
         (s) => s.surface === 'secondary' && s.role === 'outgoing' && s.motion === 'exiting',
@@ -142,7 +143,7 @@ export const NarrowTransitionsStayAligned: Story = {
     );
     assert(
       exiting.length > 0,
-      'Closing the last Secondary must slide it out instead of unmounting',
+      'Leaving the last Secondary must slide it out instead of unmounting',
     );
     assert(
       exiting.every((f) => f.surfaces.some((s) => s.surface === 'primary' && s.interactive)),
@@ -215,8 +216,8 @@ export const NarrowScopeChangeDropsExitingSecondary: Story = {
       );
     await userEvent.click(canvas.getByRole('button', { name: 'Review navigation' }));
     await sampleTransition(canvasElement, async () => undefined);
-    await userEvent.click(canvas.getByRole('button', { name: 'Close secondary content' }));
-    assert(outgoing(), 'Closing the last Secondary must start sliding it out');
+    await userEvent.click(canvas.getByRole('button', { name: 'Back' }));
+    assert(outgoing(), 'Leaving the last Secondary must start sliding it out');
 
     // The specification changes while the closed Secondary is still sliding out.
     canvas.getByRole('button', { name: 'Switch specification' }).click();

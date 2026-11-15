@@ -3,7 +3,7 @@ import { isHttpClientError } from '@nevo/http-client';
 import { useTranslation } from 'react-i18next';
 import { Separator, cn, useWorkspaceCapabilities } from '@nevo/ui';
 import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
-import { ApplicationFlowBack } from '../../../../app/navigation/ApplicationLocation';
+import { FlowBack } from '../../../../app/navigation/ApplicationLocation';
 import { useAppServices } from '../../../../app/useAppServices';
 import { useMessage } from '../../../../i18n/message';
 import { useAnnouncer } from '../../../../shared/a11y/useAnnouncer';
@@ -403,7 +403,7 @@ export function CreateDemoForm({
         <CreateFormHeader
           headingRef={headingRef}
           lead={
-            <ApplicationFlowBack
+            <FlowBack
               label={t('create.changeMethod')}
               disabled={locked}
               onBack={() => setMethod('')}

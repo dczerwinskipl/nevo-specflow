@@ -1,5 +1,5 @@
 import { Badge, Button, Icon, MarkdownDocument, Typography } from '@nevo/ui';
-import { ArrowLeft, ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WorkspaceSection } from '../../../shared/workspace-section';
@@ -12,11 +12,9 @@ import { DocumentDescription } from '../../documents';
 export function TaskWorkspacePrimary({
   onMaterial,
   onHistory,
-  onBack,
 }: {
   readonly onMaterial: (id: string) => void;
   readonly onHistory?: () => void;
-  readonly onBack?: () => void;
 }) {
   const { t } = useTranslation();
   const { data, description, setDescription, instruction, setInstruction, message, setMessage } =
@@ -27,17 +25,6 @@ export function TaskWorkspacePrimary({
 
   return (
     <div ref={ref} className="grid min-w-0 gap-6 p-4 sm:p-6" data-task-workspace="primary">
-      {onBack ? (
-        <Button
-          variant="ghost"
-          size="sm"
-          leadingIcon={ArrowLeft}
-          className="justify-self-start"
-          onClick={onBack}
-        >
-          {t('navigation.back')}
-        </Button>
-      ) : null}
       <div className="grid min-w-0 gap-3">
         <Typography
           as="h1"

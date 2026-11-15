@@ -31,7 +31,21 @@ export type ReaderFixtureScenario =
   | 'all-skipped'
   | 'forbidden'
   | 'docs-unavailable'
-  | 'index-building';
+  | 'index-building'
+  /** Word matches only: search by meaning cannot be reached. */
+  | 'endpoint-unreachable'
+  /** Word matches only: the search index cannot be read. */
+  | 'index-unavailable'
+  /** Word matches only by configuration: no line. */
+  | 'semantic-disabled'
+  /** Hybrid, but no result matched a query word: the results come from search by meaning. */
+  | 'no-word-match'
+  /** The first search answers; every later one never settles (the waiting timeline). */
+  | 'search-slow'
+  /** No search ever settles (the first search's wait). */
+  | 'search-pending'
+  /** Every search fails. */
+  | 'search-failed';
 
 export const projectFolderId = 'ws-main';
 
@@ -211,13 +225,16 @@ function fixtureSearch(
   const envelope = {
     workspaceId,
     corpusRevision: revision(workspaceId),
-    results: results.map(({ doc, section, snippet }, index) => ({
+    results: results.map(({ doc, section, snippet, snippetMatches }, index) => ({
       id: doc.id,
       title: doc.title,
       type: doc.type,
       status: doc.status,
       file: doc.path,
       score: 1 / (index + 1),
+      // Every fixture result matched a query word in its title, a section or its summary, except
+      // in the scenario of an answer found by meaning alone.
+      wordMatch: scenario !== 'no-word-match',
       sections: section
         ? [
             {
@@ -226,6 +243,8 @@ function fixtureSearch(
               line: section.line,
               score: 1,
               snippet,
+              // Found by meaning alone: no word of the excerpt matched.
+              snippetMatches: scenario === 'no-word-match' ? [] : snippetMatches,
             },
           ]
         : [],
@@ -234,14 +253,25 @@ function fixtureSearch(
     skipped: skippedDocsFor(scenario),
   };
 
-  return scenario === 'index-building'
-    ? {
+  switch (scenario) {
+    case 'index-building':
+      return {
         mode: 'lexical',
         reason: { code: 'index-building', message: 'Building' },
         indexProgress: { embedded: 62, total: 100 },
         ...envelope,
-      }
-    : { mode: 'hybrid', ...envelope };
+      };
+    case 'endpoint-unreachable':
+    case 'index-unavailable':
+    case 'semantic-disabled':
+      return {
+        mode: 'lexical',
+        reason: { code: scenario, message: 'Word matches only' },
+        ...envelope,
+      };
+    default:
+      return { mode: 'hybrid', ...envelope };
+  }
 }
 
 /**
@@ -295,6 +325,7 @@ export function createFixtureDocsApi(
   };
 
   let removed = false;
+  let searches = 0;
   const afterRemoval = (tree: WorkspaceDocsTree): WorkspaceDocsTree =>
     removed
       ? {
@@ -364,9 +395,19 @@ export function createFixtureDocsApi(
         ? pending()
         : Promise.resolve(fixtureArticle(workspaceId, documentId, scenario));
     },
-    search: (workspaceId, query) =>
-      Promise.resolve(
+    search: (workspaceId, query) => {
+      searches += 1;
+      if (scenario === 'search-failed') {
+        return Promise.reject(docsError('DOCS_UNAVAILABLE', 503));
+      }
+
+      if (scenario === 'search-pending' || (scenario === 'search-slow' && searches > 1)) {
+        return pending();
+      }
+
+      return Promise.resolve(
         fixtureSearch(workspaceId, query.q, query.includeProposals ?? false, scenario),
-      ),
+      );
+    },
   };
 }

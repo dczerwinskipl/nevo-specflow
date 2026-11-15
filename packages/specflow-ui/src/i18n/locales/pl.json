@@ -31,8 +31,7 @@
     "close": "Zamknij nawigację",
     "title": "Nawigacja aplikacji",
     "open": "Otwórz nawigację",
-    "back": "Wstecz",
-    "backTo": "Wróć do: {{name}}",
+    "backTo": "Wróć do: {{parent}}",
     "closeSecondary": "Zamknij panel dodatkowy",
     "resizeSecondary": "Zmień rozmiar panelu dodatkowego",
     "secondaryBreadcrumbs": "Położenie w karcie panelu",
@@ -93,7 +92,6 @@
   },
   "specification": {
     "title": "Specyfikacja",
-    "backToSpecifications": "Wróć do specyfikacji",
     "loadingWorkspace": "Ładowanie specyfikacji {{id}}…",
     "resourceAccessDeniedTitle": "Brak dostępu",
     "resourceAccessDeniedDescription": "Nie masz uprawnień do wyświetlenia tego zasobu.",
@@ -128,8 +126,13 @@
     "markdownCodeBlock": "Blok kodu",
     "markdownTaskDone": "Zadanie ukończone",
     "markdownTaskOpen": "Zadanie nieukończone",
+    "markdownDiagram": "Diagram",
+    "markdownDiagramFailed": "Nie udało się wyświetlić diagramu",
+    "markdownDiagramZoomIn": "Powiększ",
+    "markdownDiagramZoomOut": "Pomniejsz",
+    "markdownDiagramReset": "Dopasuj diagram",
+    "markdownDiagramFullScreen": "Otwórz diagram na pełnym ekranie",
     "thisSpecification": "Ta specyfikacja",
-    "backFromHistory": "Wróć z historii",
     "previewTaskAria": "Podgląd zadania: {{title}}",
     "openSessionAria": "Otwórz sesję: {{title}}",
     "readDocAria": "Czytaj dokument: {{title}}",
@@ -196,7 +199,6 @@
     "repoFactWorktreeDesc": "Worktree przypisane do tej specyfikacji",
     "goToChanges": "Przejdź do zmian",
     "repoNone": "Brak",
-    "backToSpecification": "Wróć do specyfikacji",
     "taskFullHistoryHeading": "Historia zadania",
     "taskStatusPending": "Gotowe",
     "taskStatusInProgress": "W trakcie",
@@ -351,7 +353,8 @@
       "question": "Pytanie do użytkownika",
       "questionUnavailable": "Ta fixture nie zawiera treści pytania.",
       "return": "Aby wrócić do zadania, przełącz się na poprzednią kartę lub zamknij tę kartę."
-    }
+    },
+    "material": "Materiał"
   },
   "taskDetails": {
     "showLess": "Pokaż mniej",
@@ -441,7 +444,6 @@
   "applicationNavigation": {
     "location": "Lokalizacja w aplikacji",
     "allSpecifications": "Wszystkie specyfikacje",
-    "specificationOverview": "Przegląd specyfikacji",
     "currentSpecification": "Bieżąca specyfikacja",
     "changeSpecification": "Zmień specyfikację",
     "searchSpecifications": "Szukaj po tytule lub ID",
@@ -466,9 +468,7 @@
     "staleContext": "Kontekst może być nieaktualny",
     "contextUnavailable": "Nie udało się wczytać informacji o specyfikacji.",
     "noSpecificationSelectedTitle": "Wybierz specyfikację",
-    "noSpecificationSelectedDescription": "Otwórz specyfikację z listy, aby zobaczyć jej dokumenty i sesje.",
-    "sessionBack": "Wróć do sesji",
-    "sessionBackNamed": "Wróć do: {{title}}"
+    "noSpecificationSelectedDescription": "Otwórz specyfikację z listy, aby zobaczyć jej dokumenty i sesje."
   },
   "operations": {
     "progress": {
@@ -1079,7 +1079,6 @@
     "loadFailed": "Nie udało się wczytać dokumentów",
     "noAccess": "Nie masz dostępu do dokumentu",
     "unavailable": "Dokument jest niedostępny",
-    "backToList": "Wróć do listy dokumentów",
     "closeDocument": "Zamknij wszystkie dokumenty",
     "menuActions": "Akcje",
     "demo": {
@@ -1944,8 +1943,7 @@
       "noMode": "Brak dostępnego trybu pracy"
     },
     "forbiddenSpecification": "Nie możesz rozpoczynać sesji w tej specyfikacji.",
-    "sessionsDisabled": "Sesje są wyłączone w tym projekcie.",
-    "backToSpecification": "Wróć do specyfikacji"
+    "sessionsDisabled": "Sesje są wyłączone w tym projekcie."
   },
   "sessionNaming": {
     "pending": "Nadawanie nazwy…",
@@ -2539,7 +2537,6 @@
   },
   "docs": {
     "title": "Dokumentacja",
-    "backToDocumentation": "Wróć do dokumentacji",
     "closeDocument": "Zamknij dokument",
     "notice": {
       "notRegistered": "Obszar roboczy, który czytałeś, nie jest już zarejestrowany, więc to jest dokumentacja {{projectFolder}}.",
@@ -2561,20 +2558,23 @@
     "search": {
       "label": "Szukaj w dokumentacji",
       "results": "Wyniki wyszukiwania",
-      "loading": "Przeszukiwanie dokumentacji",
-      "count_one": "{{count}} dokument",
-      "count_few": "{{count}} dokumenty",
-      "count_many": "{{count}} dokumentów",
-      "count_other": "{{count}} dokumentu",
+      "count_one": "{{count}} wynik",
+      "count_few": "{{count}} wyniki",
+      "count_many": "{{count}} wyników",
+      "count_other": "{{count}} wyniku",
       "indexBuilding": "Na razie tylko dopasowania słów: indeks wyszukiwania jest budowany.",
       "indexBuildingProgress": "Na razie tylko dopasowania słów: indeks wyszukiwania jest budowany ({{percent}}%).",
+      "endpointUnreachable": "Tylko dopasowania słów: wyszukiwanie znaczeniowe jest niedostępne.",
+      "indexUnavailable": "Tylko dopasowania słów: indeks wyszukiwania jest niedostępny.",
+      "noWordMatch": "Nie znaleziono dopasowań słów. Poniżej wyniki wyszukiwania znaczeniowego.",
+      "preparing": "Przygotowuję wyszukiwanie znaczeniowe…",
       "includeProposals_one": "Uwzględnij propozycje ({{count}})",
       "includeProposals_few": "Uwzględnij propozycje ({{count}})",
       "includeProposals_many": "Uwzględnij propozycje ({{count}})",
       "includeProposals_other": "Uwzględnij propozycje ({{count}})",
       "includeProposalsAny": "Uwzględnij propozycje",
       "proposalsHintLabel": "Czym są propozycje?",
-      "proposalsHint": "Propozycje to pomysły i plany z folderów oznaczonych jako propozycje; nie są obowiązującymi zasadami.",
+      "proposalsHint": "Propozycje to pomysły i plany z folderów oznaczonych jako propozycje, a nie obowiązujące zasady. Liczba mówi, ile propozycji jest wśród najlepszych wyników.",
       "proposal": "Propozycja",
       "noMatches": "Brak pasujących dokumentów",
       "noMatchesHint": "Spróbuj innych słów albo przejrzyj drzewo.",
@@ -2686,7 +2686,8 @@
     "projectFolder": "Katalog projektu",
     "worktree": "Worktree",
     "sessionWorkspace": "obszar roboczy tej sesji",
-    "dirty": "Uwzględnia niezatwierdzone zmiany"
+    "localChanges": "Zmiany lokalne",
+    "localChangesExplained": "Zmiany lokalne: czytanie i wyszukiwanie uwzględniają niezatwierdzone zmiany, także nowe pliki"
   },
   "workspaces": {
     "unavailable": {

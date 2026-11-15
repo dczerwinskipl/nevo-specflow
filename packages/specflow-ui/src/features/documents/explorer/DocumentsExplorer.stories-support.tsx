@@ -271,7 +271,7 @@ function Workspace({
         fit="available"
         scroll="content"
         split="secondary"
-        labels={{ backToPrimary: 'Wróć do listy dokumentów' }}
+        labels={{ backToPrimary: 'Wróć do: Dokumenty' }}
       >
         <AppWorkspace.Primary
           header={

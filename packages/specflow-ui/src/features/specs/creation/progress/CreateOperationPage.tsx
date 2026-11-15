@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from
 import { useTranslation } from 'react-i18next';
 import { Alert, Button, InlineNote, Separator, Typography } from '@nevo/ui';
 import type { CreatedSpec } from '@nevo/specflow-contracts/specs';
-import { ApplicationContextLine } from '../../../../app/navigation/ApplicationLocation';
+import { FlowParentBack } from '../../../../app/navigation/ApplicationLocation';
 import { useMessage } from '../../../../i18n/message';
 import { useAnnouncer } from '../../../../shared/a11y/useAnnouncer';
 import {
@@ -185,123 +185,129 @@ export function CreateOperationPage({
 
   return (
     <CreateShell title={t('create.page.location')}>
-      <div className="grid gap-8">
-        <ApplicationContextLine className="mb-0" view="new-specification" />
-        <header className="flex min-w-0 items-start gap-4">
-          {/* Static while running: the active step of the checklist carries the page's only spinner. */}
-          <OperationStatusTile tone={toneOf[view]} animated={false} />
-          <div className="grid min-w-0 gap-1">
-            <Typography
-              as="h1"
-              variant="title-lg"
-              ref={headingRef}
-              tabIndex={-1}
-              className="line-clamp-3 min-w-0 outline-none [overflow-wrap:anywhere]"
-            >
-              {headingText}
-            </Typography>
-            <Typography as="p" variant="body-md" className="min-h-6 text-content-secondary">
-              {statusText}
-            </Typography>
-          </div>
-        </header>
+      {/* The flow Back takes the Create screens' one gap (gap-6); the page keeps its own rhythm. */}
+      <div className="grid gap-6">
+        <FlowParentBack view="new-specification" />
+        <div className="grid gap-8">
+          <header className="flex min-w-0 items-start gap-4">
+            {/* Static while running: the active step of the checklist carries the page's only spinner. */}
+            <OperationStatusTile tone={toneOf[view]} animated={false} />
+            <div className="grid min-w-0 gap-1">
+              <Typography
+                as="h1"
+                variant="title-lg"
+                ref={headingRef}
+                tabIndex={-1}
+                className="line-clamp-3 min-w-0 outline-none [overflow-wrap:anywhere]"
+              >
+                {headingText}
+              </Typography>
+              <Typography as="p" variant="body-md" className="min-h-6 text-content-secondary">
+                {statusText}
+              </Typography>
+            </div>
+          </header>
 
-        {(working || created) && (
-          <div>
-            <CreateOperationProgress
-              progress={progress}
-              reportedFailure={reportedFailure}
-              target={target}
-              working={working}
-              completed={Boolean(created)}
-              commits={settings?.commit === true}
-              monitoring={flags.monitoring}
-            />
-          </div>
-        )}
-
-        {view === 'not-found' && (
-          <Alert role="status" tone="info" title={t('create.page.notFound.title')}>
-            <p>{t('create.page.notFound.body')}</p>
-          </Alert>
-        )}
-
-        {(view === 'refused' || view === 'unknown') && failure && (
-          <CreateFailurePanel
-            failure={failure}
-            state={state}
-            workspaceOptions={undefined}
-            showDiagnostics={false}
-            typedTitle={title ?? ''}
-            refreshing={false}
-            announce={announce}
-            onRefresh={() => backToForm()}
-            onUseAutomaticName={() =>
-              backToForm(
-                { choice: (choice) => ({ ...choice, branch: initialWorkspaceChoice.branch }) },
-                false,
-              )
-            }
-            onUseCustomName={() =>
-              backToForm(
-                {
-                  choice: (choice) => ({
-                    ...choice,
-                    branch: choice.branch.on
-                      ? choice.branch
-                      : { on: true, name: '', edited: false },
-                  }),
-                },
-                false,
-              )
-            }
-          />
-        )}
-
-        {view !== 'not-found' && (
-          <section className="grid gap-4" aria-labelledby={settings ? configurationId : undefined}>
-            <Separator />
-            {settings && (
-              <>
-                <Typography as="h2" variant="title-sm" id={configurationId}>
-                  {t('create.page.configuration')}
-                </Typography>
-                <CreateSettingsList settings={settings} />
-              </>
-            )}
-            <CreateTechnicalDetails settings={settings} operationId={operationId} />
-          </section>
-        )}
-
-        {(working || view === 'unknown') && <InlineNote>{t('create.page.leaveNote')}</InlineNote>}
-
-        <div className="flex flex-col gap-3 @lg:flex-row">
-          {created && (
-            <Button onClick={() => onOpen(created)}>{t('create.page.openSpecification')}</Button>
+          {(working || created) && (
+            <div>
+              <CreateOperationProgress
+                progress={progress}
+                reportedFailure={reportedFailure}
+                target={target}
+                working={working}
+                completed={Boolean(created)}
+                commits={settings?.commit === true}
+                monitoring={flags.monitoring}
+              />
+            </div>
           )}
-          {view === 'unknown' && (
-            <Button disabled={state.checking} onClick={() => void actions.check()}>
-              {checkLabel}
-            </Button>
-          )}
-          {view === 'refused' &&
-            (retainable ? (
-              <Button onClick={() => void actions.retry()}>{t('create.page.tryAgain')}</Button>
-            ) : (
-              <Button onClick={() => backToForm()}>{t('create.page.backToForm')}</Button>
-            ))}
+
           {view === 'not-found' && (
-            <Button variant="secondary" onClick={() => onBackToForm()}>
-              {t('create.page.backToCreate')}
-            </Button>
+            <Alert role="status" tone="info" title={t('create.page.notFound.title')}>
+              <p>{t('create.page.notFound.body')}</p>
+            </Alert>
           )}
-          {!created && (
-            <Button variant="secondary" onClick={onBackToSpecifications}>
-              {t('create.page.backToSpecifications')}
-            </Button>
+
+          {(view === 'refused' || view === 'unknown') && failure && (
+            <CreateFailurePanel
+              failure={failure}
+              state={state}
+              workspaceOptions={undefined}
+              showDiagnostics={false}
+              typedTitle={title ?? ''}
+              refreshing={false}
+              announce={announce}
+              onRefresh={() => backToForm()}
+              onUseAutomaticName={() =>
+                backToForm(
+                  { choice: (choice) => ({ ...choice, branch: initialWorkspaceChoice.branch }) },
+                  false,
+                )
+              }
+              onUseCustomName={() =>
+                backToForm(
+                  {
+                    choice: (choice) => ({
+                      ...choice,
+                      branch: choice.branch.on
+                        ? choice.branch
+                        : { on: true, name: '', edited: false },
+                    }),
+                  },
+                  false,
+                )
+              }
+            />
           )}
+
+          {view !== 'not-found' && (
+            <section
+              className="grid gap-4"
+              aria-labelledby={settings ? configurationId : undefined}
+            >
+              <Separator />
+              {settings && (
+                <>
+                  <Typography as="h2" variant="title-sm" id={configurationId}>
+                    {t('create.page.configuration')}
+                  </Typography>
+                  <CreateSettingsList settings={settings} />
+                </>
+              )}
+              <CreateTechnicalDetails settings={settings} operationId={operationId} />
+            </section>
+          )}
+
+          {(working || view === 'unknown') && <InlineNote>{t('create.page.leaveNote')}</InlineNote>}
+
+          <div className="flex flex-col gap-3 @lg:flex-row">
+            {created && (
+              <Button onClick={() => onOpen(created)}>{t('create.page.openSpecification')}</Button>
+            )}
+            {view === 'unknown' && (
+              <Button disabled={state.checking} onClick={() => void actions.check()}>
+                {checkLabel}
+              </Button>
+            )}
+            {view === 'refused' &&
+              (retainable ? (
+                <Button onClick={() => void actions.retry()}>{t('create.page.tryAgain')}</Button>
+              ) : (
+                <Button onClick={() => backToForm()}>{t('create.page.backToForm')}</Button>
+              ))}
+            {view === 'not-found' && (
+              <Button variant="secondary" onClick={() => onBackToForm()}>
+                {t('create.page.backToCreate')}
+              </Button>
+            )}
+            {!created && (
+              <Button variant="secondary" onClick={onBackToSpecifications}>
+                {t('create.page.backToSpecifications')}
+              </Button>
+            )}
+          </div>
+          {region}
         </div>
-        {region}
       </div>
     </CreateShell>
   );

@@ -17,7 +17,7 @@ export function SessionNotFoundView({
   onGoToSpecifications?: () => void;
 }) {
   const { t } = useTranslation();
-  const labels = useWorkspaceLabels();
+  const labels = useWorkspaceLabels(t('managedSession.notFound.title'));
 
   return (
     <AppWorkspace fit="available" labels={labels}>

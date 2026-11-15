@@ -1,10 +1,9 @@
 import { LoadingPresentation } from '../../app/loading/LoadingPresentation';
+import { useWorkspaceLabels } from '../../app/navigation/useWorkspaceLabels';
 import {
   ApplicationLocationIdentity,
-  ApplicationContextLine,
   ViewPageTitle,
 } from '../../app/navigation/ApplicationLocation';
-import type { ReactNode } from 'react';
 import {
   Alert,
   AppContent,
@@ -21,16 +20,12 @@ import { invalidateSpecificationWorkspace } from './read-model/queries';
 
 import type { SpecificationWorkspaceData } from './read-model/model';
 import { SpecificationWorkspace } from './workspace/SpecificationWorkspace';
-import { SpecificationStandaloneBack } from './workspace/SpecificationStandaloneBack';
 import { useSpecificationWorkspace } from './read-model/useSpecificationWorkspace';
 import type { TaskSection, TasksPageTarget } from './workspace/WorkspaceContext';
 
 export interface SpecificationSurfaceProps {
   readonly specId: string;
   readonly collection?: 'current' | 'archive';
-  readonly overviewHref?: string;
-  readonly renderBackLink?: (children: ReactNode, className: string) => ReactNode;
-  readonly onBack?: () => void;
   readonly onOpenDocuments?: () => void;
   readonly onOpenSessions?: () => void;
   readonly onOpenRepository?: () => void;
@@ -61,9 +56,6 @@ export function SpecificationSurface(props: SpecificationSurfaceProps) {
 function SpecificationSurfaceConnected({
   specId,
   collection,
-  overviewHref,
-  renderBackLink,
-  onBack,
   onOpenDocuments,
   onOpenSessions,
   onOpenRepository,
@@ -76,6 +68,7 @@ function SpecificationSurfaceConnected({
   onNewSession,
 }: SpecificationSurfaceProps) {
   const { t } = useTranslation();
+  const workspaceLabels = useWorkspaceLabels(t('specification.viewOverview'));
   const queryClient = useQueryClient();
   const {
     data,
@@ -90,15 +83,7 @@ function SpecificationSurfaceConnected({
 
   if (isError && (!data || errorStatus === 401 || errorStatus === 403 || errorStatus === 404)) {
     return (
-      <AppWorkspace
-        split="primary"
-        labels={{
-          backToPrimary: t('navigation.back'),
-          backToParent: (name: string) => t('navigation.backTo', { name }),
-          closeSecondary: t('navigation.closeSecondary'),
-          openNavigation: t('navigation.open'),
-        }}
-      >
+      <AppWorkspace split="primary" labels={workspaceLabels}>
         <AppWorkspace.Primary
           header={
             <WorkspaceHeader
@@ -117,15 +102,7 @@ function SpecificationSurfaceConnected({
           <AppContent className="w-content-xwide max-w-full">
             <AppWorkspaceBody scroll="area" contentClassName="py-8">
               <AppContentContainer align="start" size="full" className="grid gap-6">
-                <div>
-                  <ApplicationContextLine specId={specId} view="overview" />
-                  <SpecificationStandaloneBack
-                    overviewHref={overviewHref}
-                    renderBackLink={renderBackLink}
-                    onBack={onBack}
-                  />
-                  <ViewPageTitle className="mb-0">{t('specification.title')}</ViewPageTitle>
-                </div>
+                <ViewPageTitle className="mb-0">{t('specification.title')}</ViewPageTitle>
                 <Alert
                   role="alert"
                   tone="attention"
@@ -162,15 +139,7 @@ function SpecificationSurfaceConnected({
 
   if (isLoading || !data) {
     return (
-      <AppWorkspace
-        split="primary"
-        labels={{
-          backToPrimary: t('navigation.back'),
-          backToParent: (name: string) => t('navigation.backTo', { name }),
-          closeSecondary: t('navigation.closeSecondary'),
-          openNavigation: t('navigation.open'),
-        }}
-      >
+      <AppWorkspace split="primary" labels={workspaceLabels}>
         <AppWorkspace.Primary
           header={
             <WorkspaceHeader
@@ -189,11 +158,6 @@ function SpecificationSurfaceConnected({
           <AppContent className="w-content-xwide max-w-full">
             <AppWorkspaceBody scroll="area" contentClassName="py-6">
               <AppContentContainer align="start" size="full" className="grid gap-6">
-                <SpecificationStandaloneBack
-                  overviewHref={overviewHref}
-                  renderBackLink={renderBackLink}
-                  onBack={onBack}
-                />
                 <ViewPageTitle>{t('specification.title')}</ViewPageTitle>
                 <LoadingPresentation
                   shape="specification"
@@ -217,9 +181,6 @@ function SpecificationSurfaceConnected({
       specId={specId}
       collection={collection}
       data={data}
-      overviewHref={overviewHref}
-      renderBackLink={renderBackLink}
-      onBack={onBack}
       onOpenDocuments={onOpenDocuments}
       onOpenSessions={onOpenSessions}
       onOpenRepository={onOpenRepository}

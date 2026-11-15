@@ -161,15 +161,15 @@ describe('stackedSecondaryClose', () => {
   const closeButtons = () =>
     screen.queryAllByRole('button', { name: 'Close secondary content', hidden: true });
 
-  it('keeps the close action in a stacked Secondary by default', async () => {
-    mount(stackWith());
+  it('keeps the close action in a stacked Secondary only when asked to', async () => {
+    mount(stackWith(), 'show');
     await openStack();
     expect(closeButtons().length).toBeGreaterThan(0);
     expect(screen.getAllByRole('button', { name: 'Back', hidden: true }).length).toBeGreaterThan(0);
   });
 
-  it('hides the duplicate close action of a stacked Secondary, and keeps Back', async () => {
-    mount(stackWith(), 'hide');
+  it('never shows Back and Close together on a stacked Secondary by default', async () => {
+    mount(stackWith());
     await openStack();
     expect(closeButtons()).toHaveLength(0);
     expect(screen.getAllByRole('button', { name: 'Back', hidden: true }).length).toBeGreaterThan(0);
@@ -178,6 +178,70 @@ describe('stackedSecondaryClose', () => {
       screen.getAllByRole('button', { name: 'Screen actions', hidden: true }).length - 1,
     );
     expect(within(menu).queryByRole('menuitem', { name: 'Close secondary content' })).toBeNull();
+  });
+});
+
+describe('stacked Back targets', () => {
+  function BackHost({
+    rootBack,
+    primaryBack,
+  }: {
+    rootBack?: () => void;
+    primaryBack?: { label: string; onBack: () => void };
+  }) {
+    const navigation = useSecondaryNavigation();
+
+    return (
+      <AppWorkspace
+        split="primary"
+        labels={{ backToPrimary: 'Back to Overview' }}
+        stackedRootBack={rootBack}
+      >
+        <AppWorkspace.Primary header={<WorkspaceHeader title="Task" />} back={primaryBack}>
+          <button type="button" onClick={() => void navigation.open(stackWith(), {})}>
+            Open stack
+          </button>
+        </AppWorkspace.Primary>
+      </AppWorkspace>
+    );
+  }
+
+  function mountBackHost(props: Parameters<typeof BackHost>[0]) {
+    render(
+      <AppWorkspaceProvider>
+        <AppShell navigation={<div>Nav</div>}>
+          <BackHost {...props} />
+        </AppShell>
+      </AppWorkspaceProvider>,
+    );
+  }
+
+  it('leads a depth-1 stacked Back to the declared parent instead of revealing Primary', async () => {
+    const rootBack = vi.fn();
+    mountBackHost({ rootBack });
+    await openStack();
+    const back = screen.getAllByRole('button', { name: 'Back to Overview', hidden: true }).at(-1)!;
+    await act(async () => {
+      fireEvent.click(back);
+      await Promise.resolve();
+    });
+    expect(rootBack).toHaveBeenCalledOnce();
+  });
+
+  it('replaces the navigation trigger of a subordinate Primary with its named Back', async () => {
+    const onBack = vi.fn();
+    mountBackHost({ primaryBack: { label: 'Back to Tasks', onBack } });
+    expect(screen.queryByRole('button', { name: 'Open navigation', hidden: true })).toBeNull();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Back to Tasks', hidden: true })[0]!);
+    expect(onBack).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the navigation trigger on a root Primary', () => {
+    mountBackHost({});
+    expect(
+      screen.getAllByRole('button', { name: 'Open navigation', hidden: true }).length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: /^Back/, hidden: true })).toBeNull();
   });
 });
 

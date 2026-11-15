@@ -9,13 +9,12 @@ import {
   Button,
   WorkspaceHeader,
   useSecondaryNavigation,
+  type AppWorkspaceBack,
   type WorkspaceHeaderAction,
 } from '@nevo/ui';
 import type { TaskResourceFacts } from '@nevo/specflow-contracts/tasks';
-import {
-  ApplicationContextLine,
-  ApplicationLocationIdentity,
-} from '../../../app/navigation/ApplicationLocation';
+import { ApplicationLocationIdentity } from '../../../app/navigation/ApplicationLocation';
+import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
 import { TaskDocumentEditorHost, taskDocumentStack } from '../../documents';
 import { useSpecificationWorkspace } from '../../specs/read-model';
 import type { FullTaskData } from '../read-model/model';
@@ -33,8 +32,8 @@ export interface ProjectTaskWorkspaceProps {
   readonly specId: string;
   readonly task: FullTaskData;
   readonly resource: TaskResourceFacts;
-  readonly onBack: () => void;
-  readonly backHref: string;
+  /** The header Back of the stacked page (Narrow): "Back to Tasks". */
+  readonly back: AppWorkspaceBack;
   readonly stale?: boolean;
   readonly onRetry?: () => void;
   /** Reads the Task again (revision conflicts); resolves with the latest Task. */
@@ -79,8 +78,7 @@ function Workspace({
   specId,
   task,
   resource,
-  onBack,
-  backHref,
+  back,
   stale,
   onRetry,
   reload,
@@ -88,6 +86,7 @@ function Workspace({
 }: ProjectTaskWorkspaceProps) {
   const { t } = useTranslation();
   const navigation = useSecondaryNavigation();
+  const workspaceLabels = useWorkspaceLabels(task.title || task.id);
   const projection = useTaskActions(specId, task.id);
   const workspace = useSpecificationWorkspace(specId);
   const [editing, setEditing] = useState(false);
@@ -114,7 +113,7 @@ function Workspace({
     lifecycle: projection.data?.task,
     missingContext: view.blocking.map((row) => entryName(row.entry, names)),
     onEditDetails: () => setEditing(true),
-    onRemoved: onBack,
+    onRemoved: () => void back.onBack(),
   });
   // The history is closed by default; the header's clock opens it at every width (UX contract).
   const historyAction: WorkspaceHeaderAction[] = [
@@ -131,15 +130,9 @@ function Workspace({
 
   return (
     <>
-      <AppWorkspace
-        split="primary"
-        labels={{
-          backToPrimary: t('navigation.back'),
-          closeSecondary: t('navigation.closeSecondary'),
-          openNavigation: t('navigation.open'),
-        }}
-      >
+      <AppWorkspace split="primary" labels={workspaceLabels}>
         <AppWorkspace.Primary
+          back={back}
           header={
             <WorkspaceHeader
               title={t('specification.viewTasks')}
@@ -161,7 +154,6 @@ function Workspace({
           <AppContent className="w-content-xwide max-w-full">
             <AppWorkspaceBody scroll="area" contentClassName="py-6">
               <AppContentContainer align="start" size="full">
-                <ApplicationContextLine specId={specId} view="task" />
                 {stale ? (
                   <Alert tone="attention" title={t('taskDetails.pageFailed')}>
                     <Button variant="secondary" size="sm" onClick={onRetry}>
@@ -169,7 +161,7 @@ function Workspace({
                     </Button>
                   </Alert>
                 ) : null}
-                <FullTaskView task={task} specKey={specId} onBack={onBack} backHref={backHref}>
+                <FullTaskView task={task} specKey={specId}>
                   <TaskAuthoringView
                     specId={specId}
                     task={task}

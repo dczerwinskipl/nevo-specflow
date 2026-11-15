@@ -130,11 +130,19 @@ A document may exist only in another workspace; a `404` names nothing about the 
 
 Other parameters are rejected. `200` with `WorkspaceDocsSearch`: the fields of the CLI's `--json`
 result (`DocsSearchResult`: `mode` `hybrid` or `lexical`, the `reason` when lexical, the ranked
-`results` with each document's frontmatter and best sections, their `sectionId`, `line` and, unless
-`snippets=false`, a query-aware `snippet`, ranked as described in
-[`search`](../cli/nevo-specflow-docs.md#search)), with a hit's `file` relative to `docs.root`, plus
-the fields below. A hit names its document `id`, as in the CLI's result, where the tree and the
-article say `documentId`.
+`results` with each document's frontmatter, `wordMatch` and best sections, their `sectionId`,
+`line` and, unless `snippets=false`, a query-aware `snippet` with its `snippetMatches`, ranked as
+described in [`search`](../cli/nevo-specflow-docs.md#search)), with a hit's `file` relative to
+`docs.root`, plus the fields below. A hit names its document `id`, as in the CLI's result, where the
+tree and the article say `documentId`.
+
+What a reader shows of a hit comes from these fields, so it never tokenizes the query itself:
+
+| Field                       | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sections[].snippet`        | plain text, one line, at most 280 characters: one sentence run of a paragraph, one list item or one table row (`first cell — cell; cell`, the header row dropped), without Markdown syntax; it starts at most 40 characters before its first matched word, at a sentence start or after `… ` and a whole word; with no matched word, the section's longest prose fragment ([Excerpts](../cli/nevo-specflow-docs.md#search))                                           |
+| `sections[].snippetMatches` | the matched words of `snippet`: `{ start, end }` UTF-16 offsets into it (`end` excluded), the first occurrence of each query word, at most three, in order and not overlapping, over the original characters (diacritics included); present exactly when `snippet` is; empty when no word of the excerpt matches, and always empty when the hit's `wordMatch` is `false` (the excerpt's prefix rule, `taski` for `taskami`, is looser than the rankings' exact words) |
+| `wordMatch`                 | `true` when the query's words matched the document (a section in the BM25 ranking, by heading path or text, or the frontmatter ranking); `false` for a document found only by its meaning, in `hybrid` mode. A reader can tell "no result has the query's words" from it; it does not change the ranking                                                                                                                                                              |
 
 | Field              | Value                                                                                                                                     |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
@@ -192,6 +200,30 @@ run in that checkout.
   `ai.embeddings` from a workspace; a checkout can only turn semantic search off for itself.
 - **Read-time refresh:** every search re-embeds the changed sections before answering, at most 16.
   The HTTP search always refreshes (the CLI's `--no-refresh` has no HTTP counterpart).
+- **Answer budget:** once the corpus is loaded, a search answers within
+  `DOCS_SEARCH_ANSWER_BUDGET_MS` (7000 ms, `@nevo/specflow-contracts/docs`).
+  - The read-time refresh (its endpoint probe and the embedding) must end 4000 ms after the start,
+    so the query embedding (at most 3000 ms) still fits.
+  - At that deadline, a probe or embedding still running has its requests aborted. The search
+    waits for the refresh to release the index. The refresh has written nothing, because it stores
+    its sections in one write after they are all embedded.
+  - The search then answers `lexical` with `index-building` and hands the gap to the background
+    refresh, as the catch-up below does, without probing again. Its message:
+
+    ```text
+    The index lacks vectors for <n> changed chunks, which this search could not embed within its time budget; the Runtime started updating it in the background.
+    ```
+
+  - The abort is never reported as `endpoint-unreachable`.
+  - A refresh that has embedded its sections by the deadline finishes its one write, and the
+    search ranks hybrid.
+  - An endpoint that cannot embed 16 sections in time (a slow CPU model) always leaves them to the
+    background refresh.
+  - Not bounded by the budget, but short: the write admission's `git check-ignore` before an index
+    write, reading the index activity, and starting the background refresh (not waited for).
+  - The reader waits 12000 ms for a search (`docsSearchTimeoutMs`: the budget plus 5000 ms for the
+    corpus load, those steps and the transport), instead of the HTTP client's 10000 ms default.
+  - The CLI sets no budget.
 - **Catch-up:** a larger gap answers `lexical` with `index-building` at once and, after a
   successful endpoint probe, starts the Runtime's background refresh of the whole index unless it
   already runs (`the Runtime started updating it in the background`). Another process

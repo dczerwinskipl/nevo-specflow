@@ -228,7 +228,6 @@ function ConnectedTaskFixture() {
     <SpecificationTaskPage
       specId="admission"
       taskId="TASK-03"
-      collection="current"
       taskState={taskState}
       onBack={() => undefined}
     />
@@ -459,12 +458,18 @@ export const SnapshotExpired: Story = {
 };
 
 /**
- * Accessible name of the Secondary Back. In a split layout it returns to the Primary ("Back"); on the
- * stacked (narrow) layout at depth >= 2 it names the screen it pops to ("Back to <parent title>").
+ * Accessible name of the Secondary Back. In a split layout it returns to the Primary ("Back to
+ * <Primary title>"); on the stacked (narrow) layout at depth >= 2 it names the screen it pops to
+ * ("Back to <parent title>"). Never a bare "Back".
  */
 function stackedBackName(canvasElement: HTMLElement, parentTitle: string) {
-  return canvasElement.querySelector('[data-layout="split"]') ? 'Back' : `Back to ${parentTitle}`;
+  return canvasElement.querySelector('[data-layout="split"]')
+    ? /^Back to /
+    : `Back to ${parentTitle}`;
 }
+
+/** The depth-1 Back of the Task page's stacked Secondary: "Back to <task>", not the page's own Back to Tasks. */
+const backToTaskName = /^Back to (?!Tasks$)/;
 
 const previewScrollContract: NonNullable<Story['play']> = async ({
   canvas,
@@ -745,7 +750,7 @@ const richContextContract: NonNullable<Story['play']> = async ({
   await userEvent.click(
     args.preview
       ? canvas.getByRole('button', { name: stackedBackName(canvasElement, 'Task preview') })
-      : (close ?? canvas.getByRole('button', { name: 'Back' })),
+      : (close ?? canvas.getByRole('button', { name: backToTaskName })),
   );
   await waitFor(() => {
     if (

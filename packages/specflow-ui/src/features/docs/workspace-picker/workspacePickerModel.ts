@@ -1,16 +1,42 @@
-import type { WorkspaceListItem } from '@nevo/specflow-contracts/workspaces';
+import type {
+  WorkspaceListItem,
+  WorkspaceUnavailableReason,
+} from '@nevo/specflow-contracts/workspaces';
 
-/** The kind line of a workspace: the project folder, or a worktree with its bound Specifications. */
-export interface WorkspaceKindLine {
+/**
+ * A state of a workspace shown in the switcher's status slot: an unavailable explicit pick (with
+ * its reason) wins over local changes. A detached checkout has no `dirty` flag, so no status.
+ */
+export type WorkspaceStatus =
+  | { readonly kind: 'localChanges' }
+  | { readonly kind: 'unavailable'; readonly reason: WorkspaceUnavailableReason };
+
+/** The workspace-specific metadata the shared context switcher shows. */
+export interface WorkspaceFacts {
   readonly kind: 'projectFolder' | 'worktree';
   /** Titles of the Specifications bound to the workspace (already limited to the viewer). */
   readonly specifications: readonly string[];
+  /** The workspace the current Session runs in. */
+  readonly sessionWorkspace: boolean;
+  readonly status?: WorkspaceStatus;
 }
 
-export function kindLine(workspace: WorkspaceListItem): WorkspaceKindLine {
+export function workspaceFacts(
+  workspace: WorkspaceListItem,
+  sessionWorkspaceId?: string,
+): WorkspaceFacts {
+  const status: WorkspaceStatus | undefined =
+    !workspace.available && workspace.unavailableReason
+      ? { kind: 'unavailable', reason: workspace.unavailableReason }
+      : workspace.available && workspace.dirty
+        ? { kind: 'localChanges' }
+        : undefined;
+
   return {
     kind: workspace.kind === 'primary' ? 'projectFolder' : 'worktree',
     specifications: workspace.specifications.map((spec) => spec.title),
+    sessionWorkspace: workspace.workspaceId === sessionWorkspaceId,
+    ...(status ? { status } : {}),
   };
 }
 

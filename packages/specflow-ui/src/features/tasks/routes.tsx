@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { SpecificationAggregatePage } from '../specs';
 import { specificationRoute } from '../specs/routes';
 import { parseSpecificationCollection } from '../../app/router/search';
+import { specificationParentTarget } from '../../app/navigation/backParent';
 import { useSpecificationTask } from './useSpecificationTask';
 import { SpecificationTaskPage } from './pages/SpecificationTaskPage';
 import { TasksScreen } from './list/TasksScreen';
@@ -90,17 +91,11 @@ function SpecificationTaskRouteScreen() {
   const { services } = specificationTaskRoute.useRouteContext();
   const navigate = specificationTaskRoute.useNavigate();
   const taskState = useSpecificationTask(specId, taskId, services.taskApi);
-  const onBack = () =>
-    void navigate({ to: '/specs/$specId', params: { specId }, search: { collection } });
+  // A Task's parent is the Specification's Tasks, also when the page was opened from a deep link.
+  const onBack = () => void navigate(specificationParentTarget('tasks', specId, collection));
 
   return (
-    <SpecificationTaskPage
-      specId={specId}
-      taskId={taskId}
-      collection={collection}
-      taskState={taskState}
-      onBack={onBack}
-    />
+    <SpecificationTaskPage specId={specId} taskId={taskId} taskState={taskState} onBack={onBack} />
   );
 }
 

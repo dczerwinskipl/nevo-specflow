@@ -234,7 +234,7 @@ export const ToolActionDetailMobile: Story = {
         ).toBeNull(),
       );
       await userEvent.click(
-        secondary(canvasElement).querySelector<HTMLElement>('button[aria-label="Wstecz"]')!,
+        secondary(canvasElement).querySelector<HTMLElement>('button[aria-label="Wróć do: Sesja"]')!,
       );
       await waitFor(() =>
         expect(

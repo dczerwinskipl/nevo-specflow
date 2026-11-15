@@ -8,6 +8,7 @@ import {
   useWorkspaceCapabilities,
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
+import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
 import { TaskWorkspaceState, useTaskWorkspace } from './TaskWorkspaceState';
 import { TaskWorkspacePrimary } from './TaskWorkspacePrimary';
 import { TaskWorkspaceHistory } from './TaskWorkspaceHistory';
@@ -34,6 +35,7 @@ export function TaskWorkspace({
 function Workspace({ onBack }: { readonly onBack?: () => void }) {
   const { t } = useTranslation();
   const { data, reading } = useTaskWorkspace();
+  const workspaceLabels = useWorkspaceLabels(data.id);
   const navigation = useSecondaryNavigation();
   const { supportsSplit } = useWorkspaceCapabilities();
   const openMaterial = (id: string) => {
@@ -44,14 +46,14 @@ function Workspace({ onBack }: { readonly onBack?: () => void }) {
     <AppWorkspace
       split={reading ? 'secondary' : 'primary'}
       secondaryCloseBehavior="page"
-      labels={{
-        backToPrimary: t('navigation.back'),
-        backToParent: (name: string) => t('navigation.backTo', { name }),
-        closeSecondary: t('navigation.closeSecondary'),
-        openNavigation: t('navigation.open'),
-      }}
+      labels={workspaceLabels}
     >
       <AppWorkspace.Primary
+        back={
+          onBack
+            ? { label: t('navigation.backTo', { parent: t('specification.viewTasks') }), onBack }
+            : undefined
+        }
         header={
           <WorkspaceHeader
             title={`${data.specification} / ${data.id}`}
@@ -63,7 +65,6 @@ function Workspace({ onBack }: { readonly onBack?: () => void }) {
         <AppContent className="w-full max-w-full">
           <AppWorkspaceBody padding="none" scroll="area">
             <TaskWorkspacePrimary
-              onBack={onBack}
               onMaterial={openMaterial}
               onHistory={
                 !supportsSplit

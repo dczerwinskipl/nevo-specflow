@@ -1119,9 +1119,66 @@ export const MobileNavigation: Story = {
       name: 'Deterministic admission and execution boundaries',
       level: 1,
     });
-    await userEvent.click(canvas.getByRole('link', { name: 'All specifications' }));
+    // Overview is a peer area: no Back in its body, the navigation trigger stays and the list is
+    // reached from the navigation.
+    if (canvasElement.querySelector('[data-flow-back]')) {
+      throw new Error('A peer area must not show a Back in its body.');
+    }
+
+    await userEvent.click(await canvas.findByRole('button', { name: 'Open navigation' }));
+    const reopened = await waitFor(
+      () =>
+        canvasElement.ownerDocument.querySelector<HTMLElement>(
+          'nav[aria-label="Product navigation"]',
+        ),
+      'The navigation must reopen from the Overview.',
+    );
+    const list = [...reopened.querySelectorAll<HTMLAnchorElement>('a')].find(
+      (link) => link.textContent?.trim() === 'Specifications',
+    );
+    if (!list) {
+      throw new Error('The Specifications list stays reachable from the navigation.');
+    }
+
+    await userEvent.click(list);
     await canvas.findByRole('radio', { name: 'Current' });
   },
+};
+
+/**
+ * Peer areas of a Specification on a phone: the header keeps the navigation trigger and the body
+ * has no Back (interaction-model.md "Back and Close").
+ */
+const peerAreaHasNoBodyBack: Story['play'] = async ({ canvas, canvasElement }) => {
+  // Documents opens its main file over the tree on a phone: the tree's header stays underneath.
+  await canvas.findAllByRole('button', { name: 'Open navigation', hidden: true });
+  await new Promise<void>((resolve) => setTimeout(resolve, 300));
+  if (canvasElement.querySelector('[data-flow-back]')) {
+    throw new Error('A peer area must not show a Back in its body.');
+  }
+
+  if (canvas.queryByRole('link', { name: /^Back to |All specifications|Specification overview/ })) {
+    throw new Error('A peer area must not link back from its body.');
+  }
+};
+
+export const PeerAreaSessionsNarrow: Story = {
+  tags: ['contract'],
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  args: { path: '/specs/admission/sessions?collection=current' },
+  play: peerAreaHasNoBodyBack,
+};
+export const PeerAreaDocumentsNarrow: Story = {
+  tags: ['contract'],
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  args: { path: '/specs/admission/documents?collection=current' },
+  play: peerAreaHasNoBodyBack,
+};
+export const PeerAreaChangesNarrow: Story = {
+  tags: ['contract'],
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  args: { path: '/specs/admission/changes?collection=current&source=base' },
+  play: peerAreaHasNoBodyBack,
 };
 
 async function waitFor<T>(read: () => T | null | false, message: string): Promise<T> {

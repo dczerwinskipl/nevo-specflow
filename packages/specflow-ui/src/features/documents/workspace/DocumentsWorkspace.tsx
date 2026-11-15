@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate, useRouterState } from '@tanstack/react-router';
 import {
   AppWorkspace,
   AppWorkspaceProvider,
@@ -20,6 +21,12 @@ import {
   useApplicationCollection,
 } from '../../../app/navigation/ApplicationLocation';
 import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
+import {
+  backParentTarget,
+  backParentTitleKey,
+  documentBackParent,
+} from '../../../app/navigation/backParent';
+import { documentGutterClassName } from '../../../shared/document-reading/DocumentReadingColumns';
 import { useSessionReturn } from '../../sessions';
 import { useDocumentsApi } from '../useDocumentsApi';
 import { DocumentRouteGuard } from '../editor/DocumentRouteGuard';
@@ -65,7 +72,8 @@ export function DocumentsWorkspace({
 
 function Workspace({ specId, documentId }: { specId: string; documentId?: string }) {
   const { t } = useTranslation();
-  const workspaceLabels = useWorkspaceLabels();
+  const workspaceLabels = useWorkspaceLabels(t('specification.viewDocuments'));
+  const navigate = useNavigate();
   const { api: documentsApi } = useDocumentsApi();
   const { supportsSplit, measured } = useWorkspaceCapabilities();
   const tree = useQuery({
@@ -78,6 +86,12 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
   // document is open; an open document shows the same link in its own pane.
   const sessionReturn = useSessionReturn(specId);
   const collection = useApplicationCollection();
+  // The stacked document's parent: the Overview it was promoted from (this visit's router state),
+  // else the Documents list (the tree under it), a deep link included.
+  const returnTo = useRouterState({
+    select: (routerState) => routerState.location.state.specflowDocumentReturnTo,
+  });
+  const backParent = documentBackParent({ returnTo, sessionReturn: Boolean(sessionReturn) });
   const [demoNotice, setDemoNotice] = useState(false);
   const treeController = useRef<DocumentTreeController>(null);
   // Stable: the callbacks read the controller only when the user acts.
@@ -136,7 +150,7 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
   ) : (
     <>
       {sessionReturn && supportsSplit && (
-        <div className="shrink-0 px-4 py-3">
+        <div className={`shrink-0 py-3 ${documentGutterClassName}`}>
           <ApplicationSessionBack
             specId={specId}
             sessionId={sessionReturn}
@@ -173,14 +187,17 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
       <AppWorkspace
         scroll="content"
         fit="available"
-        // Back already leaves the stacked document; its own close would repeat it.
-        stackedSecondaryClose="hide"
         // The tree stops growing at 360 px; the document gets the rest on wide screens.
         primaryMaxPx={360}
         split="secondary"
+        stackedRootBack={
+          backParent === 'overview'
+            ? () => void navigate(backParentTarget('overview', specId, collection))
+            : undefined
+        }
         labels={{
           ...workspaceLabels,
-          backToPrimary: t('documents.backToList'),
+          backToPrimary: t('navigation.backTo', { parent: t(backParentTitleKey[backParent]) }),
           closeSecondary: t('documents.closeDocument'),
         }}
       >

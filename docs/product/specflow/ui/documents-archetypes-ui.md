@@ -102,7 +102,6 @@ tree's scroll area, above the tree, so it scrolls away with it and costs nothing
 
 ```text
 [Documents                         ...]   header: New document… / New folder / Upload files (menu)
- Single sign-on · Documents                context line (existing)
  ┌ ! Closing this specification will  ┐    attention Alert, only with Close-refusing issues
  │   be refused                       │
  │ • Two files differ only in letter  │

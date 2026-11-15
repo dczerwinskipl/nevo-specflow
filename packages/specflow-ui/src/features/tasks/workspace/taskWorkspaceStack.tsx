@@ -11,6 +11,7 @@ import {
   type SecondaryScreenProps,
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
+import { translateNow } from '../../../i18n/message';
 import { useTaskWorkspace } from './TaskWorkspaceState';
 import { TaskWorkspaceHistory } from './TaskWorkspaceHistory';
 import type { TaskWorkspaceData } from './taskWorkspaceModel';
@@ -116,7 +117,14 @@ function HistoryHeader() {
 }
 
 const screens = {
-  history: { title: 'History', header: HistoryHeader, component: HistoryScreen },
+  history: {
+    // The Back of a deeper screen names it ("Back to Task history"): a translated title.
+    get title() {
+      return translateNow('taskWorkspace.history');
+    },
+    header: HistoryHeader,
+    component: HistoryScreen,
+  },
   material: { title: 'Material', header: MaterialHeader, component: MaterialScreen },
 };
 function useData({ taskId, id }: { taskId: string; id?: string }) {

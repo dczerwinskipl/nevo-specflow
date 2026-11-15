@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, Field, Separator, TextArea, TextInput, cn } from '@nevo/ui';
 import { isApiError } from '../../../../api';
-import { ApplicationContextLine } from '../../../../app/navigation/ApplicationLocation';
+import { FlowParentBack } from '../../../../app/navigation/ApplicationLocation';
 import { useAppServices } from '../../../../app/useAppServices';
 import { useMessage } from '../../../../i18n/message';
 import { useAnnouncer } from '../../../../shared/a11y/useAnnouncer';
@@ -298,7 +298,7 @@ export function CreateProjectForm({
       <div className={cn('grid gap-8', createFormWidth)}>
         <CreateFormHeader
           headingRef={headingRef}
-          lead={<ApplicationContextLine className="mb-0" view="new-specification" />}
+          lead={<FlowParentBack view="new-specification" />}
           heading={t('create.heading.specification')}
           subheading={t('create.subheading.withArchetype')}
         />

@@ -1,11 +1,8 @@
 import { RefreshStatus } from '../../../app/loading/RefreshStatus';
-import {
-  ApplicationLocationIdentity,
-  ApplicationContextLine,
-} from '../../../app/navigation/ApplicationLocation';
+import { ApplicationLocationIdentity } from '../../../app/navigation/ApplicationLocation';
 import { WorkspaceRouteLeaveGuard } from '../../../app/navigation/WorkspaceRouteLeaveGuard';
-import { useCallback, useMemo, type ReactNode } from 'react';
-import { SpecificationStandaloneBack } from './SpecificationStandaloneBack';
+import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
+import { useCallback, useMemo } from 'react';
 import {
   Alert,
   AppContent,
@@ -46,9 +43,6 @@ export interface SpecificationWorkspaceProps {
   readonly specId: string;
   readonly collection?: 'current' | 'archive';
   readonly data: SpecificationWorkspaceData;
-  readonly overviewHref?: string;
-  readonly renderBackLink?: (children: ReactNode, className: string) => ReactNode;
-  readonly onBack?: () => void;
   readonly onOpenDocuments?: () => void;
   readonly onOpenSessions?: () => void;
   readonly onOpenRepository?: () => void;
@@ -81,9 +75,6 @@ function SpecificationWorkspaceInner({
   specId,
   data,
   collection = 'current',
-  overviewHref,
-  renderBackLink,
-  onBack,
   onOpenDocuments,
   onOpenSessions,
   onOpenRepository,
@@ -98,6 +89,7 @@ function SpecificationWorkspaceInner({
   refreshing = false,
 }: SpecificationWorkspaceProps) {
   const { t } = useTranslation();
+  const workspaceLabels = useWorkspaceLabels(t('specification.viewOverview'));
   const secondaryNavigation = useSecondaryNavigation();
   const { supportsSplit } = useWorkspaceCapabilities();
   // The created event alone is no reason to open the history: only a Session (later Task or
@@ -224,16 +216,7 @@ function SpecificationWorkspaceInner({
   return (
     <SpecificationSecondaryDataContext.Provider value={secondaryContextValue}>
       <WorkspaceProvider runtime={runtime}>
-        <AppWorkspace
-          split="primary"
-          fit="available"
-          labels={{
-            backToPrimary: t('navigation.back'),
-            backToParent: (name: string) => t('navigation.backTo', { name }),
-            closeSecondary: t('navigation.closeSecondary'),
-            openNavigation: t('navigation.open'),
-          }}
-        >
+        <AppWorkspace split="primary" fit="available" labels={workspaceLabels}>
           <AppWorkspace.Primary
             header={
               <WorkspaceHeader
@@ -310,15 +293,7 @@ function SpecificationWorkspaceInner({
                   ) : null}
 
                   {/* Specification Overview contributions. Primary destinations belong to Router. */}
-                  <div>
-                    <SpecificationStandaloneBack
-                      overviewHref={overviewHref}
-                      renderBackLink={renderBackLink}
-                      onBack={onBack}
-                    />
-                    <ApplicationContextLine specId={specId} view="overview" />
-                    <WorkView specId={specId} data={data} />
-                  </div>
+                  <WorkView specId={specId} data={data} />
                 </AppContentContainer>
               </AppWorkspaceBody>
             </AppContent>

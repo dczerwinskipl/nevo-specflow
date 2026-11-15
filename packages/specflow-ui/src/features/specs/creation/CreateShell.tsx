@@ -52,7 +52,8 @@ export function CreateShell({
   children: ReactNode;
 }) {
   const { t } = useTranslation();
-  const workspaceLabels = useWorkspaceLabels();
+  const pageTitle = title ?? (specId ? t('create.newSession') : t('create.newSpecification'));
+  const workspaceLabels = useWorkspaceLabels(pageTitle);
   // The scroll area spans the whole pane and the form column sits INSIDE it (the column must not wrap the
   // scroller, which would leave unscrollable side bands and put the scrollbar at the column's
   // edge instead of the pane's). The footer holds the same column, so its button stays aligned
@@ -101,7 +102,7 @@ export function CreateShell({
     <AppWorkspace fit="bounded" labels={workspaceLabels} scroll="content">
       <AppWorkspace.Primary
         header={applicationLocationHeader({
-          title: title ?? (specId ? t('create.newSession') : t('create.newSpecification')),
+          title: pageTitle,
           view: specId ? 'new-session' : 'new-specification',
           specId,
         })}

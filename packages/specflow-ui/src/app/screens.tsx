@@ -9,20 +9,13 @@ import {
   WorkspaceHeader,
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
+import { useWorkspaceLabels } from './navigation/useWorkspaceLabels';
 
 function Screen({ children, title }: { children: React.ReactNode; title: string }) {
-  const { t } = useTranslation();
+  const workspaceLabels = useWorkspaceLabels(title);
 
   return (
-    <AppWorkspace
-      labels={{
-        backToPrimary: t('navigation.back'),
-        backToParent: (name: string) => t('navigation.backTo', { name }),
-        closeSecondary: t('navigation.closeSecondary'),
-        openNavigation: t('navigation.open'),
-      }}
-      split="primary"
-    >
+    <AppWorkspace labels={workspaceLabels} split="primary">
       <AppWorkspace.Primary header={<WorkspaceHeader title={title} />}>
         <AppContent>
           <AppWorkspaceBody scroll="area">

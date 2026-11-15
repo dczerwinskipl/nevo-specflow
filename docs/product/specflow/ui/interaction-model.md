@@ -209,6 +209,39 @@ product does not promise to restore a Task or other Secondary selection there.
 
 ## Back and Close
 
+**Peer areas and stacked screens.** Overview, Sessions, Tasks, Documents, Changes and Repository
+are equal areas of a Specification, reached from the navigation. On Narrow they keep the navigation
+trigger in the header and have no Back in their body; the Specifications list stays reachable from
+the navigation (the Specification switcher and its list). A peer area never replaces the navigation
+trigger. A subordinate screen (a document opened from Documents, a documentation article, Activity
+history, a Task preview or Task page, and so on) is a stacked screen: on Narrow its header shows a
+Back instead, icon only, named for the parent ("Back to <parent>", "Wróć do: <parent>"; never a bare
+"Back", also at depth 1), with a 44 px touch target. Wide and Compact layouts carry the way back in
+the location trail (breadcrumbs, the split Secondary's detail header row).
+
+**Back and Close never appear together on Narrow.** A stacked Secondary shows its Back and no
+Close beside it (`AppWorkspace` hides the stacked Close by default).
+
+**Back goes to a defined parent**, not to raw browser history, and it resolves the same way for a
+screen opened from a deep link, a reload or another tab (`app/navigation/backParent.ts`):
+
+| Screen (Narrow)                       | Back leads to                                                     |
+| ------------------------------------- | ----------------------------------------------------------------- |
+| A document of Documents               | the Documents list (the tree under it), a deep link included      |
+| A document promoted from the Overview | the Overview it came from (that visit's router state)             |
+| A documentation article               | the previous article, then the documentation (the reader's rules) |
+| Activity history, a Task preview      | the Overview (the owning Primary)                                 |
+| A Task page                           | the Specification's Tasks (the Overview's Tasks section)          |
+| A deeper Secondary screen             | its parent in the same stack                                      |
+
+Back keeps the context the existing contracts provide: the selected Specification and its
+collection, the documentation's workspace, search and reading positions, and scroll.
+
+**Body backs exist only in flows**: Create steps (back to the Specifications list, or a step back
+such as "Change method"), a new Session (back to Sessions) and the way back to a Session from a
+document or the documentation tree. They use one component (`FlowBack`) with one look and no
+per-call-site spacing.
+
 Product Back inside Secondary follows the local inspection stack:
 
 - a dependent detail Back returns to its parent in the same tab or stack (for example ToolAction to

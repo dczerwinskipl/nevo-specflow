@@ -11,7 +11,6 @@ import {
   useWorkspaceCapabilities,
 } from '@nevo/ui';
 import {
-  ApplicationContextLine,
   ApplicationSessionBack,
   useApplicationCollection,
 } from '../../../app/navigation/ApplicationLocation';
@@ -101,7 +100,6 @@ export function DocumentsTreePanel({
             />
           </div>
         )}
-        <ApplicationContextLine specId={specId} view="documents" className="mb-2 px-2" />
         {data && (issues.length > 0 || readOnly !== undefined || unmet.length > 0) && (
           // Inside the tree's scroll area: it scrolls away with the tree and costs nothing when empty.
           <div className="mb-3 grid gap-4">

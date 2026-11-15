@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Typography } from '@nevo/ui';
+import { Typography } from '@nevo/ui';
 import { useAppServices } from '../../../../app/useAppServices';
 import { useRuntimeMode } from '../../../../app/useRuntimeMode';
 import {
@@ -37,14 +37,12 @@ export function NewSessionScreen({
   collection = 'current',
   onOpenSession,
   onOpenSpecification,
-  onBackToSpecification,
 }: {
   specId: string;
   /** The Specification's collection the start was opened from. */
   collection?: 'current' | 'archive';
   onOpenSession: (sessionId: string) => void;
   onOpenSpecification: (specification: ContextSpecification) => void;
-  onBackToSpecification: () => void;
 }) {
   const mode = useRuntimeMode();
   const workspace = useSpecificationWorkspace(specId);
@@ -60,7 +58,7 @@ export function NewSessionScreen({
   }
 
   if (refusal) {
-    return <StartRefused specId={specId} refusal={refusal} onBack={onBackToSpecification} />;
+    return <StartRefused specId={specId} refusal={refusal} />;
   }
 
   return (
@@ -88,15 +86,16 @@ export function NewSessionScreen({
   );
 }
 
-/** The start route refused by the workspace read: why, and the way back. */
+/**
+ * The start route refused by the workspace read: why. The way back is the flow's own Back to the
+ * Sessions list (Narrow) or the location trail, not a second control in the body.
+ */
 function StartRefused({
   specId,
   refusal,
-  onBack,
 }: {
   specId: string;
   refusal: 'forbidden' | 'sessions_disabled';
-  onBack: () => void;
 }) {
   const { t } = useTranslation();
 
@@ -110,9 +109,6 @@ function StartRefused({
               : 'sessionStart.sessionsDisabled',
           )}
         </Typography>
-        <Button variant="secondary" onClick={onBack}>
-          {t('sessionStart.backToSpecification')}
-        </Button>
       </div>
     </CreateFallback>
   );

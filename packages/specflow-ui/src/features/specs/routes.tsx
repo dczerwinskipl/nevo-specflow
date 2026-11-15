@@ -234,13 +234,6 @@ function SpecificationRouteScreen() {
     <SpecificationSurface
       specId={specId}
       collection={collection}
-      overviewHref={`/?collection=${collection}`}
-      renderBackLink={(children, className) => (
-        <Link to="/" search={{ collection }} className={className}>
-          {children}
-        </Link>
-      )}
-      onBack={() => void navigate({ to: '/', search: { collection } })}
 
       onOpenTask={(taskId) => {
         void navigate({

@@ -1,7 +1,10 @@
 import { forwardRef, type AnchorHTMLAttributes } from 'react';
 import { createLink } from '@tanstack/react-router';
-import { cn, Link } from '@nevo/ui';
-/** Breadcrumbs own current-page semantics; ancestors still use canonical router links. */
+import { cn, hitAreaBlockClassName, Link } from '@nevo/ui';
+/**
+ * Breadcrumbs own current-page semantics; ancestors still use canonical router links. The block-axis
+ * hit area lifts the one-line label to the target-size floor without changing how it looks.
+ */
 export const LocationLink = createLink(
   forwardRef<HTMLAnchorElement, AnchorHTMLAttributes<HTMLAnchorElement>>(function AncestorLink(
     { className, ...props },
@@ -13,6 +16,7 @@ export const LocationLink = createLink(
         ref={ref}
         className={cn(
           'outline-none focus-visible:outline-2 focus-visible:outline-focus-ring',
+          hitAreaBlockClassName,
           className,
         )}
         aria-current={undefined}

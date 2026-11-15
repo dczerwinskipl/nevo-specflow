@@ -141,6 +141,21 @@ go deeper. Do not promote inspection-only data (raw payloads, internal ids) to a
 summary level. (The specific level model for SpecFlow UI's AI Work view is in
 [`product/specflow/ui/ai-session-ux.md`](../../product/specflow/ui/ai-session-ux.md).)
 
+## Back controls
+
+One Back component per placement, never a hand-rolled copy:
+
+- **Header Back** of a stacked (subordinate) screen: an icon-only `IconButton` in the header's
+  leading slot (36 px visual, 44 px hit area on coarse pointers), named for its target
+  ("Back to <parent>"; never a bare "Back"). It replaces the navigation trigger only on a
+  subordinate screen; a root screen keeps the navigation trigger. `AppWorkspace` owns it.
+- **Body Back** only inside a flow (a creation step, a return to the screen the flow started from):
+  one product component with one look and no per-call-site spacing; it is the first row of its
+  region and takes that region's gap.
+- Back and Close never appear together on a stacked layout.
+- Back leads to a defined parent in the product hierarchy, also from a deep link, not to raw
+  browser history.
+
 ## Interaction hierarchy
 
 One obvious primary interaction per surface. Icon semantics must be consistent and

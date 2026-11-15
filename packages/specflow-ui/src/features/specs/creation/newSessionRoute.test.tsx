@@ -33,7 +33,6 @@ vi.mock('./new-session/NewSessionScreen', () => ({
 afterEach(cleanup);
 
 const callbacks = {
-  onBackToSpecification: vi.fn(),
   onOpenSession: vi.fn(),
   onOpenSpecification: vi.fn(),
 };

@@ -31,8 +31,7 @@
     "close": "Close navigation",
     "title": "Application navigation",
     "open": "Open navigation",
-    "back": "Back",
-    "backTo": "Back to {{name}}",
+    "backTo": "Back to {{parent}}",
     "closeSecondary": "Close secondary content",
     "resizeSecondary": "Resize secondary panel",
     "secondaryBreadcrumbs": "Location in the panel tab",
@@ -93,7 +92,6 @@
   },
   "specification": {
     "title": "Specification",
-    "backToSpecifications": "Back to Specifications",
     "loadingWorkspace": "Loading specification {{id}}…",
     "resourceAccessDeniedTitle": "Access denied",
     "resourceAccessDeniedDescription": "You do not have permission to view this resource.",
@@ -133,7 +131,6 @@
     "markdownTaskDone": "Completed task",
     "markdownTaskOpen": "Incomplete task",
     "thisSpecification": "This specification",
-    "backFromHistory": "Back from history",
     "previewTaskAria": "Preview task: {{title}}",
     "openSessionAria": "Open session: {{title}}",
     "readDocAria": "Read document: {{title}}",
@@ -208,7 +205,6 @@
     "repoFactWorktreeDesc": "Worktree assigned to this specification",
     "goToChanges": "Go to changes",
     "repoNone": "None",
-    "backToSpecification": "Back to specification",
     "taskFullHistoryHeading": "Task history",
     "executeModalTitle": "Execute selected tasks",
     "taskStatusPending": "Ready",
@@ -444,7 +440,6 @@
   "applicationNavigation": {
     "location": "Application location",
     "allSpecifications": "All specifications",
-    "specificationOverview": "Specification overview",
     "currentSpecification": "Current specification",
     "changeSpecification": "Change specification",
     "searchSpecifications": "Search title or ID",
@@ -469,9 +464,7 @@
     "noSpecificationSelectedTitle": "Select a specification",
     "noSpecificationSelectedDescription": "Open a specification from the list to see its documents and sessions.",
     "activeCount_few": "{{count}} active",
-    "activeCount_many": "{{count}} active",
-    "sessionBack": "Back to session",
-    "sessionBackNamed": "Back to {{title}}"
+    "activeCount_many": "{{count}} active"
   },
   "operations": {
     "progress": {
@@ -1078,7 +1071,6 @@
     "loadFailed": "Unable to load the documents",
     "noAccess": "You do not have access to this document",
     "unavailable": "The document is unavailable",
-    "backToList": "Back to the document list",
     "closeDocument": "Close all documents",
     "menuActions": "Actions",
     "demo": {
@@ -1403,7 +1395,6 @@
   },
   "docs": {
     "title": "Documentation",
-    "backToDocumentation": "Back to documentation",
     "closeDocument": "Close document",
     "notice": {
       "notRegistered": "The workspace you were reading is no longer registered, so this is the documentation of {{projectFolder}}.",
@@ -2096,8 +2087,7 @@
       "noMode": "No work mode is available"
     },
     "forbiddenSpecification": "You can’t start sessions in this specification.",
-    "sessionsDisabled": "Sessions are turned off in this project.",
-    "backToSpecification": "Back to specification"
+    "sessionsDisabled": "Sessions are turned off in this project."
   },
   "sessionNaming": {
     "pending": "Naming…",

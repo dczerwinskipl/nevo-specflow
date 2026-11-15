@@ -18,8 +18,6 @@ export interface ActivityHistoryProps {
   readonly unavailableReason?: 'not_implemented' | 'source_unavailable';
   /** Re-reads the activity source; offered only for an unavailable source. */
   readonly onRetry?: () => void;
-  readonly isExplicit?: boolean;
-  readonly onClose?: () => void;
   readonly onOpenTask?: (taskId: string) => void;
   readonly onOpenSession?: (sessionId: string) => void;
   readonly onOpenDoc?: (docId: string) => void;
@@ -31,8 +29,6 @@ export function ActivityHistory({
   availability = 'available',
   unavailableReason,
   onRetry,
-  isExplicit = false,
-  onClose,
   onOpenTask,
   onOpenSession,
   onOpenDoc,
@@ -44,31 +40,18 @@ export function ActivityHistory({
   return (
     <aside className="flex flex-col p-5" aria-label={t('specification.historyAriaLabel')}>
       {showHeading ? (
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <Typography
-              as="h3"
-              variant="title-sm"
-              className="flex items-center gap-2 text-content-primary"
-            >
-              <Icon name="clock" size="sm" className="text-content-muted" />
-              <span>{t('specification.activityHistory')}</span>
-            </Typography>
-            <Typography variant="body-sm" className="mt-0.5 text-content-muted">
-              {t('specification.thisSpecification')}
-            </Typography>
-          </div>
-
-          {isExplicit && onClose ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              aria-label={t('specification.backFromHistory')}
-            >
-              {t('navigation.back')}
-            </Button>
-          ) : null}
+        <div className="mb-4">
+          <Typography
+            as="h3"
+            variant="title-sm"
+            className="flex items-center gap-2 text-content-primary"
+          >
+            <Icon name="clock" size="sm" className="text-content-muted" />
+            <span>{t('specification.activityHistory')}</span>
+          </Typography>
+          <Typography variant="body-sm" className="mt-0.5 text-content-muted">
+            {t('specification.thisSpecification')}
+          </Typography>
         </div>
       ) : null}
 

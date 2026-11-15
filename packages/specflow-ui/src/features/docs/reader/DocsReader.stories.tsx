@@ -380,7 +380,7 @@ export const NarrowHopAndBack: Story = {
     );
     await readingAt('UI interaction model', 300);
     await expect(path()).toBe(interactionModel);
-    await userEvent.click(body.getByRole('button', { name: 'Back to documentation' }));
+    await userEvent.click(body.getByRole('button', { name: 'Back to Documentation' }));
     await body.findByRole('navigation', { name: 'Documents' });
     await waitFor(() => expect(path()).toBe(main));
     // Every step moved through the same entries: none was added.
@@ -416,7 +416,7 @@ export const NarrowReloadAfterHop: Story = {
         .getAttribute('aria-current'),
     ).toBe('true');
     await settleViewport(375, 812);
-    await userEvent.click(await body.findByRole('button', { name: 'Back to documentation' }));
+    await userEvent.click(await body.findByRole('button', { name: 'Back to Documentation' }));
     await waitFor(() => expect(path()).toBe(main));
     await expect(router().history.length).toBe(1);
   },
@@ -498,7 +498,7 @@ export const NarrowFastHistoryAndResize: Story = {
     await body.findByRole('navigation', { name: 'Documents' });
     await settleViewport(375, 812);
     await body.findByRole('heading', { level: 1, name: 'UI interaction model' });
-    await expect(body.getByRole('button', { name: 'Back to documentation' })).toBeTruthy();
+    await expect(body.getByRole('button', { name: 'Back to Documentation' })).toBeTruthy();
     await expect(path()).toBe(interactionModel);
   },
 };

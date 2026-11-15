@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   docsReaderSearch,
   docsReaderSearchString,
+  readerSearchFromString,
   readerSearchMaxLength,
   validateDocsReaderSearch,
 } from './readerSearch';
@@ -42,5 +43,16 @@ describe('reader search address', () => {
     // A numeric text stays a text when it is read back.
     const numeric = docsReaderSearchString('?q=%222026%22');
     expect(numeric).toBe('?q=%222026%22');
+  });
+
+  it('reads the raw text of an address, never a number the default parser made of it', () => {
+    expect(readerSearchFromString('?q=1.0')).toEqual({ q: '1.0' });
+    expect(readerSearchFromString('?q=12345678901234567890')).toEqual({
+      q: '12345678901234567890',
+    });
+    // What the router writes for such a text: JSON-quoted.
+    expect(readerSearchFromString('?q=%221.0%22&proposals=1')).toEqual({ q: '1.0', proposals: 1 });
+    expect(readerSearchFromString('?q=session+limit')).toEqual({ q: 'session limit' });
+    expect(readerSearchFromString('?q=%20%20&proposals=2')).toEqual({});
   });
 });

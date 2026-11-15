@@ -42,11 +42,16 @@ export function DocsReaderLayout() {
   const search = readerSearchOf(location);
 
   // The address names the workspace shown: `/docs` and a fallback are replaced, the document,
-  // the section and the entry kept.
+  // the section and the entry kept. Both replaces below keep the entry's identity: it is the same
+  // visit (its reading position, its stack screen and the pane's scroll stay with it).
+  const historyEntry = historyEntryOf(location.state);
   const { redirectTo } = current;
   // A fallback says why in the pane; the intent of the entry is spent, so a replayed source must
   // not turn the fallback back into the workspace that was asked for.
-  const redirectEntry = current.notice ? withoutSource(entry) : entry;
+  const redirectEntry: DocsReaderLocationState = {
+    ...(current.notice ? withoutSource(entry) : entry),
+    entry: historyEntry,
+  };
   useEffect(() => {
     if (redirectTo === undefined || !onReader) {
       return;
@@ -96,6 +101,7 @@ export function DocsReaderLayout() {
 
     const next: DocsReaderLocationState = {
       ...sessionOf(entry),
+      entry: historyEntry,
       ...(pickedMissing && entry?.notInWorkspace ? { notInWorkspace: entry.notInWorkspace } : {}),
     };
     void navigate(
@@ -131,7 +137,7 @@ export function DocsReaderLayout() {
         hash={hash}
         search={search}
         entry={entry}
-        historyEntry={historyEntryOf(location.state)}
+        historyEntry={historyEntry}
         tree={tree}
       />
     </AppWorkspaceProvider>

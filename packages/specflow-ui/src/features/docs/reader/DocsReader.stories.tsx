@@ -644,26 +644,29 @@ export const SearchFlow: Story = {
 /**
  * The search is in the address (`?q=&proposals=1`): typing and the checkbox replace the entry,
  * opening a result is a push that carries the search on, and Back returns the list, the filter and
- * the pane's scroll. Narrow, where the tree pane is the screen the article is pushed over.
+ * the pane's scroll. The `/docs` redirect and a workspace pick keep it. Narrow, where the tree pane
+ * is the screen the article is pushed over.
  */
 export const SearchInAddress: Story = {
-  args: { path: main },
+  args: { path: '/docs?q=search' },
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   play: async ({ userEvent }) => {
     // Short, so the results scroll in the pane.
     await settleViewport(375, 600);
     const body = screen();
+    // The redirect to the current workspace's address keeps the search.
+    await waitFor(() => expect(path()).toBe(main));
+    await expect(router().state.location.search).toEqual({ q: 'search' });
     const entries = router().history.length;
-    await searchFor(userEvent, 'search', () =>
-      expect(liveSearchStatus().textContent).toMatch(/^\d+ results$/),
-    );
+    const field = await body.findByRole('searchbox', { name: 'Search documentation' });
+    await expect((field as HTMLInputElement).value).toBe('search');
+    await waitFor(() => expect(liveSearchStatus().textContent).toMatch(/^\d+ results$/));
     await userEvent.click(body.getByRole('checkbox', { name: /^Include proposals \(\d+\)$/ }));
     await waitFor(() =>
       expect(router().state.location.search).toEqual({ q: 'search', proposals: 1 }),
     );
     await expect(router().history.length).toBe(entries);
 
-    const field = body.getByRole('searchbox', { name: 'Search documentation' });
     const pane = field.closest<HTMLElement>('.scroll-area-viewport')!;
     await waitFor(() => expect(pane.scrollHeight).toBeGreaterThan(pane.clientHeight + 120));
     pane.scrollTop = 120;
@@ -684,6 +687,19 @@ export const SearchInAddress: Story = {
       expect(back.closest<HTMLElement>('.scroll-area-viewport')!.scrollTop).toBe(120),
     );
     await expect(router().history.length).toBe(entries + 1);
+
+    // Picking another workspace keeps the search and runs it there.
+    const trigger = body
+      .getAllByRole('button', { name: /nevo-specflow/ })
+      .find((button) => button.hasAttribute('aria-haspopup'))!;
+    await userEvent.click(trigger);
+    await userEvent.click(
+      await body.findByRole('option', { name: /ui-1234-single-sign-on-with-the-corporate/ }),
+    );
+    await waitFor(() => expect(path()).toBe('/workspaces/ws-sso/docs'));
+    await expect(router().state.location.search).toEqual({ q: 'search', proposals: 1 });
+    const picked = await body.findByRole('searchbox', { name: 'Search documentation' });
+    await expect((picked as HTMLInputElement).value).toBe('search');
   },
 };
 

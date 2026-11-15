@@ -1,4 +1,4 @@
-import { defaultParseSearch, defaultStringifySearch } from '@tanstack/react-router';
+import { defaultStringifySearch } from '@tanstack/react-router';
 
 /** The longest search text the reader asks for; the field takes no more either. */
 export const readerSearchMaxLength = 500;
@@ -14,7 +14,10 @@ export interface DocsReaderSearch {
   readonly proposals?: 1;
 }
 
-/** A hand-typed `?q=2026` reaches the route as the number the default search parser reads. */
+/**
+ * The route's own parse of a hand-typed `?q=2026` is the number the default search parser reads;
+ * the reader itself reads the raw text (`readerSearchFromString`).
+ */
 function textOf(value: unknown): string | undefined {
   if (typeof value === 'string') {
     return value;
@@ -35,11 +38,43 @@ export function validateDocsReaderSearch(search: Record<string, unknown>): DocsR
 }
 
 /**
- * The search a router location holds, as the route validates it: every navigation inside the
- * reader passes it on explicitly, because a navigation without `search` drops it.
+ * A raw query value as the text it names. The router writes a text that would read as JSON (a
+ * number, `true`) JSON-quoted, so a quoted value is unquoted; anything else is the text as typed:
+ * the default parser would turn `?q=1.0` into `1` and round long digit strings.
  */
-export function readerSearchOf(location: { readonly search: object }): DocsReaderSearch {
-  return validateDocsReaderSearch(location.search as Record<string, unknown>);
+function rawText(raw: string | null): string | undefined {
+  if (raw === null) {
+    return undefined;
+  }
+
+  try {
+    const value: unknown = JSON.parse(raw);
+    if (typeof value === 'string') {
+      return value;
+    }
+  } catch {
+    // Not JSON: the text itself.
+  }
+
+  return raw;
+}
+
+/** The reader's search of a raw query string (`?q=…&proposals=1`), validated as the route does. */
+export function readerSearchFromString(searchStr: string): DocsReaderSearch {
+  const params = new URLSearchParams(searchStr);
+
+  return validateDocsReaderSearch({
+    q: rawText(params.get('q')),
+    proposals: params.get('proposals'),
+  });
+}
+
+/**
+ * The search a router location holds, read from its raw query string: every navigation inside
+ * the reader passes it on explicitly, because a navigation without `search` drops it.
+ */
+export function readerSearchOf(location: { readonly searchStr: string }): DocsReaderSearch {
+  return readerSearchFromString(location.searchStr);
 }
 
 /** The search to write for a field's text and the proposals checkbox. */
@@ -52,5 +87,5 @@ export function docsReaderSearch(text: string, includeProposals: boolean): DocsR
  * route does: Copy link carries the search, never an unknown parameter.
  */
 export function docsReaderSearchString(searchStr: string): string {
-  return defaultStringifySearch(validateDocsReaderSearch(defaultParseSearch(searchStr)));
+  return defaultStringifySearch(readerSearchFromString(searchStr));
 }

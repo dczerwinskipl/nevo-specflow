@@ -122,7 +122,7 @@ describe('a Task without a Specification run', () => {
     await approve(dependencies, 'api');
 
     await refused(dependencies, start(dependencies, 'api', 'stale'), 'WORKFLOW_DEFINITION_CHANGED');
-    const preview = newRun(catalogue.workflow('task-standard')).workflow;
+    const preview = newRun(catalogue.workflow('task-standard')!).workflow;
     await expect(start(dependencies, 'api', preview.revision)).resolves.toMatchObject({
       kind: 'started',
     });

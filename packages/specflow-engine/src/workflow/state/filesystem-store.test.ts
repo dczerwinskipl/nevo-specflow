@@ -1039,7 +1039,7 @@ describe('filesystem workflow store: the Task set is the one the index lists', (
         specId: SPEC,
         taskId,
         run: {
-          ...newRun(dependencies.catalogue.workflow(workflow)),
+          ...newRun(dependencies.catalogue.workflow(workflow)!),
           position: { state: 'terminal', outcome: 'completed' },
         },
       } satisfies TaskRunRecord),

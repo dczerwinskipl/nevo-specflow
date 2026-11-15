@@ -215,7 +215,7 @@ export function describeWorkflowStoreContract(name: string, create: () => Workfl
       ],
       [
         'a Task with an unknown status',
-        () => creating([{ ...manifest('api'), status: 'blocked' }]),
+        () => creating([{ ...manifest('api'), status: 'blocked' } as unknown as TaskManifest]),
       ],
       [
         'a Task manifest without its task document',

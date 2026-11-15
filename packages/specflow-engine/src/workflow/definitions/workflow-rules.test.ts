@@ -156,7 +156,7 @@ describe('checkWorkflow', () => {
         withSteps([
           {
             ...implement,
-            transitions: [annotated(implement.transitions[0], { session: 'reuse' })],
+            transitions: [annotated(implement.transitions[0]!, { session: 'reuse' })],
           },
           { ...review, executors: ['human'], annotations: { interaction: 'autonomous' } },
         ]),
@@ -189,7 +189,7 @@ describe('checkWorkflow', () => {
       () =>
         specificationWith([
           implement,
-          { ...review, transitions: [annotated(review.transitions[1], { escalate: true })] },
+          { ...review, transitions: [annotated(review.transitions[1]!, { escalate: true })] },
         ]),
       '/steps/1/transitions/0/escalate',
     ],
@@ -201,7 +201,7 @@ describe('checkWorkflow', () => {
           {
             ...review,
             transitions: [
-              annotated(review.transitions[1], { escalate: true }, { feedback: 'optional' }),
+              annotated(review.transitions[1]!, { escalate: true }, { feedback: 'optional' }),
             ],
           },
         ]),
@@ -215,7 +215,7 @@ describe('checkWorkflow', () => {
           {
             ...review,
             transitions: [
-              annotated(review.transitions[0], { escalate: true }, { feedback: 'required' }),
+              annotated(review.transitions[0]!, { escalate: true }, { feedback: 'required' }),
               review.transitions[1]!,
             ],
           },
@@ -228,7 +228,7 @@ describe('checkWorkflow', () => {
 
   it('accepts an escalation with feedback to a step of a Task workflow', () => {
     const escalation = annotated(
-      review.transitions[1],
+      review.transitions[1]!,
       { escalate: true },
       { id: 'escalated', result: 'spec' },
     );
@@ -386,7 +386,7 @@ describe('step gates', () => {
         exitGates: [{ ...documentGate, scope: 'specification', when: ['pass'] }, documentGate],
       }),
     );
-    const gatedReview = workflow.steps[1];
+    const gatedReview = workflow.steps[1] as Extract<WorkflowStep, { kind: 'work' }>;
 
     expect(gatedReview.annotations.entryGates).toEqual([
       { id: 'entry-1', ...documentGate, scope: 'subject', requiredSections: [] },

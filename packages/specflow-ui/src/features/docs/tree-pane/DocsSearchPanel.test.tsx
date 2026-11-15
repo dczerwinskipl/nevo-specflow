@@ -7,12 +7,19 @@ import { appI18n } from '../../../i18n';
 import type { DocsReaderSearch } from '../reader/readerSearch';
 import { DocsSearchPanel } from './DocsSearchPanel';
 
-/** The answers the mocked read hands out, by workspace and text; a missing one is still loading. */
+/**
+ * The answers the mocked read hands out, by workspace and text (`:p` appended when proposals are
+ * included); a missing one is still loading.
+ */
 let answers: Record<string, WorkspaceDocsSearch | 'failed'> = {};
 
 vi.mock('../read-model', () => ({
-  useDocsSearch: (workspaceId: string | undefined, query: { q: string }) => {
-    const answer = workspaceId && query.q ? answers[`${workspaceId}:${query.q}`] : undefined;
+  useDocsSearch: (
+    workspaceId: string | undefined,
+    query: { q: string; includeProposals?: boolean },
+  ) => {
+    const key = `${workspaceId}:${query.q}${query.includeProposals ? ':p' : ''}`;
+    const answer = workspaceId && query.q ? answers[key] : undefined;
 
     return {
       isSuccess: answer !== undefined && answer !== 'failed',
@@ -52,8 +59,8 @@ const answer = (workspaceId: string, titles: string[]): WorkspaceDocsSearch => (
 });
 
 /** The panel over an address of its own (the router's part is `readerSearchHistory.test.tsx`). */
-function Panel({ workspaceId }: { workspaceId: string }) {
-  const [search, setSearch] = useState<DocsReaderSearch>({});
+function Panel({ workspaceId, initial = {} }: { workspaceId: string; initial?: DocsReaderSearch }) {
+  const [search, setSearch] = useState<DocsReaderSearch>(initial);
 
   return (
     <DocsSearchPanel
@@ -171,5 +178,40 @@ describe('DocsSearchPanel', () => {
     expect(visible('Search is unavailable right now.')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy();
     expect(live()).toBe('Search is unavailable right now.');
+  });
+
+  it('keeps the checkbox only while the answer to its own change loads', () => {
+    answers['ws-a:session:p'] = answer('ws-a', ['Doc A1']);
+    render(<Panel workspaceId="ws-a" initial={{ q: 'session', proposals: 1 }} />);
+    const checkbox = screen.getByRole('checkbox', { name: /^Include proposals/ });
+
+    // Turning proposals off answers with none left out: the checkbox goes.
+    fireEvent.click(checkbox);
+    expect(screen.queryByRole('checkbox')).toBeNull();
+
+    // A later query's wait does not bring it back, neither at once nor after 400 ms.
+    type('session limit');
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(screen.queryByRole('checkbox')).toBeNull();
+  });
+
+  it('does not say it prepares search by meaning where it is off by configuration', () => {
+    answers['ws-a:session'] = {
+      ...answer('ws-a', ['Doc A1']),
+      mode: 'lexical',
+      reason: { code: 'semantic-disabled', message: '' },
+    };
+    render(<Panel workspaceId="ws-a" />);
+    type('session');
+    type('session limit');
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    absent('Preparing search by meaning…');
+    expect(live()).toBe('');
   });
 });

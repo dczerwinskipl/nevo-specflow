@@ -335,13 +335,13 @@ A search can wait when hybrid search first embeds the sections that lack a vecto
 bounds that wait (the [answer budget](#implementation-notes)), and the reader's request waits
 longer than the budget, so a first search after edits answers word-only instead of failing.
 
-| Elapsed since the request | Status row and results                                                                                                                                                                                                                                |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0–400 ms                  | Nothing changes: no spinner, no skeleton, so fast answers never flash. The previous count and rows stay.                                                                                                                                              |
-| 400 ms – 2 s              | The count disappears; a shown checkbox keeps its place without a number. A changed query keeps the previous rows in place, **dimmed (50%) and inert** (`aria-busy`), so the list does not jump; a first search (no rows yet) shows the skeleton rows. |
-| over 2 s                  | One quiet line: "Preparing search by meaning…" ("Przygotowuję wyszukiwanie znaczeniowe…"), honest for both slow causes (the probe and the embedding). No spinner and no percentage (the request reports no progress).                                 |
-| answer                    | The new count, lines and rows replace everything at once.                                                                                                                                                                                             |
-| failure or timeout        | "Search is unavailable right now." with Retry; the dimmed rows are removed.                                                                                                                                                                           |
+| Elapsed since the request | Status row and results                                                                                                                                                                                                                                                                                                                                                |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0–400 ms                  | Nothing changes: no spinner, no skeleton, so fast answers never flash. The previous count and rows stay.                                                                                                                                                                                                                                                              |
+| 400 ms – 2 s              | The count disappears; a shown checkbox keeps its place without a number. A changed query keeps the previous rows in place, **dimmed (50%) and inert** (`aria-busy`), so the list does not jump; a first search (no rows yet) shows the skeleton rows.                                                                                                                 |
+| over 2 s                  | One quiet line: "Preparing search by meaning…" ("Przygotowuję wyszukiwanie znaczeniowe…"), honest for both slow causes (the probe and the embedding). No spinner and no percentage (the request reports no progress). Not shown when the workspace's last answer was word-only by configuration (`semantic-disabled`, `no-endpoint`): nothing is being prepared then. |
+| answer                    | The new count, lines and rows replace everything at once.                                                                                                                                                                                                                                                                                                             |
+| failure or timeout        | "Search is unavailable right now." with Retry; the dimmed rows are removed.                                                                                                                                                                                                                                                                                           |
 
 Typing more cancels the pending request and restarts the timeline. An earlier answer is never shown
 under another workspace.
@@ -351,7 +351,7 @@ under another workspace.
 One `role="status"` region announces once per settled answer: the count (or "No matching
 documents") **together with** the reason line and the "no word match" line, in one message. It never
 announces per keystroke. While the answer loads it says nothing for the first 2 s, then once
-"Preparing search by meaning"; a failure is announced once.
+"Preparing search by meaning" (only when that line shows); a failure is announced once.
 
 ### Sticky field and the software keyboard
 

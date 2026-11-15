@@ -26,12 +26,12 @@ import {
 } from '../state/model';
 import type { ExecutionSnapshot } from '../state/store';
 import {
+  finishClosingOpenTasks,
   isTaskClosed,
   isTaskTypeAllowed,
+  ownsDraft,
   resolveTaskType,
   taskReadiness,
-  finishClosingOpenTasks,
-  ownsDraft,
   tasksOpenAtCompletion,
   unsatisfiableDependencies,
   type ClosableTask,

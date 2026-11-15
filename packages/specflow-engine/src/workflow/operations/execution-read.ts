@@ -64,7 +64,10 @@ export interface TaskProgress {
 export interface ExecutionReading {
   /** Its `attention` is every attention item of the read (start blockers included). */
   readonly inspection: ExecutionInspection;
-  /** The action projection of each requested Task, from the same snapshot as `inspection`. */
+  /**
+   * The action projection of each requested Task, from the same snapshot as `inspection`, without
+   * its authoring facts (`taskAuthoring` is only in `inspectActions` of one Task).
+   */
   readonly actions: ReadonlyMap<string, ActionProjection>;
   /** The neutral facts of each requested readable Task. */
   readonly facts: ReadonlyMap<string, TaskFacts>;

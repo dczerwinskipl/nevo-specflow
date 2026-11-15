@@ -373,11 +373,12 @@ const UNKNOWN_FILES_NAMED = 10;
 /**
  * Remove a Task that never started: its index entry, its manifest and its registered documents in
  * one change, so its folder goes with them. Refused with `WORKFLOW_SPECIFICATION_ENDED` once the
- * Specification's workflow ended (completed or abandoned). Refused (`WORKFLOW_TASK_NOT_REMOVABLE`, nothing written)
- * when the Task has a run record, another Task depends on it, a change of one of its documents is
- * pending, or its folder holds a file it does not register (which removing the Task would leave
- * behind as an unregistered folder). A Task that started is cancelled instead. A dangling index entry
- * (its folder or manifest is gone) is broken and not removable here: it is repaired by hand.
+ * Specification's workflow ended (completed or abandoned). Refused (`WORKFLOW_TASK_NOT_REMOVABLE`,
+ * nothing written) when the Task has a run record, another Task depends on it, a change of one of
+ * its documents is pending, or its folder holds a file it does not register (which removing the
+ * Task would leave behind as an unregistered folder). A Task that started is cancelled instead. A
+ * dangling index entry (its folder or manifest is gone) is broken and not removable here: it is
+ * repaired by hand.
  */
 export function removeTask(
   dependencies: WorkflowDependencies,

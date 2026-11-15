@@ -156,8 +156,9 @@ Wide / Compact                                   Narrow
 [tree | results          ][  from 840 px panel) ]  [tree | results        ]   [ Related       ]
 ```
 
-- **Tree pane:** workspace picker (more than one workspace), the sticky search field (Documents
-  tree filter field, see
+- **Tree pane:** workspace picker (more than one workspace), the sticky search field (the shared
+  tree pane search bar and geometry of Documents, see
+  [Tree pane](../../../design-system/implementation/react/component-guidelines.md#tree-pane) and
   [Sticky field and the software keyboard](#sticky-field-and-the-software-keyboard)), then the
   tree or the results. Folders first, then documents; a folder's hub (README) leads its documents,
   the rest by title. A document row shows its **title** (wrapping, not truncated; full path in the tooltip and in
@@ -334,7 +335,9 @@ They apply when the answer has no results (word-only search, or a future cutoff)
   checkbox stays on the status row. PL uses plural keys: "Pasuje 1 propozycja", "Pasują 2
   propozycje", "Pasuje 5 propozycji".
 - With no match and no proposals the checkbox is hidden.
-- Neither empty state has a decorative icon (the inline `EmptyState`).
+- Neither empty state has a decorative icon: both are the tree pane's shared empty search result
+  (`TreeSearchEmpty`, the same as Documents' "No matching files"), its text on the pane's 16 px text
+  column.
 
 ### Waiting for an answer
 
@@ -362,11 +365,16 @@ announces per keystroke. While the answer loads it says nothing for the first 2 
 
 ### Sticky field and the software keyboard
 
-**The sticky set is the search field only**, on the pane's `surface-raised` with a plain `divider`
-line under it (no shadow, no stuck detection), at every width. The app header is already fixed. The
-picker, the status row and the quiet lines scroll with the results. At 390x844 (app header 57 px,
-sticky field 53 px) this leaves about 734 px for results with the keyboard closed, and about 398 px
-with a 336 px keyboard open; a sticky status row would take about 44 px more.
+**The sticky set is the search field only** (owner, 2026-11-15, superseding the always-drawn band):
+the shared `TreeSearchBar` across the pane's full width, transparent at rest and, once docked, on
+the opaque docked material of the workspace with the `divider` line under it (so nothing scrolled
+underneath shows through), no shadow, at every width. The scroll position itself switches it at the
+dock point (a scroll-driven animation); browsers without scroll-driven animations keep the material
+at all times and show the divider from `useStuck` (see
+[Tree pane](../../../design-system/implementation/react/component-guidelines.md#tree-pane)). The app header is already fixed. The picker, the status row and the
+quiet lines scroll with the results. At 390x844 (app header 57 px, sticky bar 45 px) this leaves
+about 742 px for results with the keyboard closed, and about 406 px with a 336 px keyboard open; a
+sticky status row would take about 44 px more.
 
 - Focusing the field on Narrow scrolls the pane so that the field is at the top, so the picker
   leaves the view while typing. This is intended: typing needs the results, not the workspace.
@@ -560,8 +568,9 @@ Integration readiness: **ready** — the shared workspace list (`GET /api/worksp
   (`ContextSwitcherTrigger`, `ContextSwitcherOption`, `ContextSwitcherStatus` on the design
   system's `StatusIndicator`); the measured name cut and the result path's fit use
   `shared/text-measure`.
-- The search field is the shared `shared/document-tree` `TreeSearchField`; the Proposal badge is
-  `Badge` (compact); the empty states are the inline `EmptyState` without an icon. The match mark
+- The search field is the shared `shared/document-tree` `TreeSearchField` in `TreeSearchBar`; the
+  Proposal badge is `Badge` (compact); the empty states are `TreeSearchEmpty`; the pane stack uses
+  `treePane.ts`. The match mark
   style (`content-primary`, medium weight, no fill) is feature-local: it is not a design-system
   recipe until another surface needs one.
 
@@ -610,10 +619,13 @@ Integration readiness: **ready** — the shared workspace list (`GET /api/worksp
   request (`useSearchWaiting`), and typing more restarts them. The last settled answer is held with
   its workspace and filter for the wait of the next one, and is never shown under another
   workspace.
-- **Sticky field.** The tree pane's scroller content sets its inset as one variable
-  (`--tree-pane-inset`); the sticky search block covers that inset with negative margins and
-  padding, so nothing scrolled underneath shows beside it and the field sits where it would without
-  the block. No new design-system token was needed.
+- **Sticky field.** The scroller content has the vertical inset only and every block its own 8 px
+  inline inset, so the sticky bar spans the pane without negative margins. The bar's sentinel sits
+  at the top of the tree block; its view timeline drives the docked surface (Nevo UI
+  `.workspace-docked-sticky`, transparent at rest). Without scroll-driven animations the material
+  stays on and `useStuck` observes the sentinel in the pane's scroll viewport for the divider: an
+  observer answers after the measured frame is painted, so the material is never tied to it. No new
+  design-system token was needed.
 - **Name cut.** The trigger's middle cut measures the name in its rendered font on a canvas
   (`shared/text-measure`), again on resize and once web fonts are ready; until the box has a width
   (a closed drawer) the whole name shows, clipped by CSS, and counts as not truncated.
@@ -679,8 +691,9 @@ project folder, and the workspace picker in the tree pane follows the Specificat
      total.
   2. **Reason lines:** the `endpoint-unreachable` and `index-unavailable` lines ship with the
      `index-building` one.
-  3. **Sticky surface:** no new token; the sticky field uses the existing `surface-raised`, and a
-     design-system token is added only if the real pane shows a seam.
+  3. **Sticky surface:** no new token; the docked sticky field uses the workspace's docked material
+     (`.workspace-docked-sticky`, superseding `surface-raised`, 2026-11-15), and a design-system
+     token is added only if the real pane shows a seam.
   4. **Search in the address:** `?q=<text>&proposals=1`
      ([Entry and navigation](#entry-and-navigation)).
   5. **Relevance cutoff:** a separate decision, outside this feature (see [Open](#open)).

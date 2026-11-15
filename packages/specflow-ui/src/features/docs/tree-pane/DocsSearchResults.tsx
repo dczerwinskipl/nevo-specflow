@@ -1,7 +1,8 @@
 import { useLayoutEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Badge, Button, EmptyState, cn } from '@nevo/ui';
+import { Badge, Button, cn } from '@nevo/ui';
 import type { WorkspaceDocsSearchHit, WorkspaceDocsSearch } from '@nevo/specflow-contracts/docs';
+import { TreeSearchEmpty, treePaneBlockClassName } from '../../../shared/document-tree';
 import { textMeasurer } from '../../../shared/text-measure/measureText';
 import {
   excerptSegments,
@@ -176,7 +177,8 @@ export function DocsSearchResults({
   const { t } = useTranslation();
   if (failed) {
     return (
-      <div className="px-1">
+      // The retry button's edge on the search field's edge (12 px).
+      <div className="px-3">
         <Button variant="ghost" size="sm" onClick={onRetry}>
           {t('common.retry')}
         </Button>
@@ -195,22 +197,16 @@ export function DocsSearchResults({
 
   if (search.results.length === 0) {
     return (
-      <div className="px-2">
-        <EmptyState
-          variant="inline"
-          title={t('docs.search.noMatches')}
-          description={
-            search.proposalsLeftOut > 0
-              ? t('docs.search.onlyProposals', { count: search.proposalsLeftOut })
-              : t('docs.search.noMatchesHint')
-          }
-          actions={
-            <Button variant="secondary" size="sm" onClick={onClear}>
-              {t('common.clearSearch')}
-            </Button>
-          }
-        />
-      </div>
+      <TreeSearchEmpty
+        title={t('docs.search.noMatches')}
+        description={
+          search.proposalsLeftOut > 0
+            ? t('docs.search.onlyProposals', { count: search.proposalsLeftOut })
+            : t('docs.search.noMatchesHint')
+        }
+        clearLabel={t('common.clearSearch')}
+        onClear={onClear}
+      />
     );
   }
 
@@ -219,7 +215,7 @@ export function DocsSearchResults({
       aria-label={t('docs.search.results')}
       aria-busy={dimmed || undefined}
       inert={dimmed}
-      className={cn(dimmed && 'opacity-50')}
+      className={cn(treePaneBlockClassName, dimmed && 'opacity-50')}
     >
       <ul className="m-0 grid list-none divide-y divide-divider p-0">
         {search.results.map((hit) => (

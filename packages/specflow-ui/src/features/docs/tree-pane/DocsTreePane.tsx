@@ -1,7 +1,12 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AppContent, ScrollArea, TooltipProvider, Typography } from '@nevo/ui';
+import { AppContent, ScrollArea, TooltipProvider, Typography, cn } from '@nevo/ui';
 import type { WorkspaceDocsTree } from '@nevo/specflow-contracts/docs';
+import {
+  treePaneBlockClassName,
+  treePaneContentClassName,
+  treePaneTextClassName,
+} from '../../../shared/document-tree';
 import type { DocsReaderSearch } from '../reader/readerSearch';
 import { DocsSearchPanel } from './DocsSearchPanel';
 import { DocsTree } from './DocsTree';
@@ -54,7 +59,9 @@ export function DocsTreePane({
   onOpen: (documentId: string, sectionId?: string) => void;
 }) {
   const { t } = useTranslation();
-  const viewportRef = usePaneScrollMemory(historyEntry);
+  // The scroll viewport: its scroll is kept per entry, and the search field docks in it.
+  const [viewport, setViewport] = useState<HTMLDivElement | null>(null);
+  usePaneScrollMemory(historyEntry, viewport);
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
   const root = useMemo(() => (tree ? buildDocsTree(tree.documents) : undefined), [tree]);
   const proposals = useMemo(
@@ -98,37 +105,40 @@ export function DocsTreePane({
     // The pane's tooltips (the tree rows' paths) share one provider, as in the Documents explorer.
     <TooltipProvider delayDuration={300}>
       <AppContent className="h-full w-full">
-        {/*
-          The pane's rows are focusable themselves: the scroller adds no Tab stop of its own. The
-          content's inset is one variable, which the sticky search block reads to cover it.
-        */}
+        {/* The pane's rows are focusable themselves: the scroller adds no Tab stop of its own. */}
         <ScrollArea
           direction="vertical"
           className="min-h-0 flex-1"
-          contentClassName="grid content-start gap-3 p-(--tree-pane-inset) [--tree-pane-inset:--spacing(2)]"
-          viewportRef={viewportRef}
+          contentClassName={treePaneContentClassName}
+          viewportRef={setViewport}
           tabIndex={-1}
         >
-          {sessionBack && <div className="px-2">{sessionBack}</div>}
-          {picker}
+          {sessionBack && <div className={treePaneBlockClassName}>{sessionBack}</div>}
+          {picker && <div className={treePaneBlockClassName}>{picker}</div>}
           {notices.map((notice) => (
             <Typography
               key={notice}
               as="p"
               variant="body-sm"
               role="status"
-              className="px-2 text-content-secondary wrap-anywhere"
+              className={cn('text-content-secondary wrap-anywhere', treePaneTextClassName)}
             >
               {notice}
             </Typography>
           ))}
           {problem !== undefined
-            ? problem && <div className="px-2">{problem}</div>
-            : tree && <SkippedDocuments skipped={tree.skipped} docsRoot={tree.docsRoot} />}
+            ? problem && <div className={treePaneBlockClassName}>{problem}</div>
+            : tree &&
+              tree.skipped.length > 0 && (
+                <div className={treePaneBlockClassName}>
+                  <SkippedDocuments skipped={tree.skipped} docsRoot={tree.docsRoot} />
+                </div>
+              )}
           <DocsSearchPanel
             hidden={problem !== undefined}
             workspaceId={workspaceId}
             historyEntry={historyEntry}
+            scrollRoot={viewport}
             search={search}
             onSearchChange={onSearchChange}
             proposals={proposals}

@@ -153,6 +153,67 @@
     var(--color-canvas);
 }
 
+/*
+ * A `position: sticky; top: 0` bar that docks at the top of its scroller: transparent at rest, the
+ * docked material and a bottom divider once docked. Three parts: `.workspace-docked-scope` on a
+ * common ancestor, `.workspace-docked-sentinel` (an absolutely positioned 1 px box at the bar's
+ * resting top, inside the scroller) and `.workspace-docked-sticky` on the bar, which is positioned
+ * and keeps a transparent 1 px bottom border for the divider.
+ *
+ * Where scroll-driven animations exist, the scroller's own position drives one `::before` layer
+ * (the material and the divider over the border) through the sentinel's view timeline: its opacity
+ * goes from 0 to 1 within the one pixel of scroll at which the sentinel leaves the scrollport's top,
+ * which is where the bar docks. No script and no observer; an opacity animation can run on the
+ * compositor, in step with the scroll. Elsewhere the bar keeps the docked material at all times
+ * (nothing scrolled underneath shows through) and the product sets the divider (its border colour)
+ * from its own stuck detection.
+ */
+.workspace-docked-sticky {
+  background:
+    linear-gradient(var(--color-workspace-material), var(--color-workspace-material)),
+    var(--color-canvas);
+}
+
+@supports (animation-timeline: view()) {
+  .workspace-docked-scope {
+    timeline-scope: --workspace-docked;
+  }
+
+  .workspace-docked-sentinel {
+    view-timeline: --workspace-docked block;
+  }
+
+  .workspace-docked-sticky {
+    background: none;
+  }
+
+  .workspace-docked-sticky::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 -1px;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      linear-gradient(to top, var(--color-divider) 1px, transparent 1px),
+      linear-gradient(var(--color-workspace-material), var(--color-workspace-material)),
+      var(--color-canvas);
+    opacity: 0;
+    animation: workspace-docked-surface linear both;
+    animation-timeline: --workspace-docked;
+    animation-range: exit 0% exit 100%;
+  }
+}
+
+@keyframes workspace-docked-surface {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
 [data-header-covered='true'] > .mobile-floating-navigation {
   opacity: 1;
   transform: translateY(0);

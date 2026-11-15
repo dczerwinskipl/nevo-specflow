@@ -1,14 +1,12 @@
 import type { ArchetypeCatalogue, DocumentTree as Tree } from '@nevo/specflow-contracts/documents';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
+import { InlineNote, Spinner, Typography, cn, treeSectionHeaderClassName } from '@nevo/ui';
 import {
-  Button,
-  EmptyState,
-  InlineNote,
-  Spinner,
-  Typography,
-  treeSectionHeaderClassName,
-} from '@nevo/ui';
+  TreeSearchEmpty,
+  treePaneBlockClassName,
+  treePaneTextClassName,
+} from '../../../../shared/document-tree';
 import { InlineEntryEditor } from '../inline-entry/InlineEntryEditor';
 import type { InlineEntrySession } from '../inline-entry/useInlineEntry';
 import { DocumentNodeMenu, type DocumentNodeActions } from './DocumentNodeMenu';
@@ -86,7 +84,7 @@ export function ExplorerTree({
   return (
     <>
       {/* The root of the tree is a section header (no chevron, never collapses). */}
-      <div className={treeSectionHeaderClassName}>
+      <div className={cn(treeSectionHeaderClassName, 'mx-2')}>
         <Typography
           as="h2"
           id={rootHeadingId}
@@ -114,82 +112,86 @@ export function ExplorerTree({
           onChange={onFilterChange}
         />
       )}
+      {/* Attention notes: what the tree hides or could not read, before the list or the empty
+          result, so a long list never pushes them out of view. */}
       {filtering && filtered.hiddenMissing > 0 && (
         // A filter never hides a missing file without saying so.
-        <InlineNote className="px-2">
+        <InlineNote tone="attention" className={treePaneTextClassName}>
           {t('documents.tree.filter.hiddenMissing', { count: filtered.hiddenMissing })}
         </InlineNote>
       )}
+      {tree.skippedEntries > 0 && (
+        // A read failure, not a Close refusal: it stays out of the Close Alert.
+        <InlineNote tone="attention" className={treePaneTextClassName}>
+          {t('documents.tree.skipped', { count: tree.skippedEntries })}
+        </InlineNote>
+      )}
       {filtering && filtered.matches === 0 ? (
-        <EmptyState
-          icon="search"
+        <TreeSearchEmpty
           title={t('documents.tree.filter.noResults')}
           description={t('documents.tree.filter.noResultsDescription')}
-          actions={
-            <Button variant="secondary" onClick={() => onFilterChange(noTreeFilter)}>
-              {t('documents.tree.filter.clear')}
-            </Button>
-          }
+          clearLabel={t('documents.tree.filter.clear')}
+          onClear={() => onFilterChange(noTreeFilter)}
         />
       ) : null}
-      <DocumentTreeLevel
-        parent=""
-        top
-        labelledBy={rootHeadingId}
-        context={{
-          index,
-          catalogue,
-          active,
-          locked: busy || unknown,
-          expandAll: filtering,
-          flatRoot: !rows.folders.some((folder) => folder.path !== ''),
-          closed,
-          openedEmpty,
-          entry: inline.entry,
-          renderEntry: (entry, flat) => (
-            <InlineEntryEditor
-              key={entry.key}
-              entry={entry}
-              flat={flat}
-              busy={busy}
-              unknown={unknown}
-              inputRef={inline.inputRef}
-              onChange={inline.change}
-              onBlur={inline.blur}
-              onEnter={() => void inline.commit('enter')}
-              onEscape={inline.cancel}
-              onCheckResult={() => void inline.commit('retry')}
-            />
-          ),
-          renderMenu: (kind, path, id) => (
-            <DocumentNodeMenu
-              tree={tree}
-              kind={kind}
-              path={path}
-              id={id}
-              typeTitle={rowTypeTitle(id)}
-              locked={busy || unknown}
-              noteId={noteId(kind, path)}
-              actions={nodeActions}
-            />
-          ),
-          register: focus.register,
-          hintId: (path) => noteId('empty', path),
-          onToggleFolder,
-          onOpen,
-        }}
-      />
+      {/* The level renders nothing without rows (an empty result): then the inset takes no gap. */}
+      <div className={cn(treePaneBlockClassName, 'empty:hidden')}>
+        <DocumentTreeLevel
+          parent=""
+          top
+          labelledBy={rootHeadingId}
+          context={{
+            index,
+            catalogue,
+            active,
+            locked: busy || unknown,
+            expandAll: filtering,
+            flatRoot: !rows.folders.some((folder) => folder.path !== ''),
+            closed,
+            openedEmpty,
+            entry: inline.entry,
+            renderEntry: (entry, flat) => (
+              <InlineEntryEditor
+                key={entry.key}
+                entry={entry}
+                flat={flat}
+                busy={busy}
+                unknown={unknown}
+                inputRef={inline.inputRef}
+                onChange={inline.change}
+                onBlur={inline.blur}
+                onEnter={() => void inline.commit('enter')}
+                onEscape={inline.cancel}
+                onCheckResult={() => void inline.commit('retry')}
+              />
+            ),
+            renderMenu: (kind, path, id) => (
+              <DocumentNodeMenu
+                tree={tree}
+                kind={kind}
+                path={path}
+                id={id}
+                typeTitle={rowTypeTitle(id)}
+                locked={busy || unknown}
+                noteId={noteId(kind, path)}
+                actions={nodeActions}
+              />
+            ),
+            register: focus.register,
+            hintId: (path) => noteId('empty', path),
+            onToggleFolder,
+            onOpen,
+          }}
+        />
+      </div>
       {!tree.documents.length && !tree.dangling.length && (
-        <p className="text-body-sm text-content-muted">{t('documents.tree.addFirst')}</p>
-      )}
-      {tree.skippedEntries > 0 && (
-        // Neutral information: an entry the Runtime could not read is not a Close refusal.
-        <p className="px-2 text-body-sm text-content-muted">
-          {t('documents.tree.skipped', { count: tree.skippedEntries })}
+        <p className={cn('text-body-sm text-content-muted', treePaneTextClassName)}>
+          {t('documents.tree.addFirst')}
         </p>
       )}
+      {/* Quiet notes: a known limit that needs no action, after the list where it is cut. */}
       {tree.truncated && (
-        <p className="px-2 text-body-sm text-content-muted">{t('documents.tree.truncated')}</p>
+        <InlineNote className={treePaneTextClassName}>{t('documents.tree.truncated')}</InlineNote>
       )}
     </>
   );

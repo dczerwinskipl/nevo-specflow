@@ -9,16 +9,17 @@ import {
   PopoverTrigger,
   Separator,
 } from '@nevo/ui';
-import { TreeSearchField } from '../../../../shared/document-tree';
+import { TreeSearchBar, TreeSearchField } from '../../../../shared/document-tree';
+import { NO_TYPE, activeFilterCount, type TreeFilter } from './treeFilter';
 
 /** A choice row: at least 40 px high where the pointer is coarse (touch). */
 const choiceRow = 'pointer-coarse:min-h-10 pointer-coarse:items-center';
-import { NO_TYPE, activeFilterCount, type TreeFilter } from './treeFilter';
 
 /**
  * Narrows the tree: a search by file name or path and a multiple choice of types ("No type" for
- * unclassified files). Compact, above the tree: the search takes the row, the type choice is one
- * small button with the number of chosen types, and Clear filters appears only while a filter is on.
+ * unclassified files). Compact, above the tree: the search takes the `TreeSearchBar` (not sticky),
+ * the type choice is one small button with the number of chosen types, and the status row with
+ * Clear filters appears under it only while a filter is on. Both are parts of the tree block.
  */
 export function TreeFilterBar({
   filter,
@@ -48,8 +49,8 @@ export function TreeFilterBar({
     });
 
   return (
-    <div className="grid gap-1 px-1">
-      <div className="flex min-w-0 items-center gap-1">
+    <>
+      <TreeSearchBar>
         <TreeSearchField
           className="flex-1"
           label={t('documents.tree.filter.search')}
@@ -111,9 +112,10 @@ export function TreeFilterBar({
             </PopoverContent>
           </Popover>
         )}
-      </div>
+      </TreeSearchBar>
       {showReset && active > 0 && (
-        <div className="flex min-w-0 items-center justify-between gap-2 pl-2">
+        // The status on the text column, the button's edge on the filter button's edge (12 px).
+        <div className="flex min-w-0 items-center justify-between gap-2 pr-3 pl-4">
           <span role="status" className="min-w-0 truncate text-body-sm text-content-muted">
             {status}
           </span>
@@ -122,6 +124,6 @@ export function TreeFilterBar({
           </Button>
         </div>
       )}
-    </div>
+    </>
   );
 }

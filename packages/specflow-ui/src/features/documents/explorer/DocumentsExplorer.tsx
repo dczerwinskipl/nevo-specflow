@@ -5,6 +5,7 @@ import type {
 import { useTranslation } from 'react-i18next';
 import { useId, useImperativeHandle, useMemo, useRef, useState, type Ref } from 'react';
 import { Alert, Button, TooltipProvider } from '@nevo/ui';
+import { treeBlockClassName, treePaneBlockClassName } from '../../../shared/document-tree';
 import { typeTitle } from '../catalogue/documentTypePolicy';
 import { useOperationDialog } from './dialogs/useOperationDialog';
 import { DocumentOperationDialogs } from './dialogs/DocumentOperationDialogs';
@@ -192,7 +193,7 @@ export function DocumentsExplorer({
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="grid min-w-0 gap-1" aria-busy={busy || undefined}>
+      <div className={treeBlockClassName} aria-busy={busy || undefined}>
         <ExplorerTree
           tree={tree}
           catalogue={catalogue.data}
@@ -221,13 +222,15 @@ export function DocumentsExplorer({
           onOpen={select}
         />
         {error && !dialog.request && !typeRequest && (
-          <Alert tone="attention" title={error}>
-            {retry.length > 0 && (
-              <Button disabled={busy} onClick={operations.actions.retryImport}>
-                {resumable ? t('documents.tree.error.resume') : t('documents.tree.retryImport')}
-              </Button>
-            )}
-          </Alert>
+          <div className={treePaneBlockClassName}>
+            <Alert tone="attention" title={error}>
+              {retry.length > 0 && (
+                <Button disabled={busy} onClick={operations.actions.retryImport}>
+                  {resumable ? t('documents.tree.error.resume') : t('documents.tree.retryImport')}
+                </Button>
+              )}
+            </Alert>
+          </div>
         )}
         <DocumentImporter
           formats={tree.capabilities.formats}

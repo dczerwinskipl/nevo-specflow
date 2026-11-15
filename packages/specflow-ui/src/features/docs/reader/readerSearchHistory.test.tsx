@@ -84,6 +84,7 @@ function Reader() {
     <DocsSearchPanel
       workspaceId={workspaceId}
       historyEntry={historyEntryOf(location.state)}
+      scrollRoot={null}
       search={readerSearchOf(location)}
       onSearchChange={writeSearch}
       proposals={new Set()}

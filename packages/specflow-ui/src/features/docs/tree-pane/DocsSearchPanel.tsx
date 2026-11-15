@@ -3,13 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { Typography } from '@nevo/ui';
 import type { WorkspaceDocsSearch } from '@nevo/specflow-contracts/docs';
 import { useDocsSearch } from '../read-model';
-import { TreeSearchField } from '../../../shared/document-tree';
 import {
   docsReaderSearch,
   readerSearchMaxLength,
   type DocsReaderSearch,
 } from '../reader/readerSearch';
 import { DocsProposalsFilter } from './DocsProposalsFilter';
+import { DocsSearchField } from './DocsSearchField';
 import { DocsSearchResults } from './DocsSearchResults';
 import { answerAnnouncement, answerLines } from './searchStatusModel';
 import { useSearchWaiting } from './useSearchWaiting';
@@ -186,16 +186,14 @@ export function DocsSearchPanel({
   return (
     <>
       {/* Escape or the clear button empties the field and keeps focus there: the tree returns. */}
-      <div role="search" className="px-1">
-        <TreeSearchField
-          inputRef={field}
-          label={t('docs.search.label')}
-          maxLength={readerSearchMaxLength}
-          value={text}
-          onChange={setText}
-          onClear={clear}
-        />
-      </div>
+      <DocsSearchField
+        inputRef={field}
+        label={t('docs.search.label')}
+        maxLength={readerSearchMaxLength}
+        value={text}
+        onChange={setText}
+        onClear={clear}
+      />
       {searching ? (
         <>
           <div className="grid min-w-0 gap-1">
@@ -243,7 +241,11 @@ export function DocsSearchPanel({
             activeDocumentId={activeDocumentId}
             onClear={clear}
             onRetry={() => void search.refetch()}
-            onOpen={onOpen}
+            onOpen={(documentId, sectionId) => {
+              // Tapping a result closes the software keyboard; the search stays.
+              field.current?.blur();
+              onOpen(documentId, sectionId);
+            }}
           />
         </>
       ) : (

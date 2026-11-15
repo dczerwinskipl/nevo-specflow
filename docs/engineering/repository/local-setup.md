@@ -117,6 +117,42 @@ ai:
     model: qwen3-embedding:0.6b
 ```
 
+Optionally, for this model only, add the query instruction and a relevance cutoff, so that a query
+nothing in the documentation answers (a random string, a typo of nothing) returns no documents
+found by meaning only. This is a local, model-specific choice measured on this repository (issue
+#156), not a product default and not part of the committed configuration; it has to be measured
+again for another model or instruction
+([choosing a cutoff](../../reference/configuration/documentation-and-embeddings.md#relevance-cutoff-minsimilarity)):
+
+```yaml
+ai:
+  embeddings:
+    baseUrl: http://127.0.0.1:11434/v1
+    model: qwen3-embedding:0.6b
+    queryInstruction: "Instruct: Given a web search query, retrieve relevant passages that answer the query\nQuery: "
+    minSimilarity: 0.36
+```
+
+Measured with `pnpm docs:eval --random 150` (60 answerable questions and terms, 178 without an
+answer: 10 real questions and 168 nonsense strings, 150 of them generated), top 10:
+
+| Setting                                     | Recall@10 | MRR   | Partial words R@10 | Correct questions MRR | Without an answer, with a vector-only result |
+| ------------------------------------------- | --------- | ----- | ------------------ | --------------------- | -------------------------------------------- |
+| no instruction, no floor                    | 0.753     | 0.592 | 0.400              | 0.717                 | 167 of 178                                   |
+| earlier instruction (`Given a question, …`) | 0.850     | 0.625 | 0.650              | 0.708                 | 168 of 178                                   |
+| earlier instruction, floor 0.52             | 0.825     | 0.635 | 0.550              | 0.736                 | 32 of 178                                    |
+| instruction above, no floor                 | 0.925     | 0.707 | 0.900              | 0.740                 | 167 of 178                                   |
+| **instruction above, floor 0.36**           | 0.875     | 0.708 | 0.600              | 0.757                 | 19 of 178 (no real question)                 |
+| instruction above, floor 0.42               | 0.833     | 0.655 | 0.500              | 0.734                 | 0 of 178                                     |
+
+The instruction above (the model's own retrieval task line, then a line break and `Query: `) ranks
+best on its own; with it the similarity scale is about 0.1 lower than with the earlier one, so a
+floor from another instruction does not apply. Floor 0.36 keeps correct questions and typos as
+they are and removes nine in ten nonsense results; its cost is partial words: two of ten (`commi`,
+`autoryz`) lose every expected document, and from 0.38 on more of them do. 0.42 removes every
+nonsense result but loses six questions, mostly partial words. Without a floor, everything stays as
+before: every query gets results found by meaning.
+
 Without a local endpoint, `pnpm docs:semantic status` exits 1 (semantic search is enabled but
 unavailable) while `pnpm docs:search` keeps answering lexically; that is expected.
 
@@ -148,7 +184,9 @@ when the index is not up to date afterwards, for example while the endpoint is d
 To measure search quality after changing chunking, ranking or the documents, run
 `pnpm docs:eval` against the current index (`pnpm docs:semantic index` first). It searches every
 question of `tools/docs/eval/questions.yaml` like `pnpm docs:search`, embeds nothing, and reports
-Recall@5, Recall@10, MRR and the proposals in the top 10. It is a manual check,
+Recall@5, Recall@10, MRR per language and question class, the false positives of questions without
+an answer and the proposals in the top 10; `--min-similarity`, `--query-instruction` and `--random`
+calibrate a relevance cutoff. It is a manual check,
 not part of CI; see [`tools/docs`](../../../tools/docs/README.md#retrieval-eval).
 
 ## Running slow tests on Linux

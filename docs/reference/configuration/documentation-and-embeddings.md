@@ -236,7 +236,7 @@ ai:
     baseUrl: http://127.0.0.1:11434/v1
     model: qwen3-embedding:0.6b
     queryInstruction: "Instruct: Given a web search query, retrieve relevant passages that answer the query\nQuery: "
-    minSimilarity: 0.40
+    minSimilarity: 0.36
 ```
 
 There is **no default**, deliberately: absent, every section with a positive similarity is fused,

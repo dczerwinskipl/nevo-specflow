@@ -424,6 +424,8 @@ flow, no gap), where the bar sits at rest; the tree block is the timeline scope
   from the pane surface only by the pane's faint top-left gradient. Browsers on this path (MDN
   browser-compat-data, 2026-11-15: `animation-timeline` and `timeline-scope` from Chrome and Edge
   115-116, Safari 26, Firefox 159): Firefox before 159, Safari before 26, Chromium before 116.
+  Checked: Firefox 159 (Playwright) takes the scroll-driven path; the fallback was inspected in
+  Chromium with the timeline forced off (rest and docked at 390).
 
 **Empty search result (`TreeSearchEmpty`).** One variant for a search or filter that leaves nothing
 in a tree pane: `EmptyState variant="inline"`, no icon, its text on the text column (block inset

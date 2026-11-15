@@ -9,6 +9,13 @@ import readerMeta from '../../features/docs/reader/DocsReader.stories';
  * with a stylesheet that approximates the proposed shared geometry ("after"). Production will get
  * the geometry from shared components (`TreeSearchBar`, `TreeSearchEmpty`, the pane stack), not
  * from CSS overrides; the overrides only exist to compare the result on the real screens.
+ *
+ * Approximations of this mock (not part of the proposal): the Documentation search and its list are
+ * siblings in a 12 px grid here, so one negative margin pulls the list up to the 4 px tree-block
+ * gap; production wraps the search and the list in one `gap-1` grid and has no negative margin.
+ * The stuck state is set by a scroll listener here; production uses the `useStuck` sentinel. The
+ * gaps around the Documentation status row ("6 wyników" and the proposals checkbox) are out of
+ * scope and unchanged.
  */
 
 const Documents = documentsMeta.component;
@@ -39,9 +46,14 @@ const proposalCss = `
 [data-mock-docs-pane] > :not([role="search"]) {
   margin-inline: 8px;
 }
-/* Mock only: production wraps search + list in one tree block with a 4 px gap. */
+/* MOCK APPROXIMATION: production wraps search + list in one gap-1 grid (no negative margin). */
 [data-mock-docs-pane] > [role="search"] + * {
   margin-top: -8px;
+}
+/* Empty result text on the pane's text column (16 px from the pane edge): the Documentation
+   results wrapper already adds px-2, so the empty state adds no inline padding of its own there. */
+[data-mock-docs-pane] [data-empty-state] {
+  padding-left: 0 !important;
 }
 /* Documents: the search row of the filter bar is the same container (4 px block padding). */
 .grid.gap-1.px-1 > .flex:has(input[type="search"]) {

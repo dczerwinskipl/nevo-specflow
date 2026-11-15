@@ -13,6 +13,12 @@ export type CreateFailure =
    * Field-level: the form flags the branch input, refreshing the options cannot help.
    */
   | { kind: 'branch-invalid' }
+  /**
+   * The chosen "Start from" commit has no committed SpecFlow configuration
+   * (`GIT_BASE_CONFIG_MISSING`): nothing was created; choosing another start, or committing the
+   * configuration first, resolves it. Not a stale option.
+   */
+  | { kind: 'base-config-missing' }
   | { kind: 'operation-conflict' }
   /** The project Runtime CREATE_CONFLICT: the name (slug) may be taken or the state changed. */
   | { kind: 'name-conflict' }

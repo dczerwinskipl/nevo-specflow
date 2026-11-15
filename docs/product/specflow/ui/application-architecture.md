@@ -413,6 +413,14 @@ Normal product execution is single-origin. `nevo-specflow start` serves the buil
 `http://127.0.0.1:4318` by default and Runtime endpoints under `/api` on that same origin.
 OIDC callbacks and browser redirects therefore use the same product origin users open in the browser.
 
+The Runtime uses `@fastify/compress` to serve compressible built UI files as Brotli or gzip
+when requested by the browser. Files produced by Vite under `/assets/` that contain a
+content hash are cached for a year (`immutable`); other assets, `index.html` and
+client routes use `no-cache`, so a new build is discovered on the next load.
+Unknown paths under `/assets/` return 404 rather than the SPA HTML fallback.
+Compression applies only to the UI, not to API responses or SSE. This reduces
+transfer over slow links, for example from a phone connected to a workstation.
+
 When developing the UI package directly, Vite may run at `http://127.0.0.1:5173` and proxy
 `/api` to Runtime on `http://127.0.0.1:4318`. Port 5173 is a development convenience only; it
 is not the normal installed-product topology or the address users should open after

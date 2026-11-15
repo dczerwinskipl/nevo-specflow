@@ -1,3 +1,5 @@
+import { brotliDecompressSync, gunzipSync } from 'node:zlib';
+
 import Fastify from 'fastify';
 import { describe, expect, it } from 'vitest';
 
@@ -60,6 +62,78 @@ describe('Runtime product web surface', () => {
 
       const unknownApi = await app.inject({ method: 'GET', url: '/api/unknown' });
       expect(unknownApi.statusCode).toBe(404);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('compresses only built UI files and caches only content-hashed assets', async () => {
+    const script = `console.log(${JSON.stringify('specflow '.repeat(400))});`;
+    const html = `<!doctype html><html><body>${'specflow '.repeat(400)}</body></html>`;
+    const app = await createRuntimeApp(oidcConfig({ 'demo@example.com': 'demo-user' }), {
+      webApp: {
+        indexHtml: { body: Buffer.from(html), contentType: 'text/html; charset=utf-8' },
+        assets: new Map([
+          [
+            '/assets/app-a1b2c3d4.js',
+            { body: Buffer.from(script), contentType: 'text/javascript; charset=utf-8' },
+          ],
+          [
+            '/assets/legacy.js',
+            { body: Buffer.from(script), contentType: 'text/javascript; charset=utf-8' },
+          ],
+        ]),
+      },
+    });
+
+    try {
+      const brotli = await app.inject({
+        method: 'GET',
+        url: '/assets/app-a1b2c3d4.js',
+        headers: { 'accept-encoding': 'gzip, br' },
+      });
+      expect(brotli.statusCode).toBe(200);
+      expect(brotli.headers['content-encoding']).toBe('br');
+      expect(brotli.headers['cache-control']).toBe('public, max-age=31536000, immutable');
+      expect(brotli.headers.vary).toContain('Accept-Encoding');
+      expect(brotliDecompressSync(brotli.rawPayload).toString()).toBe(script);
+
+      const gzip = await app.inject({
+        method: 'GET',
+        url: '/assets/app-a1b2c3d4.js',
+        headers: { 'accept-encoding': 'br;q=0, gzip' },
+      });
+      expect(gzip.headers['content-encoding']).toBe('gzip');
+      expect(gunzipSync(gzip.rawPayload).toString()).toBe(script);
+
+      const plain = await app.inject({ method: 'GET', url: '/assets/app-a1b2c3d4.js' });
+      expect(plain.headers['content-encoding']).toBeUndefined();
+      expect(plain.headers.vary).toContain('Accept-Encoding');
+      expect(plain.body).toBe(script);
+
+      const unhashed = await app.inject({ method: 'GET', url: '/assets/legacy.js' });
+      expect(unhashed.headers['cache-control']).toBe('no-cache');
+
+      const missing = await app.inject({ method: 'GET', url: '/assets/missing.js' });
+      expect(missing.statusCode).toBe(404);
+      expect(missing.headers['content-type']).toMatch(/application\/json/u);
+
+      const index = await app.inject({
+        method: 'GET',
+        url: '/docs',
+        headers: { 'accept-encoding': 'br' },
+      });
+      expect(index.headers['cache-control']).toBe('no-cache');
+      expect(index.headers['content-encoding']).toBe('br');
+      expect(brotliDecompressSync(index.rawPayload).toString()).toBe(html);
+
+      const api = await app.inject({
+        method: 'GET',
+        url: '/api/runtime/info',
+        headers: { 'accept-encoding': 'br' },
+      });
+      expect(api.statusCode).toBe(200);
+      expect(api.headers['content-encoding']).toBeUndefined();
     } finally {
       await app.close();
     }

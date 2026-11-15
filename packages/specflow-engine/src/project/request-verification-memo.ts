@@ -37,6 +37,9 @@ interface VerificationScope {
 }
 const scope = new AsyncLocalStorage<VerificationScope>();
 
+/** Prefix of the memo keys that hold Project Home answers (`home.ts`), as opposed to a checkout's. */
+export const HOME_VERIFICATION_KEY = 'home:';
+
 export function runReadRequest<T>(work: () => Promise<T>): Promise<T> {
   const current = scope.getStore();
   // A read inside a read keeps its scope; a read inside a workflow mutation still reads without Git.
@@ -115,4 +118,27 @@ export function provenInOperation<T>(key: string): T | undefined {
 /** Record evidence just proved with Git for the rest of the workflow mutation (no-op outside one). */
 export function rememberProvenInOperation(key: string, value: unknown): void {
   scope.getStore()?.proven?.set(key, value);
+}
+
+/**
+ * Forget what the current workflow mutation verified, at a later control-lock admission. With
+ * `keepHome` the Project Home answers stay (its pinned physical evidence is unchanged) and only the
+ * checkout verifications go: a checkout can change between lock sections without changing that
+ * evidence (its identity marker, its ignore rules). Without it everything goes, proofs included.
+ */
+export function forgetOperationVerification(options: { readonly keepHome: boolean }): void {
+  const current = scope.getStore();
+  if (current?.gitBacked === undefined) {
+    return;
+  }
+
+  for (const key of [...(current.memo?.keys() ?? [])]) {
+    if (!options.keepHome || !key.startsWith(HOME_VERIFICATION_KEY)) {
+      current.memo?.delete(key);
+    }
+  }
+
+  if (!options.keepHome) {
+    current.proven?.clear();
+  }
 }

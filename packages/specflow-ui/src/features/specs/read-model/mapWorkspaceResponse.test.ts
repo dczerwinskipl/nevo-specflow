@@ -23,15 +23,6 @@ describe('Workspace response mapping', () => {
     expect(mapped.taskGroups[0]?.tasks[0]).toBe(task);
     expect(mapped.id).toBe('api-integration');
   });
-  it('keeps backend execution unavailability reason as a semantic code', async () => {
-    const dto = await createWorkspaceIntegrationApi().getSpecificationWorkspace('api-integration');
-    const mapped = mapWorkspaceResponse(dto);
-    expect(mapped.executionReadiness).toEqual({
-      canExecute: false,
-      reasonCode: 'not_implemented',
-      blockers: [],
-    });
-  });
 
   it('carries the startSession action, the section bound and the untitled label', async () => {
     const dto = await createWorkspaceIntegrationApi().getSpecificationWorkspace('api-integration');

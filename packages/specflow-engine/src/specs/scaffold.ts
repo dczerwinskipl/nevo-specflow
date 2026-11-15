@@ -412,7 +412,6 @@ function buildManifest(
     location: 'active',
     priority: 10,
     created: input.created,
-    tasks: [],
   };
 }
 

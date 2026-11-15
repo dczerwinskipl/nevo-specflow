@@ -46,12 +46,15 @@ export const InlineNote = forwardRef<HTMLParagraphElement, InlineNoteProps>(func
       {...props}
     >
       {resolvedIcon ? (
-        <Icon
-          name={resolvedIcon}
-          size="sm"
-          aria-hidden="true"
-          className={cn('mt-0.5 shrink-0', toneIconClasses[tone])}
-        />
+        // One line box tall: the icon is centred on the first line, however many lines follow.
+        <span className="flex h-[1lh] shrink-0 items-center">
+          <Icon
+            name={resolvedIcon}
+            size="sm"
+            aria-hidden="true"
+            className={toneIconClasses[tone]}
+          />
+        </span>
       ) : null}
       <span className="min-w-0">{children}</span>
     </p>

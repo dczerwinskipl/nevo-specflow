@@ -21,6 +21,7 @@ import { invalidateSpecificationWorkspace } from './read-model/queries';
 import type { SpecificationWorkspaceData } from './read-model/model';
 import { SpecificationWorkspace } from './workspace/SpecificationWorkspace';
 import { useSpecificationWorkspace } from './read-model/useSpecificationWorkspace';
+import type { TaskSection, TasksPageTarget } from './workspace/WorkspaceContext';
 
 export interface SpecificationSurfaceProps {
   readonly specId: string;
@@ -29,11 +30,12 @@ export interface SpecificationSurfaceProps {
   readonly onOpenSessions?: () => void;
   readonly onOpenRepository?: () => void;
   readonly onOpenChanges?: (source?: 'base' | 'uncommitted' | 'mr') => void;
-  readonly onOpenTask?: (taskId: string) => void;
+  readonly onOpenTask?: (taskId: string, section?: TaskSection) => void;
+  /** Opens the Tasks page, optionally filtered to the blocking Tasks or at one group. */
+  readonly onOpenTasks?: (target?: TasksPageTarget) => void;
   readonly onOpenFullDocument?: (documentId: string) => void;
   readonly data?: SpecificationWorkspaceData;
   readonly onRefresh?: () => void | Promise<void>;
-  readonly onExecute?: (agent: string, tasks: readonly string[]) => void | Promise<void>;
   readonly onOpenSession?: (sessionId: string) => void;
   readonly onNewSession?: () => void;
 }
@@ -61,7 +63,7 @@ function SpecificationSurfaceConnected({
   onOpenTask,
   onOpenFullDocument,
   onRefresh,
-  onExecute,
+  onOpenTasks,
   onOpenSession,
   onNewSession,
 }: SpecificationSurfaceProps) {
@@ -186,7 +188,7 @@ function SpecificationSurfaceConnected({
       onOpenTask={onOpenTask}
       onOpenFullDocument={onOpenFullDocument}
       onRefresh={onRefresh ?? refreshWorkspace}
-      onExecute={onExecute}
+      onOpenTasks={onOpenTasks}
       onOpenSession={onOpenSession}
       onNewSession={onNewSession}
       refreshFailed={isError && Boolean(data)}

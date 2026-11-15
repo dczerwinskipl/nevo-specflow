@@ -72,6 +72,26 @@ export const aiSemanticSearchBoundaries = [
   ]),
 ];
 
+/**
+ * `workflow`: the product-neutral workflow kernel (ADR 0012). It is a pure decision library over
+ * values, so its imports are an allowlist: its own relative modules, `node:crypto` (revision hash),
+ * `node:util` (deep equality) and, in tests, `vitest`. Everything else (workspace packages, the
+ * file system, network, process, UI/HTTP/CLI frameworks) is refused. Hosts persist what it returns.
+ */
+export const workflowBoundaries = [
+  restrict([
+    {
+      regex: String.raw`^(?!\.{1,2}(?:/|$))(?!node:(?:crypto|util)$)(?!vitest$)`,
+      message:
+        'The workflow kernel is pure: it may import only its own modules, node:crypto and node:util (and vitest in tests).',
+    },
+    {
+      regex: String.raw`^(?:\.\./){2,}`,
+      message: 'The workflow kernel must not reach outside its package by relative path.',
+    },
+  ]),
+];
+
 export const specflowContractsBoundaries = [
   restrict([
     {

@@ -30,6 +30,11 @@ export const OPENAPI_TAGS = [
   },
   { name: 'Tasks', description: 'Task reads of a Specification: detail, history and resources.' },
   {
+    name: 'Workflow',
+    description:
+      'Manual execution of Specification and Task workflows: the actions the owner may take, start, finish, return and abandon.',
+  },
+  {
     name: 'Operations',
     description: 'Status and progress of long-running operations across features.',
   },

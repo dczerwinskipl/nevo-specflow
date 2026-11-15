@@ -14,7 +14,7 @@ import {
   deriveFolders,
   findCaseCollisions,
   foldPathKey,
-  isReservedRootName,
+  isReservedSpecificationPath,
 } from '../document-rules/document-paths';
 import { folderRevisionOf } from './write/folder-revision';
 import { validateDocuments } from './document-validation';
@@ -149,9 +149,7 @@ const CAPABILITY = { kind: 'capability' } as const;
 
 export function projectDocumentTree(input: TreeProjectionInput): DocumentTree {
   const { manifest } = input;
-  const files = input.files.filter(
-    (file) => !(!file.path.includes('/') && isReservedRootName(file.path)),
-  );
+  const files = input.files.filter((file) => !isReservedSpecificationPath(file.path));
   const filePaths = files.map((file) => file.path);
   const context: AvailabilityContext = {
     archived: input.location === 'archive',

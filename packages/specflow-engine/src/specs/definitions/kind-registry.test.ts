@@ -7,7 +7,7 @@ import {
   registerDefinitionKind,
   type DefinitionKind,
 } from './kind-registry';
-import { createDefaultDefinitionRegistry } from './kinds';
+import { createDefaultDefinitionRegistry } from '../../definitions/shipped-registry';
 import { loadDefinitions } from './loader';
 import { documentTypeFile, sampleProject, toYaml, MemoryDefinitionSource } from './test-support';
 

@@ -1,15 +1,22 @@
 import { describe, expect, it } from 'vitest';
 
 import type { TaskType, WorkflowDefinition } from '../definitions/model';
-import type { TaskRecord } from '../state/model';
+import { newRun } from '@nevo/workflow';
+
+import type { ExecutionTask, WorkflowActor } from '../state/model';
 import {
   LEFT_OUT_OF_BREAKDOWN,
   allTasksClosed,
   applyTaskDecisions,
   applyTaskEffects,
+  blockingTasks,
   decideTaskStatus,
+  effectiveTaskTypes,
   materializeTasks,
+  openTasks,
+  resolveTaskType,
   taskReadiness,
+  tasksOpenAtCompletion,
   tasksStuck,
   type MaterializeTasksInput,
   type TaskDecision,
@@ -21,10 +28,10 @@ const workflow: WorkflowDefinition = {
   version: 1,
   title: 'Task',
   description: 'Task.',
-  subject: 'task',
   entryStep: 'implement',
   steps: [],
   returns: [],
+  annotations: { subject: 'task' },
 };
 const implementation: TaskType = {
   id: 'implementation',
@@ -44,7 +51,7 @@ const input = (
   allowedTypes: ['*'],
   taskType: (id) => (id === 'implementation' ? implementation : undefined),
   workflow: (id) => (id === 'task-standard' ? workflow : undefined),
-  origin: { step: 'breakdown', attempt: 1 },
+  origin: { kind: 'produced', step: 'breakdown', attempt: 1 },
   at: 'now',
   ...overrides,
 });
@@ -59,10 +66,10 @@ const proposal = (id: string, dependsOn: string[] = []): TaskProposal => ({
   dependsOn,
 });
 
-const ready = (task: TaskRecord): TaskRecord => ({ ...task, status: 'ready' });
+const ready = (task: ExecutionTask): ExecutionTask => ({ ...task, status: 'ready' });
 
 describe('materializeTasks', () => {
-  it('creates draft Tasks pinned to their type workflow', () => {
+  it('creates draft Tasks without a run: their first start pins the workflow', () => {
     const result = materializeTasks(input([proposal('api')]));
 
     expect(result.created).toEqual(['api']);
@@ -72,18 +79,21 @@ describe('materializeTasks', () => {
         type: 'implementation',
         status: 'draft',
         origin: { step: 'breakdown', attempt: 1 },
-        run: { workflow: { id: 'task-standard' }, position: { state: 'not-started' } },
       },
     ]);
+    expect(result.changed[0]?.run).toBeUndefined();
   });
 
   it('takes the list as every draft: revises listed drafts and cancels the others', () => {
-    const [api, docs] = drafts([proposal('api'), proposal('docs')]) as [TaskRecord, TaskRecord];
+    const [api, docs] = drafts([proposal('api'), proposal('docs')]) as [
+      ExecutionTask,
+      ExecutionTask,
+    ];
     const core = ready(drafts([proposal('core')])[0]!);
     const result = materializeTasks(
       input([{ ...proposal('api', ['core']), title: 'API v2' }, proposal('web', ['api'])], {
         existing: [api, docs, core],
-        origin: { step: 'breakdown', attempt: 2 },
+        origin: { kind: 'produced', step: 'breakdown', attempt: 2 },
       }),
     );
 
@@ -178,7 +188,122 @@ describe('materializeTasks', () => {
   });
 });
 
+describe('the drafts a producing step owns (D06)', () => {
+  const manual = (id: string): ExecutionTask => ({
+    specId: 'spec',
+    taskId: id,
+    title: id.toUpperCase(),
+    type: 'implementation',
+    status: 'draft',
+    dependsOn: [],
+    origin: { kind: 'manual', actorId: 'owner' },
+    documents: [{ id: 'task', path: 'task.md', type: 'task' }],
+  });
+  const manualDrafts = [manual('m1'), manual('m2'), manual('m3')];
+
+  it('keeps every manual draft when a breakdown drafts nothing', () => {
+    expect(materializeTasks(input([], { existing: manualDrafts }))).toEqual({
+      changed: [],
+      created: [],
+    });
+  });
+
+  it('revises and cancels only the drafts of the same step, from any earlier attempt', () => {
+    const own = drafts([proposal('api'), proposal('docs')]);
+    const other = drafts([proposal('spike')], {
+      origin: { kind: 'produced', step: 'research', attempt: 1 },
+    });
+    const result = materializeTasks(
+      input([{ ...proposal('api', ['m1']), title: 'API v2' }], {
+        existing: [...own, ...other, ...manualDrafts],
+        origin: { kind: 'produced', step: 'breakdown', attempt: 3 },
+      }),
+    );
+
+    expect(result.created).toEqual([]);
+    expect(result.changed).toMatchObject([
+      { taskId: 'api', title: 'API v2', dependsOn: ['m1'], origin: { attempt: 3 } },
+      { taskId: 'docs', status: 'cancelled', statusChange: { reason: LEFT_OUT_OF_BREAKDOWN } },
+    ]);
+  });
+
+  it.each([
+    ['a manual draft', manual('m1'), 'created by hand'],
+    [
+      "another step's draft",
+      drafts([proposal('m1')], { origin: { kind: 'produced', step: 'research', attempt: 1 } })[0]!,
+      'drafted by the step "research"',
+    ],
+  ])('refuses to list %s', (_name, existing, message) => {
+    expect(() => materializeTasks(input([proposal('m1')], { existing: [existing] }))).toThrow(
+      expect.objectContaining({
+        code: 'WORKFLOW_INPUT_INVALID',
+        message: expect.stringContaining(message) as unknown,
+      }),
+    );
+  });
+});
+
+describe('the effective Task Type policy (D04)', () => {
+  it.each([
+    [
+      'the run snapshot wins over the live binding',
+      { specification: { taskTypes: ['a'] }, binding: { workflow: 'w', taskTypes: ['b'] } },
+      ['a'],
+    ],
+    [
+      'the run snapshot allowing every type',
+      { specification: { taskTypes: ['*'] }, binding: { workflow: 'w', taskTypes: ['b'] } },
+      ['*'],
+    ],
+    ['no run: the live binding', { binding: { workflow: 'w', taskTypes: ['b'] } }, ['b']],
+    ['no run: a binding without taskTypes', { binding: { workflow: 'w' } }, ['*']],
+    ['no run and no binding', {}, ['*']],
+  ] as const)('%s', (_name, value, expected) => {
+    expect(effectiveTaskTypes(value as Parameters<typeof effectiveTaskTypes>[0])).toEqual(expected);
+  });
+
+  const resolve = (type: string, allowed: readonly string[], workflows = true) =>
+    resolveTaskType({
+      type,
+      allowed: allowed,
+      taskType: (id) => (id === 'implementation' ? implementation : undefined),
+      workflow: (id) => (workflows && id === 'task-standard' ? workflow : undefined),
+    });
+
+  it('resolves an allowed type to its Task workflow', () => {
+    expect(resolve('implementation', ['implementation']).workflow.id).toBe('task-standard');
+  });
+
+  it.each([
+    ['an undefined type', () => resolve('research', ['*']), 'WORKFLOW_DEFINITION_MISSING'],
+    [
+      'a type the policy does not allow',
+      () => resolve('implementation', ['ui']),
+      'WORKFLOW_TASK_TYPE_NOT_ALLOWED',
+    ],
+    [
+      'a type whose workflow is missing',
+      () => resolve('implementation', ['*'], false),
+      'WORKFLOW_DEFINITION_MISSING',
+    ],
+  ])('refuses %s', (_name, run, code) => {
+    expect(run).toThrow(expect.objectContaining({ code }));
+  });
+});
+
 describe('leaving out a draft another Task depends on', () => {
+  it('refuses keeping a draft whose dependency the same finish cancels, naming each pair', () => {
+    const existing = drafts([proposal('api'), proposal('web', ['api'])]);
+
+    expect(() => materializeTasks(input([proposal('web', ['api'])], { existing }))).toThrow(
+      expect.objectContaining({
+        code: 'WORKFLOW_INPUT_INVALID',
+        draftConflicts: [{ kept: 'web', dependsOnCancelled: 'api' }],
+      }),
+    );
+  });
+
   it('cancels the draft; the dependent Task is then stuck (tasksStuck), not refused', () => {
     const existing = drafts([proposal('api'), proposal('web', ['api'])]).map((task) =>
       task.taskId === 'web' ? ready(task) : task,
@@ -193,25 +318,29 @@ describe('leaving out a draft another Task depends on', () => {
 
 describe('Task status, readiness and the wait', () => {
   const [draftApi, draftScreen] = drafts([proposal('api'), proposal('screen', ['api'])]) as [
-    TaskRecord,
-    TaskRecord,
+    ExecutionTask,
+    ExecutionTask,
   ];
   const api = ready(draftApi);
   const screen = ready(draftScreen);
   const attempt = { step: 'implement', attempt: 1, sequence: 1, startedAt: 'now' };
-  const started: TaskRecord = {
+  const started: ExecutionTask = {
     ...api,
     run: {
-      ...api.run,
+      ...newRun<WorkflowActor>(workflow),
       position: { state: 'active', step: 'implement', attempt: 1 },
       attempts: [attempt],
     },
   };
-  const ended = (task: TaskRecord, outcome: 'completed' | 'abandoned'): TaskRecord => ({
+  const ended = (task: ExecutionTask, outcome: 'completed' | 'abandoned'): ExecutionTask => ({
     ...task,
-    run: { ...task.run, position: { state: 'terminal', outcome }, attempts: [attempt] },
+    run: {
+      ...newRun<WorkflowActor>(workflow),
+      position: { state: 'terminal', outcome },
+      attempts: [attempt],
+    },
   });
-  const decide = (task: TaskRecord, status: TaskDecision['status'], reason?: string) =>
+  const decide = (task: ExecutionTask, status: TaskDecision['status'], reason?: string) =>
     decideTaskStatus(
       task,
       { taskId: task.taskId, status, ...(reason !== undefined ? { reason } : {}) },
@@ -223,7 +352,7 @@ describe('Task status, readiness and the wait', () => {
     expect(applyTaskEffects([draftApi], [])).toEqual([]);
   });
 
-  it.each<[TaskRecord['status'], TaskDecision['status']]>([
+  it.each<[ExecutionTask['status'], TaskDecision['status']]>([
     ['draft', 'ready'],
     ['draft', 'cancelled'],
     ['ready', 'on-hold'],
@@ -237,25 +366,29 @@ describe('Task status, readiness and the wait', () => {
     });
   });
 
-  it.each<[string, TaskRecord, TaskDecision['status']]>([
+  it.each<[string, ExecutionTask, TaskDecision['status']]>([
     ['a cancelled Task', { ...api, status: 'cancelled' }, 'ready'],
     ['a draft put on hold', draftApi, 'on-hold'],
     ['a decision that changes nothing', api, 'ready'],
     ['an unknown status', api, 'done' as TaskDecision['status']],
     ['a Task whose run ended', ended(api, 'completed'), 'cancelled'],
-    ['a running Task cancelled', started, 'cancelled'],
   ])('refuses %s', (_name, task, status) => {
     expect(() => decide(task, status)).toThrow(
       expect.objectContaining({ code: 'WORKFLOW_INPUT_INVALID' }),
     );
   });
 
-  it('puts a running Task on hold', () => {
-    expect(decide(started, 'on-hold')).toMatchObject({
-      status: 'on-hold',
-      run: { position: { state: 'active' } },
-    });
-  });
+  it.each<TaskDecision['status']>(['on-hold', 'cancelled'])(
+    'refuses to set a Task with an active attempt %s (active-attempt)',
+    (status) => {
+      expect(() => decide(started, status)).toThrow(
+        expect.objectContaining({
+          code: 'WORKFLOW_TASK_BLOCKED',
+          message: expect.stringContaining('active-attempt') as unknown,
+        }),
+      );
+    },
+  );
 
   it('applies decisions as a whole and refuses an unknown Task or two decisions for one', () => {
     expect(
@@ -307,6 +440,71 @@ describe('Task status, readiness and the wait', () => {
     expect(tasksStuck([ended(api, 'completed')], ['screen'])).toBe(true);
   });
 
+  it('names the Tasks to resolve when stuck, with why each blocks, never a Task that only waits', () => {
+    const third = ready(drafts([proposal('docs', ['screen'])], { existing: [api, screen] })[0]!);
+    // `screen` waits for the draft; `docs` waits for `screen`: only the draft is to resolve.
+    expect(blockingTasks([draftApi, screen, third], [])).toEqual([
+      { taskId: 'api', cause: 'draft' },
+    ]);
+    expect(blockingTasks([{ ...api, status: 'on-hold' }, screen], [])).toEqual([
+      { taskId: 'api', cause: 'on-hold' },
+    ]);
+    // A cancelled or abandoned dependency: the dependent itself is to resolve.
+    expect(blockingTasks([{ ...api, status: 'cancelled' }, screen], [])).toEqual([
+      { taskId: 'screen', cause: 'dependency-unsatisfiable' },
+    ]);
+    expect(blockingTasks([ended(api, 'abandoned'), screen, third], [])).toEqual([
+      { taskId: 'screen', cause: 'dependency-unsatisfiable' },
+    ]);
+    // A broken dependency: the broken Task is listed, not its dependent.
+    expect(blockingTasks([screen], ['api'])).toEqual([{ taskId: 'api', cause: 'broken' }]);
+    expect(
+      blockingTasks([ended(api, 'completed'), { ...screen, status: 'cancelled' }], []),
+    ).toEqual([]);
+  });
+
+  it('names every open Task with why it is open; a cancelled or ended Task is closed', () => {
+    const third = ready(drafts([proposal('docs', ['screen'])], { existing: [api, screen] })[0]!);
+    expect(openTasks([api, screen], [])).toEqual([
+      { taskId: 'api', cause: 'ready' },
+      { taskId: 'screen', cause: 'waiting' },
+    ]);
+    expect(openTasks([started, screen, third], ['old'])).toEqual([
+      { taskId: 'api', cause: 'active' },
+      { taskId: 'docs', cause: 'waiting' },
+      { taskId: 'old', cause: 'broken' },
+      { taskId: 'screen', cause: 'waiting' },
+    ]);
+    expect(openTasks([draftApi, { ...screen, status: 'on-hold' }], [])).toEqual([
+      { taskId: 'api', cause: 'draft' },
+      { taskId: 'screen', cause: 'on-hold' },
+    ]);
+    expect(openTasks([{ ...api, status: 'cancelled' }, screen], [])).toEqual([
+      { taskId: 'screen', cause: 'dependency-unsatisfiable' },
+    ]);
+    // A Task whose own workflow ended it, completed or abandoned, is closed.
+    expect(openTasks([ended(api, 'abandoned'), { ...ended(screen, 'completed') }], [])).toEqual([]);
+  });
+
+  it('refuses only a Specification transition to terminal completed while Tasks are open', () => {
+    const completed = { kind: 'terminal', outcome: 'completed' } as const;
+    const spec = { kind: 'specification' } as const;
+    expect(tasksOpenAtCompletion(spec, completed, [api], [])).toEqual([
+      { taskId: 'api', cause: 'ready' },
+    ]);
+    expect(tasksOpenAtCompletion(spec, completed, [], ['api'])).toEqual([
+      { taskId: 'api', cause: 'broken' },
+    ]);
+    expect(
+      tasksOpenAtCompletion(spec, { kind: 'terminal', outcome: 'abandoned' }, [api], []),
+    ).toEqual([]);
+    expect(tasksOpenAtCompletion(spec, { kind: 'step' }, [api], [])).toEqual([]);
+    expect(tasksOpenAtCompletion({ kind: 'task' }, completed, [api], [])).toEqual([]);
+    expect(tasksOpenAtCompletion(spec, completed, [{ ...api, status: 'cancelled' }], [])).toEqual(
+      [],
+    );
+  });
+
   it('closes the wait when every Task ended or was cancelled', () => {
     expect(allTasksClosed([], [])).toBe(true);
     expect(allTasksClosed([ended(api, 'completed'), { ...screen, status: 'cancelled' }], [])).toBe(
@@ -323,9 +521,12 @@ describe('Task status, readiness and the wait', () => {
       kind: 'dependencies',
       waitingFor: ['api'],
     });
-    const done: TaskRecord = {
+    const done: ExecutionTask = {
       ...api,
-      run: { ...api.run, position: { state: 'terminal', outcome: 'completed' } },
+      run: {
+        ...newRun<WorkflowActor>(workflow),
+        position: { state: 'terminal', outcome: 'completed' },
+      },
     };
     expect(taskReadiness(screen, [done, screen])).toEqual({ kind: 'ready' });
   });

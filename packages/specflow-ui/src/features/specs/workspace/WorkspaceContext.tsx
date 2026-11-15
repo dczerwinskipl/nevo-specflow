@@ -1,9 +1,23 @@
 import { createContext, useContext, type ReactNode } from 'react';
 
+/** A Full Task section an action lands on (its heading takes focus). */
+export type TaskSection = 'context' | 'dependencies';
+
+/**
+ * Where the Tasks page opens: only the Tasks blocking the Specification (`?blocking=specification`,
+ * resolved by the Runtime when read), or at one group, expanded.
+ */
+export interface TasksPageTarget {
+  readonly blocking?: 'specification';
+  readonly group?: string;
+}
+
 /** Semantic operations provided by the specification workspace host. */
 export interface WorkspaceRuntime {
   readonly previewTask: (taskId: string) => void;
-  readonly openTask: (taskId: string) => void;
+  readonly openTask: (taskId: string, section?: TaskSection) => void;
+  /** Opens the Tasks page (`/specs/:specId/tasks`); a history entry is pushed. */
+  readonly openTasks: (target?: TasksPageTarget) => void;
   readonly openSession: (sessionId: string) => void;
   readonly openSessionsView: () => void;
   readonly openDoc: (docId: string, origin?: 'work' | 'documents') => void;
@@ -13,10 +27,10 @@ export interface WorkspaceRuntime {
   readonly openHistory: () => void;
   /** Opens the Specification's New Session; its entry points are gated by `startSession`. */
   readonly openNewSession: () => void;
-  readonly executeTasks: (taskIds: readonly string[], agent?: string) => void;
   readonly refresh: () => void | Promise<void>;
   readonly fullTaskHref: (taskId: string) => string;
-  readonly canExecute?: boolean;
+  /** The Tasks page address of a target (a real link; activation goes through `openTasks`). */
+  readonly tasksHref: (target?: TasksPageTarget) => string;
   readonly canOpenSession?: boolean;
 }
 
@@ -53,6 +67,7 @@ export function createFakeWorkspaceRuntime(
   return {
     previewTask: noop,
     openTask: noop,
+    openTasks: noop,
     openSession: noop,
     openSessionsView: noop,
     openDoc: noop,
@@ -61,10 +76,9 @@ export function createFakeWorkspaceRuntime(
     openChanges: noop,
     openHistory: noop,
     openNewSession: noop,
-    executeTasks: noop,
     refresh: noop,
     fullTaskHref: (taskId) => `/specs/fake/tasks/${encodeURIComponent(taskId)}`,
-    canExecute: true,
+    tasksHref: () => '/specs/fake/tasks',
     canOpenSession: true,
     ...overrides,
   };

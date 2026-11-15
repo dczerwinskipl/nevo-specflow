@@ -296,7 +296,7 @@ export const MenusPerNodeType: Story = {
     // Folder: creation + file operations, nothing hidden.
     const folder = await openMenu(canvas, userEvent, 'architektura');
     await expect(folder.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
-      'Nowy dokument…',
+      'Nowy dokument',
       'Nowy folder',
       'Wgraj pliki',
       'Zmień nazwę',
@@ -331,7 +331,7 @@ export const ReadOnlyExplainsOnceInTheMenu: Story = {
   play: async ({ canvas, userEvent }) => {
     const menu = await openMenu(canvas, userEvent, 'architektura');
     for (const name of [
-      'Nowy dokument…',
+      'Nowy dokument',
       'Nowy folder',
       'Wgraj pliki',
       'Zmień nazwę',

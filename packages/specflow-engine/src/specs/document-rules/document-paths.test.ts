@@ -6,6 +6,7 @@ import {
   deriveFolders,
   findCaseCollisions,
   isReservedRootName,
+  isReservedSpecificationPath,
   parentFolder,
   validateDocumentPath,
   validateFolderPath,
@@ -106,6 +107,18 @@ describe('validateDocumentPath', () => {
     expect(isReservedRootName('SPECIFICATION.yaml')).toBe(true);
     expect(isReservedRootName('overview.md')).toBe(false);
     expect(validateDocumentPath('docs/specification.yaml').ok).toBe(true);
+  });
+
+  it('reserves the Task folder at the root, ignoring case', () => {
+    for (const path of ['tasks/index.yaml', 'Tasks/api/task.md', 'tasks']) {
+      expect(validateDocumentPath(path)).toEqual({ ok: false, violation: 'reserved-name' });
+      expect(isReservedSpecificationPath(path)).toBe(true);
+    }
+
+    expect(validateFolderPath('TASKS')).toEqual({ ok: false, violation: 'reserved-name' });
+    expect(validateDocumentPath('docs/tasks/a.md').ok).toBe(true);
+    expect(validateDocumentPath('tasks.md').ok).toBe(true);
+    expect(isReservedSpecificationPath('overview.md')).toBe(false);
   });
 });
 

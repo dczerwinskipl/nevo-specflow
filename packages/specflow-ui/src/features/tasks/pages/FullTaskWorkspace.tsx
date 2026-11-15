@@ -43,6 +43,7 @@ import {
 import { useTaskResources } from '../detail/useTaskPages';
 import { mergeTaskResources } from '../detail/TaskDetails';
 import { FullTaskView } from './FullTaskView';
+import { ProjectTaskWorkspace, type ProjectTaskWorkspaceProps } from './ProjectTaskWorkspace';
 import { TaskViewStateProvider } from '../detail/TaskViewState';
 
 interface TaskContextData {
@@ -311,16 +312,40 @@ export function FullTaskWorkspace(props: {
   readonly back: AppWorkspaceBack;
   readonly stale?: boolean;
   readonly onRetry?: () => void;
+  /** Reads the Task again; resolves with the latest Task (project mode: revision conflicts). */
+  readonly reload?: () => Promise<FullTaskData | undefined>;
 }) {
+  const { reload, ...rest } = props;
+
   return (
     <AppWorkspaceProvider scopeKey={`${props.specId}:${props.task.id}`}>
       <WorkspaceRouteLeaveGuard />
       <TaskViewStateProvider key={`${props.specId}:${props.task.id}`}>
         <Context.Provider value={{ task: props.task, specId: props.specId }}>
-          <Workspace {...props} />
+          {/* A project Runtime's Task is a resource the owner authors (Task authoring, T10). */}
+          {props.task.resource && reload ? (
+            <ProjectTaskWorkspaceWithHistory
+              {...rest}
+              resource={props.task.resource}
+              reload={reload}
+            />
+          ) : (
+            <Workspace {...rest} />
+          )}
         </Context.Provider>
       </TaskViewStateProvider>
     </AppWorkspaceProvider>
+  );
+}
+
+function ProjectTaskWorkspaceWithHistory(props: Omit<ProjectTaskWorkspaceProps, 'onOpenHistory'>) {
+  const navigation = useSecondaryNavigation();
+
+  return (
+    <ProjectTaskWorkspace
+      {...props}
+      onOpenHistory={() => void navigation.open(historyStack, { taskId: props.task.id })}
+    />
   );
 }
 

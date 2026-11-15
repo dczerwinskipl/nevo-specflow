@@ -174,15 +174,16 @@ describe('fingerprint', () => {
   ];
 
   it('is a stable sha256 and differs between actions', () => {
-    const all = requests.map(fingerprintDocumentChange);
+    const all = requests.map((request) => fingerprintDocumentChange(request));
     expect(all.every((value) => /^[0-9a-f]{64}$/u.test(value))).toBe(true);
     expect(new Set(all).size).toBe(requests.length);
     expect(fingerprintDocumentChange(save)).toBe(fingerprintDocumentChange({ ...save }));
   });
 
-  it('covers every action', () => {
+  it('covers every action a client requests', () => {
+    // `workflow` has no client request: the Specification execution store records it.
     expect(new Set(requests.map((request) => request.action))).toEqual(
-      new Set(DOCUMENT_CHANGE_ACTIONS),
+      new Set(DOCUMENT_CHANGE_ACTIONS.filter((action) => action !== 'workflow')),
     );
   });
 

@@ -3,7 +3,7 @@ import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
 import { specScope } from '../../specs';
 import type { RequestAuthorization } from '../../auth';
 import type { TaskReadDependencies } from '../detail/read-task-detail';
-import { sameTask } from './facts';
+import { sameTask, type HistoryFacts, type SourcePage, type TaskReading } from './facts';
 import { taskVisibility } from './visibility';
 import type { ReadOutcome } from './outcome';
 
@@ -20,11 +20,14 @@ export async function readTaskPage(
     capability: SpecCapabilities.capabilities.View,
     scope: specScope(deps.projectId?.(), specId),
   });
-  if (!deps.definitions || !deps[kind]) {
+  if (!deps.reading && !deps.definitions) {
     return { kind: 'unavailable' };
   }
 
-  const definition = await deps.definitions.resolve(specId, taskId);
+  // One read when the source offers it: the identity and the history page come from it together.
+  const reading = deps.reading ? await deps.reading.read(specId, taskId) : undefined;
+  const definition =
+    reading === undefined ? await deps.definitions!.resolve(specId, taskId) : reading?.definition;
   if (!definition) {
     return { kind: 'not_found' };
   }
@@ -42,7 +45,10 @@ export async function readTaskPage(
     query.cursor,
     query.limit === undefined ? undefined : Number(query.limit),
   );
-  if (!resolved) {
+  // Without a page source of this kind no detail issued a lease for it, so every token is unknown.
+  const { resources, history } = deps;
+  const read = reading?.history;
+  if (!resolved || (kind === 'resources' ? !resources : !history && !read)) {
     return { kind: 'expired' };
   }
 
@@ -50,8 +56,10 @@ export async function readTaskPage(
   const { lease, continuation, limit } = resolved;
   const page =
     kind === 'resources'
-      ? await deps.resources!.read(identity, lease.source.handle, continuation, limit, visible)
-      : await deps.history!.read(identity, lease.source.handle, continuation, limit);
+      ? await resources!.read(identity, lease.source.handle, continuation, limit, visible)
+      : read
+        ? pageOf(read, lease.source.handle, continuation, limit)
+        : await history!.read(identity, lease.source.handle, continuation, limit);
   if (
     !page ||
     !sameTask(page.identity, identity) ||
@@ -114,5 +122,28 @@ export async function readTaskPage(
       nextCursor: deps.leases.continue(query.token, page.next, limit),
       coverage: lease.source.coverage === 'partial' ? 'partial' : page.coverage,
     } as TaskHistoryPage | TaskResourcePage,
+  };
+}
+
+/** A page of a history read whole; `null` when the read is not the one the lease was issued for. */
+function pageOf(
+  read: NonNullable<TaskReading['history']>,
+  handle: string,
+  continuation: string | null,
+  limit: number,
+): SourcePage<HistoryFacts> | null {
+  const start = continuation === null ? 0 : Number(continuation);
+  if (read.read.handle !== handle || !Number.isSafeInteger(start) || start < 0) {
+    return null;
+  }
+
+  const end = Math.min(start + limit, read.items.length);
+
+  return {
+    identity: read.read.identity,
+    version: read.read.version,
+    items: read.items.slice(start, end),
+    next: end < read.items.length ? String(end) : null,
+    coverage: read.read.coverage,
   };
 }

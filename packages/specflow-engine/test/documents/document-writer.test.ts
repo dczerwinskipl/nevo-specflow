@@ -599,13 +599,14 @@ describe('the reservation refuses what it must', () => {
     const project = await writableProject();
     const claims = {
       assertClaims: () => Promise.reject(new SharedResourceError('RESOURCE_CONFLICT', 'held')),
+      taskResourceChangePending: () => Promise.resolve(false),
     };
     const { writeDocumentChange } = await import('../../src/specs/documents/write');
     const error = await failure(
       writeDocumentChange(
         project.engine,
         claims,
-        project.specId,
+        { kind: 'specification', specId: project.specId },
         randomUUID(),
         saveNotes(2, 'x\n'),
         {

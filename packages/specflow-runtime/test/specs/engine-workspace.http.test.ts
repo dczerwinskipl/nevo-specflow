@@ -124,10 +124,19 @@ describe('Engine-backed specification workspace read', () => {
         });
         const unavailable = { state: 'unavailable', reason: 'not_implemented' };
         expect(body.sections).toEqual({
-          // Temporary manifest source: no Tasks is a verified, available empty section.
+          // The Engine's Task resources: none yet, a verified empty section.
           tasks: {
             state: 'available',
-            data: { groups: [], completed: 0, total: 0, attention: [] },
+            data: {
+              groups: [],
+              completed: 0,
+              total: 0,
+              cancelled: 0,
+              ended: 0,
+              onHold: 0,
+              attention: [],
+              overview: { rows: [], compact: [] },
+            },
           },
           documents: body.sections.documents,
           // Managed Sessions are disabled in this Runtime: the registry is unreadable.
@@ -203,7 +212,6 @@ describe('Engine-backed specification workspace read', () => {
         }
 
         expect(body.actions).toEqual({
-          executeTasks: { available: false, reason: 'not_implemented' },
           startSession: { available: false, reason: 'sessions_disabled' },
         });
 

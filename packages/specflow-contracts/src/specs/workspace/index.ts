@@ -1,5 +1,6 @@
 import { Type, type Static } from 'typebox';
-import { WorkspaceTaskSchema } from '../../tasks';
+import { TaskGroupSummarySchema, TaskOverviewSchema, WorkspaceTaskSchema } from '../../tasks';
+import { ATTENTION_ACTIONS, BlockingTaskSchema } from '../../workflow/projection';
 import { SessionIdSchema } from '../../sessions/model';
 import { SpecIdSchema, TaskIdSchema, WorkspaceIdSchema } from '../../identifiers';
 export * from '../../tasks';
@@ -27,6 +28,10 @@ export const ReadSectionSchema = <T extends ReturnType<typeof Type.Object>>(data
 export const WorkspaceTaskGroupSchema = Type.Object({
   id: IdSchema,
   name: Type.String(),
+  /** How the Overview summary shows the group (its own row, or the compact line). */
+  summary: TaskGroupSummarySchema,
+  /** The Tasks page collapses it by default. */
+  collapsed: Type.Boolean(),
   tasks: Type.Array(WorkspaceTaskSchema),
 });
 export const WorkspaceDocumentSchema = Type.Object({
@@ -66,6 +71,11 @@ export const WorkspaceSessionSchema = Type.Object(
   },
   { additionalProperties: false },
 );
+/**
+ * The actions of workspace attention items: the workflow's, and `answer-session` for a Session that
+ * waits for the person's input (the Session owner's item).
+ */
+export const WORKSPACE_ATTENTION_ACTIONS = [...ATTENTION_ACTIONS, 'answer-session'] as const;
 export const WorkspaceAttentionSchema = Type.Object({
   id: IdSchema,
   kind: Type.Union([
@@ -80,6 +90,27 @@ export const WorkspaceAttentionSchema = Type.Object({
   priority: Type.Optional(
     Type.Union([Type.Literal('critical'), Type.Literal('high'), Type.Literal('normal')]),
   ),
+  /**
+   * Workflow items (the Tasks owner, from the Engine's attention projection): the stable reason
+   * code (`reason` is then its display text), who has to act, the one action and the Tasks it names
+   * (`tasks-stuck`: the Tasks to resolve, with why each blocks). Absent on other items.
+   */
+  code: Type.Optional(Type.String({ minLength: 1, maxLength: 64 })),
+  /** The title of the step the item is about (its action names it: "Start Implementation"). */
+  stepTitle: Type.Optional(Type.String({ minLength: 1, maxLength: 200 })),
+  actor: Type.Optional(Type.Union([Type.Literal('owner'), Type.Literal('agent')])),
+  action: Type.Optional(
+    Type.Unsafe<(typeof WORKSPACE_ATTENTION_ACTIONS)[number]>(
+      Type.Union(WORKSPACE_ATTENTION_ACTIONS.map((action) => Type.Literal(action))),
+    ),
+  ),
+  secondaryAction: Type.Optional(
+    Type.Unsafe<(typeof WORKSPACE_ATTENTION_ACTIONS)[number]>(
+      Type.Union(WORKSPACE_ATTENTION_ACTIONS.map((action) => Type.Literal(action))),
+    ),
+  ),
+  taskIds: Type.Optional(Type.Array(TaskIdSchema)),
+  blocking: Type.Optional(Type.Array(BlockingTaskSchema)),
 });
 const ActivitySchema = Type.Object({
   id: IdSchema,
@@ -116,10 +147,18 @@ const ChangesSchema = Type.Object({
   mr: Type.Array(Type.String()),
 });
 const TaskCollectionSchema = Type.Object({
+  /** The configured dashboard grouping, non-empty groups in display order. */
   groups: Type.Array(WorkspaceTaskGroupSchema),
   completed: Type.Integer({ minimum: 0 }),
   total: Type.Integer({ minimum: 0 }),
+  /** Cancelled, ended and on hold Tasks, named apart from the progress; absent in the demo. */
+  cancelled: Type.Optional(Type.Integer({ minimum: 0 })),
+  /** Ended without completing by their own workflow (abandoned, not cancelled). */
+  ended: Type.Optional(Type.Integer({ minimum: 0 })),
+  onHold: Type.Optional(Type.Integer({ minimum: 0 })),
   attention: Type.Array(WorkspaceAttentionSchema),
+  /** The Overview's compact summary of the groups and Now's explanation when stuck. */
+  overview: TaskOverviewSchema,
 });
 const DocumentCollectionSchema = Type.Object({
   items: Type.Array(WorkspaceDocumentSchema),
@@ -177,7 +216,6 @@ export const SpecificationWorkspaceResponseSchema = Type.Object({
     changes: ReadSectionSchema(ChangesSchema),
   }),
   actions: Type.Object({
-    executeTasks: ActionSchema,
     startSession: StartSessionActionSchema,
   }),
 });

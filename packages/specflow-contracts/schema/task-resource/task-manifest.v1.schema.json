@@ -1,0 +1,342 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:nevo:specflow:task-resource:task-manifest:1",
+  "title": "Nevo SpecFlow Task manifest",
+  "description": "tasks/<id>/task.yaml of a Specification: one Task resource (schemaVersion 1).",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "title",
+    "type",
+    "status",
+    "dependsOn",
+    "origin",
+    "documents"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^(?!(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$)[a-z0-9][a-z0-9-]{0,63}$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "type": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,31}$"
+    },
+    "status": {
+      "anyOf": [
+        {
+          "type": "string",
+          "const": "draft"
+        },
+        {
+          "type": "string",
+          "const": "ready"
+        },
+        {
+          "type": "string",
+          "const": "on-hold"
+        },
+        {
+          "type": "string",
+          "const": "cancelled"
+        }
+      ]
+    },
+    "statusChange": {
+      "type": "object",
+      "required": [
+        "source",
+        "at"
+      ],
+      "properties": {
+        "source": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "decision"
+            },
+            {
+              "type": "string",
+              "const": "escalation"
+            },
+            {
+              "type": "string",
+              "const": "abandon"
+            }
+          ]
+        },
+        "at": {
+          "type": "string",
+          "minLength": 20,
+          "maxLength": 40
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        }
+      },
+      "additionalProperties": false
+    },
+    "dependsOn": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(?!(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$)[a-z0-9][a-z0-9-]{0,63}$"
+      },
+      "maxItems": 100,
+      "uniqueItems": true
+    },
+    "origin": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "actorId"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "manual"
+            },
+            "actorId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "step",
+            "attempt"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "produced"
+            },
+            "step": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,31}$"
+            },
+            "attempt": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "path",
+          "type"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "type": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,31}$"
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 50
+    },
+    "context": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "object",
+            "required": [
+              "kind",
+              "id",
+              "required"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "task-document"
+              },
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "note": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "artifact": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "kind",
+              "id",
+              "required"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "specification-document"
+              },
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "note": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "artifact": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "kind",
+              "id",
+              "required"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "project-document"
+              },
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9._-]{0,199}$"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "note": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "artifact": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "kind",
+              "path",
+              "required"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "path"
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "note": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "artifact": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "kind",
+              "text",
+              "required"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "instructions"
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 8000
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "note": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "maxItems": 50
+    }
+  },
+  "additionalProperties": false
+}

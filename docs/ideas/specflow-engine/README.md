@@ -47,7 +47,8 @@ Open proposals (drafts, not current rules; current documentation and code win):
 | [Workspace binding lifecycle](workspace-binding-lifecycle.md)                                         | Relocate, repair, active Turn blocking rebind                                                        |
 | [Ownership and state](ownership-and-state.md)                                                         | Human approval provenance; external claim reconciliation on boot                                     |
 | [Local actor and human gates](local-actor-and-human-gates.md)                                         | Local trust model for human approvals                                                                |
-| [Task resource and context](task-resource-and-context.md)                                             | Task folders, index, documents and context lists (plan 06 F20)                                       |
+| [Agent-assisted execution (E6)](reusable-workflow-manual-execution/agent-assisted-execution.md)       | Owner-delegated single agent steps, claim-owned writes, context resolution for agents                |
+| [Typed transition inputs (E5)](reusable-workflow-manual-execution/typed-transition-inputs.md)         | Definition-driven finish forms; needs bounded run history (F19)                                      |
 | [Legacy Nevo migration](legacy-nevo-migration.md)                                                     | Legacy modules not yet ported                                                                        |
 | [Decisions](decisions-and-promotion.md)                                                               | Open decision register                                                                               |
 | [Acceptance criteria](acceptance-criteria.md) and [test plan](test-plan.md)                           | Open gates FB01–FB09, SI04–SI08 and their test rows                                                  |

@@ -42,6 +42,7 @@ import {
   AuthorizationForbiddenErrorResponseSchema,
 } from '@nevo/specflow-contracts/authorization';
 import type { DocumentErrorDetails } from '@nevo/specflow-contracts/documents';
+import type { ExitBlocker } from '@nevo/specflow-contracts/workflow';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { FastifyPluginCallback, FastifyRequest } from 'fastify';
 
@@ -152,6 +153,13 @@ function safeCode(error: unknown): SafeCode | undefined {
   return undefined;
 }
 
+/** `CLOSE_BLOCKED`: the grouped blockers of the Specification workflow, for a list with links. */
+function blockersOf(error: unknown): { blockers?: ExitBlocker[] } {
+  return error instanceof CloseOperationError && error.blockers.length > 0
+    ? { blockers: error.blockers as ExitBlocker[] }
+    : {};
+}
+
 const SHARED_WORKTREE_REMEDY =
   'Archive just this Specification with integrateToTargetBranch=false, or use an explicit workspace-level Close.';
 const LOCAL_CONFIG_REMEDY =
@@ -187,6 +195,7 @@ function statusForCloseError(code: SafeCode): 400 | 404 | 409 | 422 | 503 {
     case 'SPEC_VALIDATION_ERROR':
       return 400;
     case 'CLOSE_CONFLICT':
+    case 'CLOSE_BLOCKED':
     case 'CLOSE_SHARED_WORKTREE':
     case 'CLOSE_LOCAL_CONFIG_MODIFIED':
     case 'REGISTRY_CONFLICT':
@@ -341,6 +350,7 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
           return reply.code(statusForCloseError(code)).send({
             code,
             error: code,
+            ...blockersOf(error),
             ...closeRefusalDetails(error),
           });
         }
@@ -390,6 +400,7 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
           return reply.code(statusForCloseError(code)).send({
             code,
             error: code,
+            ...blockersOf(error),
             ...closeRefusalDetails(error),
           });
         }

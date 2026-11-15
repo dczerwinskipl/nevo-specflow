@@ -4,6 +4,11 @@
  * model types) is in `specs/read-model`; the route object is in `specs/routes` (composition only).
  */
 export { specificationAttentionItems } from './extensions/specificationAttentionItems';
+export type {
+  SpecificationAttentionAction,
+  SpecificationAttentionEntry,
+} from './extensions/specificationAttentionItems';
+export type { TaskSection, TasksPageTarget } from './workspace/WorkspaceContext';
 export { specificationWorkSections } from './extensions/specificationWorkSections';
 export type { SpecificationWorkSectionContext } from './extensions/specificationWorkSections';
 export { SpecificationAggregatePage } from './pages/SpecificationAggregatePage';

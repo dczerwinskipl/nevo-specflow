@@ -31,6 +31,7 @@ function overviewData(kind: Case, history = true): SpecificationWorkspaceData {
           git: { state: 'unavailable', reason: 'not_implemented' },
         },
     resumeSession: session ? base.resumeSession : undefined,
+    sessions: session ? base.sessions : [],
     activityEvents: history ? base.activityEvents : [],
   };
 }
@@ -135,10 +136,14 @@ export const OneColumnAt1407: Story = {
   args: { contentWidth: 1407 },
   play: async ({ canvasElement }) => {
     await verifyOneColumn(canvasElement);
-    // Priority order in one column: Continue session sits between attention and Tasks.
+    // Priority order in one column: the work (attention, Tasks), then Sessions and Documents.
     assert(
-      top(canvasElement, '#resume-heading') < top(canvasElement, '#tasks-heading'),
-      'Continue session precedes Tasks in one column.',
+      top(canvasElement, '#tasks-summary-heading') < top(canvasElement, '#resume-heading'),
+      'Tasks precede Sessions in one column.',
+    );
+    assert(
+      top(canvasElement, '#resume-heading') < top(canvasElement, '#documents-summary-heading'),
+      'Sessions precede Documents in one column.',
     );
   },
 };
@@ -147,12 +152,12 @@ export const TwoColumnsAt1408: Story = {
   args: { contentWidth: 1408 },
   play: async ({ canvasElement }) => {
     await verifyTwoColumns(canvasElement);
-    const attention = canvasElement.querySelector<HTMLElement>('[aria-labelledby$="-heading"] h2');
-    assert(attention, 'Requires attention is shown.');
+    const attention = canvasElement.querySelector<HTMLElement>('[data-requires-attention] h2');
+    assert(attention, 'Requires attention is shown, an h2 under the page title.');
     // The work column's slots: Requires attention, then Tasks.
     const attentionBlock = attention.closest('[class*="col-start-1"]')!;
     const tasksBlock = canvasElement
-      .querySelector('#tasks-heading')!
+      .querySelector('#tasks-summary-heading')!
       .closest('[class*="col-start-1"]')!;
     // No band: Tasks follow Requires attention directly, whatever the context column holds.
     const gap =
@@ -160,14 +165,14 @@ export const TwoColumnsAt1408: Story = {
     assert(gap >= 0 && gap <= 1, `Tasks follow Requires attention directly (${gap}px).`);
     assert(
       top(canvasElement, '#resume-heading') < top(canvasElement, '#documents-summary-heading'),
-      'Continue session opens the context column above Documents.',
+      'Sessions open the context column above Documents.',
     );
     const contextTop = canvasElement
       .querySelector('[data-overview-column="context"]')!
       .getBoundingClientRect().top;
     assert(
       Math.abs(contextTop - attentionBlock.getBoundingClientRect().top) <= 1,
-      'Continue session starts on the line of Requires attention.',
+      'Sessions start on the line of Requires attention.',
     );
   },
 };
@@ -176,7 +181,7 @@ export const AttentionOnlyAt1408: Story = {
   args: { contentWidth: 1408, kind: 'attention-only' },
   play: async ({ canvasElement }) => {
     await verifyTwoColumns(canvasElement);
-    assert(!canvasElement.querySelector('#resume-heading'), 'No Session, no Continue session.');
+    assert(!canvasElement.querySelector('#resume-heading'), 'No Session, no Sessions section.');
     // Documents open the context column instead.
     assert(
       canvasElement
@@ -195,7 +200,7 @@ export const SessionOnlyAt1408: Story = {
   play: async ({ canvasElement }) => {
     await verifyTwoColumns(canvasElement);
     // Nothing requires attention: Tasks start at the top of the work column.
-    assertColumnsStartTogether(canvasElement, '#tasks-heading');
+    assertColumnsStartTogether(canvasElement, '#tasks-summary-heading');
   },
 };
 
@@ -206,7 +211,7 @@ export const NeitherAt1408: Story = {
   args: { contentWidth: 1408, kind: 'neither' },
   play: async ({ canvasElement }) => {
     await verifyTwoColumns(canvasElement);
-    assertColumnsStartTogether(canvasElement, '#tasks-heading');
+    assertColumnsStartTogether(canvasElement, '#tasks-summary-heading');
   },
 };
 

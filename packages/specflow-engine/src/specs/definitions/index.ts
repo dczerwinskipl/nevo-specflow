@@ -6,11 +6,8 @@ export {
   type DefinitionKind,
   type DefinitionReference,
 } from './kind-registry';
-export {
-  DOCUMENT_TYPE_KIND,
-  SPECIFICATION_ARCHETYPE_KIND,
-  createDefaultDefinitionRegistry,
-} from './kinds';
+export { DOCUMENT_TYPE_KIND } from './kinds/document-type';
+export { SPECIFICATION_ARCHETYPE_KIND } from './kinds/specification-archetype';
 export {
   catalogueRevisionOf,
   resolveCatalogue,
@@ -21,10 +18,7 @@ export { loadDefinitions, type LoadResult, type LoadedDefinition } from './loade
 export { resolveProjectCatalogue, type ProjectCatalogue } from './project-catalogue';
 export {
   createCatalogueSource,
-  getProjectCatalogue,
-  getStableProjectCatalogue,
   loadStableProjectCatalogue,
-  lookupProjectArchetype,
   type ArchetypeLookup,
   type CatalogueSource,
   type ProjectCatalogueResult,
@@ -35,7 +29,6 @@ export {
   type DefinitionSource,
 } from './source';
 export { createFilesystemDefinitionWriter } from './filesystem-writer';
-export { DefinitionSeedError, locateSeedDirectory, openSeedSource } from './seed';
 export {
   DefinitionInstallError,
   installDefinitions,
@@ -46,26 +39,3 @@ export {
   type InstallPlanOutcome,
   type InstallResult,
 } from './install';
-export {
-  listProjectDefinitions,
-  showProjectDefinition,
-  validateDefinitionsFolder,
-  validateProjectDefinitions,
-  type DefinitionsListing,
-  type DefinitionsReport,
-  type ListedDefinition,
-  type ShownDefinition,
-} from './inspect';
-export {
-  assertDefinitionsCommittable,
-  assertInitialDefinitionsCommittable,
-  commitInstalledDefinitions,
-  initialDefinitionsBranchOffer,
-  INITIAL_DEFINITIONS_BRANCH,
-  startInitialDefinitionsBranch,
-  installProjectDefinitionFiles,
-  installProjectDefinitions,
-  type InstallProjectOptions,
-  type InstallProjectResult,
-  type InstalledCommit,
-} from './install-project';

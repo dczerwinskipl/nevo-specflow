@@ -8,6 +8,7 @@ import type {
   ExecutionSource,
   HistorySource,
   ResourceSource,
+  TaskReadingSource,
 } from '../reads/facts';
 import { sameTask } from '../reads/facts';
 import { taskVisibility } from '../reads/visibility';
@@ -19,6 +20,8 @@ export interface TaskReadDependencies {
   definitions?: DefinitionSource;
   execution?: ExecutionSource;
   history?: HistorySource;
+  /** One read per request (definition, execution, history); wins over the separate ports. */
+  reading?: TaskReadingSource;
   resources?: ResourceSource;
   sessions?: SessionReferenceOwner;
   leases: PageLeases;
@@ -36,11 +39,14 @@ export async function readTaskDetail(
     capability: SpecCapabilities.capabilities.View,
     scope: specScope(deps.projectId?.(), specId),
   });
-  if (!deps.definitions) {
+  // One read for the whole detail when the source offers it; else the separate ports.
+  const reading = deps.reading ? await deps.reading.read(specId, taskId) : undefined;
+  if (!deps.reading && !deps.definitions) {
     return { kind: 'unavailable' };
   }
 
-  const definition = await deps.definitions.resolve(specId, taskId);
+  const definition =
+    reading === undefined ? await deps.definitions!.resolve(specId, taskId) : reading?.definition;
   if (!definition) {
     return { kind: 'not_found' };
   }
@@ -51,7 +57,10 @@ export async function readTaskDetail(
   }
 
   const visible = taskVisibility(identity, authz, deps.sessions);
-  const execution = await deps.execution?.inspect(identity, definition.version);
+  const execution =
+    reading === undefined
+      ? await deps.execution?.inspect(identity, definition.version)
+      : (reading?.execution ?? undefined);
   const coherent =
     execution &&
     sameTask(execution.identity, identity) &&
@@ -60,7 +69,7 @@ export async function readTaskDetail(
   await visible.prefetch([
     ...definition.dependencies.map((dependency) => dependency.link),
     ...(coherent
-      ? execution.requirements.flatMap((requirement) =>
+      ? (execution.requirements ?? []).flatMap((requirement) =>
           requirement.evidence.map((item) => item.link),
         )
       : []),
@@ -89,7 +98,7 @@ export async function readTaskDetail(
     }
   }
 
-  if (coherent) {
+  if (coherent && execution.requirements) {
     const requirements = structuredClone(execution.requirements);
     for (const requirement of requirements) {
       const evidence = [];
@@ -111,6 +120,9 @@ export async function readTaskDetail(
       state: 'available',
       data: { items: requirements, pendingCount: execution.pendingCount },
     };
+  }
+
+  if (coherent) {
     snapshot.sections.recovery =
       !execution.recovery || (await visible(execution.recovery.link))
         ? { state: 'available', data: execution.recovery }
@@ -164,7 +176,11 @@ export async function readTaskDetail(
     }
   }
 
-  const history = coherent ? await deps.history?.open(identity) : undefined;
+  const history = !coherent
+    ? undefined
+    : reading === undefined
+      ? await deps.history?.open(identity)
+      : (reading?.history?.read ?? undefined);
   if (history && sameTask(history.identity, identity)) {
     snapshot.sections.history = {
       state: 'available',
@@ -187,6 +203,8 @@ export async function readTaskDetail(
       coherent ? execution.version : null,
       resources?.version ?? null,
       history?.version ?? null,
+      // Readiness follows the dependencies, which the definition version does not cover.
+      definition.resource ? JSON.stringify(definition.resource) : null,
     ],
     snapshot,
   );
@@ -198,6 +216,7 @@ export async function readTaskDetail(
       purpose: definition.purpose,
       acceptanceCriteria: definition.acceptanceCriteria,
       workflow: definition.workflow,
+      ...(definition.resource ? { resource: definition.resource } : {}),
       snapshot,
     },
   };

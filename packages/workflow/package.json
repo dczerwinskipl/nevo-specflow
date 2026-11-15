@@ -1,0 +1,29 @@
+{
+  "name": "@nevo/workflow",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Product-neutral deterministic workflow kernel: compiled definitions, pins, Runs, replay validation and the coordinator. Bundled into @nevo/specflow.",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node ../../tools/build-package.mjs",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "5.1.0"
+  },
+  "engines": {
+    "node": ">=24.20.0 <25"
+  }
+}

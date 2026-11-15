@@ -2,10 +2,8 @@ import { CATALOGUE_ID_PATTERN } from '@nevo/specflow-contracts/documents';
 
 import {
   DocumentIdError,
-  OVERVIEW_DOCUMENT_TYPE,
   allocateDocumentId,
   deriveUnclassifiedDocumentId,
-  validateDocumentPath,
   validateFolderPath,
 } from '../../../document-rules';
 import { foldPathKey } from '../../../document-rules/document-paths';
@@ -28,6 +26,7 @@ import {
   type Occupancy,
   type PlanResult,
 } from './draft';
+import { isCreatablePath, requiredDocumentType } from './container';
 import type { CreateRequest, FolderRequest } from './request';
 import type { PlanningOptions, PlanningSnapshot } from './snapshot';
 
@@ -79,8 +78,7 @@ export function planCreate(
   const draft = newDraft();
 
   for (const entry of documents) {
-    const path = validateDocumentPath(entry.path);
-    if (!path.ok) {
+    if (!isCreatablePath(snapshot.container, entry.path)) {
       throw documentChangeError('path-invalid', 'The document path is not allowed.');
     }
 
@@ -114,8 +112,8 @@ export function planCreate(
       throw documentChangeError('type-invalid', 'The document type id is not valid.');
     }
 
-    if (entry.type === OVERVIEW_DOCUMENT_TYPE) {
-      throw documentChangeError('operation-invalid', 'The overview type cannot be added.');
+    if (entry.type === requiredDocumentType(snapshot.container)) {
+      throw documentChangeError('operation-invalid', `The ${entry.type} type cannot be added.`);
     }
 
     const id = allocate(snapshot.manifest.specId, entry.type, registry.length, ids);

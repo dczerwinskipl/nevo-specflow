@@ -118,7 +118,6 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
       status: 'draft',
       priority: 10,
       created: '2026-10-14',
-      tasks: [],
       relativeManifestPath: first.files[0]?.relativePath,
     });
     expect(await readWorkspaceSpecification(root, specId)).toEqual(actual[0]);

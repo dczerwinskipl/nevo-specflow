@@ -6,6 +6,7 @@
     "erasableSyntaxOnly": true,
     "paths": {
       "@nevo/authorization": ["../authorization/src/index.ts"],
+      "@nevo/workflow": ["../workflow/src/index.ts"],
       "@nevo/specflow-contracts": ["../specflow-contracts/src/index.ts"],
       "@nevo/specflow-contracts/authorization": ["../specflow-contracts/src/authorization.ts"],
       "@nevo/specflow-docs": ["../specflow-docs/src/index.ts"],

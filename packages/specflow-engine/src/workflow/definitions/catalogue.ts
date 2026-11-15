@@ -6,13 +6,13 @@ import {
 
 import type { LoadResult } from '../../specs/definitions/loader';
 import { SPECIFICATION_ARCHETYPE_KIND } from '../../specs/definitions/kinds/specification-archetype';
-import type { TaskTypes } from '../state/model';
 import {
   AGENT_ARCHETYPE_KIND,
   TASK_TYPE_KIND,
   WORKFLOW_KIND,
   type AgentArchetype,
   type TaskType,
+  type TaskTypes,
   type WorkflowDefinition,
 } from './model';
 
@@ -58,7 +58,7 @@ export function resolveSpecificationExecution(
   }
 
   const workflow = catalogue.workflow(binding.workflow);
-  if (workflow?.subject !== 'specification') {
+  if (workflow?.annotations.subject !== 'specification') {
     return {
       kind: 'problem',
       message: `The workflow "${binding.workflow}" of the Specification archetype "${archetypeId}" is not a valid Specification workflow.`,

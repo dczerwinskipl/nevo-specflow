@@ -3,14 +3,6 @@ import type { SpecificationTaskResponse } from '@nevo/specflow-contracts/specs/w
 
 export type TaskLifecycle = 'pending' | 'in_progress' | 'completed' | 'blocked';
 
-export interface TaskExecutionReadiness {
-  readonly canExecute: boolean;
-  /** Backend-owned semantic unavailability reason, not translated cache text. */
-  readonly reasonCode?: string;
-  readonly blockers?: readonly string[];
-  readonly warnings?: readonly string[];
-}
-
 export interface TaskEvidence {
   readonly label: string;
   readonly href?: string;
@@ -28,6 +20,12 @@ export interface TaskItem {
   readonly status: string;
   readonly statusCode?: TaskLifecycle;
   readonly lifecycle?: TaskLifecycle;
+  /** The presented status of the Engine lane (`draft`, `ready`, `cancelled`, …); project mode. */
+  readonly statusId?: string;
+  /** The Task Type title; project mode. */
+  readonly typeTitle?: string;
+  /** The Tasks it depends on; project mode. */
+  readonly dependsOn?: readonly string[];
   readonly attention?: boolean;
   readonly additionalInfo?: string;
   readonly group: string;
@@ -42,6 +40,10 @@ export interface TaskItem {
 export interface TaskGroup {
   readonly id: string;
   readonly name: string;
+  /** How the Overview summary shows the group (the Runtime's dashboard grouping). */
+  readonly summary?: 'row' | 'compact';
+  /** The Tasks page collapses it by default. */
+  readonly collapsed?: boolean;
   readonly tasks: readonly TaskItem[];
 }
 
@@ -53,7 +55,9 @@ export interface TaskStatePresentation {
   readonly animate?: boolean;
 }
 
-export function getTaskStatePresentation(task: TaskItem): TaskStatePresentation {
+export function getTaskStatePresentation(
+  task: Pick<TaskItem, 'lifecycle' | 'attention'>,
+): TaskStatePresentation {
   if (task.lifecycle === 'blocked' || task.attention) {
     return {
       icon: 'triangle-alert',
@@ -92,6 +96,8 @@ export function getTaskStatePresentation(task: TaskItem): TaskStatePresentation 
 /** Full Task identity and detail are independent of Workspace task-group membership. */
 export interface FullTaskData {
   readonly snapshot?: SpecificationTaskResponse['snapshot'];
+  /** The Task resource (project mode): revision, type, status, documents, context, dependencies. */
+  readonly resource?: SpecificationTaskResponse['resource'];
   readonly id: string;
   readonly title: string;
   readonly status: string;
@@ -115,5 +121,6 @@ export function mapFullTaskResponse(response: SpecificationTaskResponse): FullTa
     acceptanceCriteria: response.acceptanceCriteria,
     workflow: response.workflow,
     snapshot: response.snapshot,
+    ...(response.resource ? { resource: response.resource } : {}),
   };
 }

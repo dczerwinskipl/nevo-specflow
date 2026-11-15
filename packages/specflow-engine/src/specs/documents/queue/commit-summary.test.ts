@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { deriveUnclassifiedDocumentId } from '../../document-rules';
-import { buildSnapshot, TEST_SLUG } from '../changes/test-support';
+import { buildSnapshot, TEST_SLUG, TEST_SPEC_ID } from '../changes/test-support';
 import {
   planDocumentChange,
   type DocumentChangePlan,
@@ -297,6 +297,67 @@ describe('the message of a document commit', () => {
     );
     expect(Array.from(subject).length).toBeLessThanOrEqual(DOCUMENT_COMMIT_SUBJECT_MAX);
     expect(subject.startsWith('spec(documents): delete folder a-very-long')).toBe(true);
+  });
+});
+
+describe('the message of workflow state', () => {
+  const workflow = (summary: string, path: string): SummarizedMember => ({
+    action: 'workflow',
+    plan: {
+      version: 1,
+      action: 'workflow',
+      specId: TEST_SPEC_ID,
+      slug: TEST_SLUG,
+      directory: `specs/active/${TEST_SLUG}`,
+      paths: [
+        {
+          path: DIR + path,
+          role: 'document',
+          pre: null,
+          post: { sha256: 'a'.repeat(64), bytes: 1 },
+          source: { kind: 'written' },
+        },
+      ],
+      documents: [],
+      removedDocumentIds: [],
+      folders: [],
+      allocatedIds: [],
+      templates: [],
+      summary,
+    },
+  });
+
+  it('is worded from the summaries of the workflow changes', () => {
+    const create = workflow('create task api', 'tasks/api/task.yaml');
+    expect(documentCommitMessage(TEST_SLUG, [create], [DIR + 'tasks/api/task.yaml'])).toEqual({
+      subject: `spec(workflow): create task api in ${TEST_SLUG}`,
+      body: '',
+    });
+    const edit = workflow('edit task api', 'tasks/api/task.yaml');
+    expect(documentCommitMessage(TEST_SLUG, [create, edit], [DIR + 'tasks/api/task.yaml'])).toEqual(
+      {
+        subject: `spec(workflow): 2 workflow changes in ${TEST_SLUG}`,
+        body: 'create task api\nedit task api\n\n2 operations in one commit',
+      },
+    );
+  });
+
+  it('names documents and workflow state together when a batch holds both', () => {
+    const save = planOf({
+      action: 'save',
+      documentId: 'notes',
+      content: 'new\n',
+      expectedRevision: revision('notes.md'),
+    });
+    const message = documentCommitMessage(
+      TEST_SLUG,
+      [{ action: 'save', plan: save }, workflow('set task api on-hold', 'tasks/api/task.yaml')],
+      [DIR + 'notes.md', DIR + 'tasks/api/task.yaml'],
+    );
+    expect(message).toEqual({
+      subject: `spec(documents): change documents and workflow state in ${TEST_SLUG}`,
+      body: 'update notes.md\nset task api on-hold\n\n2 operations in one commit',
+    });
   });
 });
 

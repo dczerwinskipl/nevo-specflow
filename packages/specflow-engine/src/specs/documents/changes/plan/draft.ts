@@ -20,6 +20,7 @@ import type {
   PlannedTemplate,
 } from './model';
 import { DOCUMENT_CHANGE_PLAN_VERSION } from './model';
+import { containerDirectory, registryFileOf, renderTaskRegistry } from './container';
 import type { ObservedFile, PlanningSnapshot } from './snapshot';
 
 /** What a planner returns: the plan and the content the writer must make durable first. */
@@ -77,8 +78,9 @@ export function newDraft(): Draft {
   };
 }
 
+/** The checkout-relative root of the snapshot's container. */
 export function specDirectory(snapshot: PlanningSnapshot): string {
-  return 'specs/active/' + snapshot.manifest.slug;
+  return containerDirectory(snapshot.manifest.slug, snapshot.container);
 }
 
 /** The refusal for an archived Specification; every action calls it first. */
@@ -230,7 +232,7 @@ export function finishPlan(
     if (text !== snapshot.manifestText) {
       const post = stateOfText(text);
       paths.push({
-        path: full('specification.yaml'),
+        path: full(registryFileOf(snapshot.container)),
         role: 'manifest',
         pre: stateOfText(snapshot.manifestText),
         post,
@@ -260,6 +262,7 @@ export function finishPlan(
     action,
     specId: snapshot.manifest.specId,
     slug: snapshot.manifest.slug,
+    ...(snapshot.container.kind === 'task' ? { taskId: snapshot.container.taskId } : {}),
     directory,
     paths,
     documents: draft.documents,
@@ -278,6 +281,10 @@ function renderManifest(
   snapshot: PlanningSnapshot,
   registry: { documents: ManifestDocument[]; folders: string[] },
 ): string {
+  if (snapshot.container.kind === 'task') {
+    return renderTaskRegistry(snapshot.manifestText, snapshot.container.taskId, registry.documents);
+  }
+
   try {
     return updateManifestRegistry(
       snapshot.manifestText,

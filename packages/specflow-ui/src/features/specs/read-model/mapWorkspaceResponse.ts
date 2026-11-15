@@ -21,6 +21,13 @@ function mapAttention(items: readonly WorkspaceAttention[]): AttentionItem[] {
     actionCode: item.kind,
     targetId: item.targetId,
     priority: item.priority,
+    ...(item.code ? { code: item.code } : {}),
+    ...(item.stepTitle ? { stepTitle: item.stepTitle } : {}),
+    ...(item.actor ? { actor: item.actor } : {}),
+    ...(item.action ? { action: item.action } : {}),
+    ...(item.secondaryAction ? { secondaryAction: item.secondaryAction } : {}),
+    ...(item.taskIds ? { taskIds: item.taskIds } : {}),
+    ...(item.blocking ? { blocking: item.blocking } : {}),
   }));
 }
 
@@ -43,12 +50,18 @@ export function mapWorkspaceResponse(
   const taskGroups = (tasks?.groups ?? []).map((group) => ({
     id: group.id,
     name: group.name,
+    summary: group.summary,
+    collapsed: group.collapsed,
     tasks: group.tasks.map((task): TaskItem => ({
       id: task.id,
       title: task.title,
       status: task.status.lifecycle,
       statusCode: task.status.lifecycle,
       lifecycle: task.status.lifecycle,
+      statusId: task.status.id,
+      ...(task.type ? { typeTitle: task.type.title } : {}),
+      ...(task.dependsOn ? { dependsOn: task.dependsOn } : {}),
+      ...(task.attention ? { attention: true } : {}),
       group: group.id,
     })),
   }));
@@ -119,6 +132,18 @@ export function mapWorkspaceResponse(
     taskGroups,
     completedTasksCount: tasks?.completed,
     totalTasksCount: tasks?.total,
+    ...(tasks
+      ? {
+          taskProgress: {
+            completed: tasks.completed,
+            total: tasks.total,
+            ...(tasks.cancelled !== undefined ? { cancelled: tasks.cancelled } : {}),
+            ...(tasks.ended !== undefined ? { ended: tasks.ended } : {}),
+            ...(tasks.onHold !== undefined ? { onHold: tasks.onHold } : {}),
+          },
+          taskOverview: tasks.overview,
+        }
+      : {}),
     documents:
       sections.documents.state === 'available'
         ? sections.documents.data.items.map((doc) => ({
@@ -171,10 +196,5 @@ export function mapWorkspaceResponse(
         : [],
     repoContext: repository,
     changes,
-    executionReadiness: {
-      canExecute: dto.actions.executeTasks.available,
-      reasonCode: dto.actions.executeTasks.reason,
-      blockers: [],
-    },
   };
 }

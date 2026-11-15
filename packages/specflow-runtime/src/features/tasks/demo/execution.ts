@@ -12,14 +12,14 @@ export function demoExecutionFacts(
   const key = { specId, taskId: task.id, stepId: 'manual-tests', attempt: 1 };
   const step = {
     id: 'manual-tests',
-    executor: 'human' as const,
+    executors: ['human' as const],
     purpose: 'Check return navigation, session expiry and two browser tabs.',
     expectedWork: { summary: 'Manual verification of session behaviour' },
     hints: [],
   };
   const buildStep = {
     id: 'build',
-    executor: 'agent' as const,
+    executors: ['agent' as const],
     purpose: 'Implement the change.',
     expectedWork: { summary: 'Implement session behaviour' },
     hints: [],
@@ -145,7 +145,7 @@ export function demoTaskHistory(specId: string, taskId: string): HistoryFacts[] 
       key: { specId, taskId, stepId: 'build', attempt: 1 },
       step: {
         id: 'build',
-        executor: 'agent',
+        executors: ['agent'],
         purpose: null,
         expectedWork: { summary: 'Implement session behaviour' },
         hints: [],
@@ -155,6 +155,7 @@ export function demoTaskHistory(specId: string, taskId: string): HistoryFacts[] 
       result: 'pass',
       transitionedTo: null,
       feedback: null,
+      actor: { class: 'agent' },
       resources: [],
       provenance: [{ source: 'workflow_history', sourceId: 'build-1' }],
     },

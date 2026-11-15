@@ -4,7 +4,11 @@ import type { DocumentChangeJournal } from '../changes/journal/model';
 import type { DocumentChangeStage } from '../changes/journal/stages';
 import { listDocumentChangeJournals } from '../write/journal-store';
 import { listManualCommitJournals } from '../../manual-commit';
-import { pruneUncommitted, readUncommittedHold } from '../../uncommitted';
+import {
+  pruneUncommitted,
+  readUncommittedHold,
+  type UncommittedAllowance,
+} from '../../uncommitted';
 import { systemQueueClock, type QueueClock } from './settle-ledger';
 import { systemQueueTimers, withDeadline, type QueueTimers } from './timers';
 import {
@@ -107,6 +111,7 @@ export async function readDocumentCommitHold(
 export async function readCloseHold(
   engine: SpecFlowEngine,
   workspaceId: string,
+  allowance?: UncommittedAllowance,
 ): Promise<DocumentCommitHold | undefined> {
   const journals = await readDocumentCommitHold(engine, workspaceId);
   if (journals !== undefined) {
@@ -114,7 +119,7 @@ export async function readCloseHold(
   }
 
   await pruneUncommitted(engine, { workspaceId }).catch(() => undefined);
-  const ledger = await readUncommittedHold(engine, workspaceId);
+  const ledger = await readUncommittedHold(engine, workspaceId, allowance);
 
   return ledger !== undefined
     ? { workspaceId, cause: 'commit-uncommitted', operationIds: ledger.operationIds }
@@ -264,12 +269,14 @@ export interface FlushCheckoutEvidence {
  * The Close hook (ADR 0016 decision 16): flushes every given checkout, one after the other, then
  * refuses with `DOCUMENT_COMMITS_PENDING` when any of them is still held by document journals
  * (pending, failed, awaiting recovery) or the ledger still holds uncommitted paths. Runs between the pure Close preview and the
- * control lock; a save that slips in after the flush is the claim conflict inside the lock.
+ * control lock; a save that slips in after the flush is the claim conflict inside the lock. The
+ * ledger entries `allowance` names (the archived Specification's execution state) do not refuse.
  */
 export async function flushCheckoutsForClose(
   engine: SpecFlowEngine,
   checkouts: readonly FlushCheckoutEvidence[],
   options: FlushOptions = {},
+  allowance?: UncommittedAllowance,
 ): Promise<void> {
   const distinct = new Map<string, FlushCheckoutEvidence>();
   for (const checkout of checkouts) {
@@ -282,7 +289,7 @@ export async function flushCheckoutsForClose(
       throw documentCommitsPendingError(outcome.remaining);
     }
 
-    const uncommitted = await readCloseHold(engine, checkout.workspaceId);
+    const uncommitted = await readCloseHold(engine, checkout.workspaceId, allowance);
     if (uncommitted !== undefined) {
       throw documentCommitsPendingError(uncommitted);
     }
@@ -378,9 +385,10 @@ export async function flushAllDocumentCommits(
 export async function assertNoDocumentCommitsHold(
   engine: SpecFlowEngine,
   workspaceIds: readonly string[],
+  allowance?: UncommittedAllowance,
 ): Promise<void> {
   for (const workspaceId of new Set(workspaceIds)) {
-    const hold = await readCloseHold(engine, workspaceId);
+    const hold = await readCloseHold(engine, workspaceId, allowance);
     if (hold !== undefined) {
       throw documentCommitsPendingError(hold);
     }
@@ -395,9 +403,10 @@ export async function assertNoDocumentCommitsHold(
 export async function assertNoUncommittedHold(
   engine: SpecFlowEngine,
   workspaceIds: readonly string[],
+  allowance?: UncommittedAllowance,
 ): Promise<void> {
   for (const workspaceId of new Set(workspaceIds)) {
-    const hold = await readUncommittedHold(engine, workspaceId);
+    const hold = await readUncommittedHold(engine, workspaceId, allowance);
     if (hold !== undefined) {
       throw documentCommitsPendingError({
         workspaceId,

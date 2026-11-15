@@ -176,6 +176,7 @@ export function DocumentEditorProvider({
   document,
   readOnlyReason,
   guidance,
+  onSaved,
   children,
 }: {
   specId: string;
@@ -185,6 +186,8 @@ export function DocumentEditorProvider({
   readOnlyReason?: ActionReason;
   /** The writing guidance of the document's type, when the catalogue has it. */
   guidance?: DocumentGuidance;
+  /** After a save of a document of this scope (an owner refreshes what reads the document). */
+  onSaved?: (documentId: string) => void;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -334,7 +337,7 @@ export function DocumentEditorProvider({
 
     return { checked, toggle: () => setWrapLines(sourcePane, !checked) };
   }, [sourcePane, wrapPreference]);
-  const owner = useDocumentSave({ specId, document, draft });
+  const owner = useDocumentSave({ specId, document, draft, onSaved });
   const { save: saveOwned } = owner;
 
   const { editorRoot, focusEditor, focusContent, focusEditorSoon, focusContentSoon } =

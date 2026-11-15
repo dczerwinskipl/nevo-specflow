@@ -35,7 +35,7 @@ import {
   loadDefinitions,
   openSeedSource,
   type DefinitionSource,
-} from '../../src/specs/definitions';
+} from '../../src/definitions';
 import { documentTypeFile, sampleProject } from '../../src/specs/definitions/test-support';
 
 const registry = createDefaultDefinitionRegistry();
@@ -388,6 +388,7 @@ describe('catalogue stat memo against real timestamps', () => {
     await writeProject(home, sampleFiles());
     const counter = { reads: 0 };
     const catalogues = createCatalogueSource({
+      registry,
       sourceFor: () => counting(createFilesystemDefinitionSource(definitionsRoot(home)), counter),
       // The files were just written; a clock far ahead stands for "settled for more than 2 seconds".
       nowMs: () => Date.now() + 60_000,
@@ -413,6 +414,7 @@ describe('catalogue stat memo against real timestamps', () => {
     await writeProject(home, sampleFiles());
     const counter = { reads: 0 };
     const catalogues = createCatalogueSource({
+      registry,
       sourceFor: () => counting(createFilesystemDefinitionSource(definitionsRoot(home)), counter),
     });
     await catalogues.get(home);
@@ -424,7 +426,7 @@ describe('catalogue stat memo against real timestamps', () => {
   it('answers an archetype lookup with one stat on the real filesystem', async () => {
     const home = await newHome();
     await writeProject(home, sampleFiles());
-    const catalogues = createCatalogueSource({ nowMs: () => Date.now() + 60_000 });
+    const catalogues = createCatalogueSource({ registry, nowMs: () => Date.now() + 60_000 });
     expect(await catalogues.lookupArchetype(home, 'minimal')).toEqual({
       state: 'defined',
       title: 'Minimal',

@@ -9,7 +9,10 @@ import { docsSearchEndpoint } from './search/endpoint';
 import { docsTreeEndpoint } from './tree/endpoint';
 import { createRefreshSlot } from './workspace-corpus/background-refresh';
 import { engineWorkspaceResolver } from './workspace-corpus/engine-resolution';
-import { createWorkspaceDocsOperations } from './workspace-corpus/operations';
+import {
+  createWorkspaceDocsOperations,
+  type WorkspaceDocsOperations,
+} from './workspace-corpus/operations';
 import {
   createWorkspaceCorpora,
   type WorkspaceCorpora,
@@ -52,8 +55,16 @@ export interface CreateDocsFeatureOptions {
  */
 export type ReleaseWorkspaceDocs = (workspaceId: string) => Promise<WorkspaceDocsRelease>;
 
+/**
+ * The stable ids of the active documents a registered workspace's documentation serves now (its
+ * tree), through the same availability check and corpus instance as the docs routes. Empty when the
+ * workspace or its documentation is unavailable or not configured, or without an Engine.
+ */
+export type WorkspaceDocumentIds = (workspaceId: string) => Promise<ReadonlySet<string>>;
+
 export interface DocsFeature extends RuntimeFeature {
   readonly releaseWorkspaceDocs: ReleaseWorkspaceDocs;
+  readonly activeDocumentIds: WorkspaceDocumentIds;
 }
 
 const NOTHING_HELD: WorkspaceDocsRelease = { end: () => undefined };
@@ -64,11 +75,19 @@ export function createDocsFeature(options: CreateDocsFeatureOptions): DocsFeatur
   const env = dependencies.env ?? process.env;
   // Created when the feature registers; before that no instance exists to release.
   let corpora: WorkspaceCorpora | undefined;
+  let operations: WorkspaceDocsOperations | undefined;
 
   return {
     authorizationResources: [DocsCapabilities],
     releaseWorkspaceDocs: (workspaceId) =>
       corpora === undefined ? Promise.resolve(NOTHING_HELD) : corpora.release(workspaceId),
+    activeDocumentIds: async (workspaceId) => {
+      const tree = await operations?.tree(workspaceId);
+
+      return new Set(
+        tree?.kind === 'ok' ? tree.value.documents.map((document) => document.documentId) : [],
+      );
+    },
     register(app) {
       const { engine, projectId } = options;
       // Without an Engine there are no workspaces: every route answers `503 DOCS_UNAVAILABLE`.
@@ -89,12 +108,9 @@ export function createDocsFeature(options: CreateDocsFeatureOptions): DocsFeatur
                 : {}),
             });
       corpora = workspaces;
+      operations = workspaces === undefined ? undefined : createWorkspaceDocsOperations(workspaces);
 
-      const endpoint = {
-        operations:
-          workspaces === undefined ? undefined : createWorkspaceDocsOperations(workspaces),
-        projectId,
-      };
+      const endpoint = { operations, projectId };
       app.register(docsTreeEndpoint, endpoint);
       app.register(docsArticleEndpoint, endpoint);
       app.register(docsSearchEndpoint, endpoint);

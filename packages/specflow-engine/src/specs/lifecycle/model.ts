@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 import { validateOperationId } from '../create/journal';
 import { isValidSpecificationId } from '../model';
+import type { SpecificationExitBlocker, SpecificationExitGuard } from './exit-guard';
 
 export type CloseKind = 'worktree-close' | 'specification-close' | 'workspace-close';
 
@@ -212,6 +213,8 @@ export type CloseOperationErrorCode =
   | 'CLOSE_CONFLICT'
   | 'CLOSE_UNAVAILABLE'
   | 'CLOSE_PREFLIGHT'
+  /** The workflow of the Specification is not finished (D07); `blockers` lists what holds it. */
+  | 'CLOSE_BLOCKED'
   | 'CLOSE_SHARED_WORKTREE'
   | 'CLOSE_RECOVERY_REQUIRED'
   /**
@@ -229,19 +232,46 @@ export type CloseLocalConfigRefusal = 'changed' | 'unrecorded' | 'unreadable';
 
 export class CloseOperationError extends Error {
   readonly code: CloseOperationErrorCode;
+  /** `CLOSE_BLOCKED`: the grouped blockers of the Specification exit gate; empty otherwise. */
+  readonly blockers: readonly SpecificationExitBlocker[];
+  /** `CLOSE_PREFLIGHT` of a dirty checkout: the paths that are not clean; empty otherwise. */
+  readonly paths: readonly string[];
   /** Present only for `CLOSE_LOCAL_CONFIG_MODIFIED`. */
   readonly localConfig?: CloseLocalConfigRefusal;
 
   constructor(
     code: CloseOperationErrorCode,
     message: string,
-    details: { readonly localConfig?: CloseLocalConfigRefusal } = {},
+    details: {
+      readonly blockers?: readonly SpecificationExitBlocker[];
+      readonly paths?: readonly string[];
+      readonly localConfig?: CloseLocalConfigRefusal;
+    } = {},
   ) {
     super(message);
     this.name = 'CloseOperationError';
     this.code = code;
+    this.blockers = details.blockers ?? [];
+    this.paths = details.paths ?? [];
     if (details.localConfig) {
       this.localConfig = details.localConfig;
     }
+  }
+}
+
+/** Refuse with `CLOSE_BLOCKED` while the Specification exit gate reports blockers. */
+export async function assertSpecificationExit(
+  guard: SpecificationExitGuard,
+  specId: string,
+): Promise<void> {
+  const blockers = await guard(specId);
+  if (blockers.length > 0) {
+    throw new CloseOperationError(
+      'CLOSE_BLOCKED',
+      'The Specification workflow is not finished: ' +
+        blockers.map((blocker) => blocker.kind).join(', ') +
+        '.',
+      { blockers },
+    );
   }
 }

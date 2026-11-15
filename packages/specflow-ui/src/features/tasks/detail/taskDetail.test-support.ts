@@ -49,7 +49,7 @@ export function createTaskDetailFixture(scenario: TaskScenario = 'human-gates', 
   ].includes(scenario);
   const step = {
     id: 'verify',
-    executor: human ? ('human' as const) : ('agent' as const),
+    executors: human ? ['human' as const] : ['agent' as const],
     purpose: 'Check return navigation, session expiry and two browser tabs.',
     expectedWork: { summary: 'Verify session behaviour' },
     hints:
@@ -66,7 +66,7 @@ export function createTaskDetailFixture(scenario: TaskScenario = 'human-gates', 
   };
   const buildStep = {
     id: 'build',
-    executor: 'agent' as const,
+    executors: ['agent' as const],
     purpose: 'Implement the change.',
     expectedWork: { summary: 'Implement session behaviour' },
     hints: [],

@@ -31,7 +31,7 @@ describe('start Specification execution', () => {
 
     expect(started.context.step).toMatchObject({
       id: 'requirements',
-      executor: 'agent',
+      executors: ['agent', 'human'],
       interaction: 'interactive',
     });
     expect(started.context.archetype).toMatchObject({
@@ -44,7 +44,7 @@ describe('start Specification execution', () => {
       taskTypes: ['*'],
       run: {
         workflow: { id: 'specification-standard', version: 1 },
-        attempts: [{ step: 'requirements', executor: claude }],
+        attempts: [{ step: 'requirements', actor: claude }],
       },
     });
   });
@@ -65,19 +65,31 @@ describe('start Specification execution', () => {
       startSpecificationExecution(dependencies, {
         specId: SPEC,
         archetype: 'unknown',
-        executor: claude,
+        actor: claude,
       }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_NOT_CONFIGURED' });
   });
 });
 
 describe('the executor of a started step', () => {
-  it('refuses a person on an agent step', async () => {
+  it('lets the owner do a step an agent may also do, recording the owner as its actor', async () => {
     const dependencies = memoryDependencies(catalogue);
 
-    await expect(startSpecification(dependencies, owner)).rejects.toMatchObject({
-      code: 'WORKFLOW_EXECUTOR_NOT_ALLOWED',
+    await expect(startSpecification(dependencies, owner)).resolves.toMatchObject({
+      kind: 'started',
+      context: { step: { id: 'requirements', executors: ['agent', 'human'] } },
     });
+    const inspection = await inspectExecution(dependencies, SPEC);
+    expect(inspection.specification?.record.run.attempts).toMatchObject([{ actor: owner }]);
+  });
+
+  it('refuses an actor the stored records cannot hold', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    const forged = { class: 'human', details: { actorId: 'x', trust: 'claimed' } };
+
+    await expect(
+      startSpecification(dependencies, forged as unknown as typeof owner),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_EXECUTOR_NOT_ALLOWED' });
     expect(dependencies.store.applied).toEqual([]);
   });
 

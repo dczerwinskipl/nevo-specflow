@@ -24,6 +24,8 @@ export function createWorkspaceIntegrationApi(): SpecificationApi {
             {
               id: 'implementation',
               name: 'Integration tasks',
+              summary: 'row',
+              collapsed: false,
               tasks: [
                 {
                   id: 'TASK-01',
@@ -36,6 +38,7 @@ export function createWorkspaceIntegrationApi(): SpecificationApi {
           total: 1,
           completed: 0,
           attention: [],
+          overview: { rows: [], compact: [] },
         },
       },
       documents: {
@@ -48,7 +51,6 @@ export function createWorkspaceIntegrationApi(): SpecificationApi {
       repository: { state: 'unavailable', reason: 'not_implemented' },
     },
     actions: {
-      executeTasks: { available: false, reason: 'not_implemented' },
       startSession: { available: false, reason: 'not_implemented' },
     },
   };
@@ -67,6 +69,8 @@ export function createWorkspaceIntegrationApi(): SpecificationApi {
 /** Story-only Task detail adapter, separate from Specification Workspace reads. */
 export function createTaskIntegrationApi(): TaskApi {
   return {
+    // The fixture Runtime has no Tasks page read (as the demo Runtime).
+    getTaskList: () => Promise.reject(new Error('No Tasks page read in this fixture')),
     getTask: (specId, taskId, signal) => {
       signal?.throwIfAborted();
       if (specId !== 'api-integration' || taskId !== 'TASK-01') {

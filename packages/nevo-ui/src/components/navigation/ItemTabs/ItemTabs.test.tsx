@@ -11,11 +11,14 @@ import {
 import { useOpenedItems } from './useOpenedItems';
 
 let containerWidth = 1000;
+/** Rendered width of each measured label by text; unlisted labels read 0, as without layout. */
+let labelWidths: Record<string, number> = {};
 const observers: (() => void)[] = [];
 let frames = new Map<number, FrameRequestCallback>();
 
 beforeEach(() => {
   containerWidth = 1000;
+  labelWidths = {};
   observers.length = 0;
   frames = new Map();
   let nextFrame = 0;
@@ -37,19 +40,22 @@ beforeEach(() => {
       unobserve() {}
     },
   );
-  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
-    () =>
-      ({
-        width: containerWidth,
-        height: 56,
-        x: 0,
-        y: 0,
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-      }) as DOMRect,
-  );
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+    this: HTMLElement,
+  ) {
+    const label = this.hasAttribute('data-item-tabs-measure') ? this.textContent : undefined;
+
+    return {
+      width: label === undefined ? containerWidth : (labelWidths[label] ?? 0),
+      height: 56,
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+    } as DOMRect;
+  });
 });
 
 afterEach(() => {
@@ -199,6 +205,19 @@ describe('ItemTabs', () => {
       expect(width('Work history')).toBe(44 + Math.round('Work history'.length * 7.4));
       // The pinned tab keeps the trailing slot for its pin, so it is sized like a closable tab.
       expect(width('Context')).toBe(44 + Math.round('Context'.length * 7.4));
+    });
+
+    it('sizes a tab from the unrounded label width so a fractional label is not truncated', () => {
+      // 39.4 and 40.2 need 40 and 41 px of text (ceil); offsetWidth would round them to 39 and 40.
+      labelWidths = { 'a.md': 39.4, 'b.md': 40.2 };
+      renderTabs({
+        items: [makeItem('a', { icon: undefined }), makeItem('b', { icon: undefined })],
+        activeId: 'a',
+        density: 'rail',
+      });
+      const width = (name: string) =>
+        Number.parseFloat(screen.getByRole('tab', { name }).parentElement!.style.width);
+      expect(width('b.md')).toBe(width('a.md') + 1);
     });
 
     it('shows the dirty dot in the glyph slot of an iconless tab and reserves its width', () => {

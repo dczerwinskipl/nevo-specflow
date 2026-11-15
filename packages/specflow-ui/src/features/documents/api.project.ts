@@ -10,12 +10,13 @@ import {
 } from '@nevo/specflow-contracts/documents';
 import type { ApiTransport } from '../../api';
 import { isArchetypeCatalogue } from '../../shared/http/isArchetypeCatalogue';
-import { documentTreePath, type CreateFolderInput, type DocumentsApi } from './api';
+import { documentTreePath, scopePath, type CreateFolderInput, type DocumentsApi } from './api';
 
 const isObject = (data: unknown): data is Record<string, unknown> =>
   typeof data === 'object' && data !== null;
 
-const specPath = (specId: string) => `/api/specs/${encodeURIComponent(specId)}`;
+/** A Specification, or a Task's documents (`taskDocumentScope`): the same routes below it. */
+const specPath = scopePath;
 
 /**
  * Project-runtime adapter of {@link DocumentsApi}, the only module that knows the project routes:

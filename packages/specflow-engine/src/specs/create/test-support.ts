@@ -1,5 +1,5 @@
 import type { SpecFlowEngine } from '../../application';
-import { installDefinitionsForTesting } from '../definitions/testing-install';
+import { installDefinitionsForTesting } from '../../definitions/testing-install';
 import { normalizeCreateClientIntent } from './intent';
 import type { WindowsPathBoundOptions } from './path-bound';
 import {

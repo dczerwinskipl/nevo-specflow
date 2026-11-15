@@ -28,10 +28,10 @@ describe('return to an earlier step', () => {
   it('changes no Task status; the new breakdown drafts and decides explicitly', async () => {
     const dependencies = memoryDependencies(catalogue);
     await specificationWithTasks(dependencies);
-    await startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', executor: claude });
+    await startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', actor: claude });
 
     const returned = await returnToStep(dependencies, {
-      executor: owner,
+      actor: owner,
       subject: specification,
       step: 'breakdown',
       feedback: 'Add an audit Task.',
@@ -59,7 +59,7 @@ describe('return to an earlier step', () => {
         tasks: [{ id: 'audit', title: 'Audit', type: 'implementation', dependsOn: ['api'] }],
         taskDecisions: [{ taskId: 'screen', status: 'on-hold', reason: 'Wait for the audit.' }],
       },
-      executor: claude,
+      actor: claude,
     });
     expect(drafted.createdTasks).toEqual(['audit']);
     await work(dependencies, specification, { result: 'pass' });
@@ -78,7 +78,7 @@ describe('return to an earlier step', () => {
     });
     await expect(
       returnToStep(dependencies, {
-        executor: owner,
+        actor: owner,
         subject: task('screen'),
         step: 'implement',
         feedback: 'x',
@@ -90,7 +90,7 @@ describe('return to an earlier step', () => {
     const dependencies = memoryDependencies(catalogue);
     await specificationWithTasks(dependencies);
     await returnToStep(dependencies, {
-      executor: owner,
+      actor: owner,
       subject: specification,
       step: 'breakdown',
       feedback: 'x',
@@ -110,7 +110,7 @@ describe('return to an earlier step', () => {
             { taskId: 'screen', status: 'ready' },
           ],
         },
-        executor: claude,
+        actor: claude,
       }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_INPUT_INVALID' });
     expect(dependencies.store.applied).toHaveLength(applied);
@@ -122,14 +122,14 @@ describe('return to an earlier step', () => {
 
     await expect(
       returnToStep(dependencies, {
-        executor: owner,
+        actor: owner,
         subject: specification,
         step: 'acceptance',
         feedback: 'x',
       }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_RETURN_NOT_ALLOWED' });
     await expect(
-      returnToStep(dependencies, { executor: owner, subject: specification, step: 'requirements' }),
+      returnToStep(dependencies, { actor: owner, subject: specification, step: 'requirements' }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_INPUT_INVALID' });
   });
 
@@ -139,7 +139,7 @@ describe('return to an earlier step', () => {
 
     await expect(
       returnToStep(dependencies, {
-        executor: owner,
+        actor: owner,
         subject: specification,
         step: 'breakdown',
         feedback: 'x',
@@ -162,7 +162,7 @@ describe('return to an earlier step', () => {
           subject: specification,
           step: 'requirements',
           feedback: 'x',
-          ...(executor ? { executor } : {}),
+          ...(executor ? { actor: executor } : {}),
         } as ReturnToStepInput),
       ).rejects.toMatchObject({ code: 'WORKFLOW_EXECUTOR_NOT_ALLOWED' });
     }

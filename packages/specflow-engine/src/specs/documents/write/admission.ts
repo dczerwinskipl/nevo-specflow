@@ -11,6 +11,7 @@ import { resolveDocument, type PlanResult } from '../changes/plan/draft';
 import type { DocumentChangeRequest, DocumentWriteRequest } from '../changes/plan/request';
 import { manifestPathOf } from '../changes/plan/model';
 import type { PlanningSnapshot } from '../changes/plan/snapshot';
+import { isLoadedSpecification, type DocumentContainerRef } from '../loaded-specification';
 import type { DocumentReadOptions } from '../read-options';
 import { folderRevisionOf } from './folder-revision';
 import { admitGitCommit, type GitAdmission, type GitPreflightOptions } from './git-preflight';
@@ -18,7 +19,7 @@ import { findManifestBaseline, assertManifestNotDirty } from './manifest-dirty';
 import { nodeDocumentFileOps } from './file-effects';
 import { assertPlanFitsWindows, type WindowsPathBoundOptions } from './path-bound';
 import { planRemovesAnAliasedEntry } from './physical-aliases';
-import { readSpecificationSnapshot, type SpecificationSnapshot } from './snapshot';
+import { readContainerSnapshot, type ContainerSnapshot } from './snapshot';
 import { BUSY_RETRY_AFTER_MS } from './reservation-guard';
 import {
   asPlannerRequest,
@@ -47,7 +48,7 @@ export interface DocumentAdmissionOptions {
  * A request that passed admission: the plan to reserve, the content to make durable first, and
  * what the reservation must re-check under the control lock. Nothing was written to get here.
  */
-export interface AdmittedDocumentChange extends SpecificationSnapshot, PlanResult {
+export interface AdmittedDocumentChange extends ContainerSnapshot, PlanResult {
   /** sha256 of the manifest bytes the plan was made from (the reservation compares it). */
   readonly manifestSha256: string;
   readonly git: GitAdmission;
@@ -67,12 +68,12 @@ export interface AdmittedDocumentChange extends SpecificationSnapshot, PlanResul
  */
 export async function admitDocumentChange(
   engine: SpecFlowEngine,
-  specId: string,
+  target: DocumentContainerRef,
   written: DocumentWriteRequest,
   options: DocumentAdmissionOptions = {},
 ): Promise<AdmittedDocumentChange> {
   const request = asPlannerRequest(written);
-  const observed = await readSpecificationSnapshot(engine, specId, options.read, (snapshot) =>
+  const observed = await readContainerSnapshot(engine, target, options.read, (snapshot) =>
     pathsNeedingContentHash(snapshot, request),
   ).catch((error: unknown) => {
     if (error instanceof FileChangedDuringOpen) {
@@ -94,11 +95,12 @@ export async function admitDocumentChange(
   let planned = request;
   let catalogueRevision = options.currentCatalogueRevision;
   if (namesTemplates(written)) {
-    if (options.templates === undefined) {
+    // Templates belong to the Specification archetypes; a Task document is created from its content.
+    if (options.templates === undefined || !isLoadedSpecification(loaded)) {
       throw templatesUnavailable();
     }
 
-    const resolved = await options.templates(engine, snapshot.manifest, written);
+    const resolved = await options.templates(engine, loaded.manifest, written);
     planned = resolved.request;
     catalogueRevision = resolved.catalogueRevision;
   }
@@ -126,7 +128,11 @@ export async function admitDocumentChange(
   const paths = result.plan.paths.map((path) => path.path);
 
   const git = await admitGitCommit(engine, commits, loaded.workspaceRoot, paths, options.git);
-  if (changesManifest) {
+  // A Task's `task.yaml` is also written by the Specification execution store, whose writes are
+  // committed as `workflow` operations (`./execution-state.ts`) and may be uncommitted (auto-commit
+  // off, or a stop before they were recorded): it is not judged dirty. The whole-file revision checked
+  // again under the control lock and the mutual exclusion with that store (D03) protect it instead.
+  if (changesManifest && loaded.container.kind === 'specification') {
     const baseline = await findManifestBaseline(engine.context, {
       workspaceId: loaded.workspaceId,
       specId: loaded.specId,

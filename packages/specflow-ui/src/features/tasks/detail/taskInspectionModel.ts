@@ -1,4 +1,5 @@
 import type { TaskHumanRequirement, TaskSnapshot } from '@nevo/specflow-contracts/specs/workspace';
+import { isHumanStep } from './stepExecutors';
 
 /** Identifies one human-requirement evidence a screen opens. */
 export interface TaskEvidenceParams {
@@ -38,7 +39,7 @@ export function matchesWork(
 ): boolean {
   const work = snapshot?.sections.work;
   const step = inspectionStep(snapshot);
-  if (!snapshot || work?.state !== 'available' || step?.executor !== 'human') {
+  if (!snapshot || work?.state !== 'available' || !step || !isHumanStep(step)) {
     return false;
   }
 

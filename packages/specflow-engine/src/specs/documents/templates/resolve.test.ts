@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { resolveCatalogue } from '../../definitions/resolved-catalogue';
 import type { ProjectCatalogue } from '../../definitions/project-catalogue';
-import { seedCatalogueForTesting } from '../../definitions/testing-install';
+import { seedCatalogueForTesting } from '../../../definitions/testing-install';
 import type { SpecificationManifest } from '../../model';
 import { buildSnapshot } from '../changes/test-support';
 import { planDocumentChange } from '../changes/plan';

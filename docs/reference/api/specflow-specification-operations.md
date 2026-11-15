@@ -199,6 +199,11 @@ Close and integration first flush the document commit queue of the affected chec
 `DOCUMENT_COMMITS_PENDING` (`details.cause` `commit-pending`, `commit-failed` or `commit-uncommitted`) while document
 commits remain; the precedence and the preview behaviour are defined in
 [Specification documents](specification-documents.md).
+A Close that the Specification workflow refuses (unfinished Tasks or runs, pending writes) answers 409
+`CLOSE_BLOCKED` with `blockers`: groups `{kind, subjectIds, message}` (`kind` is a stable value, `subjectIds` are
+Task ids or the Specification id for Specification-wide holds, `message` is display-only). Abandoning the
+Specification instead is [`POST /api/specs/:specId/workflow/abandon`](specification-workflow.md).
+
 Worktree Close treats `.nevo/local/cache/**` (the semantic documentation index) as disposable
 product-owned files: they do not make the worktree dirty and are deleted with it. When Create
 copies Project Home's `.nevo/local/config.yaml` into a new linked worktree, the Engine records the

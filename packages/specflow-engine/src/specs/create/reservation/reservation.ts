@@ -29,7 +29,7 @@ import {
 import { removeExpiredCompletedCreateJournals } from '../journal/retention';
 import { admitCreateArchetype } from '../admission';
 import { assertCreatePathsFitWindows, type WindowsPathBoundOptions } from '../path-bound';
-import { getStableProjectCatalogue } from '../../definitions/catalogue-source';
+import { getStableProjectCatalogue } from '../../../definitions/process-catalogue';
 import { assertJournalFitsItsCap } from './journal-cap';
 import { CREATE_JOURNAL_VERSION } from '../journal/model';
 import { writeCreatePayload } from '../journal/payload';

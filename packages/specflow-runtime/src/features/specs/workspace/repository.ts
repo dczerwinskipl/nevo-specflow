@@ -1,3 +1,5 @@
+import type { WorkspaceAttention } from '@nevo/specflow-contracts/specs/workspace';
+import type { TaskOverview } from '@nevo/specflow-contracts/tasks';
 import type { RequestAuthorization } from '../../auth';
 import type { SessionScopeIdentity } from '../../sessions';
 import type { WorkspaceActivityInput, WorkspaceSessionStart } from './activity';
@@ -18,6 +20,8 @@ export interface WorkspaceTaskRecord {
     readonly label: string;
     readonly lifecycle: 'pending' | 'in_progress' | 'completed' | 'blocked';
   };
+  /** An attention item names the Task (its own, or the Specification's). */
+  readonly attention?: boolean;
 }
 export interface WorkspaceSessionRecord {
   readonly id: string;
@@ -38,6 +42,13 @@ export interface WorkspaceAttentionRecord {
   readonly reason: string;
   readonly targetId?: string;
   readonly priority?: 'critical' | 'high' | 'normal';
+  /** Workflow items: the reason code, who acts, the action and the Tasks named (see the contract). */
+  readonly code?: string;
+  readonly actor?: 'owner' | 'agent';
+  readonly action?: WorkspaceAttention['action'];
+  readonly secondaryAction?: WorkspaceAttention['secondaryAction'];
+  readonly taskIds?: string[];
+  readonly blocking?: WorkspaceAttention['blocking'];
 }
 export interface WorkspaceActivityRecord {
   readonly id: string;
@@ -72,11 +83,17 @@ export interface WorkspaceReadModel {
       readonly groups: {
         readonly id: string;
         readonly name: string;
+        readonly summary: 'row' | 'compact';
+        readonly collapsed: boolean;
         readonly tasks: WorkspaceTaskRecord[];
       }[];
       readonly completed: number;
       readonly total: number;
+      readonly cancelled?: number;
+      readonly ended?: number;
+      readonly onHold?: number;
       readonly attention: WorkspaceAttentionRecord[];
+      readonly overview: TaskOverview;
     }>;
     readonly documents: SourceSection<{
       readonly items: {
@@ -109,7 +126,6 @@ export interface WorkspaceReadModel {
     }>;
   };
   readonly actions: {
-    readonly executeTasks: { readonly available: boolean; readonly reason?: string };
     readonly startSession: {
       readonly available: boolean;
       readonly reason?: string;
@@ -128,24 +144,16 @@ export type SpecificationReadModel = Omit<
    * presented; the contribution decides whether it is a valid calendar date.
    */
   readonly created?: string;
-  /**
-   * The verified manifest `tasks`, an input of the (temporary) `tasks` contribution, so the
-   * manifest is read once per workspace read. Never presented.
-   */
-  readonly manifestTasks?: readonly unknown[];
 };
-/** Facts the Specification source already read, handed to the contributions that need them. */
-export interface WorkspaceSourceFacts {
-  readonly manifestTasks?: readonly unknown[];
-}
 export interface SpecificationWorkspaceRepository {
   readSpecification(specId: string): Promise<SpecificationReadModel | null>;
 }
 export interface WorkspaceContributions {
-  tasks?(
-    specId: string,
-    facts: WorkspaceSourceFacts,
-  ): Promise<WorkspaceReadModel['sections']['tasks']>;
+  /** The Tasks owner's section, and the preparation state the Tasks imply (overrides the source's). */
+  tasks?(specId: string): Promise<{
+    section: WorkspaceReadModel['sections']['tasks'];
+    preparationState?: WorkspaceReadModel['specification']['preparationState'];
+  }>;
   documents?(specId: string): Promise<WorkspaceReadModel['sections']['documents']>;
   /** Composed after the other reads, from the facts they already returned (no foreign read). */
   activity?(

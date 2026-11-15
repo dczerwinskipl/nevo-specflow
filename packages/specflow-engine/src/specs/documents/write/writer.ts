@@ -12,6 +12,7 @@ import type { DocumentChangeJournal } from '../changes/journal/model';
 import { decodePlanWithEvidence } from '../changes/plan/codec';
 import type { DocumentChangePlan } from '../changes/plan/model';
 import type { DocumentWriteRequest } from '../changes/plan/request';
+import { containerOfRef, type DocumentContainerRef } from '../loaded-specification';
 import { admitDocumentChange, type AdmittedDocumentChange } from './admission';
 import { proveExecutorState, captureExecutorIdentity, nodeProcessTable } from './executor-identity';
 import { WriterInterrupted, nodeDocumentFileOps } from './file-effects';
@@ -152,22 +153,22 @@ class AdmissionFailure extends Error {
 export async function writeDocumentChange(
   engine: SpecFlowEngine,
   deps: DocumentWriteDependencies,
-  specId: string,
+  target: DocumentContainerRef,
   operationId: string,
   request: DocumentWriteRequest,
   options: DocumentWriteOptions = {},
 ): Promise<DocumentChangeResult> {
   validateJournalOperationId(DOCUMENT_CHANGE_JOURNAL_KIND, operationId);
   const rt = createWriteRuntime(engine, deps, options);
-  const fingerprint = fingerprintDocumentChange(request);
+  const fingerprint = fingerprintDocumentChange(request, containerOfRef(target));
   try {
     return await serialized(operationId, async () => {
       const existing = await findDocumentChangeJournal(rt.context, operationId);
       if (existing !== undefined) {
-        return replayJournal(rt, existing, { specId, fingerprint });
+        return replayJournal(rt, existing, { specId: target.specId, fingerprint });
       }
 
-      return writeNew(rt, specId, operationId, request, fingerprint);
+      return writeNew(rt, target, operationId, request, fingerprint);
     });
   } catch (error) {
     throw asWriteFailure(error);
@@ -203,20 +204,20 @@ export async function replayDocumentChange(
 
 async function writeNew(
   rt: WriteRuntime,
-  specId: string,
+  target: DocumentContainerRef,
   operationId: string,
   request: DocumentWriteRequest,
   fingerprint: string,
 ): Promise<DocumentChangeResult> {
   let deadline: number | undefined;
-  let admitted = await admit(rt, specId, request, 1);
+  let admitted = await admit(rt, target, request, 1);
   let replanned = false;
   await rt.hooks.beforeJournalWrite?.('reserved');
   for (let delay = BUSY_POLL_MS; ; delay = Math.min(delay * 2, 500)) {
     const outcome = await reserveOnce(rt, admitted, operationId, fingerprint);
     switch (outcome.kind) {
       case 'existing':
-        return replayJournal(rt, outcome.journal, { specId, fingerprint });
+        return replayJournal(rt, outcome.journal, { specId: target.specId, fingerprint });
       case 'replan':
         if (replanned) {
           throw documentChangeError(
@@ -227,7 +228,7 @@ async function writeNew(
         }
 
         replanned = true;
-        admitted = await admit(rt, specId, request, 2);
+        admitted = await admit(rt, target, request, 2);
         break;
       case 'busy':
         deadline ??= rt.now().getTime() + rt.busyWaitMs;
@@ -254,13 +255,13 @@ async function writeNew(
 
 async function admit(
   rt: WriteRuntime,
-  specId: string,
+  target: DocumentContainerRef,
   request: DocumentWriteRequest,
   attempt: number,
 ): Promise<AdmittedDocumentChange> {
   let admitted: AdmittedDocumentChange;
   try {
-    admitted = await admitDocumentChange(rt.engine, specId, request, rt.options);
+    admitted = await admitDocumentChange(rt.engine, target, request, rt.options);
   } catch (error) {
     throw new AdmissionFailure(error);
   }

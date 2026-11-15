@@ -5,7 +5,8 @@
 // touches a gated slice: `specs/document-rules`, `specs/documents`, `specs/archetypes`, `specs/definitions`, `specs/durable`, `specs/uncommitted`, `specs/manual-commit`, `specs/model.ts`,
 // `specs/scaffold.ts`, `specs/create` or `version-control/commits`. A cycle that touches none of them (the lifecycle one that predates the gate) is
 // reported as informational only. One known `specs/create` cycle is accepted by its exact member
-// list; it must not grow, and any new cycle through a gated slice fails.
+// list; it must not grow, and any new cycle through a gated slice fails. The subfolders of `workflow/`
+// are gated at folder level too: they must form an acyclic graph (see the end of this file).
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -68,6 +69,9 @@ const FORBIDDEN_EDGES = [
     from: 'specs/definitions/',
     to: ['specs/create/', 'specs/archetypes/', 'specs/scaffold.ts', 'specs/documents/'],
   },
+  // The generic definitions module knows no capability that registers a kind: the shipped kinds are
+  // composed in `definitions/` (the composition root), which depends on it, never the reverse.
+  { from: 'specs/definitions/', to: ['workflow/', 'definitions/'] },
   // The pure document rules are the lowest slice: both the documents layer and the definitions
   // loader depend on them, so they import no other Specification slice.
   {
@@ -298,48 +302,55 @@ for (const file of files) {
   graph.set(file, [...targets]);
 }
 
-// Tarjan's strongly connected components.
-let counter = 0;
-const index = new Map();
-const low = new Map();
-const stack = [];
-const onStack = new Set();
-const components = [];
-function connect(node) {
-  index.set(node, counter);
-  low.set(node, counter);
-  counter += 1;
-  stack.push(node);
-  onStack.add(node);
-  for (const next of graph.get(node) ?? []) {
-    if (!index.has(next)) {
-      connect(next);
-      low.set(node, Math.min(low.get(node), low.get(next)));
-    } else if (onStack.has(next)) {
-      low.set(node, Math.min(low.get(node), index.get(next)));
+// Tarjan's strongly connected components (of the nodes with more than one member) of a graph given as
+// a map from node to its successors.
+function stronglyConnected(successors) {
+  let counter = 0;
+  const index = new Map();
+  const low = new Map();
+  const stack = [];
+  const onStack = new Set();
+  const result = [];
+  const connect = (node) => {
+    index.set(node, counter);
+    low.set(node, counter);
+    counter += 1;
+    stack.push(node);
+    onStack.add(node);
+    for (const next of successors.get(node) ?? []) {
+      if (!index.has(next)) {
+        connect(next);
+        low.set(node, Math.min(low.get(node), low.get(next)));
+      } else if (onStack.has(next)) {
+        low.set(node, Math.min(low.get(node), index.get(next)));
+      }
+    }
+
+    if (low.get(node) === index.get(node)) {
+      const component = [];
+      let member;
+      do {
+        member = stack.pop();
+        onStack.delete(member);
+        component.push(member);
+      } while (member !== node);
+
+      if (component.length > 1) {
+        result.push(component);
+      }
+    }
+  };
+
+  for (const node of successors.keys()) {
+    if (!index.has(node)) {
+      connect(node);
     }
   }
 
-  if (low.get(node) === index.get(node)) {
-    const component = [];
-    let member;
-    do {
-      member = stack.pop();
-      onStack.delete(member);
-      component.push(member);
-    } while (member !== node);
-
-    if (component.length > 1) {
-      components.push(component);
-    }
-  }
+  return result;
 }
 
-for (const node of graph.keys()) {
-  if (!index.has(node)) {
-    connect(node);
-  }
-}
+const components = stronglyConnected(graph);
 
 const relative = (file) => path.relative(src, file).split(path.sep).join('/');
 let failed = false;
@@ -390,6 +401,63 @@ for (const component of components) {
       (accepted ? 'Accepted' : 'Ungated') + ' import cycle (' + members.length + ' modules).',
     );
   }
+}
+
+// `@nevo/workflow` is its own package (its import boundaries are lint rules, `workflowBoundaries`):
+// its modules must stay acyclic so the definitions/ and execution/ folders keep one direction.
+const kernelSrc = path.join(root, 'packages', 'workflow', 'src');
+const kernelFiles = sourceFiles(kernelSrc);
+const kernelGraph = new Map(kernelFiles.map((file) => [file, []]));
+for (const file of kernelFiles) {
+  const info = ts.preProcessFile(readFileSync(file, 'utf8'), true, false);
+  for (const { fileName } of info.importedFiles) {
+    if (!fileName.startsWith('.')) {
+      continue;
+    }
+
+    const base = path.resolve(path.dirname(file), fileName);
+    const target = [base + '.ts', path.join(base, 'index.ts')].find((c) => kernelGraph.has(c));
+    if (target && target !== file) {
+      kernelGraph.get(file).push(target);
+    }
+  }
+}
+
+for (const members of stronglyConnected(kernelGraph)) {
+  failed = true;
+  const names = members.map((member) => path.relative(kernelSrc, member)).sort();
+  console.error('Import cycle in @nevo/workflow:\n  ' + names.join('\n  '));
+}
+
+// Folder-level gate for the workflow capability: its subfolders (`workflow/state`, `workflow/tasks`,
+// ...) must form an acyclic dependency graph, so a subfolder can later be extracted on its own. A file
+// directly in `workflow/` is its own node (the composition root and the shared leaves).
+const workflowNode = (file) => {
+  const parts = relative(file).split('/');
+
+  return parts.length > 2 ? parts.slice(0, 2).join('/') : parts.join('/');
+};
+
+const workflowGraph = new Map();
+for (const [file, targets] of graph) {
+  if (!relative(file).startsWith('workflow/')) {
+    continue;
+  }
+
+  const from = workflowNode(file);
+  const edges = workflowGraph.get(from) ?? new Set();
+  for (const target of targets) {
+    if (relative(target).startsWith('workflow/') && workflowNode(target) !== from) {
+      edges.add(workflowNode(target));
+    }
+  }
+
+  workflowGraph.set(from, edges);
+}
+
+for (const members of stronglyConnected(workflowGraph)) {
+  failed = true;
+  console.error('Folder cycle in workflow/:\n  ' + members.sort().join('\n  '));
 }
 
 if (failed) {

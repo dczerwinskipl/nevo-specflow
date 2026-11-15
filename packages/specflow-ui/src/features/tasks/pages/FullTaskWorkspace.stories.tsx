@@ -72,6 +72,7 @@ export function TaskWorkbenchFixture({
 
     const services = createSpecFlowAppServices({
       taskApi: {
+        getTaskList: () => new Promise(() => undefined),
         getTask: () => Promise.resolve(expired ? fresh : fixture.response),
         getResources: () => {
           if (pageState === 'expired' && !expired) {
@@ -109,7 +110,7 @@ export function TaskWorkbenchFixture({
                       step: {
                         ...fixture.step,
                         id: 'build',
-                        executor: 'agent',
+                        executors: ['agent'],
                         hints: emptyHistoryHints
                           ? []
                           : [
@@ -126,6 +127,7 @@ export function TaskWorkbenchFixture({
                       },
                       startedAt: '2026-10-10T10:00:00Z',
                       completedAt: '2026-10-10T11:00:00Z',
+                      actor: { class: 'agent' },
                       result: 'pass',
                       transitionedTo: { kind: 'step', step: fixture.step },
                       feedback: 'Historical return test completed.',
@@ -305,7 +307,7 @@ const hintsContract: NonNullable<Story['play']> = async ({
   args,
 }) => {
   if (args.preview) {
-    await userEvent.click(await canvas.findByRole('button', { name: /Preserve .*session/ }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'View task' }));
   }
 
   if (args.emptyHistoryHints) {
@@ -319,7 +321,10 @@ const hintsContract: NonNullable<Story['play']> = async ({
     }
 
     await userEvent.click(await canvas.findByRole('button', { name: 'Attempt details' }));
-    await canvas.findByRole('heading', { name: 'Original session implementation' });
+    // The attempt heading names the step and where it went.
+    await canvas.findByRole('heading', {
+      name: 'Original session implementation → Verify session behaviour',
+    });
   } else {
     await userEvent.click(
       await canvas.findByRole('button', {
@@ -471,11 +476,7 @@ const previewScrollContract: NonNullable<Story['play']> = async ({
   canvasElement,
   userEvent,
 }) => {
-  await userEvent.click(
-    await canvas.findByRole('button', {
-      name: /Preserve user context across a long running session/,
-    }),
-  );
+  await userEvent.click(await canvas.findByRole('button', { name: 'View task' }));
   const preview = canvasElement.querySelector<HTMLElement>('[data-task-details="preview"]');
   if (!preview) {
     throw new Error('Expected Task preview');
@@ -568,11 +569,7 @@ const evidenceContract: NonNullable<Story['play']> = async ({
   args,
 }) => {
   if (args.preview) {
-    await userEvent.click(
-      await canvas.findByRole('button', {
-        name: 'Preserve session and navigation context',
-      }),
-    );
+    await userEvent.click(await canvas.findByRole('button', { name: 'View task' }));
   }
 
   await userEvent.click(await canvas.findByRole('button', { name: 'Verify session behaviour' }));
@@ -615,11 +612,7 @@ const flowContract: NonNullable<Story['play']> = async ({
   args,
 }) => {
   if (args.preview) {
-    await userEvent.click(
-      await canvas.findByRole('button', {
-        name: 'Preserve session and navigation context',
-      }),
-    );
+    await userEvent.click(await canvas.findByRole('button', { name: 'View task' }));
   }
 
   await userEvent.click(await canvas.findByRole('button', { name: 'Work actions' }));
@@ -656,9 +649,7 @@ export const FlowFullNarrow: Story = {
 
 const rowCompositionContract: NonNullable<Story['play']> = async ({ canvas, userEvent, args }) => {
   if (args.preview) {
-    await userEvent.click(
-      await canvas.findByRole('button', { name: 'Preserve session and navigation context' }),
-    );
+    await userEvent.click(await canvas.findByRole('button', { name: 'View task' }));
   }
 
   const gate = await canvas.findByRole('button', { name: 'Independent verification 1' });
@@ -694,13 +685,16 @@ export const RowCompositionNarrow: Story = {
 export const HistoryComposition: Story = {
   tags: ['contract'],
   play: async ({ canvas }) => {
-    const result = await canvas.findByText('build · Agent · Attempt 1 · pass');
-    const purpose = await canvas.findByText(
-      'Implement the original session behaviour before manual verification.',
-      { selector: 'p' },
-    );
-    if (purpose.getBoundingClientRect().top < result.getBoundingClientRect().bottom + 3) {
-      throw new Error('History purpose must occupy its own band with a gap after the result');
+    // One band each, in order: the result, the feedback, then the muted meta (when · actor · attempt).
+    const result = await canvas.findByText('pass', { selector: 'p' });
+    const feedback = await canvas.findByText('Historical return test completed.', {
+      selector: 'p',
+    });
+    const meta = await canvas.findByText(/ · Agent · Attempt 1$/, { selector: 'p' });
+    const below = (upper: Element, lower: Element) =>
+      lower.getBoundingClientRect().top >= upper.getBoundingClientRect().bottom;
+    if (!below(result, feedback) || !below(feedback, meta)) {
+      throw new Error('History result, feedback and meta must each occupy their own band in order');
     }
   },
 };
@@ -723,9 +717,7 @@ const richContextContract: NonNullable<Story['play']> = async ({
   args,
 }) => {
   if (args.preview) {
-    await userEvent.click(
-      await canvas.findByRole('button', { name: 'Preserve session and navigation context' }),
-    );
+    await userEvent.click(await canvas.findByRole('button', { name: 'View task' }));
   }
 
   const opener = await canvas.findByRole('button', { name: 'Details' });
@@ -794,9 +786,7 @@ const historyContextContract: NonNullable<Story['play']> = async ({
   args,
 }) => {
   if (args.preview) {
-    await userEvent.click(
-      await canvas.findByRole('button', { name: 'Preserve session and navigation context' }),
-    );
+    await userEvent.click(await canvas.findByRole('button', { name: 'View task' }));
     await userEvent.click(await canvas.findByRole('button', { name: 'More actions' }));
     await userEvent.click(
       await within(canvasElement.ownerDocument.body).findByRole('menuitem', {

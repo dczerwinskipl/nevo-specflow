@@ -49,4 +49,15 @@ describe('Alert', () => {
       ),
     ).not.toContain('data-design-slot="icon"');
   });
+
+  it('centres the icon on the first line: the title line, else the body line', () => {
+    const titled = renderToStaticMarkup(
+      <Alert tone="attention" title="Not saved">
+        Body
+      </Alert>,
+    );
+    expect(titled).toMatch(/flex h-\[1lh\] shrink-0 items-center text-label-md/);
+    const untitled = renderToStaticMarkup(<Alert tone="attention">Body only</Alert>);
+    expect(untitled).toMatch(/flex h-\[1lh\] shrink-0 items-center text-body-sm/);
+  });
 });

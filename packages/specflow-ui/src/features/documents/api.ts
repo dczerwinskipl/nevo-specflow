@@ -11,7 +11,27 @@ import type {
   SaveResult,
 } from '@nevo/specflow-contracts/documents';
 
-const specPath = (specId: string) => `/api/specs/${encodeURIComponent(specId)}`;
+const TASK_SCOPE = '/tasks/';
+
+/**
+ * The documents scope of a Task: its documents have the Specification's routes below the Task
+ * (`reference.api.specification-documents`, "Task documents"). It stands for the `specId` of the
+ * document reads, saves, drafts and caches, so a Task's `task` document never shares a draft or a
+ * cache entry with a Specification document of the same id. Neither id can contain a `/`.
+ */
+export const taskDocumentScope = (specId: string, taskId: string) =>
+  `${specId}${TASK_SCOPE}${taskId}`;
+
+/** The route prefix of a documents scope: a Specification, or a Task of it. */
+export function scopePath(scope: string): string {
+  const [specId = scope, taskId] = scope.split(TASK_SCOPE);
+
+  return `/api/specs/${encodeURIComponent(specId)}${
+    taskId === undefined ? '' : `/tasks/${encodeURIComponent(taskId)}`
+  }`;
+}
+
+const specPath = scopePath;
 
 export interface DocumentApi {
   getDocument(

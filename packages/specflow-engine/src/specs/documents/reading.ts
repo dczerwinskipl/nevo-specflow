@@ -3,7 +3,12 @@
  * registered document summaries and the raw stream. Kept apart from `./index` because the tree
  * reader depends on the archetype catalogue, which itself imports the pure primitives.
  */
-export { readSpecificationDocument } from './document-reader';
+export { readSpecificationDocument, readTaskDocument } from './document-reader';
+export {
+  readTaskDocuments,
+  type TaskDocumentListing,
+  type TaskDocuments,
+} from './task-document-reader';
 export {
   openSpecificationDocument,
   type OpenedDocument,

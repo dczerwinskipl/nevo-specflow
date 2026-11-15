@@ -130,11 +130,19 @@ A document may exist only in another workspace; a `404` names nothing about the 
 
 Other parameters are rejected. `200` with `WorkspaceDocsSearch`: the fields of the CLI's `--json`
 result (`DocsSearchResult`: `mode` `hybrid` or `lexical`, the `reason` when lexical, the ranked
-`results` with each document's frontmatter and best sections, their `sectionId`, `line` and, unless
-`snippets=false`, a query-aware `snippet`, ranked as described in
-[`search`](../cli/nevo-specflow-docs.md#search)), with a hit's `file` relative to `docs.root`, plus
-the fields below. A hit names its document `id`, as in the CLI's result, where the tree and the
-article say `documentId`.
+`results` with each document's frontmatter, `wordMatch` and best sections, their `sectionId`,
+`line` and, unless `snippets=false`, a query-aware `snippet` with its `snippetMatches`, ranked as
+described in [`search`](../cli/nevo-specflow-docs.md#search)), with a hit's `file` relative to
+`docs.root`, plus the fields below. A hit names its document `id`, as in the CLI's result, where the
+tree and the article say `documentId`.
+
+What a reader shows of a hit comes from these fields, so it never tokenizes the query itself:
+
+| Field                       | Value                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sections[].snippet`        | plain text, one line, at most 280 characters: one sentence run of a paragraph, one list item or one table row (`first cell — cell; cell`, the header row dropped), without Markdown syntax; it starts at most 40 characters before its first matched word, at a sentence start or after `… ` and a whole word; with no matched word, the section's longest prose fragment ([Excerpts](../cli/nevo-specflow-docs.md#search)) |
+| `sections[].snippetMatches` | the matched words of `snippet`: `{ start, end }` UTF-16 offsets into it (`end` excluded), the first occurrence of each query word, at most three, in order and not overlapping, over the original characters (diacritics included); present exactly when `snippet` is; empty when no word of the excerpt matches                                                                                                            |
+| `wordMatch`                 | `true` when the query's words matched the document (a section in the BM25 ranking, by heading path or text, or the frontmatter ranking); `false` for a document found only by its meaning, in `hybrid` mode. A reader can tell "no result has the query's words" from it; it does not change the ranking                                                                                                                    |
 
 | Field              | Value                                                                                                                                     |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |

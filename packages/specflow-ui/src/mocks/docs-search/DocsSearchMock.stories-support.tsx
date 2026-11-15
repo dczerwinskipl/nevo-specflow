@@ -695,6 +695,7 @@ function toSearch(answer: MockAnswer, results: readonly MockHit[]): WorkspaceDoc
       status: 'current',
       file: hit.file,
       score: 1 - index / 100,
+      wordMatch: true,
       sections: [
         {
           headingPath: [...hit.headingPath],

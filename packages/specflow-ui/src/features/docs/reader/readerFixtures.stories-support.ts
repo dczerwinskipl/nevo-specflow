@@ -576,6 +576,19 @@ export interface MockResult {
   doc: MockDoc;
   section?: MockSection;
   snippet: string;
+  /** The first occurrence of each query word in `snippet`, at most three, in order. */
+  snippetMatches: { start: number; end: number }[];
+}
+
+function matchesIn(text: string, words: readonly string[]): { start: number; end: number }[] {
+  const lower = text.toLowerCase();
+
+  return words
+    .map((word) => ({ start: lower.indexOf(word), end: lower.indexOf(word) + word.length }))
+    .filter(({ start }) => start >= 0)
+    .sort((a, b) => a.start - b.start)
+    .filter((range, index, all) => index === 0 || range.start >= all[index - 1]!.end)
+    .slice(0, 3);
 }
 
 export function search(
@@ -616,6 +629,7 @@ export function search(
         doc: d,
         section: best.section?.headingPath.length ? best.section : undefined,
         snippet,
+        snippetMatches: matchesIn(snippet, words),
       },
       score,
       proposal: isProposal(d.path),

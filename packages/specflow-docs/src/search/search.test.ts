@@ -138,6 +138,7 @@ describe('searchDocumentation', () => {
       status: 'current',
       file: 'docs/guide.md',
       score: expect.any(Number) as unknown,
+      wordMatch: true,
       sections: [
         {
           headingPath: ['Guide', 'Install'],
@@ -156,6 +157,10 @@ describe('searchDocumentation', () => {
     expect(withSnippets.results[0]!.sections[0]).toMatchObject({
       headingPath: ['Guide', 'Install'],
       snippet: 'Install the widget with pnpm.',
+      snippetMatches: [
+        { start: 0, end: 7 },
+        { start: 12, end: 18 },
+      ],
     });
   });
 
@@ -178,6 +183,48 @@ describe('searchDocumentation', () => {
         }),
       ]);
     }
+  });
+
+  it('says which documents matched words: by a heading or the frontmatter, not by meaning only', async () => {
+    // Every text embeds alike, so the vector ranking holds every section.
+    const fake = createFakeEmbeddingProvider();
+    const provider: EmbeddingProvider = {
+      ...fake,
+      embed: (texts, purpose) =>
+        fake.embed(
+          texts.map(() => 'same'),
+          purpose,
+        ),
+    };
+    const search: DocsSearch = {
+      chunks: createDocsChunkSource({ corpus }),
+      vectors: {
+        store: createInMemoryVectorStore(),
+        writes: admitted(),
+        providers: { query: provider, documents: provider },
+      },
+    };
+    const wordMatches = async (query: string) => {
+      const result = await searchDocumentation(search, { ...request, query, snippets: true });
+      expect(result.mode).toBe('hybrid');
+
+      return result.results;
+    };
+
+    // Only the heading "Configure" has the word; the excerpt shows the body, unmarked.
+    const byHeading = await wordMatches('configure');
+    expect(byHeading.filter((hit) => hit.wordMatch).map((hit) => hit.id)).toEqual(['guide']);
+    expect(byHeading.find((hit) => hit.id === 'guide')!.sections[0]).toMatchObject({
+      headingPath: ['Guide', 'Configure'],
+      snippet: 'Point the embedding endpoint at a local model.',
+      snippetMatches: [],
+    });
+    expect(byHeading.length).toBeGreaterThan(1);
+
+    // Only the frontmatter of `engine` names tasks.
+    const byFrontmatter = await wordMatches('tasks');
+    expect(byFrontmatter.filter((hit) => hit.wordMatch).map((hit) => hit.id)).toEqual(['engine']);
+    expect(byFrontmatter.length).toBeGreaterThan(1);
   });
 
   it('includes proposals only with the switch; inactive ones never', async () => {
@@ -407,8 +454,10 @@ describe('toHit', () => {
           part('a/2', ['Guide', 'A'], 2),
           part('b', ['Guide', 'B'], 1),
         ],
+        lexical: true,
       },
       0.5,
+      true,
       undefined,
     );
     expect(hit.sections).toEqual([

@@ -1,6 +1,7 @@
-# Project configuration of this repository: documentation only (ADR 0020). The repository uses the
-# `docs` commands without being an initialized Nevo SpecFlow project; `nevo-specflow init` would add
-# the Runtime sections and keep this one. Taxonomy and path prefixes live in docs/docs.yaml.
+# Project configuration of this repository, which dogfoods Nevo SpecFlow on itself. Written by
+# `nevo-specflow init`: no sign-in (a trusted workstation identity named in the git-ignored
+# .nevo/local/config.yaml), managed Git worktrees integrating into main. Taxonomy and path
+# prefixes of the documentation live in docs/docs.yaml.
 
 docs:
   # The team opt-in only: without an `ai.embeddings` endpoint `search` stays lexical (reason
@@ -8,3 +9,31 @@ docs:
   # .nevo/local/config.yaml (docs/engineering/repository/local-setup.md).
   search:
     semantic: true
+runtime:
+  server:
+    host: 127.0.0.1
+    port: 4318
+    tls:
+      enabled: false
+  authentication:
+    mode: none
+    users:
+      dominikczerwinski:
+        name: Dominik Czerwiński
+    providers:
+      password:
+        enabled: false
+      oidc:
+        instances: {}
+  authorization:
+    assignments:
+      - userId: dominikczerwinski
+        role: admin
+git:
+  enabled: true
+  integrationTargetBranch: main
+  worktrees:
+    branchPattern: feature/{key}-{slug}
+  commits:
+    protectedBranches:
+      - main

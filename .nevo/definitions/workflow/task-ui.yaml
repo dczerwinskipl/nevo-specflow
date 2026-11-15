@@ -1,0 +1,43 @@
+kind: workflow
+schemaVersion: 1
+id: task-ui
+version: 1
+title: UI Task
+description: Implement the UI Task from its UX contract, then an independent review; a rejected review goes back to implementation.
+subject: task
+entryStep: implement
+steps:
+  - id: implement
+    kind: work
+    title: Implement
+    executor: agent
+    archetype: implementer-ui
+    purpose: Implement the UI change from its UX contract and run its verification.
+    transitions:
+      - id: implemented
+        to: { step: review }
+        continuation: auto
+  - id: review
+    kind: work
+    title: Review
+    executor: agent
+    archetype: reviewer
+    purpose: Review the change independently against the Task, the UX contract and the design system.
+    transitions:
+      - id: approved
+        result: pass
+        to: { terminal: completed }
+      - id: changes-requested
+        result: fail
+        to: { step: implement }
+        feedback: required
+        continuation: auto
+      - id: escalated
+        result: needs-spec-change
+        label: The Specification needs a change
+        to: { step: implement }
+        feedback: required
+        escalate: true
+returns:
+  - step: implement
+    label: Back to implementation

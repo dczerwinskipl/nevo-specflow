@@ -1,0 +1,12 @@
+kind: agent-archetype
+schemaVersion: 1
+id: solution-designer
+title: Solution designer
+description: Designs the solution of a decided Specification against the existing architecture.
+instructions: Reconcile the Specification with the architecture documents, record every decision with its alternatives and leave open questions explicit instead of guessing.
+preferredProvider: claude
+providers:
+  - provider: claude
+    model: claude-opus-5-5
+  - provider: codex
+  - provider: antigravity

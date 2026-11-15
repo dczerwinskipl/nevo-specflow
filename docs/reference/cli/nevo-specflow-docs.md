@@ -212,8 +212,10 @@ section's longest prose fragment from its start, which may not be the part that 
 section before relying on it. `snippetMatches` locates the matched words in `snippet`: the first
 occurrence of each query word, at most three, as `{ "start", "end" }` UTF-16 offsets (`end`
 excluded) over the original characters, also when the query was typed without diacritics
-(`platnosci` marks `płatności`); empty when no word of the excerpt matches. `--no-snippets` leaves
-both out.
+(`platnosci` marks `płatności`); empty when no word of the excerpt matches. It is always empty for
+a result whose `wordMatch` is `false`: the excerpt's prefix rule is looser than the exact words of
+the rankings, so it would otherwise mark words in a result that matched by meaning only.
+`--no-snippets` leaves both out.
 
 **Word match.** Every result has `wordMatch`: `true` when the query's words matched the document,
 in the BM25 ranking of its sections (heading path or text) or in the frontmatter ranking; `false`

@@ -111,6 +111,15 @@ describe('excerpt', () => {
     expect(text.length).toBeLessThanOrEqual(EXCERPT_MAX_CHARS);
   });
 
+  it('cuts a text without spaces on a grapheme boundary, never inside a surrogate pair', () => {
+    // "needle" and 200 two-unit emoji: a cut at 279 code units would split one.
+    const { text } = excerpt(`## Long\nneedle${'😀'.repeat(200)}`, 'needle');
+
+    expect(text.endsWith('😀…')).toBe(true);
+    expect(() => encodeURIComponent(text)).not.toThrow();
+    expect(text.length).toBeLessThanOrEqual(EXCERPT_MAX_CHARS);
+  });
+
   it('marks the first occurrence of each term, at most three, by prefix and across folding', () => {
     expect(
       marked('## S\n\nSessions start a session; the Engine owns sessions.', 'session engine'),

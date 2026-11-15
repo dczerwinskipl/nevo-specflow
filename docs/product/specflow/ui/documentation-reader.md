@@ -265,7 +265,10 @@ status shows for it, although reading and search still use its working tree.
     cut inside a sentence. At most 280 characters;
   - **marks:** the answer's `snippetMatches` (the first occurrence of each query word, at most
     three), in `content-primary` at medium weight, with no background and no accent colour. Titles
-    and paths are never marked. A malformed range loses its mark, never text.
+    and paths are never marked. A malformed range loses its mark, never text. A result without
+    `wordMatch` has no marks (the API answers no ranges for it), so the "no word match" line is
+    never contradicted by a marked word: the marks' prefix rule (`taski` / `taskami`) is looser
+    than the word ranking's exact words.
 - **Containment:** rows are separated by a `divider` line. There is no card and no permanent
   background. Hover, focus and the open document keep the row's interaction background. No row has
   an icon. Accent colour is used only for the focus ring and the checked checkbox.

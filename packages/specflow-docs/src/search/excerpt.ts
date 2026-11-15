@@ -18,6 +18,7 @@ export const EXCERPT_MAX_MATCHES = 3;
 const PREFIX_MATCH_MIN = 4;
 const CUT_START = '… ';
 const CUT_END = '…';
+const GRAPHEMES = new Intl.Segmenter('und', { granularity: 'grapheme' });
 /** A word as the query terms are matched against it; combining marks stay in the word. */
 const WORD = /[\p{L}\p{N}][\p{L}\p{N}\p{M}]*/gu;
 
@@ -146,11 +147,28 @@ function window(fragment: Fragment, start: number, prefix: string, keep: number)
     return `${prefix}${text.slice(start, sentenceEnd.end)}`;
   }
 
-  const cut = text.slice(start, start + room - CUT_END.length);
+  const cut = text.slice(start, graphemeEnd(text, start, room - CUT_END.length));
   const space = cut.lastIndexOf(' ');
   const body = space > cut.length / 2 && start + space >= keep ? cut.slice(0, space) : cut;
 
   return `${prefix}${body.trimEnd()}${CUT_END}`;
+}
+
+/**
+ * The end of the last whole grapheme of `text` that starts at `start` and fits `length` code
+ * units, so a cut never splits a surrogate pair or a letter from its combining marks.
+ */
+function graphemeEnd(text: string, start: number, length: number): number {
+  let end = start;
+  for (const { index, segment } of GRAPHEMES.segment(text.slice(start, start + length + 16))) {
+    if (index + segment.length > length) {
+      break;
+    }
+
+    end = start + index + segment.length;
+  }
+
+  return end;
 }
 
 /** The first word of `sentence` that matches a query term, as offsets into `text`. */

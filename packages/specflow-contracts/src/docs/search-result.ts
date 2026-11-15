@@ -97,7 +97,9 @@ export const DocsSearchSectionSchema = Type.Object(
     /**
      * The words of `snippet` that match the query: the first occurrence of each query word, at most
      * three, in order and not overlapping. Present exactly when `snippet` is; empty when no word of
-     * the excerpt matches.
+     * the excerpt matches, and always empty when the hit's `wordMatch` is `false`: the marks use a
+     * looser prefix rule than the word rankings (`taski` marks `taskami`), and a hit found by meaning
+     * only must not show words as matched.
      */
     snippetMatches: Type.Optional(Type.Array(DocsSearchTextRangeSchema, { maxItems: 3 })),
   },

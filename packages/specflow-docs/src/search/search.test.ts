@@ -226,6 +226,16 @@ describe('searchDocumentation', () => {
     const byFrontmatter = await wordMatches('tasks');
     expect(byFrontmatter.filter((hit) => hit.wordMatch).map((hit) => hit.id)).toEqual(['engine']);
     expect(byFrontmatter.length).toBeGreaterThan(1);
+
+    // `installing` is in no ranking's exact tokens; the excerpt's prefix rule still finds
+    // "Install", but a hit found by meaning only has no marks.
+    const byMeaning = await wordMatches('installing');
+    expect(byMeaning.some((hit) => hit.wordMatch)).toBe(false);
+    const sections = byMeaning.flatMap((hit) => hit.sections);
+    expect(sections).toContainEqual(
+      expect.objectContaining({ snippet: 'Install the widget with pnpm.' }),
+    );
+    expect(sections.every((section) => section.snippetMatches?.length === 0)).toBe(true);
   });
 
   it('includes proposals only with the switch; inactive ones never', async () => {

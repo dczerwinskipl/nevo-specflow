@@ -53,19 +53,26 @@ export function toHit(
         sectionId: chunk.sectionId,
         line: (chunk as DocsChunk).startLine,
         score: sectionScore,
-        ...(query === undefined ? {} : snippet(chunk.text, query)),
+        ...(query === undefined ? {} : snippet(chunk.text, query, wordMatch)),
       }),
     ),
   };
 }
 
+/**
+ * The excerpt and its marks. A document whose words did not match (`wordMatch` false: found by
+ * meaning only) gets no marks: the excerpt's prefix rule (`taski` / `taskami`) is looser than the
+ * exact tokens of the word rankings, and a mark must not claim a word match the rankings did not
+ * find.
+ */
 function snippet(
   section: string,
   query: string,
+  wordMatch: boolean,
 ): Pick<DocsSearchSection, 'snippet' | 'snippetMatches'> {
   const { text, matches } = excerpt(section, query);
 
-  return { snippet: text, snippetMatches: matches };
+  return { snippet: text, snippetMatches: wordMatch ? matches : [] };
 }
 
 /**

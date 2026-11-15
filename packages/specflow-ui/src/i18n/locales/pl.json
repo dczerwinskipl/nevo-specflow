@@ -2110,7 +2110,8 @@
     "projectFolder": "Katalog projektu",
     "worktree": "Worktree",
     "sessionWorkspace": "obszar roboczy tej sesji",
-    "dirty": "Uwzględnia niezatwierdzone zmiany"
+    "localChanges": "Zmiany lokalne",
+    "localChangesExplained": "Zmiany lokalne: czytanie i wyszukiwanie uwzględniają niezatwierdzone zmiany, także nowe pliki"
   },
   "workspaces": {
     "unavailable": {

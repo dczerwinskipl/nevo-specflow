@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useElementScrollRestoration, useRouterState } from '@tanstack/react-router';
 import { useWorkspacePrimaryScroll } from '@nevo/ui';
 
@@ -12,7 +12,8 @@ const readerInput = ['wheel', 'touchstart', 'keydown', 'pointerdown'] as const;
  * Narrow (the workspace owns Primary's scroll): names the Overview's scroller for the router's
  * scroll restoration, which remembers it per history entry (also across a reload). The router
  * restores on render; sections that load a moment later grow the page, so the remembered position
- * is applied again while the content grows, until the reader scrolls or presses a key. A visit
+ * is applied again while the content grows, until the reader scrolls or presses a key; after that
+ * input nothing re-applies it for the rest of this visit, even when late data re-renders the page. A visit
  * reached by a Back (a returning entry, or a navigation marked `specflowFocusTitle`) puts the focus
  * on the page title, so it does not drop to the document body.
  */
@@ -23,6 +24,8 @@ export function OverviewVisitScroll() {
     select: (state) => state.location.state.specflowFocusTitle === true,
   });
   const top = remembered?.scrollY;
+  // One mount is one visit: once the reader acts, the visit's position is theirs.
+  const readerActed = useRef(false);
 
   useLayoutEffect(() => {
     scroller?.setAttribute('data-scroll-restoration-id', overviewScrollRestorationId);
@@ -34,8 +37,12 @@ export function OverviewVisitScroll() {
     }
 
     let observer: ResizeObserver | undefined;
-    const stop = () => observer?.disconnect();
-    if (top !== undefined) {
+    const stop = () => {
+      readerActed.current = true;
+      observer?.disconnect();
+    };
+
+    if (top !== undefined && !readerActed.current) {
       const apply = () => {
         scroller.scrollTop = top;
       };
@@ -62,7 +69,7 @@ export function OverviewVisitScroll() {
 
     return () => {
       cancelAnimationFrame(frame);
-      stop();
+      observer?.disconnect();
       for (const name of readerInput) {
         scroller.removeEventListener(name, stop);
       }

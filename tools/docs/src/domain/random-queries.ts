@@ -20,22 +20,34 @@ const CONSONANTS = [...'bcdfghjklmnprstvwz'];
 const VOWELS = [...'aeiou'];
 const MIXED = [...LOWER, ...'ĄĘŚĆŻąęśćżńó0123456789'];
 
+/**
+ * mulberry32: a small 32-bit PRNG (period 2^32) in unsigned 32-bit arithmetic, so no bit is lost to
+ * floating-point rounding. Each call returns the next unsigned 32-bit integer.
+ */
+export function mulberry32(seed: number): () => number {
+  let state = seed >>> 0;
+
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let mixed = Math.imul(state ^ (state >>> 15), state | 1);
+    mixed ^= mixed + Math.imul(mixed ^ (mixed >>> 7), mixed | 61);
+
+    return (mixed ^ (mixed >>> 14)) >>> 0;
+  };
+}
+
 /** `count` nonsense strings as `random` questions without a language or an answer. */
 export function generateRandomQueries(count: number, seed = RANDOM_QUERY_SEED): EvalQuestion[] {
   if (!Number.isInteger(count) || count < 0) {
     throw new RangeError(`The random query count must be a non-negative integer, got ${count}.`);
   }
 
-  if (!Number.isInteger(seed) || seed < 0) {
-    throw new RangeError(`The random query seed must be a non-negative integer, got ${seed}.`);
+  if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) {
+    throw new RangeError(`The random query seed must be an unsigned 32-bit integer, got ${seed}.`);
   }
 
-  let state = seed;
-  const next = () => {
-    state = (state * 1103515245 + 12345) % 2147483648;
-
-    return state / 2147483648;
-  };
+  const random = mulberry32(seed);
+  const next = () => random() / 4294967296;
 
   const pick = <T>(items: readonly T[]): T => items[Math.floor(next() * items.length)]!;
   const run = (alphabet: readonly string[], min: number, max: number) =>

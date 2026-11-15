@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { generateRandomQueries } from '../../src/domain/random-queries.js';
+import { generateRandomQueries, mulberry32 } from '../../src/domain/random-queries.js';
 
 describe('generateRandomQueries', () => {
   it('generates the same seeded nonsense strings for a count, without language or answer', () => {
@@ -22,5 +22,30 @@ describe('generateRandomQueries', () => {
     expect(() => generateRandomQueries(Number.NaN)).toThrow(RangeError);
     expect(() => generateRandomQueries(-1)).toThrow(RangeError);
     expect(() => generateRandomQueries(1, Number.NaN)).toThrow(RangeError);
+    expect(() => generateRandomQueries(1, 2 ** 32)).toThrow(RangeError);
+  });
+});
+
+describe('mulberry32', () => {
+  it('keeps every bit: about half the outputs are odd, and no short cycle', () => {
+    for (const seed of [0, 1, 156, 2026]) {
+      const next = mulberry32(seed);
+      const values = Array.from({ length: 2000 }, () => next());
+      const odd = values.filter((value) => value % 2 === 1).length;
+
+      expect(odd).toBeGreaterThan(900);
+      expect(odd).toBeLessThan(1100);
+      expect(new Set(values).size).toBeGreaterThan(1995);
+      expect(
+        values.every((value) => Number.isInteger(value) && value >= 0 && value < 2 ** 32),
+      ).toBe(true);
+    }
+  });
+
+  it('spreads the generated strings: few repeats among 300', () => {
+    const questions = generateRandomQueries(300, 156).map((query) => query.question);
+
+    // Single letters (one shape in ten) can repeat by chance; the rest should not.
+    expect(new Set(questions).size).toBeGreaterThan(270);
   });
 });

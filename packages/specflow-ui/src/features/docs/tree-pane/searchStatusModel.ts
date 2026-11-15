@@ -62,6 +62,18 @@ export function noWordMatch(search: WorkspaceDocsSearch): boolean {
   );
 }
 
+/**
+ * Whether a slow answer may be said to prepare search by meaning: not when the workspace's last
+ * answer was word-only by configuration (`semantic-disabled`, `no-endpoint`), where nothing is
+ * prepared. Without an earlier answer it may.
+ */
+export function preparesSearchByMeaning(previous: WorkspaceDocsSearch | undefined): boolean {
+  return !(
+    previous?.mode === 'lexical' &&
+    (previous.reason.code === 'semantic-disabled' || previous.reason.code === 'no-endpoint')
+  );
+}
+
 /** The quiet lines under the status row for a settled answer: the reason, then "no word match". */
 export function answerLines(t: TFunction, search: WorkspaceDocsSearch): string[] {
   const reason = reasonLine(t, search);

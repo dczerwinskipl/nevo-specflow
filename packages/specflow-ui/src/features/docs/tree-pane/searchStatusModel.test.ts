@@ -1,7 +1,13 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { WorkspaceDocsSearch } from '@nevo/specflow-contracts/docs';
 import { appI18n } from '../../../i18n';
-import { answerAnnouncement, answerLines, noWordMatch, reasonLine } from './searchStatusModel';
+import {
+  answerAnnouncement,
+  answerLines,
+  noWordMatch,
+  preparesSearchByMeaning,
+  reasonLine,
+} from './searchStatusModel';
 
 const t = appI18n.t;
 
@@ -65,6 +71,18 @@ describe('reasonLine', () => {
     expect(reasonLine(t, lexical('semantic-disabled'))).toBeUndefined();
     expect(reasonLine(t, lexical('no-endpoint'))).toBeUndefined();
     expect(reasonLine(t, hybrid([true]))).toBeUndefined();
+  });
+});
+
+describe('preparesSearchByMeaning', () => {
+  it('holds unless search by meaning is off by configuration', () => {
+    expect(preparesSearchByMeaning(undefined)).toBe(true);
+    expect(preparesSearchByMeaning(hybrid([true]))).toBe(true);
+    expect(preparesSearchByMeaning(lexical('index-building'))).toBe(true);
+    expect(preparesSearchByMeaning(lexical('endpoint-unreachable'))).toBe(true);
+    expect(preparesSearchByMeaning(lexical('index-unavailable'))).toBe(true);
+    expect(preparesSearchByMeaning(lexical('semantic-disabled'))).toBe(false);
+    expect(preparesSearchByMeaning(lexical('no-endpoint'))).toBe(false);
   });
 });
 

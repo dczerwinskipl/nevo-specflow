@@ -11,7 +11,7 @@ import {
 import { DocsProposalsFilter } from './DocsProposalsFilter';
 import { DocsSearchField } from './DocsSearchField';
 import { DocsSearchResults } from './DocsSearchResults';
-import { answerAnnouncement, answerLines } from './searchStatusModel';
+import { answerAnnouncement, answerLines, preparesSearchByMeaning } from './searchStatusModel';
 import { useSearchWaiting } from './useSearchWaiting';
 
 const searchDelayMs = 250;
@@ -22,6 +22,10 @@ interface HeldAnswer {
   readonly includeProposals: boolean;
   readonly search: WorkspaceDocsSearch;
 }
+
+/** What identifies one request: its workspace, its text and the checkbox. */
+const requestKey = (workspaceId: string | undefined, q: string, includeProposals: boolean) =>
+  `${workspaceId ?? ''}\n${q}\n${includeProposals}`;
 
 /** The proposals the answer included, or those it left out: the checkbox's number. */
 function proposalCount(answer: HeldAnswer, proposals: ReadonlySet<string>): number {
@@ -82,7 +86,8 @@ export function DocsSearchPanel({
   const query = address.q ?? '';
   const includeProposals = address.proposals === 1;
   const [text, setText] = useState(query);
-  const [filterUsed, setFilterUsed] = useState(false);
+  // The request a change of the checkbox asked for: while that answer loads, the checkbox stays.
+  const [filterRequest, setFilterRequest] = useState<string>();
   // The text this field last wrote: the address coming back with it is the field's own write, not
   // a navigation, and must not overwrite what was typed since.
   const [written, setWritten] = useState<string>();
@@ -129,11 +134,9 @@ export function DocsSearchPanel({
       : undefined;
   const failed = searching && !typing && search.isError && !search.isFetching;
   const waiting = searching && !hidden && !settled && !failed;
+  const request = requestKey(workspaceId, query, includeProposals);
   // The timeline runs from the request: typing more (the pause before the next request) restarts it.
-  const stage = useSearchWaiting(
-    waiting && !typing,
-    `${workspaceId ?? ''}\n${query}\n${includeProposals}`,
-  );
+  const stage = useSearchWaiting(waiting && !typing, request);
 
   // The last settled answer, kept for the wait of the next one; dropped when the field empties.
   const [held, setHeld] = useState<HeldAnswer>();
@@ -157,18 +160,20 @@ export function DocsSearchPanel({
     includeProposals ||
     (count ?? 0) > 0 ||
     (waiting &&
-      (filterUsed ||
+      (filterRequest === request ||
         (stage !== 'quiet' && previous !== undefined && proposalCount(previous, proposals) > 0)));
+  // Nothing is prepared where the workspace's search by meaning is off by configuration.
+  const preparing = stage === 'preparing' && preparesSearchByMeaning(previous?.search);
   const lines = [
     ...(shown ? answerLines(t, shown.search) : []),
-    ...(stage === 'preparing' ? [t('docs.search.preparing')] : []),
+    ...(preparing ? [t('docs.search.preparing')] : []),
     ...(failed ? [t('docs.search.failed')] : []),
   ];
   const announcement = settled
     ? answerAnnouncement(t, settled.search)
     : failed
       ? t('docs.search.failed')
-      : stage === 'preparing'
+      : preparing
         ? t('docs.search.preparing')
         : '';
   const resultCount = shown && shown.search.results.length > 0 ? shown.search.results.length : 0;
@@ -211,7 +216,7 @@ export function DocsSearchPanel({
                     count={count}
                     pending={waiting}
                     onCheckedChange={(checked) => {
-                      setFilterUsed(true);
+                      setFilterRequest(requestKey(workspaceId, typed, checked));
                       write(typed, checked);
                     }}
                   />

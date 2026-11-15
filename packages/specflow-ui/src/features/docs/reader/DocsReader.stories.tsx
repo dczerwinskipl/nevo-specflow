@@ -815,6 +815,36 @@ export const SearchNoMatches: Story = {
   },
 };
 
+/**
+ * The sticky search field docks while the results scroll under it: always on the opaque docked
+ * material (nothing shows through, also before the stuck state is known), the divider only while
+ * docked, gone again at the top.
+ */
+export const SearchFieldDocksWhileScrolled: Story = {
+  play: async ({ userEvent }) => {
+    await settleViewport(390, 600);
+    await searchFor(userEvent, 'session', () =>
+      expect(liveSearchStatus().textContent).toMatch(/^\d+ results$/),
+    );
+    const bar = screen().getByRole('search');
+    const scroller = bar.closest<HTMLElement>('.scroll-area-viewport')!;
+    const transparent = 'rgba(0, 0, 0, 0)';
+    await expect(getComputedStyle(bar).backgroundImage).not.toBe('none');
+    await expect(bar.dataset.stuck).toBeUndefined();
+    await expect(getComputedStyle(bar).borderBottomColor).toBe(transparent);
+
+    scroller.scrollTop = scroller.scrollHeight;
+    await waitFor(() => expect(bar.dataset.stuck).toBe('true'));
+    await expect(getComputedStyle(bar).borderBottomColor).not.toBe(transparent);
+    await expect(Math.round(bar.getBoundingClientRect().top)).toBe(
+      Math.round(scroller.getBoundingClientRect().top),
+    );
+
+    scroller.scrollTop = 0;
+    await waitFor(() => expect(bar.dataset.stuck).toBeUndefined());
+  },
+};
+
 /** Only proposals match: the checkbox stays on the status row, at its start. */
 export const SearchOnlyProposals: Story = {
   play: async ({ userEvent }) =>

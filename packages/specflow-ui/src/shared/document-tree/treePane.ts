@@ -18,6 +18,7 @@ export const treePaneTextClassName = 'px-4';
 
 /**
  * The tree block: section heading, search bar, filter status, notes and the list, the results or
- * the empty result, 4 px apart. A part that renders nothing renders no element.
+ * the empty result, 4 px apart. A part that renders nothing renders no element. Positioned, so a
+ * sticky search bar's sentinel (at the block's top) scrolls with the block.
  */
-export const treeBlockClassName = 'grid min-w-0 gap-1';
+export const treeBlockClassName = 'relative grid min-w-0 gap-1';

@@ -1,8 +1,8 @@
 import { useLayoutEffect, useState } from 'react';
 
 /**
- * How far below the scroller's top the bar already counts as stuck: it takes its stuck surface a
- * few pixels before it docks, so a scroll step that docks it does not show the rows through it.
+ * How far below the scroller's top the bar already counts as stuck: its stuck treatment (the
+ * divider) comes a few pixels before it docks, so a slow scroll step that docks it shows it at once.
  */
 export const stuckEarlyPx = 8;
 

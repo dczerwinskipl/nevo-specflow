@@ -93,16 +93,20 @@ const catalogue: ArchetypeCatalogue = {
 
 const available = { available: true };
 const protectedAction = { available: false, reason: 'protected' } as const;
-/** `project`: the same Specification served by a project Runtime (the project adapter). */
-/** `plain`: the states tree without Close refusals or missing expected types (the usual tree). */
-type Scenario = 'states' | 'read-only' | 'conflict' | 'project' | 'plain';
+/**
+ * `project`: the same Specification served by a project Runtime (the project adapter).
+ * `tree-notes`: the states tree without the blocks above it (Close refusals, expected types), so
+ * the tree block shows its own notes alone: a missing file, an entry that could not be read and
+ * the listing limit. `plain`: that tree without the notes (the usual tree).
+ */
+type Scenario = 'states' | 'read-only' | 'conflict' | 'project' | 'tree-notes' | 'plain';
 
 function treeFor(scenario: Scenario): DocumentTree {
   if (scenario === 'project') {
     return treeFor('states');
   }
 
-  if (scenario === 'plain') {
+  if (scenario === 'tree-notes') {
     const tree = treeFor('states');
 
     return {
@@ -113,6 +117,10 @@ function treeFor(scenario: Scenario): DocumentTree {
         requirements: tree.completeness.requirements.map((item) => ({ ...item, satisfied: true })),
       },
     };
+  }
+
+  if (scenario === 'plain') {
+    return { ...treeFor('tree-notes'), dangling: [], skippedEntries: 0, truncated: false };
   }
 
   const readOnly = { available: false, reason: 'branch-protected' } as const;
@@ -475,7 +483,7 @@ export const Default: Story = {
   argTypes: {
     scenario: {
       control: 'inline-radio',
-      options: ['states', 'plain', 'read-only', 'conflict', 'project'],
+      options: ['states', 'tree-notes', 'plain', 'read-only', 'conflict', 'project'],
     },
     path: {
       control: 'select',
@@ -517,6 +525,70 @@ export const TreeStates: Story = {
     await expect(screen.getByText('1 entry in the folder could not be read.')).toBeTruthy();
     await expect(screen.getByText('Only the first entries are listed.')).toBeTruthy();
     await expect(screen.queryByText(/complete/i)).toBeNull();
+  },
+};
+
+/** The parts of the tree block in reading order, by the text that starts each. */
+function treeBlockOrder(texts: readonly string[]) {
+  const all = document.body.innerText;
+
+  return texts.map((text) => all.indexOf(text));
+}
+
+/**
+ * Every message of the tree block at once (component guidelines, "Tree pane message hierarchy"):
+ * the attention notes (the filters hide a missing file, an entry could not be read) before the
+ * empty result, the listing limit as a quiet note after it.
+ */
+export const TreeMessageHierarchy: Story = {
+  args: { scenario: 'tree-notes' },
+  play: async ({ userEvent }) => {
+    await wide();
+    const screen = body();
+    await userEvent.type(await screen.findByRole('searchbox', { name: 'Search files' }), 'zzzqqq');
+    await screen.findByText('No matching files');
+    const order = treeBlockOrder([
+      'The filters hide 1 missing file.',
+      '1 entry in the folder could not be read.',
+      'No matching files',
+      'Only the first entries are listed.',
+    ]);
+    await expect(
+      order.every((at, index) => at >= 0 && (index === 0 || at > order[index - 1]!)),
+    ).toBe(true);
+    const tone = (text: string) =>
+      screen.getByText(text).closest('p')!.querySelector('svg')!.getAttribute('class') ?? '';
+    await expect(tone('The filters hide 1 missing file.')).toContain('text-status-attention');
+    await expect(tone('1 entry in the folder could not be read.')).toContain(
+      'text-status-attention',
+    );
+    await expect(tone('Only the first entries are listed.')).toContain('text-content-muted');
+    // The empty result: inline, no icon, one way out.
+    const empty = document.querySelector('[data-empty-state="inline"]')!;
+    await expect(empty.querySelector('[data-design-slot="icon"]')).toBeNull();
+    await userEvent.click(
+      within(empty as HTMLElement).getByRole('button', { name: 'Clear filters' }),
+    );
+    await expect(screen.queryByText('No matching files')).toBeNull();
+  },
+};
+
+/**
+ * A plain tree: the search bar has no surface of its own and is not sticky; a search that finds
+ * nothing shows only the empty result.
+ */
+export const TreeSearchWithoutMatches: Story = {
+  args: { scenario: 'plain' },
+  play: async ({ userEvent }) => {
+    await wide();
+    const screen = body();
+    const field = await screen.findByRole('searchbox', { name: 'Search files' });
+    const bar = field.closest<HTMLElement>('[role="search"]')!;
+    await expect(getComputedStyle(bar).position).toBe('static');
+    await expect(getComputedStyle(bar).backgroundImage).toBe('none');
+    await userEvent.type(field, 'zzzqqq');
+    await screen.findByText('No matching files');
+    await expect(screen.queryByText(/could not be read|missing file|first entries/)).toBeNull();
   },
 };
 

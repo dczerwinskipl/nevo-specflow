@@ -22,18 +22,30 @@ export async function hasPendingTaskDocumentChange(
   specId: string,
   taskId: string,
 ): Promise<boolean> {
+  return (await pendingTaskDocumentChanges(context, specId)).has(taskId);
+}
+
+/**
+ * The Tasks of the Specification with a pending document change ({@link hasPendingTaskDocumentChange}),
+ * read in one pass over the journals: a read of many Tasks asks this once, not once per Task.
+ */
+export async function pendingTaskDocumentChanges(
+  context: ResolvedProjectHome,
+  specId: string,
+): Promise<ReadonlySet<string>> {
   const journals = (await listDocumentChangeJournals(context)).filter(
     (journal) => journal.specId === specId && DOCUMENT_CHANGE_STAGE_FACTS[journal.stage].active,
   );
+  const tasks = new Set<string>();
   for (const journal of journals) {
     const plan = decodePlanWithEvidence(
       await readPayload(context, DOCUMENT_CHANGE_JOURNAL_KIND, journal.operationId, journal.plan),
       journal.plan,
     );
-    if (plan.taskId === taskId) {
-      return true;
+    if (plan.taskId !== undefined) {
+      tasks.add(plan.taskId);
     }
   }
 
-  return false;
+  return tasks;
 }

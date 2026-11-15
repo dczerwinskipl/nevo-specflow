@@ -68,6 +68,7 @@ import {
 import { entryGatesOf, exitGatesFor, type GateStatus } from '../gates/evaluate';
 import { evaluateGates, type GateDocuments } from '../gates/read';
 import type { StartBlocker } from './start-blockers';
+import { forOneRead } from './task-references';
 
 export type { StartBlocker } from './start-blockers';
 export type {
@@ -341,10 +342,12 @@ export type ActionDependencies = Pick<
  * fails with `WORKFLOW_STATE_CORRUPT`, as in `inspectExecution`.
  */
 export function inspectActions(
-  dependencies: ActionDependencies,
+  outer: ActionDependencies,
   subject: WorkflowSubject,
 ): Promise<ActionProjection> {
-  return dependencies.serialize(async () => {
+  return outer.serialize(async () => {
+    // One read: every reference lookup is asked once (`readScopedReferences`).
+    const dependencies = forOneRead(outer);
     const snapshot = await dependencies.store.read(subject.specId);
     const derived = deriveAttention(dependencies.catalogue, snapshot);
 
@@ -353,7 +356,7 @@ export function inspectActions(
     }
 
     // The Task detail: the projection every read makes, plus the authoring facts of this Task.
-    const read = taskProjectionRead(dependencies, snapshot);
+    const read = taskProjectionRead(dependencies, snapshot, { detail: true });
     const projection = await taskProjection(dependencies, snapshot, subject, derived, read);
     const task = read.tasks.tasks.find((candidate) => candidate.taskId === subject.taskId);
     if (!task) {
@@ -931,17 +934,24 @@ function definitionChanged(run: WorkflowRun): Pick<ActionProjection, 'position' 
 export interface TaskProjectionRead {
   readonly tasks: ExecutionTasks;
   readonly allowedTypes: () => Promise<TaskTypes>;
+  /**
+   * The read is one Task's detail: it may list that Task's folder (`remove` names unregistered
+   * files). A read of many Tasks does no per-Task filesystem work.
+   */
+  readonly detail: boolean;
 }
 
 export function taskProjectionRead(
   dependencies: ActionDependencies,
   snapshot: ExecutionSnapshot,
+  options: { readonly detail?: boolean } = {},
 ): TaskProjectionRead {
   let allowedTypes: Promise<TaskTypes> | undefined;
 
   return {
     tasks: executionTasks(dependencies.catalogue, snapshot),
     allowedTypes: () => (allowedTypes ??= effectiveTaskTypesOf(dependencies, snapshot)),
+    detail: options.detail === true,
   };
 }
 
@@ -991,7 +1001,7 @@ export async function taskProjection(
 
   const loaded = loadTask(catalogue, snapshot, subject.taskId, tasks);
   const { task } = loaded;
-  const { lifecycle, pending } = await taskLifecycleOf(dependencies, snapshot, loaded);
+  const { lifecycle, pending } = await taskLifecycleOf(dependencies, snapshot, loaded, read.detail);
   const readinessBlockers = () => taskReadinessBlockers(task, tasks.tasks);
   const contextBlockers = async (): Promise<StartBlocker[]> => {
     const issues = (await unresolvedContext(dependencies, subject.specId, task)).filter(

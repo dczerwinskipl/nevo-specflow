@@ -127,20 +127,27 @@ export function createTaskAvailability(
 /**
  * The lifecycle actions of a Task that is not broken, and whether a change of one of its documents
  * is pending (D03; a finish that writes its folder is refused then too).
+ *
+ * `listFolder`: list the Task's folder for the files it does not register (`remove`
+ * `unregistered-files`). Only the Task's own detail does (one listing); a read of every Task does
+ * no per-Task filesystem work, so its `remove` does not name unregistered files (`removeTask`
+ * still refuses them).
  */
 export async function taskLifecycleOf(
   dependencies: Pick<WorkflowDependencies, 'store' | 'references'>,
   snapshot: ExecutionSnapshot,
   { task, manifest }: LoadedTask,
+  listFolder: boolean,
 ): Promise<{ readonly lifecycle: TaskLifecycleActions; readonly pending: boolean }> {
   const pending = await dependencies.references.pendingDocumentChange(snapshot.specId, task.taskId);
   // Only a Task that never started can be removed, so only its folder is listed.
-  const unregistered = task.run
-    ? []
-    : unregisteredTaskFiles(
-        manifest.value,
-        await dependencies.store.taskFiles(snapshot.specId, task.taskId),
-      );
+  const unregistered =
+    task.run || !listFolder
+      ? []
+      : unregisteredTaskFiles(
+          manifest.value,
+          await dependencies.store.taskFiles(snapshot.specId, task.taskId),
+        );
 
   return {
     lifecycle: lifecycleOf(task, manifest.revision, snapshot, pending, unregistered),

@@ -7,6 +7,7 @@ import type { ActionDependencies, ActionProjection } from './actions';
 import { inspectSnapshot, type ExecutionInspection } from './inspect';
 import { executionTasks } from './loaded-execution';
 import type { StartBlocker } from './start-blockers';
+import { forOneRead } from './task-references';
 
 /**
  * The neutral facts of one readable Task, derived from its record and its action projection, never
@@ -125,11 +126,13 @@ export function taskFactsOf(
  * moment. Read-only, like its parts.
  */
 export function readExecution(
-  dependencies: ActionDependencies,
+  outer: ActionDependencies,
   specId: string,
   options: ReadExecutionOptions,
 ): Promise<ExecutionReading> {
-  return dependencies.serialize(async () => {
+  return outer.serialize(async () => {
+    // One read: every reference lookup is asked once (`readScopedReferences`).
+    const dependencies = forOneRead(outer);
     const snapshot = await dependencies.store.read(specId);
     const listed = snapshot.manifests.map((entry) => entry.value.id);
     const wanted =

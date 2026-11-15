@@ -649,7 +649,11 @@ function createStore(
         throw new WorkflowError('WORKFLOW_SUBJECT_NOT_FOUND', 'Invalid Task identity.');
       }
 
-      const { folders, journal } = await load(specId);
+      // Only the folder and the pending journal's writes matter: no load of the whole state (every
+      // manifest and run parsed and validated), which made one listing cost a full read.
+      const folders = await foldersOf(specId);
+      const journalText = await readJournalText(specId, folders);
+      const journal = journalText === undefined ? undefined : parseJournal(journalText, specId);
       const files = new Map(
         (await listTree(taskFolder(folders, taskId), TASK_FOLDER_FILES_LISTED)).map(
           (path) => [foldPathKey(path), path] as const,

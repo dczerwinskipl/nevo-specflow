@@ -37,12 +37,9 @@ export async function exitStateOf(
       ...snapshot.manifests.map((entry) => entry.value.id),
     ]),
   ].sort();
-  const pendingTaskDocuments: string[] = [];
-  for (const taskId of registered) {
-    if (await dependencies.references.pendingDocumentChange(specId, taskId)) {
-      pendingTaskDocuments.push(taskId);
-    }
-  }
+  // One read of the pending document changes for every Task.
+  const pending = await dependencies.references.pendingDocumentChanges(specId);
+  const pendingTaskDocuments = registered.filter((taskId) => pending.has(taskId));
 
   return {
     specId,

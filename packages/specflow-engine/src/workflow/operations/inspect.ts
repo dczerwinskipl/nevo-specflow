@@ -13,6 +13,7 @@ import {
 import { deriveAttention } from './attention';
 import { pinnedDefinitionIfUnchanged } from './loaded-execution';
 import type { ExecutionSnapshot } from '../state/store';
+import { forOneRead } from './task-references';
 
 export interface ExecutionInspection {
   readonly specId: string;
@@ -64,7 +65,8 @@ export function inspectExecution(
 ): Promise<ExecutionInspection> {
   return dependencies.serialize(
     async () =>
-      (await inspectSnapshot(dependencies, await dependencies.store.read(specId))).inspection,
+      (await inspectSnapshot(forOneRead(dependencies), await dependencies.store.read(specId)))
+        .inspection,
   );
 }
 

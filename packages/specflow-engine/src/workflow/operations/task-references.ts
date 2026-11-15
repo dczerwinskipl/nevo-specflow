@@ -31,6 +31,50 @@ export interface TaskReferences extends GateDocuments {
    * the Task cannot be removed.
    */
   pendingDocumentChange(specId: string, taskId: string): Promise<boolean>;
+  /** {@link pendingDocumentChange} of every Task of the Specification at once (one read). */
+  pendingDocumentChanges(specId: string): Promise<ReadonlySet<string>>;
+}
+
+/** The dependencies of ONE read, with {@link readScopedReferences}. */
+export function forOneRead<D extends { readonly references: TaskReferences }>(dependencies: D): D {
+  return { ...dependencies, references: readScopedReferences(dependencies.references) };
+}
+
+/**
+ * The references of ONE read (inside `serialize`): every answer is asked once and remembered, and
+ * the pending document changes of a Specification are read once for all its Tasks. Production
+ * answers resolve the Specification (its manifest, its checkout) each time, so a read of 200 Tasks
+ * would otherwise repeat the same lookups per Task. Only for reads: a command asks again after it
+ * writes.
+ */
+export function readScopedReferences(references: TaskReferences): TaskReferences {
+  const answers = new Map<string, Promise<unknown>>();
+  const once = <T>(key: string, ask: () => Promise<T>): Promise<T> => {
+    let answer = answers.get(key) as Promise<T> | undefined;
+    if (!answer) {
+      answer = ask();
+      answers.set(key, answer);
+    }
+
+    return answer;
+  };
+
+  const key = (...parts: readonly unknown[]) => JSON.stringify(parts);
+  const pending = (specId: string) =>
+    once(key('pending', specId), () => references.pendingDocumentChanges(specId));
+
+  return {
+    archetype: (specId) => once(key('archetype', specId), () => references.archetype(specId)),
+    specificationDocument: (specId, id) =>
+      once(key('specification', specId, id), () => references.specificationDocument(specId, id)),
+    projectDocument: (specId, id) =>
+      once(key('project', specId, id), () => references.projectDocument(specId, id)),
+    path: (specId, path) => once(key('path', specId, path), () => references.path(specId, path)),
+    pendingDocumentChange: async (specId, taskId) => (await pending(specId)).has(taskId),
+    pendingDocumentChanges: pending,
+    documentsOfType: (scope, type) =>
+      once(key('documents', scope, type), () => references.documentsOfType(scope, type)),
+  };
 }
 
 /**

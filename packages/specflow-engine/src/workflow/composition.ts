@@ -27,7 +27,10 @@ import { assertSharedResourcesAvailable } from '../specs/coordination/resources'
 import { SharedResourceError } from '../specs/durable';
 import type { RememberModelDependencies } from './definitions/remember-model';
 import type { TaskReferences } from './operations/task-references';
-import { hasPendingTaskDocumentChange } from '../specs/documents/write/pending-task-change';
+import {
+  hasPendingTaskDocumentChange,
+  pendingTaskDocumentChanges,
+} from '../specs/documents/write/pending-task-change';
 import { readRegisteredDocumentsOfType } from '../specs/documents/document-reader';
 import { DocumentError } from '../specs/document-rules/errors';
 import { SpecificationError } from '../specs/model';
@@ -121,6 +124,7 @@ function engineReferences(engine: SpecFlowEngine, options: OpenWorkflowOptions):
     path: async (specId, path) =>
       checkoutPathExists((await availableSpecification(engine, specId)).workspaceRoot, path),
     pendingDocumentChange: pendingTaskDocuments(engine),
+    pendingDocumentChanges: (specId) => pendingTaskDocumentChanges(engine.context, specId),
     documentsOfType: async (scope, documentType) => {
       try {
         return await readRegisteredDocumentsOfType(engine, scope, documentType);

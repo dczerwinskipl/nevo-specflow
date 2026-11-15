@@ -86,6 +86,7 @@ export function fakeReferences(): TaskReferences & {
     path: (_specId: string, path: string) => Promise.resolve(references.paths.has(path)),
     pendingDocumentChange: (_specId: string, taskId: string) =>
       Promise.resolve(references.pendingDocuments.has(taskId)),
+    pendingDocumentChanges: () => Promise.resolve(new Set(references.pendingDocuments)),
   };
 
   return references;

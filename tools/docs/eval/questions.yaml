@@ -2,8 +2,14 @@
 # CI). Realistic agent questions, English and Polish (`lang`), each with the 1..3 active,
 # authoritative document ids a good answer must return. Keep `expected` to documents that really
 # answer the question; add a question when a search regression is found. Questions the
-# documentation does not answer have `expected: []`: they are not scored, only their best vector
-# similarity is reported next to the answerable ones.
+# documentation does not answer have `expected: []`: they are not scored for recall; one that gets
+# a document found by meaning only (`wordMatch: false`) is a false positive.
+#
+# `class` says what a question tests: `correct` (default with `expected`), `partial` (a word cut
+# short), `typo` (misspelled words), `negative` (default without `expected`: a real question the
+# documentation does not answer) and `random` (a string that means nothing; `lang` optional).
+# `pnpm docs:eval --random <count>` adds generated random strings, which are much harder than the
+# hand-written ones below.
 
 questions:
   # Design system and Storybook
@@ -123,6 +129,124 @@ questions:
     lang: en
     expected: [reference.configuration.documentation-and-embeddings]
 
+  # Short terms and questions, as typed into a search box
+  - question: how do I close a worktree
+    lang: en
+    expected:
+      [reference.configuration.specflow-git-worktrees, architecture.runtime.specflow-lifecycle]
+  - question: Claude provider
+    lang: en
+    expected: [reference.providers.claude, architecture.ai.provider-boundary]
+  - question: item tabs component
+    lang: en
+    expected: [design-system.implementation.react.item-tabs]
+  - question: commit message format
+    lang: en
+    expected: [engineering.repository.commit-conventions]
+  - question: co to jest Project Home
+    lang: pl
+    expected: [architecture.runtime.specflow-project-home]
+  - question: jak napisać commit
+    lang: pl
+    expected: [engineering.repository.commit-conventions]
+  - question: konfiguracja wyszukiwania semantycznego
+    lang: pl
+    expected: [reference.configuration.documentation-and-embeddings]
+  - question: jak działa autoryzacja
+    lang: pl
+    expected: [architecture.runtime.authorization, reference.api.authorization]
+  - question: tłumaczenia interfejsu
+    lang: pl
+    expected: [product.shared.localization]
+
+  # Partial words
+  - question: provid
+    lang: en
+    class: partial
+    expected: [architecture.ai.provider-boundary, reference.protocols.session-provider-driver]
+  - question: worktre
+    lang: en
+    class: partial
+    expected: [reference.configuration.specflow-git-worktrees]
+  - question: storyb
+    lang: en
+    class: partial
+    expected: [design-system.implementation.storybook.guidelines]
+  - question: embedd
+    lang: en
+    class: partial
+    expected: [reference.configuration.documentation-and-embeddings]
+  - question: commi
+    lang: en
+    class: partial
+    expected: [engineering.repository.commit-conventions]
+  - question: sesje
+    lang: pl
+    class: partial
+    expected: [reference.api.sessions, architecture.ai.session-storage-and-lifecycle]
+  - question: zadania
+    lang: pl
+    class: partial
+    expected: [reference.api.task-reads, architecture.runtime.task-read-composition]
+  - question: autoryz
+    lang: pl
+    class: partial
+    expected: [architecture.runtime.authorization, reference.api.authorization]
+  - question: specyfikacji
+    lang: pl
+    class: partial
+    expected: [architecture.runtime.specflow-lifecycle, product.specflow.specification-creation]
+  - question: archetyp
+    lang: pl
+    class: partial
+    expected: [product.specflow.specification-documents, product.specflow.ui.documents-archetypes]
+
+  # Typos
+  - question: worktee
+    lang: en
+    class: typo
+    expected: [reference.configuration.specflow-git-worktrees]
+  - question: sesion provder
+    lang: en
+    class: typo
+    expected: [architecture.ai.provider-boundary, reference.protocols.session-provider-driver]
+  - question: autorization
+    lang: en
+    class: typo
+    expected: [architecture.runtime.authorization, reference.api.authorization]
+  - question: storybok guidlines
+    lang: en
+    class: typo
+    expected: [design-system.implementation.storybook.guidelines]
+  - question: comit mesage format
+    lang: en
+    class: typo
+    expected: [engineering.repository.commit-conventions]
+  - question: semantc serch config
+    lang: en
+    class: typo
+    expected: [reference.configuration.documentation-and-embeddings]
+  - question: relese proces
+    lang: en
+    class: typo
+    expected: [engineering.repository.releasing]
+  - question: wokflow kernal
+    lang: en
+    class: typo
+    expected: [architecture.workflow.workflow-kernel]
+  - question: lokalizajca
+    lang: pl
+    class: typo
+    expected: [product.shared.localization]
+  - question: jak dziala autoryzajca
+    lang: pl
+    class: typo
+    expected: [architecture.runtime.authorization, reference.api.authorization]
+  - question: cykl zycia specyfikacij
+    lang: pl
+    class: typo
+    expected: [architecture.runtime.specflow-lifecycle]
+
   # No answer in the documentation, near the repository's domain
   - question: Which database engine stores Specifications in production?
     lang: en
@@ -150,3 +274,29 @@ questions:
   - question: Ile dni urlopu przysługuje w tym roku?
     lang: pl
     expected: []
+  - question: What is the monthly price of the hosted plan?
+    lang: en
+    expected: []
+  - question: Jak zresetować hasło do konta w aplikacji mobilnej?
+    lang: pl
+    expected: []
+
+  # Strings that mean nothing (hand-written; see `--random` for generated ones)
+  - { question: Nxjdjdjdkdkkdkdkdkd, class: random, expected: [] }
+  - { question: asdfghjkl, class: random, expected: [] }
+  - { question: qwertyuiop, class: random, expected: [] }
+  - { question: zzzzzzzzzz, class: random, expected: [] }
+  - { question: xkcd qvpw lmnb, class: random, expected: [] }
+  - { question: "🍕🚀🦄", class: random, expected: [] }
+  - { question: "😀", class: random, expected: [] }
+  - { question: a, class: random, expected: [] }
+  - { question: "7", class: random, expected: [] }
+  - { question: "1234567890", class: random, expected: [] }
+  - { question: 42 17 99, class: random, expected: [] }
+  - { question: йцукен фыва, class: random, expected: [] }
+  - { question: 漢字テスト, class: random, expected: [] }
+  - { question: ñßøæ€ qq, class: random, expected: [] }
+  - { question: "!!!???###", class: random, expected: [] }
+  - { question: lorem ipsum dolor sit amet, lang: en, class: random, expected: [] }
+  - { question: blorptastic frumious wug, lang: en, class: random, expected: [] }
+  - { question: "Ąęśćż xyz 123 ☃", class: random, expected: [] }

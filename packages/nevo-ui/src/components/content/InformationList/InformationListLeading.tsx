@@ -4,15 +4,16 @@ import { cn } from '../../../lib';
 export interface InformationListLeadingProps extends HTMLAttributes<HTMLDivElement> {
   /**
    * `top` (default): a control-height box anchored at the row top, for a control (a checkbox) or a
-   * glyph aligned with the first line. `row-center`: a one-line-height box (20px) centred on the
-   * whole row at any row height, for a decorative mark that identifies the entire row.
+   * glyph aligned with the first line. `first-line`: a one-line-height box (20px) on the row's first
+   * text line at any row height, for a decorative mark that identifies the row (multi-line rows keep
+   * their marks at the top, never centred on the row).
    */
-  readonly align?: 'top' | 'row-center';
+  readonly align?: 'top' | 'first-line';
 }
 
 const alignClasses = {
   top: 'h-control-height-default self-start',
-  'row-center': 'h-5 self-center',
+  'first-line': 'h-5 self-start',
 } as const;
 
 export const InformationListLeading = forwardRef<HTMLDivElement, InformationListLeadingProps>(

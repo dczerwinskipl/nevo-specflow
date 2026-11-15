@@ -558,8 +558,8 @@ Operational lists reserve a leading rail only for a real affordance or a selecta
 collection's shared axis. Text-only rows use InformationList's default control-height
 minimum; actual controls retain their own height plus row padding. The leading box is anchored
 at the row top (`InformationList.Leading` default `align="top"`); a decorative mark that
-identifies the whole row (a Session's provider mark) uses `align="row-center"`, a line-height box
-centred on the row at any height. On wide rows,
+identifies the row (a Session's provider mark) uses `align="first-line"`, a line-height box on the
+row's first text line: a multi-line row keeps its mark at the top, never centred on the row. On wide rows,
 metadata has a bounded content-sized rail (up to 18rem), leaving the primary/supporting
 region flexible; on narrow rows it follows the content. Long metadata must never collapse
 that region. Task history facts, purpose, transitions and feedback occupy separate blocks;

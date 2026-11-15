@@ -8089,6 +8089,84 @@
                 }
               }
             }
+          },
+          "outline": {
+            "type": "object",
+            "required": [
+              "stepCount"
+            ],
+            "properties": {
+              "stepCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "current": {
+                "type": "object",
+                "required": [
+                  "step",
+                  "title",
+                  "position"
+                ],
+                "properties": {
+                  "step": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "position": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                }
+              },
+              "next": {
+                "type": "object",
+                "required": [
+                  "step",
+                  "title",
+                  "position"
+                ],
+                "properties": {
+                  "step": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "position": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                }
+              },
+              "tasksStep": {
+                "type": "object",
+                "required": [
+                  "step",
+                  "title",
+                  "position"
+                ],
+                "properties": {
+                  "step": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "position": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                }
+              }
+            }
           }
         }
       },
@@ -45807,6 +45885,9 @@
                                           },
                                           "summary": {
                                             "type": "string"
+                                          },
+                                          "templateOnly": {
+                                            "type": "boolean"
                                           }
                                         }
                                       }

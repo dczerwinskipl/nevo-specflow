@@ -24,6 +24,8 @@ export interface DocumentItem {
   readonly title: string;
   readonly kind: string;
   readonly summary?: string;
+  /** Still only its archetype template (the Runtime's `templateOnly`). */
+  readonly templateOnly?: boolean;
   readonly content?: string;
   readonly sections?: readonly DocumentSection[];
 }

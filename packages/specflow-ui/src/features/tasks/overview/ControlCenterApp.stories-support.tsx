@@ -1,6 +1,11 @@
 import { useMemo } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider, createMemoryHistory } from '@tanstack/react-router';
+import type {
+  SpecificationWorkspaceResponse,
+  TaskListResponse,
+} from '@nevo/specflow-contracts/specs/workspace';
+import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { createFixtureSpecsOverviewApi } from '../../../../test-support/specs/overview/api';
 import { createAuthStore } from '../../../auth/store';
 import { createSpecFlowQueryClient } from '../../../app/queryClient';
@@ -9,6 +14,7 @@ import { builtInUiModuleRegistry } from '../../../app/ui-modules/builtInUiModule
 import { UiModulesProvider } from '../../../app/ui-modules/UiModulesProvider';
 import { StoryLocalization } from '../../../i18n/StoryLocalization';
 import { createSpecFlowAppServices } from '../../../services';
+import type { DocumentApi } from '../../documents/api';
 import { SPEC } from '../execution/projections.stories-support';
 import { authoringApi, taskDocumentApi } from '../pages/ProjectTaskAuthoring.stories-support';
 import {
@@ -25,9 +31,25 @@ import {
 
 export type ControlCenterPage = 'overview' | 'tasks' | 'tasks-blocking';
 
+/** What the faked Runtime answers: the workspace read, the projection and the Tasks page read. */
+export interface ControlCenterSource {
+  readonly workspace: () => Promise<SpecificationWorkspaceResponse>;
+  readonly projection: () => WorkflowActionProjection;
+  readonly taskList: (blocking: boolean) => TaskListResponse;
+  readonly documents?: DocumentApi;
+}
+
 const never = () => new Promise<never>(() => undefined);
 
-function services(scenario: ControlCenterScenario) {
+function scenarioSource(scenario: ControlCenterScenario): ControlCenterSource {
+  return {
+    workspace: () => controlCenterWorkspace(scenario),
+    projection: () => controlCenterProjection(scenario),
+    taskList: (blocking) => controlCenterTaskList(scenario, blocking),
+  };
+}
+
+function services(source: ControlCenterSource) {
   const defaults = createSpecFlowAppServices();
 
   return createSpecFlowAppServices({
@@ -39,15 +61,15 @@ function services(scenario: ControlCenterScenario) {
     }),
     runtimeInfoApi: { getInfo: () => Promise.resolve({ dataMode: 'project' }) },
     specsOverviewApi: createFixtureSpecsOverviewApi(),
-    specificationApi: { getSpecificationWorkspace: () => controlCenterWorkspace(scenario) },
+    specificationApi: { getSpecificationWorkspace: source.workspace },
     taskApi: {
       getTask: never,
       getTaskList: (_specId, query) =>
-        Promise.resolve(controlCenterTaskList(scenario, query.blocking === 'specification')),
+        Promise.resolve(source.taskList(query.blocking === 'specification')),
     },
     taskAuthoringApi: {
       ...authoringApi('started'),
-      specificationActions: () => Promise.resolve(controlCenterProjection(scenario)),
+      specificationActions: () => Promise.resolve(source.projection()),
     },
     workflowExecutionApi: {
       start: never,
@@ -57,7 +79,7 @@ function services(scenario: ControlCenterScenario) {
       closePreview: never,
       close: never,
     },
-    documentApi: taskDocumentApi,
+    documentApi: source.documents ?? taskDocumentApi,
   });
 }
 
@@ -75,16 +97,29 @@ export function ControlCenterApp({
   readonly scenario: ControlCenterScenario;
   readonly page?: ControlCenterPage;
 }) {
+  const source = useMemo(() => scenarioSource(scenario), [scenario]);
+
+  return <RoutedSpecificationApp source={source} page={page} />;
+}
+
+/** The routed application on the Overview or the Tasks page, over a faked Runtime source. */
+export function RoutedSpecificationApp({
+  source,
+  page = 'overview',
+}: {
+  readonly source: ControlCenterSource;
+  readonly page?: ControlCenterPage;
+}) {
   const setup = useMemo(() => {
     const query = createSpecFlowQueryClient();
     query.setDefaultOptions({ queries: { retry: false }, mutations: { retry: false } });
     const router = createSpecFlowRouter(
       createMemoryHistory({ initialEntries: [paths[page]] }),
-      services(scenario),
+      services(source),
     );
 
     return { query, router };
-  }, [scenario, page]);
+  }, [source, page]);
 
   return (
     <QueryClientProvider client={setup.query}>

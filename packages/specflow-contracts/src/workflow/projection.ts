@@ -639,6 +639,27 @@ export const TaskAuthoringSchema = Type.Object({
 });
 export type TaskAuthoring = Static<typeof TaskAuthoringSchema>;
 
+const OutlineStepSchema = Type.Object({
+  step: StepIdSchema,
+  title: Type.String(),
+  /** 1-based, in declared order. */
+  position: Type.Integer({ minimum: 1 }),
+});
+
+/**
+ * Where a run stands among its workflow's steps, in declared order (display facts; a workflow may
+ * loop or branch, so this is no execution order). `current`: the step the run is at (absent before
+ * the first start and once it ended); `next`: the step declared after it, or the entry step before
+ * the first start; `tasksStep`: the first step that declares `produces: tasks`.
+ */
+export const WorkflowOutlineSchema = Type.Object({
+  stepCount: Type.Integer({ minimum: 0 }),
+  current: Type.Optional(OutlineStepSchema),
+  next: Type.Optional(OutlineStepSchema),
+  tasksStep: Type.Optional(OutlineStepSchema),
+});
+export type WorkflowOutline = Static<typeof WorkflowOutlineSchema>;
+
 export const WorkflowActionProjectionSchema = Type.Object(
   {
     subject: WorkflowSubjectSchema,
@@ -663,6 +684,8 @@ export const WorkflowActionProjectionSchema = Type.Object(
         exit: Type.Optional(SpecificationExitSchema),
       }),
     ),
+    /** For a Specification subject whose workflow resolves. */
+    outline: Type.Optional(WorkflowOutlineSchema),
   },
   { $id: 'WorkflowActionProjection' },
 );

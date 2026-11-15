@@ -2,7 +2,7 @@ import { RefreshStatus } from '../../../app/loading/RefreshStatus';
 import { ApplicationLocationIdentity } from '../../../app/navigation/ApplicationLocation';
 import { WorkspaceRouteLeaveGuard } from '../../../app/navigation/WorkspaceRouteLeaveGuard';
 import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
   AppContent,
@@ -125,14 +125,21 @@ function SpecificationWorkspaceInner({
     data.activityEvents.some((event) => !isSpecificationCreatedEvent(event)),
   );
 
+  // The flow the Overview last opened is a document preview: it takes half of the workspace (the
+  // Overview reads in one column beside it); every other Secondary keeps the Overview's share.
+  const [documentOpened, setDocumentOpened] = useState(false);
+  const split = documentOpened && secondaryNavigation.isOpen ? 'balanced' : 'primary';
+
   const handlePreviewTask = useCallback(
     (taskId: string) => {
+      setDocumentOpened(false);
       void secondaryNavigation.open(taskPreviewStack, { specId, taskId });
     },
     [secondaryNavigation, specId],
   );
 
   const handleOpenHistory = useCallback(() => {
+    setDocumentOpened(false);
     void secondaryNavigation.open(historyStack, { specId });
   }, [secondaryNavigation, specId]);
 
@@ -153,6 +160,7 @@ function SpecificationWorkspaceInner({
 
   const handleOpenDoc = useCallback(
     (docId: string, _origin: 'work' | 'documents' = 'work') => {
+      setDocumentOpened(true);
       void secondaryNavigation.open(documentPreviewStack, { specId, documentId: docId });
     },
     [secondaryNavigation, specId],
@@ -235,7 +243,7 @@ function SpecificationWorkspaceInner({
   return (
     <SpecificationSecondaryDataContext.Provider value={secondaryContextValue}>
       <WorkspaceProvider runtime={runtime}>
-        <AppWorkspace split="primary" fit="available" labels={workspaceLabels}>
+        <AppWorkspace split={split} fit="available" labels={workspaceLabels}>
           <AppWorkspace.Primary
             header={
               <WorkspaceHeader

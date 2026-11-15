@@ -10,6 +10,7 @@ import { verifyCheckoutOnDisk, verifyProjectHomeOnDisk } from './disk-verificati
 import { resolveProjectHome, type ResolvedProjectHome } from './home/home';
 import { unlinkWindowsSafe, readFileWindowsSafe } from './fs/windows-safe-fs';
 import {
+  forgetOperationVerification,
   isReadRequest,
   provenInOperation,
   rememberProvenInOperation,
@@ -239,7 +240,13 @@ async function attemptProjectControlLock<T>(
         );
       }
 
-      return action();
+      try {
+        return await action();
+      } finally {
+        // A checkout verified in this section is not trusted after it: the next lookup of the same
+        // workflow mutation (its post action, outside any lock) verifies the checkout again.
+        forgetOperationVerification({ keepHome: true });
+      }
     })().then(
       (value) => ({ success: true as const, value }),
       (error: unknown) => ({ success: false as const, error }),
@@ -402,8 +409,19 @@ async function proveProjectHome(context: ResolvedProjectHome): Promise<HomeProof
   if (proven !== undefined) {
     const current = await pinProjectHome(context);
     if (isDeepStrictEqual(current, proven)) {
+      // Same home evidence: its Git answers hold, but every checkout is verified again (a checkout's
+      // identity marker or ignore rules can change without changing this evidence).
+      forgetOperationVerification({ keepHome: true });
+
       return current;
     }
+
+    // The evidence moved: nothing this operation verified is trusted any more.
+    forgetOperationVerification({ keepHome: false });
+  } else {
+    // The first admission: nothing verified before the lock is trusted inside it (the home is
+    // asked of Git afresh below).
+    forgetOperationVerification({ keepHome: true });
   }
 
   await assertCurrentProjectHome(context);

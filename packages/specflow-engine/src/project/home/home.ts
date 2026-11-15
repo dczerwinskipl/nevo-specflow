@@ -11,7 +11,7 @@ import {
 } from '../git-checkout';
 import { READ_GIT_CONCURRENCY, mapBounded } from '../../concurrency';
 import { verifyGitInstance } from '../git-instance';
-import { memoizeVerification } from '../request-verification-memo';
+import { HOME_VERIFICATION_KEY, memoizeVerification } from '../request-verification-memo';
 import { ProjectHomeError } from './error';
 
 /**
@@ -81,12 +81,12 @@ export async function resolveProjectHome(
 ): Promise<ResolvedProjectHome> {
   const remember = { refresh: options.refresh === true };
   const caller = await memoizeVerification(
-    'git-checkout:' + options.cwd,
+    HOME_VERIFICATION_KEY + 'checkout:' + options.cwd,
     () => inspectCheckout(options.cwd),
     remember,
   );
   const roots = await memoizeVerification(
-    'git-worktrees:' + caller.commonDir,
+    HOME_VERIFICATION_KEY + 'worktrees:' + caller.commonDir,
     () => worktreeRoots(caller),
     remember,
   );
@@ -132,7 +132,7 @@ export async function resolveProjectHome(
   const designated = (
     await mapBounded(roots, READ_GIT_CONCURRENCY, (root) =>
       memoizeVerification(
-        'designated-home:' + JSON.stringify([root, caller.commonDir]),
+        HOME_VERIFICATION_KEY + 'designated:' + JSON.stringify([root, caller.commonDir]),
         // The caller's own checkout was just asked (refreshed) above: reuse that answer.
         () =>
           readDesignatedHome(root, caller.commonDir, {
@@ -278,7 +278,11 @@ async function readDesignatedHome(
     PROJECT_STATE_RELATIVE_PATH + '/runtime/sessions/probe.json',
   ];
   const [checkoutResult, ignoredResult] = await Promise.allSettled([
-    memoizeVerification('git-checkout:' + root, () => inspectCheckout(root), remember),
+    memoizeVerification(
+      HOME_VERIFICATION_KEY + 'checkout:' + root,
+      () => inspectCheckout(root),
+      remember,
+    ),
     areGitIgnored(root, localPaths),
   ]);
   if (checkoutResult.status === 'rejected') {

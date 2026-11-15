@@ -71,8 +71,8 @@ admit ─▶ admitted ──mark dispatched──▶ dispatched ──settle(nat
   Specification's worktree, verified on disk and in Git first); every later transition names the same
   workspace. With `{specId}`, admission also requires that the Specification is still bound to the
   claimed workspace (its binding, else the primary checkout), so a rebind after the caller resolved
-  the workspace is never claimed. Runtime passes the claimed root to the provider driver, which
-  refuses a write in any other folder. It checks that the workspace incarnation in the registry is still the claimed one, that
+  the workspace is never claimed. Runtime compares the claimed root with the execution folder before
+  any write driver starts, and abandons a mismatching claim as never dispatched. It checks that the workspace incarnation in the registry is still the claimed one, that
   the registry revision did not
   change since it was read, and that no other claim conflicts (below), then publishes `admitted`. A
   retry with the same `operationId` returns the existing record when intent and workspace are equal,

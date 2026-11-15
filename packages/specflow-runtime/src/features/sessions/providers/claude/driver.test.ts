@@ -2,45 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { claudeArguments, claudeModels, verifyClaudeInit } from './discovery';
-import { createClaudeDriver } from './driver';
 
 describe('Claude native launch contract', () => {
-  it('writes only in the root the Engine claimed, whatever folder the invocation names', () => {
-    const runtime = resolve('runtime');
-    const worktree = resolve('worktree');
-    const driver = createClaudeDriver({
-      workspace: runtime,
-      temporaryRoot: resolve('temporary'),
-      managedWrites: true,
-    });
-    const invocationId = randomUUID();
-    const write = (workspace: string, claimed: string) => () =>
-      driver.start(
-        {
-          sessionId: randomUUID(),
-          turnId: randomUUID(),
-          invocationId,
-          request: { requestId: randomUUID(), message: 'Edit the documents' },
-          selection: {
-            providerId: 'claude',
-            mode: 'workspace-write',
-            providerModeId: 'acceptEdits',
-          },
-          executionContext: {
-            kind: 'workspace-write',
-            workspace,
-            temporaryRoot: resolve('temporary'),
-            workspaceIdentity: 'a'.repeat(64),
-            admission: { operationId: invocationId, scope: 'project', workspace: claimed },
-          },
-        },
-        () => Promise.resolve(),
-        new AbortController().signal,
-      );
-
-    expect(write(worktree, runtime)).toThrow(/Verified/);
-  });
-
   it('compares the manual CLI alias against its canonical default protocol mode without accepting escalation', () => {
     const selection = {
       providerId: 'claude',

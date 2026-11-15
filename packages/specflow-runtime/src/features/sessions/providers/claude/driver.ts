@@ -399,11 +399,9 @@ export function createClaudeDriver(
             invocation.executionContext.kind !== 'workspace-write' ||
             invocation.executionContext.admission.operationId !== invocation.invocationId)) ||
         invocation.executionContext.kind !== invocation.selection.mode ||
-        // The Runtime's checkout or a Specification's verified worktree; a write runs only in the
-        // root the Engine claimed for it.
-        !isAbsolute(invocation.executionContext.workspace) ||
-        (invocation.executionContext.kind === 'workspace-write' &&
-          invocation.executionContext.workspace !== invocation.executionContext.admission.workspace)
+        // The Runtime's checkout or a Specification's verified worktree (a write's folder is
+        // checked against the Engine claim before any driver starts: managed-invocation).
+        !isAbsolute(invocation.executionContext.workspace)
       ) {
         throw new SessionError(
           'CAPABILITY_UNSUPPORTED',

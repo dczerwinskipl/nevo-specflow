@@ -37,7 +37,7 @@ export function createSpecificationWorkspaceResolver(engine: SpecFlowEngine) {
 
     if (closing) {
       throw new SessionError(
-        'CAPABILITY_UNSUPPORTED',
+        'TURN_CONFLICT',
         'The Specification is being closed, so no agent can start in its workspace.',
         { reason: 'specification-close-in-progress' },
       );

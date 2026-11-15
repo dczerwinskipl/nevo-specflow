@@ -189,10 +189,46 @@ describe("A Specification's Session workspace", () => {
     occupancy.holdForClose('worktree-1');
 
     await expect(runtime!.start('actor', sessionId, turn())).rejects.toMatchObject({
-      code: 'CAPABILITY_UNSUPPORTED',
+      code: 'TURN_CONFLICT',
       details: { reason: 'specification-close-in-progress' },
     });
     expect(start).not.toHaveBeenCalled();
+    expect(occupancy.runningSessions('worktree-1')).toEqual([]);
+  });
+
+  it.each([
+    [
+      'a Close that started before the Turn registered',
+      () =>
+        Promise.reject(
+          new SessionError('TURN_CONFLICT', 'Closing.', {
+            reason: 'specification-close-in-progress',
+          }),
+        ),
+      'specification-close-in-progress',
+    ],
+    [
+      'a rebind before the Turn registered',
+      () =>
+        Promise.resolve({
+          root: join(root, 'other'),
+          workspaceId: 'worktree-2',
+          workspaceIdentity: '3'.repeat(64),
+        }),
+      'specification-workspace-changed',
+    ],
+  ])('verifies again after registering and refuses %s', async (_name, second, reason) => {
+    const { start, create, occupancy, resolve } = await fixture();
+    const sessionId = await create('read-only', 'S1');
+    resolve.mockImplementationOnce(resolve.getMockImplementation()!).mockImplementationOnce(second);
+
+    await expect(runtime!.start('actor', sessionId, turn())).rejects.toMatchObject({
+      code: 'TURN_CONFLICT',
+      details: { reason },
+    });
+    expect(resolve).toHaveBeenCalledTimes(2);
+    expect(start).not.toHaveBeenCalled();
+    // The hold taken for the check is released.
     expect(occupancy.runningSessions('worktree-1')).toEqual([]);
   });
 

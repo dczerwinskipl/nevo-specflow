@@ -8,7 +8,10 @@ import type { SessionEffectClaim, SessionEffects } from './effects';
 import { SessionError } from '../errors';
 
 type Result = Extract<DriverFact, { kind: 'outcome' }>;
-function fixture(source: 'native-result' | 'forced-stop' = 'native-result') {
+function fixture(
+  source: 'native-result' | 'forced-stop' = 'native-result',
+  claimed = '/verified/workspace',
+) {
   const order: string[] = [];
   const result: Result = {
     kind: 'outcome',
@@ -16,7 +19,7 @@ function fixture(source: 'native-result' | 'forced-stop' = 'native-result') {
   };
   let phase = 'admitted';
   const claim = {
-    workspace: '/verified/workspace',
+    workspace: claimed,
     dispatch: vi.fn(() => {
       order.push('engine-dispatch');
       phase = 'dispatched';
@@ -176,4 +179,17 @@ it('requires explicit process-owner evidence even if an adapter declares writabl
   await createManagedInvocation(f.options).done;
   expect(f.phase()).toBe('unknown');
   expect(f.finalize).not.toHaveBeenCalled();
+});
+
+it('never starts a write driver outside the root the Engine claimed', async () => {
+  const f = fixture('native-result', '/another/worktree');
+  await createManagedInvocation(f.options).done;
+
+  expect(f.start).not.toHaveBeenCalled();
+  expect(f.claim.dispatch).not.toHaveBeenCalled();
+  expect(f.claim.abandon).toHaveBeenCalledOnce();
+  expect(f.finalize).toHaveBeenCalledWith(
+    expect.objectContaining({ outcome: 'failed' }),
+    'not-dispatched',
+  );
 });

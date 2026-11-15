@@ -243,8 +243,10 @@ async function attemptProjectControlLock<T>(
       try {
         return await action();
       } finally {
-        // A checkout verified in this section is not trusted after it: the next lookup of the same
-        // workflow mutation (its post action, outside any lock) verifies the checkout again.
+        // Exit clear: a checkout verified in this section is not trusted after it: the next lookup
+        // of the same workflow mutation (its post action, outside any lock) verifies it again. The
+        // entry clear in `proveProjectHome` cannot cover this: the post action runs outside any
+        // section, so no admission follows before its lookups.
         forgetOperationVerification({ keepHome: true });
       }
     })().then(
@@ -420,7 +422,8 @@ async function proveProjectHome(context: ResolvedProjectHome): Promise<HomeProof
     forgetOperationVerification({ keepHome: false });
   } else {
     // The first admission: nothing verified before the lock is trusted inside it (the home is
-    // asked of Git afresh below).
+    // asked of Git afresh below). Entry clear: the exit clear of a previous section cannot cover
+    // this, because lookups between sections (the first plan, a post action) verify outside a lock.
     forgetOperationVerification({ keepHome: true });
   }
 

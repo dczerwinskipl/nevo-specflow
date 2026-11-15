@@ -78,6 +78,15 @@ export function createManagedInvocation(options: {
         workspaceIdentity: context.workspaceIdentity,
         ...(context.specId !== undefined ? { specId: context.specId } : {}),
       });
+      // Every write driver works only in the root the Engine claimed; checked before dispatch, so a
+      // mismatch is abandoned as never started.
+      if (claim.workspace !== context.workspace) {
+        throw new SessionError(
+          'CAPABILITY_UNSUPPORTED',
+          'The claimed workspace is not the execution workspace.',
+        );
+      }
+
       if (options.signal.aborted) {
         await claim.abandon();
         await options.finalize(

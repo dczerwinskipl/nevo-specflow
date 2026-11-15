@@ -128,7 +128,11 @@ export function createSessionCoordinator(
   async function sessionExecutionContext(
     sessionId: string,
     driver: SessionDriver,
-  ): Promise<{ context: typeof executionContext; workspaceId?: string }> {
+  ): Promise<{
+    context: typeof executionContext;
+    /** For a Session associated with a Specification: where it was resolved to run. */
+    resolved?: { specId: string; workspaceId: string; root: string };
+  }> {
     if (!specificationWorkspace || executionContext.kind !== 'read-only') {
       return { context: executionContext };
     }
@@ -151,7 +155,11 @@ export function createSessionCoordinator(
     }
 
     return {
-      workspaceId: workspace.workspaceId,
+      resolved: {
+        specId: association.specId,
+        workspaceId: workspace.workspaceId,
+        root: workspace.root,
+      },
       context:
         workspace.root === executionContext.workspace
           ? { ...executionContext, specId: association.specId }
@@ -168,19 +176,41 @@ export function createSessionCoordinator(
     };
   }
 
-  /** Registers the Turn in its Specification's workspace, refused while a Close holds it. */
-  function beginTurnIn(workspaceId: string | undefined, sessionId: string) {
-    if (workspaceId === undefined || !workspaceOccupancy) {
+  /**
+   * Registers the Turn in its Specification's workspace, then verifies the resolution again: a Close
+   * that starts after the registration sees the Turn and refuses, and one that started before it
+   * (the resolution was read without a hold) is seen here. Any change ends the hold and refuses.
+   */
+  async function beginTurnIn(
+    resolved: { specId: string; workspaceId: string; root: string } | undefined,
+    sessionId: string,
+  ) {
+    if (resolved === undefined || !workspaceOccupancy || !specificationWorkspace) {
       return undefined;
     }
 
-    const hold = workspaceOccupancy.beginTurn(workspaceId, sessionId);
+    const hold = workspaceOccupancy.beginTurn(resolved.workspaceId, sessionId);
     if (!hold) {
       throw new SessionError(
-        'CAPABILITY_UNSUPPORTED',
+        'TURN_CONFLICT',
         "The Specification's worktree is being closed, so no agent can start in it.",
         { reason: 'specification-close-in-progress' },
       );
+    }
+
+    try {
+      const current = await specificationWorkspace(resolved.specId);
+      if (current.workspaceId !== resolved.workspaceId || current.root !== resolved.root) {
+        throw new SessionError(
+          'TURN_CONFLICT',
+          "The Specification's workspace changed while the Turn was starting. Start it again.",
+          { reason: 'specification-workspace-changed' },
+        );
+      }
+    } catch (error) {
+      hold.end();
+
+      throw error;
     }
 
     return hold;
@@ -427,7 +457,7 @@ export function createSessionCoordinator(
           : await sessionExecutionContext(sessionId, driver);
       const context = placement.context;
       // Held until the Turn's execution ends; released at once when it never starts.
-      const turnHold = beginTurnIn(placement.workspaceId, sessionId);
+      const turnHold = await beginTurnIn(placement.resolved, sessionId);
       let handedOver = false;
       try {
         const native = selection.providerId !== 'mock' && context.kind === 'read-only';

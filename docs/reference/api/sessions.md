@@ -94,12 +94,14 @@ Engine claim names that workspace and stays project-wide
 ([Workspace execution claims](../../architecture/runtime/workspace-execution-claims.md)). A provider
 bound to the Runtime's checkout (Codex, Antigravity), or an unregistered or unavailable workspace, is
 refused before admission with `422 CAPABILITY_UNSUPPORTED` and `details.reason`
-`specification-worktree-provider-unsupported` or `specification-workspace-unavailable`; so is a Turn
-in a workspace a Close is removing, or of a Specification an unfinished Close names
-(`specification-close-in-progress`). A Turn of a Specification's Session is registered in its workspace
-until it ends, and Close refuses to remove that checkout meanwhile
-([Close](specflow-specification-operations.md)). A write Turn's claim re-checks under the Engine lock
-that the Specification is still bound to the claimed workspace, and the driver writes only in the
+`specification-worktree-provider-unsupported` or `specification-workspace-unavailable`. A Turn in a
+workspace a Close is removing, or of a Specification an unfinished Close names, is refused with
+`409 TURN_CONFLICT` and `details.reason` `specification-close-in-progress`. A Turn of a
+Specification's Session is registered in its workspace before the workspace is verified again
+(binding, checkout and Close journal), and stays registered until it ends: a workspace that changed in
+between refuses the start with `409 TURN_CONFLICT` (`specification-workspace-changed`), and Close
+refuses to remove a registered checkout ([Close](specflow-specification-operations.md)). A write Turn's claim re-checks under the Engine lock
+that the Specification is still bound to the claimed workspace, and no write driver starts outside the
 root the claim names. A Session never falls back to the Runtime's folder. A Session's home Specification is immutable,
 so its scope never changes. See
 [Runtime authorization](../../architecture/runtime/auth/authorization.md#session-scope). Missing auth -> existing 401 authentication_required; forbidden -> 403

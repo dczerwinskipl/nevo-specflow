@@ -1,6 +1,6 @@
 import { useLayoutEffect, useState } from 'react';
 import { fitMiddle, nameTruncation, type NameTruncation } from './nameTruncation';
-import { textMeasurer } from './measureText';
+import { textMeasurer } from '../text-measure/measureText';
 
 interface Measured {
   readonly name: string;

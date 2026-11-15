@@ -1,56 +1,44 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { TFunction } from 'i18next';
 import { Typography } from '@nevo/ui';
 import type { WorkspaceDocsSearch } from '@nevo/specflow-contracts/docs';
 import { useDocsSearch } from '../read-model';
 import { TreeSearchField } from '../../../shared/document-tree';
 import { DocsProposalsFilter } from './DocsProposalsFilter';
-import { DocsSearchResults, indexBuildingPercent } from './DocsSearchResults';
+import { DocsSearchResults } from './DocsSearchResults';
+import { answerAnnouncement, answerLines } from './searchStatusModel';
+import { useSearchWaiting } from './useSearchWaiting';
 
 const searchDelayMs = 250;
 /** The route's limit of a search text; longer text is not typed in at all. */
 const searchMaxLength = 500;
 
-/**
- * What the search's status row says: the count, or that nothing matches, or that it is
- * searching or failed; then, while the index is being built, the word-match line. `announced`
- * lines are read out but not shown (the empty state and the skeleton already show them).
- */
-export function searchStatus(
-  t: TFunction,
-  input: { search?: WorkspaceDocsSearch; pending: boolean; failed: boolean },
-): { readonly shown: string[]; readonly announced: string[] } {
-  const { search, pending, failed } = input;
-  if (failed) {
-    return { shown: [t('docs.search.failed')], announced: [] };
-  }
+/** An answer as it was asked for: its workspace and whether it included proposals. */
+interface HeldAnswer {
+  readonly workspaceId: string;
+  readonly includeProposals: boolean;
+  readonly search: WorkspaceDocsSearch;
+}
 
-  if (!search || pending) {
-    return { shown: [], announced: [t('docs.search.loading')] };
-  }
-
-  const building =
-    search.mode === 'lexical' && search.reason.code === 'index-building'
-      ? [
-          indexBuildingPercent(search) === undefined
-            ? t('docs.search.indexBuilding')
-            : t('docs.search.indexBuildingProgress', { percent: indexBuildingPercent(search) }),
-        ]
-      : [];
-
-  return search.results.length === 0
-    ? { shown: building, announced: [t('docs.search.noMatches')] }
-    : {
-        shown: [t('docs.search.count', { count: search.results.length }), ...building],
-        announced: [],
-      };
+/** The proposals the answer included, or those it left out: the checkbox's number. */
+function proposalCount(answer: HeldAnswer, proposals: ReadonlySet<string>): number {
+  return answer.includeProposals
+    ? answer.search.results.filter((hit) => proposals.has(hit.id)).length
+    : answer.search.proposalsLeftOut;
 }
 
 /**
- * The search of the tree pane: the field, and while it has text one status row (a live region
- * that stays mounted and changes only its text, with the proposals checkbox beside it) above
- * the results; otherwise `children` (the tree). Clearing returns focus to the field.
+ * The search of the tree pane: the field, and while it has text the status row (the count and the
+ * proposals checkbox), its quiet lines and the results; otherwise `children` (the tree). Clearing
+ * returns focus to the field.
+ *
+ * While an answer is awaited the screen follows the waiting timeline: for 400 ms nothing changes
+ * (the earlier answer of the same workspace stays); then the count leaves and the earlier rows dim
+ * (or the skeleton shows); after 2 s one line says search by meaning is being prepared. The answer
+ * replaces everything at once. An earlier answer is never shown under another workspace.
+ *
+ * One hidden live region reads each settled answer once (the count or that nothing matches, with
+ * its lines), the failure, and once the 2 s line; never a keystroke or the first 2 s of a wait.
  */
 export function DocsSearchPanel({
   workspaceId,
@@ -85,24 +73,63 @@ export function DocsSearchPanel({
     return () => clearTimeout(timer);
   }, [text]);
 
-  const searching = text.trim().length > 0;
+  const typed = text.trim();
+  const searching = typed.length > 0;
   const search = useDocsSearch(searching && !hidden ? workspaceId : undefined, {
     q: query,
     includeProposals,
   });
-  const pending = search.isPending || query !== text.trim();
-  const status = searchStatus(t, { search: search.data, pending, failed: search.isError });
-  const answer = pending ? undefined : search.data;
-  // The proposals the answer included, or those it left out; the checkbox shows that number.
-  const proposalCount =
-    answer === undefined
-      ? undefined
-      : includeProposals
-        ? answer.results.filter((hit) => proposals.has(hit.id)).length
-        : answer.proposalsLeftOut;
-  // One control that keeps its place (and focus) while its answer loads: shown while proposals
-  // are included or some are left out, and while the answer to its own change loads.
-  const filterShown = includeProposals || (proposalCount ?? 0) > 0 || (pending && filterUsed);
+  const typing = query !== typed;
+  const settled =
+    !typing && search.isSuccess && workspaceId !== undefined
+      ? { workspaceId, includeProposals, search: search.data }
+      : undefined;
+  const failed = searching && !typing && search.isError && !search.isFetching;
+  const waiting = searching && !hidden && !settled && !failed;
+  // The timeline runs from the request: typing more (the pause before the next request) restarts it.
+  const stage = useSearchWaiting(
+    waiting && !typing,
+    `${workspaceId ?? ''}\n${query}\n${includeProposals}`,
+  );
+
+  // The last settled answer, kept for the wait of the next one; dropped when the field empties.
+  const [held, setHeld] = useState<HeldAnswer>();
+  if (settled && held?.search !== settled.search) {
+    setHeld(settled);
+  } else if (!searching && held) {
+    setHeld(undefined);
+  }
+
+  // Never another workspace's answer, whatever is held.
+  const previous = held?.workspaceId === workspaceId ? held : undefined;
+  // What the status row and the rows show as current: the answer, or the earlier one while quiet.
+  const shown = settled ?? (waiting && stage === 'quiet' ? previous : undefined);
+  const dimmed =
+    waiting && stage !== 'quiet' && previous !== undefined && previous.search.results.length > 0;
+  const count = shown && proposalCount(shown, proposals);
+  // One control that keeps its place (and focus) while its answer loads: shown while proposals are
+  // included or some are left out, while the answer to its own change loads, and from 400 ms of a
+  // wait when the earlier answer showed it (or there is none yet).
+  const filterShown =
+    includeProposals ||
+    (count ?? 0) > 0 ||
+    (waiting &&
+      (filterUsed ||
+        (stage !== 'quiet' && (previous === undefined || proposalCount(previous, proposals) > 0))));
+  const lines = [
+    ...(shown ? answerLines(t, shown.search) : []),
+    ...(stage === 'preparing' ? [t('docs.search.preparing')] : []),
+    ...(failed ? [t('docs.search.failed')] : []),
+  ];
+  const announcement = settled
+    ? answerAnnouncement(t, settled.search)
+    : failed
+      ? t('docs.search.failed')
+      : stage === 'preparing'
+        ? t('docs.search.preparing')
+        : '';
+  const resultCount = shown && shown.search.results.length > 0 ? shown.search.results.length : 0;
+
   const clear = () => {
     setText('');
     setQuery('');
@@ -128,35 +155,47 @@ export function DocsSearchPanel({
       </div>
       {searching ? (
         <>
-          <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-1 px-2">
-            <div role="status" className="grid min-w-0 gap-0.5">
-              {status.shown.map((line) => (
-                <Typography key={line} as="p" variant="body-sm" className="text-content-muted">
-                  {line}
-                </Typography>
-              ))}
-              {status.announced.map((line) => (
-                <span key={line} className="sr-only">
-                  {line}
-                </span>
-              ))}
-            </div>
-            {filterShown && (
-              <DocsProposalsFilter
-                checked={includeProposals}
-                count={proposalCount}
-                pending={pending}
-                onCheckedChange={(checked) => {
-                  setFilterUsed(true);
-                  setIncludeProposals(checked);
-                }}
-              />
+          <div className="grid min-w-0 gap-1">
+            {(resultCount > 0 || filterShown) && (
+              // At least one target tall, so no hit area reaches into the field above.
+              <div className="flex min-h-(--target-size) min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 px-2">
+                {resultCount > 0 && (
+                  <Typography as="p" variant="body-sm" className="text-content-muted">
+                    {t('docs.search.count', { count: resultCount })}
+                  </Typography>
+                )}
+                {filterShown && (
+                  <DocsProposalsFilter
+                    checked={includeProposals}
+                    count={count}
+                    pending={waiting}
+                    onCheckedChange={(checked) => {
+                      setFilterUsed(true);
+                      setIncludeProposals(checked);
+                    }}
+                  />
+                )}
+              </div>
             )}
+            {lines.map((line) => (
+              <Typography
+                key={line}
+                as="p"
+                variant="body-sm"
+                className="px-2 text-content-secondary"
+              >
+                {line}
+              </Typography>
+            ))}
+            <div role="status" data-search-status className="sr-only">
+              {announcement}
+            </div>
           </div>
           <DocsSearchResults
-            search={search.data}
-            pending={pending}
-            failed={search.isError}
+            search={shown?.search ?? (dimmed ? previous?.search : undefined)}
+            skeleton={waiting && stage !== 'quiet' && !dimmed}
+            dimmed={dimmed}
+            failed={failed}
             proposals={proposals}
             activeDocumentId={activeDocumentId}
             onClear={clear}

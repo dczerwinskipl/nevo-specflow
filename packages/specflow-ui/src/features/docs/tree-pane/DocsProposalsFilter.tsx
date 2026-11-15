@@ -11,7 +11,8 @@ import {
 /**
  * The search's "Include proposals (N)" checkbox and the hint that says what a proposal is. It
  * stays mounted while its answer loads (keeping its place and focus): a change is ignored while
- * `pending`, and the count is left out until the answer is there.
+ * `pending`, and the count is left out until the answer is there. The checkbox and the hint are
+ * 12 px apart, so their touch hit areas (`--target-size`) never overlap.
  */
 export function DocsProposalsFilter({
   checked,
@@ -28,7 +29,7 @@ export function DocsProposalsFilter({
   const { t } = useTranslation();
 
   return (
-    <div className="flex min-w-0 items-center gap-1">
+    <div className="flex min-w-0 items-center gap-3">
       <CheckboxField
         checked={checked}
         aria-disabled={pending || undefined}

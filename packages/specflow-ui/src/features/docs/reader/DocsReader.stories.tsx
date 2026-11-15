@@ -186,6 +186,13 @@ export const Default: Story = {
         'forbidden',
         'docs-unavailable',
         'index-building',
+        'endpoint-unreachable',
+        'index-unavailable',
+        'semantic-disabled',
+        'no-word-match',
+        'search-slow',
+        'search-pending',
+        'search-failed',
       ],
     },
   },
@@ -591,8 +598,9 @@ export const SearchFlow: Story = {
     const body = screen();
     const field = await body.findByRole('searchbox', { name: 'Search documentation' });
     await userEvent.type(field, 'back narrow');
-    await waitFor(() => expect(body.getByText('2 documents')).toBeTruthy());
-    await expect(body.getByText('2 documents').closest('[role="status"]')).toBeTruthy();
+    // Shown on the status row and read once by the hidden live region.
+    await waitFor(() => expect(body.getAllByText('2 results')).toHaveLength(2));
+    await expect(liveSearchStatus().textContent).toBe('2 results');
     await userEvent.click(body.getByRole('button', { name: /^UI interaction model/ }));
     await waitFor(() => expect(document.activeElement?.textContent).toBe('Back and Close'));
 
@@ -630,6 +638,160 @@ export const SearchFlow: Story = {
         .getByRole('button', { name: /UI interaction model/ })
         .getAttribute('aria-current'),
     ).toBe('true');
+  },
+};
+
+/** The search's hidden live region (one per tree pane). */
+const liveSearchStatus = () => {
+  const region = document.querySelector<HTMLElement>('[data-search-status]');
+  if (!region) {
+    throw new Error('No search status');
+  }
+
+  return region;
+};
+
+/** Types `query` into the reader's search field and waits until `settled` holds. */
+async function searchFor(
+  userEvent: { type: (element: Element, text: string) => Promise<void> },
+  query: string,
+  settled: () => void | Promise<void>,
+) {
+  const field = await screen().findByRole('searchbox', { name: 'Search documentation' });
+  await userEvent.type(field, query);
+  await waitFor(settled, { timeout: 4000 });
+}
+
+/**
+ * The search's result rows and status row, one state per story (open them at Narrow and Wide):
+ * the title with the Proposal badge, at most `parent › leaf`, the excerpt with its marks, the
+ * count, the reason lines and the empty states.
+ */
+export const SearchResults: Story = {
+  play: async ({ userEvent }) => {
+    await searchFor(userEvent, 'session', () =>
+      expect(liveSearchStatus().textContent).toMatch(/^\d+ results$/),
+    );
+    await expect(document.querySelector('[aria-label="Search results"] mark')).toBeTruthy();
+  },
+};
+
+/** Proposals included: the Proposal badge beside their titles. */
+export const SearchWithProposals: Story = {
+  play: async ({ userEvent }) => {
+    await searchFor(userEvent, 'search', () =>
+      expect(liveSearchStatus().textContent).toMatch(/^\d+ results$/),
+    );
+    await userEvent.click(screen().getByRole('checkbox', { name: /^Include proposals \(\d+\)$/ }));
+    await waitFor(() => expect(screen().getAllByText('Proposal').length).toBeGreaterThan(0));
+  },
+};
+
+/** Word matches only while the index is being built (the existing line). */
+export const SearchIndexBuilding: Story = {
+  args: { scenario: 'index-building' },
+  play: async ({ userEvent }) =>
+    searchFor(userEvent, 'session', () =>
+      expect(liveSearchStatus().textContent).toMatch(/being built \(62%\)\.$/),
+    ),
+};
+
+/** Word matches only: search by meaning cannot be reached. */
+export const SearchEndpointUnreachable: Story = {
+  args: { scenario: 'endpoint-unreachable' },
+  play: async ({ userEvent }) =>
+    searchFor(userEvent, 'session', () =>
+      expect(liveSearchStatus().textContent).toMatch(
+        /results\. Word matches only: search by meaning is unavailable\.$/,
+      ),
+    ),
+};
+
+/** Word matches only: the search index cannot be read. */
+export const SearchIndexUnavailable: Story = {
+  args: { scenario: 'index-unavailable' },
+  play: async ({ userEvent }) =>
+    searchFor(userEvent, 'session', () =>
+      expect(liveSearchStatus().textContent).toMatch(
+        /results\. Word matches only: the search index is unavailable\.$/,
+      ),
+    ),
+};
+
+/** Word matches only by configuration: no line. */
+export const SearchSemanticDisabled: Story = {
+  args: { scenario: 'semantic-disabled' },
+  play: async ({ userEvent }) =>
+    searchFor(userEvent, 'session', () =>
+      expect(liveSearchStatus().textContent).toMatch(/^\d+ results$/),
+    ),
+};
+
+/** No result matched a query word: the results come from search by meaning. */
+export const SearchNoWordMatch: Story = {
+  args: { scenario: 'no-word-match' },
+  play: async ({ userEvent }) =>
+    searchFor(userEvent, 'session', () =>
+      expect(liveSearchStatus().textContent).toMatch(
+        /results\. No word matches\. Below are results of search by meaning\.$/,
+      ),
+    ),
+};
+
+/** Nothing matches: the empty state without an icon, and no checkbox. */
+export const SearchNoMatches: Story = {
+  play: async ({ userEvent }) => {
+    await searchFor(userEvent, 'zzzqqq', () =>
+      expect(liveSearchStatus().textContent).toBe('No matching documents'),
+    );
+    await expect(screen().queryByRole('checkbox')).toBeNull();
+  },
+};
+
+/** Only proposals match: the checkbox stays on the status row, at its start. */
+export const SearchOnlyProposals: Story = {
+  play: async ({ userEvent }) =>
+    searchFor(userEvent, 'workspace-aware reader', () =>
+      expect(screen().getByRole('checkbox', { name: /^Include proposals \(\d+\)$/ })).toBeTruthy(),
+    ),
+};
+
+/**
+ * A changed query whose answer is slow: after 400 ms the count leaves and the earlier rows dim;
+ * after 2 s one line says search by meaning is being prepared, and the live region says it once.
+ */
+export const SearchSlowAnswer: Story = {
+  args: { scenario: 'search-slow' },
+  play: async ({ userEvent }) => {
+    await searchFor(userEvent, 'search', () =>
+      expect(liveSearchStatus().textContent).toMatch(/^\d+ results$/),
+    );
+    await searchFor(userEvent, ' quality', () =>
+      expect(liveSearchStatus().textContent).toBe('Preparing search by meaning…'),
+    );
+    const rows = document.querySelector('[aria-label="Search results"]');
+    await expect(rows?.hasAttribute('inert')).toBe(true);
+    await expect(screen().queryByText(/^\d+ results$/)).toBeNull();
+  },
+};
+
+/** A first search whose answer is slow: the skeleton, then the line after 2 s. */
+export const SearchSlowFirstAnswer: Story = {
+  args: { scenario: 'search-pending' },
+  play: async ({ userEvent }) =>
+    searchFor(userEvent, 'search', () =>
+      expect(liveSearchStatus().textContent).toBe('Preparing search by meaning…'),
+    ),
+};
+
+/** The search fails: the existing message with Retry. */
+export const SearchFailed: Story = {
+  args: { scenario: 'search-failed' },
+  play: async ({ userEvent }) => {
+    await searchFor(userEvent, 'search', () =>
+      expect(liveSearchStatus().textContent).toBe('Search is unavailable right now.'),
+    );
+    await expect(screen().getByRole('button', { name: 'Retry' })).toBeTruthy();
   },
 };
 

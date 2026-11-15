@@ -1,7 +1,7 @@
 /**
  * Measures text in the font an element renders with (family, size, weight and letter spacing), on
  * a canvas so measuring never lays out the page. Null where no 2D canvas exists (tests, very old
- * engines): the caller then shows the whole name clipped by CSS.
+ * engines): the caller then falls back to a layout that needs no measurement (CSS clipping).
  */
 export function textMeasurer(element: HTMLElement): ((text: string) => number) | null {
   const context = canvas().getContext('2d');

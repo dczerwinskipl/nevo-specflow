@@ -5,7 +5,7 @@ import { ContextSwitcherOption } from './ContextSwitcherOption';
 import { ContextSwitcherTrigger } from './ContextSwitcherTrigger';
 
 // Every character 10 px wide, in place of the canvas measurement jsdom does not have.
-vi.mock('./measureText', () => ({
+vi.mock('../text-measure/measureText', () => ({
   textMeasurer: () => (text: string) => text.length * 10,
 }));
 

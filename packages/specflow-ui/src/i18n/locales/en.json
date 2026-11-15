@@ -907,6 +907,7 @@
         "branchLabel": "New branch name",
         "branchPlaceholder": "feature/new-api",
         "branchHelp": "Nevo prepares the worktree folder itself. If the name is taken, you will enter another one.",
+        "branchUntouched": "Until you edit it, the branch is named {{branch}} (… is filled in when the specification is created). Edit the name to use your own.",
         "nameSlug": "slug",
         "unavailableReason": "– {{reason}}",
         "slugDescription": "The slug names the specification folder, the worktree folder and the new branch. It follows the specification name until you edit it.",

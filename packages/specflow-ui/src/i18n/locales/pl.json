@@ -907,6 +907,7 @@
         "branchLabel": "Nazwa nowej gałęzi",
         "branchPlaceholder": "feature/new-api",
         "branchHelp": "Katalog worktree Nevo przygotuje samodzielnie. Jeśli nazwa jest zajęta, podasz inną.",
+        "branchUntouched": "Dopóki jej nie zmienisz, gałąź nazywa się {{branch}} (… zostanie uzupełnione przy tworzeniu specyfikacji). Zmień nazwę, aby użyć własnej.",
         "nameSlug": "slug",
         "unavailableReason": "– {{reason}}",
         "slugDescription": "Slug nazywa katalog specyfikacji, katalog worktree i nową gałąź. Podąża za nazwą specyfikacji, dopóki go nie zmienisz.",

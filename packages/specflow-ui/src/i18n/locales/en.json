@@ -1937,7 +1937,8 @@
       "placeholder": "Choose the agent and start the session"
     },
     "executor": {
-      "notChosen": "not chosen"
+      "notChosen": "not chosen",
+      "modelNotChosen": "model not chosen"
     },
     "provider": {
       "noMode": "No work mode is available"

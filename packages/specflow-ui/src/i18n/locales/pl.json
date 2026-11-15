@@ -1937,7 +1937,8 @@
       "placeholder": "Wybierz agenta i rozpocznij sesję"
     },
     "executor": {
-      "notChosen": "nie wybrano"
+      "notChosen": "nie wybrano",
+      "modelNotChosen": "nie wybrano modelu"
     },
     "provider": {
       "noMode": "Brak dostępnego trybu pracy"

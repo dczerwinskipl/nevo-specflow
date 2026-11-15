@@ -33,13 +33,22 @@ export interface Invocation {
   selection: Pick<CreateSession, 'providerId' | 'mode' | 'providerModeId' | 'modelId' | 'effort'>;
   executionContext:
     | { kind: 'no-effects' }
-    | { kind: 'read-only'; workspace: string; temporaryRoot: string; workspaceIdentity?: string }
+    | {
+        kind: 'read-only';
+        workspace: string;
+        temporaryRoot: string;
+        workspaceIdentity?: string;
+        /** The Specification whose workspace this is (a Session associated with it). */
+        specId?: string;
+      }
     | {
         kind: 'workspace-write';
         workspace: string;
         temporaryRoot: string;
         workspaceIdentity: string;
-        admission: { operationId: string; scope: 'project' };
+        specId?: string;
+        /** The Engine claim: `workspace` is the root it claimed, the only folder a write may use. */
+        admission: { operationId: string; scope: 'project'; workspace: string };
       };
   providerContext?: { nativeSessionId: string; resume: boolean; scope?: string };
   beforeDispatch?: () => Promise<void>;

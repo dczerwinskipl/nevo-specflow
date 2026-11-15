@@ -48,11 +48,12 @@ export function createEngineSessionEffects(engine: SpecFlowEngine): SessionEffec
    * one the Session was admitted with: the Engine's own checkout or a Specification's worktree.
    */
   async function claimTarget(identity: SessionEffectIdentity) {
+    const binding = identity.specId !== undefined ? { specId: identity.specId } : {};
     if (
       identity.workspace === engine.workspace.root &&
       identity.workspaceIdentity === workspaceExecutionIdentity(engine)
     ) {
-      return {};
+      return binding;
     }
 
     const registry = await guarded(() => engine.readRegistry());
@@ -61,7 +62,7 @@ export function createEngineSessionEffects(engine: SpecFlowEngine): SessionEffec
       return undefined;
     }
 
-    return { workspaceId: registered.workspaceId };
+    return { workspaceId: registered.workspaceId, ...binding };
   }
 
   async function guarded<T>(run: () => Promise<T>): Promise<T> {
@@ -102,6 +103,7 @@ export function createEngineSessionEffects(engine: SpecFlowEngine): SessionEffec
       }
 
       return {
+        workspace: record.workspace.root,
         dispatch: () =>
           guarded(async () => {
             await markWorkspaceExecutionDispatched(engine, request, target);

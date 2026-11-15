@@ -23,6 +23,17 @@ describe('why a Specification cannot close', () => {
     ).toBe('its workflow is waiting for 2 unfinished tasks');
   });
 
+  it('says first that an agent Session works in the worktree Close would remove', () => {
+    expect(
+      closeReasons(
+        i18n.t,
+        'en',
+        [{ kind: 'session-turn-running', subjectIds: ['session-1'], message: '' }],
+        tasks,
+      ),
+    ).toBe('an agent Session is working in its worktree');
+  });
+
   it('names the step the workflow is still at, and the unfinished Tasks apart', () => {
     expect(
       closeReasons(i18n.t, 'en', blockers, tasks, {

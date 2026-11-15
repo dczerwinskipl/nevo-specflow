@@ -76,6 +76,7 @@ export function createManagedInvocation(options: {
         binding: options.binding,
         workspace: context.workspace,
         workspaceIdentity: context.workspaceIdentity,
+        ...(context.specId !== undefined ? { specId: context.specId } : {}),
       });
       if (options.signal.aborted) {
         await claim.abandon();
@@ -107,7 +108,11 @@ export function createManagedInvocation(options: {
             ...context,
             workspaceIdentity: context.workspaceIdentity,
             kind: 'workspace-write',
-            admission: { operationId: options.invocation.invocationId, scope: 'project' },
+            admission: {
+              operationId: options.invocation.invocationId,
+              scope: 'project',
+              workspace: claim.workspace,
+            },
           },
         },
         emit,

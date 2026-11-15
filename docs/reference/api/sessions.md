@@ -94,7 +94,13 @@ Engine claim names that workspace and stays project-wide
 ([Workspace execution claims](../../architecture/runtime/workspace-execution-claims.md)). A provider
 bound to the Runtime's checkout (Codex, Antigravity), or an unregistered or unavailable workspace, is
 refused before admission with `422 CAPABILITY_UNSUPPORTED` and `details.reason`
-`specification-worktree-provider-unsupported` or `specification-workspace-unavailable`. A Session never falls back to the Runtime's folder. A Session's home Specification is immutable,
+`specification-worktree-provider-unsupported` or `specification-workspace-unavailable`; so is a Turn
+in a workspace a Close is removing, or of a Specification an unfinished Close names
+(`specification-close-in-progress`). A Turn of a Specification's Session is registered in its workspace
+until it ends, and Close refuses to remove that checkout meanwhile
+([Close](specflow-specification-operations.md)). A write Turn's claim re-checks under the Engine lock
+that the Specification is still bound to the claimed workspace, and the driver writes only in the
+root the claim names. A Session never falls back to the Runtime's folder. A Session's home Specification is immutable,
 so its scope never changes. See
 [Runtime authorization](../../architecture/runtime/auth/authorization.md#session-scope). Missing auth -> existing 401 authentication_required; forbidden -> 403
 forbidden; unknown ID -> 404 SESSION_NOT_FOUND after access handling. Existing Auth conventions

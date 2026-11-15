@@ -39,7 +39,7 @@ async function fixture() {
       workspace,
       temporaryRoot: workspace,
       workspaceIdentity: 'fixture-workspace',
-      admission: { operationId: randomUUID(), scope: 'project' },
+      admission: { operationId: randomUUID(), scope: 'project', workspace },
     },
     providerContext: { nativeSessionId: 'fixture-native', resume: false },
     beforeDispatch: vi.fn(() => Promise.resolve()),

@@ -16,6 +16,7 @@ function fixture(source: 'native-result' | 'forced-stop' = 'native-result') {
   };
   let phase = 'admitted';
   const claim = {
+    workspace: '/verified/workspace',
     dispatch: vi.fn(() => {
       order.push('engine-dispatch');
       phase = 'dispatched';
@@ -107,7 +108,11 @@ it('admits before launching and proves settlement before canonical terminal publ
   ]);
   expect(f.start.mock.calls[0]![0].executionContext).toMatchObject({
     kind: 'workspace-write',
-    admission: { operationId: f.options.invocation.invocationId, scope: 'project' },
+    admission: {
+      operationId: f.options.invocation.invocationId,
+      scope: 'project',
+      workspace: '/verified/workspace',
+    },
   });
   expect(f.persist).not.toHaveBeenCalled();
   expect(f.finalize).toHaveBeenCalledWith(f.result, 'native-result', false);

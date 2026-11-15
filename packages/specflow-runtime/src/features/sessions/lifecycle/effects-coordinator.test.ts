@@ -31,6 +31,7 @@ async function fixture(failTerminal = false) {
       phase = 'admitted';
 
       return Promise.resolve({
+        workspace: identity.workspace,
         dispatch: () => {
           phase = 'dispatched';
 

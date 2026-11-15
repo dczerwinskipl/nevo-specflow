@@ -6,7 +6,7 @@ import type { ProjectIdSource } from './scope';
 import { defaultSpecsFeatureConfig, type SpecsFeatureConfig } from './configuration';
 import { specsCreateEndpoint } from './create/endpoint';
 import { registerSpecsOperationList } from './create/operation-list';
-import { specsCloseEndpoint, type ReleaseWorkspace } from './close/endpoint';
+import { specsCloseEndpoint, type ReleaseWorkspace, type RunningSessions } from './close/endpoint';
 import { specsOverviewEndpoint } from './overview/endpoint';
 import type { SpecsOverviewRepository } from './overview/repository/read-repository';
 import {
@@ -34,6 +34,8 @@ export interface SpecsFeatureDependencies {
   readonly projectId?: ProjectIdSource;
   /** What the Runtime holds open in a checkout, released before Close may delete it (E9). */
   readonly releaseWorkspace?: ReleaseWorkspace;
+  /** The Sessions whose Turn runs in a workspace now; Close refuses to remove such a checkout. */
+  readonly runningSessions?: RunningSessions;
   /** Generic operation progress registry; absent disables live progress. */
   readonly progress?: {
     readonly registry: OperationProgressRegistry;
@@ -106,6 +108,9 @@ export function createSpecsFeature(options: CreateSpecsFeatureOptions = {}): Run
         engine: options.dependencies?.engine,
         ...(options.dependencies?.releaseWorkspace
           ? { releaseWorkspace: options.dependencies.releaseWorkspace }
+          : {}),
+        ...(options.dependencies?.runningSessions
+          ? { runningSessions: options.dependencies.runningSessions }
           : {}),
       });
       app.register(specsOverviewEndpoint, {

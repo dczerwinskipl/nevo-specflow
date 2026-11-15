@@ -22,6 +22,32 @@ import {
  */
 export interface WorkspaceExecutionTarget {
   readonly workspaceId?: string;
+  /**
+   * The Specification whose workspace this is: admission re-checks, under the control lock, that the
+   * Specification is still bound to it, so a rebind after the caller resolved it is never claimed.
+   */
+  readonly specId?: string;
+}
+
+/** The Specification's binding (else the primary checkout) still names the claimed workspace. */
+function assertSpecificationBinding(
+  registry: WorkspaceRegistry,
+  target: WorkspaceExecutionTarget,
+  workspace: ClaimWorkspace,
+) {
+  if (target.specId === undefined) {
+    return;
+  }
+
+  const bound =
+    registry.specBindings.find((binding) => binding.specId === target.specId)?.workspaceId ??
+    registry.primaryWorkspaceId;
+  if (bound !== workspace.workspaceId) {
+    throw new WorkspaceExecutionError(
+      'EXECUTION_CONFLICT',
+      'The Specification is no longer bound to the execution workspace.',
+    );
+  }
 }
 
 type ClaimWorkspace = WorkspaceExecutionJournal['workspace'];
@@ -116,6 +142,7 @@ export async function admitWorkspaceExecution(
 
     const latest = await readWorkspaceRegistry(engine.context);
     assertSameIncarnation(engine, latest, target, workspace);
+    assertSpecificationBinding(latest, target, workspace);
     if (latest.revision !== registry.revision) {
       throw new WorkspaceExecutionError(
         'EXECUTION_CONFLICT',

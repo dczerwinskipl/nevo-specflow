@@ -234,7 +234,14 @@ it('claims a Specification worktree for an agent: the project stays exclusive, t
     target: { kind: 'new-worktree', baseRef: 'HEAD' },
   });
   expect(linked.workspaceId).not.toBe(engine.workspace.workspaceId);
-  const target = { workspaceId: linked.workspaceId };
+  // A workspace resolved before a rebind is never claimed for the Specification.
+  await expect(
+    admitWorkspaceExecution(engine, intent, {
+      workspaceId: engine.workspace.workspaceId,
+      specId: linked.specId,
+    }),
+  ).rejects.toMatchObject({ code: 'EXECUTION_CONFLICT' });
+  const target = { workspaceId: linked.workspaceId, specId: linked.specId };
 
   const admitted = await admitWorkspaceExecution(engine, intent, target);
   expect(admitted.workspace).toMatchObject({
@@ -254,7 +261,7 @@ it('claims a Specification worktree for an agent: the project stays exclusive, t
   ).rejects.toMatchObject({ code: 'RESOURCE_CONFLICT' });
   await expect(
     createSpecificationForTesting(engine, create('Concurrent create')),
-  ).rejects.toBeDefined();
+  ).rejects.toMatchObject({ code: 'CREATE_CONFLICT' });
   await expect(
     reserveCloseOperation(engine, {
       kind: 'specification-close',

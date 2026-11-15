@@ -36,7 +36,7 @@ import {
   type DocsFeatureDependencies,
 } from '../features/docs';
 import { createSettingsFeature } from '../features/settings';
-import { createWorkspacesFeature } from '../features/workspaces';
+import { createWorkspaceOccupancy, createWorkspacesFeature } from '../features/workspaces';
 import {
   createEngineAssociationTargets,
   createSessionAssociationsFeature,
@@ -47,6 +47,7 @@ import {
 import {
   composeWorkspaceActivity,
   createSpecsFeature,
+  releaseAfterQuiescence,
   type SpecsFeatureDependencies,
 } from '../features/specs';
 import {
@@ -208,8 +209,12 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
           openWorkflow: () => openWorkflow(engine, { projectDocument: projectDocument() }),
         }
       : undefined;
+  // Which checkouts agent Session Turns work in: Close never removes one of them (and holds a
+  // checkout against new Turns while it removes it).
+  const workspaceOccupancy = createWorkspaceOccupancy();
   const sessionsFeature = createSessionsFeature({
     ...(engine ? { engine } : {}),
+    workspaceOccupancy,
     config: mode === 'project' ? config.sessions : undefined,
     storage:
       dependencies.sessions?.storage ??
@@ -293,7 +298,11 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
         sessions: sessionReferences,
         projectId,
         // Close deletes a checkout only after the documentation index there is released (E9).
-        releaseWorkspace: docsFeature.releaseWorkspaceDocs,
+        releaseWorkspace: releaseAfterQuiescence(
+          workspaceOccupancy,
+          docsFeature.releaseWorkspaceDocs,
+        ),
+        runningSessions: (workspaceId) => workspaceOccupancy.runningSessions(workspaceId),
         // The demo Runtime serves its own Create routes (and events route) below.
         ...(demo
           ? {}

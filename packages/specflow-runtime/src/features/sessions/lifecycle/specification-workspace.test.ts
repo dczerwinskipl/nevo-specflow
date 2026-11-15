@@ -8,6 +8,7 @@ import { openSessionStore } from '../persistence/store';
 import type { SessionDriver, Invocation, EmitFact } from '../providers/driver';
 import { createMockDriver } from '../providers/mock';
 import { SessionError } from '../errors';
+import { createWorkspaceOccupancy } from '../../workspaces';
 import type { SessionEffectIdentity } from './effects';
 
 let root = '',
@@ -22,9 +23,12 @@ afterEach(async () => {
 
 async function fixture(
   options: {
-    resolve?: (specId: string) => Promise<{ root: string; workspaceIdentity: string }>;
+    resolve?: (
+      specId: string,
+    ) => Promise<{ root: string; workspaceId: string; workspaceIdentity: string }>;
     supportsSessionWorkspaces?: boolean;
     mode?: 'read-only' | 'workspace-write';
+    holdTurn?: boolean;
   } = {},
 ) {
   root = await mkdtemp(join(tmpdir(), 'session-spec-workspace-'));
@@ -33,18 +37,33 @@ async function fixture(
   const worktreeIdentity = '2'.repeat(64);
   const resolve = vi.fn(
     options.resolve ??
-      (() => Promise.resolve({ root: worktree, workspaceIdentity: worktreeIdentity })),
+      (() =>
+        Promise.resolve({
+          root: worktree,
+          workspaceId: 'worktree-1',
+          workspaceIdentity: worktreeIdentity,
+        })),
   );
   // The Engine claim is what this test observes for a write; the claim itself is refused here.
   const admit = vi.fn((_identity: SessionEffectIdentity) =>
     Promise.reject(new SessionError('TURN_CONFLICT', 'Claimed.')),
   );
+  const occupancy = createWorkspaceOccupancy();
+  // The Turn's agent finishes only when the test releases it.
+  let finish: () => void = () => undefined;
+  const finished = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
   const start = vi.fn((invocation: Invocation, emit: EmitFact) => ({
     done: (async () => {
       await emit({
         kind: 'correlation',
         providerSessionId: invocation.providerContext!.nativeSessionId,
       });
+      if (options.holdTurn) {
+        await finished;
+      }
+
       await emit({ kind: 'outcome', outcome: 'completed' });
     })(),
     respond: () => Promise.resolve({ deliveredKeys: [] }),
@@ -79,6 +98,7 @@ async function fixture(
       reconcile: () => Promise.resolve(undefined),
     },
     resolve,
+    occupancy,
   );
 
   async function create(mode: 'read-only' | 'workspace-write', specId?: string) {
@@ -96,7 +116,17 @@ async function fixture(
     return created.sessionId;
   }
 
-  return { runtimeWorkspace, worktree, worktreeIdentity, resolve, start, admit, create };
+  return {
+    runtimeWorkspace,
+    worktree,
+    worktreeIdentity,
+    resolve,
+    start,
+    admit,
+    create,
+    occupancy,
+    finish,
+  };
 }
 
 const turn = () => ({ requestId: randomUUID(), message: 'Review the specification' });
@@ -114,6 +144,7 @@ describe("A Specification's Session workspace", () => {
       kind: 'read-only',
       workspace: worktree,
       temporaryRoot: root,
+      specId: 'S1',
       workspaceIdentity: '2'.repeat(64),
     });
   });
@@ -129,9 +160,40 @@ describe("A Specification's Session workspace", () => {
       sessionId,
       workspace: worktree,
       workspaceIdentity: worktreeIdentity,
+      // Admission re-checks that S1 is still bound to that worktree.
+      specId: 'S1',
     });
     // Refused claim: the agent never starts.
     expect(start).not.toHaveBeenCalled();
+  });
+
+  it('holds the worktree for its Turn, so Close waits until the Turn ends', async () => {
+    const { start, create, occupancy, finish } = await fixture({ holdTurn: true });
+    const sessionId = await create('read-only', 'S1');
+
+    await runtime!.start('actor', sessionId, turn());
+
+    await vi.waitFor(() => expect(start).toHaveBeenCalledTimes(1));
+    expect(occupancy.holdForClose('worktree-1')).toEqual({
+      kind: 'busy',
+      sessionIds: [sessionId],
+    });
+    finish();
+    await vi.waitFor(() => expect(occupancy.runningSessions('worktree-1')).toEqual([]));
+    expect(occupancy.holdForClose('worktree-1').kind).toBe('held');
+  });
+
+  it('refuses a Turn in a worktree Close is removing', async () => {
+    const { start, create, occupancy } = await fixture();
+    const sessionId = await create('read-only', 'S1');
+    occupancy.holdForClose('worktree-1');
+
+    await expect(runtime!.start('actor', sessionId, turn())).rejects.toMatchObject({
+      code: 'CAPABILITY_UNSUPPORTED',
+      details: { reason: 'specification-close-in-progress' },
+    });
+    expect(start).not.toHaveBeenCalled();
+    expect(occupancy.runningSessions('worktree-1')).toEqual([]);
   });
 
   it("keeps a standalone Session in the Runtime's checkout", async () => {

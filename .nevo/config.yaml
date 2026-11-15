@@ -37,3 +37,8 @@ git:
   commits:
     protectedBranches:
       - main
+sessions:
+  enabled: true
+  providers:
+    claude:
+      enabled: true

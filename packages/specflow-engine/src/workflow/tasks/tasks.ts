@@ -295,8 +295,11 @@ export function materializeTasks(input: MaterializeTasksInput): MaterializedTask
   };
 }
 
-/** A draft the producing step (by its id, any attempt) drafted, so its later finishes revise it. */
-function ownsDraft(origin: MaterializeTasksInput['origin'], task: ExecutionTask): boolean {
+/**
+ * A draft the producing step (by its id, any attempt) drafted, so its later finishes revise it, or
+ * leave it out (cancelled).
+ */
+export function ownsDraft(origin: { readonly step: string }, task: ExecutionTask): boolean {
   return (
     task.status === 'draft' && task.origin.kind === 'produced' && task.origin.step === origin.step
   );
@@ -603,6 +606,73 @@ export function tasksOpenAtCompletion(
     target.outcome === 'completed'
     ? openTasks(tasks, broken)
     : [];
+}
+
+/**
+ * How a finish's own input closes an open Task: `left-out` (a draft of the producing step that its
+ * Task list leaves out is cancelled), `decision` (a `taskDecisions` entry cancels it) or `effect`
+ * (a declared effect of the transition closes it).
+ */
+export type FinishClosure = 'left-out' | 'decision' | 'effect';
+
+export interface ClosableTask {
+  readonly taskId: string;
+  readonly by: FinishClosure;
+}
+
+/**
+ * Whether a finish could take a transition that {@link tasksOpenAtCompletion} refuses now: the
+ * finish judges the state after its own Task list, decisions and effects, so it completes when they
+ * close every open Task. Plans the finish that closes the most (every owned draft left out, every
+ * Task a decision may cancel cancelled, then the transition's effects) with the rules the finish
+ * applies (`ownsDraft`, `taskDecisionRefusal`, `applyTaskEffects`, `tasksOpenAtCompletion`), and
+ * returns how each open Task closes, in id order; `undefined` when a Task stays open even so (an
+ * active attempt, a broken Task). Pure.
+ */
+export function finishClosingOpenTasks(input: {
+  readonly subject: { readonly kind: 'specification' | 'task' };
+  readonly target: Parameters<typeof tasksOpenAtCompletion>[1];
+  readonly tasks: readonly ExecutionTask[];
+  readonly broken: readonly string[];
+  /** The finished step when it produces Tasks (its owned drafts can be left out). */
+  readonly producingStep?: string;
+  /** Only a Specification finish carries `taskDecisions`. */
+  readonly decisions: boolean;
+  readonly effects: readonly WorkflowEffect[];
+}): ClosableTask[] | undefined {
+  const open = tasksOpenAtCompletion(input.subject, input.target, input.tasks, input.broken);
+  const closure = (task: ExecutionTask): FinishClosure | undefined =>
+    isTaskClosed(task)
+      ? undefined
+      : input.producingStep !== undefined && ownsDraft({ step: input.producingStep }, task)
+        ? 'left-out'
+        : input.decisions && taskDecisionRefusal(task, 'cancelled') === undefined
+          ? 'decision'
+          : undefined;
+  const planned = new Map(
+    input.tasks.map((task) => [
+      task.taskId,
+      closure(task) ? { ...task, status: 'cancelled' as const } : task,
+    ]),
+  );
+  for (const task of applyTaskEffects([...planned.values()], input.effects)) {
+    planned.set(task.taskId, task);
+  }
+
+  if (
+    tasksOpenAtCompletion(input.subject, input.target, [...planned.values()], input.broken).length >
+    0
+  ) {
+    return undefined;
+  }
+
+  const byId = new Map(input.tasks.map((task) => [task.taskId, task] as const));
+
+  return open.map(({ taskId }) => {
+    const task = byId.get(taskId);
+
+    return { taskId, by: (task && closure(task)) ?? 'effect' };
+  });
 }
 
 /**

@@ -1,5 +1,6 @@
 import { Type, type Static } from 'typebox';
 
+import { TASK_STATUS_REASON_MAX_LENGTH } from '../documents/task-resource-files';
 import { SpecIdSchema, TaskIdSchema } from '../identifiers';
 import {
   ATTENTION_REASONS,
@@ -62,6 +63,20 @@ export const TaskProposalSchema = Type.Object(
 export type TaskProposal = Static<typeof TaskProposalSchema>;
 
 /**
+ * An explicit status decision of a Specification finish (`TaskDecision` of the Engine; the CLI's
+ * `--task-decisions-file`), applied after `tasks` and before the transition's effects.
+ */
+export const TaskDecisionSchema = Type.Object(
+  {
+    taskId: TaskIdSchema,
+    status: Type.Union([Type.Literal('ready'), Type.Literal('on-hold'), Type.Literal('cancelled')]),
+    reason: Type.Optional(Type.String({ maxLength: TASK_STATUS_REASON_MAX_LENGTH })),
+  },
+  { additionalProperties: false },
+);
+export type TaskDecision = Static<typeof TaskDecisionSchema>;
+
+/**
  * Finish the active attempt of the owner. Repeating the same request returns the recorded result
  * with `replayed: true`; another request for that attempt is `WORKFLOW_ATTEMPT_MISMATCH`.
  */
@@ -76,10 +91,16 @@ export const FinishWorkflowRequestSchema = Type.Object(
     /**
      * Required by, and only allowed for, a step that produces Tasks (`produces: tasks` in the
      * projection): the complete list of the Specification's draft Tasks after the finish, possibly
-     * empty. A listed draft is revised, an unlisted one cancelled. Status decisions are not part of a
-     * finish: the Task lifecycle actions decide them.
+     * empty. A listed draft is revised, an unlisted one cancelled.
      */
     tasks: Type.Optional(Type.Array(TaskProposalSchema, { maxItems: 100 })),
+    /**
+     * Only for a Specification step: status decisions on its Tasks, applied after `tasks` and
+     * before the transition's effects; one decision that is not allowed rejects the whole finish. A
+     * finish to `terminal completed` is judged after them, so it may cancel the open Tasks
+     * (`resolvableByFinish` in the projection).
+     */
+    taskDecisions: Type.Optional(Type.Array(TaskDecisionSchema, { maxItems: 200 })),
   },
   { additionalProperties: false },
 );

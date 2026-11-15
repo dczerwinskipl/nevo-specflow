@@ -2,6 +2,7 @@ import type {
   AbandonSpecificationResult as AbandonContract,
   FinishWorkflowResult,
   ReturnWorkflowResult,
+  TaskDecision as TaskDecisionContract,
   TaskProposal as TaskProposalContract,
   WorkflowActionProjection,
   WorkflowAttentionItem,
@@ -20,6 +21,7 @@ import type {
   ReturnToStepResult,
   RunPosition,
   TaskFacts,
+  TaskDecision,
   TaskProgress,
   TaskProposal,
   TaskReadiness,
@@ -58,6 +60,7 @@ describe('workflow contract types', () => {
     same<ReturnToStepResult, ReturnWorkflowResult>(true);
     same<AbandonSpecificationResult, AbandonContract>(true);
     same<TaskProposal, TaskProposalContract>(true);
+    same<TaskDecision, TaskDecisionContract>(true);
     same<UnresolvedContextEntry, Unresolved>(true);
     same<AwaitedContextEntry, AwaitedEntry>(true);
     same<InvalidContextEntry, InvalidEntry>(true);

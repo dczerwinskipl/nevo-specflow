@@ -289,6 +289,18 @@ export const OpenTaskSchema = Type.Object({
 export type OpenTask = Static<typeof OpenTaskSchema>;
 
 /**
+ * How a finish's own input closes an open Task: `left-out` (a draft of the producing step its Task
+ * list leaves out), `decision` (a `taskDecisions` entry cancels it) or `effect` (a declared effect
+ * of the transition). Mirrors the Engine's list.
+ */
+export const FINISH_CLOSURES = ['left-out', 'decision', 'effect'] as const;
+export const ClosableTaskSchema = Type.Object({
+  taskId: TaskIdSchema,
+  by: literals(FINISH_CLOSURES),
+});
+export type ClosableTask = Static<typeof ClosableTaskSchema>;
+
+/**
  * Why a subject needs a person: the continuation reasons, then `task-broken`,
  * `definition-changed` and the start blockers of an approved Task that has not started that a
  * person fixes. Never inferred from a status name.
@@ -445,6 +457,14 @@ export const WorkflowActionsSchema = Type.Object({
             ),
             /** For `tasks-open`: every open Task and why it is open, in id order. */
             openTasks: Type.Optional(array(OpenTaskSchema)),
+            /**
+             * For `tasks-open`: the finish's own input (its Task list, `taskDecisions`, effects)
+             * can close every open Task, so it may still be accepted; absent when a Task stays open
+             * whatever the finish sends.
+             */
+            resolvableByFinish: Type.Optional(Type.Literal(true)),
+            /** With `resolvableByFinish`: how the finish closes each open Task, in id order. */
+            closableTasks: Type.Optional(array(ClosableTaskSchema)),
             /** The exit gates that apply to the transition; absent when none do. */
             gates: Type.Optional(array(GateStatusSchema)),
           }),

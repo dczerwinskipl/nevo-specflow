@@ -195,7 +195,9 @@ export {
   DraftConflictError,
   OPEN_TASK_CAUSES,
   TasksOpenError,
+  type ClosableTask,
   type DraftConflict,
+  type FinishClosure,
   type OpenTask,
   type OpenTaskCause,
 } from './tasks/tasks';

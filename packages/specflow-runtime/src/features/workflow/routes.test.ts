@@ -273,6 +273,41 @@ describe('workflow action routes', () => {
     await app.close();
   });
 
+  it('hands the Task decisions of a Specification finish to the Engine, and refuses bad ones', async () => {
+    const { port, calls } = fakePort();
+    const app = appWith(port);
+    const taskDecisions = [
+      { taskId: 'api', status: 'cancelled', reason: 'Not needed.' },
+      { taskId: 'screen', status: 'on-hold' },
+    ];
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/specs/${SPEC}/workflow/finish`,
+      payload: { step: 'acceptance', attempt: 1, taskDecisions },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(calls.last).toMatchObject({
+      subject: { kind: 'specification', specId: SPEC },
+      input: { taskDecisions },
+    });
+
+    // `draft` is no decision; the contract refuses it before the Engine is asked.
+    const refused = await app.inject({
+      method: 'POST',
+      url: `/api/specs/${SPEC}/workflow/finish`,
+      payload: {
+        step: 'acceptance',
+        attempt: 1,
+        taskDecisions: [{ taskId: 'api', status: 'draft' }],
+      },
+    });
+    expect(refused.statusCode).toBe(400);
+    expect(calls.names).toHaveLength(1);
+    await app.close();
+  });
+
   it('returns with the reason as the feedback', async () => {
     const { port, calls } = fakePort();
     const app = appWith(port);

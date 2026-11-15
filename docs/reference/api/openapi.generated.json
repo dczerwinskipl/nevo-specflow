@@ -5390,6 +5390,50 @@
                               },
                               "maxItems": 1000
                             },
+                            "resolvableByFinish": {
+                              "type": "boolean",
+                              "enum": [
+                                true
+                              ]
+                            },
+                            "closableTasks": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": [
+                                  "taskId",
+                                  "by"
+                                ],
+                                "properties": {
+                                  "taskId": {
+                                    "$ref": "#/components/schemas/TaskId"
+                                  },
+                                  "by": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "left-out"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "decision"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "effect"
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                }
+                              },
+                              "maxItems": 1000
+                            },
                             "gates": {
                               "type": "array",
                               "items": {
@@ -39490,6 +39534,49 @@
                       "additionalProperties": false
                     },
                     "maxItems": 100
+                  },
+                  "taskDecisions": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "taskId",
+                        "status"
+                      ],
+                      "properties": {
+                        "taskId": {
+                          "$ref": "#/components/schemas/TaskId"
+                        },
+                        "status": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "ready"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "on-hold"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "cancelled"
+                              ]
+                            }
+                          ]
+                        },
+                        "reason": {
+                          "type": "string",
+                          "maxLength": 16384
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "maxItems": 200
                   }
                 },
                 "additionalProperties": false
@@ -42463,6 +42550,49 @@
                       "additionalProperties": false
                     },
                     "maxItems": 100
+                  },
+                  "taskDecisions": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "taskId",
+                        "status"
+                      ],
+                      "properties": {
+                        "taskId": {
+                          "$ref": "#/components/schemas/TaskId"
+                        },
+                        "status": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "ready"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "on-hold"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "cancelled"
+                              ]
+                            }
+                          ]
+                        },
+                        "reason": {
+                          "type": "string",
+                          "maxLength": 16384
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "maxItems": 200
                   }
                 },
                 "additionalProperties": false

@@ -81,7 +81,12 @@ to link its documents) and `reason` is `no-document`, `file-missing`, `sections-
 `unavailable: gate-unsatisfied` while one does not hold. A Specification transition to `terminal
 completed` is `unavailable: tasks-open` while any Task is open, with `openTasks` `[{taskId, cause}]`
 in id order (`cause`: `draft`, `on-hold`, `broken`, `dependency-unsatisfiable`, `active`, `waiting`
-or `ready`); see [Workflow kernel, Completion](../../architecture/workflow/workflow-kernel.md#completion-requires-closed-tasks). A startable step (`next`) lists its
+or `ready`); see [Workflow kernel, Completion](../../architecture/workflow/workflow-kernel.md#completion-requires-closed-tasks).
+When the finish's own input can close every open Task (its Task list leaves out the step's own
+drafts, `taskDecisions` cancel the others, its effects), such a transition also carries
+`resolvableByFinish: true` and `closableTasks` `[{taskId, by: left-out|decision|effect}]` in id order:
+a client lets the person submit it, names what has to close, and still handles `WORKFLOW_TASKS_OPEN`
+(409). Without it (an active attempt, a broken Task) no finish can take it now. A startable step (`next`) lists its
 `entryGates`, and unsatisfied ones block the start (`StartBlocker` `gates-unsatisfied`). A Task's
 required context entry marked as a process artifact (`artifact: true`) that does not exist yet is the
 blocker `context-awaited` (expected, not a warning), apart from the stale references of
@@ -93,7 +98,8 @@ Specification run's snapshot once it started, else its archetype's binding), in 
 its Task workflow in declared order (display only); a type whose workflow is not a defined Task
 workflow is left out. A client offers exactly these when creating a Task.
 
-`taskAuthoring` (a Task that is not broken) is what the owner edits, as the Engine reads it:
+`taskAuthoring` (a Task that is not broken, only in that Task's own projection: the Task lists and
+reads of several Tasks never compute it) is what the owner edits, as the Engine reads it:
 `context` is the **effective** context, `{isDefault, entries: [{entry, state: resolved|unresolved|awaited,
 reason?}]}`. Without an explicit list it is the Engine's single default rule (`task.md`, the Task's
 other documents, then the Specification overview when registered, each required); every start, entry
@@ -108,21 +114,25 @@ Close still checks Git and the workspace itself.
 
 ## Commands
 
-| Command | Body                                                           | Result                                                                                 |
-| ------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| start   | `{expectedWorkflowRevision?}`                                  | `{kind: started\|resumed\|terminal, subject, step?, attempt?}`                         |
-| finish  | `{step, attempt, result?, feedback?, artifacts?}`              | `{subject, transition, position, continuation, createdTasks, replayed?, postActions?}` |
-| return  | `{step, reason?}` (`reason` is carried as the step's feedback) | `{subject, position, continuation}`                                                    |
-| abandon | `{reason}`                                                     | `{specId, abandonment, cancelledTasks, abandonedTaskRuns}`                             |
+| Command | Body                                                                      | Result                                                                                 |
+| ------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| start   | `{expectedWorkflowRevision?}`                                             | `{kind: started\|resumed\|terminal, subject, step?, attempt?}`                         |
+| finish  | `{step, attempt, result?, feedback?, artifacts?, tasks?, taskDecisions?}` | `{subject, transition, position, continuation, createdTasks, replayed?, postActions?}` |
+| return  | `{step, reason?}` (`reason` is carried as the step's feedback)            | `{subject, position, continuation}`                                                    |
+| abandon | `{reason}`                                                                | `{specId, abandonment, cancelledTasks, abandonedTaskRuns}`                             |
 
 - A step that produces Tasks (`produces: tasks` in the projection, for example Breakdown) is finished with `tasks`:
   the complete list of draft Tasks `{id, title, summary?, type, dependsOn?}`, possibly empty; a listed draft is
-  revised, an unlisted one cancelled, and any other step refuses `tasks` (`WORKFLOW_INPUT_INVALID`). Task status
-  decisions are not part of a finish. The list covers only the drafts the step owns (produced by this step in any
+  revised, an unlisted one cancelled, and any other step refuses `tasks` (`WORKFLOW_INPUT_INVALID`). The list covers only the drafts the step owns (produced by this step in any
   attempt); `actions.finish.drafts` lists them as unchanged proposals, so a person finishing the step keeps them by
   sending them back. Drafts created by hand or by another step are never affected. Keeping a draft
   that depends on one the same finish leaves out is refused (`WORKFLOW_INPUT_INVALID` with
   `details.draftConflicts` `[{kept, dependsOnCancelled}]`): keep both, or leave out both.
+- A Specification step's finish may carry `taskDecisions` `[{taskId, status: ready|on-hold|cancelled,
+reason?}]` (as the CLI's `--task-decisions-file`): applied after `tasks` and before the transition's
+  effects, with the rules of `setTaskStatus`; one refused decision rejects the whole finish
+  (`WORKFLOW_INPUT_INVALID`, or `WORKFLOW_TASK_BLOCKED` during a Task's attempt). A Task's finish refuses
+  them. A finish to `terminal completed` is judged after them, so it may cancel the open Tasks.
 - A pin preview (`preview` of `not-started`) lists the `steps` it would pin, in declared order, each with `next`
   (the steps its transitions lead to, `end` for a terminal target): a client that confirmed an earlier preview
   names what changed when the start is refused with `WORKFLOW_DEFINITION_CHANGED`.

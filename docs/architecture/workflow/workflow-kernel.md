@@ -545,8 +545,15 @@ completed or abandoned, is closed. The rule is `tasksOpenAtCompletion` (with `op
   both explanations use one model and one vocabulary.
 - **Projection.** The action projection asks the same rule on the current Tasks: such a transition is
   `unavailable: tasks-open` with `openTasks` (it wins over `gate-unsatisfied`; meeting a gate would
-  not help). It does not know a finish's own decisions, so a finish that cancels the open Tasks may
-  still be accepted.
+  not help). Because the finish judges the state after its own input, the projection also plans the
+  finish that closes the most (`finishClosingOpenTasks` in `tasks/tasks.ts`, with the rules the
+  finish applies): every draft the producing step owns left out, every Task a `taskDecisions` entry
+  may cancel cancelled, then the transition's effects. When that closes every open Task, the
+  transition carries `resolvableByFinish: true` and `closableTasks [{taskId, by: left-out |
+decision | effect}]`, so a surface lets the person submit it and names what has to close; the
+  finish still decides. Otherwise (an active attempt, a broken Task) it is plainly unavailable. No
+  declared effect closes a Task today (`approve-draft-tasks` only approves drafts), so `effect`
+  appears only once such an effect exists.
 - **No attention item.** Open Tasks are the Tasks' normal progress, not something to fix: the
   Specification gets no attention item for them, and no Task gets one either. The Now block names them
   (see [Workflow execution](../../product/specflow/ui/workflow-execution.md#dialogs)).

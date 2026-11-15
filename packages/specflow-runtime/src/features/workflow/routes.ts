@@ -206,7 +206,7 @@ export const workflowEndpoint: FastifyPluginCallback<WorkflowRoutesOptions> = (
         },
       },
       refusing(async (request, reply) => {
-        const { step, attempt, result, feedback, artifacts, tasks } = request.body;
+        const { step, attempt, result, feedback, artifacts, tasks, taskDecisions } = request.body;
         const finished = await port.finish({
           subject: subjectOf(request),
           step,
@@ -216,6 +216,7 @@ export const workflowEndpoint: FastifyPluginCallback<WorkflowRoutesOptions> = (
             ...(feedback !== undefined ? { feedback } : {}),
             ...(artifacts !== undefined ? { artifacts } : {}),
             ...(tasks !== undefined ? { tasks } : {}),
+            ...(taskDecisions !== undefined ? { taskDecisions } : {}),
           },
           actor: actorOf(request),
         });

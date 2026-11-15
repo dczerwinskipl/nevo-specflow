@@ -30,8 +30,11 @@ import {
   isTaskTypeAllowed,
   resolveTaskType,
   taskReadiness,
+  finishClosingOpenTasks,
+  ownsDraft,
   tasksOpenAtCompletion,
   unsatisfiableDependencies,
+  type ClosableTask,
   type OpenTask,
 } from '../tasks/tasks';
 import { continuationOf, waitDecision } from './advance';
@@ -224,6 +227,15 @@ export interface WorkflowActions {
       readonly unavailable?: 'task-document-change' | 'tasks-open' | 'gate-unsatisfied';
       /** For `tasks-open`: every open Task and why it is open, in id order. */
       readonly openTasks?: readonly OpenTask[];
+      /**
+       * For `tasks-open`: the finish's own input can close every open Task (it judges the state
+       * after its Task list, `taskDecisions` and effects, `finishClosingOpenTasks`), so it may
+       * still be accepted. Absent when a Task stays open whatever the finish sends (an active
+       * attempt, a broken Task): the transition is plainly unavailable then.
+       */
+      readonly resolvableByFinish?: true;
+      /** With `resolvableByFinish`: how the finish closes each open Task, in id order. */
+      readonly closableTasks?: readonly ClosableTask[];
       /** The exit gates that apply to it (`when`), with their status now; absent when none do. */
       readonly gates?: readonly GateStatus[];
     })[];
@@ -385,10 +397,7 @@ function previewOf(definition: WorkflowDefinition): PinPreview {
 /** The drafts a producing step owns (D06), as the proposals that keep them unchanged. */
 function ownedDrafts(tasks: ExecutionTasks, stepId: string): TaskProposal[] {
   return tasks.tasks
-    .filter(
-      (task) =>
-        task.status === 'draft' && task.origin.kind === 'produced' && task.origin.step === stepId,
-    )
+    .filter((task) => ownsDraft({ step: stepId }, task))
     .map((task) => ({
       id: task.taskId,
       title: task.title,
@@ -587,13 +596,26 @@ async function finishTransitions(
     const gates = exitGatesFor(step, transition.result).flatMap(
       (gate) => statuses.get(gate.id) ?? [],
     );
-    // The finish asks the same rule (`advance`); it also counts the Tasks its own input changes.
+    // The finish asks the same rule (`advance`) on the state after its own input, so a finish
+    // whose own Task list, decisions or effects can close every open Task may still complete.
     const open = tasksOpenAtCompletion(
       input.gates.subject,
       transition.target,
       input.tasks.tasks,
       input.tasks.broken,
     );
+    const closable =
+      open.length > 0
+        ? finishClosingOpenTasks({
+            subject: input.gates.subject,
+            target: transition.target,
+            tasks: input.tasks.tasks,
+            broken: input.tasks.broken,
+            ...(step.annotations.produces === 'tasks' ? { producingStep: step.id } : {}),
+            decisions: input.gates.subject.kind === 'specification',
+            effects: declared?.annotations.effects ?? [],
+          })
+        : undefined;
     const unavailable =
       input.documentChangePending && declared?.annotations.escalate
         ? ('task-document-change' as const)
@@ -607,6 +629,7 @@ async function finishTransitions(
       ...transition,
       ...(unavailable ? { unavailable } : {}),
       ...(open.length > 0 ? { openTasks: open } : {}),
+      ...(closable ? { resolvableByFinish: true as const, closableTasks: closable } : {}),
       ...(gates.length > 0 ? { gates } : {}),
     };
   });

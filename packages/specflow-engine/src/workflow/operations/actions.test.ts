@@ -8,6 +8,7 @@ import { resolveExecutionCatalogue, type ExecutionCatalogue } from '../definitio
 import { inspectActions, type ActionDependencies, type ActionProjection } from './actions';
 import {
   SPEC,
+  agent,
   claude,
   memoryDependencies,
   owner,
@@ -737,9 +738,15 @@ describe('a Specification does not complete while its Tasks are open', () => {
       { taskId: 'api', cause: 'ready' },
       { taskId: 'screen', cause: 'waiting' },
     ];
+    // The finish's own decisions may cancel both (a Specification step decides its Tasks).
     expect(await acceptedTransition(dependencies)).toMatchObject({
       unavailable: 'tasks-open',
       openTasks: open,
+      resolvableByFinish: true,
+      closableTasks: [
+        { taskId: 'api', by: 'decision' },
+        { taskId: 'screen', by: 'decision' },
+      ],
     });
 
     const applied = dependencies.store.applied.length;
@@ -759,6 +766,11 @@ describe('a Specification does not complete while its Tasks are open', () => {
       { taskId: 'api', cause: 'active' },
       { taskId: 'screen', cause: 'waiting' },
     ]);
+    // No decision cancels a Task during its attempt: no finish can complete now.
+    const running = await acceptedTransition(dependencies);
+    expect(running).toMatchObject({ unavailable: 'tasks-open' });
+    expect(running).not.toHaveProperty('resolvableByFinish');
+    expect(running).not.toHaveProperty('closableTasks');
   });
 
   it('refuses open Tasks before an unmet exit gate, in the projection and in the finish', async () => {
@@ -818,6 +830,96 @@ describe('a Specification does not complete while its Tasks are open', () => {
       ],
     });
 
+    expect((await project(dependencies, specification)).position).toEqual({
+      kind: 'terminal',
+      outcome: 'completed',
+    });
+  });
+
+  it('a producing step whose only open Tasks are its own drafts completes by leaving them out', async () => {
+    // The breakdown may also end the Specification: there is nothing to implement.
+    const edited = await seedCatalogueWith((text) =>
+      text.replace(
+        /( {6}- id: proposed\r?\n {8}to: \{ step: breakdown-review \}\r?\n {8}continuation: auto)(\r?\n)/u,
+        '      - id: proposed$2        result: proposed$2        to: { step: breakdown-review }$2        continuation: auto$2' +
+          '      - id: nothing-to-do$2        result: empty$2        to: { terminal: completed }$2',
+      ),
+    );
+    const dependencies = memoryDependencies(edited);
+    await runToBreakdown(dependencies);
+    await finishStep(dependencies, {
+      subject: specification,
+      step: 'breakdown',
+      attempt: 1,
+      input: { result: 'proposed', tasks: [TWO_TASKS[0]] },
+      actor: claude,
+    });
+    await work(
+      dependencies,
+      specification,
+      { result: 'fail', feedback: 'Not needed after all.' },
+      agent('codex', 'session-r', 'x'),
+    );
+    await startSpecification(dependencies, owner);
+    const empty = async () =>
+      (await project(dependencies, specification)).actions.finish?.transitions.find(
+        (transition) => transition.id === 'nothing-to-do',
+      );
+
+    expect(await empty()).toMatchObject({
+      unavailable: 'tasks-open',
+      openTasks: [{ taskId: 'api', cause: 'draft' }],
+      resolvableByFinish: true,
+      closableTasks: [{ taskId: 'api', by: 'left-out' }],
+    });
+    const finish = (tasks: readonly (typeof TWO_TASKS)[number][]) =>
+      finishStep(dependencies, {
+        subject: specification,
+        step: 'breakdown',
+        attempt: 2,
+        input: { result: 'empty', tasks },
+        actor: owner,
+      });
+    // Keeping the draft keeps it open; leaving it out (unticking it) completes.
+    await expect(finish([TWO_TASKS[0]])).rejects.toMatchObject({ code: 'WORKFLOW_TASKS_OPEN' });
+    await finish([]);
+    expect((await project(dependencies, specification)).position).toEqual({
+      kind: 'terminal',
+      outcome: 'completed',
+    });
+  });
+
+  it('plans the transition effects after the decisions, as the finish applies them', async () => {
+    // Acceptance approves the remaining drafts: a draft it would approve stays open, unless the
+    // finish's own decision cancels it first (decisions come before effects).
+    const dependencies = await acceptingWithOpenTasks(
+      seedCatalogueWith((text) =>
+        skipWait(text).replace(
+          /( {6}- id: accepted\r?\n {8}to: \{ terminal: completed \})(\r?\n)/u,
+          '$1$2        effects: [approve-draft-tasks]$2',
+        ),
+      ),
+    );
+    await create(dependencies, 'notes');
+    expect(await acceptedTransition(dependencies)).toMatchObject({
+      unavailable: 'tasks-open',
+      resolvableByFinish: true,
+      closableTasks: [
+        { taskId: 'api', by: 'decision' },
+        { taskId: 'notes', by: 'decision' },
+        { taskId: 'screen', by: 'decision' },
+      ],
+    });
+
+    const cancelled = (taskIds: readonly string[]) =>
+      taskIds.map((taskId) => ({ taskId, status: 'cancelled' as const }));
+    await expect(
+      accept(dependencies, { taskDecisions: cancelled(['api', 'screen']) }),
+    ).rejects.toMatchObject({
+      code: 'WORKFLOW_TASKS_OPEN',
+      openTasks: [{ taskId: 'notes', cause: 'ready' }],
+    });
+    await accept(dependencies, { taskDecisions: cancelled(['api', 'notes', 'screen']) });
     expect((await project(dependencies, specification)).position).toEqual({
       kind: 'terminal',
       outcome: 'completed',

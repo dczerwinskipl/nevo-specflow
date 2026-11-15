@@ -14,17 +14,18 @@ import {
  * superseded document does not resolve. Each returned lookup reads the checkout's documentation
  * settings and the corpus frontmatter once, on its first call, so open one per request (the
  * Engine's `openWorkflow`) to see the documentation as it is now; a request without such a
- * reference never scans it. Without a checkout, or when its documentation is not configured or its
- * settings are invalid, nothing resolves.
+ * reference never scans it. `checkoutRoot` is read then too, not when the Runtime starts. Without a
+ * checkout, or when its documentation is not configured or its settings are invalid, nothing
+ * resolves.
  */
 export function openProjectDocumentLookup(
-  checkoutRoot: string | undefined,
+  checkoutRoot: () => string | undefined,
 ): () => (id: string) => Promise<boolean> {
   return () => {
     let active: ReadonlySet<string> | undefined;
 
     return (id) => {
-      active ??= activeDocumentIds(checkoutRoot);
+      active ??= activeDocumentIds(checkoutRoot());
 
       return Promise.resolve(active.has(id));
     };

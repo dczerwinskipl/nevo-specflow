@@ -189,7 +189,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   // Project mode: the Engine's workflow operations, opened per request with the definitions and
   // the documentation of the Runtime's own checkout (for `project-document` context references)
   // as they are now.
-  const projectDocument = openProjectDocumentLookup(engine?.workspace.root);
+  const projectDocument = openProjectDocumentLookup(() => engine?.workspace.root);
   const taskEngine =
     engine && !demo
       ? {

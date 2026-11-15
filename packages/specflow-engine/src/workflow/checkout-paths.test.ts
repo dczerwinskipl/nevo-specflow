@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -7,17 +7,26 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { checkoutPathExists } from './checkout-paths';
 
 let root: string;
+let outside: string;
 
 beforeAll(async () => {
   root = await realpath(await mkdtemp(join(tmpdir(), 'checkout-paths-')));
   await mkdir(join(root, 'packages', 'ui', 'src'), { recursive: true });
   await writeFile(join(root, 'packages', 'ui', 'src', 'app.ts'), '');
+  outside = await realpath(await mkdtemp(join(tmpdir(), 'checkout-outside-')));
+  await writeFile(join(outside, 'secret.ts'), '');
+  const type = process.platform === 'win32' ? 'junction' : 'dir';
+  await symlink(join(root, 'packages', 'ui'), join(root, 'inner'), type);
+  await symlink(outside, join(root, 'escape'), type);
+  await symlink(join(root, 'missing-target'), join(root, 'dangling'), type);
+  await symlink(outside, join(root, 'escape-dir.ts'), type);
   await mkdir(join(root, 'node_modules', 'dep'), { recursive: true });
   await writeFile(join(root, 'node_modules', 'dep', 'index.js'), '');
 });
 
 afterAll(async () => {
   await rm(root, { recursive: true, force: true });
+  await rm(outside, { recursive: true, force: true });
 });
 
 describe('checkoutPathExists', () => {
@@ -29,6 +38,17 @@ describe('checkoutPathExists', () => {
     ['a glob matching only folders', 'packages/*', true],
     ['a glob matching nothing', 'packages/**/*.css', false],
     ['a glob matching only inside node_modules', '**/index.js', false],
+    ['an internal symlink', 'inner', true],
+    ['a path through an internal symlink', 'inner/src/app.ts', true],
+    ['an external symlink', 'escape', false],
+    ['a path through an external symlink', 'escape/secret.ts', false],
+    ['an external symlink named like a file', 'escape-dir.ts', false],
+    ['a dangling symlink', 'dangling', false],
+    ['a glob with an escaping symlinked prefix', 'escape/**/*.ts', false],
+    ['a glob with an internal symlinked prefix', 'inner/**/*.ts', true],
+    ['a glob matching only an escaping symlink', '*.ts', false],
+    ['a glob matching an internal symlink', 'inn*', true],
+    ['a glob not descending into symlinked folders', '*/secret.ts', false],
   ])('%s', async (_name, path, expected) => {
     expect(await checkoutPathExists(root, path)).toBe(expected);
   });

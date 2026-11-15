@@ -3,6 +3,14 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '@nevo/ui';
 import { outlineColumnWidth } from './markdownOutline';
 
+/**
+ * The one content edge of a rendered document (the Documents preview, the documentation article):
+ * the scroll panel's padding. Lines outside the reading column (a source editor's type line, a way
+ * back to a Session) take the same inline gutter, so the document's first characters line up.
+ */
+export const documentPanelPaddingClassName = 'p-6';
+export const documentGutterClassName = 'px-6';
+
 /** The gap before each column beside the text (px). */
 const columnGap = 32;
 
@@ -48,25 +56,27 @@ export function DocumentReadingColumns({
   const besideWidth =
     (aside ? columnWidth + columnGap : 0) + (extraColumn ? columnWidth + columnGap : 0);
 
+  // With columns the lead sits above the row, over the text's own measure, so the columns start at
+  // the text's first line (the Properties row beside the first heading).
   return (
     <div
-      className={cn('mx-auto flex items-start gap-8', quietFocus)}
+      className={cn('mx-auto', quietFocus)}
       style={{ maxWidth: `calc(var(--spacing-content-narrow) + ${besideWidth}px)` }}
     >
-      <div className="min-w-0 max-w-content-narrow flex-1">
-        {leadBlock}
-        {text}
+      {leadBlock ? <div className="max-w-content-narrow">{leadBlock}</div> : null}
+      <div className="flex items-start gap-8">
+        <div className="min-w-0 max-w-content-narrow flex-1">{text}</div>
+        {aside && (
+          <aside
+            aria-label={t('documentReading.outline.columnLabel')}
+            className="sticky top-0 grid shrink-0 grid-cols-1 gap-4"
+            style={{ width: columnWidth }}
+          >
+            {aside}
+          </aside>
+        )}
+        {extraColumn}
       </div>
-      {aside && (
-        <aside
-          aria-label={t('documentReading.outline.columnLabel')}
-          className="sticky top-0 grid shrink-0 grid-cols-1 gap-4"
-          style={{ width: columnWidth }}
-        >
-          {aside}
-        </aside>
-      )}
-      {extraColumn}
     </div>
   );
 }

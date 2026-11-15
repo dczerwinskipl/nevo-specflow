@@ -125,6 +125,11 @@ function embeddingsLayer(value: unknown): ConfigRecord {
       }
     } else if (key === 'baseUrl') {
       baseUrl(entry, path);
+    } else if (key === 'queryInstruction') {
+      // A model's query template ends with its separator, for example Qwen3's "\nQuery: ".
+      if (typeof entry !== 'string' || entry.trim() === '') {
+        throw new DocsConfigError(`${path} must be a non-empty string.`);
+      }
     } else if (key === 'apiKeyEnv') {
       if (typeof entry !== 'string' || !ENV_VAR_NAME.test(entry)) {
         throw new DocsConfigError(

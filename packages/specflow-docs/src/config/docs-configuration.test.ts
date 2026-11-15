@@ -54,6 +54,17 @@ describe('parseDocsConfiguration', () => {
     );
   });
 
+  it('keeps a queryInstruction verbatim, its trailing separator included', () => {
+    const queryInstruction =
+      'Instruct: Given a web search query, retrieve relevant passages that answer the query\nQuery: ';
+    expect(
+      parse(undefined, { ai: { embeddings: { ...endpoint, queryInstruction } } }).embeddings,
+    ).toEqual({ ...endpoint, queryInstruction });
+    expect(() =>
+      parse(undefined, { ai: { embeddings: { ...endpoint, queryInstruction: ' ' } } }),
+    ).toThrow(/ai\.embeddings\.queryInstruction must be a non-empty string/);
+  });
+
   it('defaults the protocol: baseUrl and model are a complete endpoint', () => {
     const { baseUrl, model } = endpoint;
     expect(parse(undefined, { ai: { embeddings: { baseUrl, model } } }).embeddings).toEqual(

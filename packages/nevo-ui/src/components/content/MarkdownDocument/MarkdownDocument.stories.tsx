@@ -139,9 +139,12 @@ function assert(condition: unknown, message: string): asserts condition {
   }
 }
 
-/** Polls until `read` is truthy (no storybook/test import in the design-system package). */
+/**
+ * Polls until `read` is truthy, up to 12 s (Mermaid loads on first use and CI renders slower; no
+ * storybook/test import in the design-system package).
+ */
 async function until<T>(read: () => T | null | undefined | false): Promise<T> {
-  for (let attempt = 0; attempt < 200; attempt++) {
+  for (let attempt = 0; attempt < 240; attempt++) {
     const value = read();
     if (value) {
       return value;
@@ -304,9 +307,9 @@ export const Diagrams: Story = {
   args: { source: diagrams, diagrams: true },
   render: (args) => frame(args, '40rem'),
   play: async ({ canvas, canvasElement, userEvent }) => {
-    const drawn = await canvas.findAllByRole('img', { name: 'Diagram' }, { timeout: 10000 });
-    assert(drawn.length === 2, 'Both valid diagrams should be drawn.');
-    await canvas.findByText('Diagram could not be rendered', undefined, { timeout: 10000 });
+    // Both valid diagrams drawn (findAll would settle on the first one; CI renders slower).
+    await until(() => canvas.queryAllByRole('img', { name: 'Diagram' }).length === 2);
+    await canvas.findByText('Diagram could not be rendered', undefined, { timeout: 12000 });
     assert(canvas.getByRole('group', { name: 'Code block' }), 'The broken diagram keeps its code.');
     assert(!/syntax error/i.test(canvasElement.textContent ?? ''), 'No Mermaid error graphic.');
     assert(!document.querySelector('[id^="dnevo-markdown-diagram"]'), 'No leftover render node.');

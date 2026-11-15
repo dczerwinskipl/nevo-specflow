@@ -879,7 +879,10 @@ export const Diagram: Story = {
   args: { path: `/specs/${SPEC}/documents/overview` },
   play: async () => {
     await wide();
-    await body().findByRole('img', { name: 'Diagram' }, { timeout: 10000 });
+    // The overview and the small sequence: both drawn (Mermaid loads on first use; CI is slower).
+    await waitFor(() => expect(body().getAllByRole('img', { name: 'Diagram' })).toHaveLength(2), {
+      timeout: 12000,
+    });
   },
 };
 

@@ -52,10 +52,24 @@ export function useDiagramView(content: Size, mode: 'inline' | 'window') {
         return current.width === next.width && current.height === next.height ? current : next;
       });
     measure();
-    const observer = new ResizeObserver(measure);
+    // A new width changes the inline viewport's own height: measuring in the observer callback
+    // would resize the observed element within the same frame (a ResizeObserver loop), so the
+    // measurement waits for the next frame.
+    let frame: number | undefined;
+    const observer = new ResizeObserver(() => {
+      frame ??= requestAnimationFrame(() => {
+        frame = undefined;
+        measure();
+      });
+    });
     observer.observe(viewport);
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (frame !== undefined) {
+        cancelAnimationFrame(frame);
+      }
+    };
   }, [viewport]);
 
   const inner = {

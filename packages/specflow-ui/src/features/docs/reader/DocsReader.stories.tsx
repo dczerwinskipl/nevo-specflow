@@ -195,7 +195,11 @@ export const Article: Story = { args: { path: `${main}/product.specflow.ui.inter
 export const Diagram: Story = {
   args: { path: `${main}/architecture.readme` },
   play: async () => {
-    await within(document.body).findByRole('img', { name: 'Diagram' }, { timeout: 10000 });
+    // The overview and the small sequence: both drawn (Mermaid loads on first use; CI is slower).
+    await waitFor(
+      () => expect(within(document.body).getAllByRole('img', { name: 'Diagram' })).toHaveLength(2),
+      { timeout: 12000 },
+    );
   },
 };
 /** An address with a section opens the article at that section, focus on its heading. */

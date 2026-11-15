@@ -119,7 +119,7 @@ function ResultRow({
         aria-current={active ? 'true' : undefined}
         onClick={() => onOpen(hit.id, section?.sectionId)}
         className={cn(
-          'grid w-full min-w-0 gap-0.5 rounded-control px-2 py-1.5 text-left outline-none',
+          'grid min-h-(--target-size) w-full min-w-0 gap-0.5 rounded-control px-2 py-1.5 text-left outline-none',
           'hover:bg-surface-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring',
           'aria-[current=true]:bg-surface-selected',
         )}

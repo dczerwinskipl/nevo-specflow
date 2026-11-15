@@ -109,13 +109,13 @@ export function DocsSearchPanel({
   const count = shown && proposalCount(shown, proposals);
   // One control that keeps its place (and focus) while its answer loads: shown while proposals are
   // included or some are left out, while the answer to its own change loads, and from 400 ms of a
-  // wait when the earlier answer showed it (or there is none yet).
+  // wait when the earlier answer showed it. A first search shows it only once its answer is there.
   const filterShown =
     includeProposals ||
     (count ?? 0) > 0 ||
     (waiting &&
       (filterUsed ||
-        (stage !== 'quiet' && (previous === undefined || proposalCount(previous, proposals) > 0))));
+        (stage !== 'quiet' && previous !== undefined && proposalCount(previous, proposals) > 0)));
   const lines = [
     ...(shown ? answerLines(t, shown.search) : []),
     ...(stage === 'preparing' ? [t('docs.search.preparing')] : []),

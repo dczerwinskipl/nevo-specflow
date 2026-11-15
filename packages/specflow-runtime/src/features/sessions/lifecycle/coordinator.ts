@@ -11,7 +11,11 @@ import { SessionLimits, utf8Bytes } from '@nevo/specflow-contracts/sessions';
 import { SessionError } from '../errors';
 import { setTimeout as delay } from 'node:timers/promises';
 import type { SessionStore } from '../persistence/store';
-import { createFingerprint, type AssociationWrite } from '../persistence/associations';
+import {
+  createFingerprint,
+  type AssociationWrite,
+  type StoredAssociation,
+} from '../persistence/associations';
 import type {
   DriverFact,
   SnapshotSource,
@@ -44,6 +48,11 @@ export function createSessionCoordinator(
     kind: 'no-effects',
   },
   effects?: SessionEffects,
+  /**
+   * The verified root of a Specification's workspace (its worktree, or the primary checkout),
+   * resolved through the Engine at Turn start. Refuses with a SessionError when unavailable.
+   */
+  specificationWorkspace?: (specId: string) => Promise<string>,
 ) {
   const driverList: readonly SessionDriver[] = Array.isArray(drivers)
     ? drivers
@@ -97,6 +106,49 @@ export function createSessionCoordinator(
     }
 
     await bounded((signal) => driver.validate(selection, signal));
+  }
+
+  /**
+   * A Session associated with a Specification runs in that Specification's workspace; a standalone
+   * Session (or a Runtime without the Engine) runs in the Runtime's own verified checkout. Engine
+   * write admission covers only the Runtime's checkout, so writes elsewhere are refused.
+   */
+  async function sessionExecutionContext(
+    sessionId: string,
+    driver: SessionDriver,
+    writing: boolean,
+  ): Promise<typeof executionContext> {
+    if (!specificationWorkspace || executionContext.kind !== 'read-only') {
+      return executionContext;
+    }
+
+    const association = await call<StoredAssociation | null>({ op: 'association', sessionId });
+    if (!association) {
+      return executionContext;
+    }
+
+    const workspace = await specificationWorkspace(association.specId);
+    if (workspace === executionContext.workspace) {
+      return executionContext;
+    }
+
+    if (writing) {
+      throw new SessionError(
+        'CAPABILITY_UNSUPPORTED',
+        "Agent writes are available only for Specifications in the Runtime's own checkout; this Specification lives in another worktree. Use a read-only mode.",
+        { reason: 'specification-worktree-write-unsupported' },
+      );
+    }
+
+    if (driver.supportsSessionWorkspaces !== true) {
+      throw new SessionError(
+        'CAPABILITY_UNSUPPORTED',
+        "This provider runs only in the Runtime's own checkout and cannot work in this Specification's worktree.",
+        { reason: 'specification-worktree-provider-unsupported' },
+      );
+    }
+
+    return { kind: 'read-only', workspace, temporaryRoot: executionContext.temporaryRoot };
   }
 
   const active = new Map<string, ActiveInvocation>();
@@ -261,7 +313,7 @@ export function createSessionCoordinator(
         }),
       );
     },
-    /** `association` is written verbatim with the Session; it never steers lifecycle decisions. */
+    /** `association` is written verbatim; only a Turn start reads it (execution workspace). */
     async create(
       actor: string,
       input: CreateSession,
@@ -333,17 +385,21 @@ export function createSessionCoordinator(
       };
       const driver = driverFor(selection.providerId);
       await validate(driver, selection);
-      const native = selection.providerId !== 'mock' && executionContext.kind === 'read-only';
       const writing = selection.mode === 'workspace-write';
+      const context =
+        selection.providerId === 'mock'
+          ? executionContext
+          : await sessionExecutionContext(sessionId, driver, writing);
+      const native = selection.providerId !== 'mock' && context.kind === 'read-only';
       const nativeScope = driver.contextScope?.();
       const binding =
-        writing && executionContext.kind === 'read-only'
+        writing && context.kind === 'read-only'
           ? executionBinding(
               sessionId,
               input.requestId,
               selection,
               nativeScope ?? '',
-              executionContext.workspaceIdentity!,
+              context.workspaceIdentity!,
             )
           : undefined;
       const admitted = await call<StartAdmission>({
@@ -353,10 +409,10 @@ export function createSessionCoordinator(
         input,
         ...(native
           ? {
-              nativeWorkspace: executionContext.workspace,
+              nativeWorkspace: context.workspace,
               nativeScope,
               nativeContextMode: driver.nativeContextMode ?? 'reserved',
-              nativeWorkspaceIdentity: executionContext.workspaceIdentity,
+              nativeWorkspaceIdentity: context.workspaceIdentity,
             }
           : {}),
         ...(binding ? { effectBinding: binding } : {}),
@@ -424,8 +480,7 @@ export function createSessionCoordinator(
             invocationId: admitted.invocationId,
             request: input,
             selection,
-            executionContext:
-              selection.providerId === 'mock' ? { kind: 'no-effects' } : executionContext,
+            executionContext: selection.providerId === 'mock' ? { kind: 'no-effects' } : context,
             ...(admitted.providerContext
               ? {
                   providerContext: admitted.providerContext,

@@ -10,7 +10,8 @@ import { StoreFault, fail } from './encoding';
 /**
  * The association sidecar of the Session store: which Specification (and which of its Tasks) a
  * Session belongs to. It lives outside the core Session aggregates; the core create transaction
- * writes it verbatim and never reads it back for lifecycle decisions. The home Specification is
+ * writes it verbatim and never reads it back for lifecycle decisions; a Turn start reads the home
+ * Specification only to choose its execution workspace. The home Specification is
  * immutable (no operation updates `spec`) and Tasks are append-only.
  */
 export interface AssociationWrite {

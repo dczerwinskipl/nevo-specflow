@@ -82,9 +82,18 @@ Specification/Task projections of Session references:
 | `session.execute-write` (Turn start/respond in write mode)                         | `{projectId, sessionId}` | `{projectId, sessionId}` (no `specId`)  |
 | `session.execute-write` (create in write mode)                                     | `{projectId}`            | `{projectId}`                           |
 
-`session.execute-write` never carries `specId`: until a Specification's Session is confined to that
-Specification's worktree, every provider runs with the Runtime's whole verified workspace as `cwd`,
-so a Specification-scoped grant must not admit writes. A Session's home Specification is immutable,
+`session.execute-write` never carries `specId`: Engine write admission covers only the Runtime's
+whole verified workspace, so a write Turn runs there as `cwd` and a Specification-scoped grant must
+not admit writes.
+
+**Execution workspace.** A Turn of a standalone Session runs in the Runtime's verified workspace. A
+Turn of a Session associated with Specification S runs in S's workspace, resolved through the Engine
+at Turn start (S's registry binding, else the primary checkout; time-of-check). When that workspace
+is not the Runtime's own: a read-only Turn runs there when the provider supports it (Claude); a
+write Turn, a provider bound to the Runtime's checkout, or an unregistered or unavailable workspace is
+refused before admission with `422 CAPABILITY_UNSUPPORTED` and `details.reason`
+`specification-worktree-write-unsupported`, `specification-worktree-provider-unsupported` or
+`specification-workspace-unavailable`. A Session never falls back to the Runtime's folder. A Session's home Specification is immutable,
 so its scope never changes. See
 [Runtime authorization](../../architecture/runtime/auth/authorization.md#session-scope). Missing auth -> existing 401 authentication_required; forbidden -> 403
 forbidden; unknown ID -> 404 SESSION_NOT_FOUND after access handling. Existing Auth conventions

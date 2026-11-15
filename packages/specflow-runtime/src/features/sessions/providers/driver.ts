@@ -65,6 +65,11 @@ export interface SessionDriver {
    * Its identity must be durably correlated before any user input is dispatched. */
   readonly nativeContextMode?: 'reserved' | 'provider-assigned';
   supportsManagedWrites?: boolean;
+  /**
+   * The driver runs a read-only invocation in the verified workspace its execution context names
+   * (a Specification's worktree), not only in the Runtime's own checkout.
+   */
+  supportsSessionWorkspaces?: boolean;
   describe(): ProviderDescriptor;
   refresh?(signal: AbortSignal): Promise<ProviderDescriptor>;
   contextScope?(): string;

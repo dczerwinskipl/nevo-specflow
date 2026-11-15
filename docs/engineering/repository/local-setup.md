@@ -133,7 +133,24 @@ ai:
     minSimilarity: 0.36
 ```
 
-MEASUREMENT_PLACEHOLDER
+Measured with `pnpm docs:eval` on the eval set (`tools/docs/eval/questions.yaml`, on which the
+instruction and the floor were chosen) and on a held-out set written afterwards
+(`questions-holdout.yaml`), each with 150 generated nonsense strings for three seeds, top 10:
+
+| Setting                       | Recall@10 eval / held-out | MRR eval / held-out | Partial words R@10 | Nonsense with a vector-only result | Real questions without an answer, with one |
+| ----------------------------- | ------------------------- | ------------------- | ------------------ | ---------------------------------- | ------------------------------------------ |
+| no instruction, no floor      | 0.753 / 0.675             | 0.590 / 0.440       | 0.400 / 0.438      | almost all                         | 2 of 10 / 2 of 5                           |
+| instruction above, no floor   | 0.925 / 0.800             | 0.707 / 0.634       | 0.900 / 0.813      | almost all                         | 2 of 10 / 2 of 5                           |
+| instruction above, floor 0.32 | 0.925 / 0.800             | 0.718 / 0.630       | 0.900 / 0.688      | about 27%                          | 3 of 10 / 2 of 5                           |
+| **instruction above, 0.36**   | 0.875 / 0.775             | 0.708 / 0.606       | 0.600 / 0.625      | about 12%                          | 0 of 10 / 1 of 5                           |
+
+The instruction above (the model's own retrieval task line, then a line break and `Query: `) is the
+main gain; with it the similarity scale is about 0.1 lower than with other instructions, so a floor
+measured for another instruction does not apply. Floor 0.36 keeps correct questions and typos and
+removes most results for nonsense; its cost is partial words: two of ten (eval) and two of eight
+(held-out) lose every expected document. These numbers are optimistic for the eval set, on which the
+choice was made, and the held-out set is small. Without a floor, everything stays as before: every
+query gets results found by meaning.
 
 The commands, the corpus and the per-query results are in the
 [evaluation report](../../../tools/docs/eval/reports/2026-11-qwen3-0.6b-min-similarity.md).

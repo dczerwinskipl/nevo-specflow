@@ -89,13 +89,16 @@ Options, so a calibration runs reproducibly without code changes:
   break, for example `$'Instruct: …\nQuery: '` in Bash);
 - `--random <count>`: add `count` generated nonsense strings (seeded, the same for a count), much
   harder than hand-written nonsense;
-- `--random-seed <seed>`: another seed for those strings (default 156), for a held-out check;
+- `--random-seed <seed>`: the seed of those strings (mulberry32, default 156); run several seeds
+  to see how stable the false positives are, and use new seeds for every new iteration;
 - `--json` emits the full report, `--questions <file>` another set.
 
 [`eval/questions-holdout.yaml`](eval/questions-holdout.yaml) is a held-out set for the relevance
 cutoff (#156), written after the floor was chosen on `questions.yaml`: run it only to check a
-choice (`--questions tools/docs/eval/questions-holdout.yaml --random 150 --random-seed 2026`),
-never to tune on it, and keep its query words out of `docs/`.
+choice (`--questions tools/docs/eval/questions-holdout.yaml --random 150 --random-seed <seed>`),
+never to tune on it, and keep its query words out of `docs/`. Evaluation reports with their exact
+commands live in [`eval/reports/`](eval/reports/), for example the
+[`qwen3-embedding:0.6b` cutoff calibration](eval/reports/2026-11-qwen3-0.6b-min-similarity.md).
 
 It is a manual measurement for chunking, ranking and cutoff changes, not a CI check: results depend
 on the local embedding model.

@@ -63,7 +63,7 @@ positives); this repository's local setting for `qwen3-embedding:0.6b` is in the
 measurement in the
 [evaluation report](../../../tools/docs/eval/reports/2026-11-qwen3-0.6b-min-similarity.md).
 
-**#156 is not fully solved.** With that setting, about one in ten random strings and one in five
+**#156 is not fully solved.** With that setting, about one in eight (about 12%) random strings and one in five
 real questions without an answer still return documents found by meaning only, and partial words
 lose matches the floor removes.
 

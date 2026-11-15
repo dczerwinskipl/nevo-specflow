@@ -28,6 +28,22 @@ export function actorLabel(t: TFunction, actor: WorkflowActor, viewerId?: string
   return [actor.details.provider, actor.details.model].filter(Boolean).join(' · ');
 }
 
+/** `needs-changes` -> `Needs changes`: the fallback for an id that has no label. */
+export function humanizeId(id: string): string {
+  const words = id.replace(/[-_.]+/g, ' ').trim();
+
+  return words ? words[0]!.toUpperCase() + words.slice(1) : id;
+}
+
+/** A transition as people read it: its label, its result, else its id made readable. */
+export function transitionLabel(transition: {
+  readonly id: string;
+  readonly label?: string;
+  readonly result?: string;
+}): string {
+  return transition.label ?? transition.result ?? humanizeId(transition.id);
+}
+
 const sameDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() &&
   a.getMonth() === b.getMonth() &&

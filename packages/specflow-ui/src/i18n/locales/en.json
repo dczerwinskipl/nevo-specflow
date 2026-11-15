@@ -2250,6 +2250,12 @@
       "openDocument": "Open document"
     },
     "finish": {
+      "blocked": {
+        "noResult": "Choose a result to finish.",
+        "feedback": "This result needs feedback.",
+        "gates": "Not everything needed for this result is done yet.",
+        "unavailable": "This result cannot be taken yet; see above."
+      },
       "title": "Finish {{step}}",
       "description": "Attempt {{attempt}}. You are recorded as the person who finished it.",
       "result": "Result",
@@ -2319,6 +2325,7 @@
       },
       "explanation": {
         "workflow": "The specification workflow has not ended. A wait for tasks ends by itself once every task is done or cancelled.",
+        "workflowAtStep": "The specification workflow has not ended: it is at “{{step}}”. Take its steps to the end.",
         "tasks": "Finish, cancel or remove each one.",
         "broken": "Their files do not match their workflow records. Repair or remove them.",
         "writes": "A save or another change is still in progress; it settles by itself in a moment.",
@@ -2361,6 +2368,7 @@
         "waiting_many": "its workflow is waiting for {{count}} unfinished tasks",
         "waiting_other": "its workflow is waiting for {{count}} unfinished tasks",
         "workflow": "its workflow has not ended",
+        "atStep": "its workflow is still at “{{step}}”",
         "unfinished_one": "{{count}} task is unfinished",
         "unfinished_few": "{{count}} tasks are unfinished",
         "unfinished_many": "{{count}} tasks are unfinished",

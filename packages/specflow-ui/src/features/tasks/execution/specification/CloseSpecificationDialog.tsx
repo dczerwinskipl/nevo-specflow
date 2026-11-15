@@ -19,7 +19,13 @@ import { specsOverviewKeys } from '../../../specs/read-model';
 import { invalidateAfterTaskChange } from '../../authoring/queries';
 import { workflowRefusalKey, workflowRefusalOf } from '../refusal';
 import { focusInitial } from '../focusInitial';
-import { BlockerGroups, ITEMS_SHOWN, closeReasons, type BlockerTask } from './BlockerGroups';
+import {
+  BlockerGroups,
+  ITEMS_SHOWN,
+  closeReasons,
+  workflowAtOf,
+  type BlockerTask,
+} from './BlockerGroups';
 
 type Position = WorkflowActionProjection['position'];
 
@@ -123,7 +129,7 @@ function CloseBody({
           <DialogDescription>
             {t('workflowExecution.close.blocked', {
               title: specTitle,
-              reasons: closeReasons(t, i18n.language, blockers, tasks),
+              reasons: closeReasons(t, i18n.language, blockers, tasks, workflowAtOf(position)),
             })}
           </DialogDescription>
         </DialogHeader>
@@ -132,6 +138,7 @@ function CloseBody({
             blockers={blockers}
             order="close"
             tasks={tasks}
+            workflowAt={workflowAtOf(position)}
             onOpenTask={(id) => go(() => onOpenTask(id))()}
             onSeeWorkflow={go(onSeeWorkflow)}
             onSeeTasks={go(onSeeTasks)}

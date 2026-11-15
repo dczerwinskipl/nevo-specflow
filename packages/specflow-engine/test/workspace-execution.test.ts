@@ -226,3 +226,63 @@ it('fails closed on altered footprint or settlement identity rather than ignorin
     admitWorkspaceExecution(engine, { ...intent, operationId: randomUUID() }),
   ).rejects.toMatchObject({ code: 'EXECUTION_CORRUPT' });
 });
+
+it('claims a Specification worktree for an agent: the project stays exclusive, the default checkout unchanged', async () => {
+  const { engine, intent, create } = await fixture();
+  const linked = await createSpecificationForTesting(engine, {
+    ...create('Agent in worktree'),
+    target: { kind: 'new-worktree', baseRef: 'HEAD' },
+  });
+  expect(linked.workspaceId).not.toBe(engine.workspace.workspaceId);
+  const target = { workspaceId: linked.workspaceId };
+
+  const admitted = await admitWorkspaceExecution(engine, intent, target);
+  expect(admitted.workspace).toMatchObject({
+    workspaceId: linked.workspaceId,
+    root: linked.workspaceRoot,
+  });
+  expect(admitted.resources).toEqual([`project-write:${engine.context.project.projectId}`]);
+  // The claim is not the default checkout's, and every other writer is refused while it is held.
+  await expect(admitWorkspaceExecution(engine, intent)).rejects.toMatchObject({
+    code: 'EXECUTION_CONFLICT',
+  });
+  await expect(markWorkspaceExecutionDispatched(engine, intent)).rejects.toMatchObject({
+    code: 'EXECUTION_CONFLICT',
+  });
+  await expect(
+    admitWorkspaceExecution(engine, { ...intent, operationId: randomUUID() }),
+  ).rejects.toMatchObject({ code: 'RESOURCE_CONFLICT' });
+  await expect(
+    createSpecificationForTesting(engine, create('Concurrent create')),
+  ).rejects.toBeDefined();
+  await expect(
+    reserveCloseOperation(engine, {
+      kind: 'specification-close',
+      specId: linked.specId,
+      operationId: randomUUID(),
+    }),
+  ).rejects.toMatchObject({ code: 'CLOSE_CONFLICT' });
+
+  await markWorkspaceExecutionDispatched(engine, intent, target);
+  const settled = await settleWorkspaceExecution(
+    engine,
+    intent,
+    { invocationId: intent.operationId, process: 'stopped', outcome: 'completed' },
+    target,
+  );
+  expect(settled.phase).toBe('settled');
+
+  // Released: the default checkout is claimed as before; an unknown workspace never is.
+  const standalone = { ...intent, operationId: randomUUID() };
+  expect((await admitWorkspaceExecution(engine, standalone)).workspace.workspaceId).toBe(
+    engine.workspace.workspaceId,
+  );
+  await abandonWorkspaceExecutionAdmission(engine, standalone);
+  await expect(
+    admitWorkspaceExecution(
+      engine,
+      { ...intent, operationId: randomUUID() },
+      { workspaceId: randomUUID() },
+    ),
+  ).rejects.toMatchObject({ code: 'EXECUTION_CONFLICT' });
+}, 240000);

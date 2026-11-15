@@ -4,15 +4,22 @@ import {
   type SpecFlowEngine,
 } from '@nevo/specflow-engine';
 import { SessionError } from '../errors';
+import { recordedIdentity } from '../effects/engine';
+
+/** A Specification's verified workspace: its registered root and the identity a claim records. */
+export interface SpecificationWorkspace {
+  readonly root: string;
+  readonly workspaceIdentity: string;
+}
 
 /**
- * The verified root of the workspace a Specification lives in: its explicit registry binding (a
- * linked worktree) or, unbound, the primary checkout. A Session associated with the Specification
- * runs there; an unregistered or unavailable checkout refuses the Turn instead of falling back to
- * the Runtime's own folder.
+ * The verified workspace a Specification lives in: its explicit registry binding (a linked
+ * worktree) or, unbound, the primary checkout. A Session associated with the Specification runs
+ * there; an unregistered or unavailable checkout refuses the Turn instead of falling back to the
+ * Runtime's own folder.
  */
 export function createSpecificationWorkspaceResolver(engine: SpecFlowEngine) {
-  return async (specId: string): Promise<string> => {
+  return async (specId: string): Promise<SpecificationWorkspace> => {
     let inspected;
     try {
       const registry = await readRegistrySnapshot(engine);
@@ -32,6 +39,10 @@ export function createSpecificationWorkspaceResolver(engine: SpecFlowEngine) {
       );
     }
 
-    return inspected.root;
+    // The registered root, as an execution claim names it (the claim is matched by root).
+    return {
+      root: inspected.workspace.root,
+      workspaceIdentity: recordedIdentity(engine, inspected.workspace),
+    };
   };
 }

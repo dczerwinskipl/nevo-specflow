@@ -8,6 +8,7 @@ import { openSessionStore } from '../persistence/store';
 import type { SessionDriver, Invocation, EmitFact } from '../providers/driver';
 import { createMockDriver } from '../providers/mock';
 import { SessionError } from '../errors';
+import type { SessionEffectIdentity } from './effects';
 
 let root = '',
   runtime: SessionCoordinator | undefined;
@@ -21,7 +22,7 @@ afterEach(async () => {
 
 async function fixture(
   options: {
-    resolve?: (specId: string) => Promise<string>;
+    resolve?: (specId: string) => Promise<{ root: string; workspaceIdentity: string }>;
     supportsSessionWorkspaces?: boolean;
     mode?: 'read-only' | 'workspace-write';
   } = {},
@@ -29,7 +30,15 @@ async function fixture(
   root = await mkdtemp(join(tmpdir(), 'session-spec-workspace-'));
   const runtimeWorkspace = join(root, 'main');
   const worktree = join(root, 'worktree');
-  const resolve = vi.fn(options.resolve ?? (() => Promise.resolve(worktree)));
+  const worktreeIdentity = '2'.repeat(64);
+  const resolve = vi.fn(
+    options.resolve ??
+      (() => Promise.resolve({ root: worktree, workspaceIdentity: worktreeIdentity })),
+  );
+  // The Engine claim is what this test observes for a write; the claim itself is refused here.
+  const admit = vi.fn((_identity: SessionEffectIdentity) =>
+    Promise.reject(new SessionError('TURN_CONFLICT', 'Claimed.')),
+  );
   const start = vi.fn((invocation: Invocation, emit: EmitFact) => ({
     done: (async () => {
       await emit({
@@ -66,7 +75,7 @@ async function fixture(
       workspaceIdentity: '1'.repeat(64),
     },
     {
-      admit: () => Promise.reject(new Error('unused')),
+      admit,
       reconcile: () => Promise.resolve(undefined),
     },
     resolve,
@@ -87,7 +96,7 @@ async function fixture(
     return created.sessionId;
   }
 
-  return { runtimeWorkspace, worktree, resolve, start, create };
+  return { runtimeWorkspace, worktree, worktreeIdentity, resolve, start, admit, create };
 }
 
 const turn = () => ({ requestId: randomUUID(), message: 'Review the specification' });
@@ -105,7 +114,24 @@ describe("A Specification's Session workspace", () => {
       kind: 'read-only',
       workspace: worktree,
       temporaryRoot: root,
+      workspaceIdentity: '2'.repeat(64),
     });
+  });
+
+  it("claims the Specification's worktree for a write, never the Runtime's checkout", async () => {
+    const { worktree, worktreeIdentity, admit, start, create } = await fixture();
+    const sessionId = await create('workspace-write', 'S1');
+
+    await runtime!.start('actor', sessionId, turn());
+
+    await vi.waitFor(() => expect(admit).toHaveBeenCalledTimes(1));
+    expect(admit.mock.calls[0]![0]).toMatchObject({
+      sessionId,
+      workspace: worktree,
+      workspaceIdentity: worktreeIdentity,
+    });
+    // Refused claim: the agent never starts.
+    expect(start).not.toHaveBeenCalled();
   });
 
   it("keeps a standalone Session in the Runtime's checkout", async () => {
@@ -123,13 +149,13 @@ describe("A Specification's Session workspace", () => {
 
   it.each([
     [
-      'writes in another worktree',
-      { mode: 'workspace-write' as const },
-      'specification-worktree-write-unsupported',
-    ],
-    [
       'a provider bound to the Runtime checkout',
       { mode: 'read-only' as const, supportsSessionWorkspaces: false },
+      'specification-worktree-provider-unsupported',
+    ],
+    [
+      'a write by a provider bound to the Runtime checkout',
+      { mode: 'workspace-write' as const, supportsSessionWorkspaces: false },
       'specification-worktree-provider-unsupported',
     ],
     [

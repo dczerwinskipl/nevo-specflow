@@ -52,7 +52,9 @@ export function createSessionCoordinator(
    * The verified root of a Specification's workspace (its worktree, or the primary checkout),
    * resolved through the Engine at Turn start. Refuses with a SessionError when unavailable.
    */
-  specificationWorkspace?: (specId: string) => Promise<string>,
+  specificationWorkspace?: (
+    specId: string,
+  ) => Promise<{ readonly root: string; readonly workspaceIdentity: string }>,
 ) {
   const driverList: readonly SessionDriver[] = Array.isArray(drivers)
     ? drivers
@@ -110,13 +112,13 @@ export function createSessionCoordinator(
 
   /**
    * A Session associated with a Specification runs in that Specification's workspace; a standalone
-   * Session (or a Runtime without the Engine) runs in the Runtime's own verified checkout. Engine
-   * write admission covers only the Runtime's checkout, so writes elsewhere are refused.
+   * Session (or a Runtime without the Engine) runs in the Runtime's own verified checkout. In write
+   * mode the Engine claims that workspace (the claim stays project-wide); a provider that can only
+   * run in the Runtime's checkout is refused elsewhere.
    */
   async function sessionExecutionContext(
     sessionId: string,
     driver: SessionDriver,
-    writing: boolean,
   ): Promise<typeof executionContext> {
     if (!specificationWorkspace || executionContext.kind !== 'read-only') {
       return executionContext;
@@ -128,16 +130,8 @@ export function createSessionCoordinator(
     }
 
     const workspace = await specificationWorkspace(association.specId);
-    if (workspace === executionContext.workspace) {
+    if (workspace.root === executionContext.workspace) {
       return executionContext;
-    }
-
-    if (writing) {
-      throw new SessionError(
-        'CAPABILITY_UNSUPPORTED',
-        "Agent writes are available only for Specifications in the Runtime's own checkout; this Specification lives in another worktree. Use a read-only mode.",
-        { reason: 'specification-worktree-write-unsupported' },
-      );
     }
 
     if (driver.supportsSessionWorkspaces !== true) {
@@ -148,7 +142,15 @@ export function createSessionCoordinator(
       );
     }
 
-    return { kind: 'read-only', workspace, temporaryRoot: executionContext.temporaryRoot };
+    return {
+      kind: 'read-only',
+      workspace: workspace.root,
+      temporaryRoot: executionContext.temporaryRoot,
+      // Only a Runtime with Engine effects binds executions to a workspace incarnation.
+      ...(executionContext.workspaceIdentity
+        ? { workspaceIdentity: workspace.workspaceIdentity }
+        : {}),
+    };
   }
 
   const active = new Map<string, ActiveInvocation>();
@@ -389,7 +391,7 @@ export function createSessionCoordinator(
       const context =
         selection.providerId === 'mock'
           ? executionContext
-          : await sessionExecutionContext(sessionId, driver, writing);
+          : await sessionExecutionContext(sessionId, driver);
       const native = selection.providerId !== 'mock' && context.kind === 'read-only';
       const nativeScope = driver.contextScope?.();
       const binding =

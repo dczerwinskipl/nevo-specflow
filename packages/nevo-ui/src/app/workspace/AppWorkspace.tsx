@@ -233,8 +233,8 @@ export interface AppWorkspaceBack {
 
 export interface AppWorkspacePrimaryRegionProps extends AppWorkspaceRegionProps {
   /**
-   * Marks a routed Primary as a subordinate (stacked) screen with a defined parent, for example a
-   * Task page under the Specification's Tasks. Stacked layouts show this Back, icon only, in place
+   * Marks a routed Primary as a subordinate (stacked) screen with a defined parent, for example an
+   * item's page under its collection. Stacked layouts show this Back, icon only, in place
    * of the navigation trigger; split layouts ignore it (the location trail carries the way back).
    * Omit it on root screens (peer areas of the navigation): they keep the navigation trigger.
    */
@@ -334,7 +334,7 @@ interface CommonAppWorkspaceProps {
   /**
    * Stacked layout: what the header Back of a Secondary at stack depth 1 does when the product
    * parent of this visit is another routed surface rather than this workspace's Primary (a
-   * document opened from the Specification Overview returns there). Name the parent with
+   * page opened from another area's overview returns there). Name the parent with
    * `labels.backToPrimary`. Omit it to reveal Primary (the default). Deeper levels still pop.
    */
   stackedRootBack?: () => void | Promise<unknown>;

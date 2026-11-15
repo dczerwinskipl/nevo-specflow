@@ -134,7 +134,8 @@ export function ExplorerTree({
           onClear={() => onFilterChange(noTreeFilter)}
         />
       ) : null}
-      <div className={treePaneBlockClassName}>
+      {/* The level renders nothing without rows (an empty result): then the inset takes no gap. */}
+      <div className={cn(treePaneBlockClassName, 'empty:hidden')}>
         <DocumentTreeLevel
           parent=""
           top

@@ -391,25 +391,39 @@ the tree's notes, the status lines, the result titles and the empty result start
 
 **Search container (`TreeSearchBar`).** The field row of both panes: `TreeSearchField` (`flex-1`)
 plus an optional trailing control (the Documents type filter), `role="search"`, `px-3 py-1` across
-the pane's full width, a transparent bottom border at rest that keeps its height. Not sticky
-(Documents) it has no surface of its own. Sticky is opt-in (`sticky` with `scrollRoot`, the
-`ScrollArea` viewport element; Documentation): the bar is the first child of the tree block and
-always paints the opaque docked material of `.workspace-docked-bar`, and shows the bottom `divider`
-only while docked. Stuck band: 4 + 36 + 4 px + 1 px divider.
+the pane's full width, a transparent bottom border that keeps its height. Not sticky (Documents) it
+has no surface of its own. Sticky is opt-in (`sticky` with `scrollRoot`, the `ScrollArea` viewport
+element; Documentation): the bar is the first child of the tree block, transparent at rest, and
+docked it shows the opaque docked material of the workspace with the `divider` under it, so nothing
+scrolled underneath shows through. Stuck band: 4 + 36 + 4 px + 1 px divider.
 
-**Stuck detection (`useStuck`).** The sticky bar renders an absolutely positioned 1 px sentinel at
-the top of the positioned tree block (outside the flow, no gap), observed by an
-`IntersectionObserver` rooted at the scroll viewport with `rootMargin` top `-8px` (the divider comes
-8 px before the bar docks); the position is also read once, before paint, when the observation
-starts. The material is always on because an observer answers only after the frame it measured is
-painted: with the material tied to the stuck state, Playwright frame sampling showed one transparent
-frame over docked rows after a jump of 150 px per frame, after a Back restore by
-`usePaneScrollMemory` into a docked position, and up to three frames across a resize that changes
-the layout. With the material always on, none of slow scroll, wheel, a touch or wheel fling at
-6000-8000 px/s, the jumps, Back restores and resizes shows a transparent frame; the divider follows
-at most one frame late (three across a layout change). At rest the material differs from the pane
-surface only by the pane's faint top-left gradient, visible on Narrow as a very faint flat band
-behind the field when the bar sits within that gradient.
+**Docked surface (Nevo UI `.workspace-docked-sticky`).** The bar renders an absolutely positioned
+1 px sentinel (`.workspace-docked-sentinel`) at the top of the positioned tree block (outside the
+flow, no gap), where the bar sits at rest; the tree block is the timeline scope
+(`.workspace-docked-scope`). Two paths:
+
+- **Scroll-driven (progressive enhancement, `@supports (animation-timeline: view())`).** The
+  sentinel's view timeline drives one `::before` layer of the bar (the docked material with the
+  divider drawn over the bar's bottom border): its opacity goes from 0 to 1 over `exit 0%` to
+  `exit 100%`, the one pixel of scroll in which the sentinel leaves the scrollport's top, which is
+  the dock point. No script and no observer runs; the opacity animation is composited, in step with
+  the scroll. Measured in Chromium 158 (Playwright) on the painted frames (screencast pixels): one-step
+  jumps of 147 px from a task and from `requestAnimationFrame`, a wheel fling and the field's focus
+  scroll show no docked frame without the material or the divider and no material at rest, except
+  the first frame after a jump to the top set inside `requestAnimationFrame` (after the frame's
+  animation update), which still shows the material for that one frame. Main-thread sampling of
+  slow scroll, wheel, touch and wheel flings at 6000-8000 px/s, Back restores by
+  `usePaneScrollMemory` and resizes shows no transparent docked frame and no docked frame without
+  the divider.
+- **Fallback (no scroll-driven animations).** The bar keeps the docked material at all times, and
+  `useStuck` (an `IntersectionObserver` on the sentinel, rooted at the scroll viewport, `rootMargin`
+  top `-8px`, the position also read once before paint) sets the divider. It runs only where the
+  timeline is unsupported. The material is never tied to the observer: an observer answers only
+  after the frame it measured is painted, and frame sampling showed one transparent frame on a jump
+  and on a Back restore, and up to three across a resize, when it was. At rest the material differs
+  from the pane surface only by the pane's faint top-left gradient. Browsers on this path (MDN
+  browser-compat-data, 2026-11-15: `animation-timeline` and `timeline-scope` from Chrome and Edge
+  115-116, Safari 26, Firefox 159): Firefox before 159, Safari before 26, Chromium before 116.
 
 **Empty search result (`TreeSearchEmpty`).** One variant for a search or filter that leaves nothing
 in a tree pane: `EmptyState variant="inline"`, no icon, its text on the text column (block inset

@@ -816,9 +816,10 @@ export const SearchNoMatches: Story = {
 };
 
 /**
- * The sticky search field docks while the results scroll under it: always on the opaque docked
- * material (nothing shows through, also before the stuck state is known), the divider only while
- * docked, gone again at the top.
+ * The sticky search field docks while the results scroll under it. With scroll-driven animations
+ * (Chromium here) it is transparent at rest and takes the docked material (its `::before` layer)
+ * and the divider exactly when it docks; without them it keeps the material and the divider
+ * follows the stuck state.
  */
 export const SearchFieldDocksWhileScrolled: Story = {
   play: async ({ userEvent }) => {
@@ -829,19 +830,28 @@ export const SearchFieldDocksWhileScrolled: Story = {
     const bar = screen().getByRole('search');
     const scroller = bar.closest<HTMLElement>('.scroll-area-viewport')!;
     const transparent = 'rgba(0, 0, 0, 0)';
-    await expect(getComputedStyle(bar).backgroundImage).not.toBe('none');
-    await expect(bar.dataset.stuck).toBeUndefined();
-    await expect(getComputedStyle(bar).borderBottomColor).toBe(transparent);
+    const timeline = CSS.supports('animation-timeline: view()');
+    // With a scroll timeline the material and the divider are the bar's `::before` layer; without
+    // one the material is the bar's background (always on) and the divider its border.
+    const surface = () =>
+      timeline
+        ? getComputedStyle(bar, '::before').opacity === '1'
+          ? 'docked'
+          : 'rest'
+        : getComputedStyle(bar).borderBottomColor === transparent
+          ? 'rest'
+          : 'docked';
+    await expect(surface()).toBe('rest');
+    await expect(getComputedStyle(bar).backgroundImage === 'none').toBe(timeline);
 
     scroller.scrollTop = scroller.scrollHeight;
-    await waitFor(() => expect(bar.dataset.stuck).toBe('true'));
-    await expect(getComputedStyle(bar).borderBottomColor).not.toBe(transparent);
+    await waitFor(() => expect(surface()).toBe('docked'));
     await expect(Math.round(bar.getBoundingClientRect().top)).toBe(
       Math.round(scroller.getBoundingClientRect().top),
     );
 
     scroller.scrollTop = 0;
-    await waitFor(() => expect(bar.dataset.stuck).toBeUndefined());
+    await waitFor(() => expect(surface()).toBe('rest'));
   },
 };
 

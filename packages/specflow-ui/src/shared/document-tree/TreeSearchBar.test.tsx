@@ -40,11 +40,12 @@ describe('TreeSearchBar', () => {
 
     expect(bar().className).toContain('border-transparent');
     expect(bar().className).not.toContain('sticky');
-    expect(bar().className).not.toContain('workspace-docked-bar');
+    expect(bar().className).not.toContain('workspace-docked-sticky');
     expect(container.querySelector('[aria-hidden="true"]')).toBeNull();
   });
 
-  it('paints a sticky bar opaque always and shows the divider only while it is docked', () => {
+  it('without scroll timelines, paints a sticky bar opaque always and its divider while docked', () => {
+    vi.stubGlobal('CSS', { supports: () => false });
     vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver);
     const root = document.createElement('div');
     // At rest: the sentinel (jsdom's 0) is well below the root's top.
@@ -61,7 +62,7 @@ describe('TreeSearchBar', () => {
     expect(bar().contains(sentinel)).toBe(false);
     expect(bar().className).toContain('sticky');
     // Opaque from the first frame; only the divider waits for the stuck state.
-    expect(bar().className).toContain('workspace-docked-bar');
+    expect(bar().className).toContain('workspace-docked-sticky');
     expect(bar().className).toContain('border-transparent');
 
     act(() => notify!(true));
@@ -70,7 +71,22 @@ describe('TreeSearchBar', () => {
     expect(bar().dataset.stuck).toBe('true');
 
     act(() => notify!(false));
-    expect(bar().className).toContain('workspace-docked-bar');
+    expect(bar().className).toContain('workspace-docked-sticky');
+    expect(bar().className).toContain('border-transparent');
+  });
+
+  it('with scroll timelines, leaves the docked surface to CSS and observes nothing', () => {
+    vi.stubGlobal('CSS', { supports: (query: string) => query === 'animation-timeline: view()' });
+    vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver);
+    const { container } = render(
+      <TreeSearchBar sticky scrollRoot={document.createElement('div')}>
+        <input type="search" />
+      </TreeSearchBar>,
+    );
+
+    expect(notify).toBeUndefined();
+    expect(container.querySelector('.workspace-docked-sentinel')).toBeTruthy();
+    expect(bar().className).toContain('workspace-docked-sticky');
     expect(bar().className).toContain('border-transparent');
   });
 });

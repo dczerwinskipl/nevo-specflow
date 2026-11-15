@@ -202,6 +202,7 @@ describe('searchDocumentation', () => {
         store: createInMemoryVectorStore(),
         writes: admitted(),
         providers: { query: provider, documents: provider },
+        providersAbortedBy: () => ({ query: provider, documents: provider }),
       },
     };
     const wordMatches = async (query: string) => {

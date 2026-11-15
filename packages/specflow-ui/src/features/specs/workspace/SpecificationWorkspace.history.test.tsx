@@ -221,7 +221,7 @@ describe('Specification Overview Activity history', () => {
     render(<Workspace data={withHistory} />);
     expect(historyPanel()).not.toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Specyfikacja' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Specyfikacja/u }));
     await act(() => Promise.resolve());
     // The preview covers the history: the toggle no longer reads as pressed.
     expect(historyPanel()).toBeNull();

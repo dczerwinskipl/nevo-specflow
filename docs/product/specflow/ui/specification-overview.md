@@ -47,14 +47,20 @@ grouping is [ADR 0023](../../../architecture/decisions/0023-neutral-workflow-coo
 
 The summary (title and description) leads. Below it: **Now** (or the preparation block),
 **Requires attention**, **Tasks** (work), then **Sessions**, **Documents** and other context (the
-repository section). Sections render whenever their data exists.
+repository section). **Tasks**, **Sessions** and **Documents** always keep their place: an empty
+one is its header and the design system's inline empty state (`EmptyState variant="inline"`).
+Requires attention appears only with items, or with its unavailable state when a source cannot
+answer; it never shows empty (owner decision on the early-state Overview, variant E, 2026-11-15).
 
 Three concerns stay apart and the UI computes none of them: workflow state (the Engine's projection
 and neutral Task facts), attention (the attention projection) and grouping (the Runtime's
 dashboard configuration). The Overview renders what the reads deliver.
 
 - **Now** — the Specification workflow's position: the step title and one plain line (attempt,
-  since, by whom; or what the step does). For a `wait` step the Task progress appears here only,
+  since, by whom; or what the step does), then the step's purpose and where the run is among the
+  workflow's declared steps, "Step 2 of 7 · next: Design the solution" (the projection's `outline`;
+  "Step 7 of 7" at the last step). Before the first start the plain line reads "First step · Gather
+  requirements" and no step line follows. For a `wait` step the Task progress appears here only,
   once: a segmented bar, "Tasks 1 of 6 done · 1 cancelled · 1 ended · 1 on hold" (zero parts
   omitted) and a line that cancelled (and ended) Tasks are not counted. When the wait cannot
   continue, one note names the blocking Tasks as links ("It cannot continue now: T-04 is a draft,
@@ -82,9 +88,13 @@ dashboard configuration). The Overview renders what the reads deliver.
   is not the viewer. The Specification-level `tasks-stuck` item states the intervention ("Resolve 2
   blocking tasks · Approve, resume or cancel them so the specification can finish"); Now carries
   the diagnosis. On a narrow row the actions follow the title and reason.
-- **Tasks** — a preview of the configured grouping, omitted without Tasks. Each group the
-  configuration marks as a summary row gets one row: its name, then "1 task · T-04 Return users to
-  where they were" (count, up to two Tasks, "N more"), opening the Tasks page at that group. A Task
+- **Tasks** — a preview of the configured grouping. Without Tasks: "No tasks yet" and, when the
+  workflow declares a step that produces Tasks (`outline.tasksStep`, never a step id), "Tasks appear
+  when the workflow reaches Break the solution down (step 4 of 7)." while the run is before that
+  step, "Tasks appear when Break the solution down (step 4 of 7) finishes." while it is at it, and no
+  line otherwise. Each group the configuration marks as a summary row gets one row: its name, then
+  "1 task · T-04 Return users to where they were" (count, up to two Tasks, "N more", at most two
+  lines), opening the Tasks page at that group. A Task
   already named by Requires attention or Now appears by id only. Compact groups (Done, Cancelled,
   Ended) share one line of links that open the Tasks page with that group expanded (owner decision at the
   final Overview approval, 2026-11-14). **All tasks**
@@ -93,8 +103,15 @@ dashboard configuration). The Overview renders what the reads deliver.
   three; the same row as in the [Specification Sessions list](specification-sessions.md#rows). A
   Session waiting for the person is in Requires attention instead, never twice. **All sessions** is
   a quiet header action; when the start is offered, the header's overflow menu holds **New
-  session**.
-- **Documents** — unchanged.
+  session**. A Specification without Sessions shows the Sessions page's text, "This specification
+  has no sessions yet.", with **New session** (`chat-plus`) as the section's secondary action when
+  the start is offered; never beside Start workflow. With Sessions turned off or an unreadable
+  Sessions read the section is left out.
+- **Documents** — the Documents page's own row (type glyph and file name, the type in the tooltip
+  and read with the name) in a flat list, every row the same height, at most eight before **Show
+  all**; a document that is still only its archetype template says **Template only** (the
+  workspace read's `templateOnly`). The overflow menu opens all documents. A document opened from
+  the Overview takes half of the workspace (50/50), and the Overview reads in one column beside it.
 
 ## Tasks page
 
@@ -117,6 +134,9 @@ Its search is router-owned and validated; absence is the default:
   button, and the count reads "2 of 7 shown". Review tasks pushes the entry; clearing replaces it.
 - `group=<id>` opens the page at that group, expanded, and moves focus to its header.
 
+Without Tasks the page names the step that produces them with the Overview's line ("Tasks appear
+when the workflow reaches …"); without such a step it keeps its own description.
+
 The demo Runtime has no Tasks page read; the page renders the workspace read's grouping instead.
 
 ## Project mode: what the sections show today
@@ -124,7 +144,8 @@ The demo Runtime has no Tasks page read; the page renders the workspace read's g
 On a project Runtime (not `--demo`) the Overview shows what the Engine and the Session store hold
 ([Specification Workspace API, Data source](../../../reference/api/specification-workspace.md#data-source)):
 
-- **Description** — the overview document's first paragraph as plain text (at most 320 graphemes),
+- **Description** — the first paragraph of the overview document's **Goal** section (else its
+  first paragraph) as plain text (at most 320 graphemes),
   rendered as delivered, never parsed as Markdown again; empty when there is no readable overview.
   **Show more** (expanding the overview document) appears only when the description was cut (it
   ends with `…`) or there is none; a whole description has no Show more.

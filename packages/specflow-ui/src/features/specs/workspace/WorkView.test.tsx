@@ -153,9 +153,31 @@ describe('Specification Overview columns', () => {
     expect(tasks?.className).toContain('[&>*:first-child]:border-t-0');
   });
 
-  it('shows Documents first in the context column without a Session', () => {
+  it('keeps Sessions first in the context column without a Session, with its empty state', () => {
     const data = createSpecificationWorkspaceFixture('no-git');
-    const { container } = renderWorkView(1600, { ...data, resumeSession: undefined, sessions: [] });
+    const { container } = renderWorkView(1600, {
+      ...data,
+      resumeSession: undefined,
+      sessions: [],
+      sectionAvailability: { ...data.sectionAvailability, sessions: 'available' },
+      startSession: { available: true },
+    });
+    const context = container.querySelector('[data-overview-column="context"]');
+
+    expect(context?.firstElementChild?.querySelector('#resume-heading')).not.toBeNull();
+    expect(screen.getByText('This specification has no sessions yet.')).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'New session' })).not.toBeNull();
+    expect(context?.querySelector('#documents-summary-heading')).not.toBeNull();
+  });
+
+  it('leaves Sessions out without a Session when the Sessions read does not answer', () => {
+    const data = createSpecificationWorkspaceFixture('no-git');
+    const { container } = renderWorkView(1600, {
+      ...data,
+      resumeSession: undefined,
+      sessions: [],
+      sectionAvailability: { ...data.sectionAvailability, sessions: 'forbidden' },
+    });
     const context = container.querySelector('[data-overview-column="context"]');
 
     expect(context?.firstElementChild?.querySelector('#documents-summary-heading')).not.toBeNull();
@@ -178,7 +200,7 @@ describe('Specification Overview columns', () => {
       ...data,
       resumeSession: undefined,
       sessions: [],
-      sectionAvailability: { documents: 'unavailable' },
+      sectionAvailability: { documents: 'unavailable', sessions: 'forbidden' },
     });
 
     expect(columns(container)).toBe('1');
@@ -201,9 +223,9 @@ describe('Specification Overview columns', () => {
     expect(sections.slice(2).join(' ')).toMatch(/Repository/);
   });
 
-  it('stays one column at any width when no work section shows', () => {
+  it('keeps Tasks in the work column without Tasks, with its empty state', () => {
     // An empty Specification with a Session and no Tasks: no attention, no preparation (a
-    // Session owns the next step), no Tasks summary; only context sections.
+    // Session owns the next step); Tasks keeps its place.
     const working = withoutAttention(createSpecificationWorkspaceFixture('working'));
     const { container } = render(
       <TestProviders>
@@ -219,11 +241,10 @@ describe('Specification Overview columns', () => {
     contentWidth = 2400;
     resizeTo(2400);
 
-    expect(container.querySelector('#tasks-summary-heading')).toBeNull();
+    expect(container.querySelector('#tasks-summary-heading')).not.toBeNull();
+    expect(screen.getByText('No tasks yet')).not.toBeNull();
     expect(container.querySelector('#preparation-heading')).toBeNull();
-    // The context side alone would fill a column: the repository is there.
-    expect([...container.querySelectorAll('h3')].map((h) => h.textContent)).toContain('Repository');
-    expect(columns(container)).toBe('1');
+    expect(columns(container)).toBe('2');
   });
 });
 
@@ -266,9 +287,10 @@ describe('Specification Overview without Tasks', () => {
     expect(container.querySelector('#preparation-heading')).not.toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Start session' }));
     expect(openNewSession).toHaveBeenCalledTimes(1);
-    // Without Tasks there is no Tasks summary: the Tasks page holds New task and its empty state.
-    expect(container.querySelector('#tasks-summary-heading')).toBeNull();
-    expect(headingOrder(container)).toEqual(['Documents']);
+    // Tasks, Sessions and Documents keep their places, each with its empty state where empty.
+    expect(screen.getByText('No tasks yet')).not.toBeNull();
+    expect(screen.getByText('This specification has no sessions yet.')).not.toBeNull();
+    expect(headingOrder(container)).toEqual(['Tasks', 'Sessions', 'Documents']);
   });
 
   it.each([

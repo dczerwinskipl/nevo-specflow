@@ -69,8 +69,21 @@ const settle = () =>
     await new Promise((resolve) => setTimeout(resolve, 30));
   });
 
-function Workspace() {
-  const data = { ...createSpecificationWorkspaceFixture('working', 'SPEC-1'), activityEvents: [] };
+/** The working fixture; `extraDocuments` more documents push Documents past "Show all". */
+function Workspace({ extraDocuments = 0 }: { readonly extraDocuments?: number }) {
+  const fixture = createSpecificationWorkspaceFixture('working', 'SPEC-1');
+  const data = {
+    ...fixture,
+    documents: [
+      ...fixture.documents,
+      ...Array.from({ length: extraDocuments }, (_, index) => ({
+        id: `extra-${index + 1}`,
+        title: `Extra ${index + 1}`,
+        kind: 'note',
+      })),
+    ],
+    activityEvents: [],
+  };
 
   return (
     <QueryClientProvider client={createSpecFlowQueryClient()}>
@@ -95,7 +108,7 @@ function documentRow(container: HTMLElement) {
   const context = container.querySelector<HTMLElement>('[data-overview-column="context"]');
   expect(context).not.toBeNull();
 
-  return within(context!).getByRole('button', { name: 'Specyfikacja' });
+  return within(context!).getByRole('button', { name: /^Specyfikacja/u });
 }
 
 describe('Specification Overview focus across the column change', () => {
@@ -128,27 +141,26 @@ describe('Specification Overview focus across the column change', () => {
     resizeOverview(1000);
 
     expect(columns(container)).toBe('1');
-    const row = screen.getByRole('button', { name: 'Specyfikacja' });
+    const row = screen.getByRole('button', { name: /^Specyfikacja/u });
     expect(row.closest('[data-focus-key]')?.getAttribute('data-focus-key')).toBe('document:spec');
     expect(document.activeElement).toBe(row);
   });
 
-  it('keeps the expanded Documents list and focus on a row past the first three', async () => {
-    const { container } = render(<Workspace />);
+  it('keeps the expanded Documents list and focus on a row past the first eight', async () => {
+    const { container } = render(<Workspace extraDocuments={5} />);
     const context = () =>
       within(container.querySelector<HTMLElement>('[data-overview-column="context"]')!);
-    fireEvent.click(context().getByRole('button', { name: 'Show all (5)' }));
-    const fifth = () =>
-      screen.getByRole('button', { name: 'Kryteria akceptacji i scenariusze brzegowe' });
-    const opener = fifth();
+    fireEvent.click(context().getByRole('button', { name: 'Show all (10)' }));
+    const tenth = () => screen.getByRole('button', { name: /^Extra 5/u });
+    const opener = tenth();
     opener.focus();
     fireEvent.click(opener);
     await settle();
 
     resizeOverview(1000);
     expect(columns(container)).toBe('1');
-    // Still expanded after the remount: the fifth row exists in one column.
-    expect(fifth()).not.toBe(opener);
+    // Still expanded after the remount: the tenth row exists in one column.
+    expect(tenth()).not.toBe(opener);
 
     fireEvent.click(screen.getByRole('button', { name: /Close secondary content/i }));
     resizeOverview(1600);
@@ -156,7 +168,7 @@ describe('Specification Overview focus across the column change', () => {
 
     expect(columns(container)).toBe('2');
     expect(context().getByRole('button', { name: 'Show less' })).not.toBeNull();
-    expect(document.activeElement).toBe(fifth());
+    expect(document.activeElement).toBe(tenth());
   });
 
   it('does not pull focus back after the user left the row', async () => {

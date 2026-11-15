@@ -1,6 +1,6 @@
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
-import { actorLabel, personLabel } from './presentation';
+import { actorLabel, personLabel, progressLine } from './presentation';
 
 const t = ((key: string) => (key === 'workflowExecution.actor.you' ? 'you' : key)) as TFunction;
 
@@ -27,5 +27,26 @@ describe('recorded actor labels', () => {
         'ann',
       ),
     ).toBe('you');
+  });
+});
+
+describe('progress line', () => {
+  const echo = ((key: string, values?: Record<string, unknown>) =>
+    [key, JSON.stringify(values)].join(' ')) as unknown as TFunction;
+  const step = (position: number, title: string) => ({ step: 's' + position, title, position });
+
+  it('names the position and the next step', () => {
+    expect(
+      progressLine(echo, { stepCount: 7, current: step(2, 'Write'), next: step(3, 'Design') }),
+    ).toBe('workflowExecution.now.progressNext {"position":2,"total":7,"next":"Design"}');
+    expect(progressLine(echo, { stepCount: 7, current: step(7, 'Accept') })).toBe(
+      'workflowExecution.now.progress {"position":7,"total":7}',
+    );
+  });
+
+  it('says nothing before the first start and once the run ended', () => {
+    expect(progressLine(echo, { stepCount: 7, next: step(1, 'Gather') })).toBeUndefined();
+    expect(progressLine(echo, { stepCount: 7 })).toBeUndefined();
+    expect(progressLine(echo, undefined)).toBeUndefined();
   });
 });

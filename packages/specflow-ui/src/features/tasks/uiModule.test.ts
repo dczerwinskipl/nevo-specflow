@@ -20,12 +20,9 @@ function visible(data: SpecificationWorkspaceData): boolean {
 describe('Overview Tasks summary visibility', () => {
   const empty = createSpecificationWorkspaceFixture('empty');
 
-  it('is omitted without Tasks: the Tasks page holds New task and the empty state', () => {
-    expect(visible({ ...empty, sectionAvailability: { tasks: 'available' } })).toBe(false);
-    expect(visible(empty)).toBe(false);
-  });
-
-  it('shows an unavailable or forbidden Tasks read and any Specification with Tasks', () => {
+  it('keeps its place without Tasks (an inline empty state) and with an unreadable read', () => {
+    expect(visible({ ...empty, sectionAvailability: { tasks: 'available' } })).toBe(true);
+    expect(visible(empty)).toBe(true);
     expect(visible({ ...empty, sectionAvailability: { tasks: 'unavailable' } })).toBe(true);
     expect(visible({ ...empty, sectionAvailability: { tasks: 'forbidden' } })).toBe(true);
     expect(visible(createSpecificationWorkspaceFixture('working'))).toBe(true);

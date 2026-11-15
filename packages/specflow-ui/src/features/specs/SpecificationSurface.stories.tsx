@@ -247,7 +247,9 @@ export const DocumentReturnNavigation: Story = {
       name: 'Odświeżanie sesji i zachowanie kontekstu użytkownika',
       level: 1,
     });
-    await userEvent.click(await canvas.findByRole('button', { name: 'Obszar: uwierzytelnianie' }));
+    await userEvent.click(
+      await canvas.findByRole('button', { name: /^Obszar: uwierzytelnianie/u }),
+    );
     await userEvent.click(await canvas.findByRole('button', { name: 'Open full document' }));
     // The document opens in the Documents workspace (a tab, or the switcher on a narrow strip).
     await canvas.findByRole('tabpanel', {}, { timeout: 5000 });
@@ -278,7 +280,7 @@ export const DocumentReturnNavigationNarrow: Story = {
       canvasElement.querySelector<HTMLElement>(
         '[data-workspace-surface="primary"] .mobile-workspace-scroll',
       );
-    const opener = await canvas.findByRole('button', { name: 'Obszar: uwierzytelnianie' });
+    const opener = await canvas.findByRole('button', { name: /^Obszar: uwierzytelnianie/u });
     opener.scrollIntoView({ block: 'center' });
     await new Promise<void>((resolve) =>
       requestAnimationFrame(() => requestAnimationFrame(() => resolve())),

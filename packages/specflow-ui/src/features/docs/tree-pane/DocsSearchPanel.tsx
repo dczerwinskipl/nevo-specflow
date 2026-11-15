@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Typography } from '@nevo/ui';
+import { Typography, cn } from '@nevo/ui';
 import type { WorkspaceDocsSearch } from '@nevo/specflow-contracts/docs';
+import { treeBlockClassName, treePaneTextClassName } from '../../../shared/document-tree';
 import { useDocsSearch } from '../read-model';
 import {
   docsReaderSearch,
@@ -55,6 +56,7 @@ function proposalCount(answer: HeldAnswer, proposals: ReadonlySet<string>): numb
 export function DocsSearchPanel({
   workspaceId,
   historyEntry,
+  scrollRoot,
   search: address,
   onSearchChange,
   proposals,
@@ -71,6 +73,8 @@ export function DocsSearchPanel({
   workspaceId: string | undefined;
   /** The history entry of the address: a new one (Back, Forward, a push) takes its search. */
   historyEntry: string;
+  /** The pane's scroll viewport, where the search field docks. */
+  scrollRoot: HTMLElement | null;
   /** The search the address holds. */
   search: DocsReaderSearch;
   /** Writes the search into the address (a replace). */
@@ -189,10 +193,13 @@ export function DocsSearchPanel({
   }
 
   return (
-    <>
+    // The tree block: the field first (its sticky sentinel sits at the block's top), the status row
+    // and its lines, then the results or the tree.
+    <div className={treeBlockClassName}>
       {/* Escape or the clear button empties the field and keeps focus there: the tree returns. */}
       <DocsSearchField
         inputRef={field}
+        scrollRoot={scrollRoot}
         label={t('docs.search.label')}
         maxLength={readerSearchMaxLength}
         value={text}
@@ -201,41 +208,45 @@ export function DocsSearchPanel({
       />
       {searching ? (
         <>
-          <div className="grid min-w-0 gap-1">
-            {(resultCount > 0 || filterShown) && (
-              // At least one target tall, so no hit area reaches into the field above.
-              <div className="flex min-h-(--target-size) min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 px-2">
-                {resultCount > 0 && (
-                  <Typography as="p" variant="body-sm" className="text-content-muted">
-                    {t('docs.search.count', { count: resultCount })}
-                  </Typography>
-                )}
-                {filterShown && (
-                  <DocsProposalsFilter
-                    checked={includeProposals}
-                    count={count}
-                    pending={waiting}
-                    onCheckedChange={(checked) => {
-                      setFilterRequest(requestKey(workspaceId, typed, checked));
-                      write(typed, checked);
-                    }}
-                  />
-                )}
-              </div>
-            )}
-            {lines.map((line) => (
-              <Typography
-                key={line}
-                as="p"
-                variant="body-sm"
-                className="px-2 text-content-secondary"
-              >
-                {line}
-              </Typography>
-            ))}
-            <div role="status" data-search-status className="sr-only">
-              {announcement}
+          {(resultCount > 0 || filterShown) && (
+            // At least one target tall, so no hit area reaches into the field above.
+            <div
+              className={cn(
+                'flex min-h-(--target-size) min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1',
+                treePaneTextClassName,
+              )}
+            >
+              {resultCount > 0 && (
+                <Typography as="p" variant="body-sm" className="text-content-muted">
+                  {t('docs.search.count', { count: resultCount })}
+                </Typography>
+              )}
+              {filterShown && (
+                <DocsProposalsFilter
+                  checked={includeProposals}
+                  count={count}
+                  pending={waiting}
+                  onCheckedChange={(checked) => {
+                    setFilterRequest(requestKey(workspaceId, typed, checked));
+                    write(typed, checked);
+                  }}
+                />
+              )}
             </div>
+          )}
+          {lines.map((line) => (
+            <Typography
+              key={line}
+              as="p"
+              variant="body-sm"
+              className={cn('text-content-secondary', treePaneTextClassName)}
+            >
+              {line}
+            </Typography>
+          ))}
+          {/* `sr-only` is out of the flow: the live region costs the block no gap. */}
+          <div role="status" data-search-status className="sr-only">
+            {announcement}
           </div>
           <DocsSearchResults
             search={shown?.search ?? (dimmed ? previous?.search : undefined)}
@@ -256,6 +267,6 @@ export function DocsSearchPanel({
       ) : (
         children
       )}
-    </>
+    </div>
   );
 }

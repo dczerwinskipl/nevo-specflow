@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from 'react';
+import { useLayoutEffect } from 'react';
 import { createEntryPositions } from '../article/readingPositions';
 
 /** The pane's scroll of every reader history entry of this tab. */
@@ -12,11 +12,9 @@ const userInput = ['wheel', 'touchstart', 'keydown', 'pointerdown'] as const;
  * tree) where they were scrolled for that entry. The rows of an entry may still be rendering (an
  * answer that loads again, the tree), so the position is set again as the content grows, until it
  * is reached or the user scrolls. An entry with no position yet (a push, a pick) keeps the pane
- * where it is. Returns the ref of the scroll viewport.
+ * where it is. `viewport` is the pane's scroll viewport element.
  */
-export function usePaneScrollMemory(entry: string) {
-  const [viewport, setViewport] = useState<HTMLDivElement | null>(null);
-
+export function usePaneScrollMemory(entry: string, viewport: HTMLElement | null) {
   // Before paint, so a restored entry never shows the previous entry's position first.
   useLayoutEffect(() => {
     if (!viewport) {
@@ -69,6 +67,4 @@ export function usePaneScrollMemory(entry: string) {
       }
     };
   }, [viewport, entry]);
-
-  return setViewport;
 }

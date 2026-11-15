@@ -13,6 +13,7 @@ function renderField(pointer: 'coarse' | 'fine') {
     <>
       <DocsSearchField
         inputRef={null}
+        scrollRoot={null}
         label="Search documentation"
         maxLength={500}
         value="session"

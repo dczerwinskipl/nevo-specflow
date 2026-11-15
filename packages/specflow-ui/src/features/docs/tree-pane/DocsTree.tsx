@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { cn } from '@nevo/ui';
 import {
   TreeDocumentRow,
   TreeFolderRow,
   TreeLevel,
+  treePaneBlockClassName,
   useRovingTree,
 } from '../../../shared/document-tree';
 import { documentKey, folderKey, visibleRows, type DocsFolderNode } from './docsTreeModel';
@@ -71,7 +73,11 @@ export function DocsTree({
   );
 
   return (
-    <nav aria-label={t('docs.tree.label')} className="min-w-0" onKeyDown={onKeyDown}>
+    <nav
+      aria-label={t('docs.tree.label')}
+      className={cn('min-w-0', treePaneBlockClassName)}
+      onKeyDown={onKeyDown}
+    >
       {level(root, true)}
     </nav>
   );

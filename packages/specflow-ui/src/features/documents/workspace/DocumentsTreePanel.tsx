@@ -8,8 +8,14 @@ import {
   InlineNote,
   ScrollArea,
   Separator,
+  cn,
   useWorkspaceCapabilities,
 } from '@nevo/ui';
+import {
+  treePaneBlockClassName,
+  treePaneContentClassName,
+  treePaneTextClassName,
+} from '../../../shared/document-tree';
 import {
   ApplicationContextLine,
   ApplicationSessionBack,
@@ -89,11 +95,15 @@ export function DocumentsTreePanel({
         {t('specification.viewDocuments')}
       </h1>
       <SessionRecoveryNotice specId={specId} />
-      <ScrollArea direction="both" className="min-h-0 flex-1" contentClassName="p-2">
+      <ScrollArea
+        direction="both"
+        className="min-h-0 flex-1"
+        contentClassName={treePaneContentClassName}
+      >
         {/* Stacked: the tree is the first view, so the way back to the Session sits above it (an open
             document shows its own link; on a split layout the document area carries it). */}
         {sessionReturn && !supportsSplit && (
-          <div className="mb-2 px-2">
+          <div className={treePaneBlockClassName}>
             <ApplicationSessionBack
               specId={specId}
               sessionId={sessionReturn}
@@ -101,10 +111,14 @@ export function DocumentsTreePanel({
             />
           </div>
         )}
-        <ApplicationContextLine specId={specId} view="documents" className="mb-2 px-2" />
+        <ApplicationContextLine
+          specId={specId}
+          view="documents"
+          className={treePaneBlockClassName}
+        />
         {data && (issues.length > 0 || readOnly !== undefined || unmet.length > 0) && (
           // Inside the tree's scroll area: it scrolls away with the tree and costs nothing when empty.
-          <div className="mb-3 grid gap-4">
+          <div className={cn('grid gap-4', treePaneBlockClassName)}>
             <CloseIssues issues={issues} />
             {readOnly && (
               <InlineNote className="px-2">{text(readOnlyLine(readOnly, 'tree'))}</InlineNote>
@@ -120,11 +134,15 @@ export function DocumentsTreePanel({
           </div>
         )}
         {tree.isPending ? (
-          <p role="status">{t('documents.loadingDocuments')}</p>
+          <p role="status" className={treePaneTextClassName}>
+            {t('documents.loadingDocuments')}
+          </p>
         ) : !tree.data ? (
-          <Alert tone="attention" title={t('documents.loadFailed')}>
-            <Button onClick={() => void tree.refetch()}>{t('common.retry')}</Button>
-          </Alert>
+          <div className={treePaneBlockClassName}>
+            <Alert tone="attention" title={t('documents.loadFailed')}>
+              <Button onClick={() => void tree.refetch()}>{t('common.retry')}</Button>
+            </Alert>
+          </div>
         ) : (
           <DocumentsExplorer
             tree={tree.data}

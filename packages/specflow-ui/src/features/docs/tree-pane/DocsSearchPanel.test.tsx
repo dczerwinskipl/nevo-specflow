@@ -66,6 +66,7 @@ function Panel({ workspaceId, initial = {} }: { workspaceId: string; initial?: D
     <DocsSearchPanel
       workspaceId={workspaceId}
       historyEntry="entry"
+      scrollRoot={null}
       search={search}
       onSearchChange={setSearch}
       proposals={new Set()}

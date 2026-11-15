@@ -2,6 +2,7 @@ import { newRun } from '@nevo/workflow';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import type { ExecutionCatalogue } from '../definitions/catalogue';
+import { abandonSpecification } from './abandon';
 import { finishStep } from './finish';
 import { inspectExecution } from './inspect';
 import {
@@ -451,6 +452,21 @@ describe('removing a Task', () => {
       message: expect.stringContaining(message) as unknown,
     });
     expect(dependencies.store.applied).toHaveLength(applied);
+  });
+
+  it('keeps the Tasks of an abandoned Specification for audit', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    await create(dependencies, 'api');
+    await abandonSpecification(dependencies, {
+      specId: SPEC,
+      reason: 'Superseded.',
+      actor: owner,
+    });
+
+    await refused(dependencies, remove(dependencies, 'api'), 'WORKFLOW_SPECIFICATION_ENDED');
+    const snapshot = await dependencies.store.read(SPEC);
+    expect(snapshot.folders).toEqual(['api']);
+    expect(snapshot.index?.value.tasks).toEqual([{ id: 'api' }]);
   });
 });
 

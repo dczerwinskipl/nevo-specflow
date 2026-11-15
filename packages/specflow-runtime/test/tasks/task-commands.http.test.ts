@@ -186,4 +186,53 @@ describe('Task commands and reads against the real Engine', () => {
     },
     timeoutMs,
   );
+
+  it(
+    'keeps the Tasks of an abandoned Specification: removing one answers 409',
+    async () => {
+      const engine = await project();
+      const { specId } = await createSpecificationFromRequest(engine, {
+        archetype: { id: 'minimal', version: 1 },
+        operationId: randomUUID(),
+        title: 'Abandoned work',
+        target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
+      });
+      const app = await createRuntimeApp(
+        {
+          ...noAuthConfig(),
+          authorization: { assignments: [{ userId: 'demo-user', role: 'admin', scope: {} }] },
+        },
+        { specs: { engine } },
+      );
+      try {
+        const created = await app.inject({
+          method: 'POST',
+          url: `/api/specs/${specId}/tasks`,
+          payload: { taskId: 'draft', title: 'A draft', type: 'implementation' },
+        });
+        expect(created.statusCode, created.body).toBe(201);
+
+        const abandoned = await app.inject({
+          method: 'POST',
+          url: `/api/specs/${specId}/workflow/abandon`,
+          payload: { reason: 'Superseded.' },
+        });
+        expect(abandoned.statusCode, abandoned.body).toBe(200);
+        const { revision } = (await app.inject(`/api/specs/${specId}/tasks/draft`)).json<{
+          resource: { revision: string };
+        }>().resource;
+
+        const removed = await app.inject({
+          method: 'DELETE',
+          url: `/api/specs/${specId}/tasks/draft?expectedRevision=${encodeURIComponent(revision)}`,
+        });
+        expect(removed.statusCode, removed.body).toBe(409);
+        expect(removed.json()).toMatchObject({ code: 'WORKFLOW_SPECIFICATION_ENDED' });
+        expect((await app.inject(`/api/specs/${specId}/tasks/draft`)).statusCode).toBe(200);
+      } finally {
+        await app.close();
+      }
+    },
+    timeoutMs,
+  );
 });

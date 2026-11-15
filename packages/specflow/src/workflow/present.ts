@@ -173,6 +173,13 @@ export function actionLines(projection: ActionProjection): string[] {
       lines.push(
         ...(transition.openTasks ?? []).map((task) => `  open task ${task.taskId}: ${task.cause}`),
       );
+      // Only a Specification transition is `tasks-open`, and a Specification finish takes decisions.
+      if (transition.unavailable === 'tasks-open') {
+        lines.push(
+          '  hint: finish or cancel these Tasks first, or finish with --task-decisions-file cancelling them (the finish then completes)',
+        );
+      }
+
       lines.push(...(transition.gates ?? []).map((gate) => `  ${gateLine(gate)}`));
     }
   }

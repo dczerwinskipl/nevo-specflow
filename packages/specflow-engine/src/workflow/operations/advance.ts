@@ -114,15 +114,7 @@ export function advance(
   intent: WorkflowIntent,
 ): ContinuationDecision {
   if (intent.kind === 'terminal') {
-    const open = tasksOpenAtCompletion(
-      subject,
-      intent,
-      context.set.tasks(),
-      context.set.brokenTasks(),
-    );
-    if (open.length > 0) {
-      throw new TasksOpenError(open);
-    }
+    assertNoOpenTasksAtCompletion(context, subject, intent);
   }
 
   if (intent.kind === 'await-event') {
@@ -132,6 +124,27 @@ export function advance(
   }
 
   return continuationOf(context.set.run(subject), definition, context.catalogue);
+}
+
+/**
+ * Refuse a Specification change that ends its run `terminal completed` while Tasks are open
+ * (`tasksOpenAtCompletion`, `WORKFLOW_TASKS_OPEN`), on the planned state of the working set.
+ * `advance` asks it for every decision; a finish asks it first, so it wins over the exit gates.
+ */
+export function assertNoOpenTasksAtCompletion(
+  context: AdvanceContext,
+  subject: WorkflowSubject,
+  target: Parameters<typeof tasksOpenAtCompletion>[1],
+): void {
+  const open = tasksOpenAtCompletion(
+    subject,
+    target,
+    context.set.tasks(),
+    context.set.brokenTasks(),
+  );
+  if (open.length > 0) {
+    throw new TasksOpenError(open);
+  }
 }
 
 const escalatedTasks = (tasks: readonly ExecutionTask[]) =>

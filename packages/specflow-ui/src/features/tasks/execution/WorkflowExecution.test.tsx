@@ -416,6 +416,62 @@ describe('manual workflow execution', () => {
     expect(screen.getByRole('button', { name: 'See Tasks' })).toBeTruthy();
   });
 
+  it('offers an unmet gate as the Overview main action only when meeting it would make a result available', () => {
+    const base = specificationWorkflowProjection('tasks-open');
+    const accepted = base.actions.finish!.transitions[0]!;
+    const noteGate = {
+      id: 'note',
+      type: 'document' as const,
+      label: 'A note',
+      documentType: 'note',
+      scope: { kind: 'specification' as const, specId: SPEC },
+      status: 'unsatisfied' as const,
+      reason: 'no-document' as const,
+    };
+    const withTransitions = (
+      transitions: NonNullable<WorkflowActionProjection['actions']['finish']>['transitions'],
+    ): WorkflowActionProjection => ({
+      ...base,
+      actions: { ...base.actions, finish: { ...base.actions.finish!, transitions } },
+    });
+    const gated = { ...accepted, gates: [noteGate] };
+    const render = (projection: WorkflowActionProjection) =>
+      renderWith(
+        <WorkflowNow
+          subject={{ specId: SPEC }}
+          projection={projection}
+          headingId="now"
+          links={{ tasks: vi.fn() }}
+          artifactOptions={[]}
+          gateAction={() => ({ label: 'Create note', onSelect: vi.fn() })}
+          overview={{ specId: SPEC }}
+        />,
+      );
+
+    // The only result waits for open Tasks: its gate would not help.
+    const first = render(withTransitions([gated]));
+    expect(screen.queryByRole('button', { name: 'Finish step' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Create note' })).toBeNull();
+    first.unmount();
+
+    // Another result only needs the gate: meeting it makes that result available.
+    render(
+      withTransitions([
+        gated,
+        {
+          id: 'rejected',
+          label: 'Rejected',
+          target: { kind: 'step', step: 'breakdown' },
+          feedback: 'required',
+          unavailable: 'gate-unsatisfied',
+          gates: [noteGate],
+        },
+      ]),
+    );
+    expect(screen.queryByRole('button', { name: 'Finish step' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Create note' })).toBeTruthy();
+  });
+
   it('explains a finish the Engine refused because Tasks are open', async () => {
     const finish = vi.fn(() =>
       Promise.reject(

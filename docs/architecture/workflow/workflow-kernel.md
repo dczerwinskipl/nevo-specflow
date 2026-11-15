@@ -296,7 +296,8 @@ steps:
   `entryGates`, and unsatisfied ones are the start blocker `gates-unsatisfied`. The inspection writes
   nothing.
 - **Authoritative check.** `finishStep` evaluates the exit gates of the taken transition inside the
-  lock after every input rule and before anything is planned or written; a start (not a resume)
+  lock after every input rule and the open-Tasks rule of a completion (so `WORKFLOW_TASKS_OPEN` wins,
+  as in the projection), on the planned change, before anything is written; a start (not a resume)
   evaluates the step's entry gates after the Task's own readiness and context checks. An unsatisfied
   gate refuses with `WORKFLOW_GATE_UNSATISFIED` (`GateUnsatisfiedError`: `phase`, `step`, `gates`). A
   repeated finish (F16 replay) returns the recorded result without evaluating gates again.
@@ -534,7 +535,9 @@ completed or abandoned, is closed. The rule is `tasksOpenAtCompletion` (with `op
   effects, so a finish that cancels the last open Tasks itself completes; and it runs before anything
   is written, so the attempt stays active. A wait step's `tasks-finished` completes only with every
   Task closed and `task-escalated` always leads to a step, so both pass. A repeated finish (F16
-  replay) returns the recorded result without asking the rule again. Abandon is not affected.
+  replay) returns the recorded result without asking the rule again. Abandon is not affected. The
+  finish asks the rule before its exit gates, so a finish with both problems is refused for its open
+  Tasks; once they are closed, an unmet gate still refuses it.
 - **Causes.** `cause` is one of `BLOCKING_TASK_CAUSES` (`draft`, `on-hold`, `broken`,
   `dependency-unsatisfiable`, which only a person resolves) or `active` (an attempt runs), `waiting`
   (`ready`, waiting for open dependencies) and `ready` (can start, or continue with its next step).

@@ -170,9 +170,14 @@ export function NowBlock({
 
   const detailLine = compactDetail ? undefined : workflowLine;
   // The exit gates of the active step that are not met yet, per result ("To finish with Done:").
+  // A result that waits for open Tasks is named below instead: meeting its gates would not help.
   const unmet =
     position.kind === 'active'
       ? (projection.actions.finish?.transitions ?? []).flatMap((transition) => {
+          if (transition.unavailable === 'tasks-open') {
+            return [];
+          }
+
           const gates = (transition.gates ?? []).filter((gate) => gate.status === 'unsatisfied');
 
           return gates.length > 0 ? [{ transition, gates }] : [];

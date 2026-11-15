@@ -681,18 +681,30 @@ describe('the projection and the Task commands agree once the Specification ende
   });
 });
 
+/** The edit of {@link withoutWait}: the reviewed breakdown goes straight to acceptance. */
+const skipWait = (text: string) =>
+  text.replace(
+    /(id: approved\r?\n(?: {8}.*\r?\n)*? {8}to: \{ step: )implementation/u,
+    '$1acceptance',
+  );
+
 /** The seed workflow without its wait step: the reviewed breakdown goes straight to acceptance. */
-const withoutWait = () =>
+const withoutWait = () => seedCatalogueWith(skipWait);
+
+/** {@link withoutWait}, and acceptance needs a `note` of the Specification to finish. */
+const withoutWaitGated = () =>
   seedCatalogueWith((text) =>
-    text.replace(
-      /(id: approved\r?\n(?: {8}.*\r?\n)*? {8}to: \{ step: )implementation/u,
-      '$1acceptance',
+    skipWait(text).replace(
+      /( {4}purpose: The owner accepts the implemented Specification\.)(\r?\n)/u,
+      '$1$2    exitGates:$2      - type: document$2        documentType: note$2        scope: specification$2',
     ),
   );
 
 /** The owner's acceptance attempt, active, with {@link TWO_TASKS} approved and not started. */
-async function acceptingWithOpenTasks(): Promise<Dependencies> {
-  const dependencies = memoryDependencies(await withoutWait());
+async function acceptingWithOpenTasks(
+  catalogue: Promise<ExecutionCatalogue> = withoutWait(),
+): Promise<Dependencies> {
+  const dependencies = memoryDependencies(await catalogue);
   await specificationWithTasks(dependencies);
   await startSpecification(dependencies, owner);
 
@@ -747,6 +759,28 @@ describe('a Specification does not complete while its Tasks are open', () => {
       { taskId: 'api', cause: 'active' },
       { taskId: 'screen', cause: 'waiting' },
     ]);
+  });
+
+  it('refuses open Tasks before an unmet exit gate, in the projection and in the finish', async () => {
+    const dependencies = await acceptingWithOpenTasks(withoutWaitGated());
+    const transition = await acceptedTransition(dependencies);
+    expect(transition).toMatchObject({
+      unavailable: 'tasks-open',
+      gates: [expect.objectContaining({ status: 'unsatisfied' })],
+    });
+
+    const applied = dependencies.store.applied.length;
+    await expect(accept(dependencies)).rejects.toMatchObject({ code: 'WORKFLOW_TASKS_OPEN' });
+    // Once the Tasks are closed, the gate is what is left.
+    await expect(
+      accept(dependencies, {
+        taskDecisions: [
+          { taskId: 'api', status: 'cancelled' },
+          { taskId: 'screen', status: 'cancelled' },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_GATE_UNSATISFIED' });
+    expect(dependencies.store.applied).toHaveLength(applied);
   });
 
   it('completes once every Task is done or cancelled', async () => {

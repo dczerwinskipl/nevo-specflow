@@ -14,6 +14,7 @@ import {
   FinishStepDialog,
   type ArtifactOption,
   type FinishDraft,
+  type FinishTransition,
 } from './FinishStepDialog';
 import type { GateAction } from './GateList';
 import { NowBlock } from './NowBlock';
@@ -220,28 +221,29 @@ export function WorkflowNow({
       : next
         ? t('workflowExecution.now.start', { step: next.step.title || next.step.id })
         : undefined;
-  // Overview: when every result of the active step needs an unmet gate, the gate's action is the
-  // main action and Finish step waits in the menu, unavailable.
-  const gateBlocksFinish =
+  // Overview: Finish step is the main action only while some result can be taken now. Otherwise it
+  // waits in the menu, unavailable, with why; the main action is the action of an unmet gate, and
+  // only of a gate whose result meeting it would make available (`gate-unsatisfied`; open Tasks
+  // win over gates in the projection, so meeting the gate of a `tasks-open` result would not help).
+  const finishBlocked =
     overview !== undefined &&
     finish !== undefined &&
     finish.transitions.length > 0 &&
-    finish.transitions.every((transition) =>
-      (transition.gates ?? []).some((gate) => gate.status === 'unsatisfied'),
-    );
-  // Every result completes the Specification while Tasks are open: Finish step waits in the menu.
-  const tasksBlockFinish =
-    overview !== undefined &&
-    finish !== undefined &&
-    finish.transitions.length > 0 &&
-    finish.transitions.every((transition) => transition.unavailable === 'tasks-open');
-  const mainGateAction = gateBlocksFinish
-    ? finish.transitions
-        .flatMap((transition) => transition.gates ?? [])
-        .filter((gate) => gate.status === 'unsatisfied')
-        .map(finishGateAction)
-        .find((action) => action !== undefined)
-    : undefined;
+    finish.transitions.every((transition) => transition.unavailable !== undefined);
+  const blockedBy = (reason: FinishTransition['unavailable']) =>
+    finishBlocked &&
+    (finish?.transitions ?? []).some((transition) => transition.unavailable === reason);
+  const gateBlocksFinish = blockedBy('gate-unsatisfied');
+  const tasksBlockFinish = blockedBy('tasks-open');
+  const mainGateAction =
+    gateBlocksFinish && finish
+      ? finish.transitions
+          .filter((transition) => transition.unavailable === 'gate-unsatisfied')
+          .flatMap((transition) => transition.gates ?? [])
+          .filter((gate) => gate.status === 'unsatisfied')
+          .map(finishGateAction)
+          .find((action) => action !== undefined)
+      : undefined;
 
   const workflowActions =
     primaryAction ??
@@ -250,7 +252,7 @@ export function WorkflowNow({
         <Button onClick={startNow} disabled={busy}>
           {startLabel}
         </Button>
-      ) : finish && !gateBlocksFinish && !tasksBlockFinish ? (
+      ) : finish && !finishBlocked ? (
         <Button onClick={openFinish} disabled={busy}>
           {t('workflowExecution.now.finish')}
         </Button>
@@ -305,7 +307,7 @@ export function WorkflowNow({
               },
             ]
           : []),
-        ...(gateBlocksFinish || tasksBlockFinish
+        ...(finishBlocked
           ? [
               {
                 id: 'finish',

@@ -20,6 +20,7 @@ import { assertSameSession, finishDigest } from './actors';
 import {
   advance,
   applyEffects,
+  assertNoOpenTasksAtCompletion,
   continuationOf,
   settleWait,
   waitDecision,
@@ -193,16 +194,6 @@ function recordFinish(
       );
     }
 
-    // The authoritative check of the exit gates, after every input rule and before anything is
-    // planned or written. A repeated finish (above) never evaluates them again.
-    await assertGatesSatisfied(
-      dependencies.references,
-      subject,
-      'exit',
-      step,
-      exitGatesFor(step, transition.result),
-    );
-
     context.set.setRun(subject, decision.nextRun);
     const createdTasks = produces ? draftTasks(context, request) : [];
     for (const task of applyTaskDecisions(
@@ -226,6 +217,20 @@ function recordFinish(
         },
       });
     }
+
+    // Open Tasks refuse a completion first (no gate would help), judged on the planned Tasks: the
+    // finish's own drafts, decisions and effects count. `advance` asks the same rule again.
+    assertNoOpenTasksAtCompletion(context, subject, transition.target);
+
+    // The authoritative check of the exit gates, after every input rule, on nothing written yet (the
+    // change above is only planned). A repeated finish (above) never evaluates them again.
+    await assertGatesSatisfied(
+      dependencies.references,
+      subject,
+      'exit',
+      step,
+      exitGatesFor(step, transition.result),
+    );
 
     const held =
       subject.kind === 'task' &&

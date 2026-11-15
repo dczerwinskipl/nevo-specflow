@@ -97,8 +97,10 @@ opened by the header's history toggle.
   (owner decision A, [ADR 0024](../../../architecture/decisions/0024-tasks-are-resources.md)): the
   dialog names each open Task with why it is open ("t-02 is in progress, t-05 waits for other
   tasks") and Finish stays disabled for that result. The Now block says the same for each such result
-  with **See Tasks**; on the Overview, when every result waits for open Tasks, Finish step moves to
-  the ⋯ menu, unavailable, with the reason. A refused finish (the Tasks changed after the projection
+  with **See Tasks**, and does not list the gates of such a result (meeting them would not help). On
+  the Overview, Finish step is the main action only while some result can be taken; otherwise it
+  moves to the ⋯ menu, unavailable, with the reasons, and an unmet gate's action becomes the main
+  action only when meeting it would make a result available. A refused finish (the Tasks changed after the projection
   was read) shows the same explanation. Abandon remains the way to end a Specification with open
   Tasks.
 - **Return to an earlier step.** The projection's allowed steps and the reason, required when the

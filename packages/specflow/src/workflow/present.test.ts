@@ -162,10 +162,11 @@ describe('actionLines', () => {
       },
     } as unknown as ActionProjection;
 
-    expect(actionLines(projection).slice(-3)).toEqual([
+    expect(actionLines(projection).slice(-4)).toEqual([
       'Action: finish "acceptance" attempt 1 (accepted, unavailable: tasks-open)',
       '  open task api: active',
       '  open task screen: waiting',
+      '  hint: finish or cancel these Tasks first, or finish with --task-decisions-file cancelling them (the finish then completes)',
     ]);
   });
 });

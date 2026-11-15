@@ -32,11 +32,16 @@ import { StoryLocalization } from '../../i18n/StoryLocalization';
 import { NowBlock } from '../../features/tasks/execution/NowBlock';
 import { SessionsSection } from '../../features/sessions/contributions/specification-work/SessionsSection';
 import { TreeDocumentRow, TreeLevel } from '../../shared/document-tree';
+import { TasksSummarySection } from '../../features/tasks/contributions/specification-overview/TasksSummarySection';
+import type { SpecificationWorkSectionContext } from '../../features/specs';
 import { OperationalRow } from '../../shared/operational-list';
 import { WorkspaceSection } from '../../shared/workspace-section';
 import {
   documentsFor,
+  firstTasksOverview,
   nextStepTitle,
+  producingStep,
+  stepIndex,
   overviewMarkdown,
   projectionFor,
   sessionsFor,
@@ -52,17 +57,10 @@ import {
  * PRESENTATION MOCK ONLY: the Specification Overview in early and sparse states (no Tasks, no
  * attention, at most one Session). Not production code: static data, no routing, no backend.
  * It renders the real AppShell / AppWorkspace / WorkspaceHeader, the real NowBlock, the real
- * SessionsSection and the Documents page's own document row (TreeDocumentRow in a flat TreeLevel,
- * row ⋯ menu). Every story pins one frame size.
+ * SessionsSection and TasksSummarySection, and the Documents page's own document row (TreeDocumentRow
+ * in a flat TreeLevel, row ⋯ menu). Variant D: every applicable section is always present; an empty
+ * one is its header and an inline EmptyState (the Tasks page's pattern). Every story pins one frame.
  */
-
-export type EarlyArrangement =
-  /** A': the accepted contract: Now in the work column; Sessions, Documents in the context column. */
-  | 'contract'
-  /** B: one reading column at any width. */
-  | 'one-column'
-  /** C: Documents join the work column while there are no Tasks; Sessions stay in context. */
-  | 'docs-in-work';
 
 export type EarlySecondary =
   | 'none'
@@ -73,7 +71,6 @@ export interface OverviewEarlyMockProps {
   width: number;
   height?: number;
   scenario: EarlyScenario;
-  arrangement?: EarlyArrangement;
   secondary?: EarlySecondary;
 }
 
@@ -161,8 +158,8 @@ function Summary() {
 }
 
 /** "Step 2 of 7 · next: Design the solution" for an active work step. */
-function progressLine(scenario: EarlyScenario): string | undefined {
-  const index = scenario === 'requirements' ? 0 : scenario === 'not-started' ? -1 : 1;
+function progressLine(scenario: EarlyScenario): string {
+  const index = stepIndex(scenario);
   const next = nextStepTitle(scenario);
   if (index < 0) {
     return `${workflowSteps.length} steps`;
@@ -329,7 +326,6 @@ function Sessions({ scenario }: { scenario: EarlyScenario }) {
       <EmptyState
         variant="inline"
         title="No sessions yet"
-        description="An agent can work on this step with you in a Session."
         actions={
           <Button variant="secondary" size="sm" leadingIcon="chat">
             Start session
@@ -341,79 +337,108 @@ function Sessions({ scenario }: { scenario: EarlyScenario }) {
 }
 
 /* ------------------------------------------------------------------------------------------ */
-/* Overview composition                                                                         */
+/* Always-present work sections (variant D)                                                     */
 /* ------------------------------------------------------------------------------------------ */
 
-function OverviewBody({
-  scenario,
-  arrangement,
-  openId,
-}: {
-  scenario: EarlyScenario;
-  arrangement: EarlyArrangement;
-  openId?: string;
-}) {
+/** Requires attention with no items: its header and one inline empty line. */
+function AttentionEmpty() {
+  return (
+    <WorkspaceSection aria-labelledby="mock-attention-heading">
+      <WorkspaceSection.Header
+        id="mock-attention-heading"
+        headingTag="h2"
+        title="Requires attention"
+        icon="triangle-alert"
+      />
+      <EmptyState variant="inline" title="Nothing needs your attention right now" />
+    </WorkspaceSection>
+  );
+}
+
+/**
+ * Tasks: the production summary once Tasks exist; before that its header and the Tasks page's own
+ * empty state, naming the step that produces Tasks and its position (from the workflow).
+ */
+function Tasks({ scenario }: { scenario: EarlyScenario }) {
+  if (scenario === 'tasks-created') {
+    const context = {
+      specId: specSlug,
+      data: { taskOverview: firstTasksOverview },
+      actions: { openTasks: noop, tasksHref: () => '#tasks' },
+    } as unknown as SpecificationWorkSectionContext;
+
+    return <TasksSummarySection {...context} />;
+  }
+
+  return (
+    <WorkspaceSection aria-labelledby="mock-tasks-heading">
+      <WorkspaceSection.Header
+        id="mock-tasks-heading"
+        headingTag="h2"
+        title="Tasks"
+        icon="list-checks"
+      />
+      <EmptyState
+        variant="inline"
+        title="No tasks yet"
+        description={`Tasks appear when the workflow reaches ${producingStep.title} (step ${producingStep.position} of ${workflowSteps.length}).`}
+      />
+    </WorkspaceSection>
+  );
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* Overview composition: the accepted contract arrangement                                      */
+/* ------------------------------------------------------------------------------------------ */
+
+function OverviewBody({ scenario, openId }: { scenario: EarlyScenario; openId?: string }) {
   const { matches: wide, setElement } = useContainerMinWidth(TWO_COLUMN_MIN_WIDTH, {
     hysteresis: TWO_COLUMN_HYSTERESIS,
   });
-  const twoColumns = arrangement !== 'one-column' && wide;
 
   const block = (key: string, first: boolean, content: ReactNode) => (
     <div key={key} className={cn(first ? opening : following, 'min-w-0')}>
       {content}
     </div>
   );
-  const now = block('now', true, <Now scenario={scenario} />);
-  const sessions = (first: boolean) => block('sessions', first, <Sessions scenario={scenario} />);
-  const documents = (first: boolean) =>
-    block('documents', first, <Documents scenario={scenario} openId={openId} />);
-  const docs = block('docs', false, <DocsLink />);
+  const work = [
+    block('now', true, <Now scenario={scenario} />),
+    block('attention', false, <AttentionEmpty />),
+    block('tasks', false, <Tasks scenario={scenario} />),
+  ];
+  const context = (opensColumn: boolean) => [
+    block('sessions', opensColumn, <Sessions scenario={scenario} />),
+    block('documents', false, <Documents scenario={scenario} openId={openId} />),
+    block('docs', false, <DocsLink />),
+  ];
 
-  if (!twoColumns) {
-    return (
-      <div className="@container/work min-w-0" data-overview-columns={1}>
-        <div ref={setElement} aria-hidden="true" className="h-0" />
+  return (
+    <div className="@container/work min-w-0" data-overview-columns={wide ? 2 : 1}>
+      <div ref={setElement} aria-hidden="true" className="h-0" />
+      {wide ? (
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(22rem,30rem)] gap-x-12">
+          <div className="col-span-2 pb-3">
+            <Summary />
+          </div>
+          <div className="min-w-0">{work}</div>
+          <div className="min-w-0" data-overview-column="context">
+            {context(true)}
+          </div>
+        </div>
+      ) : (
         <div className="max-w-content-standard">
           <div className="pb-3">
             <Summary />
           </div>
-          {now}
-          {sessions(false)}
-          {documents(false)}
-          {docs}
+          {work}
+          {context(false)}
         </div>
-      </div>
-    );
-  }
-
-  const docsInWork = arrangement === 'docs-in-work';
-
-  return (
-    <div className="@container/work min-w-0" data-overview-columns={2}>
-      <div ref={setElement} aria-hidden="true" className="h-0" />
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(22rem,30rem)] gap-x-12">
-        <div className="col-span-2 pb-3">
-          <Summary />
-        </div>
-        <div className="min-w-0">
-          {now}
-          {docsInWork ? documents(false) : null}
-        </div>
-        <div className="min-w-0" data-overview-column="context">
-          {sessions(true)}
-          {docsInWork ? null : documents(false)}
-          {docs}
-        </div>
-      </div>
+      )}
     </div>
   );
 }
 
-function Workspace({
-  scenario,
-  arrangement = 'contract',
-  secondary = 'none',
-}: OverviewEarlyMockProps) {
+function Workspace({ scenario, secondary = 'none' }: OverviewEarlyMockProps) {
   const docOpen = secondary !== 'none';
 
   return (
@@ -445,11 +470,7 @@ function Workspace({
           <AppContent className="w-full">
             <AppWorkspaceBody scroll="area" contentClassName="py-6">
               <AppContentContainer align="start" size="full" className="grid gap-6">
-                <OverviewBody
-                  scenario={scenario}
-                  arrangement={arrangement}
-                  openId={docOpen ? 'overview' : undefined}
-                />
+                <OverviewBody scenario={scenario} openId={docOpen ? 'overview' : undefined} />
               </AppContentContainer>
             </AppWorkspaceBody>
           </AppContent>

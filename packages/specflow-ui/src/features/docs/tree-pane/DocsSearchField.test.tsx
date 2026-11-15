@@ -36,6 +36,10 @@ afterEach(() => {
 describe('DocsSearchField', () => {
   it('closes the software keyboard on Enter and keeps the text', () => {
     const { field, onChange } = renderField('coarse');
+    // The Enter that confirms an IME composition keeps the keyboard.
+    fireEvent.keyDown(field, { key: 'Enter', isComposing: true });
+    expect(document.activeElement).toBe(field);
+
     fireEvent.keyDown(field, { key: 'Enter' });
 
     expect(document.activeElement).not.toBe(field);

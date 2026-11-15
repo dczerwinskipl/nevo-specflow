@@ -85,11 +85,14 @@ export function DocsTreePane({
     // The pane's tooltips (the tree rows' paths) share one provider, as in the Documents explorer.
     <TooltipProvider delayDuration={300}>
       <AppContent className="h-full w-full">
-        {/* The pane's rows are focusable themselves: the scroller adds no Tab stop of its own. */}
+        {/*
+          The pane's rows are focusable themselves: the scroller adds no Tab stop of its own. The
+          content's inset is one variable, which the sticky search block reads to cover it.
+        */}
         <ScrollArea
           direction="vertical"
           className="min-h-0 flex-1"
-          contentClassName="grid content-start gap-3 p-2"
+          contentClassName="grid content-start gap-3 p-(--tree-pane-inset) [--tree-pane-inset:--spacing(2)]"
           tabIndex={-1}
         >
           {sessionBack && <div className="px-2">{sessionBack}</div>}

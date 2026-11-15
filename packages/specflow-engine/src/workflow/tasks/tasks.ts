@@ -610,10 +610,10 @@ export function tasksOpenAtCompletion(
 
 /**
  * How a finish's own input closes an open Task: `left-out` (a draft of the producing step that its
- * Task list leaves out is cancelled), `decision` (a `taskDecisions` entry cancels it) or `effect`
- * (a declared effect of the transition closes it).
+ * Task list leaves out is cancelled) or `decision` (a `taskDecisions` entry cancels it). No declared
+ * effect closes a Task (`approve-draft-tasks` only approves drafts).
  */
-export type FinishClosure = 'left-out' | 'decision' | 'effect';
+export type FinishClosure = 'left-out' | 'decision';
 
 export interface ClosableTask {
   readonly taskId: string;
@@ -624,10 +624,12 @@ export interface ClosableTask {
  * Whether a finish could take a transition that {@link tasksOpenAtCompletion} refuses now: the
  * finish judges the state after its own Task list, decisions and effects, so it completes when they
  * close every open Task. Plans the finish that closes the most (every owned draft left out, every
- * Task a decision may cancel cancelled, then the transition's effects) with the rules the finish
- * applies (`ownsDraft`, `taskDecisionRefusal`, `applyTaskEffects`, `tasksOpenAtCompletion`), and
- * returns how each open Task closes, in id order; `undefined` when a Task stays open even so (an
- * active attempt, a broken Task). Pure.
+ * Task a decision may cancel cancelled, then the transition's effects, in the finish's order) with
+ * the rules the finish applies (`ownsDraft`, `taskDecisionRefusal`, `applyTaskEffects`,
+ * `tasksOpenAtCompletion`), and returns how each open Task closes, in id order. `undefined` when a
+ * Task stays open even so: an active attempt, a broken Task, or a Task whose document change is
+ * pending (`documentChangePending`: closing it writes its folder, which the store refuses with
+ * `WORKFLOW_TASK_BUSY`). Pure.
  */
 export function finishClosingOpenTasks(input: {
   readonly subject: { readonly kind: 'specification' | 'task' };
@@ -639,16 +641,35 @@ export function finishClosingOpenTasks(input: {
   /** Only a Specification finish carries `taskDecisions`. */
   readonly decisions: boolean;
   readonly effects: readonly WorkflowEffect[];
+  /** The Tasks with a pending document change (D03): the finish cannot write their folder. */
+  readonly documentChangePending: ReadonlySet<string>;
 }): ClosableTask[] | undefined {
-  const open = tasksOpenAtCompletion(input.subject, input.target, input.tasks, input.broken);
   const closure = (task: ExecutionTask): FinishClosure | undefined =>
-    isTaskClosed(task)
+    isTaskClosed(task) || input.documentChangePending.has(task.taskId)
       ? undefined
       : input.producingStep !== undefined && ownsDraft({ step: input.producingStep }, task)
         ? 'left-out'
         : input.decisions && taskDecisionRefusal(task, 'cancelled') === undefined
           ? 'decision'
           : undefined;
+  const byId = new Map(input.tasks.map((task) => [task.taskId, task] as const));
+  const closable: ClosableTask[] = [];
+  for (const { taskId } of tasksOpenAtCompletion(
+    input.subject,
+    input.target,
+    input.tasks,
+    input.broken,
+  )) {
+    const task = byId.get(taskId);
+    const by = task && closure(task);
+    if (!by) {
+      return undefined;
+    }
+
+    closable.push({ taskId, by });
+  }
+
+  // The state the finish would judge, so the projection never claims more than the finish accepts.
   const planned = new Map(
     input.tasks.map((task) => [
       task.taskId,
@@ -659,20 +680,10 @@ export function finishClosingOpenTasks(input: {
     planned.set(task.taskId, task);
   }
 
-  if (
-    tasksOpenAtCompletion(input.subject, input.target, [...planned.values()], input.broken).length >
-    0
-  ) {
-    return undefined;
-  }
-
-  const byId = new Map(input.tasks.map((task) => [task.taskId, task] as const));
-
-  return open.map(({ taskId }) => {
-    const task = byId.get(taskId);
-
-    return { taskId, by: (task && closure(task)) ?? 'effect' };
-  });
+  return tasksOpenAtCompletion(input.subject, input.target, [...planned.values()], input.broken)
+    .length === 0
+    ? closable
+    : undefined;
 }
 
 /**

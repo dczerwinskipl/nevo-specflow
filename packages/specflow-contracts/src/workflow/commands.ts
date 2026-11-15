@@ -1,6 +1,9 @@
 import { Type, type Static } from 'typebox';
 
-import { TASK_STATUS_REASON_MAX_LENGTH } from '../documents/task-resource-files';
+import {
+  TASK_STATUS_REASON_MAX_LENGTH,
+  TASKS_PER_SPECIFICATION_MAX,
+} from '../documents/task-resource-files';
 import { SpecIdSchema, TaskIdSchema } from '../identifiers';
 import {
   ATTENTION_REASONS,
@@ -100,7 +103,9 @@ export const FinishWorkflowRequestSchema = Type.Object(
      * finish to `terminal completed` is judged after them, so it may cancel the open Tasks
      * (`resolvableByFinish` in the projection).
      */
-    taskDecisions: Type.Optional(Type.Array(TaskDecisionSchema, { maxItems: 200 })),
+    taskDecisions: Type.Optional(
+      Type.Array(TaskDecisionSchema, { maxItems: TASKS_PER_SPECIFICATION_MAX }),
+    ),
   },
   { additionalProperties: false },
 );

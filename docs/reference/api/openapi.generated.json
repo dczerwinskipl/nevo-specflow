@@ -5421,16 +5421,17 @@
                                         "enum": [
                                           "decision"
                                         ]
-                                      },
-                                      {
-                                        "type": "string",
-                                        "enum": [
-                                          "effect"
-                                        ]
                                       }
                                     ]
                                   }
                                 }
+                              },
+                              "maxItems": 1000
+                            },
+                            "documentChangePending": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/TaskId"
                               },
                               "maxItems": 1000
                             },

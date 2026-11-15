@@ -236,6 +236,12 @@ export interface WorkflowActions {
       readonly resolvableByFinish?: true;
       /** With `resolvableByFinish`: how the finish closes each open Task, in id order. */
       readonly closableTasks?: readonly ClosableTask[];
+      /**
+       * For `tasks-open`: the open Tasks, in id order, with a pending document change (D03). A
+       * finish cannot close them (it would write their folder: `WORKFLOW_TASK_BUSY`), so a
+       * transition that needs them closed is not `resolvableByFinish` until the change is saved.
+       */
+      readonly documentChangePending?: readonly string[];
       /** The exit gates that apply to it (`when`), with their status now; absent when none do. */
       readonly gates?: readonly GateStatus[];
     })[];
@@ -569,6 +575,8 @@ interface RunInput {
   readonly returnable: boolean;
   /** A Task with a pending document change (D03): a finish that writes its folder is refused. */
   readonly documentChangePending: boolean;
+  /** Whether a change of one of a Task's documents is pending (D03). */
+  readonly taskDocumentChangePending: (specId: string, taskId: string) => Promise<boolean>;
   readonly tasks: ExecutionTasks;
   readonly gates: GateReading;
 }
@@ -590,6 +598,29 @@ async function finishTransitions(
       )
     ).map((status) => [status.id, status] as const),
   );
+
+  // The open Tasks whose document change is pending (D03): a finish cannot close them, since that
+  // writes their folder. Asked once, only when a transition waits for open Tasks.
+  const anyOpen = describeTransitions(input.definition, step).some(
+    (transition) =>
+      tasksOpenAtCompletion(
+        input.gates.subject,
+        transition.target,
+        input.tasks.tasks,
+        input.tasks.broken,
+      ).length > 0,
+  );
+  const busy = new Set<string>();
+  if (anyOpen) {
+    for (const task of input.tasks.tasks) {
+      if (
+        !isTaskClosed(task) &&
+        (await input.taskDocumentChangePending(input.gates.subject.specId, task.taskId))
+      ) {
+        busy.add(task.taskId);
+      }
+    }
+  }
 
   return describeTransitions(input.definition, step).map((transition, index) => {
     const declared = step.transitions[index];
@@ -614,8 +645,10 @@ async function finishTransitions(
             ...(step.annotations.produces === 'tasks' ? { producingStep: step.id } : {}),
             decisions: input.gates.subject.kind === 'specification',
             effects: declared?.annotations.effects ?? [],
+            documentChangePending: busy,
           })
         : undefined;
+    const pendingOpen = open.filter((task) => busy.has(task.taskId)).map((task) => task.taskId);
     const unavailable =
       input.documentChangePending && declared?.annotations.escalate
         ? ('task-document-change' as const)
@@ -630,6 +663,7 @@ async function finishTransitions(
       ...(unavailable ? { unavailable } : {}),
       ...(open.length > 0 ? { openTasks: open } : {}),
       ...(closable ? { resolvableByFinish: true as const, closableTasks: closable } : {}),
+      ...(pendingOpen.length > 0 ? { documentChangePending: pendingOpen } : {}),
       ...(gates.length > 0 ? { gates } : {}),
     };
   });
@@ -872,8 +906,10 @@ async function specificationPosition(
       startBlockers: () => Promise.resolve([]),
       returnable: true,
       // A Specification finish writes Task folders only through its input (drafts, decisions,
-      // effects); the store refuses such a finish then, which no projection can tell beforehand.
+      // effects): the Tasks it would close are asked one by one (`taskDocumentChangePending`).
       documentChangePending: false,
+      taskDocumentChangePending: (specId, taskId) =>
+        dependencies.references.pendingDocumentChange(specId, taskId),
       tasks: executionTasks(catalogue, snapshot),
       gates,
     })),
@@ -1047,6 +1083,8 @@ export async function taskProjection(
       startBlockers: async () => [...readinessBlockers(), ...(await contextBlockers())],
       returnable: task.status === 'ready',
       documentChangePending: pending,
+      taskDocumentChangePending: (specId, taskId) =>
+        dependencies.references.pendingDocumentChange(specId, taskId),
       tasks,
       gates,
     })),

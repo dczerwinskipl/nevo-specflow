@@ -290,10 +290,9 @@ export type OpenTask = Static<typeof OpenTaskSchema>;
 
 /**
  * How a finish's own input closes an open Task: `left-out` (a draft of the producing step its Task
- * list leaves out), `decision` (a `taskDecisions` entry cancels it) or `effect` (a declared effect
- * of the transition). Mirrors the Engine's list.
+ * list leaves out) or `decision` (a `taskDecisions` entry cancels it). Mirrors the Engine's list.
  */
-export const FINISH_CLOSURES = ['left-out', 'decision', 'effect'] as const;
+export const FINISH_CLOSURES = ['left-out', 'decision'] as const;
 export const ClosableTaskSchema = Type.Object({
   taskId: TaskIdSchema,
   by: literals(FINISH_CLOSURES),
@@ -465,6 +464,11 @@ export const WorkflowActionsSchema = Type.Object({
             resolvableByFinish: Type.Optional(Type.Literal(true)),
             /** With `resolvableByFinish`: how the finish closes each open Task, in id order. */
             closableTasks: Type.Optional(array(ClosableTaskSchema)),
+            /**
+             * For `tasks-open`: the open Tasks with a pending document change, in id order. No
+             * finish closes them until the change is saved (`WORKFLOW_TASK_BUSY`).
+             */
+            documentChangePending: Type.Optional(array(TaskIdSchema)),
             /** The exit gates that apply to the transition; absent when none do. */
             gates: Type.Optional(array(GateStatusSchema)),
           }),

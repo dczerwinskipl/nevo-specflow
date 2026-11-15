@@ -2260,6 +2260,7 @@
       "untickToClose": "Untick {{tasks}} below to cancel them with this finish.",
       "cancelToClose": "Cancel {{tasks}} in Tasks first.",
       "tasksClosedByFinish": "Finishing cancels the drafts you unticked, so no task stays open and the specification completes.",
+      "tasksDocumentPending": "A document change of {{tasks}} is still being saved; this finish can close them once it is saved.",
       "feedbackRequired": "Feedback (required)",
       "feedbackOptional": "Feedback (optional)",
       "feedbackNeeded": "This result needs feedback for the next step.",

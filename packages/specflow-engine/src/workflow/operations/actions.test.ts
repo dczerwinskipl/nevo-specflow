@@ -729,6 +729,43 @@ const acceptedTransition = async (dependencies: Dependencies) =>
     (transition) => transition.id === 'accepted',
   );
 
+/**
+ * A breakdown that may also end the Specification (`nothing-to-do`, to `terminal completed`), at
+ * its second attempt by the owner, after its first drafted `api` and the review sent it back.
+ */
+async function breakdownThatMayEnd(): Promise<Dependencies> {
+  const edited = await seedCatalogueWith((text) =>
+    text.replace(
+      /( {6}- id: proposed\r?\n {8}to: \{ step: breakdown-review \}\r?\n {8}continuation: auto)(\r?\n)/u,
+      '      - id: proposed$2        result: proposed$2        to: { step: breakdown-review }$2        continuation: auto$2' +
+        '      - id: nothing-to-do$2        result: empty$2        to: { terminal: completed }$2',
+    ),
+  );
+  const dependencies = memoryDependencies(edited);
+  await runToBreakdown(dependencies);
+  await finishStep(dependencies, {
+    subject: specification,
+    step: 'breakdown',
+    attempt: 1,
+    input: { result: 'proposed', tasks: [TWO_TASKS[0]] },
+    actor: claude,
+  });
+  await work(
+    dependencies,
+    specification,
+    { result: 'fail', feedback: 'Not needed after all.' },
+    agent('codex', 'session-r', 'x'),
+  );
+  await startSpecification(dependencies, owner);
+
+  return dependencies;
+}
+
+const nothingToDo = async (dependencies: Dependencies) =>
+  (await project(dependencies, specification)).actions.finish?.transitions.find(
+    (transition) => transition.id === 'nothing-to-do',
+  );
+
 // Owner decision A (2026-11-15): a Specification completes only once no Task is open, in any
 // workflow (this one has no wait step). Abandon is the way to end it with open Tasks.
 describe('a Specification does not complete while its Tasks are open', () => {
@@ -837,36 +874,8 @@ describe('a Specification does not complete while its Tasks are open', () => {
   });
 
   it('a producing step whose only open Tasks are its own drafts completes by leaving them out', async () => {
-    // The breakdown may also end the Specification: there is nothing to implement.
-    const edited = await seedCatalogueWith((text) =>
-      text.replace(
-        /( {6}- id: proposed\r?\n {8}to: \{ step: breakdown-review \}\r?\n {8}continuation: auto)(\r?\n)/u,
-        '      - id: proposed$2        result: proposed$2        to: { step: breakdown-review }$2        continuation: auto$2' +
-          '      - id: nothing-to-do$2        result: empty$2        to: { terminal: completed }$2',
-      ),
-    );
-    const dependencies = memoryDependencies(edited);
-    await runToBreakdown(dependencies);
-    await finishStep(dependencies, {
-      subject: specification,
-      step: 'breakdown',
-      attempt: 1,
-      input: { result: 'proposed', tasks: [TWO_TASKS[0]] },
-      actor: claude,
-    });
-    await work(
-      dependencies,
-      specification,
-      { result: 'fail', feedback: 'Not needed after all.' },
-      agent('codex', 'session-r', 'x'),
-    );
-    await startSpecification(dependencies, owner);
-    const empty = async () =>
-      (await project(dependencies, specification)).actions.finish?.transitions.find(
-        (transition) => transition.id === 'nothing-to-do',
-      );
-
-    expect(await empty()).toMatchObject({
+    const dependencies = await breakdownThatMayEnd();
+    expect(await nothingToDo(dependencies)).toMatchObject({
       unavailable: 'tasks-open',
       openTasks: [{ taskId: 'api', cause: 'draft' }],
       resolvableByFinish: true,
@@ -887,6 +896,70 @@ describe('a Specification does not complete while its Tasks are open', () => {
       kind: 'terminal',
       outcome: 'completed',
     });
+  });
+
+  // Drift guard: the projection's `closableTasks` is exactly the input the real finish accepts.
+  it('completes with the finish input built from closableTasks alone', async () => {
+    const dependencies = await breakdownThatMayEnd();
+    await create(dependencies, 'notes');
+    const projected = (await project(dependencies, specification)).actions.finish;
+    const transition = projected?.transitions.find((entry) => entry.id === 'nothing-to-do');
+    expect(transition?.closableTasks).toEqual([
+      { taskId: 'api', by: 'left-out' },
+      { taskId: 'notes', by: 'decision' },
+    ]);
+
+    const closable = transition?.closableTasks ?? [];
+    const leftOut = new Set(
+      closable.filter((entry) => entry.by === 'left-out').map((entry) => entry.taskId),
+    );
+    await finishStep(dependencies, {
+      subject: specification,
+      step: 'breakdown',
+      attempt: 2,
+      input: {
+        ...(transition?.result !== undefined ? { result: transition.result } : {}),
+        tasks: (projected?.drafts ?? []).filter((draft) => !leftOut.has(draft.id)),
+        taskDecisions: closable
+          .filter((entry) => entry.by === 'decision')
+          .map((entry) => ({ taskId: entry.taskId, status: 'cancelled' as const })),
+      },
+      actor: owner,
+    });
+    expect((await project(dependencies, specification)).position).toEqual({
+      kind: 'terminal',
+      outcome: 'completed',
+    });
+  });
+
+  it('does not count a draft whose document change is pending as closable (D03)', async () => {
+    const dependencies = await breakdownThatMayEnd();
+    dependencies.references.pendingDocuments.add('api');
+    const transition = await nothingToDo(dependencies);
+    expect(transition).toMatchObject({
+      unavailable: 'tasks-open',
+      openTasks: [{ taskId: 'api', cause: 'draft' }],
+      documentChangePending: ['api'],
+    });
+    expect(transition).not.toHaveProperty('resolvableByFinish');
+    expect(transition).not.toHaveProperty('closableTasks');
+
+    // The guarded store (as in production) refuses the finish that would cancel it.
+    const guarded = {
+      ...dependencies,
+      store: guardTaskDocumentChanges(dependencies.store, (specId, taskId) =>
+        dependencies.references.pendingDocumentChange(specId, taskId),
+      ),
+    };
+    await expect(
+      finishStep(guarded, {
+        subject: specification,
+        step: 'breakdown',
+        attempt: 2,
+        input: { result: 'empty', tasks: [] },
+        actor: owner,
+      }),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_TASK_BUSY' });
   });
 
   it('plans the transition effects after the decisions, as the finish applies them', async () => {

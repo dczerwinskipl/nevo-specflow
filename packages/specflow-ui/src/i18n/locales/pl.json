@@ -2260,6 +2260,7 @@
       "untickToClose": "Odznacz poniżej {{tasks}}, aby anulować je tym zakończeniem.",
       "cancelToClose": "Najpierw anuluj {{tasks}} w Zadaniach.",
       "tasksClosedByFinish": "Zakończenie anuluje odznaczone szkice, więc żadne zadanie nie zostanie otwarte i specyfikacja się zakończy.",
+      "tasksDocumentPending": "Zmiana dokumentu zadania {{tasks}} jest jeszcze zapisywana; to zakończenie może je zamknąć, gdy zostanie zapisana.",
       "feedbackRequired": "Uwagi (wymagane)",
       "feedbackOptional": "Uwagi (opcjonalne)",
       "feedbackNeeded": "Ten wynik wymaga uwag dla następnego kroku.",

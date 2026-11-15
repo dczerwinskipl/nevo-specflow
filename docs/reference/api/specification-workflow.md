@@ -83,10 +83,11 @@ completed` is `unavailable: tasks-open` while any Task is open, with `openTasks`
 in id order (`cause`: `draft`, `on-hold`, `broken`, `dependency-unsatisfiable`, `active`, `waiting`
 or `ready`); see [Workflow kernel, Completion](../../architecture/workflow/workflow-kernel.md#completion-requires-closed-tasks).
 When the finish's own input can close every open Task (its Task list leaves out the step's own
-drafts, `taskDecisions` cancel the others, its effects), such a transition also carries
-`resolvableByFinish: true` and `closableTasks` `[{taskId, by: left-out|decision|effect}]` in id order:
+drafts, `taskDecisions` cancel the others), such a transition also carries
+`resolvableByFinish: true` and `closableTasks` `[{taskId, by: left-out|decision}]` in id order:
 a client lets the person submit it, names what has to close, and still handles `WORKFLOW_TASKS_OPEN`
-(409). Without it (an active attempt, a broken Task) no finish can take it now. A startable step (`next`) lists its
+(409). Without it (an active attempt, a broken Task, a pending Task document change) no finish can
+take it now; `documentChangePending` names the open Tasks whose document change is still pending. A startable step (`next`) lists its
 `entryGates`, and unsatisfied ones block the start (`StartBlocker` `gates-unsatisfied`). A Task's
 required context entry marked as a process artifact (`artifact: true`) that does not exist yet is the
 blocker `context-awaited` (expected, not a warning), apart from the stale references of

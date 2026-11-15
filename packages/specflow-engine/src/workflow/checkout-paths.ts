@@ -1,5 +1,5 @@
 import { readdir, realpath } from 'node:fs/promises';
-import { isAbsolute, join, posix, relative } from 'node:path';
+import { isAbsolute, join, posix, relative, sep } from 'node:path';
 
 import { isAbsent } from '../specs/document-rules/errno';
 import { WorkflowError } from './errors';
@@ -29,7 +29,8 @@ async function resolvesInside(rootReal: string, absolute: string): Promise<boole
 
   const rel = relative(rootReal, real);
 
-  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
+  // `..` or `../…` leaves the root; a root entry whose name starts with dots (`..env`) does not.
+  return rel === '' || (rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel));
 }
 
 /**

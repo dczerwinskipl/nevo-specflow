@@ -43,11 +43,18 @@ export function FinishTasksOpenNote({
 }) {
   const { t } = useTranslation();
   if (transition.resolvableByFinish !== true) {
+    const pending = transition.documentChangePending ?? [];
+
     return (
       <InlineNote tone="attention" data-finish-tasks-open="">
-        {t('workflowExecution.finish.tasksOpen', {
-          tasks: openTasksText(t, transition.openTasks ?? []),
-        })}
+        {[
+          t('workflowExecution.finish.tasksOpen', {
+            tasks: openTasksText(t, transition.openTasks ?? []),
+          }),
+          ...(pending.length > 0
+            ? [t('workflowExecution.finish.tasksDocumentPending', { tasks: pending.join(', ') })]
+            : []),
+        ].join(' ')}
       </InlineNote>
     );
   }

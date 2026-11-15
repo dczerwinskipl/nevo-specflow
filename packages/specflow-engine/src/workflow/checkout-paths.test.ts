@@ -15,6 +15,8 @@ beforeAll(async () => {
   await writeFile(join(root, 'packages', 'ui', 'src', 'app.ts'), '');
   outside = await realpath(await mkdtemp(join(tmpdir(), 'checkout-outside-')));
   await writeFile(join(outside, 'secret.ts'), '');
+  // A root entry whose name starts with two dots is inside the root, not its parent.
+  await writeFile(join(root, '..env'), '');
   const type = process.platform === 'win32' ? 'junction' : 'dir';
   await symlink(join(root, 'packages', 'ui'), join(root, 'inner'), type);
   await symlink(outside, join(root, 'escape'), type);
@@ -38,6 +40,7 @@ describe('checkoutPathExists', () => {
     ['a glob matching only folders', 'packages/*', true],
     ['a glob matching nothing', 'packages/**/*.css', false],
     ['a glob matching only inside node_modules', '**/index.js', false],
+    ['a root entry named with two leading dots', '..env', true],
     ['an internal symlink', 'inner', true],
     ['a path through an internal symlink', 'inner/src/app.ts', true],
     ['an external symlink', 'escape', false],

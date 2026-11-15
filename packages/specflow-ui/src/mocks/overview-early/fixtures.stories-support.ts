@@ -16,7 +16,43 @@ export type EarlyScenario =
   /** Write the Specification, by hand: no Session yet, Sessions are offered. */
   | 'write-spec'
   /** Write the Specification with an agent Session working on it. */
-  | 'write-spec-session';
+  | 'write-spec-session'
+  /** Break the solution down: the first two draft Tasks were just created. */
+  | 'tasks-created';
+
+/** The active step's index in `workflowSteps` (-1 before the workflow starts). */
+export function stepIndex(scenario: EarlyScenario): number {
+  return {
+    'not-started': -1,
+    requirements: 0,
+    'write-spec': 1,
+    'write-spec-session': 1,
+    'tasks-created': 3,
+  }[scenario];
+}
+
+/**
+ * The step whose `produces: tasks` creates the Tasks (`breakdown`), by title and 1-based position:
+ * what the empty Tasks section names. A projection read would deliver it; the mock reads the outline.
+ */
+export const producingStep = { title: 'Break the solution down', position: 4 } as const;
+
+/** The Runtime's Tasks grouping right after the breakdown proposed its first drafts. */
+export const firstTasksOverview = {
+  rows: [
+    {
+      groupId: 'needs-approval',
+      name: 'Needs approval',
+      count: 2,
+      tasks: [
+        { id: 'cutoff-calibration', title: 'Calibrate and document the cutoff' },
+        { id: 'fusion-cutoff', title: 'Drop vector-only hits below minSimilarity' },
+      ],
+      more: 0,
+    },
+  ],
+  compact: [],
+};
 
 export const specTitle = 'Docs search: relevance cutoff for vector-only results';
 export const specSlug = 'docs-search-relevance-cutoff';
@@ -80,7 +116,7 @@ const guidance = {
 };
 
 export function documentsFor(scenario: EarlyScenario): readonly MockDocument[] {
-  const writing = scenario === 'write-spec' || scenario === 'write-spec-session';
+  const writing = scenario !== 'not-started' && scenario !== 'requirements';
   const doc = (
     id: keyof typeof guidance,
     title: string,
@@ -161,40 +197,30 @@ export function projectionFor(scenario: EarlyScenario): WorkflowActionProjection
     };
   }
 
-  const requirements = scenario === 'requirements';
+  const active = activeSteps[scenario];
 
   return {
     subject,
     workflow,
     position: {
       kind: 'active',
-      step: requirements
-        ? {
-            id: 'requirements',
-            title: 'Gather requirements',
-            kind: 'work',
-            purpose:
-              'Agree on the goal, scope, constraints and acceptance with the owner in conversation.',
-            executors: ['agent', 'human'],
-          }
-        : {
-            id: 'specification',
-            title: 'Write the Specification',
-            kind: 'work',
-            purpose: 'Write the Specification documents from the agreed requirements.',
-            executors: ['agent', 'human'],
-          },
-      attempt: { number: 1, startedAt: minutesAgo(requirements ? 12 : 31), actor: owner },
+      step: {
+        id: active.id,
+        title: active.title,
+        kind: 'work',
+        purpose: active.purpose,
+        executors: ['agent', 'human'],
+      },
+      attempt: { number: 1, startedAt: minutesAgo(active.since), actor: owner },
     },
     actions: {
       finish: {
-        step: requirements ? 'requirements' : 'specification',
+        step: active.id,
         attempt: 1,
         transitions: [
           {
-            id: requirements ? 'agreed' : 'written',
-            ...(requirements ? { label: 'Requirements agreed' } : {}),
-            target: { kind: 'step', step: requirements ? 'specification' : 'solution' },
+            id: active.transition,
+            target: { kind: 'step', step: active.next.id },
             feedback: 'optional',
           },
         ],
@@ -204,13 +230,46 @@ export function projectionFor(scenario: EarlyScenario): WorkflowActionProjection
   };
 }
 
+/** The active work step of each started scenario (`specification-standard` definitions). */
+const activeSteps = {
+  requirements: {
+    id: 'requirements',
+    title: 'Gather requirements',
+    purpose: 'Agree on the goal, scope, constraints and acceptance with the owner in conversation.',
+    since: 12,
+    transition: 'agreed',
+    next: { id: 'specification', title: 'Write the Specification' },
+  },
+  'write-spec': {
+    id: 'specification',
+    title: 'Write the Specification',
+    purpose: 'Write the Specification documents from the agreed requirements.',
+    since: 31,
+    transition: 'written',
+    next: { id: 'solution', title: 'Design the solution' },
+  },
+  'write-spec-session': {
+    id: 'specification',
+    title: 'Write the Specification',
+    purpose: 'Write the Specification documents from the agreed requirements.',
+    since: 31,
+    transition: 'written',
+    next: { id: 'solution', title: 'Design the solution' },
+  },
+  'tasks-created': {
+    id: 'breakdown',
+    title: 'Break the solution down',
+    purpose:
+      'Draft the Tasks, each with its task type, dependencies and verification; the finish input lists every draft Task.',
+    since: 8,
+    transition: 'proposed',
+    next: { id: 'breakdown-review', title: 'Review the breakdown' },
+  },
+} as const;
+
 /** What finishing the active step leads to (the projection's transition target, by title). */
 export function nextStepTitle(scenario: EarlyScenario): string | undefined {
-  if (scenario === 'requirements') {
-    return 'Write the Specification';
-  }
-
-  return scenario === 'not-started' ? undefined : 'Design the solution';
+  return scenario === 'not-started' ? undefined : activeSteps[scenario].next.title;
 }
 
 export function sessionsFor(scenario: EarlyScenario): readonly SessionSummary[] {
@@ -230,14 +289,17 @@ export function sessionsFor(scenario: EarlyScenario): readonly SessionSummary[] 
     ];
   }
 
-  if (scenario === 'write-spec-session') {
+  // The Session from step 2 stays with the Specification after the breakdown created Tasks.
+  if (scenario === 'write-spec-session' || scenario === 'tasks-created') {
+    const later = scenario === 'tasks-created';
+
     return [
       {
         id: 'spec',
         title: 'Write the cutoff Specification documents',
-        navigationStatus: 'active',
+        navigationStatus: later ? 'quiet' : 'active',
         taskCount: 0,
-        updatedAt: minutesAgo(1),
+        updatedAt: minutesAgo(later ? 26 : 1),
         providerId: 'claude',
         providerTitle: 'Claude',
         modelId: 'claude-sonnet-5-5',

@@ -341,8 +341,10 @@ have two adapters. Production fixture-based adapters remain forbidden.
   Documents explorer and the documentation reader both render through; `document-reading/`: the
   reading columns, heading navigation, Contents column, sheet and button and Properties of a
   rendered document that the Documents preview and the documentation reader both render through;
-  `context-switcher/`: the trigger, options and listbox keys of the Specification switcher and the
-  workspace picker; `clipboard/`: `copyText`, the one clipboard write, which reports whether it
+  `context-switcher/`: the trigger, options, status and listbox keys of the Specification switcher
+  and the workspace picker; `text-measure/`: `textMeasurer`, text width in an element's rendered
+  font on a canvas, which the context switcher's name cut and the documentation reader's result
+  path both measure with; `clipboard/`: `copyText`, the one clipboard write, which reports whether it
   happened). It imports no
   feature and no composition root. A purely presentational piece used by several features lives
   here instead of in the feature that happened to create it; features do not re-export it.

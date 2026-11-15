@@ -80,7 +80,7 @@ function semanticSearch() {
       store,
       writes: admitted(),
       providers: { query: provider, documents: provider },
-      documentsAbortedBy: () => provider,
+      providersAbortedBy: () => ({ query: provider, documents: provider }),
     },
   };
 
@@ -234,7 +234,7 @@ describe('searchDocumentation', () => {
         store,
         writes: admitted(),
         providers: { query: provider, documents: provider },
-        documentsAbortedBy: () => provider,
+        providersAbortedBy: () => ({ query: provider, documents: provider }),
       },
     };
 
@@ -268,7 +268,7 @@ describe('searchDocumentation', () => {
         store,
         writes: admitted(),
         providers: { query: after, documents: after },
-        documentsAbortedBy: () => after,
+        providersAbortedBy: () => ({ query: after, documents: after }),
         catchUp: {
           running: () => Promise.resolve(undefined),
           start: () => {
@@ -515,7 +515,7 @@ describe('answer budget', () => {
     const provider = createFakeEmbeddingProvider();
     let reached!: () => void;
     const embedding = new Promise<void>((resolve) => (reached = resolve));
-    const documentsAbortedBy = (signal: AbortSignal): EmbeddingProvider => ({
+    const documents = (signal: AbortSignal): EmbeddingProvider => ({
       ...provider,
       probe: () => provider.probe(),
       embed: () => {
@@ -537,7 +537,7 @@ describe('answer budget', () => {
         store: createInMemoryVectorStore(),
         writes: admitted(),
         providers: { query: provider, documents: provider },
-        documentsAbortedBy,
+        providersAbortedBy: (signal) => ({ query: provider, documents: documents(signal) }),
         catchUp: {
           running: () => Promise.resolve(undefined),
           start: () => {

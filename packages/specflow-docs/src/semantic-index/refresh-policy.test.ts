@@ -24,7 +24,7 @@ const vectors = (activity: DocsIndexActivity): IndexVectors => {
     store: createInMemoryVectorStore(),
     writes: createIndexWrites(() => Promise.resolve(undefined)),
     providers: { query: provider, documents: provider },
-    documentsAbortedBy: () => provider,
+    providersAbortedBy: () => ({ query: provider, documents: provider }),
     activity: () => Promise.resolve(activity),
   };
 };
@@ -120,6 +120,31 @@ function gatedDocuments(inner: FakeEmbeddingProvider) {
   return { documentsAbortedBy, open, waiting };
 }
 
+/**
+ * A query provider whose probe answers only once its signal aborts (a hanging endpoint); `probing`
+ * is called when the probe starts.
+ */
+function hangingProbe(
+  inner: FakeEmbeddingProvider,
+  signal: AbortSignal,
+  probing: () => void,
+): EmbeddingProvider {
+  return {
+    ...inner,
+    embed: (texts, purpose) => inner.embed(texts, purpose),
+    probe: () =>
+      new Promise((resolve) => {
+        probing();
+        signal.addEventListener(
+          'abort',
+          () =>
+            resolve({ ok: false, latencyMs: 0, failure: { code: 'timeout', message: 'aborted' } }),
+          { once: true },
+        );
+      }),
+  };
+}
+
 const chunks: DocsChunk[] = [1, 2, 3].map((n) => ({
   id: `guide#s${String(n)}`,
   unitId: 'guide',
@@ -143,7 +168,10 @@ describe('read-time refresh with a deadline', () => {
       store,
       writes: createIndexWrites(() => Promise.resolve(undefined)),
       providers: { query: provider, documents: provider },
-      documentsAbortedBy: gated.documentsAbortedBy,
+      providersAbortedBy: (signal) => ({
+        query: provider,
+        documents: gated.documentsAbortedBy(signal),
+      }),
       catchUp: {
         running: () => Promise.resolve(undefined),
         start: () => {
@@ -205,6 +233,31 @@ describe('read-time refresh with a deadline', () => {
     ).toMatchObject({
       status: 'current',
     });
+  });
+
+  it('aborts a probe still running at the deadline and answers index-building, not endpoint-unreachable', async () => {
+    const { provider, indexVectors, starts, activityReads } = setup();
+    const deadline = new AbortController();
+    let started!: () => void;
+    const probeStarted = new Promise<void>((resolve) => (started = resolve));
+    const probing = {
+      ...indexVectors,
+      providersAbortedBy: (signal: AbortSignal) => ({
+        query: hangingProbe(provider, signal, started),
+        documents: provider,
+      }),
+    };
+
+    const pending = refreshForRead(probing, chunks, true, 'index', deadline.signal);
+    await probeStarted;
+    deadline.abort();
+    const reason = await pending;
+
+    expect(reason?.code).toBe('index-building');
+    expect(reason?.message).toContain('time budget');
+    expect(starts()).toBe(1);
+    expect(activityReads()).toBe(0);
+    expect(provider.calls).toEqual([]);
   });
 
   it('names the index command when no catch-up is available', async () => {

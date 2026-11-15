@@ -1,12 +1,7 @@
 // The read-time refresh (ADR 0020): how much of the index a search brings up to date before it
 // answers. `semantic status` reports `index-building` with the same bound.
 
-import {
-  refreshIndex,
-  type EmbeddingFailure,
-  type EmbeddingProvider,
-  type VectorStore,
-} from '@nevo/ai-semantic-search';
+import { refreshIndex, type EmbeddingFailure, type VectorStore } from '@nevo/ai-semantic-search';
 import type { DocsIndexActivity, DocsSearchReason } from '@nevo/specflow-contracts/docs';
 
 import type { EmbeddingProviders } from '../embeddings/embedding-providers';
@@ -42,11 +37,11 @@ export interface IndexVectors {
   readonly writes: IndexWrites;
   readonly providers: EmbeddingProviders;
   /**
-   * The document provider of `providers` with its requests also aborted by `signal`: the read-time
-   * refresh of a search with an answer budget embeds through it, so its deadline stops the requests
-   * instead of leaving them to run (`EmbeddingProviders` from `createEmbeddingProviders`).
+   * `providers` with their requests also aborted by `signal`: the read-time refresh of a search with
+   * an answer budget probes and embeds through them, so its deadline stops the requests instead of
+   * leaving them to run (`createEmbeddingProviders`).
    */
-  readonly documentsAbortedBy: (signal: AbortSignal) => EmbeddingProvider;
+  readonly providersAbortedBy: (signal: AbortSignal) => EmbeddingProviders;
   /**
    * Runs a full refresh in the background for a gap above `READ_REFRESH_MAX_CHUNKS`. Absent: the
    * `index-building` reason asks for `semantic index` instead.
@@ -87,12 +82,13 @@ export async function endpointFailureReason(
  * gap with `refresh` on has the catch-up run (when the host supplies one): a refresh that already
  * runs is only described, otherwise one is started after the probe succeeds.
  *
- * With a `deadline` (a search's answer budget, `DocsSearchRequest.answerBudgetMs`), the small gap is
- * embedded only until it aborts: the document requests are aborted through it, the refresh is awaited
- * until it has settled (it releases the writer; a bounded refresh writes its one slice only after
- * embedding it, so an aborted one has written nothing) and the gap is handed to the catch-up without
- * another probe, answering `index-building`. The abort is recognised by `deadline.aborted`, never by
- * the failure, so it is never reported as `endpoint-unreachable`.
+ * With a `deadline` (a search's answer budget, `DocsSearchRequest.answerBudgetMs`), the probe and
+ * the small gap's embedding run only until it aborts: their requests are aborted through it, the
+ * refresh is awaited until it has settled (it releases the writer; a bounded refresh writes its one
+ * slice only after embedding it, so an aborted one has written nothing) and the gap is handed to the
+ * catch-up without another probe, answering `index-building`. A probe the deadline cut is not
+ * proof of an unreachable endpoint; the catch-up's own refresh reports one. The abort is recognised
+ * by `deadline.aborted`, never by the failure, so it is never reported as `endpoint-unreachable`.
  */
 export async function refreshForRead(
   vectors: IndexVectors,
@@ -126,13 +122,15 @@ export async function refreshForRead(
     return largeGapReason(vectors, missing, indexCommand);
   }
 
-  const probe = await providers.query.probe();
-  if (!probe.ok) {
-    return endpointFailureReason(vectors, probe.failure);
-  }
-
+  // With a deadline, the probe and the refresh go through providers it aborts.
+  const bounded = deadline === undefined ? providers : vectors.providersAbortedBy(deadline);
+  const probe = await bounded.query.probe();
   if (deadline?.aborted) {
     return deadlineGapReason(vectors, missing, indexCommand);
+  }
+
+  if (!probe.ok) {
+    return endpointFailureReason(vectors, probe.failure);
   }
 
   // The bound holds under the lock too: a re-probe that observes another dimension, or a manifest
@@ -140,7 +138,7 @@ export async function refreshForRead(
   // Awaited also once the deadline has aborted it, so its writer is closed before the answer.
   const outcome = await refreshIndex({
     chunks,
-    provider: deadline === undefined ? providers.documents : vectors.documentsAbortedBy(deadline),
+    provider: bounded.documents,
     store,
     maxEmbed: READ_REFRESH_MAX_CHUNKS,
   });
@@ -202,7 +200,7 @@ async function largeGapReason(
 
 /**
  * A small gap the read-time refresh did not embed before its deadline: caught up like a large gap,
- * but without a probe, since the endpoint has just answered one.
+ * but without a probe, since the search has just probed (and another would exceed the budget).
  */
 async function deadlineGapReason(
   vectors: IndexVectors,

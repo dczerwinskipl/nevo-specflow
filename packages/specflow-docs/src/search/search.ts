@@ -104,7 +104,7 @@ export function openDocsSearch(options: OpenDocsSearchOptions): DocsSearch {
       store: index.store,
       writes: index.writes,
       providers: created.providers,
-      documentsAbortedBy: created.documentsAbortedBy,
+      providersAbortedBy: created.providersAbortedBy,
       ...(options.catchUp ? { catchUp: options.catchUp } : {}),
       ...(index.directory === undefined
         ? {}
@@ -128,7 +128,7 @@ export interface DocsSearchRequest {
    */
   readonly refresh: boolean;
   /**
-   * Milliseconds the search may take to answer once it starts, more than `QUERY_TIMEOUT_MS`
+   * Milliseconds the search may take to answer once the corpus is loaded, more than `QUERY_TIMEOUT_MS`
    * (`embeddings/embedding-providers`), for a host whose caller waits a bounded time (the Runtime:
    * `DOCS_SEARCH_ANSWER_BUDGET_MS`). The read-time refresh must end `QUERY_TIMEOUT_MS` before it,
    * so the query embedding fits as well; a refresh still embedding then is aborted, the gap goes to
@@ -158,12 +158,12 @@ export async function searchDocumentation(
   search: DocsSearch,
   request: DocsSearchRequest,
 ): Promise<DocsSearchResult> {
-  return withRefreshDeadline(request, async (deadline) => {
-    const loaded = await search.chunks.load();
-    const vectors = await vectorsFor(search.vectors, loaded.chunks, request, deadline);
+  const loaded = await search.chunks.load();
+  const vectors = await withRefreshDeadline(request, (deadline) =>
+    vectorsFor(search.vectors, loaded.chunks, request, deadline),
+  );
 
-    return rank(search, request, loaded, vectors);
-  });
+  return rank(search, request, loaded, vectors);
 }
 
 /** A search result plus how many proposals the same search would have added. */
@@ -185,11 +185,10 @@ export async function searchDocumentationWithLeftOut(
   search: DocsSearch,
   request: DocsSearchRequest,
 ): Promise<DocsSearchWithLeftOut> {
-  const { loaded, prepared } = await withRefreshDeadline(request, async (deadline) => {
-    const loaded = await search.chunks.load();
-
-    return { loaded, prepared: await vectorsFor(search.vectors, loaded.chunks, request, deadline) };
-  });
+  const loaded = await search.chunks.load();
+  const prepared = await withRefreshDeadline(request, (deadline) =>
+    vectorsFor(search.vectors, loaded.chunks, request, deadline),
+  );
   const vectors = 'reason' in prepared ? prepared : withQueryEmbeddedOnce(prepared);
   const result = await rank(search, request, loaded, vectors);
   if (request.includeProposals) {

@@ -2,11 +2,7 @@ import { mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import {
-  DEFAULT_EMBEDDING_TIMEOUT_MS,
-  PROBE_TEXT,
-  inspectFileStoreWriter,
-} from '@nevo/ai-semantic-search';
+import { PROBE_TEXT, inspectFileStoreWriter } from '@nevo/ai-semantic-search';
 import { createFakeEmbeddingProvider } from '@nevo/ai-semantic-search/testing';
 import { seedIndexIfMissing, type CreateEmbeddingProvider } from '@nevo/specflow-docs';
 import type { FastifyBaseLogger } from 'fastify';
@@ -20,11 +16,26 @@ import {
   type WorkspaceResolution,
 } from './workspace-corpora';
 
+// The signals of the background refreshes (`buildDocsIndex`), which tell their providers apart from
+// a search's, whose read-time refresh carries the search's deadline signal.
+const backgroundSignals = vi.hoisted(() => new WeakSet<AbortSignal>());
+
 // The seed copy itself is specflow-docs' (seed.test.ts); here only who asks for it matters.
-vi.mock('@nevo/specflow-docs', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@nevo/specflow-docs')>()),
-  seedIndexIfMissing: vi.fn(() => Promise.resolve({ status: 'not-seeded', reason: 'no-source' })),
-}));
+vi.mock('@nevo/specflow-docs', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@nevo/specflow-docs')>();
+
+  return {
+    ...original,
+    seedIndexIfMissing: vi.fn(() => Promise.resolve({ status: 'not-seeded', reason: 'no-source' })),
+    buildDocsIndex: ((index, configuration, environment, ...rest) => {
+      if (environment.signal !== undefined) {
+        backgroundSignals.add(environment.signal);
+      }
+
+      return original.buildDocsIndex(index, configuration, environment, ...rest);
+    }) satisfies typeof original.buildDocsIndex,
+  };
+});
 
 const TRUSTED = 'http://trusted.test/v1';
 const INDEX = ['.nevo', 'local', 'cache', 'docs-index'];
@@ -72,18 +83,10 @@ function harness(workspaces: Map<string, WorkspaceResolution>, home: string) {
   const searchEmbeds: string[] = [];
   const gate = deferred();
   const embedding = deferred();
-  // A background refresh creates its query provider (the shorter timeout), then its document
-  // provider, with the refresh's signal. A search's providers have none, except the document
-  // provider of its read-time refresh, which carries the search's deadline.
-  const background = new WeakSet<AbortSignal>();
   const createProvider: CreateEmbeddingProvider = (settings, { signal }) => {
     baseUrls.push(settings.baseUrl);
     const provider = createFakeEmbeddingProvider();
-    if (signal !== undefined && (settings.timeoutMs ?? 0) < DEFAULT_EMBEDDING_TIMEOUT_MS) {
-      background.add(signal);
-    }
-
-    if (signal === undefined || !background.has(signal)) {
+    if (signal === undefined || !backgroundSignals.has(signal)) {
       // A search's own provider: the query and the read-time refresh.
       return {
         ...provider,

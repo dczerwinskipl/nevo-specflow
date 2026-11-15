@@ -192,23 +192,30 @@ run in that checkout.
   `ai.embeddings` from a workspace; a checkout can only turn semantic search off for itself.
 - **Read-time refresh:** every search re-embeds the changed sections before answering, at most 16.
   The HTTP search always refreshes (the CLI's `--no-refresh` has no HTTP counterpart).
-- **Answer budget:** a search answers within `DOCS_SEARCH_ANSWER_BUDGET_MS` (7000 ms,
-  `@nevo/specflow-contracts/docs`) once it runs on the loaded corpus. The read-time refresh (its
-  endpoint probe, at most 3000 ms, and the embedding) must end 3000 ms before that, 4000 ms after
-  the start, so the query embedding (at most 3000 ms) still fits. A refresh still embedding then has
-  its document requests aborted. The search waits for it to release the index; it has written
-  nothing, since its sections are stored in one write after they are all embedded. It then answers
-  `lexical` with `index-building` (`The index lacks vectors for <n> changed chunks, which this
-search could not embed within its time budget; the Runtime started updating it in the
-background.`) and hands the gap to the background refresh as the catch-up below does, without
-  probing the endpoint again. The abort is never reported as `endpoint-unreachable`. A refresh that has already embedded its sections at the deadline finishes its one write, and the search ranks hybrid. An endpoint
-  that cannot embed 16 sections in that time (a slow CPU model) therefore always leaves them to the
-  background refresh. Not bounded by the budget, but short: loading the corpus (in memory,
-  re-reading only changed files), the write admission's `git check-ignore` before an index write,
-  reading the index activity, and starting the background refresh, which the search does not wait
-  for. The reader waits 12000 ms for a search (`docsSearchTimeoutMs`: the budget plus 5000 ms for
-  those steps and the transport) instead of the HTTP client's 10000 ms default, so a slow answer is
-  not shown as unavailable. The CLI sets no budget.
+- **Answer budget:** once the corpus is loaded, a search answers within
+  `DOCS_SEARCH_ANSWER_BUDGET_MS` (7000 ms, `@nevo/specflow-contracts/docs`).
+  - The read-time refresh (its endpoint probe and the embedding) must end 4000 ms after the start,
+    so the query embedding (at most 3000 ms) still fits.
+  - At that deadline, a probe or embedding still running has its requests aborted. The search
+    waits for the refresh to release the index. The refresh has written nothing, because it stores
+    its sections in one write after they are all embedded.
+  - The search then answers `lexical` with `index-building` and hands the gap to the background
+    refresh, as the catch-up below does, without probing again. Its message:
+
+    ```text
+    The index lacks vectors for <n> changed chunks, which this search could not embed within its time budget; the Runtime started updating it in the background.
+    ```
+
+  - The abort is never reported as `endpoint-unreachable`.
+  - A refresh that has embedded its sections by the deadline finishes its one write, and the
+    search ranks hybrid.
+  - An endpoint that cannot embed 16 sections in time (a slow CPU model) always leaves them to the
+    background refresh.
+  - Not bounded by the budget, but short: the write admission's `git check-ignore` before an index
+    write, reading the index activity, and starting the background refresh (not waited for).
+  - The reader waits 12000 ms for a search (`docsSearchTimeoutMs`: the budget plus 5000 ms for the
+    corpus load, those steps and the transport), instead of the HTTP client's 10000 ms default.
+  - The CLI sets no budget.
 - **Catch-up:** a larger gap answers `lexical` with `index-building` at once and, after a
   successful endpoint probe, starts the Runtime's background refresh of the whole index unless it
   already runs (`the Runtime started updating it in the background`). Another process

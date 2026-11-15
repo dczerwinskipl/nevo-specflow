@@ -1,6 +1,10 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import type { ExecutionCatalogue } from '../definitions/catalogue';
+import { createDefaultDefinitionRegistry } from '../../definitions/shipped-registry';
+import { loadDefinitions } from '../../specs/definitions/loader';
+import { MemoryDefinitionSource } from '../../specs/definitions/test-support';
+import { closeBlockers } from '../close/blockers';
+import { resolveExecutionCatalogue, type ExecutionCatalogue } from '../definitions/catalogue';
 import { inspectActions, type ActionDependencies, type ActionProjection } from './actions';
 import {
   SPEC,
@@ -8,6 +12,7 @@ import {
   memoryDependencies,
   owner,
   runToBreakdown,
+  seedDefinitionFiles,
   seedExecutionCatalogue,
   TWO_TASKS,
   specification,
@@ -20,7 +25,9 @@ import {
 import { guardTaskDocumentChanges } from '../state/task-document-guard';
 import { finishStep } from './finish';
 import { startTaskExecution } from './start';
-import { createTask, type CreateTaskInput } from './task-resource';
+import { abandonSpecification } from './abandon';
+import { readSpecificationExitState } from './specification-exit';
+import { createTask, editTask, removeTask, type CreateTaskInput } from './task-resource';
 import { setTaskStatus } from './task-status';
 
 let catalogue: ExecutionCatalogue;
@@ -582,5 +589,130 @@ describe('Task positions', () => {
     await expect(project(memoryDependencies(catalogue), task('nope'))).rejects.toMatchObject({
       code: 'WORKFLOW_SUBJECT_NOT_FOUND',
     });
+  });
+});
+
+/** The seed catalogue with the Specification workflow edited; the edit must change it. */
+async function seedCatalogueWith(edit: (workflow: string) => string): Promise<ExecutionCatalogue> {
+  const files = await seedDefinitionFiles();
+  const path = 'workflow/specification-standard.yaml';
+  const edited = edit(files[path] ?? '');
+  if (edited === files[path]) {
+    throw new Error('The edit did not change the seed workflow.');
+  }
+
+  files[path] = edited;
+
+  return resolveExecutionCatalogue(
+    await loadDefinitions(new MemoryDefinitionSource(files), createDefaultDefinitionRegistry()),
+  );
+}
+
+/** A Task command refused because the Specification ended, with nothing written. */
+async function refusedAsEnded(dependencies: Dependencies, operation: Promise<unknown>) {
+  const applied = dependencies.store.applied.length;
+  await expect(operation).rejects.toMatchObject({ code: 'WORKFLOW_SPECIFICATION_ENDED' });
+  expect(dependencies.store.applied).toHaveLength(applied);
+}
+
+/**
+ * Once the Specification ended, the projection offers no Task creation, edit or removal, and the
+ * commands refuse them. Returns the Task's projection for the status checks of each case.
+ */
+async function expectEndedAgreement(dependencies: Dependencies, taskId: string) {
+  const level = await project(dependencies, specification);
+  expect(level.specification?.createTask).toEqual(no('specification-ended'));
+  await refusedAsEnded(dependencies, create(dependencies, 'late'));
+
+  const projection = await project(dependencies, task(taskId));
+  expect(projection.task).toMatchObject({
+    editDetails: no('specification-ended'),
+    editContext: no('specification-ended'),
+    editDependencies: no('specification-ended'),
+    remove: no('specification-ended'),
+  });
+  const revision = projection.task?.revision ?? '';
+  await refusedAsEnded(
+    dependencies,
+    editTask(dependencies, {
+      specId: SPEC,
+      taskId,
+      expectedRevision: revision,
+      title: 'Edited',
+      actor: owner,
+    }),
+  );
+  await refusedAsEnded(
+    dependencies,
+    removeTask(dependencies, { specId: SPEC, taskId, expectedRevision: revision, actor: owner }),
+  );
+
+  return projection;
+}
+
+describe('the projection and the Task commands agree once the Specification ended', () => {
+  it('completed: no Task is created, edited or removed; a finished Task takes no decision', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    await specificationWithTasks(dependencies);
+    for (const id of ['api', 'screen']) {
+      await work(dependencies, task(id));
+      await work(dependencies, task(id), { result: 'pass' });
+    }
+
+    await work(dependencies, specification, {}, owner);
+    expect((await project(dependencies, specification)).position).toEqual({
+      kind: 'terminal',
+      outcome: 'completed',
+    });
+
+    const projection = await expectEndedAgreement(dependencies, 'api');
+    expect(projection.task).toMatchObject({ hold: no('ended'), cancel: no('ended') });
+    await expect(decide(dependencies, 'api', 'on-hold')).rejects.toBeDefined();
+  });
+
+  it('abandoned: no Task is created, edited or removed; a cancelled Task takes no decision', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    await create(dependencies, 'api');
+    await abandonSpecification(dependencies, { specId: SPEC, reason: 'Superseded.', actor: owner });
+
+    const projection = await expectEndedAgreement(dependencies, 'api');
+    expect(projection.task).toMatchObject({ approve: no('status'), cancel: no('cancelled') });
+    await expect(decide(dependencies, 'api', 'ready')).rejects.toBeDefined();
+  });
+});
+
+// Characterization, not a decision: whether a Specification may complete while its Tasks are
+// unfinished is an open owner decision (PR #137 review, part C). This records today's behaviour.
+describe('a Specification completed by a workflow that does not wait for its Tasks (current behaviour)', () => {
+  it('keeps Close blocked by the unfinished Tasks, which can still be decided and run', async () => {
+    const dependencies = memoryDependencies(
+      await seedCatalogueWith((text) =>
+        text.replace(
+          /(id: approved\r?\n(?: {8}.*\r?\n)*? {8}to: \{ step: )implementation/u,
+          '$1acceptance',
+        ),
+      ),
+    );
+    await specificationWithTasks(dependencies);
+    await work(dependencies, specification, {}, owner);
+    expect((await project(dependencies, specification)).position).toEqual({
+      kind: 'terminal',
+      outcome: 'completed',
+    });
+
+    expect(
+      closeBlockers(await readSpecificationExitState(dependencies, SPEC)).map((blocker) => [
+        blocker.kind,
+        blocker.subjectIds,
+      ]),
+    ).toEqual([['unfinished-tasks', ['api', 'screen']]]);
+
+    // Edits and removal are final, but the Task's status and its run are not.
+    const projection = await expectEndedAgreement(dependencies, 'api');
+    expect(projection.task).toMatchObject({ hold: ALLOWED, cancel: ALLOWED });
+    expect(projection.actions.start).toMatchObject({ step: 'implement', firstStart: true });
+    await expect(
+      startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', actor: claude }),
+    ).resolves.toMatchObject({ kind: 'started' });
   });
 });

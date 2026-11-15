@@ -371,7 +371,7 @@ export function specificationWorkflowProjection(
       ? {}
       : { return: { targets: [{ step: 'breakdown', title: 'Breakdown', feedback: 'optional' }] } },
     specification: {
-      createTask: abandoned ? unavailable('task-limit') : allowed,
+      createTask: abandoned ? unavailable('specification-ended') : allowed,
       taskTypes: [],
       exit: {
         close: abandoned ? allowed : { kind: 'blocked', blockers: [...closeBlockers] },

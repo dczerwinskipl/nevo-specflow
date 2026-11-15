@@ -554,8 +554,9 @@ const smallChange = {
   title: 'Small change',
 };
 const allowed = { kind: 'allowed' } as const;
+/** `closeAllowed`: the Specification's workflow ended, so no Task is created any more. */
 const exit = (closeAllowed: boolean): NonNullable<WorkflowActionProjection['specification']> => ({
-  createTask: allowed,
+  createTask: closeAllowed ? { kind: 'unavailable', reason: 'specification-ended' } : allowed,
   taskTypes: [],
   exit: {
     close: closeAllowed ? allowed : { kind: 'blocked', blockers: [] },

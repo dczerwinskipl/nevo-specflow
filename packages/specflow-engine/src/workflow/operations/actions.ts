@@ -261,7 +261,12 @@ export type TaskActionUnavailableReason =
   | 'task-document-change'
   /** The Task folder holds files it does not register; move or register them first. */
   | 'unregistered-files'
-  | 'broken';
+  | 'broken'
+  /**
+   * The Specification's workflow ended (completed or abandoned): its Tasks stay as they are for
+   * audit, so they are neither edited nor removed (`WORKFLOW_SPECIFICATION_ENDED`).
+   */
+  | 'specification-ended';
 
 /** The owner's Task lifecycle actions (`setTaskStatus`, `editTask`, `removeTask`). */
 export interface TaskLifecycleActions {
@@ -306,7 +311,8 @@ export interface TaskTypeOption {
 }
 
 export interface SpecificationLevelActions {
-  readonly createTask: Availability<'task-limit'>;
+  /** `specification-ended`: the Specification's workflow completed or was abandoned. */
+  readonly createTask: Availability<'task-limit' | 'specification-ended'>;
   /**
    * The task types a new Task may have, in catalogue order; empty when none is allowed or defined.
    * A type whose workflow is not a defined Task workflow is left out (its creation is refused).
@@ -809,8 +815,9 @@ async function specificationPosition(
 ): Promise<ActionProjection> {
   const { catalogue } = dependencies;
   const specification: SpecificationLevelActions = {
-    createTask:
-      (snapshot.index?.value.tasks.length ?? 0) >= TASKS_PER_SPECIFICATION_MAX
+    createTask: specificationEnded(snapshot)
+      ? unavailable('specification-ended')
+      : (snapshot.index?.value.tasks.length ?? 0) >= TASKS_PER_SPECIFICATION_MAX
         ? unavailable('task-limit')
         : allowed,
     taskTypes: taskTypeOptions(catalogue, await effectiveTaskTypesOf(dependencies, snapshot)),
@@ -1072,10 +1079,15 @@ function taskReadinessBlockers(
   return [];
 }
 
+/** The Specification's run ended: `createTask`, `editTask` and `removeTask` refuse. */
+function specificationEnded(snapshot: ExecutionSnapshot): boolean {
+  return snapshot.specification?.value.run.position.state === 'terminal';
+}
+
 /**
  * The owner's lifecycle actions on a Task that is not broken: the status decisions ask
  * `taskDecisionRefusal` (no hold or cancel during an active attempt), the edits and the removal
- * follow `editTask` and `removeTask`.
+ * follow `editTask` and `removeTask`, which refuse first once the Specification's run ended.
  */
 function lifecycleOf(
   task: ExecutionTask,
@@ -1107,8 +1119,10 @@ function lifecycleOf(
     return pending ? unavailable('task-document-change') : allowed;
   };
 
-  const edit: Action =
-    task.status === 'cancelled'
+  const ended = specificationEnded(snapshot);
+  const edit: Action = ended
+    ? unavailable('specification-ended')
+    : task.status === 'cancelled'
       ? unavailable('cancelled')
       : state === 'terminal'
         ? unavailable('ended')
@@ -1126,15 +1140,17 @@ function lifecycleOf(
     hold: decision('ready', 'on-hold'),
     resume: decision('on-hold', 'ready'),
     cancel: decision(undefined, 'cancelled'),
-    remove: task.run
-      ? unavailable('started')
-      : dependents.length > 0
-        ? unavailable('has-dependents', { taskIds: dependents })
-        : pending
-          ? unavailable('task-document-change')
-          : unregistered.length > 0
-            ? unavailable('unregistered-files', { files: unregistered })
-            : allowed,
+    remove: ended
+      ? unavailable('specification-ended')
+      : task.run
+        ? unavailable('started')
+        : dependents.length > 0
+          ? unavailable('has-dependents', { taskIds: dependents })
+          : pending
+            ? unavailable('task-document-change')
+            : unregistered.length > 0
+              ? unavailable('unregistered-files', { files: unregistered })
+              : allowed,
     editDetails: edit,
     editContext: edit,
     editDependencies: edit.kind === 'allowed' && task.run ? unavailable('started') : edit,

@@ -368,6 +368,10 @@ actorId}`) and the initial `task.md` in one change. Its type must be defined and
 
 An edit or a removal names the revision of `task.yaml` it was made against (`expectedRevision`); a
 different stored revision refuses it.
+Once the Specification run ended (completed or abandoned), `createTask`, `editTask` and `removeTask`
+refuse with `WORKFLOW_SPECIFICATION_ENDED`: the Tasks stay as they are, readable for audit. The projection
+reports the same (`createTask` and the Task's edit and `remove` actions `unavailable` with reason
+`specification-ended`). `setTaskStatus` does not consult the Specification run.
 
 **Effective policy.** The task types a Specification allows now are its run's `taskTypes` snapshot once
 it started, otherwise the live execution binding of its archetype (`effectiveTaskTypesOf`); without a

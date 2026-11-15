@@ -470,6 +470,7 @@ export const TASK_ACTION_UNAVAILABLE_REASONS = [
   'task-document-change',
   'unregistered-files',
   'broken',
+  'specification-ended',
 ] as const;
 
 const availability = <Reason extends TSchema>(reason: Reason) =>
@@ -608,7 +609,9 @@ export const WorkflowActionProjectionSchema = Type.Object(
     /** For a Specification subject. */
     specification: Type.Optional(
       Type.Object({
-        createTask: availability(Type.Literal('task-limit')),
+        createTask: availability(
+          Type.Union([Type.Literal('task-limit'), Type.Literal('specification-ended')]),
+        ),
         /** The task types a new Task may have now (the effective policy), in catalogue order. */
         taskTypes: array(TaskTypeOptionSchema),
         exit: Type.Optional(SpecificationExitSchema),

@@ -62,6 +62,9 @@ last `handoff` (a finished attempt names the transition `label`, its step `title
 finished it), `actions` (`start`, `finish` with its
 transitions, `return` with its targets) and, per subject, `task` (the Task lifecycle actions, each
 `allowed` or `unavailable` with a stable reason) or `specification` (`createTask`, and `exit`).
+Once the Specification run ended (completed or abandoned), `createTask` and a Task's edit and `remove`
+actions are `unavailable` with reason `specification-ended`, as the commands refuse them with
+`WORKFLOW_SPECIFICATION_ENDED`.
 
 A client renders only what the projection allows. `kind`, `reason` and every code are stable values; the
 only free text is a `message` (and the step `purpose` and `instructions`), which is for display and must

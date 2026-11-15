@@ -194,4 +194,23 @@ describe('Specification control center', () => {
       'T-02 Token exchange endpoint and session cookie',
     );
   });
+
+  it('offers New task on the Tasks page while the Specification runs', async () => {
+    await renderAt(`/specs/${SPEC}/tasks`, 'waiting');
+
+    expect(await screen.findByRole('button', { name: 'New task' })).toBeTruthy();
+  });
+
+  it.each(['completed', 'abandoned'] as const)(
+    'offers no New task once the Specification is %s',
+    async (scenario) => {
+      await renderAt(`/specs/${SPEC}/tasks`, scenario);
+      await screen.findByRole('heading', { name: 'Tasks', level: 1 });
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(screen.queryByRole('button', { name: 'New task' })).toBeNull();
+    },
+  );
 });

@@ -5644,6 +5644,12 @@
                             "enum": [
                               "broken"
                             ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "specification-ended"
+                            ]
                           }
                         ]
                       },
@@ -5748,6 +5754,12 @@
                             "type": "string",
                             "enum": [
                               "broken"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "specification-ended"
                             ]
                           }
                         ]
@@ -5854,6 +5866,12 @@
                             "enum": [
                               "broken"
                             ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "specification-ended"
+                            ]
                           }
                         ]
                       },
@@ -5958,6 +5976,12 @@
                             "type": "string",
                             "enum": [
                               "broken"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "specification-ended"
                             ]
                           }
                         ]
@@ -6064,6 +6088,12 @@
                             "enum": [
                               "broken"
                             ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "specification-ended"
+                            ]
                           }
                         ]
                       },
@@ -6168,6 +6198,12 @@
                             "type": "string",
                             "enum": [
                               "broken"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "specification-ended"
                             ]
                           }
                         ]
@@ -6274,6 +6310,12 @@
                             "enum": [
                               "broken"
                             ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "specification-ended"
+                            ]
                           }
                         ]
                       },
@@ -6378,6 +6420,12 @@
                             "type": "string",
                             "enum": [
                               "broken"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "specification-ended"
                             ]
                           }
                         ]
@@ -7524,9 +7572,19 @@
                         ]
                       },
                       "reason": {
-                        "type": "string",
-                        "enum": [
-                          "task-limit"
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "task-limit"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "specification-ended"
+                            ]
+                          }
                         ]
                       },
                       "taskIds": {

@@ -351,7 +351,8 @@
       "question": "Pytanie do użytkownika",
       "questionUnavailable": "Ta fixture nie zawiera treści pytania.",
       "return": "Aby wrócić do zadania, przełącz się na poprzednią kartę lub zamknij tę kartę."
-    }
+    },
+    "material": "Materiał"
   },
   "taskDetails": {
     "showLess": "Pokaż mniej",

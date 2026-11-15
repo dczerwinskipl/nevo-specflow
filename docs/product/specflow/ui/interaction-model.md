@@ -228,14 +228,26 @@ screen opened from a deep link, a reload or another tab (`app/navigation/backPar
 | Screen (Narrow)                       | Back leads to                                                     |
 | ------------------------------------- | ----------------------------------------------------------------- |
 | A document of Documents               | the Documents list (the tree under it), a deep link included      |
-| A document promoted from the Overview | the Overview it came from (that visit's router state)             |
+| A document promoted from the Overview | the Overview it came from (that visit's router state; see below)  |
 | A documentation article               | the previous article, then the documentation (the reader's rules) |
 | Activity history, a Task preview      | the Overview (the owning Primary)                                 |
 | A Task page                           | the Specification's Tasks (the Overview's Tasks section)          |
+| A refused new Session (Sessions off)  | the Overview (not the turned-off Sessions area)                   |
 | A deeper Secondary screen             | its parent in the same stack                                      |
 
 Back keeps the context the existing contracts provide: the selected Specification and its
-collection, the documentation's workspace, search and reading positions, and scroll.
+collection, and the documentation's workspace, search and reading positions (the reader's own
+rules). A Back to a routed parent moves in one of two ways:
+
+- when the previous history entry is the parent's own visit (a document opened from the Overview
+  records that entry's index), Back steps back in history: the Overview returns at the scroll it
+  was left at (it remembers its scroll per history entry, Narrow) and its title takes the focus;
+- otherwise (a deep link, a reload, or a document tab opened since, which pushed an entry) Back
+  navigates to the parent, which opens at its top with its title focused.
+
+The Narrow header names the screen with the Specification's key ("Overview · KEY") and shows a
+context notice (stale, or the Specification's information could not be read) in full under the
+title, wrapping to a second line, since a peer area has no line in its body.
 
 **Body backs exist only in flows**: Create steps (back to the Specifications list, or a step back
 such as "Change method"), a new Session (back to Sessions) and the way back to a Session from a

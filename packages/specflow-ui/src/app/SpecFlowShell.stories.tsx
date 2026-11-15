@@ -61,7 +61,15 @@ export function RoutedApplication({
   specsStatus?: 401 | 403;
   integrationDto?: boolean;
   navigationScenario?:
-    'attention' | 'partial' | 'stale' | 'unavailable' | 'long' | 'identity' | 'revoked';
+    | 'attention'
+    | 'partial'
+    | 'stale'
+    | 'stale-keyed'
+    | 'context-failed'
+    | 'unavailable'
+    | 'long'
+    | 'identity'
+    | 'revoked';
   cancelNavigation?: boolean;
   catalogueFailure?: 'wrong-collection' | 'invalid-progress';
   navigationFailure?: boolean;
@@ -116,6 +124,7 @@ export function RoutedApplication({
       if (navigationScenario) {
         fixture = {
           ...fixture,
+          ...(navigationScenario === 'stale-keyed' ? { key: 'ADM-7' } : {}),
           ...(navigationScenario === 'long'
             ? {
                 title:
@@ -154,11 +163,19 @@ export function RoutedApplication({
       }
 
       query.setQueryData(specificationKeys.detail(id), fixture);
-      if (navigationScenario === 'stale') {
+      if (navigationScenario === 'stale' || navigationScenario === 'stale-keyed') {
         query
           .getQueryCache()
           .find({ queryKey: specificationKeys.detail(id), exact: true })
           ?.setState({ status: 'error', error: new Error('Refresh unavailable') });
+      }
+
+      // The Specification's information could not be read at all (no snapshot to keep).
+      if (navigationScenario === 'context-failed') {
+        query
+          .getQueryCache()
+          .find({ queryKey: specificationKeys.detail(id), exact: true })
+          ?.setState({ status: 'error', data: undefined, error: new Error('Unavailable') });
       }
 
       if (navigationScenario === 'revoked') {
@@ -458,6 +475,8 @@ export const Default: Story = {
         'attention',
         'partial',
         'stale',
+        'stale-keyed',
+        'context-failed',
         'unavailable',
         'long',
         'identity',
@@ -1152,7 +1171,8 @@ export const MobileNavigation: Story = {
 const peerAreaHasNoBodyBack: Story['play'] = async ({ canvas, canvasElement }) => {
   // Documents opens its main file over the tree on a phone: the tree's header stays underneath.
   await canvas.findAllByRole('button', { name: 'Open navigation', hidden: true });
-  await new Promise<void>((resolve) => setTimeout(resolve, 300));
+  // The screen has settled once its level-1 title is there (the Back would render with it).
+  await canvas.findByRole('heading', { level: 1, hidden: true });
   if (canvasElement.querySelector('[data-flow-back]')) {
     throw new Error('A peer area must not show a Back in its body.');
   }
@@ -1160,6 +1180,53 @@ const peerAreaHasNoBodyBack: Story['play'] = async ({ canvas, canvasElement }) =
   if (canvas.queryByRole('link', { name: /^Back to |All specifications|Specification overview/ })) {
     throw new Error('A peer area must not link back from its body.');
   }
+};
+
+/**
+ * The Narrow header carries the Specification's key and the context notice in full (it wraps to a
+ * second line, never cut off), since the body of a peer area has no context line.
+ */
+const narrowNoticeInFull =
+  (notice: string, key?: string): Story['play'] =>
+  async ({ canvas, canvasElement }) => {
+    const status = await waitFor(
+      () =>
+        [
+          ...canvasElement.querySelectorAll<HTMLElement>('[data-narrow-identity] [role="status"]'),
+        ].find((element) => element.textContent === notice) ?? null,
+      `The Narrow header must show "${notice}".`,
+    );
+    if (
+      status.scrollHeight > status.clientHeight + 1 ||
+      status.scrollWidth > status.clientWidth + 1
+    ) {
+      throw new Error('The context notice must not be cut off.');
+    }
+
+    if (key) {
+      await canvas.findByText(`· ${key}`);
+    }
+  };
+
+export const NavigationStaleNarrow: Story = {
+  tags: ['contract'],
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  args: {
+    path: '/specs/admission/sessions?collection=current',
+    navigationScenario: 'stale-keyed',
+    locale: 'pl',
+  },
+  play: narrowNoticeInFull('Kontekst może być nieaktualny', 'ADM-7'),
+};
+export const NavigationUnavailableNarrow: Story = {
+  tags: ['contract'],
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  args: {
+    path: '/specs/admission/sessions?collection=current',
+    navigationScenario: 'context-failed',
+    locale: 'pl',
+  },
+  play: narrowNoticeInFull('Nie udało się wczytać informacji o specyfikacji.'),
 };
 
 export const PeerAreaSessionsNarrow: Story = {

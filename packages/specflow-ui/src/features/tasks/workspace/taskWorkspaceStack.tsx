@@ -125,7 +125,13 @@ const screens = {
     header: HistoryHeader,
     component: HistoryScreen,
   },
-  material: { title: 'Material', header: MaterialHeader, component: MaterialScreen },
+  material: {
+    get title() {
+      return translateNow('taskWorkspace.material');
+    },
+    header: MaterialHeader,
+    component: MaterialScreen,
+  },
 };
 function useData({ taskId, id }: { taskId: string; id?: string }) {
   const { data } = useTaskWorkspace();

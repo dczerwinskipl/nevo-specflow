@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate, useRouterState } from '@tanstack/react-router';
+import { useNavigate, useRouter, useRouterState } from '@tanstack/react-router';
 import {
   AppWorkspace,
   AppWorkspaceProvider,
@@ -22,9 +22,10 @@ import {
 } from '../../../app/navigation/ApplicationLocation';
 import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
 import {
-  backParentTarget,
+  backByHistory,
   backParentTitleKey,
   documentBackParent,
+  specificationParentTarget,
 } from '../../../app/navigation/backParent';
 import { documentGutterClassName } from '../../../shared/document-reading/DocumentReadingColumns';
 import { useSessionReturn } from '../../sessions';
@@ -74,6 +75,7 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
   const { t } = useTranslation();
   const workspaceLabels = useWorkspaceLabels(t('specification.viewDocuments'));
   const navigate = useNavigate();
+  const router = useRouter();
   const { api: documentsApi } = useDocumentsApi();
   const { supportsSplit, measured } = useWorkspaceCapabilities();
   const tree = useQuery({
@@ -92,6 +94,28 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
     select: (routerState) => routerState.location.state.specflowDocumentReturnTo,
   });
   const backParent = documentBackParent({ returnTo, sessionReturn: Boolean(sessionReturn) });
+  // Back to the Overview: a step back in history when the previous entry is that Overview visit
+  // (it returns as it was left, at its scroll), else a navigation (a deep link, a reload, or a
+  // document tab opened since, which pushed an entry) whose Overview focuses its title.
+  const backToOverview = () => {
+    const state = router.state.location.state;
+    if (
+      backByHistory({
+        parentIndex: state.specflowDocumentReturnIndex,
+        currentIndex: state.__TSR_index,
+      })
+    ) {
+      router.history.back();
+
+      return;
+    }
+
+    void navigate({
+      ...specificationParentTarget('overview', specId, collection),
+      state: { specflowFocusTitle: true },
+    });
+  };
+
   const [demoNotice, setDemoNotice] = useState(false);
   const treeController = useRef<DocumentTreeController>(null);
   // Stable: the callbacks read the controller only when the user acts.
@@ -190,11 +214,7 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
         // The tree stops growing at 360 px; the document gets the rest on wide screens.
         primaryMaxPx={360}
         split="secondary"
-        stackedRootBack={
-          backParent === 'overview'
-            ? () => void navigate(backParentTarget('overview', specId, collection))
-            : undefined
-        }
+        stackedRootBack={backParent === 'overview' ? backToOverview : undefined}
         labels={{
           ...workspaceLabels,
           backToPrimary: t('navigation.backTo', { parent: t(backParentTitleKey[backParent]) }),

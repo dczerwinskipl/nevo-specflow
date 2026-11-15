@@ -17,6 +17,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import type { SpecificationWorkspaceData } from '../read-model/model';
 import { WorkView } from './WorkView';
+import { OverviewVisitScroll } from './OverviewVisitScroll';
 import { ActivityHistory } from './ActivityHistory';
 import { isSpecificationCreatedEvent } from './activity/presentActivity';
 import { ExecuteModal } from './ExecuteModal';
@@ -293,6 +294,7 @@ function SpecificationWorkspaceInner({
                   ) : null}
 
                   {/* Specification Overview contributions. Primary destinations belong to Router. */}
+                  <OverviewVisitScroll />
                   <WorkView specId={specId} data={data} />
                 </AppContentContainer>
               </AppWorkspaceBody>

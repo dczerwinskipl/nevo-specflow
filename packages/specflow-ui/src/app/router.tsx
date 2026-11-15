@@ -109,5 +109,12 @@ declare module '@tanstack/react-router' {
   interface HistoryState {
     /** Primary location that promoted a Document Preview or list item to Full. */
     specflowDocumentReturnTo?: 'overview';
+    /**
+     * The history index of that Overview visit: a Back that finds it as the previous entry steps
+     * there (the visit returns as it was left) instead of pushing a new Overview.
+     */
+    specflowDocumentReturnIndex?: number;
+    /** A Back reached this screen by navigating: its title takes the focus. */
+    specflowFocusTitle?: boolean;
   }
 }

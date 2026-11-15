@@ -100,7 +100,11 @@ function StartRefused({
   const { t } = useTranslation();
 
   return (
-    <CreateFallback specId={specId} view="new-session">
+    <CreateFallback
+      specId={specId}
+      view="new-session"
+      sessionsDisabled={refusal === 'sessions_disabled'}
+    >
       <div className="grid justify-items-start gap-4">
         <Typography as="p" variant="body-md" className="text-content-primary">
           {t(

@@ -1,7 +1,7 @@
 import { createRoute } from '@tanstack/react-router';
 import { specificationRoute } from '../specs/routes';
 import { parseSpecificationCollection } from '../../app/router/search';
-import { backParentTarget } from '../../app/navigation/backParent';
+import { specificationParentTarget } from '../../app/navigation/backParent';
 import { useSpecificationTask } from './useSpecificationTask';
 import { SpecificationTaskPage } from './pages/SpecificationTaskPage';
 
@@ -21,7 +21,7 @@ function SpecificationTaskRouteScreen() {
   const navigate = specificationTaskRoute.useNavigate();
   const taskState = useSpecificationTask(specId, taskId, services.taskApi);
   // A Task's parent is the Specification's Tasks, also when the page was opened from a deep link.
-  const onBack = () => void navigate(backParentTarget('tasks', specId, collection));
+  const onBack = () => void navigate(specificationParentTarget('tasks', specId, collection));
 
   return (
     <SpecificationTaskPage specId={specId} taskId={taskId} taskState={taskState} onBack={onBack} />

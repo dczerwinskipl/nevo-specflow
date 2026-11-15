@@ -14,15 +14,18 @@ import { CreateShell } from './CreateShell';
 export function CreateFallback({
   specId,
   view,
+  sessionsDisabled,
   children,
 }: {
   specId?: string;
   view?: 'new-session' | 'new-specification';
+  /** A Session start refused because Sessions are off: the way back is the Overview. */
+  sessionsDisabled?: boolean;
   children: ReactNode;
 }) {
   return (
     <CreateShell specId={specId} containerClassName="grid gap-6">
-      {view && <FlowParentBack specId={specId} view={view} />}
+      {view && <FlowParentBack specId={specId} view={view} sessionsDisabled={sessionsDisabled} />}
       {children}
     </CreateShell>
   );

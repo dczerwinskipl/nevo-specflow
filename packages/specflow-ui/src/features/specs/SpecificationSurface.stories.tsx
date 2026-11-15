@@ -1,4 +1,4 @@
-import { expect, within } from 'storybook/test';
+import { expect, waitFor, within } from 'storybook/test';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { RoutedApplication } from '../../app/SpecFlowShell.stories';
 
@@ -260,29 +260,49 @@ export const DocumentReturnNavigation: Story = {
 
 /**
  * On a phone a document promoted from the Overview is a stacked screen whose header Back names
- * its parent for this visit, the Overview, and returns there; Back and Close never appear together.
+ * its parent for this visit, the Overview, and returns there: a step back in history, so the
+ * Overview comes back at the scroll it was left at, with the focus on its title. Back and Close
+ * never appear together.
  */
 export const DocumentReturnNavigationNarrow: Story = {
   tags: ['integration'],
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   args: { path: '/specs/docs-spec?collection=archive', dataMode: 'project' },
-  play: async ({ canvas, userEvent }) => {
+  play: async ({ canvas, canvasElement, userEvent }) => {
     await canvas.findByRole('heading', {
       name: 'Odświeżanie sesji i zachowanie kontekstu użytkownika',
       level: 1,
     });
-    await userEvent.click(await canvas.findByRole('button', { name: 'Obszar: uwierzytelnianie' }));
+    const scroller = () =>
+      canvasElement.querySelector<HTMLElement>(
+        '[data-workspace-surface="primary"] .mobile-workspace-scroll',
+      );
+    const opener = await canvas.findByRole('button', { name: 'Obszar: uwierzytelnianie' });
+    opener.scrollIntoView({ block: 'center' });
+    await new Promise<void>((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+    );
+    const left = scroller()?.scrollTop ?? 0;
+    if (left < 40) {
+      throw new Error(`The Overview must be scrolled before opening the document (${left}).`);
+    }
+
+    await userEvent.click(opener);
     await userEvent.click(await canvas.findByRole('button', { name: 'Open full document' }));
     const back = await canvas.findByRole('button', { name: 'Back to Overview' }, { timeout: 5000 });
     await expect(canvas.queryByRole('button', { name: /^Close/ })).toBeNull();
     await expect(canvas.queryByRole('link', { name: /Specification overview/ })).toBeNull();
     await userEvent.click(back);
-    await canvas.findByRole('heading', {
+    const title = await canvas.findByRole('heading', {
       name: 'Odświeżanie sesji i zachowanie kontekstu użytkownika',
       level: 1,
     });
     // The Overview itself, not the document tree under the stack.
     await expect(canvas.queryByRole('heading', { name: 'Documents', level: 1 })).toBeNull();
+    await waitFor(async () => {
+      await expect(Math.abs((scroller()?.scrollTop ?? 0) - left)).toBeLessThanOrEqual(2);
+      await expect(canvasElement.ownerDocument.activeElement).toBe(title);
+    });
   },
 };
 

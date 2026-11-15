@@ -11,10 +11,20 @@ import {
   type WorkspaceHeaderAction,
   type WorkspaceHeaderProps,
 } from '@nevo/ui';
-import { useRouter, useRouterState } from '@tanstack/react-router';
+import {
+  useRouter,
+  useRouterState,
+  type RegisteredRouter,
+  type ValidateLinkOptions,
+} from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { useSpecificationNavigationSource } from '../../features/specs/overview/useSpecificationNavigationMetadata';
-import { backParentTarget, backParentTitleKey, flowBackParent } from './backParent';
+import {
+  backParentTitleKey,
+  flowBackParent,
+  specificationParentTarget,
+  specificationsTarget,
+} from './backParent';
 export type ApplicationView =
   | 'specifications'
   | 'overview'
@@ -97,15 +107,26 @@ function RoutedIdentity({
 }) {
   const { t } = useTranslation();
   const { supportsSplit } = useWorkspaceCapabilities();
-  const { collection, identity, contextNotice, parent } = useApplicationLocationModel(specId, view);
+  const { collection, identity, specificationKey, contextNotice, parent } =
+    useApplicationLocationModel(specId, view);
   if (!supportsSplit) {
-    // Narrow: the header names the screen itself (a stacked detail its own name) and carries the
-    // context notice, so a peer area needs no line in its body.
+    // Narrow: the header names the screen itself (a stacked detail its own name) with the
+    // Specification's key, and carries the context notice in full (two lines fit the 56 px header),
+    // so a peer area needs no line in its body.
     return (
-      <span className="grid min-w-0">
-        <span className="truncate text-title-sm text-content-primary">{detailLabel ?? title}</span>
+      <span className="grid min-w-0" data-narrow-identity="">
+        <span className="flex min-w-0 items-baseline gap-1.5">
+          <span className="truncate text-title-sm text-content-primary">
+            {detailLabel ?? title}
+          </span>
+          {specificationKey ? (
+            <span className="shrink-0 whitespace-nowrap text-body-sm text-content-secondary">
+              · {specificationKey}
+            </span>
+          ) : null}
+        </span>
         {contextNotice ? (
-          <span className="truncate text-body-sm text-content-secondary" role="status">
+          <span className="line-clamp-2 text-body-sm text-content-secondary" role="status">
             {contextNotice}
           </span>
         ) : null}
@@ -203,6 +224,7 @@ function useApplicationLocationModel(specId: string | undefined, view: Applicati
   return {
     collection,
     identity,
+    specificationKey: metadata?.key,
     contextNotice,
     parent,
   };
@@ -217,9 +239,12 @@ function useApplicationLocationModel(specId: string | undefined, view: Applicati
 export function FlowParentBack({
   specId,
   view,
+  sessionsDisabled = false,
 }: {
   specId?: string;
   view: 'new-specification' | 'new-session';
+  /** A refused Session start because Sessions are off: the way back is the Overview. */
+  sessionsDisabled?: boolean;
 }) {
   const { t } = useTranslation();
   const router = useRouter({ warn: false });
@@ -233,13 +258,13 @@ export function FlowParentBack({
     return null;
   }
 
-  const parent = flowBackParent(view);
+  const parent = flowBackParent(view, sessionsDisabled);
+  const label = t('navigation.backTo', { parent: t(backParentTitleKey[parent]) });
 
-  return (
-    <FlowBack
-      label={t('navigation.backTo', { parent: t(backParentTitleKey[parent]) })}
-      link={backParentTarget(parent, specId, collection)}
-    />
+  return parent === 'specifications' || !specId ? (
+    <FlowBack label={label} link={specificationsTarget(collection)} />
+  ) : (
+    <FlowBack label={label} link={specificationParentTarget(parent, specId, collection)} />
   );
 }
 
@@ -261,14 +286,6 @@ export function ViewPageTitle({
       {children}
     </Typography>
   );
-}
-
-/** Router navigation options of a Back target (an address, so it can open in a new tab). */
-export interface FlowBackTarget {
-  to: string;
-  params?: Record<string, string>;
-  search?: Record<string, unknown>;
-  hash?: string;
 }
 
 const flowBackButtonClassName = [
@@ -294,15 +311,15 @@ function FlowBackContent({ children }: { children: ReactNode }) {
  * the first row of its region and takes that region's gap. Its label names the target
  * ("Back to <parent>") unless it is a flow step ("Change method").
  */
-export function FlowBack({
+export function FlowBack<TLink>({
   label,
   link,
   onBack,
   disabled,
 }: {
   label: string;
-  /** The target's address (a link: it can be opened in a new tab). */
-  link?: FlowBackTarget;
+  /** The target's router link options (a link: it can be opened in a new tab), type-checked. */
+  link?: ValidateLinkOptions<RegisteredRouter, TLink>;
   /** A local flow step without an address (a button). */
   onBack?: () => void;
   disabled?: boolean;
@@ -310,8 +327,7 @@ export function FlowBack({
   return (
     <Typography as="div" variant="body-sm" data-flow-back="">
       {link ? (
-        // The targets are router-typed where they are built (`backParentTarget`, a Session route).
-        <BackLink {...(link as Parameters<typeof BackLink>[0])}>
+        <BackLink {...link}>
           <FlowBackContent>{label}</FlowBackContent>
         </BackLink>
       ) : (

@@ -193,8 +193,10 @@ export function loadTask(
   catalogue: ExecutionCatalogue,
   snapshot: ExecutionSnapshot,
   taskId: string,
+  /** The snapshot's {@link executionTasks}, when the caller derived them already. */
+  tasks: ExecutionTasks = executionTasks(catalogue, snapshot),
 ): LoadedTask {
-  if (executionTasks(catalogue, snapshot).broken.includes(taskId)) {
+  if (tasks.broken.includes(taskId)) {
     brokenTask(taskId);
   }
 

@@ -26,33 +26,87 @@ export function dependencyView(
   };
 }
 
+/** The dependency rule of one Task, its graph facts read once for any number of questions. */
+export interface DependencyRule {
+  /**
+   * Why `dependency` cannot be one of the Task's dependencies when its whole list becomes
+   * `dependsOn` (which names it), or `undefined`; `previous` is the list stored now.
+   */
+  refusal(
+    dependency: string,
+    dependsOn: readonly string[],
+    previous: readonly string[],
+  ): DependencyRefusal | undefined;
+}
+
 /**
- * The single rule of a manual dependency: the dependency is a registered Task, not the Task itself
- * and not broken; one newly added is not cancelled (it would never complete); and the Task's whole
- * dependency list `dependsOn` (which names it) closes no cycle with every other Task's.
+ * The single rule of a manual dependency of `taskId`: the dependency is a registered Task, not the
+ * Task itself and not broken; one newly added is not cancelled (it would never complete); and the
+ * Task's whole dependency list closes no cycle with every other Task's.
+ *
+ * A list closes a cycle exactly when one of its Tasks is the Task itself or reaches it through the
+ * other Tasks' dependencies, or when the other Tasks form a cycle without it. Both facts are read
+ * once (one walk of the graph each), however many dependencies are asked about, so asking it for
+ * every other Task of a Specification stays linear in the size of the graph.
  */
-export function dependencyRefusal(
-  view: DependencyView,
-  taskId: string,
-  dependency: string,
-  dependsOn: readonly string[],
-  previous: readonly string[],
-): DependencyRefusal | undefined {
-  if (view.broken.includes(dependency)) {
-    return 'broken';
+export function dependencyRule(view: DependencyView, taskId: string): DependencyRule {
+  let facts: GraphFacts | undefined;
+
+  return {
+    refusal(dependency, dependsOn, previous) {
+      if (view.broken.includes(dependency)) {
+        return 'broken';
+      }
+
+      const task = view.byId.get(dependency);
+      if (!task || dependency === taskId) {
+        return 'unknown';
+      }
+
+      if (task.status === 'cancelled' && !previous.includes(dependency)) {
+        return 'cancelled';
+      }
+
+      facts ??= graphFactsOf(view.graph, taskId);
+      const { reachesTask, otherCycle } = facts;
+
+      return otherCycle || dependsOn.some((id) => id === taskId || reachesTask.has(id))
+        ? 'would-create-cycle'
+        : undefined;
+    },
+  };
+}
+
+interface GraphFacts {
+  /** The Tasks whose dependencies lead to the Task (without its own dependencies). */
+  readonly reachesTask: ReadonlySet<string>;
+  /** The other Tasks' dependencies form a cycle by themselves. */
+  readonly otherCycle: boolean;
+}
+
+/** {@link GraphFacts}: one reverse walk from the Task and one `dependencyCycle` walk. */
+function graphFactsOf(graph: ReadonlyMap<string, readonly string[]>, taskId: string): GraphFacts {
+  const others = new Map(graph);
+  others.set(taskId, []);
+  const dependents = new Map<string, string[]>();
+  for (const [id, dependsOn] of others) {
+    for (const dependency of dependsOn) {
+      const list = dependents.get(dependency) ?? [];
+      list.push(id);
+      dependents.set(dependency, list);
+    }
   }
 
-  const task = view.byId.get(dependency);
-  if (!task || dependency === taskId) {
-    return 'unknown';
+  const reachesTask = new Set<string>();
+  const queue = [taskId];
+  for (let next = queue.pop(); next !== undefined; next = queue.pop()) {
+    for (const dependent of dependents.get(next) ?? []) {
+      if (!reachesTask.has(dependent)) {
+        reachesTask.add(dependent);
+        queue.push(dependent);
+      }
+    }
   }
 
-  if (task.status === 'cancelled' && !previous.includes(dependency)) {
-    return 'cancelled';
-  }
-
-  const graph = new Map(view.graph);
-  graph.set(taskId, dependsOn);
-
-  return dependencyCycle(graph) === undefined ? undefined : 'would-create-cycle';
+  return { reachesTask, otherCycle: dependencyCycle(others) !== undefined };
 }

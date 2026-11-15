@@ -17,12 +17,9 @@ import { resolveSpecificationExecution, type ExecutionCatalogue } from '../defin
 import type { TaskTypes, WorkflowDefinition, WorkflowStep } from '../definitions/model';
 import { WorkflowError } from '../errors';
 import type { TaskProposal } from '../tasks/tasks';
-import { TASKS_PER_SPECIFICATION_MAX } from '../limits';
-import { unregisteredTaskFiles, type TaskResourceIssue } from '../../tasks/resource/validate';
+import type { TaskResourceIssue } from '../../tasks/resource/validate';
 import {
-  taskPosition,
   type ExecutionTask,
-  type TaskStatus,
   type WorkflowActor,
   type WorkflowRun,
   type WorkflowSubject,
@@ -32,7 +29,6 @@ import {
   isTaskClosed,
   isTaskTypeAllowed,
   resolveTaskType,
-  taskDecisionRefusal,
   taskReadiness,
   tasksOpenAtCompletion,
   unsatisfiableDependencies,
@@ -56,12 +52,26 @@ import {
   type TransitionDescription,
 } from './step-context';
 import { effectiveTaskTypesOf, isAwaited, unresolvedContext } from './task-policy';
-import { taskAuthoringOf, type TaskAuthoringFacts } from './task-authoring';
+import {
+  createTaskAvailability,
+  taskAuthoringOf,
+  taskLifecycleOf,
+  unavailable,
+  type Availability,
+  type TaskActionUnavailableReason,
+  type TaskAuthoringFacts,
+  type TaskLifecycleActions,
+} from './task-authoring';
 import { entryGatesOf, exitGatesFor, type GateStatus } from '../gates/evaluate';
 import { evaluateGates, type GateDocuments } from '../gates/read';
 import type { StartBlocker } from './start-blockers';
 
 export type { StartBlocker } from './start-blockers';
+export type {
+  Availability,
+  TaskActionUnavailableReason,
+  TaskLifecycleActions,
+} from './task-authoring';
 
 /**
  * The read-only action projection (E4a): where a Specification or a Task stands and what the owner
@@ -74,18 +84,6 @@ export type { StartBlocker } from './start-blockers';
  * status decisions, the edits, the removal and an escalating finish. A start writes only the run
  * record, so it is not refused.
  */
-
-/** An action the owner may take now, or why not. */
-export type Availability<Reason extends string> =
-  | { readonly kind: 'allowed' }
-  | {
-      readonly kind: 'unavailable';
-      readonly reason: Reason;
-      /** For `has-dependents`: the Tasks that depend on this one, in id order. */
-      readonly taskIds?: readonly string[];
-      /** For `unregistered-files`: the files of the Task folder it does not register. */
-      readonly files?: readonly string[];
-    };
 
 /** The workflow a run is pinned to, or the one a first start would pin. */
 export interface WorkflowSummary {
@@ -248,48 +246,6 @@ export interface WorkflowActions {
   };
 }
 
-export type TaskActionUnavailableReason =
-  /** The Task's status does not allow it (for example approving a Task that is not a draft). */
-  | 'status'
-  /** The Task's run ended. */
-  | 'ended'
-  | 'cancelled'
-  /** An attempt is active: finish or return the current step first. */
-  | 'active-attempt'
-  /** The Task has started: its dependencies are fixed; it is cancelled, not removed. */
-  | 'started'
-  | 'has-dependents'
-  /**
-   * A change of one of the Task's documents is pending (D03): the change would write its folder,
-   * which the store refuses (`WORKFLOW_TASK_BUSY`, reason `task-document-change`).
-   */
-  | 'task-document-change'
-  /** The Task folder holds files it does not register; move or register them first. */
-  | 'unregistered-files'
-  | 'broken'
-  /**
-   * The Specification's workflow ended (completed or abandoned): its Tasks stay as they are for
-   * audit, so they are neither edited nor removed (`WORKFLOW_SPECIFICATION_ENDED`).
-   */
-  | 'specification-ended';
-
-/** The owner's Task lifecycle actions (`setTaskStatus`, `editTask`, `removeTask`). */
-export interface TaskLifecycleActions {
-  /** The manifest revision an edit or a removal names; absent for a broken Task. */
-  readonly revision?: string;
-  readonly approve: Availability<TaskActionUnavailableReason>;
-  /** Shown disabled with its reason during an active attempt (UX contract). */
-  readonly hold: Availability<TaskActionUnavailableReason>;
-  readonly resume: Availability<TaskActionUnavailableReason>;
-  readonly cancel: Availability<TaskActionUnavailableReason>;
-  readonly remove: Availability<TaskActionUnavailableReason>;
-  /** Title and summary. */
-  readonly editDetails: Availability<TaskActionUnavailableReason>;
-  readonly editContext: Availability<TaskActionUnavailableReason>;
-  /** Only before the first start. */
-  readonly editDependencies: Availability<TaskActionUnavailableReason>;
-}
-
 /** Close and Abandon of a Specification (T6, D07), with the blockers that refuse them. */
 export type SpecificationExitActions = SpecificationLifecycleActions;
 
@@ -339,7 +295,11 @@ export interface ActionProjection {
   readonly task?: TaskLifecycleActions;
   /** For a Specification subject. */
   readonly specification?: SpecificationLevelActions;
-  /** For a Task subject that is not broken: its effective context and dependency candidates. */
+  /**
+   * For a Task subject that is not broken, in the projection of that one Task (`inspectActions`):
+   * its effective context and dependency candidates. A read of several Tasks (`readExecution`,
+   * `inspectExecution`) never computes it.
+   */
   readonly taskAuthoring?: TaskAuthoringFacts;
   /**
    * What a person has to do about the subject now, if anything: the item `deriveAttention` derives
@@ -370,17 +330,30 @@ export function inspectActions(
     const snapshot = await dependencies.store.read(subject.specId);
     const derived = deriveAttention(dependencies.catalogue, snapshot);
 
-    return subject.kind === 'specification'
-      ? specificationProjection(dependencies, snapshot, subject, derived)
-      : taskProjection(dependencies, snapshot, subject, derived);
+    if (subject.kind === 'specification') {
+      return specificationProjection(dependencies, snapshot, subject, derived);
+    }
+
+    // The Task detail: the projection every read makes, plus the authoring facts of this Task.
+    const read = taskProjectionRead(dependencies, snapshot);
+    const projection = await taskProjection(dependencies, snapshot, subject, derived, read);
+    const task = read.tasks.tasks.find((candidate) => candidate.taskId === subject.taskId);
+    if (!task) {
+      return projection;
+    }
+
+    return {
+      ...projection,
+      taskAuthoring: await taskAuthoringOf(
+        dependencies,
+        snapshot,
+        read.tasks,
+        task,
+        projection.task?.editDependencies.kind === 'allowed',
+      ),
+    };
   });
 }
-
-const allowed = { kind: 'allowed' } as const;
-const unavailable = <Reason extends string>(
-  reason: Reason,
-  details: { readonly taskIds?: readonly string[]; readonly files?: readonly string[] } = {},
-): Availability<Reason> => ({ kind: 'unavailable', reason, ...details });
 
 function summaryOf(definition: WorkflowDefinition): WorkflowSummary {
   // The pin a first start gives its run (a value; nothing is stored).
@@ -830,11 +803,7 @@ async function specificationPosition(
 ): Promise<ActionProjection> {
   const { catalogue } = dependencies;
   const specification: SpecificationLevelActions = {
-    createTask: specificationEnded(snapshot)
-      ? unavailable('specification-ended')
-      : (snapshot.index?.value.tasks.length ?? 0) >= TASKS_PER_SPECIFICATION_MAX
-        ? unavailable('task-limit')
-        : allowed,
+    createTask: createTaskAvailability(snapshot),
     taskTypes: taskTypeOptions(catalogue, await effectiveTaskTypesOf(dependencies, snapshot)),
     ...(dependencies.specificationExit
       ? { exit: await dependencies.specificationExit.exitActions(snapshot) }
@@ -896,15 +865,42 @@ function definitionChanged(run: WorkflowRun): Pick<ActionProjection, 'position' 
   };
 }
 
-/** The action projection of one Task of a snapshot already read (inside `serialize`). */
+/**
+ * What every Task projection of one snapshot reads alike, derived once per read: the Tasks
+ * (`executionTasks` replays every run) and the effective task types (they may read the archetype).
+ */
+export interface TaskProjectionRead {
+  readonly tasks: ExecutionTasks;
+  readonly allowedTypes: () => Promise<TaskTypes>;
+}
+
+export function taskProjectionRead(
+  dependencies: ActionDependencies,
+  snapshot: ExecutionSnapshot,
+): TaskProjectionRead {
+  let allowedTypes: Promise<TaskTypes> | undefined;
+
+  return {
+    tasks: executionTasks(dependencies.catalogue, snapshot),
+    allowedTypes: () => (allowedTypes ??= effectiveTaskTypesOf(dependencies, snapshot)),
+  };
+}
+
+/**
+ * The action projection of one Task of a snapshot already read (inside `serialize`), without its
+ * authoring facts (`taskAuthoring`, which only `inspectActions` adds for one Task): its position,
+ * start blockers, workflow actions, lifecycle actions and attention. A read of every Task asks this
+ * for each, with one {@link TaskProjectionRead}, so no part of it walks the other Tasks' graph.
+ */
 export async function taskProjection(
   dependencies: ActionDependencies,
   snapshot: ExecutionSnapshot,
   subject: Extract<WorkflowSubject, { kind: 'task' }>,
   derived: readonly AttentionItem[],
+  read: TaskProjectionRead = taskProjectionRead(dependencies, snapshot),
 ): Promise<ActionProjection> {
   const { catalogue } = dependencies;
-  const tasks = executionTasks(catalogue, snapshot);
+  const { tasks } = read;
   if (tasks.broken.includes(subject.taskId)) {
     const issue = snapshot.issues.find(
       (candidate): candidate is Extract<TaskResourceIssue, { kind: 'broken' | 'dangling' }> =>
@@ -934,26 +930,9 @@ export async function taskProjection(
     };
   }
 
-  const { task, manifest } = loadTask(catalogue, snapshot, subject.taskId);
-  const pending = await dependencies.references.pendingDocumentChange(
-    subject.specId,
-    subject.taskId,
-  );
-  // Only a Task that never started can be removed, so only its folder is listed.
-  const unregistered = task.run
-    ? []
-    : unregisteredTaskFiles(
-        manifest.value,
-        await dependencies.store.taskFiles(subject.specId, subject.taskId),
-      );
-  const lifecycle = lifecycleOf(task, manifest.revision, snapshot, pending, unregistered);
-  const taskAuthoring = await taskAuthoringOf(
-    dependencies,
-    snapshot,
-    tasks,
-    task,
-    lifecycle.editDependencies.kind === 'allowed',
-  );
+  const loaded = loadTask(catalogue, snapshot, subject.taskId, tasks);
+  const { task } = loaded;
+  const { lifecycle, pending } = await taskLifecycleOf(dependencies, snapshot, loaded);
   const readinessBlockers = () => taskReadinessBlockers(task, tasks.tasks);
   const contextBlockers = async (): Promise<StartBlocker[]> => {
     const issues = (await unresolvedContext(dependencies, subject.specId, task)).filter(
@@ -991,7 +970,7 @@ export async function taskProjection(
     try {
       workflow = resolveTaskType({
         type: task.type,
-        allowed: await effectiveTaskTypesOf(dependencies, snapshot),
+        allowed: await read.allowedTypes(),
         taskType: (id) => catalogue.taskType(id),
         workflow: (id) => catalogue.workflow(id),
       }).workflow;
@@ -1008,7 +987,6 @@ export async function taskProjection(
         position: { kind: 'blocked', blockers },
         actions: {},
         task: lifecycle,
-        taskAuthoring,
         ...(attention ? { attention } : {}),
       };
     }
@@ -1023,7 +1001,6 @@ export async function taskProjection(
       subject,
       ...first,
       task: lifecycle,
-      taskAuthoring,
       ...(attention ? { attention } : {}),
     };
   }
@@ -1034,7 +1011,6 @@ export async function taskProjection(
       subject,
       ...definitionChanged(run),
       task: lifecycle,
-      taskAuthoring,
       ...ownAttention(derived, subject),
     };
   }
@@ -1052,7 +1028,6 @@ export async function taskProjection(
       gates,
     })),
     task: lifecycle,
-    taskAuthoring,
     ...ownAttention(derived, subject),
   };
 }
@@ -1092,82 +1067,4 @@ function taskReadinessBlockers(
   }
 
   return [];
-}
-
-/** The Specification's run ended: `createTask`, `editTask` and `removeTask` refuse. */
-function specificationEnded(snapshot: ExecutionSnapshot): boolean {
-  return snapshot.specification?.value.run.position.state === 'terminal';
-}
-
-/**
- * The owner's lifecycle actions on a Task that is not broken: the status decisions ask
- * `taskDecisionRefusal` (no hold or cancel during an active attempt), the edits and the removal
- * follow `editTask` and `removeTask`, which refuse first once the Specification's run ended.
- */
-function lifecycleOf(
-  task: ExecutionTask,
-  revision: string,
-  snapshot: ExecutionSnapshot,
-  pending: boolean,
-  unregistered: readonly string[],
-): TaskLifecycleActions {
-  type Action = Availability<TaskActionUnavailableReason>;
-  const state = taskPosition(task).state;
-  const decision = (from: TaskStatus | undefined, to: TaskStatus): Action => {
-    const refusal = taskDecisionRefusal(task, to);
-    if (refusal === 'ended') {
-      return unavailable('ended');
-    }
-
-    if (to === 'cancelled' && task.status === 'cancelled') {
-      return unavailable('cancelled');
-    }
-
-    if (refusal === 'status' || (from !== undefined && task.status !== from)) {
-      return unavailable('status');
-    }
-
-    if (refusal === 'active-attempt') {
-      return unavailable('active-attempt');
-    }
-
-    return pending ? unavailable('task-document-change') : allowed;
-  };
-
-  const ended = specificationEnded(snapshot);
-  const edit: Action = ended
-    ? unavailable('specification-ended')
-    : task.status === 'cancelled'
-      ? unavailable('cancelled')
-      : state === 'terminal'
-        ? unavailable('ended')
-        : pending
-          ? unavailable('task-document-change')
-          : allowed;
-  const dependents = snapshot.manifests
-    .filter((entry) => entry.value.dependsOn.includes(task.taskId))
-    .map((entry) => entry.value.id)
-    .sort();
-
-  return {
-    revision,
-    approve: decision('draft', 'ready'),
-    hold: decision('ready', 'on-hold'),
-    resume: decision('on-hold', 'ready'),
-    cancel: decision(undefined, 'cancelled'),
-    remove: ended
-      ? unavailable('specification-ended')
-      : task.run
-        ? unavailable('started')
-        : dependents.length > 0
-          ? unavailable('has-dependents', { taskIds: dependents })
-          : pending
-            ? unavailable('task-document-change')
-            : unregistered.length > 0
-              ? unavailable('unregistered-files', { files: unregistered })
-              : allowed,
-    editDetails: edit,
-    editContext: edit,
-    editDependencies: edit.kind === 'allowed' && task.run ? unavailable('started') : edit,
-  };
 }

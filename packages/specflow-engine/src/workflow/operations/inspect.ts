@@ -4,9 +4,14 @@ import { taskReadiness, type TaskReadiness } from '../tasks/tasks';
 import type { SpecificationExecutionRecord, ExecutionTask, WorkflowRun } from '../state/model';
 import type { TaskResourceIssue } from '../../tasks/resource/validate';
 import { WorkflowError } from '../errors';
-import { taskProjection, type ActionDependencies, type ActionProjection } from './actions';
+import {
+  taskProjection,
+  taskProjectionRead,
+  type ActionDependencies,
+  type ActionProjection,
+} from './actions';
 import { deriveAttention } from './attention';
-import { executionTasks, pinnedDefinitionIfUnchanged } from './loaded-execution';
+import { pinnedDefinitionIfUnchanged } from './loaded-execution';
 import type { ExecutionSnapshot } from '../state/store';
 
 export interface ExecutionInspection {
@@ -78,7 +83,9 @@ export async function inspectSnapshot(
 }> {
   const { catalogue } = dependencies;
   const specId = snapshot.specId;
-  const { tasks, broken } = executionTasks(catalogue, snapshot);
+  // One read for every Task projection: the Tasks and task types are derived once.
+  const read = taskProjectionRead(dependencies, snapshot);
+  const { tasks, broken } = read.tasks;
   const revisions = new Map(
     snapshot.manifests.map((entry) => [entry.value.id, entry.revision] as const),
   );
@@ -95,9 +102,11 @@ export async function inspectSnapshot(
   const derived = deriveAttention(catalogue, snapshot);
   const projections = new Map<string, ActionProjection>();
   const attention = [...derived];
+  // No authoring facts: those are for one Task's detail only (`inspectActions`).
+  const wanted = new Set(projected);
   for (const task of tasks) {
     const unstarted = !task.run && task.status === 'ready';
-    if (!unstarted && !projected.includes(task.taskId)) {
+    if (!unstarted && !wanted.has(task.taskId)) {
       continue;
     }
 
@@ -106,6 +115,7 @@ export async function inspectSnapshot(
       snapshot,
       { kind: 'task', specId, taskId: task.taskId },
       derived,
+      read,
     );
     projections.set(task.taskId, projection);
     if (unstarted && projection.attention) {

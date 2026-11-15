@@ -14,7 +14,7 @@ import {
 import { unregisteredTaskFiles } from '../../tasks/resource/validate';
 import { WorkflowError } from '../errors';
 import { isValidTaskId, TASKS_PER_SPECIFICATION_MAX } from '../limits';
-import { dependencyRefusal, dependencyView } from './task-dependencies';
+import { dependencyRule, dependencyView } from './task-dependencies';
 import {
   taskPosition,
   type ExecutionTask,
@@ -150,9 +150,9 @@ function assertDependencies(
   previous: readonly string[],
 ): void {
   const { tasks, broken } = executionTasks(dependencies.catalogue, snapshot);
-  const view = dependencyView(snapshot, tasks, broken);
+  const rule = dependencyRule(dependencyView(snapshot, tasks, broken), taskId);
   for (const dependency of dependsOn) {
-    switch (dependencyRefusal(view, taskId, dependency, dependsOn, previous)) {
+    switch (rule.refusal(dependency, dependsOn, previous)) {
       case 'broken':
         invalid(`The Task "${taskId}" cannot depend on the broken Task "${dependency}".`);
         break;

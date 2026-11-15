@@ -43,8 +43,12 @@ export function usePaneScrollMemory(entry: string, viewport: HTMLElement | null)
       }
     };
 
+    // User input ends a waiting restore and keeps the position it starts from. A scroll event comes
+    // only with the next frame: a press that navigates before it (opening a result right after a
+    // scroll) would otherwise leave this entry at its previous position.
     const stop = () => {
       pending = undefined;
+      save();
     };
 
     apply();

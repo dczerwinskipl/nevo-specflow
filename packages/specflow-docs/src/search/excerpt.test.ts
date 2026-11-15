@@ -68,6 +68,12 @@ describe('excerpt', () => {
       text: 'Read the workspace docs first, see the diagram and *not* Ctrl & more.',
     },
     {
+      name: 'no tag rebuilt from nested tags',
+      section: '## Tags\n\nThe widget <<b>script>alert(1)<</b>/script> renders safely.',
+      query: 'widget',
+      text: 'The widget alert(1) renders safely.',
+    },
+    {
       name: 'the longest prose fragment when no word matches',
       section:
         '## Guide\n\nShort intro.\n\nThe widget is installed with pnpm and configured once per project.\n\n```\nlonger code line that is not prose at all here\n```',

@@ -147,9 +147,19 @@ function inline(markdown: string): Inline {
     .replace(/\[\^[^\]]+\]/gu, '')
     .replace(/\[([^\]]+)\](?:\((?:[^()]|\([^)]*\))*\)|\[[^\]]*\])/gu, '$1')
     .replace(/<((?:https?|mailto):[^>\s]+)>/gu, (_match, url: string) => hold(url, false))
-    .replace(/<br\s*\/?>/giu, ' ')
-    .replace(/<\/?[A-Za-z][^<>]*>/gu, '')
-    .replace(/&(amp|lt|gt|quot|apos|nbsp|#39);/gu, (_match, name: string) => ENTITIES[name]!);
+    .replace(/<br\s*\/?>/giu, ' ');
+  // Tags are removed until none is left, so a nested `<<b>script>` cannot rebuild one. Entities are
+  // decoded afterwards on purpose: the excerpt is plain text (rendered as text, never as HTML), and
+  // `&lt;` is meant to read as `<`.
+  for (let previous = ''; previous !== text;) {
+    previous = text;
+    text = text.replace(/<\/?[A-Za-z][^<>]*>/gu, '');
+  }
+
+  text = text.replace(
+    /&(amp|lt|gt|quot|apos|nbsp|#39);/gu,
+    (_match, name: string) => ENTITIES[name]!,
+  );
 
   for (let previous = ''; previous !== text;) {
     previous = text;

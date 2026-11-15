@@ -2323,7 +2323,8 @@
         "tasks": "Unfinished tasks",
         "broken": "Broken tasks",
         "writes": "Pending writes",
-        "state": "Workflow state"
+        "state": "Workflow state",
+        "sessions": "Running sessions"
       },
       "explanation": {
         "workflow": "The specification workflow has not ended. A wait for tasks ends by itself once every task is done or cancelled.",
@@ -2331,7 +2332,8 @@
         "tasks": "Finish, cancel or remove each one.",
         "broken": "Their files do not match their workflow records. Repair or remove them.",
         "writes": "A save or another change is still in progress; it settles by itself in a moment.",
-        "state": "The workflow state cannot be read. Check the specification's execution files."
+        "state": "The workflow state cannot be read. Check the specification's execution files.",
+        "sessions": "An agent Session is working in this worktree. Wait for its Turn to finish or cancel it, then close."
       },
       "groupHeading": "{{title}} · {{count}}",
       "more_one": "and {{count}} more",
@@ -2384,7 +2386,9 @@
         "saving_many": "{{count}} task documents are still being saved",
         "saving_other": "{{count}} task documents are still being saved",
         "change": "a change is still being saved",
-        "state": "its workflow state cannot be read"
+        "state": "its workflow state cannot be read",
+        "sessions_one": "an agent Session is working in its worktree",
+        "sessions_other": "{{count}} agent Sessions are working in its worktree"
       }
     },
     "abandon": {

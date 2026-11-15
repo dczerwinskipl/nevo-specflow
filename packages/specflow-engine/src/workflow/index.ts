@@ -1,5 +1,6 @@
 // Deterministic execution of Specifications and Tasks: one workflow core, two entry points.
 export {
+  closeInProgress,
   openArchetypeEditing,
   inspectActionsForRead,
   openWorkflow,

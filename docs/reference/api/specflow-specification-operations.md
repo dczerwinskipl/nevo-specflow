@@ -203,6 +203,13 @@ A Close that the Specification workflow refuses (unfinished Tasks or runs, pendi
 `CLOSE_BLOCKED` with `blockers`: groups `{kind, subjectIds, message}` (`kind` is a stable value, `subjectIds` are
 Task ids or the Specification id for Specification-wide holds, `message` is display-only). Abandoning the
 Specification instead is [`POST /api/specs/:specId/workflow/abandon`](specification-workflow.md).
+The Runtime also answers `409 CLOSE_BLOCKED`, on the preview and on the Close itself (Specification
+and Workspace Close), while an agent Session Turn works in the linked checkout Close would remove: one
+blocker `{kind: 'session-turn-running', subjectIds: [sessionId...]}` (`CloseRefusalBlocker`). While
+Close runs, the Runtime holds that checkout against new Turns, and a Turn of the Specification's
+Session refuses to start while an unfinished Close journal names the Specification
+([Sessions API, execution workspace](sessions.md)). The hold is in the Runtime process; a Close run
+by the CLI is seen by Turns through the durable journal only.
 
 Worktree Close treats `.nevo/local/cache/**` (the semantic documentation index) as disposable
 product-owned files: they do not make the worktree dirty and are deleted with it. When Create

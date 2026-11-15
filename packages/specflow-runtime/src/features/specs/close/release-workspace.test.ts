@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { whileReleased } from './release-workspace';
+import { createWorkspaceOccupancy } from '../../workspaces';
+import {
+  assertNoRunningTurns,
+  releaseAfterQuiescence,
+  whileReleased,
+  WorkspaceBusyError,
+} from './release-workspace';
 
 describe('releasing a workspace around Close', () => {
   it('releases only a linked plan source, and ends the hold when Close fails', async () => {
@@ -24,5 +30,33 @@ describe('releasing a workspace around Close', () => {
       Promise.resolve(),
     );
     expect(release).toHaveBeenCalledTimes(2);
+  });
+
+  it('refuses a Close of a checkout an agent Turn works in, and holds it against new Turns', async () => {
+    const occupancy = createWorkspaceOccupancy();
+    const docsEnd = vi.fn();
+    const release = releaseAfterQuiescence(occupancy, () => Promise.resolve({ end: docsEnd }));
+    const linked = { workspaceId: 'linked-1', kind: 'linked' } as const;
+    const turn = occupancy.beginTurn('linked-1', 'session-1')!;
+
+    // The preview refuses the same way, without holding anything.
+    expect(() => assertNoRunningTurns((id) => occupancy.runningSessions(id), linked)).toThrow(
+      WorkspaceBusyError,
+    );
+    await expect(whileReleased(release, linked, () => Promise.resolve())).rejects.toMatchObject({
+      sessionIds: ['session-1'],
+    });
+    expect(docsEnd).not.toHaveBeenCalled();
+
+    turn.end();
+    let duringClose: unknown;
+    await whileReleased(release, linked, () => {
+      duringClose = occupancy.beginTurn('linked-1', 'session-2');
+
+      return Promise.resolve();
+    });
+    expect(duringClose).toBeUndefined();
+    expect(docsEnd).toHaveBeenCalledOnce();
+    expect(occupancy.beginTurn('linked-1', 'session-2')).toBeDefined();
   });
 });

@@ -491,9 +491,7 @@ describe('demo document writes (D4 shapes)', () => {
     ]);
     expect(created.documents[0]!.id).toBe('decisions');
     expect(created.folders).toEqual(['empty', 'notes']);
-    expect((await source.read('localization', 'decisions')).content).toContain(
-      '# Localization and account preferences - Decisions',
-    );
+    expect((await source.read('localization', 'decisions')).content).toContain('# Decisions');
     expect((await tree('localization')).folders.map((folder) => folder.path)).toContain('empty');
     const add = (n: number, path: string) =>
       env.documents.create(

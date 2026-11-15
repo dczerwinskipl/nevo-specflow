@@ -52,9 +52,18 @@ export function createSessionCoordinator(
    * The verified root of a Specification's workspace (its worktree, or the primary checkout),
    * resolved through the Engine at Turn start. Refuses with a SessionError when unavailable.
    */
-  specificationWorkspace?: (
-    specId: string,
-  ) => Promise<{ readonly root: string; readonly workspaceIdentity: string }>,
+  specificationWorkspace?: (specId: string) => Promise<{
+    readonly root: string;
+    readonly workspaceId: string;
+    readonly workspaceIdentity: string;
+  }>,
+  /**
+   * Turns registered by workspace, so Close never removes a checkout an agent works in; `undefined`
+   * while a Close holds the workspace (the Turn is refused).
+   */
+  workspaceOccupancy?: {
+    beginTurn(workspaceId: string, sessionId: string): { end(): void } | undefined;
+  },
 ) {
   const driverList: readonly SessionDriver[] = Array.isArray(drivers)
     ? drivers
@@ -119,22 +128,21 @@ export function createSessionCoordinator(
   async function sessionExecutionContext(
     sessionId: string,
     driver: SessionDriver,
-  ): Promise<typeof executionContext> {
+  ): Promise<{ context: typeof executionContext; workspaceId?: string }> {
     if (!specificationWorkspace || executionContext.kind !== 'read-only') {
-      return executionContext;
+      return { context: executionContext };
     }
 
     const association = await call<StoredAssociation | null>({ op: 'association', sessionId });
     if (!association) {
-      return executionContext;
+      return { context: executionContext };
     }
 
     const workspace = await specificationWorkspace(association.specId);
-    if (workspace.root === executionContext.workspace) {
-      return executionContext;
-    }
-
-    if (driver.supportsSessionWorkspaces !== true) {
+    if (
+      workspace.root !== executionContext.workspace &&
+      driver.supportsSessionWorkspaces !== true
+    ) {
       throw new SessionError(
         'CAPABILITY_UNSUPPORTED',
         "This provider runs only in the Runtime's own checkout and cannot work in this Specification's worktree.",
@@ -143,14 +151,39 @@ export function createSessionCoordinator(
     }
 
     return {
-      kind: 'read-only',
-      workspace: workspace.root,
-      temporaryRoot: executionContext.temporaryRoot,
-      // Only a Runtime with Engine effects binds executions to a workspace incarnation.
-      ...(executionContext.workspaceIdentity
-        ? { workspaceIdentity: workspace.workspaceIdentity }
-        : {}),
+      workspaceId: workspace.workspaceId,
+      context:
+        workspace.root === executionContext.workspace
+          ? { ...executionContext, specId: association.specId }
+          : {
+              kind: 'read-only',
+              workspace: workspace.root,
+              temporaryRoot: executionContext.temporaryRoot,
+              specId: association.specId,
+              // Only a Runtime with Engine effects binds executions to a workspace incarnation.
+              ...(executionContext.workspaceIdentity
+                ? { workspaceIdentity: workspace.workspaceIdentity }
+                : {}),
+            },
     };
+  }
+
+  /** Registers the Turn in its Specification's workspace, refused while a Close holds it. */
+  function beginTurnIn(workspaceId: string | undefined, sessionId: string) {
+    if (workspaceId === undefined || !workspaceOccupancy) {
+      return undefined;
+    }
+
+    const hold = workspaceOccupancy.beginTurn(workspaceId, sessionId);
+    if (!hold) {
+      throw new SessionError(
+        'CAPABILITY_UNSUPPORTED',
+        "The Specification's worktree is being closed, so no agent can start in it.",
+        { reason: 'specification-close-in-progress' },
+      );
+    }
+
+    return hold;
   }
 
   const active = new Map<string, ActiveInvocation>();
@@ -388,219 +421,236 @@ export function createSessionCoordinator(
       const driver = driverFor(selection.providerId);
       await validate(driver, selection);
       const writing = selection.mode === 'workspace-write';
-      const context =
+      const placement =
         selection.providerId === 'mock'
-          ? executionContext
+          ? { context: executionContext }
           : await sessionExecutionContext(sessionId, driver);
-      const native = selection.providerId !== 'mock' && context.kind === 'read-only';
-      const nativeScope = driver.contextScope?.();
-      const binding =
-        writing && context.kind === 'read-only'
-          ? executionBinding(
-              sessionId,
-              input.requestId,
-              selection,
-              nativeScope ?? '',
-              context.workspaceIdentity!,
-            )
-          : undefined;
-      const admitted = await call<StartAdmission>({
-        op: 'start',
-        actor,
-        sessionId,
-        input,
-        ...(native
-          ? {
-              nativeWorkspace: context.workspace,
-              nativeScope,
-              nativeContextMode: driver.nativeContextMode ?? 'reserved',
-              nativeWorkspaceIdentity: context.workspaceIdentity,
-            }
-          : {}),
-        ...(binding ? { effectBinding: binding } : {}),
-      });
-      if (!admitted.fresh) {
-        return { turnId: admitted.turnId };
-      }
-
-      if (closed) {
-        return { turnId: admitted.turnId };
-      }
-
-      const controller = new AbortController();
-      let seq = 0,
-        tail = Promise.resolve();
-      let uncertain = false;
-      const emit = async (fact: DriverFact) => {
-        validateDriverFact(fact);
-        if (fact.kind === 'text' && utf8Bytes(fact.text) > SessionLimits.chunkBytes) {
-          throw new SessionError('SESSION_PAYLOAD_TOO_LARGE', 'Driver text chunk exceeds budget.');
-        }
-
-        if (utf8Bytes(JSON.stringify(fact)) > SessionLimits.eventBytes) {
-          throw new SessionError('SESSION_PAYLOAD_TOO_LARGE', 'Driver fact exceeds budget.');
-        }
-
-        const operation = tail.then(async () => {
-          const next = seq + 1;
-          const accepted = await persistFact({
-            op: 'fact',
-            sessionId,
-            turnId: admitted.turnId,
-            invocationId: admitted.invocationId,
-            driverSeq: next,
-            fact,
-          });
-          // A replayed lost fact may already be committed despite a lost acknowledgement.
-          if (fact.kind === 'lost') {
-            uncertain = true;
-          }
-
-          if (accepted && fact.kind === 'outcome') {
-            uncertain = false;
-          }
-
-          seq = next;
+      const context = placement.context;
+      // Held until the Turn's execution ends; released at once when it never starts.
+      const turnHold = beginTurnIn(placement.workspaceId, sessionId);
+      let handedOver = false;
+      try {
+        const native = selection.providerId !== 'mock' && context.kind === 'read-only';
+        const nativeScope = driver.contextScope?.();
+        const binding =
+          writing && context.kind === 'read-only'
+            ? executionBinding(
+                sessionId,
+                input.requestId,
+                selection,
+                nativeScope ?? '',
+                context.workspaceIdentity!,
+              )
+            : undefined;
+        const admitted = await call<StartAdmission>({
+          op: 'start',
+          actor,
+          sessionId,
+          input,
+          ...(native
+            ? {
+                nativeWorkspace: context.workspace,
+                nativeScope,
+                nativeContextMode: driver.nativeContextMode ?? 'reserved',
+                nativeWorkspaceIdentity: context.workspaceIdentity,
+              }
+            : {}),
+          ...(binding ? { effectBinding: binding } : {}),
         });
-        tail = operation.catch(() => undefined);
-        await operation;
-      };
+        if (!admitted.fresh) {
+          return { turnId: admitted.turnId };
+        }
 
-      const live: ActiveInvocation = {
-        sessionId,
-        invocationId: admitted.invocationId,
-        controller,
-        emit,
-        done: Promise.resolve(),
-      };
-      active.set(admitted.turnId, live);
-      live.done = (async () => {
-        try {
-          const invocation: Invocation = {
-            sessionId,
-            turnId: admitted.turnId,
-            invocationId: admitted.invocationId,
-            request: input,
-            selection,
-            executionContext: selection.providerId === 'mock' ? { kind: 'no-effects' } : context,
-            ...(admitted.providerContext
-              ? {
-                  providerContext: admitted.providerContext,
-                  beforeDispatch: async () => {
-                    await call({
-                      op: 'dispatch-intent',
-                      sessionId,
-                      turnId: admitted.turnId,
-                      invocationId: admitted.invocationId,
-                    });
-                  },
-                }
-              : {}),
-          };
-          if (writing) {
-            const managed = createManagedInvocation({
-              invocation,
-              binding: binding!,
-              driver,
-              effects: effects!,
-              signal: controller.signal,
-              stop: () => controller.abort('persistence-loss'),
-              persist: emit,
-              finalize: async (result, source, recovered = false) => {
-                await call({
-                  op: 'reconcile-effect',
-                  sessionId,
-                  turnId: admitted.turnId,
-                  invocationId: admitted.invocationId,
-                  binding: binding!,
-                  actor: 'runtime-execution',
-                  requestId: admitted.invocationId,
-                  source,
-                  outcome: result.outcome,
-                  ...(result.error ? { error: result.error } : {}),
-                  recovered,
-                });
+        if (closed) {
+          return { turnId: admitted.turnId };
+        }
+
+        const controller = new AbortController();
+        let seq = 0,
+          tail = Promise.resolve();
+        let uncertain = false;
+        const emit = async (fact: DriverFact) => {
+          validateDriverFact(fact);
+          if (fact.kind === 'text' && utf8Bytes(fact.text) > SessionLimits.chunkBytes) {
+            throw new SessionError(
+              'SESSION_PAYLOAD_TOO_LARGE',
+              'Driver text chunk exceeds budget.',
+            );
+          }
+
+          if (utf8Bytes(JSON.stringify(fact)) > SessionLimits.eventBytes) {
+            throw new SessionError('SESSION_PAYLOAD_TOO_LARGE', 'Driver fact exceeds budget.');
+          }
+
+          const operation = tail.then(async () => {
+            const next = seq + 1;
+            const accepted = await persistFact({
+              op: 'fact',
+              sessionId,
+              turnId: admitted.turnId,
+              invocationId: admitted.invocationId,
+              driverSeq: next,
+              fact,
+            });
+            // A replayed lost fact may already be committed despite a lost acknowledgement.
+            if (fact.kind === 'lost') {
+              uncertain = true;
+            }
+
+            if (accepted && fact.kind === 'outcome') {
+              uncertain = false;
+            }
+
+            seq = next;
+          });
+          tail = operation.catch(() => undefined);
+          await operation;
+        };
+
+        const live: ActiveInvocation = {
+          sessionId,
+          invocationId: admitted.invocationId,
+          controller,
+          emit,
+          done: Promise.resolve(),
+        };
+        active.set(admitted.turnId, live);
+        handedOver = true;
+        live.done = (async () => {
+          try {
+            const invocation: Invocation = {
+              sessionId,
+              turnId: admitted.turnId,
+              invocationId: admitted.invocationId,
+              request: input,
+              selection,
+              executionContext: selection.providerId === 'mock' ? { kind: 'no-effects' } : context,
+              ...(admitted.providerContext
+                ? {
+                    providerContext: admitted.providerContext,
+                    beforeDispatch: async () => {
+                      await call({
+                        op: 'dispatch-intent',
+                        sessionId,
+                        turnId: admitted.turnId,
+                        invocationId: admitted.invocationId,
+                      });
+                    },
+                  }
+                : {}),
+            };
+            if (writing) {
+              const managed = createManagedInvocation({
+                invocation,
+                binding: binding!,
+                driver,
+                effects: effects!,
+                signal: controller.signal,
+                stop: () => controller.abort('persistence-loss'),
+                persist: emit,
+                finalize: async (result, source, recovered = false) => {
+                  await call({
+                    op: 'reconcile-effect',
+                    sessionId,
+                    turnId: admitted.turnId,
+                    invocationId: admitted.invocationId,
+                    binding: binding!,
+                    actor: 'runtime-execution',
+                    requestId: admitted.invocationId,
+                    source,
+                    outcome: result.outcome,
+                    ...(result.error ? { error: result.error } : {}),
+                    recovered,
+                  });
+                },
+              });
+              live.operation = managed;
+              live.emit = managed.emit;
+              await managed.done;
+
+              return;
+            }
+
+            live.operation = driver.start(invocation, emit, controller.signal);
+            await live.operation.done;
+            // A transport ending is not evidence that a previously lost operation settled.
+            if (uncertain) {
+              return;
+            }
+
+            // A settled read-only operation without protocol outcome is interrupted, never invented success.
+            await emit({
+              kind: 'outcome',
+              outcome: 'interrupted',
+              error: {
+                code: 'INTERRUPTED',
+                message: 'Provider operation ended without a terminal outcome.',
               },
             });
-            live.operation = managed;
-            live.emit = managed.emit;
-            await managed.done;
+          } catch (error) {
+            if (writing) {
+              await emit({
+                kind: 'lost',
+                message: 'Agent lifecycle persistence requires recovery.',
+              }).catch(() => undefined);
 
-            return;
-          }
+              return;
+            }
 
-          live.operation = driver.start(invocation, emit, controller.signal);
-          await live.operation.done;
-          // A transport ending is not evidence that a previously lost operation settled.
-          if (uncertain) {
-            return;
-          }
+            if (uncertain) {
+              return;
+            }
 
-          // A settled read-only operation without protocol outcome is interrupted, never invented success.
-          await emit({
-            kind: 'outcome',
-            outcome: 'interrupted',
-            error: {
-              code: 'INTERRUPTED',
-              message: 'Provider operation ended without a terminal outcome.',
-            },
-          });
-        } catch (error) {
-          if (writing) {
+            if (
+              error instanceof SessionError &&
+              ['SESSION_STORE_BUSY', 'SESSION_STORE_UNAVAILABLE'].includes(error.code)
+            ) {
+              // A storage failure says nothing about the provider's execution outcome.
+              // If this final write also fails, retain the nonterminal record for restart recovery.
+              uncertain = true;
+              await emit({
+                kind: 'lost',
+                message: 'Provider lifecycle persistence could not be confirmed.',
+              });
+
+              return;
+            }
+
             await emit({
-              kind: 'lost',
-              message: 'Agent lifecycle persistence requires recovery.',
-            }).catch(() => undefined);
-
-            return;
-          }
-
-          if (uncertain) {
-            return;
-          }
-
-          if (
-            error instanceof SessionError &&
-            ['SESSION_STORE_BUSY', 'SESSION_STORE_UNAVAILABLE'].includes(error.code)
-          ) {
-            // A storage failure says nothing about the provider's execution outcome.
-            // If this final write also fails, retain the nonterminal record for restart recovery.
-            uncertain = true;
-            await emit({
-              kind: 'lost',
-              message: 'Provider lifecycle persistence could not be confirmed.',
+              kind: 'outcome',
+              outcome: controller.signal.aborted
+                ? controller.signal.reason === 'shutdown'
+                  ? 'interrupted'
+                  : 'cancelled'
+                : 'failed',
+              ...(controller.signal.aborted
+                ? {}
+                : {
+                    error: {
+                      code: 'PROVIDER_FAILED',
+                      message:
+                        error instanceof SessionError
+                          ? error.message
+                          : 'Provider operation failed.',
+                    },
+                  }),
             });
-
-            return;
+          } finally {
+            turnHold?.end();
+            if (active.get(admitted.turnId) === live) {
+              active.delete(admitted.turnId);
+            }
           }
+        })();
+        // Store errors must not become unhandled rejection; lifecycle remains recoverable on disk.
+        void live.done.catch(() => undefined);
 
-          await emit({
-            kind: 'outcome',
-            outcome: controller.signal.aborted
-              ? controller.signal.reason === 'shutdown'
-                ? 'interrupted'
-                : 'cancelled'
-              : 'failed',
-            ...(controller.signal.aborted
-              ? {}
-              : {
-                  error: {
-                    code: 'PROVIDER_FAILED',
-                    message:
-                      error instanceof SessionError ? error.message : 'Provider operation failed.',
-                  },
-                }),
-          });
-        } finally {
-          if (active.get(admitted.turnId) === live) {
-            active.delete(admitted.turnId);
-          }
+        return { turnId: admitted.turnId };
+      } finally {
+        if (!handedOver) {
+          turnHold?.end();
         }
-      })();
-      // Store errors must not become unhandled rejection; lifecycle remains recoverable on disk.
-      void live.done.catch(() => undefined);
-
-      return { turnId: admitted.turnId };
+      }
     },
     async cancel(actor: string, sessionId: string, turnId: string, requestId: string) {
       accepting();

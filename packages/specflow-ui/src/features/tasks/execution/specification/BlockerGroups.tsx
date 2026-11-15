@@ -1,15 +1,16 @@
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { Typography } from '@nevo/ui';
-import type { ExitBlocker, WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
+import type { CloseRefusalBlocker } from '@nevo/specflow-contracts/specs';
+import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { InlineAction } from '../InlineAction';
 
 export const ITEMS_SHOWN = 5;
 
-type Group = 'workflow' | 'tasks' | 'broken' | 'writes' | 'state';
+type Group = 'sessions' | 'workflow' | 'tasks' | 'broken' | 'writes' | 'state';
 
 /** Which group each blocker kind belongs to; the group order is fixed. */
-const GROUP_OF: Record<ExitBlocker['kind'], Group> = {
+const GROUP_OF: Record<CloseRefusalBlocker['kind'], Group> = {
   'specification-run': 'workflow',
   'draft-tasks': 'tasks',
   'on-hold-tasks': 'tasks',
@@ -19,14 +20,29 @@ const GROUP_OF: Record<ExitBlocker['kind'], Group> = {
   'pending-task-documents': 'writes',
   'operation-in-progress': 'writes',
   'execution-state-unreadable': 'state',
+  'session-turn-running': 'sessions',
 };
 
 /** Close: Workflow → Unfinished tasks → Pending writes; Abandon starts with Pending writes. */
-const CLOSE_ORDER: readonly Group[] = ['workflow', 'tasks', 'broken', 'writes', 'state'];
-const ABANDON_ORDER: readonly Group[] = ['writes', 'state', 'workflow', 'tasks', 'broken'];
+const CLOSE_ORDER: readonly Group[] = [
+  'sessions',
+  'workflow',
+  'tasks',
+  'broken',
+  'writes',
+  'state',
+];
+const ABANDON_ORDER: readonly Group[] = [
+  'writes',
+  'state',
+  'sessions',
+  'workflow',
+  'tasks',
+  'broken',
+];
 
 const taskIdsOf = (
-  blockers: readonly ExitBlocker[],
+  blockers: readonly CloseRefusalBlocker[],
   group: Group,
   tasks: ReadonlyMap<string, BlockerTask>,
 ) => [
@@ -66,13 +82,21 @@ export function workflowAtOf(position: WorkflowActionProjection['position']): Wo
 export function closeReasons(
   t: TFunction,
   locale: string,
-  blockers: readonly ExitBlocker[],
+  blockers: readonly CloseRefusalBlocker[],
   tasks: ReadonlyMap<string, BlockerTask>,
   at: WorkflowAt = { waiting: false },
 ): string {
   const has = (group: Group) => blockers.some((blocker) => GROUP_OF[blocker.kind] === group);
   const unfinished = taskIdsOf(blockers, 'tasks', tasks).length;
   const reasons: string[] = [];
+  if (has('sessions')) {
+    // An agent works in the worktree Close would remove (subjects are Session ids).
+    const sessions = blockers
+      .filter((blocker) => GROUP_OF[blocker.kind] === 'sessions')
+      .reduce((count, blocker) => count + blocker.subjectIds.length, 0);
+    reasons.push(t('workflowExecution.close.reason.sessions', { count: sessions }));
+  }
+
   if (has('workflow') && at.waiting && unfinished > 0) {
     reasons.push(t('workflowExecution.close.reason.waiting', { count: unfinished }));
   } else {
@@ -120,7 +144,7 @@ export interface BlockerTask {
 }
 
 export interface BlockerGroupsProps {
-  readonly blockers: readonly ExitBlocker[];
+  readonly blockers: readonly CloseRefusalBlocker[];
   readonly order: 'close' | 'abandon';
   /** The Specification's Tasks by id, to name each blocking Task and its state. */
   readonly tasks: ReadonlyMap<string, BlockerTask>;

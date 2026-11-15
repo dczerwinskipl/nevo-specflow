@@ -153,7 +153,7 @@ function pendingTaskDocuments(engine: SpecFlowEngine): PendingTaskDocumentChange
 }
 
 /** An unsettled Close journal names the Specification (its subject, or a Workspace Close occupant). */
-async function closeInProgress(engine: SpecFlowEngine, specId: string): Promise<boolean> {
+export async function closeInProgress(engine: SpecFlowEngine, specId: string): Promise<boolean> {
   return (await listCloseJournals(engine.context)).some(
     (journal) =>
       journal.stage !== 'completed' &&

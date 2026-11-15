@@ -50,13 +50,34 @@ import { requireCapability } from '../../auth';
 import { specScope } from '../scope';
 import { documentFailure } from '../../documents';
 import { contractRef } from '../../../server/shared-contracts';
-import { whileReleased, type ReleaseWorkspace } from './release-workspace';
+import {
+  assertNoRunningTurns,
+  sessionTurnBlocker,
+  whileReleased,
+  WorkspaceBusyError,
+  type ReleaseWorkspace,
+  type RunningSessions,
+} from './release-workspace';
 
-export type { ReleaseWorkspace } from './release-workspace';
+export type { ReleaseWorkspace, RunningSessions } from './release-workspace';
+export { WorkspaceBusyError } from './release-workspace';
 
 export interface SpecsCloseEndpointOptions {
   readonly engine?: SpecFlowEngine;
   readonly releaseWorkspace?: ReleaseWorkspace;
+  /** The Sessions whose Turn runs in a workspace now: a preview refuses while there are any. */
+  readonly runningSessions?: RunningSessions;
+}
+
+/** `CLOSE_BLOCKED` for agent Session Turns working in the checkout Close would remove. */
+function busyRefusal(error: unknown) {
+  return error instanceof WorkspaceBusyError
+    ? {
+        code: 'CLOSE_BLOCKED' as const,
+        error: 'CLOSE_BLOCKED' as const,
+        blockers: [sessionTurnBlocker(error.sessionIds)],
+      }
+    : undefined;
 }
 
 type CloseKind = 'worktree-close' | 'specification-close';
@@ -337,6 +358,11 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
 
           return reply.code(result.status === 'completed' ? 200 : 202).send(result);
         } catch (error) {
+          const busy = busyRefusal(error);
+          if (busy) {
+            return reply.code(409).send(busy);
+          }
+
           const refusal = documentRefusal(error);
           if (refusal) {
             return reply.code(refusal.status).send(refusal.body);
@@ -389,9 +415,15 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
             operationId,
             request.query.integrateToTargetBranch,
           );
+          assertNoRunningTurns(options.runningSessions, plan.sourceWorkspace);
 
           return reply.code(200).send(plan);
         } catch (error) {
+          const busy = busyRefusal(error);
+          if (busy) {
+            return reply.code(409).send(busy);
+          }
+
           const code = safeCode(error);
           if (!code) {
             throw error;
@@ -432,13 +464,19 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
         projectWorkspaceCloseAllowed(request, engine);
         projectIntegrationAllowed(request, engine);
 
-        return reply.code(200).send(
-          await planPublicWorkspaceCloseOperation(engine, {
-            workspaceId: request.params.workspaceId,
-            operationId: randomUUID(),
-          }),
-        );
+        const plan = await planPublicWorkspaceCloseOperation(engine, {
+          workspaceId: request.params.workspaceId,
+          operationId: randomUUID(),
+        });
+        assertNoRunningTurns(options.runningSessions, plan.sourceWorkspace);
+
+        return reply.code(200).send(plan);
       } catch (error) {
+        const busy = busyRefusal(error);
+        if (busy) {
+          return reply.code(409).send(busy);
+        }
+
         const code = safeCode(error);
         if (!code) {
           throw error;
@@ -488,6 +526,11 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
 
         return reply.code(result.status === 'completed' ? 200 : 202).send(result);
       } catch (error) {
+        const busy = busyRefusal(error);
+        if (busy) {
+          return reply.code(409).send(busy);
+        }
+
         const refusal = documentRefusal(error);
         if (refusal) {
           return reply.code(refusal.status).send(refusal.body);

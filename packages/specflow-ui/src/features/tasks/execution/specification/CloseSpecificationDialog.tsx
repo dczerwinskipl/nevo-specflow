@@ -12,7 +12,8 @@ import {
   DialogTitle,
   Typography,
 } from '@nevo/ui';
-import type { ExitBlocker, WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
+import type { CloseRefusalBlocker } from '@nevo/specflow-contracts/specs';
+import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { useAppServices } from '../../../../app/useAppServices';
 import { InlineAction } from '../InlineAction';
 import { specsOverviewKeys } from '../../../specs/read-model';
@@ -111,7 +112,7 @@ function CloseBody({
   const refusedBlockers = [previewRefusal, closeRefusal].find(
     (refusal) => refusal?.code === 'CLOSE_BLOCKED',
   )?.blockers;
-  const blockers: readonly ExitBlocker[] | undefined = workflowBlockers ?? refusedBlockers;
+  const blockers: readonly CloseRefusalBlocker[] | undefined = workflowBlockers ?? refusedBlockers;
   const position: Position = projection.position;
   const abandonment =
     position.kind === 'terminal' && position.abandonment ? position.abandonment : undefined;

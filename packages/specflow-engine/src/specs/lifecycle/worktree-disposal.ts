@@ -416,7 +416,9 @@ export async function disposeReboundWorktree(
     await requireUnchangedLocalConfigCopy(registration.root);
   }
 
-  // TODO(workspace-execution): connect real active writer/session/claim quiescence admission here when implemented.
+  // Quiescence: an agent write holds the project claim (refused above); the Runtime refuses Close
+  // while a read-only Session Turn works in this checkout and holds it against new Turns. TODO: a
+  // Close run outside the Runtime (CLI) does not see those in-process Turns yet.
   const intent = await stage(engine, current, { ...current, stage: 'disposal-initiated' });
   await afterDisposalIntent?.();
 

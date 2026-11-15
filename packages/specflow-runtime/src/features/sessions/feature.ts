@@ -41,6 +41,10 @@ export function createSessionsFeature(
     /** Demo mode: the read-only reads of the managed Session screen. */
     demoReads?: DemoManagedSessionReads;
     engine?: SpecFlowEngine;
+    /** Turns registered by workspace, shared with Close (the composition root wires one). */
+    workspaceOccupancy?: {
+      beginTurn(workspaceId: string, sessionId: string): { end(): void } | undefined;
+    };
   } = {},
 ): RuntimeFeature & { readonly runtime: SessionsRuntime } {
   let registered: SessionCoordinator | undefined;
@@ -166,6 +170,7 @@ export function createSessionsFeature(
             options.engine && options.storage?.workspace === options.engine.workspace.root
               ? createSpecificationWorkspaceResolver(options.engine)
               : undefined,
+            options.workspaceOccupancy,
           )
         : undefined;
       if (coordinator) {

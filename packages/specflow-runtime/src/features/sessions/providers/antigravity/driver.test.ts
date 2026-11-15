@@ -356,7 +356,7 @@ async function invocationFixture(
       workspace: test.workspace,
       temporaryRoot: test.workspace,
       workspaceIdentity: 'controlled-workspace',
-      admission: { operationId: invocationId, scope: 'project' },
+      admission: { operationId: invocationId, scope: 'project', workspace: test.workspace },
     },
     providerContext: {
       nativeSessionId: resume ? nativeId : randomUUID(),

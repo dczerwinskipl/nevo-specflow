@@ -392,83 +392,114 @@
           "blockers": {
             "type": "array",
             "items": {
-              "type": "object",
-              "required": [
-                "kind",
-                "subjectIds",
-                "message"
-              ],
-              "properties": {
-                "kind": {
-                  "anyOf": [
-                    {
-                      "type": "string",
-                      "enum": [
-                        "specification-run"
+              "anyOf": [
+                {
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "subjectIds",
+                    "message"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "specification-run"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "draft-tasks"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "on-hold-tasks"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "unfinished-tasks"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "broken-tasks"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "pending-execution-change"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "pending-task-documents"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "operation-in-progress"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "execution-state-unreadable"
+                          ]
+                        }
                       ]
                     },
-                    {
-                      "type": "string",
-                      "enum": [
-                        "draft-tasks"
-                      ]
+                    "subjectIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "maxItems": 1000
                     },
-                    {
+                    "message": {
                       "type": "string",
-                      "enum": [
-                        "on-hold-tasks"
-                      ]
-                    },
-                    {
-                      "type": "string",
-                      "enum": [
-                        "unfinished-tasks"
-                      ]
-                    },
-                    {
-                      "type": "string",
-                      "enum": [
-                        "broken-tasks"
-                      ]
-                    },
-                    {
-                      "type": "string",
-                      "enum": [
-                        "pending-execution-change"
-                      ]
-                    },
-                    {
-                      "type": "string",
-                      "enum": [
-                        "pending-task-documents"
-                      ]
-                    },
-                    {
-                      "type": "string",
-                      "enum": [
-                        "operation-in-progress"
-                      ]
-                    },
-                    {
-                      "type": "string",
-                      "enum": [
-                        "execution-state-unreadable"
-                      ]
+                      "maxLength": 20000
                     }
-                  ]
+                  }
                 },
-                "subjectIds": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "maxItems": 1000
-                },
-                "message": {
-                  "type": "string",
-                  "maxLength": 20000
+                {
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "subjectIds",
+                    "message"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "session-turn-running"
+                      ]
+                    },
+                    "subjectIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "maxItems": 1000
+                    },
+                    "message": {
+                      "type": "string",
+                      "maxLength": 20000
+                    }
+                  }
                 }
-              }
+              ]
             }
           },
           "localConfig": {

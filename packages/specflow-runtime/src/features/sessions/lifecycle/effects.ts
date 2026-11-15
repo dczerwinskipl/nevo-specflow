@@ -8,8 +8,12 @@ export interface SessionEffectIdentity {
   binding: string;
   workspace: string;
   workspaceIdentity?: string;
+  /** The Specification whose workspace is claimed: admission re-checks its binding. */
+  specId?: string;
 }
 export interface SessionEffectClaim {
+  /** The workspace root the Engine claimed. */
+  readonly workspace: string;
   dispatch(): Promise<void>;
   abandon(): Promise<void>;
   unknown(): Promise<void>;

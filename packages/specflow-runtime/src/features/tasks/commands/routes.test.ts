@@ -89,7 +89,7 @@ describe('Task command routes', () => {
         actor: {
           class: 'human',
           details: {
-            actorId: JSON.stringify({ kind: 'user', id: 'demo-user' }),
+            actorId: 'user:demo-user',
             trust: 'authenticated',
           },
         },

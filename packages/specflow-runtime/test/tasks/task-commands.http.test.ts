@@ -134,7 +134,7 @@ describe('Task commands and reads against the real Engine', () => {
           status: 'draft',
           dependsOn: [],
           // The person behind the request, recorded by the Engine.
-          origin: { kind: 'manual', actorId: JSON.stringify({ kind: 'user', id: 'demo-user' }) },
+          origin: { kind: 'manual', actorId: 'user:demo-user' },
           context: null,
           readiness: { kind: 'status', status: 'draft' },
           position: { state: 'not-started' },

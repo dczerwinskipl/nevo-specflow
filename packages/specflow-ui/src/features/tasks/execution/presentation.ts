@@ -1,13 +1,28 @@
 import type { TFunction } from 'i18next';
 import type { GateStatus, OpenTask, WorkflowActor } from '@nevo/specflow-contracts/workflow';
 
+/** The recorded identity of the trusted local person (no authentication configured). */
+const TRUSTED_LOCAL_ACTOR = 'runtime:trusted-local';
+
 /**
- * Who acted, as recorded: a person by the id the Runtime recorded (without the `local:` or `user:`
- * prefix of the identity source; the id itself is shown as it is), an agent by provider and model.
+ * A person as recorded (`user:ann`, `local:ann`): "you" for the viewer or the trusted local person,
+ * else the id without its identity-source prefix (the id itself is shown as it is).
  */
-export function actorLabel(actor: WorkflowActor): string {
+export function personLabel(t: TFunction, actorId: string, viewerId?: string): string {
+  if (
+    actorId === TRUSTED_LOCAL_ACTOR ||
+    (viewerId !== undefined && actorId === `user:${viewerId}`)
+  ) {
+    return t('workflowExecution.actor.you');
+  }
+
+  return actorId.replace(/^(local|user):/, '');
+}
+
+/** Who acted, as recorded: a person by {@link personLabel}, an agent by provider and model. */
+export function actorLabel(t: TFunction, actor: WorkflowActor, viewerId?: string): string {
   if (actor.class === 'human') {
-    return actor.details.actorId.replace(/^(local|user):/, '');
+    return personLabel(t, actor.details.actorId, viewerId);
   }
 
   return [actor.details.provider, actor.details.model].filter(Boolean).join(' · ');

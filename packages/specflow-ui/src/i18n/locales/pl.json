@@ -2165,6 +2165,9 @@
     }
   },
   "workflowExecution": {
+    "actor": {
+      "you": "ciebie"
+    },
     "now": {
       "heading": "Teraz",
       "workflow": "{{title}} · wersja {{version}}",
@@ -2188,7 +2191,7 @@
         "completed": "Ukończono",
         "abandoned": "Porzucono"
       },
-      "abandonedBy": "{{at}}, porzucił(a) {{actor}}",
+      "abandonedBy": "{{at}}, porzucone przez {{actor}}",
       "toFinishWith": "Aby zakończyć z wynikiem {{result}}:",
       "returned": "Zawrócono do tego kroku",
       "start": "Rozpocznij: {{step}}",

@@ -2165,6 +2165,9 @@
     }
   },
   "workflowExecution": {
+    "actor": {
+      "you": "you"
+    },
     "now": {
       "heading": "Now",
       "workflow": "{{title}} · rev {{version}}",

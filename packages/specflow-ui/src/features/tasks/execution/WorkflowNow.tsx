@@ -16,6 +16,7 @@ import {
   type FinishDraft,
   type FinishTransition,
 } from './FinishStepDialog';
+import { closableInFinishDialog } from './FinishTasksOpen';
 import type { GateAction } from './GateList';
 import { NowBlock } from './NowBlock';
 import { ReturnStepDialog } from './ReturnStepDialog';
@@ -225,11 +226,14 @@ export function WorkflowNow({
   // waits in the menu, unavailable, with why; the main action is the action of an unmet gate, and
   // only of a gate whose result meeting it would make available (`gate-unsatisfied`; open Tasks
   // win over gates in the projection, so meeting the gate of a `tasks-open` result would not help).
+  // A `tasks-open` result the dialog closes itself (its own drafts, unticked) can be taken there.
   const finishBlocked =
     overview !== undefined &&
     finish !== undefined &&
     finish.transitions.length > 0 &&
-    finish.transitions.every((transition) => transition.unavailable !== undefined);
+    finish.transitions.every(
+      (transition) => transition.unavailable !== undefined && !closableInFinishDialog(transition),
+    );
   const blockedBy = (reason: FinishTransition['unavailable']) =>
     finishBlocked &&
     (finish?.transitions ?? []).some((transition) => transition.unavailable === reason);

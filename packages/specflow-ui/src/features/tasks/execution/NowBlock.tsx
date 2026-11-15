@@ -4,6 +4,7 @@ import { AccentBlock, Icon, InlineNote, Typography, cn } from '@nevo/ui';
 import type { GateStatus, WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { GateList, type GateAction } from './GateList';
 import { InlineAction } from './InlineAction';
+import { closableInFinishDialog } from './FinishTasksOpen';
 import { actorLabel, formatWhen, openTasksText } from './presentation';
 import { StartBlockerLines, type NowLinks } from './StartBlockerLines';
 
@@ -257,10 +258,15 @@ export function NowBlock({
         })}
         {tasksOpen.map((transition) => (
           <InlineNote key={transition.id} tone="attention" data-now-tasks-open="">
-            {t('workflowExecution.now.tasksOpen', {
-              result: transition.label ?? transition.result ?? transition.id,
-              tasks: openTasksText(t, transition.openTasks ?? []),
-            })}
+            {closableInFinishDialog(transition)
+              ? t('workflowExecution.now.tasksOpenDrafts', {
+                  result: transition.label ?? transition.result ?? transition.id,
+                  tasks: (transition.openTasks ?? []).map((task) => task.taskId).join(', '),
+                })
+              : t('workflowExecution.now.tasksOpen', {
+                  result: transition.label ?? transition.result ?? transition.id,
+                  tasks: openTasksText(t, transition.openTasks ?? []),
+                })}
             {links.tasks ? (
               <>
                 {' '}

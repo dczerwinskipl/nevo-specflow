@@ -23,8 +23,12 @@ import {
   Typography,
 } from '@nevo/ui';
 import type { GateStatus, WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
+import {
+  closableInFinishDialog,
+  FinishTasksOpenNote,
+  stillOpenAfterFinish,
+} from './FinishTasksOpen';
 import { GateList, type GateAction } from './GateList';
-import { openTasksText } from './presentation';
 import { workflowRefusalOf } from './refusal';
 import { WorkflowRefusalAlert } from './WorkflowRefusalAlert';
 
@@ -105,9 +109,17 @@ export function FinishStepDialog({
   const feedbackMissing = feedbackRequired && draft.feedback.trim() === '';
   const gates = selected?.gates ?? [];
   const gatesUnmet = gates.some((gate) => gate.status === 'unsatisfied');
-  // The Engine says whether the result can be taken now; the gates are shown, not re-evaluated.
+  // The Engine says whether the result can be taken now; the gates are shown, not re-evaluated. A
+  // result waiting for open Tasks that this finish closes itself (its unticked drafts) is taken
+  // once no Task stays open after them and its gates hold (open Tasks win over gates in the
+  // projection, so a gate is only checked here); the Engine still decides.
   const unavailable = selected?.unavailable;
-  const blocked = !selected || feedbackMissing || unavailable !== undefined;
+  const closedHere =
+    selected !== undefined &&
+    closableInFinishDialog(selected) &&
+    stillOpenAfterFinish(selected, draft.droppedDrafts).length === 0 &&
+    !gatesUnmet;
+  const blocked = !selected || feedbackMissing || (unavailable !== undefined && !closedHere);
   const drafts = finish.drafts ?? [];
   // The Engine names each kept draft that depends on an unticked one; shown while it still holds.
   const conflicts = workflowRefusalOf(error).draftConflicts.filter(
@@ -206,11 +218,7 @@ export function FinishStepDialog({
               </div>
             ) : null}
             {unavailable === 'tasks-open' && selected ? (
-              <InlineNote tone="attention" data-finish-tasks-open="">
-                {t('workflowExecution.finish.tasksOpen', {
-                  tasks: openTasksText(t, selected.openTasks ?? []),
-                })}
-              </InlineNote>
+              <FinishTasksOpenNote transition={selected} droppedDrafts={draft.droppedDrafts} />
             ) : null}
             {unavailable === 'task-document-change' ? (
               <Typography as="p" variant="body-sm" className="text-content-secondary">

@@ -17,6 +17,7 @@ import {
   SPEC,
   TASK,
   closeBlockers,
+  dominik,
   specificationWorkflowProjection,
   taskWorkflowProjection,
 } from './projections.stories-support';
@@ -470,6 +471,118 @@ describe('manual workflow execution', () => {
     );
     expect(screen.queryByRole('button', { name: 'Finish step' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Create note' })).toBeTruthy();
+  });
+
+  it('lets a breakdown complete once its own open drafts are unticked (resolvableByFinish)', async () => {
+    const finish = vi.fn(() => never());
+    const base = specificationWorkflowProjection('tasks-open');
+    const projection: WorkflowActionProjection = {
+      ...base,
+      position: {
+        kind: 'active',
+        step: { id: 'breakdown', title: 'Breakdown', kind: 'work', purpose: '', produces: 'tasks' },
+        attempt: { number: 2, startedAt: '2026-11-14T09:30:00Z', actor: dominik },
+      },
+      actions: {
+        finish: {
+          step: 'breakdown',
+          attempt: 2,
+          transitions: [
+            {
+              id: 'nothing-to-do',
+              result: 'empty',
+              label: 'Nothing to do',
+              target: { kind: 'terminal', outcome: 'completed' },
+              feedback: 'optional',
+              unavailable: 'tasks-open',
+              openTasks: [{ taskId: 't-08', cause: 'draft' }],
+              resolvableByFinish: true,
+              closableTasks: [{ taskId: 't-08', by: 'left-out' }],
+            },
+          ],
+          drafts: [{ id: 't-08', title: 'Audit log', type: 'backend' }],
+        },
+      },
+    };
+    renderWith(
+      <WorkflowNow
+        subject={{ specId: SPEC }}
+        projection={projection}
+        headingId="now"
+        links={{ tasks: vi.fn() }}
+        artifactOptions={[]}
+        overview={{ specId: SPEC }}
+      />,
+      { execution: fakeExecutionApi({ finish }) },
+    );
+
+    expect(document.querySelector('[data-now-tasks-open]')?.textContent).toContain(
+      'To finish with Nothing to do, leave out the open drafts of this step: untick t-08 when you finish.',
+    );
+    // The Overview offers Finish step: the dialog itself can close the open Task.
+    fireEvent.click(screen.getByRole('button', { name: 'Finish step' }));
+    fireEvent.click(screen.getByRole('radio', { name: /^Nothing to do/ }));
+    expect(document.querySelector('[data-finish-tasks-open]')?.textContent).toBe(
+      'This result completes the specification, so every task must be done or cancelled. Still open: t-08 is a draft. Untick t-08 below to cancel them with this finish.',
+    );
+    expect(finishButton().disabled).toBe(true);
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 't-08 · Audit log' }));
+    expect(document.querySelector('[data-finish-tasks-open]')?.textContent).toBe(
+      'Finishing cancels the drafts you unticked, so no task stays open and the specification completes.',
+    );
+    fireEvent.click(finishButton());
+
+    await waitFor(() =>
+      expect(finish).toHaveBeenCalledWith(
+        { specId: SPEC },
+        expect.objectContaining({ step: 'breakdown', attempt: 2, result: 'empty', tasks: [] }),
+      ),
+    );
+  });
+
+  it('names the Tasks a finish can only close by a decision, and keeps Finish off until they are cancelled', () => {
+    const base = specificationWorkflowProjection('tasks-open');
+    const accepted = base.actions.finish!.transitions[0]!;
+    renderWith(
+      <WorkflowNow
+        subject={{ specId: SPEC }}
+        projection={{
+          ...base,
+          actions: {
+            ...base.actions,
+            finish: {
+              ...base.actions.finish!,
+              transitions: [
+                {
+                  ...accepted,
+                  // Approved Tasks no attempt runs on: a decision of the finish may cancel them.
+                  openTasks: [
+                    { taskId: 't-02', cause: 'ready' },
+                    { taskId: TASK, cause: 'waiting' },
+                  ],
+                  resolvableByFinish: true,
+                  closableTasks: [
+                    { taskId: 't-02', by: 'decision' },
+                    { taskId: TASK, by: 'decision' },
+                  ],
+                },
+              ],
+            },
+          },
+        }}
+        headingId="now"
+        links={{ tasks: vi.fn() }}
+        artifactOptions={[]}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Finish step' }));
+    fireEvent.click(screen.getByRole('radio', { name: /^Accepted/ }));
+
+    expect(document.querySelector('[data-finish-tasks-open]')?.textContent).toBe(
+      `This result completes the specification, so every task must be done or cancelled. Still open: t-02 can start or continue, ${TASK} waits for other tasks. Cancel t-02, ${TASK} in Tasks first.`,
+    );
+    expect(finishButton().disabled).toBe(true);
   });
 
   it('explains a finish the Engine refused because Tasks are open', async () => {

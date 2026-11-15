@@ -100,9 +100,15 @@ opened by the header's history toggle.
   with **See Tasks**, and does not list the gates of such a result (meeting them would not help). On
   the Overview, Finish step is the main action only while some result can be taken; otherwise it
   moves to the ⋯ menu, unavailable, with the reasons, and an unmet gate's action becomes the main
-  action only when meeting it would make a result available. A refused finish (the Tasks changed after the projection
-  was read) shows the same explanation. Abandon remains the way to end a Specification with open
-  Tasks.
+  action only when meeting it would make a result available. When the Engine says the finish itself
+  can close the open Tasks (`resolvableByFinish`), the dialog names the Tasks still open after the
+  drafts the owner unticked and how each closes: "Untick t-08 below" for a draft of this step,
+  "Cancel t-02 in Tasks first" for one only a status decision closes (the dialog sends no
+  decisions). Finish becomes available once unticking leaves no Task open ("Finishing cancels the
+  drafts you unticked"); such a result counts as available on the Overview, and the Now block asks
+  to untick those drafts instead of naming them as open. A refused finish (the Tasks changed after
+  the projection was read) shows the same explanation. Abandon remains the way to end a
+  Specification with open Tasks.
 - **Return to an earlier step.** The projection's allowed steps and the reason, required when the
   return requires it.
 - **First start of a Task** confirms what will be pinned: Task Type, workflow and revision, first step.

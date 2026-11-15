@@ -1,9 +1,10 @@
-import { mkdir, mkdtemp, realpath, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { serializeTaskIndex, serializeTaskManifest } from '../../tasks/resource/codec';
 import { TASK_MAIN_DOCUMENT, type TaskManifest } from '../../tasks/resource/model';
 import { createFilesystemWorkflowStore } from '../state/filesystem-store';
 import type { WorkflowStore } from '../state/store';
@@ -70,10 +71,20 @@ describe('the execution read on the filesystem store', () => {
         origin: { kind: 'manual', actorId: 'owner' },
         documents: [{ ...TASK_MAIN_DOCUMENT }],
       }));
-      await store.apply(SPEC, {
-        index: { expected: null, next: { tasks: manifests.map((entry) => ({ id: entry.id })) } },
-        manifests: manifests.map((entry) => ({ taskId: entry.id, expected: null, next: entry })),
-      });
+      // The files as a checkout holds them, written directly (faster than one change through the
+      // store's journal and commit steps).
+      const tasks = join(root, 'spec', 'tasks');
+      await mkdir(tasks, { recursive: true });
+      await writeFile(
+        join(tasks, 'index.yaml'),
+        serializeTaskIndex({ tasks: manifests.map((entry) => ({ id: entry.id })) }),
+      );
+      await Promise.all(
+        manifests.map(async (entry) => {
+          await mkdir(join(tasks, entry.id));
+          await writeFile(join(tasks, entry.id, 'task.yaml'), serializeTaskManifest(entry));
+        }),
+      );
 
       const storeCalls = new Map<string, number>();
       const referenceCalls = new Map<string, number>();

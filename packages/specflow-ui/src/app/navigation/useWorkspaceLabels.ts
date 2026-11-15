@@ -2,15 +2,19 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AppWorkspaceProps } from '@nevo/ui';
 
-/** Localised accessible names of the `AppWorkspace` chrome (navigation, back, close secondary,
- * splitter, and the Secondary root-tab strip). */
-export function useWorkspaceLabels(): NonNullable<AppWorkspaceProps['labels']> {
+/**
+ * Localised accessible names of the `AppWorkspace` chrome (navigation, back, close secondary,
+ * splitter, and the Secondary root-tab strip). Every Back names where it leads: `primaryTitle` is
+ * the Primary's title, so a stacked Secondary at depth 1 reads "Back to <Primary title>" (never a
+ * bare "Back").
+ */
+export function useWorkspaceLabels(primaryTitle: string): NonNullable<AppWorkspaceProps['labels']> {
   const { t } = useTranslation();
 
   return useMemo(
     () => ({
-      backToPrimary: t('navigation.back'),
-      backToParent: (name: string) => t('navigation.backTo', { name }),
+      backToPrimary: t('navigation.backTo', { parent: primaryTitle }),
+      backToParent: (parent: string) => t('navigation.backTo', { parent }),
       closeSecondary: t('navigation.closeSecondary'),
       openNavigation: t('navigation.open'),
       resizeSecondary: t('navigation.resizeSecondary'),
@@ -41,6 +45,6 @@ export function useWorkspaceLabels(): NonNullable<AppWorkspaceProps['labels']> {
         noItem: t('navigation.secondaryTabs.noItem'),
       },
     }),
-    [t],
+    [t, primaryTitle],
   );
 }

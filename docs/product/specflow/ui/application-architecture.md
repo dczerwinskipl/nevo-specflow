@@ -501,7 +501,8 @@ links) whether it was reached by client navigation or opened cold (direct link, 
   request actually failed without a snapshot, with Retry wired to that query. A failed refresh
   keeps the last snapshot and marks it stale. A resource-wide HTTP 401, 403 or 404 suppresses
   any retained metadata. The wide location trail does not repeat the notice (the navigation
-  owns it); the narrow context line shows it because navigation is hidden there.
+  owns it); the narrow header shows it under the screen's title because navigation is hidden
+  there (a peer area has no line in its body).
 - **Capabilities.** An explicitly unsupported (`not_implemented`) or forbidden Git source hides
   the Git entries; a settled `source_unavailable` remains unknown and keeps them (unknown is not
   absent). An unavailable document collection is never presented as an authoritative zero.

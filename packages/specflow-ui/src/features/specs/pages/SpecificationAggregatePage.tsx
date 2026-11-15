@@ -17,7 +17,6 @@ import { useSpecificationWorkspace } from '../read-model/useSpecificationWorkspa
 import type { SpecificationSectionId, SpecificationWorkspaceData } from '../read-model/model';
 import {
   ApplicationLocationIdentity,
-  ApplicationContextLine,
   ViewPageTitle,
   type ApplicationView,
 } from '../../../app/navigation/ApplicationLocation';
@@ -58,7 +57,7 @@ export function SpecificationAggregatePage({
   children: (data: SpecificationWorkspaceData) => ReactNode;
 }) {
   const { t } = useTranslation();
-  const workspaceLabels = useWorkspaceLabels();
+  const workspaceLabels = useWorkspaceLabels(title);
   const query = useSpecificationWorkspace(specId);
   const availability =
     section && !ownSource ? query.data?.sectionAvailability?.[section] : undefined;
@@ -112,7 +111,6 @@ export function SpecificationAggregatePage({
         <AppContent className="w-content-xwide max-w-full">
           <AppWorkspaceBody scroll="area" contentClassName="py-6">
             <AppContentContainer align="start" size="full">
-              <ApplicationContextLine specId={specId} view={sectionViews[section ?? 'activity']} />
               <ViewPageTitle>{title}</ViewPageTitle>
               {query.isPending || (ownSource && query.isError && !query.data && !blockingError) ? (
                 loading !== undefined ? (

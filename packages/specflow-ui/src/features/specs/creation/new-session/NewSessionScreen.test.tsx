@@ -26,7 +26,6 @@ import { catalogue } from '../options/creationCatalogue.stories-support';
 import { NewSessionScreen } from './NewSessionScreen';
 
 const open = vi.fn<(sessionId: string) => void>();
-const back = vi.fn<() => void>();
 const allocations: DemoSessionInput[] = [];
 const creates: { specId: string; input: CreateContextSession }[] = [];
 const allocationPaths: (string | undefined)[] = [];
@@ -120,7 +119,6 @@ function renderScreen(
                   collection={collection}
                   onOpenSession={open}
                   onOpenSpecification={vi.fn()}
-                  onBackToSpecification={back}
                 />
               </AppShell>
             </AppWorkspaceProvider>
@@ -166,7 +164,6 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   open.mockClear();
-  back.mockClear();
   allocations.length = 0;
   allocationPaths.length = 0;
   creates.length = 0;
@@ -210,8 +207,7 @@ describe('NewSessionScreen', () => {
     renderScreen('project', ok, { available: false, reason });
     expect(await screen.findByText(text)).toBeTruthy();
     expect(screen.queryByRole('heading', { level: 2, name: 'Start a session' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Back to specification' }));
-    expect(back).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('button', { name: /^Back/ })).toBeNull();
   });
 
   it('keeps the start form without a usable provider (the form explains it)', async () => {

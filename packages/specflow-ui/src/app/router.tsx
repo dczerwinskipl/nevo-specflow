@@ -34,6 +34,7 @@ import { UiPlaygroundScreen } from './screens';
 import { NotFoundView } from './errors/NotFoundView';
 import { RouteErrorView } from './errors/RouteErrorView';
 import { rootRoute, appRoute, type SpecFlowRouterContext } from './router/root';
+import { isSpecificationOverviewPath } from './navigation/routeScope';
 
 export {
   rootRoute,
@@ -96,6 +97,9 @@ export function createSpecFlowRouter(
     defaultNotFoundComponent: NotFoundView,
     // Defects reach the console (no remote telemetry in a local product); the boundary shows a generic screen.
     defaultOnCatch: (error) => console.error('Route render failed', error),
+    // Only the Overview: a Back to it returns at its scroll (per history entry, kept across a
+    // reload). Not app-wide, where it would set the scroll of screens that restore their own.
+    scrollRestoration: ({ location }) => isSpecificationOverviewPath(location.pathname),
     ...(history ? { history } : {}),
   });
 }
@@ -109,5 +113,12 @@ declare module '@tanstack/react-router' {
   interface HistoryState {
     /** Primary location that promoted a Document Preview or list item to Full. */
     specflowDocumentReturnTo?: 'overview';
+    /**
+     * The history index of that Overview visit: a Back that finds it as the previous entry steps
+     * there (the visit returns as it was left) instead of pushing a new Overview.
+     */
+    specflowDocumentReturnIndex?: number;
+    /** A Back reached this screen by navigating: its title takes the focus. */
+    specflowFocusTitle?: boolean;
   }
 }

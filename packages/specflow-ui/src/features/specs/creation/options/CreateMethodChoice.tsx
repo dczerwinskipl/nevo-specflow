@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { cn, choiceSurfaceClassName, Icon, Typography } from '@nevo/ui';
-import { ApplicationContextLine } from '../../../../app/navigation/ApplicationLocation';
+import { FlowParentBack } from '../../../../app/navigation/ApplicationLocation';
 
 /** First step of a new specification: write it with an agent or by hand. */
 export function CreateMethodChoice({ onChoose }: { onChoose: (method: 'ai' | 'manual') => void }) {
@@ -22,7 +22,7 @@ export function CreateMethodChoice({ onChoose }: { onChoose: (method: 'ai' | 'ma
 
   return (
     <div className="grid gap-6">
-      <ApplicationContextLine className="mb-0" view="new-specification" />
+      <FlowParentBack view="new-specification" />
       <header className="grid gap-2">
         <Typography as="h1" variant="title-lg">
           {t('create.method.title')}

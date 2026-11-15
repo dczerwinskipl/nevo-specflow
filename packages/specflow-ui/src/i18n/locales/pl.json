@@ -31,8 +31,7 @@
     "close": "Zamknij nawigację",
     "title": "Nawigacja aplikacji",
     "open": "Otwórz nawigację",
-    "back": "Wstecz",
-    "backTo": "Wróć do: {{name}}",
+    "backTo": "Wróć do: {{parent}}",
     "closeSecondary": "Zamknij panel dodatkowy",
     "resizeSecondary": "Zmień rozmiar panelu dodatkowego",
     "secondaryBreadcrumbs": "Położenie w karcie panelu",
@@ -93,7 +92,6 @@
   },
   "specification": {
     "title": "Specyfikacja",
-    "backToSpecifications": "Wróć do specyfikacji",
     "loadingWorkspace": "Ładowanie specyfikacji {{id}}…",
     "resourceAccessDeniedTitle": "Brak dostępu",
     "resourceAccessDeniedDescription": "Nie masz uprawnień do wyświetlenia tego zasobu.",
@@ -139,7 +137,6 @@
     "markdownDiagramReset": "Dopasuj diagram",
     "markdownDiagramFullScreen": "Otwórz diagram na pełnym ekranie",
     "thisSpecification": "Ta specyfikacja",
-    "backFromHistory": "Wróć z historii",
     "previewTaskAria": "Podgląd zadania: {{title}}",
     "openSessionAria": "Otwórz sesję: {{title}}",
     "readDocAria": "Czytaj dokument: {{title}}",
@@ -214,7 +211,6 @@
     "repoFactWorktreeDesc": "Worktree przypisane do tej specyfikacji",
     "goToChanges": "Przejdź do zmian",
     "repoNone": "Brak",
-    "backToSpecification": "Wróć do specyfikacji",
     "taskFullHistoryHeading": "Historia zadania",
     "executeModalTitle": "Wykonaj wybrane zadania",
     "taskStatusPending": "Gotowe",
@@ -361,7 +357,8 @@
       "question": "Pytanie do użytkownika",
       "questionUnavailable": "Ta fixture nie zawiera treści pytania.",
       "return": "Aby wrócić do zadania, przełącz się na poprzednią kartę lub zamknij tę kartę."
-    }
+    },
+    "material": "Materiał"
   },
   "taskDetails": {
     "showLess": "Pokaż mniej",
@@ -450,7 +447,6 @@
   "applicationNavigation": {
     "location": "Lokalizacja w aplikacji",
     "allSpecifications": "Wszystkie specyfikacje",
-    "specificationOverview": "Przegląd specyfikacji",
     "currentSpecification": "Bieżąca specyfikacja",
     "changeSpecification": "Zmień specyfikację",
     "searchSpecifications": "Szukaj po tytule lub ID",
@@ -475,9 +471,7 @@
     "staleContext": "Kontekst może być nieaktualny",
     "contextUnavailable": "Nie udało się wczytać informacji o specyfikacji.",
     "noSpecificationSelectedTitle": "Wybierz specyfikację",
-    "noSpecificationSelectedDescription": "Otwórz specyfikację z listy, aby zobaczyć jej dokumenty i sesje.",
-    "sessionBack": "Wróć do sesji",
-    "sessionBackNamed": "Wróć do: {{title}}"
+    "noSpecificationSelectedDescription": "Otwórz specyfikację z listy, aby zobaczyć jej dokumenty i sesje."
   },
   "operations": {
     "progress": {
@@ -1088,7 +1082,6 @@
     "loadFailed": "Nie udało się wczytać dokumentów",
     "noAccess": "Nie masz dostępu do dokumentu",
     "unavailable": "Dokument jest niedostępny",
-    "backToList": "Wróć do listy dokumentów",
     "closeDocument": "Zamknij wszystkie dokumenty",
     "menuActions": "Akcje",
     "demo": {
@@ -1413,7 +1406,6 @@
   },
   "docs": {
     "title": "Dokumentacja",
-    "backToDocumentation": "Wróć do dokumentacji",
     "closeDocument": "Zamknij dokument",
     "notice": {
       "notRegistered": "Obszar roboczy, który czytałeś, nie jest już zarejestrowany, więc to jest dokumentacja {{projectFolder}}.",
@@ -2109,8 +2101,7 @@
       "noMode": "Brak dostępnego trybu pracy"
     },
     "forbiddenSpecification": "Nie możesz rozpoczynać sesji w tej specyfikacji.",
-    "sessionsDisabled": "Sesje są wyłączone w tym projekcie.",
-    "backToSpecification": "Wróć do specyfikacji"
+    "sessionsDisabled": "Sesje są wyłączone w tym projekcie."
   },
   "sessionNaming": {
     "pending": "Nadawanie nazwy…",

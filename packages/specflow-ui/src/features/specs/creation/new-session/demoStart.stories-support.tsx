@@ -33,13 +33,7 @@ export const startSpecId = 'api-integration';
  * The New Session route opened directly in a project Runtime whose workspace refuses the start
  * (full-session.md "Starting a Session"): `forbidden` or Sessions turned off replace the start form.
  */
-export function StartRefusedPreview({
-  reason,
-  onBack,
-}: {
-  reason: 'forbidden' | 'sessions_disabled';
-  onBack: () => void;
-}) {
+export function StartRefusedPreview({ reason }: { reason: 'forbidden' | 'sessions_disabled' }) {
   const client = useMemo(
     () => new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false } } }),
     [],
@@ -73,7 +67,6 @@ export function StartRefusedPreview({
                 specId={startSpecId}
                 onOpenSession={() => undefined}
                 onOpenSpecification={() => undefined}
-                onBackToSpecification={onBack}
               />
             </AppWorkspaceProvider>
           </AppShell>

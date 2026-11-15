@@ -1,5 +1,5 @@
 import { Fragment, useEffect } from 'react';
-import { createRoute, Link, Outlet, redirect } from '@tanstack/react-router';
+import { createRoute, Link, Outlet, redirect, useRouter } from '@tanstack/react-router';
 import { appRoute, rootRoute } from '../../app/router/root';
 import { parseSpecificationCollection } from '../../app/router/search';
 import { SpecsOverview } from './overview/SpecsOverview';
@@ -229,18 +229,12 @@ function SpecificationRouteScreen() {
   const { specId } = specificationRoute.useParams();
   const { collection } = specificationRoute.useSearch();
   const navigate = specificationRoute.useNavigate();
+  const router = useRouter();
 
   return (
     <SpecificationSurface
       specId={specId}
       collection={collection}
-      overviewHref={`/?collection=${collection}`}
-      renderBackLink={(children, className) => (
-        <Link to="/" search={{ collection }} className={className}>
-          {children}
-        </Link>
-      )}
-      onBack={() => void navigate({ to: '/', search: { collection } })}
 
       onOpenTask={(taskId) => {
         void navigate({
@@ -254,7 +248,10 @@ function SpecificationRouteScreen() {
           to: '/specs/$specId/documents/$documentId',
           params: { specId, documentId },
           search: { collection },
-          state: { specflowDocumentReturnTo: 'overview' },
+          state: {
+            specflowDocumentReturnTo: 'overview',
+            specflowDocumentReturnIndex: router.state.location.state.__TSR_index,
+          },
         });
       }}
       onOpenDocuments={() =>

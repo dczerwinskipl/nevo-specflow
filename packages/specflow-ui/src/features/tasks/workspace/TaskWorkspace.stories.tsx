@@ -115,7 +115,8 @@ export const PreviewReturnContract: Story = {
     await waitFor(async () => {
       await expect(canvasElement.ownerDocument.activeElement).toBe(title);
     });
-    await userEvent.click(canvas.getByRole('button', { name: 'Wstecz' }));
+    // The full Task is a stacked page: its header Back names its parent.
+    await userEvent.click(canvas.getByRole('button', { name: 'Wróć do: Zadania' }));
     await waitFor(async () => {
       await expect(canvasElement.ownerDocument.activeElement).toBe(opener);
     });
@@ -405,7 +406,9 @@ export const NarrowHistoryCloseContract: Story = {
     );
     await userEvent.click(opener);
     await canvas.findByText(/Raport dotyczy/);
-    await userEvent.click(canvas.getByRole('button', { name: 'Zamknij panel dodatkowy' }));
+    // Stacked: Back and Close never appear together; Back pops to the history.
+    await expect(canvas.queryByRole('button', { name: 'Zamknij panel dodatkowy' })).toBeNull();
+    await userEvent.click(canvas.getByRole('button', { name: 'Wróć do: Historia zadania' }));
     await waitFor(
       async () => {
         await expect(canvasElement.ownerDocument.activeElement).toBe(
@@ -431,7 +434,7 @@ export const NarrowHistoryCloseContract: Story = {
       'aria-expanded',
       'true',
     );
-    await userEvent.click(canvas.getByRole('button', { name: 'Zamknij panel dodatkowy' }));
+    await userEvent.click(canvas.getByRole('button', { name: /^Wróć do: (?!Zadania$)/ }));
     await canvas.findByRole('heading', { level: 1, name: /Zachowaj sesję/ });
   },
 };

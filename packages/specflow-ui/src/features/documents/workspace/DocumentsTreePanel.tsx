@@ -17,7 +17,6 @@ import {
   treePaneTextClassName,
 } from '../../../shared/document-tree';
 import {
-  ApplicationContextLine,
   ApplicationSessionBack,
   useApplicationCollection,
 } from '../../../app/navigation/ApplicationLocation';
@@ -111,11 +110,6 @@ export function DocumentsTreePanel({
             />
           </div>
         )}
-        <ApplicationContextLine
-          specId={specId}
-          view="documents"
-          className={treePaneBlockClassName}
-        />
         {data && (issues.length > 0 || readOnly !== undefined || unmet.length > 0) && (
           // Inside the tree's scroll area: it scrolls away with the tree and costs nothing when empty.
           <div className={cn('grid gap-4', treePaneBlockClassName)}>

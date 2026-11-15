@@ -248,7 +248,7 @@ export const StackedBackFollowsThePath: Story = {
     await expectSurface('Zadanie');
     await press('Wróć do: Kontekst');
     await expectSurface('Kontekst');
-    await press('Wstecz');
+    await press('Wróć do: Sesja');
     await expectSurface('conversation');
   },
 };

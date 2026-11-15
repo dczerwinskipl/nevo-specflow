@@ -6,7 +6,10 @@ import { useMarkdownLabels } from '../../../i18n/useMarkdownLabels';
 import { DocumentOutline } from '../../../shared/document-reading/DocumentOutline';
 import { DocumentOutlineSheet } from '../../../shared/document-reading/DocumentOutlineSheet';
 import { DocumentProperties } from '../../../shared/document-reading/DocumentProperties';
-import { DocumentReadingColumns } from '../../../shared/document-reading/DocumentReadingColumns';
+import {
+  DocumentReadingColumns,
+  documentPanelPaddingClassName,
+} from '../../../shared/document-reading/DocumentReadingColumns';
 import {
   markdownOutline,
   outlineColumnMinWidth,
@@ -174,7 +177,7 @@ export function DocsArticleView({
         <ScrollArea
           direction="both"
           className="min-h-0 flex-1"
-          contentClassName="p-6"
+          contentClassName={documentPanelPaddingClassName}
           viewportRef={setPanel}
         >
           <DocumentReadingColumns

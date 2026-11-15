@@ -86,7 +86,11 @@ document owns only what they mean in the product. Approved mock: Storybook
 ## Session (target, not implemented)
 
 Today a Session reaches documents only through Context's Documents row, which opens the
-Specification's Documents screen with the Session as the way back. The following is the intended
+Specification's Documents screen with the Session as the way back (a flow Back, "Back to <Session>").
+On Narrow the open document is a stacked screen: its header Back is "Back to Documents" (the tree
+under it) or, for a document promoted from the Overview, "Back to Overview", with no Close beside
+it. The type line, the Properties disclosure and the text share the preview's one content edge. The
+following is the intended
 behavior once a Session can preview files in its own Secondary:
 
 - The same tabs host read-only previews in the Session's Secondary region, next to the

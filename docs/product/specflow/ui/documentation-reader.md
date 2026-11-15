@@ -561,7 +561,11 @@ Integration readiness: **ready** — the shared workspace list (`GET /api/worksp
   needed.
 - `MarkdownDocument.diagrams` draws Mermaid fences (the Documents preview turns it on too).
 - The stacked header Back below the first article is named `backToParent(<previous title>)`
-  ("Back to UI interaction model"); the first screen's Back is "Back to documentation".
+  ("Back to UI interaction model"); the first screen's Back is "Back to Documentation" (the
+  `navigation.backTo` family). The stacked article shows no Close beside its Back.
+- The article body and the Documents preview share one content edge
+  (`documentPanelPaddingClassName`); the Properties disclosure hangs its padding outside it, so its
+  chevron starts where the text starts.
 - The Properties row and the Contents column/sheet are the shared `shared/document-reading`
   components that the Documents preview also uses.
 - The workspace picker and the Specification switcher share `shared/context-switcher`

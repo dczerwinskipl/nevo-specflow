@@ -71,7 +71,7 @@ export function SessionStartScreen({
   const text = useMessage();
   const { supportsSplit } = useWorkspaceCapabilities();
   const navigation = useSecondaryNavigation();
-  const labels = useWorkspaceLabels();
+  const labels = useWorkspaceLabels(t('sessionStart.heading'));
   const queryClient = useQueryClient();
   const [contextOpen, setContextOpen] = useState(true);
   // One press hides the whole side panel (Context and a visible tab), the next restores it.

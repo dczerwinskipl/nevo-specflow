@@ -580,7 +580,6 @@ export function ActivityHistoryScreen({
           events={data.events}
           availability={data.availability}
           onRetry={data.retry}
-          isExplicit={true}
           onOpenTask={(taskId) => {
             void nav.navTo(taskPreviewStack, { specId: data.specId, taskId });
           }}

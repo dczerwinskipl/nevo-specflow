@@ -58,6 +58,8 @@ export { useWorkspaceLayout, type WorkspaceLayout } from './workspace/useWorkspa
 export { useSecondaryDetailHeaderHosted } from './workspace/secondaryDetailHeaderHost';
 export type {
   AppContentContainerSize,
+  AppWorkspaceBack,
+  AppWorkspacePrimaryRegionProps,
   AppWorkspaceRegionProps,
   AppWorkspaceSecondaryRegionProps,
 } from './workspace/AppWorkspace';

@@ -234,7 +234,7 @@ export const DocumentsTablet: Story = {
     }
 
     await settle(390, 844);
-    await userEvent.click(canvas.getByRole('button', { name: 'Wróć do listy dokumentów' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Wróć do: Dokumenty' }));
     await userEvent.click((await canvas.findAllByRole('button', { name: 'Więcej akcji' }))[0]!);
     await shot('root-menu', 390, 844);
     await userEvent.keyboard('{Escape}');
@@ -244,7 +244,7 @@ export const RequiredFileMenu: Story = {
   play: async ({ canvas, userEvent }) => {
     await waitForDocumentActions(canvas);
     await settle(390, 844);
-    await userEvent.click(canvas.getByRole('button', { name: 'Wróć do listy dokumentów' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Wróć do: Dokumenty' }));
     await userEvent.click(canvas.getByRole('button', { name: 'Akcje: specification.md' }));
     await shot('required-file-menu', 390, 844);
   },
@@ -253,7 +253,7 @@ export const OptionalFileMenu: Story = {
   play: async ({ canvas, userEvent }) => {
     await waitForDocumentActions(canvas);
     await settle(390, 844);
-    await userEvent.click(canvas.getByRole('button', { name: 'Wróć do listy dokumentów' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Wróć do: Dokumenty' }));
     await userEvent.click(canvas.getByRole('button', { name: 'Akcje: CLIENT.TXT' }));
     await shot('optional-file-menu', 390, 844);
   },

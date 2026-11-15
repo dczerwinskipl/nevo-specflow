@@ -11,9 +11,20 @@ import {
   type WorkspaceHeaderAction,
   type WorkspaceHeaderProps,
 } from '@nevo/ui';
-import { useRouter, useRouterState } from '@tanstack/react-router';
+import {
+  useRouter,
+  useRouterState,
+  type RegisteredRouter,
+  type ValidateLinkOptions,
+} from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { useSpecificationNavigationSource } from '../../features/specs/overview/useSpecificationNavigationMetadata';
+import {
+  backParentTitleKey,
+  flowBackParent,
+  specificationParentTarget,
+  specificationsTarget,
+} from './backParent';
 export type ApplicationView =
   | 'specifications'
   | 'overview'
@@ -96,12 +107,29 @@ function RoutedIdentity({
 }) {
   const { t } = useTranslation();
   const { supportsSplit } = useWorkspaceCapabilities();
-  const { collection, identity, contextNotice, parent } = useApplicationLocationModel(specId, view);
+  const { collection, identity, specificationKey, contextNotice, parent } =
+    useApplicationLocationModel(specId, view);
   if (!supportsSplit) {
+    // Narrow: the header names the screen itself (a stacked detail its own name) with the
+    // Specification's key, and carries the context notice in full (two lines fit the 56 px header),
+    // so a peer area needs no line in its body.
     return (
-      <span className="text-title-sm text-content-primary" title={contextNotice}>
-        {title}
-        {contextNotice ? <span className="sr-only"> · {contextNotice}</span> : null}
+      <span className="grid min-w-0" data-narrow-identity="">
+        <span className="flex min-w-0 items-baseline gap-1.5">
+          <span className="truncate text-title-sm text-content-primary">
+            {detailLabel ?? title}
+          </span>
+          {specificationKey ? (
+            <span className="shrink-0 whitespace-nowrap text-body-sm text-content-secondary">
+              · {specificationKey}
+            </span>
+          ) : null}
+        </span>
+        {contextNotice ? (
+          <span className="line-clamp-2 text-body-sm text-content-secondary" role="status">
+            {contextNotice}
+          </span>
+        ) : null}
       </span>
     );
   }
@@ -127,14 +155,15 @@ function RoutedIdentity({
             ? [
                 <BreadcrumbItem key="specification" current={false}>
                   <LocationLink
-                    className="block max-w-48 truncate"
+                    className="block max-w-48"
                     title={identity}
                     aria-label={identity}
                     to="/specs/$specId"
                     params={{ specId }}
                     search={{ collection }}
                   >
-                    {identity}
+                    {/* Truncated inside: the link's own box keeps its hit area unclipped. */}
+                    <span className="block truncate">{identity}</span>
                   </LocationLink>
                 </BreadcrumbItem>,
               ]
@@ -191,88 +220,51 @@ function useApplicationLocationModel(specId: string | undefined, view: Applicati
         : view === 'task'
           ? { label: t('specification.viewTasks'), to: null }
           : undefined;
-  const mobileBack =
-    view === 'session' || view === 'new-session'
-      ? { label: t('specification.viewSessions'), to: '/specs/$specId/sessions' as const }
-      : view === 'overview' || view === 'new-specification'
-        ? { label: t('applicationNavigation.allSpecifications'), to: '/' as const }
-        : parent?.to
-          ? parent
-          : {
-              label: t('applicationNavigation.specificationOverview'),
-              to: '/specs/$specId' as const,
-            };
 
   return {
     collection,
-    metadata,
     identity,
+    specificationKey: metadata?.key,
     contextNotice,
     parent,
-    mobileBack,
   };
 }
 
-export function ApplicationContextLine({
+/**
+ * The Narrow body Back of a flow page (a Create step, a new Session): "Back to <list>", the list
+ * the flow was started from. Peer areas of a Specification (Overview, Sessions, Tasks, Documents,
+ * Changes, Repository) never show one: they keep the navigation trigger, and the location trail
+ * carries the way back on split layouts.
+ */
+export function FlowParentBack({
   specId,
   view,
-  className,
+  sessionsDisabled = false,
 }: {
   specId?: string;
-  view: ApplicationView;
-  className?: string;
+  view: 'new-specification' | 'new-session';
+  /** A refused Session start because Sessions are off: the way back is the Overview. */
+  sessionsDisabled?: boolean;
 }) {
+  const { t } = useTranslation();
   const router = useRouter({ warn: false });
   const { supportsSplit } = useWorkspaceCapabilities();
+  const collection = useApplicationCollection();
   if (
     !router?.state.matches.some((match) => match.routeId.startsWith('/_app/')) ||
     supportsSplit ||
-    (!specId && view !== 'new-specification')
+    (view === 'new-session' && !specId)
   ) {
     return null;
   }
 
-  return <MobileContext specId={specId} view={view} className={className} />;
-}
+  const parent = flowBackParent(view, sessionsDisabled);
+  const label = t('navigation.backTo', { parent: t(backParentTitleKey[parent]) });
 
-function MobileContext({
-  specId,
-  view,
-  className,
-}: {
-  specId?: string;
-  view: ApplicationView;
-  className?: string;
-}) {
-  const { collection, metadata, contextNotice, mobileBack } = useApplicationLocationModel(
-    specId,
-    view,
-  );
-  const content = <ApplicationBackContent>{mobileBack.label}</ApplicationBackContent>;
-
-  return (
-    <Typography
-      as="div"
-      variant="body-sm"
-      className={`flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 ${className ?? 'mb-6'}`}
-      data-application-context
-    >
-      <BackLink
-        to={mobileBack.to}
-        params={mobileBack.to === '/' ? undefined : { specId }}
-        search={{ collection }}
-      >
-        {content}
-      </BackLink>
-      {metadata?.key ? (
-        <span className="whitespace-nowrap text-content-secondary">· {metadata.key}</span>
-      ) : null}
-      {contextNotice ? (
-        <span className="text-content-secondary" role="status">
-          {contextNotice}
-        </span>
-      ) : null}
-    </Typography>
+  return parent === 'specifications' || !specId ? (
+    <FlowBack label={label} link={specificationsTarget(collection)} />
+  ) : (
+    <FlowBack label={label} link={specificationParentTarget(parent, specId, collection)} />
   );
 }
 
@@ -296,12 +288,12 @@ export function ViewPageTitle({
   );
 }
 
-/** Same contextual navigation treatment for route ancestors and local flow steps. */
-export const applicationBackClassName = [
+const flowBackButtonClassName = [
   'inline-flex min-w-0 items-center gap-1.5 text-content-secondary outline-none focus-visible:outline-2 focus-visible:outline-focus-ring disabled:opacity-50',
   hitAreaClassName,
 ].join(' ');
-export function ApplicationBackContent({ children }: { children: ReactNode }) {
+
+function FlowBackContent({ children }: { children: ReactNode }) {
   return (
     // One flex row: the DS Link wraps its children in a label span, so the icon and text must
     // not rely on the anchor being the flex container.
@@ -312,25 +304,42 @@ export function ApplicationBackContent({ children }: { children: ReactNode }) {
   );
 }
 
-export function ApplicationFlowBack({
+/**
+ * The one body Back control. Body backs exist only in flows (Create steps, a new Session, the
+ * return to a Session from a document or the documentation); every other way back is the header
+ * Back of a stacked screen or the location trail. It owns its look and has no outer spacing: it is
+ * the first row of its region and takes that region's gap. Its label names the target
+ * ("Back to <parent>") unless it is a flow step ("Change method").
+ */
+export function FlowBack<TLink>({
   label,
+  link,
   onBack,
   disabled,
 }: {
   label: string;
-  onBack: () => void;
+  /** The target's router link options (a link: it can be opened in a new tab), type-checked. */
+  link?: ValidateLinkOptions<RegisteredRouter, TLink>;
+  /** A local flow step without an address (a button). */
+  onBack?: () => void;
   disabled?: boolean;
 }) {
   return (
-    <Typography as="div" variant="body-sm">
-      <button
-        type="button"
-        className={applicationBackClassName}
-        disabled={disabled}
-        onClick={onBack}
-      >
-        <ApplicationBackContent>{label}</ApplicationBackContent>
-      </button>
+    <Typography as="div" variant="body-sm" data-flow-back="">
+      {link ? (
+        <BackLink {...link}>
+          <FlowBackContent>{label}</FlowBackContent>
+        </BackLink>
+      ) : (
+        <button
+          type="button"
+          className={flowBackButtonClassName}
+          disabled={disabled}
+          onClick={onBack}
+        >
+          <FlowBackContent>{label}</FlowBackContent>
+        </button>
+      )}
     </Typography>
   );
 }
@@ -350,22 +359,17 @@ export function ApplicationSessionBack({
   /** Callers still pass the Specification; the Session route is top-level and needs only its id. */
   specId?: string;
   sessionId: string;
-  /** Names the Session when the caller knows its title ("Back to <title>"). */
+  /** Names the Session when the caller knows its title ("Back to <title>", else "Back to Session"). */
   sessionTitle?: string;
   collection: 'current' | 'archive';
 }) {
   const { t } = useTranslation();
 
   return (
-    <Typography as="div" variant="body-sm">
-      <BackLink to="/sessions/$sessionId" params={{ sessionId }} search={{ collection }}>
-        <ApplicationBackContent>
-          {sessionTitle
-            ? t('applicationNavigation.sessionBackNamed', { title: sessionTitle })
-            : t('applicationNavigation.sessionBack')}
-        </ApplicationBackContent>
-      </BackLink>
-    </Typography>
+    <FlowBack
+      label={t('navigation.backTo', { parent: sessionTitle ?? t('managedSession.title') })}
+      link={{ to: '/sessions/$sessionId', params: { sessionId }, search: { collection } }}
+    />
   );
 }
 

@@ -5,6 +5,17 @@ export interface RouteLocationLike {
 }
 
 const documentsScreen = /^\/specs\/\$specId\/documents(?:\/\$documentId)?\/?$/;
+const specificationOverview = /^\/specs\/(?!new(?:\/|$))[^/]+\/?$/;
+
+/**
+ * The Specification Overview's address (`/specs/:specId`, not the Create flow's `/specs/new`): the
+ * only screen whose scroll the router restores (`router.tsx`). Other screens own their scroll (the
+ * documentation reader's reading positions, the Documents panes), and a router restore would race
+ * them.
+ */
+export function isSpecificationOverviewPath(pathname: string): boolean {
+  return specificationOverview.test(pathname);
+}
 
 /** The Documents list or one document of a specification. */
 export function isDocumentsLocation(location: RouteLocationLike): boolean {

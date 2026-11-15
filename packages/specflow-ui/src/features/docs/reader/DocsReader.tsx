@@ -63,7 +63,7 @@ export function DocsReader({
   const router = useRouter();
   const notify = useNotify();
   const writeSearch = useWriteReaderSearch();
-  const workspaceLabels = useWorkspaceLabels();
+  const workspaceLabels = useWorkspaceLabels(t('docs.title'));
   const { supportsSplit, measured } = useWorkspaceCapabilities();
   const [chrome] = useState(createArticleChromeStore);
   const list = current.workspaces.data;
@@ -287,13 +287,10 @@ export function DocsReader({
           <AppWorkspace
             scroll="content"
             fit="available"
-            // Back already leaves the stacked article; a Close would repeat it.
-            stackedSecondaryClose="hide"
             primaryMaxPx={360}
             split="secondary"
             labels={{
               ...workspaceLabels,
-              backToPrimary: t('docs.backToDocumentation'),
               closeSecondary: t('docs.closeDocument'),
             }}
           >

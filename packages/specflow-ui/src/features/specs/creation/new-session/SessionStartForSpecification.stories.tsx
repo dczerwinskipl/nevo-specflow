@@ -1,5 +1,5 @@
 import type { Meta, StoryContext, StoryObj } from '@storybook/react-vite';
-import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { withLocale } from '../../../../i18n/StoryLocalization';
 import { browserPage } from '../../../../test-support/browserPage';
 import { settleViewport } from '../../../../test-support/viewportSettle.stories-support';
@@ -339,30 +339,25 @@ export const NoProviderAvailable: Story = {
   },
 };
 
-const onBackToSpecification = fn();
-
-/** The start route opened directly by a viewer: the form is replaced, with the way back. */
+/** The start route opened directly by a viewer: the form is replaced; no second Back in the body. */
 export const StartForbidden: Story = {
-  render: () => <StartRefusedPreview reason="forbidden" onBack={onBackToSpecification} />,
+  render: () => <StartRefusedPreview reason="forbidden" />,
   play: async ({ canvas }) => {
     await settle();
     await expect(
       await canvas.findByText('Nie możesz rozpoczynać sesji w tej specyfikacji.'),
     ).toBeVisible();
     await expect(canvas.queryByRole('heading', { name: 'Rozpocznij sesję' })).toBeNull();
-    onBackToSpecification.mockClear();
-    await userEvent.click(canvas.getByRole('button', { name: 'Wróć do specyfikacji' }));
-    await expect(onBackToSpecification).toHaveBeenCalledOnce();
+    await expect(canvas.queryByRole('button', { name: /Wróć/ })).toBeNull();
   },
 };
 
 /** Sessions are turned off in the project: said instead of the form, never as a failure. */
 export const StartSessionsDisabled: Story = {
-  render: () => <StartRefusedPreview reason="sessions_disabled" onBack={onBackToSpecification} />,
+  render: () => <StartRefusedPreview reason="sessions_disabled" />,
   play: async ({ canvas }) => {
     await settle();
     await expect(await canvas.findByText('Sesje są wyłączone w tym projekcie.')).toBeVisible();
-    await expect(canvas.getByRole('button', { name: 'Wróć do specyfikacji' })).toBeVisible();
   },
 };
 

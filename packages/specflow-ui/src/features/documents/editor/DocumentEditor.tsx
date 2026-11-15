@@ -37,7 +37,11 @@ import {
   guidanceColumnWidth,
   outlineColumnMinWidth,
 } from '../../../shared/document-reading/markdownOutline';
-import { DocumentReadingColumns } from '../../../shared/document-reading/DocumentReadingColumns';
+import {
+  DocumentReadingColumns,
+  documentGutterClassName,
+  documentPanelPaddingClassName,
+} from '../../../shared/document-reading/DocumentReadingColumns';
 import { useHeadingNavigation } from '../../../shared/document-reading/useHeadingNavigation';
 import { usePanelSize } from '../../../shared/document-reading/usePanelSize';
 import type { DocumentGuidance } from '../catalogue/documentTypePolicy';
@@ -150,7 +154,7 @@ function SaveRefusal({ session }: { session: DocumentEditorSession }) {
   }
 
   return (
-    <div className="shrink-0 px-4 pt-4">
+    <div className={`shrink-0 pt-4 ${documentGutterClassName}`}>
       <Alert role="alert" tone="attention" title={title} actions={actions}>
         {body && <p>{body}</p>}
       </Alert>
@@ -212,21 +216,31 @@ function DocumentContentView({ session }: { session: DocumentEditorSession }) {
   // The type of a registered document, as one quiet line at the head of the document: on touch the
   // row tooltip is not reachable, and the tree may not be on screen.
   const typeLine =
-    document.classification === 'registered' && document.type
-      ? t('documents.tree.typeOf', { type: typeTitle(catalogue.data, document.type) })
-      : undefined;
+    document.classification === 'registered' && document.type ? (
+      <Typography
+        as="p"
+        variant="body-sm"
+        data-document-type=""
+        className="m-0 truncate text-content-muted"
+      >
+        {t('documents.tree.typeOf', { type: typeTitle(catalogue.data, document.type) })}
+      </Typography>
+    ) : undefined;
+  // The preview carries the type line in its reading column, on the document's one text edge; the
+  // other views (source, image, file) show it above them on the same gutter.
+  const preview = !(view === 'image' || view === 'file' || view === 'edit' || view === 'source');
+  const previewLead =
+    typeLine || session.readOnlyReason ? (
+      <div className="grid gap-2">
+        {typeLine}
+        {session.readOnlyReason ? readOnlyLine : null}
+      </div>
+    ) : undefined;
 
   return (
     <div ref={rootRef} className="flex h-full min-h-0 w-full flex-col">
-      {typeLine && (
-        <Typography
-          as="p"
-          variant="body-sm"
-          data-document-type=""
-          className="m-0 shrink-0 truncate px-4 pt-2 text-content-muted"
-        >
-          {typeLine}
-        </Typography>
+      {typeLine && !preview && (
+        <div className={`shrink-0 pt-2 ${documentGutterClassName}`}>{typeLine}</div>
       )}
       <SaveRefusal session={session} />
       {view === 'image' ? (
@@ -239,7 +253,9 @@ function DocumentContentView({ session }: { session: DocumentEditorSession }) {
         <DocumentFileView document={document} onDownload={session.download} />
       ) : view === 'edit' || view === 'source' ? (
         <SourceWithGuidance guidance={guidance} width={width}>
-          {session.readOnlyReason && <div className="shrink-0 px-4 pb-1 pt-3">{readOnlyLine}</div>}
+          {session.readOnlyReason && (
+            <div className={`shrink-0 pb-1 pt-3 ${documentGutterClassName}`}>{readOnlyLine}</div>
+          )}
           <MarkdownSourceEditor
             key={document.id}
             plainText={plainText}
@@ -265,7 +281,7 @@ function DocumentContentView({ session }: { session: DocumentEditorSession }) {
       ) : (
         <PreviewScroller
           key={document.id}
-          lead={session.readOnlyReason ? readOnlyLine : undefined}
+          lead={previewLead}
           content={draft.content}
           anchor={session.anchor}
           onAnchorChange={session.rememberAnchor}
@@ -430,7 +446,7 @@ function PreviewScroller({
     <ScrollArea
       direction="both"
       className="min-h-0 flex-1"
-      contentClassName="p-6"
+      contentClassName={documentPanelPaddingClassName}
       // The focusable scroll viewport is the preview region the editor provider refocuses.
       viewportRef={viewportRef}
     >

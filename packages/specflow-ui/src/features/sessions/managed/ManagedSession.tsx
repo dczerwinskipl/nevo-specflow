@@ -1161,7 +1161,7 @@ export function ManagedSession({
     return () => feed.disconnect();
   }, [feed]);
   const navigation = useSecondaryNavigation(),
-    labels = useWorkspaceLabels();
+    labels = useWorkspaceLabels(t('managedSession.title'));
   // The side panel shows when Context is registered or a runtime tab is visible; one press hides
   // all of it and the next restores what was active (`useSessionSidePanel`).
   const sidePanel = useSessionSidePanel(contextOpen, setContextOpen);

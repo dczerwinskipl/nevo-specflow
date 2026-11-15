@@ -14,14 +14,13 @@ import {
   useSecondaryStack,
   useWorkspaceCapabilities,
   type SecondaryData,
+  type AppWorkspaceBack,
   type SecondaryScreenProps,
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import {
-  ApplicationLocationIdentity,
-  ApplicationContextLine,
-} from '../../../app/navigation/ApplicationLocation';
+import { ApplicationLocationIdentity } from '../../../app/navigation/ApplicationLocation';
 import { WorkspaceRouteLeaveGuard } from '../../../app/navigation/WorkspaceRouteLeaveGuard';
+import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
 import type { FullTaskData } from '../read-model/model';
 import { TaskContent } from '../detail/TaskContent';
 import { inspectionAnchor, type TaskInspectionAnchor } from '../detail/taskInspectionModel';
@@ -308,8 +307,8 @@ const historyResourceStack = defineSecondaryStack<RootParams, TaskContextData, P
 export function FullTaskWorkspace(props: {
   readonly task: FullTaskData;
   readonly specId: string;
-  readonly onBack: () => void;
-  readonly backHref: string;
+  /** The header Back of the stacked page (Narrow): "Back to Tasks". */
+  readonly back: AppWorkspaceBack;
   readonly stale?: boolean;
   readonly onRetry?: () => void;
 }) {
@@ -328,33 +327,25 @@ export function FullTaskWorkspace(props: {
 function Workspace({
   task,
   specId,
-  onBack,
-  backHref,
+  back,
   stale,
   onRetry,
 }: {
   task: FullTaskData;
   specId: string;
-  onBack: () => void;
-  backHref: string;
+  back: AppWorkspaceBack;
   stale?: boolean;
   onRetry?: () => void;
 }) {
   const { t } = useTranslation();
   const { supportsSplit } = useWorkspaceCapabilities();
   const navigation = useSecondaryNavigation();
+  const workspaceLabels = useWorkspaceLabels(task.title || task.id);
 
   return (
-    <AppWorkspace
-      split="primary"
-      labels={{
-        backToPrimary: t('navigation.back'),
-        backToParent: (name: string) => t('navigation.backTo', { name }),
-        closeSecondary: t('navigation.closeSecondary'),
-        openNavigation: t('navigation.open'),
-      }}
-    >
+    <AppWorkspace split="primary" labels={workspaceLabels}>
       <AppWorkspace.Primary
+        back={back}
         header={
           <WorkspaceHeader
             title={t('specification.viewTasks')}
@@ -389,7 +380,6 @@ function Workspace({
         <AppContent className="w-content-xwide max-w-full">
           <AppWorkspaceBody scroll="area" contentClassName="py-6">
             <AppContentContainer align="start" size="full">
-              <ApplicationContextLine specId={specId} view="task" />
               {stale ? (
                 <Alert tone="attention" title={t('taskDetails.pageFailed')}>
                   <Button variant="secondary" size="sm" onClick={onRetry}>
@@ -397,7 +387,7 @@ function Workspace({
                   </Button>
                 </Alert>
               ) : null}
-              <FullTaskView task={task} specKey={specId} onBack={onBack} backHref={backHref}>
+              <FullTaskView task={task} specKey={specId}>
                 <TaskContent
                   task={task}
                   specKey={specId}

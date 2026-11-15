@@ -230,9 +230,12 @@ export const MobileCollapsedCustomHeaderActions: Story = {
     assert(trigger, 'Collapsed custom header must expose the declared action menu');
     await userEvent.click(trigger);
     const doc = canvasElement.ownerDocument;
-    for (const label of ['Save', 'Refresh', 'Open full view', 'Close secondary content']) {
+    for (const label of ['Save', 'Refresh', 'Open full view']) {
       assert(findMenuItem(doc, label), `Missing compact action: ${label}`);
     }
+
+    // Back already leaves the stacked Secondary; the compact row has no Close beside it.
+    assert(!findMenuItem(doc, 'Close secondary content'), 'Stacked compact row must not close');
 
     const save = findMenuItem(doc, 'Save');
     assert(save, 'Save action must be available');

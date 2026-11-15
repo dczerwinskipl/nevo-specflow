@@ -249,8 +249,9 @@ not aligned with the 56 px Primary header; opening a detail never moves the tabs
   (1 = root) in **one** `pop` transition, consulting only the current page's leave guard, and
   resolves `false` for a depth that is not an ancestor. With `browserHistory`, a jump of N levels
   lowers the desired depth by N and the provider consumes exactly N entries with one `go(-N)`.
-- **Not applied** on stacked/mobile (its header Back + title + Close stay; at depth >= 2 the Back is
-  named for the parent via `labels.backToParent`, at depth 1 it stays `backToPrimary`, with no row under the
+- **Not applied** on stacked/mobile (its header Back + title stay, without a Close beside them; at depth >= 2
+  the Back is named for the parent via `labels.backToParent`, at depth 1 it is `backToPrimary`, which the
+  product sets to "Back to <Primary title>", with no row under the
   header; the strip keeps the 56 px `header` density there; Documents' tab strip keeps its own
   look) and not to a single runtime flow without
   a strip. The pinned/declarative tab has no runtime stack and therefore no local row.
@@ -457,10 +458,26 @@ neither turn a full-width page into a Focused frame nor widen a Focused frame. T
 `content` fit keeps its intrinsic width with a Secondary. `NestedAvailableInBounded{1600,1920}Contract`,
 `NestedBoundedInAvailable1920Contract` and `ContentIntrinsicWithSecondary1920Contract` cover these cases.
 
-**Stacked close (opt-in).** `stackedSecondaryClose="hide"` removes the Secondary's own close action (the trailing
-`x`, and the matching item of the compact row) while the layout is stacked, where Back already leaves the
-Secondary and the second control only repeats it. Split layouts keep the close action. The default is
-`show`; `AppWorkspace` tests cover both values.
+**Stacked close.** Back and Close never appear together on a stacked layout. By default
+(`stackedSecondaryClose="hide"`) the Secondary's own close action (the trailing `x`, and the matching item
+of the compact row) is not rendered while the layout is stacked, where Back already leaves the Secondary and
+the second control only repeats it. `show` is an explicit opt-in for a stacked surface whose Close means
+something Back does not; no product surface uses it today. Split layouts keep the close action.
+`AppWorkspace` tests cover both values.
+
+**Stacked Back targets.** Every header Back names its target ("Back to <parent>"; never a bare "Back") and
+leads to a defined parent, not to raw browser history:
+
+- a Secondary at depth >= 2 pops to its parent (`labels.backToParent(parent title)`);
+- a Secondary at depth 1 reveals Primary (`labels.backToPrimary`), unless the product parent of the visit
+  is another routed surface: `stackedRootBack` then replaces that step (a document opened from the
+  Specification Overview returns there) and `labels.backToPrimary` names that parent;
+- a routed Primary that is a subordinate screen (`AppWorkspace.Primary back={{ label, onBack }}`) shows
+  its Back in place of the navigation trigger on a stacked layout; split layouts ignore it, because the
+  location trail carries the way back. Root screens (peer areas of the navigation) never get one and keep
+  the navigation trigger.
+
+The Back is the icon-only `IconButton` (36 px visual) whose hit area reaches 44 px on coarse pointers.
 
 **Capped Primary (opt-in).** `primaryMaxPx` is the maximum width of the Primary region in px. Primary is
 its share of the split but never wider than the cap, and Secondary takes the rest (`capPrimaryWidth`), so a

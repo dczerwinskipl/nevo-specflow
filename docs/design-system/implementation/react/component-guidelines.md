@@ -322,7 +322,7 @@ row geometry from `treeRecipes` (`Nevo UI/Foundations/TreeGuide`). The tree has 
 hierarchy is carried by one small indent step and the chevron + folder icon + name alignment.
 In SpecFlow UI the document trees (the Documents explorer, the documentation reader) render through
 one product composition, `src/shared/document-tree` (`TreeLevel`, `TreeFolderRow`,
-`TreeDocumentRow`, `TreeSearchField`, `useRovingTree`). The screens differ only in the row slots:
+`TreeDocumentRow`, `TreeSearchField`, `useRovingTree`, and the pane parts of [Tree pane](#tree-pane)). The screens differ only in the row slots:
 `menu` (row actions), `editor` (inline rename or create entry), `state` (trailing state label, with
 an attention form), `details` and `spokenDetail` (tooltip lines and the text read with the name),
 `glyph` (the document's icon), `wrap` (a wrapping instead of a single-line name), and the focus
@@ -367,117 +367,93 @@ selected when nothing is open, and during loading the row of the new target is s
 previous or default one. Products must not add local opacity, outline or selected classes to tree
 rows; use `aria-current` for the open document instead of `aria-pressed`.
 
-## Tree pane consistency (proposal, awaiting owner acceptance)
-
-> **Status: proposal, awaiting owner acceptance.** Nothing below is implemented yet; the current
-> code stays authoritative until the owner accepts it. Mock: the Storybook story "Tree pane
-> consistency" under SpecFlow/Proposals (the real screens; "after" is approximated by a
-> stylesheet, see its description).
+## Tree pane
 
 The Primary tree pane of Documents (a Specification's files) and of Documentation (the reader) are
-two areas of one product. They keep their own functions (file filter by name and type versus hybrid
-search with proposals; `DocumentsExplorer` and `DocsTreePane` stay separate), but take one geometry,
-one search container and one empty search result from `src/shared/document-tree`.
+two areas of one product (owner, 2026-11-15). They keep their own functions (file filter by name
+and type versus hybrid search with proposals; `DocumentsExplorer` and `DocsTreePane` stay separate,
+and so do their filtering and search logic), but take one geometry, one search container and one
+empty search result from `src/shared/document-tree`. Do not restyle these parts per screen.
 
-**Pane stack.** The scroller content has the pane's vertical inset only (`py-2`); every block
-carries the 8 px inline inset itself (`px-2`), so a full-width block (the sticky search bar) needs
-no negative margins. Blocks (back link, context line or workspace picker, notices and attention
-blocks, the tree block) are one grid with `gap-3` (12 px) and no margins of their own (`mb-2`,
-`mb-3` go). The tree block (section heading, search bar, filter status, list or results or empty
-result) is one grid with `gap-1` (4 px). A block that renders nothing renders no element, so it
-costs no gap (a status wrapper that only holds a hidden live region sits outside the grid flow).
+**Pane stack (`treePane.ts`).** The scroller content is `treePaneContentClassName`: the pane's
+vertical inset only (`py-2`), the blocks 12 px apart (`gap-3`), no margins (`mb-*`) and no negative
+margins. Every block carries the 8 px inline inset itself (`treePaneBlockClassName`); a text block
+on the text column uses `treePaneTextClassName` (16 px); a full-width block (the search bar) has
+neither. The blocks, in order: back link, context line or workspace picker, notices and attention
+blocks (Close refusals, expected types, skipped documents), the tree block. The tree block
+(`treeBlockClassName`, positioned, `gap-1`) holds section heading, search bar, filter or search
+status, notes and the list, the results or the empty result. A block or part that renders nothing
+renders no element, so it costs no gap; a hidden live region (`sr-only`) is out of the flow.
 
 **Text column.** Two inline edges, measured from the pane's inner edge: the search field's border at
-12 px, and the pane's text column at 16 px, where the rows' content (the icon of a document, a flat
-name), the tree's quiet notes, the result titles and the result count already start. The empty
-search result starts on the text column (16 px) in both panes: the block's 8 px inset plus the
-`EmptyState` inline padding (`px-2`), with no extra wrapper inset (today Documentation adds a `px-2`
-wrapper and starts at 24 px).
+12 px, and the text column at 16 px, where the rows' content (the icon of a document, a flat name),
+the tree's notes, the status lines, the result titles and the empty result start.
 
-**Search container (`TreeSearchBar`).** The field row of both panes: `TreeSearchField` plus an
-optional trailing control (the Documents type filter), `role="search"`, `py-1 px-3` across the
-pane's full width, so the field border sits at 12 px. At rest it has no surface and no divider of
-its own (a transparent bottom border keeps the height). Sticky is opt-in (`sticky`): Documentation
-uses it, Documents does not. While stuck it paints the opaque docked material of
-`.workspace-docked-bar` (workspace material over the canvas) and shows the bottom `divider`, so
-nothing scrolled underneath shows through. Stuck band: 4 + 36 + 4 px + 1 px divider.
+**Search container (`TreeSearchBar`).** The field row of both panes: `TreeSearchField` (`flex-1`)
+plus an optional trailing control (the Documents type filter), `role="search"`, `px-3 py-1` across
+the pane's full width, a transparent bottom border at rest that keeps its height. Not sticky
+(Documents) it has no surface of its own. Sticky is opt-in (`sticky` with `scrollRoot`, the
+`ScrollArea` viewport element; Documentation): the bar is the first child of the tree block and
+always paints the opaque docked material of `.workspace-docked-bar`, and shows the bottom `divider`
+only while docked. Stuck band: 4 + 36 + 4 px + 1 px divider.
 
-**Stuck detection (reverses an earlier decision).** `DocsSearchField` today draws its band "always,
-no stuck detection". The owner's finding C was exactly that always-drawn band (a toolbar glued on at
-rest), so the proposal detects the stuck state. Mechanism: a small `useStuck` hook in
-`shared/document-tree`; the bar renders an absolutely positioned 1 px sentinel just above itself
-(not a grid child, so it costs no gap), observed by an `IntersectionObserver` whose root is the
-`ScrollArea` viewport; the bar is stuck while the sentinel is outside the root. Risks: the root must
-be the Radix viewport element (not the `ScrollArea` root), passed by ref; `usePaneScrollMemory` can
-restore a scrolled position before the first observer callback (the bar would be transparent for
-that frame unless the hook also reads the position once on mount); a fast fling can show one frame
-of content through the bar, mitigated by a `rootMargin` that switches a few pixels early. Fallback
-if these prove unreliable: the docked material always on (opaque; at rest it matches the pane
-surface apart from the faint top gradient), the divider only when stuck.
+**Stuck detection (`useStuck`).** The sticky bar renders an absolutely positioned 1 px sentinel at
+the top of the positioned tree block (outside the flow, no gap), observed by an
+`IntersectionObserver` rooted at the scroll viewport with `rootMargin` top `-8px` (the divider comes
+8 px before the bar docks); the position is also read once, before paint, when the observation
+starts. The material is always on because an observer answers only after the frame it measured is
+painted: with the material tied to the stuck state, Playwright frame sampling showed one transparent
+frame over docked rows after a jump of 150 px per frame, after a Back restore by
+`usePaneScrollMemory` into a docked position, and up to three frames across a resize that changes
+the layout. With the material always on, none of slow scroll, wheel, a touch or wheel fling at
+6000-8000 px/s, the jumps, Back restores and resizes shows a transparent frame; the divider follows
+at most one frame late (three across a layout change). At rest the material differs from the pane
+surface only by the pane's faint top-left gradient, visible on Narrow as a very faint flat band
+behind the field when the bar sits within that gradient.
 
 **Empty search result (`TreeSearchEmpty`).** One variant for a search or filter that leaves nothing
-in a tree pane: `EmptyState variant="inline"`, no icon, its text on the text column, a `body-md`
-medium title, a `body-sm` secondary description and one `Button variant="secondary" size="sm"`
-that removes what hides the rows. Texts and the action stay per screen (Documents: "No matching
-files", "Change the search or the chosen types.", Clear filters; Documentation: "No matching
-documents", its hint or the proposals line, Clear search). The bordered `default` and the `pane`
-variants stay for empty areas (for example the document area), not for search results.
+in a tree pane: `EmptyState variant="inline"`, no icon, its text on the text column (block inset
+plus the empty state's own `px-2`), a `body-md` medium title, a `body-sm` secondary description and
+one `Button variant="secondary" size="sm"` that removes what hides the rows. Texts and the action
+stay per screen (Documents: "No matching files", "Change the search or the chosen types.", Clear
+filters; Documentation: "No matching documents", its hint or the proposals line, Clear search). The
+bordered `default` and the `pane` variants stay for empty areas (for example the document area),
+not for search results.
 
-Measured in Storybook (CSS px at 390 with a coarse pointer; the 1440 values are the same where the
-element exists; "text" means the glyph line box):
+**Message hierarchy of the tree block.** A tree block can show its primary content and several
+messages at once (in Documents: the empty result, "The filters hide 1 missing file.", "1 entry in
+the folder could not be read." and "Only the first entries are listed."). Each message is a
+status, an attention note or a quiet note; with the primary content they always come in this order:
 
-| Element                   | Documents now                                                                               | Documentation now                                                                          | Proposal                                                                                |
-| ------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
-| Back link (Narrow)        | `ApplicationContextLine mb-2`, 44 px box                                                    | session back `px-2`, 44 px box, pane `gap-3`                                               | pane `gap-3`; box: see the separate `Link` decision                                     |
-| Back text to heading text | 30                                                                                          | no heading                                                                                 | 24 with the `Link` change, 30 without                                                   |
-| Section heading           | `treeSectionHeaderClassName`, 32 px row, 16 px text                                         | none (the picker names the workspace)                                                      | unchanged                                                                               |
-| Search container          | `TreeFilterBar` row, `px-1`, no padding                                                     | `DocsSearchField`: `bg-surface-raised`, `border-b`, `py-2`, negative margins, always drawn | `TreeSearchBar`, `py-1 px-3`, transparent at rest, docked material + divider when stuck |
-| Heading text to field     | 13 (heading row box to field 4)                                                             | no heading                                                                                 | 17 (row box to field 8)                                                                 |
-| Picker to field           | no picker                                                                                   | 12                                                                                         | 16                                                                                      |
-| Field to first row        | 4                                                                                           | 13 (8 padding, 1 border, 4)                                                                | 8 Documents (not sticky), 9 Documentation (4 padding, 1 border, 4 gap)                  |
-| Empty search result       | `EmptyState` default: bordered, 48 px icon, centred, md button, 262 (390) / 282 (1440) high | `EmptyState` inline, sm button, 100 high, text at 24                                       | `TreeSearchEmpty`, 100 high, text at 16 in both                                         |
+1. **Status** of the search or filter, right under the search bar: the count and Clear filters
+   (Documents), the count, the proposals checkbox and the search's lines (Documentation). Quiet
+   (`body-sm`, muted or secondary), no icon.
+2. **Attention notes**, before the primary: what the list hides or could not show that the reader
+   may need to act on. `InlineNote tone="attention"` (attention icon, secondary text) on the text
+   column. In Documents: the filters hide a missing file (a missing file is itself an attention
+   row), then the entries the Runtime could not read (a read failure; not a Close refusal, so it
+   stays out of the Close Alert). They come before the list so a long list never hides them, and
+   they stay in the same place whether the result is a list or empty.
+3. **Primary**: the list, the results, or the empty result in their place (`TreeSearchEmpty`, whose
+   `body-md` title outweighs every note).
+4. **Quiet notes**, after the primary: a known limit that needs no action, `InlineNote` (`info`
+   tone, muted icon) on the text column. In Documents: the listing limit, where the list is cut.
 
-### Separate decision: standalone `Link` layout box
+Pane-level blocks (Close refusals as an attention `Alert`, the read-only line, expected types,
+skipped documents, the reader's picker notices) keep their places in the pane stack above the tree
+block; a filter never hides them. A screen does not add a fourth tone or its own note styling.
 
-This is a **design-system rule change**, decided separately from the pane geometry above.
+Measured in Storybook (CSS px at 390 with a coarse pointer; the 1440 values are the same):
 
-- **Today's rule** (`Link.tsx`, `layout.standalone`, asserted in `Link.test.tsx`; the
-  [Target size](#target-size) list "Already applied: `Link layout="standalone"`"): a standalone
-  link's box is at least the target size (`min-h-(--target-size)`, 44 px on coarse pointers) "so
-  neighbours cannot cover its hit area". On a phone the back link is a 44 px layout box around a
-  20 px line: 12 px of invisible slack below it, the largest part of the Documents gap the owner
-  reported (back text to heading 30 px on a phone).
-- **Proposed rule:** a standalone link keeps its 44 px hit area (`::after`), but its layout box is
-  its content height with the 24 px floor, like the other controls in the Target size rules. The hit
-  area then overhangs the box by 10 px above and below. That is safe only with at least 10 px to the
-  next interactive neighbour; the pane stack's `gap-3` (12 px) gives that. A screen that places a
-  standalone link closer to another control needs that spacing.
-- **Impact:** every `layout="standalone"` user, that is `LocationLink` / `BackLink` and through
-  them the in-flow back links of every screen (Overview, Documents, Sessions, Create steps); each
-  loses up to 20 px of height on coarse pointers.
-- **Files:** `nevo-ui` `components/actions/Link/Link.tsx`, `Link.test.tsx`, `Link.stories.tsx`,
-  `design-system/hitArea.contract.stories.tsx`, and the [Target size](#target-size) section.
-- **Interaction with the back-navigation audit:** a parallel audit recommends removing the body
-  back link on Documents, Sessions and Overview on phones (they are siblings in the Specification
-  menu). If the owner accepts that, the Documents gap goes away without this change, which is then
-  needed only for the in-flow back links that remain and can be deferred.
+| Element             | Documents                                                 | Documentation                                |
+| ------------------- | --------------------------------------------------------- | -------------------------------------------- |
+| Search bar          | `TreeSearchBar`, 45 high, field border at 12, not sticky  | `TreeSearchBar sticky`, 45 high, field at 12 |
+| Empty search result | `TreeSearchEmpty`, 100 high, title at 16                  | `TreeSearchEmpty`, 100 high, title at 16     |
+| Notes               | attention and quiet `InlineNote`, icon on the text column | status lines on the text column              |
 
-Files to change on acceptance:
-
-- `shared/document-tree/`: new `TreeSearchBar.tsx`, `TreeSearchEmpty.tsx`, `useStuck.ts` (the
-  sentinel hook), `treePane.ts` (pane stack and tree block classes), `index.ts`.
-- `features/docs/tree-pane/`: `DocsSearchField.tsx` (becomes `TreeSearchBar sticky` plus its
-  keyboard behaviour; no `--tree-pane-inset`, no negative margins; its doc comment loses "no stuck
-  detection"), `DocsSearchField.test.tsx` (rest and stuck surfaces), `DocsTreePane.tsx`,
-  `DocsSearchPanel.tsx` (the tree block; the status wrapper outside the grid flow),
-  `DocsSearchPanel.test.tsx` (structure updates), `DocsSearchResults.tsx` (`TreeSearchEmpty`, no
-  `px-2` wrapper).
-- `features/documents/`: `explorer/tree/TreeFilterBar.tsx` (`TreeSearchBar`),
-  `explorer/tree/ExplorerTree.tsx` (`TreeSearchEmpty`), `workspace/DocumentsTreePanel.tsx` (pane
-  stack, no `mb-*`).
-- Only if the separate decision is accepted: the `Link` files listed above.
-
-Then this section replaces its status line with the accepted rule.
+The standalone `Link` layout box (44 px on coarse pointers, see [Target size](#target-size)) is
+unchanged: a proposal to shrink it to its content height was deferred by the owner (2026-11-15),
+and the Documents body back link belongs to the navigation work, not to this rule.
 
 ## Document reading
 

@@ -327,7 +327,7 @@ The status row (at least one target tall) holds the count and the proposals chec
 
 ### Empty states
 
-They apply when the answer has no results (word-only search, or a future cutoff):
+They apply when the answer has no results (word-only search, or a configured relevance cutoff):
 
 - **No match:** "No matching documents", the hint "Try other words, or browse the tree.", and Clear
   search.
@@ -696,7 +696,8 @@ project folder, and the workspace picker in the tree pane follows the Specificat
      token is added only if the real pane shows a seam.
   4. **Search in the address:** `?q=<text>&proposals=1`
      ([Entry and navigation](#entry-and-navigation)).
-  5. **Relevance cutoff:** a separate decision, outside this feature (see [Open](#open)).
+  5. **Relevance cutoff:** a separate decision, outside this feature; its first stage is an
+     optional, model-specific setting (see [Open](#open)).
   6. **Local changes in amber:** the informational `attention` tone for the "Local changes" status
      ([Workspace picker and Specification switcher](#workspace-picker-and-specification-switcher)).
 
@@ -719,11 +720,14 @@ project folder, and the workspace picker in the tree pane follows the Specificat
   `interactive-widget=resizes-content` in the viewport meta and `dvh` units, so that the sticky
   field stays above the keyboard. iOS Safari ignores `interactive-widget`, so only this check
   settles it.
-- **Relevance cutoff (separate decision, tracked in issue #156):** a minimum vector similarity for
-  hybrid results, also applied to `proposalsLeftOut`, or any ranking change, needs its own product
-  rationale, calibration and tests. The search works without it: the "no word match" line covers
-  the nonsense-query case. A cutoff calibrated on this corpus may hide valid matches by meaning in
-  other corpora or models.
+- **Relevance cutoff (issue #156, first stage):** optional and model-specific, with no default
+  yet. An installation may set `ai.embeddings.minSimilarity`
+  ([configuration](../../../reference/configuration/documentation-and-embeddings.md#relevance-cutoff-minsimilarity)):
+  hybrid search then drops sections found by meaning only whose vector similarity is below it, and
+  `proposalsLeftOut` counts with the same floor; word matches are never dropped. The answer may
+  then have fewer results than the limit, or none, which the [empty states](#empty-states) cover.
+  Without the setting (every installation by default) a nonsense query still gets results found by
+  meaning; the "no word match" line covers that case. A safe default per model is still open.
 - **Light theme:** the palette is dark only; the amber status dot and the marks need checking once a
   light theme exists.
 - **Configurable endpoint concurrency:** a running background index job counts as occupying the

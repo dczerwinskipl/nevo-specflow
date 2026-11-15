@@ -9,10 +9,13 @@ import {
 describe('retrieval metrics', () => {
   it('scores recall at 5 and 10 and the reciprocal rank, averaged over questions', () => {
     const ids = ['x1', 'x2', 'a', 'x4', 'x5', 'b'];
-    const hit = scoreQuestion({ question: 'q', lang: 'en', expected: ['a', 'b'] }, ids);
+    const hit = scoreQuestion(
+      { question: 'q', lang: 'en', class: 'correct', expected: ['a', 'b'] },
+      ids,
+    );
     expect(hit).toEqual({ recallAt5: 0.5, recallAt10: 1, reciprocalRank: 1 / 3 });
 
-    const miss = scoreQuestion({ question: 'q', lang: 'pl', expected: ['c'] }, ids);
+    const miss = scoreQuestion({ question: 'q', lang: 'pl', class: 'typo', expected: ['c'] }, ids);
     expect(miss.reciprocalRank).toBe(0);
     expect(summarize([hit, miss])).toEqual({
       questions: 2,

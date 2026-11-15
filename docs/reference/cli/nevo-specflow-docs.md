@@ -136,6 +136,14 @@ matches `PŁATNOŚCI` and the ASCII-typed `platnosci`. Section text is matched b
 words without stemming, because the engine does not know the corpus language; only the frontmatter
 ranking folds English plurals, and only of words that are ASCII after normalization.
 
+**Relevance cutoff.** With `ai.embeddings.minSimilarity` set
+([configuration](../configuration/documentation-and-embeddings.md#relevance-cutoff-minsimilarity)),
+hybrid search fuses only the sections whose raw vector similarity to the question reaches it; a
+section or document the words match (BM25 or the frontmatter ranking) is never dropped. A search
+may then return fewer documents than `--limit`, or none, still with `mode: hybrid`. Without it
+(the default) a hybrid search fills `--limit` with its nearest sections by meaning, also for a
+question nothing in the documentation answers.
+
 **Mode.** With `docs.search.semantic: true` and a reachable `ai.embeddings` endpoint, the section
 ranking is hybrid. Otherwise it is BM25 alone and the result states why. Every result carries
 `mode`; a lexical result carries `reason.code` and a `reason.message` with the cause. A lexical
@@ -348,7 +356,9 @@ non-empty value; `snippet` and `snippetMatches` are left out with `--no-snippets
 score; a section's `score` is BM25 in lexical mode and the section-level reciprocal-rank-fusion
 score in hybrid mode. Scores only order the results of one search: they are not a confidence or a
 probability, do not compare across searches, and a high score does not mean the document answers
-the question (a search always returns its best candidates, also when none is relevant).
+the question (a search returns its best candidates, also when none is relevant; only
+`ai.embeddings.minSimilarity` leaves out sections found by meaning alone that are not similar
+enough).
 
 ## `semantic status` and `semantic index`
 

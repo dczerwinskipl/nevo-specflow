@@ -30,6 +30,13 @@ export interface EmbeddingsSettings {
   readonly apiKeyEnv?: string;
   /** Prefix for query texts only (instruction-tuned models). */
   readonly queryInstruction?: string;
+  /**
+   * Relevance floor of the vector ranking: sections whose raw cosine similarity to the query is
+   * below it are not fused (`SearchVectors.minSimilarity`), `0 <= minSimilarity < 1`. Its scale
+   * depends on the model and the query instruction, so there is no default; absent, every section
+   * with a positive similarity is fused. Not part of the index identity.
+   */
+  readonly minSimilarity?: number;
   readonly batchSize?: number;
   /** Per request, in milliseconds. */
   readonly timeoutMs?: number;
@@ -43,6 +50,7 @@ const EMBEDDINGS_KEYS = new Set([
   'dimensions',
   'apiKeyEnv',
   'queryInstruction',
+  'minSimilarity',
   'batchSize',
   'timeoutMs',
 ]);
@@ -104,6 +112,10 @@ function embeddingsLayer(value: unknown): ConfigRecord {
     if (POSITIVE_INTEGER_KEYS.has(key)) {
       if (typeof entry !== 'number' || !Number.isInteger(entry) || entry <= 0) {
         throw new DocsConfigError(`${path} must be a positive integer.`);
+      }
+    } else if (key === 'minSimilarity') {
+      if (typeof entry !== 'number' || !Number.isFinite(entry) || entry < 0 || entry >= 1) {
+        throw new DocsConfigError(`${path} must be a number with 0 <= ${key} < 1.`);
       }
     } else if (key === 'protocol') {
       if (!(EMBEDDINGS_PROTOCOLS as readonly unknown[]).includes(entry)) {

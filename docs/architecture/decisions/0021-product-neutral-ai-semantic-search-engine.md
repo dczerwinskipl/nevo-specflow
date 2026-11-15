@@ -102,6 +102,14 @@ With vectors, ranking is hybrid:
 2. cosine similarity against the query embedding, bounded to a number of candidates;
 3. reciprocal rank fusion of both lists, then grouping by parent unit.
 
+**Amendment (issue #156): optional relevance floor.** The vectors of a search may carry a
+`minSimilarity` (`0 <= minSimilarity < 1`). Vector matches whose raw cosine similarity is below it
+are dropped in step 2, before fusion; without it, every match with a positive similarity is fused.
+The floor never applies to BM25 matches or to fused scores, so a word match is never dropped and a
+hybrid answer may hold fewer units than the limit, or none. The similarity scale depends on the
+model and its query instruction, so the engine has no default; the consumer configures it per
+model (`ai.embeddings.minSimilarity`). It is not part of the index identity. `minSimilarity` is a relevance filter for vector-only candidates, not a confidence measure of whether the documentation answers the question.
+
 Consumer filters (for example "no proposals") apply before any candidate cut:
 rejected chunks are left out of the BM25 list and of the vector query, so they neither take a
 candidate place nor shift the ranks that are fused.

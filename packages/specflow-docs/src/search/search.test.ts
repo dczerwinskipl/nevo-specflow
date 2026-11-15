@@ -115,6 +115,57 @@ describe('searchDocumentationWithLeftOut', () => {
     ).toMatchObject({ proposalsLeftOut: 0 });
   });
 
+  it('applies ai.embeddings.minSimilarity to both runs, so the count matches the filtering', async () => {
+    // Exact 2-D vectors: the query is (1, 0); the proposal's sections (4, 3), similarity 0.8; every
+    // other section (0, 1), similarity 0. No word of the query is in any document.
+    const vector = (values: readonly number[]) => new Float32Array(values);
+    const provider: EmbeddingProvider = {
+      protocol: 'fixed',
+      model: 'fixed',
+      space: 'fixed',
+      dimensions: 2,
+      embed: (texts, purpose) =>
+        Promise.resolve({
+          ok: true,
+          vectors: texts.map((text) =>
+            vector(purpose === 'query' ? [1, 0] : text.includes('idea') ? [4, 3] : [0, 1]),
+          ),
+        }),
+      probe: () => Promise.resolve({ ok: true, latencyMs: 0, dimensions: 2 }),
+    };
+    const leftOut = async (minSimilarity?: number) => {
+      const search = openDocsSearch({
+        corpus,
+        configuration: {
+          docs: settings,
+          embeddings: {
+            protocol: 'openai-compatible',
+            baseUrl: 'http://127.0.0.1:1/v1',
+            model: 'fixed',
+            ...(minSimilarity === undefined ? {} : { minSimilarity }),
+          },
+        },
+        env: {},
+        createProvider: () => provider,
+        index: {
+          chunks: createDocsChunkSource({ corpus }),
+          store: createInMemoryVectorStore(),
+          writes: admitted(),
+        },
+      });
+
+      return searchDocumentationWithLeftOut(search, { ...request, query: 'zebra' });
+    };
+
+    expect(await leftOut()).toMatchObject({ mode: 'hybrid', results: [], proposalsLeftOut: 1 });
+    expect(await leftOut(0.8)).toMatchObject({ mode: 'hybrid', results: [], proposalsLeftOut: 1 });
+    expect(await leftOut(0.81)).toMatchObject({
+      mode: 'hybrid',
+      results: [],
+      proposalsLeftOut: 0,
+    });
+  });
+
   it('counts on the lexical path too', async () => {
     const search: DocsSearch = {
       chunks: createDocsChunkSource({ corpus }),

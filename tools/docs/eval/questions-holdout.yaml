@@ -1,0 +1,106 @@
+# Held-out questions for the relevance cutoff (issue #156): written after the floor and the query
+# instruction were chosen on questions.yaml and before any result on them was seen. Never tune on
+# this set; run it only to check a choice made on questions.yaml:
+#   pnpm docs:eval --questions tools/docs/eval/questions-holdout.yaml --random 150 ...
+# Same format and classes as questions.yaml. Its query words must not be copied into docs/.
+
+questions:
+  # Partial words
+  - question: auth
+    lang: en
+    class: partial
+    expected: [architecture.runtime.authorization, reference.api.authorization]
+  - question: tailw
+    lang: en
+    class: partial
+    expected: [design-system.implementation.tailwind.styling-guidelines]
+  - question: openap
+    lang: en
+    class: partial
+    expected: [reference.api.openapi]
+  - question: releas
+    lang: en
+    class: partial
+    expected: [engineering.repository.releasing]
+  - question: lokaliz
+    lang: pl
+    class: partial
+    expected: [product.shared.localization]
+  - question: transkrypt
+    lang: pl
+    class: partial
+    expected: [architecture.ai.session-storage-and-lifecycle]
+  - question: odzysk
+    lang: pl
+    class: partial
+    expected:
+      [engineering.shared.specflow-git-recovery, product.specflow.ui.authentication-recovery]
+  - question: claim
+    lang: en
+    class: partial
+    expected: [architecture.runtime.workspace-execution-claims]
+
+  # Typos
+  - question: tailwnd tokens
+    lang: en
+    class: typo
+    expected: [design-system.implementation.tailwind.styling-guidelines]
+  - question: opnapi generaton
+    lang: en
+    class: typo
+    expected: [reference.api.openapi]
+  - question: pull reqest description
+    lang: en
+    class: typo
+    expected: [engineering.repository.pull-requests]
+  - question: integraton tests on linx
+    lang: en
+    class: typo
+    expected: [engineering.repository.local-setup]
+  - question: jak napisac storie
+    lang: pl
+    class: typo
+    expected: [design-system.implementation.storybook.guidelines]
+  - question: konfiguracja embedingow
+    lang: pl
+    class: typo
+    expected: [reference.configuration.documentation-and-embeddings]
+  - question: odzyskiwnie po błedzie commita
+    lang: pl
+    class: typo
+    expected: [engineering.shared.specflow-git-recovery]
+  - question: postep operacji w UI
+    lang: pl
+    class: typo
+    expected: [engineering.shared.operation-progress, reference.api.operation-progress]
+
+  # Correct questions and terms
+  - question: operation progress events
+    lang: en
+    expected: [engineering.shared.operation-progress, reference.api.operation-progress]
+  - question: workspace execution claims
+    lang: en
+    expected: [architecture.runtime.workspace-execution-claims]
+  - question: co pokazuje ekran Full Session
+    lang: pl
+    expected: [product.specflow.ui.full-session]
+  - question: testowanie komend CLI
+    lang: pl
+    expected: [engineering.cli.testing]
+
+  # No answer in the documentation, real questions
+  - question: How do I configure email notifications for Specification reviews?
+    lang: en
+    expected: []
+  - question: Which monitoring dashboard shows the Runtime CPU usage?
+    lang: en
+    expected: []
+  - question: What is the on-call rotation for the Runtime team?
+    lang: en
+    expected: []
+  - question: Jak wygenerować fakturę dla klienta?
+    lang: pl
+    expected: []
+  - question: Jak skonfigurować VPN do biura?
+    lang: pl
+    expected: []

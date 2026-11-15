@@ -12,7 +12,8 @@ read_when:
   - extending the repository retrieval eval
 summary: >
   Proposals for docs search quality and scale: a BM25 inverted index for large corpora, better
-  excerpts for semantic-only matches, no-answer detection (blocked: similarity ranges overlap),
+  excerpts for semantic-only matches, no-answer detection (first stage: an optional per-model
+  relevance floor, #156; no default yet),
   partial vector ranking during a full rebuild, and eval tracking. Measurements from PR #138.
 related:
   - ideas.semantic-docs
@@ -51,17 +52,30 @@ from the document's own text; generated summaries remain out of scope.
 
 ## "No answer" detection
 
-**Now:** a search always returns its best candidates; the contract and the agent instructions say
-that `score` only orders one search's results and is not a confidence.
+**Now (issue #156, first stage):** an optional relevance floor, `ai.embeddings.minSimilarity`, drops
+sections found by meaning only whose raw cosine similarity is below it, before fusion; word
+matches are never dropped and `proposalsLeftOut` counts with the same floor. It has no default, so
+every installation that does not set it still gets documents found by meaning only for a query
+nothing answers; `score` remains a rank, not a confidence. `pnpm docs:eval` measures it
+(`--min-similarity`, `--query-instruction`, `--random`, question classes and false positives), and
+this repository's local recommendation for `qwen3-embedding:0.6b` is in the
+[local setup](../../engineering/repository/local-setup.md#semantic-documentation-search).
 
-**Missing, and not supported by the evidence yet:** a signal that nothing answers the question. In
-the #138 eval (30 answerable questions, 8 without an answer, `qwen3-embedding:0.6b`) the best raw
-vector similarity was 0.464–0.829 for answerable questions and 0.307–0.660 for the others; the
-near-domain questions without an answer ("Which database engine stores Specifications in
-production?" 0.660, SSO login 0.575, Helm deployment 0.536) overlap the answerable range, so a
-similarity threshold would reject real answers. A candidate needs a different signal (a reranker,
-agreement between the lexical and vector rankings, or a calibrated per-model threshold) and a
-larger question set to show it separates the cases.
+What the calibration showed: an absolute floor separates generated nonsense from real questions
+only for a given model and query instruction (the instruction shifts the whole scale), relative
+cutoffs (margin below the best match, z-score, gap) do not separate them at all, and the answerable
+queries with the lowest similarity are partial words and typos, so they are what any floor costs.
+Near-domain questions without an answer ("Which database engine stores Specifications in
+production?") stay above any useful floor; a floor addresses nonsense, not those.
+
+**Missing:**
+
+- a safe default per model (or a per-model calibration the product runs itself), so installations
+  that do not measure get the cutoff too;
+- a signal for near-domain questions without an answer: a reranker, agreement between the lexical
+  and vector rankings, or a calibrated per-model threshold on a larger question set;
+- a query-side gate for strings without a word (a run of letters), measured as a separate
+  heuristic.
 
 ## Partial vector ranking during a full rebuild
 

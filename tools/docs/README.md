@@ -51,29 +51,48 @@ plan.
 
 ## Retrieval eval
 
-`pnpm docs:eval` runs every question of [`eval/questions.yaml`](eval/questions.yaml) (about 30
-realistic agent questions in English and Polish, marked by `lang`, each with the 1–3 document ids a
-good answer must return, plus a few questions the documentation does not answer, with
-`expected: []`) through three variants, with this repository's configuration and local index, the
-top 10 documents per question and no document embedding (`--no-refresh`):
+`pnpm docs:eval` runs every question of [`eval/questions.yaml`](eval/questions.yaml) (realistic
+agent questions and search-box terms in English and Polish, marked by `lang`, each with the 1–3
+document ids a good answer must return, plus questions the documentation does not answer and
+strings that mean nothing, with `expected: []`) through these variants, with this repository's
+configuration and local index, the top 10 documents per question and no document embedding
+(`--no-refresh`):
 
 - `context`: the frontmatter-only lexical ranking of `docs context` (discovery before `search`);
 - `lexical`: `docs search` without vectors (BM25 over sections fused with the frontmatter ranking);
-- `hybrid`: `docs search` as it answers (BM25 and vectors fused, then with the frontmatter).
+- `hybrid@<floor>`: `docs search` as it answers (BM25 and vectors fused, then with the
+  frontmatter), once per relevance floor (`ai.embeddings.minSimilarity`, `none` for no floor).
 
-It prints per question the rank of the first expected document in each variant and the cosine
-similarity of the best stored section to the question (straight from the vector store, a
-diagnostic: a search always returns its best candidates, so the similarity of a question nothing
-answers shows how far apart the two cases are, if at all), then per variant and per language
-(all, `en`, `pl`) Recall@5, Recall@10 and MRR (mean of 1 / rank of the first expected document in
-the top 10, 0 when none) over the answerable questions. Finally it counts the proposals in
-the hybrid top-10 lists (the default search excludes them, so this only checks the
-filter: expected 0) and, from a second hybrid search per question with them included, how many rank
-above the first expected document (how much they would compete if included). Expected ids must be
-active documents that are not proposals. Questions answered lexically in the hybrid variant are flagged;
-build the index first (`pnpm docs:semantic index`). `--json` emits the full report,
-`--questions <file>` another set. It is a manual measurement for chunking and ranking changes, not
-a CI check: results depend on the local embedding model.
+Each question has a `class`: `correct` (the default with expected documents), `partial` (a word cut
+short), `typo`, `negative` (the default without: a real question nothing answers) or `random` (a
+string that means nothing; `lang` optional).
+
+It prints per question the rank of the first expected document in each variant (for a question
+without an answer, the number of documents found by meaning only) and the cosine similarity of the
+best stored section to the question (straight from the vector store, no floor), then per variant,
+per language (all, `en`, `pl`) and per answerable class Recall@5, Recall@10 and MRR (mean of
+1 / rank of the first expected document in the top 10, 0 when none) over the answerable questions,
+and per variant the **false positives**: questions without an answer that got at least one document
+found by meaning only (`wordMatch: false`), for `negative`, `random` and both. Finally it counts the
+proposals in the first hybrid variant's top-10 lists (the default search excludes them, so this only
+checks the filter: expected 0) and, from a second search per question with them included, how many
+rank above the first expected document. Expected ids must be active documents that are not
+proposals. Questions answered lexically in the hybrid variant are flagged; build the index first
+(`pnpm docs:semantic index`).
+
+Options, so a calibration runs reproducibly without code changes:
+
+- `--min-similarity <floors>`: comma-separated floors, for example `none,0.40,0.45,0.50` (default:
+  the configured `ai.embeddings.minSimilarity`, none when unset); the query is embedded once for all;
+- `--query-instruction <text>` / `--no-query-instruction`: replace or remove
+  `ai.embeddings.queryInstruction` for the run (the index does not depend on it; pass a real line
+  break, for example `$'Instruct: …\nQuery: '` in Bash);
+- `--random <count>`: add `count` generated nonsense strings (seeded, the same for a count), much
+  harder than hand-written nonsense;
+- `--json` emits the full report, `--questions <file>` another set.
+
+It is a manual measurement for chunking, ranking and cutoff changes, not a CI check: results depend
+on the local embedding model.
 
 ## Layout
 

@@ -12,10 +12,11 @@ read_when:
   - enabling semantic documentation search or configuring an embedding endpoint
   - changing the semantic search step of nevo-specflow init
   - diagnosing a docs or ai.embeddings configuration error
+  - choosing a relevance cutoff (minSimilarity) for semantic search results
 summary: >
   The docs namespace (root, search.semantic), the documentation settings file <docs.root>/docs.yaml
   (taxonomy, proposals, exclude) and the ai.embeddings endpoint (baseUrl, model, optional
-  protocol, spaceId, dimensions, apiKeyEnv, queryInstruction, batchSize, timeoutMs): which file
+  protocol, spaceId, dimensions, apiKeyEnv, queryInstruction, minSimilarity, batchSize, timeoutMs): which file
   holds them, how they merge, their validation and defaults, and documentation-only configuration.
 related:
   - adr.0020-documentation-discovery-is-a-product-capability
@@ -206,8 +207,68 @@ endpoint. After merging, `baseUrl` and `model` are required; a minimal endpoint 
 | `dimensions`       | Expected vector dimension; a different observed dimension is an endpoint error            | observed by probe   |
 | `apiKeyEnv`        | Name of the environment variable holding the API key (upper-case letters, digits and `_`) | no key sent         |
 | `queryInstruction` | Prefix added to queries only, for instruction-tuned models                                | none                |
+| `minSimilarity`    | Relevance floor of the vector ranking, `0 <= minSimilarity < 1` (see Relevance cutoff)    | none (no floor)     |
 | `batchSize`        | Texts per request when embedding documents                                                | 16                  |
 | `timeoutMs`        | Per-request timeout for document embedding; query embedding uses at most 3000 ms of it    | 60000               |
+
+`queryInstruction` is prepended to the query text as it is, so it must carry the model's whole
+query format, including the separator before the question; for example the
+`Instruct: <task>` line, a line break and `Query: ` for the Qwen3 embedding models. It applies to
+queries only, so changing it needs no rebuild; it changes the similarity scale, so a
+`minSimilarity` chosen for one instruction does not carry over to another.
+
+### Relevance cutoff (`minSimilarity`)
+
+Without it, hybrid search fuses the nearest sections by meaning of every query, so a query nothing
+in the documentation answers (a typo of nothing, a random string) still fills the result with
+documents found by meaning only (`wordMatch: false`). `minSimilarity` sets a floor on the **raw
+cosine similarity** between the query embedding and a section's stored vector: sections below it
+are not fused (a section exactly at it is). It applies before reciprocal rank fusion, never to fused
+scores, and never to word matches: a section the BM25 ranking holds or a document the frontmatter
+ranking holds stays in the result whatever its similarity. A search may then return fewer documents
+than its limit, or none, still with `mode: hybrid`. The Runtime's `proposalsLeftOut` is counted
+with the same floor.
+
+```yaml
+# .nevo/local/config.yaml — a choice for this model and instruction only
+ai:
+  embeddings:
+    baseUrl: http://127.0.0.1:11434/v1
+    model: qwen3-embedding:0.6b
+    queryInstruction: "Instruct: Given a web search query, retrieve relevant passages that answer the query\nQuery: "
+    minSimilarity: 0.40
+```
+
+There is **no default**, deliberately: absent, every section with a positive similarity is fused,
+as before. The key is not part of the index identity (changing it rebuilds nothing). Like the other
+keys, the local value wins over the project's. The CLI reads it on every command; a running Runtime
+uses the value it was started with.
+
+**Choosing a cutoff.** The similarity scale belongs to the model and the query instruction, not
+to the product: with `qwen3-embedding:0.6b` on this repository, the best section of a real question
+scores about 0.4–0.8, and the same model with another instruction shifts every score by about 0.1.
+A floor is therefore a per-model, per-instruction choice, made by measurement on the corpus it
+serves:
+
+1. build the index, then run `pnpm docs:eval --random 150 --min-similarity none,0.30,0.32,…` (in
+   this repository; [`tools/docs`](../../../tools/docs/README.md#retrieval-eval)) with and without
+   the instruction (`--query-instruction`, `--no-query-instruction`);
+2. compare, per floor, Recall@5, Recall@10 and MRR of the answerable questions (overall and for
+   partial words and typos, which lose their match first: their similarity is the lowest of the
+   answerable classes) with the false positives (questions without an answer that still get a
+   document found by meaning only), using generated nonsense: hand-written nonsense is much easier
+   to reject;
+3. take the floor where false positives stop falling faster than recall; do not take one that
+   removes random results but materially worsens correct questions.
+
+Relative cutoffs (a margin below the best match, a z-score against all sections, the gap between
+the first and the tenth match) were measured on this corpus and do not separate the cases: the
+distributions of answerable and nonsense queries overlap completely. For this repository's
+recommended local setting, see the
+[local setup](../../engineering/repository/local-setup.md#semantic-documentation-search).
+
+This is a first stage: an installation without a configured floor still gets results found by
+meaning for a query nothing answers, until a safe default per model is defined (issue #156).
 
 ### Embedding space
 

@@ -4,6 +4,8 @@
 
 import {
   SEARCH_REASON,
+  type EmbeddingProvider,
+  type EmbeddingPurpose,
   reciprocalRankFusion,
   type SearchReason,
   type SearchVectors,
@@ -22,10 +24,12 @@ import {
 import {
   createDocsChunkSource,
   type DocsChunk,
+  type DocsChunks,
   type DocsChunkSource,
 } from '../semantic-index/chunk-source';
 import type { IndexCatchUp } from '../semantic-index/catch-up';
 import type { DocsIndex } from '../semantic-index/index-store';
+import type { IndexWrites } from '../semantic-index/write-admission';
 import { readIndexActivity } from '../semantic-index/progress';
 import { SEMANTIC_INDEX_COMMAND, searchReason, semanticEndpoint } from '../semantic-index/reasons';
 import {
@@ -42,8 +46,12 @@ import { toHit } from './result';
  */
 export const DOCUMENT_CANDIDATES_PER_RESULT = 3;
 
-/** Vectors for a search, or why there are none. */
-export type DocsSearchVectors = { readonly reason: DocsSearchReason } | IndexVectors;
+/**
+ * Vectors for a search, or why there are none. With `writes`, a refused write admission is reported
+ * before that reason.
+ */
+export type DocsSearchVectors =
+  { readonly reason: DocsSearchReason; readonly writes?: IndexWrites } | IndexVectors;
 
 /**
  * Everything a project's searches share. Open it once per project and process (a CLI invocation, or
@@ -64,9 +72,9 @@ export interface OpenDocsSearchOptions {
   /** Test seam; production uses the OpenAI-compatible adapter. */
   readonly createProvider?: CreateEmbeddingProvider;
   /**
-   * The project's index (`openDocsIndex` after `checkIndexAccess`). A process keeps one per index
-   * directory, for example a Runtime that also refreshes it. Unused without semantic search, so
-   * nothing is written below `.nevo/` then.
+   * The project's index (`openDocsIndex`), whose writes its admission gates. A process keeps one per
+   * index directory, for example a Runtime that also refreshes it. Unused without semantic search,
+   * so nothing is written below `.nevo/` then.
    */
   readonly index: DocsIndex;
   /** Catches a large gap up in the background (`IndexVectors.catchUp`). */
@@ -81,22 +89,19 @@ export function openDocsSearch(options: OpenDocsSearchOptions): DocsSearch {
     return { chunks: createDocsChunkSource({ corpus }), vectors: { reason: endpoint.reason } };
   }
 
-  if (index.unavailable !== undefined) {
-    return { chunks: index.chunks, vectors: { reason: index.unavailable } };
-  }
-
   const created = createEmbeddingProviders(endpoint.embeddings, {
     env: options.env,
     ...(options.createProvider ? { createProvider: options.createProvider } : {}),
   });
   if (!created.ok) {
-    return { chunks: index.chunks, vectors: { reason: created.reason } };
+    return { chunks: index.chunks, vectors: { reason: created.reason, writes: index.writes } };
   }
 
   return {
     chunks: index.chunks,
     vectors: {
       store: index.store,
+      writes: index.writes,
       providers: created.providers,
       ...(options.catchUp ? { catchUp: options.catchUp } : {}),
       ...(index.directory === undefined
@@ -110,8 +115,8 @@ export interface DocsSearchRequest {
   readonly query: string;
   /** Maximum number of documents. */
   readonly limit: number;
-  /** Include documents under the project's non-authoritative prefixes. */
-  readonly includeNonAuthoritative: boolean;
+  /** Include documents under the project's proposal prefixes. */
+  readonly includeProposals: boolean;
   /** Add each section's query-aware excerpt (`snippet`) to the result. */
   readonly snippets: boolean;
   /**
@@ -142,23 +147,109 @@ export async function searchDocumentation(
   search: DocsSearch,
   request: DocsSearchRequest,
 ): Promise<DocsSearchResult> {
-  const { chunks, documents, searchEngine } = await search.chunks.load();
+  const loaded = await search.chunks.load();
   const vectors = await vectorsFor(
     search.vectors,
-    chunks,
+    loaded.chunks,
     request.refresh,
     request.semanticIndexCommand ?? SEMANTIC_INDEX_COMMAND,
   );
+
+  return rank(search, request, loaded, vectors);
+}
+
+/** A search result plus how many proposals the same search would have added. */
+export type DocsSearchWithLeftOut = DocsSearchResult & {
+  /**
+   * Proposals among the results of the same query run with
+   * `includeProposals` and the same `limit`; `0` when the request already includes them.
+   * The query is embedded once for both runs.
+   */
+  readonly proposalsLeftOut: number;
+};
+
+/**
+ * `searchDocumentation` that also counts the proposals it left out, for a reader
+ * that offers to include them. The second ranking reuses the first one's query vector and the
+ * loaded corpus; only the ranking runs twice.
+ */
+export async function searchDocumentationWithLeftOut(
+  search: DocsSearch,
+  request: DocsSearchRequest,
+): Promise<DocsSearchWithLeftOut> {
+  const loaded = await search.chunks.load();
+  const prepared = await vectorsFor(
+    search.vectors,
+    loaded.chunks,
+    request.refresh,
+    request.semanticIndexCommand ?? SEMANTIC_INDEX_COMMAND,
+  );
+  const vectors = 'reason' in prepared ? prepared : withQueryEmbeddedOnce(prepared);
+  const result = await rank(search, request, loaded, vectors);
+  if (request.includeProposals) {
+    return { ...result, proposalsLeftOut: 0 };
+  }
+
+  const including = await rank(
+    search,
+    { ...request, includeProposals: true, refresh: false },
+    loaded,
+    vectors,
+  );
+  const proposals = new Set(
+    loaded.documents
+      .filter((document) => document.proposal)
+      .map((document) => asString(document.record.id)),
+  );
+
+  return {
+    ...result,
+    proposalsLeftOut: including.results.filter((hit) => proposals.has(hit.id)).length,
+  };
+}
+
+/** The same provider, except that the embedding of one query is requested from it only once. */
+function withQueryEmbeddedOnce(
+  vectors: Extract<SearchVectors, { provider: unknown }>,
+): SearchVectors {
+  const embedded = new Map<string, ReturnType<EmbeddingProvider['embed']>>();
+  const { provider: inner } = vectors;
+  const provider: EmbeddingProvider = {
+    protocol: inner.protocol,
+    model: inner.model,
+    space: inner.space,
+    dimensions: inner.dimensions,
+    probe: () => inner.probe(),
+    embed: (texts: readonly string[], purpose: EmbeddingPurpose) => {
+      const key = JSON.stringify([purpose, texts]);
+      let result = embedded.get(key);
+      if (result === undefined) {
+        result = inner.embed(texts, purpose);
+        embedded.set(key, result);
+      }
+
+      return result;
+    },
+  };
+
+  return { ...vectors, provider };
+}
+
+async function rank(
+  search: DocsSearch,
+  request: DocsSearchRequest,
+  { chunks, documents, searchEngine, skipped }: DocsChunks,
+  vectors: SearchVectors,
+): Promise<DocsSearchResult> {
   const candidates = request.limit * DOCUMENT_CANDIDATES_PER_RESULT;
   const sections = await searchEngine().search({
     query: request.query,
     limit: candidates,
     vectors,
-    filter: (chunk) =>
-      request.includeNonAuthoritative || !(chunk as DocsChunk).metadata.nonAuthoritative,
+    filter: (chunk) => request.includeProposals || !(chunk as DocsChunk).metadata.proposal,
   });
   const searched = documents
-    .filter((document) => request.includeNonAuthoritative || !document.nonAuthoritative)
+    .filter((document) => request.includeProposals || !document.proposal)
     .map((document) => document.record);
   const byFrontmatter = rankByContent(searched, request.query, candidates);
 
@@ -179,11 +270,12 @@ export async function searchDocumentation(
     );
 
   return sections.mode === 'hybrid'
-    ? { mode: 'hybrid', results }
+    ? { mode: 'hybrid', results, skipped }
     : {
         mode: 'lexical',
         reason: await lexicalReason(search.vectors, sections.reason, chunks.length, request),
         results,
+        skipped,
       };
 }
 
@@ -219,6 +311,13 @@ async function vectorsFor(
   refresh: boolean,
   indexCommand: string,
 ): Promise<SearchVectors> {
+  // While the index must not be written (a refused write admission), the search is lexical, also
+  // when the endpoint is unusable: the index is reported first, as `semantic index` does.
+  const blocked = await vectors.writes?.blocked();
+  if (blocked !== undefined) {
+    return { reason: blocked };
+  }
+
   if ('reason' in vectors) {
     return { reason: vectors.reason };
   }

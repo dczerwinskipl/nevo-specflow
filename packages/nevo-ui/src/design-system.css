@@ -136,6 +136,8 @@
    * leaf-offset: leaves have no disclosure slot; their icon aligns with sibling folder icons.
    * name-offset: row edge to a folder's name (border + padding + chevron + gap + icon + gap).
    * row-height: one compact control height; the hit area, not the row, grows on coarse pointers.
+   * line-inset: block padding of an item that centres one icon-md line in the row (inside the
+   * 1px border), so the icon and the first line of a wrapping name share a centre.
    */
   --spacing-tree-gap: calc(var(--spacing) * 1.5);
   --spacing-tree-indent: var(--spacing-icon-md);
@@ -145,6 +147,9 @@
       var(--spacing-tree-gap) * 2
   );
   --spacing-tree-row-height: var(--spacing-control-height-compact);
+  --spacing-tree-line-inset: calc(
+    (var(--spacing-tree-row-height) - var(--spacing-icon-md)) / 2 - 1px
+  );
 
   /* Shape hierarchy: inline action → control → composite → app surface. */
   --radius-control-inline: 0.25rem;

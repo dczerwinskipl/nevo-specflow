@@ -5,6 +5,7 @@ import { SpecificationWorkspaceResponseSchema } from './index';
 function workspace() {
   return {
     revision: '1',
+    workspaceId: '0b8f1c1e-0a11-4c6e-9a01-000000000001',
     specification: {
       id: 'spec-1',
       title: 'Specification',

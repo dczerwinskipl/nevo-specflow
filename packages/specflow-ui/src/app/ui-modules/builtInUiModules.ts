@@ -7,6 +7,7 @@ import { gitUiModule } from '../../features/git/uiModule';
 import { sessionsUiModule } from '../../features/sessions/uiModule';
 import { tasksUiModule } from '../../features/tasks/uiModule';
 import { documentsUiModule } from '../../features/documents/uiModule';
+import { docsUiModule } from '../../features/docs/uiModule';
 import { createUiRegistry, type UiRegistry } from './registry';
 import type { UiModule } from './contracts';
 
@@ -28,4 +29,5 @@ export const builtInUiModuleRegistry = createSpecFlowUiRegistry([
   sessionsUiModule,
   tasksUiModule,
   documentsUiModule,
+  docsUiModule,
 ]);

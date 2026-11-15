@@ -77,6 +77,36 @@ describe('MarkdownDocument', () => {
     expect(html).toContain('>Docs</');
   });
 
+  it('neutralizes script URLs in links and images and lets renderImage own image output', () => {
+    const unsafe = renderToStaticMarkup(
+      <MarkdownDocument
+        source={
+          '[bad](javascript:alert(1)) [data](data:text/html;base64,AAAA) ![x](javascript:alert(1)) ![y](data:image/svg+xml;base64,AAAA)'
+        }
+      />,
+    );
+    expect(unsafe).not.toContain('javascript:');
+    expect(unsafe).not.toContain('data:');
+
+    const seen: unknown[] = [];
+    const owned = renderToStaticMarkup(
+      <MarkdownDocument
+        renderImage={(props) => {
+          seen.push(props);
+
+          return props.src?.startsWith('./') ? <span data-image={props.src} /> : null;
+        }}
+        source={'![a](./a.png "T") ![b](https://example.com/b.png)'}
+      />,
+    );
+    expect(seen).toEqual([
+      { alt: 'a', src: './a.png', title: 'T' },
+      { alt: 'b', src: 'https://example.com/b.png', title: undefined },
+    ]);
+    expect(owned).toContain('data-image="./a.png"');
+    expect(owned).not.toContain('<img');
+  });
+
   it('does not enable raw HTML', () => {
     const html = renderToStaticMarkup(<MarkdownDocument source={'<script>alert("x")</script>'} />);
 

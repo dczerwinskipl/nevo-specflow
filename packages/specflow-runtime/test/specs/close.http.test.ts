@@ -305,6 +305,44 @@ describe('E2.T16 authorized HTTP lifecycle adapters', () => {
     }
   }, 120000);
 
+  it('refuses Worktree Close with 409 CLOSE_LOCAL_CONFIG_MODIFIED, then resumes once the file is gone', async () => {
+    const { engine, spec } = await fixture(true);
+    const url = '/api/specs/' + spec.specId + '/worktree/close';
+    const operationId = randomUUID();
+    const config = join(spec.workspaceRoot, '.nevo/local/config.yaml');
+    // Added by hand: Create copied nothing, so Close must not delete it.
+    await writeFile(config, 'ai: {}\n');
+    const admin = await authedApp(engine, 'admin');
+    try {
+      const refused = await admin.app.inject({
+        method: 'POST',
+        url,
+        headers: admin.headers,
+        payload: { operationId },
+      });
+      expect(refused.statusCode, refused.body).toBe(409);
+      expect(refused.json()).toEqual({
+        code: 'CLOSE_LOCAL_CONFIG_MODIFIED',
+        error: 'CLOSE_LOCAL_CONFIG_MODIFIED',
+        localConfig: 'unrecorded',
+        remedy: expect.stringContaining('.nevo/local/config.yaml') as unknown,
+      });
+      expect((await inspectCloseOperation(engine, operationId))?.stage).toBe('binding-rebound');
+
+      await rm(config);
+      const resumed = await admin.app.inject({
+        method: 'POST',
+        url,
+        headers: admin.headers,
+        payload: { operationId },
+      });
+      expect(resumed.statusCode, resumed.body).toBe(200);
+      expect(resumed.json()).toMatchObject({ status: 'completed' });
+    } finally {
+      await admin.app.close();
+    }
+  }, 300000);
+
   it('I03: workspace preview hides occupants before admin grant, then closes all bindings', async () => {
     const { root, engine, spec: a } = await fixture(true);
     const registry = await engine.readRegistry();

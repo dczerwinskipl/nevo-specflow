@@ -19,7 +19,7 @@ export interface DocsConfigPaths {
   readonly localConfigPath: string;
 }
 
-function readTopLevel(path: string): Record<string, unknown> | undefined {
+export function readTopLevel(path: string): Record<string, unknown> | undefined {
   if (!existsSync(path)) {
     return undefined;
   }

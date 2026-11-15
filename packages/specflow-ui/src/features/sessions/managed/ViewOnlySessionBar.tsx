@@ -13,7 +13,7 @@ export function ViewOnlySessionBar() {
     <div
       data-view-only-bar="true"
       role="status"
-      className="workspace-floating-pill rounded-composite border border-solid border-border-default px-4 py-3 shadow-lg"
+      className="rounded-composite border border-solid border-border-default bg-surface-raised px-4 py-3 shadow-lg"
     >
       <InlineNote tone="info">{t('managedSession.viewOnly.note')}</InlineNote>
     </div>

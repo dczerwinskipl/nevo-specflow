@@ -33,7 +33,7 @@ function featureBarrelPattern(others) {
 }
 
 function boundaryBlocks() {
-  const features = ['documents', 'sessions', 'specs', 'tasks', 'git'];
+  const features = ['docs', 'documents', 'sessions', 'specs', 'tasks', 'git', 'workspaces'];
   const blocks = features.map((feature) => {
     const patterns = [
       ...specflowUiSharedPatterns,

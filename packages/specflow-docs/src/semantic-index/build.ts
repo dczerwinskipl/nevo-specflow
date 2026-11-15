@@ -25,7 +25,9 @@ export type SemanticIndexResult =
  * Bring the index up to date now: embeds new and changed documents, or everything after a mismatch.
  * `onProgress` is called once the plan is made and after every store write (the refresh lands in
  * slices). A refresh that embeds records its progress and outcome in the index directory, where
- * `semantic status` and `GET /api/docs/status` of other processes read it.
+ * `semantic status`, the search catch-up and the Runtime's workspace search (for its "another process
+ * is updating" reason) of other processes read it. The `indexProgress` of the workspace search is
+ * only the Runtime's own background refresh, held in memory.
  */
 export async function buildDocsIndex(
   index: DocsIndex,
@@ -39,8 +41,9 @@ export async function buildDocsIndex(
     return { status: 'not-attempted', reason: endpoint.reason };
   }
 
-  if (index.unavailable !== undefined) {
-    return { status: 'not-attempted', reason: index.unavailable };
+  const blocked = await index.writes.blocked();
+  if (blocked !== undefined) {
+    return { status: 'not-attempted', reason: blocked };
   }
 
   const resolved = providersFor(endpoint.embeddings, environment);
@@ -48,10 +51,26 @@ export async function buildDocsIndex(
     return { status: 'not-attempted', reason: resolved.reason };
   }
 
+  const { chunks } = await index.chunks.load();
+  // A refused chunk cache write: the store writes would be refused too.
+  const refused = index.writes.refusal();
+  if (refused !== undefined) {
+    return { status: 'not-attempted', reason: refused };
+  }
+
+  // Every record runs its own check immediately before it is written; once the index's latest
+  // check refused, no further record is attempted.
   const progress =
-    index.directory === undefined ? undefined : createProgressRecorder(index.directory, recorder);
+    index.directory === undefined
+      ? undefined
+      : createProgressRecorder(
+          index.directory,
+          recorder,
+          async () =>
+            index.writes.refusal() === undefined && (await index.writes.check()) === undefined,
+        );
   const outcome = await refreshIndex({
-    chunks: (await index.chunks.load()).chunks,
+    chunks,
     provider: resolved.providers.documents,
     store: index.store,
     // A full refresh checks that the endpoint still produces the index's vectors (one probe).
@@ -61,7 +80,8 @@ export async function buildDocsIndex(
       onProgress?.(step);
     },
   });
-  const reason = refreshReason(outcome);
+  const refusal = outcome.status === 'write-failed' ? index.writes.refusal() : undefined;
+  const reason = refusal ?? refreshReason(outcome);
   await progress?.finish(
     outcome.status === 'refreshed'
       ? { outcome: 'completed', generation: outcome.generation }

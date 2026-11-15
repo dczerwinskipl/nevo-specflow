@@ -8,7 +8,7 @@ import { Value } from 'typebox/value';
 import { describe, expect, it } from 'vitest';
 import { DemoTargetError, demoSlugFor, resolveTarget } from './create-target';
 import { applyOptionsScenario, demoOptionsScenarios, parseScenarios } from './scenarios';
-import { demoWorkspaceIds as ids, seedCreateOptions } from './seed';
+import { demoWorkspaceIds as ids, seedCreateOptions, toCreateOptions } from './seed';
 
 const options = seedCreateOptions;
 const code = (fn: () => unknown) => {
@@ -42,12 +42,12 @@ describe('seed registry', () => {
     expect(
       seed.workspaces.map((w) => [w.branch, w.kind, w.specCount, w.state, w.selectable]),
     ).toEqual([
-      ['develop', 'primary', 0, 'available', true],
+      ['develop', 'primary', 1, 'available', true],
       ['feature/platform', 'linked', 2, 'available', true],
       ['feature/payments', 'linked', 1, 'dirty', true],
       ['spec/architecture', 'linked', 3, 'available', true],
       [undefined, 'linked', 0, 'detached', false],
-      [undefined, 'linked', 1, 'unavailable', false],
+      [undefined, 'linked', 0, 'unavailable', false],
     ]);
     expect(seed.newWorktree).toEqual({ status: 'available' });
     expect(seed.defaultBaseRef).toBe('develop');
@@ -58,7 +58,9 @@ describe('seed registry', () => {
     const seed = options();
     for (const name of [undefined, ...demoOptionsScenarios]) {
       const value = name ? applyOptionsScenario(seed, name) : seed;
-      expect(Value.Check(DemoCreateOptionsSchema, value), name ?? 'seed').toBe(true);
+      expect(Value.Check(DemoCreateOptionsSchema, toCreateOptions(value)), name ?? 'seed').toBe(
+        true,
+      );
       for (const w of value.workspaces) {
         expect(w.branch ?? '').not.toMatch(/^refs\//u);
       }

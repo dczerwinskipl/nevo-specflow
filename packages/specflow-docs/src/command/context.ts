@@ -5,12 +5,19 @@ import type { DocsCorpusRules } from '../corpus/corpus';
 import { DocsUsageError } from '../errors';
 import type { CreateEmbeddingProvider } from '../embeddings/embedding-providers';
 import type { BackgroundIndexLaunch, SpawnDetached } from '../semantic-index/detached-process';
-import type { GitIgnoreCheck } from '../semantic-index/index-store';
+import type { GitIgnoreCheck } from '../semantic-index/write-admission';
 
 /** The project the host resolved: its root and configuration file paths. */
 export interface DocsProject extends DocsConfigPaths {
   /** Absolute project root. */
   readonly root: string;
+  /**
+   * The Project Home checkout root whose index seeds a missing one (ADR 0022 §3), or `undefined`
+   * when there is none (this checkout is the Project Home, or none is designated). Called only by
+   * `search` and `semantic index`, and only when this checkout's index is missing. The command
+   * still uses only this checkout's configuration; a seed copies only on an identical identity.
+   */
+  readonly seedFrom?: () => Promise<string | undefined>;
 }
 
 /**
@@ -62,6 +69,16 @@ export interface DocsCommandContext {
   readonly createEmbeddingProvider?: CreateEmbeddingProvider;
   /** Host-specific rules on top of the product contract; the product shell supplies none. */
   readonly corpusRules?: DocsCorpusRules;
+}
+
+/** One stderr warning per document a read left out (ADR 0022); `--json` carries `skipped`. */
+export function warnSkipped(
+  ctx: DocsCommandContext,
+  skipped: readonly { path: string; error: string }[],
+): void {
+  for (const { path, error } of skipped) {
+    ctx.stderr(`warning: skipped ${path}: ${error}`);
+  }
 }
 
 /** Usage problems found by the use cases exit like Commander usage errors (exit code 2). */

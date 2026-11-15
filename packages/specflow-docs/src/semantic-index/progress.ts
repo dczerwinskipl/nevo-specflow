@@ -1,6 +1,8 @@
 // The progress of a full index refresh (`semantic index`, a background catch-up, the Runtime
-// refresh) as small files in the index directory, so another process can show it: `semantic status`
-// and `GET /api/docs/status` combine the latest record with the vector store's writer lock.
+// refresh) as small files in the index directory, so another process can show it: `semantic status`,
+// the search catch-up and the Runtime's workspace search (its "another process is updating" reason)
+// combine the latest record with the vector store's writer lock. The `indexProgress` of the
+// workspace search is not read from these files: it is the Runtime's own refresh, held in memory.
 //
 // Every write goes to a new file name (`progress-<started>-<sequence>-<token>.json`, written to a
 // temporary file and renamed to that name, which never exists yet), like the store's generation
@@ -20,6 +22,7 @@ import {
 import type { DocsIndexActivity } from '@nevo/specflow-contracts/docs';
 
 import { vectorsDirectory } from './index-store';
+import type { AdmitWrite } from './write-admission';
 
 /** Bump when the record shape changes; another version is ignored. */
 export const PROGRESS_SCHEMA_VERSION = 1;
@@ -71,11 +74,14 @@ export interface ProgressRecorderDependencies {
  * The writer side, for one refresh. `update` is called synchronously from the refresh's progress
  * callback; the writes run one after another in the background and `finish` waits for them. A
  * refresh that never reported progress (nothing to embed, or it failed before embedding) records
- * nothing, so the previous refresh stays the last one.
+ * nothing, so the previous refresh stays the last one. Each record is its own write batch:
+ * `admitWrite` (the index's write admission) is asked in the write queue immediately before that
+ * record is written, and a refused record is not written.
  */
 export function createProgressRecorder(
   directory: string,
   dependencies: ProgressRecorderDependencies,
+  admitWrite: AdmitWrite = () => Promise.resolve(true),
 ): ProgressRecorder {
   const token = randomBytes(6).toString('hex');
   let started: number | undefined;
@@ -98,7 +104,11 @@ export function createProgressRecorder(
     } as ProgressRecord;
     sequence += 1;
     const name = `progress-${String(startedAt).padStart(13, '0')}-${String(sequence).padStart(6, '0')}-${token}.json`;
-    writes = writes.then(() => writeRecord(directory, name, record));
+    writes = writes.then(async () => {
+      if (await admitWrite()) {
+        await writeRecord(directory, name, record);
+      }
+    });
 
     return writes;
   };

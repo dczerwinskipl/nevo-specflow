@@ -110,13 +110,13 @@ export const NarrowBackAndMissingEntity: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Review navigation' }));
     await userEvent.click(canvas.getByRole('button', { name: 'Todo history' }));
     await userEvent.click(canvas.getByRole('button', { name: 'Open e1' }));
-    await userEvent.click(canvas.getByRole('button', { name: 'Back' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Back: Todo history' }));
     let secondary = currentSecondary(canvasElement);
     assert(
       secondary?.textContent?.includes('Todo history'),
       'Mobile Back should pop the event page',
     );
-    await userEvent.click(canvas.getByRole('button', { name: 'Back' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Back: Todo details' }));
     secondary = currentSecondary(canvasElement);
     assert(secondary?.textContent?.includes('Review navigation'), 'Mobile Back should pop to root');
     await userEvent.click(canvas.getByRole('button', { name: 'Back' }));

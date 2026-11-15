@@ -112,7 +112,7 @@ The exact rule is in [Runtime authorization](../../architecture/runtime/auth/aut
 
 ## Current roles
 
-- `viewer`: `spec.view`, `session.view`, `docs.search`;
+- `viewer`: `spec.view`, `session.view`, `workspace.view`, `docs.view`;
 - `developer`: viewer capabilities plus `spec.create`, `spec.manage`, `spec.close-worktree`,
   `spec.close-specification`, `spec.start-session`, `session.create`, `session.manage`,
   `session.delete`, `session.execute-write`;

@@ -173,8 +173,7 @@ export async function inspectCleanGitWorkspace(
     throw new CloseOperationError(
       'CLOSE_PREFLIGHT',
       `Checkout has staged, modified or untracked files: ${named}${more}.`,
-      [],
-      unclean,
+      { paths: unclean },
     );
   }
 

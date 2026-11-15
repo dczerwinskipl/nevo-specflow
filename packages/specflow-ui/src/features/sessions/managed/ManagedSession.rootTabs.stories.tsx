@@ -240,13 +240,13 @@ export const StackedBackFollowsThePath: Story = {
     await expectSurface('Kontekst');
     await press(/Document the admission guard/);
     await expectSurface('Zadanie');
-    await press('Wstecz');
+    await press('Wróć do: Kontekst');
     await expectSurface('Kontekst');
     // The same Task again pushes again, so Back still returns to Context, then the conversation:
     // the path, not the object, decides.
     await press(/Document the admission guard/);
     await expectSurface('Zadanie');
-    await press('Wstecz');
+    await press('Wróć do: Kontekst');
     await expectSurface('Kontekst');
     await press('Wstecz');
     await expectSurface('conversation');

@@ -32,7 +32,7 @@ const expectedRuns = JSON.parse(
 const DOCS_FILE = `taxonomy:
   scopes: [shared, repo, specflow, nevo-ui]
   areas: [ai, workflow, runtime, server, cli, ui, figma, testing, docs, release, security, configuration]
-nonAuthoritative: [ideas/]
+proposals: [ideas/]
 `;
 
 const root = mkdtempSync(join(tmpdir(), 'specflow-docs-parity-'));

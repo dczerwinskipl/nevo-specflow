@@ -21,7 +21,7 @@ function setup() {
     ...extra,
   });
   const count = (workspaceId: string) =>
-    env.specs.createOptions().workspaces.find((w) => w.workspaceId === workspaceId)?.specCount;
+    env.specs.registry().workspaces.find((w) => w.workspaceId === workspaceId)?.specCount;
 
   return { env, body, count };
 }
@@ -77,7 +77,7 @@ describe('target-aware demo create', () => {
       workspaceId: ids.main,
       relativeManifestPath: 'specs/nowa-obsluga-platnosci/manifest.json',
     });
-    expect(count(ids.main)).toBe(1);
+    expect(count(ids.main)).toBe(2);
     expect(env.state.specifications.get(result.specId)).toMatchObject({
       workspaceId: ids.main,
       branch: 'develop',
@@ -90,7 +90,7 @@ describe('target-aware demo create', () => {
       body(1, { target: { kind: 'existing', workspaceId: ids.platform } }),
     );
     expect(result.workspaceId).toBe(ids.platform);
-    expect([count(ids.platform), count(ids.main), count(ids.architecture)]).toEqual([3, 0, 3]);
+    expect([count(ids.platform), count(ids.main), count(ids.architecture)]).toEqual([3, 1, 3]);
   });
   it('new-worktree registers a linked workspace and its branch for later options', () => {
     const { env, body, count } = setup();
@@ -106,7 +106,7 @@ describe('target-aware demo create', () => {
       }),
     );
     expect(count(result.workspaceId)).toBe(1);
-    const after = env.specs.createOptions();
+    const after = env.specs.registry();
     expect(after.workspaces.at(-1)).toMatchObject({
       workspaceId: result.workspaceId,
       kind: 'linked',
@@ -148,7 +148,7 @@ describe('target-aware demo create', () => {
     const { env, body, count } = setup();
     const first = env.specs.create('alice', body(1));
     expect(env.specs.create('alice', body(1))).toEqual(first);
-    expect(count(ids.main)).toBe(1);
+    expect(count(ids.main)).toBe(2);
     expect(env.state.specifications.size).toBe(1);
     expect(failure(() => env.specs.create('alice', body(1, { title: 'Inny' })))).toEqual([
       409,
@@ -175,7 +175,7 @@ describe('target-aware demo create', () => {
     }
 
     expect(env.state.specifications.size).toBe(0);
-    expect(count(ids.main)).toBe(0);
+    expect(count(ids.main)).toBe(1);
     expect(env.specs.createOptions().workspaces).toHaveLength(6);
   });
   it('honours scenarios for options and forced failures', () => {

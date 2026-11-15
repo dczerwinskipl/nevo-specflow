@@ -5,7 +5,7 @@ title: Nevo SpecFlow documentation
 status: current
 summary: >
   Top-level map of architecture, engineering, design-system, product, reference,
-  instruction, and non-authoritative idea backlog documentation.
+  instruction, and idea backlog (proposals) documentation.
 ---
 
 # Nevo SpecFlow documentation
@@ -20,7 +20,7 @@ Requirements in authoritative docs use [normative language and document authorit
 - [Product](product/) — SpecFlow product behavior and user-facing interaction models.
 - [Reference](reference/) — exact contracts and factual lookup material.
 - [Instructions](instructions/) — task-oriented routing to authoritative documentation.
-- [Ideas](ideas/) — non-authoritative proposal backlog used to preserve migration evidence and candidate designs before promotion into an authoritative home.
+- [Ideas](ideas/) — proposals: a backlog, not current rules, used to preserve migration evidence and candidate designs before promotion into an authoritative home.
 
 For the generated flat index, see [`index.generated.md`](index.generated.md).
 

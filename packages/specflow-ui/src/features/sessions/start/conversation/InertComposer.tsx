@@ -30,7 +30,7 @@ export function InertComposer({
         {t('managedSession.message')}
       </label>
       <MessageComposer
-        className="shadow-lg workspace-floating-pill"
+        className="shadow-lg"
         enterKeyBehavior={isSplit ? 'submit' : 'newline'}
         presentation="standalone"
         disabled

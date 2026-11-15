@@ -1,7 +1,8 @@
 import type { MutableRefObject } from 'react';
 import { Field } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import { refDisplayName, type CreateOptions } from '@nevo/specflow-contracts/specs';
+import { refDisplayName } from '@nevo/specflow-contracts/specs';
+import type { CreateOptionsView } from './model/createOptionsView';
 import { useMessage, type Message } from '../../../../i18n/message';
 import { LocalizedOptionPicker } from '../../../../shared/controls/LocalizedOptionPicker';
 import { BranchRef } from './BranchRef';
@@ -22,7 +23,7 @@ export function BaseRefField({
   onAnnounce,
   onRequestFocus,
 }: {
-  options: CreateOptions;
+  options: CreateOptionsView;
   choice: WorkspaceChoice;
   error: Message | undefined;
   update: SettingsUpdate;

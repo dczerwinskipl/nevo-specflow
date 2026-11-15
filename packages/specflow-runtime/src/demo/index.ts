@@ -14,6 +14,7 @@ import { createDemoAssociationTargets } from '../features/session-associations';
 import {
   createDemoSpecs,
   createDemoSpecsRepositories,
+  createDemoWorkspaceList,
   registerDemoSpecRoutes,
 } from '../features/specs';
 import { createDemoTaskSources } from '../features/tasks';
@@ -56,7 +57,7 @@ export type DemoEnvironment = ReturnType<typeof createDemoEnvironment>;
  * in this environment) is the Session association registry.
  */
 export function createDemoRuntime(environment: DemoEnvironment) {
-  const { state, documents, sessions } = environment;
+  const { state, documents, sessions, specs } = environment;
   const repositories = createDemoSpecsRepositories({ state, documents, sessions });
   const sessionReferences = sessions.overlayReferences(
     createDemoSessionReferences(repositories.catalogue),
@@ -84,6 +85,12 @@ export function createDemoRuntime(environment: DemoEnvironment) {
     }),
     documentReadSource: createDemoDocumentReadSource(documents, repositories.catalogue),
     taskSources,
+    // `GET /api/workspaces` over the demo registry, with the Specifications bound to each.
+    workspaceList: createDemoWorkspaceList({
+      registry: () => specs.registry(),
+      catalogue: repositories.catalogue,
+      state,
+    }),
   };
 }
 

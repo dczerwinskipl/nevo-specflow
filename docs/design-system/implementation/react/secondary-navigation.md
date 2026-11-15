@@ -249,7 +249,8 @@ not aligned with the 56 px Primary header; opening a detail never moves the tabs
   (1 = root) in **one** `pop` transition, consulting only the current page's leave guard, and
   resolves `false` for a depth that is not an ancestor. With `browserHistory`, a jump of N levels
   lowers the desired depth by N and the provider consumes exactly N entries with one `go(-N)`.
-- **Not applied** on stacked/mobile (its header Back + title + Close stay, with no row under the
+- **Not applied** on stacked/mobile (its header Back + title + Close stay; at depth >= 2 the Back is
+  named for the parent via `labels.backToParent`, at depth 1 it stays `backToPrimary`, with no row under the
   header; the strip keeps the 56 px `header` density there; Documents' tab strip keeps its own
   look) and not to a single runtime flow without
   a strip. The pinned/declarative tab has no runtime stack and therefore no local row.

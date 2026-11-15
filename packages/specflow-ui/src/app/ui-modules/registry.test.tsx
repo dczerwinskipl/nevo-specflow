@@ -45,6 +45,7 @@ describe('typed UI extension registry', () => {
       'specflow.sessions.resume',
       'specflow.tasks.summary',
       'specflow.documents.summary',
+      'specflow.docs.workspace',
     ]);
   });
 

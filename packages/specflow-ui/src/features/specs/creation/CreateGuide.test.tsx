@@ -13,7 +13,8 @@ import { createOperationEventsUrl, type ProjectCreationApi } from './api/api.pro
 import type { DemoCreationApi } from './api/api.demo';
 import { CreateSpecificationScreen } from './CreateSpecificationScreen';
 import {
-  createOptionsFixture,
+  createOptionsWireFixture,
+  workspaceApiFixture,
   type OptionsVariant,
 } from './options/creationOptions.stories-support';
 import { catalogue } from './options/creationCatalogue.stories-support';
@@ -42,9 +43,10 @@ function renderProject(variant: OptionsVariant = 'default', { catalogueFails = f
       operationEventsUrl: createOperationEventsUrl,
       archetypes: () =>
         catalogueFails ? Promise.reject(new Error('unavailable')) : Promise.resolve(catalogue),
-      createOptions: () => Promise.resolve(createOptionsFixture(variant)),
+      createOptions: () => Promise.resolve(createOptionsWireFixture(variant)),
       create,
     } as unknown as ProjectCreationApi,
+    workspaceApi: workspaceApiFixture(variant),
     operationsApi: operations,
   });
   mount(services, onProjectStarted);
@@ -60,9 +62,10 @@ function renderDemo() {
     demoCreationApi: {
       ...defaults.demoCreationApi,
       catalogue: () => Promise.resolve(catalogue),
-      createOptions: () => Promise.resolve(createOptionsFixture('default')),
+      createOptions: () => Promise.resolve(createOptionsWireFixture('default')),
       create,
     },
+    workspaceApi: workspaceApiFixture(),
     operationsApi: operations,
   });
   mount(services, vi.fn());

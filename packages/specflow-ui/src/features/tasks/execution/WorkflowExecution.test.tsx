@@ -340,6 +340,40 @@ describe('manual workflow execution', () => {
     );
     expect(screen.getByRole('heading', { name: 'Pending writes · 1' })).toBeTruthy();
   });
+
+  it('says what to do when Close stops at a modified worktree local configuration', async () => {
+    const close = vi.fn(() => Promise.reject(refusal('CLOSE_LOCAL_CONFIG_MODIFIED', 409)));
+    renderWith(
+      <CloseSpecificationDialog
+        open
+        onOpenChange={vi.fn()}
+        specId={SPEC}
+        specTitle="Single sign-on"
+        projection={specificationWorkflowProjection('abandoned')}
+        tasks={new Map()}
+        cancelledTasks={[]}
+        onSeeWorkflow={vi.fn()}
+        onSeeTasks={vi.fn()}
+        onOpenTask={vi.fn()}
+        onClosed={vi.fn()}
+      />,
+      {
+        execution: fakeExecutionApi({
+          closePreview: vi.fn(() => Promise.resolve({ operationId: 'op-1' })),
+          close,
+        }),
+      },
+    );
+    const submit = await screen.findByRole<HTMLButtonElement>('button', {
+      name: 'Close specification',
+    });
+    await waitFor(() => expect(submit.disabled).toBe(false));
+    fireEvent.click(submit);
+
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'Move or delete it, then close again.',
+    );
+  });
   it('names the kept draft that still needs an unticked one when the Engine refuses the finish', async () => {
     const finish = vi.fn(() =>
       Promise.reject(

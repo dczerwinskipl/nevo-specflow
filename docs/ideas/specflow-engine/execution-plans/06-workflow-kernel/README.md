@@ -22,8 +22,8 @@ related:
   - ideas.specflow-engine.plan-05
   - architecture.runtime.workspace-execution-claims
   - ideas.specflow-engine.workflow-api-requirements
-  - adr.0023-tasks-are-resources
-  - adr.0022-neutral-workflow-coordinator-and-manual-execution
+  - adr.0024-tasks-are-resources
+  - adr.0023-neutral-workflow-coordinator-and-manual-execution
   - ideas.specflow-engine.reusable-workflow.agent-execution
 ---
 
@@ -31,8 +31,8 @@ related:
 
 Normative behaviour is in [Workflow kernel](../../../../architecture/workflow/workflow-kernel.md), and
 the decisions are in [ADR 0019](../../../../architecture/decisions/0019-workflow-kernel-and-automatic-continuation.md),
-[ADR 0023](../../../../architecture/decisions/0023-tasks-are-resources.md) and
-[ADR 0022](../../../../architecture/decisions/0022-neutral-workflow-coordinator-and-manual-execution.md).
+[ADR 0024](../../../../architecture/decisions/0024-tasks-are-resources.md) and
+[ADR 0023](../../../../architecture/decisions/0023-neutral-workflow-coordinator-and-manual-execution.md).
 This plan records the legacy analysis and the open follow-ups.
 
 ## 1. Legacy analysis: what was taken over and what was written anew
@@ -280,7 +280,7 @@ that no sequence of valid operations reaches the budget.
 
 ### F20 — Task resource, lifecycle and context
 
-**Done** ([ADR 0023](../../../../architecture/decisions/0023-tasks-are-resources.md)): Task folders,
+**Done** ([ADR 0024](../../../../architecture/decisions/0024-tasks-are-resources.md)): Task folders,
 the index, `task.md` and Task-scoped documents, the slim run record created at the first start, typed
 context authoring with process artifacts, and broken-Task isolation. Open: resolving the context for an
 agent (references with digests, budgets, per-attempt evidence) and path hints, part of

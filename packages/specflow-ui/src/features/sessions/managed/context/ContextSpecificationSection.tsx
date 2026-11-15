@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { InformationList } from '@nevo/ui';
+import { ContextDocumentationRow } from './ContextDocumentationRow';
 import { ContextKey, ContextNavigationRow } from './ContextNavigationRow';
 import { ContextNote, ContextSection, ContextSkeletonRows } from './ContextSectionFrame';
 import { isRequired, isSectionPresent, resolveSection } from './sessionContextAvailability';
@@ -17,10 +18,13 @@ export function ContextSpecificationSection({
   value,
   onOpenSpecification,
   onOpenDocuments,
+  onOpenDocumentation,
 }: {
   value: SessionContextViewModel;
   onOpenSpecification?: (specification: ContextSpecification) => void;
   onOpenDocuments?: (specification: ContextSpecification) => void;
+  /** The project documentation of the Session's workspace: a row under Documents. */
+  onOpenDocumentation?: () => void;
 }) {
   const { t } = useTranslation();
   if (!isSectionPresent('specification', value.scope)) {
@@ -68,6 +72,7 @@ export function ContextSpecificationSection({
               onClick={() => onOpenDocuments(resolved.value)}
             />
           )}
+          {onOpenDocumentation && <ContextDocumentationRow onOpen={onOpenDocumentation} />}
         </InformationList>
       )}
       {resolved.kind === 'info' && (

@@ -19,6 +19,7 @@ import {
 } from '../../../project/workspace/identity';
 import { CreateOperationError, type CreateJournal } from '../journal';
 import { registrationOf } from '../binding/registration';
+import { copyLocalConfigIntoWorktree } from '../../../project/workspace/local-config-copy';
 import { requireCommitLineage } from './commit';
 
 /**
@@ -194,6 +195,8 @@ export async function ensureLinkedIdentity(
   }
 
   await verifyLinkedWorkspaceIdentity(engine.context, registration);
+  // Runs after identity verification: the state directory exists and is verified.
+  await copyLocalConfigIntoWorktree(engine.context.project.homeRoot, record.target.workspaceRoot);
 
   return record;
 }

@@ -320,6 +320,15 @@ Nevo UI has no generic `TreeView` component. A product that renders a hierarchy 
 document tree) keeps its data, expansion state, actions, ARIA and ordering, and takes the compact
 row geometry from `treeRecipes` (`Nevo UI/Foundations/TreeGuide`). The tree has no guide lines:
 hierarchy is carried by one small indent step and the chevron + folder icon + name alignment.
+In SpecFlow UI the document trees (the Documents explorer, the documentation reader) render through
+one product composition, `src/shared/document-tree` (`TreeLevel`, `TreeFolderRow`,
+`TreeDocumentRow`, `TreeSearchField`, `useRovingTree`). The screens differ only in the row slots:
+`menu` (row actions), `editor` (inline rename or create entry), `state` (trailing state label, with
+an attention form), `details` and `spokenDetail` (tooltip lines and the text read with the name),
+`glyph` (the document's icon), `wrap` (a wrapping instead of a single-line name), and the focus
+wiring (`buttonRef`, `focus`). `flat` (a top level without folders) and `lead` (the document that
+leads its level above the folders) are structural rules of the tree, not per-screen geometry: any
+tree that has that structure gets the same geometry. The screen root provides the `TooltipProvider`.
 
 | Export                                             | Apply to                                                                                                                                                                                                                                               |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -341,7 +350,9 @@ Geometry tokens are derived, not hand-tuned: `--spacing-tree-row-height` is one 
 height (`--spacing-control-height-compact`); `--spacing-tree-gap` spaces glyph, icon and name;
 `--spacing-tree-indent` is one `icon-md` glyph slot, so the third level keeps most of the width;
 `--spacing-tree-leaf-offset` = `icon-md` + one gap, used by leaves so their icon aligns with sibling
-folder icons.
+folder icons; `--spacing-tree-line-inset` is the item's block padding that centres one `icon-md` line
+in the row, so glyph, icon and the first line of a wrapping name (`treeItemLabelClassName`) share a
+centre.
 
 Target size follows the hit-area policy: the visual row stays compact on every pointer and the item
 expands its hit area on the block axis (`hitAreaBlockClassName`), the row action through
@@ -355,6 +366,30 @@ and must never promote the row. Selection (`aria-current`) means the opened item
 selected when nothing is open, and during loading the row of the new target is selected, never a
 previous or default one. Products must not add local opacity, outline or selected classes to tree
 rows; use `aria-current` for the open document instead of `aria-pressed`.
+
+## Document reading
+
+A rendered document (the Documents preview, the documentation reader) is read through one product
+composition, `src/shared/document-reading`. `DocumentReadingColumns` owns the geometry: the text at
+its readable measure and, from `outlineColumnMinWidth` (840 px of panel), a sticky column of
+`outlineColumnWidth(panelWidth)` beside it (`aside`: Properties and Contents) and optionally a
+further column of the same width (`extraColumn`, the Documents guidance); the group is centred.
+`useHeadingNavigation` owns moving to a heading (smooth unless motion is reduced, 16 px below the
+top, focus without a ring after a pointer, a brief tint, the chosen heading current until the next
+manual scroll) and the current section (`aria-current="location"` in Contents). `ContentsButton`
+is the header control in its two modes (`sheet`: opens the Contents sheet; `toggle`: shows or
+hides the column) with the "Contents" tooltip. Each screen keeps its own anchors and reading
+positions; no screen passes geometry of its own.
+
+## Context switcher
+
+A control that switches the context a screen works in (the current Specification in the
+navigation, the workspace the documentation reader reads) uses `src/shared/context-switcher`:
+`ContextSwitcherTrigger` (quiet label, wrapping name, detail lines, up-down glyph),
+`ContextSwitcherOption` (name, detail lines, "Selected" with a check, `unavailable` options
+focusable but not chosen), `useListboxKeys` (ArrowUp/ArrowDown wrapping, Home, End) and
+`contextSwitcherPopoverClassName` with `motion="navigation"` and `inert`/`aria-hidden` while closed.
+The screens differ only in what they add around the list (the switcher's search, states and footer).
 
 ## Dialog footers
 

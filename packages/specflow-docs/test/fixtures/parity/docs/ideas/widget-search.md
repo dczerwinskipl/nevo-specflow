@@ -6,7 +6,7 @@ status: draft
 areas: [docs]
 read_when:
   - exploring widget search
-summary: A non-authoritative widget idea.
+summary: A widget idea, a proposal.
 ---
 
 # Widget search idea

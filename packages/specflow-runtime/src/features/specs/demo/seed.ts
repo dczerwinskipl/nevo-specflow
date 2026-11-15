@@ -6,7 +6,28 @@ import { localBranchRef } from '@nevo/specflow-contracts/specs';
  * Pure data and functions only: scenarios live in `scenarios.ts`, target validation in
  * `create-target.ts`, the in-memory state in `creation-state.ts`.
  */
-export type DemoWorkspace = DemoCreateOptions['workspaces'][number];
+/**
+ * A registry row: the Create facts of the contract row plus the registry facts (`kind`, `name`,
+ * `path`), which `GET /api/workspaces` serves and Create options no longer carry. The demo keeps them on one row and projects the Create part.
+ */
+export type DemoWorkspace = DemoCreateOptions['workspaces'][number] & {
+  kind: 'primary' | 'linked';
+  name: string;
+  path: string;
+};
+
+/** The demo workspace registry together with the project-wide Create settings. */
+export type DemoRegistry = Omit<DemoCreateOptions, 'workspaces'> & { workspaces: DemoWorkspace[] };
+
+/** The wire form of the registry: Create options without the facts of `GET /api/workspaces`. */
+export function toCreateOptions(registry: DemoRegistry): DemoCreateOptions {
+  return {
+    ...registry,
+    workspaces: registry.workspaces.map(
+      ({ kind: _kind, name: _name, path: _path, ...facts }) => facts,
+    ),
+  };
+}
 
 export const uuid = (n: number) => `0b8f1c1e-0a11-4c6e-9a01-${String(n).padStart(12, '0')}`;
 export const demoWorkspaceIds = {
@@ -17,6 +38,28 @@ export const demoWorkspaceIds = {
   spike: uuid(5),
   legacy: uuid(6),
 } as const;
+
+/**
+ * The workspace each seeded Specification (the current and archived samples) is bound to. The
+ * seed's `specCount` values and the seeded Specification reads (`workspaceId`) both derive from it,
+ * so the registry and the Specifications agree; a created Specification carries its own.
+ */
+export const demoSeedSpecWorkspaces: Readonly<Record<string, string>> = {
+  admission: demoWorkspaceIds.platform,
+  security: demoWorkspaceIds.platform,
+  review: demoWorkspaceIds.payments,
+  packaging: demoWorkspaceIds.architecture,
+  providers: demoWorkspaceIds.architecture,
+  localization: demoWorkspaceIds.architecture,
+  'archived-shell': demoWorkspaceIds.main,
+};
+
+/** The workspace a seeded Specification is bound to (the primary one for any other id). */
+export const seededSpecWorkspace = (specId: string): string =>
+  demoSeedSpecWorkspaces[specId] ?? demoWorkspaceIds.main;
+
+const seededSpecCount = (workspaceId: string) =>
+  Object.values(demoSeedSpecWorkspaces).filter((id) => id === workspaceId).length;
 
 /** Synthetic machine layout: the repository folder and the folder that receives worktrees. */
 export const demoRepositoryName = 'acme-app';
@@ -38,7 +81,7 @@ export const isIntegrationSelectable = (workspace: DemoWorkspace) =>
  * true when {@link isIntegrationSelectable} holds,
  * a pin exists only on linked workspaces and never points at its own workspace.
  */
-export function normalize(options: DemoCreateOptions): DemoCreateOptions {
+export function normalize(options: DemoRegistry): DemoRegistry {
   options.workspaces = options.workspaces.map((workspace) => {
     const next: DemoWorkspace = {
       ...workspace,
@@ -57,7 +100,7 @@ export function normalize(options: DemoCreateOptions): DemoCreateOptions {
 }
 
 /** Default seed: the realistic happy path (IMPLEMENTATION-SPEC section 2). */
-export function seedCreateOptions(): DemoCreateOptions {
+export function seedCreateOptions(): DemoRegistry {
   const ids = demoWorkspaceIds;
 
   return {
@@ -70,7 +113,7 @@ export function seedCreateOptions(): DemoCreateOptions {
         path: '/work/acme-app',
         // The Engine never marks the primary workspace as Nevo-managed and gives it no pin.
         managed: false,
-        specCount: 0,
+        specCount: seededSpecCount(ids.main),
         state: 'available',
         selectable: true,
         integrationSelectable: true,
@@ -82,7 +125,7 @@ export function seedCreateOptions(): DemoCreateOptions {
         name: 'platform',
         path: linkedPath('platform'),
         managed: true,
-        specCount: 2,
+        specCount: seededSpecCount(ids.platform),
         state: 'available',
         selectable: true,
         integrationSelectable: true,
@@ -94,7 +137,7 @@ export function seedCreateOptions(): DemoCreateOptions {
         name: 'payments',
         path: linkedPath('payments'),
         managed: true,
-        specCount: 1,
+        specCount: seededSpecCount(ids.payments),
         state: 'dirty',
         selectable: true,
         integrationSelectable: false,
@@ -109,7 +152,7 @@ export function seedCreateOptions(): DemoCreateOptions {
         name: 'architecture',
         path: linkedPath('architecture'),
         managed: true,
-        specCount: 3,
+        specCount: seededSpecCount(ids.architecture),
         state: 'available',
         selectable: true,
         integrationSelectable: true,
@@ -121,7 +164,7 @@ export function seedCreateOptions(): DemoCreateOptions {
         name: 'spike',
         path: linkedPath('spike'),
         managed: true,
-        specCount: 0,
+        specCount: seededSpecCount(ids.spike),
         state: 'detached',
         selectable: false,
         integrationSelectable: false,
@@ -133,7 +176,7 @@ export function seedCreateOptions(): DemoCreateOptions {
         name: 'legacy',
         path: linkedPath('legacy'),
         managed: true,
-        specCount: 1,
+        specCount: seededSpecCount(ids.legacy),
         state: 'unavailable',
         selectable: false,
         integrationSelectable: false,

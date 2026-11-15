@@ -317,8 +317,9 @@ resolve. A reference entry with `artifact: true` is a process artifact: accepted
 (awaited). The context lists the Task's **inputs**; what the Task produces is a gate (an exit gate on
 the producing step, an entry gate on the consuming step), so a required `task-document` artifact is
 refused with `422 WORKFLOW_INPUT_INVALID` and `details.invalidContext [{index, key, reason:
-required-own-artifact}]` (an optional one is allowed). A `project-document` context reference resolves against the project documentation the
-Runtime serves (`/api/docs/`), read once per request. The documents of a Task are the
+required-own-artifact}]` (an optional one is allowed). A `project-document` context reference resolves against the documentation of the
+Runtime's own checkout (served at `/api/workspaces/:workspaceId/docs` for its workspace, with that
+checkout's documentation settings), read once per request. The documents of a Task are the
 [Task document routes](specification-documents.md#task-documents); a Task document save is a
 document operation of its Specification, so its status is read at
 `GET /api/specs/:specId/document-operations/:operationId`.

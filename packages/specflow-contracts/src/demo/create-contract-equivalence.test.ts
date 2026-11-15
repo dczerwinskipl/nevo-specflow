@@ -56,9 +56,6 @@ describe('demo create contract equals the real create contract', () => {
       workspaces: [
         {
           workspaceId: ID,
-          kind: 'primary',
-          name: 'repo',
-          path: '/work/repo',
           managed: false,
           specCount: 0,
           state: 'available',

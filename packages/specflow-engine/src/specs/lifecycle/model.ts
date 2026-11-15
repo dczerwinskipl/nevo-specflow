@@ -217,7 +217,18 @@ export type CloseOperationErrorCode =
   | 'CLOSE_BLOCKED'
   | 'CLOSE_SHARED_WORKTREE'
   | 'CLOSE_RECOVERY_REQUIRED'
+  /**
+   * Resumable stop before disposal: the worktree's `.nevo/local/config.yaml` is not the unchanged
+   * copy Create made. The user moves or deletes it, then resumes the same Close.
+   */
+  | 'CLOSE_LOCAL_CONFIG_MODIFIED'
   | 'CLOSE_JOURNAL_CORRUPT';
+
+/**
+ * Why `CLOSE_LOCAL_CONFIG_MODIFIED` refused: the copy was edited, the Engine never copied the
+ * file, or the file or its copy record cannot be read. Carries no path or content.
+ */
+export type CloseLocalConfigRefusal = 'changed' | 'unrecorded' | 'unreadable';
 
 export class CloseOperationError extends Error {
   readonly code: CloseOperationErrorCode;
@@ -225,18 +236,26 @@ export class CloseOperationError extends Error {
   readonly blockers: readonly SpecificationExitBlocker[];
   /** `CLOSE_PREFLIGHT` of a dirty checkout: the paths that are not clean; empty otherwise. */
   readonly paths: readonly string[];
+  /** Present only for `CLOSE_LOCAL_CONFIG_MODIFIED`. */
+  readonly localConfig?: CloseLocalConfigRefusal;
 
   constructor(
     code: CloseOperationErrorCode,
     message: string,
-    blockers: readonly SpecificationExitBlocker[] = [],
-    paths: readonly string[] = [],
+    details: {
+      readonly blockers?: readonly SpecificationExitBlocker[];
+      readonly paths?: readonly string[];
+      readonly localConfig?: CloseLocalConfigRefusal;
+    } = {},
   ) {
     super(message);
     this.name = 'CloseOperationError';
     this.code = code;
-    this.blockers = blockers;
-    this.paths = paths;
+    this.blockers = details.blockers ?? [];
+    this.paths = details.paths ?? [];
+    if (details.localConfig) {
+      this.localConfig = details.localConfig;
+    }
   }
 }
 
@@ -252,7 +271,7 @@ export async function assertSpecificationExit(
       'The Specification workflow is not finished: ' +
         blockers.map((blocker) => blocker.kind).join(', ') +
         '.',
-      blockers,
+      { blockers },
     );
   }
 }

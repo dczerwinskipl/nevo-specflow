@@ -10,12 +10,17 @@ import { LocalizationProvider, createSpecFlowI18n } from '../../../i18n';
 import { createSpecFlowAppServices } from '../../../services';
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
 import type { OperationsApi } from '../../../shared/operations/operationsApi';
+import { ApiError } from '../../../api';
+import type { WorkspaceApi } from '../../workspaces/read-model';
 import { createSessionOperationStorage } from './operation/createOperationStorage';
 import type { CreateFailure } from './errors/createFailure';
 import { initialWorkspaceChoice } from './workspace/model/workspaceChoice';
 import { createOperationEventsUrl, type ProjectCreationApi } from './api/api.project';
 import { CreateSpecificationScreen } from './CreateSpecificationScreen';
-import { createOptionsFixture } from './options/creationOptions.stories-support';
+import {
+  createOptionsWireFixture,
+  workspaceApiFixture,
+} from './options/creationOptions.stories-support';
 import { catalogue } from './options/creationCatalogue.stories-support';
 import { archetypeSelectionFixture } from './workspace/model/createRequest.test-support';
 
@@ -45,6 +50,7 @@ function renderScreen(
   props: { restoreDraftOf?: string } = {},
   client = createSpecFlowQueryClient(),
   operationsApi: OperationsApi = silentOperations,
+  workspaceApi: WorkspaceApi = workspaceApiFixture(),
 ) {
   const onProjectStarted = vi.fn();
   const services = createSpecFlowAppServices({
@@ -55,6 +61,7 @@ function renderScreen(
       ...projectCreationApi,
     } as ProjectCreationApi,
     operationsApi,
+    workspaceApi,
   });
   render(
     <QueryClientProvider client={client}>
@@ -114,7 +121,7 @@ afterEach(() => {
 describe('CreateSpecificationScreen on a project Runtime', () => {
   it('shows the real form (name, goal, workspace) without the demo workflow or agent', async () => {
     renderScreen('project', {
-      createOptions: () => Promise.resolve(createOptionsFixture('default')),
+      createOptions: () => Promise.resolve(createOptionsWireFixture('default')),
     });
     expect(await screen.findByLabelText('Specification name')).toBeTruthy();
     expect(screen.getByLabelText('Goal (optional)')).toBeTruthy();
@@ -132,7 +139,7 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
   it('hands the request over to the progress page instead of sending it: nothing is sent by the form', async () => {
     const create = vi.fn().mockResolvedValue(created);
     const { onProjectStarted } = renderScreen('project', {
-      createOptions: () => Promise.resolve(createOptionsFixture('default')),
+      createOptions: () => Promise.resolve(createOptionsWireFixture('default')),
       create,
     });
     fireEvent.change(await screen.findByLabelText('Specification name'), {
@@ -170,7 +177,7 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
 
   it('stores the new-worktree target of the chosen workspace in the request', async () => {
     const { onProjectStarted } = renderScreen('project', {
-      createOptions: () => Promise.resolve(createOptionsFixture('default')),
+      createOptions: () => Promise.resolve(createOptionsWireFixture('default')),
     });
     fireEvent.change(await screen.findByLabelText('Specification name'), {
       target: { value: 'Payment limits' },
@@ -200,7 +207,7 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
       choice: { ...initialWorkspaceChoice, tile: 'main' },
     });
     const { onProjectStarted } = renderScreen('project', {
-      createOptions: () => Promise.resolve(createOptionsFixture('default')),
+      createOptions: () => Promise.resolve(createOptionsWireFixture('default')),
     });
     const name = await screen.findByLabelText<HTMLInputElement>('Specification name');
     expect(name.value).toBe('');
@@ -220,7 +227,7 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
     };
     storage().save({ request: first, startedAt: Date.now() });
     const { onProjectStarted } = renderScreen('project', {
-      createOptions: () => Promise.resolve(createOptionsFixture('default')),
+      createOptions: () => Promise.resolve(createOptionsWireFixture('default')),
     });
     fireEvent.change(await screen.findByLabelText('Specification name'), {
       target: { value: 'Second' },
@@ -244,7 +251,7 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
     });
     renderScreen(
       'project',
-      { createOptions: () => Promise.resolve(createOptionsFixture('default')) },
+      { createOptions: () => Promise.resolve(createOptionsWireFixture('default')) },
       { restoreDraftOf: created.operationId },
     );
     expect((await screen.findByLabelText<HTMLInputElement>('Specification name')).value).toBe(
@@ -273,7 +280,7 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
         },
         failure,
       });
-    const options = { createOptions: () => Promise.resolve(createOptionsFixture('default')) };
+    const options = { createOptions: () => Promise.resolve(createOptionsWireFixture('default')) };
 
     it('flags the refused branch name on its own field, opens it and puts focus there', async () => {
       refused({ kind: 'branch-exists', automatic: false }, 'taken');
@@ -310,11 +317,59 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
     });
   });
 
+  it('draws no workspace tiles and blocks Create when the workspace list cannot be read', async () => {
+    renderScreen(
+      'project',
+      { createOptions: () => Promise.resolve(createOptionsWireFixture('default')) },
+      {},
+      createSpecFlowQueryClient(),
+      silentOperations,
+      { list: () => Promise.reject(new Error('Workspaces unavailable')) },
+    );
+    expect(await screen.findByLabelText('Specification name')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Specification name'), { target: { value: 'Title' } });
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Create specification' }).getAttribute('aria-disabled'),
+      ).toBe('true'),
+    );
+    expect(screen.queryByRole('radio', { name: /new workspace/i })).toBeNull();
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'Unable to load the workspace options',
+    );
+  });
+
+  it('shows the no-permission alert, without Retry, when the principal may not view workspaces', async () => {
+    renderScreen(
+      'project',
+      { createOptions: () => Promise.resolve(createOptionsWireFixture('default')) },
+      {},
+      createSpecFlowQueryClient(),
+      silentOperations,
+      {
+        list: () =>
+          Promise.reject(
+            new ApiError({
+              kind: 'forbidden',
+              operation: 'workspaces.read',
+              outcome: 'not-applied',
+              retryable: false,
+              status: 403,
+            }),
+          ),
+      },
+    );
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'You do not have permission to create specifications',
+    );
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull();
+  });
+
   it('re-entering the screen never shows options cached from the previous visit as current', async () => {
     const client = createSpecFlowQueryClient();
     const first = renderScreen(
       'project',
-      { createOptions: () => Promise.resolve(createOptionsFixture('no-linked')) },
+      { createOptions: () => Promise.resolve(createOptionsWireFixture('no-linked')) },
       {},
       client,
     );
@@ -326,8 +381,8 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
     expect(first.onProjectStarted).not.toHaveBeenCalled();
 
     // The second visit: Git state changed, the answer is still in flight.
-    let resolve!: (value: ReturnType<typeof createOptionsFixture>) => void;
-    const pending = new Promise<ReturnType<typeof createOptionsFixture>>((r) => (resolve = r));
+    let resolve!: (value: ReturnType<typeof createOptionsWireFixture>) => void;
+    const pending = new Promise<ReturnType<typeof createOptionsWireFixture>>((r) => (resolve = r));
     renderScreen('project', { createOptions: () => pending }, {}, client);
     expect(await screen.findByLabelText('Specification name')).toBeTruthy();
     // No tile state from the cached answer while the fresh one is loading.
@@ -337,7 +392,7 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
     fireEvent.change(screen.getByLabelText('Specification name'), { target: { value: 'Title' } });
     expect(submit.getAttribute('aria-disabled')).toBe('true');
 
-    resolve(createOptionsFixture('default'));
+    resolve(createOptionsWireFixture('default'));
     expect(await screen.findByRole('radio', { name: /new workspace/i })).toBeTruthy();
     expect(document.querySelector('[aria-busy="true"]')).toBeNull();
   });

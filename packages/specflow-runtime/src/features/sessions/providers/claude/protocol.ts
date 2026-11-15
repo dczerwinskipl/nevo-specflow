@@ -544,7 +544,7 @@ export function createClaudeProtocol(
         }
 
         if (frame.type === 'system' && frame.subtype === 'thinking_tokens') {
-          // Estimates are non-authoritative progress. Validate and ignore before
+          // Estimates are advisory progress. Validate and ignore before
           // the UUID ledger so long thinking cannot exhaust lifecycle deduplication.
           identifier(frame.uuid);
           if (

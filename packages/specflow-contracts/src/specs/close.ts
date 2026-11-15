@@ -92,6 +92,14 @@ export const CloseErrorSchema = Type.Object(
      * links. `message` of a blocker is display-only.
      */
     blockers: Type.Optional(Type.Array(ExitBlockerSchema)),
+    /**
+     * Present for `CLOSE_LOCAL_CONFIG_MODIFIED`: the worktree's `.nevo/local/config.yaml` was
+     * edited (`changed`), was not copied by Create (`unrecorded`), or cannot be read
+     * (`unreadable`). Move or delete it, then resume the same Close operation.
+     */
+    localConfig: Type.Optional(
+      Type.Union([Type.Literal('changed'), Type.Literal('unrecorded'), Type.Literal('unreadable')]),
+    ),
   },
   { $id: 'CloseError', additionalProperties: false },
 );

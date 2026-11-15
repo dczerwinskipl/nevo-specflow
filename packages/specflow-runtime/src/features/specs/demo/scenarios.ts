@@ -1,4 +1,3 @@
-import type { DemoCreateOptions } from '@nevo/specflow-contracts/demo';
 import { localBranchRef } from '@nevo/specflow-contracts/specs';
 
 import {
@@ -7,6 +6,7 @@ import {
   linkedPath,
   normalize,
   uuid,
+  type DemoRegistry,
   type DemoWorkspace,
 } from './seed';
 
@@ -127,9 +127,9 @@ function strip(workspace: DemoWorkspace): DemoWorkspace {
 
 /** Returns a modified copy of `options` for one options scenario. */
 export function applyOptionsScenario(
-  options: DemoCreateOptions,
+  options: DemoRegistry,
   scenario: DemoOptionsScenario,
-): DemoCreateOptions {
+): DemoRegistry {
   const next = structuredClone(options);
   const primary = () => next.workspaces.find((w) => w.kind === 'primary')!;
   const map = (fn: (w: DemoWorkspace) => DemoWorkspace, only?: (w: DemoWorkspace) => boolean) => {

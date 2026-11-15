@@ -38,7 +38,7 @@ nevo-specflow docs get <id...> [--json]
 nevo-specflow docs get --content <id | id#sectionId...> [--json]
 nevo-specflow docs context <query...> [--limit <n>] [--json]
 nevo-specflow docs check [--write]
-nevo-specflow docs search <question...> [--limit <n>] [--include-non-authoritative] [--no-refresh] [--no-snippets] [--json]
+nevo-specflow docs search <question...> [--limit <n>] [--include-proposals] [--no-refresh] [--no-snippets] [--json]
 nevo-specflow docs semantic status [--json]
 nevo-specflow docs semantic index
 ```
@@ -61,8 +61,15 @@ nevo-specflow docs semantic index
   lists the document's section ids) fails the whole call with exit 2 and an empty stdout. A section
   reference without `--content` is a usage error.
 - `context` lists the files to load for a task: like `find`, but inactive documents and documents
-  under non-authoritative prefixes are never returned.
-- `check` validates the whole corpus (frontmatter contract, taxonomy, unique ids, resolvable
+  under the `proposals` prefixes of `docs.yaml` (proposals) are never returned.
+- **Skipped documents.** `list`, `find`, `get`, `context` and `search` work on the valid documents
+  instead of refusing the whole corpus. A file is skipped when it has no frontmatter, when its own
+  frontmatter fails the contract or taxonomy, or when its `id` is shared with another file (every
+  file with that id is skipped). An unresolved `related`, `supersedes` or `superseded_by` does not
+  skip a document. Text output prints one `warning: skipped <path>: <error>` line per skipped
+  document on stderr; `--json` output carries `skipped` (see below). `get` on the id of a skipped
+  document fails (exit 2) naming the error. Extra host rules (`corpusRules`) apply to `check` only.
+- `check` stays strict: it validates the whole corpus (frontmatter contract, taxonomy, unique ids, resolvable
   `related` / `supersedes` / `superseded_by`, relative Markdown links and their `#fragment`
   headings) and verifies that `<root>/index.generated.json` and `<root>/index.generated.md` are
   current. `--write` regenerates both when the corpus is valid; broken links are reported but do
@@ -70,7 +77,10 @@ nevo-specflow docs semantic index
   content does not depend on how the command was invoked: it always names
   `nevo-specflow docs check --write`.
 
-With `--json`, stdout holds one JSON document and nothing else. A `list` or `find` result carries
+With `--json`, stdout holds one JSON document and nothing else. For `list`, `find`, `get`
+(also with `--content`) and `context` it is an object `{ "documents": [...], "skipped": [...] }`,
+where each `skipped` entry is `{ "path", "error" }` (`path` relative to the project root); for
+`search` it is the result contract plus `skipped`. A `list` or `find` document carries
 the document's frontmatter, `file` and `body` (and, for `find`, `score`, `matchedTerms` and
 `matchedFields`); a `get` or `context` entry carries `id`, `file`, `title`, `status`, `summary`,
 `read_when`, `scope` (when set), `areas` and `tags`, and with `get --content` also `content`: the
@@ -88,17 +98,17 @@ frontmatter and its best matching sections (heading path, section id, line and a
 what the section says), so a reader (often an AI agent) can choose which documents or sections to
 open with `get`. It is the only model-dependent command.
 
-| Option                        | Meaning                                                                      |
-| ----------------------------- | ---------------------------------------------------------------------------- |
-| `--limit <n>`                 | Maximum documents (default 10); each shows up to 3 matching sections         |
-| `--include-non-authoritative` | Also return documents under the `nonAuthoritative` prefixes of `docs.yaml`   |
-| `--no-refresh`                | Embed no documents; answer lexically unless the index is already complete    |
-| `--no-snippets`               | Show no excerpt under each matching section (they are shown by default)      |
-| `--json`                      | Print the result contract (`DocsSearchResult` in `@nevo/specflow-contracts`) |
+| Option                | Meaning                                                                                     |
+| --------------------- | ------------------------------------------------------------------------------------------- |
+| `--limit <n>`         | Maximum documents (default 10); each shows up to 3 matching sections                        |
+| `--include-proposals` | Also return proposals: documents under the `proposals` prefixes of `docs.yaml`              |
+| `--no-refresh`        | Embed no documents; answer lexically unless the index is already complete                   |
+| `--no-snippets`       | Show no excerpt under each matching section (they are shown by default)                     |
+| `--json`              | Print the result contract (`DocsSearchResult` in `@nevo/specflow-contracts`) plus `skipped` |
 
 Inactive documents (`deprecated`, `superseded`) are never returned. The corpus frontmatter is
-validated as for `context` (document bodies are not checked; links are `check`'s job); an invalid
-corpus or configuration fails with exit 1.
+validated as for `context` (document bodies are not checked; links are `check`'s job); documents that fail
+it are skipped and reported in `skipped` (and on stderr), an invalid configuration fails with exit 1.
 
 **Ranking.** Documents are ranked by reciprocal rank fusion (equal weight, by rank, so the two
 scores never mix) of two rankings, each limited to three times `--limit` candidates:
@@ -337,8 +347,9 @@ index with the configured one, but not the stored probe vector: a model whose we
 the same name and space is noticed by the next full refresh (`semantic index`, the background
 catch-up or the Runtime start). Status only reports; it starts nothing.
 The endpoint line shows `space <spaceId>` when `ai.embeddings.spaceId` is set. `--json` prints the
-same report as one JSON object, the `DocsStatus` contract of [`GET
-/api/docs/status`](../api/docs-search.md#get-apidocsstatus).
+same report as one JSON object, the `DocsStatus` contract. The Runtime has no status endpoint; its
+[workspace search](../api/workspace-docs.md#get-apiworkspacesworkspaceiddocssearch) carries the
+index progress.
 
 ```text
 semantic search: enabled
@@ -378,6 +389,22 @@ The index is disposable cache in `.nevo/local/cache/docs-index/`; deleting it is
 CLI and a running Runtime share it; one process writes at a time, and another one answers lexically
 meanwhile. Next to it are the progress records of the last full refresh, the catch-up log and the
 marker of the last catch-up start.
+
+**Seeding in a linked worktree.** Every checkout has its own index. When `search` (without
+`--no-refresh`) or `semantic index` runs in a worktree whose index is missing, and that worktree
+is not the designated Project Home, the command first seeds the index with a copy of the Project
+Home's index, and only when both would build the same index: the same chunker version, protocol,
+model, embedding space and dimensions, a recorded probe vector that the configured endpoint
+reproduces (one probe request, within the query timeout for `search`), and the same documentation
+settings (`docs.root`, `docs.yaml` and `docs.search.semantic`). The Project Home index only needs
+to be readable with a recorded probe: one still being built is copied as far as it got. The copy
+takes this index's writer lock without waiting and passes the same write admission as any other
+write; it also copies the chunk cache. A mismatch, no readable Project Home index, a held lock or a
+refused admission copies nothing, and a seed that cannot be attempted never fails the command. Either way the
+command then refreshes as usual, so after a seed it re-embeds only the sections that differ from
+the Project Home. The command still uses only this checkout's configuration; there is no fallback
+to the Project Home's, so a worktree whose local configuration has no `ai.embeddings` searches
+lexically. `semantic status` never seeds.
 
 ## Configuration
 

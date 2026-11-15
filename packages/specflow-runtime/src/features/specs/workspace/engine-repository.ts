@@ -46,6 +46,7 @@ export function createEngineWorkspaceRepository(
 
       return {
         revision: source.sourceRevision,
+        workspaceId: source.workspaceId,
         specification: {
           id: source.specId,
           title: source.specification.title,

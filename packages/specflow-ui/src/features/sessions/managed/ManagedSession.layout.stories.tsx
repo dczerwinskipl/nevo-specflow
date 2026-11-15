@@ -2,8 +2,11 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { settleViewport } from '../../../test-support/viewportSettle.stories-support';
 import { ManagedSession } from './ManagedSession';
-import { fixtureSessionId } from './managedSession.stories-support';
-import { richDefaultApi } from './managedSession.fullSession.stories-support';
+import { fixtureApi, fixtureSessionId } from './managedSession.stories-support';
+import {
+  genericSpecLevelSnapshot,
+  richDefaultApi,
+} from './managedSession.fullSession.stories-support';
 import { genericSpecLevelContext } from './context/sessionContextFixtures';
 import { Environment } from './managedSession.storyHelpers.stories-support';
 
@@ -203,6 +206,67 @@ export const SplitAt780WithWorkOpen: Story = {
     await openLastWork(canvasElement);
     await settleViewport(780, 844);
     await verifySplitConversation(canvasElement);
+  },
+};
+
+/** A conversation shorter than the viewport keeps the split layout's composer at the bottom. */
+export const SplitShortConversationComposerAtBottom: Story = {
+  tags: ['contract'],
+  args: { api: fixtureApi(genericSpecLevelSnapshot()) },
+  play: async ({ canvasElement }) => {
+    await settleViewport(1280, 655);
+    await waitFor(async () => {
+      await expect(layoutOf()).toBe('split');
+      await expect(canvasElement.querySelector('[data-composer-overlay]')).not.toBeNull();
+    });
+    await nextFrames();
+    const scroller = scrollerOf(canvasElement);
+    await expect(scroller.scrollHeight, 'the conversation does not overflow').toBeLessThanOrEqual(
+      scroller.clientHeight,
+    );
+    // Docked where a long conversation pins it: its own sticky `bottom` offset above the edge.
+    const overlay = canvasElement.querySelector<HTMLElement>('[data-composer-overlay]')!;
+    const stickyOffset = parseFloat(getComputedStyle(overlay).bottom);
+    await expect(
+      Math.abs(
+        scroller.getBoundingClientRect().bottom -
+          stickyOffset -
+          overlay.getBoundingClientRect().bottom,
+      ),
+      'composer docked to the bottom of the conversation',
+    ).toBeLessThanOrEqual(1);
+  },
+};
+
+/**
+ * With a fine pointer: an answer's actions are always visible in a row under it; the user's bubble
+ * reserves no row, and its actions appear in the corner toolbar only on hover or focus.
+ */
+export const MessageActionsWithFinePointer: Story = {
+  tags: ['contract'],
+  play: async ({ canvasElement }) => {
+    await settleViewport(1280, 800);
+    await waitForConversation(canvasElement);
+    const primary = canvasElement.querySelector<HTMLElement>('[data-workspace-surface="primary"]')!;
+    const answer = [...primary.querySelectorAll<HTMLElement>('article:not(.justify-end)')].find(
+      (article) => article.querySelector(':scope > [data-message-actions]'),
+    )!;
+    await expect(
+      getComputedStyle(answer.querySelector('[data-message-actions]')!).opacity,
+      'answer actions always visible',
+    ).toBe('1');
+
+    const request = primary.querySelector<HTMLElement>('article.justify-end')!;
+    const bubble = request.querySelector<HTMLElement>('.rounded-composite')!;
+    await expect(
+      Math.round(request.getBoundingClientRect().height),
+      'the user bubble reserves no actions row',
+    ).toBe(Math.round(bubble.getBoundingClientRect().height));
+    const toolbar = request.querySelector<HTMLElement>('[data-message-actions]')!;
+    await expect(getComputedStyle(toolbar).opacity, 'hidden until hover or focus').toBe('0');
+    // CSS `:hover` needs a real pointer; focus reveals it through the same group rule.
+    toolbar.querySelector('button')!.focus();
+    await waitFor(async () => expect(getComputedStyle(toolbar).opacity).toBe('1'));
   },
 };
 

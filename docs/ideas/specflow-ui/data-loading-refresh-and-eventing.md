@@ -20,7 +20,7 @@ read_when:
   - evaluating prefetch, batching-window, polling, cache-tuning, or observability ideas
   - preserving migration evidence for advanced data-delivery behavior not yet promoted
 summary: >
-  Non-authoritative exploration of advanced SpecFlow UI eventing, prefetch, batching-window,
+  Proposal: exploration of advanced SpecFlow UI eventing, prefetch, batching-window,
   polling, cache-tuning, observability, and migration ideas beyond the canonical data/loading rules.
 related:
   - ideas.specflow-ui.screens
@@ -32,7 +32,7 @@ related:
 
 > Canonical approved rules for UX data requirements, integration readiness, loading, refresh,
 > coherent read-model boundaries, and basic batching now live in
-> `product.specflow.ui.data-loading-and-integration`. This ideas document remains non-authoritative
+> `product.specflow.ui.data-loading-and-integration`. This ideas document remains a proposal:
 > exploration for deeper eventing, tuning, prefetch, batching-window, observability, and migration
 > details that have not all been promoted.
 >

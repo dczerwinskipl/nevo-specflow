@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   createOptionsFixture,
+  createOptionsWireFixture,
+  workspaceListFixture,
   workspaceIds as ids,
   type OptionsVariant,
 } from '../../options/creationOptions.stories-support';
 import { polishText } from '../../../../../i18n/testing';
+import { joinCreateOptions } from './createOptionsView';
 import {
   activeTile,
   defaultBaseValue,
@@ -996,5 +999,23 @@ describe('protected branches (Git enabled, commits present)', () => {
     expect(branchNameError('release/own', value)).toBeUndefined();
     expect(problems(choice(), value, 'Orders')).toEqual([]);
     expect(rawTileAvailability(value).main.protected).toBeUndefined();
+  });
+});
+
+describe('joining Create options with the workspace list', () => {
+  it('takes kind, name, path and the viewable Specifications from the list row of the workspace', () => {
+    const joined = createOptionsFixture();
+    const platform = joined.workspaces.find((w) => w.workspaceId === ids.platform);
+    expect(platform).toMatchObject({ kind: 'linked', name: 'platform', selectable: true });
+    expect(platform?.path).toBe('/work/acme-app-worktrees/platform');
+    expect(platform?.specifications).toHaveLength(2);
+    // An unavailable checkout lists no Specification, whatever it is bound to.
+    expect(joined.workspaces.find((w) => w.workspaceId === ids.legacy)?.specifications).toEqual([]);
+  });
+
+  it('is not coherent when a Create workspace is missing from the list', () => {
+    const list = workspaceListFixture();
+    list.workspaces = list.workspaces.filter((w) => w.workspaceId !== ids.platform);
+    expect(joinCreateOptions(createOptionsWireFixture(), list)).toBeUndefined();
   });
 });

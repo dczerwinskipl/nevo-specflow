@@ -41,7 +41,7 @@ the Tasks page reads [Task reads, Tasks page](../../../reference/api/task-reads.
 
 The Now block, its dialogs, Task authoring, Close and Abandon are described in
 [Manual workflow execution](workflow-execution.md); the separation of workflow state, attention and
-grouping is [ADR 0022](../../../architecture/decisions/0022-neutral-workflow-coordinator-and-manual-execution.md).
+grouping is [ADR 0023](../../../architecture/decisions/0023-neutral-workflow-coordinator-and-manual-execution.md).
 
 ## Sections and order
 

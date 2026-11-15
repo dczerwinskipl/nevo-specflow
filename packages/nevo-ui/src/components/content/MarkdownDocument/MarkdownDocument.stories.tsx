@@ -75,6 +75,16 @@ export const ProductLinkRenderer: Story = {
   },
 };
 
+export const BlockedImages: Story = {
+  args: {
+    source:
+      'A workspace image: ![Diagram](./diagram.png)\n\nA remote image: ![Logo](https://example.com/logo.png)\n\nText stays readable around blocked images.',
+    renderImage: ({ alt }) => (
+      <span className="my-3 block text-content-muted">{`Image not shown: ${alt ?? ''}`}</span>
+    ),
+  },
+};
+
 export const EmbeddedUnderViewTitle: Story = {
   args: { source: '# Section below a view title\n\n## Subsection', headingOffset: 1 },
 };

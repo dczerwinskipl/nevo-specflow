@@ -344,11 +344,14 @@ export function useApplicationCollection() {
 
 export function ApplicationSessionBack({
   sessionId,
+  sessionTitle,
   collection,
 }: {
   /** Callers still pass the Specification; the Session route is top-level and needs only its id. */
   specId?: string;
   sessionId: string;
+  /** Names the Session when the caller knows its title ("Back to <title>"). */
+  sessionTitle?: string;
   collection: 'current' | 'archive';
 }) {
   const { t } = useTranslation();
@@ -356,7 +359,11 @@ export function ApplicationSessionBack({
   return (
     <Typography as="div" variant="body-sm">
       <BackLink to="/sessions/$sessionId" params={{ sessionId }} search={{ collection }}>
-        <ApplicationBackContent>{t('applicationNavigation.sessionBack')}</ApplicationBackContent>
+        <ApplicationBackContent>
+          {sessionTitle
+            ? t('applicationNavigation.sessionBackNamed', { title: sessionTitle })
+            : t('applicationNavigation.sessionBack')}
+        </ApplicationBackContent>
       </BackLink>
     </Typography>
   );

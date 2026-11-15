@@ -64,6 +64,8 @@ export interface WorkspaceActivityRecord {
 }
 export interface WorkspaceReadModel {
   readonly revision: string;
+  /** The registered workspace the Specification is bound to. */
+  readonly workspaceId: string;
   readonly specification: {
     readonly id: string;
     readonly key?: string;

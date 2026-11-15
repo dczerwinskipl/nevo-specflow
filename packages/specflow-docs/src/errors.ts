@@ -26,3 +26,8 @@ export class DocsCorpusInvalidError extends DocsError {
     this.problems = problems;
   }
 }
+
+/** A configuration path of a checkout is a symbolic link or junction, which the reader refuses. */
+export class DocsLinkRejectedError extends DocsError {
+  override readonly name = 'DocsLinkRejectedError';
+}

@@ -48,7 +48,8 @@ function ManagedSessionRoute() {
 export function ManagedSessionRouteView({ sessionId }: { sessionId: string }) {
   const services = useAppServices();
   const owner = useAuthOwner() ?? 'unavailable';
-  const { onOpenSpecification, onOpenDocuments } = useSessionContextNavigation(sessionId);
+  const { onOpenSpecification, onOpenDocuments, onOpenDocumentation } =
+    useSessionContextNavigation(sessionId);
   const association = useSessionAssociation(sessionId);
   const queryClient = useQueryClient();
   const { data, isError } = association;
@@ -108,6 +109,7 @@ export function ManagedSessionRouteView({ sessionId }: { sessionId: string }) {
         sessionContext={sessionContext}
         onOpenSpecification={onOpenSpecification}
         onOpenDocuments={onOpenDocuments}
+        onOpenDocumentation={onOpenDocumentation}
         onSessionDeleted={onSessionDeleted}
         onSessionChanged={onSessionChanged}
         onGoToSpecifications={() => void toSpecifications()}

@@ -159,6 +159,17 @@ export function cacheNotIgnoredReason(directory: string): DocsSearchReason {
   );
 }
 
+/**
+ * The project may be a Git work tree, but Git gave no answer whether it ignores the index directory
+ * (`detail`, which names no absolute path): the write fails closed.
+ */
+export function cacheIgnoreUnverifiedReason(directory: string, detail: string): DocsSearchReason {
+  return reason(
+    'index-unavailable',
+    `Git could not confirm that it ignores ${directory}/ (${detail}), so the index is not written there; check that Git runs in this project (for example its safe.directory setting) and that its .gitignore covers \`.nevo/local/\`.`,
+  );
+}
+
 /** The index could not be read before a refresh. */
 export function unreadableIndexReason(message: string): DocsSearchReason {
   return reason('index-unavailable', `The index cannot be read: ${message}`);

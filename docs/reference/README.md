@@ -25,6 +25,7 @@ Exact contracts and factual lookup material live here.
 - [Specs Overview HTTP API](api/specs-overview.md)
 - [Specs operations list HTTP API](api/specs-operations-list.md)
 - [Specification workspace HTTP API](api/specification-workspace.md)
+- [Workspaces HTTP API](api/workspaces.md)
 - [Task reads HTTP API](api/task-reads.md)
 - [Operation progress HTTP API](api/operation-progress.md)
 - [Specification creation demo HTTP API](api/specification-creation-demo.md)

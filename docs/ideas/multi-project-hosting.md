@@ -13,7 +13,7 @@ read_when:
   - planning Docker hosting, repository registration, or installed development tools
   - evaluating a logical workspace spanning multiple independent Git repositories
 summary: >
-  Non-authoritative product direction: one SpecFlow Runtime can eventually host multiple registered
+  Proposed product direction: one SpecFlow Runtime can eventually host multiple registered
   Git projects, with global app concerns separated from project-owned Engine state, and room for
   explicitly authorized cross-project agents and an optional logical Workbench without implementing them now.
 related:

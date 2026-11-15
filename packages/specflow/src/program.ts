@@ -19,7 +19,7 @@ import { printDefinitionsMissingHint } from './definitions/startup-hint';
 import type { DocumentsCommandContext } from './documents/command';
 import { createProjectInitCommand, type ProjectInitCommandContext } from './init/cli';
 import { createProjectInspectCommand } from './project/inspect-command';
-import { resolveProjectLayout } from './project/layout';
+import { resolveDocsProject } from './project/docs-project';
 import { createSpecsCommand } from './specs/command';
 import { createTasksCommand } from './tasks/command';
 import { createWorkflowCommand } from './workflow/command';
@@ -107,7 +107,7 @@ export function createProgram(io: ProgramIO): Command {
   // An ordinary command: it never starts Runtime or loads UI assets (ADR 0020).
   program.addCommand(
     createDocsCommand({
-      resolveProject: () => resolveProjectLayout(io.cwd ?? '.'),
+      resolveProject: () => resolveDocsProject(io.cwd ?? '.'),
       stdout: io.stdout,
       stderr: io.stderr,
       checkWriteCommand: 'nevo-specflow docs check --write',

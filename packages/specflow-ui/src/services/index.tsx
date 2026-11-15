@@ -41,6 +41,17 @@ import {
   type WorkflowExecutionApi,
 } from '../features/tasks/execution/api';
 import {
+  createRuntimeWorkspaceApi,
+  workspacesReadOperation,
+  type WorkspaceApi,
+} from '../features/workspaces/read-model';
+import {
+  createRuntimeDocsApi,
+  docsErrorCodes,
+  docsReadOperation,
+  type DocsApi,
+} from '../features/docs/read-model';
+import {
   createRuntimeDocumentApi,
   type DocumentApi,
   type DocumentsApi,
@@ -63,6 +74,10 @@ export interface SpecFlowAppServices {
   readonly taskAuthoringApi: TaskAuthoringApi;
   /** Manual workflow execution of a project Runtime: start, finish, return, abandon, Close. */
   readonly workflowExecutionApi: WorkflowExecutionApi;
+  /** The registered workspaces of the project (`GET /api/workspaces`, project and demo Runtime alike). */
+  readonly workspaceApi: WorkspaceApi;
+  /** The documentation of one registered workspace (`/api/workspaces/:workspaceId/docs…`). */
+  readonly docsApi: DocsApi;
   readonly documentApi: DocumentApi;
   /** Document tree, catalogue and writes of the demo Runtime (writes emulated under `/api/demo`). */
   readonly demoDocumentsApi: DocumentsApi;
@@ -92,6 +107,8 @@ export interface SpecFlowServicesOptions {
   readonly taskApi?: TaskApi;
   readonly taskAuthoringApi?: TaskAuthoringApi;
   readonly workflowExecutionApi?: WorkflowExecutionApi;
+  readonly workspaceApi?: WorkspaceApi;
+  readonly docsApi?: DocsApi;
   readonly documentApi?: DocumentApi;
   readonly demoDocumentsApi?: DocumentsApi;
   readonly projectDocumentsApi?: DocumentsApi;
@@ -144,6 +161,16 @@ export function createSpecFlowAppServices(
           operation: 'workflow',
           codes: { ...workflowErrorCodes, ...closeErrorCodes },
         }),
+      ),
+    workspaceApi:
+      options.workspaceApi ??
+      createRuntimeWorkspaceApi(
+        createApiTransport(runtimeHttp, { operation: workspacesReadOperation }),
+      ),
+    docsApi:
+      options.docsApi ??
+      createRuntimeDocsApi(
+        createApiTransport(runtimeHttp, { operation: docsReadOperation, codes: docsErrorCodes }),
       ),
     documentApi: options.documentApi ?? createRuntimeDocumentApi(runtimeHttp),
     demoDocumentsApi: options.demoDocumentsApi ?? createDemoDocumentsApi(runtimeHttp),

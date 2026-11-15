@@ -2,6 +2,7 @@ import { useId, useState, type ReactNode } from 'react';
 import { Button, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { useTaskViewState } from '../TaskViewState';
+import { copyText } from '../../../../shared/clipboard/copyText';
 
 /** Product inspection depth; only expansion flags survive a keyed document round trip. */
 export function TaskDetailDisclosure({
@@ -86,18 +87,7 @@ export function TaskCopyValue({
     }
   };
 
-  const copyValue = async () => {
-    try {
-      if (!navigator.clipboard?.writeText) {
-        throw new Error('Clipboard unavailable');
-      }
-
-      await navigator.clipboard.writeText(value);
-      setStatus('copied');
-    } catch {
-      setStatus('failed');
-    }
-  };
+  const copyValue = async () => setStatus((await copyText(value)) ? 'copied' : 'failed');
 
   return (
     <div className="pointer-events-auto grid min-w-0 gap-1 justify-items-start">

@@ -28,6 +28,7 @@ import { documentsAppRoutes } from '../features/documents/routes';
 import { sessionsAppRoutes } from '../features/sessions/routes';
 import { managedSessionAppRoutes } from '../features/sessions/managed/routes';
 import { gitAppRoutes } from '../features/git/routes';
+import { docsAppRoutes } from '../features/docs/routes';
 import { createSpecFlowAppServices, type SpecFlowAppServices } from './dependencies';
 import { UiPlaygroundScreen } from './screens';
 import { NotFoundView } from './errors/NotFoundView';
@@ -74,6 +75,7 @@ export const routeTree = rootRoute.addChildren([
       newSessionRoute,
       ...gitAppRoutes,
     ]),
+    ...docsAppRoutes,
     uiPlaygroundRoute,
   ]),
 ]);

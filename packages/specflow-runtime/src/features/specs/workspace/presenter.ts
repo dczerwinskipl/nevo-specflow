@@ -14,6 +14,7 @@ export function presentWorkspace(
 ): SpecificationWorkspaceResponse {
   return {
     revision: data.revision,
+    workspaceId: data.workspaceId,
     specification: data.specification,
     ...(recommendedSessionId ? { recommendedSessionId } : {}),
     sections: {

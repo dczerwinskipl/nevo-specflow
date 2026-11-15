@@ -22,6 +22,8 @@ export interface CachedFile {
   readonly contentHash: string;
   /** `null`: the file has no frontmatter block. */
   readonly frontmatter: Record<string, unknown> | null;
+  /** Set when the frontmatter block is not valid YAML (`frontmatter` is `null` then too). */
+  readonly invalidFrontmatter?: string;
   readonly chunks: readonly CachedChunk[];
 }
 
@@ -69,6 +71,7 @@ function isCachedFile(value: unknown): value is CachedFile {
     typeof value.file === 'string' &&
     typeof value.contentHash === 'string' &&
     (value.frontmatter === null || isObject(value.frontmatter)) &&
+    (value.invalidFrontmatter === undefined || typeof value.invalidFrontmatter === 'string') &&
     Array.isArray(value.chunks) &&
     value.chunks.every(isCachedChunk)
   );

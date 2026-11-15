@@ -6,7 +6,7 @@ status: current
 scope: specflow
 areas: [configuration, docs, ai, security]
 read_when:
-  - configuring the documentation root, taxonomy, non-authoritative or excluded paths of a project
+  - configuring the documentation root, taxonomy, proposal or excluded paths of a project
   - writing or validating a docs/docs.yaml documentation settings file
   - using the docs commands in a project that is not initialized (documentation-only configuration)
   - enabling semantic documentation search or configuring an embedding endpoint
@@ -14,7 +14,7 @@ read_when:
   - diagnosing a docs or ai.embeddings configuration error
 summary: >
   The docs namespace (root, search.semantic), the documentation settings file <docs.root>/docs.yaml
-  (taxonomy, nonAuthoritative, exclude) and the ai.embeddings endpoint (baseUrl, model, optional
+  (taxonomy, proposals, exclude) and the ai.embeddings endpoint (baseUrl, model, optional
   protocol, spaceId, dimensions, apiKeyEnv, queryInstruction, batchSize, timeoutMs): which file
   holds them, how they merge, their validation and defaults, and documentation-only configuration.
 related:
@@ -55,19 +55,35 @@ docs:
 ```
 
 Nothing adds the `.nevo/local/` entry to `.gitignore` in such a project, and the semantic index is
-local cache below it. Before writing it, `search`, `semantic index`, `semantic status` and the
-Runtime check with `git check-ignore` (once per process, only with `ai.embeddings` configured) that
-Git ignores `.nevo/local/cache/docs-index/`. In a Git work tree that does not, nothing is written
-below `.nevo/local/`: searches answer lexically with `index-unavailable` (``Git does not ignore
+local cache below it. The CLI and the Runtime check with an uncached `git check-ignore` that Git
+ignores `.nevo/local/cache/docs-index/` when they open the index (only with `ai.embeddings`
+configured) and again immediately before every write batch of it (the writer lock, each slice of
+a refresh, a refresh already running included, each progress record, the chunk cache, the start of
+a background catch-up, a seed copy). The check fails closed: in a Git work tree only Git's answer
+that it ignores the path admits a write. In a Git work tree that does not, nothing is written below
+`.nevo/local/`: searches answer lexically with `index-unavailable` (``Git does not ignore
 .nevo/local/cache/docs-index/, so the index is not written there; add `.nevo/local/` to the
-project's .gitignore.``), and `semantic index` and `semantic status` exit 1 with the same
-reason. Add the entry:
+project's .gitignore.``), and `semantic index` and `semantic status` exit 1 with the same reason.
+When Git gives no answer (it fails, for example on a `safe.directory` refusal, does not answer
+within 10 seconds, or cannot be run) and the project root or a directory above it has a `.git`
+entry (or `GIT_DIR` is set, or the root cannot be resolved or a directory on the way cannot be
+read), nothing is written either, with an `index-unavailable` reason that
+names the failure but no path (`Git could not confirm that it ignores
+.nevo/local/cache/docs-index/ (git check-ignore exited with code 128), …`). (An index that cannot
+be read or written is reported as `index-unavailable` too, with the operating-system error in the
+reason; that text can name an absolute path, and the Runtime's workspace search returns the reason
+unchanged, so a client that shows it to other users reveals the checkout's location.) While a
+check has refused, each search and status checks again, so writes resume once Git answers that the
+path is ignored (the entry added, or Git working again). Add the entry:
 
 ```gitignore
 .nevo/local/
 ```
 
-Outside a Git work tree the check does not apply.
+A project outside any Git work tree (the CLI also serves plain directories) is written without
+the entry, but only when that is established: Git gives no answer, no `.git` entry exists in the
+project root or any directory above it, both along the root as given and along the root resolved
+through symbolic links and junctions, and `GIT_DIR` is not set.
 
 Such a project is not initialized: `nevo-specflow start` and `nevo-specflow project bootstrap`
 refuse it and name `nevo-specflow init`, which adds the `runtime` and `git` sections and keeps the
@@ -100,25 +116,27 @@ The documentation settings file describes the documentation itself and is commit
 taxonomy:
   scopes: [shared, specflow] # allowed `scope` values
   areas: [cli, docs, testing] # allowed `areas` values
-nonAuthoritative: [ideas/] # path prefixes under `docs.root` that `context` and `search` skip
+proposals: [ideas/] # path prefixes under `docs.root` whose documents are proposals
 exclude: [templates/] # path prefixes under `docs.root` that are not part of the corpus at all
 ```
 
-| Key                | Meaning                                                                   | Default      |
-| ------------------ | ------------------------------------------------------------------------- | ------------ |
-| `taxonomy.scopes`  | Non-empty list of distinct values; any other `scope` is a `check` problem | unrestricted |
-| `taxonomy.areas`   | Non-empty list of distinct values; any other area is a `check` problem    | unrestricted |
-| `nonAuthoritative` | Directory prefixes relative to `docs.root` (a trailing `/` is optional)   | none         |
-| `exclude`          | Directory prefixes relative to `docs.root`, validated the same way        | none         |
+| Key               | Meaning                                                                   | Default      |
+| ----------------- | ------------------------------------------------------------------------- | ------------ |
+| `taxonomy.scopes` | Non-empty list of distinct values; any other `scope` is a `check` problem | unrestricted |
+| `taxonomy.areas`  | Non-empty list of distinct values; any other area is a `check` problem    | unrestricted |
+| `proposals`       | Directory prefixes relative to `docs.root` (a trailing `/` is optional)   | none         |
+| `exclude`         | Directory prefixes relative to `docs.root`, validated the same way        | none         |
 
 An absent or empty file means all defaults. An unknown key at the top level or under `taxonomy` is
 an error naming the file. The file is not part of the corpus: only `*.md` files are scanned,
-validated and indexed. It is read whenever a corpus is opened (every `docs` command, and a running
-Runtime when it first uses the corpus). Document types, required fields and statuses are the
-product frontmatter contract and are not configurable.
+validated and indexed. It is read whenever a corpus is opened: by every `docs` command, and by a
+running Runtime on every documentation request, which re-reads the `docs` settings and `docs.yaml`
+of the requested checkout (a change takes effect on the next request, with no restart). Document
+types, required fields and statuses are the product frontmatter contract and are not configurable.
 
-`context` never returns documents under a non-authoritative prefix; `search` skips them unless
-`--include-non-authoritative` is given; `list`, `find` and `get` return them.
+A document under a `proposals` prefix is a **proposal**: an idea or plan, not a current rule.
+`context` never returns proposals; `search` skips them unless `--include-proposals` is given;
+`list`, `find` and `get` return them.
 
 Symbolic links (and Windows junctions) below `docs.root` are skipped by every command, whether
 they point to a directory or a file, inside or outside `docs.root`: a link never loops the scan and
@@ -162,6 +180,17 @@ summary, scope, areas, tags and read_when) to it to embed them, and every search
 Configure in `.nevo/config.yaml` only an endpoint every contributor may send the documentation to; a
 workstation that must not use it sets its own `baseUrl` and `model` in `.nevo/local/config.yaml`
 (`docs.search.semantic` is a project setting and cannot be turned off locally).
+
+The Runtime embeds only through the `ai.embeddings` of its own, trusted configuration (the two files
+of the checkout it runs in, normally Project Home). It never reads `ai.embeddings` from another
+checkout, so a branch's configuration can switch semantic search off for that workspace
+(`docs.search.semantic: false`) but never redirect where document text is sent. The CLI keeps using
+the configuration of the checkout it runs in. Semantic search is therefore on for a workspace only
+when that checkout opts in (`docs.search.semantic: true`) and the Runtime has a trusted
+`ai.embeddings` ([ADR 0022 section 3](../../architecture/decisions/0022-workspace-scoped-documentation-reader.md)).
+If a worktree's own local configuration points the CLI at a different endpoint or model than the
+Runtime's, the two index identities differ and the CLI and the Runtime rebuild each other's shared
+index of that checkout: searches answer lexically with `index-building` until a rebuild finishes.
 
 The two files merge key by key, the local value winning; the example resolves to the remote
 endpoint and model with the project's `queryInstruction`. Either file alone may configure the
@@ -291,6 +320,28 @@ full refresh (`progress-*.json`) and the log and start marker of the background 
 (`catch-up.log`, `catch-up.started`). It is disposable cache
 ([project configuration and local state](../../architecture/runtime/configuration.md)): deleting it
 costs only re-embedding. `search` writes nothing there while semantic search is not enabled. A
-running Runtime shares the same index for
-[`GET /api/docs/search`](../api/docs-search.md), refreshes it in the background on start and
-catches a larger gap up in process.
+running Runtime shares the same index for the
+[workspace documentation search](../api/workspace-docs.md) of that checkout, refreshes its own
+checkout's index in the background on start and catches a larger gap up in process.
+
+Each checkout has its own index; linked worktrees never share one. In a linked worktree without an
+index, `search` and `semantic index` first copy the Project Home's index when the identity is the
+same: the index identity (chunker version, protocol, model, embedding space, dimensions), the
+recorded probe vector (reproduced by this checkout's endpoint) and the fingerprint of the effective
+documentation settings (`docs.root`, `docs.yaml`, `docs.search.semantic`). Any difference copies
+nothing and the index is built normally. The copy is written like any other write of the index
+(writer lock, write admission), and the following refresh re-embeds only what differs (see
+[seeding](../cli/nevo-specflow-docs.md#semantic-status-and-semantic-index)). The worktree's own
+`.nevo/local/config.yaml` decides the endpoint for the CLI; a seed only happens when it matches the
+Project Home's. The Runtime seeds a workspace's missing index from Project Home the same way, with
+these differences: it starts on the first documentation request after a workspace corpus opens; it
+runs once per opened instance, so again after the instance is evicted or the settings change; it
+runs only with semantic search on; and it embeds the probe through the Runtime's trusted endpoint,
+not the worktree's local configuration.
+
+The local configuration is gitignored, so a new linked worktree would have none: when the Engine
+creates a linked worktree it copies Project Home's `.nevo/local/config.yaml` into it when the
+worktree has none, and records the copy's SHA-256. Close deletes `.nevo/local/cache/` with the
+worktree, and deletes the local configuration only while it still matches that recorded copy. A
+local configuration that was edited, that the Engine did not copy, or that cannot be read stops Close until it is moved
+or deleted by hand, so a worktree's own settings are never lost silently.

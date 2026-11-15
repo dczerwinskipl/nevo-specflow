@@ -8,7 +8,7 @@ Seek answers in this order:
 2. authoritative product/architecture/design-system documentation;
 3. established rendered product pattern that is consistent with current documentation;
 4. current implementation as evidence of existing behavior;
-5. draft/ideas material as non-authoritative evidence;
+5. draft/ideas material (proposals) as evidence, not current rules;
 6. generic UX knowledge.
 
 Generic UX knowledge may help frame alternatives, but it must not be presented as a repository/product requirement.

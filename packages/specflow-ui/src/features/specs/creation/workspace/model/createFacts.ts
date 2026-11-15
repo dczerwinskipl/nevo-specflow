@@ -1,4 +1,5 @@
-import { refDisplayName, type CreateOptions } from '@nevo/specflow-contracts/specs';
+import { refDisplayName } from '@nevo/specflow-contracts/specs';
+import type { CreateOptionsView, CreateWorkspace } from './createOptionsView';
 import { branchPreview, createOverrides, effectiveSlug } from './createRequest';
 import type { WorkspaceChoice } from './workspaceChoice';
 import { activeTile, primaryWorkspace, targetStatus } from './workspaceTiles';
@@ -36,7 +37,7 @@ export interface CreateSettingsFacts {
   readonly commit?: true;
 }
 
-const named = (workspace: CreateOptions['workspaces'][number]): FactWorkspace => ({
+const named = (workspace: CreateWorkspace): FactWorkspace => ({
   name: workspace.name,
   ...(workspace.branch ? { branch: workspace.branch } : {}),
 });
@@ -44,7 +45,7 @@ const named = (workspace: CreateOptions['workspaces'][number]): FactWorkspace =>
 /** The facts of the form's current choice; undefined when no tile applies. */
 export function buildCreateFacts(
   choice: WorkspaceChoice,
-  options: CreateOptions,
+  options: CreateOptionsView,
   title: string,
 ): CreateSettingsFacts | undefined {
   const tile = activeTile(choice, options);

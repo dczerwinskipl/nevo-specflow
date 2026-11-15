@@ -179,7 +179,7 @@ function WorkFilterBar({
         {filter.search && (
           <InputGroup.Action>
             <IconButton
-              aria-label={t('managedSession.workInspector.clearSearch')}
+              aria-label={t('common.clearSearch')}
               icon="close"
               size="xs"
               onClick={() => onChange({ ...filter, search: '' })}

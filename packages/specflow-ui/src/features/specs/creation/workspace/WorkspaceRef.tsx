@@ -1,4 +1,4 @@
-import type { CreateOptions } from '@nevo/specflow-contracts/specs';
+import type { CreateWorkspace } from './model/createOptionsView';
 import { useMessage } from '../../../../i18n/message';
 import { BranchRef } from './BranchRef';
 import { noBranchLabel } from './model/workspaceCopy';
@@ -8,7 +8,7 @@ export function WorkspaceLabel({
   workspace,
   truncate = false,
 }: {
-  workspace: CreateOptions['workspaces'][number];
+  workspace: CreateWorkspace;
   /** One line with an ellipsis (Select); the searchable list wraps so similar names stay distinct. */
   truncate?: boolean;
 }) {
@@ -28,7 +28,7 @@ export function WorkspaceRef({
   workspace,
   truncate = false,
 }: {
-  workspace: Pick<CreateOptions['workspaces'][number], 'name' | 'branch'>;
+  workspace: Pick<CreateWorkspace, 'name' | 'branch'>;
   truncate?: boolean;
 }) {
   const text = useMessage();

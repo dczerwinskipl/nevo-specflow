@@ -16,5 +16,5 @@ taxonomy:
     - release
     - security
     - configuration
-nonAuthoritative: [ideas/]
+proposals: [ideas/]
 exclude: [templates/]

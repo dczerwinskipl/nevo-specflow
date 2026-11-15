@@ -31,7 +31,8 @@ afterEach(async () => {
   }
 });
 
-async function fixture() {
+/** `homeLocalConfig` is written to Project Home before Create, which copies it into the worktree. */
+async function fixture(homeLocalConfig?: string) {
   const root = await createGitTestProject(
     'close-worktree-t13-Ż ',
     'runtime: {}\ngit:\n  enabled: true\n',
@@ -45,6 +46,10 @@ async function fixture() {
   git(root, 'add', '.nevo/config.yaml');
   commitStaged(root, 'pin integration target');
   const engine = await bootstrapProjectHome(root);
+  if (homeLocalConfig !== undefined) {
+    await writeFile(join(root, '.nevo/local/config.yaml'), homeLocalConfig);
+  }
+
   const spec = await createSpecificationForTesting(engine, {
     operationId: randomUUID(),
     title: 'Lifecycle bind and disposal',
@@ -168,6 +173,54 @@ describe('E2.T12–T13 linked Worktree Close lifecycle', () => {
       closeWorktree(engine, { operationId: randomUUID(), specId: spec.specId }),
     ).rejects.toMatchObject({ code: 'CLOSE_PREFLIGHT' });
   }, 120000);
+
+  it('removes a worktree holding the disposable local cache and an unmodified local configuration copy', async () => {
+    const { engine, spec } = await fixture('ai: {}\n');
+    expect(await readFile(join(spec.workspaceRoot, '.nevo/local/config.yaml'), 'utf8')).toBe(
+      'ai: {}\n',
+    );
+    const cache = join(spec.workspaceRoot, '.nevo/local/cache/docs-index/units.json');
+    await mkdir(dirname(cache), { recursive: true });
+    await writeFile(cache, '{}\n');
+    const outcome = await closeWorktree(engine, { operationId: randomUUID(), specId: spec.specId });
+    expect(outcome.status).toBe('completed');
+    await expect(lstat(spec.workspaceRoot)).rejects.toMatchObject({ code: 'ENOENT' });
+  }, 300000);
+
+  it('refuses to dispose an edited local configuration copy and keeps the file', async () => {
+    const { engine, spec } = await fixture('ai: {}\n');
+    const config = join(spec.workspaceRoot, '.nevo/local/config.yaml');
+    await writeFile(config, 'ai: { edited: true }\n');
+    const operationId = randomUUID();
+    const refusal = closeWorktree(engine, { operationId, specId: spec.specId });
+    await expect(refusal).rejects.toMatchObject({
+      code: 'CLOSE_LOCAL_CONFIG_MODIFIED',
+      localConfig: 'changed',
+    });
+    await expect(refusal).rejects.toThrow(
+      'is not the unchanged copy Create made (changed): move or delete it, then resume the same Close operation.',
+    );
+    expect((await inspectCloseOperation(engine, operationId))?.stage).toBe('binding-rebound');
+    expect(await readFile(config, 'utf8')).toBe('ai: { edited: true }\n');
+    // Once the user has moved the file away, the same Close resumes and disposes the worktree.
+    await rm(config);
+    const resumed = await closeWorktree(engine, { operationId, specId: spec.specId });
+    expect(resumed.status).toBe('completed');
+    await expect(lstat(spec.workspaceRoot)).rejects.toMatchObject({ code: 'ENOENT' });
+  }, 300000);
+
+  it('refuses to dispose a local configuration that Create never copied', async () => {
+    const { engine, spec } = await fixture();
+    const config = join(spec.workspaceRoot, '.nevo/local/config.yaml');
+    await writeFile(config, 'ai: {}\n');
+    const refusal = closeWorktree(engine, { operationId: randomUUID(), specId: spec.specId });
+    await expect(refusal).rejects.toMatchObject({
+      code: 'CLOSE_LOCAL_CONFIG_MODIFIED',
+      localConfig: 'unrecorded',
+    });
+    await expect(refusal).rejects.toThrow('is not the unchanged copy Create made (added by hand)');
+    expect(await readFile(config, 'utf8')).toBe('ai: {}\n');
+  }, 300000);
 
   it('retains verified primary binding and original linked data when ignored user files block disposal', async () => {
     const { root, engine, spec } = await fixture();

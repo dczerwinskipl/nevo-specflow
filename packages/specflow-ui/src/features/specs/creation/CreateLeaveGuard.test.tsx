@@ -11,7 +11,10 @@ import { TestServicesRouterContext } from '../../../../test-support/app/TestServ
 import type { OperationsApi } from '../../../shared/operations/operationsApi';
 import { createOperationEventsUrl, type ProjectCreationApi } from './api/api.project';
 import { CreateSpecificationScreen } from './CreateSpecificationScreen';
-import { createOptionsFixture } from './options/creationOptions.stories-support';
+import {
+  createOptionsWireFixture,
+  workspaceApiFixture,
+} from './options/creationOptions.stories-support';
 import { catalogue } from './options/creationCatalogue.stories-support';
 import { createSessionOperationStorage } from './operation/createOperationStorage';
 import { initialWorkspaceChoice } from './workspace/model/workspaceChoice';
@@ -40,8 +43,8 @@ const operations: OperationsApi = {
 };
 
 function renderProject(
-  createOptions: () => Promise<ReturnType<typeof createOptionsFixture>> = () =>
-    Promise.resolve(createOptionsFixture('default')),
+  createOptions: () => Promise<ReturnType<typeof createOptionsWireFixture>> = () =>
+    Promise.resolve(createOptionsWireFixture('default')),
   props: { restoreDraftOf?: string } = {},
 ) {
   const services = createSpecFlowAppServices({
@@ -52,6 +55,7 @@ function renderProject(
       createOptions,
       create: vi.fn(),
     } as unknown as ProjectCreationApi,
+    workspaceApi: workspaceApiFixture(),
     operationsApi: operations,
   });
   render(
@@ -147,13 +151,13 @@ describe('a restored draft', () => {
         branch: { on: true, name: 'feature/own', edited: true },
       },
     });
-    let resolve!: (value: ReturnType<typeof createOptionsFixture>) => void;
-    const pending = new Promise<ReturnType<typeof createOptionsFixture>>((r) => (resolve = r));
+    let resolve!: (value: ReturnType<typeof createOptionsWireFixture>) => void;
+    const pending = new Promise<ReturnType<typeof createOptionsWireFixture>>((r) => (resolve = r));
     renderProject(() => pending, { restoreDraftOf: operationId });
     await screen.findByRole('radio', { name: /Feature/ });
     // No options yet: nothing to measure the place choice against.
     expect(dirty()).toBe(false);
-    resolve(createOptionsFixture('default'));
+    resolve(createOptionsWireFixture('default'));
     const branch = await screen.findByLabelText<HTMLInputElement>('New branch name');
     expect(branch.value).toBe('feature/own');
     expect(dirty()).toBe(false);

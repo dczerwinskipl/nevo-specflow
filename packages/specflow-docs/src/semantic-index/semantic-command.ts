@@ -5,6 +5,7 @@ import { buildDocsIndex } from './build';
 import type { SemanticEnvironment } from './environment';
 import { openProjectIndex } from './index-store';
 import { createReachabilityCache } from './reachability';
+import { seedProjectIndex } from './seed';
 import { semanticStatus, type SemanticStatus } from './status';
 import { runDocsAction, type DocsCommandContext } from '../command/context';
 import type { OpenProject } from '../command/open-project';
@@ -72,8 +73,24 @@ export function addSemanticCommand(
   index.action(() =>
     runDocsAction(index, async () => {
       const { project, configuration, corpus } = await open();
+      const docsIndex = await openProjectIndex(
+        project.root,
+        corpus,
+        configuration,
+        ctx.isIgnoredByGit,
+      );
+      if (project.seedFrom) {
+        await seedProjectIndex(docsIndex, {
+          from: project.seedFrom,
+          configuration,
+          corpusSettings: corpus.settings,
+          environment: environment(ctx),
+          provider: 'documents',
+        });
+      }
+
       const result = await buildDocsIndex(
-        await openProjectIndex(project.root, corpus, configuration, ctx.isIgnoredByGit),
+        docsIndex,
         configuration,
         environment(ctx),
         ({ embedded, total }) => {

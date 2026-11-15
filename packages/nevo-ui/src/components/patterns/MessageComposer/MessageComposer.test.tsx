@@ -24,8 +24,8 @@ describe('MessageComposer', () => {
     expect(disabled).toContain('class="contents"');
     expect(disabled).toContain('disabled=""');
     expect(disabled).toContain('border-border-subtle');
-    expect(disabled).toContain('bg-surface-subtle');
-    expect(disabled).toContain('opacity-60');
+    expect(disabled).toContain('bg-surface-raised');
+    expect(disabled).not.toContain('opacity-60');
     expect(disabled).toContain('data-control-surface="embedded"');
     expect(disabled).toContain('text-area-embedded');
     expect(disabled).not.toContain('message-composer-editor');

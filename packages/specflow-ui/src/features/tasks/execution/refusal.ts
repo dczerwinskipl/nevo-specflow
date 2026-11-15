@@ -85,6 +85,8 @@ export function workflowRefusalKey(refusal: WorkflowRefusal) {
     case 'WORKFLOW_EXIT_BLOCKED':
     case 'CLOSE_BLOCKED':
       return 'workflowExecution.refusal.exitBlocked';
+    case 'CLOSE_LOCAL_CONFIG_MODIFIED':
+      return 'workflowExecution.refusal.localConfigModified';
     case 'WORKFLOW_TASK_BUSY':
     case 'WORKFLOW_SPECIFICATION_BUSY':
     case 'CONTROL_LOCK_BUSY':

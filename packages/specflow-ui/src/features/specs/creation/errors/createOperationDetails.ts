@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next';
-import type { CreateOptions } from '@nevo/specflow-contracts/specs';
+import type { CreateOptionsView } from '../workspace/model/createOptionsView';
 import { message, type Message } from '../../../../i18n/message';
 import type { OperationDetail } from './CreateFailureAlert';
 import type { CreateOperationStatus, SentRequest } from '../operation/createOperationReducer';
@@ -12,7 +12,7 @@ import { primaryWorkspace } from '../workspace/model/workspaceTiles';
 export function buildOperationDetails(input: {
   sent: SentRequest | null;
   status: CreateOperationStatus | null;
-  workspaceOptions: CreateOptions | undefined;
+  workspaceOptions: CreateOptionsView | undefined;
   typedTitle: string;
   language: string;
   t: TFunction;

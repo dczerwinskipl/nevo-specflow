@@ -11,7 +11,7 @@ read_when:
   - changing the association storage, the composed create, the Session scope or spec.start-session
   - picking up a stage 3 follow-up (execute-write with specId, Task identity, Engine Task source)
 summary: >
-  Non-authoritative decision record of stage 3 (owner decisions 2026-11-08, delivered in PR #126):
+  Decision record (a proposal, not a current rule) of stage 3 (owner decisions 2026-11-08, delivered in PR #126):
   a separate durable Session association registry in the Session SQLite, the composed create from a
   Specification, one Spec-bearing Session scope with the execute-write exception. Keeps the
   decisions, the options considered, the fit with the workflow engine and the open follow-ups (D8
@@ -33,7 +33,7 @@ related:
 
 # Session association registry and Session list (stage 3) — decision record
 
-**Non-authoritative.** Stage 3 was accepted by the owner on 2026-11-08
+**A proposal, not a current rule.** Stage 3 was accepted by the owner on 2026-11-08
 ([section 1](#1-owner-decisions-2026-11-08)) and delivered in PR #126. This record keeps the
 decisions, the options considered and the open follow-ups. The exact contracts (association model
 and invariants, storage, scopes, routes) live in their owning documents

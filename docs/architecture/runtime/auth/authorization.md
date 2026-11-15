@@ -49,7 +49,7 @@ integration, and backend enforcement boundaries.
 ## Feature ownership and composition
 
 Product features own the capabilities they expose. Specs declares `spec.*`, Sessions declares
-`session.*`, Settings declares `settings.*`, and Docs declares `docs.*`.
+`session.*`, Settings declares `settings.*`, Workspaces declares `workspace.*`, and Docs declares `docs.*`.
 
 Auth does not import those feature definitions. The Runtime composition root creates feature modules,
 collects their authorization resource definitions, defines the product role-to-capability policy, and injects
@@ -86,7 +86,12 @@ The current feature-owned resources are:
 - `session`: `session.view`, `session.create`, `session.manage`, `session.delete`,
   `session.execute-write`, `session.view-provider-limits`;
 - `settings`: `settings.view`, `settings.manage`;
-- `docs`: `docs.search` (checked in any scope: project documentation has no narrower scope).
+- `workspace`: `workspace.view` (the registered-workspace list, checked at the Runtime's project
+  scope `{ projectId }`);
+- `docs`: `docs.view` (the tree, documents and search of a registered workspace's documentation,
+  checked at the project scope `{ projectId }`: a grant bounded to a Specification or a Session
+  admits no project documentation). `docs.view` and `workspace.view` MUST be checked at the project
+  scope, never in any scope.
 
 There is intentionally no `spec.list` capability. A Specs collection endpoint requires the subject
 to possess `spec.view` in at least one scope, then filters rows with target-specific `spec.view`
@@ -231,8 +236,9 @@ withCapabilities(...)
 Target-specific `can/require` always evaluate a concrete required scope. The any-scope pair answers
 a different backend question: whether the subject possesses that capability in at least one scope.
 It never widens a scoped grant into global access and is intended for collection-entry checks where
-row visibility is enforced separately, and for reads of project-wide data that has no narrower scope:
-documentation search admits any subject holding `docs.search` in some scope.
+row visibility is enforced separately. Project-wide data, such as the workspace list and the
+documentation reads, is not an any-scope check: it requires `workspace.view` or `docs.view` at the
+project scope.
 
 Product routes are registered normally at the Runtime composition root and do not receive cookie
 names, `AuthenticationStore`, or session-resolution helpers. They are not nested inside the Auth feature just

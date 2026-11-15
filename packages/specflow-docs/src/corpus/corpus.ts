@@ -9,7 +9,7 @@ import type { DocsSettings } from '../config/docs-settings';
 import { loadDocsFile } from '../config/load-docs-settings';
 import type { DocRecord } from '../frontmatter/contract';
 import { validateCorpus, validateDoc } from '../frontmatter/validate';
-import { DocsConfigError, DocsCorpusInvalidError } from '../errors';
+import { DocsConfigError } from '../errors';
 import { createFileSystemDocRepository, type DocRepository, type ScanResult } from './repository';
 
 /**
@@ -18,8 +18,9 @@ import { createFileSystemDocRepository, type DocRepository, type ScanResult } fr
  */
 export interface DocsCorpusRules {
   /**
-   * Extra problems over the scanned documents; reported like contract problems. `search` validates
-   * frontmatter only: the records it passes here have an empty `body`.
+   * Extra problems over the scanned documents; reported like contract problems by `check` only.
+   * Reads (`list`, `find`, `get`, `context`, `search`) skip documents by the product contract and
+   * never run these rules.
    */
   readonly validate?: (docs: readonly DocRecord[]) => string[];
 }
@@ -39,17 +40,19 @@ export function openFileSystemCorpus(
   { root }: DocsSettings,
   rules: DocsCorpusRules = {},
 ): DocsCorpus {
-  if (
-    !statSync(join(projectRoot, ...root.split('/')), {
-      throwIfNoEntry: false,
-    })?.isDirectory()
-  ) {
-    throw new DocsConfigError(
-      `documentation root '${root}' does not exist in ${projectRoot}; create it or set docs.root.`,
-    );
-  }
+  return openCorpus(projectRoot, { root, ...loadDocsFile(projectRoot, root) }, rules);
+}
 
-  const settings: CorpusSettings = { root, ...loadDocsFile(projectRoot, root) };
+/**
+ * Open the corpus from settings already read (`readCheckoutDocsSettings`), so `docs.yaml` is read
+ * once for the fingerprint, the link check and the corpus. The root must be an existing directory.
+ */
+export function openCorpus(
+  projectRoot: string,
+  settings: CorpusSettings,
+  rules: DocsCorpusRules = {},
+): DocsCorpus {
+  assertDocsRoot(projectRoot, settings.root);
 
   return {
     repo: createFileSystemDocRepository({
@@ -62,6 +65,18 @@ export function openFileSystemCorpus(
   };
 }
 
+function assertDocsRoot(projectRoot: string, root: string): void {
+  if (
+    !statSync(join(projectRoot, ...root.split('/')), {
+      throwIfNoEntry: false,
+    })?.isDirectory()
+  ) {
+    throw new DocsConfigError(
+      `documentation root '${root}' does not exist in ${projectRoot}; create it or set docs.root.`,
+    );
+  }
+}
+
 export function collectCorpusProblems(
   scan: ScanResult,
   settings: CorpusSettings,
@@ -72,6 +87,10 @@ export function collectCorpusProblems(
     problems.push(
       `${file}: missing frontmatter (every authored ${settings.root}/**.md file needs it)`,
     );
+  }
+
+  for (const { error } of scan.invalidFrontmatter) {
+    problems.push(error);
   }
 
   for (const doc of scan.docs) {
@@ -92,14 +111,4 @@ export function inspectCorpus(corpus: DocsCorpus): { docs: DocRecord[]; problems
     docs: scan.docs,
     problems: collectCorpusProblems(scan, corpus.settings, corpus.validate),
   };
-}
-
-/** Scan and fully validate; throws `DocsCorpusInvalidError` on any inconsistency. */
-export function loadValidatedCorpus(corpus: DocsCorpus): DocRecord[] {
-  const { docs, problems } = inspectCorpus(corpus);
-  if (problems.length) {
-    throw new DocsCorpusInvalidError(problems);
-  }
-
-  return docs;
 }

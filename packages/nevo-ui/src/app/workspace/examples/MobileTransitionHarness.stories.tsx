@@ -129,7 +129,10 @@ export const NarrowTransitionsStayAligned: Story = {
       'Secondary -> Secondary',
       await sampleTransition(canvasElement, click('Todo history')),
     );
-    assertCleanTransition('Back', await sampleTransition(canvasElement, click('Back')));
+    assertCleanTransition(
+      'Back',
+      await sampleTransition(canvasElement, click('Back: Todo details')),
+    );
     const close = await sampleTransition(canvasElement, click('Close secondary content'));
     assertCleanTransition('Close', close);
     const exiting = close.filter((f) =>
@@ -182,7 +185,7 @@ export const NarrowRapidTransitionsStayAligned: Story = {
     const rapid = await sampleTransition(canvasElement, async () => {
       await tapWhenOnScreen(canvasElement, 'Review navigation');
       await tapWhenOnScreen(canvasElement, 'Todo history');
-      await tapWhenOnScreen(canvasElement, 'Back');
+      await tapWhenOnScreen(canvasElement, 'Back: Todo details');
       await tapWhenOnScreen(canvasElement, 'Back');
     });
     assertCleanTransition('Rapid push/back', rapid);

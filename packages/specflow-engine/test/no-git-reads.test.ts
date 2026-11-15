@@ -13,6 +13,8 @@ import {
   readRegistrySnapshot,
   resolveSpecificationForRead,
   type SpecFlowEngine,
+  inspectWorkspaceForRead,
+  inspectWorkspaces,
 } from '../src';
 import { bootstrapProjectHome, createSpecificationForTesting } from '../src/testing';
 import { createGitTestProject } from './support/git-project';
@@ -70,6 +72,11 @@ const readOperations: readonly (readonly [
   ['resolve specification', (engine, specId) => resolveSpecificationForRead(engine, specId)],
   ['registry', (engine) => readRegistrySnapshot(engine)],
   ['create-options', (engine) => inspectCreateOptions(engine)],
+  [
+    'workspace read inspection',
+    (engine) => inspectWorkspaceForRead(engine, engine.workspace.workspaceId),
+  ],
+  ['workspaces list', (engine) => inspectWorkspaces(engine)],
 ];
 
 describe('read endpoints never spawn Git (regression guard)', () => {
@@ -77,7 +84,7 @@ describe('read endpoints never spawn Git (regression guard)', () => {
     it.each(readOperations)(
       '%s spawns zero Git processes',
       async (_name, read) => {
-        if (gitEnabled && _name === 'create-options') {
+        if (gitEnabled && (_name === 'create-options' || _name === 'workspaces list')) {
           return;
         } // budgeted separately below
 

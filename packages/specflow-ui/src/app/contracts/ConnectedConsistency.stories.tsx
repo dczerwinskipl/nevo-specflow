@@ -35,7 +35,8 @@ import {
 import { catalogue } from '../../features/specs/creation/options/creationCatalogue.stories-support';
 import {
   createdSpecFixture,
-  createOptionsFixture,
+  createOptionsWireFixture,
+  workspaceApiFixture,
   type OptionsVariant,
 } from '../../features/specs/creation/options/creationOptions.stories-support';
 import { settleViewport } from '../../test-support/viewportSettle.stories-support';
@@ -212,6 +213,7 @@ function Connected({
     const services = createSpecFlowAppServices({
       authStore: auth,
       runtimeInfoApi: { getInfo: () => Promise.resolve({ dataMode: 'demo' }) },
+      workspaceApi: workspaceApiFixture(optionsVariant),
       // The canonical Full Session route (`/sessions/:sessionId`, ManagedSession) is top-level and
       // unrelated to this fixture's demo Specification/documents graph; a fixed, realistic
       // Managed-Sessions snapshot lets contract stories navigate there and see real content instead
@@ -348,7 +350,7 @@ function Connected({
             : catalogueState === 'error'
               ? Promise.reject(new Error('Catalogue unavailable'))
               : Promise.resolve(catalogue),
-        createOptions: () => Promise.resolve(createOptionsFixture(optionsVariant)),
+        createOptions: () => Promise.resolve(createOptionsWireFixture(optionsVariant)),
         create: (input) =>
           createOutcome === 'failure'
             ? Promise.reject(

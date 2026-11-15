@@ -41,7 +41,7 @@ Seek evidence in this order:
 3. the closest semantically matching established product or design-system pattern;
 4. rendered Storybook or composed-application behavior for that pattern when useful;
 5. current implementation and neighboring consumers as evidence of existing behavior;
-6. draft/ideas/prototype material as non-authoritative evidence;
+6. draft/ideas/prototype material (proposals) as evidence, not current rules;
 7. generic engineering or frontend knowledge.
 
 Search for semantic and interaction patterns, not merely components with similar markup. Prefer the closest meaningful context: the same feature, then neighboring product surfaces, then broader product/design-system patterns. Inspect component stories and meaningful consumers when their contract or usage is relevant.

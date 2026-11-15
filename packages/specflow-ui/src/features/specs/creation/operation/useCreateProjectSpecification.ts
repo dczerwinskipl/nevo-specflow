@@ -8,6 +8,7 @@ import { useNotify } from '../../../../shared/notifications/notifications';
 import { useUnmountSignal } from '../../../../shared/operations/progress/useUnmountSignal';
 import { retainRequest } from '../../../../shared/operations/retainedRequest';
 import { specsOverviewKeys } from '../../overview/data/queries';
+import { workspaceKeys } from '../../../workspaces/read-model';
 import { projectCreationKeys } from '../api/api.project';
 import type { CreateFailure } from '../errors/createFailure';
 import { createOperationLedger } from './createOperationLedger';
@@ -209,6 +210,7 @@ export function useCreateProjectSpecification(
         ledger.navigationAllowed = true;
         void cache.invalidateQueries({ queryKey: specsOverviewKeys.all });
         void cache.invalidateQueries({ queryKey: projectCreationKeys.createOptions });
+        void cache.invalidateQueries({ queryKey: workspaceKeys.list });
         notify(t('create.specificationCreated'));
         dispatch({ type: 'submit-succeeded' });
         onCreated(outcome.created);

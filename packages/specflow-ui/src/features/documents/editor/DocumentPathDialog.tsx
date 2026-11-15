@@ -9,6 +9,7 @@ import {
   DialogTitle,
   Typography,
 } from '@nevo/ui';
+import { copyText } from '../../../shared/clipboard/copyText';
 
 /**
  * The full path of the open document, wrapped and selectable, with a copy action. Touch has no
@@ -26,18 +27,7 @@ export function DocumentPathDialog({
 }) {
   const { t } = useTranslation();
   const [status, setStatus] = useState<'copied' | 'failed' | null>(null);
-  const copy = async () => {
-    try {
-      if (!navigator.clipboard?.writeText) {
-        throw new Error('Clipboard unavailable');
-      }
-
-      await navigator.clipboard.writeText(path);
-      setStatus('copied');
-    } catch {
-      setStatus('failed');
-    }
-  };
+  const copy = async () => setStatus((await copyText(path)) ? 'copied' : 'failed');
 
   return (
     <Dialog

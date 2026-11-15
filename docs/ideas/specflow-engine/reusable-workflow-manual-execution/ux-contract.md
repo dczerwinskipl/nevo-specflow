@@ -25,7 +25,7 @@ Accepted and implemented. The authoritative contracts are:
   exit gates, Task authoring, lifecycle actions, Close and Abandon;
 - [Specification Overview](../../../product/specflow/ui/specification-overview.md): the control center
   and the Tasks page;
-- [ADR 0022](../../../architecture/decisions/0022-neutral-workflow-coordinator-and-manual-execution.md):
+- [ADR 0023](../../../architecture/decisions/0023-neutral-workflow-coordinator-and-manual-execution.md):
   workflow state, attention and grouping kept apart;
 - [Task reads](../../../reference/api/task-reads.md#dashboard-grouping): the default dashboard grouping.
 

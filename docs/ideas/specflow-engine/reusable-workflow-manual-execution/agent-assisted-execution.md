@@ -15,13 +15,13 @@ summary: >
   Specification authoring, Task descriptions, dependencies and context, with
   durable Session and attempt correlation and shared Engine validation.
 related:
-  - adr.0023-tasks-are-resources
-  - adr.0022-neutral-workflow-coordinator-and-manual-execution
+  - adr.0024-tasks-are-resources
+  - adr.0023-neutral-workflow-coordinator-and-manual-execution
   - product.specflow.ui.workflow-execution
   - ideas.specflow-engine.plan-06
   - architecture.workflow.workflow-kernel
   - architecture.runtime.workspace-execution-claims
-  - reference.api.docs-search
+  - reference.api.workspace-docs
   - reference.cli.nevo-specflow-docs
 ---
 
@@ -29,12 +29,12 @@ related:
 
 **Open idea.** Manual execution, the neutral coordinator, executors and actors, Tasks as resources and
 the Ask agent attachment point are implemented
-([ADR 0023](../../../architecture/decisions/0023-tasks-are-resources.md),
-[ADR 0022](../../../architecture/decisions/0022-neutral-workflow-coordinator-and-manual-execution.md),
+([ADR 0024](../../../architecture/decisions/0024-tasks-are-resources.md),
+[ADR 0023](../../../architecture/decisions/0023-neutral-workflow-coordinator-and-manual-execution.md),
 [Manual workflow execution](../../../product/specflow/ui/workflow-execution.md#later-ask-agent-e6-not-implemented)).
 What follows is still open. Decided already: `session: reuse` after a manual step is
 `session-unavailable`, with no fresh-Session override (D10); the post action that commits a step's
-execution state is the seam for the agent push (ADR 0023, decision 11).
+execution state is the seam for the agent push (ADR 0024, decision 11).
 
 ## Product path
 
@@ -152,9 +152,9 @@ revision checks. F20 context references for Specification and Task documents res
 actual resource registry, with required/optional semantics and revision provenance.
 
 The current [`nevo-specflow docs search`](../../../reference/cli/nevo-specflow-docs.md#search)
-and [`GET /api/docs/search`](../../../reference/api/docs-search.md) search the Runtime
-project's configured **`docs.root`**. They neither search Specification/Task files nor accept
-a selected Worktree. Search may be hybrid semantic/BM25 or lexical; it is not automatically
+and [`GET /api/workspaces/:workspaceId/docs/search`](../../../reference/api/workspace-docs.md)
+search the configured **`docs.root`** of one checkout (the CLI's, or a registered workspace's).
+They do not search Specification/Task files. Search may be hybrid semantic/BM25 or lexical; it is not automatically
 wired to a running agent.
 
 For E6, bind retrieval to the verified project, Workspace/incarnation, checkout path,
@@ -171,7 +171,7 @@ Task `task.md` always come from the registered resource, never project docs sear
 
 ## Context resolution for agents
 
-Task context is authored and validated today (ADR 0023); resolving it for an agent is open:
+Task context is authored and validated today (ADR 0024); resolving it for an agent is open:
 
 - the step context carries each resolved entry as a reference `{kind, ref, path?, sha256, bytes}`
   (only `instructions` inline), in deterministic order (workflow-provided parts, then the entries in

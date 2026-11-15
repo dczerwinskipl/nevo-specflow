@@ -11,8 +11,9 @@ import { StartFormSkeleton } from './StartFormSkeleton';
 
 /**
  * The start screen's conversation column: the start form (a skeleton while the catalogue loads,
- * an alert when it cannot be read) and, on the split layout, the inactive Composer docked below it.
- * On a phone there is no Composer before Start: it would only take space from the form.
+ * an alert when it cannot be read) and, on the split layout, the inactive Composer docked below it
+ * while both fit the column. On a phone there is no Composer before Start: it would only take space
+ * from the form.
  */
 export function SessionStartColumn({
   source,
@@ -37,6 +38,7 @@ export function SessionStartColumn({
 
   return (
     <SessionStartConversation
+      composerOnlyIfFits
       composer={
         isSplit ? (
           <InertComposer id="start-message" placeholder={t('sessionStart.composer.placeholder')} />

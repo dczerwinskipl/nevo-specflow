@@ -217,9 +217,14 @@ export const ToolActionDetailMobile: Story = {
       await expect(region.querySelector('[data-workspace-detail-header]')).toBeNull();
       await expect(region.querySelector('[data-workspace-breadcrumbs]')).toBeNull();
       await expect(region.querySelector('[data-workspace-tab-rail]')).toBeNull();
-      await expect(region.querySelector('button[aria-label^="Wstecz"]')).not.toBeNull();
+      // Depth 2: the Back names the turn's Work history it returns to; depth 1 then returns to the chat.
+      await expect(
+        region.querySelector('button[aria-label="Wróć do: Historia pracy · tura 3"]'),
+      ).not.toBeNull();
       await expect(region.scrollWidth).toBeLessThanOrEqual(region.clientWidth + 1);
-      await userEvent.click(region.querySelector<HTMLElement>('button[aria-label^="Wstecz"]')!);
+      await userEvent.click(
+        region.querySelector<HTMLElement>('button[aria-label="Wróć do: Historia pracy · tura 3"]')!,
+      );
       await waitFor(() =>
         expect(
           within(secondary(canvasElement)).queryByRole('heading', {
@@ -229,7 +234,7 @@ export const ToolActionDetailMobile: Story = {
         ).toBeNull(),
       );
       await userEvent.click(
-        secondary(canvasElement).querySelector<HTMLElement>('button[aria-label^="Wstecz"]')!,
+        secondary(canvasElement).querySelector<HTMLElement>('button[aria-label="Wstecz"]')!,
       );
       await waitFor(() =>
         expect(

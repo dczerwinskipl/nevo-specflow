@@ -184,7 +184,7 @@ templates:
     filename: runbook.md
     include: optional
     preselected: true
-    content: "# {{specificationTitle}} - Runbook\n"
+    content: "# Runbook\n"
 ```
 
 Rules of a file: `kind` equals the directory, `id` equals the file name (`^[a-z][a-z0-9-]{0,31}$`), unknown keys are

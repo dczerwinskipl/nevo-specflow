@@ -74,7 +74,7 @@ const archetype = (): SpecificationArchetypeDefinitionFile => ({
       filename: 'runbook.md',
       include: 'optional',
       preselected: true,
-      content: '# {{specificationTitle}} - Runbook\n',
+      content: '# Runbook\n',
     },
   ],
 });

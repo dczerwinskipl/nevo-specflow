@@ -58,7 +58,7 @@ describe('create documents from a template', () => {
       { sleep: noSleep },
     );
     const content = await readFile(join(project.dir, 'docs', 'behaviour.md'), 'utf8');
-    expect(content).toContain('# Readable feature - Behaviour');
+    expect(content).toContain('# Behaviour');
     expect(result.documents).toMatchObject([
       { path: 'docs/behaviour.md', type: 'behaviour', sha256: sha256Hex(content) },
     ]);

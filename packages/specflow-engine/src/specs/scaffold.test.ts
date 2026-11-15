@@ -158,7 +158,7 @@ describe('createSpecificationScaffold', () => {
       input({ archetypeId: 'feature', optionalDocumentIds: ['behaviour'] }),
     );
     expect(scaffold.files[2]!.content).toBe(
-      '# My feature - Behaviour\n\n## Scenarios\n\n## Rules\n\n## Edge cases\n\n## Acceptance scenarios\n',
+      '# Behaviour\n\n## Scenarios\n\n## Rules\n\n## Edge cases\n\n## Acceptance scenarios\n',
     );
   });
 

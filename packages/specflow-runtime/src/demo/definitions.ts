@@ -145,7 +145,7 @@ export const seedArchetypes: readonly ArchetypeDefinition[] = [
         preselected: true,
         instructions: 'Give at least two options with trade-offs before the chosen structure.',
         content:
-          '# {{specificationTitle}} - Architecture\n\n## Context\n\n## Options considered\n\n## Chosen structure\n\n## Constraints\n',
+          '# Architecture\n\n## Context\n\n## Options considered\n\n## Chosen structure\n\n## Constraints\n',
       },
       {
         id: 'decisions',
@@ -155,8 +155,7 @@ export const seedArchetypes: readonly ArchetypeDefinition[] = [
         preselected: true,
         instructions:
           'Add one section block per decision; do not rewrite earlier decisions, supersede them.',
-        content:
-          '# {{specificationTitle}} - Decisions\n\n## Context\n\n## Options\n\n## Decision\n\n## Consequences\n',
+        content: '# Decisions\n\n## Context\n\n## Options\n\n## Decision\n\n## Consequences\n',
       },
       {
         id: 'research',
@@ -164,8 +163,7 @@ export const seedArchetypes: readonly ArchetypeDefinition[] = [
         filename: 'research.md',
         include: 'optional',
         instructions: 'List the questions first; every finding cites a source.',
-        content:
-          '# {{specificationTitle}} - Research\n\n## Questions\n\n## Sources\n\n## Findings\n',
+        content: '# Research\n\n## Questions\n\n## Sources\n\n## Findings\n',
       },
       {
         id: 'note',
@@ -173,7 +171,7 @@ export const seedArchetypes: readonly ArchetypeDefinition[] = [
         filename: 'note.md',
         include: 'optional',
         instructions: 'State why this note belongs here.',
-        content: '# {{specificationTitle}} - Note\n',
+        content: '# Note\n',
       },
     ],
     execution: {
@@ -216,7 +214,7 @@ export const seedArchetypes: readonly ArchetypeDefinition[] = [
         instructions:
           'Write scenarios before rules; each acceptance scenario must be independently checkable.',
         content:
-          '# {{specificationTitle}} - Behaviour\n\n## Scenarios\n\n## Rules\n\n## Edge cases\n\n## Acceptance scenarios\n',
+          '# Behaviour\n\n## Scenarios\n\n## Rules\n\n## Edge cases\n\n## Acceptance scenarios\n',
       },
       {
         id: 'ux',
@@ -226,7 +224,7 @@ export const seedArchetypes: readonly ArchetypeDefinition[] = [
         preselected: true,
         instructions: 'Cover every state of every screen, including empty and error.',
         content:
-          '# {{specificationTitle}} - UX\n\n## Flows\n\n## Screens and states\n\n## Copy\n\n## Responsive behaviour\n\n## Accessibility\n',
+          '# UX\n\n## Flows\n\n## Screens and states\n\n## Copy\n\n## Responsive behaviour\n\n## Accessibility\n',
       },
       {
         id: 'backend',
@@ -236,7 +234,7 @@ export const seedArchetypes: readonly ArchetypeDefinition[] = [
         preselected: true,
         instructions: 'Name the owner of each contract and mark every test as unit or integration.',
         content:
-          '# {{specificationTitle}} - Backend\n\n## Contracts\n\n## Data and ownership\n\n## Invariants\n\n## Errors and recovery\n\n## Verification\n',
+          '# Backend\n\n## Contracts\n\n## Data and ownership\n\n## Invariants\n\n## Errors and recovery\n\n## Verification\n',
       },
       {
         id: 'user-story',
@@ -244,7 +242,7 @@ export const seedArchetypes: readonly ArchetypeDefinition[] = [
         filename: 'user-story.md',
         include: 'optional',
         instructions: 'One story per section; keep acceptance criteria testable.',
-        content: '# {{specificationTitle}} - User story\n\n## Story\n\n## Acceptance criteria\n',
+        content: '# User story\n\n## Story\n\n## Acceptance criteria\n',
       },
       {
         id: 'decisions',
@@ -253,8 +251,7 @@ export const seedArchetypes: readonly ArchetypeDefinition[] = [
         include: 'optional',
         instructions:
           'Add one section block per decision; do not rewrite earlier decisions, supersede them.',
-        content:
-          '# {{specificationTitle}} - Decisions\n\n## Context\n\n## Options\n\n## Decision\n\n## Consequences\n',
+        content: '# Decisions\n\n## Context\n\n## Options\n\n## Decision\n\n## Consequences\n',
       },
       {
         id: 'research',
@@ -262,8 +259,7 @@ export const seedArchetypes: readonly ArchetypeDefinition[] = [
         filename: 'research.md',
         include: 'optional',
         instructions: 'List the questions first; every finding cites a source.',
-        content:
-          '# {{specificationTitle}} - Research\n\n## Questions\n\n## Sources\n\n## Findings\n',
+        content: '# Research\n\n## Questions\n\n## Sources\n\n## Findings\n',
       },
     ],
     execution: {
@@ -303,8 +299,7 @@ export const seedArchetypes: readonly ArchetypeDefinition[] = [
         include: 'optional',
         instructions:
           'Add one section block per decision; do not rewrite earlier decisions, supersede them.',
-        content:
-          '# {{specificationTitle}} - Decisions\n\n## Context\n\n## Options\n\n## Decision\n\n## Consequences\n',
+        content: '# Decisions\n\n## Context\n\n## Options\n\n## Decision\n\n## Consequences\n',
       },
       {
         id: 'research',
@@ -312,8 +307,7 @@ export const seedArchetypes: readonly ArchetypeDefinition[] = [
         filename: 'research.md',
         include: 'optional',
         instructions: 'List the questions first; every finding cites a source.',
-        content:
-          '# {{specificationTitle}} - Research\n\n## Questions\n\n## Sources\n\n## Findings\n',
+        content: '# Research\n\n## Questions\n\n## Sources\n\n## Findings\n',
       },
       {
         id: 'note',
@@ -321,7 +315,7 @@ export const seedArchetypes: readonly ArchetypeDefinition[] = [
         filename: 'note.md',
         include: 'optional',
         instructions: 'State why this note belongs here.',
-        content: '# {{specificationTitle}} - Note\n',
+        content: '# Note\n',
       },
     ],
     execution: {

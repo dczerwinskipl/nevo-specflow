@@ -23,7 +23,7 @@ templates:
     preselected: true
     instructions: Write scenarios before rules; each acceptance scenario must be independently checkable.
     content: |
-      # {{specificationTitle}} - Behaviour
+      # Behaviour
 
       ## Scenarios
 
@@ -39,7 +39,7 @@ templates:
     preselected: true
     instructions: Cover every state of every screen, including empty and error.
     content: |
-      # {{specificationTitle}} - UX
+      # UX
 
       ## Flows
 
@@ -57,7 +57,7 @@ templates:
     preselected: true
     instructions: Name the owner of each contract and mark every test as unit or integration.
     content: |
-      # {{specificationTitle}} - Backend
+      # Backend
 
       ## Contracts
 
@@ -74,7 +74,7 @@ templates:
     include: optional
     instructions: One story per section; keep acceptance criteria testable.
     content: |
-      # {{specificationTitle}} - User story
+      # User story
 
       ## Story
 
@@ -85,7 +85,7 @@ templates:
     include: optional
     instructions: Add one section block per decision; do not rewrite earlier decisions, supersede them.
     content: |
-      # {{specificationTitle}} - Decisions
+      # Decisions
 
       ## Context
 
@@ -100,7 +100,7 @@ templates:
     include: optional
     instructions: List the questions first; every finding cites a source.
     content: |
-      # {{specificationTitle}} - Research
+      # Research
 
       ## Questions
 

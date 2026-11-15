@@ -133,35 +133,10 @@ ai:
     minSimilarity: 0.36
 ```
 
-Measured with `pnpm docs:eval --random 150` (60 answerable questions and terms, 178 without an
-answer: 10 real questions and 168 nonsense strings, 150 of them generated), top 10:
+MEASUREMENT_PLACEHOLDER
 
-| Setting                                     | Recall@10 | MRR   | Partial words R@10 | Correct questions MRR | Without an answer, with a vector-only result |
-| ------------------------------------------- | --------- | ----- | ------------------ | --------------------- | -------------------------------------------- |
-| no instruction, no floor                    | 0.753     | 0.592 | 0.400              | 0.717                 | 167 of 178                                   |
-| earlier instruction (`Given a question, …`) | 0.850     | 0.625 | 0.650              | 0.708                 | 168 of 178                                   |
-| earlier instruction, floor 0.52             | 0.825     | 0.635 | 0.550              | 0.736                 | 32 of 178                                    |
-| instruction above, no floor                 | 0.925     | 0.707 | 0.900              | 0.740                 | 167 of 178                                   |
-| **instruction above, floor 0.36**           | 0.875     | 0.708 | 0.600              | 0.757                 | 19 of 178 (no real question)                 |
-| instruction above, floor 0.42               | 0.833     | 0.655 | 0.500              | 0.734                 | 0 of 178                                     |
-
-The instruction above (the model's own retrieval task line, then a line break and `Query: `) ranks
-best on its own; with it the similarity scale is about 0.1 lower than with the earlier one, so a
-floor from another instruction does not apply. Floor 0.36 keeps correct questions and typos as
-they are and removes nine in ten nonsense results; its cost is partial words: two of the ten lose every expected document, and from 0.38 on more of
-them do. 0.42 removes every nonsense result but loses six questions, mostly partial words. Without
-a floor, everything stays as before: every query gets results found by meaning.
-
-These numbers are optimistic: the instruction and the floor were chosen on the same questions they
-are reported on. The margin below 0.38 rests on only ten partial-word questions.
-
-A held-out set written afterwards (`tools/docs/eval/questions-holdout.yaml`: 20 answerable, 5
-without an answer, 150 nonsense strings of another seed) confirms the instruction (Recall@10 0.675
-without it, 0.800 with it) and the floor's trade-off, with a larger cost for partial words: at 0.36
-correct questions and typos keep their documents, nonsense with a vector-only result falls from 148
-to 15 of 150, and two of eight partial words lose every expected document (Recall@10 0.800 to
-0.775). 0.42 does worse there (six lost, three of them typos), so it is not a safe stricter
-choice; 0.32 loses one partial word and leaves 41 of 150.
+The commands, the corpus and the per-query results are in the
+[evaluation report](../../../tools/docs/eval/reports/2026-11-qwen3-0.6b-min-similarity.md).
 
 Without a local endpoint, `pnpm docs:semantic status` exits 1 (semantic search is enabled but
 unavailable) while `pnpm docs:search` keeps answering lexically; that is expected.

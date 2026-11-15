@@ -228,7 +228,7 @@ are not fused (a section exactly at it is). It applies before reciprocal rank fu
 scores, and never to word matches: a section the BM25 ranking holds or a document the frontmatter
 ranking holds stays in the result whatever its similarity. A search may then return fewer documents
 than its limit, or none, still with `mode: hybrid`. The Runtime's `proposalsLeftOut` is counted
-with the same floor.
+with the same floor. `minSimilarity` is a relevance filter for vector-only candidates, not a confidence measure of whether the documentation answers the question.
 
 ```yaml
 # .nevo/local/config.yaml — a choice for this model and instruction only

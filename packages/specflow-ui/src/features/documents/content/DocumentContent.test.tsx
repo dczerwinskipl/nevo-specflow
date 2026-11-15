@@ -16,6 +16,8 @@ function renderDocument({
   expectedRevision = 'r1',
   network = false,
   timeout = false,
+  content = 'Protected document body',
+  omitTitle,
 }: {
   status?: number;
   id?: string;
@@ -23,10 +25,12 @@ function renderDocument({
   expectedRevision?: string;
   network?: boolean;
   timeout?: boolean;
+  content?: string;
+  omitTitle?: string;
 } = {}) {
   const client = createSpecFlowQueryClient();
   const key = documentKeys.detail('spec', 'doc', expectedRevision);
-  client.setQueryData(key, { id, revision, title: 'Document', content: 'Protected document body' });
+  client.setQueryData(key, { id, revision, title: 'Document', content });
   if (status || network || timeout) {
     client
       .getQueryCache()
@@ -45,7 +49,12 @@ function renderDocument({
     <QueryClientProvider client={client}>
       <TestServicesRouterContext services={createSpecFlowAppServices()}>
         <LocalizationProvider instance={createSpecFlowI18n('en')}>
-          <DocumentContent specId="spec" documentId="doc" expectedRevision={expectedRevision} />
+          <DocumentContent
+            specId="spec"
+            documentId="doc"
+            expectedRevision={expectedRevision}
+            omitTitle={omitTitle}
+          />
         </LocalizationProvider>
       </TestServicesRouterContext>
     </QueryClientProvider>,
@@ -85,4 +94,17 @@ describe('query-facing Document content retention', () => {
     expect(html).not.toContain('data-loading-shape');
     expect(html).not.toContain('initial-content-appearance');
   });
+  it.each([undefined, 'Overview'])(
+    'shows a leading YAML block as Properties, never as markdown text (title omitted: %s)',
+    (omitTitle) => {
+      const html = renderDocument({
+        content: '---\nstatus: draft\nowner: ann\n---\n# Overview\n\nThe summary.\n',
+        omitTitle,
+      });
+      expect(html).toContain('data-document-properties');
+      expect(html).toContain('The summary.');
+      expect(html).not.toContain('status: draft');
+      expect(html).not.toContain('<hr');
+    },
+  );
 });

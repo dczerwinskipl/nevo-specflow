@@ -139,6 +139,23 @@ function assert(condition: unknown, message: string): asserts condition {
   }
 }
 
+/**
+ * Polls until `read` is truthy, up to 12 s (Mermaid loads on first use and CI renders slower; no
+ * storybook/test import in the design-system package).
+ */
+async function until<T>(read: () => T | null | undefined | false): Promise<T> {
+  for (let attempt = 0; attempt < 240; attempt++) {
+    const value = read();
+    if (value) {
+      return value;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+
+  throw new Error('Timed out.');
+}
+
 function overflowOf(element: Element) {
   return element.scrollWidth - element.clientWidth;
 }
@@ -235,5 +252,82 @@ export const LocalizedRegionLabels: Story = {
     const tables = await canvas.findAllByRole('group', { name: 'Tabela' });
     assert(tables.length === 2, 'Table labels should be localized.');
     assert(canvas.getByRole('group', { name: 'Blok kodu' }), 'Code label should be localized.');
+  },
+};
+
+const diagrams = `## Runtime
+
+\`\`\`mermaid
+flowchart LR
+  person([Person])
+  subgraph host["Long-lived host"]
+    http["HTTP server<br/>/api + built UI"] --> features["Runtime features"]
+    features --> engine["Engine (library)"]
+    features --> store[("Session store<br/>SQLite, worker thread")]
+  end
+  browser["Browser: UI"]
+  providers["Provider CLIs<br/>(child processes)"]
+  git[("Git repository<br/>Project Home + worktrees")]
+  person --> browser
+  browser -- "HTTP JSON + SSE" --> http
+  features -- "spawn, stdio, process tree" --> providers
+  engine --> git
+  providers -- "work in the bound workspace" --> git
+\`\`\`
+
+## Saving a document
+
+\`\`\`mermaid
+sequenceDiagram
+  participant UI
+  participant Runtime
+  participant Git
+  UI->>Runtime: Save (expected revision)
+  Runtime->>Git: Commit
+  Git-->>Runtime: New revision
+  Runtime-->>UI: Saved
+\`\`\`
+
+## A diagram with a mistake
+
+\`\`\`mermaid
+flowchart LR
+  a -->
+\`\`\`
+`;
+
+/**
+ * Fenced `mermaid` blocks drawn as diagrams (`diagrams`): Mermaid loads on the first one, themed
+ * from the design tokens. A wide diagram fits the column down to 10 px text and pans beyond; a
+ * small one keeps its natural size. Zoom, fit and full screen sit above each drawing; Ctrl/Cmd +
+ * wheel or pinch zoom, a drag pans, and the focused drawing answers `+`, `-`, the arrows and `0`.
+ * One that cannot be drawn keeps its code with a quiet note.
+ */
+export const Diagrams: Story = {
+  args: { source: diagrams, diagrams: true },
+  render: (args) => frame(args, '40rem'),
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    // Both valid diagrams drawn (findAll would settle on the first one; CI renders slower).
+    await until(() => canvas.queryAllByRole('img', { name: 'Diagram' }).length === 2);
+    await canvas.findByText('Diagram could not be rendered', undefined, { timeout: 12000 });
+    assert(canvas.getByRole('group', { name: 'Code block' }), 'The broken diagram keeps its code.');
+    assert(!/syntax error/i.test(canvasElement.textContent ?? ''), 'No Mermaid error graphic.');
+    assert(!document.querySelector('[id^="dnevo-markdown-diagram"]'), 'No leftover render node.');
+    const [flowchart] = canvas.getAllByRole('group', { name: 'Diagram' });
+    assert(flowchart, 'The flowchart should have its zoom region.');
+    const scale = () => Number(flowchart.dataset.diagramScale);
+    const fitted = scale();
+    assert(fitted >= 10 / 14 - 0.001 && fitted < 1, 'The wide flowchart fits down to 10 px text.');
+    await userEvent.click(canvas.getAllByRole('button', { name: 'Zoom in' })[0]!);
+    assert(scale() > fitted, 'Zoom in enlarges the drawing.');
+    assert(overflowOf(frameOf(canvasElement)) <= 0, 'The page must not overflow.');
+    const open = canvas.getAllByRole('button', { name: 'Open diagram full screen' })[0]!;
+    await userEvent.click(open);
+    // The dialog is portalled out of the canvas; it shows its own copy of the diagram.
+    await until(() => document.querySelector('[role="dialog"] [role="img"] svg'));
+    await userEvent.keyboard('{Escape}');
+    await until(
+      () => document.activeElement === open && !document.querySelector('[role="dialog"]'),
+    );
   },
 };

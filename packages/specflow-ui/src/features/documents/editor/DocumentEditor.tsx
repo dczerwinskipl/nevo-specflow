@@ -423,7 +423,7 @@ function PreviewScroller({
       }
     };
   }, [navigatorRef, goTo, measureActive]);
-  const text = <MarkdownDocument labels={markdownLabels} source={body} sourceLines />;
+  const text = <MarkdownDocument labels={markdownLabels} source={body} sourceLines diagrams />;
   const columns = wide && (contents || guidance);
 
   return (

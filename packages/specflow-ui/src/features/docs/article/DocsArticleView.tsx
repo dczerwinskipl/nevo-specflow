@@ -159,6 +159,7 @@ export function DocsArticleView({
       <MarkdownDocument
         source={body}
         sourceLines
+        diagrams
         labels={markdownLabels}
         renderLink={renderers.renderLink}
         renderImage={renderers.renderImage}

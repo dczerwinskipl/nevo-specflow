@@ -29,6 +29,7 @@ export default defineConfig({
         /^@tanstack\//,
         /^clsx(?:\/.*)?$/,
         /^lucide-react(?:\/.*)?$/,
+        /^mermaid(?:\/.*)?$/,
         /^react(?:\/.*)?$/,
         /^react-aria-components(?:\/.*)?$/,
         /^react-dom(?:\/.*)?$/,

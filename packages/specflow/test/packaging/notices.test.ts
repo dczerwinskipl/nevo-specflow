@@ -4,7 +4,10 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { buildThirdPartyNotices } from '../../packaging/notices';
+import {
+  buildThirdPartyNotices,
+  discoverThirdPartyDependencyClosure,
+} from '../../packaging/notices';
 
 const dirs: string[] = [];
 
@@ -61,6 +64,46 @@ describe('buildThirdPartyNotices', () => {
 
     expect(() => buildThirdPartyNotices([{ name: 'unknown-license', root }])).toThrow(
       /neither a LICENSE file nor package\.json license metadata/,
+    );
+  });
+});
+
+describe('discoverThirdPartyDependencyClosure', () => {
+  function workspace(dependencies: Record<string, string>) {
+    const root = mkdtempSync(join(tmpdir(), 'nevo-closure-'));
+    dirs.push(root);
+    const app = join(root, 'packages', 'app');
+    mkdirSync(app, { recursive: true });
+    writeFileSync(join(app, 'package.json'), JSON.stringify({ name: 'app', dependencies }));
+
+    return { root, app };
+  }
+
+  it('finds an installed dependency whose exports hide package.json and point at a missing file', () => {
+    const { root, app } = workspace({ 'hidden-exports': '2.0.0' });
+    const dependency = join(app, 'node_modules', 'hidden-exports');
+    mkdirSync(dependency, { recursive: true });
+    // As @upsetjs/venn.js 2.0.0 (a mermaid dependency): no "./package.json" export, and the
+    // `require` target does not exist.
+    writeFileSync(
+      join(dependency, 'package.json'),
+      JSON.stringify({
+        name: 'hidden-exports',
+        version: '2.0.0',
+        exports: { '.': { import: './build/index.esm.js', require: './build/index.js' } },
+      }),
+    );
+
+    expect(discoverThirdPartyDependencyClosure(app, root).map((pkg) => pkg.name)).toEqual([
+      'hidden-exports',
+    ]);
+  });
+
+  it('still fails when a required dependency is not installed', () => {
+    const { root, app } = workspace({ 'not-installed': '1.0.0' });
+
+    expect(() => discoverThirdPartyDependencyClosure(app, root)).toThrow(
+      /Could not resolve production dependency not-installed/,
     );
   });
 });

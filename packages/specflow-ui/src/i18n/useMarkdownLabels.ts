@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { MarkdownDocumentLabels } from '@nevo/ui';
 
-/** Localized accessible names the shared Markdown renderer generates (tables, code, task state). */
+/** Localized accessible names the shared Markdown renderer generates (tables, code, task state, diagrams). */
 export function useMarkdownLabels(): MarkdownDocumentLabels {
   const { t } = useTranslation();
 
@@ -12,6 +12,13 @@ export function useMarkdownLabels(): MarkdownDocumentLabels {
       codeBlock: t('specification.markdownCodeBlock'),
       completedTask: t('specification.markdownTaskDone'),
       incompleteTask: t('specification.markdownTaskOpen'),
+      diagram: t('specification.markdownDiagram'),
+      diagramFailed: t('specification.markdownDiagramFailed'),
+      diagramZoomIn: t('specification.markdownDiagramZoomIn'),
+      diagramZoomOut: t('specification.markdownDiagramZoomOut'),
+      diagramReset: t('specification.markdownDiagramReset'),
+      diagramFullScreen: t('specification.markdownDiagramFullScreen'),
+      diagramClose: t('common.close'),
     }),
     [t],
   );

@@ -56,6 +56,10 @@ describe('Icon', () => {
       'panels-top-left',
       'panel-right',
       'pin',
+      'zoom-in',
+      'zoom-out',
+      'zoom-fit',
+      'fullscreen',
     ] as const;
     for (const name of actions) {
       expect(renderToStaticMarkup(<Icon name={name} />)).toContain('<svg');

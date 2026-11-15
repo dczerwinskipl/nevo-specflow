@@ -289,9 +289,12 @@ live in `@nevo/specflow-contracts`.
 
 - Documentation discovery is a product contract defined here, not inherited from `tools/docs`;
   changing it is a product change.
-- This repository dogfoods the capability without being an initialized SpecFlow project: it commits
+- (Later, 2026-11-14: the repository became an initialized SpecFlow project; see
+  [dogfooding](../../engineering/repository/dogfooding.md). Its `docs` section is unchanged.)
+  When this decision was made, the repository dogfooded the capability without being an
+  initialized SpecFlow project: it committed
   a `.nevo/config.yaml` with only the `docs` section (the semantic search opt-in) and a
-  `docs/docs.yaml` that declares its taxonomy — the current `scope` and `areas` vocabulary,
+  `docs/docs.yaml` that declared its taxonomy — the current `scope` and `areas` vocabulary,
   `ideas/` as the non-authoritative prefix and `templates/` as an excluded prefix. Its root
   `pnpm docs:*` scripts build only `@nevo/specflow-docs` and its dependencies and run the same
   `docs` command adapter the product shell mounts, so agent lookups stay fast and do not need the

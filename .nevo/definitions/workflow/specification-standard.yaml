@@ -1,0 +1,100 @@
+kind: workflow
+schemaVersion: 1
+id: specification-standard
+version: 1
+title: Standard Specification
+description: Requirements with the owner, Specification, solution design, a breakdown into draft Tasks with a review that approves them, then waiting for the Tasks and owner acceptance.
+subject: specification
+entryStep: requirements
+steps:
+  - id: requirements
+    kind: work
+    title: Gather requirements
+    executor: agent
+    archetype: spec-writer
+    interaction: interactive
+    purpose: Agree on the goal, scope, constraints and acceptance with the owner in conversation.
+    transitions:
+      - id: agreed
+        label: Requirements agreed
+        to: { step: specification }
+        continuation: auto
+        session: reuse
+  - id: specification
+    kind: work
+    title: Write the Specification
+    executor: agent
+    archetype: spec-writer
+    purpose: Write the Specification documents from the agreed requirements.
+    transitions:
+      - id: written
+        to: { step: solution }
+        continuation: auto
+  - id: solution
+    kind: work
+    title: Design the solution
+    executor: agent
+    archetype: solution-designer
+    purpose: Design the solution and record its decisions.
+    transitions:
+      - id: designed
+        to: { step: breakdown }
+        continuation: auto
+  - id: breakdown
+    kind: work
+    title: Break the solution down
+    executor: agent
+    archetype: task-planner
+    purpose: Draft the Tasks, each with its task type, dependencies and verification; the finish input lists every draft Task.
+    produces: tasks
+    transitions:
+      - id: proposed
+        to: { step: breakdown-review }
+        continuation: auto
+  - id: breakdown-review
+    kind: work
+    title: Review the breakdown
+    executor: agent
+    archetype: reviewer
+    purpose: Check that the Specification, the solution and the draft Tasks are complete and consistent.
+    transitions:
+      - id: approved
+        result: pass
+        to: { step: implementation }
+        effects: [approve-draft-tasks]
+      - id: changes-requested
+        result: fail
+        to: { step: breakdown }
+        feedback: required
+        continuation: auto
+  - id: implementation
+    kind: wait-for-tasks
+    title: Implementation
+    purpose: Wait until every Task is finished. A Task that escalates sends the Specification back to the breakdown.
+    transitions:
+      - id: tasks-finished
+        on: tasks-finished
+        to: { step: acceptance }
+      - id: task-escalated
+        on: task-escalated
+        label: A Task needs a Specification change
+        to: { step: breakdown }
+        feedback: required
+        continuation: owner-action
+  - id: acceptance
+    kind: work
+    title: Acceptance
+    executor: human
+    purpose: The owner accepts the implemented Specification.
+    transitions:
+      - id: accepted
+        to: { terminal: completed }
+returns:
+  - step: requirements
+    label: Back to requirements
+  - step: specification
+    label: Back to the Specification
+  - step: solution
+    label: Back to the solution
+  - step: breakdown
+    label: Add or change Tasks

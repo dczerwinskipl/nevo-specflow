@@ -1,0 +1,9 @@
+kind: document-type
+schemaVersion: 1
+id: user-story
+title: User story
+icon: book-user
+description: One or more user stories (as a ... I want ... so that ...) with their acceptance criteria.
+useWhen: The team works from stories and wants them kept next to the specification.
+instructions: Write stories as 'As a <role> I want <capability> so that <benefit>', each with acceptance criteria. Keep stories small and independent and link them to the behaviour they imply.
+defaultFilename: user-story.md

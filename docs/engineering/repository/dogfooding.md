@@ -11,8 +11,9 @@ summary: >
   `pnpm dogfood:install` builds the real distributable, packs it, installs THAT tarball
   globally with pnpm, and smokes the installed `nevo-specflow`. It deliberately uses a
   tarball — not a workspace link — so it catches packaging problems a linked install
-  would hide. This repository's `pnpm docs:*` scripts run the product documentation command over a
-  documentation-only configuration; the repository is not an initialized SpecFlow project.
+  would hide. The repository is itself an initialized SpecFlow project (no sign-in, one local
+  admin, managed worktrees into main), so its own build can run on it; its `pnpm docs:*` scripts run
+  the product documentation command over the same configuration.
 related:
   - adr.0020-documentation-discovery-is-a-product-capability
   - engineering.repository.product-packaging
@@ -70,21 +71,67 @@ nevo-specflow start      # starts the configured long-running Runtime server
 
 Remove it with `pnpm remove -g @nevo/specflow`.
 
-## This repository uses the documentation capability
+## This repository is a SpecFlow project
 
-The repository uses the product documentation capability without being an initialized SpecFlow
-project ([ADR 0020](../../architecture/decisions/0020-documentation-discovery-is-a-product-capability.md)).
-It commits two files:
+The repository runs SpecFlow on itself. `nevo-specflow init` wrote its configuration, and it commits:
 
-- `.nevo/config.yaml` with only the `docs` section: the semantic search opt-in
-  (`docs.search.semantic: true`; `docs.root` is the default `docs`). It has no `runtime` section,
-  so `nevo-specflow start` and `nevo-specflow project bootstrap` refuse and name
-  `nevo-specflow init`.
+- `.nevo/config.yaml`:
+  - `docs`: the semantic search opt-in (`docs.search.semantic: true`; `docs.root` is the default
+    `docs`), see [ADR 0020](../../architecture/decisions/0020-documentation-discovery-is-a-product-capability.md);
+  - `runtime`: the Runtime on `127.0.0.1:4318` without sign-in (`authentication.mode: none`), one
+    user `dominikczerwinski` with the `admin` role;
+  - `git`: managed worktrees with the `feature/{key}-{slug}` branch pattern, integrating into
+    `main`, which is protected.
+- `.nevo/definitions/`: the default workflow, archetype and task-type definitions (23 YAML
+  definitions and one Markdown template). They belong to the project and may drift from the seeds
+  (ADR 0017); `pnpm check:quality` validates them (`pnpm definitions:check`, the same check as
+  `nevo-specflow definitions validate .nevo/definitions`).
 - `docs/docs.yaml`, the documentation settings: the `scope` and `areas` vocabulary, `ideas/` as
   proposals and `templates/` excluded from the corpus.
 
-An embedding endpoint is a workstation choice and belongs in the git-ignored
-`.nevo/local/config.yaml` ([local setup](local-setup.md)).
+Sessions are not configured, so the Sessions capability stays off. Sign-in can be enabled later
+(for example OIDC) by editing `runtime.authentication`
+([authorization](../../reference/configuration/authorization.md)).
+
+Each clone needs its own git-ignored `.nevo/local/config.yaml` and a designated Project Home,
+because `init` refuses a configuration that already has `runtime`:
+
+```yaml
+# .nevo/local/config.yaml
+runtime:
+  authentication:
+    localUserId: dominikczerwinski
+```
+
+```bash
+nevo-specflow project bootstrap   # once per clone, in the primary checkout
+nevo-specflow start               # http://127.0.0.1:4318
+```
+
+An embedding endpoint is a workstation choice and belongs in the same local file
+([local setup](local-setup.md)). The Runtime reads it when it starts.
+
+**One local operator.** The configuration is meant for a single person on their own workstation:
+every clone that sets `localUserId: dominikczerwinski` acts as that one administrator. Without
+`localUserId`, `authentication.mode: none` disables Runtime access control altogether rather than
+using the assigned role ([authorization](../../reference/configuration/authorization.md#authentication-mode-interaction)),
+and `project bootstrap` does not change that. Another contributor adds their own user and
+assignment, or the project enables sign-in.
+
+**Finishing a Specification with a pull request.** This repository merges through GitHub pull
+requests with squash merge. Every Close that removes a linked worktree (`specs worktree close`,
+`specs workspace close`) integrates the branch into the local `main`; `protectedBranches: [main]`
+blocks Engine commits on `main`, not that integration (ADR 0013). After a squash merge the local
+`main` already holds the change, so integrating the original branch again would duplicate it.
+The safe path today:
+
+1. On the feature branch, before the pull request merges, run
+   `nevo-specflow specs close <spec-id> --archive-only --preview`, then `--yes`. The archival move
+   becomes part of the pull request; nothing is merged locally and the worktree stays.
+2. Merge the pull request on GitHub, then update the local `main` with `git pull`.
+3. Do not run an integrating Close for that branch. Removing the worktree after an external merge
+   is not supported yet ([#157](https://github.com/dczerwinskipl/nevo-specflow/issues/157)); leave
+   it in place until then.
 
 The root `pnpm docs:*` scripts are the product `nevo-specflow docs` command: `tools/docs` mounts the
 same command adapter with this repository as the project, adds `adr new` and the ADR rules, and

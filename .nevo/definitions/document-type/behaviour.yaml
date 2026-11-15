@@ -1,0 +1,9 @@
+kind: document-type
+schemaVersion: 1
+id: behaviour
+title: Behaviour
+icon: list-ordered
+description: "Observable product behaviour: scenarios, rules, edge cases and acceptance scenarios, independent of layout and implementation."
+useWhen: The change alters what the product does for a user or a caller.
+instructions: Describe what the product does as observable scenarios (given/when/then or short numbered steps), the rules behind them and the edge and failure cases, in the terms of the user or caller. Do not describe screens, layout or implementation. Every acceptance scenario must be verifiable by someone who has not read the code.
+defaultFilename: behaviour.md

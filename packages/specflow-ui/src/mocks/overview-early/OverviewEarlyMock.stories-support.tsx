@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   AppContent,
   AppContentContainer,
@@ -158,11 +159,11 @@ function Summary() {
 }
 
 /** "Step 2 of 7 · next: Design the solution" for an active work step. */
-function progressLine(scenario: EarlyScenario): string {
+function progressLine(scenario: EarlyScenario): string | undefined {
   const index = stepIndex(scenario);
   const next = nextStepTitle(scenario);
   if (index < 0) {
-    return `${workflowSteps.length} steps`;
+    return undefined;
   }
 
   return `Step ${index + 1} of ${workflowSteps.length}${next ? ` · next: ${next}` : ''}`;
@@ -194,9 +195,11 @@ function Now({ scenario }: { scenario: EarlyScenario }) {
               {purpose}
             </Typography>
           ) : null}
-          <Typography as="p" variant="body-sm" className="text-content-muted">
-            {progressLine(scenario)}
-          </Typography>
+          {progressLine(scenario) ? (
+            <Typography as="p" variant="body-sm" className="text-content-muted">
+              {progressLine(scenario)}
+            </Typography>
+          ) : null}
         </div>
       }
       actions={
@@ -265,12 +268,8 @@ function Documents({ scenario, openId }: { scenario: EarlyScenario; openId?: str
             key={doc.id}
             name={doc.filename}
             glyph={typeIcon[doc.id]}
-            lead={doc.id === 'overview'}
             state={doc.state === 'template' ? { text: 'Template only' } : undefined}
-            details={[
-              `Type: ${doc.title}`,
-              doc.state === 'template' ? doc.guidance : `Updated ${doc.updatedMinutesAgo} min ago`,
-            ]}
+            details={[`Type: ${doc.title}`, ...(doc.state === 'template' ? [doc.guidance] : [])]}
             spokenDetail={doc.title}
             current={doc.id === openId}
             onOpen={noop}
@@ -325,10 +324,10 @@ function Sessions({ scenario }: { scenario: EarlyScenario }) {
       />
       <EmptyState
         variant="inline"
-        title="No sessions yet"
+        title="This specification has no sessions yet."
         actions={
-          <Button variant="secondary" size="sm" leadingIcon="chat">
-            Start session
+          <Button variant="secondary" size="sm" leadingIcon="chat-plus">
+            New session
           </Button>
         }
       />
@@ -339,21 +338,6 @@ function Sessions({ scenario }: { scenario: EarlyScenario }) {
 /* ------------------------------------------------------------------------------------------ */
 /* Always-present work sections (variant D)                                                     */
 /* ------------------------------------------------------------------------------------------ */
-
-/** Requires attention with no items: its header and one inline empty line. */
-function AttentionEmpty() {
-  return (
-    <WorkspaceSection aria-labelledby="mock-attention-heading">
-      <WorkspaceSection.Header
-        id="mock-attention-heading"
-        headingTag="h2"
-        title="Requires attention"
-        icon="triangle-alert"
-      />
-      <EmptyState variant="inline" title="Nothing needs your attention right now" />
-    </WorkspaceSection>
-  );
-}
 
 /**
  * Tasks: the production summary once Tasks exist; before that its header and the Tasks page's own
@@ -367,7 +351,12 @@ function Tasks({ scenario }: { scenario: EarlyScenario }) {
       actions: { openTasks: noop, tasksHref: () => '#tasks' },
     } as unknown as SpecificationWorkSectionContext;
 
-    return <TasksSummarySection {...context} />;
+    // Proposed production change: the group line wraps to two lines instead of truncating.
+    return (
+      <div className="[&_.truncate]:line-clamp-2 [&_.truncate]:whitespace-normal">
+        <TasksSummarySection {...context} />
+      </div>
+    );
   }
 
   return (
@@ -403,7 +392,7 @@ function OverviewBody({ scenario, openId }: { scenario: EarlyScenario; openId?: 
   );
   const work = [
     block('now', true, <Now scenario={scenario} />),
-    block('attention', false, <AttentionEmpty />),
+    // Requires attention is omitted without items (owner decision): an empty one reads as work.
     block('tasks', false, <Tasks scenario={scenario} />),
   ];
   const context = (opensColumn: boolean) => [
@@ -501,22 +490,41 @@ function Workspace({ scenario, secondary = 'none' }: OverviewEarlyMockProps) {
   );
 }
 
+/** The proposed copy of the not-started Now line, the same shape as "Step 2 of 7 · next: …". */
+function useMockStrings() {
+  const { i18n } = useTranslation();
+  i18n.addResource(
+    'en',
+    'translation',
+    'workflowExecution.now.firstStep',
+    'First step · {{title}}',
+  );
+}
+
+function MockStrings({ children }: { children: ReactNode }) {
+  useMockStrings();
+
+  return children;
+}
+
 export function OverviewEarlyMock(props: OverviewEarlyMockProps): ReactNode {
   const { width, height = 900 } = props;
 
   return (
     <StoryLocalization locale="en">
-      <TooltipProvider>
-        <div style={{ width, height }} data-mock-frame={width}>
-          <AppShell
-            navigation={<Navigation />}
-            style={{ height: '100%' }}
-            labels={{ navigationTitle: 'Navigation' }}
-          >
-            <Workspace key={JSON.stringify(props)} {...props} />
-          </AppShell>
-        </div>
-      </TooltipProvider>
+      <MockStrings>
+        <TooltipProvider>
+          <div style={{ width, height }} data-mock-frame={width}>
+            <AppShell
+              navigation={<Navigation />}
+              style={{ height: '100%' }}
+              labels={{ navigationTitle: 'Navigation' }}
+            >
+              <Workspace key={JSON.stringify(props)} {...props} />
+            </AppShell>
+          </div>
+        </TooltipProvider>
+      </MockStrings>
     </StoryLocalization>
   );
 }

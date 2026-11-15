@@ -289,14 +289,17 @@ export function sessionsFor(scenario: EarlyScenario): readonly SessionSummary[] 
     ];
   }
 
-  if (scenario === 'write-spec-session') {
+  // The Session from step 2 stays with the Specification after the breakdown created Tasks.
+  if (scenario === 'write-spec-session' || scenario === 'tasks-created') {
+    const later = scenario === 'tasks-created';
+
     return [
       {
         id: 'spec',
         title: 'Write the cutoff Specification documents',
-        navigationStatus: 'active',
+        navigationStatus: later ? 'quiet' : 'active',
         taskCount: 0,
-        updatedAt: minutesAgo(1),
+        updatedAt: minutesAgo(later ? 26 : 1),
         providerId: 'claude',
         providerTitle: 'Claude',
         modelId: 'claude-sonnet-5-5',

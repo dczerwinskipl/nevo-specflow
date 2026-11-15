@@ -19,7 +19,7 @@ import {
 } from '../app/run-eval.js';
 import { validateAdrs } from '../domain/adr.js';
 import { validateRoadmapTables } from '../domain/markdown-tables.js';
-import { generateRandomQueries } from '../domain/random-queries.js';
+import { generateRandomQueries, RANDOM_QUERY_SEED } from '../domain/random-queries.js';
 import { createAdrFiles } from '../infra/adr-files.js';
 import { readEvalQuestions } from '../infra/eval-questions.js';
 
@@ -137,6 +137,11 @@ function addEvalCommand(program: Command, ctx: LauncherContext): void {
       'add <count> generated nonsense strings (seeded) to the questions',
       '0',
     )
+    .option(
+      '--random-seed <seed>',
+      'seed of the --random strings; another seed for a held-out check',
+      String(RANDOM_QUERY_SEED),
+    )
     .option('--json', 'emit JSON on stdout', false)
     .action(
       async (opts: {
@@ -144,12 +149,13 @@ function addEvalCommand(program: Command, ctx: LauncherContext): void {
         minSimilarity?: string;
         queryInstruction?: string | boolean;
         random: string;
+        randomSeed: string;
         json: boolean;
       }) => {
         const project = await ctx.resolveProject();
         const questions = [
           ...readEvalQuestions(join(project.root, opts.questions)),
-          ...generateRandomQueries(Number(opts.random)),
+          ...generateRandomQueries(Number(opts.random), Number(opts.randomSeed)),
         ];
         const report = await runEval(
           project,

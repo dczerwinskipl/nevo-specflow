@@ -21,5 +21,6 @@ describe('generateRandomQueries', () => {
     expect(generateRandomQueries(0)).toEqual([]);
     expect(() => generateRandomQueries(Number.NaN)).toThrow(RangeError);
     expect(() => generateRandomQueries(-1)).toThrow(RangeError);
+    expect(() => generateRandomQueries(1, Number.NaN)).toThrow(RangeError);
   });
 });

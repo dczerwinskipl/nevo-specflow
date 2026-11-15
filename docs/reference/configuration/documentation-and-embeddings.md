@@ -132,7 +132,8 @@ An absent or empty file means all defaults. An unknown key at the top level or u
 an error naming the file. The file is not part of the corpus: only `*.md` files are scanned,
 validated and indexed. It is read whenever a corpus is opened: by every `docs` command, and by a
 running Runtime on every documentation request, which re-reads the `docs` settings and `docs.yaml`
-of the requested checkout (a change takes effect on the next request, with no restart). Document
+of the requested checkout (a change takes effect on the next request, with no restart; the
+exception is `ai.embeddings`, `minSimilarity` included, which the Runtime reads only at start). Document
 types, required fields and statuses are the product frontmatter contract and are not configurable.
 
 A document under a `proposals` prefix is a **proposal**: an idea or plan, not a current rule.
@@ -242,7 +243,7 @@ ai:
 There is **no default**, deliberately: absent, every section with a positive similarity is fused,
 as before. The key is not part of the index identity (changing it rebuilds nothing). Like the other
 keys, the local value wins over the project's. The CLI reads it on every command; a running Runtime
-uses the value it was started with.
+uses the value it was started with, so restart the Runtime after changing it.
 
 **Choosing a cutoff.** The similarity scale belongs to the model and the query instruction, not
 to the product: with `qwen3-embedding:0.6b` on this repository, the best section of a real question

@@ -148,10 +148,20 @@ answer: 10 real questions and 168 nonsense strings, 150 of them generated), top 
 The instruction above (the model's own retrieval task line, then a line break and `Query: `) ranks
 best on its own; with it the similarity scale is about 0.1 lower than with the earlier one, so a
 floor from another instruction does not apply. Floor 0.36 keeps correct questions and typos as
-they are and removes nine in ten nonsense results; its cost is partial words: two of ten (`commi`,
-`autoryz`) lose every expected document, and from 0.38 on more of them do. 0.42 removes every
-nonsense result but loses six questions, mostly partial words. Without a floor, everything stays as
-before: every query gets results found by meaning.
+they are and removes nine in ten nonsense results; its cost is partial words: two of the ten lose every expected document, and from 0.38 on more of
+them do. 0.42 removes every nonsense result but loses six questions, mostly partial words. Without
+a floor, everything stays as before: every query gets results found by meaning.
+
+These numbers are optimistic: the instruction and the floor were chosen on the same questions they
+are reported on. The margin below 0.38 rests on only ten partial-word questions.
+
+A held-out set written afterwards (`tools/docs/eval/questions-holdout.yaml`: 20 answerable, 5
+without an answer, 150 nonsense strings of another seed) confirms the instruction (Recall@10 0.675
+without it, 0.800 with it) and the floor's trade-off, with a larger cost for partial words: at 0.36
+correct questions and typos keep their documents, nonsense with a vector-only result falls from 148
+to 15 of 150, and two of eight partial words lose every expected document (Recall@10 0.800 to
+0.775). 0.42 does worse there (six lost, three of them typos), so it is not a safe stricter
+choice; 0.32 loses one partial word and leaves 41 of 150.
 
 Without a local endpoint, `pnpm docs:semantic status` exits 1 (semantic search is enabled but
 unavailable) while `pnpm docs:search` keeps answering lexically; that is expected.

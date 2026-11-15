@@ -67,6 +67,10 @@ cutoffs (margin below the best match, z-score, gap) do not separate them at all,
 queries with the lowest similarity are partial words and typos, so they are what any floor costs.
 Near-domain questions without an answer ("Which database engine stores Specifications in
 production?") stay above any useful floor; a floor addresses nonsense, not those.
+The calibration is optimistic: the instruction and the floor were tuned on the same eval questions
+they are reported on, and the floor's margin rests on ten partial-word questions; a held-out set
+(`tools/docs/eval/questions-holdout.yaml`) checks the choice, and a larger one is needed before
+any default.
 
 **Missing:**
 

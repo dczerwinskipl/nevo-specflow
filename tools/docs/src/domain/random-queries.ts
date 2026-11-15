@@ -26,6 +26,10 @@ export function generateRandomQueries(count: number, seed = RANDOM_QUERY_SEED): 
     throw new RangeError(`The random query count must be a non-negative integer, got ${count}.`);
   }
 
+  if (!Number.isInteger(seed) || seed < 0) {
+    throw new RangeError(`The random query seed must be a non-negative integer, got ${seed}.`);
+  }
+
   let state = seed;
   const next = () => {
     state = (state * 1103515245 + 12345) % 2147483648;

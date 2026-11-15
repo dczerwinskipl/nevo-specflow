@@ -246,6 +246,101 @@ describe('createSearchEngine', () => {
     expect(result.hits.map((hit) => hit.unitId)).toEqual(['locks']);
   });
 
+  describe('minSimilarity', () => {
+    // 2-D vectors with exact cosine similarities to the query (1, 0): (4, 3) is 0.8, (3, 4) is 0.6,
+    // (7, 24) is 0.28, (0, 1) is 0. Only `low-word` contains the query's word.
+    const fixed = [
+      { id: 'high', text: '# High\nAlpha beta.', vector: [4, 3] },
+      { id: 'edge', text: '# Edge\nGamma delta.', vector: [3, 4] },
+      { id: 'low-word', text: '# Low\nThe palette.', vector: [7, 24] },
+      { id: 'far', text: '# Far\nEpsilon zeta.', vector: [7, 24] },
+      { id: 'orthogonal', text: '# Orthogonal\nEta theta.', vector: [0, 1] },
+    ];
+    const fixedChunks = fixed
+      .map((unit) => ({ ...unit, contentHash: unit.id, header: '', metadata: {} }))
+      .flatMap(chunkMarkdownUnit);
+    const provider = {
+      protocol: 'fixed',
+      model: 'fixed',
+      space: 'fixed',
+      dimensions: 2,
+      embed: (texts: readonly string[]) =>
+        Promise.resolve({ ok: true as const, vectors: texts.map(() => new Float32Array([1, 0])) }),
+      probe: () => Promise.resolve({ ok: true as const, latencyMs: 0, dimensions: 2 }),
+    };
+    const fixedEngine = createSearchEngine(fixedChunks);
+    const fixedStore = async (): Promise<VectorStore> => {
+      const store = createInMemoryVectorStore();
+      await write(store, {
+        baseGeneration: undefined,
+        identity: {
+          chunkerVersion: CHUNKER_VERSION,
+          protocol: 'fixed',
+          model: 'fixed',
+          space: 'fixed',
+          dimensions: 2,
+        },
+        reset: true,
+        delete: [],
+        upsert: fixedChunks.map((chunk) => ({
+          chunkId: chunk.id,
+          contentHash: chunk.contentHash,
+          vector: new Float32Array(fixed.find((unit) => unit.id === chunk.unitId)!.vector),
+        })),
+      });
+
+      return store;
+    };
+
+    const search = async (query: string, minSimilarity?: number) =>
+      fixedEngine.search({
+        query,
+        limit: 10,
+        vectors: {
+          provider,
+          store: await fixedStore(),
+          ...(minSimilarity === undefined ? {} : { minSimilarity }),
+        },
+      });
+
+    it('keeps every positive similarity without a floor', async () => {
+      const result = await search('palette');
+
+      expect(result.mode).toBe('hybrid');
+      expect(result.hits.map((hit) => hit.unitId).sort()).toEqual([
+        'edge',
+        'far',
+        'high',
+        'low-word',
+      ]);
+    });
+
+    it('drops vector matches below the floor, keeps one exactly at it and every lexical match', async () => {
+      const result = await search('palette', 0.6);
+
+      expect(result.mode).toBe('hybrid');
+      expect(Object.fromEntries(result.hits.map((hit) => [hit.unitId, hit.lexical]))).toEqual({
+        high: false,
+        edge: false,
+        'low-word': true,
+      });
+    });
+
+    it('answers hybrid with no hits when nothing passes the floor and no word matches', async () => {
+      const result = await search('unrelated', 0.9);
+
+      expect(result).toEqual({ mode: 'hybrid', hits: [] });
+    });
+
+    it('rejects a floor outside 0 <= minSimilarity < 1', async () => {
+      for (const invalid of [-0.01, 1, 1.5, Number.NaN]) {
+        await expect(search('palette', invalid)).rejects.toThrow(RangeError);
+      }
+
+      await expect(search('palette', 0)).resolves.toMatchObject({ mode: 'hybrid' });
+    });
+  });
+
   it('rejects duplicate chunk ids and invalid limits at the boundary', async () => {
     expect(() => createSearchEngine([chunks[0]!, chunks[0]!])).toThrow(/Duplicate chunk id/);
     await expect(

@@ -132,7 +132,8 @@ export const DocsSearchHitSchema = Type.Object(
      * Document rank score: reciprocal rank fusion of the section ranking (BM25, fused with the vector
      * ranking in hybrid mode) and the frontmatter ranking. It only orders the results of one search;
      * it is not a confidence or probability, and a search returns its best candidates also when none
-     * is relevant.
+     * is relevant, unless `ai.embeddings.minSimilarity` is configured: then sections found by meaning
+     * only whose vector similarity is below it are left out (word matches never are).
      */
     score: Type.Number(),
     /**
@@ -170,7 +171,9 @@ const skipped = Type.Optional(Type.Array(DocsSkippedDocumentSchema));
 
 /**
  * Ranked documents, best first, with the mode that produced them and, when lexical, why, and the
- * documents the search left out (`skipped`).
+ * documents the search left out (`skipped`). `results` holds at most the requested limit; it may
+ * hold fewer, or none, also in hybrid mode when a relevance cutoff (`ai.embeddings.minSimilarity`)
+ * is configured.
  */
 export const DocsSearchResultSchema = Type.Union(
   [

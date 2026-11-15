@@ -105,6 +105,9 @@ export function openDocsSearch(options: OpenDocsSearchOptions): DocsSearch {
       writes: index.writes,
       providers: created.providers,
       providersAbortedBy: created.providersAbortedBy,
+      ...(endpoint.embeddings.minSimilarity === undefined
+        ? {}
+        : { minSimilarity: endpoint.embeddings.minSimilarity }),
       ...(options.catchUp ? { catchUp: options.catchUp } : {}),
       ...(index.directory === undefined
         ? {}
@@ -369,5 +372,9 @@ async function vectorsFor(
     return { reason: notReady };
   }
 
-  return { provider: vectors.providers.query, store: vectors.store };
+  return {
+    provider: vectors.providers.query,
+    store: vectors.store,
+    ...(vectors.minSimilarity === undefined ? {} : { minSimilarity: vectors.minSimilarity }),
+  };
 }

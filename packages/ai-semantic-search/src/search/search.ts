@@ -33,7 +33,19 @@ export const VECTOR_CANDIDATES_PER_RESULT = 10;
 
 /** Either vectors to search, or the consumer's reason why there are none. */
 export type SearchVectors =
-  | { readonly provider: EmbeddingProvider; readonly store: VectorStore }
+  | {
+      readonly provider: EmbeddingProvider;
+      readonly store: VectorStore;
+      /**
+       * Relevance floor of the vector ranking: matches whose raw cosine similarity to the query is
+       * below it are dropped before fusion (a match exactly at it is kept), so a query nothing
+       * answers by meaning adds no vector-only results. `0 <= minSimilarity < 1`. It never removes a
+       * lexical match and never applies to fused scores. The scale is model-specific (and depends on
+       * a query instruction), so there is no default: absent, every match with a positive similarity
+       * is fused.
+       */
+      readonly minSimilarity?: number;
+    }
   | { readonly reason: SearchReason };
 
 export interface SearchRequest {
@@ -84,7 +96,7 @@ export interface SearchEngine {
  * the store (at most `limit * VECTOR_CANDIDATES_PER_RESULT` matches) and both lists are fused by
  * reciprocal rank fusion. The request filter, and stored vectors whose chunk no longer exists or
  * whose content hash differs from the current chunk, are excluded before that cut; vector matches
- * with a non-positive similarity are ignored. Without
+ * with a non-positive similarity, or below the vectors' `minSimilarity`, are ignored. Without
  * usable vectors the same call returns BM25 results with `mode: 'lexical'` and a reason; it never
  * fails because embeddings or the index are unavailable.
  */
@@ -109,6 +121,13 @@ export function createSearchEngine(chunks: readonly Chunk[]): SearchEngine {
     async search(request) {
       if (!Number.isInteger(request.limit) || request.limit < 1) {
         throw new RangeError(`Search limit must be a positive integer, got ${request.limit}.`);
+      }
+
+      const floor = 'reason' in request.vectors ? undefined : request.vectors.minSimilarity;
+      if (floor !== undefined && !(floor >= 0 && floor < 1)) {
+        throw new RangeError(
+          `Search minSimilarity must be a number with 0 <= minSimilarity < 1, got ${floor}.`,
+        );
       }
 
       const accepted = (chunk: Chunk) => !request.filter || request.filter(chunk);
@@ -197,10 +216,15 @@ async function rankByVectors(
           message: describeMismatch(outcome.stored, identity),
         },
       };
-    case 'ok':
+    case 'ok': {
+      const floor = vectors.minSimilarity ?? 0;
+
       return {
-        ids: outcome.matches.filter((match) => match.score > 0).map((match) => match.chunkId),
+        ids: outcome.matches
+          .filter((match) => match.score > 0 && match.score >= floor)
+          .map((match) => match.chunkId),
       };
+    }
   }
 }
 

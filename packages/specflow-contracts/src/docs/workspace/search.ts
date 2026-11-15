@@ -30,7 +30,8 @@ const envelope = {
   results: Type.Array(WorkspaceDocsSearchHitSchema),
   /**
    * Proposals the same query would have returned with
-   * `includeProposals=true` and the same `limit`; `0` when they were included.
+   * `includeProposals=true` and the same `limit` (and the same relevance cutoff,
+   * `ai.embeddings.minSimilarity`); `0` when they were included.
    */
   proposalsLeftOut: Type.Integer({ minimum: 0 }),
   indexProgress: Type.Optional(WorkspaceDocsIndexProgressSchema),
@@ -38,7 +39,8 @@ const envelope = {
 };
 
 /**
- * Ranked documents, best first, with the mode that produced them and, when lexical, why. Search
+ * Ranked documents, best first, with the mode that produced them and, when lexical, why; fewer than
+ * `limit`, or none, when nothing else matches (or passes a configured relevance cutoff). Search
  * `line`s count in the file (frontmatter included), unlike an article's section lines.
  */
 export const WorkspaceDocsSearchSchema = Type.Union([

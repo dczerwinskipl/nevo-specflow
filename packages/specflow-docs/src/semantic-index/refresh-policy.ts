@@ -42,6 +42,8 @@ export interface IndexVectors {
    * leaving them to run (`createEmbeddingProviders`).
    */
   readonly providersAbortedBy: (signal: AbortSignal) => EmbeddingProviders;
+  /** `ai.embeddings.minSimilarity`: the vector ranking's relevance floor of every search. */
+  readonly minSimilarity?: number;
   /**
    * Runs a full refresh in the background for a gap above `READ_REFRESH_MAX_CHUNKS`. Absent: the
    * `index-building` reason asks for `semantic index` instead.

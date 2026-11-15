@@ -2388,6 +2388,8 @@
         "change": "a change is still being saved",
         "state": "its workflow state cannot be read",
         "sessions_one": "an agent Session is working in its worktree",
+        "sessions_few": "{{count}} agent Sessions are working in its worktree",
+        "sessions_many": "{{count}} agent Sessions are working in its worktree",
         "sessions_other": "{{count}} agent Sessions are working in its worktree"
       }
     },

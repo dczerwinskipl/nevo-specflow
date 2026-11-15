@@ -72,7 +72,7 @@ export const ManagedInSpecification: Story = {
     // The Runtime's own providers, the first available one chosen; Context pins the Specification.
     await expect(canvas.getByRole('radio', { name: /Claude/ })).toBeChecked();
     await expect(canvas.getByRole('button', { name: /Logowanie SSO/ })).toBeVisible();
-    await expect(canvas.getByText('nie wybrano')).toBeVisible();
+    await expect(canvas.getByText('nie wybrano modelu')).toBeVisible();
     await expect(canvas.getByRole('combobox', { name: 'Model' })).toBeEnabled();
     await expect(canvas.getByRole('combobox', { name: 'Effort' })).toBeDisabled();
     await expect(startButton(canvas)).toBeDisabled();

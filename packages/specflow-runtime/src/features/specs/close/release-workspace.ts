@@ -14,8 +14,11 @@ export type RunningSessions = (workspaceId: string) => readonly string[];
 
 /** Close refused: agent Session Turns work in the checkout it would remove. */
 export class WorkspaceBusyError extends Error {
-  constructor(readonly sessionIds: readonly string[]) {
+  readonly sessionIds: readonly string[];
+
+  constructor(sessionIds: readonly string[]) {
     super('An agent Session works in the worktree.');
+    this.sessionIds = sessionIds;
     this.name = 'WorkspaceBusyError';
   }
 }

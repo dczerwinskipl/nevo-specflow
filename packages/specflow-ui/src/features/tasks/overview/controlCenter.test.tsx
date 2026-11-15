@@ -54,6 +54,8 @@ async function renderAt(
   workspace: () => Promise<SpecificationWorkspaceResponse> = () => controlCenterWorkspace(scenario),
   start = vi.fn(() => Promise.resolve({}) as never),
 ) {
+  const projection = controlCenterProjection(scenario);
+  const specificationActions = vi.fn(() => Promise.resolve(projection));
   const router = createSpecFlowRouter(
     createMemoryHistory({ initialEntries: [url] }),
     createSpecFlowAppServices({
@@ -74,7 +76,7 @@ async function renderAt(
           Promise.resolve(controlCenterTaskList(scenario, query.blocking === 'specification')),
       },
       taskAuthoringApi: fakeTaskAuthoringApi({
-        specificationActions: vi.fn(() => Promise.resolve(controlCenterProjection(scenario))),
+        specificationActions,
       }),
       workflowExecutionApi: {
         start,
@@ -99,7 +101,7 @@ async function renderAt(
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
 
-  return { router, start };
+  return { router, start, projection, specificationActions };
 }
 
 describe('Specification control center', () => {
@@ -201,13 +203,27 @@ describe('Specification control center', () => {
     expect(await screen.findByRole('button', { name: 'New task' })).toBeTruthy();
   });
 
-  it.each(['completed', 'abandoned'] as const)(
-    'offers no New task once the Specification is %s',
-    async (scenario) => {
-      await renderAt(`/specs/${SPEC}/tasks`, scenario);
-      await screen.findByRole('heading', { name: 'Tasks', level: 1 });
+  it.each([
+    ['completed', { kind: 'terminal', outcome: 'completed' }],
+    ['abandoned', { kind: 'terminal', outcome: 'abandoned' }],
+  ] as const)(
+    'offers no New task once the Specification is %s (specification-ended)',
+    async (scenario, position) => {
+      const { projection, specificationActions } = await renderAt(`/specs/${SPEC}/tasks`, scenario);
+      // The fixture is what the Engine projects for an ended Specification.
+      expect(projection.position).toMatchObject(position);
+      expect(projection.specification?.createTask).toEqual({
+        kind: 'unavailable',
+        reason: 'specification-ended',
+      });
+
+      // The page has its Tasks and has read the projection before New task is judged absent.
+      expect(await screen.findByText('T-01')).toBeTruthy();
+      await waitFor(() =>
+        expect(specificationActions).toHaveBeenCalledWith(SPEC, expect.anything()),
+      );
       await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 0));
+        await specificationActions.mock.results[0]?.value;
       });
 
       expect(screen.queryByRole('button', { name: 'New task' })).toBeNull();

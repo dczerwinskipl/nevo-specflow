@@ -554,14 +554,20 @@ const smallChange = {
   title: 'Small change',
 };
 const allowed = { kind: 'allowed' } as const;
-/** `closeAllowed`: the Specification's workflow ended, so no Task is created any more. */
-const exit = (closeAllowed: boolean): NonNullable<WorkflowActionProjection['specification']> => ({
-  createTask: closeAllowed ? { kind: 'unavailable', reason: 'specification-ended' } : allowed,
+/** A running Specification: Tasks may be created; Close waits, Abandon is possible. */
+const running = (): NonNullable<WorkflowActionProjection['specification']> => ({
+  createTask: allowed,
   taskTypes: [],
-  exit: {
-    close: closeAllowed ? allowed : { kind: 'blocked', blockers: [] },
-    abandon: closeAllowed ? { kind: 'unavailable', reason: 'ended' } : allowed,
-  },
+  exit: { close: { kind: 'blocked', blockers: [] }, abandon: allowed },
+});
+/**
+ * A Specification whose workflow ended, as the Engine projects it: no Task is created any more
+ * (`specification-ended`), Close is possible and Abandon has nothing left to end.
+ */
+const ended = (): NonNullable<WorkflowActionProjection['specification']> => ({
+  createTask: { kind: 'unavailable', reason: 'specification-ended' },
+  taskTypes: [],
+  exit: { close: allowed, abandon: { kind: 'unavailable', reason: 'ended' } },
 });
 const workStep = (id: string, title: string) => ({
   id,
@@ -594,7 +600,7 @@ export function controlCenterProjection(scenario: ControlCenterScenario): Workfl
           },
         },
         actions: { start: { step: 'requirements', firstStart: false } },
-        specification: exit(false),
+        specification: running(),
       };
     case 'blocked':
       return {
@@ -637,7 +643,7 @@ export function controlCenterProjection(scenario: ControlCenterScenario): Workfl
             targets: [{ step: 'requirements', title: 'Requirements', feedback: 'optional' }],
           },
         },
-        specification: exit(false),
+        specification: running(),
       };
     case 'completed':
     case 'abandoned':
@@ -658,7 +664,7 @@ export function controlCenterProjection(scenario: ControlCenterScenario): Workfl
                 },
               },
         actions: {},
-        specification: exit(true),
+        specification: ended(),
       };
     case 'no-task-workflow':
       return {
@@ -687,7 +693,7 @@ export function controlCenterProjection(scenario: ControlCenterScenario): Workfl
             targets: [{ step: 'implementation', title: 'Implementation', feedback: 'required' }],
           },
         },
-        specification: exit(false),
+        specification: running(),
       };
     default: {
       const stuck = scenario === 'stuck';
@@ -718,7 +724,7 @@ export function controlCenterProjection(scenario: ControlCenterScenario): Workfl
         actions: {
           return: { targets: [{ step: 'breakdown', title: 'Breakdown', feedback: 'optional' }] },
         },
-        specification: exit(false),
+        specification: running(),
       };
     }
   }

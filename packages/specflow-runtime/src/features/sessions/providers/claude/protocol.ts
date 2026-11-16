@@ -81,7 +81,7 @@ export function createClaudeProtocol(
 ) {
   identifier(expectedSessionId);
   const seen = new Map<string, string>();
-  const tools = new Map<string, { parent: string; key: string }>();
+  const tools = new Map<string, { parent: string; key: string; name: string }>();
   const groups = new Map<string, { remaining: number; failed: boolean }>();
   let correlated = false;
   let terminal = false;
@@ -140,6 +140,16 @@ export function createClaudeProtocol(
   async function consume(frame: ObjectValue) {
     await correlate(frame);
     if (frame.type === 'system') {
+      if (frame.subtype === 'permission_denied') {
+        // Claude refused one open call of this Turn itself (for example a file tool outside the
+        // working directory under --restricted); that call's error tool_result follows.
+        if (tools.get(identifier(frame.tool_use_id))?.name !== identifier(frame.tool_name)) {
+          throw new ClaudeProtocolError();
+        }
+
+        return;
+      }
+
       if (
         !['init', 'status', 'compact_boundary', 'api_retry', 'session_state_changed'].includes(
           string(frame.subtype),
@@ -312,7 +322,7 @@ export function createClaudeProtocol(
             throw new ClaudeProtocolError();
           }
 
-          tools.set(toolId, { parent, key });
+          tools.set(toolId, { parent, key, name });
           await emit({
             kind: 'action-open',
             key,
@@ -567,13 +577,18 @@ export function createClaudeProtocol(
         if (frame.type === 'tool_progress') {
           // Foreground shell progress also has task_id and may use an internal
           // bash-progress-* ID. It is not an action/result or background receipt.
+          // A long-running tool also reports a liveness heartbeat (every 30 s) whose parent is
+          // that tool's own open call of this Turn; a subagent's progress has another parent.
           identifier(frame.uuid);
           identifier(frame.tool_use_id);
           const name = identifier(frame.tool_name);
+          const parent =
+            frame.parent_tool_use_id === null ? undefined : identifier(frame.parent_tool_use_id);
           if (
             identifier(frame.session_id) !== expectedSessionId ||
             !allowedTools.includes(name) ||
-            frame.parent_tool_use_id !== null ||
+            (parent !== undefined &&
+              (frame.heartbeat !== true || tools.get(parent)?.name !== name)) ||
             !Number.isSafeInteger(frame.elapsed_time_seconds) ||
             (frame.heartbeat !== undefined && typeof frame.heartbeat !== 'boolean') ||
             frame.subagent_type !== undefined ||
@@ -623,7 +638,8 @@ export function createClaudeProtocol(
         busy = false;
       }
     },
-    async end() {
+    /** `reason` says why no authoritative result arrived; it also stays in the conversation. */
+    async end(reason?: string) {
       if (terminal) {
         return;
       }
@@ -633,7 +649,14 @@ export function createClaudeProtocol(
       }
 
       await flushCommentary();
-      await emit({ kind: 'lost', message: 'Claude ended without an authoritative result.' });
+      if (reason) {
+        await text('provider-error', 'commentary', reason);
+      }
+
+      await emit({
+        kind: 'lost',
+        message: reason ?? 'Claude ended without an authoritative result.',
+      });
       tools.clear();
       groups.clear();
       seen.clear();

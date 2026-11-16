@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import type { DriverFact } from '../../persistence/protocol';
 import type { Invocation } from '../driver';
 import { validateDriverFact } from '../facts';
-import { createClaudeOperation, type ClaudeProcess } from './operation';
+import { claudeLoss, createClaudeOperation, type ClaudeProcess } from './operation';
+import { ProviderProcessError } from '../process';
 import { SessionError } from '../../errors';
 
 function fixture(
@@ -21,6 +22,7 @@ function fixture(
   const frames: string[] = [];
   let wake: (() => void) | undefined;
   let ended = false;
+  let broken: Error | undefined;
   const push = (frame: unknown) => {
     frames.push(JSON.stringify(frame));
     wake?.();
@@ -56,6 +58,10 @@ function fixture(
     },
     async *lines() {
       while (!ended) {
+        if (broken) {
+          throw broken;
+        }
+
         if (!frames.length) {
           await new Promise<void>((resolve) => {
             wake = resolve;
@@ -136,6 +142,17 @@ function fixture(
     },
   });
 
+  /** Claude closes its output (its process ended), or the stdio connection fails. */
+  const endOutput = (error?: Error) => {
+    if (error) {
+      broken = error;
+    } else {
+      ended = true;
+    }
+
+    wake?.();
+  };
+
   return {
     facts,
     sent,
@@ -143,6 +160,7 @@ function fixture(
     operation,
     ready,
     push,
+    endOutput,
     result,
     question,
     controller,
@@ -152,6 +170,37 @@ function fixture(
 }
 
 describe('Claude bidirectional operation', () => {
+  it.each([
+    ['an unsupported frame', claudeLoss.rejected],
+    ['the end of its output', claudeLoss.exited],
+    ['a failed connection', claudeLoss.connection],
+  ] as const)(
+    'names why a dispatched operation ended without a result after %s',
+    async (_, reason) => {
+      const f = fixture();
+      await f.ready();
+      if (reason === claudeLoss.rejected) {
+        f.push({ type: 'system', subtype: 'unsupported_frame' });
+      } else {
+        f.endOutput(
+          reason === claudeLoss.connection
+            ? new ProviderProcessError('PROTOCOL_FAILED', 'Provider input stream is unavailable.')
+            : undefined,
+        );
+      }
+
+      await f.operation.done;
+      // Still unknown: the agent may have changed the workspace before it stopped.
+      await expect(f.operation.settlement).resolves.toEqual({
+        process: 'stopped',
+        source: 'unverified',
+      });
+      expect(f.facts.slice(-2)).toEqual([
+        { kind: 'text', key: 'provider-error', channel: 'commentary', text: reason },
+        { kind: 'lost', message: reason },
+      ]);
+    },
+  );
   it('verifies native inventory before accepting a host permission or question request', async () => {
     const verifyFrame = vi.fn(() => {
       throw new Error('Inventory not verified');

@@ -9,7 +9,7 @@ import {
   projectProviderEnvironment,
   type ProviderEnvironment,
 } from '../process';
-import { createClaudeOperation } from './operation';
+import { claudeLoss, createClaudeOperation } from './operation';
 import { inspectClaudeInstallation } from './installation';
 import {
   classifyProviderInstallation,
@@ -435,7 +435,8 @@ export function createClaudeDriver(
         },
         async (fact) => {
           if (
-            fact.kind === 'lost' ||
+            // A frame this adapter refused says nothing about Claude's availability.
+            (fact.kind === 'lost' && fact.message !== claudeLoss.rejected) ||
             (fact.kind === 'outcome' &&
               fact.error &&
               [

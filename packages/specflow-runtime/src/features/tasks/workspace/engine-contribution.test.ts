@@ -16,7 +16,8 @@ describe('workspaceAttentionOf', () => {
       action: 'resume-task',
       secondaryAction: 'cancel-task',
       blocks: { taskIds: ['screen'], finish: 'acceptance' },
-      message: 'It is on hold and holds up screen and keeps "Acceptance" from finishing.',
+      message:
+        'It is on hold and holds up screen and keeps "Acceptance" from finishing: resume it, or cancel it.',
     };
 
     const record = workspaceAttentionOf(item, new Map([['api', 'API']]));

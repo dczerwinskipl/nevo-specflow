@@ -84,12 +84,18 @@ dashboard configuration). The Overview renders what the reads deliver.
   first text line) and the one action its code maps to an existing flow: Review tasks (the Tasks
   page filtered to the blocking Tasks), Edit context and Edit dependencies (the Task's section),
   Start step, Review new revision (the first-start confirmation), Cancel task (its confirmation),
-  Open task (restore a broken Task, meet an entry gate), Return to an earlier step (the
-  Specification's Return dialog), Answer (the Session). Actions without a UI of their own yet
-  (project settings, archetype configuration) are shown unavailable. The actor shows only when it
-  is not the viewer. The Specification-level `tasks-stuck` item states the intervention ("Resolve 2
-  blocking tasks · Approve, resume or cancel them so the specification can finish"); Now carries
-  the diagnosis. On a narrow row the actions follow the title and reason.
+  Open task (restore a broken Task, meet an entry gate, and for now resume a held Task), Return to
+  an earlier step (the Specification's Return dialog), Answer (the Session). Actions without a UI
+  of their own yet (project settings, archetype configuration) are shown unavailable. The actor
+  shows only when it is not the viewer. The Specification-level `tasks-stuck` item states the
+  intervention ("Resolve 2 blocking tasks · Approve, resume or cancel them so the specification can
+  finish"); Now carries the diagnosis. On a narrow row the actions follow the title and reason.
+  A Task on hold appears here only when the Engine reports it (never from the status): escalated
+  with no Specification step deciding it (`task-escalated` on the Task), or `on-hold-blocking`
+  when open Tasks wait on it or the current step cannot finish while it is on hold (`blocks`).
+  Its primary action is `resume-task` (today it opens the Task page, which offers Resume), its
+  alternative Cancel task. A hold that nothing waits on is not listed; its row shows
+  "On hold · <reason>" ([workflow kernel, Held Tasks](../../../architecture/workflow/workflow-kernel.md#continuation-and-attention)).
 - **Tasks** — a preview of the configured grouping. Without Tasks: "No tasks yet" and, when the
   run is certain to get to a step that produces Tasks (`outline.tasksStep`, never a step id: no
   branch on the way), "Tasks appear when Break the solution down (step 4 of 7) finishes.", the same

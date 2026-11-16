@@ -1,6 +1,11 @@
 import { findStep } from '@nevo/workflow';
 
-import type { AttentionAction, AttentionItem, AttentionItemReason } from '../attention/model';
+import type {
+  AttentionAction,
+  AttentionItem,
+  AttentionItemReason,
+  HeldTaskBlocks,
+} from '../attention/model';
 import type { ContinuationDecision } from '../continuation/resolve';
 import type { ExecutionCatalogue } from '../definitions/catalogue';
 import type { WorkflowDefinition } from '../definitions/model';
@@ -68,6 +73,7 @@ export function deriveAttention(
 
   // Tasks run without a Specification run, so only a started Specification adds its own item.
   let finish: HeldTaskInput['finish'];
+  let decidingStep: string | undefined;
   if (specification) {
     const subject: WorkflowSubject = { kind: 'specification', specId: specification.specId };
     const run = specification.run;
@@ -75,6 +81,16 @@ export function deriveAttention(
     const position = run.position;
     const step =
       definition && position.state === 'active' ? findStep(definition, position.step) : undefined;
+    // A work step the Specification is at (ready or active) lists every Task in its context
+    // (`existingTasks`) and decides them with `taskDecisions`: it handles an escalation.
+    if (
+      definition &&
+      (position.state === 'ready' || position.state === 'active') &&
+      findStep(definition, position.step)?.kind === 'work'
+    ) {
+      decidingStep = position.step;
+    }
+
     if (!definition) {
       changed(subject, run);
     } else if (position.state === 'ready') {
@@ -96,9 +112,13 @@ export function deriveAttention(
     items.flatMap((entry) => (entry.subject.kind === 'specification' ? (entry.taskIds ?? []) : [])),
   );
   const held = new Map(
-    heldTaskAttention({ specId: snapshot.specId, tasks, named, ...(finish ? { finish } : {}) }).map(
-      (entry) => [entry.subject.kind === 'task' ? entry.subject.taskId : '', entry] as const,
-    ),
+    heldTaskAttention({
+      specId: snapshot.specId,
+      tasks,
+      named,
+      ...(decidingStep !== undefined ? { decidingStep } : {}),
+      ...(finish ? { finish } : {}),
+    }).map((entry) => [entry.subject.taskId, entry] as const),
   );
 
   for (const task of tasks) {
@@ -134,6 +154,11 @@ export interface HeldTaskInput {
   /** The Tasks the Specification's own item names (`task-escalated`, `tasks-stuck`). */
   readonly named: ReadonlySet<string>;
   /**
+   * The Specification work step it is at (ready or active), which decides the escalated Tasks
+   * itself (its context lists them, its finish takes `taskDecisions`): no Task item for them.
+   */
+  readonly decidingStep?: string;
+  /**
    * The Specification's active work step when its finish to `completed` is refused now
    * (`tasksOpenAtCompletion`): the step, its title and the open Tasks that refuse it.
    */
@@ -150,7 +175,9 @@ export interface HeldTaskInput {
  * enough). At most one item per held Task that no Specification item names (`named`), in Task
  * order:
  *
- * - escalated (`statusChange.source: escalation`): `task-escalated` on the Task;
+ * - escalated (`statusChange.source: escalation`): `task-escalated` on the Task, unless the
+ *   Specification is at a work step (`decidingStep`), which decides it: the agent or the step's
+ *   owner acts there, and a second item would invite a race (resumed while the step decides);
  * - otherwise `on-hold-blocking` with what it holds up now (`blocks`): the open Tasks that wait on it
  *   directly (`taskReadiness` names it in `waitingFor`), and the Specification's active step whose
  *   finish to `completed` it refuses (`finish`, which Close needs);
@@ -158,8 +185,8 @@ export interface HeldTaskInput {
  *
  * Each offers `resume-task`, with `cancel-task` as the alternative. Pure.
  */
-export function heldTaskAttention(input: HeldTaskInput): AttentionItem[] {
-  const items: AttentionItem[] = [];
+export function heldTaskAttention(input: HeldTaskInput): HeldTaskItem[] {
+  const items: HeldTaskItem[] = [];
   for (const task of input.tasks) {
     if (task.status !== 'on-hold' || isTaskClosed(task) || input.named.has(task.taskId)) {
       continue;
@@ -168,13 +195,17 @@ export function heldTaskAttention(input: HeldTaskInput): AttentionItem[] {
     const subject = { kind: 'task', specId: input.specId, taskId: task.taskId } as const;
     const resume = { action: 'resume-task', secondaryAction: 'cancel-task' } as const;
     if (isTaskEscalated(task)) {
-      items.push(
-        item(subject, 'task-escalated', {
-          ...resume,
-          message:
-            'It escalated to the specification and is on hold (its hold reason is the feedback): resume it, or cancel it.',
-        }),
-      );
+      if (input.decidingStep === undefined) {
+        items.push({
+          ...item(subject, 'task-escalated', {
+            ...resume,
+            message:
+              'It escalated to the specification and is on hold (its hold reason is the feedback): resume it, or cancel it.',
+          }),
+          subject,
+        });
+      }
+
       continue;
     }
 
@@ -187,24 +218,33 @@ export function heldTaskAttention(input: HeldTaskInput): AttentionItem[] {
     )
       ? input.finish
       : undefined;
-    if (dependents.length === 0 && !finish) {
+    const blocks: HeldTaskBlocks | undefined =
+      dependents.length > 0
+        ? { taskIds: dependents, ...(finish ? { finish: finish.step } : {}) }
+        : finish
+          ? { finish: finish.step }
+          : undefined;
+    if (!blocks) {
       continue;
     }
 
-    items.push(
-      item(subject, 'on-hold-blocking', {
+    items.push({
+      ...item(subject, 'on-hold-blocking', {
         ...(finish ? { step: finish.step, stepTitle: finish.stepTitle } : {}),
         ...resume,
-        blocks: {
-          ...(dependents.length > 0 ? { taskIds: dependents } : {}),
-          ...(finish ? { finish: finish.step } : {}),
-        },
+        blocks,
       }),
-    );
+      subject,
+    });
   }
 
   return items;
 }
+
+/** An item {@link heldTaskAttention} derives: always about the held Task. */
+export type HeldTaskItem = AttentionItem & {
+  readonly subject: Extract<WorkflowSubject, { kind: 'task' }>;
+};
 
 /** `task` waits on `dependency` directly: its readiness names it among the open dependencies. */
 function waitsOn(
@@ -406,7 +446,9 @@ function messageOf(reason: AttentionItemReason, fields: ItemFields): string {
       return 'The files of the task are inconsistent: restore them from Git.';
     case 'on-hold-blocking': {
       const blocks = [
-        ...(fields.blocks?.taskIds ? [`holds up ${listed(fields.blocks.taskIds)}`] : []),
+        ...(fields.blocks && 'taskIds' in fields.blocks
+          ? [`holds up ${listed(fields.blocks.taskIds)}`]
+          : []),
         ...(fields.blocks?.finish !== undefined ? [`keeps ${step}from finishing`] : []),
       ];
 

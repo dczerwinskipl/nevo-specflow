@@ -63,10 +63,10 @@ export function workspaceAttentionOf(
     ...(item.blocking ? { blocking: item.blocking.map((task) => ({ ...task })) } : {}),
     ...(item.blocks
       ? {
-          blocks: {
-            ...(item.blocks.taskIds ? { taskIds: [...item.blocks.taskIds] } : {}),
-            ...(item.blocks.finish !== undefined ? { finish: item.blocks.finish } : {}),
-          },
+          blocks:
+            'taskIds' in item.blocks
+              ? { ...item.blocks, taskIds: [...item.blocks.taskIds] }
+              : { finish: item.blocks.finish },
         }
       : {}),
   };

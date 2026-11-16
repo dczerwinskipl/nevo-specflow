@@ -185,6 +185,21 @@ describe('heldTaskAttention (owner decision 2026-11-16: the user must act)', () 
     expect(holdOf({ tasks, named: new Set(['api']) })).toEqual([]);
   });
 
+  it('leaves an escalation to the Specification work step that decides it', () => {
+    const escalated = held('api', {
+      statusChange: { source: 'escalation', at: '2026-11-17T10:00:00.000Z', reason: 'Split it.' },
+    });
+
+    // Not even `on-hold-blocking` for its dependents: the step decides the escalated Task.
+    expect(
+      holdOf({ tasks: [escalated, ready('web', ['api'])], decidingStep: 'breakdown' }),
+    ).toEqual([]);
+    // A person's hold is still reported while that step runs.
+    expect(
+      holdOf({ tasks: [held('api'), ready('web', ['api'])], decidingStep: 'breakdown' }),
+    ).toMatchObject([{ reason: 'on-hold-blocking', blocks: { taskIds: ['web'] } }]);
+  });
+
   it('adds no Task item for a hold the Specification item names (tasks-stuck)', () => {
     const api = held('api');
 
@@ -201,7 +216,7 @@ describe('heldTaskAttention (owner decision 2026-11-16: the user must act)', () 
     const dependents = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map((id) => ready(id, ['api']));
     const [only] = holdOf({ tasks: [held('api'), ...dependents] });
 
-    expect(only?.blocks?.taskIds).toHaveLength(7);
+    expect(only?.blocks).toEqual({ taskIds: ['a', 'b', 'c', 'd', 'e', 'f', 'g'] });
     expect(only?.message).toBe(
       'It is on hold and holds up a, b, c, d, e (+2): resume it, or cancel it.',
     );

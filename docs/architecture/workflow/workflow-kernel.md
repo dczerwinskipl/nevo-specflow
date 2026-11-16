@@ -693,7 +693,7 @@ returns its `ContinuationDecision`.
 | `task-broken`              | A broken Task (see "The Task set").                                                                |
 | `definition-changed`       | A run that has not ended (a Task's only while `ready`) is pinned to a missing or changed workflow. |
 | `on-hold-blocking`         | A Task on hold (not escalated) that an open Task waits on, or that keeps the step from finishing.  |
-| `task-escalated` (Task)    | An escalated Task that no Specification item names (see "Held Tasks").                             |
+| `task-escalated` (Task)    | An escalated Task that no Specification item names nor work step decides (see "Held Tasks").       |
 | `context-unresolved`       | An approved Task that has not started has a required entry that is stale.                          |
 | `dependency-unsatisfiable` | It depends on a Task that was cancelled, ended otherwise or is broken.                             |
 | `type-not-allowed`         | Its task type is not allowed by the effective policy any more.                                     |
@@ -722,10 +722,15 @@ order:
 
 1. A Specification item already names it (`task-escalated` on the wait step, or `tasks-stuck` where
    it is the bottleneck): no Task item.
-2. It escalated (`statusChange.source: escalation`): `task-escalated` on the Task (the
-   Specification's `task-escalated` transition, as in the seed, leaves no Specification item that
-   names it). The escalation feedback is its hold reason.
-3. Otherwise `on-hold-blocking` with `blocks` (at least one set): `taskIds`, the open Tasks that wait
+2. It escalated (`statusChange.source: escalation`): no Task item while the Specification is at a
+   work step (`ready` or `active`). That step decides it: its context lists every Task
+   (`existingTasks`) and its finish takes `taskDecisions`, as after the seed's `task-escalated`
+   transition back to `breakdown` (the Specification's own item then asks the owner to start it).
+   Someone else acts there, and a Task item would invite a race between a Resume and the step's
+   decision. Otherwise (the Specification has not started, or its pinned workflow changed)
+   `task-escalated` on the Task; the escalation feedback is its hold reason.
+3. Otherwise `on-hold-blocking` with `blocks` (never empty: `taskIds` with at least one id, or
+   `finish`, or both): `taskIds`, the open Tasks that wait
    on it directly (their readiness names it in `waitingFor`, the `dependencyWait` fact), in id
    order; `finish`, the Specification's active work step whose transition to `terminal completed`
    it refuses (`tasksOpenAtCompletion`, the projection's `unavailable: tasks-open` with cause
@@ -733,6 +738,12 @@ order:
    outcome, so this also covers Close.
 4. Otherwise, a hold that nothing waits on and that blocks no finish while other work can move: no
    item (the Now wait line still counts it as on hold).
+
+On a wait step an escalation wins (`waitDecision` in `operations/advance.ts`): while any Task is
+escalated the Specification's item is `task-escalated` naming only the escalated Tasks, never
+`tasks-stuck`. So a person's hold that is the bottleneck but has no dependents gets no item (rule 1
+needs `tasks-stuck` to name it, rule 3 finds nothing it holds up) until the escalation is resolved;
+then `tasks-stuck` names it again.
 
 Each of these items offers `resume-task` (`on-hold → ready`) and `cancel-task` as the alternative.
 The surfaces render the item; they never decide from the status whether a hold is attention.

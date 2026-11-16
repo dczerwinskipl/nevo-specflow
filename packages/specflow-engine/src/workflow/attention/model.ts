@@ -13,7 +13,7 @@ export { BLOCKING_TASK_CAUSES, type BlockingTask, type BlockingTaskCause } from 
  * - `on-hold-blocking`: a Task on hold (not by its own escalation) that holds up progress now: an open
  *   Task waits on it directly, or the Specification's active step cannot finish to `completed`
  *   while it is open (`blocks`). An escalated hold is `task-escalated` instead (on the Task when no
- *   Specification item names it), and a hold the Specification's `tasks-stuck` names gets no Task
+ *   Specification item names it and no Specification work step decides it), and a hold the Specification's `tasks-stuck` names gets no Task
  *   item. A hold that nothing waits on and that blocks no finish is not attention;
  * - and the start blockers of an approved Task that has not started that need a person
  *   (`context-unresolved`, `dependency-unsatisfiable`, `type-not-allowed`, `definition-missing`,
@@ -60,15 +60,13 @@ export const ATTENTION_ACTIONS = [
 export type AttentionAction = (typeof ATTENTION_ACTIONS)[number];
 
 /**
- * `on-hold-blocking`: what the held Task holds up now. At least one is set: `taskIds`, the open
- * Tasks that wait on it directly (their `dependencyWait.waitingFor` names it), in id order;
+ * `on-hold-blocking`: what the held Task holds up now, never nothing: `taskIds` (never empty), the
+ * open Tasks that wait on it directly (their `dependencyWait.waitingFor` names it), in id order;
  * `finish`, the Specification's active step whose finish to `completed` it refuses
  * (`unavailable: tasks-open`, ADR 0024 decision 12), which Close needs.
  */
-export interface HeldTaskBlocks {
-  readonly taskIds?: readonly string[];
-  readonly finish?: string;
-}
+export type HeldTaskBlocks =
+  { readonly taskIds: readonly string[]; readonly finish?: string } | { readonly finish: string };
 
 /** Who has to act. The Engine derives owner items only today; `agent` is reserved for agent steps. */
 export type AttentionActor = 'owner' | 'agent';

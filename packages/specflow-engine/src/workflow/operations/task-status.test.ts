@@ -403,6 +403,16 @@ describe('escalation to the Specification', () => {
       state: 'ready',
       step: 'breakdown',
     });
+    // The breakdown decides the escalated Task: only its own item, none for the Task (no race
+    // between a Resume and the step's decision).
+    const onlyBreakdown = [
+      expect.objectContaining({
+        subject: specification,
+        step: 'breakdown',
+        reason: 'owner-action',
+      }),
+    ];
+    expect((await inspectExecution(dependencies, SPEC)).attention).toEqual(onlyBreakdown);
     expect(await statusOf(dependencies, 'api')).toMatchObject({
       status: 'on-hold',
       statusChange: {
@@ -622,19 +632,11 @@ describe('escalation to the Specification', () => {
         ],
       },
     });
-    // No Specification item names it, so the escalated Task has its own: the user resumes or
-    // cancels it (owner decision 2026-11-16).
-    expect((await inspectExecution(dependencies, SPEC)).attention).toEqual([
-      expect.objectContaining({
-        subject: task('api'),
-        reason: 'task-escalated',
-        action: 'resume-task',
-        secondaryAction: 'cancel-task',
-      }),
-    ]);
+    // The active breakdown decides the escalated Task (`existingTasks`, `taskDecisions`): no item.
+    expect((await inspectExecution(dependencies, SPEC)).attention).toEqual([]);
   });
 
-  it('records only the escalated Task item while a Specification step is worked on, and refuses the wait while escalated', async () => {
+  it('records no item while a Specification step is worked on, and refuses the wait while escalated', async () => {
     const dependencies = memoryDependencies(await withoutEscalationTransition());
     await specificationWithTasks(dependencies);
     await work(dependencies, task('api'));
@@ -649,9 +651,7 @@ describe('escalation to the Specification', () => {
     const escalated = await escalate(dependencies, 'Split the API Task.');
 
     expect(escalated.specification).toBeUndefined();
-    expect((await inspectExecution(dependencies, SPEC)).attention).toMatchObject([
-      { subject: task('api'), reason: 'task-escalated', action: 'resume-task' },
-    ]);
+    expect((await inspectExecution(dependencies, SPEC)).attention).toEqual([]);
     await finishStep(dependencies, {
       subject: specification,
       step: 'breakdown',

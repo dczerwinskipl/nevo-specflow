@@ -304,7 +304,7 @@ export type ClosableTask = Static<typeof ClosableTaskSchema>;
  * `definition-changed`, `on-hold-blocking` (a Task on hold that holds up progress now: `blocks`)
  * and the start blockers of an approved Task that has not started that a person fixes.
  * `task-escalated` is on the Specification (its wait step) or, when no Specification item names
- * the escalated Task, on the Task itself. Never inferred from a status name.
+ * the escalated Task and no Specification work step decides it, on the Task itself. Never inferred from a status name.
  */
 export const ATTENTION_ITEM_REASONS = [
   ...ATTENTION_REASONS,
@@ -340,10 +340,13 @@ export const ATTENTION_ACTIONS = [
  * `finish`: the Specification's active step whose finish to `completed` it refuses (`tasks-open`),
  * which Close needs. Mirrors the Engine's `HeldTaskBlocks`.
  */
-export const HeldTaskBlocksSchema = Type.Object({
-  taskIds: Type.Optional(array(TaskIdSchema)),
-  finish: Type.Optional(StepIdSchema),
-});
+export const HeldTaskBlocksSchema = Type.Union([
+  Type.Object({
+    taskIds: Type.Array(TaskIdSchema, { minItems: 1, maxItems: 1000 }),
+    finish: Type.Optional(StepIdSchema),
+  }),
+  Type.Object({ finish: StepIdSchema }),
+]);
 
 /**
  * A subject a person has to act on, derived on every read and never stored: the reason (a stable

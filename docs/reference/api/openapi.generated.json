@@ -7769,21 +7769,42 @@
                 "maxItems": 1000
               },
               "blocks": {
-                "type": "object",
-                "properties": {
-                  "taskIds": {
-                    "type": "array",
-                    "items": {
-                      "$ref": "#/components/schemas/TaskId"
-                    },
-                    "maxItems": 1000
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "taskIds"
+                    ],
+                    "properties": {
+                      "taskIds": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/TaskId"
+                        },
+                        "minItems": 1,
+                        "maxItems": 1000
+                      },
+                      "finish": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      }
+                    }
                   },
-                  "finish": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 200
+                  {
+                    "type": "object",
+                    "required": [
+                      "finish"
+                    ],
+                    "properties": {
+                      "finish": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      }
+                    }
                   }
-                }
+                ]
               },
               "archetype": {
                 "type": "string"
@@ -29688,21 +29709,42 @@
                                               "maxItems": 1000
                                             },
                                             "blocks": {
-                                              "type": "object",
-                                              "properties": {
-                                                "taskIds": {
-                                                  "type": "array",
-                                                  "items": {
-                                                    "$ref": "#/components/schemas/TaskId"
-                                                  },
-                                                  "maxItems": 1000
+                                              "anyOf": [
+                                                {
+                                                  "type": "object",
+                                                  "required": [
+                                                    "taskIds"
+                                                  ],
+                                                  "properties": {
+                                                    "taskIds": {
+                                                      "type": "array",
+                                                      "items": {
+                                                        "$ref": "#/components/schemas/TaskId"
+                                                      },
+                                                      "minItems": 1,
+                                                      "maxItems": 1000
+                                                    },
+                                                    "finish": {
+                                                      "type": "string",
+                                                      "minLength": 1,
+                                                      "maxLength": 200
+                                                    }
+                                                  }
                                                 },
-                                                "finish": {
-                                                  "type": "string",
-                                                  "minLength": 1,
-                                                  "maxLength": 200
+                                                {
+                                                  "type": "object",
+                                                  "required": [
+                                                    "finish"
+                                                  ],
+                                                  "properties": {
+                                                    "finish": {
+                                                      "type": "string",
+                                                      "minLength": 1,
+                                                      "maxLength": 200
+                                                    }
+                                                  }
                                                 }
-                                              }
+                                              ]
                                             },
                                             "archetype": {
                                               "type": "string"
@@ -30409,21 +30451,42 @@
                             "maxItems": 1000
                           },
                           "blocks": {
-                            "type": "object",
-                            "properties": {
-                              "taskIds": {
-                                "type": "array",
-                                "items": {
-                                  "$ref": "#/components/schemas/TaskId"
-                                },
-                                "maxItems": 1000
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": [
+                                  "taskIds"
+                                ],
+                                "properties": {
+                                  "taskIds": {
+                                    "type": "array",
+                                    "items": {
+                                      "$ref": "#/components/schemas/TaskId"
+                                    },
+                                    "minItems": 1,
+                                    "maxItems": 1000
+                                  },
+                                  "finish": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  }
+                                }
                               },
-                              "finish": {
-                                "type": "string",
-                                "minLength": 1,
-                                "maxLength": 200
+                              {
+                                "type": "object",
+                                "required": [
+                                  "finish"
+                                ],
+                                "properties": {
+                                  "finish": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  }
+                                }
                               }
-                            }
+                            ]
                           },
                           "archetype": {
                             "type": "string"
@@ -32615,21 +32678,42 @@
                                   "maxItems": 1000
                                 },
                                 "blocks": {
-                                  "type": "object",
-                                  "properties": {
-                                    "taskIds": {
-                                      "type": "array",
-                                      "items": {
-                                        "$ref": "#/components/schemas/TaskId"
-                                      },
-                                      "maxItems": 1000
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "taskIds"
+                                      ],
+                                      "properties": {
+                                        "taskIds": {
+                                          "type": "array",
+                                          "items": {
+                                            "$ref": "#/components/schemas/TaskId"
+                                          },
+                                          "minItems": 1,
+                                          "maxItems": 1000
+                                        },
+                                        "finish": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        }
+                                      }
                                     },
-                                    "finish": {
-                                      "type": "string",
-                                      "minLength": 1,
-                                      "maxLength": 200
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "finish"
+                                      ],
+                                      "properties": {
+                                        "finish": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        }
+                                      }
                                     }
-                                  }
+                                  ]
                                 },
                                 "archetype": {
                                   "type": "string"
@@ -45747,21 +45831,42 @@
                                 }
                               },
                               "blocks": {
-                                "type": "object",
-                                "properties": {
-                                  "taskIds": {
-                                    "type": "array",
-                                    "items": {
-                                      "$ref": "#/components/schemas/TaskId"
-                                    },
-                                    "maxItems": 1000
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "required": [
+                                      "taskIds"
+                                    ],
+                                    "properties": {
+                                      "taskIds": {
+                                        "type": "array",
+                                        "items": {
+                                          "$ref": "#/components/schemas/TaskId"
+                                        },
+                                        "minItems": 1,
+                                        "maxItems": 1000
+                                      },
+                                      "finish": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      }
+                                    }
                                   },
-                                  "finish": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "maxLength": 200
+                                  {
+                                    "type": "object",
+                                    "required": [
+                                      "finish"
+                                    ],
+                                    "properties": {
+                                      "finish": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      }
+                                    }
                                   }
-                                }
+                                ]
                               }
                             }
                           }
@@ -46276,21 +46381,42 @@
                                             }
                                           },
                                           "blocks": {
-                                            "type": "object",
-                                            "properties": {
-                                              "taskIds": {
-                                                "type": "array",
-                                                "items": {
-                                                  "$ref": "#/components/schemas/TaskId"
-                                                },
-                                                "maxItems": 1000
+                                            "anyOf": [
+                                              {
+                                                "type": "object",
+                                                "required": [
+                                                  "taskIds"
+                                                ],
+                                                "properties": {
+                                                  "taskIds": {
+                                                    "type": "array",
+                                                    "items": {
+                                                      "$ref": "#/components/schemas/TaskId"
+                                                    },
+                                                    "minItems": 1,
+                                                    "maxItems": 1000
+                                                  },
+                                                  "finish": {
+                                                    "type": "string",
+                                                    "minLength": 1,
+                                                    "maxLength": 200
+                                                  }
+                                                }
                                               },
-                                              "finish": {
-                                                "type": "string",
-                                                "minLength": 1,
-                                                "maxLength": 200
+                                              {
+                                                "type": "object",
+                                                "required": [
+                                                  "finish"
+                                                ],
+                                                "properties": {
+                                                  "finish": {
+                                                    "type": "string",
+                                                    "minLength": 1,
+                                                    "maxLength": 200
+                                                  }
+                                                }
                                               }
-                                            }
+                                            ]
                                           }
                                         }
                                       }
@@ -47033,21 +47159,42 @@
                                             }
                                           },
                                           "blocks": {
-                                            "type": "object",
-                                            "properties": {
-                                              "taskIds": {
-                                                "type": "array",
-                                                "items": {
-                                                  "$ref": "#/components/schemas/TaskId"
-                                                },
-                                                "maxItems": 1000
+                                            "anyOf": [
+                                              {
+                                                "type": "object",
+                                                "required": [
+                                                  "taskIds"
+                                                ],
+                                                "properties": {
+                                                  "taskIds": {
+                                                    "type": "array",
+                                                    "items": {
+                                                      "$ref": "#/components/schemas/TaskId"
+                                                    },
+                                                    "minItems": 1,
+                                                    "maxItems": 1000
+                                                  },
+                                                  "finish": {
+                                                    "type": "string",
+                                                    "minLength": 1,
+                                                    "maxLength": 200
+                                                  }
+                                                }
                                               },
-                                              "finish": {
-                                                "type": "string",
-                                                "minLength": 1,
-                                                "maxLength": 200
+                                              {
+                                                "type": "object",
+                                                "required": [
+                                                  "finish"
+                                                ],
+                                                "properties": {
+                                                  "finish": {
+                                                    "type": "string",
+                                                    "minLength": 1,
+                                                    "maxLength": 200
+                                                  }
+                                                }
                                               }
-                                            }
+                                            ]
                                           }
                                         }
                                       }
@@ -47611,21 +47758,42 @@
                                             }
                                           },
                                           "blocks": {
-                                            "type": "object",
-                                            "properties": {
-                                              "taskIds": {
-                                                "type": "array",
-                                                "items": {
-                                                  "$ref": "#/components/schemas/TaskId"
-                                                },
-                                                "maxItems": 1000
+                                            "anyOf": [
+                                              {
+                                                "type": "object",
+                                                "required": [
+                                                  "taskIds"
+                                                ],
+                                                "properties": {
+                                                  "taskIds": {
+                                                    "type": "array",
+                                                    "items": {
+                                                      "$ref": "#/components/schemas/TaskId"
+                                                    },
+                                                    "minItems": 1,
+                                                    "maxItems": 1000
+                                                  },
+                                                  "finish": {
+                                                    "type": "string",
+                                                    "minLength": 1,
+                                                    "maxLength": 200
+                                                  }
+                                                }
                                               },
-                                              "finish": {
-                                                "type": "string",
-                                                "minLength": 1,
-                                                "maxLength": 200
+                                              {
+                                                "type": "object",
+                                                "required": [
+                                                  "finish"
+                                                ],
+                                                "properties": {
+                                                  "finish": {
+                                                    "type": "string",
+                                                    "minLength": 1,
+                                                    "maxLength": 200
+                                                  }
+                                                }
                                               }
-                                            }
+                                            ]
                                           }
                                         }
                                       }

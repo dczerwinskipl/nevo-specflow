@@ -289,10 +289,11 @@ An attention item (`WorkflowAttentionItem`) is derived on every read and never s
 for the Specification's `task-escalated`, `tasks-stuck` and `dependency-unsatisfiable` the Tasks it
 names (`taskIds`; `tasks-stuck` also `blocking: [{taskId, cause}]` with `cause` `draft`, `on-hold`,
 `broken` or `dependency-unsatisfiable`). A Task on hold that the user has to resume or cancel has its
-own item (`resume-task`, then `cancel-task`): `task-escalated` on the Task when it escalated and no
-Specification item names it, otherwise `on-hold-blocking` with `blocks: {taskIds?, finish?}` (the
-open Tasks that wait on it directly, and the Specification step whose finish to `completed` it
-refuses, also its `step`). A hold that nothing waits on and that blocks no finish has none. The
+own item (`resume-task`, then `cancel-task`): `task-escalated` on the Task when it escalated, no
+Specification item names it and the Specification is not at a work step (which decides it),
+otherwise `on-hold-blocking` with `blocks` (`taskIds`, the open Tasks that wait on it directly, at
+least one; `finish`, the Specification step whose finish to `completed` it refuses, also its
+`step`; at least one of the two). A hold that nothing waits on and that blocks no finish has none. The
 rules are the
 [workflow kernel's](../../architecture/workflow/workflow-kernel.md#continuation-and-attention).
 

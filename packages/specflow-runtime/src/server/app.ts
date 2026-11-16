@@ -1,9 +1,8 @@
 import compress from '@fastify/compress';
 import cookie from '@fastify/cookie';
-import { join } from 'node:path';
 import { RuntimeInfoResponseSchema } from '@nevo/specflow-contracts/runtime';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import { openWorkflow } from '@nevo/specflow-engine';
+import { openWorkflow, withCheckoutQuiescence } from '@nevo/specflow-engine';
 import Fastify, {
   type FastifyInstance,
   type FastifyServerOptions,
@@ -14,6 +13,8 @@ import { authCookieNames, createAuthFeature, type AuthFeatureDependencies } from
 import type { RuntimeConfig } from '../config/types';
 import {
   createSessionsFeature,
+  projectSessionStoreDirectory,
+  runtimeCheckoutQuiescence,
   type SessionReferenceOwner,
   type SessionDriver,
 } from '../features/sessions';
@@ -220,7 +221,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       dependencies.sessions?.storage ??
       (mode === 'project' && config.sessions?.enabled && engine
         ? {
-            directory: join(engine.context.project.stateRoot, 'sessions'),
+            directory: projectSessionStoreDirectory(engine),
             projectId: engine.context.project.projectId,
             workspace: engine.context.workspace.root,
           }
@@ -290,7 +291,18 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     createSpecsFeature({
       ...(config.specs ? { config: config.specs } : {}),
       dependencies: {
-        engine: dependencies.specs?.engine,
+        // Close asks whether an agent can work in a checkout it removes: this Runtime's own Turns
+        // while it owns the Session store, else the store's owner record.
+        engine:
+          engine &&
+          withCheckoutQuiescence(
+            engine,
+            runtimeCheckoutQuiescence({
+              engine,
+              sessions: sessionsFeature.runtime,
+              runningSessions: (workspaceId) => workspaceOccupancy.runningSessions(workspaceId),
+            }),
+          ),
         overviewRepository: dependencies.specs?.overviewRepository ?? demo?.overviewRepository,
         workspaceRepository: dependencies.specs?.workspaceRepository ?? demo?.workspaceRepository,
         contributions,

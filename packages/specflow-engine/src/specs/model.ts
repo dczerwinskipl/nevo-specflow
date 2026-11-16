@@ -48,6 +48,11 @@ export interface ManifestDocument {
   readonly id: string;
   readonly path: string;
   readonly type: string;
+  /**
+   * The revision (sha256 of the bytes) of the content the Engine created the document with from an
+   * archetype template. While the file still has exactly this revision, it is template only.
+   */
+  readonly templateRevision?: string;
 }
 
 /**
@@ -130,7 +135,8 @@ export function specificationSlugFromTitle(title: string, specId: string): strin
 /** Keys of each strict manifest object. Unknown top-level keys are tolerated; these are not. */
 const ARCHETYPE_KEYS: readonly string[] = ['id', 'version', 'requirements'];
 const REQUIREMENT_KEYS: readonly string[] = ['documentType', 'minCount'];
-const DOCUMENT_KEYS: readonly string[] = ['id', 'path', 'type'];
+const DOCUMENT_KEYS: readonly string[] = ['id', 'path', 'type', 'templateRevision'];
+const TEMPLATE_REVISION = /^[0-9a-f]{64}$/u;
 
 /**
  * Parse manifest YAML text: enforces the manifest size limit, then {@link parseSpecificationManifest}.
@@ -327,7 +333,20 @@ function parseDocuments(value: unknown, slug: string): ManifestDocument[] {
       throw sourceInvalid(slug, `${field}.path`, `is not a portable path (${path.violation})`);
     }
 
-    return { id: entry.id, path: entry.path, type: entry.type };
+    if (
+      entry.templateRevision !== undefined &&
+      (typeof entry.templateRevision !== 'string' ||
+        !TEMPLATE_REVISION.test(entry.templateRevision))
+    ) {
+      throw sourceInvalid(slug, `${field}.templateRevision`, 'must be a sha256 hex digest');
+    }
+
+    return {
+      id: entry.id,
+      path: entry.path,
+      type: entry.type,
+      ...(entry.templateRevision !== undefined ? { templateRevision: entry.templateRevision } : {}),
+    };
   });
 
   const pathKeys = new Set<string>();

@@ -12,6 +12,7 @@ import { CloseOperationError, type CloseJournal } from '../model';
 import { reserveCloseOperation } from '../reservation';
 import { pruneUncommitted } from '../../uncommitted';
 import { advanceCloseIntegration } from './integration';
+import { requireQuietCheckoutBeforeClose } from '../checkout-quiescence';
 
 export type CloseSpecificationResult =
   | { readonly status: 'completed'; readonly journal: CloseJournal }
@@ -106,6 +107,7 @@ export async function closeSpecification(
     ...request,
   });
   let journal = admission.journal;
+  await requireQuietCheckoutBeforeClose(engine, journal);
   if (journal.stage === 'reserved') {
     // The Specification exit gate (D07) admitted this Close in its reservation, under the lock.
     journal = await archiveSpecificationWithCommit(engine, request.operationId);

@@ -90,12 +90,12 @@ Availability and action states describe only what actually exists.
   exists), in project and demo mode alike. Clients expand the summary into this document only; when
   it is absent they offer no expand action and never substitute another document (for example the
   first item).
-- `sections.documents.data.items[].templateOnly` (project mode) is `true` while the file is still
-  only the template of the Specification's archetype that has its type and file name, rendered with
-  the Specification's title, slug and creation date; the goal, which the Specification does not
-  keep, may hold any text but a heading line, and line endings and trailing spaces do not count. It is `false` once the
-  file differs, and when the archetype or such a template is not in the current catalogue. The demo
-  Runtime omits it.
+- `sections.documents.data.items[].templateOnly` (project mode) is `true` while the file still has
+  exactly the content the Engine created it with from an archetype template (at Create or by a
+  template create): its revision, the sha256 of its bytes, equals the `templateRevision` its registry
+  entry recorded then. It is `false` once a byte differs (line endings included) and for a document
+  the Engine did not create from a template. The current catalogue is not consulted. The demo Runtime
+  omits it.
 - `sections.tasks` is one Engine read (`readExecution`) of the Specification's Task resources
   (`tasks/index.yaml`, `tasks/<id>/task.yaml`), runs and action projections, presented in the
   Runtime's dashboard grouping ([Task reads](task-reads.md#dashboard-grouping)), the same one the

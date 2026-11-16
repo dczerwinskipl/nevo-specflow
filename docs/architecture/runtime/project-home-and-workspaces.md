@@ -82,4 +82,7 @@ alone does not register a workspace or grant access.
 See [Git configuration](../../reference/configuration/specflow-git-worktrees.md) and
 [Specification lifecycle](specification-lifecycle.md). The Engine does not supply network-distributed
 locks or automatic moved-home repair; managed agent processes are fenced by
-[workspace execution claims](workspace-execution-claims.md).
+[workspace execution claims](workspace-execution-claims.md). Read-only agent Turns hold no claim: a
+Close that removes a worktree asks the Runtime that owns the Project Home's Session store
+(`.nevo/local/state/sessions/sessions.sqlite`), and any other process reads that store's owner record
+and refuses while a live Runtime owns it.

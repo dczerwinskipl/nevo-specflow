@@ -11,4 +11,7 @@ export type {
   RuntimeSetupUi,
 } from './init/contracts';
 export { startRuntime, type RuntimeHandle, type RuntimeStartOptions } from './runtime';
+// Agent Sessions run only in the Runtime that owns the Project's Session store; a Close in any
+// other process (the CLI) asks that store's owner record whether an agent can work in a checkout.
+export { sessionStoreCheckoutQuiescence } from './features/sessions';
 export type { RuntimeWebApp, RuntimeWebAppAsset } from './server/web-app';

@@ -642,16 +642,17 @@ export type TaskAuthoring = Static<typeof TaskAuthoringSchema>;
 const OutlineStepSchema = Type.Object({
   step: StepIdSchema,
   title: Type.String(),
-  /** 1-based, in declared order. */
+  /** 1-based, in the definition's declared order ("Step 2 of 7"), not progress. */
   position: Type.Integer({ minimum: 1 }),
 });
 
 /**
  * Where a run stands among its workflow's steps, in declared order (display facts; a workflow may
  * loop or branch, so this is no execution order). `current`: the step the run is at (absent before
- * the first start and once it ended); `next`: the declared successor when a transition of `current`
- * leads there, else its only target step, else absent (the entry step before the first start);
- * `tasksStep`: the first step that declares `produces: tasks`, while the run can still reach it.
+ * the first start and once it ended); `next`: the one step every step-leading transition of
+ * `current` leads to, absent when ambiguous or none (the entry step before the first start);
+ * `tasksStep`: the first step that declares `produces: tasks`, only while following `next` from
+ * `current` (or the entry step) arrives at it.
  */
 export const WorkflowOutlineSchema = Type.Object({
   stepCount: Type.Integer({ minimum: 0 }),

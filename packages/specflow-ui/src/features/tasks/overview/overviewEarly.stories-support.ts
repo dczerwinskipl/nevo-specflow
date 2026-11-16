@@ -133,7 +133,8 @@ export function earlyProjection(scenario: EarlyScenario): WorkflowActionProjecti
     stepCount: steps.length,
     current: outlineStep(index),
     next: outlineStep(index + 1),
-    tasksStep,
+    // The steps run in a line: past the producing step the Engine claims no Tasks step.
+    ...(index <= tasksStep.position - 1 ? { tasksStep } : {}),
   };
 
   return {

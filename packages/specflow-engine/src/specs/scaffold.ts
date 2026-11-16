@@ -153,7 +153,7 @@ class DocumentRegistry {
     this.specId = specId;
   }
 
-  register(path: string, type: string): void {
+  register(path: string, type: string, templateRevision?: string): void {
     let id: string;
     try {
       id = allocateDocumentId({
@@ -175,7 +175,7 @@ class DocumentRegistry {
     }
 
     this.usedIds.add(id);
-    this.documents.push({ id, path, type });
+    this.documents.push({ id, path, type, ...(templateRevision ? { templateRevision } : {}) });
   }
 }
 
@@ -294,7 +294,8 @@ function renderArchetypeFiles(
       });
     }
 
-    registry.register(path, template.documentType);
+    // Its revision is the hash of exactly these bytes (`fingerprint`), as the reads compute it.
+    registry.register(path, template.documentType, sha256Hex(content));
     files.push({ path, content });
   }
 

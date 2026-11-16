@@ -36,6 +36,7 @@ import { readCloseJournal } from './journal/store';
 import { CloseOperationError, type CloseJournal } from './model';
 import { inspectCleanGitWorkspace } from './preflight';
 import { assertResourcesAvailable } from './resources';
+import { requireQuietCheckout } from './checkout-quiescence';
 
 function conflict(message: string): CloseOperationError {
   return new CloseOperationError('CLOSE_CONFLICT', message);
@@ -416,9 +417,10 @@ export async function disposeReboundWorktree(
     await requireUnchangedLocalConfigCopy(registration.root);
   }
 
-  // Quiescence: an agent write holds the project claim (refused above); the Runtime refuses Close
-  // while a read-only Session Turn works in this checkout and holds it against new Turns. TODO: a
-  // Close run outside the Runtime (CLI) does not see those in-process Turns yet.
+  // Quiescence: an agent write holds the project claim (refused above); a read-only Session Turn
+  // holds no durable claim, so the host attests that none works here. A Turn that starts after this
+  // answer sees the unfinished Close journal and refuses.
+  await requireQuietCheckout(engine, { workspaceId: c.sourceWorkspaceId, root: c.sourceRoot });
   const intent = await stage(engine, current, { ...current, stage: 'disposal-initiated' });
   await afterDisposalIntent?.();
 

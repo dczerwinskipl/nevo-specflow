@@ -299,6 +299,11 @@ describe('create', () => {
     expect(result.templates).toEqual([
       { path: 'a.md', templateId: 'tpl', sha256: sha256Hex('rendered') },
     ]);
+    // The registry entry keeps the revision it was created with: template only while unchanged.
+    expect(result.registry?.documents.find((entry) => entry.path === 'a.md')).toMatchObject({
+      type: 'behaviour',
+      templateRevision: sha256Hex('rendered'),
+    });
     expect(refusal(snapshot, request, { currentCatalogueRevision: 'rev-2' }).code).toBe(
       'CATALOGUE_STALE',
     );

@@ -10,6 +10,7 @@ import { useSlowGitTestTimeouts } from '../support/platform';
 
 import { sha256Hex } from '../../src/hash';
 import { applyDocumentChange } from '../../src/specs/documents/api';
+import { readRegisteredDocumentSummaries } from '../../src/specs/documents/summaries';
 import { getStableProjectCatalogue } from '../../src/definitions';
 import { createSpecificationForTesting } from '../../src/testing';
 import { failure, documentsProject, removeTrackedRoots } from '../support/documents-fixture';
@@ -65,6 +66,22 @@ describe('create documents from a template', () => {
     expect(await readFile(join(project.dir, 'specification.yaml'), 'utf8')).toContain(
       'docs/behaviour.md',
     );
+
+    // Template only exactly while the file has the content the Engine created it with: the
+    // overview of Create and this document, whatever their goal or title text.
+    const templateOnly = async () =>
+      Object.fromEntries(
+        (await readRegisteredDocumentSummaries(project.engine, project.specId)).map((summary) => [
+          summary.path,
+          summary.templateOnly,
+        ]),
+      );
+    expect(await templateOnly()).toEqual({ 'overview.md': true, 'docs/behaviour.md': true });
+    const path = join(project.dir, 'docs', 'behaviour.md');
+    await writeFile(path, content + 'Given a written scenario.\n');
+    expect(await templateOnly()).toEqual({ 'overview.md': true, 'docs/behaviour.md': false });
+    await writeFile(path, content);
+    expect(await templateOnly()).toEqual({ 'overview.md': true, 'docs/behaviour.md': true });
   });
 
   it('replays the stored rendering after the template changed', async () => {

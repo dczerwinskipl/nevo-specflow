@@ -85,7 +85,7 @@ export function collectCorpusProblems(
   const problems: string[] = [];
   for (const file of scan.missingFrontmatter) {
     problems.push(
-      `${file}: missing frontmatter (every authored ${settings.root}/**.md file needs a '---' block at the top; ${frontmatterFormat()})`,
+      `${file}: missing frontmatter (every authored ${settings.root}/**.md file needs a '---' block at the top | ${frontmatterFormat()})`,
     );
   }
 

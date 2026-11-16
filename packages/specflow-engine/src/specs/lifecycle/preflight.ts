@@ -223,7 +223,7 @@ export async function inspectCleanGitWorkspace(
   }
 
   if (symbolic.exitCode !== 0 || !branchRef) {
-    throw invalid('Checkout must be on an attached local branch.');
+    throw invalid('The branch of the checkout cannot be read.');
   }
 
   if (!branchRef.startsWith('refs/heads/')) {

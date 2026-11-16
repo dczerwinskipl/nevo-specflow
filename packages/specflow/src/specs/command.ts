@@ -26,6 +26,7 @@ import { Command, InvalidArgumentError } from 'commander';
 
 import { createDocumentsCommand, type DocumentsCommandContext } from '../documents/command';
 import { engineAt } from '../engine-at';
+import { reportingRefusals } from '../documents/report';
 import { previewCloseForCli } from './close-preview';
 import { openExecution, reportingWorkflowRefusals } from '../execution-session';
 import { localOwner } from '../local-actor';
@@ -53,6 +54,25 @@ function summary(item: DiscoveredSpecification): Record<string, unknown> {
     binding: item.binding,
     specification: item.specification,
   };
+}
+
+/**
+ * A Close preview refused by document commits (`DOCUMENT_COMMITS_PENDING`, answered as the Close
+ * would) is printed as a documents refusal with its cause and hint, not as an internal error.
+ */
+function previewRefusals(
+  context: SpecsCommandContext,
+  json: boolean | undefined,
+  body: () => Promise<void>,
+): Promise<void> {
+  return reportingRefusals(
+    {
+      stdout: context.stdout,
+      stderr: context.stderr ?? ((line: string) => process.stderr.write(line + '\n')),
+    },
+    json,
+    body,
+  );
 }
 
 function output(context: SpecsCommandContext, value: unknown): void {
@@ -194,13 +214,15 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
       const engine = await engineForClose(context.cwd, options.projectRoot);
       const operationId = options.operationId ?? randomUUID();
       if (options.preview) {
-        output(
-          context,
-          await previewCloseForCli(engine, {
-            kind: 'worktree-close',
-            operationId,
-            specId,
-          }),
+        await previewRefusals(context, options.json, async () =>
+          output(
+            context,
+            await previewCloseForCli(engine, {
+              kind: 'worktree-close',
+              operationId,
+              specId,
+            }),
+          ),
         );
 
         return;
@@ -239,7 +261,9 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
       const operationId = options.operationId ?? randomUUID();
       const request = { workspaceId, operationId };
       if (options.preview) {
-        output(context, await planPublicWorkspaceCloseOperation(engine, request));
+        await previewRefusals(context, options.json, async () =>
+          output(context, await planPublicWorkspaceCloseOperation(engine, request)),
+        );
 
         return;
       }
@@ -297,7 +321,9 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
         ...(options.archiveOnly ? { integrateToTargetBranch: false } : {}),
       };
       if (options.preview) {
-        output(context, await previewCloseForCli(engine, request));
+        await previewRefusals(context, options.json, async () =>
+          output(context, await previewCloseForCli(engine, request)),
+        );
 
         return;
       }

@@ -2423,11 +2423,11 @@
         "recovery": "An earlier Close of this specification stopped part way. Finish it from the command line before closing again.",
         "gitConfig": "The git section of .nevo/config.yaml is invalid or incomplete. Correct it, then close again.",
         "git": "Git cannot run in the project folder now. Check the repository, then try again.",
-        "documentsPending": "Saved documents of this specification are still being committed. Wait a moment, then close again.",
+        "documentsPending": "Saved documents in this checkout are still being committed. Wait a moment, then close again.",
         "commitBlocked": "Git does not accept a commit on this branch now. Check the branch protection and the repository state, then close again.",
         "engine": "Close is not available in this Runtime.",
         "unknown": "Close did not start, and the reason cannot be shown here. Try again; if it fails again, run “nevo-specflow specs close <specification id> --preview” in the project folder.",
-        "documentsUncommitted": "Saved documents of this specification are not committed (manual commit mode). Commit them from Documents, then close again.",
+        "documentsUncommitted": "Saved documents in this checkout are not committed (manual commit mode). Commit them from Documents, then close again.",
         "documentsFailed": "A document commit failed. Retry or resolve it in Documents, then close again."
       },
       "repository": {
@@ -2465,7 +2465,9 @@
         }
       },
       "closingTitle": "Closing",
-      "closingBody": "Close is running. This can take a moment."
+      "closingBody": "Close is running. This can take a moment.",
+      "documentsCheckingTitle": "Saving document commits…",
+      "documentsCheckingBody": "Saved documents in this checkout are still being committed. The check runs again by itself, and Close can start once they are committed."
     },
     "abandon": {
       "action": "Abandon specification",

@@ -26,7 +26,11 @@ import {
   workflowAtOf,
   type BlockerTask,
 } from './BlockerGroups';
-import { closeDialogOutcome } from './closeDialogOutcome';
+import {
+  DOCUMENT_COMMIT_RECHECK_MS,
+  closeDialogOutcome,
+  waitsForDocumentCommits,
+} from './closeDialogOutcome';
 import { RepositoryBlockers, repositoryReasons } from './RepositoryBlockers';
 
 type Position = WorkflowActionProjection['position'];
@@ -95,6 +99,14 @@ function CloseBody({
     staleTime: Infinity,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
+    // Saved documents still queued for their commit settle by themselves: read the preview again
+    // until they do (then it plans the Close or names the real blockers). Stops when the dialog
+    // closes, since the query unmounts with it.
+    refetchInterval: (query) =>
+      query.state.status === 'error' &&
+      waitsForDocumentCommits(workflowRefusalOf(query.state.error))
+        ? DOCUMENT_COMMIT_RECHECK_MS
+        : false,
   });
   // A Close the workflow blocks is not planned; the running agent Turns that would hold its
   // checkout too are read on their own, so both are listed at once.
@@ -207,8 +219,18 @@ function CloseBody({
       </DialogHeader>
       <DialogBody className="grid gap-5">
         {outcome.kind === 'checking' ? (
-          <Alert role="status" tone="neutral" title={t('workflowExecution.close.checkingTitle')}>
-            {t('workflowExecution.close.checkingBody')}
+          <Alert
+            role="status"
+            tone="neutral"
+            title={
+              outcome.waitingFor === 'documents'
+                ? t('workflowExecution.close.documentsCheckingTitle')
+                : t('workflowExecution.close.checkingTitle')
+            }
+          >
+            {outcome.waitingFor === 'documents'
+              ? t('workflowExecution.close.documentsCheckingBody')
+              : t('workflowExecution.close.checkingBody')}
           </Alert>
         ) : null}
         {outcome.kind === 'cannot-start' ? (

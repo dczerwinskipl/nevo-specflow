@@ -115,10 +115,8 @@ describe('closeDialogOutcome', () => {
         close: idle,
       });
 
-    expect(held('commit-pending')).toEqual({
-      kind: 'cannot-start',
-      reasonKey: 'workflowExecution.close.refusal.documentsPending',
-    });
+    // Queued for the automatic commit: it settles by itself, so the dialog keeps checking.
+    expect(held('commit-pending')).toEqual({ kind: 'checking', waitingFor: 'documents' });
     expect(held('commit-uncommitted')).toEqual({
       kind: 'cannot-start',
       reasonKey: 'workflowExecution.close.refusal.documentsUncommitted',
@@ -126,6 +124,21 @@ describe('closeDialogOutcome', () => {
     expect(held('commit-failed')).toEqual({
       kind: 'cannot-start',
       reasonKey: 'workflowExecution.close.refusal.documentsFailed',
+    });
+  });
+
+  it('shows a Close refused by documents still being committed as not closed', () => {
+    expect(
+      closeDialogOutcome({
+        preview: { status: 'success' },
+        close: {
+          status: 'error',
+          refusal: refusal('DOCUMENT_COMMITS_PENDING', { documentCause: 'commit-pending' }),
+        },
+      }),
+    ).toEqual({
+      kind: 'not-closed',
+      reasonKey: 'workflowExecution.close.refusal.documentsPending',
     });
   });
 

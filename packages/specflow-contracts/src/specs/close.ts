@@ -107,8 +107,10 @@ const CloseCheckoutRoleSchema = Type.Union([
 /**
  * A repository precondition of a Close the owner fixes in the repository (`CLOSE_PREFLIGHT`, from the
  * preview or the Close): `checkout` is the Specification's own checkout or the one it is integrated
- * into. `uncommitted-changes` names at most 10 `paths` of `count`; `integration-target-branch` is a
- * primary checkout on `branch` instead of the configured `expectedBranch`.
+ * into. `uncommitted-changes` names at most 10 `paths` of `count`; `integration-target-branch` is the
+ * checkout the Close integrates into (the primary checkout for the configured
+ * `git.integrationTargetBranch`, or a pinned integration destination) on `branch` instead of
+ * `expectedBranch`.
  */
 export const RepositoryBlockerSchema = Type.Union([
   Type.Object(

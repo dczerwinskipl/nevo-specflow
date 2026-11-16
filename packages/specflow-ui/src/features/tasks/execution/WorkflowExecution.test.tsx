@@ -570,6 +570,42 @@ describe('manual workflow execution', () => {
     expect(close).not.toHaveBeenCalled();
   });
 
+  it('checks again by itself while saved documents are being committed, then names the real blockers', async () => {
+    const pending = refusal('DOCUMENT_COMMITS_PENDING', 409, { cause: 'commit-pending' });
+    const dirty = refusal('CLOSE_PREFLIGHT', 422);
+    (dirty.cause as { data: Record<string, unknown> }).data.repository = [
+      { kind: 'uncommitted-changes', checkout: 'specification', paths: ['notes.txt'], count: 1 },
+    ];
+    const closePreview = vi
+      .fn<WorkflowExecutionApi['closePreview']>()
+      .mockRejectedValueOnce(pending)
+      .mockRejectedValue(dirty);
+    renderWith(
+      <CloseSpecificationDialog
+        open
+        onOpenChange={vi.fn()}
+        specId={SPEC}
+        specTitle="Single sign-on"
+        projection={specificationWorkflowProjection('abandoned')}
+        tasks={new Map()}
+        cancelledTasks={[]}
+        onSeeWorkflow={vi.fn()}
+        onSeeTasks={vi.fn()}
+        onOpenTask={vi.fn()}
+        onClosed={vi.fn()}
+      />,
+      { execution: fakeExecutionApi({ closePreview }) },
+    );
+    const dialog = screen.getByRole('dialog');
+
+    expect(await within(dialog).findByText('Saving document commits…')).toBeTruthy();
+    expect(within(dialog).queryByRole('alert')).toBeNull();
+
+    expect(await within(dialog).findByText('notes.txt', undefined, { timeout: 4000 })).toBeTruthy();
+    expect(closePreview).toHaveBeenCalledTimes(2);
+    expect(within(dialog).queryByText('Saving document commits…')).toBeNull();
+  });
+
   it('tells to commit saved documents from Documents when manual commits hold the Close', async () => {
     const held = refusal('DOCUMENT_COMMITS_PENDING', 409, { cause: 'commit-uncommitted' });
     renderWith(

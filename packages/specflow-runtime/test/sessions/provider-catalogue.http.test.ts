@@ -11,7 +11,10 @@ import {
   type ProviderDescriptor,
 } from '@nevo/specflow-contracts/sessions';
 import { createRuntimeApp } from '../../src/server/app';
-import type { SessionsFeatureConfig } from '../../src/features/sessions';
+import {
+  parseSessionsFeatureConfig,
+  type SessionsFeatureConfig,
+} from '../../src/features/sessions';
 import { passwordConfig } from '../auth/support/config';
 import { associationTargets } from '../support/association-targets';
 
@@ -218,31 +221,66 @@ describe('GET /api/session-providers by start context', () => {
   });
 });
 
-describe('GET /api/session-providers with providers the configuration withholds', () => {
+describe('GET /api/session-providers under project policy and workstation enablement', () => {
+  const items = async (server: FastifyInstance, query = '') => {
+    const response = await catalogue(server, query);
+    expect(response.statusCode, response.body).toBe(200);
+    expect(Value.Check(ProviderCatalogueSchema, response.json())).toBe(true);
+
+    return response.json<{ items: ProviderDescriptor[] }>().items;
+  };
+
   it('lists each withheld provider as unavailable with its reason, and refuses to start it', async () => {
     const server = await open(
       'developer',
       { projectId: 'project' },
-      {
-        enabled: true,
-        providers: { mock: { enabled: true }, codex: { enabled: false } },
-        withheld: [
-          { providerId: 'codex', reason: 'not-enabled' },
-          { providerId: 'claude', reason: 'not-allowed' },
-        ],
-      },
+      parseSessionsFeatureConfig({
+        project: {
+          enabled: true,
+          providers: { mock: { allowed: true }, codex: { allowed: true } },
+        },
+        // A provider the project does not allow stays not allowed, whatever the workstation says.
+        local: { providers: { codex: { enabled: false }, claude: { enabled: false } } },
+      }),
     );
-    const response = await catalogue(server);
-    expect(response.statusCode, response.body).toBe(200);
-    expect(Value.Check(ProviderCatalogueSchema, response.json())).toBe(true);
-    const items = response.json<{ items: ProviderDescriptor[] }>().items;
-    expect(items.map((item) => [item.providerId, item.readiness, item.reasonCode])).toEqual([
+    const listed = await items(server);
+    expect(listed.map((item) => [item.providerId, item.readiness, item.reasonCode])).toEqual([
       ['mock', 'ready', undefined],
-      ['codex', 'unavailable', 'NOT_ENABLED_ON_WORKSTATION'],
       ['claude', 'unavailable', 'NOT_ALLOWED_BY_PROJECT'],
+      ['codex', 'unavailable', 'NOT_ENABLED_ON_WORKSTATION'],
+      ['antigravity', 'unavailable', 'NOT_ALLOWED_BY_PROJECT'],
     ]);
-    expect(items[1]!.reason).toContain('.nevo/local/config.yaml');
-    expect(items[2]!.reason).toContain('sessions.providers.claude.allowed: true');
-    expect((await createIn(server, 'S', 'codex')).statusCode).toBe(503);
+    expect(listed[1]!.reason).toContain('sessions.providers.claude.allowed: true');
+    expect(listed[2]!.reason).toContain('.nevo/local/config.yaml');
+    for (const providerId of ['claude', 'codex', 'antigravity']) {
+      const created = await createIn(server, 'S', providerId);
+      expect(created.statusCode).toBe(503);
+      expect(created.json()).toMatchObject({ code: 'PROVIDER_UNAVAILABLE' });
+    }
+
+    // Read for a Specification the withheld entries keep their configuration reason.
+    expect((await items(server, '?specId=S')).slice(1).map((item) => item.reasonCode)).toEqual([
+      'NOT_ALLOWED_BY_PROJECT',
+      'NOT_ENABLED_ON_WORKSTATION',
+      'NOT_ALLOWED_BY_PROJECT',
+    ]);
+  });
+
+  it('serves no catalogue and starts nothing while the project disables Sessions, whatever is local', async () => {
+    const server = await open(
+      'developer',
+      { projectId: 'project' },
+      parseSessionsFeatureConfig({
+        project: {
+          enabled: false,
+          providers: { mock: { allowed: true }, claude: { allowed: true } },
+        },
+        local: { providers: { mock: { enabled: true }, claude: { enabled: true } } },
+      }),
+    );
+    for (const response of [await catalogue(server), await createIn(server, 'S')]) {
+      expect(response.statusCode, response.body).toBe(503);
+      expect(response.json()).toMatchObject({ code: 'SESSION_DISABLED' });
+    }
   });
 });

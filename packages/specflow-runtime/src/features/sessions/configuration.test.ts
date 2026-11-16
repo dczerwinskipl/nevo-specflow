@@ -65,7 +65,33 @@ describe('Session configuration: project policy and workstation enablement', () 
     });
   });
 
+  it('loads disabled while the project disables Sessions, with local opt-outs and paths', () => {
+    expect(
+      parseSessionsFeatureConfig({
+        project: { enabled: false, providers: { claude: { allowed: true } } },
+        local: { providers: { claude: { enabled: false, executable: '/opt/claude/claude' } } },
+      }),
+    ).toEqual({ enabled: false, providers: { mock: { enabled: false } } });
+  });
+
+  it('reports a provider the project does not allow as not allowed, even when turned off locally', () => {
+    expect(
+      parseSessionsFeatureConfig({
+        project: { enabled: true, providers: { claude: { allowed: true } } },
+        local: { providers: { codex: { enabled: false } } },
+      }).withheld,
+    ).toContainEqual({ providerId: 'codex', reason: 'not-allowed' });
+  });
+
   it.each([
+    [
+      'a local executable of a provider the project does not allow',
+      {
+        project: { enabled: true, providers: { claude: { allowed: true } } },
+        local: { providers: { codex: { executable: '/opt/codex/codex' } } },
+      },
+      /sessions\.providers\.codex\.executable in \.nevo\/local\/config\.yaml configures a provider the project does not allow/u,
+    ],
     [
       'the former project enablement, with how to migrate',
       { project: { enabled: true, providers: { claude: { enabled: true } } } },
@@ -118,5 +144,59 @@ describe('Session configuration: project policy and workstation enablement', () 
     ]) {
       expect(() => parseSessionsFeatureConfig(documents)).toThrow();
     }
+  });
+
+  it('never lets local configuration widen project policy', () => {
+    const choices = [true, false, undefined] as const;
+    for (const providerId of ['mock', 'claude', 'codex', 'antigravity'] as const) {
+      for (const feature of choices) {
+        for (const allowed of choices) {
+          for (const enabled of choices) {
+            const documents = {
+              project: {
+                ...(feature === undefined ? {} : { enabled: feature }),
+                providers: { [providerId]: allowed === undefined ? {} : { allowed } },
+              },
+              local: {
+                providers: { [providerId]: enabled === undefined ? {} : { enabled } },
+              },
+            };
+            if (enabled === true && allowed !== true) {
+              expect(() => parseSessionsFeatureConfig(documents)).toThrow(/does not allow/u);
+              continue;
+            }
+
+            const config = parseSessionsFeatureConfig(documents);
+            const effective = config.providers[providerId]?.enabled === true;
+            expect(effective).toBe(feature === true && allowed === true && enabled !== false);
+            // A provider is either run or withheld, never both (one reason per catalogue entry).
+            const withheld = config.withheld?.some((entry) => entry.providerId === providerId);
+            expect(effective && withheld).toBe(false);
+          }
+        }
+      }
+    }
+  });
+
+  it('keeps the test-only mock apart from the real providers', () => {
+    // Allowing the mock grants no real provider; a real provider grants no mock.
+    expect(
+      parseSessionsFeatureConfig({
+        project: { enabled: true, providers: { mock: { allowed: true } } },
+      }),
+    ).toEqual({
+      enabled: true,
+      providers: { mock: { enabled: true } },
+      withheld: [
+        { providerId: 'claude', reason: 'not-allowed' },
+        { providerId: 'codex', reason: 'not-allowed' },
+        { providerId: 'antigravity', reason: 'not-allowed' },
+      ],
+    });
+    const realOnly = parseSessionsFeatureConfig({
+      project: { enabled: true, providers: { claude: { allowed: true } } },
+    });
+    expect(realOnly.providers.mock).toEqual({ enabled: false });
+    expect(realOnly.withheld?.map((entry) => entry.providerId)).not.toContain('mock');
   });
 });

@@ -49,7 +49,7 @@ sessions:
 Both flags default to false. An allowed provider is enabled on every workstation unless that
 workstation's `.nevo/local/config.yaml` sets `sessions.providers.<provider>.enabled: false`; the
 local file also holds a real provider's optional absolute `executable`. Local config cannot enable
-the feature, allow a provider or enable one the project does not allow; such values, a project
+the feature, allow a provider or enable or configure one the project does not allow; such values, a project
 `executable`, the former project `providers.<provider>.enabled` and unknown keys are refused at
 load ([project versus local](../../architecture/runtime/configuration.md#session-providers-project-and-workstation)).
 Start the existing product server and open a Specification's **Sessions** list; a Session started
@@ -731,7 +731,11 @@ unavailable, with no model, mode or capability, and reason code `NOT_ALLOWED_BY_
 does not allow it; a maintainer sets `allowed: true` in `.nevo/config.yaml`) or
 `NOT_ENABLED_ON_WORKSTATION` (allowed, but this workstation's local config sets `enabled: false`).
 A mock the project does not allow is never listed. Starting a withheld provider is refused
-(`PROVIDER_UNAVAILABLE`). The mock identifies itself as a test;
+(`PROVIDER_UNAVAILABLE`). A withheld provider runs no driver, so its configuration reason is its
+only reason: read for a Specification in its own worktree it is not marked
+`SPECIFICATION_WORKTREE_UNSUPPORTED`, which applies only to enabled providers. While the project
+disables Sessions the catalogue answers `SESSION_DISABLED`, whatever the local file says, and the
+demo Runtime serves its own catalogue regardless of either file. The mock identifies itself as a test;
 Claude discovers native model/effort metadata and reports unavailable when its installation/auth/policy
 fails the supported authentication/policy or protocol checks. Unlisted compatible versions run
 Provisional; a missing catalogue entry or unknown hash is not a refusal reason. Each Session is dispatched through its own selected provider;

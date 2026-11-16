@@ -1954,11 +1954,11 @@
       "worktreeUnsupported": "Unavailable in a worktree",
       "worktreeUnsupportedNote": "Some providers are unavailable in this specification: they work only in the project folder, and this specification has its own worktree. Choose a provider that supports worktrees, or start the session outside the specification.",
       "notAllowed": "Not allowed by the project",
-      "notAllowedHelp": "A project maintainer can allow it with {{key}}.allowed: true in .nevo/config.yaml.",
+      "notAllowedHelp": "A project maintainer can allow it with {{key}}.allowed: true in .nevo/config.yaml, then restart Nevo SpecFlow.",
       "notEnabled": "Turned off on this machine",
       "notEnabledHelp": "To enable it, remove {{key}}.enabled: false from .nevo/local/config.yaml, then restart Nevo SpecFlow.",
       "notReady": "Not installed or not ready",
-      "notReadyHelp": "Check that the provider CLI is installed and signed in on this machine. If it is installed elsewhere, set its path as {{key}}.executable in .nevo/local/config.yaml."
+      "notReadyHelp": "Check that the provider CLI is installed and works on this machine. If it is installed elsewhere, set its path as {{key}}.executable in .nevo/local/config.yaml."
     },
     "forbiddenSpecification": "You can’t start sessions in this specification.",
     "sessionsDisabled": "Sessions are turned off in this project."

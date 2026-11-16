@@ -189,7 +189,7 @@ Current ownership is explicit:
   local config holds only `providers.<provider>.enabled` and, for real providers, an optional
   absolute `executable`. A provider runs only when the project enables the feature and allows it,
   the workstation does not turn it off, and its CLI is ready. Local config cannot widen policy: a
-  local `sessions.enabled`, a local `allowed`, or a local `enabled: true` for a provider the project
+  local `sessions.enabled`, a local `allowed`, or a local `enabled: true` or `executable` for a provider the project
   does not allow are refused, as are `executable` in project config and the former project
   `providers.<provider>.enabled` (the refusal says to replace it with `allowed`). Unknown keys are
   refused in both files. See

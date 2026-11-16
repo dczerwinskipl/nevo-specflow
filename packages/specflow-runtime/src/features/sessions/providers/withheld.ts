@@ -17,7 +17,7 @@ export function withheldProviderDescriptor(withheld: WithheldSessionProvider): P
     ...(withheld.reason === 'not-allowed'
       ? {
           reasonCode: 'NOT_ALLOWED_BY_PROJECT' as const,
-          reason: `The project does not allow this provider. A maintainer allows it with ${key}.allowed: true in .nevo/config.yaml.`,
+          reason: `The project does not allow this provider. A maintainer allows it with ${key}.allowed: true in .nevo/config.yaml, then the Runtime is restarted.`,
         }
       : {
           reasonCode: 'NOT_ENABLED_ON_WORKSTATION' as const,

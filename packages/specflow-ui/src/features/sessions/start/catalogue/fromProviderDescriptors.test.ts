@@ -79,6 +79,20 @@ describe('startCatalogueFromProviders', () => {
     },
   );
 
+  it('says a withheld provider is a configuration matter, not a worktree one', () => {
+    // A withheld provider runs no driver, so the Runtime never reads it for the worktree: its
+    // configuration reason stands and the worktree note does not count it.
+    const provider = only(
+      providerDescriptor({
+        providerId: 'codex',
+        readiness: 'unavailable',
+        reasonCode: 'NOT_ENABLED_ON_WORKSTATION',
+      }),
+    );
+    expect(provider.unavailableInWorktree).toBeUndefined();
+    expect(provider.reason).toEqual({ key: 'sessionStart.provider.notEnabled' });
+  });
+
   it('tells how to install or locate a provider that is enabled but not ready', () => {
     const provider = only(
       providerDescriptor({

@@ -63,6 +63,13 @@ export function parseSessionsFeatureConfig(
           `Remove it, or ask a maintainer to set sessions.providers.${providerId}.allowed: true in ${PROJECT_FILE}.`,
       );
     }
+
+    if (local[providerId]?.executable !== undefined && !project.allowed.has(providerId)) {
+      throw new RuntimeConfigError(
+        `sessions.providers.${providerId}.executable in ${LOCAL_FILE} configures a provider the project does not allow. ` +
+          `Remove it, or ask a maintainer to set sessions.providers.${providerId}.allowed: true in ${PROJECT_FILE}.`,
+      );
+    }
   }
 
   if (!project.enabled) {

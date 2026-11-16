@@ -71,7 +71,9 @@ A Close that removes a linked worktree (Worktree and Workspace Close, `specs clo
 refuses with `CLOSE_BLOCKED` while a running Runtime owns the Project's Session store, because an agent
 Session Turn of that Runtime may work in the worktree and the CLI cannot see it. It also refuses when a
 stopped Runtime left an unsettled native Turn in that worktree, or when the store's owner cannot be
-read. Close from the SpecFlow UI instead, or stop the Runtime and rerun with the same `--operation-id`
+read. `specs close --preview` and `specs worktree close --preview` ask the same check and refuse the
+same way, listing the `session-turn-running` blocker next to any workflow blockers, so the preview
+names everything Close would refuse on. Close from the SpecFlow UI instead, or stop the Runtime and rerun with the same `--operation-id`
 ([Specification lifecycle](../../architecture/runtime/specification-lifecycle.md#safe-integration-rebind-and-disposal)).
 
 Usage errors of nested commands (for example a missing required option of `specs create`) now exit with code **2**

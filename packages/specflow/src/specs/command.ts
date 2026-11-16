@@ -10,7 +10,6 @@ import {
   closeWorkspaceOperation,
   planPublicWorkspaceCloseOperation,
   inspectPublicWorkspaceCloseOperation,
-  previewPublicCloseOperation,
   reconcileArchivedConflictScratchOperation,
   discoverSpecifications,
   resolveCreateArchetype,
@@ -27,6 +26,7 @@ import { Command, InvalidArgumentError } from 'commander';
 
 import { createDocumentsCommand, type DocumentsCommandContext } from '../documents/command';
 import { engineAt } from '../engine-at';
+import { previewCloseForCli } from './close-preview';
 import { openExecution, reportingWorkflowRefusals } from '../execution-session';
 import { localOwner } from '../local-actor';
 import { abandonLines } from '../workflow/present';
@@ -191,7 +191,7 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
       if (options.preview) {
         output(
           context,
-          await previewPublicCloseOperation(engine, {
+          await previewCloseForCli(engine, {
             kind: 'worktree-close',
             operationId,
             specId,
@@ -292,7 +292,7 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
         ...(options.archiveOnly ? { integrateToTargetBranch: false } : {}),
       };
       if (options.preview) {
-        output(context, await previewPublicCloseOperation(engine, request));
+        output(context, await previewCloseForCli(engine, request));
 
         return;
       }

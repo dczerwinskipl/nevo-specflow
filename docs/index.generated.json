@@ -3586,7 +3586,7 @@
         "deciding which Engine writes an agent may make and which decisions stay with a person",
         "changing what is committed after an agent step, or what Close does with uncommitted work"
       ],
-      "summary": "The proposed architecture contract for executing one Specification step or one Task step through an agent: the context built from the step, the definition, the Specification and its documents; Engine writes during the agent's Turn through a trusted Runtime broker bound to the invocation, without weakening the project-wide claim; document registration through the Engine; a finish proposal finalized with the claim settlement; owner-only decisions and approvals; a controlled commit policy for documents, Tasks and code; and error recovery. Open decisions D11 to D21.",
+      "summary": "The proposed architecture contract for executing one Specification step or one Task step through an agent: the context built from the step, the definition, the Specification and its documents; Engine writes during the agent's Turn through a trusted Runtime broker bound to the invocation, without weakening the project-wide claim; document registration through the Engine; a finish proposal finalized with the claim settlement; owner-only decisions and approvals; a controlled commit policy for documents, Tasks and code; and error recovery. Decisions D11 to D21: most decided by the owner, D12, D15 and D21 clarified and pending sign-off.",
       "related": [
         "ideas.specflow-engine.reusable-workflow.ask-agent-plan",
         "adr.0024-tasks-are-resources",

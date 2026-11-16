@@ -28,8 +28,9 @@ related:
 The order in which the [Ask agent contract](agent-assisted-execution.md) is delivered. Each slice
 is one PR, a vertical slice through Engine, Runtime, CLI and UI where it needs them, and leaves the
 product working: no slice opens a path the next slice has to close (an agent approving, an
-unregistered document, unattributed changes). The decisions each slice assumes are the contract's
-recommendations; a different owner decision changes only the slices that name it.
+unregistered document, unattributed changes). The slices follow the contract's decided entries;
+for D12, D15 and D21, which are clarified and pending the owner's sign-off, they assume the
+recommendation, and a different sign-off changes only the slices that name it.
 
 ## Test budget
 
@@ -90,15 +91,16 @@ create --type` and succeeds.
 
 ### 4. Owner credential on owner routes
 
-- **Delivers:** the owner credential of D21 on every owner mutation route in every authentication
-  mode, the one-time launch token handed only to the launcher and exchanged once for the UI's
-  cookie, and a provider environment stripped of any Runtime credential.
-- **Decisions:** D21.
+- **Delivers:** the per-device owner credential of D21 on every owner mutation route in every
+  authentication mode, its bootstrap by the signed-off option (recommended: device pairing confirmed
+  on the Runtime's console or on a paired device, with a QR code for phones), the device list with
+  revoke, and a provider environment stripped of any credential, code or token.
+- **Decisions:** D21 (pending sign-off).
 - **Depends on:** nothing; it must land before slice 6 makes agent execution reachable.
 - **Tests:** Runtime route tests: in mode `none`, Finish, Approve and Return without the credential
-  are refused and with it succeed; the launch token is accepted once and refused on reuse, and is
-  refused after it expires; the provider launch environment holds neither the token nor the
-  credential.
+  are refused and with it succeed; a pairing request cannot be approved without an owner credential
+  or the console; a code is single-use, expires and is rate-limited; a revoked device is refused; the
+  provider launch environment holds no credential, code or token.
 
 ### 5. Agent step context
 
@@ -116,51 +118,61 @@ create --type` and succeeds.
 
 - **Delivers:**
   - the projection's agent option (available, or unavailable with its reason);
-  - the Ask agent command: start with the trusted `AgentActor`, Session per D18 (a fresh Session for
-    an independent archetype), association, claim with the attempt binding, dispatch of the brief;
+  - the Ask agent command: start with the trusted `AgentActor`, Session per D18 (the `independent`
+    archetype facet and its validation: always a fresh Session), association, claim with the attempt
+    binding, dispatch of the brief;
   - attempt scope in the broker, including Task drafts with origin `produced`;
   - the boundary checks: clean-baseline admission, the baseline re-check at every Turn's dispatch,
     and the finish refusals for unregistered documents (D14), Engine files past their post-image and
     undeclared or clean declared `changes.paths`;
   - effect authority: an agent proposal whose transition carries an owner-authority effect or
     `confirmation: owner` is refused (`WORKFLOW_OWNER_DECISION_REQUIRED`);
-  - the finish proposal, finalize-with-settle, the unresolved-attempt state and **Continue**;
+  - the finish proposal, `finalizeAgentAttempt` (step state and claim settlement in one control-lock
+    section, post actions after it), the unresolved-attempt state and **Continue**; with D15 (a2),
+    also **Accept result** and **Reject**;
   - the Now block's split action and the position line's Session and Stop.
 
   After this slice the agent's work is attributed and visible, but not yet committed: the ledger and
   the declared paths stay uncommitted, Close lists them (slice 1), and the owner commits them by hand.
 
-- **Decisions:** D12, D14, D18.
+- **Decisions:** D12 (pending sign-off), D14, D18.
 - **Depends on:** 1 to 5.
 - **Tests:** Engine unit for proposal validation and replay, each boundary refusal with its paths
   (an undeclared file, an unclassified document, a direct `task.md` edit, a file changed between
-  Turns), and the refused approval effect; fault injection at the three new boundaries (proposal
-  recorded, finish published, claim settled) proving no duplicate finish and no gap; one Runtime
+  Turns, a write to a path holding another author's ledger entry), the refused approval effect, and
+  definition validation refusing `session: reuse` into an independent step;
+  fault injection at the three new boundaries (proposal recorded, step state published, claim
+  settled) proving no duplicate finish, no settlement before publication and no gap; a test that
+  the finalize section takes the control lock once and post actions run after it; one Runtime
   integration test with the mock driver running start, a document write, a Task draft and a finish;
   Now block stories for each position.
 
 ### 7. Attempt commit
 
-- **Delivers:** the one attempt commit at finalize of the attempt's ledger entries and declared,
-  verified paths, with full subjects (B5), and its retryable post action.
-- **Decisions:** D15.
+- **Delivers:** the one Engine-owned attempt commit as a post action (at settlement with D15 (a1),
+  at Accept result with (a2)), holding only the attempt's own ledger entries and its declared paths
+  whose content still matches the recorded hash, with full subjects (B5). It folds
+  `commit-execution-state` into it, reports the step and the commit separately, and adds **Retry
+  commit**. The UI states, before acceptance, that accepting creates one commit with its subject and
+  paths.
+- **Decisions:** D15 (pending sign-off).
 - **Depends on:** 6.
-- **Tests:** Engine unit with a temporary Git fixture: exactly the declared path and the ledger
-  entries are committed and nothing else; a failed commit leaves the finish published and the paths
-  listed by Close; the retry commits once.
+- **Tests:** Engine unit with a temporary Git fixture: exactly the attempt's paths are committed and
+  nothing else, also with another author's ledger entry present; a path edited after publication
+  refuses the commit; a failed commit leaves the step published, reported separately, and the paths
+  listed by Close; the retry commits once. One UI test of the disclosure text.
 
 ### 8. Owner confirmation of approvals
 
-- **Delivers:** the `confirmation: owner` transition marker in the definition schema, the
-  `independent` archetype facet and its validation, the pending owner confirmation position, and
-  Confirm and Reject in the projection, API, CLI and Now block. Slice 6's refusal becomes a pending
-  confirmation.
+- **Delivers:** the `confirmation: owner` transition marker in the definition schema, the pending
+  owner confirmation position, and Confirm and Reject in the projection, API, CLI and Now block.
+  Slice 6's refusal becomes a pending confirmation. With D15 (a2) this slice folds into slice 6,
+  because Accept result is the same mechanism.
 - **Decisions:** D17.
 - **Depends on:** 6.
 - **Tests:** kernel unit: an agent proposal with `approve-draft-tasks` waits, the owner confirms and
   the drafts are approved, Reject returns with feedback, a person's finish is direct; definition
-  validation for the marker and for `session: reuse` into an independent step; one story per new Now
-  block state.
+  validation for the marker; one story per new Now block state.
 
 ### 9. Stop, return and takeover
 

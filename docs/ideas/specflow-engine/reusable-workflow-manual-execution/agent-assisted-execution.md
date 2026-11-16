@@ -18,7 +18,7 @@ summary: >
   Engine writes during the agent's Turn through a trusted Runtime broker bound to the invocation,
   without weakening the project-wide claim; document registration through the Engine; a finish
   proposal finalized with the claim settlement; owner-only decisions and approvals; a controlled
-  commit policy for documents, Tasks and code; and error recovery. Open decisions D11 to D21.
+  commit policy for documents, Tasks and code; and error recovery. Decisions D11 to D21: most decided by the owner, D12, D15 and D21 clarified and pending sign-off.
 related:
   - ideas.specflow-engine.reusable-workflow.ask-agent-plan
   - adr.0024-tasks-are-resources
@@ -282,13 +282,43 @@ required, exit gates, open Tasks, D06 draft conflicts, unregistered documents), 
 deduplicated **finish proposal** on the attempt. A refused submission returns the reasons to the agent
 in the same Turn, so it can fix them.
 
-The proposal is not a transition. After the Turn ends and the native process is proven stopped, the
-Runtime calls one Engine operation that, **in one control-lock section**, re-validates the proposal,
-applies the finish and its effects, runs the post actions, and settles the invocation's claim with
-the native-result receipt. Because the claim is released in the same section that publishes the
-finish, no other writer can enter between them, and no unprotected gap exists. When re-validation
-refuses (a gate changed, the owner edited a Task meanwhile through another path), the claim still
-settles, the attempt stays active and unresolved, and the owner sees the proposal with the refusal.
+The proposal is not a transition. Three things happen after the Turn ends and the native process is
+proven stopped. They are kept apart:
+
+1. **Publishing the step state.** The proposal is re-validated and the attempt's result is published
+   in the execution store: the finished attempt, transition and effects with D15 (a1), or the ended
+   attempt with its frozen proposal awaiting the owner's acceptance with D15 (a2). This includes the
+   store's own commit admission and its ledger record, as today.
+2. **Settling the claim** with the native-result receipt.
+3. **Running the post actions**: flushing the document queue when auto-commit is on, then the
+   attempt commit (D15).
+
+**1 and 2 are atomic; 3 is not part of them.** One Engine operation (`finalizeAgentAttempt`) takes
+the project control lock **once** and calls the lock-held forms of the store change and of the claim
+settlement. Neither takes the lock again; there is no re-entrant or nested control-lock section. The
+journals are published in a fixed order, the store change first and the claim settlement second.
+While the claim is unsettled every other writer is refused, so nobody can observe or enter the
+window between them. A crash inside it leaves the claim held. Recovery runs the same operation
+again: the store change replays idempotently (F16, same request digest), then the claim settles. The
+claim is never settled before the step state is published. When re-validation refuses (a gate
+changed, a Task changed), the claim still settles in that section, the attempt stays active and
+unresolved, and the owner sees the proposal with the refusal.
+
+**Post actions run after the control lock is released**, each as an ordinary journaled Engine
+operation with an id derived from `(attempt, kind)`, so a retry or a restart resumes it rather than
+duplicating it. They take their own locks in the existing order of the manual commit: a short
+control-lock section for the reservation, released; then the checkout lease; then short control-lock
+sections for verification and prune. No operation waits for the lease while it holds the control
+lock, and no post action is ever called from inside a lock section, so the order cannot deadlock. The
+execution-state commit (`commit-execution-state`) is folded into the attempt commit, which already
+holds those ledger entries, so two commit operations never compete for one path.
+
+**A post action that fails after the step is published** fails nothing that is already published.
+The finish result reports the step and each post action separately, as PR #163 reports a step and its
+commit: `step: finished`, and `postActions: [{kind: attempt-commit, status: failed, code}]`. The
+attempt keeps its attributed paths with their recorded hashes. The Now block says "Finished. The
+commit failed (`<code>`)" with **Retry commit** (a repeated finish replays and runs the post actions
+again, F16), and Close lists the paths until they are committed.
 
 Replays are idempotent (F16): the proposal has a request digest; the same proposal again returns the
 recorded one; a different one replaces it only while not finalized. A late callback of a stopped or
@@ -317,7 +347,10 @@ or a commit of the whole tree, and the agent is not expected to commit by itself
 1. **Clean baseline at start.** Ask agent is refused while the workspace has changes the Engine cannot
    attribute (dirty or untracked paths outside the ledger), naming them, so whatever is dirty at the
    end of the attempt came from that attempt, the Engine's own ledger aside. This is the
-   "dirty-baseline admission" of [execution scopes](../execution-scopes-and-recovery.md).
+   "dirty-baseline admission" of [execution scopes](../execution-scopes-and-recovery.md). Ledger
+   entries of other authors may remain, but the broker refuses an agent write to a path whose ledger
+   entry carries another author's operation ("commit it first"), so no path ever mixes two authors'
+   uncommitted changes.
 2. **Baseline at every Turn.** The claim is released between the Turns of one attempt, so the owner or
    an IDE may edit files meanwhile. When a Turn's claim settles, the Engine records the attempt's
    dirty set (path and content hash). The dispatch of the next Turn of that attempt (**Continue**)
@@ -335,12 +368,23 @@ or a commit of the whole tree, and the agent is not expected to commit by itself
    and the Engine's own namespace, both derived from the configured Specification root and Project
    Home (never hardcoded paths): an undeclared or a declared-but-clean path refuses the finish, naming
    it. Ignored files are never committed.
-5. **One attempt commit.** Finalizing an agent finish makes one commit through the Engine commit port
-   holding the attempt's ledger entries (documents, Tasks, execution state) and its declared paths,
-   subject `spec(<subject>): <step title> (attempt n) by agent in <slug>` (no truncation, B5), with
-   the `Nevo-Operation` and attempt trailers. With `git.commits.auto.documents` on, the queued
-   document commits drain first. A failed commit fails nothing already published: the finish stands,
-   the paths stay attributed and uncommitted, and the post action can be retried.
+5. **One attempt commit.** One attributable, Engine-owned commit per agent attempt, whatever
+   `git.commits.auto.documents` says. It is a deliberate Ask agent operation, not the periodic
+   auto-commit. It holds exactly:
+   - the ledger entries whose every operation belongs to this attempt's invocations (documents,
+     Tasks, execution state);
+   - the declared paths, each with the content hash recorded when the step state was published.
+
+   A path whose content differs from its recorded hash or post-image (someone edited it after the
+   publish) refuses the commit, naming it, and nothing of it is committed: the commit never takes in
+   another author's change. The subject is `spec(<subject>): <step title> (attempt n) by agent in
+<slug>` (no truncation, B5), with the `Nevo-Operation` and attempt trailers. When auto-commit is
+   on, the queued document commits drain first. A failed commit fails nothing already published (see
+   [Step completion](#step-completion-d12)). **Disclosure before acceptance:** before the owner accepts
+   the agent's result, the UI states that accepting creates one commit, with its subject and the paths
+   it will hold, and that no other change is included. Where acceptance happens depends on D15
+   (a1 or a2).
+
 6. **Close never silently loses work.** Close keeps refusing any dirty path other than the
    Specification's execution state (`CLOSE_PREFLIGHT`, `DOCUMENT_COMMITS_PENDING`). The Close preview
    lists these paths as an **Uncommitted changes** blocker group with the remedy for each kind (commit
@@ -376,125 +420,141 @@ These are the machine-checked rules the slices MUST enforce; each has one owner.
    claim or scope (Engine admission, Runtime broker).
 3. While an agent claim is unsettled, every writer except that invocation's broker calls is refused,
    kernel operations included (Engine, closes F05 for agent claims).
-4. The finish proposal and the claim settlement are published in one lock section (Engine).
+4. The step state and the claim settlement are published in one control-lock section, step state
+   first; post actions run only after that section, never nested in a lock section (Engine).
 5. An agent actor never applies an owner-authority effect or a `confirmation: owner` transition, and
    never calls an owner operation (Engine). Before owner confirmation exists, such an agent proposal
    is refused outright.
-6. An owner operation requires the owner credential of D21 on every route, in every authentication
-   mode; the provider environment never receives it (Runtime). Within the cooperative trust model
-   above, this is what makes invariant 5 hold against the agent's own HTTP calls.
+6. **An agent can never call an owner route.** Every owner operation, pairing approval included,
+   requires an owner credential (D21) on every route and from every device, in every authentication
+   mode; the provider environment never receives one, and nothing an agent can call issues one
+   (Runtime). Within the cooperative trust model above, this is what makes invariant 5 hold against
+   the agent's own HTTP calls.
 7. An agent finish is refused while unregistered uncommitted files, Engine files edited past their
    post-image, or undeclared changes exist; a Turn of an attempt is not dispatched while the dirty
    set changed since the previous Turn (Engine).
-8. The Engine commits only ledger paths and declared, verified attempt paths (Engine commit port).
+8. The Engine commits only the attempt's own ledger entries and its declared paths whose content
+   still matches the recorded hash; it never commits another author's change (Engine commit port).
 9. Close refuses unattributed dirty paths and lists them in its preview (Engine lifecycle).
 
-## Open decisions
+## Decisions
 
-Each needs the owner; the recommendation is what the delivery plan assumes.
+Owner decisions of 2026-11-16 on PR #169. **Decided** entries are the contract. **Open: clarified,
+pending owner** entries carry the owner's conditions and the recommendation the delivery plan
+assumes, until the owner signs them off.
 
-**D11 — How an agent's CLI proves its invocation.**
+**D11 — How an agent's CLI proves its invocation. Decided: (a).** A per-invocation capability in the
+provider environment; the CLI forwards to the Runtime's local broker, which calls the Engine with an
+owned-claim admission ([Engine writes during a Turn](#engine-writes-during-a-turn-d11)). A product MCP
+tool may later become a second transport over the same broker. Rejected: a delegated claim file (any
+reader holds the claim) and releasing the claim per call (breaks exclusion).
 
-- (a) Per-invocation capability in the provider environment; the CLI forwards to the Runtime loopback
-  broker, which calls the Engine with an owned-claim admission. Cooperative trust, simplest, works with
-  every provider and the existing CLI and skills.
-- (b) A product MCP tool served by the Runtime, same broker. Providers start with an empty MCP
-  configuration today, and each needs its own wiring.
-- (c) A delegated claim file the CLI presents to the Engine. Any process that reads the file holds the
-  claim; it weakens the lock.
-- (d) Release the claim around each CLI call. Breaks exclusion while the agent still runs.
-
-**Recommendation: (a)**, with (b) later as a second transport over the same broker.
-
-**D11b — Scope of a Turn without an attempt.** (a) None: ad-hoc Turns keep today's refusals; (b)
-documents of the home Specification only; (c) documents plus Task drafts with origin `manual` and the
-agent actor. **Recommendation: (b)**, so a conversation can still write the documents it discusses;
+**D11b — Scope of a Turn without an attempt. Decided: (b), documents only.** An ad-hoc Turn of a
+Specification-associated Session may create, save and classify documents of its home Specification.
 Task drafts need an attempt of a producing step.
 
-**D12 — Finalizing the finish.** (a) Record a proposal, finalize it together with the claim
-settlement after native-stop proof; (b) apply the finish at once during the Turn (the agent may keep
-writing after the step is committed); (c) derive the result from the Turn's last message. Fragile and
-unverifiable. **Recommendation: (a)**.
+**D12 — Finalizing an agent attempt. Open: clarified, pending owner.** Recommendation (a): record a
+proposal and finalize it after native-stop proof. Owner condition, now written into
+[Step completion](#step-completion-d12): publishing the step state and settling the claim are atomic,
+in one control-lock section with a fixed journal order and no nested lock section. Post actions,
+including every Git commit, run after that section, in the manual commit's lock order, and their
+failure is reported apart from the step. Rejected: applying the finish during the Turn (the agent
+may keep writing after the step is published) and deriving the result from the last message.
 
-**D13 — Context form.** (a) References with digests, the agent reads the files (budgets bound the
-list, not the files); (b) inline document bodies (large prompts, stale on edit). **Recommendation:
-(a)**, inline only `instructions`.
+**D13 — Context form. Decided: (a).** References with digests, read by the agent; only
+`instructions` inline; budgets bound the list.
 
-**D14 — Unregistered documents at finish (B6).** (a) Refuse an agent finish while uncommitted
-unclassified files exist in the Specification directory; (b) warn and list them; (c) register by a
-filename-to-type rule. (c) contradicts the owner decision. **Recommendation: (a)**.
+**D14 — Unregistered documents at finish. Decided: (a).** An agent finish is refused while
+uncommitted unclassified files exist in the Specification directory.
 
-**D15 — Code commit at an agent finish (B3).** (a) One attempt commit of the ledger entries and
-the declared, verified paths, at finalize, whatever `git.commits.auto.documents` says; (b) the same,
-only when the policy is on, else the paths join the ledger and wait for a manual commit; (c) the agent
-commits with Git itself. (c) is unverifiable and races the commit lease. **Recommendation: (a)**:
-an agent step is a reviewable unit and its boundary is the natural commit, as the execution-state
-"Next" commit is today. Owner question: is (b) wanted for teams that keep commits off?
+**D15 — Commit of an agent attempt. Open: clarified, pending owner.** Recommendation (a): one
+attributable, Engine-owned attempt commit, whatever the document auto-commit setting says. Owner
+conditions, now written into [Commit ownership](#commit-ownership-and-close-b3):
 
-**D16 — Uncommitted work at Close.** (a) Keep refusing, and list the paths in the preview as their
-own group with remedies; (b) let Close commit them into its archive commit. This takes unreviewed
-foreign changes. (c) a product "discard" action. **Recommendation: (a)**, no discard in the product.
+- it is a deliberate Ask agent operation, not the periodic auto-commit;
+- the UI says, before the owner accepts the result, that accepting creates a commit;
+- it never takes in another author's change.
 
-**D17 — Human-only decisions.** (a) Engine-owned effect authority (approval effects are owner) plus an
-optional `confirmation: owner` marker on transitions, finalized into a pending owner confirmation; (b)
-make review steps `executors: [human]`, which loses the agent review; (c) let agents approve.
-**Recommendation: (a)**.
+The remaining question is where the owner accepts:
 
-**D18 — Which Session runs the step.** (a) The kernel's continuation resolution decides (`session:
-reuse` reuses the previous attempt's Session, otherwise a fresh Session with the archetype's
-preferred provider and model); the owner may change provider and model only for a fresh Session, and
-the choice is recorded on the attempt; (b) the owner always picks; (c) as (a), and a step whose
-archetype declares itself independent (a review facet, for example `independent: true` on the
-reviewer archetype) always gets a fresh Session, never `reuse`: definition validation refuses
-`session: reuse` into such a step, and the Ask agent form cannot pick the author's Session.
-**Recommendation: (c)**: one rule for Ask agent and the future orchestrator, and a review by a
-separate agent, as the owner's role-separation rule asks. The facet is declared data, not a step id.
+- (a1) **At Ask agent.** The Ask agent dialog states that the finished attempt is committed as one
+  commit. The step state is published, and the commit made, when the claim settles. The Now block
+  shows the commit on the result line.
+- (a2) **At Accept result.** The settled attempt ends with its frozen proposal awaiting the owner.
+  **Accept result** shows the result, the commit subject and the exact paths ("Accepting creates one
+  commit of these N files; no other change is included"). Accepting publishes the step and runs the
+  attempt commit. **Reject** returns the step with feedback. It reuses D17's pending confirmation for
+  every agent step, so the `confirmation: owner` marker only matters for a person's own finish rules.
 
-**D19 — Stop and takeover.** (a) Stop cancels the Turn and keeps the claim until proof; Take over
-(F17) is an explicit owner operation, allowed only once the claim is settled, that ends the agent
-attempt as `taken-over` and starts an owner attempt of the same step; (b) let the owner finish the
-agent's attempt, which the kernel forbids today. **Recommendation: (a)**.
+**Recommendation: (a2).** It matches "before they accept the result" literally, gives the owner one
+review point before anything is committed, and keeps one confirmation mechanism. The cost is one
+click per agent step. If (a2) is chosen, slice 8 of the delivery plan folds into slice 6.
 
-**D20 — Permission prompts.** (a) The Runtime starts an Ask agent Turn with the provider's
-allowlist for read-only tools and the product CLI, from the archetype; (b) keep every prompt; (c)
-leave it to the work mode. **Recommendation: (a)**, as an owner choice per archetype; it is
-provider configuration, not an Engine rule.
+**D16 — Uncommitted work at Close. Decided: (a).** Close keeps refusing and lists the paths in its
+preview with remedies; there is no discard action in the product.
 
-**D21 — Owner routes while an agent can reach them.** With `runtime.authentication.mode: none`, the
-agent and its subprocesses can call Finish, Approve and Return on the loopback HTTP listener as the
-owner.
+**D17 — Human-only decisions. Decided: (a).** Engine-owned effect authority (approval effects are
+owner authority) plus an optional `confirmation: owner` marker on transitions, finalized into a
+pending owner confirmation; refused outright until that exists.
 
-- (a) Owner routes require an **owner credential** the provider environment never gets, in every
-  authentication mode (with authentication on, the authenticated subject carries it). Bootstrap
-  without any endpoint an agent could call:
-  - the Runtime mints a **one-time launch token** (at least 256 random bits, valid about a minute)
-    and hands it only to the **launcher**, the process that opens the browser (`nevo-specflow ui`, or
-    the desktop shell), over the launcher's own channel: its stdout pipe or the inherited handle of
-    the process that started the Runtime. It is never written to a file, a log or an environment
-    variable, and never to a Runtime the agent's Session belongs to;
-  - the launcher opens the browser with the token in the URL fragment, which no server log sees; the
-    UI posts it once, and the Runtime exchanges it for the owner credential as an `HttpOnly`,
-    `SameSite=Strict` cookie and burns the token. A second exchange, an expired token, or a token from
-    any other source is refused;
-  - there is no unauthenticated "give me a session" route: without a valid launch token, the owner
-    routes stay closed. An owner who lost the tab runs the launcher again.
+**D18 — Which Session runs the step. Decided: (c).** The kernel's continuation resolution decides,
+and a step whose archetype is declared independent (a review facet) always gets a fresh Session,
+never `reuse`. Definition validation refuses `session: reuse` into such a step. The owner may change
+provider and model only for a fresh Session; the choice is recorded on the attempt.
 
-  The Runtime strips every Runtime credential from the provider's environment. The offline owner CLI
-  is refused by the claim while an agent Turn runs (F05).
+**D19 — Stop and takeover. Decided: (a).** Stop cancels the Turn and keeps the claim until proof.
+Take over (F17) is an explicit owner operation, allowed once the claim is settled: it ends the agent
+attempt as `taken-over` and starts an owner attempt.
 
-- (b) Document that owner separation is cooperative in `none` mode: an agent can act as the owner,
-  and history records it as the owner.
-- (c) Refuse agent execution while authentication is `none`.
+**D20 — Permission prompts. Decided: (a).** The Runtime starts an Ask agent Turn with the provider's
+allowlist for read-only tools and the product CLI, configured per archetype; it is provider
+configuration, not an Engine rule.
 
-**Recommendation: (a)**, with the one-time launch token as its bootstrap. It closes the direct path
-(an agent calling a route) without asking local users to configure authentication. Its limit stays stated: a hostile same-user process that reads the
-browser's cookie store is outside the trust model. (c) would stop the dogfood setup, and (b) leaves
-invariant 5 unenforced.
+**D21 — Owner credential and how a device gets it. Open: clarified, pending owner.** Accepted
+principle: owner routes require an owner credential the agent can never obtain, and invariant 6
+holds in every mode. Today, with `runtime.authentication.mode: none`, any local process can call
+Finish, Approve and Return as the owner. The bootstrap must not assume a local launcher: the owner
+may open the UI from a remote browser or a phone, for example over Tailscale to the Runtime on their
+machine. Tailscale Serve forwards to the loopback listener, so the bind address cannot tell remote
+from local. Common to every option:
+
+- the credential is per device, an `HttpOnly`, `SameSite=Strict` cookie, listed and revocable by the
+  owner;
+- the provider environment never holds a credential, a pairing code or a launch token, and none of
+  them is ever logged;
+- with authentication on, the authenticated subject is the owner credential;
+- the offline owner CLI is refused by the claim while an agent Turn runs (F05).
+
+Options for how a device gets the credential:
+
+- (a) **Device pairing confirmed on a trusted surface.**
+  - A device without a credential sees "Pair this device" with a short code (8 characters,
+    single-use, valid about two minutes, rate-limited) and its address and browser.
+  - The owner approves that code on a trusted surface. The first is the Runtime's own console: the
+    terminal or desktop window that started it, which provider processes never read, because the
+    Runtime pipes their output separately. Later ones are any already paired device; a paired device
+    can also show a QR code holding a one-time pairing token for a phone.
+  - An agent can create a pairing request but cannot approve one: approval is an owner route. A
+    pending request shows where it came from, so the owner can reject one they did not start.
+- (b) **Require an existing authentication mode for remote access.** Password, stored only as a hash,
+  or OIDC is required once the owner enables remote access (`runtime.remoteAccess: true`, needed
+  because a forwarded connection looks local). `none` stays loopback-only, with a one-time launch token
+  handed to the local launcher. This needs password setup or an identity provider.
+- (c) **Trust identity headers of a tailnet proxy** (`Tailscale-User-Login`). Safe only on a listener
+  that only the proxy can reach, because a local agent can forge headers on loopback. It ties the
+  product to one vendor.
+- (d) **Declare separation cooperative in `none` mode**, or refuse agent execution in it. The first
+  leaves invariant 6 unenforced; the second stops the dogfood setup.
+
+**Recommendation: (a)**, as the bootstrap for `none` mode on every device, with (b) available as
+the stronger choice for teams. Both are open until the owner signs off. Stated limit: a hostile
+same-user process that reads the browser's cookie store or the console's scrollback is outside the
+cooperative trust model.
 
 ## Readiness
 
-**Partially ready for decomposition.** The slices of the delivery plan that depend only on
-established contracts (Close preservation, claim-aware kernel operations and their messages) can be
-planned now. Engine writes during a Turn, completion, approvals and the commit policy are ready once
-D11, D12, D15, D17 and D21 are decided; the
-rest of the decisions change only their own slice.
+**Partially ready for decomposition.** The decided parts can be planned now: Close preservation,
+claim-aware kernel operations, Runtime-mediated writes (D11, D11b), context (D13), the boundary
+checks (D14), approvals (D17), Session choice (D18), stop and takeover (D19) and permissions (D20).
+The finalization (D12), the attempt commit (D15) and the owner credential (D21) are clarified and
+wait for the owner's sign-off; they change slices 4, 6, 7 and 8 only.

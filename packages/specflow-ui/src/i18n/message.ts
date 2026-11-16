@@ -1,4 +1,4 @@
-import type { ParseKeys, TFunction } from 'i18next';
+import type { ParseKeys, TFunction, TOptions } from 'i18next';
 import { useCallback } from 'react';
 import { getI18n, useTranslation } from 'react-i18next';
 import { formatList } from './formatList';
@@ -52,10 +52,7 @@ export function translateMessage(
             );
   }
 
-  return (t as (key: string, options?: Record<string, string | number>) => string)(
-    value.key,
-    resolved,
-  );
+  return t(value.key, resolved as TOptions);
 }
 
 /** Hook form of {@link translateMessage}: `const text = useMessage(); text(policy.reason)`. */

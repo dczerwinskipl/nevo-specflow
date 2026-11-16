@@ -19,6 +19,10 @@ import type { LimitsRefreshControl } from './sessionContextTypes';
 
 type TokenReading = TelemetrySnapshot['usage']['session'];
 type MoneyReading = TelemetrySnapshot['cost']['session'];
+type TokenBreakdownKey =
+  | 'sessions.context.sessionDetails.cacheReadTokens'
+  | 'sessions.context.sessionDetails.cacheWriteTokens'
+  | 'sessions.context.sessionDetails.reasoningTokens';
 
 /**
  * Low-emphasis "Session details" (full-session.md "Context"): token usage, cost,
@@ -540,12 +544,9 @@ function formatTokenBreakdown(
 
   const value = reading.value;
   const parts: string[] = [];
-  // `key` varies per call, so it can't stay inside the typed `TFunction` key union; cast at this
-  // one dynamic-key call site only (same pattern as `translateMessage` in `i18n/message.ts`).
-  const translateDynamic = t as (key: string, options?: Record<string, string>) => string;
-  const push = (amount: number | undefined, key: string) => {
+  const push = (amount: number | undefined, key: TokenBreakdownKey) => {
     if (amount !== undefined) {
-      parts.push(translateDynamic(key, { value: new Intl.NumberFormat(locale).format(amount) }));
+      parts.push(t(key, { value: new Intl.NumberFormat(locale).format(amount) }));
     }
   };
 

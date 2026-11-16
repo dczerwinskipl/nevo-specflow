@@ -29,7 +29,7 @@ export function selectReadableDocs(scan: ScanResult, taxonomy: DocsTaxonomy): Re
   const skipped: SkippedDocument[] = [
     ...scan.missingFrontmatter.map((path) => ({
       path,
-      error: `missing frontmatter (a '---' block at the top; ${frontmatterFormat()})`,
+      error: `missing frontmatter (a '---' block at the top | ${frontmatterFormat()})`,
     })),
     ...scan.invalidFrontmatter.map(({ file, error }) => ({ path: file, error })),
   ];

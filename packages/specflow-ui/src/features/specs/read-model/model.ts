@@ -72,7 +72,8 @@ export interface AttentionItem {
   /**
    * Workflow and Session items (the attention projection): the stable reason code (`reason` is
    * then the server's display text), who has to act, the one action and its alternative, and the
-   * Tasks it names (`tasks-stuck`: with why each blocks). Absent on other items.
+   * Tasks it names (`tasks-stuck`: with why each blocks; `on-hold-blocking`: what the held Task
+   * holds up, `blocks`). Absent on other items.
    */
   readonly code?: string;
   /** The step the item is about (its action names it). */
@@ -82,6 +83,7 @@ export interface AttentionItem {
   readonly secondaryAction?: WorkspaceAttention['secondaryAction'];
   readonly taskIds?: readonly string[];
   readonly blocking?: WorkspaceAttention['blocking'];
+  readonly blocks?: WorkspaceAttention['blocks'];
 }
 
 /**

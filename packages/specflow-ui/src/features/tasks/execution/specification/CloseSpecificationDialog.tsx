@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -26,7 +27,12 @@ import {
   workflowAtOf,
   type BlockerTask,
 } from './BlockerGroups';
-import { closeDialogOutcome } from './closeDialogOutcome';
+import {
+  DOCUMENT_COMMIT_RECHECK,
+  closeDialogOutcome,
+  waitsForDocumentCommits,
+  type DocumentCommitRecheck,
+} from './closeDialogOutcome';
 import { RepositoryBlockers, repositoryReasons } from './RepositoryBlockers';
 
 type Position = WorkflowActionProjection['position'];
@@ -45,6 +51,8 @@ export interface CloseSpecificationDialogProps {
   readonly onSeeTasks: () => void;
   readonly onOpenTask: (taskId: string) => void;
   readonly onClosed: () => void;
+  /** How the preview is read again while document commits settle; the default outside tests. */
+  readonly documentCommitRecheck?: DocumentCommitRecheck;
 }
 
 /**
@@ -78,8 +86,11 @@ function CloseBody({
   onSeeTasks,
   onOpenTask,
   onClosed,
+  documentCommitRecheck = DOCUMENT_COMMIT_RECHECK,
 }: CloseSpecificationDialogProps) {
   const { t, i18n } = useTranslation();
+  // The refusals counted before the last "Check again": the bound applies to each round of checks.
+  const [rechecksFrom, setRechecksFrom] = useState(0);
   const { workflowExecutionApi } = useAppServices();
   const exit = projection.specification?.exit?.close;
   const workflowBlockers = exit?.kind === 'blocked' ? exit.blockers : undefined;
@@ -95,7 +106,21 @@ function CloseBody({
     staleTime: Infinity,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
+    // Saved documents still queued for their commit settle by themselves: read the preview again
+    // until they do (then it plans the Close or names the real blockers). Stops when the dialog
+    // closes, since the query unmounts with it.
+    refetchInterval: (query) =>
+      query.state.status === 'error' &&
+      waitsForDocumentCommits(workflowRefusalOf(query.state.error)) &&
+      query.state.errorUpdateCount - rechecksFrom < documentCommitRecheck.attempts
+        ? documentCommitRecheck.intervalMs
+        : false,
   });
+  const checkAgain = () => {
+    setRechecksFrom(preview.errorUpdateCount);
+    void preview.refetch();
+  };
+
   // A Close the workflow blocks is not planned; the running agent Turns that would hold its
   // checkout too are read on their own, so both are listed at once.
   const occupancy = useQuery({
@@ -124,7 +149,12 @@ function CloseBody({
     ...(workflowBlockers ? { workflowBlockers } : {}),
     ...(occupancy.data ? { occupancyBlockers: occupancy.data.blockers } : {}),
     preview: preview.isError
-      ? { status: 'error', refusal: workflowRefusalOf(preview.error) }
+      ? {
+          status: 'error',
+          refusal: workflowRefusalOf(preview.error),
+          documentRechecksExhausted:
+            preview.errorUpdateCount - rechecksFrom >= documentCommitRecheck.attempts,
+        }
       : preview.isSuccess
         ? { status: 'success' }
         : { status: 'pending' },
@@ -207,13 +237,26 @@ function CloseBody({
       </DialogHeader>
       <DialogBody className="grid gap-5">
         {outcome.kind === 'checking' ? (
-          <Alert role="status" tone="neutral" title={t('workflowExecution.close.checkingTitle')}>
-            {t('workflowExecution.close.checkingBody')}
+          <Alert
+            role="status"
+            tone="neutral"
+            title={
+              outcome.waitingFor === 'documents'
+                ? t('workflowExecution.close.documentsCheckingTitle')
+                : t('workflowExecution.close.checkingTitle')
+            }
+          >
+            {outcome.waitingFor === 'documents'
+              ? t('workflowExecution.close.documentsCheckingBody')
+              : t('workflowExecution.close.checkingBody')}
           </Alert>
         ) : null}
         {outcome.kind === 'cannot-start' ? (
           <Alert role="alert" tone="danger" title={t('workflowExecution.close.previewFailed')}>
-            {t(outcome.reasonKey)}
+            {t(outcome.reasonKey)}{' '}
+            <InlineAction onClick={checkAgain}>
+              {t('workflowExecution.close.checkAgain')}
+            </InlineAction>
           </Alert>
         ) : null}
         {outcome.kind === 'not-closed' ? (

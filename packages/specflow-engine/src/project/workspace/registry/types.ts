@@ -46,6 +46,13 @@ export type WorkspaceRegistration =
       readonly instanceId: string;
       /** Absent on legacy/default-target workspaces. */
       readonly integrationDestination?: WorkspaceIntegrationDestination;
+      /**
+       * The local branch Create based this workspace's new branch on (the explicit local-branch base
+       * ref, or the branch Project Home's HEAD was attached to). Absent when the base was a commit,
+       * a tag or a detached HEAD, and on workspaces created before it was recorded. A fact, never a
+       * merge destination.
+       */
+      readonly startedFrom?: string;
     };
 
 export interface SpecWorkspaceBinding {

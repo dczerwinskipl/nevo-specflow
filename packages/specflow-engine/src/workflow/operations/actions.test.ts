@@ -1009,3 +1009,51 @@ describe('a Specification does not complete while its Tasks are open', () => {
     });
   });
 });
+
+// Owner decision 2026-11-16 (A-Q1): a hold is attention only when the user must act on it now.
+describe('the attention of a Task on hold', () => {
+  const attentionOf = async (dependencies: Dependencies, taskId: string) =>
+    (await project(dependencies, task(taskId))).attention;
+
+  it('names what the hold holds up: the waiting Tasks and the step that cannot finish', async () => {
+    const dependencies = await acceptingWithOpenTasks();
+    await decide(dependencies, 'api', 'on-hold');
+
+    // `screen` waits on it, and acceptance cannot complete while it is open.
+    expect(await attentionOf(dependencies, 'api')).toEqual(
+      expect.objectContaining({
+        subject: task('api'),
+        reason: 'on-hold-blocking',
+        step: 'acceptance',
+        stepTitle: 'Acceptance',
+        action: 'resume-task',
+        secondaryAction: 'cancel-task',
+        blocks: { taskIds: ['screen'], finish: 'acceptance' },
+      }),
+    );
+    // The Task waiting on it is not attention itself (its dependency can still complete).
+    expect(await attentionOf(dependencies, 'screen')).toBeUndefined();
+
+    await decide(dependencies, 'api', 'ready');
+    expect(await attentionOf(dependencies, 'api')).toBeUndefined();
+  });
+
+  it('on a wait step that can still progress: only the Tasks that wait on it', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    await specificationWithTasks(dependencies);
+    await create(dependencies, 'notes');
+    await decide(dependencies, 'notes', 'ready');
+    await decide(dependencies, 'api', 'on-hold');
+
+    expect(await attentionOf(dependencies, 'api')).toMatchObject({
+      reason: 'on-hold-blocking',
+      blocks: { taskIds: ['screen'] },
+    });
+    expect((await project(dependencies, specification)).attention).toBeUndefined();
+
+    // A hold nothing waits on, while other work can move: nothing.
+    await decide(dependencies, 'api', 'ready');
+    await decide(dependencies, 'notes', 'on-hold');
+    expect(await attentionOf(dependencies, 'notes')).toBeUndefined();
+  });
+});

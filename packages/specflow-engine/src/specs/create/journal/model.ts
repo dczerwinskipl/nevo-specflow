@@ -33,6 +33,8 @@ export interface NewWorktreeJournalTarget {
   readonly baseCommit: string;
   readonly instanceId: string;
   readonly integrationDestination?: WorkspaceIntegrationDestination;
+  /** The local branch the new branch was based on, when the base was one (registered on the workspace). */
+  readonly startedFrom?: string;
 }
 
 export type CreateJournalTarget = ExistingJournalTarget | NewWorktreeJournalTarget;

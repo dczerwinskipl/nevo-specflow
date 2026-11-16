@@ -2377,11 +2377,11 @@
         "recovery": "Wcześniejsze zamknięcie tej specyfikacji zatrzymało się w połowie. Dokończ je z wiersza poleceń, zanim zamkniesz ponownie.",
         "gitConfig": "Sekcja git w .nevo/config.yaml jest nieprawidłowa lub niepełna. Popraw ją i zamknij ponownie.",
         "git": "Git nie może teraz działać w folderze projektu. Sprawdź repozytorium i spróbuj ponownie.",
-        "documentsPending": "Zapisane dokumenty tej specyfikacji wciąż są commitowane. Poczekaj chwilę i zamknij ponownie.",
+        "documentsPending": "Zapisane dokumenty w tym katalogu roboczym wciąż są commitowane. Poczekaj chwilę i zamknij ponownie.",
         "commitBlocked": "Git nie przyjmie teraz commita na tej gałęzi. Sprawdź ochronę gałęzi i stan repozytorium, a potem zamknij ponownie.",
         "engine": "Zamykanie nie jest dostępne w tym Runtime.",
         "unknown": "Zamknięcie się nie rozpoczęło, a powodu nie można tu pokazać. Spróbuj ponownie; jeśli znów się nie uda, uruchom „nevo-specflow specs close <id specyfikacji> --preview” w folderze projektu.",
-        "documentsUncommitted": "Zapisane dokumenty tej specyfikacji nie mają commita (tryb ręcznych commitów). Zrób commit w Dokumentach i zamknij ponownie.",
+        "documentsUncommitted": "Zapisane dokumenty w tym katalogu roboczym nie mają commita (tryb ręcznych commitów). Zrób commit w Dokumentach i zamknij ponownie.",
         "documentsFailed": "Commit dokumentu się nie powiódł. Ponów go lub rozwiąż w Dokumentach, a potem zamknij ponownie."
       },
       "repository": {
@@ -2419,7 +2419,10 @@
         }
       },
       "closingTitle": "Zamykanie",
-      "closingBody": "Zamknięcie trwa. Może to chwilę potrwać."
+      "closingBody": "Zamknięcie trwa. Może to chwilę potrwać.",
+      "documentsCheckingTitle": "Zapisywanie commitów dokumentów…",
+      "documentsCheckingBody": "Zapisane dokumenty w tym katalogu roboczym wciąż są commitowane. Sprawdzenie powtórzy się samo, a zamknięcie będzie można rozpocząć, gdy commity się zakończą.",
+      "checkAgain": "Sprawdź ponownie"
     },
     "abandon": {
       "action": "Porzuć specyfikację",
@@ -2481,6 +2484,7 @@
         "cancel-task": "Anuluj zadanie",
         "restore-task": "Otwórz zadanie",
         "satisfy-gate": "Otwórz zadanie",
+        "resume-task": "Otwórz zadanie",
         "start-step": "Rozpocznij krok",
         "return-to-step": "Wróć do wcześniejszego kroku"
       },

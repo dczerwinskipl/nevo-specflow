@@ -6,7 +6,9 @@ import { workflowRefusalKey, type WorkflowRefusal } from '../refusal';
  * The one outcome the Close dialog presents (never two at once):
  * - `blocked`: what holds the Close (workflow, running Sessions, repository preconditions), with
  *   only Dismiss;
- * - `checking`: the preview runs the repository checks; the confirm waits for it;
+ * - `checking`: the preview runs the repository checks, or (`documents`) waits for saved documents
+ *   that are still being committed and is read again ({@link waitsForDocumentCommits}); the confirm
+ *   waits for it;
  * - `cannot-start`: the preview refused for a reason that is not a blocker list;
  * - `not-closed`: the Close itself was refused (the same planned Close may be confirmed again);
  * - `needs-attention`: the Close ran but did not complete;
@@ -19,7 +21,7 @@ export type CloseDialogOutcome =
       readonly blockers: readonly CloseRefusalBlocker[];
       readonly repository: readonly RepositoryBlocker[];
     }
-  | { readonly kind: 'checking' }
+  | { readonly kind: 'checking'; readonly waitingFor?: 'documents' }
   | { readonly kind: 'cannot-start'; readonly reasonKey: CloseRefusalKey }
   | { readonly kind: 'not-closed'; readonly reasonKey: CloseRefusalKey }
   | {
@@ -36,7 +38,12 @@ export interface CloseDialogFacts {
   readonly occupancyBlockers?: readonly CloseRefusalBlocker[];
   readonly preview:
     | { readonly status: 'pending' }
-    | { readonly status: 'error'; readonly refusal: WorkflowRefusal }
+    | {
+        readonly status: 'error';
+        readonly refusal: WorkflowRefusal;
+        /** The preview was read again for document commits as often as it is, without a change. */
+        readonly documentRechecksExhausted?: boolean;
+      }
     | { readonly status: 'success' };
   readonly close:
     | { readonly status: 'idle' | 'pending' }
@@ -81,6 +88,14 @@ export function closeDialogOutcome(facts: CloseDialogFacts): CloseDialogOutcome 
     return { kind: 'needs-attention', status: facts.close.result.status };
   }
 
+  if (
+    previewRefusal &&
+    waitsForDocumentCommits(previewRefusal) &&
+    !(facts.preview.status === 'error' && facts.preview.documentRechecksExhausted)
+  ) {
+    return { kind: 'checking', waitingFor: 'documents' };
+  }
+
   if (previewRefusal) {
     return { kind: 'cannot-start', reasonKey: closeRefusalKey(previewRefusal) };
   }
@@ -91,6 +106,27 @@ export function closeDialogOutcome(facts: CloseDialogFacts): CloseDialogOutcome 
 
   return facts.preview.status === 'pending' ? { kind: 'checking' } : { kind: 'ready' };
 }
+
+/**
+ * A preview refused only because saved documents are still queued for their automatic commit: the
+ * queue settles by itself, so the dialog reads the preview again instead of showing a blocker.
+ * Manual-mode (`commit-uncommitted`) and failed commits are blockers the owner resolves.
+ */
+export function waitsForDocumentCommits(refusal: WorkflowRefusal): boolean {
+  return refusal.code === 'DOCUMENT_COMMITS_PENDING' && refusal.documentCause === 'commit-pending';
+}
+
+/**
+ * How the preview is read again while it waits for document commits: every `intervalMs`, at most
+ * `attempts` times (about 30 s). A commit that never settles (a crashed write keeps its journal
+ * pending) then shows as a refusal with a way to check again, never as an endless wait.
+ */
+export interface DocumentCommitRecheck {
+  readonly intervalMs: number;
+  readonly attempts: number;
+}
+
+export const DOCUMENT_COMMIT_RECHECK: DocumentCommitRecheck = { intervalMs: 1500, attempts: 20 };
 
 export type CloseRefusalKey =
   | ReturnType<typeof workflowRefusalKey>

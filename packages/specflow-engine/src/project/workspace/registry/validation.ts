@@ -105,6 +105,9 @@ function parseRegistration(value: unknown): WorkspaceRegistration {
       ...(value.integrationDestination !== undefined
         ? { integrationDestination: parseIntegrationDestination(value.integrationDestination) }
         : {}),
+      ...(value.startedFrom !== undefined
+        ? { startedFrom: parseStartedFrom(value.startedFrom) }
+        : {}),
     };
   }
 
@@ -116,17 +119,32 @@ function parseRegistration(value: unknown): WorkspaceRegistration {
   };
 }
 
+/** The short-branch shape a registry entry may record (Git validated the name when it was read). */
+export function isWorkspaceBranchName(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    value.length <= 255 &&
+    !value.startsWith('/') &&
+    !value.endsWith('/') &&
+    !value.includes('..') &&
+    !/[\s\\~^:?*[\]]/u.test(value)
+  );
+}
+
+function parseStartedFrom(value: unknown): string {
+  if (!isWorkspaceBranchName(value)) {
+    throw corrupt('Invalid workspace started-from branch.');
+  }
+
+  return value;
+}
+
 function parseIntegrationDestination(value: unknown): WorkspaceIntegrationDestination {
   if (
     !isObject(value) ||
     !isIdentifier(value.workspaceId) ||
-    typeof value.branch !== 'string' ||
-    value.branch.length === 0 ||
-    value.branch.length > 255 ||
-    value.branch.startsWith('/') ||
-    value.branch.endsWith('/') ||
-    value.branch.includes('..') ||
-    /[\s\\~^:?*[\]]/u.test(value.branch) ||
+    !isWorkspaceBranchName(value.branch) ||
     (value.instanceId !== undefined && !isIdentifier(value.instanceId)) ||
     Object.keys(value).some(
       (key) => key !== 'workspaceId' && key !== 'branch' && key !== 'instanceId',

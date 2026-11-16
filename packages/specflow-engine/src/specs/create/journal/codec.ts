@@ -11,6 +11,7 @@ import { OPERATION_ID_PATTERN } from '../../durable';
 
 import { TEXT_CONTENT_MAX_BYTES, validateDocumentPath } from '../../documents';
 import { isExplicitSpecificationSlug } from '../../model';
+import { isWorkspaceBranchName } from '../../../project/workspace/registry/validation';
 import { isSpecKey } from '../../spec-key';
 import { CREATE_SCAFFOLD_FILES_MAX } from '../limits';
 import {
@@ -42,6 +43,7 @@ const WORKTREE_TARGET_FIELDS = new Set([
   'baseCommit',
   'instanceId',
   'integrationDestination',
+  'startedFrom',
 ]);
 
 export function parseCreateJournal(
@@ -145,6 +147,7 @@ function isValidJournalTarget(value: unknown): boolean {
   return (
     typeof value.instanceId === 'string' &&
     UUID.test(value.instanceId) &&
+    (value.startedFrom === undefined || isWorkspaceBranchName(value.startedFrom)) &&
     typeof value.branch === 'string' &&
     typeof value.baseCommit === 'string' &&
     /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/iu.test(value.baseCommit)

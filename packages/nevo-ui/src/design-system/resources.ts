@@ -30,6 +30,7 @@ export const iconNames = [
   'circle-check',
   'triangle-alert',
   'circle-alert',
+  'circle-pause',
   'users',
   'workflow',
   'list-checks',

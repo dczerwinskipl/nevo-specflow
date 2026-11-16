@@ -361,8 +361,9 @@ Provider failures already have the provider's Commentary in the conversation and
   Composer's slot shows "You can only view this session."; an empty conversation reads "This session
   has no messages." with no call to action. A pending question of a view-only Session still shows as "Response
   required" with its options disabled, so the header readiness and the page agree. Demo Sessions
-  are view-only: a seeded one shows the request it was started with and, when its list row asks for
-  input, the question it waits on; a Session allocated in the demo has no messages.
+  are view-only: a seeded one shows the request it was started with, follows its list row (working:
+  that Turn runs; needs attention: the question it waits on, with choices only when the signal asks
+  for input; otherwise nothing runs); a Session allocated in the demo has no messages.
 - **Header subtitle precedence** (first match wins): connection lost/reconnecting → Archived → Turn
   outcome unknown → current activity / readiness.
 - **Delete** is an `AlertDialog` naming what is and is not deleted; no type-to-confirm. Success

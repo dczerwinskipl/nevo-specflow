@@ -46,18 +46,18 @@ describe('validateDoc taxonomy', () => {
 
 describe('validateDoc type', () => {
   const byType =
-    'required fields by type: hub: id, type, title, status; engineering, product, architecture, ' +
-    'reference, instruction: id, type, title, status, read_when, summary; adr: id, type, title, ' +
+    'required fields by type: hub: id, type, title, status / engineering, product, architecture, ' +
+    'reference, instruction: id, type, title, status, read_when, summary / adr: id, type, title, ' +
     'status, date';
 
   it('reports every problem at once and, without a known type, the fields of every type', () => {
     expect(validateDoc(doc({ type: 'guide', status: 'done', title: undefined }))).toEqual([
-      `docs/a.md: unknown type 'guide' (expected one of: hub, engineering, product, architecture, reference, instruction, adr; ${byType})`,
+      `docs/a.md: unknown type 'guide' (expected one of: hub, engineering, product, architecture, reference, instruction, adr | ${byType})`,
       "docs/a.md: unknown status 'done' (expected one of: current, draft, deprecated, superseded)",
       "docs/a.md: missing required field 'title' for type 'guide'",
     ]);
     expect(validateDoc(doc({ type: undefined }))[0]).toBe(
-      `docs/a.md: missing 'type' (one of: hub, engineering, product, architecture, reference, instruction, adr; ${byType})`,
+      `docs/a.md: missing 'type' (one of: hub, engineering, product, architecture, reference, instruction, adr | ${byType})`,
     );
   });
 

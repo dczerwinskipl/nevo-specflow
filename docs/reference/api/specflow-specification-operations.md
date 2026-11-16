@@ -198,8 +198,15 @@ needs project-wide Git `Integrate`. Workspace Close requires project-wide Git
 Shared spec-scoped integration refuses with 409 `CLOSE_SHARED_WORKTREE`.
 Close and integration first flush the document commit queue of the affected checkouts and refuse with 409
 `DOCUMENT_COMMITS_PENDING` (`details.cause` `commit-pending`, `commit-failed` or `commit-uncommitted`) while document
-commits remain; the precedence and the preview behaviour are defined in
-[Specification documents](specification-documents.md).
+commits remain; the precedence is defined in [Specification documents](specification-documents.md)
+(item 19 of its UI notes). The three preview routes do not flush: when the plan refuses a dirty
+checkout while document commits still hold one of the checkouts the request names, they answer the
+same `409 DOCUMENT_COMMITS_PENDING` the Close would, so documents Nevo commits or waits for are never
+reported as files to commit by hand. Any other repository precondition is `422 CLOSE_PREFLIGHT`
+with `repository`: the blockers the owner fixes in the repository, all that are known at once
+(`uncommitted-changes` with at most 10 `paths` and the `count`, `integration-target-missing`,
+`integration-target-branch`, `git-operation-in-progress`, `branch-detached`; `RepositoryBlocker`
+in `@nevo/specflow-contracts/specs`).
 A Close that the Specification workflow refuses (unfinished Tasks or runs, pending writes) answers 409
 `CLOSE_BLOCKED` with `blockers`: groups `{kind, subjectIds, message}` (`kind` is a stable value, `subjectIds` are
 Task ids or the Specification id for Specification-wide holds, `message` is display-only). Abandoning the

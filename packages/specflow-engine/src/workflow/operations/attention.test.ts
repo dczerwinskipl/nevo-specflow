@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { startBlockerAttention } from './attention';
+import type { ExecutionTask } from '../state/model';
+import { heldTaskAttention, startBlockerAttention, type HeldTaskInput } from './attention';
 import type { StartBlocker } from './start-blockers';
 
 const subject = { kind: 'task', specId: 'spec', taskId: 'api' } as const;
@@ -82,5 +83,127 @@ describe('startBlockerAttention (owner decision 2A)', () => {
       message:
         'It depends on broken tasks: gone. Restore their files from Git, or edit its dependencies.',
     });
+  });
+});
+
+const held = (taskId: string, fields: Partial<ExecutionTask> = {}): ExecutionTask => ({
+  specId: 'spec',
+  taskId,
+  title: taskId,
+  type: 'implementation',
+  dependsOn: [],
+  origin: { kind: 'manual', actorId: 'local:owner' },
+  status: 'on-hold',
+  statusChange: { source: 'decision', at: '2026-11-17T10:00:00.000Z', reason: 'Waiting for IT.' },
+  documents: [],
+  ...fields,
+});
+const ready = (taskId: string, dependsOn: string[] = []): ExecutionTask => {
+  const { statusChange: _statusChange, ...task } = held(taskId, { dependsOn });
+
+  return { ...task, status: 'ready' };
+};
+
+const holdOf = (input: Partial<HeldTaskInput> & Pick<HeldTaskInput, 'tasks'>) =>
+  heldTaskAttention({ specId: 'spec', named: new Set(), ...input });
+const finishing = (open: readonly ExecutionTask[]): NonNullable<HeldTaskInput['finish']> => ({
+  step: 'breakdown',
+  stepTitle: 'Breakdown',
+  open: open.map((task) => ({ taskId: task.taskId, cause: 'on-hold' as const })),
+});
+
+describe('heldTaskAttention (owner decision 2026-11-16: the user must act)', () => {
+  it('gives no attention for a hold that nothing waits on and that blocks no finish', () => {
+    expect(holdOf({ tasks: [held('api'), ready('web')] })).toEqual([]);
+    // A draft, a held or a cancelled dependent does not wait on it yet.
+    expect(
+      holdOf({
+        tasks: [
+          held('api'),
+          { ...ready('draft', ['api']), status: 'draft' },
+          held('paused', { dependsOn: ['api'] }),
+          held('gone', { status: 'cancelled', dependsOn: ['api'] }),
+        ],
+      }),
+    ).toEqual([]);
+  });
+
+  it('names the open Tasks that wait on the hold directly, in id order', () => {
+    const tasks = [
+      held('api'),
+      ready('web', ['api']),
+      ready('cli', ['api', 'web']),
+      ready('docs', ['web']),
+    ];
+
+    expect(holdOf({ tasks })).toEqual([
+      {
+        subject: { kind: 'task', specId: 'spec', taskId: 'api' },
+        reason: 'on-hold-blocking',
+        actor: 'owner',
+        action: 'resume-task',
+        secondaryAction: 'cancel-task',
+        blocks: { taskIds: ['cli', 'web'] },
+        message: 'It is on hold and holds up cli, web: resume it, or cancel it.',
+      },
+    ]);
+  });
+
+  it('names the active step whose finish to completed the hold refuses', () => {
+    const api = held('api');
+
+    expect(holdOf({ tasks: [api, held('web')], finish: finishing([api]) })).toEqual([
+      expect.objectContaining({
+        subject: { kind: 'task', specId: 'spec', taskId: 'api' },
+        reason: 'on-hold-blocking',
+        step: 'breakdown',
+        stepTitle: 'Breakdown',
+        blocks: { finish: 'breakdown' },
+        message: 'It is on hold and keeps "Breakdown" from finishing: resume it, or cancel it.',
+      }),
+    ]);
+    // Both at once: still one item for the Task.
+    expect(holdOf({ tasks: [api, ready('web', ['api'])], finish: finishing([api]) })).toMatchObject(
+      [{ blocks: { taskIds: ['web'], finish: 'breakdown' } }],
+    );
+  });
+
+  it('keeps escalation its own reason, on the Task only when no Specification item names it', () => {
+    const escalated = held('api', {
+      statusChange: { source: 'escalation', at: '2026-11-17T10:00:00.000Z', reason: 'Split it.' },
+    });
+    const tasks = [escalated, ready('web', ['api'])];
+
+    expect(holdOf({ tasks })).toEqual([
+      expect.objectContaining({
+        subject: { kind: 'task', specId: 'spec', taskId: 'api' },
+        reason: 'task-escalated',
+        action: 'resume-task',
+        secondaryAction: 'cancel-task',
+      }),
+    ]);
+    expect(holdOf({ tasks, named: new Set(['api']) })).toEqual([]);
+  });
+
+  it('adds no Task item for a hold the Specification item names (tasks-stuck)', () => {
+    const api = held('api');
+
+    expect(
+      holdOf({
+        tasks: [api, ready('web', ['api'])],
+        named: new Set(['api']),
+        finish: finishing([api]),
+      }),
+    ).toEqual([]);
+  });
+
+  it('lists at most five dependents in the message, every one in blocks', () => {
+    const dependents = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map((id) => ready(id, ['api']));
+    const [only] = holdOf({ tasks: [held('api'), ...dependents] });
+
+    expect(only?.blocks?.taskIds).toHaveLength(7);
+    expect(only?.message).toBe(
+      'It is on hold and holds up a, b, c, d, e (+2): resume it, or cancel it.',
+    );
   });
 });

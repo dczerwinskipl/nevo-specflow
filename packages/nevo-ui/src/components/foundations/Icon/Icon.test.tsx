@@ -67,6 +67,12 @@ describe('Icon', () => {
     }
   });
 
+  it('registers the On hold status glyph and no Blocked glyph yet', () => {
+    expect(renderToStaticMarkup(<Icon name="circle-pause" />)).toContain('<svg');
+    expect(iconAssetRef('circle-pause', 'md')).toBe('Icon/circle-pause/md');
+    expect(isIconName('ban')).toBe(false);
+  });
+
   it('tells a registered glyph name from data apart from an unknown one', () => {
     expect(isIconName('tag')).toBe(false);
     expect(isIconName('classify')).toBe(true);

@@ -225,7 +225,9 @@ detail pane alike (a list instead fills the pane with bounded column tracks, as 
 the column a narrower box around the scroller: the scrollbar would sit in the middle of the pane and
 the band beside the column would not scroll. Every such column and list starts at the workspace's
 content inset, the 16 px of the header (`px-4`) and `AppWorkspaceBody` (`p-4`), so moving between
-screens never shifts the content edge. A detail pane may fill that space with more columns once the
+screens never shifts the content edge. The body exposes its inline padding as
+`--app-body-padding-inline`; content that spans it to the sheet edges (`AccentBlock bleed`) reads
+that variable instead of copying the length. A detail pane may fill that space with more columns once the
 pane is wide enough; until then the space beside the column stays empty rather than stretching it.
 When it does, the reading column no longer applies: the columns fill the pane at the same 16 px
 inset, each column stacks on its own (a missing section leaves no gap), and a summary above them

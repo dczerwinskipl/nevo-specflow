@@ -1,1 +1,1 @@
-export { Progress, type ProgressProps } from './Progress';
+export { Progress, type ProgressPosition, type ProgressProps } from './Progress';

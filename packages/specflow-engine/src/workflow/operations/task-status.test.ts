@@ -622,10 +622,19 @@ describe('escalation to the Specification', () => {
         ],
       },
     });
-    expect((await inspectExecution(dependencies, SPEC)).attention).toEqual([]);
+    // No Specification item names it, so the escalated Task has its own: the user resumes or
+    // cancels it (owner decision 2026-11-16).
+    expect((await inspectExecution(dependencies, SPEC)).attention).toEqual([
+      expect.objectContaining({
+        subject: task('api'),
+        reason: 'task-escalated',
+        action: 'resume-task',
+        secondaryAction: 'cancel-task',
+      }),
+    ]);
   });
 
-  it('records no item while a Specification step is worked on, and refuses the wait while escalated', async () => {
+  it('records only the escalated Task item while a Specification step is worked on, and refuses the wait while escalated', async () => {
     const dependencies = memoryDependencies(await withoutEscalationTransition());
     await specificationWithTasks(dependencies);
     await work(dependencies, task('api'));
@@ -640,7 +649,9 @@ describe('escalation to the Specification', () => {
     const escalated = await escalate(dependencies, 'Split the API Task.');
 
     expect(escalated.specification).toBeUndefined();
-    expect((await inspectExecution(dependencies, SPEC)).attention).toEqual([]);
+    expect((await inspectExecution(dependencies, SPEC)).attention).toMatchObject([
+      { subject: task('api'), reason: 'task-escalated', action: 'resume-task' },
+    ]);
     await finishStep(dependencies, {
       subject: specification,
       step: 'breakdown',

@@ -570,6 +570,76 @@ describe('manual workflow execution', () => {
     expect(close).not.toHaveBeenCalled();
   });
 
+  it('checks again by itself while saved documents are being committed, then names the real blockers', async () => {
+    const pending = refusal('DOCUMENT_COMMITS_PENDING', 409, { cause: 'commit-pending' });
+    const dirty = refusal('CLOSE_PREFLIGHT', 422);
+    (dirty.cause as { data: Record<string, unknown> }).data.repository = [
+      { kind: 'uncommitted-changes', checkout: 'specification', paths: ['notes.txt'], count: 1 },
+    ];
+    const closePreview = vi
+      .fn<WorkflowExecutionApi['closePreview']>()
+      .mockRejectedValueOnce(pending)
+      .mockRejectedValue(dirty);
+    renderWith(
+      <CloseSpecificationDialog
+        open
+        onOpenChange={vi.fn()}
+        specId={SPEC}
+        specTitle="Single sign-on"
+        projection={specificationWorkflowProjection('abandoned')}
+        tasks={new Map()}
+        cancelledTasks={[]}
+        onSeeWorkflow={vi.fn()}
+        onSeeTasks={vi.fn()}
+        onOpenTask={vi.fn()}
+        onClosed={vi.fn()}
+        documentCommitRecheck={{ intervalMs: 200, attempts: 20 }}
+      />,
+      { execution: fakeExecutionApi({ closePreview }) },
+    );
+    const dialog = screen.getByRole('dialog');
+
+    expect(await within(dialog).findByText('Saving document commits…')).toBeTruthy();
+    expect(within(dialog).queryByRole('alert')).toBeNull();
+
+    expect(await within(dialog).findByText('notes.txt')).toBeTruthy();
+    expect(closePreview).toHaveBeenCalledTimes(2);
+    expect(within(dialog).queryByText('Saving document commits…')).toBeNull();
+  });
+
+  it('stops checking after a bounded wait for document commits and offers to check again', async () => {
+    const pending = refusal('DOCUMENT_COMMITS_PENDING', 409, { cause: 'commit-pending' });
+    const closePreview = vi.fn<WorkflowExecutionApi['closePreview']>(() => Promise.reject(pending));
+    renderWith(
+      <CloseSpecificationDialog
+        open
+        onOpenChange={vi.fn()}
+        specId={SPEC}
+        specTitle="Single sign-on"
+        projection={specificationWorkflowProjection('abandoned')}
+        tasks={new Map()}
+        cancelledTasks={[]}
+        onSeeWorkflow={vi.fn()}
+        onSeeTasks={vi.fn()}
+        onOpenTask={vi.fn()}
+        onClosed={vi.fn()}
+        documentCommitRecheck={{ intervalMs: 20, attempts: 3 }}
+      />,
+      { execution: fakeExecutionApi({ closePreview }) },
+    );
+    const dialog = screen.getByRole('dialog');
+
+    expect((await within(dialog).findByRole('alert')).textContent).toContain(
+      'Saved documents in this checkout are still being committed. Wait a moment',
+    );
+    expect(closePreview).toHaveBeenCalledTimes(3);
+    expect(within(dialog).queryByText('Saving document commits…')).toBeNull();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Check again' }));
+    await waitFor(() => expect(closePreview).toHaveBeenCalledTimes(6));
+    expect(await within(dialog).findByRole('alert')).toBeTruthy();
+  });
+
   it('tells to commit saved documents from Documents when manual commits hold the Close', async () => {
     const held = refusal('DOCUMENT_COMMITS_PENDING', 409, { cause: 'commit-uncommitted' });
     renderWith(

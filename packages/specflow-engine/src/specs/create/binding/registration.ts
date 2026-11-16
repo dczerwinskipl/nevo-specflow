@@ -23,5 +23,6 @@ export function registrationOf(
     ...(target.integrationDestination
       ? { integrationDestination: target.integrationDestination }
       : {}),
+    ...(target.startedFrom !== undefined ? { startedFrom: target.startedFrom } : {}),
   };
 }

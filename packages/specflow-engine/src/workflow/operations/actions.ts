@@ -328,8 +328,8 @@ export interface ActionProjection {
   readonly taskAuthoring?: TaskAuthoringFacts;
   /**
    * What a person has to do about the subject now, if anything: the item `deriveAttention` derives
-   * for it, or for a Task that has not started, its start blockers that need a person
-   * (`startBlockerAttention`).
+   * for it (a held Task's included, `heldTaskAttention`), or for a Task that has not started, its
+   * start blockers that need a person (`startBlockerAttention`).
    */
   readonly attention?: AttentionItem;
 }
@@ -1066,6 +1066,8 @@ export async function taskProjection(
     }
 
     const blockers = [...readinessBlockers(), ...typeBlockers, ...(await contextBlockers())];
+    // A Task on hold has no start-blocker item: the item of its hold, if any, is derived
+    // (`heldTaskAttention`), as for a Task with a run.
     if (!workflow) {
       const attention = startBlockerAttention(subject, blockers, undefined, tasks.broken);
 
@@ -1074,7 +1076,7 @@ export async function taskProjection(
         position: { kind: 'blocked', blockers },
         actions: {},
         task: lifecycle,
-        ...(attention ? { attention } : {}),
+        ...(attention ? { attention } : ownAttention(derived, subject)),
       };
     }
 
@@ -1088,7 +1090,7 @@ export async function taskProjection(
       subject,
       ...first,
       task: lifecycle,
-      ...(attention ? { attention } : {}),
+      ...(attention ? { attention } : ownAttention(derived, subject)),
     };
   }
 

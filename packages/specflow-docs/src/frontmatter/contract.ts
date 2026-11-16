@@ -41,7 +41,7 @@ export function requiredFieldsByType(): string {
     groups.set(fields, [...(groups.get(fields) ?? []), type]);
   }
 
-  return [...groups].map(([fields, types]) => `${types.join(', ')}: ${fields}`).join('; ');
+  return [...groups].map(([fields, types]) => `${types.join(', ')}: ${fields}`).join(' / ');
 }
 
 /**
@@ -50,8 +50,8 @@ export function requiredFieldsByType(): string {
  */
 export function frontmatterFormat(): string {
   return (
-    `type is one of: ${KNOWN_TYPES.join(', ')}; status is one of: ${KNOWN_STATUSES.join(', ')}; ` +
-    `required fields by type: ${requiredFieldsByType()}; read_when is a non-empty list of strings`
+    `type is one of: ${KNOWN_TYPES.join(', ')} | status is one of: ${KNOWN_STATUSES.join(', ')} | ` +
+    `required fields by type: ${requiredFieldsByType()} | read_when is a non-empty list of strings`
   );
 }
 

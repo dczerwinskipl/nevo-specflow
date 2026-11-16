@@ -21,6 +21,30 @@ describe('AppContentContainer', () => {
     expect(html).toContain('w-content-standard');
     expect(html).toContain('mx-auto');
   });
+
+  it('is the named page content container that AccentBlock bleed="narrow" queries', () => {
+    expect(renderToStaticMarkup(<AppContentContainer>Content</AppContentContainer>)).toContain(
+      '@container/app-content',
+    );
+  });
+});
+
+describe('AppWorkspaceBody inline padding variable', () => {
+  it.each([
+    ['md', '--spacing(4)'],
+    ['sm', '--spacing(3)'],
+    ['none', '0px'],
+  ] as const)('exposes the %s inline padding as --app-body-padding-inline', (padding, value) => {
+    for (const scroll of ['native', 'area'] as const) {
+      const markup = renderToStaticMarkup(
+        <AppWorkspaceBody padding={padding} scroll={scroll}>
+          Content
+        </AppWorkspaceBody>,
+      );
+      expect(markup).toContain(`[--app-body-padding-inline:${value}]`);
+      expect(markup.includes('px-(--app-body-padding-inline)')).toBe(padding !== 'none');
+    }
+  });
 });
 
 describe('AppWorkspaceBody scroll ownership', () => {
@@ -41,7 +65,7 @@ describe('AppWorkspaceBody scroll ownership', () => {
       </AppWorkspaceBody>,
     );
     expect(markup).toContain('scroll-area-content');
-    expect(markup).toMatch(/scroll-area-content[^"]*p-4 py-6/);
+    expect(markup).toMatch(/scroll-area-content[^"]*p-4 [^"]*py-6/);
   });
   it('keeps contentClassName on the native body when the body owns no scroll area', () => {
     const markup = renderToStaticMarkup(

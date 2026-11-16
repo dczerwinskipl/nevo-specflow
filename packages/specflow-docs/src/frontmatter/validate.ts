@@ -77,12 +77,12 @@ export function validateDoc(doc: DocRecord, taxonomy: DocsTaxonomy = {}): string
   // so the next round does not reveal more missing fields.
   const byType = `required fields by type: ${requiredFieldsByType()}`;
   if (!doc.type) {
-    problems.push(`${loc}: missing 'type' (one of: ${KNOWN_TYPES.join(', ')}; ${byType})`);
+    problems.push(`${loc}: missing 'type' (one of: ${KNOWN_TYPES.join(', ')} | ${byType})`);
   }
 
   if (doc.type !== undefined && !isKnownType(doc.type)) {
     problems.push(
-      `${loc}: unknown type '${asString(doc.type)}' (expected one of: ${KNOWN_TYPES.join(', ')}; ${byType})`,
+      `${loc}: unknown type '${asString(doc.type)}' (expected one of: ${KNOWN_TYPES.join(', ')} | ${byType})`,
     );
   }
 

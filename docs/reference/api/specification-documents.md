@@ -715,8 +715,11 @@ the demo endpoints.
     paths, the queue is full or a batch awaits recovery (`details.cause`). Autosave MUST back off by
     `retryAfterMs` and keep the draft.
 19. **Close refused with pending commits** (`DOCUMENT_COMMITS_PENDING`, `details.cause` `commit-pending`,
-    `commit-failed` or `commit-uncommitted`): the Close dialog explains that document commits are not finished and offers "Commit now"
-    (flush) or points to the failed operation.
+    `commit-failed` or `commit-uncommitted`; the Close preview answers it too, without flushing, exactly when the
+    Close would): for `commit-pending` the Close dialog shows "Saving document commits…" and reads the preview
+    again for a bounded time, then offers "Check again"; for `commit-uncommitted` it says to commit the documents
+    from Documents; for `commit-failed` it says to retry or resolve the failed commit in Documents. The dialog
+    itself offers no "Commit now" (see `product.specflow.ui.workflow-execution`, section Close).
 20. **Definitions problems.** `ArchetypeCatalogue.problems[]` (invalid definition files) is shown to people who can
     fix them as a quiet warning on the Create form ("N definitions are invalid"); the valid archetypes remain
     selectable. Messages are plain text without paths.

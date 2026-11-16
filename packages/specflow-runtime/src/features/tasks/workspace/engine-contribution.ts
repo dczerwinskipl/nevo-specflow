@@ -61,6 +61,14 @@ export function workspaceAttentionOf(
     ...(item.secondaryAction ? { secondaryAction: item.secondaryAction } : {}),
     ...(item.taskIds ? { taskIds: [...item.taskIds] } : {}),
     ...(item.blocking ? { blocking: item.blocking.map((task) => ({ ...task })) } : {}),
+    ...(item.blocks
+      ? {
+          blocks: {
+            ...(item.blocks.taskIds ? { taskIds: [...item.blocks.taskIds] } : {}),
+            ...(item.blocks.finish !== undefined ? { finish: item.blocks.finish } : {}),
+          },
+        }
+      : {}),
   };
   if (item.subject.kind === 'task') {
     const { taskId } = item.subject;

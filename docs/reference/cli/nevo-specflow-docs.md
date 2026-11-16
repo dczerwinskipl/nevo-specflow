@@ -71,7 +71,9 @@ nevo-specflow docs semantic index
   allowed types and statuses and the required fields of every type, so one round of fixes is
   enough. `check` reports the same messages. Text output prints one `warning: skipped <path>: <error>` line per skipped
   document on stderr; `--json` output carries `skipped` (see below). `get` on the id of a skipped
-  document fails (exit 2) naming the error. Extra host rules (`corpusRules`) apply to `check` only.
+  document fails (exit 2) naming the error: the message has one problem per line (`skipped
+document id '<id>' in <path>: <error>` for every skipped file, then unknown and inactive ids), so
+  the `; ` inside a file's error separates only that file's own problems. Extra host rules (`corpusRules`) apply to `check` only.
 - `check` stays strict: it validates the whole corpus (frontmatter contract, taxonomy, unique ids, resolvable
   `related` / `supersedes` / `superseded_by`, relative Markdown links and their `#fragment`
   headings) and verifies that `<root>/index.generated.json` and `<root>/index.generated.md` are

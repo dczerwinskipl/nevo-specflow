@@ -3,14 +3,21 @@ import { tv } from 'tailwind-variants/lite';
 import { cn } from '../../lib';
 import { ScrollArea } from '../../components/layout/ScrollArea';
 
+/**
+ * The body's padding. Its inline part is exposed as `--app-body-padding-inline` for content that
+ * spans it to the sheet edges (`AccentBlock bleed`); change the inline padding through the variable,
+ * not with a `px-*` class, so the two never disagree.
+ */
+const bodyPadding = {
+  none: '[--app-body-padding-inline:0px]',
+  sm: 'p-3 px-(--app-body-padding-inline) [--app-body-padding-inline:--spacing(3)]',
+  md: 'p-4 px-(--app-body-padding-inline) [--app-body-padding-inline:--spacing(4)]',
+} as const;
+
 const appWorkspaceBodyVariants = tv({
   base: 'min-h-0 flex-1 overflow-y-auto',
   variants: {
-    padding: {
-      none: '',
-      sm: 'p-3',
-      md: 'p-4',
-    },
+    padding: bodyPadding,
   },
   defaultVariants: {
     padding: 'md',
@@ -24,7 +31,9 @@ export function AppContentScrollProvider({ children }: PropsWithChildren) {
 }
 
 const appContentContainerVariants = tv({
-  base: '@container min-w-0 max-w-full',
+  // Named so a descendant can query this container exactly (`AccentBlock bleed="narrow"`); unnamed
+  // container queries still match it as the nearest container.
+  base: '@container/app-content min-w-0 max-w-full',
   variants: {
     align: {
       start: '',
@@ -111,10 +120,7 @@ export function AppWorkspaceBody({
       <ScrollArea
         {...props}
         className={cn('min-h-0 flex-1 w-full', className)}
-        contentClassName={cn(
-          padding === 'md' ? 'p-4' : padding === 'sm' ? 'p-3' : undefined,
-          contentClassName,
-        )}
+        contentClassName={cn(bodyPadding[padding], contentClassName)}
         tabIndex={tabIndex}
       >
         {children}

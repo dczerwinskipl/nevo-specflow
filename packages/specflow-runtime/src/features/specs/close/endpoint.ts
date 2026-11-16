@@ -542,6 +542,12 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
           return reply.code(409).send(busy);
         }
 
+        // Documents the Close would commit first, or wait for: answered as the Close would.
+        const refusal = documentRefusal(error);
+        if (refusal) {
+          return reply.code(refusal.status).send(refusal.body);
+        }
+
         const code = safeCode(error);
         if (!code) {
           throw error;

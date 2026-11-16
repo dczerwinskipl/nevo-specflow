@@ -457,8 +457,9 @@ executor})`, which requires a human executor (`WORKFLOW_EXECUTOR_NOT_ALLOWED` ot
   finish;
 - the Task's own **escalation** (below).
 
-No attention is derived for a Task that is not `ready`. After a status change, `setTaskStatus`
-settles the Specification in the same change (see "Wait step").
+No attention is derived for a Task that is not `ready`, except for a Task on hold the user has to
+resume or cancel (see "Held Tasks" under "Continuation and attention"). After a status change,
+`setTaskStatus` settles the Specification in the same change (see "Wait step").
 
 ### Readiness and the step context
 
@@ -558,9 +559,11 @@ decision}]`, so a surface lets the person submit it and names what has to close;
   `WORKFLOW_TASK_BUSY`) it is plainly unavailable; the Tasks with a pending document change are
   named in `documentChangePending`. A test finishes with exactly the input `closableTasks` names
   (`actions.test.ts`), so the projection and the finish cannot drift apart.
-- **No attention item.** Open Tasks are the Tasks' normal progress, not something to fix: the
-  Specification gets no attention item for them, and no Task gets one either. The Now block names them
-  (see [Workflow execution](../../product/specflow/ui/workflow-execution.md#dialogs)).
+- **No attention item for open Tasks.** Open Tasks are the Tasks' normal progress, not something
+  to fix: the Specification gets no attention item for them. The Now block names them (see
+  [Workflow execution](../../product/specflow/ui/workflow-execution.md#dialogs)). The one exception
+  is a Task **on hold** among them: it gets `on-hold-blocking` with `blocks.finish` (see "Held
+  Tasks" under "Continuation and attention"), because only the user moves it.
 
 ## Returns ("back to the table")
 
@@ -689,6 +692,8 @@ returns its `ContinuationDecision`.
 | -------------------------- | -------------------------------------------------------------------------------------------------- |
 | `task-broken`              | A broken Task (see "The Task set").                                                                |
 | `definition-changed`       | A run that has not ended (a Task's only while `ready`) is pinned to a missing or changed workflow. |
+| `on-hold-blocking`         | A Task on hold (not escalated) that an open Task waits on, or that keeps the step from finishing.  |
+| `task-escalated` (Task)    | An escalated Task that no Specification item names (see "Held Tasks").                             |
 | `context-unresolved`       | An approved Task that has not started has a required entry that is stale.                          |
 | `dependency-unsatisfiable` | It depends on a Task that was cancelled, ended otherwise or is broken.                             |
 | `type-not-allowed`         | Its task type is not allowed by the effective policy any more.                                     |
@@ -699,15 +704,38 @@ Every item carries the required `actor` (`owner`: neither the steps nor the gate
 derives items from name another actor; `agent` is reserved), the primary `action` it offers and an
 optional `secondaryAction` (`start-step`, `return-to-step`, `configure-archetype`, `review-tasks`,
 `restore-task`, `confirm-definition`, `edit-context`, `edit-dependencies`,
-`open-project-settings`, `cancel-task`, `satisfy-gate`), the step and its title where one
+`open-project-settings`, `cancel-task`, `resume-task`, `satisfy-gate`), the step and its title where one
 resolves, and a display-only English `message`. A type no longer allowed or not defined offers
 `open-project-settings` or `cancel-task`; an unsatisfiable dependency `edit-dependencies` or
 `cancel-task`, and `restore-task` (or `edit-dependencies`) when a dependency is broken. An unmet
 entry gate is attention only once no dependency the Task waits for can still complete, since a
 dependency may deliver the document. The start blockers that are **not** attention (owner decision 2A): a draft or a
 Task on hold (`status`; the Specification's `tasks-stuck` covers them when nothing else can
-progress), dependencies that can all still complete, an awaited process artifact
-(`context-awaited`), and a Task that can start. Attention is never inferred from a status name.
+progress, and a hold that holds up progress has its own item, see "Held Tasks"), dependencies that
+can all still complete, an awaited process artifact (`context-awaited`), and a Task that can start.
+Attention is never inferred from a status name.
+
+**Held Tasks.** Owner decision 2026-11-16: Requires attention means the user must act; being on
+hold alone is never enough. A Task on hold gets an item only while the user has to resume or
+cancel it, decided by `heldTaskAttention` (`operations/attention.ts`), at most one per Task, in this
+order:
+
+1. A Specification item already names it (`task-escalated` on the wait step, or `tasks-stuck` where
+   it is the bottleneck): no Task item.
+2. It escalated (`statusChange.source: escalation`): `task-escalated` on the Task (the
+   Specification's `task-escalated` transition, as in the seed, leaves no Specification item that
+   names it). The escalation feedback is its hold reason.
+3. Otherwise `on-hold-blocking` with `blocks` (at least one set): `taskIds`, the open Tasks that wait
+   on it directly (their readiness names it in `waitingFor`, the `dependencyWait` fact), in id
+   order; `finish`, the Specification's active work step whose transition to `terminal completed`
+   it refuses (`tasksOpenAtCompletion`, the projection's `unavailable: tasks-open` with cause
+   `on-hold`), with that step as the item's `step` and `stepTitle`. Close needs the completed
+   outcome, so this also covers Close.
+4. Otherwise, a hold that nothing waits on and that blocks no finish while other work can move: no
+   item (the Now wait line still counts it as on hold).
+
+Each of these items offers `resume-task` (`on-hold → ready`) and `cancel-task` as the alternative.
+The surfaces render the item; they never decide from the status whether a hold is attention.
 
 **Attention is derived, never stored.** `inspectExecution` computes the attention items
 (`deriveAttention` in `operations/attention.ts`) from the canonical runs, the pinned definitions and
@@ -722,10 +750,12 @@ the current archetypes, with the same functions the operations use for their res
 - a Specification active on its wait step gets `task-escalated` or `tasks-stuck` (also when every
   Task is closed but the wait is still active, which only a Task file changed outside the Engine
   causes);
+- a Task on hold that the user has to resume or cancel gets `task-escalated` or `on-hold-blocking`
+  (see "Held Tasks");
 - a run that has not ended whose pinned workflow is missing or changed gets `definition-changed`
   (its inspection entry carries `definitionChanged: true`; re-pinning is F07);
 - nothing is derived for a subject that is active (being worked on), not started or terminal, or
-  for a Task that is not `ready`.
+  for a Task that is neither `ready` nor such a hold.
 
 The start blockers of a Task that has not started are read with the documents (context, gates), so
 the action projection classifies them (`startBlockerAttention`). There is one list:

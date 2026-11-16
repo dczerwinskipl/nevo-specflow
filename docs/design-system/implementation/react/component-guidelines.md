@@ -261,6 +261,54 @@ required thing: status-danger colour, circle-alert icon); the icon is decorative
 carries the meaning. It has no live-region role: wrap it in one or use `Alert` when it must be announced.
 No Figma projection in v1.
 
+## Status glyphs
+
+A status shows a registry glyph, its tone and a label; the label carries the meaning and the glyph
+is decorative. The glyph is chosen by the presented status, never by where it appears, so one status
+looks the same in every list, header and dialog. Not started and Ready use the `StatusIndicator` dot,
+Waiting `clock`, In progress `loader` (it spins except under `prefers-reduced-motion`), **On hold
+`circle-pause` (neutral)**, Requires attention `triangle-alert`, Done `circle-check`, Cancelled
+`close`, Failed or broken `circle-alert` (danger); a disabled capability has no glyph and a muted
+label. There is no Blocked glyph yet: keep the existing presentation until a Blocked state is
+designed, and add its glyph to the registry then, not ahead of it.
+
+## Progress position mode
+
+`Progress variant="segmented"` counts completed parts out of `total`. With `position` instead of
+`completed` it shows **where a step sits** among `total` workflow steps: one segment per step, and
+it never claims progress (after a return to an earlier step the current segment moves back).
+
+- `position` is `{ state: 'current', step }` (steps before it `content-secondary` at 60 %, the
+  current one 40 px wide in `status-info`, the steps after it `surface-control`),
+  `{ state: 'not-started' }` (all `surface-control`, the first outlined in info),
+  `{ state: 'completed' }` (all `status-success`) or `{ state: 'abandoned', step }` (the steps up to
+  the abandoning one `content-muted`, the rest `surface-control`). `step` is 1-based; a step outside
+  `1…total` renders nothing rather than being clamped.
+- Geometry: 20 px segments with 2 px gaps, `h-progress-track` (6 px) or `size="compact"` (4 px, for a
+  track that is not the dominant progress on the screen, such as the step track on a wait step whose
+  Task progress bar keeps the default size). The track is as wide as its segments up to 16rem and the
+  container's width; past that the segments shrink, the current one staying the widest, and never
+  below 4 px.
+- No animation: a position change is a new fact, not a movement.
+- Accessibility: the track is `role="img"` with no progressbar values. Its required `aria-label`
+  names the position ("Step 4 of 7: Break the solution down"). A visible label beside it ("Step 4 of
+  7 · next: Review the breakdown", `body-sm` secondary) is `aria-hidden` so it is not read twice.
+
+## Accent block bleed
+
+`AccentBlock` is a card inside the page's padding by default. `bleed` makes it a **flush band**: it
+spans the `AppWorkspaceBody` padding to the sheet edges, and its inline padding is the page gutter,
+so its text lines up with the page title and section headings (the 3 px bar plus the rest of the
+gutter on the left, the gutter on the right); the tint, the bar and the vertical padding stay.
+`bleed` always bleeds; `bleed="narrow"` bleeds only while the enclosing `AppContentContainer` (the
+named `@container/app-content`) is narrower than 40rem and keeps the card above that, as a CSS
+container query, never a viewport check. Use it where a nested card inside an edge-to-edge sheet
+would be one frame too many (the Narrow Now band). The geometry comes from
+`--app-body-padding-inline`, which `AppWorkspaceBody` sets for every `padding` preset (`0px` for
+`none`), so it needs an `AppWorkspaceBody` ancestor; change a body's inline padding through that
+variable, never with a `px-*` class. The consumer removes its own divider after the band (the band's
+edge separates it) and any second rule inside it.
+
 ## Shell footer
 
 Every bar pinned to the bottom of the shell (the navigation's account row, a page's sticky footer

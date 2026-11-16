@@ -1947,8 +1947,8 @@
     },
     "provider": {
       "noMode": "Brak dostępnego trybu pracy",
-      "worktreeUnsupported": "Niedostępny w tej specyfikacji: ten dostawca działa tylko w folderze projektu, a specyfikacja ma własny worktree.",
-      "worktreeUnsupportedHint": "Wybierz dostawcę, który może pracować w worktree, albo rozpocznij sesję poza specyfikacją."
+      "worktreeUnsupported": "Niedostępny w worktree",
+      "worktreeUnsupportedNote": "Niektórzy dostawcy są niedostępni w tej specyfikacji: działają tylko w folderze projektu, a ta specyfikacja ma własny worktree. Wybierz dostawcę, który obsługuje worktree, albo rozpocznij sesję poza specyfikacją."
     },
     "forbiddenSpecification": "Nie możesz rozpoczynać sesji w tej specyfikacji.",
     "sessionsDisabled": "Sesje są wyłączone w tym projekcie."

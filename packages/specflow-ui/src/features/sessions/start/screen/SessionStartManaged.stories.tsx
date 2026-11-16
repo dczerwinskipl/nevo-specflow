@@ -72,6 +72,8 @@ export const ManagedInSpecification: Story = {
     // The Runtime's own providers, the first available one chosen; Context pins the Specification.
     await expect(canvas.getByRole('radio', { name: /Claude/ })).toBeChecked();
     await expect(canvas.getByRole('button', { name: /Logowanie SSO/ })).toBeVisible();
+    // Every provider can work here, so the worktree note is not shown.
+    await expect(canvas.queryByText(/obsługuje worktree/)).toBeNull();
     await expect(canvas.getByText('nie wybrano modelu')).toBeVisible();
     await expect(canvas.getByRole('combobox', { name: 'Model' })).toBeEnabled();
     await expect(canvas.getByRole('combobox', { name: 'Effort' })).toBeDisabled();
@@ -214,7 +216,8 @@ export const ManagedNoProviderAvailable: Story = {
 
 /**
  * A Specification in its own worktree: the Runtime lists the providers bound to its own checkout
- * (Codex, Antigravity) as unavailable here, and each tile says why and what to do instead.
+ * (Codex, Antigravity) as unavailable here: each tile says so briefly, and one note below the tiles
+ * says what, why and what to do.
  */
 export const ManagedProviderNotForSpecificationWorktree: Story = {
   args: {
@@ -235,16 +238,12 @@ export const ManagedProviderNotForSpecificationWorktree: Story = {
       await expect(canvas.getByRole('radio', { name })).toBeDisabled();
     }
 
+    await expect(canvas.getAllByText('Niedostępny w worktree')).toHaveLength(2);
     await expect(
       canvas.getAllByText(
-        'Niedostępny w tej specyfikacji: ten dostawca działa tylko w folderze projektu, a specyfikacja ma własny worktree.',
+        'Niektórzy dostawcy są niedostępni w tej specyfikacji: działają tylko w folderze projektu, a ta specyfikacja ma własny worktree. Wybierz dostawcę, który obsługuje worktree, albo rozpocznij sesję poza specyfikacją.',
       ),
-    ).toHaveLength(2);
-    await expect(
-      canvas.getAllByText(
-        'Wybierz dostawcę, który może pracować w worktree, albo rozpocznij sesję poza specyfikacją.',
-      ),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
     await expect(canvas.queryByText(/Runtime's own checkout/)).toBeNull();
   },
 };

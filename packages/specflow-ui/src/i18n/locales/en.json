@@ -1947,8 +1947,8 @@
     },
     "provider": {
       "noMode": "No work mode is available",
-      "worktreeUnsupported": "Not available in this specification: this provider works only in the project folder, and the specification has its own worktree.",
-      "worktreeUnsupportedHint": "Choose a provider that can work in the worktree, or start a session outside the specification."
+      "worktreeUnsupported": "Unavailable in a worktree",
+      "worktreeUnsupportedNote": "Some providers are unavailable in this specification: they work only in the project folder, and this specification has its own worktree. Choose a provider that supports worktrees, or start the session outside the specification."
     },
     "forbiddenSpecification": "You can’t start sessions in this specification.",
     "sessionsDisabled": "Sessions are turned off in this project."

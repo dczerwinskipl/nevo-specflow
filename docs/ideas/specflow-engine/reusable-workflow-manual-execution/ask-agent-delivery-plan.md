@@ -54,22 +54,23 @@ One manual dogfood rerun of the 2026-11-16 flow closes the plan (not in CI).
   changes** group with the paths Close would refuse (`CLOSE_PREFLIGHT`, ledger holds) and the remedy
   per kind.
 - **Decisions:** D16.
-- **Depends on:** PR #163, which fixes B4's root cause and its banner; this slice rebases on it and
-  does not assume that cause. If #163 leaves the manual-path banner wording wrong, the correction is
-  part of this slice.
+- **Depends on:** nothing. B4 is being fixed in PR #163; if it is not, the manual-path case (the
+  `MANUAL_COMMIT_CONFLICT` after a finish and its banner saying Close includes the changes) falls into
+  this slice. The plan does not assume B4's cause either way.
 - **Tests:** Engine unit for the preview's blocker list from a fixture with one ledger path and one
   foreign path; one UI component test of the group; CLI preview output test.
 
-### 2. Claim-aware kernel operations and honest refusals
+### 2. Claim-aware kernel operations
 
 - **Delivers:** workflow start, finish and return consult the claims like every other writer (plan 06
-  F05), so an offline owner CLI or another writer cannot move a Run while an agent Turn runs;
-  `SPEC_BUSY` and `RESOURCE_CONFLICT` name the real holder (an agent Turn, Create, Close) (B1); an
-  invalid context reference names the field and the accepted form (B7).
+  F05), so an offline owner CLI or another writer cannot move a Run while an agent Turn runs, and the
+  refusal uses the holder naming of PR #163; an invalid context reference names the field and the
+  accepted form (B7). The B1 refusal message (naming the agent Turn instead of Create or Close) is
+  done in PR #163 and is not repeated here.
 - **Decisions:** none new.
-- **Depends on:** nothing; useful today.
+- **Depends on:** PR #163 (the B1 message); useful today.
 - **Tests:** Engine unit: a finish and a return refuse during a foreign claim and succeed after it
-  settles; refusal messages for each holder kind; the `spec-doc:overview.md` case.
+  settles; the `spec-doc:overview.md` case.
 
 ### 3. Runtime-mediated Engine writes
 
@@ -90,13 +91,14 @@ create --type` and succeeds.
 ### 4. Owner credential on owner routes
 
 - **Delivers:** the owner credential of D21 on every owner mutation route in every authentication
-  mode, the UI's first-party session that carries it, and a provider environment stripped of any
-  Runtime credential.
+  mode, the one-time launch token handed only to the launcher and exchanged once for the UI's
+  cookie, and a provider environment stripped of any Runtime credential.
 - **Decisions:** D21.
 - **Depends on:** nothing; it must land before slice 6 makes agent execution reachable.
 - **Tests:** Runtime route tests: in mode `none`, Finish, Approve and Return without the credential
-  are refused and with it succeed; the provider launch environment holds no credential; one UI test
-  that the session is established on open.
+  are refused and with it succeed; the launch token is accepted once and refused on reuse, and is
+  refused after it expires; the provider launch environment holds neither the token nor the
+  credential.
 
 ### 5. Agent step context
 

@@ -239,8 +239,8 @@ bypass or re-enter it without proven identity and permission scope.
 8. Every accepted write is its own durable Engine mutation with its own operation id and revision,
    published at once and committed by the policy below; it is not held until the finish and does not
    disappear when a finish is refused.
-9. The refusal names the real holder: `SPEC_BUSY` today says "a Create or Close holds this checkout"
-   for an agent's own claim (B1). The broker answers out-of-scope requests with a reason the agent can
+9. The refusal names the real holder: `SPEC_BUSY` said "a Create or Close holds this checkout" for an
+   agent's own claim (B1); PR #163 corrects that message, and this contract reuses it. The broker answers out-of-scope requests with a reason the agent can
    act on, and an invalid context reference with the field and the accepted form (B7).
 
 **Owner routes.** The broker gives the agent its own scope; it must not be able to use the owner's.
@@ -328,7 +328,8 @@ or a commit of the whole tree, and the agent is not expected to commit by itself
    ledger by the commit policy, with their post-images. A registered document or Task file whose bytes
    differ from its ledger post-image at finish was written past the Engine; the finish is refused,
    naming it, and the agent saves it through the Engine. (B4 on the manual path is being fixed in
-   PR #163; this contract does not depend on its cause.)
+   PR #163; if it is not, that case falls into delivery slice 1. This contract does not depend on its
+   cause.)
 4. **Code and other files** the agent changed are declared in the finish proposal (`changes.paths`).
    The Engine checks that the declared set equals the dirty set outside the Specification directories
    and the Engine's own namespace, both derived from the configured Specification root and Project
@@ -463,17 +464,30 @@ provider configuration, not an Engine rule.
 agent and its subprocesses can call Finish, Approve and Return on the loopback HTTP listener as the
 owner.
 
-- (a) Owner routes require an **owner credential** the provider environment never gets: in every
-  authentication mode, the Runtime mints a per-start secret that the UI receives as an `HttpOnly`,
-  `SameSite=Strict` cookie through a first-party open (or that the authenticated subject carries), and
-  every owner mutation requires it. The Runtime strips any Runtime credential from the provider's
-  environment. The offline owner CLI is refused by the claim while an agent Turn runs (F05).
+- (a) Owner routes require an **owner credential** the provider environment never gets, in every
+  authentication mode (with authentication on, the authenticated subject carries it). Bootstrap
+  without any endpoint an agent could call:
+  - the Runtime mints a **one-time launch token** (at least 256 random bits, valid about a minute)
+    and hands it only to the **launcher**, the process that opens the browser (`nevo-specflow ui`, or
+    the desktop shell), over the launcher's own channel: its stdout pipe or the inherited handle of
+    the process that started the Runtime. It is never written to a file, a log or an environment
+    variable, and never to a Runtime the agent's Session belongs to;
+  - the launcher opens the browser with the token in the URL fragment, which no server log sees; the
+    UI posts it once, and the Runtime exchanges it for the owner credential as an `HttpOnly`,
+    `SameSite=Strict` cookie and burns the token. A second exchange, an expired token, or a token from
+    any other source is refused;
+  - there is no unauthenticated "give me a session" route: without a valid launch token, the owner
+    routes stay closed. An owner who lost the tab runs the launcher again.
+
+  The Runtime strips every Runtime credential from the provider's environment. The offline owner CLI
+  is refused by the claim while an agent Turn runs (F05).
+
 - (b) Document that owner separation is cooperative in `none` mode: an agent can act as the owner,
   and history records it as the owner.
 - (c) Refuse agent execution while authentication is `none`.
 
-**Recommendation: (a)**. It closes the direct path (an agent calling a route) without asking local
-users to configure authentication. Its limit stays stated: a hostile same-user process that reads the
+**Recommendation: (a)**, with the one-time launch token as its bootstrap. It closes the direct path
+(an agent calling a route) without asking local users to configure authentication. Its limit stays stated: a hostile same-user process that reads the
 browser's cookie store is outside the trust model. (c) would stop the dogfood setup, and (b) leaves
 invariant 5 unenforced.
 

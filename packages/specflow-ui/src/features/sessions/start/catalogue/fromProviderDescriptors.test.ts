@@ -37,7 +37,7 @@ describe('startCatalogueFromProviders', () => {
     expect(only(providerDescriptor({ providerId: 'p' })).reason).toBeUndefined();
   });
 
-  it('explains a provider that cannot work in the Specification worktree and what to do instead', () => {
+  it('marks a provider that cannot work in the Specification worktree with a short reason', () => {
     const provider = only(
       providerDescriptor({
         providerId: 'codex',
@@ -49,8 +49,9 @@ describe('startCatalogueFromProviders', () => {
     expect(provider).toMatchObject({
       available: false,
       reason: { key: 'sessionStart.provider.worktreeUnsupported' },
-      hint: { key: 'sessionStart.provider.worktreeUnsupportedHint' },
+      unavailableInWorktree: true,
     });
+    expect(provider.hint).toBeUndefined();
   });
 
   it('keeps the provider modes with their availability: ready, authorized and offered', () => {

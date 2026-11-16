@@ -10,9 +10,9 @@ import {
 } from '../changes/plan';
 import {
   DOCUMENT_COMMIT_BODY_LINES_MAX,
-  DOCUMENT_COMMIT_SUBJECT_MAX,
   documentCommitMessage,
-  fitParts,
+  firstFitting,
+  workflowCommitMessage,
   type SummarizedMember,
 } from './commit-summary';
 
@@ -195,7 +195,7 @@ describe('the message of a document commit', () => {
     ).toBe(`spec(documents): change 2 documents in ${TEST_SLUG}`);
   });
 
-  it('keeps the subject within 72 characters, shortening the longest name with an ellipsis', () => {
+  it('keeps the subject within 72 characters without cutting a name: shorter forms, then the body', () => {
     const long = 'a-very-long-document-name-that-goes-on-and-on-and-on.md';
     const withLong = buildSnapshot({ files: [{ path: long, content: 'x' }] });
     const plan = planOf(
@@ -207,18 +207,49 @@ describe('the message of a document commit', () => {
       },
       withLong,
     );
-    const { subject } = messageOf(plan);
-    expect(Array.from(subject).length).toBeLessThanOrEqual(DOCUMENT_COMMIT_SUBJECT_MAX);
-    expect(subject.startsWith('spec(documents): rename a-very-long')).toBe(true);
-    expect(subject).toContain('…');
+    const message = messageOf(plan);
+    expect(message.subject).toBe(`spec(documents): rename a document in ${TEST_SLUG}`);
+    expect(message.subject).not.toContain('…');
+    expect(message.body).toBe(
+      `rename ${long} -> another-equally-long-name-for-the-same-document.md`,
+    );
     // Deterministic: the same input gives the same subject.
-    expect(messageOf(plan).subject).toBe(subject);
+    expect(messageOf(plan).subject).toBe(message.subject);
+
+    // A name in a folder that does not fit in full is named by its file name.
+    const nested = 'design/some-rather-long-folder-name/api-overview.md';
+    const withNested = buildSnapshot({ files: [{ path: nested, content: 'x' }] });
+    expect(
+      messageOf(
+        planOf(
+          {
+            action: 'save',
+            documentId: deriveUnclassifiedDocumentId(nested),
+            content: 'y',
+            expectedRevision: revision(nested, withNested),
+          },
+          withNested,
+        ),
+      ).subject,
+    ).toBe(`spec(documents): update api-overview.md in ${TEST_SLUG}`);
   });
 
-  it('never cuts inside a character of a non-ASCII name', () => {
+  it('leaves the slug to the body when it does not fit, never cutting it', () => {
+    const slug = 'docs-search-relevance-cutoff-for-vector-only-results';
+    const plan = save('notes', 'notes.md');
+    const message = documentCommitMessage(slug, [{ action: 'save', plan }], [DIR + 'notes.md']);
+    expect(message).toEqual({
+      subject: 'spec(documents): update notes.md',
+      body: `update notes.md
+
+Specification: ${slug}`,
+    });
+  });
+
+  it('never cuts a non-ASCII name: it stays whole in the body', () => {
     const name = 'zażółć-gęślą-jaźń-🙂🙂🙂🙂🙂🙂🙂🙂🙂🙂-łódź-źdźbło-pięćdziesiąt.md';
     const withName = buildSnapshot({ files: [{ path: name, content: 'x' }] });
-    const { subject } = messageOf(
+    const message = messageOf(
       planOf(
         {
           action: 'save',
@@ -229,13 +260,10 @@ describe('the message of a document commit', () => {
         withName,
       ),
     );
-    expect(Array.from(subject).length).toBeLessThanOrEqual(DOCUMENT_COMMIT_SUBJECT_MAX);
-    // Re-encoding round-trips: no lone surrogate half was left by a cut.
-    expect(Buffer.from(subject, 'utf8').toString('utf8')).toBe(subject);
-    expect(subject).not.toMatch(
-      /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u,
-    );
-    expect(subject.startsWith('spec(documents): update zażółć')).toBe(true);
+    expect(message).toEqual({
+      subject: `spec(documents): update a document in ${TEST_SLUG}`,
+      body: `update ${name}`,
+    });
   });
 
   it('bounds the body and names what it left out', () => {
@@ -282,10 +310,10 @@ describe('the message of a document commit', () => {
       subject: `spec(documents): delete folder drafts/later from ${TEST_SLUG}`,
       body: 'delete folder drafts/later',
     });
-    // A long folder name is shortened within the subject bound.
+    // A long folder name is not cut: the subject counts the folder, the body names it.
     const long = 'a-very-long-folder-name-that-would-not-fit-into-one-commit-subject-line';
     const withLong = buildSnapshot({ folders: [long] });
-    const { subject } = messageOf(
+    const message = messageOf(
       planOf(
         {
           action: 'delete',
@@ -295,8 +323,10 @@ describe('the message of a document commit', () => {
         withLong,
       ),
     );
-    expect(Array.from(subject).length).toBeLessThanOrEqual(DOCUMENT_COMMIT_SUBJECT_MAX);
-    expect(subject.startsWith('spec(documents): delete folder a-very-long')).toBe(true);
+    expect(message).toEqual({
+      subject: `spec(documents): delete a folder from ${TEST_SLUG}`,
+      body: `delete folder ${long}`,
+    });
   });
 });
 
@@ -361,12 +391,42 @@ describe('the message of workflow state', () => {
   });
 });
 
-describe('fitting a subject', () => {
-  it('shortens the longest name first and keeps the fixed words', () => {
-    expect(fitParts(['x ', { name: 'abcdefgh' }, ' y ', { name: 'abc' }], 12)).toBe('x abc… y abc');
-    // Equal lengths: the first name is cut first.
-    expect(fitParts([{ name: 'abcd' }, '-', { name: 'efgh' }], 8)).toBe('ab…-efgh');
-    expect(fitParts(['fixed words only'], 5)).toBe('fixed words only');
-    expect(fitParts([{ name: 'ab' }, { name: 'cd' }], 1)).toBe('abcd');
+describe('choosing a subject', () => {
+  it('takes the first candidate that fits, whole, and the last one when none does', () => {
+    expect(firstFitting(['too long a subject', 'short'], 10)).toBe('short');
+    expect(firstFitting(['fits', 'short'], 10)).toBe('fits');
+    expect(firstFitting(['still too long', 'also too long'], 5)).toBe('also too long');
+  });
+});
+
+describe('the message of a workflow-state commit', () => {
+  it('names the step by its title and keeps the details in the body', () => {
+    expect(
+      workflowCommitMessage('finish "Design the solution"', TEST_SLUG, [
+        'Step solution, attempt 1.',
+      ]),
+    ).toEqual({
+      subject: `spec(workflow): finish "Design the solution" in ${TEST_SLUG}`,
+      body: 'Step solution, attempt 1.',
+    });
+  });
+
+  it('drops the slug, then the phrase, rather than cutting either (B5)', () => {
+    const slug = 'docs-search-relevance-cutoff-for-vector-only-results';
+    expect(
+      workflowCommitMessage('finish "Design the solution"', slug, ['Step solution, attempt 1.']),
+    ).toEqual({
+      subject: 'spec(workflow): finish "Design the solution"',
+      body: `Step solution, attempt 1.
+Specification: ${slug}`,
+    });
+    const phrase = 'finish "Implement the hybrid empty states" of task ui-hybrid-empty-states';
+    const message = workflowCommitMessage(phrase, slug);
+    expect(message).toEqual({
+      subject: 'spec(workflow): change the workflow state',
+      body: `${phrase}
+Specification: ${slug}`,
+    });
+    expect(message.subject).not.toContain('…');
   });
 });

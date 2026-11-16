@@ -857,11 +857,17 @@ documents ([documents layer](../runtime/specification-documents.md#commits-of-wo
   `finish an interrupted workflow change`.
 - **Auto-commit on.** The operation is queued and committed by the document queue with its batch
   policy, identity and trailers (`Nevo-Action: workflow`); its subject is
-  `spec(workflow): <summary> in <slug>` (`<n> workflow changes` when a batch holds several).
+  `spec(workflow): <summary> in <slug>` (`<n> workflow changes` when a batch holds several), never
+  cut (a form that fits is chosen whole, see
+  [commits of workflow state](../runtime/specification-documents.md#commits-of-workflow-state)).
 - **Auto-commit off.** The paths go to the uncommitted-changes ledger. Finishing a step ("Next")
   runs the post action `commit-execution-state` (`operations/post-actions.ts`): a manual commit of
   the Specification's ledger entries below `.execution/` and `tasks/` (closed under shared operation
-  ids), reported in `FinishStepResult.postActions`. A failed post action does not fail the finish; a
+  ids) with the subject `spec(workflow): finish "<step title>"[ of task <id>] in <slug>`, reported in
+  `FinishStepResult.postActions`, apart from the finish. Execution state edited since the Engine
+  wrote it is held out of that commit with its operations, never refusing it (`held`, see
+  [commits of workflow state](../runtime/specification-documents.md#commits-of-workflow-state)). A
+  failed post action does not fail the finish; a
   repeated finish runs it again. The post-action hook is the seam where E6 adds the push of an agent
   step's work (not implemented).
 - **Close and Abandon.** Abandon is a workflow change like the others. A Specification Close takes

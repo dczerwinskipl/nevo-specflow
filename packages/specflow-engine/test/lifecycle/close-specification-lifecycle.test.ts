@@ -162,12 +162,12 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
     ]);
     const [post] = finished.postActions ?? [];
     expect(post?.status === 'completed' ? post.commit?.paths.length : 0).toBeGreaterThan(0);
-    // Shortened to the subject bound (72 characters).
-    expect(git(root, 'log', '-1', '--format=%s')).toMatch(
-      new RegExp(
-        `^spec\\(workflow\\): finish step ${started.context.step.id} .* in ${spec.slug}$`,
-        'u',
-      ),
+    // The step by its title, never cut (B5); the step id and attempt are in the body.
+    expect(git(root, 'log', '-1', '--format=%s')).toBe(
+      `spec(workflow): finish "${started.context.step.title}" in ${spec.slug}`,
+    );
+    expect(git(root, 'log', '-1', '--format=%b')).toContain(
+      `Step ${started.context.step.id}, attempt ${started.context.attempt}.`,
     );
     expect(dirty()).toEqual([]);
 

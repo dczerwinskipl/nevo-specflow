@@ -258,11 +258,11 @@ function enginePostActions(engine: SpecFlowEngine): WorkflowPostActions {
     async afterStepFinished(event): Promise<readonly PostActionResult[]> {
       const action = 'commit-execution-state';
       try {
-        const outcome = await commitExecutionState(
-          engine,
-          event.subject.specId,
-          `finish step ${event.step}${ofSubject(event.subject)} (attempt ${event.attempt})`,
-        );
+        const outcome = await commitExecutionState(engine, event.subject.specId, {
+          phrase: `finish "${event.stepTitle}"${ofSubject(event.subject)}`,
+          details: [`Step ${event.step}, attempt ${event.attempt}.`],
+        });
+        const held = 'held' in outcome && outcome.held ? { held: outcome.held } : {};
         switch (outcome.kind) {
           case 'committed':
             return [
@@ -273,10 +273,11 @@ function enginePostActions(engine: SpecFlowEngine): WorkflowPostActions {
                   ...(outcome.sha !== undefined ? { sha: outcome.sha } : {}),
                   paths: outcome.paths,
                 },
+                ...held,
               },
             ];
           case 'nothing-to-commit':
-            return [{ action, status: 'completed' }];
+            return [{ action, status: 'completed', ...held }];
           case 'not-applicable':
             return [{ action, status: 'skipped', reason: outcome.reason }];
         }

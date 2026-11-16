@@ -38,6 +38,13 @@ export function hintFor(error: DocumentError): string | undefined {
         );
       }
 
+      if (details?.cause === 'agent-turn') {
+        return (
+          'Run the command again once that Turn has ended (the same --operation-id is safe). From ' +
+          'inside the Turn it cannot succeed: waiting or retrying there only keeps the claim held.'
+        );
+      }
+
       return details?.retryAfterMs !== undefined
         ? `Retry in ${details.retryAfterMs} ms (same --operation-id is safe).`
         : 'Retry shortly (the same --operation-id is safe).';

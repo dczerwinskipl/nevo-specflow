@@ -268,12 +268,23 @@ export function finishLines(result: FinishStepResult): string[] {
     `Next: ${continuationLine(result.continuation)}`,
     ...(result.createdTasks.length > 0 ? [`Drafted Tasks: ${result.createdTasks.join(', ')}`] : []),
     ...(result.specification ? [`Specification: ${continuationLine(result.specification)}`] : []),
-    // The finish is recorded either way; a failed post action (the commit of the state) is shown.
-    ...(result.postActions ?? []).flatMap((post) =>
-      post.status === 'failed'
-        ? [`Post action ${post.action} failed: ${post.code} ${post.message}`]
-        : [],
-    ),
+    // The finish is recorded either way; the commit of the state reports on its own line: a failure,
+    // or the state it left uncommitted because someone edited it since the Engine wrote it.
+    ...(result.postActions ?? []).flatMap((post) => {
+      if (post.status === 'failed') {
+        return [`Post action ${post.action} failed: ${post.code} ${post.message}`];
+      }
+
+      if (post.status === 'completed' && post.held) {
+        return [
+          `Workflow state left uncommitted (${post.held.paths.length} files), edited outside the ` +
+            `Engine since it wrote them: ${post.held.edited.join(', ')}. Commit them with Git; ` +
+            'Close takes them otherwise.',
+        ];
+      }
+
+      return [];
+    }),
   ];
 }
 

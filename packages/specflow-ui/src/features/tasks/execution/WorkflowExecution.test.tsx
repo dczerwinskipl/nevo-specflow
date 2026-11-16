@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { createSpecFlowQueryClient } from '../../../app/queryClient';
@@ -358,6 +358,65 @@ describe('manual workflow execution', () => {
       'This step was already finished. What you can do now is shown below.',
     );
     expect(finish).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports what the finish commit left uncommitted, and only until the next attempt is active (B4)', async () => {
+    const finish = vi.fn(() =>
+      Promise.resolve({
+        subject: { kind: 'task' as const, specId: SPEC, taskId: TASK },
+        transition: 'approved',
+        position: { state: 'ready' as const, step: 'review' },
+        continuation: { kind: 'none' as const, reason: 'on-hold' as const },
+        createdTasks: [],
+        postActions: [
+          {
+            action: 'commit-execution-state' as const,
+            status: 'completed' as const,
+            commit: { paths: ['specs/active/s/.execution/specification.yaml'] },
+            held: {
+              edited: ['specs/active/s/tasks/a/task.md'],
+              paths: ['specs/active/s/tasks/a/task.md', 'specs/active/s/tasks/index.yaml'],
+            },
+          },
+        ],
+      }),
+    );
+    let show: (projection: WorkflowActionProjection) => void = () => undefined;
+    function Switching() {
+      const [projection, setProjection] = useState(taskWorkflowProjection('review'));
+      useEffect(() => {
+        show = setProjection;
+      }, []);
+
+      return (
+        <WorkflowNow
+          subject={{ specId: SPEC, taskId: TASK }}
+          projection={projection}
+          headingId="now"
+          links={{}}
+          artifactOptions={[]}
+        />
+      );
+    }
+
+    renderWith(<Switching />, { execution: fakeExecutionApi({ finish }) });
+    fireEvent.click(await screen.findByRole('button', { name: 'Finish step' }));
+    fireEvent.click(screen.getByRole('radio', { name: /^Approved/ }));
+    fireEvent.click(finishButton());
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    // The finished attempt has no Finish any more: the commit's own result is shown beside it.
+    const finished = taskWorkflowProjection('review');
+    act(() => show({ ...finished, actions: {} }));
+    const held =
+      'The step is finished. Some workflow files stay uncommitted because ' +
+      'specs/active/s/tasks/a/task.md changed outside SpecFlow after SpecFlow wrote it. ' +
+      'Commit them with Git; otherwise Close includes them.';
+    expect(screen.getByText(held)).toBeTruthy();
+
+    // The next attempt is active: the earlier commit's note does not carry over into it.
+    act(() => show(taskWorkflowProjection('rework')));
+    expect(screen.queryByText(held)).toBeNull();
   });
 
   it('keeps the drafts a producing step made earlier unless the owner unticks them', async () => {

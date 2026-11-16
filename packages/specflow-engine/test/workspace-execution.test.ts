@@ -14,6 +14,9 @@ import {
   settleWorkspaceExecution,
   inspectWorkspaceExecution,
   listUnsettledWorkspaceExecutions,
+  createTask,
+  installProjectDefinitions,
+  openWorkflow,
   type WorkspaceExecutionIntent,
 } from '../src/testing';
 import { createGitTestProject, git, commitStaged } from './support/git-project';
@@ -143,6 +146,32 @@ it('blocks new Create and Close reservations while a native CLI owns the project
   ).rejects.toMatchObject({ code: 'CLOSE_CONFLICT' });
   await abandonWorkspaceExecutionAdmission(engine, intent);
 });
+// B1: the refusal names the real holder (the agent Session's Turn), not a Create or Close.
+it('refuses a Task change while an agent Turn holds the project, naming its Session', async () => {
+  const { engine, intent } = await fixture();
+  await installProjectDefinitions(engine);
+  const spec = await createSpecificationForTesting(engine, {
+    operationId: randomUUID(),
+    title: 'Agent claim',
+    created: '2026-11-16',
+    archetype: { id: 'feature', version: 1 },
+    target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
+  });
+  await admitWorkspaceExecution(engine, intent);
+  const refused = createTask(await openWorkflow(engine), {
+    specId: spec.specId,
+    taskId: 'docs',
+    title: 'Document it',
+    type: 'implementation',
+    actor: { class: 'human', details: { actorId: 'local:owner', trust: 'local' } },
+  });
+  await expect(refused).rejects.toMatchObject({
+    code: 'SPEC_BUSY',
+    details: { reason: 'busy', cause: 'agent-turn' },
+  });
+  await expect(refused).rejects.toThrow(`agent Session Turn (Session ${intent.ownerId})`);
+  await abandonWorkspaceExecutionAdmission(engine, intent);
+}, 240_000);
 it('does not admit an external writer while an interrupted Create retains resources', async () => {
   const { engine, intent, create } = await fixture();
   await expect(

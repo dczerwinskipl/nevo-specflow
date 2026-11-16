@@ -1867,7 +1867,7 @@
         "tool": "{{label}}",
         "toolUnnamed": "Running a tool…",
         "reasoning": "Thinking…",
-        "responding": "Writing the answer…",
+        "responding": "Writing the answer",
         "commentary": "Describing progress…",
         "waiting": "Waiting…",
         "cancelling": "Cancelling…",

@@ -1,6 +1,9 @@
 import type { WorkflowDefinition, WorkflowStep } from '../definitions/model';
 
-/** A step of the outline: its id, its title and its 1-based position in declared order. */
+/**
+ * A step of the outline: its id, its title and its 1-based position in the definition's declared
+ * order ("Step 2 of 7" is that position, not how many steps the run has done or has left).
+ */
 export interface OutlineStep {
   readonly step: string;
   readonly title: string;
@@ -13,12 +16,12 @@ export interface OutlineStep {
  * - `stepCount`: how many steps the workflow declares;
  * - `current`: the step the run is at (active, waiting or ready); absent before the first start and
  *   once the run ended;
- * - `next`: the step a finish of `current` leads to: the step declared after it when one of its
- *   transitions targets that step, else the only step its transitions target; absent when its
- *   transitions lead to several other steps or none. Before the first start, the entry step.
- * - `tasksStep`: the first step that declares `produces: tasks`, when the run can still reach it
- *   through transitions (from `current`, itself included, or from the entry step before the first
- *   start); absent otherwise and once the run ended.
+ * - `next`: the step a finish of `current` leads to, only when that is unambiguous: every transition
+ *   of `current` that leads to a step leads to the same one (transitions that end the run do not
+ *   count). Absent when they lead to several steps or none. Before the first start, the entry step.
+ * - `tasksStep`: the first step that declares `produces: tasks`, only when the run is certain to get
+ *   there through unambiguous steps: following `next` from `current` (itself included), or from the
+ *   entry step before the first start, arrives at it. Absent otherwise and once the run ended.
  */
 export interface WorkflowOutline {
   readonly stepCount: number;
@@ -46,23 +49,24 @@ function stepTargets(step: WorkflowStep): string[] {
   return [...new Set(targets)];
 }
 
-/** Whether `goal` can be reached from `from` through transitions (`from` itself counts). */
-function reaches(definition: WorkflowDefinition, from: string, goal: string): boolean {
+/** The one step every step-leading transition of `step` leads to; none when ambiguous or none. */
+function onlyTarget(step: WorkflowStep): string | undefined {
+  const targets = stepTargets(step);
+
+  return targets.length === 1 ? targets[0] : undefined;
+}
+
+/** Whether following only unambiguous successors from `from` arrives at `goal` (`from` counts). */
+function certainlyReaches(definition: WorkflowDefinition, from: string, goal: string): boolean {
   const seen = new Set<string>();
-  const queue = [from];
-  while (queue.length > 0) {
-    const id = queue.shift()!;
+  for (let id: string | undefined = from; id !== undefined && !seen.has(id);) {
     if (id === goal) {
       return true;
     }
 
-    if (seen.has(id)) {
-      continue;
-    }
-
     seen.add(id);
     const step = definition.steps.find((candidate) => candidate.id === id);
-    queue.push(...(step ? stepTargets(step) : []));
+    id = step ? onlyTarget(step) : undefined;
   }
 
   return false;
@@ -94,21 +98,14 @@ export function outlineOf(
     if (step) {
       current = at(index);
       from = step.id;
-      const targets = stepTargets(step);
-      const successor = steps[index + 1];
-      const target =
-        successor && targets.includes(successor.id)
-          ? successor.id
-          : targets.length === 1
-            ? targets[0]
-            : undefined;
+      const target = onlyTarget(step);
       next = target === undefined ? undefined : at(indexOf(target));
     }
   }
 
   const producing = steps.find(producesTasks);
   const tasksStep =
-    producing && from !== undefined && reaches(definition, from, producing.id)
+    producing && from !== undefined && certainlyReaches(definition, from, producing.id)
       ? at(indexOf(producing.id))
       : undefined;
 

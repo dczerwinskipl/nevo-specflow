@@ -59,7 +59,9 @@ dashboard configuration). The Overview renders what the reads deliver.
 - **Now** — the Specification workflow's position: the step title and one plain line (attempt,
   since, by whom; or what the step does), then the step's purpose and where the run is among the
   workflow's declared steps, "Step 2 of 7 · next: Design the solution" (the projection's `outline`;
-  "Step 7 of 7" at the last step). Before the first start the plain line reads "First step · Gather
+  "Step 7 of 7" at the last step). The number is the step's position in the workflow definition,
+  not progress (a workflow may loop or branch), and "next" appears only when the step leads to one
+  step only. Before the first start the plain line reads "First step · Gather
   requirements" and no step line follows. For a `wait` step the Task progress appears here only,
   once: a segmented bar, "Tasks 1 of 6 done · 1 cancelled · 1 ended · 1 on hold" (zero parts
   omitted) and a line that cancelled (and ended) Tasks are not counted. When the wait cannot
@@ -89,10 +91,9 @@ dashboard configuration). The Overview renders what the reads deliver.
   blocking tasks · Approve, resume or cancel them so the specification can finish"); Now carries
   the diagnosis. On a narrow row the actions follow the title and reason.
 - **Tasks** — a preview of the configured grouping. Without Tasks: "No tasks yet" and, when the
-  workflow declares a step that produces Tasks (`outline.tasksStep`, never a step id), "Tasks appear
-  when the workflow reaches Break the solution down (step 4 of 7)." while the run is before that
-  step, "Tasks appear when Break the solution down (step 4 of 7) finishes." while it is at it, and no
-  line otherwise. Each group the configuration marks as a summary row gets one row: its name, then
+  run is certain to get to a step that produces Tasks (`outline.tasksStep`, never a step id: no
+  branch on the way), "Tasks appear when the workflow reaches Break the solution down (step 4 of
+  7)." while the run is not yet at that step, "Tasks appear when Break the solution down (step 4 of 7) finishes." while it is at it, and no line otherwise. Each group the configuration marks as a summary row gets one row: its name, then
   "1 task · T-04 Return users to where they were" (count, up to two Tasks, "N more", at most two
   lines), opening the Tasks page at that group. A Task
   already named by Requires attention or Now appears by id only. Compact groups (Done, Cancelled,

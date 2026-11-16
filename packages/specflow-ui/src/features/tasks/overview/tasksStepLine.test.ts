@@ -9,17 +9,18 @@ const at = (position: number) => ({ stepCount: 7, current: step(position), tasks
 const reaches = 'specification.tasksAppearAt {"step":"Step 4","position":4,"total":7}';
 
 describe('tasksStepLine', () => {
-  it('names the producing step before the run reaches it, and its finish while at it', () => {
+  it('names the producing step the run is certain to reach, and its finish while at it', () => {
     expect(tasksStepLine(t, { stepCount: 7, next: step(1), tasksStep: step(4) })).toBe(reaches);
     expect(tasksStepLine(t, at(2))).toBe(reaches);
+    // A later step whose only way on loops back to the producing step: the Engine claims it.
+    expect(tasksStepLine(t, at(5))).toBe(reaches);
     expect(tasksStepLine(t, at(4))).toBe(
       'specification.tasksAppearAfter {"step":"Step 4","position":4,"total":7}',
     );
   });
 
-  it('says nothing without a reachable producing step, after it or while unknown', () => {
+  it('says nothing when the Engine claims no Tasks step, or while the projection is unknown', () => {
     expect(tasksStepLine(t, { stepCount: 7, current: step(2) })).toBeUndefined();
-    expect(tasksStepLine(t, at(5))).toBeUndefined();
     expect(tasksStepLine(t, undefined)).toBeUndefined();
   });
 });

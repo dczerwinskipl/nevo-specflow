@@ -272,7 +272,13 @@ export {
 } from './specs/create';
 
 // Supported operation endpoints project the Engine's durable state to stable DTOs.
-export { CloseOperationError } from './specs/lifecycle';
+export {
+  CloseOperationError,
+  withCheckoutQuiescence,
+  type CheckoutQuiescence,
+  type CheckoutQuiescenceVerdict,
+  type CloseCheckout,
+} from './specs/lifecycle';
 export {
   closeWorktreeOperation,
   closeWorkspaceOperation,

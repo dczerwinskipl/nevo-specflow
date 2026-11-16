@@ -67,6 +67,13 @@ Workspace Close takes `workspaceId`, not one of its Specs. Reuse the original
 `--operation-id` on retries. These commands work offline; the CLI does **not** call Runtime
 HTTP and its local OS-account trust is distinct from authenticated HTTP grants.
 
+A Close that removes a linked worktree (Worktree and Workspace Close, `specs close` with integration)
+refuses with `CLOSE_BLOCKED` while a running Runtime owns the Project's Session store, because an agent
+Session Turn of that Runtime may work in the worktree and the CLI cannot see it. It also refuses when a
+stopped Runtime left an unsettled native Turn in that worktree, or when the store's owner cannot be
+read. Close from the SpecFlow UI instead, or stop the Runtime and rerun with the same `--operation-id`
+([Specification lifecycle](../../architecture/runtime/specification-lifecycle.md#safe-integration-rebind-and-disposal)).
+
 Usage errors of nested commands (for example a missing required option of `specs create`) now exit with code **2**
 like the top-level ones; they used to end the process with code 1. Operation failures still exit 1.
 

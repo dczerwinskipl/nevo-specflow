@@ -21,6 +21,8 @@ import {
   readWorkspaceSpecification,
   rebindVerifiedClose,
   reserveCloseOperation,
+  withCheckoutQuiescence,
+  type CheckoutQuiescenceVerdict,
 } from '../../src/testing';
 import { createGitTestProject, git, commitStaged } from '../support/git-project';
 
@@ -97,6 +99,30 @@ describe('E2.T12–T13 linked Worktree Close lifecycle', () => {
     expect(registry.specBindings.find((x) => x.specId === spec.specId)?.workspaceId).toBe(
       registry.primaryWorkspaceId,
     );
+  }, 150000);
+
+  it('refuses to remove the checkout while the host reports an agent there, then resumes', async () => {
+    const { root, engine, spec } = await fixture();
+    const operationId = randomUUID();
+    const busy: CheckoutQuiescenceVerdict = {
+      quiet: false,
+      sessionIds: ['session-1'],
+      message: 'An agent Session works in the worktree.',
+    };
+    // Quiet when the Close starts; an agent begins before the removal (the second question).
+    const answers: CheckoutQuiescenceVerdict[] = [{ quiet: true }, busy];
+    const host = withCheckoutQuiescence(engine, () => Promise.resolve(answers.shift() ?? busy));
+    await expect(closeWorktree(host, { operationId, specId: spec.specId })).rejects.toMatchObject({
+      code: 'CLOSE_BLOCKED',
+      blockers: [{ kind: 'session-turn-running', subjectIds: ['session-1'] }],
+    });
+    // Integrated and rebound, but the checkout is still there and no removal was recorded.
+    expect((await inspectCloseOperation(engine, operationId))?.stage).toBe('binding-rebound');
+    expect((await lstat(spec.workspaceRoot)).isDirectory()).toBe(true);
+
+    const resumed = await closeWorktree(engine, { operationId, specId: spec.specId });
+    expect(resumed.status).toBe('completed');
+    expect(git(root, 'worktree', 'list', '--porcelain').match(/worktree /gu)).toHaveLength(1);
   }, 150000);
 
   it('LC02: Worktree Close then primary Spec Close without second merge', async () => {

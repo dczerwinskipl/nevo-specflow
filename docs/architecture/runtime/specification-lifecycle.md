@@ -220,6 +220,27 @@ evidence. Changed incarnation returns recovery-required instead of deleting the 
 
 A managed agent execution holds a project-wide
 [workspace execution claim](workspace-execution-claims.md), so Create and Close are not admitted
-while one is unsettled. An external agent started outside Runtime holds no claim, and the Engine
+while one is unsettled.
+
+A read-only Session Turn holds no durable claim, yet its agent works in the checkout and Close MUST
+NOT remove it from under the agent. The Engine does not know agent Sessions: the host process supplies
+a checkout quiescence port (`withCheckoutQuiescence`), and Close asks it when it starts and again right
+before the durable disposal intent; without the port Close does not remove a checkout. A refusal is a
+resumable `CLOSE_BLOCKED` with a `session-turn-running` blocker. Agent Sessions run only inside the
+Runtime that owns the Project's Session store (one local owner, see
+[Session storage](../ai/session-storage-and-lifecycle.md#storage-choice-and-process-model)), so:
+
+- the owning Runtime answers from its own Turns (its in-process workspace occupancy, which also holds
+  the checkout against new Turns while Close runs);
+- any other process (the CLI, or a Runtime without managed Sessions) reads the store's durable owner
+  record read-only, in a short-lived Worker. A recorded owner whose process is alive, or cannot be
+  proven stopped (only `ESRCH` proves it), refuses: close from the SpecFlow UI or stop that Runtime. No
+  store, or no owner, means no Turn can run, except an agent that a crashed Runtime started: a native
+  Turn in that checkout that never settled (still nonterminal, or `unknown` after restart recovery)
+  refuses too. A store that cannot be read refuses.
+
+A Turn that starts after the answer sees the unfinished Close journal and refuses, so the answer
+cannot go stale before the removal. On Windows a dead Runtime's provider tree dies with its Job
+Object; on POSIX its process group may outlive it, which is why the unsettled-Turn evidence counts. An external agent started outside Runtime holds no claim, and the Engine
 MUST NOT claim it is quiescent. Writer admission for workflow steps is not implemented yet.
 See [durable recovery](../../engineering/shared/specflow-git-recovery.md).

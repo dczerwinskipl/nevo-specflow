@@ -70,6 +70,12 @@ outside this feature. No force-takeover endpoint is included.
 
 Every write transaction verifies runtime UUID/epoch; callbacks carry the invocation ID as well.
 
+A process that does not own the store (the CLI, or a Runtime without managed Sessions) MAY read the
+owner row and the nonterminal Turns of a checkout through a read-only connection in a short-lived
+Worker, and nothing else: a Close outside the owner refuses to remove a checkout while the owner is
+live, cannot be proven stopped, or left an unsettled native Turn there
+([Specification lifecycle](../runtime/specification-lifecycle.md#safe-integration-rebind-and-disposal)).
+
 Store admission is bounded, not an unbounded retry queue: ordinary requests stop at 48 concurrent
 Worker commands; the remaining slots up to 64 are reserved for lifecycle-critical work (provider
 facts, dispatch, delivery receipts, close). At most 64 lifecycle requests wait, FIFO, each with a

@@ -208,8 +208,11 @@ and Workspace Close), while an agent Session Turn works in the linked checkout C
 blocker `{kind: 'session-turn-running', subjectIds: [sessionId...]}` (`CloseRefusalBlocker`). While
 Close runs, the Runtime holds that checkout against new Turns, and a Turn of the Specification's
 Session refuses to start while an unfinished Close journal names the Specification
-([Sessions API, execution workspace](sessions.md)). The hold is in the Runtime process; a Close run
-by the CLI is seen by Turns through the durable journal only.
+([Sessions API, execution workspace](sessions.md)). The hold is in the Runtime process. A Close run
+anywhere else (the CLI, or a Runtime that does not own the Session store) refuses with the same
+blocker while a live Runtime owns the store, after a stopped one left an unsettled Turn in the
+checkout, or when the owner cannot be determined
+([Specification lifecycle](../../architecture/runtime/specification-lifecycle.md#safe-integration-rebind-and-disposal)).
 
 Worktree Close treats `.nevo/local/cache/**` (the semantic documentation index) as disposable
 product-owned files: they do not make the worktree dirty and are deleted with it. When Create

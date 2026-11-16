@@ -1,4 +1,9 @@
 export { createSessionsFeature, type SessionsRuntime } from './feature';
+export {
+  projectSessionStoreDirectory,
+  runtimeCheckoutQuiescence,
+  sessionStoreCheckoutQuiescence,
+} from './workspace/checkout-quiescence';
 export { runAntigravityHook } from './providers/antigravity/hook-client';
 export { runAntigravityDiscovery } from './providers/antigravity/discovery/run';
 export { parseSessionsFeatureConfig, type SessionsFeatureConfig } from './configuration';

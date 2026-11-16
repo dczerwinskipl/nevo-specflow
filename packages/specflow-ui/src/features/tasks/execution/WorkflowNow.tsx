@@ -25,10 +25,21 @@ import type { NowLinks } from './StartBlockerLines';
 import { useWorkflowCommands } from './useWorkflowCommands';
 import { WorkflowRefusalAlert } from './WorkflowRefusalAlert';
 
-type FailedPostAction = Extract<
-  NonNullable<FinishWorkflowResult['postActions']>[number],
-  { status: 'failed' }
->;
+type PostAction = NonNullable<FinishWorkflowResult['postActions']>[number];
+type FailedPostAction = Extract<PostAction, { status: 'failed' }>;
+type HeldPostAction = Extract<PostAction, { status: 'completed' }> & {
+  readonly held: NonNullable<Extract<PostAction, { status: 'completed' }>['held']>;
+};
+
+/** What a finish's commit of the workflow state left to say, for the subject it finished. */
+interface FinishCommitNote {
+  readonly subjectKey: string;
+  readonly failed: readonly FailedPostAction[];
+  readonly held: readonly HeldPostAction[];
+}
+
+const subjectKeyOf = (subject: WorkflowSubjectRef): string =>
+  `${subject.specId}/${subject.taskId ?? ''}`;
 
 export interface WorkflowNowProps {
   readonly subject: WorkflowSubjectRef;
@@ -122,7 +133,13 @@ export function WorkflowNow({
       : emptyDraft(attemptKey, finish?.transitions);
   const [kept, setKept] = useState(false);
   const [confirmed, setConfirmed] = useState<PinPreview>();
-  const [failedPostActions, setFailedPostActions] = useState<readonly FailedPostAction[]>([]);
+  const [commitNote, setCommitNote] = useState<FinishCommitNote>();
+  // The commit result belongs to the finish that ran it: shown for that subject until its next
+  // attempt is active, never carried into another step or another subject's Now.
+  const shownCommitNote =
+    commitNote?.subjectKey === subjectKeyOf(subject) && finish === undefined
+      ? commitNote
+      : undefined;
   const preview = previewOf(position);
   const next =
     position.kind === 'not-started' || position.kind === 'ready' ? position.next : undefined;
@@ -168,6 +185,7 @@ export function WorkflowNow({
     }
 
     const feedback = draft.feedback.trim();
+    const finishedSubject = subjectKeyOf(subject);
     commands.finish.mutate(
       {
         step: finish.step,
@@ -193,11 +211,17 @@ export function WorkflowNow({
           setDialog(undefined);
           setDraft(undefined);
           setKept(false);
-          setFailedPostActions(
-            (result.postActions ?? []).filter(
+          const postActions = result.postActions ?? [];
+          setCommitNote({
+            subjectKey: finishedSubject,
+            failed: postActions.filter(
               (action): action is FailedPostAction => action.status === 'failed',
             ),
-          );
+            held: postActions.filter(
+              (action): action is HeldPostAction =>
+                action.status === 'completed' && action.held !== undefined,
+            ),
+          });
         },
       },
     );
@@ -386,9 +410,14 @@ export function WorkflowNow({
       {kept && finish && draft.transitionId ? (
         <InlineNote tone="info">{t('workflowExecution.now.finishKept')}</InlineNote>
       ) : null}
-      {failedPostActions.map((action) => (
+      {shownCommitNote?.failed.map((action) => (
         <InlineNote key={action.action} tone="attention">
           {t('workflowExecution.now.postActionFailed', { code: action.code })}
+        </InlineNote>
+      ))}
+      {shownCommitNote?.held.map((action) => (
+        <InlineNote key={action.action} tone="attention">
+          {t('workflowExecution.now.postActionHeld', { edited: action.held.edited.join(', ') })}
         </InlineNote>
       ))}
       {dialog !== 'start' && commands.start.isError ? (

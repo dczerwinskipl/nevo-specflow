@@ -53,4 +53,10 @@ export {
   type ManualCommitReadOptions,
 } from './reads';
 export { readWorkingContents, readWorkingContent } from './working';
-export { closureOf, revisionOfScope, scopeEntriesOf, type ScopeEntry } from './selection';
+export {
+  closureOf,
+  editedSince,
+  revisionOfScope,
+  scopeEntriesOf,
+  type ScopeEntry,
+} from './selection';

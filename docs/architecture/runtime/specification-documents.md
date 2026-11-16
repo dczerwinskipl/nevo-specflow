@@ -537,10 +537,11 @@ finished; a split after a failure forms two new batches with disjoint members, n
 **Message of a batch commit.** The subject says what the batch did, worded from the plans of its members and
 restricted to what the commit holds: `spec(documents): update notes.md in <slug>`, `update 3 documents in <slug>`,
 `add …`, `rename <old> to <new> in <slug>`, `move …`, `delete … from <slug>` (`delete folder <name> from <slug>` for a folder, also an empty one), `classify <path> as <type> in <slug>`,
-and `change N documents in <slug>` when the members did different things. It is at most 72 characters: the longest
-name (document, folder, type or slug) is shortened first, with an ellipsis, never inside a character. The body lists
-one line per change (at most 20 lines and 1500 characters, then `… and N more`) and, for a coalesced batch, the number
-of operations; it is cleaned like the body of a manual commit. A member whose plan cannot be read is worded from its
+and `change N documents in <slug>` when the members did different things. It is at most 72 characters and is never
+cut: when the form with full names does not fit, the Engine takes the next form whole, first with ` in <slug>` and
+then without it: the names by their last segment (`update api.md`), then a count (`update a document`). The body lists
+one line per change with the full names (at most 20 lines and 1500 characters, then `… and N more`), for a coalesced
+batch the number of operations, and `Specification: <slug>` when the subject could not name it; it is cleaned like the body of a manual commit. A member whose plan cannot be read is worded from its
 action and the committed paths. The trailers (ADR 0016 decision 3) are unchanged; the wording is not configurable.
 
 **Failures, retry, abandon and recover.** A transient blocker (index lock, busy Git, timed-out or
@@ -786,7 +787,16 @@ published change is ONE document operation of action `workflow` (contract
   and a Task document change still refuses while the store's local journal is pending.
 - **Auto-commit off, "Next".** A step's finish runs the post action `commit-execution-state`
   (`commitExecutionState`): a manual commit of the Specification's ledger entries below `.execution/`
-  and `tasks/`, closed under shared operation ids, message `spec(workflow): finish step ... in <slug>`.
+  and `tasks/`, closed under shared operation ids, subject `spec(workflow): finish "<step title>"[ of task <id>] in <slug>`
+  and the step id and attempt in the body (`Step solution, attempt 1.`). A path edited since the Engine
+  wrote it (an agent writing `tasks/<id>/task.md` directly) would refuse the manual commit, and every
+  later one, since each takes all the execution state. So before the commit the post action prunes the
+  ledger once (an edit already committed with Git is no edit), then leaves out the edited paths with
+  every path of their operations (`held` in the result) and commits the rest. The held paths stay
+  uncommitted until a person commits them with Git or a Close archives them.
+- **Workflow subjects** follow the same rule as document subjects: at most 72 characters and never cut. When
+  `<summary> in <slug>` does not fit, the summary goes alone, then `change the workflow state`; the body then holds the
+  summary and `Specification: <slug>`.
 - **Close.** A Specification Close does not wait for ledger entries of the execution state of the
   Specification it archives: its archive commit takes them along, and the next prune removes them.
 - **Crash safety.** The store's journal fixes the operation id, the summary and each target's `pre`

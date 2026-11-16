@@ -6,9 +6,10 @@ import { manifestPathOf } from '../changes/plan/model';
  * of the operations the batch commits (ADR 0016: one commit per batch). Pure; no I/O.
  *
  * Subject: `spec(documents): <what> in <slug>`, at most {@link DOCUMENT_COMMIT_SUBJECT_MAX}
- * characters (code points). A long name or slug is shortened with an ellipsis, deterministically and
- * never inside a character. Body: one line per change (bounded), then the number of operations when
- * the batch coalesced several. A member whose plan is unknown contributes its action only; the words
+ * characters (code points), never cut: when the names do not fit, a shorter form is taken whole (the
+ * names by their last segment, then a count such as `update a document`), first with the slug and
+ * then without it. Body: one line per change (bounded), then the number of operations when the batch
+ * coalesced several, then `Specification: <slug>` when the subject could not name it. A member whose plan is unknown contributes its action only; the words
  * then come from the action and the committed paths.
  */
 
@@ -144,8 +145,20 @@ function changesOf(plan: DocumentChangePlan): Change[] {
   }
 }
 
-/** A part of a subject: fixed words, or a name that may be shortened to fit. */
-type Part = string | { readonly name: string };
+/**
+ * A subject phrase in its forms, most specific first. A subject is never cut: when the specific form
+ * does not fit, a shorter form is taken whole ({@link firstFitting}), and the body keeps the details.
+ */
+interface Phrase {
+  /** The names in full (paths relative to the Specification directory). */
+  readonly full: string;
+  /** The names by their last segment (the same as `full` when that changes nothing). */
+  readonly short: string;
+  /** No names: what happened and how much (`update a document`). Always short. */
+  readonly counted: string;
+  /** What joins the slug: ` in `, ` to ` or ` from `. */
+  readonly preposition: string;
+}
 
 function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? '' : 's'}`;
@@ -167,98 +180,148 @@ function unique<T extends string>(values: readonly T[]): T[] {
   return [...new Set(values)];
 }
 
+/** The last segment of a path. */
+const baseName = (path: string): string => path.split('/').at(-1) ?? path;
+
+const named = (full: string, short: string, counted: string, preposition = ' in '): Phrase => ({
+  full,
+  short,
+  counted,
+  preposition,
+});
+
+const unnamed = (words: string, preposition = ' in '): Phrase =>
+  named(words, words, words, preposition);
+
 /** The subject of a batch whose changes all share one verb. */
-function singleVerbPhrase(verb: Verb, changes: readonly Change[], slug: Part): Part[] {
-  const preposition = verb === 'add' ? 'to' : verb === 'delete' ? 'from' : 'in';
-  const tail: Part[] = [` ${preposition} `, slug];
+function singleVerbPhrase(verb: Verb, changes: readonly Change[]): Phrase {
+  const preposition = verb === 'add' ? ' to ' : verb === 'delete' ? ' from ' : ' in ';
   // A new folder that comes with created documents is not counted beside them.
-  const named = changes.filter((change) => change.implied !== true);
+  const listed = changes.filter((change) => change.implied !== true);
   const counted =
-    verb === 'add' && named.some((change) => !change.folder)
-      ? named.filter((change) => !change.folder)
-      : named;
+    verb === 'add' && listed.some((change) => !change.folder)
+      ? listed.filter((change) => !change.folder)
+      : listed;
   const count = unique(
     counted.map((change) => `${change.folder ? 'f' : 'd'}:${change.path}:${change.to ?? ''}`),
   ).length;
-  if (count === 1) {
-    const only = counted[0]!;
-    const kind = only.folder ? 'folder ' : '';
-    if ((verb === 'rename' || verb === 'move') && only.to !== undefined) {
-      return only.path === ''
-        ? [`${verb} a folder to `, { name: only.to }, ...tail]
-        : [`${verb} ${kind}`, { name: only.path }, ' to ', { name: only.to }, ...tail];
-    }
-
-    if (verb === 'classify' && only.type !== undefined) {
-      return ['classify ', { name: only.path }, ' as ', { name: only.type }, ...tail];
-    }
-
-    return [`${verb} ${kind}`, { name: only.path }, ...tail];
+  if (count !== 1) {
+    return unnamed(`${verb} ${plural(count, nounFor(counted))}`, preposition);
   }
 
-  return [`${verb} ${plural(count, nounFor(counted))}`, ...tail];
+  const only = counted[0]!;
+  const kind = only.folder ? 'folder ' : '';
+  const one = `${verb} a ${only.folder ? 'folder' : 'document'}`;
+  if ((verb === 'rename' || verb === 'move') && only.to !== undefined) {
+    return only.path === ''
+      ? named(
+          `${verb} a folder to ${only.to}`,
+          `${verb} a folder to ${baseName(only.to)}`,
+          one,
+          preposition,
+        )
+      : named(
+          `${verb} ${kind}${only.path} to ${only.to}`,
+          `${verb} ${kind}${baseName(only.path)} to ${baseName(only.to)}`,
+          one,
+          preposition,
+        );
+  }
+
+  if (verb === 'classify' && only.type !== undefined) {
+    return named(
+      `classify ${only.path} as ${only.type}`,
+      `classify ${baseName(only.path)} as ${only.type}`,
+      one,
+      preposition,
+    );
+  }
+
+  return named(
+    `${verb} ${kind}${only.path}`,
+    `${verb} ${kind}${baseName(only.path)}`,
+    one,
+    preposition,
+  );
 }
 
 /** The subject when nothing more than the actions and the committed paths is known. */
-function fallbackPhrase(
-  actions: readonly string[],
-  documentPaths: readonly string[],
-  slug: Part,
-): Part[] {
+function fallbackPhrase(actions: readonly string[], documentPaths: readonly string[]): Phrase {
   const verbs = unique(actions.map((action) => VERB_OF_ACTION[action] ?? 'change'));
   const verb = verbs.length === 1 ? verbs[0]! : 'change';
   if (documentPaths.length === 1) {
-    return [`${verb} `, { name: documentPaths[0]! }, ' in ', slug];
+    const path = documentPaths[0]!;
+
+    return named(`${verb} ${path}`, `${verb} ${baseName(path)}`, `${verb} a document`);
   }
 
   if (documentPaths.length === 0) {
-    return [`${verb} documents in `, slug];
+    return unnamed(`${verb} documents`);
   }
 
-  return [`${verb} ${plural(documentPaths.length, 'document')} in `, slug];
+  return unnamed(`${verb} ${plural(documentPaths.length, 'document')}`);
 }
 
 const codePoints = (text: string): string[] => Array.from(text);
 
 /**
- * Joins the parts within `max` characters: while too long, the longest name (the first of equals)
- * loses one character and ends with an ellipsis. A name keeps at least one character.
+ * The first candidate within `max` characters (code points), whole: an Engine commit subject is never
+ * cut. The candidates go from the most specific to the most general, and the last one is a fixed
+ * phrase short enough for any bound in use; it is returned even when it is longer.
  */
-export function fitParts(parts: readonly Part[], max: number): string {
-  const chars = parts.map((part) => codePoints(typeof part === 'string' ? part : part.name));
-  const full = chars.map((list) => list.length);
-  const kept = [...full];
-  /** A shortened name shows the kept characters and the ellipsis. */
-  const shown = (index: number): number =>
-    kept[index] === full[index] ? full[index]! : kept[index]! + 1;
-  const total = (): number => chars.reduce((sum, _, index) => sum + shown(index), 0);
-  while (total() > max) {
-    let longest = -1;
-    for (const [index, part] of parts.entries()) {
-      if (typeof part === 'string' || shown(index) <= 2) {
-        continue;
-      }
+export function firstFitting(
+  candidates: readonly string[],
+  max: number = DOCUMENT_COMMIT_SUBJECT_MAX,
+): string {
+  return (
+    candidates.find((candidate) => codePoints(candidate).length <= max) ?? candidates.at(-1) ?? ''
+  );
+}
 
-      if (longest === -1 || shown(index) > shown(longest)) {
-        longest = index;
-      }
-    }
+interface FittedSubject {
+  readonly subject: string;
+  /** The subject names the Specification (`... in <slug>`); otherwise the body does. */
+  readonly withSlug: boolean;
+}
 
-    if (longest === -1) {
-      break;
-    }
+/** `prefix` and the most specific form of the phrase that fits, with the slug when it fits too. */
+function fitPhrase(prefix: string, phrase: Phrase, slug: string): FittedSubject {
+  const forms = unique([phrase.full, phrase.short, phrase.counted]);
+  const candidates = forms.flatMap((form) => [
+    { subject: prefix + form + phrase.preposition + slug, withSlug: true },
+    { subject: prefix + form, withSlug: false },
+  ]);
+  const subject = firstFitting(candidates.map((candidate) => candidate.subject));
 
-    // The first cut removes two characters for the ellipsis; each later one removes one more.
-    kept[longest] = kept[longest] === full[longest] ? full[longest]! - 2 : kept[longest]! - 1;
-  }
+  return candidates.find((candidate) => candidate.subject === subject)!;
+}
 
-  return chars
-    .map((_, index) =>
-      kept[index] === full[index]
-        ? chars[index]!.join('')
-        : chars[index]!.slice(0, kept[index]).join('') + ELLIPSIS,
-    )
-    .join('');
+/** The body paragraph that names the Specification when the subject could not. */
+const specificationLine = (fitted: FittedSubject, slug: string): string[] =>
+  fitted.withSlug ? [] : [`Specification: ${slug}`];
+
+/**
+ * The subject and body of a commit of workflow state: `spec(workflow): <phrase> in <slug>` when it
+ * fits, else the phrase alone, else `change the workflow state` (with the slug when it fits); never
+ * cut. The body holds `details`, the phrase when the subject left it out, and the slug when the
+ * subject could not name it.
+ */
+export function workflowCommitMessage(
+  phrase: string,
+  slug: string,
+  details: readonly string[] = [],
+): DocumentCommitMessage {
+  const fitted = fitPhrase(
+    WORKFLOW_COMMIT_SUBJECT_PREFIX,
+    named(phrase, phrase, 'change the workflow state'),
+    slug,
+  );
+  const omitted = fitted.subject.startsWith(WORKFLOW_COMMIT_SUBJECT_PREFIX + phrase)
+    ? []
+    : [phrase];
+  const body = [...omitted, ...details, ...specificationLine(fitted, slug)].join('\n');
+
+  return { subject: fitted.subject, body };
 }
 
 function lineOf(change: Change): string {
@@ -316,18 +379,27 @@ export function documentCommitMessage(
   const summaries = workflow.map((member) => member.plan?.summary ?? 'change the workflow state');
   const coalesced = members.length > 1 ? [`${members.length} operations in one commit`] : [];
   if (workflow.length === members.length) {
-    const phrase: Part[] =
-      summaries.length === 1
-        ? [{ name: summaries[0]! }]
-        : [`${plural(summaries.length, 'workflow change')}`];
-    const subject = fitParts(
-      [WORKFLOW_COMMIT_SUBJECT_PREFIX, ...phrase, ' in ', { name: slug }],
-      DOCUMENT_COMMIT_SUBJECT_MAX,
-    );
-    const lines = summaries.length > 1 ? boundedLines(summaries) : [];
-    const body = [lines.join('\n'), ...coalesced].filter((part) => part.length > 0).join('\n\n');
+    if (summaries.length === 1) {
+      const message = workflowCommitMessage(summaries[0]!, slug);
 
-    return { subject, body };
+      return {
+        subject: message.subject,
+        body: [message.body, ...coalesced].filter((part) => part.length > 0).join('\n\n'),
+      };
+    }
+
+    const fitted = fitPhrase(
+      WORKFLOW_COMMIT_SUBJECT_PREFIX,
+      unnamed(plural(summaries.length, 'workflow change')),
+      slug,
+    );
+    const body = [
+      boundedLines(summaries).join('\n'),
+      ...coalesced,
+      ...specificationLine(fitted, slug),
+    ].join('\n\n');
+
+    return { subject: fitted.subject, body };
   }
 
   // Documents and workflow state in one batch (a Task document and its task.yaml, for example).
@@ -336,15 +408,18 @@ export function documentCommitMessage(
     members.filter((member) => member.action !== 'workflow'),
     effective,
   );
-  const subject = fitParts(
-    [DOCUMENT_COMMIT_SUBJECT_PREFIX, 'change documents and workflow state in ', { name: slug }],
-    DOCUMENT_COMMIT_SUBJECT_MAX,
+  const fitted = fitPhrase(
+    DOCUMENT_COMMIT_SUBJECT_PREFIX,
+    unnamed('change documents and workflow state'),
+    slug,
   );
   const listed = documents.body.split('\n\n')[0] ?? '';
   const lines = boundedLines([...(listed.length > 0 ? listed.split('\n') : []), ...summaries]);
-  const body = [lines.join('\n'), ...coalesced].filter((part) => part.length > 0).join('\n\n');
+  const body = [lines.join('\n'), ...coalesced, ...specificationLine(fitted, slug)]
+    .filter((part) => part.length > 0)
+    .join('\n\n');
 
-  return { subject, body };
+  return { subject: fitted.subject, body };
 }
 
 /** The message of a batch of document changes only. */
@@ -378,37 +453,34 @@ function documentsMessage(
 
   const kept = all.filter(holds);
   const changes = kept.length > 0 ? kept : all;
-  const slugPart: Part = { name: slug };
 
   const verbs = unique(changes.map((change) => change.verb));
   const documentPaths = effective
     .filter((path) => path !== manifest && path.startsWith(directory + '/'))
     .map((path) => path.slice(directory.length + 1));
-  let phrase: Part[];
+  let phrase: Phrase;
   if (changes.length === 0) {
     phrase = fallbackPhrase(
       members.map((member) => member.action),
       documentPaths,
-      slugPart,
     );
   } else if (verbs.length === 1) {
-    phrase = singleVerbPhrase(verbs[0]!, changes, slugPart);
+    phrase = singleVerbPhrase(verbs[0]!, changes);
   } else {
     phrase =
       documentPaths.length === 0
-        ? ['change documents in ', slugPart]
-        : [`change ${plural(documentPaths.length, 'document')} in `, slugPart];
+        ? unnamed('change documents')
+        : unnamed(`change ${plural(documentPaths.length, 'document')}`);
   }
 
-  const subject = fitParts(
-    [DOCUMENT_COMMIT_SUBJECT_PREFIX, ...phrase],
-    DOCUMENT_COMMIT_SUBJECT_MAX,
-  );
+  const fitted = fitPhrase(DOCUMENT_COMMIT_SUBJECT_PREFIX, phrase, slug);
 
   const lines = boundedLines(changes.length > 0 ? unique(changes.map(lineOf)) : documentPaths);
   const coalesced =
     members.length > 1 ? [`${members.length} document operations in one commit`] : [];
-  const body = [lines.join('\n'), ...coalesced].filter((part) => part.length > 0).join('\n\n');
+  const body = [lines.join('\n'), ...coalesced, ...specificationLine(fitted, slug)]
+    .filter((part) => part.length > 0)
+    .join('\n\n');
 
-  return { subject, body };
+  return { subject: fitted.subject, body };
 }

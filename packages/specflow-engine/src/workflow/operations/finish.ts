@@ -115,10 +115,11 @@ export async function finishStep(
   const operation = dependencies.operation ?? ((work) => work());
 
   return operation(async () => {
-    const result = await recordFinish(dependencies, request);
+    const { result, stepTitle } = await recordFinish(dependencies, request);
     const postActions = await (dependencies.postActions ?? NO_POST_ACTIONS).afterStepFinished({
       subject: request.subject,
       step: request.step,
+      stepTitle,
       attempt: request.attempt,
       actor: request.actor,
       replayed: result.replayed === true,
@@ -128,11 +129,17 @@ export async function finishStep(
   });
 }
 
+/** The recorded finish, and the title of the finished step (the post actions word their work with it). */
+interface RecordedFinish {
+  readonly result: FinishStepResult;
+  readonly stepTitle: string;
+}
+
 function recordFinish(
   dependencies: WorkflowDependencies,
   request: FinishStepInput,
-): Promise<FinishStepResult> {
-  return dependencies.serialize(async () => {
+): Promise<RecordedFinish> {
+  return dependencies.serialize(async (): Promise<RecordedFinish> => {
     assertFinishInputShape(request.input);
     const { subject } = request;
     const snapshot = await dependencies.store.read(subject.specId);
@@ -171,7 +178,10 @@ function recordFinish(
       // empty change publishes that journal, so the retry leaves the files complete.
       await dependencies.store.apply(subject.specId, {});
 
-      return replayedFinish(context, loaded, decision);
+      return {
+        result: replayedFinish(context, loaded, decision),
+        stepTitle: findStep(loaded.definition, request.step)?.title ?? request.step,
+      };
     }
 
     const [taken] = decision.declaredEffects;
@@ -250,12 +260,15 @@ function recordFinish(
     });
 
     return {
-      subject,
-      transition: transition.id,
-      position: context.set.run(subject).position,
-      continuation,
-      createdTasks,
-      ...(specification && specification.kind !== 'none' ? { specification } : {}),
+      result: {
+        subject,
+        transition: transition.id,
+        position: context.set.run(subject).position,
+        continuation,
+        createdTasks,
+        ...(specification && specification.kind !== 'none' ? { specification } : {}),
+      },
+      stepTitle: step.title,
     };
   });
 }

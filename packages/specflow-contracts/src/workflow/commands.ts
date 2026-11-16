@@ -180,6 +180,13 @@ export const PostActionResultSchema = Type.Union([
     commit: Type.Optional(
       Type.Object({ sha: Type.Optional(Type.String()), paths: Type.Array(Type.String()) }),
     ),
+    /**
+     * Execution state left uncommitted because someone edited it since the Engine wrote it: `edited`
+     * are those paths, `paths` everything that travels with them (an operation is never split).
+     */
+    held: Type.Optional(
+      Type.Object({ edited: Type.Array(Type.String()), paths: Type.Array(Type.String()) }),
+    ),
   }),
   Type.Object({ action: PostActionName, status: Type.Literal('skipped'), reason: Type.String() }),
   Type.Object({

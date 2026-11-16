@@ -126,7 +126,7 @@ describe('demo managed Session reads (read-only, no coordinator)', () => {
     const working = (await server.inject('/api/sessions/' + seeded)).json<SessionSnapshot>();
     expect(working.session.readiness).toBe('busy');
     expect(working.activeTurn).toMatchObject({ state: 'active' });
-    expect(working.entries[0]?.text.text).toContain('TASK-02');
+    expect(working.entries[0]?.text.text).toContain('queue-validation');
     expect(working.interaction).toBeUndefined();
 
     const asking = (await server.inject('/api/sessions/' + otherSeeded)).json<SessionSnapshot>();

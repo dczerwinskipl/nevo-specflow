@@ -7,7 +7,6 @@ import type {
   DefinitionSource,
   ExecutionSource,
   HistorySource,
-  ResourceSource,
   TaskReadingSource,
 } from '../reads/facts';
 import { sameTask } from '../reads/facts';
@@ -22,7 +21,6 @@ export interface TaskReadDependencies {
   history?: HistorySource;
   /** One read per request (definition, execution, history); wins over the separate ports. */
   reading?: TaskReadingSource;
-  resources?: ResourceSource;
   sessions?: SessionReferenceOwner;
   leases: PageLeases;
   /** The Runtime's project; every `spec.*` check runs at `specScope(projectId, specId)`. */
@@ -66,15 +64,7 @@ export async function readTaskDetail(
     sameTask(execution.identity, identity) &&
     execution.definitionVersion === definition.version;
   // Every Session reference known up front resolves in one batch.
-  await visible.prefetch([
-    ...definition.dependencies.map((dependency) => dependency.link),
-    ...(coherent
-      ? (execution.requirements ?? []).flatMap((requirement) =>
-          requirement.evidence.map((item) => item.link),
-        )
-      : []),
-    ...(coherent && execution.recovery ? [execution.recovery.link] : []),
-  ]);
+  await visible.prefetch(definition.dependencies.map((dependency) => dependency.link));
   const missing = { state: 'unavailable' as const, reason: 'not_implemented' as const };
   const snapshot: TaskSnapshot = {
     revision: JSON.stringify([definition.version, coherent ? execution.version : null]),
@@ -84,11 +74,8 @@ export async function readTaskDetail(
     taskType: definition.taskType,
     sections: {
       work: coherent ? { state: 'available', data: structuredClone(execution.workflow) } : missing,
-      humanRequirements: missing,
-      resources: missing,
       document: definition.document,
       dependencies: { state: 'available', data: { items: [] } },
-      recovery: missing,
       history: missing,
     },
   };
@@ -98,84 +85,7 @@ export async function readTaskDetail(
     }
   }
 
-  if (coherent && execution.requirements) {
-    const requirements = structuredClone(execution.requirements);
-    for (const requirement of requirements) {
-      const evidence = [];
-      for (const item of requirement.evidence) {
-        if (await visible(item.link)) {
-          evidence.push(item);
-        }
-      }
-
-      if (evidence.length !== requirement.evidence.length) {
-        requirement.actions = [];
-        requirement.inspectionProblem = 'Required material cannot be accessed.';
-      }
-
-      requirement.evidence = evidence;
-    }
-
-    snapshot.sections.humanRequirements = {
-      state: 'available',
-      data: { items: requirements, pendingCount: execution.pendingCount },
-    };
-  }
-
-  if (coherent) {
-    snapshot.sections.recovery =
-      !execution.recovery || (await visible(execution.recovery.link))
-        ? { state: 'available', data: execution.recovery }
-        : { state: 'forbidden' };
-  }
-
   const context = authz.readContext();
-  const resources = await deps.resources?.open(identity, visible);
-  if (
-    resources?.coverage === 'complete' &&
-    sameTask(resources.identity, identity) &&
-    Number.isSafeInteger(resources.visibleTotal) &&
-    resources.visibleTotal >= 0
-  ) {
-    const page = await deps.resources!.read(identity, resources.handle, null, 3, visible);
-    if (
-      page?.coverage === 'complete' &&
-      sameTask(page.identity, identity) &&
-      page.version === resources.version &&
-      page.items.length <= 3 &&
-      page.items.length === Math.min(3, resources.visibleTotal) &&
-      (page.next !== null) === resources.visibleTotal > page.items.length
-    ) {
-      let safe = true;
-      for (const item of page.items) {
-        if (!(await visible(item.link))) {
-          safe = false;
-        }
-      }
-
-      if (safe) {
-        snapshot.sections.resources = {
-          state: 'available',
-          data: {
-            recommended: page.items,
-            visibleTotal: resources.visibleTotal,
-            page:
-              page.next === null
-                ? null
-                : deps.leases.create({
-                    identity,
-                    context,
-                    kind: 'resources',
-                    source: resources,
-                    start: page.next,
-                    initialLimit: 20,
-                  }),
-          },
-        };
-      }
-    }
-  }
-
   const history = !coherent
     ? undefined
     : reading === undefined
@@ -201,7 +111,6 @@ export async function readTaskDetail(
     [
       definition.version,
       coherent ? execution.version : null,
-      resources?.version ?? null,
       history?.version ?? null,
       // Readiness follows the dependencies, which the definition version does not cover.
       definition.resource ? JSON.stringify(definition.resource) : null,

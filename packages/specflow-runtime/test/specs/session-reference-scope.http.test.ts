@@ -11,7 +11,7 @@ import { WorkspaceCapabilities } from '../../src/features/workspaces';
 import { taskReadEndpoint } from '../../src/features/tasks/endpoint';
 import { specificationWorkspaceEndpoint } from '../../src/features/specs/workspace/endpoint';
 import { PageLeases } from '../../src/features/tasks/reads/page-leases';
-import { createDemoTaskSources } from '../../src/features/tasks';
+import { createFixtureTaskSources } from '../support/task-sources';
 import { createDemoSpecsRepositories } from '../../src/features/specs';
 import type { SessionReference, SessionReferenceOwner } from '../../src/features/sessions';
 import { sessionScope } from '../../src/features/sessions/scope';
@@ -40,9 +40,8 @@ const grants: Record<string, Scope | undefined> = {
 
 async function fixture(role: Role, grant: Scope | undefined) {
   const demo = createDemoSpecsRepositories(),
-    sources = createDemoTaskSources(demo.catalogue);
-  const definition = (await sources.definitions!.resolve(SPEC, 'TASK-03'))!;
-  const execution = (await sources.execution!.inspect(definition.identity, definition.version))!;
+    sources = createFixtureTaskSources();
+  const definition = (await sources.definitions.resolve(SPEC, 'task-03'))!;
   const link = (sessionId: string) => ({
     state: 'available' as const,
     target: { kind: 'session' as const, sessionId },
@@ -50,34 +49,8 @@ async function fixture(role: Role, grant: Scope | undefined) {
   definition.dependencies = [
     { taskId: 'dependency-a', title: 'Dependency A', link: link(SESSION_A) },
     { taskId: 'dependency-b', title: 'Dependency B', link: link(SESSION_B) },
+    { taskId: 'dependency-c', title: 'Dependency C', link: link(SESSION_C) },
   ];
-  execution.requirements = [
-    {
-      id: 'gate',
-      definitionRevision: '1',
-      source: {
-        kind: 'human-gate',
-        gateId: 'gate',
-        phase: 'exit',
-        role: 'owner',
-        scope: 'task',
-        targetId: 'TASK-03',
-      },
-      key: null,
-      title: 'Inspect materials',
-      instruction: null,
-      state: 'pending',
-      actions: [],
-      evidence: [{ title: 'Evidence C', link: link(SESSION_C) }],
-    },
-  ];
-  execution.pendingCount = 1;
-  execution.recovery = {
-    id: 'recovery',
-    state: 'required',
-    summary: 'Recovery A',
-    link: link(SESSION_A),
-  };
 
   // session-a belongs to the Specification, session-b to another one, session-c is standalone.
   const owners: Record<string, SessionReference> = {
@@ -117,7 +90,6 @@ async function fixture(role: Role, grant: Scope | undefined) {
     dependencies: {
       ...sources,
       definitions: { resolve: () => Promise.resolve(definition) },
-      execution: { inspect: () => Promise.resolve(execution) },
       leases: new PageLeases(),
       projectId: () => 'demo-project',
       sessions,
@@ -163,7 +135,7 @@ describe('Session references in Specification and Task reads', () => {
       const { app, batches } = await fixture(role, grants[grant]);
       try {
         const workspace = await app.inject(`/api/specs/${SPEC}/workspace`);
-        const task = await app.inject(`/api/specs/${SPEC}/tasks/TASK-03`);
+        const task = await app.inject(`/api/specs/${SPEC}/tasks/task-03`);
         // spec.view at specScope = {projectId, specId} gates both reads: a project grant covers
         // the Specification, a Session-only, other-project or other-Specification grant does not.
         const readable = grant === 'global' || grant === 'project' || grant === 'spec';
@@ -210,7 +182,7 @@ describe('Session references in Specification and Task reads', () => {
         SessionCapabilities.capabilities.View,
       ]);
       spy.mockClear();
-      expect((await app.inject(`/api/specs/${SPEC}/tasks/TASK-03`)).statusCode).toBe(200);
+      expect((await app.inject(`/api/specs/${SPEC}/tasks/task-03`)).statusCode).toBe(200);
       expect(spy.mock.calls).toContainEqual([
         expect.objectContaining({
           projectId: 'demo-project',

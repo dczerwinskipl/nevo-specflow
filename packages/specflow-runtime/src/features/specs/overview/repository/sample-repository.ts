@@ -42,7 +42,7 @@ const currentItems: readonly CurrentSpecRecord[] = [
     title: 'Deterministic admission and execution boundaries',
     updatedAt: '2026-10-01T12:00:00Z',
     tags: ['Auth'],
-    progress: { completed: 5, total: 9 },
+    progress: { completed: 1, total: 5 },
     signals: [
       signal(
         'admission',
@@ -59,7 +59,7 @@ const currentItems: readonly CurrentSpecRecord[] = [
       {
         sessionId: '00000000-0000-4000-8000-000000000024',
         agentRole: 'Implementer',
-        taskIds: ['TASK-02'],
+        taskIds: ['queue-validation'],
       },
     ],
   },
@@ -70,7 +70,7 @@ const currentItems: readonly CurrentSpecRecord[] = [
     title: 'Runtime authorization and access policy',
     updatedAt: '2026-10-01T12:00:00Z',
     tags: ['Runtime'],
-    progress: { completed: 3, total: 7 },
+    progress: { completed: 0, total: 2 },
     signals: [
       signal(
         'security',
@@ -91,7 +91,7 @@ const currentItems: readonly CurrentSpecRecord[] = [
     key: 'CORE-1236',
     title: 'Review evidence and verification handover',
     updatedAt: '2026-10-01T12:00:00Z',
-    progress: { completed: 6, total: 10 },
+    progress: { completed: 1, total: 4 },
     signals: [
       signal(
         'review',
@@ -114,7 +114,7 @@ const currentItems: readonly CurrentSpecRecord[] = [
     title: 'Single-artifact packaging and installation',
     updatedAt: '2026-10-01T12:00:00Z',
     tags: ['Core'],
-    progress: { completed: 4, total: 6 },
+    progress: { completed: 2, total: 4 },
     signals: [signal('packaging', 'ready', 'ready', '2 Tasks ready to start', 60)],
     currentExecutions: [],
   },
@@ -125,13 +125,13 @@ const currentItems: readonly CurrentSpecRecord[] = [
     title: 'Provider diagnostics and replay',
     updatedAt: '2026-10-01T12:00:00Z',
     tags: ['Provider'],
-    progress: { completed: 2, total: 8 },
+    progress: { completed: 1, total: 5 },
     signals: [signal('providers', 'working', 'working', 'Implementation in progress', 40)],
     currentExecutions: [
       {
         sessionId: '00000000-0000-4000-8000-000000000042',
         agentRole: 'Implementer',
-        taskIds: ['TASK-02', 'TASK-04', 'TASK-05'],
+        taskIds: ['replay-runner'],
       },
     ],
   },
@@ -143,7 +143,7 @@ const currentItems: readonly CurrentSpecRecord[] = [
     title: 'Localization and account preferences',
     updatedAt: '2026-10-01T12:00:00Z',
     tags: ['UI'],
-    progress: { completed: 0, total: 5 },
+    progress: { completed: 0, total: 0 },
     signals: [],
     currentExecutions: [],
   },

@@ -9,7 +9,7 @@ export interface ReadContext {
 export interface PageLease {
   identity: TaskIdentity;
   context: ReadContext;
-  kind: 'resources' | 'history';
+  kind: 'history';
   source: SourceRead;
   start: string | null;
   initialLimit: number;

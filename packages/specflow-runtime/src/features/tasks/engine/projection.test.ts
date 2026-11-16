@@ -169,8 +169,6 @@ describe('Engine Task projection', () => {
       result: null,
       text: 'Done.',
     });
-    // No legacy human-requirement projection: that section stays unavailable.
-    expect(facts.requirements).toBeUndefined();
     expect(facts.workflow.position).toMatchObject({
       actor: { class: 'human', actorId: 'user:ann' },
     });

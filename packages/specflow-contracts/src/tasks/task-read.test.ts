@@ -57,11 +57,8 @@ function snapshot(): TaskSnapshot {
           previousFeedback: null,
         },
       },
-      humanRequirements: unavailable,
-      resources: unavailable,
       document: unavailable,
       dependencies: unavailable,
-      recovery: unavailable,
       history: unavailable,
     },
   };

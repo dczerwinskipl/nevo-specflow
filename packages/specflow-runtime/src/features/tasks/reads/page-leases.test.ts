@@ -21,7 +21,6 @@ describe('Disposable page leases', () => {
       ).toBeNull();
     }
 
-    expect(leases.resolve(ref.token, 'resources', identity, context)).toBeNull();
     expect(
       leases.resolve(ref.token, 'history', identity, { ...context, subject: 'bob' }),
     ).toBeNull();

@@ -3,19 +3,14 @@ import { createRuntimeApp } from '../../src/server/app';
 import { createDemoEnvironment } from '../../src/demo';
 import { createDemoDocumentReadSource } from '../../src/features/documents';
 import { createDemoSpecsRepositories } from '../../src/features/specs';
-import { createDemoTaskSources } from '../../src/features/tasks';
-import { demoTaskHistory, demoTaskResources } from '../../src/features/tasks/demo/execution';
 import { passwordConfig } from '../auth/support/config';
-import type {
-  TaskHistoryPage,
-  TaskResourcePage,
-  SpecificationTaskResponse,
-} from '@nevo/specflow-contracts/tasks';
-import type {
-  TaskIdentity,
-  ResourceFacts,
-  ReferenceVisibility,
-} from '../../src/features/tasks/reads/facts';
+import type { TaskHistoryPage, SpecificationTaskResponse } from '@nevo/specflow-contracts/tasks';
+import type { TaskIdentity } from '../../src/features/tasks/reads/facts';
+import {
+  createFixtureTaskSources,
+  fixtureHistory,
+  fixtureResources,
+} from '../support/task-sources';
 
 /** The demo read source of the document routes over a fresh demo environment. */
 const demoDocuments = (catalogue: Parameters<typeof createDemoDocumentReadSource>[1]) =>
@@ -26,18 +21,14 @@ const config = () => {
   return { ...config, authentication: { ...config.authentication, mode: 'none' as const } };
 };
 
+const TASK = '/api/specs/admission/tasks/task-03';
+
 describe('Task source paging and lease HTTP boundary', () => {
-  it('keeps frozen workflow, approvals, associations and recovery unchanged across GET reads', async () => {
+  it('keeps the frozen definition and execution unchanged across GET reads', async () => {
     const demo = createDemoSpecsRepositories(),
-      sources = createDemoTaskSources(demo.catalogue);
-    const definition = (await sources.definitions!.resolve('admission', 'TASK-03'))!;
-    const execution = (await sources.execution!.inspect(definition.identity, definition.version))!;
-    execution.recovery = {
-      id: 'recovery',
-      state: 'required',
-      summary: 'Recovery requires an explicit command',
-      link: { state: 'unavailable', reason: 'not_implemented' },
-    };
+      sources = createFixtureTaskSources();
+    const definition = (await sources.definitions.resolve('admission', 'task-03'))!;
+    const execution = (await sources.execution.inspect(definition.identity, definition.version))!;
     const freeze = (value: unknown): void => {
       if (value && typeof value === 'object') {
         for (const item of Object.values(value)) {
@@ -60,35 +51,17 @@ describe('Task source paging and lease HTTP boundary', () => {
       documents: { readSource: demoDocuments(demo.catalogue) },
     });
     try {
-      const response = await app.inject('/api/specs/admission/tasks/TASK-03');
+      const response = await app.inject(TASK);
       expect(response.statusCode).toBe(200);
-      const snapshot = response.json<SpecificationTaskResponse>().snapshot!;
-      expect(
-        snapshot.sections.recovery.state === 'available' && snapshot.sections.recovery.data?.state,
-      ).toBe('required');
-      for (const kind of ['history', 'resources'] as const) {
-        const section = snapshot.sections[kind];
-        const ref =
-          section.state === 'available'
-            ? kind === 'history' && 'token' in section.data
-              ? section.data
-              : 'page' in section.data
-                ? section.data.page
-                : null
-            : null;
-        if (!ref) {
-          throw Error('Expected page');
-        }
-
-        expect(
-          (
-            await app.inject(
-              `/api/specs/admission/tasks/TASK-03/${kind}?token=${encodeURIComponent(ref.token)}`,
-            )
-          ).statusCode,
-        ).toBe(200);
+      const history = response.json<SpecificationTaskResponse>().snapshot!.sections.history;
+      if (history.state !== 'available') {
+        throw Error('Expected history');
       }
 
+      expect(
+        (await app.inject(`${TASK}/history?token=${encodeURIComponent(history.data.token)}`))
+          .statusCode,
+      ).toBe(200);
       expect(
         (await app.inject('/api/specs/admission/documents/overview?revision=demo-document-1'))
           .statusCode,
@@ -100,16 +73,16 @@ describe('Task source paging and lease HTTP boundary', () => {
   });
   it('reads Task and document without Workspace and rejects a mismatched execution basis', async () => {
     const demo = createDemoSpecsRepositories(),
-      sources = createDemoTaskSources(demo.catalogue);
-    const definition = (await sources.definitions!.resolve('admission', 'TASK-03'))!;
-    const execution = (await sources.execution!.inspect(definition.identity, definition.version))!;
+      sources = createFixtureTaskSources();
+    const definition = (await sources.definitions.resolve('admission', 'task-03'))!;
+    const execution = (await sources.execution.inspect(definition.identity, definition.version))!;
     execution.definitionVersion = 'other-definition';
     const app = await createRuntimeApp(config(), {
       tasks: { ...sources, execution: { inspect: () => Promise.resolve(execution) } },
       documents: { readSource: demoDocuments(demo.catalogue) },
     });
     try {
-      const response = await app.inject('/api/specs/admission/tasks/TASK-03');
+      const response = await app.inject(TASK);
       expect(response.statusCode).toBe(200);
       const sections = response.json<SpecificationTaskResponse>().snapshot!.sections;
       expect(sections.work.state).toBe('unavailable');
@@ -124,16 +97,17 @@ describe('Task source paging and lease HTTP boundary', () => {
     }
   });
   it('reads one bounded history interval, preserves pass material and rejects changed basis', async () => {
-    const sources = createDemoTaskSources(createDemoSpecsRepositories().catalogue);
+    const sources = createFixtureTaskSources();
     let version = 'history-1';
-    const base = demoTaskHistory('admission', 'TASK-03')[0]!;
+    const base = fixtureHistory('admission', 'task-03')[0]!;
+    const materials = fixtureResources('admission', 'task-03', 7);
     const entries = Array.from({ length: 7 }, (_, i) => ({
       ...base,
       id: 'attempt-' + i,
       key: { ...base.key, attempt: i + 1 },
       result: 'pass',
       feedback: null,
-      resources: [demoTaskResources('admission', 'TASK-03')[i]!],
+      resources: [materials[i]!],
     }));
     const read = vi.fn(
       (identity: TaskIdentity, _handle: string, continuation: string | null, limit: number) => {
@@ -161,18 +135,14 @@ describe('Task source paging and lease HTTP boundary', () => {
       },
     });
     try {
-      const detail = (
-        await app.inject('/api/specs/admission/tasks/TASK-03')
-      ).json<SpecificationTaskResponse>();
+      const detail = (await app.inject(TASK)).json<SpecificationTaskResponse>();
       expect(read).not.toHaveBeenCalled();
       const history = detail.snapshot!.sections.history;
       if (history.state !== 'available') {
         throw Error('Expected history');
       }
 
-      const url =
-        '/api/specs/admission/tasks/TASK-03/history?token=' +
-        encodeURIComponent(history.data.token);
+      const url = `${TASK}/history?token=` + encodeURIComponent(history.data.token);
       const first = (await app.inject(url + '&limit=2')).json<TaskHistoryPage>();
       expect(read).toHaveBeenCalledTimes(1);
       expect(first.items.map((item) => item.id)).toEqual(['attempt-0', 'attempt-1']);
@@ -190,94 +160,8 @@ describe('Task source paging and lease HTTP boundary', () => {
       await app.close();
     }
   });
-  it('continues after the actual authorized recommendations, without duplication or lost items', async () => {
-    const sources = createDemoTaskSources(createDemoSpecsRepositories().catalogue);
-    const candidates = demoTaskResources('admission', 'TASK-03').slice(0, 8);
-    candidates[0]!.link = { state: 'forbidden' };
-    candidates[1]!.link = {
-      state: 'available',
-      target: { kind: 'session', sessionId: 'unresolved-session' },
-    };
-    const select = async (visible: ReferenceVisibility) => {
-      const result: ResourceFacts[] = [];
-      for (const item of candidates) {
-        if (await visible(item.link)) {
-          result.push(item);
-        }
-      }
-
-      return result;
-    };
-
-    const read = vi.fn(
-      async (
-        identity: TaskIdentity,
-        _handle: string,
-        continuation: string | null,
-        limit: number,
-        visible: ReferenceVisibility,
-      ) => {
-        const items = await select(visible),
-          offset = continuation === null ? 0 : Number(continuation),
-          end = Math.min(offset + limit, items.length);
-
-        return {
-          identity,
-          version: '1',
-          items: items.slice(offset, end),
-          next: end < items.length ? String(end) : null,
-          coverage: 'complete' as const,
-        };
-      },
-    );
-    const app = await createRuntimeApp(config(), {
-      tasks: {
-        ...sources,
-        resources: {
-          open: async (identity, visible) => ({
-            identity,
-            version: '1',
-            handle: 'resources',
-            visibleTotal: (await select(visible)).length,
-            coverage: 'complete',
-          }),
-          read,
-        },
-      },
-    });
-    try {
-      const detail = (
-        await app.inject('/api/specs/admission/tasks/TASK-03')
-      ).json<SpecificationTaskResponse>();
-      const section = detail.snapshot!.sections.resources;
-      if (section.state !== 'available') {
-        throw Error('Expected resources');
-      }
-
-      expect(section.data.visibleTotal).toBe(6);
-      expect(section.data.recommended.map((item) => item.id)).toEqual([
-        'document-3',
-        'document-4',
-        'document-5',
-      ]);
-      expect(read.mock.calls[0]![3]).toBe(3);
-      const page = (
-        await app.inject(
-          '/api/specs/admission/tasks/TASK-03/resources?token=' +
-            encodeURIComponent(section.data.page!.token),
-        )
-      ).json<TaskResourcePage>();
-      expect(read.mock.calls[1]![2]).toBe('3');
-      expect(page.items.map((item) => item.id)).toEqual(['document-6', 'document-7', 'document-8']);
-      expect(
-        new Set([...section.data.recommended, ...page.items].map((item) => item.id)).size,
-      ).toBe(6);
-    } finally {
-      await app.close();
-    }
-  });
   it('retains continuation for an empty bounded candidate page and expires leases honestly', async () => {
-    const sources = createDemoTaskSources(createDemoSpecsRepositories().catalogue);
+    const sources = createFixtureTaskSources();
     let now = 0;
     const app = await createRuntimeApp(config(), {
       tasks: {
@@ -290,7 +174,7 @@ describe('Task source paging and lease HTTP boundary', () => {
             Promise.resolve({
               identity,
               version: '1',
-              items: continuation === null ? [] : demoTaskHistory('admission', 'TASK-03'),
+              items: continuation === null ? [] : fixtureHistory('admission', 'task-03'),
               next: continuation === null ? 'continue' : null,
               coverage: 'partial',
             }),
@@ -298,17 +182,13 @@ describe('Task source paging and lease HTTP boundary', () => {
       },
     });
     try {
-      const detail = (
-        await app.inject('/api/specs/admission/tasks/TASK-03')
-      ).json<SpecificationTaskResponse>();
+      const detail = (await app.inject(TASK)).json<SpecificationTaskResponse>();
       const section = detail.snapshot!.sections.history;
       if (section.state !== 'available') {
         throw Error('Expected history');
       }
 
-      const url =
-        '/api/specs/admission/tasks/TASK-03/history?token=' +
-        encodeURIComponent(section.data.token);
+      const url = `${TASK}/history?token=` + encodeURIComponent(section.data.token);
       const page = (await app.inject(url)).json<TaskHistoryPage>();
       expect(page.items).toEqual([]);
       expect(page.nextCursor).not.toBeNull();

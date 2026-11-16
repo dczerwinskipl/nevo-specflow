@@ -8,7 +8,7 @@ import { readProjectGitPolicy } from '../../version-control/worktrees/config';
 import { effectiveAutoCommit } from '../../version-control/worktrees/policy';
 import { resolveSpecification } from '../discovery';
 import { readLedgerRecord } from '../durable';
-import { isExecutionStatePathOf } from '../execution-paths';
+import { EXECUTION_DIRECTORY, isExecutionStatePathOf } from '../execution-paths';
 import { pruneUncommitted } from '../uncommitted';
 import {
   closureOf,
@@ -114,7 +114,11 @@ export async function commitExecutionState(
       .filter((path) => isExecutionStatePathOf(directory, path));
     const closure = seed.length === 0 ? [] : closureOf(entries, seed, unlinked);
 
-    return { closure, held: await heldOf(found.workspaceRoot, entries, closure, unlinked) };
+    return {
+      entries,
+      closure,
+      held: await heldOf(found.workspaceRoot, entries, closure, unlinked),
+    };
   };
 
   let planned = await plan();
@@ -125,9 +129,9 @@ export async function commitExecutionState(
     planned = await plan();
   }
 
-  const { closure } = planned;
+  const { entries, closure } = planned;
   const held = planned.held
-    ? await withIndex(planned.held, closure, index, directory, (paths) =>
+    ? await withIndex(planned.held, { entries, closure, index, directory, unlinked }, (paths) =>
         commits.pathFacts(found.workspaceRoot, paths),
       )
     : undefined;
@@ -188,33 +192,74 @@ async function heldOf(
   return { edited, paths: closure.filter((path) => travelling.has(path)) };
 }
 
-const MANIFEST_OF_TASK = new RegExp(`/${TASKS_FOLDER}/[^/]+/${TASK_MANIFEST_FILE}$`, 'u');
+/** The Task a path of the execution state belongs to: its folder below `tasks/`, or its run record. */
+function taskOf(directory: string, path: string): string | undefined {
+  const inside = path.startsWith(directory + '/') ? path.slice(directory.length + 1) : undefined;
+  const match =
+    inside === undefined
+      ? null
+      : (new RegExp(`^${TASKS_FOLDER}/([^/]+)/.+$`, 'u').exec(inside) ??
+        new RegExp(`^${EXECUTION_DIRECTORY}/${TASKS_FOLDER}/([^/]+)\\.yaml$`, 'u').exec(inside));
+
+  return match?.[1];
+}
+
+interface IndexScope {
+  readonly entries: readonly ScopeEntry[];
+  readonly closure: readonly string[];
+  readonly index: string;
+  readonly directory: string;
+  readonly unlinked: ReadonlySet<string>;
+}
 
 /**
- * `held`, and the Task index too when committing it would make HEAD disagree with itself: a held
- * Task manifest that exists in the working tree but not in HEAD (its creation is held) or the other
- * way round (its removal is held). The index registers that Task, so it waits for it.
+ * `held`, widened so that HEAD stays consistent with its Task index (`validateTaskResources`: no
+ * `unregistered` folder, no `broken` run, no `dangling` entry read from HEAD).
+ *
+ * The index waits when committing it would register a held Task that HEAD does not have (its creation
+ * is held) or drop one HEAD still has (its removal is held), or when it is held itself (edited by
+ * hand). While it waits, every Task of the commit whose manifest exists in only one of the working
+ * tree and HEAD (a creation or a removal) waits too, with every path of its operations: HEAD keeps the
+ * old index and exactly the Tasks it lists. Edits of Tasks that HEAD already registers still commit.
  */
 async function withIndex(
   held: HeldExecutionState,
-  closure: readonly string[],
-  index: string,
-  directory: string,
+  scope: IndexScope,
   pathFacts: (paths: readonly string[]) => Promise<readonly DocumentPathFacts[]>,
 ): Promise<HeldExecutionState> {
-  if (!closure.includes(index) || held.paths.includes(index)) {
+  const { entries, closure, index, directory, unlinked } = scope;
+  if (!closure.includes(index)) {
     return held;
   }
 
-  const manifests = held.paths.filter(
-    (path) => path.startsWith(directory + '/') && MANIFEST_OF_TASK.test(path),
+  const taskIds = [...new Set(closure.flatMap((path) => taskOf(directory, path) ?? []))].sort();
+  const manifestOf = (taskId: string) =>
+    `${directory}/${TASKS_FOLDER}/${taskId}/${TASK_MANIFEST_FILE}`;
+  const facts = taskIds.length === 0 ? [] : await pathFacts(taskIds.map(manifestOf));
+  const moved = new Set(
+    taskIds.filter((taskId) => {
+      const fact = facts.find((candidate) => candidate.path === manifestOf(taskId));
+
+      // A manifest Git cannot tell about is treated as moved: it waits rather than risk HEAD.
+      return fact === undefined || (fact.working === null) !== (fact.head === null);
+    }),
   );
-  if (manifests.length === 0) {
+  const heldTask = (path: string) => {
+    const taskId = taskOf(directory, path);
+
+    return taskId !== undefined && moved.has(taskId);
+  };
+
+  if (!held.paths.includes(index) && !held.paths.some(heldTask)) {
     return held;
   }
 
-  const facts = await pathFacts(manifests);
-  const registration = facts.some((fact) => (fact.working === null) !== (fact.head === null));
+  const travelling = new Set(
+    closureOf(entries, [...held.paths, ...closure.filter(heldTask)], unlinked),
+  );
 
-  return registration ? { ...held, paths: [...held.paths, index].sort() } : held;
+  return {
+    edited: held.edited,
+    paths: [...new Set([...closure.filter((path) => travelling.has(path)), index])].sort(),
+  };
 }

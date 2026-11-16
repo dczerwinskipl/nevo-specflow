@@ -2213,7 +2213,7 @@
       "return": "Return to earlier step",
       "finishKept": "Your finish is kept: result, feedback and artifacts stay as you left them. Finish step continues it.",
       "postActionFailed": "The step is finished. Its workflow state was not committed ({{code}}): it stays uncommitted, and Close includes it.",
-      "postActionHeld": "The step is finished. {{edited}} changed outside SpecFlow after SpecFlow wrote it, so the files of its Task stay uncommitted; the rest of the workflow state is committed. Commit those files with Git; otherwise Close includes them.",
+      "postActionHeld": "The step is finished. {{edited}} changed outside SpecFlow after SpecFlow wrote it, so the files of its Task, and of Tasks added or removed since, stay uncommitted; the rest of the workflow state is committed. Commit those files with Git; otherwise Close includes them.",
       "lastPrefix": "Last: {{step}} · ",
       "alreadyFinished": "This step was already finished. What you can do now is shown below.",
       "startWorkflow": "Start workflow",

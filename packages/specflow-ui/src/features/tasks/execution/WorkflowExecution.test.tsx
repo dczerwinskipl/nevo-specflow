@@ -410,7 +410,8 @@ describe('manual workflow execution', () => {
     act(() => show({ ...finished, actions: {} }));
     const held =
       'The step is finished. specs/active/s/tasks/a/task.md changed outside SpecFlow after ' +
-      'SpecFlow wrote it, so the files of its Task stay uncommitted; the rest of the workflow state ' +
+      'SpecFlow wrote it, so the files of its Task, and of Tasks added or removed since, stay ' +
+      'uncommitted; the rest of the workflow state ' +
       'is committed. Commit those files with Git; otherwise Close includes them.';
     expect(screen.getByText(held)).toBeTruthy();
 

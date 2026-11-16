@@ -797,8 +797,12 @@ published change is ONE document operation of action `workflow` (contract
   it would tie all Tasks into one and hold them all. Only the edited Task's own files are held; the
   other Tasks commit. The index commits with them unless it would register a held Task that HEAD does
   not have (its creation is held) or drop one HEAD still has (its removal is held); then the index is
-  held too, and HEAD briefly lacks the index entries of Tasks created meanwhile (their folders are
-  committed) until the next finish after the held Task is committed. The held paths stay uncommitted
+  held too. While the index waits, every Task of the commit whose `task.yaml` exists in only one of
+  the working tree and HEAD (created or removed since) waits with it, with all paths of its
+  operations, so HEAD never holds a Task folder or run record its index does not list, nor an index
+  entry without its Task (no `unregistered`, `broken` or `dangling` Task read from HEAD). Edits of
+  Tasks HEAD already registers still commit. The next finish after the held Task is committed takes
+  the index and the waiting Tasks. The held paths stay uncommitted
   until a person commits them with Git or a Close archives them.
 - **Workflow subjects** follow the same rule as document subjects: at most 72 characters and never cut. When
   `<summary> in <slug>` does not fit, the summary goes alone, then `change the workflow state`; the body then holds the

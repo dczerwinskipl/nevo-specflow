@@ -50,7 +50,7 @@ function refusal(run: () => unknown): { code: string; details?: unknown } {
 }
 
 describe('rendering template entries of an existing Specification', () => {
-  it('renders title, slug and created from the manifest and leaves the goal empty', () => {
+  it('renders the shipped template with the document name as its heading', () => {
     const resolved = resolveTemplateEntries(
       manifest,
       request([{ path: 'docs/behaviour.md', templateId: 'behaviour' }]),
@@ -63,8 +63,39 @@ describe('rendering template entries of an existing Specification', () => {
       type: 'behaviour',
       templateId: 'behaviour',
     });
-    expect(entry?.content).toContain('# Readable "quoted" feature - Behaviour');
+    expect(entry?.content?.startsWith('# Behaviour\n')).toBe(true);
     expect(entry?.content).not.toContain('{{');
+  });
+
+  it('renders title, slug and created from the manifest and leaves the goal empty', () => {
+    // A project template may still use the placeholders (the shipped ones name only the document).
+    const placeholders = resolveCatalogue({
+      documentTypes: seed.documentTypes,
+      archetypes: seed.archetypes.map((archetype) =>
+        archetype.id !== 'feature'
+          ? archetype
+          : {
+              ...archetype,
+              templates: archetype.templates.map((template) =>
+                template.id !== 'behaviour'
+                  ? template
+                  : {
+                      ...template,
+                      content:
+                        '# {{specificationTitle}} - Behaviour\n{{slug}} {{created}} [{{goal}}]\n',
+                    },
+              ),
+            },
+      ),
+    });
+    const resolved = resolveTemplateEntries(
+      manifest,
+      request([{ templateId: 'behaviour' }], placeholders.revision),
+      projectOf(placeholders),
+    );
+    expect(resolved.documents[0]?.content).toContain('# Readable "quoted" feature - Behaviour');
+    expect(resolved.documents[0]?.content).toContain('2026-10-24 []');
+    expect(resolved.documents[0]?.content).not.toContain('{{');
   });
 
   it('defaults the path to the template filename and keeps content entries as they are', () => {

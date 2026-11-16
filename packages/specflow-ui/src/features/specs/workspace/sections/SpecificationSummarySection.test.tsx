@@ -20,11 +20,11 @@ const documents = [
   { id: 'backend', title: 'Backend', kind: 'backend' },
 ];
 
-async function summaryOf(overviewDocumentId: string | undefined) {
+async function summaryOf(overviewDocumentId: string | undefined, summary = 'From the overview…') {
   const dto = await createWorkspaceIntegrationApi().getSpecificationWorkspace('api-integration');
   const data = mapWorkspaceResponse({
     ...dto,
-    specification: { ...dto.specification, summary: 'From the overview.' },
+    specification: { ...dto.specification, summary },
     sections: {
       ...dto.sections,
       documents: {
@@ -65,8 +65,15 @@ describe('Specification summary expand target', () => {
   it('offers no expand action without an overview, never a substitute document', async () => {
     await summaryOf(undefined);
 
-    expect(screen.getByText('From the overview.')).toBeTruthy();
+    expect(screen.getByText('From the overview…')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
     expect(screen.queryByTestId('expanded-document')).toBeNull();
+  });
+
+  it('offers no Show more under a description the Runtime did not cut', async () => {
+    await summaryOf('overview', 'Source: GitHub issue #156.');
+
+    expect(screen.getByText('Source: GitHub issue #156.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
   });
 });

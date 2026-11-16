@@ -7,6 +7,7 @@ import type {
   StartWorkflowRequest,
   StartWorkflowResult,
 } from '@nevo/specflow-contracts/workflow';
+import type { CloseOccupancy } from '@nevo/specflow-contracts/specs';
 import type { ApiTransport, ErrorCodeTable } from '../../../api';
 
 /** The workflow subject a command acts on: the Specification, or one of its Tasks. */
@@ -41,6 +42,8 @@ export interface WorkflowExecutionApi {
   ): Promise<ReturnWorkflowResult>;
   abandon(specId: string, reason: string): Promise<AbandonSpecificationResult>;
   closePreview(specId: string, signal?: AbortSignal): Promise<ClosePreviewResult>;
+  /** What else holds the checkout a Close would remove (running agent Turns), without planning it. */
+  closeOccupancy(specId: string, signal?: AbortSignal): Promise<CloseOccupancy>;
   close(specId: string, operationId: string): Promise<CloseSpecificationResult>;
 }
 
@@ -73,6 +76,11 @@ export function createRuntimeWorkflowExecutionApi(transport: ApiTransport): Work
       transport.get(`${specBase(specId)}/close/preview`, {
         signal,
         operation: 'workflow.close-preview',
+      }),
+    closeOccupancy: (specId, signal) =>
+      transport.get(`${specBase(specId)}/close/occupancy`, {
+        signal,
+        operation: 'workflow.close-occupancy',
       }),
     close: (specId, operationId) =>
       transport.post(`${specBase(specId)}/close`, { operationId }, { operation: 'workflow.close' }),

@@ -154,7 +154,7 @@ export const Open: Story = {
     await expect(canvas.getByRole('button', { name: 'Wyślij' })).toBeDisabled();
     // Context: the pinned Specification and the executor mirroring the choice.
     await expect(await canvas.findByText('Logowanie SSO')).toBeVisible();
-    await expect(canvas.getByText('nie wybrano')).toBeVisible();
+    await expect(canvas.getByText('nie wybrano modelu')).toBeVisible();
     await expectActionRowClear(canvas);
   },
 };

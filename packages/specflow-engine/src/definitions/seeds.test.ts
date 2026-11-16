@@ -92,7 +92,7 @@ describe('seed files', () => {
   it('pin the revision of the shipped catalogue', () => {
     // Recompute (and re-pin) only when the shipped definitions change on purpose.
     expect(project.catalogue.revision).toBe(
-      '07b1c01d63520a27116ccc64a31cd13f70e1cc7b493b4891384d6eb338738328',
+      '3add201adaaef393caf492731875c9f311a1eb75e39d31e72fe916c4b16d474a',
     );
   });
 });
@@ -222,11 +222,7 @@ describe('seed files against the product document matrix', () => {
           : headingsCell!.split('; ').map((heading) => heading.trim());
         const title = project.catalogue.findDocumentType(id)?.title;
         expect(template?.content, `${archetype.id}/${id}`).toBe(
-          [
-            `# {{specificationTitle}} - ${title}`,
-            '',
-            ...headings.flatMap((h) => [`## ${h}`, '']),
-          ].join('\n'),
+          [`# ${title}`, '', ...headings.flatMap((h) => [`## ${h}`, ''])].join('\n'),
         );
       }
     }

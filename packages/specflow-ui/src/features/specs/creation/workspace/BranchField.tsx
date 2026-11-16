@@ -5,7 +5,12 @@ import { BRANCH_NAME_MAX_LENGTH } from '@nevo/specflow-contracts/specs';
 import type { CreateOptionsView } from './model/createOptionsView';
 import { useMessage, type Message } from '../../../../i18n/message';
 import { createControlWidth } from '../createFormLayout';
-import { branchFieldValue } from './model/createRequest';
+import {
+  branchFieldValue,
+  branchPreview,
+  effectiveSlug,
+  readableBranchName,
+} from './model/createRequest';
 import type { SettingsUpdate } from './settingsTypes';
 import type { WorkspaceChoice } from './model/workspaceChoice';
 
@@ -30,6 +35,11 @@ export function BranchField({
 }) {
   const { t } = useTranslation();
   const text = useMessage();
+  // The prefill leaves out what nobody knows before creation (the key, the id), and an untouched
+  // prefill is not sent: say which name is used until the owner types one.
+  const generated = readableBranchName(branchPreview(options, effectiveSlug(choice, title)));
+  const untouchedDiffers =
+    !choice.branch.edited && generated !== branchFieldValue(choice, options, title);
 
   return (
     <Field invalid={Boolean(error)} className={createControlWidth}>
@@ -46,7 +56,11 @@ export function BranchField({
           update.set({ branch: { on: true, name: event.target.value, edited: true } })
         }
       />
-      <Field.Description>{t('create.workspace.settings.branchHelp')}</Field.Description>
+      <Field.Description>
+        {untouchedDiffers
+          ? t('create.workspace.settings.branchUntouched', { branch: generated })
+          : t('create.workspace.settings.branchHelp')}
+      </Field.Description>
       {error && <Field.Error>{text(error)}</Field.Error>}
     </Field>
   );

@@ -6,6 +6,8 @@ import { terminateOwnedProcess, type ProcessDisposition } from './termination';
 import type { InvocationScope, CleanupIssue } from './scope';
 import type { ProviderEnvironment } from './environment';
 import { createWindowsJob } from './windows-job';
+import { captureProcessIdentity } from './native-stop';
+import type { NativeProcessIdentity } from './process-identity';
 
 export class ProviderProcessError extends Error {
   readonly code:
@@ -37,6 +39,11 @@ export async function launchOwnedProcess(options: {
   diagnostics?: DiagnosticStore;
   secrets?: readonly string[];
   maxFrameBytes?: number;
+  /**
+   * Durably records the native-stop evidence of the started process before the launch returns
+   * (on Windows before any provider code runs). A failure stops the process and fails the launch.
+   */
+  record?: (identity: NativeProcessIdentity) => Promise<void>;
 }) {
   let child: ReturnType<typeof spawn>;
   let windowsJob: ReturnType<typeof createWindowsJob> | undefined;
@@ -216,7 +223,29 @@ export async function launchOwnedProcess(options: {
 
   try {
     await ready;
-    await windowsJob?.ready(child, options.environment.values);
+    const record = options.record;
+    const identify = async () => {
+      if (!record) {
+        return;
+      }
+
+      const identity = captureProcessIdentity(child.pid!, windowsJob?.name);
+      if (!identity) {
+        throw new ProviderProcessError(
+          'START_FAILED',
+          'Provider process identity could not be recorded.',
+        );
+      }
+
+      await record(identity);
+    };
+
+    if (windowsJob) {
+      await windowsJob.ready(child, options.environment.values, identify);
+    } else {
+      await identify();
+    }
+
     if (options.signal.aborted) {
       throw new ProviderProcessError('CANCELLED', 'Provider startup was cancelled.');
     }

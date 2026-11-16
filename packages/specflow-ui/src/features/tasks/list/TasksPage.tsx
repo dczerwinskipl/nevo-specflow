@@ -37,6 +37,8 @@ export interface TasksPageProps {
   readonly onNewTask?: () => void;
   /** A notice above the list (New task could not be checked). */
   readonly notice?: ReactNode;
+  /** When the first Tasks appear (the workflow's step that produces them), for the empty list. */
+  readonly emptyLine?: string;
 }
 
 const groupHeadingId = (groupId: string) => `task-group-${groupId}-heading`;
@@ -55,6 +57,7 @@ export function TasksPage({
   onClearBlocking,
   onNewTask,
   notice,
+  emptyLine,
 }: TasksPageProps) {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
@@ -164,10 +167,11 @@ export function TasksPage({
           <EmptyState
             variant="inline"
             title={t('specification.tasksEmptyTitle')}
+            // When the workflow's Tasks appear, and that New task creates them sooner when offered.
             description={
               onNewTask
-                ? t('taskAuthoring.tasks.emptyDescription')
-                : t('specification.tasksEmptyDescription')
+                ? [emptyLine, t('taskAuthoring.tasks.emptyDescription')].filter(Boolean).join(' ')
+                : (emptyLine ?? t('specification.tasksEmptyDescription'))
             }
           />
         ) : groups.length === 0 && needle ? (

@@ -5,6 +5,7 @@ import { useRuntimeMode } from '../../../app/useRuntimeMode';
 import type { SpecificationWorkspaceData } from '../../specs/read-model';
 import { NewTaskDialog } from '../authoring/NewTaskDialog';
 import { useSpecificationActions } from '../authoring/useTaskAuthoring';
+import { tasksStepLine } from '../overview/tasksStepLine';
 import { TasksPage } from './TasksPage';
 import { useTaskListState } from './useTaskListState';
 
@@ -44,6 +45,7 @@ export function TasksScreen({
   const actions = useSpecificationActions(specId, project && collection === 'current');
   const [open, setOpen] = useState(false);
   const specification = actions.data?.specification;
+  const emptyLine = tasksStepLine(t, actions.data?.outline);
 
   return (
     <>
@@ -54,6 +56,7 @@ export function TasksScreen({
         fullTaskHref={fullTaskHref}
         onOpenTask={onOpenTask}
         onClearBlocking={onClearBlocking}
+        {...(emptyLine ? { emptyLine } : {})}
         {...(specification?.createTask.kind === 'allowed'
           ? { onNewTask: () => setOpen(true) }
           : {})}

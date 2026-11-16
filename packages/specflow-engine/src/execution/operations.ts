@@ -1,7 +1,7 @@
 import { isDeepStrictEqual } from 'node:util';
 import type { SpecFlowEngine } from '../application';
 import { withProjectControlLock } from '../project/control-lock';
-import { readWorkspaceRegistry } from '../project/workspace/registry/registry';
+import { readWorkspaceRegistry, verifyWorkspaceRoot } from '../project/workspace/registry/registry';
 import type { WorkspaceRegistry } from '../project/workspace/registry/types';
 import { assertSharedResourcesAvailable } from '../specs/coordination/resources';
 import { publishExecutionJournal, readExecutionJournal } from './journal';
@@ -15,22 +15,79 @@ import {
   type WorkspaceExecutionReceipt,
 } from './model';
 
-function workspaceOf(engine: SpecFlowEngine) {
+/**
+ * Where the execution runs: the Engine's own checkout by default, or another registered workspace
+ * of the project (a Specification's worktree) named by id. The claim's resource is project-wide
+ * either way; only the workspace it is bound to differs.
+ */
+export interface WorkspaceExecutionTarget {
+  readonly workspaceId?: string;
+  /**
+   * The Specification whose workspace this is: admission re-checks, under the control lock, that the
+   * Specification is still bound to it, so a rebind after the caller resolved it is never claimed.
+   */
+  readonly specId?: string;
+}
+
+/** The Specification's binding (else the primary checkout) still names the claimed workspace. */
+function assertSpecificationBinding(
+  registry: WorkspaceRegistry,
+  target: WorkspaceExecutionTarget,
+  workspace: ClaimWorkspace,
+) {
+  if (target.specId === undefined) {
+    return;
+  }
+
+  const bound =
+    registry.specBindings.find((binding) => binding.specId === target.specId)?.workspaceId ??
+    registry.primaryWorkspaceId;
+  if (bound !== workspace.workspaceId) {
+    throw new WorkspaceExecutionError(
+      'EXECUTION_CONFLICT',
+      'The Specification is no longer bound to the execution workspace.',
+    );
+  }
+}
+
+type ClaimWorkspace = WorkspaceExecutionJournal['workspace'];
+
+/** The claimed workspace as the registry holds it now; an unknown id is a conflict. */
+function targetWorkspace(
+  engine: SpecFlowEngine,
+  registry: WorkspaceRegistry,
+  target: WorkspaceExecutionTarget,
+): ClaimWorkspace {
+  const workspaceId = target.workspaceId ?? engine.workspace.workspaceId;
+  const registered = registry.workspaces.find((item) => item.workspaceId === workspaceId);
+  if (!registered) {
+    throw new WorkspaceExecutionError('EXECUTION_CONFLICT', 'Workspace incarnation changed.');
+  }
+
+  // The Engine's own checkout must still be the incarnation it was opened in.
+  if (
+    workspaceId === engine.workspace.workspaceId &&
+    (registered.root !== engine.workspace.root ||
+      registered.instanceId !== engine.workspace.instanceId)
+  ) {
+    throw new WorkspaceExecutionError('EXECUTION_CONFLICT', 'Workspace incarnation changed.');
+  }
+
   return {
-    workspaceId: engine.workspace.workspaceId,
-    root: engine.workspace.root,
-    ...(engine.workspace.instanceId ? { instanceId: engine.workspace.instanceId } : {}),
+    workspaceId: registered.workspaceId,
+    root: registered.root,
+    ...(registered.instanceId ? { instanceId: registered.instanceId } : {}),
   };
 }
 
 function matching(
-  engine: SpecFlowEngine,
   record: WorkspaceExecutionJournal,
   intent: WorkspaceExecutionIntent,
+  workspace: ClaimWorkspace,
 ) {
   if (
     !isDeepStrictEqual(record.intent, intent) ||
-    !isDeepStrictEqual(record.workspace, workspaceOf(engine))
+    !isDeepStrictEqual(record.workspace, workspace)
   ) {
     throw new WorkspaceExecutionError(
       'EXECUTION_CONFLICT',
@@ -39,14 +96,14 @@ function matching(
   }
 }
 
-function assertCurrentWorkspace(engine: SpecFlowEngine, registry: WorkspaceRegistry) {
-  const current = registry.workspaces.find(
-    (item) => item.workspaceId === engine.workspace.workspaceId,
-  );
-  if (
-    current?.root !== engine.workspace.root ||
-    current.instanceId !== engine.workspace.instanceId
-  ) {
+/** The registered workspace still is the incarnation the claim names. */
+function assertSameIncarnation(
+  engine: SpecFlowEngine,
+  registry: WorkspaceRegistry,
+  target: WorkspaceExecutionTarget,
+  expected: ClaimWorkspace,
+) {
+  if (!isDeepStrictEqual(targetWorkspace(engine, registry, target), expected)) {
     throw new WorkspaceExecutionError('EXECUTION_CONFLICT', 'Workspace incarnation changed.');
   }
 }
@@ -55,21 +112,37 @@ function assertCurrentWorkspace(engine: SpecFlowEngine, registry: WorkspaceRegis
 export async function admitWorkspaceExecution(
   engine: SpecFlowEngine,
   intent: WorkspaceExecutionIntent,
+  target: WorkspaceExecutionTarget = {},
 ): Promise<WorkspaceExecutionJournal> {
   validateExecutionIntent(intent);
   const registry = await engine.readRegistry();
-  assertCurrentWorkspace(engine, registry);
+  const workspace = targetWorkspace(engine, registry, target);
+  if (workspace.workspaceId !== engine.workspace.workspaceId) {
+    // Another checkout than the Engine's own: verified on disk and in Git before it is claimed.
+    const registered = registry.workspaces.find(
+      (item) => item.workspaceId === workspace.workspaceId,
+    )!;
+    try {
+      await verifyWorkspaceRoot(engine.context, registered.root, registered);
+    } catch {
+      throw new WorkspaceExecutionError(
+        'EXECUTION_CONFLICT',
+        'The execution workspace is not available.',
+      );
+    }
+  }
 
   return withProjectControlLock(engine.context, async () => {
     const existing = await readExecutionJournal(engine.context, intent.operationId);
     if (existing) {
-      matching(engine, existing, intent);
+      matching(existing, intent, workspace);
 
       return existing;
     }
 
     const latest = await readWorkspaceRegistry(engine.context);
-    assertCurrentWorkspace(engine, latest);
+    assertSameIncarnation(engine, latest, target, workspace);
+    assertSpecificationBinding(latest, target, workspace);
     if (latest.revision !== registry.revision) {
       throw new WorkspaceExecutionError(
         'EXECUTION_CONFLICT',
@@ -82,7 +155,7 @@ export async function admitWorkspaceExecution(
       projectId: engine.context.project.projectId,
       gitInstanceId: engine.context.project.gitInstanceId,
       intent: structuredClone(intent),
-      workspace: workspaceOf(engine),
+      workspace,
       registryRevision: registry.revision,
       resources: [...executionResources(engine.context)],
       phase: 'admitted',
@@ -100,10 +173,11 @@ export async function admitWorkspaceExecution(
 async function transition(
   engine: SpecFlowEngine,
   intent: WorkspaceExecutionIntent,
+  target: WorkspaceExecutionTarget,
   update: (record: WorkspaceExecutionJournal) => WorkspaceExecutionJournal,
 ): Promise<WorkspaceExecutionJournal> {
   validateExecutionIntent(intent);
-  await engine.readRegistry();
+  const workspace = targetWorkspace(engine, await engine.readRegistry(), target);
 
   return withProjectControlLock(engine.context, async () => {
     const record = await readExecutionJournal(engine.context, intent.operationId);
@@ -114,9 +188,9 @@ async function transition(
       );
     }
 
-    matching(engine, record, intent);
+    matching(record, intent, workspace);
     const latest = await readWorkspaceRegistry(engine.context);
-    assertCurrentWorkspace(engine, latest);
+    assertSameIncarnation(engine, latest, target, workspace);
     if (latest.revision !== record.registryRevision) {
       throw new WorkspaceExecutionError(
         'EXECUTION_RECOVERY_REQUIRED',
@@ -137,8 +211,9 @@ async function transition(
 export function markWorkspaceExecutionDispatched(
   engine: SpecFlowEngine,
   intent: WorkspaceExecutionIntent,
+  target: WorkspaceExecutionTarget = {},
 ) {
-  return transition(engine, intent, (record) => {
+  return transition(engine, intent, target, (record) => {
     if (record.phase !== 'admitted') {
       throw new WorkspaceExecutionError(
         'EXECUTION_RECOVERY_REQUIRED',
@@ -153,8 +228,9 @@ export function markWorkspaceExecutionDispatched(
 export function markWorkspaceExecutionUnknown(
   engine: SpecFlowEngine,
   intent: WorkspaceExecutionIntent,
+  target: WorkspaceExecutionTarget = {},
 ) {
-  return transition(engine, intent, (record) =>
+  return transition(engine, intent, target, (record) =>
     record.phase === 'settled' ? record : { ...record, phase: 'unknown' },
   );
 }
@@ -163,8 +239,9 @@ export function markWorkspaceExecutionUnknown(
 export function abandonWorkspaceExecutionAdmission(
   engine: SpecFlowEngine,
   intent: WorkspaceExecutionIntent,
+  target: WorkspaceExecutionTarget = {},
 ) {
-  return transition(engine, intent, (record) => {
+  return transition(engine, intent, target, (record) => {
     if (record.phase === 'settled' && record.settlement?.kind === 'not-dispatched') {
       return record;
     }
@@ -185,6 +262,7 @@ export function settleWorkspaceExecution(
   engine: SpecFlowEngine,
   intent: WorkspaceExecutionIntent,
   receipt: WorkspaceExecutionReceipt,
+  target: WorkspaceExecutionTarget = {},
 ) {
   validateExecutionReceipt(receipt);
   if (receipt.invocationId !== intent.operationId) {
@@ -194,7 +272,7 @@ export function settleWorkspaceExecution(
     );
   }
 
-  return transition(engine, intent, (record) => {
+  return transition(engine, intent, target, (record) => {
     const settlement = { kind: 'native-result' as const, receipt: structuredClone(receipt) };
     if (record.phase === 'settled') {
       if (!isDeepStrictEqual(record.settlement, settlement)) {

@@ -46,6 +46,11 @@ export const WorkspaceDocumentSchema = Type.Object({
    */
   kind: Type.String(),
   summary: Type.Optional(Type.String()),
+  /**
+   * The file is still only the archetype template it was created from (any goal text aside);
+   * absent when the source cannot tell (the demo Runtime).
+   */
+  templateOnly: Type.Optional(Type.Boolean()),
 });
 export const WorkspaceSessionSchema = Type.Object(
   {

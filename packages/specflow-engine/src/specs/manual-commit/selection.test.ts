@@ -52,6 +52,50 @@ describe('closureOf', () => {
   });
 });
 
+describe('closureOf with an unlinked registry', () => {
+  // The Task index: every Task operation rewrites it, so it would tie them all together.
+  const entries = [
+    entry('tasks/index.yaml', ['create-a', 'create-b'], A),
+    entry('tasks/a/task.yaml', ['create-a']),
+    entry('tasks/a/task.md', ['create-a']),
+    entry('tasks/b/task.yaml', ['create-b']),
+  ];
+  const unlinked = new Set(['tasks/index.yaml']);
+
+  it('joins no operations through it, and takes it only when asked for', () => {
+    expect(closureOf(entries, ['tasks/a/task.md'])).toEqual([
+      'tasks/a/task.md',
+      'tasks/a/task.yaml',
+      'tasks/b/task.yaml',
+      'tasks/index.yaml',
+    ]);
+    expect(closureOf(entries, ['tasks/a/task.md'], unlinked)).toEqual([
+      'tasks/a/task.md',
+      'tasks/a/task.yaml',
+    ]);
+    expect(closureOf(entries, ['tasks/b/task.yaml', 'tasks/index.yaml'], unlinked)).toEqual([
+      'tasks/b/task.yaml',
+      'tasks/index.yaml',
+    ]);
+    expect(
+      selectEntries(entries, ['tasks/b/task.yaml', 'tasks/index.yaml'], unlinked),
+    ).toMatchObject({ ok: true });
+  });
+
+  it('does not count its forgotten operation ids', () => {
+    const truncated = [{ ...entries[0]!, operationCount: 80 }, ...entries.slice(1)];
+    expect(closureOf(truncated, ['tasks/b/task.yaml'], unlinked)).toEqual(['tasks/b/task.yaml']);
+  });
+
+  it('keeps the request key of a request without one', () => {
+    const base = { scope: 's', specId: 'x', message: 'm', paths: ['a'], ledgerRevision: undefined };
+    expect(fingerprintOfRequest({ ...base, unlinkedPaths: [] })).toBe(fingerprintOfRequest(base));
+    expect(fingerprintOfRequest({ ...base, unlinkedPaths: ['a'] })).not.toBe(
+      fingerprintOfRequest(base),
+    );
+  });
+});
+
 describe('closureOf with forgotten operation ids', () => {
   it('returns the whole scope when an entry kept fewer ids than operations', () => {
     const truncated = { ...entry('a.md', ['op-51']), operationCount: 51 };

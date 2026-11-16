@@ -23,12 +23,14 @@ import {
 } from '../lifecycle/work-aggregate';
 import { StoreFault, fail, decode, type Row } from './encoding';
 import { CREATED_SEQ_KEY, initializeSessionSchema } from './schema';
+import { UNSETTLED_CHECKOUT_TURNS_SQL } from './checkout-turns';
 import { createContentStorage } from './content';
 import { createRequestJournal } from './requests';
 import { createSessionCursors } from './cursors';
 import { createSessionReads } from './reads';
 import { createProviderFacts } from './facts';
 import { createEffectReconciliation } from './reconciliation';
+import { parseProcessIdentity } from '../providers/process/process-identity';
 import { createSessionTelemetry } from './telemetry';
 import { createSessionManagement } from './session-management';
 import { createFingerprint, createSessionAssociations } from './associations';
@@ -224,6 +226,7 @@ export async function runSessionWorker(): Promise<void> {
     workId?: string,
     existing?: string,
     digest?: WorkDigest,
+    error?: ConversationEntry['error'],
   ): ConversationEntry {
     const old = existing
       ? decode<ConversationEntry>(get('SELECT data FROM entries WHERE id=?', existing))
@@ -238,6 +241,7 @@ export async function runSessionWorker(): Promise<void> {
       createdAt: old?.createdAt ?? now(),
       ...(workId ? { workId } : {}),
       ...(digest ? { digest } : {}),
+      ...(error ? { error } : {}),
     };
     run(
       'INSERT OR REPLACE INTO entries VALUES(?,?,?,?,?)',
@@ -409,10 +413,20 @@ export async function runSessionWorker(): Promise<void> {
       reviseWorkDigest(s, t);
     }
 
-    entry(s, t.summary.turnId, 'outcome', {
-      text: t.summary.state === 'terminal' ? t.summary.outcome : outcome,
-      complete: true,
-    });
+    // The reason travels with the outcome entry: the conversation is where a client shows it.
+    entry(
+      s,
+      t.summary.turnId,
+      'outcome',
+      {
+        text: t.summary.state === 'terminal' ? t.summary.outcome : outcome,
+        complete: true,
+      },
+      undefined,
+      undefined,
+      undefined,
+      error,
+    );
   }
 
   let publicationTimer: ReturnType<typeof setTimeout> | undefined;
@@ -707,6 +721,10 @@ export async function runSessionWorker(): Promise<void> {
 
     if (c.op === 'rename' || c.op === 'archive' || c.op === 'unarchive' || c.op === 'delete') {
       return transaction(() => management.execute(c));
+    }
+
+    if (c.op === 'checkout-turns') {
+      return all(UNSETTLED_CHECKOUT_TURNS_SQL, c.root).map((row) => String(row.session));
     }
 
     if (c.op === 'effect-candidates') {
@@ -1042,6 +1060,35 @@ export async function runSessionWorker(): Promise<void> {
         }
 
         run('UPDATE provider_contexts SET dispatched=1 WHERE session=?', c.sessionId);
+
+        return true;
+      });
+    }
+
+    if (c.op === 'process-identity') {
+      return transaction(() => {
+        const t = turn(c.turnId, c.sessionId);
+        const identity = parseProcessIdentity(c.identity);
+        const context = get(
+          'SELECT dispatched FROM provider_contexts WHERE session=?',
+          c.sessionId,
+        );
+        // Evidence precedes the dispatch barrier, once per invocation: a dispatched Turn without it
+        // stays unknown rather than gaining evidence of a process recorded afterwards.
+        if (
+          !identity ||
+          t.invocationId !== c.invocationId ||
+          t.summary.state === 'terminal' ||
+          t.summary.state === 'unknown' ||
+          t.nativeProcess ||
+          !context ||
+          Number(context.dispatched) !== 0
+        ) {
+          fail('SESSION_RECOVERY_REQUIRED', 'Native process evidence cannot be recorded.');
+        }
+
+        t.nativeProcess = identity;
+        saveTurn(c.sessionId, t);
 
         return true;
       });

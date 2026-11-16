@@ -1,9 +1,8 @@
 import compress from '@fastify/compress';
 import cookie from '@fastify/cookie';
-import { join } from 'node:path';
 import { RuntimeInfoResponseSchema } from '@nevo/specflow-contracts/runtime';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import { openWorkflow } from '@nevo/specflow-engine';
+import { openWorkflow, withCheckoutQuiescence } from '@nevo/specflow-engine';
 import Fastify, {
   type FastifyInstance,
   type FastifyServerOptions,
@@ -13,7 +12,10 @@ import Fastify, {
 import { authCookieNames, createAuthFeature, type AuthFeatureDependencies } from '../features/auth';
 import type { RuntimeConfig } from '../config/types';
 import {
+  checkoutSessions,
   createSessionsFeature,
+  projectSessionStoreDirectory,
+  runtimeCheckoutQuiescence,
   type SessionReferenceOwner,
   type SessionDriver,
 } from '../features/sessions';
@@ -36,7 +38,7 @@ import {
   type DocsFeatureDependencies,
 } from '../features/docs';
 import { createSettingsFeature } from '../features/settings';
-import { createWorkspacesFeature } from '../features/workspaces';
+import { createWorkspaceOccupancy, createWorkspacesFeature } from '../features/workspaces';
 import {
   createEngineAssociationTargets,
   createSessionAssociationsFeature,
@@ -47,6 +49,7 @@ import {
 import {
   composeWorkspaceActivity,
   createSpecsFeature,
+  releaseAfterQuiescence,
   type SpecsFeatureDependencies,
 } from '../features/specs';
 import {
@@ -208,14 +211,18 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
           openWorkflow: () => openWorkflow(engine, { projectDocument: projectDocument() }),
         }
       : undefined;
+  // Which checkouts agent Session Turns work in: Close never removes one of them (and holds a
+  // checkout against new Turns while it removes it).
+  const workspaceOccupancy = createWorkspaceOccupancy();
   const sessionsFeature = createSessionsFeature({
     ...(engine ? { engine } : {}),
+    workspaceOccupancy,
     config: mode === 'project' ? config.sessions : undefined,
     storage:
       dependencies.sessions?.storage ??
       (mode === 'project' && config.sessions?.enabled && engine
         ? {
-            directory: join(engine.context.project.stateRoot, 'sessions'),
+            directory: projectSessionStoreDirectory(engine),
             projectId: engine.context.project.projectId,
             workspace: engine.context.workspace.root,
           }
@@ -285,7 +292,18 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     createSpecsFeature({
       ...(config.specs ? { config: config.specs } : {}),
       dependencies: {
-        engine: dependencies.specs?.engine,
+        // Close asks whether an agent can work in a checkout it removes: this Runtime's own Turns
+        // while it owns the Session store, else the store's owner record.
+        engine:
+          engine &&
+          withCheckoutQuiescence(
+            engine,
+            runtimeCheckoutQuiescence({
+              engine,
+              sessions: sessionsFeature.runtime,
+              runningSessions: (workspaceId) => workspaceOccupancy.runningSessions(workspaceId),
+            }),
+          ),
         overviewRepository: dependencies.specs?.overviewRepository ?? demo?.overviewRepository,
         workspaceRepository: dependencies.specs?.workspaceRepository ?? demo?.workspaceRepository,
         contributions,
@@ -293,7 +311,19 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
         sessions: sessionReferences,
         projectId,
         // Close deletes a checkout only after the documentation index there is released (E9).
-        releaseWorkspace: docsFeature.releaseWorkspaceDocs,
+        releaseWorkspace: releaseAfterQuiescence(
+          workspaceOccupancy,
+          docsFeature.releaseWorkspaceDocs,
+        ),
+        ...(engine
+          ? {
+              runningSessions: checkoutSessions({
+                engine,
+                sessions: sessionsFeature.runtime,
+                runningSessions: (workspaceId) => workspaceOccupancy.runningSessions(workspaceId),
+              }),
+            }
+          : {}),
         // The demo Runtime serves its own Create routes (and events route) below.
         ...(demo
           ? {}

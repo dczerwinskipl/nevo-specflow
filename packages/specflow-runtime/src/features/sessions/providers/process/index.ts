@@ -2,3 +2,5 @@ export { projectProviderEnvironment, type ProviderEnvironment } from './environm
 export { createDiagnosticStore, sanitizeDiagnostic, type DiagnosticStore } from './diagnostics';
 export { createInvocationScope, type InvocationScope } from './scope';
 export { launchOwnedProcess, ProviderProcessError, type ProcessExit } from './owned-process';
+export { nativeStopEvidence, type NativeStopEvidence } from './native-stop';
+export { parseProcessIdentity, type NativeProcessIdentity } from './process-identity';

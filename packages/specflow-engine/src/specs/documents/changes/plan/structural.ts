@@ -160,7 +160,7 @@ function planDocumentOperation(
   if (document.kind === 'registered') {
     draft.registry = {
       documents: registry.map((entry) =>
-        entry.id === id ? { id: entry.id, path: destination, type: entry.type } : entry,
+        entry.id === id ? { ...entry, path: destination } : entry,
       ),
       folders: [...snapshot.manifest.folders],
     };
@@ -361,7 +361,7 @@ function planFolderOperation(
         throw documentChangeError('path-invalid', 'A moved path is not allowed.');
       }
 
-      registry.push({ id: entry.id, path: to, type: entry.type });
+      registry.push({ ...entry, path: to });
     } else if (!draft.removedDocumentIds.includes(entry.id)) {
       draft.removedDocumentIds.push(entry.id);
     }

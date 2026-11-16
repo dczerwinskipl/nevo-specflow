@@ -190,7 +190,7 @@ describe('workflow action routes', () => {
       subject: { kind: 'task', specId: SPEC, taskId: 't1' },
       actor: {
         class: 'human',
-        details: { actorId: JSON.stringify(alice), trust: 'authenticated' },
+        details: { actorId: `${alice.kind}:${alice.id}`, trust: 'authenticated' },
       },
       expectedWorkflowRevision: 'abc',
     });

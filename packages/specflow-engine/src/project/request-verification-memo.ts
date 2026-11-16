@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 /**
- * Read-request scope (READ paths only).
+ * Request-scoped verification.
  *
  * A read request (overview, workspace, documents, create-options, ...) calls
  * registry reads and workspace inspections many times. Reads MUST NOT spawn Git:
@@ -12,23 +12,38 @@ import { AsyncLocalStorage } from 'node:async_hooks';
  * re-checks cheap on-disk evidence (marker, Git instance sentinel, `.git` link
  * of the checkout, linked identity marker, realpath containment).
  *
- * The scope also memoises each verification once per workspace, including
- * in-flight (coalesced) work. It lives in an AsyncLocalStorage scope owned by
- * exactly one request, so concurrent requests never share results and nothing
- * outlives the request. Callers that do not enter a scope (every mutation path:
- * create, close/integrate, archive, registry writes, control-lock admission)
- * always run the full Git-backed verification; the only exception is
- * `runGitFreeMutation` (existing-workspace create with Git disabled). Engines keep their own
+ * A workflow mutation (`runVerifiedMutation`: one step start, finish, Task change, ...)
+ * keeps the full Git-backed verification but runs it once per operation: the
+ * control-lock admission resolves the Project Home with Git afresh (and refreshes
+ * the memo), and every later membership check of the same operation reuses what it
+ * proved instead of resolving the Project Home again for each Specification lookup.
+ * The operation changes neither the registry nor any checkout's Git identity.
+ *
+ * The scope memoises each verification once, including in-flight (coalesced) work.
+ * It lives in an AsyncLocalStorage scope owned by exactly one request, so concurrent
+ * requests never share results and nothing outlives the request. Callers that do not
+ * enter a scope (create, close/integrate, archive, registry writes) always run the
+ * full Git-backed verification at every step; `runGitFreeMutation` (existing-workspace
+ * create with Git disabled) uses the read checks without a memo. Engines keep their own
  * `readRegistry`, so wrapped/instrumented engines behave unchanged.
  */
 interface VerificationScope {
   /** Per-request memo; absent for a Git-free mutation (no cached verification may outlive a step). */
   readonly memo?: Map<string, Promise<unknown>>;
+  /** A workflow mutation: verification uses Git (once per operation), not the disk-only checks. */
+  readonly gitBacked?: true;
+  /** Evidence a workflow mutation proved with Git, by kind (the control-lock home proof). */
+  readonly proven?: Map<string, unknown>;
 }
 const scope = new AsyncLocalStorage<VerificationScope>();
 
+/** Prefix of the memo keys that hold Project Home answers (`home.ts`), as opposed to a checkout's. */
+export const HOME_VERIFICATION_KEY = 'home:';
+
 export function runReadRequest<T>(work: () => Promise<T>): Promise<T> {
-  if (scope.getStore()) {
+  const current = scope.getStore();
+  // A read inside a read keeps its scope; a read inside a workflow mutation still reads without Git.
+  if (current && current.gitBacked === undefined) {
     return work();
   }
 
@@ -48,19 +63,41 @@ export function runGitFreeMutation<T>(work: () => Promise<T>): Promise<T> {
   return scope.run({}, work);
 }
 
-/** True while verification must not use Git (read request or Git-free mutation). */
-export function isReadRequest(): boolean {
-  return scope.getStore() !== undefined;
+/**
+ * A workflow mutation: full Git-backed verification, once per operation (see above). Inside an
+ * existing scope (a read, or the same mutation) the work keeps that scope.
+ */
+export function runVerifiedMutation<T>(work: () => Promise<T>): Promise<T> {
+  if (scope.getStore()) {
+    return work();
+  }
+
+  return scope.run({ memo: new Map(), gitBacked: true, proven: new Map() }, work);
 }
 
-export function memoizeVerification<T>(key: string, compute: () => Promise<T>): Promise<T> {
+/** True while verification must not use Git (read request or Git-free mutation). */
+export function isReadRequest(): boolean {
+  const current = scope.getStore();
+
+  return current !== undefined && current.gitBacked === undefined;
+}
+
+/**
+ * Remember `compute` for the rest of the request. With `refresh` it is computed again and replaces
+ * what was remembered (an admission that must re-prove the Project Home with Git).
+ */
+export function memoizeVerification<T>(
+  key: string,
+  compute: () => Promise<T>,
+  options: { readonly refresh?: boolean } = {},
+): Promise<T> {
   const memo = scope.getStore()?.memo;
   if (!memo) {
     return compute();
   }
 
   const existing = memo.get(key);
-  if (existing) {
+  if (existing && options.refresh !== true) {
     return existing as Promise<T>;
   }
 
@@ -68,4 +105,40 @@ export function memoizeVerification<T>(key: string, compute: () => Promise<T>): 
   memo.set(key, pending);
 
   return pending;
+}
+
+/**
+ * What the current workflow mutation last proved with Git under `key` (`undefined` outside one).
+ * The caller decides whether that proof still applies (it compares fresh on-disk evidence with it).
+ */
+export function provenInOperation<T>(key: string): T | undefined {
+  return scope.getStore()?.proven?.get(key) as T | undefined;
+}
+
+/** Record evidence just proved with Git for the rest of the workflow mutation (no-op outside one). */
+export function rememberProvenInOperation(key: string, value: unknown): void {
+  scope.getStore()?.proven?.set(key, value);
+}
+
+/**
+ * Forget what the current workflow mutation verified, at a later control-lock admission. With
+ * `keepHome` the Project Home answers stay (its pinned physical evidence is unchanged) and only the
+ * checkout verifications go: a checkout can change between lock sections without changing that
+ * evidence (its identity marker, its ignore rules). Without it everything goes, proofs included.
+ */
+export function forgetOperationVerification(options: { readonly keepHome: boolean }): void {
+  const current = scope.getStore();
+  if (current?.gitBacked === undefined) {
+    return;
+  }
+
+  for (const key of [...(current.memo?.keys() ?? [])]) {
+    if (!options.keepHome || !key.startsWith(HOME_VERIFICATION_KEY)) {
+      current.memo?.delete(key);
+    }
+  }
+
+  if (!options.keepHome) {
+    current.proven?.clear();
+  }
 }

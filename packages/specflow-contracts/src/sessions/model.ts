@@ -242,6 +242,7 @@ export const WorkDigestSchema = Type.Object(
   },
   closed,
 );
+export const TurnErrorSchema = Type.Object({ code: text(64), message: text(2048) }, closed);
 export const ConversationEntrySchema = Type.Object(
   {
     id: SessionUuidSchema,
@@ -260,6 +261,9 @@ export const ConversationEntrySchema = Type.Object(
     /** The Turn's latest `work-summary` entry carries the current digest once a ToolAction opened;
      * an earlier entry keeps the value it had while it was the latest. */
     digest: Type.Optional(WorkDigestSchema),
+    /** An `outcome` entry of a Turn that ended with an error: the Turn's safe reason (`code` lets a
+     * client say why and what to do). */
+    error: Type.Optional(TurnErrorSchema),
     createdAt: text(40),
   },
   closed,
@@ -301,7 +305,6 @@ export const ContentPageSchema = Type.Object(
   },
   closed,
 );
-export const TurnErrorSchema = Type.Object({ code: text(64), message: text(2048) }, closed);
 const turnFields = {
   mode: Type.Optional(SessionModeSchema),
   providerModeId: Type.Optional(text(128)),

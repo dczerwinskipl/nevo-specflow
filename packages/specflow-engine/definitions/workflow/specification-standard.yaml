@@ -28,6 +28,7 @@ steps:
     purpose: Write the Specification documents from the agreed requirements.
     transitions:
       - id: written
+        label: Specification written
         to: { step: solution }
         continuation: auto
   - id: solution
@@ -38,6 +39,7 @@ steps:
     purpose: Design the solution and record its decisions.
     transitions:
       - id: designed
+        label: Solution designed
         to: { step: breakdown }
         continuation: auto
   - id: breakdown
@@ -49,6 +51,7 @@ steps:
     produces: tasks
     transitions:
       - id: proposed
+        label: Breakdown proposed
         to: { step: breakdown-review }
         continuation: auto
   - id: breakdown-review
@@ -59,10 +62,12 @@ steps:
     purpose: Check that the Specification, the solution and the draft Tasks are complete and consistent.
     transitions:
       - id: approved
+        label: Breakdown approved
         result: pass
         to: { step: implementation }
         effects: [approve-draft-tasks]
       - id: changes-requested
+        label: Changes requested
         result: fail
         to: { step: breakdown }
         feedback: required
@@ -73,6 +78,7 @@ steps:
     purpose: Wait until every Task is finished. A Task that escalates sends the Specification back to the breakdown.
     transitions:
       - id: tasks-finished
+        label: All Tasks finished
         on: tasks-finished
         to: { step: acceptance }
       - id: task-escalated
@@ -88,6 +94,7 @@ steps:
     purpose: The owner accepts the implemented Specification.
     transitions:
       - id: accepted
+        label: Specification accepted
         to: { terminal: completed }
 returns:
   - step: requirements

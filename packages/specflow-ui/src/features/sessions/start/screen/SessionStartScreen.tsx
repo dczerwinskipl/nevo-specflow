@@ -139,16 +139,17 @@ export function SessionStartScreen({
     );
   };
 
-  const notChosen = t('sessionStart.executor.notChosen');
+  const agentNotChosen = t('sessionStart.executor.notChosen');
+  const modelNotChosen = t('sessionStart.executor.modelNotChosen');
   const contextValue = useMemo(
     () =>
       startContextValue({
         catalogue: source.catalogue,
         choice: agent,
         specification: source.specification,
-        notChosen,
+        notChosen: { agent: agentNotChosen, model: modelNotChosen },
       }),
-    [source.catalogue, agent, source.specification, notChosen],
+    [source.catalogue, agent, source.specification, agentNotChosen, modelNotChosen],
   );
 
   const contextAction: WorkspaceHeaderAction = !supportsSplit

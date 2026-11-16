@@ -41,6 +41,7 @@ it('reaches positive evidence after a full page of unrecoverable operations', as
   const effects: SessionEffects = {
     admit: () => Promise.reject(new Error('Unexpected admission')),
     reconcile,
+    settleStopped: () => Promise.reject(new Error('Unexpected native-stop settlement')),
   };
   const coordinator = createSessionCoordinator(
     store,

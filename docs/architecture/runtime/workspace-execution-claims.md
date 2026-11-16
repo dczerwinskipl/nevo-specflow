@@ -45,7 +45,7 @@ There is no separate reservation store. One JSON record per execution is the cla
 | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `intent {operationId, ownerId, binding}`     | `operationId` is the Runtime invocation id (a UUID, also the file name); `ownerId` the Session id; `binding` a sha256 of the Session, request, provider selection and workspace identity. |
 | `projectId`, `gitInstanceId`                 | The Project Home the claim belongs to. A record of another project is corrupt.                                                                                                            |
-| `workspace {workspaceId, root, instanceId?}` | The workspace incarnation the execution runs in.                                                                                                                                          |
+| `workspace {workspaceId, root, instanceId?}` | The workspace incarnation the execution runs in: the Engine's own checkout, or a registered workspace named at admission (a Specification's worktree).                                    |
 | `registryRevision`                           | The workspace registry revision at admission.                                                                                                                                             |
 | `resources`                                  | Exactly one: `project-write:<projectId>`.                                                                                                                                                 |
 | `phase`                                      | `admitted`, `dispatched`, `unknown` or `settled`.                                                                                                                                         |
@@ -66,14 +66,23 @@ admit ─▶ admitted ──mark dispatched──▶ dispatched ──settle(nat
             └──abandon──▶ settled(not-dispatched)
 ```
 
-- **Admit** (`admitWorkspaceExecution`) runs under the project control lock. It checks that the
-  workspace incarnation in the registry is still the Engine's, that the registry revision did not
+- **Admit** (`admitWorkspaceExecution`) runs under the project control lock. The claimed workspace
+  is the Engine's own checkout, or the registered workspace named by `{workspaceId}` (a
+  Specification's worktree, verified on disk and in Git first); every later transition names the same
+  workspace. With `{specId}`, admission also requires that the Specification is still bound to the
+  claimed workspace (its binding, else the primary checkout), so a rebind after the caller resolved
+  the workspace is never claimed. Runtime compares the claimed root with the execution folder before
+  any write driver starts, and abandons a mismatching claim as never dispatched. It checks that the workspace incarnation in the registry is still the claimed one, that
+  the registry revision did not
   change since it was read, and that no other claim conflicts (below), then publishes `admitted`. A
   retry with the same `operationId` returns the existing record when intent and workspace are equal,
   and fails with `EXECUTION_CONFLICT` otherwise.
-- **Dispatched** (`markWorkspaceExecutionDispatched`) is allowed only from `admitted`. Runtime MUST
-  await it before it calls the provider driver, so a record that is still `admitted` proves the
-  native process was never started.
+- **Dispatched** (`markWorkspaceExecutionDispatched`) is allowed only from `admitted`. Runtime marks
+  it right after the provider process's native-stop evidence is durable on the Turn (on Windows
+  before any provider code runs) and MUST await it before any input crosses the dispatch barrier. A
+  record that is still `admitted` therefore proves that no provider process of the invocation
+  received input, and a `dispatched` claim always has a recorded process to prove stopped. A
+  recorded process that may still run keeps even an `admitted` claim held.
 - **Unknown** (`markWorkspaceExecutionUnknown`) records that the process or its outcome cannot be
   verified (lost process, forced stop, contradicting facts). It is allowed from any unsettled phase.
 - **Abandon** (`abandonWorkspaceExecutionAdmission`) settles `admitted` as `not-dispatched`. From any
@@ -93,7 +102,8 @@ under a running agent is never silently accepted.
 boundary was never crossed, or the process owner proved the process stopped with a result. Time,
 process exit codes, a missing record or an operator assertion are not proof. There is no HTTP or CLI
 operation that forces a claim to succeed or fail; `settleWorkspaceExecution` is a trusted Runtime
-boundary.
+boundary. A claim neither receipt can settle (no recorded process evidence) is left to the
+[administrative recovery procedure](../ai/session-storage-and-lifecycle.md#administrative-recovery).
 
 ## The project-wide resource
 
@@ -110,7 +120,25 @@ execution claim as a conflict for every requested resource. So, in both directio
 - an execution is not admitted while an unfinished Create, Close, document change or manual commit
   holds any resource.
 
-At most one native agent execution therefore runs per project at a time. Per-Task or per-worktree
+The `SharedResourceError` names the claim it met (`holder`: its kind and operation id, and for an
+execution its `ownerId`, the Session). Callers word the refusal from it, never from the resource
+alone: a document change, a workflow-state change (a Task created or edited) and a manual commit
+refused by an execution claim are `SPEC_BUSY` with `details.cause: agent-turn` and a message that
+names the Session; Create and Close keep their own codes with the same message. A claim in phase
+`unknown` belongs to a Turn that has already ended without a verified outcome: its refusal is
+`agent-turn-unknown` and says to resolve the Session (Check outcome, or its recovery) instead of
+waiting for the Turn. This includes the
+Engine commands the agent runs inside its own Turn (`tasks create`, `tasks edit`): they are refused
+until the Turn ends.
+
+A mode without workspace write (a read-only Turn) takes no claim. Close still MUST NOT remove the
+checkout such a Turn works in; it asks the host's checkout quiescence instead (the owning Runtime's
+Turns, or the Session store's owner record from any other process), see
+[Specification lifecycle](specification-lifecycle.md#safe-integration-rebind-and-disposal).
+
+Claiming a Specification's worktree changes only where the agent runs (`cwd`), not this resource:
+the claim still excludes every other writer of the project. At most one native agent execution
+therefore runs per project at a time. Per-Task or per-worktree
 claims are future work and need real containment of the agent first (plan 06 F08,
 [execution scopes](../../ideas/specflow-engine/execution-scopes-and-recovery.md)).
 
@@ -130,13 +158,13 @@ files.
 
 ## Crash windows
 
-| Crash or failure                                    | State left                        | Resolution                                                                                                                                                                       |
-| --------------------------------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Runtime stored the Turn, Engine admission never ran | No record                         | Reconcile admits the same intent under the Engine lock (revalidating workspace and conflicts), then abandons it as `not-dispatched`. A missing record alone never ends a Turn.   |
-| After `admitted`, before `dispatched`               | `admitted`                        | The driver was never called: abandon to `not-dispatched` (on the spot or on reconcile, when Runtime's record says the native process was not dispatched).                        |
-| After `dispatched`, without a verified result       | `dispatched` or `unknown`         | The process may have written. The claim blocks the project until a `native-result` receipt exists; reconcile returns no evidence and the Turn stays `SESSION_RECOVERY_REQUIRED`. |
-| After the settled write, before the archive rename  | `settled` in the active directory | Harmless: the record stays where it is, admission skips settled records, and reads and an exact replay find it.                                                                  |
-| Read-back of a publication differs                  | Unverified record                 | `EXECUTION_RECOVERY_REQUIRED`; the next transition re-reads the same claim.                                                                                                      |
+| Crash or failure                                    | State left                        | Resolution                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| --------------------------------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Runtime stored the Turn, Engine admission never ran | No record                         | Reconcile admits the same intent under the Engine lock (revalidating workspace and conflicts), then abandons it as `not-dispatched`. A missing record alone never ends a Turn.                                                                                                                                                                                                                                                                                                                                                                            |
+| After `admitted`, before `dispatched`               | `admitted`                        | No input was dispatched (installation discovery, a launch without recorded evidence, or a crash between the evidence commit and the dispatch mark): abandon to `not-dispatched` on the spot or on reconcile. When the Turn already recorded its process, only once that process is proven stopped; until then the claim stays held.                                                                                                                                                                                                                       |
+| After `dispatched`, without a verified result       | `dispatched` or `unknown`         | The process may have written. The claim blocks the project until a `native-result` receipt exists. When the Turn recorded its provider's native-stop evidence and no process of that identity remains, startup recovery or reconcile settles the claim with the receipt `{process: 'stopped', outcome: 'interrupted'}`, then the Turn. Without that evidence (a live process, an OS answer that cannot be established, or a Turn recorded before Runtime kept the identity) reconcile returns no evidence and the Turn stays `SESSION_RECOVERY_REQUIRED`. |
+| After the settled write, before the archive rename  | `settled` in the active directory | Harmless: the record stays where it is, admission skips settled records, and reads and an exact replay find it.                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Read-back of a publication differs                  | Unverified record                 | `EXECUTION_RECOVERY_REQUIRED`; the next transition re-reads the same claim.                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 
 ## Errors and the Runtime mapping
 
@@ -149,7 +177,8 @@ files.
 
 Runtime (`createEngineSessionEffects`) maps `RESOURCE_CONFLICT` to `TURN_CONFLICT` ("an unfinished
 project writer prevents agent execution"); a Turn refused this way before its driver was invoked
-finishes `failed` as `not-dispatched`. Every other Engine error maps to `SESSION_RECOVERY_REQUIRED`.
+finishes `failed` as `not-dispatched`, with `TURN_CONFLICT` on its outcome entry so the UI says why
+and what to do. Every other Engine error maps to `SESSION_RECOVERY_REQUIRED`.
 Admission also refuses with `SESSION_RECOVERY_REQUIRED` when the Turn's workspace root or identity
 hash is not the Engine's workspace, or when the claim is already past `admitted`.
 

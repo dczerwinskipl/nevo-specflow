@@ -2,7 +2,7 @@ import { dirname, join } from 'node:path';
 
 import type { SpecFlowEngine } from '../application';
 import { withProjectControlLock } from '../project/control-lock';
-import { runReadRequest } from '../project/request-verification-memo';
+import { runReadRequest, runVerifiedMutation } from '../project/request-verification-memo';
 import { resolveSpecification } from '../specs/discovery';
 import { createDefaultDefinitionRegistry } from '../definitions/shipped-registry';
 import { loadDefinitions } from '../specs/definitions/loader';
@@ -153,7 +153,7 @@ function pendingTaskDocuments(engine: SpecFlowEngine): PendingTaskDocumentChange
 }
 
 /** An unsettled Close journal names the Specification (its subject, or a Workspace Close occupant). */
-async function closeInProgress(engine: SpecFlowEngine, specId: string): Promise<boolean> {
+export async function closeInProgress(engine: SpecFlowEngine, specId: string): Promise<boolean> {
   return (await listCloseJournals(engine.context)).some(
     (journal) =>
       journal.stage !== 'completed' &&
@@ -216,7 +216,11 @@ export async function openWorkflow(
     references: engineReferences(engine, options),
     holds: engineHolds(engine),
     now: () => new Date(),
-    serialize: (operation) => withProjectControlLock(engine.context, operation),
+    // One Git-backed verification per operation (the lock admission proves the Project Home; the
+    // Specification lookups and later lock sections of the same operation reuse it), not one per lookup.
+    serialize: (operation) =>
+      runVerifiedMutation(() => withProjectControlLock(engine.context, operation)),
+    operation: runVerifiedMutation,
     postActions: enginePostActions(engine),
   };
 
@@ -254,11 +258,11 @@ function enginePostActions(engine: SpecFlowEngine): WorkflowPostActions {
     async afterStepFinished(event): Promise<readonly PostActionResult[]> {
       const action = 'commit-execution-state';
       try {
-        const outcome = await commitExecutionState(
-          engine,
-          event.subject.specId,
-          `finish step ${event.step}${ofSubject(event.subject)} (attempt ${event.attempt})`,
-        );
+        const outcome = await commitExecutionState(engine, event.subject.specId, {
+          phrase: `finish "${event.stepTitle}"${ofSubject(event.subject)}`,
+          details: [`Step ${event.step}, attempt ${event.attempt}.`],
+        });
+        const held = 'held' in outcome && outcome.held ? { held: outcome.held } : {};
         switch (outcome.kind) {
           case 'committed':
             return [
@@ -269,10 +273,11 @@ function enginePostActions(engine: SpecFlowEngine): WorkflowPostActions {
                   ...(outcome.sha !== undefined ? { sha: outcome.sha } : {}),
                   paths: outcome.paths,
                 },
+                ...held,
               },
             ];
           case 'nothing-to-commit':
-            return [{ action, status: 'completed' }];
+            return [{ action, status: 'completed', ...held }];
           case 'not-applicable':
             return [{ action, status: 'skipped', reason: outcome.reason }];
         }

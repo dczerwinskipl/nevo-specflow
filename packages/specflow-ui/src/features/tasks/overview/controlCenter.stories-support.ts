@@ -452,9 +452,7 @@ export async function controlCenterWorkspace(
                 count: group.members.length,
                 tasks: group.members
                   .slice(0, 2)
-                  .map((task) =>
-                    named.has(task.id) ? { id: task.id } : { id: task.id, title: task.title },
-                  ),
+                  .map((task) => ({ id: task.id, title: task.title })),
                 more: Math.max(0, group.members.length - 2),
               })),
             compact: groups

@@ -1,31 +1,24 @@
 import type { MouseEvent } from 'react';
-import { Alert, Button, InformationList, Link, Typography } from '@nevo/ui';
+import { Alert, Button, EmptyState, InformationList, Link, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { FeatureUnavailable } from '../../../../app/errors/FeatureUnavailable';
 import { OperationalRow } from '../../../../shared/operational-list';
 import { WorkspaceSection } from '../../../../shared/workspace-section';
 import type { SpecificationWorkSectionContext } from '../../../specs';
-
-/** Whether the Overview shows the Tasks summary: Tasks exist, or their read failed. */
-export function tasksSummaryVisible({ data }: Pick<SpecificationWorkSectionContext, 'data'>) {
-  const availability = data.sectionAvailability?.tasks;
-  if (availability !== undefined && availability !== 'available') {
-    return true;
-  }
-
-  const overview = data.taskOverview;
-
-  return Boolean(overview && (overview.rows.length > 0 || overview.compact.length > 0));
-}
+import { useSpecificationWorkflow } from '../../execution/specification/SpecificationWorkflow';
+import { tasksStepLine } from '../../overview/tasksStepLine';
 
 /**
  * The Overview's Tasks: a preview of the Runtime's configured grouping, rendered as delivered. A
- * `row` group has a row (name, count, up to two Tasks; a Task already named by Requires attention
- * or Now comes by id only), opening the Tasks page at that group; `compact` groups share one quiet
- * line of links. The full inventory, New task and the row actions are on the Tasks page.
+ * `row` group has a row (name, count, up to two Tasks, each by id and title in every group), opening
+ * the Tasks page at that group; `compact` groups share one quiet
+ * line of links. The full inventory, New task and the row actions are on the Tasks page. Without
+ * Tasks the section keeps its place with an inline empty state naming the workflow step that
+ * produces them, when the workflow has one.
  */
 export function TasksSummarySection({ specId, data, actions }: SpecificationWorkSectionContext) {
   const { t } = useTranslation();
+  const workflow = useSpecificationWorkflow();
   const availability = data.sectionAvailability?.tasks;
   if (
     availability === 'unavailable' &&
@@ -43,8 +36,22 @@ export function TasksSummarySection({ specId, data, actions }: SpecificationWork
   }
 
   const overview = data.taskOverview;
-  if (!overview) {
-    return null;
+  if (!overview || (overview.rows.length === 0 && overview.compact.length === 0)) {
+    return (
+      <WorkspaceSection aria-labelledby="tasks-summary-heading" data-tasks-summary="">
+        <WorkspaceSection.Header
+          id="tasks-summary-heading"
+          headingTag="h2"
+          title={t('specification.tasksHeading')}
+          icon="list-checks"
+        />
+        <EmptyState
+          variant="inline"
+          title={t('specification.tasksEmptyTitle')}
+          description={tasksStepLine(t, workflow?.projection?.outline)}
+        />
+      </WorkspaceSection>
+    );
   }
 
   const openGroup = (group: string) => (event?: MouseEvent) => {
@@ -70,7 +77,7 @@ export function TasksSummarySection({ specId, data, actions }: SpecificationWork
           {overview.rows.map((row) => {
             const parts = [
               t('taskOverview.summary.count', { count: row.count }),
-              ...row.tasks.map((task) => (task.title ? `${task.id} ${task.title}` : task.id)),
+              ...row.tasks.map((task) => `${task.id} ${task.title}`),
               ...(row.more > 0 ? [t('taskOverview.summary.more', { count: row.more })] : []),
             ];
 
@@ -81,7 +88,8 @@ export function TasksSummarySection({ specId, data, actions }: SpecificationWork
                 primaryHref={actions.tasksHref({ group: row.groupId })}
                 onPrimaryClick={openGroup(row.groupId)}
                 primaryAriaLabel={t('taskOverview.summary.openGroup', { group: row.name })}
-                supporting={<span className="block truncate">{parts.join(' · ')}</span>}
+                // Two lines at most: a narrow row keeps the second Task's title readable.
+                supporting={<span className="line-clamp-2">{parts.join(' · ')}</span>}
                 dataAttributes={{ 'data-summary-group': row.groupId }}
               />
             );

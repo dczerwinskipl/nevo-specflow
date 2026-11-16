@@ -20,6 +20,12 @@ export interface RegisteredDocumentSummary {
   readonly type: string;
   readonly title: string;
   readonly revision: string;
+  /**
+   * The file still has exactly the content the Engine created it with from an archetype template:
+   * its revision equals the registry entry's `templateRevision`. False for a document the Engine did
+   * not create from a template.
+   */
+  readonly templateOnly: boolean;
   /** The open commit that covers the file (pending, failed, uncommitted); absent when none does. */
   readonly commit?: DocumentCommitMarker;
 }
@@ -63,19 +69,24 @@ async function summariesOfLoaded(
         document.path,
         resolved,
         resolved.summaryMemo,
-        (analysis) => ({
-          title: deriveDocumentTitle(
-            document.path,
-            analysis.kind === 'text' && analysis.bytes ? decodeText(analysis.bytes) : undefined,
-          ),
-          revision: analysis.revision,
-        }),
+        (analysis) => {
+          const text =
+            analysis.kind === 'text' && analysis.bytes ? decodeText(analysis.bytes) : undefined;
+
+          return { title: deriveDocumentTitle(document.path, text), revision: analysis.revision };
+        },
       );
       if (probe.kind !== 'file') {
         return undefined;
       }
 
-      return { id: document.id, path: document.path, type: document.type, ...probe.value };
+      return {
+        id: document.id,
+        path: document.path,
+        type: document.type,
+        ...probe.value,
+        templateOnly: probe.value.revision === document.templateRevision,
+      };
     },
   );
 

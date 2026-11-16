@@ -72,7 +72,9 @@ export const ManagedInSpecification: Story = {
     // The Runtime's own providers, the first available one chosen; Context pins the Specification.
     await expect(canvas.getByRole('radio', { name: /Claude/ })).toBeChecked();
     await expect(canvas.getByRole('button', { name: /Logowanie SSO/ })).toBeVisible();
-    await expect(canvas.getByText('nie wybrano')).toBeVisible();
+    // Every provider can work here, so the worktree note is not shown.
+    await expect(canvas.queryByText(/obsługuje worktree/)).toBeNull();
+    await expect(canvas.getByText('nie wybrano modelu')).toBeVisible();
     await expect(canvas.getByRole('combobox', { name: 'Model' })).toBeEnabled();
     await expect(canvas.getByRole('combobox', { name: 'Effort' })).toBeDisabled();
     await expect(startButton(canvas)).toBeDisabled();
@@ -209,6 +211,40 @@ export const ManagedNoProviderAvailable: Story = {
     // The Runtime is asked again only on request, after signing in.
     await expect(canvas.getByRole('button', { name: 'Spróbuj ponownie' })).toBeEnabled();
     await expect(canvas.getByText('nie wybrano')).toBeVisible();
+  },
+};
+
+/**
+ * A Specification in its own worktree: the Runtime lists the providers bound to its own checkout
+ * (Codex, Antigravity) as unavailable here: each tile says so briefly, and one note below the tiles
+ * says what, why and what to do.
+ */
+export const ManagedProviderNotForSpecificationWorktree: Story = {
+  args: {
+    providers: [
+      claudeDescriptor,
+      ...[codexDescriptor, antigravityDescriptor].map((descriptor) => ({
+        ...descriptor,
+        readiness: 'unavailable' as const,
+        reasonCode: 'SPECIFICATION_WORKTREE_UNSUPPORTED' as const,
+        reason: "This provider runs only in the Runtime's own checkout.",
+      })),
+    ],
+  },
+  play: async ({ canvas }) => {
+    await settle();
+    await expect(await canvas.findByRole('radio', { name: /Claude/ })).toBeChecked();
+    for (const name of [/Codex/, /Antigravity/]) {
+      await expect(canvas.getByRole('radio', { name })).toBeDisabled();
+    }
+
+    await expect(canvas.getAllByText('Niedostępny w worktree')).toHaveLength(2);
+    await expect(
+      canvas.getAllByText(
+        'Niektórzy dostawcy są niedostępni w tej specyfikacji: działają tylko w folderze projektu, a ta specyfikacja ma własny worktree. Wybierz dostawcę, który obsługuje worktree, albo rozpocznij sesję poza specyfikacją.',
+      ),
+    ).toHaveLength(1);
+    await expect(canvas.queryByText(/Runtime's own checkout/)).toBeNull();
   },
 };
 

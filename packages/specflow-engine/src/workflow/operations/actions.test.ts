@@ -736,8 +736,8 @@ const acceptedTransition = async (dependencies: Dependencies) =>
 async function breakdownThatMayEnd(): Promise<Dependencies> {
   const edited = await seedCatalogueWith((text) =>
     text.replace(
-      /( {6}- id: proposed\r?\n {8}to: \{ step: breakdown-review \}\r?\n {8}continuation: auto)(\r?\n)/u,
-      '      - id: proposed$2        result: proposed$2        to: { step: breakdown-review }$2        continuation: auto$2' +
+      /( {6}- id: proposed)(\r?\n)((?: {8}label: .*\r?\n)? {8}to: \{ step: breakdown-review \}\r?\n {8}continuation: auto\r?\n)/u,
+      '$1$2        result: proposed$2$3' +
         '      - id: nothing-to-do$2        result: empty$2        to: { terminal: completed }$2',
     ),
   );
@@ -968,7 +968,7 @@ describe('a Specification does not complete while its Tasks are open', () => {
     const dependencies = await acceptingWithOpenTasks(
       seedCatalogueWith((text) =>
         skipWait(text).replace(
-          /( {6}- id: accepted\r?\n {8}to: \{ terminal: completed \})(\r?\n)/u,
+          /( {6}- id: accepted\r?\n(?: {8}label: .*\r?\n)? {8}to: \{ terminal: completed \})(\r?\n)/u,
           '$1$2        effects: [approve-draft-tasks]$2',
         ),
       ),

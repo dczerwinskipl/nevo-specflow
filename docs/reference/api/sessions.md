@@ -82,9 +82,32 @@ Specification/Task projections of Session references:
 | `session.execute-write` (Turn start/respond in write mode)                         | `{projectId, sessionId}` | `{projectId, sessionId}` (no `specId`)  |
 | `session.execute-write` (create in write mode)                                     | `{projectId}`            | `{projectId}`                           |
 
-`session.execute-write` never carries `specId`: until a Specification's Session is confined to that
-Specification's worktree, every provider runs with the Runtime's whole verified workspace as `cwd`,
-so a Specification-scoped grant must not admit writes. A Session's home Specification is immutable,
+`session.execute-write` never carries `specId`: a write Turn holds the project-wide execution claim
+and a native agent is not contained to its `cwd`, so a Specification-scoped grant must not admit
+writes.
+
+**Execution workspace.** A Turn of a standalone Session runs in the Runtime's verified workspace. A
+Turn of a Session associated with Specification S runs in S's workspace, resolved through the Engine
+at Turn start (S's registry binding, else the primary checkout; time-of-check). When that workspace
+is not the Runtime's own, a Turn runs there when the provider supports it (Claude); a write Turn's
+Engine claim names that workspace and stays project-wide
+([Workspace execution claims](../../architecture/runtime/workspace-execution-claims.md)). A provider
+bound to the Runtime's checkout (Codex, Antigravity), or an unregistered or unavailable workspace, is
+refused before admission with `422 CAPABILITY_UNSUPPORTED` and `details.reason`
+`specification-worktree-provider-unsupported` or `specification-workspace-unavailable`. The same
+provider is refused earlier, at the composed create in that Specification
+(`422 CAPABILITY_UNSUPPORTED`, `specification-worktree-provider-unsupported`), and the catalogue read
+for it (`?specId`) lists it `unavailable` with `reasonCode` `SPECIFICATION_WORKTREE_UNSUPPORTED`. A
+workspace that cannot be resolved at the create or the catalogue read refuses nothing there; the
+Turn start resolves it again. A Turn in a
+workspace a Close is removing, or of a Specification an unfinished Close names, is refused with
+`409 TURN_CONFLICT` and `details.reason` `specification-close-in-progress`. A Turn of a
+Specification's Session is registered in its workspace before the workspace is verified again
+(binding, checkout and Close journal), and stays registered until it ends: a workspace that changed in
+between refuses the start with `409 TURN_CONFLICT` (`specification-workspace-changed`), and Close
+refuses to remove a registered checkout ([Close](specflow-specification-operations.md)). A write Turn's claim re-checks under the Engine lock
+that the Specification is still bound to the claimed workspace, and no write driver starts outside the
+root the claim names. A Session never falls back to the Runtime's folder. A Session's home Specification is immutable,
 so its scope never changes. See
 [Runtime authorization](../../architecture/runtime/auth/authorization.md#session-scope). Missing auth -> existing 401 authentication_required; forbidden -> 403
 forbidden; unknown ID -> 404 SESSION_NOT_FOUND after access handling. Existing Auth conventions
@@ -131,6 +154,7 @@ type ConversationEntry = {
   text: TextPreview;
   workId?: string;
   digest?: WorkDigest; // work-summary entries only; see "Work digest"
+  error?: { code: string; message: string }; // outcome entry of a Turn that ended with an error
   createdAt: string;
 };
 type SessionInfo = {
@@ -284,6 +308,10 @@ existing Session. See [the V10 backend readiness audit](../../ideas/specflow-run
 Reconcile uses session.manage and the existing positive-evidence recovery path. It accepts no
 caller-supplied outcome, native receipt or force flag, and never resends a possibly executed prompt.
 Unavailable evidence leaves the operation unknown rather than manufacturing a terminal result.
+Positive evidence is an exact Engine settlement receipt or native-stop evidence: no process of the
+identity recorded before dispatch remains, which settles the Turn `interrupted` with error
+`PROCESS_STOPPED` (architecture.ai.session-storage-and-lifecycle). Startup recovery applies the same
+evidence without a request. A live process answers 409 SESSION_RECOVERY_REQUIRED.
 
 Every command acknowledgement is a closed contract schema (`CreateSessionResult`,
 `StartTurnResult`, `CancelTurnResult`, `RespondInteractionResult`, `ReconcileTurnResult`, with
@@ -670,13 +698,21 @@ source beyond selecting which check runs:
 | `?specId=S`    | a Session started in Specification S         | the composed create's checks: `spec.start-session` at `specScope(projectId, S)` and `session.create` at `{projectId, specId: S}`                 |
 | `?sessionId=X` | the composer of Session X (model/mode/retry) | `session.manage` at X's store-derived `sessionScope`: any-scope precheck first (403 for an unknown Session too), then the identity (404 unknown) |
 
+The read re-runs a provider's bounded discovery when its last check is older than its short cache,
+so it can take up to `PROVIDER_DISCOVERY_BUDGET_MS` (30 s) on a cold machine, even right after a
+startup probe; clients give it that budget plus a margin, not the default read deadline.
+
 Both parameters together are `400 SESSION_INPUT_INVALID`, as is any other parameter or a malformed
 id. `?specId` is a pure authorization check: it does not verify that the Specification exists
 (the catalogue is not sensitive and names no Specification; the composed create verifies it). A `workspace-write` provider mode is `authorized` when the caller holds `session.execute-write`
 at `{projectId}` (no context, `?specId`) or at the Session's own execute-write scope
 (`?sessionId`); it never carries `specId`. The UI's New Session in a Specification reads `?specId`,
 the Full Session composer `?sessionId`, so a Specification-scoped developer can start and steer
-Sessions in its Specification without any project-level grant.
+Sessions in its Specification without any project-level grant. Read with `?specId` for a
+Specification in a worktree other than the Runtime's checkout, a provider that runs only in the
+Runtime's checkout is `readiness: 'unavailable'` with `reasonCode`
+`SPECIFICATION_WORKTREE_UNSUPPORTED` ([Execution workspace](#authorization-and-transport)); the UI explains it in
+its own words.
 
 ProviderDescriptor = {providerId, title, readiness:'ready'|'unavailable'|'authenticationRequired'|
 'unknown', reason?:string, reasonCode?:string, compatibility?:{classification:'tested'|'provisional'|'unsupported',protocolProfile,version?}, capabilities:{questions,permissions,cancel,resume,modelOverride,effortOverride},

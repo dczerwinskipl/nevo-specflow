@@ -18,6 +18,7 @@ export type WorkspaceDocumentsSource = (specId: string) => Promise<
           readonly filename: string;
           readonly revision: string;
           readonly kind: string;
+          readonly templateOnly: boolean;
         }[];
         readonly overviewDocumentId?: string;
       };
@@ -45,6 +46,7 @@ export function createEngineWorkspaceDocuments(engine: SpecFlowEngine): Workspac
             filename: summary.path,
             revision: summary.revision,
             kind: summary.type,
+            templateOnly: summary.templateOnly,
           })),
           // The Engine's overview identity, the same one the workspace description is read by.
           ...(summaries.some((summary) => summary.id === OVERVIEW_DOCUMENT_ID)

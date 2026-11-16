@@ -17,11 +17,13 @@ import {
   planPublicCloseOperation,
   reconcileArchivedConflictScratchOperation,
   type PlanPublicCloseOptions,
+  readRegistrySnapshot,
   type PublicClosePreview,
   type SpecFlowEngine,
 } from '@nevo/specflow-engine';
 import {
   CloseErrorSchema,
+  CloseOccupancySchema,
   CloseOperationParamsSchema,
   ClosePreviewQuerySchema,
   ClosePreviewSchema,
@@ -50,13 +52,35 @@ import { requireCapability } from '../../auth';
 import { specScope } from '../scope';
 import { documentFailure } from '../../documents';
 import { contractRef } from '../../../server/shared-contracts';
-import { whileReleased, type ReleaseWorkspace } from './release-workspace';
+import {
+  assertNoRunningTurns,
+  sessionTurnBlocker,
+  specificationOccupancy,
+  whileReleased,
+  WorkspaceBusyError,
+  type ReleaseWorkspace,
+  type RunningSessions,
+} from './release-workspace';
 
-export type { ReleaseWorkspace } from './release-workspace';
+export type { ReleaseWorkspace, RunningSessions } from './release-workspace';
+export { WorkspaceBusyError } from './release-workspace';
 
 export interface SpecsCloseEndpointOptions {
   readonly engine?: SpecFlowEngine;
   readonly releaseWorkspace?: ReleaseWorkspace;
+  /** The Sessions whose Turn runs in a workspace now: a preview refuses while there are any. */
+  readonly runningSessions?: RunningSessions;
+}
+
+/** `CLOSE_BLOCKED` for agent Session Turns working in the checkout Close would remove. */
+function busyRefusal(error: unknown) {
+  return error instanceof WorkspaceBusyError
+    ? {
+        code: 'CLOSE_BLOCKED' as const,
+        error: 'CLOSE_BLOCKED' as const,
+        blockers: [sessionTurnBlocker(error.sessionIds)],
+      }
+    : undefined;
 }
 
 type CloseKind = 'worktree-close' | 'specification-close';
@@ -337,6 +361,11 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
 
           return reply.code(result.status === 'completed' ? 200 : 202).send(result);
         } catch (error) {
+          const busy = busyRefusal(error);
+          if (busy) {
+            return reply.code(409).send(busy);
+          }
+
           const refusal = documentRefusal(error);
           if (refusal) {
             return reply.code(refusal.status).send(refusal.body);
@@ -389,9 +418,15 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
             operationId,
             request.query.integrateToTargetBranch,
           );
+          await assertNoRunningTurns(options.runningSessions, plan.sourceWorkspace);
 
           return reply.code(200).send(plan);
         } catch (error) {
+          const busy = busyRefusal(error);
+          if (busy) {
+            return reply.code(409).send(busy);
+          }
+
           const code = safeCode(error);
           if (!code) {
             throw error;
@@ -407,6 +442,46 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
       },
     );
   }
+
+  // A Close the workflow blocks is not planned: its dialog reads what else holds the checkout here.
+  typed.get(
+    '/api/specs/:specId/close/occupancy',
+    {
+      preHandler: authSpec,
+      schema: {
+        tags: ['Specifications'],
+        summary:
+          'Read the agent Session Turns that keep a Specification Close from removing its worktree',
+        params: CloseSpecParamsSchema,
+        response: { 200: CloseOccupancySchema, ...errors },
+      },
+    },
+    async (request, reply) => {
+      reply.header('Cache-Control', 'no-store');
+      if (!options.engine) {
+        return reply.code(503).send({ code: 'ENGINE_UNAVAILABLE', error: 'ENGINE_UNAVAILABLE' });
+      }
+
+      try {
+        const registry = await readRegistrySnapshot(options.engine);
+
+        return reply.code(200).send({
+          blockers: await specificationOccupancy(
+            registry,
+            request.params.specId,
+            options.runningSessions,
+          ),
+        });
+      } catch (error) {
+        const code = safeCode(error);
+        if (!code) {
+          throw error;
+        }
+
+        return reply.code(statusForCloseError(code)).send({ code, error: code });
+      }
+    },
+  );
 
   // Workspace scope is not an alias for an arbitrary Spec ID. Authorization
   // runs BEFORE the read-only preview or journal inspection: unauthorized
@@ -432,13 +507,19 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
         projectWorkspaceCloseAllowed(request, engine);
         projectIntegrationAllowed(request, engine);
 
-        return reply.code(200).send(
-          await planPublicWorkspaceCloseOperation(engine, {
-            workspaceId: request.params.workspaceId,
-            operationId: randomUUID(),
-          }),
-        );
+        const plan = await planPublicWorkspaceCloseOperation(engine, {
+          workspaceId: request.params.workspaceId,
+          operationId: randomUUID(),
+        });
+        await assertNoRunningTurns(options.runningSessions, plan.sourceWorkspace);
+
+        return reply.code(200).send(plan);
       } catch (error) {
+        const busy = busyRefusal(error);
+        if (busy) {
+          return reply.code(409).send(busy);
+        }
+
         const code = safeCode(error);
         if (!code) {
           throw error;
@@ -488,6 +569,11 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
 
         return reply.code(result.status === 'completed' ? 200 : 202).send(result);
       } catch (error) {
+        const busy = busyRefusal(error);
+        if (busy) {
+          return reply.code(409).send(busy);
+        }
+
         const refusal = documentRefusal(error);
         if (refusal) {
           return reply.code(refusal.status).send(refusal.body);

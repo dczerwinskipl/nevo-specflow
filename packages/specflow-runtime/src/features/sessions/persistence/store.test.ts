@@ -1073,3 +1073,86 @@ describe('durable Session store', () => {
     expect(entry).not.toHaveProperty('digest');
   });
 });
+
+describe('outcome reason', () => {
+  it('keeps the reason a Turn ended with on its outcome entry', async () => {
+    const { sessionId } = await create('claude');
+    const start = await store!.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      nativeWorkspace: directory,
+      nativeScope: 'account',
+      input: { requestId: randomUUID(), message: 'First' },
+    });
+    const error = { code: 'TURN_CONFLICT', message: 'An unfinished project writer prevents it.' };
+    await store!.call({
+      op: 'fact',
+      sessionId,
+      turnId: start.turnId,
+      invocationId: start.invocationId,
+      driverSeq: 1,
+      fact: { kind: 'outcome', outcome: 'failed', error },
+    });
+    const outcome = (await snap(sessionId)).entries.at(-1);
+    expect(outcome).toMatchObject({ kind: 'outcome', text: { text: 'failed' }, error });
+    expect(sessionValidators.snapshot(await snap(sessionId))).toBe(true);
+  });
+});
+
+describe('native-stop evidence record', () => {
+  it('records one well-formed process identity per invocation, only before the dispatch barrier', async () => {
+    const { sessionId } = await create('claude');
+    const start = await store!.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      nativeWorkspace: directory,
+      nativeScope: 'account',
+      input: { requestId: randomUUID(), message: 'First' },
+    });
+    const ids = { sessionId, turnId: start.turnId, invocationId: start.invocationId };
+    const identity = { platform: 'posix' as const, groupId: 4242, leaderStart: '100' };
+    await expect(
+      store!.call({
+        op: 'process-identity',
+        ...ids,
+        identity: { ...identity, groupId: -1 },
+      }),
+    ).rejects.toMatchObject({ code: 'SESSION_RECOVERY_REQUIRED' });
+    await expect(store!.call({ op: 'process-identity', ...ids, identity })).resolves.toBe(true);
+    await expect(
+      store!.call({ op: 'process-identity', ...ids, identity: { ...identity, groupId: 4243 } }),
+    ).rejects.toMatchObject({ code: 'SESSION_RECOVERY_REQUIRED' });
+    await store!.call({ op: 'dispatch-intent', ...ids });
+    await expect(
+      store!.call<unknown[]>({ op: 'effect-candidates', sessionId, turnId: start.turnId }),
+    ).resolves.toEqual([
+      expect.objectContaining({ turnId: start.turnId, nativeProcess: identity }),
+    ]);
+  });
+
+  it('refuses evidence recorded after the dispatch barrier', async () => {
+    const { sessionId } = await create('claude');
+    const start = await store!.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      nativeWorkspace: directory,
+      nativeScope: 'account',
+      input: { requestId: randomUUID(), message: 'First' },
+    });
+    const ids = { sessionId, turnId: start.turnId, invocationId: start.invocationId };
+    await store!.call({ op: 'dispatch-intent', ...ids });
+    await expect(
+      store!.call({
+        op: 'process-identity',
+        ...ids,
+        identity: { platform: 'posix', groupId: 4242 },
+      }),
+    ).rejects.toMatchObject({ code: 'SESSION_RECOVERY_REQUIRED' });
+    await expect(
+      store!.call<unknown[]>({ op: 'effect-candidates', sessionId, turnId: start.turnId }),
+    ).resolves.toEqual([]);
+  });
+});

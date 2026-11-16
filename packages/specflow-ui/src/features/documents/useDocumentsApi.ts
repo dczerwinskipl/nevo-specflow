@@ -22,9 +22,15 @@ export function documentsApiFor(services: SpecFlowAppServices, kind: DocumentsAp
  * The documents port of the connected Runtime. The only place the documents feature decides by
  * Runtime mode; everything above it (hooks, components) is shared by both modes.
  */
-export function useDocumentsApi(): { api: DocumentsApi; kind: DocumentsApiKind } {
+export function useDocumentsApi(): {
+  api: DocumentsApi;
+  kind: DocumentsApiKind;
+  /** False while the Runtime mode loads: `kind` is a placeholder then, so nothing should be read. */
+  settled: boolean;
+} {
   const services = useAppServices();
-  const kind = documentsApiKind(useRuntimeMode());
+  const mode = useRuntimeMode();
+  const kind = documentsApiKind(mode);
 
-  return { api: documentsApiFor(services, kind), kind };
+  return { api: documentsApiFor(services, kind), kind, settled: mode !== 'loading' };
 }

@@ -126,8 +126,10 @@ only after Engine settles the receipt.
 
 Native `api_error` results (including HTTP 429) become safe structured failures; native error prose
 is excluded. Loss without an authoritative outcome stays unknown. Provider-supplied thinking text is
-reasoning content; numeric `system/thinking_tokens` frames and foreground `tool_progress` metadata
-are validated and ignored, and final native usage remains authoritative.
+reasoning content; numeric `system/thinking_tokens` frames, foreground `tool_progress` metadata
+(including the 30-second heartbeat whose parent is the open tool call itself) and
+`system/permission_denied` for an open tool call (its error tool result follows) are validated and
+ignored, and final native usage remains authoritative.
 
 ## Limits
 

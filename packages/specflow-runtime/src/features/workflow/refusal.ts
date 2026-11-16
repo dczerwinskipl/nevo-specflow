@@ -202,18 +202,41 @@ function failure(
 /**
  * The owner actor of an authenticated request (`authz.readContext().subject`): the recorded actor is
  * always derived from the caller, never from the request body. The trusted local identity is
- * `trust: local`; an authenticated subject is `trust: authenticated`. An identity too long for the
- * record is stored as its digest.
+ * `trust: local`; an authenticated subject is `trust: authenticated`, recorded as `<kind>:<id>`
+ * (`user:ann`), not as the serialized subject key. An identity too long for the record is stored as
+ * its digest.
  */
 export function ownerActorOf(subject: string): OwnerActor {
   if (subject === TRUSTED_LOCAL_SUBJECT) {
     return { class: 'human', details: { actorId: 'runtime:trusted-local', trust: 'local' } };
   }
 
+  const identity = subjectIdentity(subject);
   const actorId =
-    subject.length <= 200
-      ? subject
-      : 'sha256:' + createHash('sha256').update(subject).digest('hex');
+    identity.length <= 200
+      ? identity
+      : 'sha256:' + createHash('sha256').update(identity).digest('hex');
 
   return { class: 'human', details: { actorId, trust: 'authenticated' } };
+}
+
+/** `readContext().subject` serializes the Auth subject `{kind, id}`; the record keeps `kind:id`. */
+function subjectIdentity(subject: string): string {
+  try {
+    const parsed: unknown = JSON.parse(subject);
+    if (
+      parsed !== null &&
+      typeof parsed === 'object' &&
+      typeof (parsed as { kind?: unknown }).kind === 'string' &&
+      typeof (parsed as { id?: unknown }).id === 'string'
+    ) {
+      const { kind, id } = parsed as { kind: string; id: string };
+
+      return `${kind}:${id}`;
+    }
+  } catch {
+    // Not a serialized subject: recorded as it is.
+  }
+
+  return subject;
 }

@@ -30,7 +30,8 @@ export function defaultManualCommitSubject(input: {
   if (input.scope === 'specification' && input.slug !== undefined) {
     const subject = `spec(docs): manual commit ${input.slug}`;
 
-    return Array.from(subject).slice(0, COMMIT_SUBJECT_MAX).join('');
+    // Never cut: without room for the slug the subject goes without it (the trailers name the Specification).
+    return Array.from(subject).length <= COMMIT_SUBJECT_MAX ? subject : 'spec(docs): manual commit';
   }
 
   return 'manual commit: uncommitted Engine changes';

@@ -37,6 +37,23 @@ describe('startCatalogueFromProviders', () => {
     expect(only(providerDescriptor({ providerId: 'p' })).reason).toBeUndefined();
   });
 
+  it('marks a provider that cannot work in the Specification worktree with a short reason', () => {
+    const provider = only(
+      providerDescriptor({
+        providerId: 'codex',
+        readiness: 'unavailable',
+        reasonCode: 'SPECIFICATION_WORKTREE_UNSUPPORTED',
+        reason: "This provider runs only in the Runtime's own checkout.",
+      }),
+    );
+    expect(provider).toMatchObject({
+      available: false,
+      reason: { key: 'sessionStart.provider.worktreeUnsupported' },
+      unavailableInWorktree: true,
+    });
+    expect(provider.hint).toBeUndefined();
+  });
+
   it('keeps the provider modes with their availability: ready, authorized and offered', () => {
     const provider = only(
       providerDescriptor({

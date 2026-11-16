@@ -8,6 +8,7 @@ import { readCloseJournal } from '../journal/store';
 import { CloseOperationError, type CloseJournal } from '../model';
 import { reserveCloseOperation } from '../reservation';
 import { advanceCloseIntegration } from './integration';
+import { requireQuietCheckoutBeforeClose } from '../checkout-quiescence';
 
 export type CloseWorktreeResult =
   { readonly status: 'completed'; readonly journal: CloseJournal } | DivergentCloseNeedsResolution;
@@ -24,6 +25,7 @@ export async function closeWorktree(
   request: { readonly operationId: string; readonly specId: string },
 ): Promise<CloseWorktreeResult> {
   const admitted = await reserveCloseOperation(engine, { ...request, kind: 'worktree-close' });
+  await requireQuietCheckoutBeforeClose(engine, admitted.journal);
   let journal = admitted.journal;
   journal = await advanceCloseIntegration(engine, journal);
   if (journal.stage === 'integration-scratch-conflict') {
@@ -74,6 +76,7 @@ export async function closeWorkspace(
   request: { readonly operationId: string; readonly workspaceId: string },
 ): Promise<CloseWorktreeResult> {
   const admitted = await reserveCloseOperation(engine, { ...request, kind: 'workspace-close' });
+  await requireQuietCheckoutBeforeClose(engine, admitted.journal);
   const journal = await advanceCloseIntegration(engine, admitted.journal);
   if (journal.stage === 'integration-scratch-conflict') {
     return inspectDivergentCloseResolution(engine, request.operationId);

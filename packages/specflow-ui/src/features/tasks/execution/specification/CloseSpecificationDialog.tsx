@@ -12,14 +12,21 @@ import {
   DialogTitle,
   Typography,
 } from '@nevo/ui';
-import type { ExitBlocker, WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
+import type { CloseRefusalBlocker } from '@nevo/specflow-contracts/specs';
+import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { useAppServices } from '../../../../app/useAppServices';
 import { InlineAction } from '../InlineAction';
 import { specsOverviewKeys } from '../../../specs/read-model';
 import { invalidateAfterTaskChange } from '../../authoring/queries';
 import { workflowRefusalKey, workflowRefusalOf } from '../refusal';
 import { focusInitial } from '../focusInitial';
-import { BlockerGroups, ITEMS_SHOWN, closeReasons, type BlockerTask } from './BlockerGroups';
+import {
+  BlockerGroups,
+  ITEMS_SHOWN,
+  closeReasons,
+  workflowAtOf,
+  type BlockerTask,
+} from './BlockerGroups';
 
 type Position = WorkflowActionProjection['position'];
 
@@ -40,8 +47,9 @@ export interface CloseSpecificationDialogProps {
 }
 
 /**
- * Close preflight: the workflow blockers of the projection (or of a `CLOSE_BLOCKED` preview) as
- * grouped blockers with only Dismiss; otherwise the Close the preview planned, with the cancelled
+ * Close preflight: the workflow blockers of the projection with the agent Turns running in the
+ * checkout (the occupancy read), or the blockers of a `CLOSE_BLOCKED` preview, as grouped blockers
+ * with only Dismiss; otherwise the Close the preview planned, with the cancelled
  * Tasks named as not delivered. Git and workspace rules are still checked by the Close itself.
  */
 export function CloseSpecificationDialog(props: CloseSpecificationDialogProps) {
@@ -86,6 +94,16 @@ function CloseBody({
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
+  // A Close the workflow blocks is not planned; the running agent Turns that would hold its
+  // checkout too are read on their own, so both are listed at once.
+  const occupancy = useQuery({
+    queryKey: ['close-occupancy', specId],
+    queryFn: ({ signal }) => workflowExecutionApi.closeOccupancy(specId, signal),
+    enabled: workflowBlockers !== undefined,
+    retry: false,
+    gcTime: 0,
+    refetchOnWindowFocus: false,
+  });
   const close = useMutation({
     mutationFn: (operationId: string) => workflowExecutionApi.close(specId, operationId),
     // Whatever the answer, the Specification may have changed (closed, archived, partly done).
@@ -105,7 +123,9 @@ function CloseBody({
   const refusedBlockers = [previewRefusal, closeRefusal].find(
     (refusal) => refusal?.code === 'CLOSE_BLOCKED',
   )?.blockers;
-  const blockers: readonly ExitBlocker[] | undefined = workflowBlockers ?? refusedBlockers;
+  const blockers: readonly CloseRefusalBlocker[] | undefined = workflowBlockers
+    ? [...workflowBlockers, ...(occupancy.data?.blockers ?? [])]
+    : refusedBlockers;
   const position: Position = projection.position;
   const abandonment =
     position.kind === 'terminal' && position.abandonment ? position.abandonment : undefined;
@@ -123,7 +143,7 @@ function CloseBody({
           <DialogDescription>
             {t('workflowExecution.close.blocked', {
               title: specTitle,
-              reasons: closeReasons(t, i18n.language, blockers, tasks),
+              reasons: closeReasons(t, i18n.language, blockers, tasks, workflowAtOf(position)),
             })}
           </DialogDescription>
         </DialogHeader>
@@ -132,6 +152,7 @@ function CloseBody({
             blockers={blockers}
             order="close"
             tasks={tasks}
+            workflowAt={workflowAtOf(position)}
             onOpenTask={(id) => go(() => onOpenTask(id))()}
             onSeeWorkflow={go(onSeeWorkflow)}
             onSeeTasks={go(onSeeTasks)}

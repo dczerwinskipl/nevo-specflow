@@ -25,6 +25,7 @@ import { MANIFEST_MAX_BYTES } from '../limits';
 import { WorkflowError } from '../../../workflow/errors';
 import type { LoadedDocumentContainer } from '../loaded-specification';
 import type { AdmittedDocumentChange } from './admission';
+import { claimConflictOf } from './claim-source';
 import { BUSY_RETRY_AFTER_MS, assertNoClaimedBatchOverlap } from './reservation-guard';
 import {
   findDocumentChangeJournal,
@@ -134,7 +135,9 @@ export async function reserveOnce(
           throw documentChangeError('journal-corrupt', 'A journal is corrupt; recover it.');
         }
 
-        return busy('busy-create-or-close', 'A Create or Close holds this checkout.', false);
+        const conflict = claimConflictOf(error);
+
+        return busy(conflict.cause, conflict.message, false);
       }
 
       throw error;
@@ -321,6 +324,8 @@ function busy(
     | 'busy-recovery-required'
     | 'busy-write-in-progress'
     | 'busy-create-or-close'
+    | 'busy-agent-turn'
+    | 'busy-agent-turn-unknown'
     | 'busy-task-resource-change',
   message: string,
   waitable: boolean,
@@ -330,7 +335,11 @@ function busy(
     error: documentChangeError(
       cause,
       message,
-      cause === 'busy-recovery-required' || cause === 'busy-held-limit'
+      // A wait does not help: a person acts, or the agent Turn holding the project has to end.
+      cause === 'busy-recovery-required' ||
+        cause === 'busy-held-limit' ||
+        cause === 'busy-agent-turn' ||
+        cause === 'busy-agent-turn-unknown'
         ? {}
         : { retryAfterMs: BUSY_RETRY_AFTER_MS },
     ),

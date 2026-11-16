@@ -89,6 +89,7 @@ export async function commitUncommitted(
     message: message.subject + '\n\n' + message.body,
     paths: request.paths,
     ledgerRevision: request.ledgerRevision,
+    unlinkedPaths: request.unlinkedPaths,
   });
 
   const known = await findManualCommitJournal(rt.context, request.operationId);

@@ -11,7 +11,7 @@ import type {
 function executorOf(
   state: StartCatalogueState,
   choice: AgentChoice,
-  notChosen: string,
+  notChosen: { readonly agent: string; readonly model: string },
 ): ContextFact<SessionExecutor> {
   if (state.status === 'loading') {
     return { status: 'loading' };
@@ -25,7 +25,7 @@ function executorOf(
   if (!provider) {
     return {
       status: 'ready',
-      value: { providerId: '', providerTitle: notChosen },
+      value: { providerId: '', providerTitle: notChosen.agent },
     };
   }
 
@@ -34,9 +34,9 @@ function executorOf(
     value: {
       providerId: provider.icon ?? provider.id,
       providerTitle: provider.title,
-      // The model is a deliberate choice: "not chosen" stands in until there is one (a provider
-      // that offers no model choice has none to show).
-      modelTitle: provider.models.length > 0 ? (model?.title ?? notChosen) : undefined,
+      // The model is a deliberate choice: "model not chosen" stands in until there is one (a
+      // provider that offers no model choice has none to show).
+      modelTitle: provider.models.length > 0 ? (model?.title ?? notChosen.model) : undefined,
       effort: model && choice.effort !== providerDefaultEffort ? choice.effort : undefined,
     },
   };
@@ -51,7 +51,8 @@ export function startContextValue(input: {
   catalogue: StartCatalogueState;
   choice: AgentChoice;
   specification?: ContextFact<ContextSpecification>;
-  notChosen: string;
+  /** What stands in for an agent or a model not chosen yet. */
+  notChosen: { readonly agent: string; readonly model: string };
 }): SessionContextViewModel {
   return {
     scope: input.specification ? { kind: 'specification' } : { kind: 'standalone' },

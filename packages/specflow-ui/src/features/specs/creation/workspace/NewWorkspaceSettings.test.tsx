@@ -126,6 +126,18 @@ describe('New workspace settings: three decision rows that start from the effect
     expect(field('New branch name').getAttribute('aria-invalid')).toBe('true');
   });
 
+  it('branch name: an untouched prefill without the key says which name is used until edited', () => {
+    renderSettings('Payment limits', { ...options, branchPattern: 'feature/{key}-{slug}' });
+    act('Branch name', 'Change');
+    expect(field('New branch name').value).toBe('feature/payment-limits');
+    expect(
+      screen.getByText(/Until you edit it, the branch is named feature\/…-payment-limits/),
+    ).toBeTruthy();
+
+    fireEvent.change(field('New branch name'), { target: { value: 'feature/own' } });
+    expect(screen.queryByText(/Until you edit it/)).toBeNull();
+  });
+
   it('start from and merge into: prefilled (no empty states) and not sent while default', () => {
     renderSettings();
     act('Start from', 'Change');

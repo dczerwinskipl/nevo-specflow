@@ -4,7 +4,8 @@ import { extname } from 'node:path';
 
 // Raw-source tests use Node's native type stripping. Resolution is local to this Worker;
 // installed builds bundle the module and never install this hook.
-if (!isMainThread && (workerData as { kind?: string })?.kind === 'session-store') {
+const kind = isMainThread ? undefined : (workerData as { kind?: string } | undefined)?.kind;
+if (kind === 'session-store' || kind === 'session-store-probe') {
   const hooks = import.meta.url.endsWith('.ts')
     ? registerHooks({
         resolve(specifier, context, nextResolve) {
@@ -16,7 +17,9 @@ if (!isMainThread && (workerData as { kind?: string })?.kind === 'session-store'
       })
     : undefined;
   try {
-    await import('./features/sessions/persistence/worker');
+    await (kind === 'session-store'
+      ? import('./features/sessions/persistence/worker')
+      : import('./features/sessions/persistence/owner-probe'));
   } finally {
     hooks?.deregister();
   }

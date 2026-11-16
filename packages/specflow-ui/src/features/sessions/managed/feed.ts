@@ -245,6 +245,7 @@ export function createSessionFeed(
       }
     }
 
+    const wasUnavailable = state.snapshot.session.readiness === 'unavailable';
     const snapshot = applySessionEvent(state.snapshot, incoming);
     const activeTurnId =
       event.kind === 'turn'
@@ -266,6 +267,20 @@ export function createSessionFeed(
         activeTurnId,
       ),
     });
+    // A Turn that ended in a provider loss can leave its provider marked for a recheck, which
+    // the Runtime runs only on a catalogue read: without one the Composer would stay disabled
+    // until a reload. The manager's feed asks once per such Turn change, or once when a later
+    // projection first turns an idle Session's provider unavailable (either order); a provider
+    // that is really unavailable stays so, and the reload is a snapshot, not an event: no loop.
+    if (
+      (event.kind === 'turn' || !wasUnavailable) &&
+      !snapshot.activeTurn &&
+      snapshot.session.readiness === 'unavailable' &&
+      snapshot.session.capabilities.manage
+    ) {
+      void recheckProvider();
+    }
+
     const changedTurn =
       event.kind === 'work'
         ? event.changes.turnId
@@ -477,6 +492,51 @@ export function createSessionFeed(
     }
   }
 
+  function connect() {
+    controller?.abort();
+    controller = new AbortController();
+    const token = ++generation;
+    notify({
+      ...state,
+      historyBusy: false,
+      connection: state.snapshot ? 'reconnecting' : 'loading',
+    });
+    void run(controller.signal, token);
+
+    return () => {
+      if (token === generation) {
+        generation++;
+        controller?.abort();
+      }
+    };
+  }
+
+  /** Reads the provider catalogue (the Runtime rechecks the provider), then reloads the Session. */
+  async function recheckProvider() {
+    if (state.commandBusy) {
+      return;
+    }
+
+    const token = generation;
+    notify({ ...state, commandBusy: true, commandError: false });
+    try {
+      // Read for this Session: rechecking its provider is its manager's action.
+      await api.providers({ sessionId }, controller?.signal);
+      notify({ ...state, commandBusy: false });
+      if (token !== generation) {
+        return;
+      }
+
+      connect();
+    } catch {
+      notify({
+        ...state,
+        commandBusy: false,
+        commandError: token === generation ? true : state.commandError,
+      });
+    }
+  }
+
   return {
     getSnapshot: () => state,
     subscribe: (listener: () => void) => {
@@ -497,24 +557,7 @@ export function createSessionFeed(
 
       return () => workListeners.delete(listener);
     },
-    connect() {
-      controller?.abort();
-      controller = new AbortController();
-      const token = ++generation;
-      notify({
-        ...state,
-        historyBusy: false,
-        connection: state.snapshot ? 'reconnecting' : 'loading',
-      });
-      void run(controller.signal, token);
-
-      return () => {
-        if (token === generation) {
-          generation++;
-          controller?.abort();
-        }
-      };
-    },
+    connect,
     disconnect() {
       generation++;
       controller?.abort();
@@ -571,30 +614,7 @@ export function createSessionFeed(
       }
     },
     send,
-    async recheckProvider() {
-      if (state.commandBusy) {
-        return;
-      }
-
-      const token = generation;
-      notify({ ...state, commandBusy: true, commandError: false });
-      try {
-        // Read for this Session: rechecking its provider is its manager's action.
-        await api.providers({ sessionId }, controller?.signal);
-        notify({ ...state, commandBusy: false });
-        if (token !== generation) {
-          return;
-        }
-
-        this.connect();
-      } catch {
-        notify({
-          ...state,
-          commandBusy: false,
-          commandError: token === generation ? true : state.commandError,
-        });
-      }
-    },
+    recheckProvider,
     async older() {
       const before = state.snapshot?.history.before;
       if (!before || state.historyBusy) {

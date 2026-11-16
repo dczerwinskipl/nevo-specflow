@@ -50,6 +50,7 @@ export function assertManualCommitClaimsAvailable(
       throw new SharedResourceError(
         'RESOURCE_CONFLICT',
         'An unfinished manual commit reserves this checkout; finish or recover it.',
+        { kind: 'manual-commit', operationId: record.operationId },
       );
     }
   }

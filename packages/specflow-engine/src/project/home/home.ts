@@ -11,6 +11,7 @@ import {
 } from '../git-checkout';
 import { READ_GIT_CONCURRENCY, mapBounded } from '../../concurrency';
 import { verifyGitInstance } from '../git-instance';
+import { HOME_VERIFICATION_KEY, memoizeVerification } from '../request-verification-memo';
 import { ProjectHomeError } from './error';
 
 /**
@@ -27,6 +28,12 @@ export interface ResolveProjectHomeOptions {
   readonly cwd: string;
   /** Verified, absolute override. Must identify a Git worktree of the caller's common repository. */
   readonly projectRoot?: string;
+  /**
+   * Inside a workflow mutation (`runVerifiedMutation`) the Git answers of one resolution are
+   * remembered for the rest of the operation. `refresh` asks Git again and replaces them: the
+   * control-lock admission, which must prove the Project Home afresh on every attempt.
+   */
+  readonly refresh?: boolean;
 }
 
 export interface ResolvedProjectHome {
@@ -72,8 +79,17 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3
 export async function resolveProjectHome(
   options: ResolveProjectHomeOptions,
 ): Promise<ResolvedProjectHome> {
-  const caller = await inspectCheckout(options.cwd);
-  const roots = await worktreeRoots(caller);
+  const remember = { refresh: options.refresh === true };
+  const caller = await memoizeVerification(
+    HOME_VERIFICATION_KEY + 'checkout:' + options.cwd,
+    () => inspectCheckout(options.cwd),
+    remember,
+  );
+  const roots = await memoizeVerification(
+    HOME_VERIFICATION_KEY + 'worktrees:' + caller.commonDir,
+    () => worktreeRoots(caller),
+    remember,
+  );
   if (!roots.includes(caller.root)) {
     throw new ProjectHomeError(
       'PROJECT_HOME_INVALID',
@@ -115,7 +131,15 @@ export async function resolveProjectHome(
   // marker spawn Git. Errors surface in worktree order, as in a sequential scan.
   const designated = (
     await mapBounded(roots, READ_GIT_CONCURRENCY, (root) =>
-      readDesignatedHome(root, caller.commonDir),
+      memoizeVerification(
+        HOME_VERIFICATION_KEY + 'designated:' + JSON.stringify([root, caller.commonDir]),
+        // The caller's own checkout was just asked (refreshed) above: reuse that answer.
+        () =>
+          readDesignatedHome(root, caller.commonDir, {
+            refresh: remember.refresh && root !== options.cwd,
+          }),
+        remember,
+      ),
     )
   ).filter(
     (selected): selected is { checkout: GitCheckout; marker: HomeMarker } => selected !== undefined,
@@ -205,6 +229,7 @@ async function worktreeRoots(caller: GitCheckout): Promise<string[]> {
 async function readDesignatedHome(
   root: string,
   expectedCommonDir: string,
+  remember: { readonly refresh: boolean },
 ): Promise<{ checkout: GitCheckout; marker: HomeMarker } | undefined> {
   const markerPath = join(root, PROJECT_HOME_MARKER_RELATIVE_PATH);
   // Inspect the file and every parent before reading through them. A replaced
@@ -253,7 +278,11 @@ async function readDesignatedHome(
     PROJECT_STATE_RELATIVE_PATH + '/runtime/sessions/probe.json',
   ];
   const [checkoutResult, ignoredResult] = await Promise.allSettled([
-    inspectCheckout(root),
+    memoizeVerification(
+      HOME_VERIFICATION_KEY + 'checkout:' + root,
+      () => inspectCheckout(root),
+      remember,
+    ),
     areGitIgnored(root, localPaths),
   ]);
   if (checkoutResult.status === 'rejected') {

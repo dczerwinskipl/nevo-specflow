@@ -40,7 +40,9 @@ export async function verifyWorkspaceMembership(
   }
 
   if (isReadRequest()) {
-    // READ path: no Git. Identity proven at open + cheap on-disk evidence.
+    // READ path: no Git. Identity proven at open + cheap on-disk evidence. The key has no `home:`
+    // prefix on purpose: it is a disk check, not a Git answer about the home, and it is memoized only
+    // in read-request scopes, which `forgetOperationVerification` never clears.
     await memoizeVerification('project-home-on-disk', () => verifyProjectHomeOnDisk(context));
     await verifyCheckoutOnDisk(context, canonical);
 

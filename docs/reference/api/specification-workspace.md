@@ -72,7 +72,9 @@ Availability and action states describe only what actually exists.
 
 ### Project summary, Tasks and activity
 
-- `specification.summary` is the first non-empty paragraph of the registered overview document as
+- `specification.summary` is the first non-empty paragraph of the registered overview document's
+  **Goal** section (a heading whose text is `Goal`, at any level, up to the next heading of the same
+  or a higher level), else, without such a section or prose in it, of the whole document, as
   plain text: front matter, headings (so the first H1), HTML tags and comments, images, fenced and
   indented code and tables are dropped, links keep their text, emphasis, inline-code, list and quote
   markers are removed, whitespace is collapsed, and text longer than 320 graphemes is cut at a word
@@ -88,6 +90,13 @@ Availability and action states describe only what actually exists.
   exists), in project and demo mode alike. Clients expand the summary into this document only; when
   it is absent they offer no expand action and never substitute another document (for example the
   first item).
+- `sections.documents.data.items[].templateOnly` (project mode) is `true` while the file still has
+  exactly the content the Engine created it with from an archetype template (at Create or by a
+  template create): its revision, the sha256 of its bytes, equals the `templateRevision` its registry
+  entry recorded then. It is `false` once a byte differs and for a document the Engine did not create
+  from a template. The comparison is of raw bytes: a checkout whose Git converts line endings (for
+  example `core.autocrlf` on Windows) shows the document as written. The current catalogue is not consulted. The demo Runtime
+  omits it.
 - `sections.tasks` is one Engine read (`readExecution`) of the Specification's Task resources
   (`tasks/index.yaml`, `tasks/<id>/task.yaml`), runs and action projections, presented in the
   Runtime's dashboard grouping ([Task reads](task-reads.md#dashboard-grouping)), the same one the

@@ -28,6 +28,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
+  Typography,
   WorkspaceHeader,
   useRegisterPinnedSecondaryTab,
   useSecondaryNavigation,
@@ -77,6 +78,7 @@ import type {
 } from './context/sessionContextTypes';
 
 import { WorkBlock } from './WorkBlock';
+import { outcomeReason } from './outcomeReason';
 import { conversationItems, liveActivity } from './workBlockModel';
 import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
 import type { ManagedSessionsApi } from './api';
@@ -178,6 +180,8 @@ function EntryRow({
   // marker on failure/cancel. No "view work" link here: by construction this branch only
   // ever renders for a Turn with zero `work-summary` entries, so that link would open an empty,
   // dead-end Work history panel every time.
+  // Why it ended and what to do, when the Runtime recorded no Commentary of its own for it.
+  const reason = outcomeReason(entry.error?.code, t);
   const tone =
     entry.text.text === 'failed'
       ? 'danger'
@@ -212,6 +216,11 @@ function EntryRow({
           onGrow={onGrow}
         />
       </div>
+      {reason && (
+        <Typography as="p" variant="body-sm" className="text-content-secondary">
+          {reason}
+        </Typography>
+      )}
     </article>
   );
 }

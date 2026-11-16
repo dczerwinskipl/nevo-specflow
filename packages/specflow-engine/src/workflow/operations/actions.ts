@@ -68,6 +68,7 @@ import {
 import { entryGatesOf, exitGatesFor, type GateStatus } from '../gates/evaluate';
 import { evaluateGates, type GateDocuments } from '../gates/read';
 import type { StartBlocker } from './start-blockers';
+import { outlineOf, type OutlinePosition, type WorkflowOutline } from './outline';
 import { forOneRead } from './task-references';
 
 export type { StartBlocker } from './start-blockers';
@@ -314,6 +315,11 @@ export interface ActionProjection {
   readonly task?: TaskLifecycleActions;
   /** For a Specification subject. */
   readonly specification?: SpecificationLevelActions;
+  /**
+   * For a Specification subject whose workflow resolves: where the run stands among the declared
+   * steps, the next step and the step that produces Tasks (display facts).
+   */
+  readonly outline?: WorkflowOutline;
   /**
    * For a Task subject that is not broken, in the projection of that one Task (`inspectActions`):
    * its effective context and dependency candidates. A read of several Tasks (`readExecution`,
@@ -892,6 +898,7 @@ async function specificationPosition(
       subject,
       ...(await firstStart(resolved.workflow, catalogue, gates, [], false)),
       specification,
+      outline: outlineOf(resolved.workflow, { kind: 'not-started' }),
     };
   }
 
@@ -917,7 +924,18 @@ async function specificationPosition(
       gates,
     })),
     specification,
+    outline: outlineOf(definition, outlinePositionOf(record.run)),
   };
+}
+
+function outlinePositionOf(run: WorkflowRun): OutlinePosition {
+  const position = run.position;
+
+  return position.state === 'terminal'
+    ? { kind: 'ended' }
+    : position.state === 'not-started'
+      ? { kind: 'not-started' }
+      : { kind: 'at', step: position.step };
 }
 
 function definitionChanged(run: WorkflowRun): Pick<ActionProjection, 'position' | 'actions'> {

@@ -1,5 +1,6 @@
 import { isHttpClientError, type HttpRequestClient } from '@nevo/http-client';
 import {
+  PROVIDER_DISCOVERY_BUDGET_MS,
   SessionErrorCodes,
   sessionValidators,
   type SessionErrorCode,
@@ -28,6 +29,13 @@ import {
   type SessionCommandResult,
 } from '@nevo/specflow-contracts/sessions';
 import { createApiTransport, isApiError, readServerCode, type ErrorCodeTable } from '../../../api';
+
+/**
+ * The catalogue read may re-run a bounded provider discovery (`PROVIDER_DISCOVERY_BUDGET_MS`), far
+ * longer than the default read deadline on a cold machine; the margin covers the transport and a
+ * busy Runtime, so a slow first load is never shown as "Unable to load the configuration".
+ */
+export const providerCatalogueTimeoutMs = PROVIDER_DISCOVERY_BUDGET_MS + 10_000;
 
 /**
  * A telemetry read: the snapshot with its entity tag, or `not-modified` when the snapshot the
@@ -130,6 +138,7 @@ export function createManagedSessionsApi(http: HttpRequestClient): ManagedSessio
     providers: (context, signal) =>
       read.get('/api/session-providers', {
         signal,
+        timeoutMs: providerCatalogueTimeoutMs,
         params: context,
         isValid: sessionValidators.providers,
       }),

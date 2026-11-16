@@ -19,11 +19,9 @@ export const documentsUiModule: UiModule = {
     contributeTo(specificationWorkSections, {
       id: 'specflow.documents.summary',
       slot: 'related',
-      // A Specification without Tasks still shows its documents whenever it has some.
+      // Always in its place while the documents read answers (an empty one says so).
       isVisible: ({ data }) =>
-        (!data.isEmpty || data.documents.length > 0) &&
-        (!data.sectionAvailability?.documents ||
-          data.sectionAvailability.documents === 'available'),
+        !data.sectionAvailability?.documents || data.sectionAvailability.documents === 'available',
       Component: SpecificationDocuments,
     }),
   ],

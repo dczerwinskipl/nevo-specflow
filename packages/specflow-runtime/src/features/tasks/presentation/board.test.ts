@@ -179,11 +179,11 @@ describe('the Overview tasks section', () => {
 
     const { data } = contribution.section;
     expect(data.overview.rows.map((row) => [row.groupId, row.count, row.tasks, row.more])).toEqual([
-      // Named by Requires attention: by id only.
-      ['needs-approval', 1, [{ id: 't-04' }], 0],
+      // Also a Task Requires attention names: by id and title, like every group.
+      ['needs-approval', 1, [{ id: 't-04', title: 'Title t-04' }], 0],
       ['in-progress', 1, [{ id: 'build', title: 'Title build' }], 0],
       ['ready', 1, [{ id: 'ready-1', title: 'Title ready-1' }], 0],
-      ['cannot-start', 1, [{ id: 't-07' }], 0],
+      ['cannot-start', 1, [{ id: 't-07', title: 'Title t-07' }], 0],
       [
         'waiting',
         2,
@@ -193,7 +193,7 @@ describe('the Overview tasks section', () => {
         ],
         0,
       ],
-      ['on-hold', 1, [{ id: 't-05' }], 0],
+      ['on-hold', 1, [{ id: 't-05', title: 'Title t-05' }], 0],
     ]);
     expect(data.overview.compact).toEqual([
       { groupId: 'done', name: 'Done', count: 1 },

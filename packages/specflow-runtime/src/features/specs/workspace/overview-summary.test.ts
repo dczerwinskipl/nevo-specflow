@@ -3,6 +3,34 @@ import { describe, expect, it } from 'vitest';
 import { OVERVIEW_SUMMARY_MAX_GRAPHEMES, summarizeOverview } from './overview-summary';
 
 describe('summarizeOverview', () => {
+  it('prefers the Goal section, whatever comes before it', () => {
+    expect(
+      summarizeOverview(
+        [
+          '# Cutoff',
+          '',
+          'Source: issue #156.',
+          '',
+          '## Goal',
+          '',
+          '<!-- Initial goal -->',
+          '',
+          'Drop weak hits.',
+          '',
+          '## Non-goals',
+          '',
+          'No UI.',
+        ].join('\n'),
+      ),
+    ).toBe('Drop weak hits.');
+  });
+
+  it('falls back to the first paragraph when the Goal section holds no prose', () => {
+    expect(summarizeOverview('# Cutoff\n\nSource: issue #156.\n\n## Goal\n\n## Non-goals\n')).toBe(
+      'Source: issue #156.',
+    );
+  });
+
   it('returns the first paragraph after front matter and the H1 as plain text', () => {
     expect(
       summarizeOverview(

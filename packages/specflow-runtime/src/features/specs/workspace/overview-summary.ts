@@ -23,7 +23,10 @@ const ENTITIES: Record<string, string> = {
 };
 
 /**
- * The workspace description: the first non-empty paragraph of the overview Markdown as plain text.
+ * The workspace description: the first non-empty paragraph of the overview's **Goal** section (a
+ * heading whose text is `Goal`, at any level, up to the next heading of the same or a higher level)
+ * as plain text; without such a section, or when it holds no prose, the overview's first non-empty
+ * paragraph.
  *
  * Front matter, headings (so also the first H1), HTML tags and comments, images, fenced and indented
  * code and tables are dropped; links keep their text; emphasis, inline-code, list and quote markers
@@ -35,6 +38,58 @@ export function summarizeOverview(markdown: string): string {
   const lines = withoutHtmlComments(withoutFrontMatter(markdown.replace(/\r\n?/gu, '\n'))).split(
     '\n',
   );
+  const goal = goalSection(lines);
+
+  return (goal ? firstParagraph(goal) : '') || firstParagraph(lines);
+}
+
+const ATX_HEADING = /^ {0,3}(#{1,6})(?:\s+(.*?))?(?:\s+#+)?\s*$/u;
+
+/** The lines of the first `Goal` section (outside code fences), without its heading. */
+function goalSection(lines: readonly string[]): readonly string[] | undefined {
+  let fence: string | undefined;
+  let start: number | undefined;
+  let level = 0;
+  for (const [index, line] of lines.entries()) {
+    if (fence) {
+      if (line.trim().startsWith(fence)) {
+        fence = undefined;
+      }
+
+      continue;
+    }
+
+    const opening = FENCE.exec(line);
+    if (opening) {
+      fence = opening[1]!;
+      continue;
+    }
+
+    const heading = ATX_HEADING.exec(line);
+    if (!heading) {
+      continue;
+    }
+
+    const depth = heading[1]!.length;
+    if (start !== undefined) {
+      if (depth <= level) {
+        return lines.slice(start, index);
+      }
+
+      continue;
+    }
+
+    if ((heading[2] ?? '').trim().toLowerCase() === 'goal') {
+      start = index + 1;
+      level = depth;
+    }
+  }
+
+  return start === undefined ? undefined : lines.slice(start);
+}
+
+/** The first non-empty paragraph of `lines` as plain text, bounded; `''` without prose. */
+function firstParagraph(lines: readonly string[]): string {
   let paragraph: string[] = [];
   let fence: string | undefined;
   let inTable = false;

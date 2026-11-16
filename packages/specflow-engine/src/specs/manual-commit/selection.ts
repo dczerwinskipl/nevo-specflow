@@ -54,24 +54,34 @@ export function revisionOfScope(
  * `operationCount` exceeds its ids has forgotten operations that may have touched other paths. When
  * any entry of the scope is truncated that way, closure cannot be proven for a partial selection and
  * the whole scope is returned (committing everything never splits an operation).
+ *
+ * `unlinked` paths join no operations: one is selected only when asked for (in `seed`) and pulls
+ * nothing in, and no other path pulls it in. It is for a shared registry that every operation of a
+ * kind rewrites whole (the Task index), which would otherwise tie all such operations into one; its
+ * caller decides on its own when it may go (`commitExecutionState`). Its truncation does not count.
  */
-export function closureOf(entries: readonly ScopeEntry[], seed: Iterable<string>): string[] {
+export function closureOf(
+  entries: readonly ScopeEntry[],
+  seed: Iterable<string>,
+  unlinked: ReadonlySet<string> = new Set(),
+): string[] {
   const selected = new Set(seed);
+  const linked = entries.filter((entry) => !unlinked.has(entry.path));
   if (
     selected.size > 0 &&
-    entries.some((entry) => entry.operationCount > entry.operationIds.length)
+    linked.some((entry) => entry.operationCount > entry.operationIds.length)
   ) {
     return entries.map((entry) => entry.path).sort();
   }
 
   const byOperation = new Map<string, string[]>();
-  for (const entry of entries) {
+  for (const entry of linked) {
     for (const id of entry.operationIds) {
       byOperation.set(id, [...(byOperation.get(id) ?? []), entry.path]);
     }
   }
 
-  const byPathEntries = new Map(entries.map((entry) => [entry.path, entry]));
+  const byPathEntries = new Map(linked.map((entry) => [entry.path, entry]));
   const queue = [...selected];
   while (queue.length > 0) {
     const path = queue.pop()!;
@@ -95,10 +105,14 @@ export type SubsetCheck =
   /** The subset splits an operation: `paths` is the closure it needs. */
   | { readonly ok: false; readonly kind: 'not-closed'; readonly paths: readonly string[] };
 
-/** Checks the optional subset against the entries of the scope; without one, every entry is selected. */
+/**
+ * Checks the optional subset against the entries of the scope; without one, every entry is selected.
+ * `unlinked` as in {@link closureOf}.
+ */
 export function selectEntries(
   entries: readonly ScopeEntry[],
   requested: readonly string[] | undefined,
+  unlinked: ReadonlySet<string> = new Set(),
 ): SubsetCheck {
   if (requested === undefined) {
     return { ok: true, selected: entries };
@@ -111,7 +125,7 @@ export function selectEntries(
     return { ok: false, kind: 'unknown-path', paths: unknown };
   }
 
-  const closure = closureOf(entries, wanted);
+  const closure = closureOf(entries, wanted, unlinked);
   if (closure.length !== wanted.length) {
     return { ok: false, kind: 'not-closed', paths: closure };
   }
@@ -152,6 +166,7 @@ export function fingerprintOfRequest(input: {
   readonly message: string;
   readonly paths: readonly string[] | undefined;
   readonly ledgerRevision: string | undefined;
+  readonly unlinkedPaths?: readonly string[] | undefined;
 }): string {
   return sha256Hex(
     JSON.stringify({
@@ -160,6 +175,10 @@ export function fingerprintOfRequest(input: {
       message: input.message,
       paths: input.paths === undefined ? null : [...new Set(input.paths)].sort(),
       ledgerRevision: input.ledgerRevision ?? null,
+      // Absent and empty are one request: the key of every other request stays what it was.
+      ...(input.unlinkedPaths !== undefined && input.unlinkedPaths.length > 0
+        ? { unlinkedPaths: [...new Set(input.unlinkedPaths)].sort() }
+        : {}),
     }),
   );
 }

@@ -38,6 +38,14 @@ export function hintFor(error: DocumentError): string | undefined {
         );
       }
 
+      if (details?.cause === 'agent-turn-unknown') {
+        return (
+          'That Turn has ended, but SpecFlow does not know how: waiting does not release its claim. ' +
+          'Open the Session and use Check outcome, or recover the Session, then run the command again ' +
+          '(the same --operation-id is safe).'
+        );
+      }
+
       if (details?.cause === 'agent-turn') {
         return (
           'Run the command again once that Turn has ended (the same --operation-id is safe). From ' +

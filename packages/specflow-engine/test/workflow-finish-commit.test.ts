@@ -27,7 +27,7 @@ afterEach(async () => {
 
 const owner = { class: 'human', details: { actorId: 'local:owner', trust: 'local' } } as const;
 
-it('commits the workflow state of a finish and holds only what was edited by hand, with what travels with it', async () => {
+it('holds only the hand-edited Task (and the index that registers it) and commits the other Tasks', async () => {
   const root = await createGitTestProject(
     'specflow-finish-commit-',
     'runtime: {}\ngit:\n  enabled: true\n',
@@ -61,19 +61,19 @@ it('commits the workflow state of a finish and holds only what was edited by han
     throw new Error('The Specification run did not start.');
   }
 
-  for (const taskId of ['api', 'docs']) {
-    await createTask(await openWorkflow(engine), {
+  const create = async (taskId: string) =>
+    createTask(await openWorkflow(engine), {
       specId: spec.specId,
       taskId,
       title: 'Task ' + taskId,
       type: 'implementation',
       actor: owner,
     });
-  }
-
-  // The body of one Task is written directly, not through the Engine.
+  await create('docs');
+  // The body of one Task is written directly, not through the Engine; another Task comes after it.
   const edited = `${directory}/tasks/docs/task.md`;
   await appendFile(join(root, edited), '\nWritten by the agent.\n');
+  await create('api');
 
   const finish = async (step: string, attempt: number) =>
     finishStep(await openWorkflow(engine), {
@@ -92,15 +92,24 @@ it('commits the workflow state of a finish and holds only what was edited by han
     throw new Error('The commit of the workflow state did not complete.');
   }
 
-  expect(post.held?.edited).toEqual([edited]);
-  expect(post.held?.paths).toContain(edited);
+  // Only the edited Task is held, with the index that registers it (HEAD has no such Task yet): the
+  // shared index ties no other Task to it, so the other Task's files are committed.
+  const index = `${directory}/tasks/index.yaml`;
+  expect(post.held).toEqual({
+    edited: [edited],
+    paths: [edited, `${directory}/tasks/docs/task.yaml`, index].sort(),
+  });
+  expect(post.commit?.paths).toEqual(
+    expect.arrayContaining([`${directory}/tasks/api/task.md`, `${directory}/tasks/api/task.yaml`]),
+  );
   // Exactly what the commit left out stays uncommitted: no path is both committed and held.
-  expect(dirty()).toEqual([...(post.held?.paths ?? [])].sort());
-  expect(post.commit?.paths.filter((path) => post.held?.paths.includes(path)) ?? []).toEqual([]);
+  expect(dirty()).toEqual([...post.held!.paths].sort());
 
-  // A person commits the edited Task with Git: the next finish commits the rest, nothing is held.
+  // A person commits the edited Task with Git, and a third Task is created: the next finish commits
+  // the rest, the index included, and holds nothing.
   git(root, 'add', '--', `${directory}/tasks/docs`);
   commitStaged(root, 'write the docs task');
+  await create('web');
   const next = await startSpecificationExecution(await openWorkflow(engine), {
     specId: spec.specId,
     archetype: 'feature',
@@ -115,4 +124,8 @@ it('commits the workflow state of a finish and holds only what was edited by han
   expect(again).toMatchObject({ action: 'commit-execution-state', status: 'completed' });
   expect(again?.status === 'completed' ? again.held : 'failed').toBeUndefined();
   expect(dirty()).toEqual([]);
+  const registered = git(root, 'show', `HEAD:${index}`);
+  for (const taskId of ['docs', 'api', 'web']) {
+    expect(registered).toContain(`id: ${taskId}`);
+  }
 }, 600_000);

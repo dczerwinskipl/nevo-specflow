@@ -2213,7 +2213,7 @@
       "return": "Wróć do wcześniejszego kroku",
       "finishKept": "Twoje zakończenie jest zachowane: wynik, uwagi i artefakty zostają bez zmian. Zakończ krok wraca do niego.",
       "postActionFailed": "Krok jest zakończony. Stanu przepływu nie zatwierdzono ({{code}}): pozostaje niezatwierdzony, a Zamknięcie go obejmie.",
-      "postActionHeld": "Krok jest zakończony. Część plików stanu przepływu pozostaje niezatwierdzona, bo {{edited}} zmieniono poza SpecFlow po zapisaniu przez SpecFlow. Zatwierdź je w Git; w przeciwnym razie obejmie je Zamknięcie.",
+      "postActionHeld": "Krok jest zakończony. {{edited}} zmieniono poza SpecFlow po zapisaniu przez SpecFlow, więc pliki tego zadania pozostają niezatwierdzone; reszta stanu przepływu jest zatwierdzona. Zatwierdź te pliki w Git; w przeciwnym razie obejmie je Zamknięcie.",
       "lastPrefix": "Ostatnio: {{step}} · ",
       "alreadyFinished": "Ten krok został już zakończony. Poniżej widać, co można zrobić teraz.",
       "startWorkflow": "Rozpocznij przepływ",

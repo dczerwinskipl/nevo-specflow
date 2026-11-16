@@ -36,10 +36,16 @@ export const documentChangeClaims: ClaimSource<DocumentChangeJournal> = {
  * holds the project-wide write claim (named by the claim source's message, with its Session).
  */
 export function claimConflictOf(error: SharedResourceError): {
-  readonly cause: 'busy-agent-turn' | 'busy-create-or-close';
+  readonly cause: 'busy-agent-turn' | 'busy-agent-turn-unknown' | 'busy-create-or-close';
   readonly message: string;
 } {
-  return error.holder?.kind === 'external'
-    ? { cause: 'busy-agent-turn', message: error.message }
-    : { cause: 'busy-create-or-close', message: 'A Create or Close holds this checkout.' };
+  if (error.holder?.kind === 'external') {
+    // `unknown`: the Turn has ended; only resolving its Session releases the claim.
+    return {
+      cause: error.holder.phase === 'unknown' ? 'busy-agent-turn-unknown' : 'busy-agent-turn',
+      message: error.message,
+    };
+  }
+
+  return { cause: 'busy-create-or-close', message: 'A Create or Close holds this checkout.' };
 }

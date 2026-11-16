@@ -66,6 +66,11 @@ export interface ManualCommitCommand {
   readonly message?: string;
   readonly paths?: readonly string[];
   readonly ledgerRevision?: string;
+  /**
+   * Paths of `paths` that join no operations in the closure check: the Task index, for the commit of
+   * the execution state (`commitExecutionState`). Never set by a transport.
+   */
+  readonly unlinkedPaths?: readonly string[];
 }
 
 export interface ManualCommitCommandOptions extends ManualCommitOptions {
@@ -377,6 +382,7 @@ export async function manualCommit(
       ...(command.message !== undefined ? { message: command.message } : {}),
       ...(command.paths !== undefined ? { paths: command.paths } : {}),
       ...(command.ledgerRevision !== undefined ? { ledgerRevision: command.ledgerRevision } : {}),
+      ...(command.unlinkedPaths !== undefined ? { unlinkedPaths: command.unlinkedPaths } : {}),
     },
     manualCommitPorts(engine, options),
   );

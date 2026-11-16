@@ -74,6 +74,8 @@ export interface ManualCommitRequestFields {
   readonly operationId: string;
   readonly paths?: readonly string[];
   readonly ledgerRevision?: string;
+  /** Paths of `paths` that join no operations in its closure check (see `closureOf`); internal only. */
+  readonly unlinkedPaths?: readonly string[];
 }
 
 /** The records of the owners of the target, read without a lock; a corrupt one refuses (fail closed). */
@@ -151,7 +153,7 @@ export async function admitManualCommit(
   }
 
   // 5. The subset.
-  const check = selectEntries(entries, request.paths);
+  const check = selectEntries(entries, request.paths, new Set(request.unlinkedPaths ?? []));
   if (!check.ok) {
     throw manualCommitError(
       'subset-invalid',
@@ -298,7 +300,10 @@ export async function reserveManualCommit(
         // The scoped claim of a manual commit coexists with document changes and other manual
         // commits: only a Close, a Create into this checkout or an agent Turn conflicts.
         if (error.holder?.kind === 'external') {
-          throw manualCommitError('busy-agent-turn', error.message);
+          throw manualCommitError(
+            error.holder.phase === 'unknown' ? 'busy-agent-turn-unknown' : 'busy-agent-turn',
+            error.message,
+          );
         }
 
         throw manualCommitError('busy-create-or-close', 'A Create or Close holds this checkout.', {

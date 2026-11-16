@@ -13,7 +13,13 @@ export type ClaimHolder =
       readonly kind: 'create' | 'close' | 'document-change' | 'manual-commit';
       readonly operationId: string;
     }
-  | { readonly kind: 'external'; readonly operationId: string; readonly ownerId: string };
+  | {
+      readonly kind: 'external';
+      readonly operationId: string;
+      readonly ownerId: string;
+      /** `unknown`: the Turn ended without a verified outcome; the Session must be resolved. */
+      readonly phase: 'admitted' | 'dispatched' | 'unknown';
+    };
 
 export class SharedResourceError extends Error {
   readonly code: 'RESOURCE_CONFLICT' | 'RESOURCE_JOURNAL_CORRUPT';

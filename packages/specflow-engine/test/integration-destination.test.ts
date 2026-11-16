@@ -118,6 +118,7 @@ describe('E2.I02 workspace-owned integration destination', () => {
       )?.instanceId,
       branch: 'feature/x',
     });
+    expect(record.startedFrom).toBe('feature/x');
     const options = await inspectCreateOptions(engine);
     expect(
       options.workspaces.find((item) => item.workspaceId === created.workspaceId),

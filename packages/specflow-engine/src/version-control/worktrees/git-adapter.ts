@@ -13,6 +13,7 @@ import {
 import type { SpecFlowEngine } from '../../application';
 import { GitCapabilityError } from '../../git/errors';
 import { createLocalGitClient, type LocalWorktreeFacts } from '../git/client';
+import { normalizeBaseRef, startedFromBranch } from '../git/refs';
 import { effectiveWorktreesRoot, loadGitWorktreePolicy } from './config';
 import {
   assertWorktreeTargetOutsideRepository,
@@ -166,7 +167,10 @@ export function createGitWorktreePort(engine: SpecFlowEngine): WorktreePort {
       const targetPath =
         request.targetPath ?? join(effectiveWorktreesRoot(engine.context, policy), request.slug);
       const baseRef = request.baseRefOverride ?? policy.baseRef;
+      const attached =
+        normalizeBaseRef(baseRef) === 'HEAD' ? await git.attachedBranch() : undefined;
       const baseCommit = await git.resolveCommit(baseRef);
+      const startedFrom = startedFromBranch(baseRef, attached);
       const result: WorktreePlan = {
         projectId: engine.context.project.projectId,
         gitInstanceId: engine.context.project.gitInstanceId,
@@ -184,7 +188,7 @@ export function createGitWorktreePort(engine: SpecFlowEngine): WorktreePort {
         );
       }
 
-      return result;
+      return startedFrom === undefined ? result : { ...result, startedFrom };
     },
     validateReservedPlan,
     inspectEffect: inspect,

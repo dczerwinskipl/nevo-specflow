@@ -27,12 +27,18 @@ export interface WorktreePlan {
   readonly targetPath: string;
 }
 
+/** A new plan with the facts of its base that are not part of the Git effect. */
+export interface PlannedWorktree extends WorktreePlan {
+  /** The local branch the base ref named or HEAD was attached to (`startedFromBranch`). */
+  readonly startedFrom?: string;
+}
+
 export type WorktreeEffect = 'absent' | 'present' | 'conflict';
 
 export interface WorktreePort {
   availability(): Promise<WorktreeAvailability>;
   /** Side-effect-free and based on Project Home policy, never caller cwd. */
-  plan(request: WorktreeRequest): Promise<WorktreePlan>;
+  plan(request: WorktreeRequest): Promise<PlannedWorktree>;
   /** Validates durable evidence without re-applying new naming defaults. */
   validateReservedPlan(plan: WorktreePlan): Promise<void>;
   /** Examines the original Git effect; HEAD must still equal the planned base. */

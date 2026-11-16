@@ -47,6 +47,23 @@ export function normalizeBaseRef(baseRef: string): string {
     : 'refs/heads/' + baseRef;
 }
 
+/**
+ * The local branch a new branch based on `baseRef` starts from: the branch an explicit local-branch
+ * ref names, or the branch HEAD is attached to when `baseRef` is `HEAD`. A commit, a tag or a
+ * detached HEAD starts from no branch.
+ */
+export function startedFromBranch(
+  baseRef: string,
+  attachedBranch: string | undefined,
+): string | undefined {
+  const name = normalizeBaseRef(baseRef);
+  if (name === 'HEAD') {
+    return attachedBranch;
+  }
+
+  return name.startsWith('refs/heads/') ? name.slice('refs/heads/'.length) : undefined;
+}
+
 function invalid(message: string): GitCapabilityError {
   return new GitCapabilityError('GIT_POLICY_INVALID', message);
 }

@@ -35,7 +35,7 @@ export async function probeFile<T>(
   loaded: LoadedDocumentContainer,
   path: string,
   options: ResolvedReadOptions,
-  memo: Pick<RevisionMemo<T>, 'get' | 'set'>,
+  memo: RevisionMemo<T>,
   project: (analysis: FileAnalysis) => T,
 ): Promise<Probe<T>> {
   try {

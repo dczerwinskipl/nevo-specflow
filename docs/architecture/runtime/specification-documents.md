@@ -77,6 +77,7 @@ documents: # REQUIRED registry
   - id: overview # stable id
     path: overview.md # relative to the Specification directory
     type: overview # document type id
+    templateRevision: <sha256> # optional, Engine-written: the content it created the file with from a template
 folders: # OPTIONAL: explicit folders that may hold no file (see below)
   - research
 ```
@@ -92,6 +93,11 @@ Parser rules (strict, `SPEC_SOURCE_INVALID` otherwise; no alias, no default, no 
    catalogue (a retired type stays valid and is shown by id).
 4. `documents[].path` is a normalised portable relative path (see "Paths"); paths are unique ignoring case, and a
    registered file path is never an ancestor folder of another registered path.
+   `documents[].templateRevision`, when present, is a lowercase sha256 hex digest. The Engine writes it when it
+   creates the file from an archetype template (Create, or a create naming a `templateId`): the revision of exactly
+   the bytes it wrote. Rename and move keep it; nothing else writes it. A document is _template only_ (the
+   workspace read's `templateOnly`) exactly while its current revision equals it, so the check costs no read
+   beyond the revision the documents section computes anyway.
 5. The registry contains exactly one entry with `id: overview`, `path: overview.md`, `type: overview`. Its id
    and path are fixed, so rename and move of `overview` are refused with the `protected` reason like delete
    (confirmed by the owner).

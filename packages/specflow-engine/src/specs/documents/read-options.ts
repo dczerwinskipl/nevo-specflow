@@ -20,8 +20,6 @@ export interface ObservationMemoValue {
 export interface SummaryMemoValue {
   readonly revision: string;
   readonly title: string;
-  /** Still only its archetype template (the key of the memo names the template it was compared to). */
-  readonly templateOnly: boolean;
 }
 
 export interface DocumentReadOptions {

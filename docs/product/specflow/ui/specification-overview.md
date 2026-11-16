@@ -110,8 +110,8 @@ dashboard configuration). The Overview renders what the reads deliver.
   Sessions read the section is left out.
 - **Documents** — the Documents page's own row (type glyph and file name, the type in the tooltip
   and read with the name) in a flat list, every row the same height, at most eight before **Show
-  all**; a document that is still only its archetype template says **Template only** (the
-  workspace read's `templateOnly`). The overflow menu opens all documents. A document opened from
+  all**; a document whose file is still exactly what the Engine created from its archetype
+  template says **Template only** (the workspace read's `templateOnly`). The overflow menu opens all documents. A document opened from
   the Overview takes half of the workspace (50/50), and the Overview reads in one column beside it.
 
 ## Tasks page

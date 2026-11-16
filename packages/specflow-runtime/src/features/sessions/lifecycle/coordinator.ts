@@ -39,6 +39,15 @@ interface ActiveInvocation {
   done: Promise<void>;
   emit: (fact: DriverFact) => Promise<void>;
 }
+
+/** Where a Specification's Session was resolved to run: its workspace, root and checkout incarnation. */
+interface ResolvedWorkspace {
+  readonly specId: string;
+  readonly workspaceId: string;
+  readonly root: string;
+  readonly workspaceIdentity: string;
+}
+
 export function createSessionCoordinator(
   store: SessionStore,
   drivers: SessionDriver | readonly SessionDriver[],
@@ -160,7 +169,7 @@ export function createSessionCoordinator(
   ): Promise<{
     context: typeof executionContext;
     /** For a Session associated with a Specification: where it was resolved to run. */
-    resolved?: { specId: string; workspaceId: string; root: string };
+    resolved?: ResolvedWorkspace;
   }> {
     if (!specificationWorkspace || executionContext.kind !== 'read-only') {
       return { context: executionContext };
@@ -184,6 +193,7 @@ export function createSessionCoordinator(
         specId: association.specId,
         workspaceId: workspace.workspaceId,
         root: workspace.root,
+        workspaceIdentity: workspace.workspaceIdentity,
       },
       context:
         workspace.root === executionContext.workspace
@@ -204,12 +214,10 @@ export function createSessionCoordinator(
   /**
    * Registers the Turn in its Specification's workspace, then verifies the resolution again: a Close
    * that starts after the registration sees the Turn and refuses, and one that started before it
-   * (the resolution was read without a hold) is seen here. Any change ends the hold and refuses.
+   * (the resolution was read without a hold) is seen here. Any change ends the hold and refuses,
+   * including a checkout recreated under the same path (another incarnation, another identity).
    */
-  async function beginTurnIn(
-    resolved: { specId: string; workspaceId: string; root: string } | undefined,
-    sessionId: string,
-  ) {
+  async function beginTurnIn(resolved: ResolvedWorkspace | undefined, sessionId: string) {
     if (resolved === undefined || !workspaceOccupancy || !specificationWorkspace) {
       return undefined;
     }
@@ -225,7 +233,11 @@ export function createSessionCoordinator(
 
     try {
       const current = await specificationWorkspace(resolved.specId);
-      if (current.workspaceId !== resolved.workspaceId || current.root !== resolved.root) {
+      if (
+        current.workspaceId !== resolved.workspaceId ||
+        current.root !== resolved.root ||
+        current.workspaceIdentity !== resolved.workspaceIdentity
+      ) {
         throw new SessionError(
           'TURN_CONFLICT',
           "The Specification's workspace changed while the Turn was starting. Start it again.",

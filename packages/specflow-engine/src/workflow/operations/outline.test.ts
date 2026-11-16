@@ -93,17 +93,54 @@ describe('outlineOf', () => {
     expect(outlineOf(definition(), { kind: 'ended' })).toEqual({ stepCount: 3 });
   });
 
-  it('names next only when every step-leading transition leads to the same step', () => {
+  it('names next only when every transition leads to the same step', () => {
     // Back to draft or on to fork: ambiguous, even though fork is the declared successor.
     expect(outlineOf(branching, { kind: 'at', step: 'review' }).next).toBeUndefined();
     expect(outlineOf(branching, { kind: 'at', step: 'fork' }).next).toBeUndefined();
-    // Its only target step, declared earlier; the transition that ends the run does not count.
-    expect(outlineOf(branching, { kind: 'at', step: 'c' }).next?.step).toBe('fork');
-    // Two transitions to the same step are one step.
-    expect(outlineOf(loop, { kind: 'at', step: 'review' }).next).toEqual({
+    // Back to fork or the end: a finish may end the run, so there is no next.
+    expect(outlineOf(branching, { kind: 'at', step: 'c' }).next).toBeUndefined();
+    // Back to plan (twice) or the end: still no next.
+    expect(outlineOf(loop, { kind: 'at', step: 'review' }).next).toBeUndefined();
+
+    // Two transitions to the same step, declared earlier, are one step.
+    const rework = {
+      ...loop,
+      steps: loop.steps.map((step) =>
+        step.id === 'review' ? { ...step, transitions: [to('plan'), to('plan')] } : step,
+      ),
+    } as unknown as WorkflowDefinition;
+    expect(outlineOf(rework, { kind: 'at', step: 'review' }).next).toEqual({
       step: 'plan',
       title: 'Plan',
       position: 2,
+    });
+  });
+
+  it('has no next for a Review whose approval completes the run and changes go back to Implement', () => {
+    const review = {
+      entryStep: 'implement',
+      steps: [
+        {
+          id: 'implement',
+          title: 'Implement',
+          kind: 'work',
+          annotations: {},
+          transitions: [to('review')],
+        },
+        {
+          id: 'review',
+          title: 'Review',
+          kind: 'work',
+          annotations: {},
+          // approved → Completed, changes-requested → Implement.
+          transitions: [end, to('implement')],
+        },
+      ],
+    } as unknown as WorkflowDefinition;
+
+    expect(outlineOf(review, { kind: 'at', step: 'review' })).toEqual({
+      stepCount: 2,
+      current: { step: 'review', title: 'Review', position: 2 },
     });
   });
 
@@ -114,8 +151,33 @@ describe('outlineOf', () => {
     const plan = { step: 'plan', title: 'Plan', position: 2 };
     expect(outlineOf(loop, { kind: 'not-started' }).tasksStep).toEqual(plan);
     expect(outlineOf(loop, { kind: 'at', step: 'plan' }).tasksStep).toEqual(plan);
+    // Review may end the run instead of going back to plan: no promise.
+    expect(outlineOf(loop, { kind: 'at', step: 'review' }).tasksStep).toBeUndefined();
     // A rework loop back to the producing step is certain when it is the only way on.
-    expect(outlineOf(loop, { kind: 'at', step: 'review' }).tasksStep).toEqual(plan);
+    const rework = {
+      ...loop,
+      steps: loop.steps.map((step) =>
+        step.id === 'review' ? { ...step, transitions: [to('plan'), to('plan')] } : step,
+      ),
+    } as unknown as WorkflowDefinition;
+    expect(outlineOf(rework, { kind: 'at', step: 'review' }).tasksStep).toEqual(plan);
+
+    // A cycle that never reaches the producing step stops: no promise.
+    const cycle = {
+      entryStep: 'x',
+      steps: [
+        { id: 'x', title: 'X', kind: 'work', annotations: {}, transitions: [to('y')] },
+        { id: 'y', title: 'Y', kind: 'work', annotations: {}, transitions: [to('x')] },
+        {
+          id: 'z',
+          title: 'Z',
+          kind: 'work',
+          annotations: { produces: 'tasks' },
+          transitions: [end],
+        },
+      ],
+    } as unknown as WorkflowDefinition;
+    expect(outlineOf(cycle, { kind: 'not-started' }).tasksStep).toBeUndefined();
 
     // fork leads only to a, but the way there from the entry branches at review: no promise.
     const toA = {
@@ -126,5 +188,35 @@ describe('outlineOf', () => {
     } as unknown as WorkflowDefinition;
     expect(outlineOf(toA, { kind: 'at', step: 'fork' }).tasksStep?.step).toBe('a');
     expect(outlineOf(toA, { kind: 'not-started' }).tasksStep).toBeUndefined();
+  });
+
+  it('claims no Tasks step when a step before it can end the run', () => {
+    // draft → triage; triage → plan or the end (rejected); plan produces Tasks.
+    const triage = {
+      entryStep: 'draft',
+      steps: [
+        { id: 'draft', title: 'Draft', kind: 'work', annotations: {}, transitions: [to('triage')] },
+        {
+          id: 'triage',
+          title: 'Triage',
+          kind: 'work',
+          annotations: {},
+          transitions: [to('plan'), end],
+        },
+        {
+          id: 'plan',
+          title: 'Plan',
+          kind: 'work',
+          annotations: { produces: 'tasks' },
+          transitions: [end],
+        },
+      ],
+    } as unknown as WorkflowDefinition;
+
+    expect(outlineOf(triage, { kind: 'not-started' }).tasksStep).toBeUndefined();
+    expect(outlineOf(triage, { kind: 'at', step: 'draft' }).tasksStep).toBeUndefined();
+    expect(outlineOf(triage, { kind: 'at', step: 'triage' }).tasksStep).toBeUndefined();
+    // At the producing step itself it is certain, whatever its own transitions.
+    expect(outlineOf(triage, { kind: 'at', step: 'plan' }).tasksStep?.step).toBe('plan');
   });
 });

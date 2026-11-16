@@ -638,7 +638,8 @@ export function createClaudeProtocol(
         busy = false;
       }
     },
-    async end() {
+    /** `reason` says why no authoritative result arrived; it also stays in the conversation. */
+    async end(reason?: string) {
       if (terminal) {
         return;
       }
@@ -648,7 +649,14 @@ export function createClaudeProtocol(
       }
 
       await flushCommentary();
-      await emit({ kind: 'lost', message: 'Claude ended without an authoritative result.' });
+      if (reason) {
+        await text('provider-error', 'commentary', reason);
+      }
+
+      await emit({
+        kind: 'lost',
+        message: reason ?? 'Claude ended without an authoritative result.',
+      });
       tools.clear();
       groups.clear();
       seen.clear();

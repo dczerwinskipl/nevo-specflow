@@ -40818,6 +40818,27 @@
                                     }
                                   }
                                 }
+                              },
+                              "held": {
+                                "type": "object",
+                                "required": [
+                                  "edited",
+                                  "paths"
+                                ],
+                                "properties": {
+                                  "edited": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "paths": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
                               }
                             }
                           },
@@ -43818,6 +43839,27 @@
                                 "properties": {
                                   "sha": {
                                     "type": "string"
+                                  },
+                                  "paths": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              },
+                              "held": {
+                                "type": "object",
+                                "required": [
+                                  "edited",
+                                  "paths"
+                                ],
+                                "properties": {
+                                  "edited": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
                                   },
                                   "paths": {
                                     "type": "array",

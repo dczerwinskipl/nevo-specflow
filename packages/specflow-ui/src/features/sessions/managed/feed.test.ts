@@ -130,6 +130,61 @@ describe('Session feed operation lifetime', () => {
       }
     },
   );
+  it('rechecks once when a later session event turns an idle provider unavailable', async () => {
+    const { storage, api } = setup();
+    const ready = { ...snapshot.session, readiness: 'ready', capabilities: { manage: true } };
+    const unavailable = { ...ready, readiness: 'unavailable' };
+    const projection = (session: unknown) => ({
+      session,
+      activeTurn: null,
+      currentActivity: null,
+      interaction: null,
+    });
+    const snapshotRead = vi
+      .fn<ManagedSessionsApi['snapshot']>()
+      .mockResolvedValueOnce(snapshot)
+      .mockResolvedValue({
+        ...snapshot,
+        eventSeq: 3,
+        session: ready,
+      } as unknown as SessionSnapshot);
+    api.snapshot = snapshotRead;
+    const providers = vi.fn<ManagedSessionsApi['providers']>().mockResolvedValue({ items: [] });
+    api.providers = providers;
+    let streamed = false;
+    api.watch = async function* (_id, _after, signal) {
+      if (!streamed) {
+        streamed = true;
+        for (const [eventSeq, session] of [
+          [1, ready],
+          [2, unavailable],
+          [3, unavailable],
+        ] as const) {
+          yield {
+            sessionId: 'session',
+            eventSeq,
+            kind: 'session',
+            changes: { projection: projection(session) },
+          } as unknown as SessionChange;
+        }
+      }
+
+      await new Promise<void>((resolve) =>
+        signal.addEventListener('abort', () => resolve(), { once: true }),
+      );
+    };
+
+    const feed = createSessionFeed(api, 'session', 'actor', storage);
+    feed.connect();
+    try {
+      await vi.waitFor(() => expect(snapshotRead).toHaveBeenCalledTimes(2));
+      await vi.waitFor(() => expect(feed.getSnapshot().snapshot?.session.readiness).toBe('ready'));
+      // One recheck for the change to unavailable, none for the repeat or the reloaded snapshot.
+      expect(providers).toHaveBeenCalledOnce();
+    } finally {
+      feed.disconnect();
+    }
+  });
   it('does not reconnect after a pending login recheck outlives its view', async () => {
     const { storage, api } = setup();
     const snapshotRead = vi.fn<ManagedSessionsApi['snapshot']>().mockResolvedValue(snapshot);

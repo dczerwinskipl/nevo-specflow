@@ -1074,6 +1074,32 @@ describe('durable Session store', () => {
   });
 });
 
+describe('outcome reason', () => {
+  it('keeps the reason a Turn ended with on its outcome entry', async () => {
+    const { sessionId } = await create('claude');
+    const start = await store!.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      nativeWorkspace: directory,
+      nativeScope: 'account',
+      input: { requestId: randomUUID(), message: 'First' },
+    });
+    const error = { code: 'TURN_CONFLICT', message: 'An unfinished project writer prevents it.' };
+    await store!.call({
+      op: 'fact',
+      sessionId,
+      turnId: start.turnId,
+      invocationId: start.invocationId,
+      driverSeq: 1,
+      fact: { kind: 'outcome', outcome: 'failed', error },
+    });
+    const outcome = (await snap(sessionId)).entries.at(-1);
+    expect(outcome).toMatchObject({ kind: 'outcome', text: { text: 'failed' }, error });
+    expect(sessionValidators.snapshot(await snap(sessionId))).toBe(true);
+  });
+});
+
 describe('native-stop evidence record', () => {
   it('records one well-formed process identity per invocation, only before the dispatch barrier', async () => {
     const { sessionId } = await create('claude');

@@ -154,6 +154,7 @@ type ConversationEntry = {
   text: TextPreview;
   workId?: string;
   digest?: WorkDigest; // work-summary entries only; see "Work digest"
+  error?: { code: string; message: string }; // outcome entry of a Turn that ended with an error
   createdAt: string;
 };
 type SessionInfo = {

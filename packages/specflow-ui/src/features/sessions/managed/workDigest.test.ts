@@ -57,6 +57,57 @@ describe('describeWorkBlock', () => {
     ).toEqual({ text: 'Tura przerwana', tone: 'attention' });
   });
 
+  it('says why a Turn ended and what to do for a reason the Runtime records without Commentary', () => {
+    expect(
+      describeWorkBlock(
+        block({ actionCount: 2, outcome: 'interrupted', outcomeError: 'PROCESS_STOPPED' }),
+        en,
+      ).outcome?.reason,
+    ).toBe(
+      'The agent stopped while SpecFlow could not record its result. Review the changes in the workspace before you continue.',
+    );
+    // A provider failure already has its own Commentary: no second line.
+    expect(
+      describeWorkBlock(
+        block({ actionCount: 2, outcome: 'failed', outcomeError: 'PROVIDER_FAILED' }),
+        en,
+      ).outcome,
+    ).toEqual({ text: 'Turn failed', tone: 'danger' });
+  });
+
+  it('carries the outcome reason from the outcome entry into the block', () => {
+    const turnId = '00000000-0000-4000-8000-000000000001';
+    const base = {
+      turnId,
+      revision: 1,
+      createdAt: '2026-11-16T00:00:00.000Z',
+      text: { text: 'x', complete: true as const },
+    };
+    const items = conversationItems(
+      [
+        { ...base, id: '00000000-0000-4000-8000-000000000101', ordinal: 1, kind: 'work-summary' },
+        {
+          ...base,
+          id: '00000000-0000-4000-8000-000000000102',
+          ordinal: 2,
+          kind: 'outcome',
+          text: { text: 'interrupted', complete: true as const },
+          error: { code: 'PROCESS_STOPPED', message: 'Stopped.' },
+        },
+      ],
+      { hasOlder: false },
+    );
+    expect(items).toEqual([
+      expect.objectContaining({
+        type: 'work',
+        block: expect.objectContaining({
+          outcome: 'interrupted',
+          outcomeError: 'PROCESS_STOPPED',
+        }) as unknown,
+      }),
+    ]);
+  });
+
   it('describes the live activity from its kind, the tool by its runtime label verbatim', () => {
     // No "Wykonuje:" prefix for `tool`: the runtime's own activity label is already a complete,
     // self-describing sentence (e.g. "Bash: pnpm test", "Searching repository…") in every real

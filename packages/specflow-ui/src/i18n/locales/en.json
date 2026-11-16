@@ -1878,6 +1878,10 @@
       "actionsAtLeast_few": "at least {{count}} tool actions",
       "actionsAtLeast_many": "at least {{count}} tool actions"
     },
+    "outcomeReason": {
+      "TURN_CONFLICT": "Another agent or a specification change is still writing to this project. Wait until it finishes, or check the outcome of a Turn whose outcome is unknown, then send the message again.",
+      "PROCESS_STOPPED": "The agent stopped while SpecFlow could not record its result. Review the changes in the workspace before you continue."
+    },
     "turnUnknown": "Turn outcome unknown",
     "reconcile": {
       "title": "It is not known how the last Turn ended",

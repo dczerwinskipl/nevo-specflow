@@ -226,6 +226,7 @@ export async function runSessionWorker(): Promise<void> {
     workId?: string,
     existing?: string,
     digest?: WorkDigest,
+    error?: ConversationEntry['error'],
   ): ConversationEntry {
     const old = existing
       ? decode<ConversationEntry>(get('SELECT data FROM entries WHERE id=?', existing))
@@ -240,6 +241,7 @@ export async function runSessionWorker(): Promise<void> {
       createdAt: old?.createdAt ?? now(),
       ...(workId ? { workId } : {}),
       ...(digest ? { digest } : {}),
+      ...(error ? { error } : {}),
     };
     run(
       'INSERT OR REPLACE INTO entries VALUES(?,?,?,?,?)',
@@ -411,10 +413,20 @@ export async function runSessionWorker(): Promise<void> {
       reviseWorkDigest(s, t);
     }
 
-    entry(s, t.summary.turnId, 'outcome', {
-      text: t.summary.state === 'terminal' ? t.summary.outcome : outcome,
-      complete: true,
-    });
+    // The reason travels with the outcome entry: the conversation is where a client shows it.
+    entry(
+      s,
+      t.summary.turnId,
+      'outcome',
+      {
+        text: t.summary.state === 'terminal' ? t.summary.outcome : outcome,
+        complete: true,
+      },
+      undefined,
+      undefined,
+      undefined,
+      error,
+    );
   }
 
   let publicationTimer: ReturnType<typeof setTimeout> | undefined;

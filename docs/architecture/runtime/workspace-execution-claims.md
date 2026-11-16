@@ -162,7 +162,8 @@ files.
 
 Runtime (`createEngineSessionEffects`) maps `RESOURCE_CONFLICT` to `TURN_CONFLICT` ("an unfinished
 project writer prevents agent execution"); a Turn refused this way before its driver was invoked
-finishes `failed` as `not-dispatched`. Every other Engine error maps to `SESSION_RECOVERY_REQUIRED`.
+finishes `failed` as `not-dispatched`, with `TURN_CONFLICT` on its outcome entry so the UI says why
+and what to do. Every other Engine error maps to `SESSION_RECOVERY_REQUIRED`.
 Admission also refuses with `SESSION_RECOVERY_REQUIRED` when the Turn's workspace root or identity
 hash is not the Engine's workspace, or when the claim is already past `admitted`.
 

@@ -66,7 +66,7 @@ export function resolveTarget(
       ? new DemoTargetError(503, 'GIT_POLICY_INVALID', 'GIT_POLICY_INVALID')
       : workspace.reason === 'branch-protected' || workspace.reason === 'branch-not-allowed'
         ? new DemoTargetError(422, 'BRANCH_PROTECTED', 'BRANCH_PROTECTED')
-        : unavailable('Wybrane środowisko pracy nie jest już dostępne.');
+        : unavailable('The selected workspace is no longer available.');
   if (!target) {
     const primary = options.workspaces.find((w) => w.workspaceId === options.primaryWorkspaceId);
     if (primary && !primary.selectable) {
@@ -74,7 +74,7 @@ export function resolveTarget(
     }
 
     if (!primary?.selectable) {
-      throw unavailable('Bieżący katalog nie jest teraz dostępny.');
+      throw unavailable('The current directory is not available right now.');
     }
 
     return { kind: 'main', workspaceId: primary.workspaceId, baseRef: primary.branch ?? 'HEAD' };
@@ -87,7 +87,7 @@ export function resolveTarget(
     }
 
     if (!workspace?.selectable) {
-      throw unavailable('Wybrane środowisko pracy nie jest już dostępne.');
+      throw unavailable('The selected workspace is no longer available.');
     }
 
     return {
@@ -102,7 +102,7 @@ export function resolveTarget(
   }
 
   if (options.newWorktree.status !== 'available') {
-    throw unavailable('Tworzenie nowego środowiska pracy nie jest teraz dostępne.');
+    throw unavailable('Creating a new workspace is not available right now.');
   }
 
   const baseRef = target.baseRef ?? options.defaultBaseRef;

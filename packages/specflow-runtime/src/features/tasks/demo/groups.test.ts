@@ -14,9 +14,9 @@ describe('demo task groups', () => {
   it('maps lifecycles onto configured workflow groups in display order', () => {
     const groups = buildDemoTaskContribution(record).data.groups;
     expect(groups.map((group) => [group.name, group.tasks.length])).toEqual([
-      ['Implementacja', 3],
-      ['Weryfikacja i domknięcie', 1],
-      ['Ukończone', 5],
+      ['Implementation', 3],
+      ['Verification and wrap-up', 1],
+      ['Completed', 5],
     ]);
   });
 
@@ -35,6 +35,6 @@ describe('demo task groups', () => {
       'admission',
       'TASK-02',
     );
-    expect(definition?.group).toEqual({ id: 'verification', label: 'Weryfikacja i domknięcie' });
+    expect(definition?.group).toEqual({ id: 'verification', label: 'Verification and wrap-up' });
   });
 });

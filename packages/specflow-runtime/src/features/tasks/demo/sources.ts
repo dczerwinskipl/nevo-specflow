@@ -11,20 +11,20 @@ import type {
 import { demoTaskGroupFor } from './groups';
 import { demoExecutionFacts, demoTaskHistory, demoTaskResources } from './execution';
 
-/** Synthetic demo task titles (per index; ids stay `TASK-NN`). */
+/** Synthetic demo task titles (per index; ids stay `TASK-NN`, which the UI shows beside the title). */
 const demoTaskTitles = [
-  'Kontrakt admisji zadań',
-  'Walidacja kolejki po restarcie',
-  'Granice wykonania agentów',
-  'Obsługa wygasłej sesji',
-  'Powrót do kontekstu specyfikacji',
-  'Raport z wykonania kroku',
-  'Uprawnienia do zasobów zadania',
-  'Testy scenariuszy odzyskiwania',
-  'Dokumentacja decyzji architektonicznych',
-  'Migracja istniejących wpisów',
-  'Monitorowanie kolejki',
-  'Przegląd bezpieczeństwa',
+  'Task admission contract',
+  'Queue validation after restart',
+  'Agent execution boundaries',
+  'Expired session handling',
+  'Return to the specification context',
+  'Step execution report',
+  'Task resource permissions',
+  'Recovery scenario tests',
+  'Architecture decision records',
+  'Migration of existing entries',
+  'Queue monitoring',
+  'Security review',
 ] as const;
 
 export function buildDemoTasks(record: DemoSpecification): TaskDefinitionFacts['task'][] {
@@ -39,7 +39,7 @@ export function buildDemoTasks(record: DemoSpecification): TaskDefinitionFacts['
 
   return ids.map((id, index) => ({
     id,
-    title: id + ' · ' + demoTaskTitles[index % demoTaskTitles.length],
+    title: demoTaskTitles[index % demoTaskTitles.length]!,
     status: {
       id: completed.has(id) ? 'completed' : active.has(id) ? 'in_progress' : 'ready',
       label: completed.has(id) ? 'Completed' : active.has(id) ? 'In progress' : 'Ready',

@@ -2753,9 +2753,13 @@
         "title": "This workspace is unavailable right now",
         "description": "The folder {{folder}} cannot be read, for example while its branch is being switched or after the folder was moved. Choose another workspace or try again."
       },
+      "notServed": {
+        "title": "Project documentation is not available in the demo",
+        "description": "The demo runs on sample data without a project, so there is no documentation folder to read. Start SpecFlow in a project to read its documentation."
+      },
       "docsUnavailable": {
         "title": "The documentation cannot be read right now",
-        "description": "Its settings could not be read, or this Runtime serves no project documentation. Try again in a moment."
+        "description": "Its settings could not be read, or reading it failed. Try again in a moment."
       },
       "failed": {
         "title": "The documentation cannot be shown right now",

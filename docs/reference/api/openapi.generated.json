@@ -512,6 +512,162 @@
               ]
             }
           },
+          "repository": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "checkout",
+                    "paths",
+                    "count"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "uncommitted-changes"
+                      ]
+                    },
+                    "checkout": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "specification"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "integration-target"
+                          ]
+                        }
+                      ]
+                    },
+                    "paths": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "maxLength": 4096
+                      },
+                      "maxItems": 10
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "kind"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "integration-target-missing"
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "expectedBranch",
+                    "branch"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "integration-target-branch"
+                      ]
+                    },
+                    "expectedBranch": {
+                      "type": "string"
+                    },
+                    "branch": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "checkout"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "git-operation-in-progress"
+                      ]
+                    },
+                    "checkout": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "specification"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "integration-target"
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "checkout"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "branch-detached"
+                      ]
+                    },
+                    "checkout": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "specification"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "integration-target"
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "maxItems": 8
+          },
           "localConfig": {
             "anyOf": [
               {
@@ -9018,6 +9174,12 @@
                 "type": "string",
                 "enum": [
                   "DOCS_UNAVAILABLE"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "DOCS_NOT_SERVED"
                 ]
               }
             ]
@@ -20198,6 +20360,12 @@
                         "type": "string",
                         "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
                       }
+                    },
+                    "uncommitted": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
                     }
                   },
                   "additionalProperties": false
@@ -21396,6 +21564,12 @@
                             "type": "string",
                             "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
                           }
+                        },
+                        "uncommitted": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
                         }
                       },
                       "additionalProperties": false

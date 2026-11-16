@@ -74,6 +74,7 @@ export function createDemoRuntime(environment: DemoEnvironment) {
       state,
       list: sessionList,
       references: sessionReferences,
+      catalogue: repositories.catalogue,
     }),
     associationTargets: createDemoAssociationTargets({
       catalogue: repositories.catalogue,

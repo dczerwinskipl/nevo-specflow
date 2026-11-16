@@ -2753,9 +2753,13 @@
         "title": "Ten obszar roboczy jest teraz niedostępny",
         "description": "Nie można odczytać katalogu {{folder}}, na przykład w trakcie przełączania gałęzi albo po przeniesieniu katalogu. Wybierz inny obszar roboczy albo spróbuj ponownie."
       },
+      "notServed": {
+        "title": "Dokumentacja projektu nie jest dostępna w wersji demonstracyjnej",
+        "description": "Wersja demonstracyjna działa na przykładowych danych bez projektu, więc nie ma folderu dokumentacji do odczytania. Uruchom SpecFlow w projekcie, aby czytać jego dokumentację."
+      },
       "docsUnavailable": {
         "title": "Nie można teraz odczytać dokumentacji",
-        "description": "Nie udało się odczytać jej ustawień albo ten Runtime nie udostępnia dokumentacji projektu. Spróbuj ponownie za chwilę."
+        "description": "Nie udało się odczytać jej ustawień albo jej odczyt się nie powiódł. Spróbuj ponownie za chwilę."
       },
       "failed": {
         "title": "Nie można teraz wyświetlić dokumentacji",

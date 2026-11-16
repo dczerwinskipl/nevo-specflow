@@ -22,7 +22,7 @@ import type { WorkspaceDocsFailure } from './workspace-corpus/workspace-corpora'
 export type DocsProjectId = () => string | undefined;
 
 export interface WorkspaceDocsEndpointOptions {
-  /** Absent without an Engine (demo data): every route answers `503 DOCS_UNAVAILABLE`. */
+  /** Absent without an Engine (demo data): every route answers `503 DOCS_NOT_SERVED`. */
   readonly operations: WorkspaceDocsOperations | undefined;
   readonly projectId: DocsProjectId;
 }
@@ -41,6 +41,7 @@ const MESSAGES: Readonly<Record<WorkspaceDocsErrorCode, string>> = {
   DOCS_WORKSPACE_UNAVAILABLE: 'The workspace cannot be read now.',
   DOCS_NOT_CONFIGURED: 'The workspace has no documentation folder (docs.root).',
   DOCS_UNAVAILABLE: 'The documentation of the workspace is unavailable.',
+  DOCS_NOT_SERVED: 'This Runtime serves no project documentation.',
 };
 
 const STATUS: Readonly<Record<WorkspaceDocsErrorCode, number>> = {
@@ -48,6 +49,7 @@ const STATUS: Readonly<Record<WorkspaceDocsErrorCode, number>> = {
   DOCS_WORKSPACE_UNAVAILABLE: 409,
   DOCS_NOT_CONFIGURED: 503,
   DOCS_UNAVAILABLE: 503,
+  DOCS_NOT_SERVED: 503,
 };
 
 const CODES: Readonly<Record<WorkspaceDocsFailure['kind'], WorkspaceDocsErrorCode>> = {

@@ -8,9 +8,9 @@ type DemoTask = TaskDefinitionFacts['task'];
  * live demo and stories show the same grouping.
  */
 const demoTaskGroups = [
-  { id: 'implementation', name: 'Implementacja', summary: 'row', collapsed: false },
-  { id: 'verification', name: 'Weryfikacja i domknięcie', summary: 'row', collapsed: false },
-  { id: 'done', name: 'Ukończone', summary: 'compact', collapsed: false },
+  { id: 'implementation', name: 'Implementation', summary: 'row', collapsed: false },
+  { id: 'verification', name: 'Verification and wrap-up', summary: 'row', collapsed: false },
+  { id: 'done', name: 'Completed', summary: 'compact', collapsed: false },
 ] as const;
 
 export type DemoTaskGroup = (typeof demoTaskGroups)[number];

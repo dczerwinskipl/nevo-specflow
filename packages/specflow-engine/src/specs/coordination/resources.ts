@@ -69,6 +69,7 @@ const createClaims: ClaimSource<CreateJournal> = {
         throw new SharedResourceError(
           'RESOURCE_CONFLICT',
           'Unfinished Create reserves a conflicting checkout/ref; inspect or recover it.',
+          { kind: 'create', operationId: record.operationId },
         );
       }
     }
@@ -111,6 +112,7 @@ const closeClaims: ClaimSource<CloseJournal> = {
           throw new SharedResourceError(
             'RESOURCE_CONFLICT',
             'Retained conflicting scratch must be reconciled before another Git worktree lifecycle.',
+            { kind: 'close', operationId: record.plan.operationId },
           );
         }
 
@@ -125,11 +127,25 @@ const closeClaims: ClaimSource<CloseJournal> = {
         throw new SharedResourceError(
           'RESOURCE_CONFLICT',
           'Unfinished Close reserves a conflicting checkout/ref; inspect or recover it.',
+          { kind: 'close', operationId: record.plan.operationId },
         );
       }
     }
   },
 };
+
+/**
+ * The refusal of a write while an agent Session Turn holds the project-wide write claim
+ * (`project-write:`, see the workspace execution claims): it names the Session, says that the Turn's
+ * own Engine commands are refused too, and what to do.
+ */
+export function agentTurnClaimMessage(sessionId: string): string {
+  return (
+    `An agent Session Turn (Session ${sessionId}) holds the project-wide write claim: no other ` +
+    'Engine write of this project is admitted until that Turn ends, including the Task and ' +
+    'document commands run inside the Turn. Retry once the Turn has ended, or stop it.'
+  );
+}
 
 /**
  * Cross-slice durable admission, invoked only while holding the short Project
@@ -152,7 +168,12 @@ export async function assertSharedResourcesAvailable(
 
     throw new SharedResourceError(
       'RESOURCE_CONFLICT',
-      'An external execution reserves this project; inspect or reconcile it.',
+      agentTurnClaimMessage(execution.intent.ownerId),
+      {
+        kind: 'external',
+        operationId: execution.intent.operationId,
+        ownerId: execution.intent.ownerId,
+      },
     );
   }
 

@@ -120,6 +120,14 @@ execution claim as a conflict for every requested resource. So, in both directio
 - an execution is not admitted while an unfinished Create, Close, document change or manual commit
   holds any resource.
 
+The `SharedResourceError` names the claim it met (`holder`: its kind and operation id, and for an
+execution its `ownerId`, the Session). Callers word the refusal from it, never from the resource
+alone: a document change, a workflow-state change (a Task created or edited) and a manual commit
+refused by an execution claim are `SPEC_BUSY` with `details.cause: agent-turn` and a message that
+names the Session; Create and Close keep their own codes with the same message. This includes the
+Engine commands the agent runs inside its own Turn (`tasks create`, `tasks edit`): they are refused
+until the Turn ends.
+
 A mode without workspace write (a read-only Turn) takes no claim. Close still MUST NOT remove the
 checkout such a Turn works in; it asks the host's checkout quiescence instead (the owning Runtime's
 Turns, or the Session store's owner record from any other process), see

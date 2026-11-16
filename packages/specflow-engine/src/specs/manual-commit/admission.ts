@@ -295,6 +295,12 @@ export async function reserveManualCommit(
           throw manualCommitError('journal-corrupt', 'A journal is corrupt; recover it.');
         }
 
+        // The scoped claim of a manual commit coexists with document changes and other manual
+        // commits: only a Close, a Create into this checkout or an agent Turn conflicts.
+        if (error.holder?.kind === 'external') {
+          throw manualCommitError('busy-agent-turn', error.message);
+        }
+
         throw manualCommitError('busy-create-or-close', 'A Create or Close holds this checkout.', {
           retryAfterMs: MANUAL_COMMIT_BUSY_RETRY_AFTER_MS,
         });

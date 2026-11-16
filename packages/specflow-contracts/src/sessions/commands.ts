@@ -222,6 +222,12 @@ export const ProviderCatalogueSchema = Type.Object(
   { items: Type.Array(ProviderDescriptorSchema, { maxItems: 32 }) },
   closed,
 );
+/**
+ * The longest one provider discovery runs, in milliseconds. A catalogue read re-probes a provider
+ * whose last check is older than its cache, so `GET /api/session-providers` can legitimately take
+ * this long on a cold machine; a client waits longer (with a margin) before treating it as failed.
+ */
+export const PROVIDER_DISCOVERY_BUDGET_MS = 30_000;
 export type CreateSession = Static<typeof CreateSessionSchema>;
 export type StartTurn = Static<typeof StartTurnSchema>;
 export type RespondInteraction = Static<typeof RespondInteractionSchema>;

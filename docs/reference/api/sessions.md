@@ -698,6 +698,10 @@ source beyond selecting which check runs:
 | `?specId=S`    | a Session started in Specification S         | the composed create's checks: `spec.start-session` at `specScope(projectId, S)` and `session.create` at `{projectId, specId: S}`                 |
 | `?sessionId=X` | the composer of Session X (model/mode/retry) | `session.manage` at X's store-derived `sessionScope`: any-scope precheck first (403 for an unknown Session too), then the identity (404 unknown) |
 
+The read re-runs a provider's bounded discovery when its last check is older than its short cache,
+so it can take up to `PROVIDER_DISCOVERY_BUDGET_MS` (30 s) on a cold machine, even right after a
+startup probe; clients give it that budget plus a margin, not the default read deadline.
+
 Both parameters together are `400 SESSION_INPUT_INVALID`, as is any other parameter or a malformed
 id. `?specId` is a pure authorization check: it does not verify that the Specification exists
 (the catalogue is not sensitive and names no Specification; the composed create verifies it). A `workspace-write` provider mode is `authorized` when the caller holds `session.execute-write`

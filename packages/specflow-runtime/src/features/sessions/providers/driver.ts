@@ -7,6 +7,7 @@ import type {
 } from '@nevo/specflow-contracts/sessions';
 import type { DriverFact, MeasurementFact } from '../persistence/protocol';
 import type { NativeProcessIdentity } from './process/process-identity';
+import { PROVIDER_DISCOVERY_BUDGET_MS } from '@nevo/specflow-contracts/sessions';
 
 export interface ProviderTelemetryBinding {
   accountScope: string;
@@ -62,7 +63,10 @@ export interface Invocation {
 }
 export type EmitFact = (fact: DriverFact) => Promise<void>;
 /** Discovery may initialize several bounded native mode profiles on a cold machine. */
-export const ProviderTimeouts = { discoveryMs: 30000, initializeMs: 10000 } as const;
+export const ProviderTimeouts = {
+  discoveryMs: PROVIDER_DISCOVERY_BUDGET_MS,
+  initializeMs: 10000,
+} as const;
 export interface ProviderOperation {
   done: Promise<void>;
   /** Positive liveness evidence from the process owner; required for a writable driver. */

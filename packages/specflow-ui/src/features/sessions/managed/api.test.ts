@@ -1,5 +1,6 @@
 import { HttpClientError, type HttpRequestClient } from '@nevo/http-client';
 import { describe, expect, it, vi } from 'vitest';
+import { PROVIDER_DISCOVERY_BUDGET_MS } from '@nevo/specflow-contracts/sessions';
 import { createManagedSessionsApi } from './api';
 import { fullTelemetrySnapshot } from './context/sessionTelemetry.stories-support';
 
@@ -38,6 +39,16 @@ describe('managed Session command responses', () => {
         decision: 'allow',
       }),
     ).resolves.toEqual({ turnId, interactionId });
+  });
+
+  it('waits for a bounded provider discovery on the catalogue read, beyond the default deadline', async () => {
+    const http = { get: vi.fn().mockResolvedValue({ items: [] }) };
+    const api = createManagedSessionsApi(http as unknown as HttpRequestClient);
+    await expect(api.providers({})).resolves.toEqual({ items: [] });
+    expect(http.get).toHaveBeenCalledWith(
+      '/api/session-providers',
+      expect.objectContaining({ timeoutMs: PROVIDER_DISCOVERY_BUDGET_MS + 10_000 }),
+    );
   });
 
   it('posts reconcile with the given request id and validates the settled outcome', async () => {

@@ -1,5 +1,7 @@
 import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
+import { isAbsolute } from 'node:path';
 import { SessionError } from '../../errors';
+import { ProviderTitles } from '../titles';
 import type { SessionDriver, Invocation } from '../driver';
 import { ProviderTimeouts } from '../driver';
 import {
@@ -8,7 +10,7 @@ import {
   projectProviderEnvironment,
   type ProviderEnvironment,
 } from '../process';
-import { createClaudeOperation } from './operation';
+import { claudeLoss, createClaudeOperation } from './operation';
 import { inspectClaudeInstallation } from './installation';
 import {
   classifyProviderInstallation,
@@ -45,7 +47,7 @@ export function createClaudeDriver(
   };
   let descriptor: ProviderDescriptor = {
     providerId: 'claude',
-    title: 'Claude Code',
+    title: ProviderTitles.claude,
     readiness: 'unknown',
     capabilities: {
       questions: true,
@@ -370,6 +372,7 @@ export function createClaudeDriver(
   return {
     telemetryGroups: ['usage', 'cost', 'limits'],
     supportsManagedWrites: options.managedWrites === true,
+    supportsSessionWorkspaces: true,
     describe: () => structuredClone(descriptor),
     refresh,
     contextScope: () => scope,
@@ -397,7 +400,9 @@ export function createClaudeDriver(
             invocation.executionContext.kind !== 'workspace-write' ||
             invocation.executionContext.admission.operationId !== invocation.invocationId)) ||
         invocation.executionContext.kind !== invocation.selection.mode ||
-        invocation.executionContext.workspace !== options.workspace
+        // The Runtime's checkout or a Specification's verified worktree (a write's folder is
+        // checked against the Engine claim before any driver starts: managed-invocation).
+        !isAbsolute(invocation.executionContext.workspace)
       ) {
         throw new SessionError(
           'CAPABILITY_UNSUPPORTED',
@@ -405,6 +410,7 @@ export function createClaudeDriver(
         );
       }
 
+      const workspace = invocation.executionContext.workspace;
       let verified = false;
       let expectedVersion: string | undefined;
       let launchFingerprint: string | undefined;
@@ -430,7 +436,8 @@ export function createClaudeDriver(
         },
         async (fact) => {
           if (
-            fact.kind === 'lost' ||
+            // A frame this adapter refused says nothing about Claude's availability.
+            (fact.kind === 'lost' && fact.message !== claudeLoss.rejected) ||
             (fact.kind === 'outcome' &&
               fact.error &&
               [
@@ -474,11 +481,12 @@ export function createClaudeDriver(
               invocationId: invocation.invocationId,
               scope: temporary,
               executable: installation.executable,
-              cwd: options.workspace,
+              cwd: workspace,
               args: claudeArguments(invocation.selection, invocation.providerContext),
               environment,
               signal: operationSignal,
               secrets: installation.secrets,
+              ...(invocation.recordProcess ? { record: invocation.recordProcess } : {}),
             });
           },
           async initialize(payload) {
@@ -517,7 +525,7 @@ export function createClaudeDriver(
           verifyFrame(frame) {
             if (!verified) {
               try {
-                verifyClaudeInit(frame, options.workspace, expectedVersion, invocation.selection);
+                verifyClaudeInit(frame, workspace, expectedVersion, invocation.selection);
               } catch (error) {
                 invalidate(
                   new ClaudeProbeError(
@@ -531,7 +539,7 @@ export function createClaudeDriver(
 
               verified = true;
             } else if (frame.type === 'system' && frame.subtype === 'init') {
-              verifyClaudeInit(frame, options.workspace, expectedVersion, invocation.selection);
+              verifyClaudeInit(frame, workspace, expectedVersion, invocation.selection);
             }
           },
         },

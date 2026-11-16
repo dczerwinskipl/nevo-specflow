@@ -15,6 +15,7 @@ steps:
     purpose: Implement the UI change from its UX contract and run its verification.
     transitions:
       - id: implemented
+        label: Implemented
         to: { step: review }
         continuation: auto
   - id: review
@@ -25,9 +26,11 @@ steps:
     purpose: Review the change independently against the Task, the UX contract and the design system.
     transitions:
       - id: approved
+        label: Approved
         result: pass
         to: { terminal: completed }
       - id: changes-requested
+        label: Changes requested
         result: fail
         to: { step: implement }
         feedback: required

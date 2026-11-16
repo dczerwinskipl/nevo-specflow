@@ -256,7 +256,7 @@ function messageOf(reason: AttentionItemReason, fields: ItemFields): string {
     case 'human-step':
       return `${step}is done by a person: start it.`;
     case 'session-unavailable':
-      return `${step}continues the previous Session, but the previous step ran in none: start it yourself or in a new Session.`;
+      return `${step}continues the previous step's Session, but that step has no Session to continue: start it yourself or in a new Session.`;
     case 'archetype-missing':
       return `${step}cannot continue: ${archetype} is not defined.`;
     case 'provider-not-chosen':

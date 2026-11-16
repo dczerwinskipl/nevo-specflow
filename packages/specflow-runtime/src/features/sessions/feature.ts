@@ -19,6 +19,8 @@ import { join } from 'node:path';
 import type { SpecFlowEngine } from '@nevo/specflow-engine';
 import { createEngineSessionEffects, workspaceExecutionIdentity } from './effects/engine';
 import type { SessionCoordinator } from './lifecycle/coordinator';
+import { createSpecificationWorkspaceResolver } from './workspace/specification-workspace';
+import { withheldProviderDescriptor } from './providers/withheld';
 
 /**
  * The registered Sessions runtime, read at request time by the features composed over it (the
@@ -40,6 +42,10 @@ export function createSessionsFeature(
     /** Demo mode: the read-only reads of the managed Session screen. */
     demoReads?: DemoManagedSessionReads;
     engine?: SpecFlowEngine;
+    /** Turns registered by workspace, shared with Close (the composition root wires one). */
+    workspaceOccupancy?: {
+      beginTurn(workspaceId: string, sessionId: string): { end(): void } | undefined;
+    };
   } = {},
 ): RuntimeFeature & { readonly runtime: SessionsRuntime } {
   let registered: SessionCoordinator | undefined;
@@ -160,6 +166,12 @@ export function createSessionsFeature(
                 }
               : { kind: 'no-effects' },
             effects,
+            // Only an Engine opened in the verified Session workspace resolves Specification
+            // workspaces; without one every Session keeps the Runtime's checkout.
+            options.engine && options.storage?.workspace === options.engine.workspace.root
+              ? createSpecificationWorkspaceResolver(options.engine)
+              : undefined,
+            options.workspaceOccupancy,
           )
         : undefined;
       if (coordinator) {
@@ -179,6 +191,9 @@ export function createSessionsFeature(
       registerSessionRoutes(app, {
         coordinator,
         projectId: options.storage?.projectId,
+        ...(enabled && options.config?.withheld
+          ? { withheldProviders: options.config.withheld.map(withheldProviderDescriptor) }
+          : {}),
         ...(options.demoList ? { demoList: options.demoList } : {}),
         ...(options.demoReads ? { demoReads: options.demoReads } : {}),
       });

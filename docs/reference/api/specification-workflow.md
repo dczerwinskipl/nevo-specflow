@@ -62,6 +62,17 @@ last `handoff` (a finished attempt names the transition `label`, its step `title
 finished it), `actions` (`start`, `finish` with its
 transitions, `return` with its targets) and, per subject, `task` (the Task lifecycle actions, each
 `allowed` or `unavailable` with a stable reason) or `specification` (`createTask`, and `exit`).
+A Specification whose workflow resolves also has `outline`: `stepCount`, the `current` step (absent
+before the first start and once the run ended), the `next` step and `tasksStep`, each
+`{step, title, position}` with a 1-based position in the definition's declared order. `next` is
+present only when it is certain: every transition of `current` leads to the same step. It is absent
+when any transition ends the run (a Review whose approval completes the run has no `next`, even if
+its other transition goes back to Implement) or when they lead to several steps; before the first
+start it is the entry step. `tasksStep` is the first step that declares `produces: tasks`, present
+only while the run is certain to get there: following `next` from `current` (itself included), or
+from the entry step, arrives at it, so no step on the way branches or can end the run. These are
+display facts: "Step 2 of 7" is the step's position in the definition, not progress, since a
+workflow may loop or branch and declared order is no execution order.
 Once the Specification run ended (completed or abandoned), `createTask` and a Task's edit and `remove`
 actions are `unavailable` with reason `specification-ended`, as the commands refuse them with
 `WORKFLOW_SPECIFICATION_ENDED`.
@@ -143,7 +154,12 @@ reason?}]` (as the CLI's `--task-decisions-file`): applied after `tasks` and bef
 - `finish` names the `step` and `attempt` the owner worked on, so a stale caller never finishes a newer
   attempt (`WORKFLOW_ATTEMPT_MISMATCH`). **Repeating the same finish** returns `200` with the recorded
   result and `replayed: true`; no state changes. `postActions` reports what ran after the finish
-  (`commit-execution-state`: `completed`, `skipped` with a reason, or `failed` with a code); a failed
+  (`commit-execution-state`: `completed`, `skipped` with a reason, or `failed` with a code), separately
+  from the finish itself. A `completed` commit carries `held: {edited, paths}` when it left execution
+  state uncommitted because someone edited it since the Engine wrote it (`edited`, for example a
+  `task.md` an agent wrote directly) together with every path of the same operations (`paths`: that Task's files, and the Task index
+  while it would register a Task HEAD does not have, with every Task created or removed since, so
+  HEAD stays consistent; edits of Tasks HEAD registers are never held with it); the rest is committed. Committing the edited files with Git releases them for the next finish. A failed
   post action does not fail the finish and runs again on a repeated finish. A different finish of that attempt is
   `WORKFLOW_ATTEMPT_MISMATCH` (409).
 - `abandon` is final. A retry with the same reason returns the same result; it is not a bypass of Close:

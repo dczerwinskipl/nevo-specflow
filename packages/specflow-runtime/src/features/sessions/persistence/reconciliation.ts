@@ -2,6 +2,7 @@ import type { StoreDatabase } from './database';
 import type { StoredTurn, StoreCommand, EffectRecoveryCandidate } from './protocol';
 import { decode, fail } from './encoding';
 import { validateDriverFact } from '../providers/facts';
+import { parseProcessIdentity } from '../providers/process/process-identity';
 import type { createRequestJournal } from './requests';
 
 type Reconcile = Extract<StoreCommand, { op: 'reconcile-effect' }>;
@@ -19,7 +20,8 @@ export function createEffectReconciliation(db: Dependencies) {
   ): EffectRecoveryCandidate[] {
     const rows = db.all(
       `SELECT id,session,data FROM turns WHERE state!='terminal'
-      AND json_extract(data,'$.effectBinding') IS NOT NULL
+      AND (json_extract(data,'$.effectBinding') IS NOT NULL
+        OR json_extract(data,'$.nativeProcess') IS NOT NULL)
       AND (? IS NULL OR session=?) AND (? IS NULL OR id=?) AND session>?
       ORDER BY session LIMIT 40`,
       c.sessionId ?? null,
@@ -31,8 +33,14 @@ export function createEffectReconciliation(db: Dependencies) {
 
     return rows.map((row) => {
       const turn = decode<StoredTurn>(row);
-      if (!turn.effectBinding || !/^[0-9a-f]{64}$/.test(turn.effectBinding)) {
+      if (turn.effectBinding !== undefined && !/^[0-9a-f]{64}$/.test(turn.effectBinding)) {
         return fail('SESSION_RECOVERY_REQUIRED', 'Execution binding evidence is invalid.');
+      }
+
+      const nativeProcess =
+        turn.nativeProcess === undefined ? undefined : parseProcessIdentity(turn.nativeProcess);
+      if (turn.nativeProcess !== undefined && !nativeProcess) {
+        return fail('SESSION_RECOVERY_REQUIRED', 'Native process evidence is invalid.');
       }
 
       const context = db.get(
@@ -47,12 +55,13 @@ export function createEffectReconciliation(db: Dependencies) {
         sessionId: String(row.session),
         turnId: String(row.id),
         invocationId: turn.invocationId,
-        binding: turn.effectBinding,
+        ...(turn.effectBinding !== undefined ? { binding: turn.effectBinding } : {}),
         nativeDispatched: Number(context?.dispatched) === 1,
         workspace: String(context?.workspace ?? ''),
         ...(session.nativeWorkspaceIdentity
           ? { workspaceIdentity: session.nativeWorkspaceIdentity }
           : {}),
+        ...(nativeProcess ? { nativeProcess } : {}),
       };
     });
   }
@@ -71,6 +80,10 @@ export function createEffectReconciliation(db: Dependencies) {
         'SESSION_RECOVERY_REQUIRED',
         'Execution receipt belongs to another invocation or binding.',
       );
+    }
+
+    if (c.source === 'native-stopped' && (!turn.nativeProcess || c.outcome !== 'interrupted')) {
+      fail('SESSION_RECOVERY_REQUIRED', 'Native-stop evidence does not belong to this Turn.');
     }
 
     const context = db.get(
@@ -123,7 +136,9 @@ export function createEffectReconciliation(db: Dependencies) {
           text:
             c.source === 'not-dispatched'
               ? 'Runtime recovered an operation that never reached provider launch.'
-              : 'Runtime recovered a verified execution outcome. Output not persisted before interruption is unavailable.',
+              : c.source === 'native-stopped'
+                ? 'The agent process stopped while its outcome was not recorded. Output not persisted before then is unavailable; review the workspace changes before continuing.'
+                : 'Runtime recovered a verified execution outcome. Output not persisted before interruption is unavailable.',
         },
       });
     }

@@ -5,8 +5,9 @@ import type { GateStatus, WorkflowActionProjection } from '@nevo/specflow-contra
 import { GateList, type GateAction } from './GateList';
 import { InlineAction } from './InlineAction';
 import { closableInFinishDialog } from './FinishTasksOpen';
-import { actorLabel, formatWhen, openTasksText } from './presentation';
+import { actorLabel, formatWhen, openTasksText, transitionLabel } from './presentation';
 import { StartBlockerLines, type NowLinks } from './StartBlockerLines';
+import { useViewerId } from './useViewerId';
 
 /** An icon inside running text: on the text line, no flex box that would shift the line. */
 function InlineIcon({ name }: { name: ComponentProps<typeof Icon>['name'] }) {
@@ -74,6 +75,7 @@ export function NowBlock({
   summary,
 }: NowBlockProps) {
   const { t, i18n } = useTranslation();
+  const viewerId = useViewerId();
   const { position, workflow, handoff } = projection;
   const when = (at: string) => formatWhen(t, at, i18n.language);
   const workflowLine = workflow
@@ -99,7 +101,7 @@ export function NowBlock({
       facts = t('workflowExecution.now.active', {
         attempt: position.attempt.number,
         since: formatWhen(t, position.attempt.startedAt, i18n.language, { timeOnlyToday: true }),
-        actor: actorLabel(position.attempt.actor),
+        actor: actorLabel(t, position.attempt.actor, viewerId),
       });
       stepId = position.step.id;
       break;
@@ -159,7 +161,7 @@ export function NowBlock({
       facts = position.abandonment
         ? t('workflowExecution.now.abandonedBy', {
             at: when(position.abandonment.at),
-            actor: actorLabel(position.abandonment.actor),
+            actor: actorLabel(t, position.abandonment.actor, viewerId),
           })
         : undefined;
       break;
@@ -240,7 +242,7 @@ export function NowBlock({
         {summary}
         {supporting}
         {unmet.map(({ transition, gates }) => {
-          const result = transition.label ?? transition.result ?? transition.id;
+          const result = transitionLabel(transition);
 
           return (
             <div key={transition.id} className="grid gap-1.5">
@@ -260,11 +262,11 @@ export function NowBlock({
           <InlineNote key={transition.id} tone="attention" data-now-tasks-open="">
             {closableInFinishDialog(transition)
               ? t('workflowExecution.now.tasksOpenDrafts', {
-                  result: transition.label ?? transition.result ?? transition.id,
+                  result: transitionLabel(transition),
                   tasks: (transition.openTasks ?? []).map((task) => task.taskId).join(', '),
                 })
               : t('workflowExecution.now.tasksOpen', {
-                  result: transition.label ?? transition.result ?? transition.id,
+                  result: transitionLabel(transition),
                   tasks: openTasksText(t, transition.openTasks ?? []),
                 })}
             {links.tasks ? (
@@ -286,9 +288,9 @@ export function NowBlock({
                   {t('workflowExecution.now.lastPrefix', { step: handoff.from.title })}
                   <span className="font-medium text-content-primary">
                     <InlineIcon name="arrow-right" />
-                    {handoff.label ?? handoff.result ?? handoff.transition}
+                    {transitionLabel({ ...handoff, id: handoff.transition })}
                   </span>
-                  {handoff.from.actor ? ` · ${actorLabel(handoff.from.actor)}` : null}
+                  {handoff.from.actor ? ` · ${actorLabel(t, handoff.from.actor, viewerId)}` : null}
                   {handoff.from.at ? `, ${when(handoff.from.at)}` : null}
                 </>
               ) : (

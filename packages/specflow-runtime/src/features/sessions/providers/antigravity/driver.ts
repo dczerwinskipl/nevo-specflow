@@ -3,6 +3,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 import { SessionError } from '../../errors';
+import { ProviderTitles } from '../titles';
 import { ProviderTimeouts, type Invocation, type SessionDriver } from '../driver';
 import { createInvocationScope, launchOwnedProcess } from '../process';
 import { createProviderAuthentication } from '../authentication';
@@ -47,7 +48,7 @@ export function createAntigravityDriver(
   const authentication = createProviderAuthentication();
   let descriptor: ProviderDescriptor = {
     providerId: 'antigravity',
-    title: 'Antigravity',
+    title: ProviderTitles.antigravity,
     readiness: 'unknown',
     models: [],
     modes: ['workspace-write'],
@@ -437,6 +438,7 @@ export function createAntigravityDriver(
                 signal: operationSignal,
                 maxFrameBytes: 1024 * 1024,
                 secrets: [bridge.nativeHookClientConfiguration.token],
+                ...(invocation.recordProcess ? { record: invocation.recordProcess } : {}),
               });
               launched = true;
 

@@ -392,83 +392,114 @@
           "blockers": {
             "type": "array",
             "items": {
-              "type": "object",
-              "required": [
-                "kind",
-                "subjectIds",
-                "message"
-              ],
-              "properties": {
-                "kind": {
-                  "anyOf": [
-                    {
-                      "type": "string",
-                      "enum": [
-                        "specification-run"
+              "anyOf": [
+                {
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "subjectIds",
+                    "message"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "specification-run"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "draft-tasks"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "on-hold-tasks"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "unfinished-tasks"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "broken-tasks"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "pending-execution-change"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "pending-task-documents"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "operation-in-progress"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "execution-state-unreadable"
+                          ]
+                        }
                       ]
                     },
-                    {
-                      "type": "string",
-                      "enum": [
-                        "draft-tasks"
-                      ]
+                    "subjectIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "maxItems": 1000
                     },
-                    {
+                    "message": {
                       "type": "string",
-                      "enum": [
-                        "on-hold-tasks"
-                      ]
-                    },
-                    {
-                      "type": "string",
-                      "enum": [
-                        "unfinished-tasks"
-                      ]
-                    },
-                    {
-                      "type": "string",
-                      "enum": [
-                        "broken-tasks"
-                      ]
-                    },
-                    {
-                      "type": "string",
-                      "enum": [
-                        "pending-execution-change"
-                      ]
-                    },
-                    {
-                      "type": "string",
-                      "enum": [
-                        "pending-task-documents"
-                      ]
-                    },
-                    {
-                      "type": "string",
-                      "enum": [
-                        "operation-in-progress"
-                      ]
-                    },
-                    {
-                      "type": "string",
-                      "enum": [
-                        "execution-state-unreadable"
-                      ]
+                      "maxLength": 20000
                     }
-                  ]
+                  }
                 },
-                "subjectIds": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "maxItems": 1000
-                },
-                "message": {
-                  "type": "string",
-                  "maxLength": 20000
+                {
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "subjectIds",
+                    "message"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "session-turn-running"
+                      ]
+                    },
+                    "subjectIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "maxItems": 1000
+                    },
+                    "message": {
+                      "type": "string",
+                      "maxLength": 20000
+                    }
+                  }
                 }
-              }
+              ]
             }
           },
           "localConfig": {
@@ -8058,6 +8089,84 @@
                 }
               }
             }
+          },
+          "outline": {
+            "type": "object",
+            "required": [
+              "stepCount"
+            ],
+            "properties": {
+              "stepCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "current": {
+                "type": "object",
+                "required": [
+                  "step",
+                  "title",
+                  "position"
+                ],
+                "properties": {
+                  "step": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "position": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                }
+              },
+              "next": {
+                "type": "object",
+                "required": [
+                  "step",
+                  "title",
+                  "position"
+                ],
+                "properties": {
+                  "step": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "position": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                }
+              },
+              "tasksStep": {
+                "type": "object",
+                "required": [
+                  "step",
+                  "title",
+                  "position"
+                ],
+                "properties": {
+                  "step": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "position": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                }
+              }
+            }
           }
         }
       },
@@ -10341,6 +10450,24 @@
                                 "enum": [
                                   "PROCESS_SETTLEMENT_UNVERIFIED"
                                 ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "SPECIFICATION_WORKTREE_UNSUPPORTED"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "NOT_ALLOWED_BY_PROJECT"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "NOT_ENABLED_ON_WORKSTATION"
+                                ]
                               }
                             ]
                           },
@@ -12081,6 +12208,24 @@
                             },
                             "additionalProperties": false
                           },
+                          "error": {
+                            "type": "object",
+                            "required": [
+                              "code",
+                              "message"
+                            ],
+                            "properties": {
+                              "code": {
+                                "type": "string",
+                                "maxLength": 64
+                              },
+                              "message": {
+                                "type": "string",
+                                "maxLength": 2048
+                              }
+                            },
+                            "additionalProperties": false
+                          },
                           "createdAt": {
                             "type": "string",
                             "maxLength": 40
@@ -13536,6 +13681,24 @@
                                   }
                                 },
                                 "additionalProperties": false
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          "error": {
+                            "type": "object",
+                            "required": [
+                              "code",
+                              "message"
+                            ],
+                            "properties": {
+                              "code": {
+                                "type": "string",
+                                "maxLength": 64
+                              },
+                              "message": {
+                                "type": "string",
+                                "maxLength": 2048
                               }
                             },
                             "additionalProperties": false
@@ -22553,6 +22716,186 @@
           },
           "400": {
             "description": "The request is invalid. A request that fails its schema validation or JSON parsing is answered in this shape too, with `error` `Bad Request` and `code` `FST_ERR_VALIDATION`, `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloseError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticationRequiredErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The principal lacks a required capability.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloseError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state of the resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloseError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request is well-formed but cannot be processed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloseError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: the source exceeded the Runtime default rate limit.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the budget renews."
+              },
+              "x-ratelimit-limit": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The budget of the time window."
+              },
+              "x-ratelimit-remaining": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "`0` on a refusal."
+              },
+              "x-ratelimit-reset": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the window resets."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloseError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/specs/{specId}/close/occupancy": {
+      "get": {
+        "operationId": "getSpecsBySpecIdCloseOccupancy",
+        "summary": "Read the agent Session Turns that keep a Specification Close from removing its worktree",
+        "tags": [
+          "Specifications"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+            },
+            "in": "path",
+            "name": "specId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "blockers"
+                  ],
+                  "properties": {
+                    "blockers": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "kind",
+                          "subjectIds",
+                          "message"
+                        ],
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "session-turn-running"
+                            ]
+                          },
+                          "subjectIds": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "maxItems": 1000
+                          },
+                          "message": {
+                            "type": "string",
+                            "maxLength": 20000
+                          }
+                        }
+                      },
+                      "maxItems": 1
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is invalid. A request that fails its schema validation is answered in this shape too, with `error` `Bad Request` and `code` `FST_ERR_VALIDATION`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -40487,6 +40830,27 @@
                                     }
                                   }
                                 }
+                              },
+                              "held": {
+                                "type": "object",
+                                "required": [
+                                  "edited",
+                                  "paths"
+                                ],
+                                "properties": {
+                                  "edited": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "paths": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
                               }
                             }
                           },
@@ -43495,6 +43859,27 @@
                                     }
                                   }
                                 }
+                              },
+                              "held": {
+                                "type": "object",
+                                "required": [
+                                  "edited",
+                                  "paths"
+                                ],
+                                "properties": {
+                                  "edited": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "paths": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
                               }
                             }
                           },
@@ -45577,7 +45962,8 @@
                                                 "items": {
                                                   "type": "object",
                                                   "required": [
-                                                    "id"
+                                                    "id",
+                                                    "title"
                                                   ],
                                                   "properties": {
                                                     "id": {
@@ -45776,6 +46162,9 @@
                                           },
                                           "summary": {
                                             "type": "string"
+                                          },
+                                          "templateOnly": {
+                                            "type": "boolean"
                                           }
                                         }
                                       }

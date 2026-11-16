@@ -17,6 +17,20 @@ export type ClaudeProcess = Pick<
 >;
 type Questions = Extract<ReturnType<typeof prepareClaudeRequest>, { kind: 'questions' }>;
 
+/**
+ * Why a dispatched operation ended without Claude's authoritative result. Each stays an unknown
+ * outcome (the agent may have changed the workspace), but each names what actually happened.
+ */
+export const claudeLoss = {
+  /** This adapter refused a Claude frame and stopped the process; Claude itself was available. */
+  rejected:
+    'SpecFlow stopped the Claude process because it sent output that SpecFlow does not support.',
+  /** Claude closed its output stream before its result: its process ended (exited or crashed). */
+  exited: 'The Claude process ended before it reported a result.',
+  /** The stdio connection to the running process failed. */
+  connection: 'SpecFlow lost its connection to the Claude process.',
+} as const;
+
 /** One owner for the bidirectional transport. Waiting for user input never blocks the
  * reader; only persistence and bounded writes apply backpressure. Outcomes are held
  * until process-tree disposal supplies settlement evidence.
@@ -353,7 +367,15 @@ export function createClaudeOperation(
       } else if (result) {
         await outcome(result);
       } else if (!lost) {
-        await protocol.end();
+        await protocol.end(
+          failure === undefined
+            ? claudeLoss.exited
+            : failure instanceof ProviderProcessError
+              ? claudeLoss.connection
+              : failure instanceof ClaudeProtocolError || failure instanceof SyntaxError
+                ? claudeLoss.rejected
+                : undefined,
+        );
       }
     }
   })();

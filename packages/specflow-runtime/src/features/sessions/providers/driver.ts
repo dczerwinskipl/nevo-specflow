@@ -6,6 +6,8 @@ import type {
   TelemetryGroup,
 } from '@nevo/specflow-contracts/sessions';
 import type { DriverFact, MeasurementFact } from '../persistence/protocol';
+import type { NativeProcessIdentity } from './process/process-identity';
+import { PROVIDER_DISCOVERY_BUDGET_MS } from '@nevo/specflow-contracts/sessions';
 
 export interface ProviderTelemetryBinding {
   accountScope: string;
@@ -33,20 +35,38 @@ export interface Invocation {
   selection: Pick<CreateSession, 'providerId' | 'mode' | 'providerModeId' | 'modelId' | 'effort'>;
   executionContext:
     | { kind: 'no-effects' }
-    | { kind: 'read-only'; workspace: string; temporaryRoot: string; workspaceIdentity?: string }
+    | {
+        kind: 'read-only';
+        workspace: string;
+        temporaryRoot: string;
+        workspaceIdentity?: string;
+        /** The Specification whose workspace this is (a Session associated with it). */
+        specId?: string;
+      }
     | {
         kind: 'workspace-write';
         workspace: string;
         temporaryRoot: string;
         workspaceIdentity: string;
-        admission: { operationId: string; scope: 'project' };
+        specId?: string;
+        /** The Engine claim: `workspace` is the root it claimed, the only folder a write may use. */
+        admission: { operationId: string; scope: 'project'; workspace: string };
       };
   providerContext?: { nativeSessionId: string; resume: boolean; scope?: string };
   beforeDispatch?: () => Promise<void>;
+  /**
+   * Durably records the native-stop evidence of the invocation's provider process; a driver passes
+   * it as `record` to the launch of that process (never to discovery helpers). Present with
+   * `beforeDispatch`.
+   */
+  recordProcess?: (identity: NativeProcessIdentity) => Promise<void>;
 }
 export type EmitFact = (fact: DriverFact) => Promise<void>;
 /** Discovery may initialize several bounded native mode profiles on a cold machine. */
-export const ProviderTimeouts = { discoveryMs: 30000, initializeMs: 10000 } as const;
+export const ProviderTimeouts = {
+  discoveryMs: PROVIDER_DISCOVERY_BUDGET_MS,
+  initializeMs: 10000,
+} as const;
 export interface ProviderOperation {
   done: Promise<void>;
   /** Positive liveness evidence from the process owner; required for a writable driver. */
@@ -65,6 +85,11 @@ export interface SessionDriver {
    * Its identity must be durably correlated before any user input is dispatched. */
   readonly nativeContextMode?: 'reserved' | 'provider-assigned';
   supportsManagedWrites?: boolean;
+  /**
+   * The driver runs a read-only invocation in the verified workspace its execution context names
+   * (a Specification's worktree), not only in the Runtime's own checkout.
+   */
+  supportsSessionWorkspaces?: boolean;
   describe(): ProviderDescriptor;
   refresh?(signal: AbortSignal): Promise<ProviderDescriptor>;
   contextScope?(): string;

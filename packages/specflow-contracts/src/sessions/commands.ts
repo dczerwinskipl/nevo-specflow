@@ -146,6 +146,15 @@ export const ProviderDescriptorSchema = Type.Object(
         Type.Literal('KNOWN_INCOMPATIBILITY'),
         Type.Literal('PROBE_FAILED'),
         Type.Literal('PROCESS_SETTLEMENT_UNVERIFIED'),
+        /**
+         * Read for a Session started in a Specification (`?specId`): the provider runs only in the
+         * Runtime's own checkout, and that Specification works in its own worktree.
+         */
+        Type.Literal('SPECIFICATION_WORKTREE_UNSUPPORTED'),
+        /** The project's configuration does not allow the provider (`allowed` is not `true`). */
+        Type.Literal('NOT_ALLOWED_BY_PROJECT'),
+        /** The project allows the provider; this workstation's local configuration turns it off. */
+        Type.Literal('NOT_ENABLED_ON_WORKSTATION'),
       ]),
     ),
     compatibility: Type.Optional(
@@ -217,6 +226,12 @@ export const ProviderCatalogueSchema = Type.Object(
   { items: Type.Array(ProviderDescriptorSchema, { maxItems: 32 }) },
   closed,
 );
+/**
+ * The longest one provider discovery runs, in milliseconds. A catalogue read re-probes a provider
+ * whose last check is older than its cache, so `GET /api/session-providers` can legitimately take
+ * this long on a cold machine; a client waits longer (with a margin) before treating it as failed.
+ */
+export const PROVIDER_DISCOVERY_BUDGET_MS = 30_000;
 export type CreateSession = Static<typeof CreateSessionSchema>;
 export type StartTurn = Static<typeof StartTurnSchema>;
 export type RespondInteraction = Static<typeof RespondInteractionSchema>;

@@ -136,6 +136,9 @@ function canonicalPlan(plan: DocumentChangePlan): Record<string, unknown> {
               id: entry.id,
               path: entry.path,
               type: entry.type,
+              ...(entry.templateRevision !== undefined
+                ? { templateRevision: entry.templateRevision }
+                : {}),
             })),
             folders: [...plan.registry.folders],
           },
@@ -561,18 +564,30 @@ function validateRegistry(value: unknown): PlannedRegistry {
   const documents = (value.documents as unknown[]).map((entry) => {
     if (
       !isRecord(entry) ||
-      !exactKeys(entry, ['id', 'path', 'type']) ||
+      !exactKeys(
+        entry,
+        entry.templateRevision === undefined
+          ? ['id', 'path', 'type']
+          : ['id', 'path', 'type', 'templateRevision'],
+      ) ||
       typeof entry.id !== 'string' ||
       !DOCUMENT_ID.test(entry.id) ||
       typeof entry.path !== 'string' ||
       !validateDocumentPath(entry.path).ok ||
       typeof entry.type !== 'string' ||
-      !CATALOGUE_ID.test(entry.type)
+      !CATALOGUE_ID.test(entry.type) ||
+      (entry.templateRevision !== undefined &&
+        (typeof entry.templateRevision !== 'string' || !SHA256.test(entry.templateRevision)))
     ) {
       throw invalid();
     }
 
-    return { id: entry.id, path: entry.path, type: entry.type };
+    return {
+      id: entry.id,
+      path: entry.path,
+      type: entry.type,
+      ...(entry.templateRevision !== undefined ? { templateRevision: entry.templateRevision } : {}),
+    };
   });
 
   return { documents, folders: validateFolders(value.folders) };

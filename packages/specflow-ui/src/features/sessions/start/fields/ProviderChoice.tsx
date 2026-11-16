@@ -1,4 +1,4 @@
-import { cn, StatusIndicator, Typography } from '@nevo/ui';
+import { cn, InlineNote, StatusIndicator, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { useMessage } from '../../../../i18n/message';
 import { ChoiceTile, ChoiceTileGroup } from '../../../../shared/controls/ChoiceTile';
@@ -43,7 +43,9 @@ export function ProviderChoice({
     );
   }
 
-  return (
+  // Said once below the tiles, whichever providers it concerns; each tile keeps a short reason.
+  const worktreeNote = providers.some((p) => p.unavailableInWorktree);
+  const tiles = (
     <ChoiceTileGroup
       aria-labelledby={labelledBy}
       columns={columns}
@@ -79,5 +81,16 @@ export function ProviderChoice({
         );
       })}
     </ChoiceTileGroup>
+  );
+
+  if (!worktreeNote) {
+    return tiles;
+  }
+
+  return (
+    <div className="grid gap-3">
+      {tiles}
+      <InlineNote>{t('sessionStart.provider.worktreeUnsupportedNote')}</InlineNote>
+    </div>
   );
 }

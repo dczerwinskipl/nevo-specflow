@@ -26,6 +26,7 @@ import {
   type CreateSession,
   type StartTurn,
   type RespondInteraction,
+  type ProviderDescriptor,
 } from '@nevo/specflow-contracts/sessions';
 import type { SessionCoordinator } from '../lifecycle/coordinator';
 import { SessionError } from '../errors';
@@ -95,6 +96,11 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
   options: {
     coordinator?: SessionCoordinator;
     projectId?: string;
+    /**
+     * Catalogue entries of the providers the configuration withholds (not allowed by the project,
+     * or turned off on this workstation), listed after the drivers' own entries.
+     */
+    withheldProviders?: readonly ProviderDescriptor[];
     /** Demo mode: the catalogue's Session list, served without managed Sessions. */
     demoList?: { source: SessionListSource; projectId: string };
     /** Demo mode: the read-only reads of the managed Session screen (no coordinator). */
@@ -182,10 +188,13 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
           });
 
           return {
-            items: authorizedProviderModes(
-              await sessions.providers(),
-              permissions['execute-write'],
-            ),
+            items: [
+              ...authorizedProviderModes(
+                await sessions.providers((request.query as { specId?: string }).specId),
+                permissions['execute-write'],
+              ),
+              ...(options.withheldProviders ?? []),
+            ],
           };
         },
       );

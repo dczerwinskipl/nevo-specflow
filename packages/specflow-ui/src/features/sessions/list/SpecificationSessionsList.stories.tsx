@@ -77,22 +77,23 @@ const currentRows: SessionListItem[] = [
   }),
 ];
 
-/** Each row's leading mark is centred on the row content (title, facts and any status line). */
-async function expectMarksCentred(canvasElement: HTMLElement) {
+/** Each row's leading mark is on its title line, at the top of the row at any height. */
+async function expectMarksOnTitleLine(canvasElement: HTMLElement) {
   const rows = canvasElement.querySelectorAll<HTMLElement>('[data-session-row]');
   await expect(rows.length).toBeGreaterThan(0);
   for (const rowElement of rows) {
     // The row's first slot is the leading box; the mark is its only child.
     const mark = rowElement.firstElementChild!.firstElementChild!.firstElementChild!;
     await expect(mark.getAttribute('aria-hidden')).toBe('true');
-    const content = rowElement.querySelector('[data-spec-title]')!.parentElement!;
+    const title = rowElement.querySelector('[data-spec-title]')!;
     const markBox = mark.getBoundingClientRect();
-    const contentBox = content.getBoundingClientRect();
+    const titleBox = title.getBoundingClientRect();
     const centre = (box: DOMRect) => box.top + box.height / 2;
+    // The title's first line is 20 px high; a wrapped title only grows below it.
     await expect(
-      Math.abs(centre(markBox) - centre(contentBox)),
-      `mark centre of ${rowElement.dataset.sessionRow}`,
-    ).toBeLessThanOrEqual(1);
+      Math.abs(centre(markBox) - (titleBox.top + 10)),
+      `mark of ${rowElement.dataset.sessionRow} on its title line`,
+    ).toBeLessThanOrEqual(1.5);
   }
 }
 
@@ -309,7 +310,7 @@ export const CurrentSessions: Story = {
     const status = first.status!.getBoundingClientRect();
     await expect(Math.abs(status.top - age.top)).toBeLessThanOrEqual(0.5);
     await expect(status.left).toBeGreaterThan(first.facts.at(-1)!.getBoundingClientRect().right);
-    await expectMarksCentred(canvasElement);
+    await expectMarksOnTitleLine(canvasElement);
     await expectNoLineStartsWithSeparator(canvasElement);
     await expect(canvas.queryByRole('button', { name: 'Pokaż więcej' })).toBeNull();
     await expectMarkOpensSession(canvasElement, 'a');
@@ -662,7 +663,7 @@ export const SessionsDisabledByListRead: Story = {
 
 /**
  * Narrow (specification-sessions.md "Rows"): the title and facts wrap, the status takes its own
- * line under the facts, the mark stays centred on the whole row, no horizontal overflow; a click on
+ * line under the facts, the mark stays on the title line, no horizontal overflow; a click on
  * the mark opens the Session.
  */
 export const Mobile: Story = {
@@ -684,7 +685,7 @@ export const Mobile: Story = {
     }
 
     await expectNoLineStartsWithSeparator(canvasElement);
-    await expectMarksCentred(canvasElement);
+    await expectMarksOnTitleLine(canvasElement);
     await expectMarkOpensSession(canvasElement, 'b');
   },
 };
@@ -727,7 +728,7 @@ export const WrappedFactsAt390: Story = {
     const tops = new Set(parts.facts.map((fact) => Math.round(fact.getBoundingClientRect().top)));
     await expect(tops.size, 'the facts wrap at 390').toBeGreaterThan(1);
     await expectNoLineStartsWithSeparator(canvasElement);
-    await expectMarksCentred(canvasElement);
+    await expectMarksOnTitleLine(canvasElement);
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
   },
 };

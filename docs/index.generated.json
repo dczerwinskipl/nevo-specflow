@@ -672,7 +672,8 @@
         "launching, cancelling or settling a provider process",
         "changing process-tree termination or Windows Job Object ownership",
         "adding provider temporary files, cleanup registrations or protocol framing",
-        "packaging native process bindings"
+        "packaging native process bindings",
+        "proving after a Runtime crash that a provider process stopped (native-stop evidence)"
       ],
       "summary": "One Runtime owner per provider invocation: POSIX process-group and Windows Job Object tree ownership, positive settlement evidence, no-shell launch, bounded framing, input, temporary files and cleanup, and the packaged Koffi binding.",
       "related": [

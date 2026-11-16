@@ -28,3 +28,24 @@ export const documentChangeClaims: ClaimSource<DocumentChangeJournal> = {
   },
   assertAvailable: assertDocumentChangeClaimsAvailable,
 };
+
+/**
+ * The refusal of a document write whose claim check found a conflicting holder. A document write
+ * claims `checkout-scoped:<workspaceId>`, which coexists with other document changes and manual
+ * commits, so the holder is a Close or a Create into this checkout, or an agent Session Turn that
+ * holds the project-wide write claim (named by the claim source's message, with its Session).
+ */
+export function claimConflictOf(error: SharedResourceError): {
+  readonly cause: 'busy-agent-turn' | 'busy-agent-turn-unknown' | 'busy-create-or-close';
+  readonly message: string;
+} {
+  if (error.holder?.kind === 'external') {
+    // `unknown`: the Turn has ended; only resolving its Session releases the claim.
+    return {
+      cause: error.holder.phase === 'unknown' ? 'busy-agent-turn-unknown' : 'busy-agent-turn',
+      message: error.message,
+    };
+  }
+
+  return { cause: 'busy-create-or-close', message: 'A Create or Close holds this checkout.' };
+}

@@ -84,6 +84,7 @@ async function renderAt(
         returnTo: vi.fn(),
         abandon: vi.fn(),
         closePreview: vi.fn(),
+        closeOccupancy: vi.fn(),
         close: vi.fn(),
       },
     }),

@@ -94,6 +94,14 @@ function services(scenario: WorkflowStoryScenario) {
       scenario === 'abandoned'
         ? Promise.resolve({ operationId: '6f1c1f43-6c4e-4c5c-9f60-1d3f3a9a1b20' })
         : Promise.reject(refusal('CLOSE_BLOCKED', { blockers: closeBlockers })),
+    // An agent Session still works in the worktree of the blocked Specification.
+    closeOccupancy: () =>
+      Promise.resolve({
+        blockers:
+          scenario === 'close-blocked'
+            ? [{ kind: 'session-turn-running', subjectIds: ['session-1'], message: 'display only' }]
+            : [],
+      }),
     close: never,
   };
   const defaults = createSpecFlowAppServices();

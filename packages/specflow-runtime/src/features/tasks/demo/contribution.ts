@@ -20,7 +20,6 @@ export function buildDemoTaskContribution(record: DemoSpecification) {
   );
 
   const groups = groupDemoTasks(tasks);
-  const named = new Set(attention.map((item) => item.targetId));
 
   return {
     state: 'available' as const,
@@ -29,7 +28,7 @@ export function buildDemoTaskContribution(record: DemoSpecification) {
       completed: record.progress.completed,
       total: record.progress.total,
       attention,
-      overview: overviewSummary(groups, named),
+      overview: overviewSummary(groups),
     },
   };
 }

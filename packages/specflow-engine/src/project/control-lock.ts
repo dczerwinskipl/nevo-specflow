@@ -2,13 +2,19 @@ import { randomUUID } from 'node:crypto';
 import { channel } from 'node:diagnostics_channel';
 import { lstat, mkdir, open, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import { performance } from 'node:perf_hooks';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 import { verifyCheckoutOnDisk, verifyProjectHomeOnDisk } from './disk-verification';
 import { resolveProjectHome, type ResolvedProjectHome } from './home/home';
 import { unlinkWindowsSafe, readFileWindowsSafe } from './fs/windows-safe-fs';
-import { isReadRequest } from './request-verification-memo';
+import {
+  forgetOperationVerification,
+  isReadRequest,
+  provenInOperation,
+  rememberProvenInOperation,
+} from './request-verification-memo';
 import { assertProjectHomeLockProof, captureProjectHomeLockProof } from './home/lock-proof';
 
 export const PROJECT_CONTROL_LOCK_RELATIVE_PATH = 'engine/control.lock';
@@ -158,18 +164,9 @@ async function attemptProjectControlLock<T>(
   deadline: number,
   retryMs: number,
 ): Promise<T> {
-  await assertCurrentProjectHome(context);
   // The expensive Git-based authority check is outside the lock.
   // Pin the physical evidence to recheck it without spawning Git after acquisition.
-  let homeProof: Awaited<ReturnType<typeof captureProjectHomeLockProof>>;
-  try {
-    homeProof = await captureProjectHomeLockProof(context);
-  } catch {
-    throw new ProjectControlLockError(
-      'CONTROL_LOCK_INVALID_HOME',
-      'Project Home physical authority could not be pinned before acquiring control lock.',
-    );
-  }
+  const homeProof = await proveProjectHome(context);
 
   const dir = join(context.project.stateRoot, 'engine');
   await ensureSafeLockDirectory(context, dir);
@@ -243,7 +240,15 @@ async function attemptProjectControlLock<T>(
         );
       }
 
-      return action();
+      try {
+        return await action();
+      } finally {
+        // Exit clear: a checkout verified in this section is not trusted after it: the next lookup
+        // of the same workflow mutation (its post action, outside any lock) verifies it again. The
+        // entry clear in `proveProjectHome` cannot cover this: the post action runs outside any
+        // section, so no admission follows before its lookups.
+        forgetOperationVerification({ keepHome: true });
+      }
     })().then(
       (value) => ({ success: true as const, value }),
       (error: unknown) => ({ success: false as const, error }),
@@ -390,6 +395,56 @@ async function ensureSafeLockDirectory(context: ResolvedProjectHome, dir: string
   }
 }
 
+type HomeProof = Awaited<ReturnType<typeof captureProjectHomeLockProof>>;
+
+const PROVEN_HOME = 'control-lock-home-proof';
+
+/**
+ * The Git-based authority check of an admission and the physical evidence pinned after it. A later
+ * admission of the same workflow mutation (`runVerifiedMutation`: the finish's own lock section,
+ * then each stage of its manual commit) skips the Git check only when the physical evidence it pins
+ * now is exactly the evidence the operation last proved with Git; anything that differs (a stale
+ * proof, the retry of `withProjectControlLock`) is proved with Git afresh.
+ */
+async function proveProjectHome(context: ResolvedProjectHome): Promise<HomeProof> {
+  const proven = provenInOperation<HomeProof>(PROVEN_HOME);
+  if (proven !== undefined) {
+    const current = await pinProjectHome(context);
+    if (isDeepStrictEqual(current, proven)) {
+      // Same home evidence: its Git answers hold, but every checkout is verified again (a checkout's
+      // identity marker or ignore rules can change without changing this evidence).
+      forgetOperationVerification({ keepHome: true });
+
+      return current;
+    }
+
+    // The evidence moved: nothing this operation verified is trusted any more.
+    forgetOperationVerification({ keepHome: false });
+  } else {
+    // The first admission: nothing verified before the lock is trusted inside it (the home is
+    // asked of Git afresh below). Entry clear: the exit clear of a previous section cannot cover
+    // this, because lookups between sections (the first plan, a post action) verify outside a lock.
+    forgetOperationVerification({ keepHome: true });
+  }
+
+  await assertCurrentProjectHome(context);
+  const proof = await pinProjectHome(context);
+  rememberProvenInOperation(PROVEN_HOME, proof);
+
+  return proof;
+}
+
+async function pinProjectHome(context: ResolvedProjectHome): Promise<HomeProof> {
+  try {
+    return await captureProjectHomeLockProof(context);
+  } catch {
+    throw new ProjectControlLockError(
+      'CONTROL_LOCK_INVALID_HOME',
+      'Project Home physical authority could not be pinned before acquiring control lock.',
+    );
+  }
+}
+
 async function assertCurrentProjectHome(context: ResolvedProjectHome): Promise<void> {
   try {
     if (isReadRequest()) {
@@ -403,6 +458,8 @@ async function assertCurrentProjectHome(context: ResolvedProjectHome): Promise<v
     const current = await resolveProjectHome({
       cwd: context.workspace.root,
       projectRoot: context.project.homeRoot,
+      // Asked of Git afresh; the operation's later membership checks reuse these answers.
+      refresh: true,
     });
     if (
       current.project.projectId !== context.project.projectId ||

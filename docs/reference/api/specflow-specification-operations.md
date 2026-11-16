@@ -181,6 +181,7 @@ and without SSE clients just poll the inspection.
 | HTTP | Route                                                        | Meaning                                   |
 | ---- | ------------------------------------------------------------ | ----------------------------------------- |
 | GET  | `/api/specs/:specId/close/preview`                           | Plan Specification Close                  |
+| GET  | `/api/specs/:specId/close/occupancy`                         | Running Turns in the checkout, no plan    |
 | POST | `/api/specs/:specId/close`                                   | Archive/optional integrate                |
 | GET  | `/api/specs/:specId/worktree/close/preview`                  | Exclusive Worktree Close preview          |
 | POST | `/api/specs/:specId/worktree/close`                          | Exclusive Worktree Close                  |
@@ -203,6 +204,21 @@ A Close that the Specification workflow refuses (unfinished Tasks or runs, pendi
 `CLOSE_BLOCKED` with `blockers`: groups `{kind, subjectIds, message}` (`kind` is a stable value, `subjectIds` are
 Task ids or the Specification id for Specification-wide holds, `message` is display-only). Abandoning the
 Specification instead is [`POST /api/specs/:specId/workflow/abandon`](specification-workflow.md).
+The Runtime also answers `409 CLOSE_BLOCKED`, on the preview and on the Close itself (Specification
+and Workspace Close), while an agent Session Turn works in the linked checkout Close would remove: one
+blocker `{kind: 'session-turn-running', subjectIds: [sessionId...]}` (`CloseRefusalBlocker`).
+`GET /api/specs/:specId/close/occupancy` (the Specification Close capability) reads the same blocker
+without planning the Close, from the Specification's registry binding: `{blockers: []}`, or the one
+`session-turn-running` blocker while Turns run in its linked checkout (never for the primary
+checkout, which Close does not remove). A client reads it when the workflow projection already
+blocks the Close, so both kinds are shown at once. While
+Close runs, the Runtime holds that checkout against new Turns, and a Turn of the Specification's
+Session refuses to start while an unfinished Close journal names the Specification
+([Sessions API, execution workspace](sessions.md)). The hold is in the Runtime process. A Close run
+anywhere else (the CLI, or a Runtime that does not own the Session store) refuses with the same
+blocker while a live Runtime owns the store, after a stopped one left an unsettled Turn in the
+checkout, or when the owner cannot be determined
+([Specification lifecycle](../../architecture/runtime/specification-lifecycle.md#safe-integration-rebind-and-disposal)).
 
 Worktree Close treats `.nevo/local/cache/**` (the semantic documentation index) as disposable
 product-owned files: they do not make the worktree dirty and are deleted with it. When Create

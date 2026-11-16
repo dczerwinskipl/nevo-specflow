@@ -37,6 +37,83 @@ describe('startCatalogueFromProviders', () => {
     expect(only(providerDescriptor({ providerId: 'p' })).reason).toBeUndefined();
   });
 
+  it('marks a provider that cannot work in the Specification worktree with a short reason', () => {
+    const provider = only(
+      providerDescriptor({
+        providerId: 'codex',
+        readiness: 'unavailable',
+        reasonCode: 'SPECIFICATION_WORKTREE_UNSUPPORTED',
+        reason: "This provider runs only in the Runtime's own checkout.",
+      }),
+    );
+    expect(provider).toMatchObject({
+      available: false,
+      reason: { key: 'sessionStart.provider.worktreeUnsupported' },
+      unavailableInWorktree: true,
+    });
+    expect(provider.hint).toBeUndefined();
+  });
+
+  it.each([
+    ['NOT_ALLOWED_BY_PROJECT', 'notAllowed'],
+    ['NOT_ENABLED_ON_WORKSTATION', 'notEnabled'],
+  ] as const)(
+    'explains a provider withheld by configuration (%s) and what to change',
+    (code, key) => {
+      const provider = only(
+        providerDescriptor({
+          providerId: 'codex',
+          readiness: 'unavailable',
+          reasonCode: code,
+          reason: 'Runtime text',
+        }),
+      );
+      expect(provider).toMatchObject({
+        available: false,
+        reason: { key: `sessionStart.provider.${key}` },
+        hint: {
+          key: `sessionStart.provider.${key}Help`,
+          values: { key: 'sessions.providers.codex' },
+        },
+      });
+    },
+  );
+
+  it('says a withheld provider is a configuration matter, not a worktree one', () => {
+    // A withheld provider runs no driver, so the Runtime never reads it for the worktree: its
+    // configuration reason stands and the worktree note does not count it.
+    const provider = only(
+      providerDescriptor({
+        providerId: 'codex',
+        readiness: 'unavailable',
+        reasonCode: 'NOT_ENABLED_ON_WORKSTATION',
+      }),
+    );
+    expect(provider.unavailableInWorktree).toBeUndefined();
+    expect(provider.reason).toEqual({ key: 'sessionStart.provider.notEnabled' });
+  });
+
+  it('tells how to install or locate a provider that is enabled but not ready', () => {
+    const provider = only(
+      providerDescriptor({
+        providerId: 'claude',
+        readiness: 'unavailable',
+        reasonCode: 'INSTALLATION_UNAVAILABLE',
+        reason: 'Claude Code was not found.',
+      }),
+    );
+    expect(provider).toMatchObject({
+      reason: 'Claude Code was not found.',
+      hint: {
+        key: 'sessionStart.provider.notReadyHelp',
+        values: { key: 'sessions.providers.claude' },
+      },
+    });
+    expect(
+      only(providerDescriptor({ providerId: 'claude', readiness: 'unavailable' })).reason,
+    ).toEqual({ key: 'sessionStart.provider.notReady' });
+  });
+
   it('keeps the provider modes with their availability: ready, authorized and offered', () => {
     const provider = only(
       providerDescriptor({

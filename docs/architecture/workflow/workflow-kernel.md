@@ -231,8 +231,9 @@ its own (plan 06, F17), not a finish. No dispatch preference is stored: whether 
 does the next step is chosen when it starts.
 
 **After a manual step, no Session to reuse.** When a person finishes into a `session: reuse`
-transition, the continuation is `session-unavailable` and the action projection reports the next
-step's agent option as unavailable with that reason. Nothing falls back to a fresh Session.
+transition, the continuation is an owner action with the blocker `session-unavailable`, and the
+action projection reports the next step's agent option as unavailable with that reason. Nothing
+falls back to a fresh Session.
 
 **Idempotent finish (F16).** A finish stores the digest of its request (step, attempt and the whole
 input, `finishDigest`) on the attempt (`requestDigest`). A finish that names the run's last finished
@@ -654,7 +655,10 @@ How a launch is resolved:
 - **`session: fresh`.** The provider is the archetype's `preferredProvider`, with its model.
 
 Only an `auto` transition whose launch resolves gives `continue`. Otherwise the result is attention.
-The reasons are:
+An unresolved launch is reported under its own reason (`model-missing`, …) only when an agent
+finished the previous attempt; after a person's attempt (always the case while agent Sessions are
+off) agent configuration is not the owner's problem, so it is `owner-action` with that reason as its
+`blocker`. The reasons are:
 
 | Reason                | When                                                                          |
 | --------------------- | ----------------------------------------------------------------------------- |
@@ -662,7 +666,7 @@ The reasons are:
 | `human-step`          | The next step is done by a person.                                            |
 | `model-missing`       | The provider to use has no model in the archetype.                            |
 | `provider-not-chosen` | A fresh Session is needed and the archetype has no preferred provider.        |
-| `session-unavailable` | The transition reuses the Session, but the finishing executor had none.       |
+| `session-unavailable` | The transition reuses the Session, but the finishing agent reported none.     |
 | `archetype-missing`   | The step's archetype is not defined, or its file is invalid.                  |
 | `tasks-stuck`         | The Specification waits, but no open Task can progress without the owner.     |
 | `task-escalated`      | Tasks escalated, no declared transition (`taskIds`). Wins over `tasks-stuck`. |
@@ -853,11 +857,17 @@ documents ([documents layer](../runtime/specification-documents.md#commits-of-wo
   `finish an interrupted workflow change`.
 - **Auto-commit on.** The operation is queued and committed by the document queue with its batch
   policy, identity and trailers (`Nevo-Action: workflow`); its subject is
-  `spec(workflow): <summary> in <slug>` (`<n> workflow changes` when a batch holds several).
+  `spec(workflow): <summary> in <slug>` (`<n> workflow changes` when a batch holds several), never
+  cut (a form that fits is chosen whole, see
+  [commits of workflow state](../runtime/specification-documents.md#commits-of-workflow-state)).
 - **Auto-commit off.** The paths go to the uncommitted-changes ledger. Finishing a step ("Next")
   runs the post action `commit-execution-state` (`operations/post-actions.ts`): a manual commit of
   the Specification's ledger entries below `.execution/` and `tasks/` (closed under shared operation
-  ids), reported in `FinishStepResult.postActions`. A failed post action does not fail the finish; a
+  ids) with the subject `spec(workflow): finish "<step title>"[ of task <id>] in <slug>`, reported in
+  `FinishStepResult.postActions`, apart from the finish. Execution state edited since the Engine
+  wrote it is held out of that commit with its operations, never refusing it (`held`, see
+  [commits of workflow state](../runtime/specification-documents.md#commits-of-workflow-state)). A
+  failed post action does not fail the finish; a
   repeated finish runs it again. The post-action hook is the seam where E6 adds the push of an agent
   step's work (not implemented).
 - **Close and Abandon.** Abandon is a workflow change like the others. A Specification Close takes

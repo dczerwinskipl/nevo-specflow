@@ -163,7 +163,11 @@ export const sessionRouteErrors = {
     'PROVIDER_UNAVAILABLE',
     'PROVIDER_AUTH_REQUIRED',
   ),
-  /** The start replay, the message, archive and Turn state, the provider validation, recovery. */
+  /**
+   * The start replay, the message, archive and Turn state (`TURN_CONFLICT` also while a Close holds
+   * the Specification's workspace or its workspace changed during the start), the provider
+   * validation, recovery.
+   */
   start: sessionBodyErrors(
     ...SESSION_ROUTE_REFUSALS,
     'SESSION_NOT_FOUND',

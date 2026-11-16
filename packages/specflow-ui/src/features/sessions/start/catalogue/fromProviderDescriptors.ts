@@ -37,6 +37,38 @@ function startModes(provider: ProviderDescriptor): StartMode[] {
   }));
 }
 
+const configKey = (provider: ProviderDescriptor) => `sessions.providers.${provider.providerId}`;
+
+/**
+ * Withheld by configuration: the project does not allow the provider, or this machine turned it
+ * off. Each says who changes what, in which file.
+ */
+function configurationPolicy(provider: ProviderDescriptor) {
+  if (provider.reasonCode === 'NOT_ALLOWED_BY_PROJECT') {
+    return {
+      reason: message('sessionStart.provider.notAllowed'),
+      hint: message('sessionStart.provider.notAllowedHelp', { key: configKey(provider) }),
+    };
+  }
+
+  if (provider.reasonCode === 'NOT_ENABLED_ON_WORKSTATION') {
+    return {
+      reason: message('sessionStart.provider.notEnabled'),
+      hint: message('sessionStart.provider.notEnabledHelp', { key: configKey(provider) }),
+    };
+  }
+
+  return undefined;
+}
+
+/** Enabled here, but its CLI is missing or did not answer: installing or locating it helps. */
+const notReady = (provider: ProviderDescriptor) =>
+  provider.readiness === 'unavailable' &&
+  provider.providerId !== 'mock' &&
+  (provider.reasonCode === undefined ||
+    provider.reasonCode === 'INSTALLATION_UNAVAILABLE' ||
+    provider.reasonCode === 'PROBE_FAILED');
+
 function startProvider(provider: ProviderDescriptor): StartProvider {
   const modes = startModes(provider);
   const { modelOverride, effortOverride } = provider.capabilities;
@@ -54,14 +86,30 @@ function startProvider(provider: ProviderDescriptor): StartProvider {
       ? (modes.find((mode) => !mode.available && mode.reason)?.reason ??
         message('sessionStart.provider.noMode'))
       : undefined;
-  const reason =
-    noMode ??
-    given ??
-    (provider.readiness === 'authenticationRequired'
-      ? message('managedSession.authenticationRequired')
-      : provider.providerId === 'mock'
-        ? message('managedSession.mockNote')
-        : undefined);
+  // Read for a Specification in its own worktree: the tile says it briefly; the provider choice
+  // explains what, why and what to do once for every such provider.
+  const worktreeUnsupported = provider.reasonCode === 'SPECIFICATION_WORKTREE_UNSUPPORTED';
+  const policy = configurationPolicy(provider);
+  const reason = worktreeUnsupported
+    ? message('sessionStart.provider.worktreeUnsupported')
+    : (policy?.reason ??
+      noMode ??
+      given ??
+      (provider.readiness === 'authenticationRequired'
+        ? message('managedSession.authenticationRequired')
+        : provider.providerId === 'mock'
+          ? message('managedSession.mockNote')
+          : notReady(provider)
+            ? message('sessionStart.provider.notReady')
+            : undefined));
+  const hint = worktreeUnsupported
+    ? undefined
+    : (policy?.hint ??
+      (provider.readiness === 'authenticationRequired'
+        ? message('managedSession.authenticationHelp')
+        : notReady(provider)
+          ? message('sessionStart.provider.notReadyHelp', { key: configKey(provider) })
+          : undefined));
 
   return {
     id: provider.providerId,
@@ -69,9 +117,8 @@ function startProvider(provider: ProviderDescriptor): StartProvider {
     icon: provider.providerId,
     available: startable,
     ...(reason ? { reason } : {}),
-    ...(provider.readiness === 'authenticationRequired'
-      ? { hint: message('managedSession.authenticationHelp') }
-      : {}),
+    ...(hint ? { hint } : {}),
+    ...(worktreeUnsupported ? { unavailableInWorktree: true } : {}),
     // A provider that does not accept a model (or an effort) override has nothing to choose: the
     // Session starts at its default.
     models: modelOverride

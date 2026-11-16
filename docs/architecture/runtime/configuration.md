@@ -85,11 +85,11 @@ specs:
 
 sessions:
   enabled: false # managed Sessions feature; default false
-  providers:
-    mock: { enabled: false }
-    claude: { enabled: false } # optional absolute `executable`
-    codex: { enabled: false } # optional absolute `executable`
-    antigravity: { enabled: false } # optional absolute `executable`
+  providers: # what the project allows; each workstation enables it locally
+    mock: { allowed: false } # test/demo only
+    claude: { allowed: false }
+    codex: { allowed: false }
+    antigravity: { allowed: false }
 
 git:
   enabled: true
@@ -184,9 +184,16 @@ Current ownership is explicit:
 - `authorization`: project-owned role assignments; workstation-local authorization is rejected.
 - `specs.overview.current.sections`: project-owned ordered Current Overview sections; local Specs
   configuration is rejected.
-- `sessions`: entirely project-owned (`enabled`, `providers.{mock,claude,codex,antigravity}` with
-  boolean `enabled` and, for real providers, an optional absolute `executable`); unknown keys and
-  any local `sessions` section are rejected. Provider details are in the
+- `sessions`: the project owns policy, the workstation owns enablement. Project config holds
+  `enabled` (the managed Sessions feature) and `providers.{mock,claude,codex,antigravity}.allowed`;
+  local config holds only `providers.<provider>.enabled` and, for real providers, an optional
+  absolute `executable`. A provider runs only when the project enables the feature and allows it,
+  the workstation does not turn it off, and its CLI is ready. Local config cannot widen policy: a
+  local `sessions.enabled`, a local `allowed`, or a local `enabled: true` or `executable` for a provider the project
+  does not allow are refused, as are `executable` in project config and the former project
+  `providers.<provider>.enabled` (the refusal says to replace it with `allowed`). Unknown keys are
+  refused in both files. See
+  [Session providers: project and workstation](#session-providers-project-and-workstation) and the
   [provider reference](../../reference/providers/README.md).
 - `git`: project owns everything shareable (`enabled`, `worktrees`, `integrationTargetBranch`,
   `commits.protectedBranches`/`allowedBranches`/`auto`); local owns `worktreesRoot` and may override
@@ -202,6 +209,41 @@ Current ownership is explicit:
 
 A local file that attempts to set project-owned policy is rejected before composition. Likewise,
 project config cannot contain local-owned credentials or workstation-specific TLS paths.
+
+### Session providers: project and workstation
+
+```yaml
+# .nevo/config.yaml (committed): what the team may use
+sessions:
+  enabled: true
+  providers:
+    claude: { allowed: true }
+    codex: { allowed: true }
+```
+
+```yaml
+# .nevo/local/config.yaml (ignored): what this machine runs
+sessions:
+  providers:
+    claude: { executable: /abs/path/claude } # enabled by default; a path only where it differs
+    codex: { enabled: false } # allowed, but not used on this machine
+```
+
+**An allowed provider is enabled on a workstation unless its local config sets `enabled: false`.**
+Zero setup was chosen over an explicit local opt-in because enablement only starts the provider's
+own readiness check: a provider whose CLI is not installed, not signed in or incompatible is listed
+as unavailable with its reason, and Runtime and the other providers stay usable. An opt-in would add
+a second step to every clone of every project without any safety the project policy does not
+already give. The cost is that an allowed, installed CLI is probed at Runtime start on every
+workstation; `enabled: false` opts out, and the provider then inspects no login and launches no
+process.
+
+The mock follows the same model: a project allows it (`mock: { allowed: true }`, for test and demo
+setups only) and a workstation may turn it off; it has no `executable`, and a project that does not
+allow it never lists it. The provider catalogue lists every other provider the configuration
+withholds as unavailable, with reason code `NOT_ALLOWED_BY_PROJECT` or `NOT_ENABLED_ON_WORKSTATION`
+and what to change in which file, next to the readiness reasons of enabled providers
+([Sessions API](../../reference/api/sessions.md)).
 
 `.nevo/local/state/` is reserved for persistent application-owned data that cannot be rebuilt, such as
 Session bindings, transcript and read-model records, workflow operation records, human-verification records, provider

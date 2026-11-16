@@ -8,8 +8,12 @@ export interface SessionEffectIdentity {
   binding: string;
   workspace: string;
   workspaceIdentity?: string;
+  /** The Specification whose workspace is claimed: admission re-checks its binding. */
+  specId?: string;
 }
 export interface SessionEffectClaim {
+  /** The workspace root the Engine claimed. */
+  readonly workspace: string;
   dispatch(): Promise<void>;
   abandon(): Promise<void>;
   unknown(): Promise<void>;
@@ -25,6 +29,11 @@ export interface SessionEffects {
       }
     | undefined
   >;
+  /**
+   * Settles a dispatched or unknown claim as interrupted on positive native-stop evidence (no
+   * process of the recorded identity remains). Refuses anything the claim lifecycle refuses.
+   */
+  settleStopped(identity: SessionEffectIdentity): Promise<void>;
 }
 export function executionBinding(
   sessionId: string,

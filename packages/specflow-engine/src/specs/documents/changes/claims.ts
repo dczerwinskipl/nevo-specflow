@@ -49,6 +49,7 @@ export function assertDocumentChangeClaimsAvailable(
       throw new SharedResourceError(
         'RESOURCE_CONFLICT',
         'Unfinished document changes reserve this checkout; flush, retry, abandon or recover them.',
+        { kind: 'document-change', operationId: record.operationId },
       );
     }
   }

@@ -158,9 +158,8 @@ describe('specs documents against a real project', () => {
     const { root, specId, dir } = await project();
     const added = await docs(root, ['add', specId, '--template', 'decisions', '--wait', '--json']);
     expect(added.exit, added.err.join('\n')).toBe(0);
-    expect(await readFile(join(dir, 'decisions.md'), 'utf8')).toContain(
-      '# CLI documents - Decisions',
-    );
+    // A seed document is headed by its own name, not the Specification title.
+    expect(await readFile(join(dir, 'decisions.md'), 'utf8')).toMatch(/^# Decisions\n/);
     const listed = json<{ documents: { path: string; type?: string }[]; commits?: unknown }>(
       await docs(root, ['list', specId, '--json']),
     );

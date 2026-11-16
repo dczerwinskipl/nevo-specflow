@@ -29,6 +29,15 @@ runtime:
     assignments:
       - userId: dominikczerwinski
         role: admin
+# Managed Sessions: the project allows these providers; each workstation runs every allowed one whose
+# CLI is ready, unless its .nevo/local/config.yaml sets sessions.providers.<provider>.enabled: false
+# (that file also holds a provider's `executable` where it is not at the default path).
+sessions:
+  enabled: true
+  providers:
+    claude: { allowed: true }
+    codex: { allowed: true }
+    antigravity: { allowed: true }
 git:
   enabled: true
   integrationTargetBranch: main

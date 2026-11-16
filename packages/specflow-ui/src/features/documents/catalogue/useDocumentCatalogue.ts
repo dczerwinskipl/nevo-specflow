@@ -9,11 +9,13 @@ import { documentCatalogueKeys } from '../read-model/queries';
  * back to the type id and the chooser shows its loading or failure line.
  */
 export function useDocumentCatalogue() {
-  const { api, kind } = useDocumentsApi();
+  const { api, kind, settled } = useDocumentsApi();
 
   return useQuery<ArchetypeCatalogue>({
     queryKey: documentCatalogueKeys.catalogue(kind),
     queryFn: ({ signal }) => api.catalogue(signal),
+    // Never ask the demo endpoint of a project Runtime while its mode is still being read.
+    enabled: settled,
     // The catalogue changes only with a Runtime configuration change.
     staleTime: 5 * 60 * 1000,
   });

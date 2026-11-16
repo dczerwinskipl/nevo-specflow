@@ -170,6 +170,10 @@
     "tasksHeading": "Zadania",
     "tasksEmptyTitle": "Nie ma jeszcze zadań",
     "tasksEmptyDescription": "Zadania pojawią się tutaj, gdy specyfikacja zostanie przygotowana do realizacji.",
+    "tasksAppearAt": "Zadania pojawią się, gdy workflow dojdzie do kroku {{step}} (krok {{position}} z {{total}}).",
+    "tasksAppearAfter": "Zadania pojawią się po zakończeniu kroku {{step}} (krok {{position}} z {{total}}).",
+    "documentTemplateOnly": "Tylko szablon",
+    "documentsEmptyTitle": "Nie ma jeszcze dokumentów",
     "documentsHeading": "Dokumenty",
     "allDocumentsLink": "Wszystkie dokumenty",
     "openFullDocument": "Otwórz pełny dokument",
@@ -907,6 +911,7 @@
         "branchLabel": "Nazwa nowej gałęzi",
         "branchPlaceholder": "feature/new-api",
         "branchHelp": "Katalog worktree Nevo przygotuje samodzielnie. Jeśli nazwa jest zajęta, podasz inną.",
+        "branchUntouched": "Dopóki jej nie zmienisz, gałąź nazywa się {{branch}} (… zostanie uzupełnione przy tworzeniu specyfikacji). Zmień nazwę, aby użyć własnej.",
         "nameSlug": "slug",
         "unavailableReason": "– {{reason}}",
         "slugDescription": "Slug nazywa katalog specyfikacji, katalog worktree i nową gałąź. Podąża za nazwą specyfikacji, dopóki go nie zmienisz.",
@@ -1866,12 +1871,16 @@
         "tool": "{{label}}",
         "toolUnnamed": "Wykonuje narzędzie…",
         "reasoning": "Myśli…",
-        "responding": "Pisze odpowiedź…",
+        "responding": "Pisze odpowiedź",
         "commentary": "Opisuje postęp…",
         "waiting": "Czeka…",
         "cancelling": "Anuluje…",
         "working": "Pracuje…"
       }
+    },
+    "outcomeReason": {
+      "TURN_CONFLICT": "Inny agent lub zmiana specyfikacji wciąż zapisuje w tym projekcie. Poczekaj, aż się zakończy, albo sprawdź wynik tury o nieznanym wyniku, a potem wyślij wiadomość ponownie.",
+      "PROCESS_STOPPED": "Agent zatrzymał się, gdy SpecFlow nie mógł zapisać jego wyniku. Przejrzyj zmiany w obszarze roboczym, zanim przejdziesz dalej."
     },
     "turnUnknown": "Wynik tury nieznany",
     "reconcile": {
@@ -1937,10 +1946,19 @@
       "placeholder": "Wybierz agenta i rozpocznij sesję"
     },
     "executor": {
-      "notChosen": "nie wybrano"
+      "notChosen": "nie wybrano",
+      "modelNotChosen": "nie wybrano modelu"
     },
     "provider": {
-      "noMode": "Brak dostępnego trybu pracy"
+      "noMode": "Brak dostępnego trybu pracy",
+      "worktreeUnsupported": "Niedostępny w worktree",
+      "worktreeUnsupportedNote": "Niektórzy dostawcy są niedostępni w tej specyfikacji: działają tylko w folderze projektu, a ta specyfikacja ma własny worktree. Wybierz dostawcę, który obsługuje worktree, albo rozpocznij sesję poza specyfikacją.",
+      "notAllowed": "Niedozwolony w projekcie",
+      "notAllowedHelp": "Opiekun projektu może go dopuścić ustawieniem {{key}}.allowed: true w .nevo/config.yaml, a następnie uruchomić ponownie Nevo SpecFlow.",
+      "notEnabled": "Wyłączony na tym komputerze",
+      "notEnabledHelp": "Aby go włączyć, usuń {{key}}.enabled: false z .nevo/local/config.yaml, a następnie uruchom ponownie Nevo SpecFlow.",
+      "notReady": "Niezainstalowany lub niegotowy",
+      "notReadyHelp": "Sprawdź, czy CLI dostawcy jest zainstalowane i działa na tym komputerze. Jeśli jest zainstalowane w innym miejscu, ustaw jego ścieżkę jako {{key}}.executable w .nevo/local/config.yaml."
     },
     "forbiddenSpecification": "Nie możesz rozpoczynać sesji w tej specyfikacji.",
     "sessionsDisabled": "Sesje są wyłączone w tym projekcie."
@@ -1969,7 +1987,7 @@
     },
     "tasks": {
       "newTask": "Nowe zadanie",
-      "emptyDescription": "Utwórz zadania teraz albo po kroku podziału. Zadania można tworzyć, zanim workflow wystartuje.",
+      "emptyDescription": "Utwórz zadania przyciskiem Nowe zadanie, także zanim workflow wystartuje.",
       "draftLine": "Szkic · wymaga zatwierdzenia",
       "after": "po {{ids}}",
       "actionsFailed": "Nie udało się wczytać, czy można tworzyć zadania."
@@ -2165,11 +2183,16 @@
     }
   },
   "workflowExecution": {
+    "actor": {
+      "you": "ciebie"
+    },
     "now": {
       "heading": "Teraz",
       "workflow": "{{title}} · wersja {{version}}",
       "notStarted": "Nie rozpoczęto",
-      "firstStep": "Pierwszy krok: {{title}}",
+      "firstStep": "Pierwszy krok · {{title}}",
+      "progress": "Krok {{position}} z {{total}}",
+      "progressNext": "Krok {{position}} z {{total}} · dalej: {{next}}",
       "ready": "Gotowe do rozpoczęcia",
       "active": "Próba {{attempt}} · w toku od {{since}} · rozpoczęta przez {{actor}}",
       "waitingNote": "Przejdzie dalej samo, gdy każde zadanie zostanie ukończone lub anulowane",
@@ -2188,14 +2211,15 @@
         "completed": "Ukończono",
         "abandoned": "Porzucono"
       },
-      "abandonedBy": "{{at}}, porzucił(a) {{actor}}",
+      "abandonedBy": "{{at}}, porzucone przez {{actor}}",
       "toFinishWith": "Aby zakończyć z wynikiem {{result}}:",
       "returned": "Zawrócono do tego kroku",
       "start": "Rozpocznij: {{step}}",
       "finish": "Zakończ krok",
       "return": "Wróć do wcześniejszego kroku",
       "finishKept": "Twoje zakończenie jest zachowane: wynik, uwagi i artefakty zostają bez zmian. Zakończ krok wraca do niego.",
-      "postActionFailed": "Zakończono. Zatwierdzenie stanu przepływu nie powiodło się ({{code}}); zmiany pozostają niezatwierdzone, a Zamknięcie je obejmie.",
+      "postActionFailed": "Krok jest zakończony. Stanu przepływu nie zatwierdzono ({{code}}): pozostaje niezatwierdzony, a Zamknięcie go obejmie.",
+      "postActionHeld": "Krok jest zakończony. {{edited}} zmieniono poza SpecFlow po zapisaniu przez SpecFlow, więc pliki tego zadania oraz zadań dodanych lub usuniętych od tego czasu pozostają niezatwierdzone; reszta stanu przepływu jest zatwierdzona. Zatwierdź te pliki w Git; w przeciwnym razie obejmie je Zamknięcie.",
       "lastPrefix": "Ostatnio: {{step}} · ",
       "alreadyFinished": "Ten krok został już zakończony. Poniżej widać, co można zrobić teraz.",
       "startWorkflow": "Rozpocznij przepływ",
@@ -2247,6 +2271,12 @@
       "openDocument": "Otwórz dokument"
     },
     "finish": {
+      "blocked": {
+        "noResult": "Wybierz wynik, aby zakończyć.",
+        "feedback": "Ten wynik wymaga informacji zwrotnej.",
+        "gates": "Nie wszystko, co potrzebne dla tego wyniku, jest jeszcze gotowe.",
+        "unavailable": "Tego wyniku nie można jeszcze wybrać; szczegóły powyżej."
+      },
       "title": "Zakończ: {{step}}",
       "description": "Próba {{attempt}}. Zostaniesz zapisany jako osoba, która ją zakończyła.",
       "result": "Wynik",
@@ -2312,14 +2342,17 @@
         "tasks": "Nieukończone zadania",
         "broken": "Uszkodzone zadania",
         "writes": "Trwające zapisy",
-        "state": "Stan przepływu"
+        "state": "Stan przepływu",
+        "sessions": "Uruchomione sesje"
       },
       "explanation": {
         "workflow": "Przepływ specyfikacji się nie zakończył. Oczekiwanie na zadania kończy się samo, gdy każde zadanie zostanie ukończone lub anulowane.",
+        "workflowAtStep": "Przepływ specyfikacji się nie zakończył: jest na kroku „{{step}}”. Doprowadź jego kroki do końca.",
         "tasks": "Ukończ, anuluj lub usuń każde z nich.",
         "broken": "Ich pliki nie zgadzają się z zapisem przepływu. Napraw je lub usuń.",
         "writes": "Zapis lub inna zmiana jeszcze trwa; za chwilę zakończy się sama.",
-        "state": "Nie można odczytać stanu przepływu. Sprawdź pliki wykonania specyfikacji."
+        "state": "Nie można odczytać stanu przepływu. Sprawdź pliki wykonania specyfikacji.",
+        "sessions": "W tym worktree pracuje sesja agenta. Poczekaj na zakończenie jej tury albo ją anuluj, a potem zamknij."
       },
       "groupHeading": "{{title}} · {{count}}",
       "more_one": "i {{count}} więcej",
@@ -2358,6 +2391,7 @@
         "waiting_many": "jej przepływ czeka na {{count}} nieukończonych zadań",
         "waiting_other": "jej przepływ czeka na {{count}} nieukończonych zadań",
         "workflow": "jej przepływ się nie zakończył",
+        "atStep": "jej przepływ jest wciąż na kroku „{{step}}”",
         "unfinished_one": "{{count}} zadanie jest nieukończone",
         "unfinished_few": "{{count}} zadania są nieukończone",
         "unfinished_many": "{{count}} zadań jest nieukończonych",
@@ -2371,7 +2405,11 @@
         "saving_many": "{{count}} dokumentów zadań jest jeszcze zapisywanych",
         "saving_other": "{{count}} dokumentów zadań jest jeszcze zapisywanych",
         "change": "zmiana jest jeszcze zapisywana",
-        "state": "nie można odczytać stanu jej przepływu"
+        "state": "nie można odczytać stanu jej przepływu",
+        "sessions_one": "w jej worktree pracuje sesja agenta",
+        "sessions_few": "w jej worktree pracują {{count}} sesje agenta",
+        "sessions_many": "w jej worktree pracuje {{count}} sesji agenta",
+        "sessions_other": "w jej worktree pracuje {{count}} sesji agenta"
       }
     },
     "abandon": {

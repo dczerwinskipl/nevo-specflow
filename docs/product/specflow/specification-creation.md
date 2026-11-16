@@ -401,8 +401,10 @@ repository folder) and a `path`; the UI shows the name instead of a generic "Cur
 ## Overview right after Create in project mode
 
 A freshly created Specification opens on an Overview that shows everything that exists: the
-overview's first paragraph as the description, the registered documents, the empty Tasks section
-(an inline empty state under the **Tasks** header) and the preparation block. The block's
+overview's Goal (else its first paragraph) as the description, the registered documents, each
+marked **Template only** while it is still its template, the empty Tasks and Sessions sections
+(inline empty states under their headers) and, with a workflow, Now with **Start workflow**
+(without one, the preparation block). The block's
 **Start session** opens New Session when the caller may start one; with Sessions turned off or not
 permitted it only explains the preparation path. Activity history holds the "Specification created"
 event and opens by default only once a Session event exists. A section whose source this Runtime

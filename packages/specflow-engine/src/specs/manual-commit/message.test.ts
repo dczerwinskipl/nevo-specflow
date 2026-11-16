@@ -33,9 +33,9 @@ describe('the default message', () => {
     );
   });
 
-  it('stays within a subject length even for a long slug', () => {
+  it('leaves out a slug that does not fit rather than cutting it', () => {
     const subject = defaultManualCommitSubject({ scope: 'specification', slug: 'x'.repeat(300) });
-    expect(Array.from(subject)).toHaveLength(100);
+    expect(subject).toBe('spec(docs): manual commit');
   });
 
   it('is used when no message was given and never when one was', () => {

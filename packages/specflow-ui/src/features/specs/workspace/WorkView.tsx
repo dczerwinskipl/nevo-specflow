@@ -86,6 +86,8 @@ export function WorkView({ specId, data }: WorkViewProps) {
   const preparationShown = data.isEmpty === true && !data.resumeSession;
   const nowShown = useSpecificationNowVisible();
   const nowBlock = nowShown || preparationShown;
+  // Without a workflow's Now the preparation block renders, and it owns the start of a Session.
+  const preparationRendered = preparationShown && !nowShown;
   const attentionShown = hasSpecificationAttention(modules, context);
   const mainShown = hasVisibleWorkSections(modules, ['main'], context);
   const hasContextSide = hasVisibleWorkSections(modules, ['resume', 'context', 'related'], context);
@@ -145,12 +147,24 @@ export function WorkView({ specId, data }: WorkViewProps) {
         !nowBlock && !attentionShown && opensColumn,
       )}
     >
-      <SpecificationWorkSectionOutlet slot="main" specId={id} data={data} modules={modules} />
+      <SpecificationWorkSectionOutlet
+        slot="main"
+        specId={id}
+        data={data}
+        modules={modules}
+        preparationShown={preparationRendered}
+      />
     </div>
   ) : null;
   const outlet = (slot: 'resume' | 'context' | 'related') =>
     contextReady ? (
-      <SpecificationWorkSectionOutlet slot={slot} specId={id} data={data} modules={modules} />
+      <SpecificationWorkSectionOutlet
+        slot={slot}
+        specId={id}
+        data={data}
+        modules={modules}
+        preparationShown={preparationRendered}
+      />
     ) : null;
 
   return (

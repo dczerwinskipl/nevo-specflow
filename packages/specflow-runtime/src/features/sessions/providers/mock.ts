@@ -1,5 +1,6 @@
 import { SessionLimits } from '@nevo/specflow-contracts/sessions';
 import { SessionError } from '../errors';
+import { ProviderTitles } from './titles';
 import type { EmitFact, Invocation, SessionDriver } from './driver';
 
 /** Directly injected test seam. It is never a route, query parameter or prompt convention. */
@@ -14,7 +15,7 @@ export function createMockDriver(scenario?: MockScenario): SessionDriver {
   return {
     describe: () => ({
       providerId: 'mock',
-      title: 'Controlled mock (test only)',
+      title: ProviderTitles.mock,
       readiness: 'ready',
       capabilities: {
         questions: true,

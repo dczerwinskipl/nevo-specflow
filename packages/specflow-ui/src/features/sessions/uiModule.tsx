@@ -32,11 +32,31 @@ export function overviewSessions(data: SpecificationWorkspaceData): readonly Ses
   return ordered.filter((session) => !inAttention.has(session.id)).slice(0, OVERVIEW_SESSIONS);
 }
 
-function SpecificationSessions({ data, actions }: SpecificationWorkSectionContext) {
-  const sessions = overviewSessions(data);
-  if (sessions.length === 0) {
-    return null;
+/**
+ * Whether the Overview shows Sessions: whenever it has one to list, and, when the Specification has
+ * none, while its Sessions read answers (never with Sessions turned off or a failed read).
+ */
+export function overviewSessionsVisible(data: SpecificationWorkspaceData): boolean {
+  if (overviewSessions(data).length > 0) {
+    return true;
   }
+
+  // Every Session waits in Requires attention: the section has nothing else to say.
+  if (data.sessions.length > 0) {
+    return false;
+  }
+
+  const availability = data.sectionAvailability?.sessions;
+
+  return (availability === undefined || availability === 'available') && !sessionsDisabled(data);
+}
+
+function SpecificationSessions({
+  data,
+  actions,
+  preparationShown,
+}: SpecificationWorkSectionContext) {
+  const sessions = overviewSessions(data);
 
   return (
     <SessionsSection
@@ -44,7 +64,8 @@ function SpecificationSessions({ data, actions }: SpecificationWorkSectionContex
       onOpenSession={actions.openSession}
       onOpenSessionsView={actions.openSessionsView}
       onStartSession={actions.openNewSession}
-      canStartSession={startSessionOffered(data.startSession)}
+      // The preparation block's Start session is the one start while it shows.
+      canStartSession={startSessionOffered(data.startSession) && !preparationShown}
       canOpenSession={actions.canOpenSession !== false}
     />
   );
@@ -56,8 +77,8 @@ export const sessionsUiModule: UiModule = {
     contributeTo(specificationWorkSections, {
       id: 'specflow.sessions.resume',
       slot: 'resume',
-      // Independent of Tasks: the Specification's Sessions whenever one is not in attention.
-      isVisible: ({ data }) => overviewSessions(data).length > 0,
+      // Independent of Tasks; without a Session to list, an empty state while Sessions answer.
+      isVisible: ({ data }) => overviewSessionsVisible(data),
       Component: SpecificationSessions,
     }),
     contributeTo(specificationAttentionItems, {

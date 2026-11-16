@@ -48,7 +48,7 @@ function fixture(
       workspace: '/workspace',
       temporaryRoot: '/temp',
       workspaceIdentity: 'workspace-1',
-      admission: { operationId: randomUUID(), scope: 'project' },
+      admission: { operationId: randomUUID(), scope: 'project', workspace: '/workspace' },
     },
     providerContext: {
       nativeSessionId: options.resume ? nativeId : randomUUID(),

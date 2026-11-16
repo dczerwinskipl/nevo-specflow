@@ -25,10 +25,21 @@ import type { NowLinks } from './StartBlockerLines';
 import { useWorkflowCommands } from './useWorkflowCommands';
 import { WorkflowRefusalAlert } from './WorkflowRefusalAlert';
 
-type FailedPostAction = Extract<
-  NonNullable<FinishWorkflowResult['postActions']>[number],
-  { status: 'failed' }
->;
+type PostAction = NonNullable<FinishWorkflowResult['postActions']>[number];
+type FailedPostAction = Extract<PostAction, { status: 'failed' }>;
+type HeldPostAction = Extract<PostAction, { status: 'completed' }> & {
+  readonly held: NonNullable<Extract<PostAction, { status: 'completed' }>['held']>;
+};
+
+/** What a finish's commit of the workflow state left to say, for the subject it finished. */
+interface FinishCommitNote {
+  readonly subjectKey: string;
+  readonly failed: readonly FailedPostAction[];
+  readonly held: readonly HeldPostAction[];
+}
+
+const subjectKeyOf = (subject: WorkflowSubjectRef): string =>
+  `${subject.specId}/${subject.taskId ?? ''}`;
 
 export interface WorkflowNowProps {
   readonly subject: WorkflowSubjectRef;
@@ -64,8 +75,13 @@ export interface WorkflowNowProps {
   };
 }
 
-const emptyDraft = (attemptKey: string): FinishDraft => ({
+/** A new draft; the only result of a step is chosen already (there is nothing to choose). */
+const emptyDraft = (
+  attemptKey: string,
+  transitions: readonly { readonly id: string }[] = [],
+): FinishDraft => ({
   attemptKey,
+  ...(transitions.length === 1 ? { transitionId: transitions[0]!.id } : {}),
   feedback: '',
   artifacts: [],
   droppedDrafts: [],
@@ -111,10 +127,19 @@ export function WorkflowNow({
     dialog === 'finish' && finishFor !== attemptKey && !commands.finish.isSuccess;
   const [storedDraft, setDraft] = useState<FinishDraft>();
   // A draft of another attempt (the run moved on) is not this attempt's draft.
-  const draft = storedDraft?.attemptKey === attemptKey ? storedDraft : emptyDraft(attemptKey);
+  const draft =
+    storedDraft?.attemptKey === attemptKey
+      ? storedDraft
+      : emptyDraft(attemptKey, finish?.transitions);
   const [kept, setKept] = useState(false);
   const [confirmed, setConfirmed] = useState<PinPreview>();
-  const [failedPostActions, setFailedPostActions] = useState<readonly FailedPostAction[]>([]);
+  const [commitNote, setCommitNote] = useState<FinishCommitNote>();
+  // The commit result belongs to the finish that ran it: shown for that subject until its next
+  // attempt is active, never carried into another step or another subject's Now.
+  const shownCommitNote =
+    commitNote?.subjectKey === subjectKeyOf(subject) && finish === undefined
+      ? commitNote
+      : undefined;
   const preview = previewOf(position);
   const next =
     position.kind === 'not-started' || position.kind === 'ready' ? position.next : undefined;
@@ -160,6 +185,7 @@ export function WorkflowNow({
     }
 
     const feedback = draft.feedback.trim();
+    const finishedSubject = subjectKeyOf(subject);
     commands.finish.mutate(
       {
         step: finish.step,
@@ -185,11 +211,17 @@ export function WorkflowNow({
           setDialog(undefined);
           setDraft(undefined);
           setKept(false);
-          setFailedPostActions(
-            (result.postActions ?? []).filter(
+          const postActions = result.postActions ?? [];
+          setCommitNote({
+            subjectKey: finishedSubject,
+            failed: postActions.filter(
               (action): action is FailedPostAction => action.status === 'failed',
             ),
-          );
+            held: postActions.filter(
+              (action): action is HeldPostAction =>
+                action.status === 'completed' && action.held !== undefined,
+            ),
+          });
         },
       },
     );
@@ -252,12 +284,15 @@ export function WorkflowNow({
   const workflowActions =
     primaryAction ??
     (overview ? (
+      // Distinct keys: the button that opened Finish must never become Start. When a finish whose
+      // answer was lost closes its dialog, the dialog returns focus to its opener; a reused element
+      // would then be the next step's Start, and one Enter or Space would start a step nobody chose.
       actions.start && startLabel ? (
-        <Button onClick={startNow} disabled={busy}>
+        <Button key="start" onClick={startNow} disabled={busy}>
           {startLabel}
         </Button>
       ) : finish && !finishBlocked ? (
-        <Button onClick={openFinish} disabled={busy}>
+        <Button key="finish" onClick={openFinish} disabled={busy}>
           {t('workflowExecution.now.finish')}
         </Button>
       ) : mainGateAction ? (
@@ -375,9 +410,14 @@ export function WorkflowNow({
       {kept && finish && draft.transitionId ? (
         <InlineNote tone="info">{t('workflowExecution.now.finishKept')}</InlineNote>
       ) : null}
-      {failedPostActions.map((action) => (
+      {shownCommitNote?.failed.map((action) => (
         <InlineNote key={action.action} tone="attention">
           {t('workflowExecution.now.postActionFailed', { code: action.code })}
+        </InlineNote>
+      ))}
+      {shownCommitNote?.held.map((action) => (
+        <InlineNote key={action.action} tone="attention">
+          {t('workflowExecution.now.postActionHeld', { edited: action.held.edited.join(', ') })}
         </InlineNote>
       ))}
       {dialog !== 'start' && commands.start.isError ? (

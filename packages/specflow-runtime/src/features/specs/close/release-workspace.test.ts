@@ -1,6 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { whileReleased } from './release-workspace';
+import { createWorkspaceOccupancy } from '../../workspaces';
+import {
+  assertNoRunningTurns,
+  releaseAfterQuiescence,
+  specificationOccupancy,
+  whileReleased,
+  WorkspaceBusyError,
+} from './release-workspace';
 
 describe('releasing a workspace around Close', () => {
   it('releases only a linked plan source, and ends the hold when Close fails', async () => {
@@ -24,5 +31,54 @@ describe('releasing a workspace around Close', () => {
       Promise.resolve(),
     );
     expect(release).toHaveBeenCalledTimes(2);
+  });
+
+  it('refuses a Close of a checkout an agent Turn works in, and holds it against new Turns', async () => {
+    const occupancy = createWorkspaceOccupancy();
+    const docsEnd = vi.fn();
+    const release = releaseAfterQuiescence(occupancy, () => Promise.resolve({ end: docsEnd }));
+    const linked = { workspaceId: 'linked-1', kind: 'linked' } as const;
+    const turn = occupancy.beginTurn('linked-1', 'session-1')!;
+
+    // The preview refuses the same way, without holding anything.
+    await expect(
+      assertNoRunningTurns((id) => Promise.resolve(occupancy.runningSessions(id)), linked),
+    ).rejects.toThrow(WorkspaceBusyError);
+    await expect(whileReleased(release, linked, () => Promise.resolve())).rejects.toMatchObject({
+      sessionIds: ['session-1'],
+    });
+    expect(docsEnd).not.toHaveBeenCalled();
+
+    turn.end();
+    let duringClose: unknown;
+    await whileReleased(release, linked, () => {
+      duringClose = occupancy.beginTurn('linked-1', 'session-2');
+
+      return Promise.resolve();
+    });
+    expect(duringClose).toBeUndefined();
+    expect(docsEnd).toHaveBeenCalledOnce();
+    expect(occupancy.beginTurn('linked-1', 'session-2')).toBeDefined();
+  });
+
+  it('reads the running Turns of a Specification checkout from its binding, never of the primary', async () => {
+    const registry = {
+      primaryWorkspaceId: 'primary',
+      specBindings: [
+        { specId: 'spec-linked', workspaceId: 'linked-1' },
+        { specId: 'spec-primary', workspaceId: 'primary' },
+      ],
+    };
+    const running = vi.fn((workspaceId: string) =>
+      Promise.resolve(workspaceId === 'linked-1' || workspaceId === 'primary' ? ['session-1'] : []),
+    );
+
+    expect(await specificationOccupancy(registry, 'spec-linked', running)).toEqual([
+      expect.objectContaining({ kind: 'session-turn-running', subjectIds: ['session-1'] }),
+    ]);
+    expect(await specificationOccupancy(registry, 'spec-primary', running)).toEqual([]);
+    expect(await specificationOccupancy(registry, 'spec-unbound', running)).toEqual([]);
+    expect(running).toHaveBeenCalledOnce();
+    expect(await specificationOccupancy(registry, 'spec-linked', undefined)).toEqual([]);
   });
 });

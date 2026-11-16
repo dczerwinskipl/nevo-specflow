@@ -59,7 +59,7 @@ it.runIf(process.platform === 'win32' && process.arch === 'x64' && !!executable)
         workspace,
         temporaryRoot: root,
         workspaceIdentity: 'synthetic-workspace',
-        admission: { operationId: randomUUID(), scope: 'project' },
+        admission: { operationId: randomUUID(), scope: 'project', workspace },
       },
       providerContext: { nativeSessionId: randomUUID(), resume: false },
       beforeDispatch: () => Promise.resolve(),

@@ -9,6 +9,8 @@ import { hasTextDraft } from '../content-kinds/kindId';
 import { DocumentNonTextPreview } from './DocumentFileViews';
 import { useMarkdownLabels } from '../../../i18n/useMarkdownLabels';
 import { documentKeys } from '../read-model/queries';
+import { documentOutline } from '../../../shared/document-reading/outlineData';
+import { DocumentProperties } from '../../../shared/document-reading/DocumentProperties';
 
 export function DocumentContent({
   specId,
@@ -99,19 +101,45 @@ export function DocumentContent({
         // Images and files without text to render have their own previews.
         <DocumentNonTextPreview specId={specId} document={query.data} />
       ) : usable && query.data ? (
-        <MarkdownDocument
-          labels={markdownLabels}
+        <MarkdownBody
+          content={query.data.content ?? ''}
+          omitTitle={omitTitle}
           headingOffset={headingOffset}
-          diagrams
-          source={
-            omitTitle
-              ? markdownIntro(query.data.content ?? '', omitTitle).source
-              : (query.data.content ?? '')
-          }
+          labels={markdownLabels}
         />
       ) : (
         <Alert tone="attention" role="alert" title={t('specification.unavailableTitle')} />
       )}
     </div>
+  );
+}
+
+/**
+ * The text as the full document view previews it: the leading YAML block is not rendered as
+ * markdown but shown as the read-only Properties row (the same parse as the editor's preview).
+ */
+function MarkdownBody({
+  content,
+  omitTitle,
+  headingOffset,
+  labels,
+}: {
+  readonly content: string;
+  readonly omitTitle?: string;
+  readonly headingOffset: 0 | 1 | 2 | 3 | 4 | 5;
+  readonly labels: ReturnType<typeof useMarkdownLabels>;
+}) {
+  const { properties, body } = documentOutline(content, true);
+
+  return (
+    <>
+      {properties ? <DocumentProperties properties={properties} anchored={false} /> : null}
+      <MarkdownDocument
+        labels={labels}
+        headingOffset={headingOffset}
+        diagrams
+        source={omitTitle ? markdownIntro(body, omitTitle).source : body}
+      />
+    </>
   );
 }

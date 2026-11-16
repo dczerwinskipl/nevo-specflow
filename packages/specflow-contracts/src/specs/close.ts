@@ -80,6 +80,30 @@ export const CloseResultSchema = Type.Object(
   },
   { $id: 'CloseResult', additionalProperties: false },
 );
+/**
+ * Runtime only: agent Session Turns work in the checkout Close would remove (`subjectIds` are
+ * Session ids). The Engine never reports it; the Runtime adds it to a `CLOSE_BLOCKED` refusal.
+ */
+export const SessionTurnBlockerSchema = Type.Object({
+  kind: Type.Literal('session-turn-running'),
+  subjectIds: Type.Array(Type.String(), { maxItems: 1000 }),
+  message: Type.String({ maxLength: 20_000 }),
+});
+export type SessionTurnBlocker = Static<typeof SessionTurnBlockerSchema>;
+/**
+ * `GET /api/specs/:specId/close/occupancy`: the agent Session Turns that work now in the linked
+ * checkout a Close of the Specification would remove, read without planning the Close (for a Close
+ * the workflow already blocks). Empty when none run or the Specification has no linked checkout.
+ */
+export const CloseOccupancySchema = Type.Object(
+  { blockers: Type.Array(SessionTurnBlockerSchema, { maxItems: 1 }) },
+  { additionalProperties: false },
+);
+export type CloseOccupancy = Static<typeof CloseOccupancySchema>;
+/** One group of a `CLOSE_BLOCKED` refusal: a workflow blocker, or running Session Turns. */
+export const CloseRefusalBlockerSchema = Type.Union([ExitBlockerSchema, SessionTurnBlockerSchema]);
+export type CloseRefusalBlocker = Static<typeof CloseRefusalBlockerSchema>;
+
 export const CloseErrorSchema = Type.Object(
   {
     error: Type.String(),
@@ -91,7 +115,7 @@ export const CloseErrorSchema = Type.Object(
      * `CLOSE_BLOCKED` (409): what the Specification workflow still holds, grouped, for a list with
      * links. `message` of a blocker is display-only.
      */
-    blockers: Type.Optional(Type.Array(ExitBlockerSchema)),
+    blockers: Type.Optional(Type.Array(CloseRefusalBlockerSchema)),
     /**
      * Present for `CLOSE_LOCAL_CONFIG_MODIFIED`: the worktree's `.nevo/local/config.yaml` was
      * edited (`changed`), was not copied by Create (`unrecorded`), or cannot be read

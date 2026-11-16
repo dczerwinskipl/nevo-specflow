@@ -18,6 +18,7 @@ import type {
   ToolOperation,
   SessionListFilter,
 } from '@nevo/specflow-contracts/sessions';
+import type { NativeProcessIdentity } from '../providers/process/process-identity';
 import type { WorkAggregate } from '../lifecycle/work-aggregate';
 import type { AssociationWrite } from './associations';
 
@@ -123,16 +124,27 @@ export type StoreCommand =
       effectBinding?: string;
     }
   | { op: 'dispatch-intent'; sessionId: string; turnId: string; invocationId: string }
+  /** The invocation's native-stop evidence, recorded once, before the dispatch barrier. */
+  | {
+      op: 'process-identity';
+      sessionId: string;
+      turnId: string;
+      invocationId: string;
+      identity: NativeProcessIdentity;
+    }
   | { op: 'effect-candidates'; sessionId?: string; turnId?: string; afterSession?: string }
+  /** The Sessions with an unsettled native Turn in the checkout at `root` (`checkout-turns.ts`). */
+  | { op: 'checkout-turns'; root: string }
   | {
       op: 'reconcile-effect';
       sessionId: string;
       turnId: string;
       invocationId: string;
-      binding: string;
       actor: string;
       requestId: string;
-      source: 'native-result' | 'not-dispatched';
+      /** Absent for a Turn without an Engine claim (settled on native-stop evidence alone). */
+      binding?: string;
+      source: 'native-result' | 'not-dispatched' | 'native-stopped';
       outcome: TurnOutcome;
       error?: { code: string; message: string };
       recovered?: boolean;
@@ -299,13 +311,22 @@ export interface StoredTurn {
   work?: WorkAggregate;
   /** The Turn's latest `work-summary` entry, which carries the current Work digest. */
   workSummaryEntryId?: string;
+  /**
+   * The provider process's native-stop evidence, recorded before the dispatch barrier. Absent for a
+   * Turn that never launched its process, and for Turns recorded before Runtime kept it.
+   */
+  nativeProcess?: NativeProcessIdentity;
 }
+/** A nonterminal Turn whose outcome positive evidence may establish: an Engine claim, or a
+ * recorded native process, or both. */
 export interface EffectRecoveryCandidate {
   sessionId: string;
   turnId: string;
   invocationId: string;
-  binding: string;
+  /** The Engine claim's binding; absent for a Turn that took no claim. */
+  binding?: string;
   nativeDispatched: boolean;
   workspace: string;
   workspaceIdentity?: string;
+  nativeProcess?: NativeProcessIdentity;
 }

@@ -20,6 +20,8 @@ export interface WorkflowPostActions {
 export interface StepFinishedEvent {
   readonly subject: WorkflowSubject;
   readonly step: string;
+  /** The finished step's title (its id when the definition no longer has the step). */
+  readonly stepTitle: string;
   readonly attempt: number;
   readonly actor: WorkflowActor;
   /** The finish repeated a recorded one (nothing changed). */
@@ -35,6 +37,11 @@ export type PostActionResult =
       readonly status: 'completed';
       /** The commit the action made; absent when there was nothing to commit. */
       readonly commit?: { readonly sha?: string; readonly paths: readonly string[] };
+      /**
+       * What it left uncommitted because someone edited it since the Engine wrote it (`edited`), with
+       * everything that travels with it (`paths`); absent when nothing was held.
+       */
+      readonly held?: { readonly edited: readonly string[]; readonly paths: readonly string[] };
     }
   | {
       readonly action: PostActionName;

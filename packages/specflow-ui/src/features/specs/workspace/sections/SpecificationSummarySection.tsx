@@ -15,6 +15,11 @@ export function SpecificationSummarySection({
   overviewDocumentId,
   specId,
 }: SpecificationSummarySectionProps) {
+  const description = intro && intro.trim() !== title.trim() ? intro.trim() : undefined;
+  // "Show more" continues a description the Runtime cut (it ends the cut text with `…`), or shows
+  // the overview when there is no description; a whole one-paragraph description has nothing more.
+  const clamped = description === undefined || description.endsWith('…');
+
   return (
     <div>
       <Typography
@@ -30,8 +35,8 @@ export function SpecificationSummarySection({
         key={`${specId}:${overviewDocumentId}`}
         // `summary` is already plain text bounded by the Runtime (320 graphemes): shown as is,
         // never parsed as Markdown again. A summary equal to the title adds nothing.
-        intro={intro && intro.trim() !== title.trim() ? intro.trim() : undefined}
-        hasMore={Boolean(overviewDocumentId && specId)}
+        intro={description}
+        hasMore={Boolean(overviewDocumentId && specId) && clamped}
         renderDocument={
           overviewDocumentId && specId
             ? () => (

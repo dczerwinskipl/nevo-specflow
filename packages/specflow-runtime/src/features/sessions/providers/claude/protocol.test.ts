@@ -201,6 +201,95 @@ describe('Claude full-message protocol', () => {
     ).rejects.toThrow();
     expect(f.facts.some((fact) => fact.kind === 'usage' || fact.kind === 'outcome')).toBe(false);
   });
+  // Recorded from Claude Code 2.1.312: a foreground Bash call that runs past 30 s reports a
+  // heartbeat whose parent is that call itself.
+  const heartbeat = {
+    type: 'tool_progress',
+    uuid: 'dbda0cb5-051f-44b8-9393-4407319dbdac',
+    session_id: sessionId,
+    tool_use_id: 'tool-1-heartbeat-0',
+    tool_name: 'Bash',
+    parent_tool_use_id: 'tool-1',
+    elapsed_time_seconds: 30,
+    heartbeat: true,
+  };
+  it('accepts the heartbeat of a long-running open tool call', async () => {
+    const f = fixture(['Bash']);
+    await f.assistant('command', [
+      { type: 'tool_use', id: 'tool-1', name: 'Bash', input: { command: 'sleep 60' } },
+    ]);
+    const before = f.facts.length;
+    await f.accept(heartbeat);
+    await f.accept({ ...heartbeat, uuid: 'heartbeat-1', tool_use_id: 'tool-1-heartbeat-1' });
+    expect(f.facts).toHaveLength(before);
+    await f.accept({
+      type: 'user',
+      session_id: sessionId,
+      message: { content: [{ type: 'tool_result', tool_use_id: 'tool-1', content: 'slept' }] },
+    });
+    await f.result({ result: 'Done' });
+    expect(f.facts.at(-1)).toEqual({ kind: 'outcome', outcome: 'completed' });
+  });
+  it.each([
+    { parent_tool_use_id: 'tool-2' },
+    { heartbeat: false },
+    { heartbeat: undefined },
+    { tool_name: 'Read' },
+    { tool_use_id: 'tool-1' },
+    { tool_use_id: 'tool-2-heartbeat-0' },
+  ])('rejects a heartbeat that is not of an open call of this Turn: %j', async (change) => {
+    const f = fixture(['Bash', 'Read']);
+    await f.assistant('command', [
+      { type: 'tool_use', id: 'tool-1', name: 'Bash', input: { command: 'sleep 60' } },
+    ]);
+    await expect(f.accept({ ...heartbeat, ...change })).rejects.toThrow();
+  });
+  // Recorded from Claude Code 2.1.312 under --restricted: a Write outside the working directory.
+  const denied = {
+    type: 'system',
+    subtype: 'permission_denied',
+    uuid: 'denied-1',
+    session_id: sessionId,
+    tool_name: 'Write',
+    tool_use_id: 'tool-1',
+    decision_reason_type: 'other',
+    decision_reason: '--restricted: path outside the working directory',
+    message: 'C:\\Temp\\t1.md is outside C:\\work; --restricted confines the file tools.',
+  };
+  it('accepts Claude refusing an open call itself and keeps the error tool result', async () => {
+    const f = fixture(['Write']);
+    await f.assistant('write', [
+      {
+        type: 'tool_use',
+        id: 'tool-1',
+        name: 'Write',
+        input: { file_path: 'C:\\Temp\\t1.md', content: 'x' },
+      },
+    ]);
+    await f.accept(denied);
+    await f.accept({
+      type: 'user',
+      session_id: sessionId,
+      message: {
+        content: [
+          { type: 'tool_result', tool_use_id: 'tool-1', content: denied.message, is_error: true },
+        ],
+      },
+    });
+    await f.result({ result: 'Done' });
+    expect(f.facts).toContainEqual({ kind: 'action-update', key: 'tool:tool-1', state: 'failed' });
+    expect(f.facts.at(-1)).toEqual({ kind: 'outcome', outcome: 'completed' });
+  });
+  it.each([{ tool_use_id: 'tool-2' }, { tool_name: 'Edit' }, { tool_use_id: undefined }])(
+    'rejects a permission denial that is not of an open call: %j',
+    async (change) => {
+      const f = fixture(['Write', 'Edit']);
+      await f.assistant('write', [
+        { type: 'tool_use', id: 'tool-1', name: 'Write', input: { file_path: 'a', content: 'x' } },
+      ]);
+      await expect(f.accept({ ...denied, ...change })).rejects.toThrow();
+    },
+  );
   it('accepts correlated native thinking estimates without inventing usage or terminal state', async () => {
     const f = fixture();
     await f.accept({

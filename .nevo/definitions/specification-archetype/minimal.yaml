@@ -22,7 +22,7 @@ templates:
     include: optional
     instructions: Add one section block per decision; do not rewrite earlier decisions, supersede them.
     content: |
-      # {{specificationTitle}} - Decisions
+      # Decisions
 
       ## Context
 
@@ -37,7 +37,7 @@ templates:
     include: optional
     instructions: List the questions first; every finding cites a source.
     content: |
-      # {{specificationTitle}} - Research
+      # Research
 
       ## Questions
 
@@ -50,6 +50,6 @@ templates:
     include: optional
     instructions: State why this note belongs here.
     content: |
-      # {{specificationTitle}} - Note
+      # Note
 execution:
   workflow: specification-standard

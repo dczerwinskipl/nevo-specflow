@@ -73,6 +73,8 @@ export interface WorkBlockModel {
   live?: LiveActivity;
   /** Terminal outcome folded in from the Turn's `outcome` entry (block owns it; no second row). */
   outcome?: string;
+  /** The error code of that `outcome` entry, when the Turn ended with one. */
+  outcomeError?: string;
 }
 
 export type ConversationItem =
@@ -141,6 +143,7 @@ export function conversationItems(
       ...(digest ? { digest } : {}),
       ...(isLive ? { live } : {}),
       ...(!isLive && turn.outcome ? { outcome: turn.outcome.text.text } : {}),
+      ...(!isLive && turn.outcome?.error ? { outcomeError: turn.outcome.error.code } : {}),
     };
     const position = isLive ? (turn.answerIndex ?? turn.lastIndex + 1) : entries.indexOf(lastWork!);
     before.set(position, [...(before.get(position) ?? []), block]);

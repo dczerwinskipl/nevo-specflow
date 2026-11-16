@@ -41,6 +41,17 @@ Reads must be fast and must not spawn Git. Verification is split by what an oper
 | Each mutation (create with a new-worktree target or with Git enabled, close/integrate, archive, registry writes, control-lock admission) | Full resolution again, ignore-rule audit of the linked identity marker, and the REGISTRY_CONFLICT revision checks.                                                                                                                                                                                                                                                                                                                          | yes |
 | Create into an existing workspace of a project with `git.enabled: false`                                                                 | The disk checks of a read, re-run at every admission step (not memoised); no Git is involved in the operation.                                                                                                                                                                                                                                                                                                                              | no  |
 
+A workflow mutation (a step start, finish, return or abandon, a Task change, together with the
+post actions of a finish) proves the Project Home **once per operation**: its first control-lock
+admission resolves it with Git, and the rest of the operation reuses those answers instead of
+resolving the Project Home again for every Specification lookup. A later lock section of the same
+operation (each stage of the finish's manual commit takes the lock) skips that Git check only when
+the physical evidence it pins (`home/lock-proof.ts`) is exactly what the operation last proved; any
+difference, including the stale proof of a lock retry, discards everything the operation verified
+and proves the home with Git again. A checkout's verification (membership, linked identity marker
+and its ignore rules) is reused only within one lock section: it is discarded when a section ends
+and at every admission, because a checkout can change without changing the pinned home evidence.
+
 A stale open-time identity can only cause the following on a read, never a write: a deleted or
 moved workspace is reported `workspace_unavailable` by the filesystem check; a replaced or
 foreign checkout fails the `.git` link or identity-marker check and the read is refused; a repository
@@ -71,4 +82,7 @@ alone does not register a workspace or grant access.
 See [Git configuration](../../reference/configuration/specflow-git-worktrees.md) and
 [Specification lifecycle](specification-lifecycle.md). The Engine does not supply network-distributed
 locks or automatic moved-home repair; managed agent processes are fenced by
-[workspace execution claims](workspace-execution-claims.md).
+[workspace execution claims](workspace-execution-claims.md). Read-only agent Turns hold no claim: a
+Close that removes a worktree asks the Runtime that owns the Project Home's Session store
+(`.nevo/local/state/sessions/sessions.sqlite`), and any other process reads that store's owner record
+and refuses while a live Runtime owns it.

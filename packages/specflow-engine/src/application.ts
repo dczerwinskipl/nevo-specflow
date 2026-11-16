@@ -1,4 +1,5 @@
 import { runReadRequest } from './project/request-verification-memo';
+import type { CheckoutQuiescence } from './specs/lifecycle/checkout-quiescence';
 import type { SpecificationExitGuard } from './specs/lifecycle/exit-guard';
 import {
   resolveProjectHome,
@@ -20,6 +21,11 @@ export interface SpecFlowEngine {
   readRegistry(): Promise<WorkspaceRegistry>;
   /** Close's Specification exit gate (D07), composed from the workflow capability. */
   readonly specificationExit: SpecificationExitGuard;
+  /**
+   * Whether an agent can work in a checkout Close would remove, from the host process (the Runtime
+   * or the CLI) through `withCheckoutQuiescence`. Absent, Close does not remove a checkout.
+   */
+  readonly checkoutQuiescence?: CheckoutQuiescence;
 }
 
 /**

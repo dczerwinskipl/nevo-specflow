@@ -77,6 +77,7 @@ documents: # REQUIRED registry
   - id: overview # stable id
     path: overview.md # relative to the Specification directory
     type: overview # document type id
+    templateRevision: <sha256> # optional, Engine-written: the content it created the file with from a template
 folders: # OPTIONAL: explicit folders that may hold no file (see below)
   - research
 ```
@@ -92,6 +93,11 @@ Parser rules (strict, `SPEC_SOURCE_INVALID` otherwise; no alias, no default, no 
    catalogue (a retired type stays valid and is shown by id).
 4. `documents[].path` is a normalised portable relative path (see "Paths"); paths are unique ignoring case, and a
    registered file path is never an ancestor folder of another registered path.
+   `documents[].templateRevision`, when present, is a lowercase sha256 hex digest. The Engine writes it when it
+   creates the file from an archetype template (Create, or a create naming a `templateId`): the revision of exactly
+   the bytes it wrote. Rename and move keep it; nothing else writes it. A document is _template only_ (the
+   workspace read's `templateOnly`) exactly while its current revision equals it, so the check costs no read
+   beyond the revision the documents section computes anyway.
 5. The registry contains exactly one entry with `id: overview`, `path: overview.md`, `type: overview`. Its id
    and path are fixed, so rename and move of `overview` are refused with the `protected` reason like delete
    (confirmed by the owner).
@@ -531,10 +537,11 @@ finished; a split after a failure forms two new batches with disjoint members, n
 **Message of a batch commit.** The subject says what the batch did, worded from the plans of its members and
 restricted to what the commit holds: `spec(documents): update notes.md in <slug>`, `update 3 documents in <slug>`,
 `add …`, `rename <old> to <new> in <slug>`, `move …`, `delete … from <slug>` (`delete folder <name> from <slug>` for a folder, also an empty one), `classify <path> as <type> in <slug>`,
-and `change N documents in <slug>` when the members did different things. It is at most 72 characters: the longest
-name (document, folder, type or slug) is shortened first, with an ellipsis, never inside a character. The body lists
-one line per change (at most 20 lines and 1500 characters, then `… and N more`) and, for a coalesced batch, the number
-of operations; it is cleaned like the body of a manual commit. A member whose plan cannot be read is worded from its
+and `change N documents in <slug>` when the members did different things. It is at most 72 characters and is never
+cut: when the form with full names does not fit, the Engine takes the next form whole, first with ` in <slug>` and
+then without it: the names by their last segment (`update api.md`), then a count (`update a document`). The body lists
+one line per change with the full names (at most 20 lines and 1500 characters, then `… and N more`), for a coalesced
+batch the number of operations, and `Specification: <slug>` when the subject could not name it; it is cleaned like the body of a manual commit. A member whose plan cannot be read is worded from its
 action and the committed paths. The trailers (ADR 0016 decision 3) are unchanged; the wording is not configurable.
 
 **Failures, retry, abandon and recover.** A transient blocker (index lock, busy Git, timed-out or
@@ -780,7 +787,26 @@ published change is ONE document operation of action `workflow` (contract
   and a Task document change still refuses while the store's local journal is pending.
 - **Auto-commit off, "Next".** A step's finish runs the post action `commit-execution-state`
   (`commitExecutionState`): a manual commit of the Specification's ledger entries below `.execution/`
-  and `tasks/`, closed under shared operation ids, message `spec(workflow): finish step ... in <slug>`.
+  and `tasks/`, closed under shared operation ids, subject `spec(workflow): finish "<step title>"[ of task <id>] in <slug>`
+  and the step id and attempt in the body (`Step solution, attempt 1.`). A path edited since the Engine
+  wrote it (an agent writing `tasks/<id>/task.md` directly) would refuse the manual commit, and every
+  later one, since each takes all the execution state. So before the commit the post action prunes the
+  ledger once (an edit already committed with Git is no edit), then leaves out the edited paths with
+  every path of their operations (`held` in the result) and commits the rest. The Task index
+  (`tasks/index.yaml`) joins no operations here: every Task create, edit and removal rewrites it, so
+  it would tie all Tasks into one and hold them all. Only the edited Task's own files are held; the
+  other Tasks commit. The index commits with them unless it would register a held Task that HEAD does
+  not have (its creation is held) or drop one HEAD still has (its removal is held); then the index is
+  held too. While the index waits, every Task of the commit whose `task.yaml` exists in only one of
+  the working tree and HEAD (created or removed since) waits with it, with all paths of its
+  operations, so HEAD never holds a Task folder or run record its index does not list, nor an index
+  entry without its Task (no `unregistered`, `broken` or `dangling` Task read from HEAD). Edits of
+  Tasks HEAD already registers still commit. The next finish after the held Task is committed takes
+  the index and the waiting Tasks. The held paths stay uncommitted
+  until a person commits them with Git or a Close archives them.
+- **Workflow subjects** follow the same rule as document subjects: at most 72 characters and never cut. When
+  `<summary> in <slug>` does not fit, the summary goes alone, then `change the workflow state`; the body then holds the
+  summary and `Specification: <slug>`.
 - **Close.** A Specification Close does not wait for ledger entries of the execution state of the
   Specification it archives: its archive commit takes them along, and the next prune removes them.
 - **Crash safety.** The store's journal fixes the operation id, the summary and each target's `pre`

@@ -10,7 +10,8 @@ import { useTranslation } from 'react-i18next';
 import type { TaskSnapshot } from '@nevo/specflow-contracts/specs/workspace';
 import { TaskSourceState } from '../TaskDetails';
 import { useTaskHistory } from '../useTaskPages';
-import { formatWhen } from '../../execution/presentation';
+import { formatWhen, personLabel } from '../../execution/presentation';
+import { useViewerId } from '../../execution/useViewerId';
 
 export function TaskHistory({
   specId,
@@ -24,14 +25,15 @@ export function TaskHistory({
   readonly onOpenResource?: (params: TaskHistoryResourceParams) => void;
 }) {
   const { t, i18n } = useTranslation();
-  // Who actually worked on an attempt: a person by the recorded id (its identity-source prefix
-  // dropped), an agent by its class; a wait step has no actor.
+  const viewerId = useViewerId();
+  // Who actually worked on an attempt: a person as the Now block names them ("you", else the
+  // recorded id), an agent by its class; a wait step has no actor.
   const actorOf = (
     actor: { readonly class: 'agent' | 'human'; readonly actorId?: string } | null,
   ) =>
     actor
       ? actor.class === 'human' && actor.actorId
-        ? actor.actorId.replace(/^(local|user):/, '')
+        ? personLabel(t, actor.actorId, viewerId)
         : t(`taskDetails.executor.${actor.class}`)
       : undefined;
   const titleOf = (step: {

@@ -274,6 +274,7 @@ export {
 // Supported operation endpoints project the Engine's durable state to stable DTOs.
 export {
   CloseOperationError,
+  closePreviewCheckoutBlocker,
   withCheckoutQuiescence,
   type CheckoutQuiescence,
   type CheckoutQuiescenceVerdict,

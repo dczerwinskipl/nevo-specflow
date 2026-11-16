@@ -1,5 +1,5 @@
 import type { SpecFlowEngine } from '../../application';
-import { CloseOperationError, type CloseJournal } from './model';
+import { CloseOperationError, type CloseJournal, type ClosePlan } from './model';
 
 /** The linked checkout a Close is about to remove. */
 export interface CloseCheckout {
@@ -57,15 +57,15 @@ export async function requireQuietCheckout(
 }
 
 /**
- * The same check when a Close starts, so a refusal comes before its archive commit or integration
- * rather than after them. Only a Close that removes a linked checkout asks; the check right before
- * the removal still decides.
+ * The linked checkout a Close of `plan` still has to remove and so asks quiescence for: a Worktree or
+ * Workspace Close, or a Specification Close with integration, of a managed linked source with an
+ * integration target, while its journal (when it has one) is not yet disposing or done. One rule for
+ * Close and for every preview of it.
  */
-export async function requireQuietCheckoutBeforeClose(
-  engine: SpecFlowEngine,
-  journal: CloseJournal,
-): Promise<void> {
-  const plan = journal.plan;
+export function checkoutRemovedByClose(
+  plan: Pick<ClosePlan, 'kind' | 'integrateToTargetBranch' | 'source' | 'target'>,
+  stage?: CloseJournal['stage'],
+): CloseCheckout | undefined {
   const removesCheckout =
     plan.kind === 'worktree-close' ||
     plan.kind === 'workspace-close' ||
@@ -74,14 +74,26 @@ export async function requireQuietCheckoutBeforeClose(
     !removesCheckout ||
     !plan.source.instanceId ||
     !plan.target ||
-    journal.stage === 'disposal-initiated' ||
-    journal.stage === 'completed'
+    stage === 'disposal-initiated' ||
+    stage === 'completed'
   ) {
-    return;
+    return undefined;
   }
 
-  await requireQuietCheckout(engine, {
-    workspaceId: plan.source.workspaceId,
-    root: plan.source.root,
-  });
+  return { workspaceId: plan.source.workspaceId, root: plan.source.root };
+}
+
+/**
+ * The same check when a Close starts, so a refusal comes before its archive commit or integration
+ * rather than after them. Only a Close that removes a linked checkout asks; the check right before
+ * the removal still decides.
+ */
+export async function requireQuietCheckoutBeforeClose(
+  engine: SpecFlowEngine,
+  journal: CloseJournal,
+): Promise<void> {
+  const checkout = checkoutRemovedByClose(journal.plan, journal.stage);
+  if (checkout) {
+    await requireQuietCheckout(engine, checkout);
+  }
 }

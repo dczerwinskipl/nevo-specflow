@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { SpecFlowEngine } from '../../application';
 import {
+  checkoutRemovedByClose,
   requireQuietCheckout,
   requireQuietCheckoutBeforeClose,
   withCheckoutQuiescence,
@@ -70,5 +71,24 @@ describe('checkout quiescence', () => {
     await requireQuietCheckoutBeforeClose(host, journal({}, 'disposal-initiated'));
     await requireQuietCheckoutBeforeClose(host, journal({}, 'completed'));
     expect(quiet).not.toHaveBeenCalled();
+  });
+
+  it('decides with one rule which checkout a Close removes, for Close and its preview', () => {
+    const plan = (overrides: Partial<CloseJournal['plan']>) => journal(overrides).plan;
+    expect(checkoutRemovedByClose(plan({}))).toEqual(checkout);
+    expect(
+      checkoutRemovedByClose(plan({ kind: 'specification-close', integrateToTargetBranch: true })),
+    ).toEqual(checkout);
+    for (const ignored of [
+      plan({ kind: 'specification-close', integrateToTargetBranch: false }),
+      plan({ kind: 'specification-close' }),
+      plan({ source: { workspaceId: 'linked-1', root: '/repo/linked' } } as never),
+      plan({ target: undefined }),
+    ]) {
+      expect(checkoutRemovedByClose(ignored)).toBeUndefined();
+    }
+
+    expect(checkoutRemovedByClose(plan({}), 'disposal-initiated')).toBeUndefined();
+    expect(checkoutRemovedByClose(plan({}), 'completed')).toBeUndefined();
   });
 });

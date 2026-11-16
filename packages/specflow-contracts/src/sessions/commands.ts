@@ -146,6 +146,11 @@ export const ProviderDescriptorSchema = Type.Object(
         Type.Literal('KNOWN_INCOMPATIBILITY'),
         Type.Literal('PROBE_FAILED'),
         Type.Literal('PROCESS_SETTLEMENT_UNVERIFIED'),
+        /**
+         * Read for a Session started in a Specification (`?specId`): the provider runs only in the
+         * Runtime's own checkout, and that Specification works in its own worktree.
+         */
+        Type.Literal('SPECIFICATION_WORKTREE_UNSUPPORTED'),
       ]),
     ),
     compatibility: Type.Optional(

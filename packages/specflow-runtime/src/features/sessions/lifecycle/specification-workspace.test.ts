@@ -245,17 +245,46 @@ describe("A Specification's Session workspace", () => {
     });
   });
 
+  it('lists a provider bound to the Runtime checkout as unavailable for a Specification in its own worktree, and refuses its create', async () => {
+    const { runtimeWorkspace, resolve, start, create } = await fixture({
+      supportsSessionWorkspaces: false,
+    });
+
+    expect(await runtime!.providers('S1')).toEqual([
+      expect.objectContaining({
+        providerId: 'controlled',
+        readiness: 'unavailable',
+        reasonCode: 'SPECIFICATION_WORKTREE_UNSUPPORTED',
+      }),
+    ]);
+    // A standalone start keeps the Runtime's checkout: the provider is listed as it reports itself.
+    const [standalone] = await runtime!.providers();
+    expect(standalone).toMatchObject({ providerId: 'controlled', readiness: 'ready' });
+    expect(standalone).not.toHaveProperty('reasonCode');
+    for (const mode of ['read-only', 'workspace-write'] as const) {
+      await expect(create(mode, 'S1')).rejects.toMatchObject({
+        code: 'CAPABILITY_UNSUPPORTED',
+        details: { reason: 'specification-worktree-provider-unsupported' },
+      });
+    }
+
+    await expect(create('read-only')).resolves.toEqual(expect.any(String));
+
+    // A Specification that moved to its own worktree after the create is still refused at the Turn.
+    resolve.mockResolvedValueOnce({
+      root: runtimeWorkspace,
+      workspaceId: 'primary',
+      workspaceIdentity: '1'.repeat(64),
+    });
+    const sessionId = await create('read-only', 'S1');
+    await expect(runtime!.start('actor', sessionId, turn())).rejects.toMatchObject({
+      code: 'CAPABILITY_UNSUPPORTED',
+      details: { reason: 'specification-worktree-provider-unsupported' },
+    });
+    expect(start).not.toHaveBeenCalled();
+  });
+
   it.each([
-    [
-      'a provider bound to the Runtime checkout',
-      { mode: 'read-only' as const, supportsSessionWorkspaces: false },
-      'specification-worktree-provider-unsupported',
-    ],
-    [
-      'a write by a provider bound to the Runtime checkout',
-      { mode: 'workspace-write' as const, supportsSessionWorkspaces: false },
-      'specification-worktree-provider-unsupported',
-    ],
     [
       'an unavailable workspace',
       {

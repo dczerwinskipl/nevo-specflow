@@ -54,14 +54,22 @@ function startProvider(provider: ProviderDescriptor): StartProvider {
       ? (modes.find((mode) => !mode.available && mode.reason)?.reason ??
         message('sessionStart.provider.noMode'))
       : undefined;
-  const reason =
-    noMode ??
-    given ??
-    (provider.readiness === 'authenticationRequired'
-      ? message('managedSession.authenticationRequired')
-      : provider.providerId === 'mock'
-        ? message('managedSession.mockNote')
-        : undefined);
+  // Read for a Specification in its own worktree: interface copy says what, why and what to do.
+  const worktreeUnsupported = provider.reasonCode === 'SPECIFICATION_WORKTREE_UNSUPPORTED';
+  const reason = worktreeUnsupported
+    ? message('sessionStart.provider.worktreeUnsupported')
+    : (noMode ??
+      given ??
+      (provider.readiness === 'authenticationRequired'
+        ? message('managedSession.authenticationRequired')
+        : provider.providerId === 'mock'
+          ? message('managedSession.mockNote')
+          : undefined));
+  const hint = worktreeUnsupported
+    ? message('sessionStart.provider.worktreeUnsupportedHint')
+    : provider.readiness === 'authenticationRequired'
+      ? message('managedSession.authenticationHelp')
+      : undefined;
 
   return {
     id: provider.providerId,
@@ -69,9 +77,7 @@ function startProvider(provider: ProviderDescriptor): StartProvider {
     icon: provider.providerId,
     available: startable,
     ...(reason ? { reason } : {}),
-    ...(provider.readiness === 'authenticationRequired'
-      ? { hint: message('managedSession.authenticationHelp') }
-      : {}),
+    ...(hint ? { hint } : {}),
     // A provider that does not accept a model (or an effort) override has nothing to choose: the
     // Session starts at its default.
     models: modelOverride

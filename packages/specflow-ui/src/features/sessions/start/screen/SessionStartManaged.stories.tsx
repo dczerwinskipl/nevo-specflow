@@ -212,6 +212,43 @@ export const ManagedNoProviderAvailable: Story = {
   },
 };
 
+/**
+ * A Specification in its own worktree: the Runtime lists the providers bound to its own checkout
+ * (Codex, Antigravity) as unavailable here, and each tile says why and what to do instead.
+ */
+export const ManagedProviderNotForSpecificationWorktree: Story = {
+  args: {
+    providers: [
+      claudeDescriptor,
+      ...[codexDescriptor, antigravityDescriptor].map((descriptor) => ({
+        ...descriptor,
+        readiness: 'unavailable' as const,
+        reasonCode: 'SPECIFICATION_WORKTREE_UNSUPPORTED' as const,
+        reason: "This provider runs only in the Runtime's own checkout.",
+      })),
+    ],
+  },
+  play: async ({ canvas }) => {
+    await settle();
+    await expect(await canvas.findByRole('radio', { name: /Claude/ })).toBeChecked();
+    for (const name of [/Codex/, /Antigravity/]) {
+      await expect(canvas.getByRole('radio', { name })).toBeDisabled();
+    }
+
+    await expect(
+      canvas.getAllByText(
+        'Niedostępny w tej specyfikacji: ten dostawca działa tylko w folderze projektu, a specyfikacja ma własny worktree.',
+      ),
+    ).toHaveLength(2);
+    await expect(
+      canvas.getAllByText(
+        'Wybierz dostawcę, który może pracować w worktree, albo rozpocznij sesję poza specyfikacją.',
+      ),
+    ).toHaveLength(2);
+    await expect(canvas.queryByText(/Runtime's own checkout/)).toBeNull();
+  },
+};
+
 /** A ready provider that can run no work mode is not startable: disabled with its reason. */
 export const ManagedProviderWithoutUsableMode: Story = {
   args: {

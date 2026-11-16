@@ -94,7 +94,12 @@ Engine claim names that workspace and stays project-wide
 ([Workspace execution claims](../../architecture/runtime/workspace-execution-claims.md)). A provider
 bound to the Runtime's checkout (Codex, Antigravity), or an unregistered or unavailable workspace, is
 refused before admission with `422 CAPABILITY_UNSUPPORTED` and `details.reason`
-`specification-worktree-provider-unsupported` or `specification-workspace-unavailable`. A Turn in a
+`specification-worktree-provider-unsupported` or `specification-workspace-unavailable`. The same
+provider is refused earlier, at the composed create in that Specification
+(`422 CAPABILITY_UNSUPPORTED`, `specification-worktree-provider-unsupported`), and the catalogue read
+for it (`?specId`) lists it `unavailable` with `reasonCode` `SPECIFICATION_WORKTREE_UNSUPPORTED`. A
+workspace that cannot be resolved at the create or the catalogue read refuses nothing there; the
+Turn start resolves it again. A Turn in a
 workspace a Close is removing, or of a Specification an unfinished Close names, is refused with
 `409 TURN_CONFLICT` and `details.reason` `specification-close-in-progress`. A Turn of a
 Specification's Session is registered in its workspace before the workspace is verified again
@@ -694,7 +699,11 @@ id. `?specId` is a pure authorization check: it does not verify that the Specifi
 at `{projectId}` (no context, `?specId`) or at the Session's own execute-write scope
 (`?sessionId`); it never carries `specId`. The UI's New Session in a Specification reads `?specId`,
 the Full Session composer `?sessionId`, so a Specification-scoped developer can start and steer
-Sessions in its Specification without any project-level grant.
+Sessions in its Specification without any project-level grant. Read with `?specId` for a
+Specification in a worktree other than the Runtime's checkout, a provider that runs only in the
+Runtime's checkout is `readiness: 'unavailable'` with `reasonCode`
+`SPECIFICATION_WORKTREE_UNSUPPORTED` ([Execution workspace](#authorization-and-transport)); the UI explains it in
+its own words.
 
 ProviderDescriptor = {providerId, title, readiness:'ready'|'unavailable'|'authenticationRequired'|
 'unknown', reason?:string, reasonCode?:string, compatibility?:{classification:'tested'|'provisional'|'unsupported',protocolProfile,version?}, capabilities:{questions,permissions,cancel,resume,modelOverride,effortOverride},

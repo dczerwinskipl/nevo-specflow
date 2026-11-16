@@ -119,6 +119,35 @@ export function createSessionCoordinator(
     await bounded((signal) => driver.validate(selection, signal));
   }
 
+  function worktreeProviderUnsupported() {
+    return new SessionError(
+      'CAPABILITY_UNSUPPORTED',
+      "This provider runs only in the Runtime's own checkout and cannot work in this Specification's worktree.",
+      { reason: 'specification-worktree-provider-unsupported' },
+    );
+  }
+
+  /**
+   * Whether the Specification's workspace is a checkout other than the Runtime's own, read for the
+   * catalogue and the create, which say early what a Turn start refuses. Unresolvable is `false`:
+   * the Turn start resolves it again and refuses with its own reason.
+   */
+  async function inSeparateWorktree(specId: string): Promise<boolean> {
+    if (!specificationWorkspace || executionContext.kind !== 'read-only') {
+      return false;
+    }
+
+    try {
+      return (await specificationWorkspace(specId)).root !== executionContext.workspace;
+    } catch {
+      return false;
+    }
+  }
+
+  /** A provider bound to the Runtime's checkout (the mock runs nowhere else either). */
+  const checkoutBound = (driver: SessionDriver) =>
+    driver.supportsSessionWorkspaces !== true && driver.describe().providerId !== 'mock';
+
   /**
    * A Session associated with a Specification runs in that Specification's workspace; a standalone
    * Session (or a Runtime without the Engine) runs in the Runtime's own verified checkout. In write
@@ -147,11 +176,7 @@ export function createSessionCoordinator(
       workspace.root !== executionContext.workspace &&
       driver.supportsSessionWorkspaces !== true
     ) {
-      throw new SessionError(
-        'CAPABILITY_UNSUPPORTED',
-        "This provider runs only in the Runtime's own checkout and cannot work in this Specification's worktree.",
-        { reason: 'specification-worktree-provider-unsupported' },
-      );
+      throw worktreeProviderUnsupported();
     }
 
     return {
@@ -355,13 +380,32 @@ export function createSessionCoordinator(
 
       return recover(candidate, actor, requestId);
     },
-    async providers() {
+    /**
+     * The provider catalogue; read for a Session started in `specId`, a provider that cannot run in
+     * that Specification's separate worktree is listed unavailable
+     * (`SPECIFICATION_WORKTREE_UNSUPPORTED`), as its create and Turn start would refuse it.
+     */
+    async providers(specId?: string) {
       if (!available) {
         return [];
       }
 
+      const drivers = [...registry.values()];
+      const separate =
+        specId !== undefined && drivers.some(checkoutBound) && (await inSeparateWorktree(specId));
+
       return Promise.all(
-        [...registry.values()].map(async (driver) => {
+        drivers.map(async (driver) => {
+          if (separate && checkoutBound(driver)) {
+            return {
+              ...driver.describe(),
+              readiness: 'unavailable' as const,
+              reasonCode: 'SPECIFICATION_WORKTREE_UNSUPPORTED' as const,
+              reason:
+                "This provider runs only in the Runtime's own checkout and cannot work in this Specification's worktree.",
+            };
+          }
+
           try {
             if (driver.refresh) {
               await bounded((signal) => driver.refresh!(signal));
@@ -405,6 +449,9 @@ export function createSessionCoordinator(
 
       const driver = driverFor(input.providerId);
       await validate(driver, input);
+      if (association && checkoutBound(driver) && (await inSeparateWorktree(association.specId))) {
+        throw worktreeProviderUnsupported();
+      }
 
       return call({ op: 'create', actor, input, ...(association ? { association } : {}) });
     },

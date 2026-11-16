@@ -183,7 +183,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
 
           return {
             items: authorizedProviderModes(
-              await sessions.providers(),
+              await sessions.providers((request.query as { specId?: string }).specId),
               permissions['execute-write'],
             ),
           };

@@ -1946,7 +1946,9 @@
       "modelNotChosen": "nie wybrano modelu"
     },
     "provider": {
-      "noMode": "Brak dostępnego trybu pracy"
+      "noMode": "Brak dostępnego trybu pracy",
+      "worktreeUnsupported": "Niedostępny w tej specyfikacji: ten dostawca działa tylko w folderze projektu, a specyfikacja ma własny worktree.",
+      "worktreeUnsupportedHint": "Wybierz dostawcę, który może pracować w worktree, albo rozpocznij sesję poza specyfikacją."
     },
     "forbiddenSpecification": "Nie możesz rozpoczynać sesji w tej specyfikacji.",
     "sessionsDisabled": "Sesje są wyłączone w tym projekcie."

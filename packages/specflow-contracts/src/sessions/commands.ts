@@ -151,6 +151,10 @@ export const ProviderDescriptorSchema = Type.Object(
          * Runtime's own checkout, and that Specification works in its own worktree.
          */
         Type.Literal('SPECIFICATION_WORKTREE_UNSUPPORTED'),
+        /** The project's configuration does not allow the provider (`allowed` is not `true`). */
+        Type.Literal('NOT_ALLOWED_BY_PROJECT'),
+        /** The project allows the provider; this workstation's local configuration turns it off. */
+        Type.Literal('NOT_ENABLED_ON_WORKSTATION'),
       ]),
     ),
     compatibility: Type.Optional(

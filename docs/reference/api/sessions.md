@@ -36,22 +36,27 @@ Timestamps are UTC ISO-8601 strings. Byte limits refer to UTF-8, not JavaScript 
 
 ## Enable Sessions
 
-Add this project-owned top-level section to `.nevo/config.yaml`:
+The project enables the feature and allows providers in `.nevo/config.yaml`:
 
 ```yaml
 sessions:
   enabled: true
   providers:
     mock:
-      enabled: true
+      allowed: true
 ```
 
-Both flags default to false. Local overrides and unknown provider keys are rejected.
+Both flags default to false. An allowed provider is enabled on every workstation unless that
+workstation's `.nevo/local/config.yaml` sets `sessions.providers.<provider>.enabled: false`; the
+local file also holds a real provider's optional absolute `executable`. Local config cannot enable
+the feature, allow a provider or enable one the project does not allow; such values, a project
+`executable`, the former project `providers.<provider>.enabled` and unknown keys are refused at
+load ([project versus local](../../architecture/runtime/configuration.md#session-providers-project-and-workstation)).
 Start the existing product server and open a Specification's **Sessions** list; a Session started
 there (`/specs/:specId/sessions/new`) opens at `/sessions/:sessionId`. Every UI start is from a
 Specification; `/sessions/new` redirects to `/`.
 The explicitly labelled mock performs no external effects. The Claude, Codex and Antigravity
-adapters (`sessions.providers.<provider>.{enabled, executable}`) use this same API; their supported
+adapters (project `sessions.providers.<provider>.allowed`, local `enabled` and `executable`) use this same API; their supported
 platforms, logins, modes and limits are in the [provider reference](../providers/README.md).
 Importing external Nevo history remains outside this API. Writable execution uses
 Engine-owned admission and settlement; it does not imply OS isolation. Disabling only the provider
@@ -721,7 +726,12 @@ Catalogue response is <=128 KiB; <=32 providers, <=100 models each, <=16 efforts
 titles/reasons <=512 bytes. Cap by total bytes as well; oversized provider catalogue is explicit
 PROVIDER_CATALOGUE_UNAVAILABLE, not a silent omission of selected model. Catalogue is advisory;
 command-time validation is authoritative.
-The catalogue includes explicitly enabled production drivers. The mock identifies itself as a test;
+The catalogue lists the drivers the configuration enables, then every provider it withholds:
+unavailable, with no model, mode or capability, and reason code `NOT_ALLOWED_BY_PROJECT` (the project
+does not allow it; a maintainer sets `allowed: true` in `.nevo/config.yaml`) or
+`NOT_ENABLED_ON_WORKSTATION` (allowed, but this workstation's local config sets `enabled: false`).
+A mock the project does not allow is never listed. Starting a withheld provider is refused
+(`PROVIDER_UNAVAILABLE`). The mock identifies itself as a test;
 Claude discovers native model/effort metadata and reports unavailable when its installation/auth/policy
 fails the supported authentication/policy or protocol checks. Unlisted compatible versions run
 Provisional; a missing catalogue entry or unknown hash is not a refusal reason. Each Session is dispatched through its own selected provider;

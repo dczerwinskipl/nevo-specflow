@@ -11,6 +11,7 @@ import {
   type ProviderDescriptor,
 } from '@nevo/specflow-contracts/sessions';
 import { createRuntimeApp } from '../../src/server/app';
+import type { SessionsFeatureConfig } from '../../src/features/sessions';
 import { passwordConfig } from '../auth/support/config';
 import { associationTargets } from '../support/association-targets';
 
@@ -68,7 +69,11 @@ afterEach(async () => {
 });
 
 /** Opens the Runtime over the same Session store, as the local user with one assignment. */
-async function open(role?: Role, scope: Record<string, string> = {}) {
+async function open(
+  role?: Role,
+  scope: Record<string, string> = {},
+  sessions: SessionsFeatureConfig = { enabled: true, providers: { mock: { enabled: true } } },
+) {
   await app?.close();
   const config = passwordConfig();
   app = await createRuntimeApp(
@@ -78,7 +83,7 @@ async function open(role?: Role, scope: Record<string, string> = {}) {
       authorization: {
         assignments: role ? [{ userId: 'demo-user', role, scope }] : [],
       },
-      sessions: { enabled: true, providers: { mock: { enabled: true } } },
+      sessions,
     },
     {
       sessions: { storage: { directory, projectId: 'project' }, targets: associationTargets() },
@@ -210,5 +215,34 @@ describe('GET /api/session-providers by start context', () => {
 
     expect((await catalogue(server, '?specId=T')).statusCode).toBe(403);
     expect((await createIn(server, 'T', provider!.providerId)).statusCode).toBe(403);
+  });
+});
+
+describe('GET /api/session-providers with providers the configuration withholds', () => {
+  it('lists each withheld provider as unavailable with its reason, and refuses to start it', async () => {
+    const server = await open(
+      'developer',
+      { projectId: 'project' },
+      {
+        enabled: true,
+        providers: { mock: { enabled: true }, codex: { enabled: false } },
+        withheld: [
+          { providerId: 'codex', reason: 'not-enabled' },
+          { providerId: 'claude', reason: 'not-allowed' },
+        ],
+      },
+    );
+    const response = await catalogue(server);
+    expect(response.statusCode, response.body).toBe(200);
+    expect(Value.Check(ProviderCatalogueSchema, response.json())).toBe(true);
+    const items = response.json<{ items: ProviderDescriptor[] }>().items;
+    expect(items.map((item) => [item.providerId, item.readiness, item.reasonCode])).toEqual([
+      ['mock', 'ready', undefined],
+      ['codex', 'unavailable', 'NOT_ENABLED_ON_WORKSTATION'],
+      ['claude', 'unavailable', 'NOT_ALLOWED_BY_PROJECT'],
+    ]);
+    expect(items[1]!.reason).toContain('.nevo/local/config.yaml');
+    expect(items[2]!.reason).toContain('sessions.providers.claude.allowed: true');
+    expect((await createIn(server, 'S', 'codex')).statusCode).toBe(503);
   });
 });

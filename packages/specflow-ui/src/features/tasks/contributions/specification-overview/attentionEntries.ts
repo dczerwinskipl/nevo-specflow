@@ -65,8 +65,10 @@ function actionOf(
         : undefined;
     }
 
+    // The Task page offers Resume; the Overview has no Resume flow of its own yet.
     case 'restore-task':
     case 'satisfy-gate':
+    case 'resume-task':
       return onTask(openTask);
     case 'return-to-step':
       // The Specification's own Return dialog (its Now block, which also offers it in its menu

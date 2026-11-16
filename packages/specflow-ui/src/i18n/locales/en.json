@@ -2530,6 +2530,7 @@
         "cancel-task": "Cancel task",
         "restore-task": "Open task",
         "satisfy-gate": "Open task",
+        "resume-task": "Open task",
         "start-step": "Start step",
         "return-to-step": "Return to earlier step"
       },

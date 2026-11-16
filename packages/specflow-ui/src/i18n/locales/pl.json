@@ -2530,6 +2530,7 @@
         "cancel-task": "Anuluj zadanie",
         "restore-task": "Otwórz zadanie",
         "satisfy-gate": "Otwórz zadanie",
+        "resume-task": "Otwórz zadanie",
         "start-step": "Rozpocznij krok",
         "return-to-step": "Wróć do wcześniejszego kroku"
       },

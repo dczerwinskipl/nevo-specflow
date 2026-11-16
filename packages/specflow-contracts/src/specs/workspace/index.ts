@@ -1,6 +1,10 @@
 import { Type, type Static } from 'typebox';
 import { TaskGroupSummarySchema, TaskOverviewSchema, WorkspaceTaskSchema } from '../../tasks';
-import { ATTENTION_ACTIONS, BlockingTaskSchema } from '../../workflow/projection';
+import {
+  ATTENTION_ACTIONS,
+  BlockingTaskSchema,
+  HeldTaskBlocksSchema,
+} from '../../workflow/projection';
 import { SessionIdSchema } from '../../sessions/model';
 import { SpecIdSchema, TaskIdSchema, WorkspaceIdSchema } from '../../identifiers';
 export * from '../../tasks';
@@ -98,7 +102,8 @@ export const WorkspaceAttentionSchema = Type.Object({
   /**
    * Workflow items (the Tasks owner, from the Engine's attention projection): the stable reason
    * code (`reason` is then its display text), who has to act, the one action and the Tasks it names
-   * (`tasks-stuck`: the Tasks to resolve, with why each blocks). Absent on other items.
+   * (`tasks-stuck`: the Tasks to resolve, with why each blocks; `on-hold-blocking`: what the held
+   * Task holds up, `blocks`). Absent on other items.
    */
   code: Type.Optional(Type.String({ minLength: 1, maxLength: 64 })),
   /** The title of the step the item is about (its action names it: "Start Implementation"). */
@@ -116,6 +121,7 @@ export const WorkspaceAttentionSchema = Type.Object({
   ),
   taskIds: Type.Optional(Type.Array(TaskIdSchema)),
   blocking: Type.Optional(Type.Array(BlockingTaskSchema)),
+  blocks: Type.Optional(HeldTaskBlocksSchema),
 });
 const ActivitySchema = Type.Object({
   id: IdSchema,

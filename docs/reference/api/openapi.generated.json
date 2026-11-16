@@ -7510,6 +7510,12 @@
                   {
                     "type": "string",
                     "enum": [
+                      "on-hold-blocking"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
                       "context-unresolved"
                     ]
                   },
@@ -7620,6 +7626,12 @@
                   {
                     "type": "string",
                     "enum": [
+                      "resume-task"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
                       "satisfy-gate"
                     ]
                   }
@@ -7690,6 +7702,12 @@
                   {
                     "type": "string",
                     "enum": [
+                      "resume-task"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
                       "satisfy-gate"
                     ]
                   }
@@ -7749,6 +7767,23 @@
                   }
                 },
                 "maxItems": 1000
+              },
+              "blocks": {
+                "type": "object",
+                "properties": {
+                  "taskIds": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/TaskId"
+                    },
+                    "maxItems": 1000
+                  },
+                  "finish": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                }
               },
               "archetype": {
                 "type": "string"
@@ -29394,6 +29429,12 @@
                                                 {
                                                   "type": "string",
                                                   "enum": [
+                                                    "on-hold-blocking"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
                                                     "context-unresolved"
                                                   ]
                                                 },
@@ -29504,6 +29545,12 @@
                                                 {
                                                   "type": "string",
                                                   "enum": [
+                                                    "resume-task"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
                                                     "satisfy-gate"
                                                   ]
                                                 }
@@ -29574,6 +29621,12 @@
                                                 {
                                                   "type": "string",
                                                   "enum": [
+                                                    "resume-task"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
                                                     "satisfy-gate"
                                                   ]
                                                 }
@@ -29633,6 +29686,23 @@
                                                 }
                                               },
                                               "maxItems": 1000
+                                            },
+                                            "blocks": {
+                                              "type": "object",
+                                              "properties": {
+                                                "taskIds": {
+                                                  "type": "array",
+                                                  "items": {
+                                                    "$ref": "#/components/schemas/TaskId"
+                                                  },
+                                                  "maxItems": 1000
+                                                },
+                                                "finish": {
+                                                  "type": "string",
+                                                  "minLength": 1,
+                                                  "maxLength": 200
+                                                }
+                                              }
                                             },
                                             "archetype": {
                                               "type": "string"
@@ -30080,6 +30150,12 @@
                               {
                                 "type": "string",
                                 "enum": [
+                                  "on-hold-blocking"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
                                   "context-unresolved"
                                 ]
                               },
@@ -30190,6 +30266,12 @@
                               {
                                 "type": "string",
                                 "enum": [
+                                  "resume-task"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
                                   "satisfy-gate"
                                 ]
                               }
@@ -30260,6 +30342,12 @@
                               {
                                 "type": "string",
                                 "enum": [
+                                  "resume-task"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
                                   "satisfy-gate"
                                 ]
                               }
@@ -30319,6 +30407,23 @@
                               }
                             },
                             "maxItems": 1000
+                          },
+                          "blocks": {
+                            "type": "object",
+                            "properties": {
+                              "taskIds": {
+                                "type": "array",
+                                "items": {
+                                  "$ref": "#/components/schemas/TaskId"
+                                },
+                                "maxItems": 1000
+                              },
+                              "finish": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              }
+                            }
                           },
                           "archetype": {
                             "type": "string"
@@ -32251,6 +32356,12 @@
                                     {
                                       "type": "string",
                                       "enum": [
+                                        "on-hold-blocking"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
                                         "context-unresolved"
                                       ]
                                     },
@@ -32361,6 +32472,12 @@
                                     {
                                       "type": "string",
                                       "enum": [
+                                        "resume-task"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
                                         "satisfy-gate"
                                       ]
                                     }
@@ -32431,6 +32548,12 @@
                                     {
                                       "type": "string",
                                       "enum": [
+                                        "resume-task"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
                                         "satisfy-gate"
                                       ]
                                     }
@@ -32490,6 +32613,23 @@
                                     }
                                   },
                                   "maxItems": 1000
+                                },
+                                "blocks": {
+                                  "type": "object",
+                                  "properties": {
+                                    "taskIds": {
+                                      "type": "array",
+                                      "items": {
+                                        "$ref": "#/components/schemas/TaskId"
+                                      },
+                                      "maxItems": 1000
+                                    },
+                                    "finish": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    }
+                                  }
                                 },
                                 "archetype": {
                                   "type": "string"
@@ -45458,6 +45598,12 @@
                                   {
                                     "type": "string",
                                     "enum": [
+                                      "resume-task"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
                                       "satisfy-gate"
                                     ]
                                   },
@@ -45534,6 +45680,12 @@
                                   {
                                     "type": "string",
                                     "enum": [
+                                      "resume-task"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
                                       "satisfy-gate"
                                     ]
                                   },
@@ -45591,6 +45743,23 @@
                                         }
                                       ]
                                     }
+                                  }
+                                }
+                              },
+                              "blocks": {
+                                "type": "object",
+                                "properties": {
+                                  "taskIds": {
+                                    "type": "array",
+                                    "items": {
+                                      "$ref": "#/components/schemas/TaskId"
+                                    },
+                                    "maxItems": 1000
+                                  },
+                                  "finish": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
                                   }
                                 }
                               }
@@ -45958,6 +46127,12 @@
                                               {
                                                 "type": "string",
                                                 "enum": [
+                                                  "resume-task"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
                                                   "satisfy-gate"
                                                 ]
                                               },
@@ -46034,6 +46209,12 @@
                                               {
                                                 "type": "string",
                                                 "enum": [
+                                                  "resume-task"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
                                                   "satisfy-gate"
                                                 ]
                                               },
@@ -46091,6 +46272,23 @@
                                                     }
                                                   ]
                                                 }
+                                              }
+                                            }
+                                          },
+                                          "blocks": {
+                                            "type": "object",
+                                            "properties": {
+                                              "taskIds": {
+                                                "type": "array",
+                                                "items": {
+                                                  "$ref": "#/components/schemas/TaskId"
+                                                },
+                                                "maxItems": 1000
+                                              },
+                                              "finish": {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "maxLength": 200
                                               }
                                             }
                                           }
@@ -46686,6 +46884,12 @@
                                               {
                                                 "type": "string",
                                                 "enum": [
+                                                  "resume-task"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
                                                   "satisfy-gate"
                                                 ]
                                               },
@@ -46762,6 +46966,12 @@
                                               {
                                                 "type": "string",
                                                 "enum": [
+                                                  "resume-task"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
                                                   "satisfy-gate"
                                                 ]
                                               },
@@ -46819,6 +47029,23 @@
                                                     }
                                                   ]
                                                 }
+                                              }
+                                            }
+                                          },
+                                          "blocks": {
+                                            "type": "object",
+                                            "properties": {
+                                              "taskIds": {
+                                                "type": "array",
+                                                "items": {
+                                                  "$ref": "#/components/schemas/TaskId"
+                                                },
+                                                "maxItems": 1000
+                                              },
+                                              "finish": {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "maxLength": 200
                                               }
                                             }
                                           }
@@ -47235,6 +47462,12 @@
                                               {
                                                 "type": "string",
                                                 "enum": [
+                                                  "resume-task"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
                                                   "satisfy-gate"
                                                 ]
                                               },
@@ -47311,6 +47544,12 @@
                                               {
                                                 "type": "string",
                                                 "enum": [
+                                                  "resume-task"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
                                                   "satisfy-gate"
                                                 ]
                                               },
@@ -47368,6 +47607,23 @@
                                                     }
                                                   ]
                                                 }
+                                              }
+                                            }
+                                          },
+                                          "blocks": {
+                                            "type": "object",
+                                            "properties": {
+                                              "taskIds": {
+                                                "type": "array",
+                                                "items": {
+                                                  "$ref": "#/components/schemas/TaskId"
+                                                },
+                                                "maxItems": 1000
+                                              },
+                                              "finish": {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "maxLength": 200
                                               }
                                             }
                                           }

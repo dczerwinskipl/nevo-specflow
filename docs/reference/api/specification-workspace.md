@@ -108,8 +108,8 @@ Availability and action states describe only what actually exists.
   broken Task included; on hold counts), `completed` those whose run completed; `cancelled`,
   `ended` and `onHold` count those apart (absent in the demo Runtime). `attention` is the Engine's attention
   projection ([Attention items](task-reads.md#attention-items)): `reason` is the item's message,
-  `code` its reason, with `stepTitle` (when a step resolves), `actor`, `action`, `taskIds` and, for
-  `tasks-stuck`, `blocking`; at most one Specification-level `tasks-stuck` item, never one per
+  `code` its reason, with `stepTitle` (when a step resolves), `actor`, `action`, `taskIds`, for
+  `tasks-stuck` `blocking`, and for `on-hold-blocking` `blocks` (what the held Task holds up); at most one Specification-level `tasks-stuck` item, never one per
   draft. A broken Task's item has `priority` `critical`, so it comes before every other item. `overview` is the Overview's
   summary: `rows` (each `row` group with its `count`, up to two `tasks` and `more`; a Task already
   named by an attention item carries no `title`), `compact` (each `compact` group's `count`, for

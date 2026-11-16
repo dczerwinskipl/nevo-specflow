@@ -4,8 +4,15 @@ import type { AttentionAction, AttentionItem, AttentionItemReason } from '../att
 import type { ContinuationDecision } from '../continuation/resolve';
 import type { ExecutionCatalogue } from '../definitions/catalogue';
 import type { WorkflowDefinition } from '../definitions/model';
-import type { BlockingTask } from '../tasks/tasks';
-import type { WorkflowRun, WorkflowSubject } from '../state/model';
+import {
+  isTaskClosed,
+  isTaskEscalated,
+  taskReadiness,
+  tasksOpenAtCompletion,
+  type BlockingTask,
+  type OpenTask,
+} from '../tasks/tasks';
+import type { ExecutionTask, WorkflowRun, WorkflowSubject } from '../state/model';
 import type { ExecutionSnapshot } from '../state/store';
 import { continuationOf, waitDecision } from './advance';
 import { executionTasks, pinnedDefinitionIfUnchanged } from './loaded-execution';
@@ -20,10 +27,13 @@ import type { StartBlocker } from './start-blockers';
  *   the Session that finished it, or an owner return), when the owner has to act;
  * - a Specification active on its wait step: `task-escalated` or `tasks-stuck` (with the Tasks to
  *   resolve);
+ * - a Task on hold that the user has to resume or cancel ({@link heldTaskAttention}): escalated,
+ *   waited on directly by an open Task, or refusing the finish of the Specification's active step to
+ *   `completed`, unless the Specification's item already names it;
  * - a run that has not ended whose pinned workflow is missing or changed: `definition-changed`
  *   (its next operation fails with `WORKFLOW_DEFINITION_CHANGED`);
  * - nothing for a subject that is being worked on, has not started or has ended, and for a Task
- *   that is not `ready`.
+ *   that is neither `ready` nor such a hold.
  *
  * The start blockers of a Task that has not started need the action projection (context and gates
  * are read from the documents): {@link startBlockerAttention} adds them where the projection is
@@ -57,24 +67,48 @@ export function deriveAttention(
   };
 
   // Tasks run without a Specification run, so only a started Specification adds its own item.
+  let finish: HeldTaskInput['finish'];
   if (specification) {
     const subject: WorkflowSubject = { kind: 'specification', specId: specification.specId };
     const run = specification.run;
     const definition = pinnedDefinitionIfUnchanged(catalogue, run);
     const position = run.position;
+    const step =
+      definition && position.state === 'active' ? findStep(definition, position.step) : undefined;
     if (!definition) {
       changed(subject, run);
     } else if (position.state === 'ready') {
       add(subject, continuationOf(run, definition, catalogue), definition);
-    } else if (
-      position.state === 'active' &&
-      findStep(definition, position.step)?.kind === 'wait'
-    ) {
-      add(subject, waitDecision(position.step, tasks, broken), definition);
+    } else if (step?.kind === 'wait') {
+      add(subject, waitDecision(step.id, tasks, broken), definition);
+    } else if (step?.kind === 'work') {
+      // The rule the finish and the projection ask (`tasks-open`), on the current Tasks.
+      const completes = step.transitions.find(
+        (transition) =>
+          transition.target.kind === 'terminal' && transition.target.outcome === 'completed',
+      );
+      const open = completes ? tasksOpenAtCompletion(subject, completes.target, tasks, broken) : [];
+      finish = open.length > 0 ? { step: step.id, stepTitle: step.title, open } : undefined;
     }
   }
 
+  const named = new Set(
+    items.flatMap((entry) => (entry.subject.kind === 'specification' ? (entry.taskIds ?? []) : [])),
+  );
+  const held = new Map(
+    heldTaskAttention({ specId: snapshot.specId, tasks, named, ...(finish ? { finish } : {}) }).map(
+      (entry) => [entry.subject.kind === 'task' ? entry.subject.taskId : '', entry] as const,
+    ),
+  );
+
   for (const task of tasks) {
+    // A held Task is never `ready`, so it has no other item.
+    const hold = held.get(task.taskId);
+    if (hold) {
+      items.push(hold);
+      continue;
+    }
+
     // A Task that has not started has no run: its start blockers come from the projection.
     const run = task.run;
     if (!run || task.status !== 'ready') {
@@ -91,6 +125,96 @@ export function deriveAttention(
   }
 
   return items;
+}
+
+export interface HeldTaskInput {
+  readonly specId: string;
+  /** The readable Tasks (`executionTasks`). */
+  readonly tasks: readonly ExecutionTask[];
+  /** The Tasks the Specification's own item names (`task-escalated`, `tasks-stuck`). */
+  readonly named: ReadonlySet<string>;
+  /**
+   * The Specification's active work step when its finish to `completed` is refused now
+   * (`tasksOpenAtCompletion`): the step, its title and the open Tasks that refuse it.
+   */
+  readonly finish?: {
+    readonly step: string;
+    readonly stepTitle: string;
+    readonly open: readonly OpenTask[];
+  };
+}
+
+/**
+ * The attention of the Tasks on hold that the user has to resume or cancel (owner decision
+ * 2026-11-16: Requires attention means the user must act; the On hold status alone is never
+ * enough). At most one item per held Task that no Specification item names (`named`), in Task
+ * order:
+ *
+ * - escalated (`statusChange.source: escalation`): `task-escalated` on the Task;
+ * - otherwise `on-hold-blocking` with what it holds up now (`blocks`): the open Tasks that wait on it
+ *   directly (`taskReadiness` names it in `waitingFor`), and the Specification's active step whose
+ *   finish to `completed` it refuses (`finish`, which Close needs);
+ * - nothing for a hold that nothing waits on and that blocks no finish.
+ *
+ * Each offers `resume-task`, with `cancel-task` as the alternative. Pure.
+ */
+export function heldTaskAttention(input: HeldTaskInput): AttentionItem[] {
+  const items: AttentionItem[] = [];
+  for (const task of input.tasks) {
+    if (task.status !== 'on-hold' || isTaskClosed(task) || input.named.has(task.taskId)) {
+      continue;
+    }
+
+    const subject = { kind: 'task', specId: input.specId, taskId: task.taskId } as const;
+    const resume = { action: 'resume-task', secondaryAction: 'cancel-task' } as const;
+    if (isTaskEscalated(task)) {
+      items.push(
+        item(subject, 'task-escalated', {
+          ...resume,
+          message:
+            'It escalated to the specification and is on hold (its hold reason is the feedback): resume it, or cancel it.',
+        }),
+      );
+      continue;
+    }
+
+    const dependents = input.tasks
+      .filter((candidate) => !isTaskClosed(candidate) && waitsOn(candidate, task, input.tasks))
+      .map((candidate) => candidate.taskId)
+      .sort();
+    const finish = input.finish?.open.some(
+      (open) => open.taskId === task.taskId && open.cause === 'on-hold',
+    )
+      ? input.finish
+      : undefined;
+    if (dependents.length === 0 && !finish) {
+      continue;
+    }
+
+    items.push(
+      item(subject, 'on-hold-blocking', {
+        ...(finish ? { step: finish.step, stepTitle: finish.stepTitle } : {}),
+        ...resume,
+        blocks: {
+          ...(dependents.length > 0 ? { taskIds: dependents } : {}),
+          ...(finish ? { finish: finish.step } : {}),
+        },
+      }),
+    );
+  }
+
+  return items;
+}
+
+/** `task` waits on `dependency` directly: its readiness names it among the open dependencies. */
+function waitsOn(
+  task: ExecutionTask,
+  dependency: ExecutionTask,
+  tasks: readonly ExecutionTask[],
+): boolean {
+  const readiness = taskReadiness(task, tasks);
+
+  return readiness.kind === 'dependencies' && readiness.waitingFor.includes(dependency.taskId);
 }
 
 /**
@@ -175,6 +299,7 @@ const ACTIONS_OF: Readonly<
   'task-escalated': ['review-tasks'],
   'task-broken': ['restore-task'],
   'definition-changed': ['confirm-definition'],
+  'on-hold-blocking': ['resume-task', 'cancel-task'],
   'context-unresolved': ['edit-context'],
   'dependency-unsatisfiable': ['edit-dependencies', 'cancel-task'],
   'type-not-allowed': ['open-project-settings', 'cancel-task'],
@@ -237,6 +362,10 @@ function definitionChangedItem(subject: WorkflowSubject, run: WorkflowRun): Atte
 
 const quoted = (title: string | undefined) => (title === undefined ? 'The step ' : `"${title}" `);
 
+/** At most five ids, then how many more: the item's `blocks.taskIds` holds them all. */
+const listed = (ids: readonly string[]) =>
+  ids.length > 5 ? `${ids.slice(0, 5).join(', ')} (+${String(ids.length - 5)})` : ids.join(', ');
+
 const count = (n: number, one: string, many: string) => `${String(n)} ${n === 1 ? one : many}`;
 
 const CAUSE_TEXT: Readonly<Record<BlockingTask['cause'], string>> = {
@@ -275,6 +404,15 @@ function messageOf(reason: AttentionItemReason, fields: ItemFields): string {
       return `Escalated to the specification: ${(fields.taskIds ?? []).join(', ')}. Decide each task, or return the specification to an earlier step.`;
     case 'task-broken':
       return 'The files of the task are inconsistent: restore them from Git.';
+    case 'on-hold-blocking': {
+      const blocks = [
+        ...(fields.blocks?.taskIds ? [`holds up ${listed(fields.blocks.taskIds)}`] : []),
+        ...(fields.blocks?.finish !== undefined ? [`keeps ${step}from finishing`] : []),
+      ];
+
+      return `It is on hold and ${blocks.join(' and ')}: resume it, or cancel it.`;
+    }
+
     case 'dependency-unsatisfiable':
       return `It depends on tasks that can no longer complete: ${(fields.taskIds ?? []).join(', ')}. Edit its dependencies or cancel it.`;
     default:

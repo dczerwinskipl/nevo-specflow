@@ -301,13 +301,16 @@ export type ClosableTask = Static<typeof ClosableTaskSchema>;
 
 /**
  * Why a subject needs a person: the continuation reasons, then `task-broken`,
- * `definition-changed` and the start blockers of an approved Task that has not started that a
- * person fixes. Never inferred from a status name.
+ * `definition-changed`, `on-hold-blocking` (a Task on hold that holds up progress now: `blocks`)
+ * and the start blockers of an approved Task that has not started that a person fixes.
+ * `task-escalated` is on the Specification (its wait step) or, when no Specification item names
+ * the escalated Task, on the Task itself. Never inferred from a status name.
  */
 export const ATTENTION_ITEM_REASONS = [
   ...ATTENTION_REASONS,
   'task-broken',
   'definition-changed',
+  'on-hold-blocking',
   'context-unresolved',
   'dependency-unsatisfiable',
   'type-not-allowed',
@@ -326,8 +329,21 @@ export const ATTENTION_ACTIONS = [
   'edit-dependencies',
   'open-project-settings',
   'cancel-task',
+  /** Resume the Task on hold the item is about (`on-hold → ready`). */
+  'resume-task',
   'satisfy-gate',
 ] as const;
+
+/**
+ * `on-hold-blocking`: what the held Task holds up now; at least one is set. `taskIds`: the open
+ * Tasks that wait on it directly (their `dependencyWait.waitingFor` names it), in id order.
+ * `finish`: the Specification's active step whose finish to `completed` it refuses (`tasks-open`),
+ * which Close needs. Mirrors the Engine's `HeldTaskBlocks`.
+ */
+export const HeldTaskBlocksSchema = Type.Object({
+  taskIds: Type.Optional(array(TaskIdSchema)),
+  finish: Type.Optional(StepIdSchema),
+});
 
 /**
  * A subject a person has to act on, derived on every read and never stored: the reason (a stable
@@ -344,10 +360,15 @@ export const WorkflowAttentionItemSchema = Type.Object({
   /** An alternative to `action` (for example `cancel-task`). */
   secondaryAction: Type.Optional(literals(ATTENTION_ACTIONS)),
   message: text(4000),
-  /** `task-escalated`, `tasks-stuck` (the Tasks to resolve), `dependency-unsatisfiable`. */
+  /**
+   * `task-escalated` on the Specification, `tasks-stuck` (the Tasks to resolve),
+   * `dependency-unsatisfiable`.
+   */
   taskIds: Type.Optional(array(TaskIdSchema)),
   /** `tasks-stuck`: why each Task of `taskIds` blocks. */
   blocking: Type.Optional(array(BlockingTaskSchema)),
+  /** `on-hold-blocking`: what the held Task holds up (`step` is then the finish step, if any). */
+  blocks: Type.Optional(HeldTaskBlocksSchema),
   archetype: Type.Optional(Type.String()),
   provider: Type.Optional(Type.String()),
   blocker: Type.Optional(literals(LAUNCH_BLOCKERS)),

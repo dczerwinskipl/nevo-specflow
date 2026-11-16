@@ -284,11 +284,16 @@ An attention item (`WorkflowAttentionItem`) is derived on every read and never s
 `step` and `stepTitle` (absent when no step resolves), `reason` (a stable code), `actor` (`owner`;
 `agent` is reserved), `action` (the primary action: `start-step`, `return-to-step`,
 `configure-archetype`, `review-tasks`, `restore-task`, `confirm-definition`, `edit-context`,
-`edit-dependencies`, `open-project-settings`, `cancel-task`, `satisfy-gate`), `secondaryAction`
-(an alternative, for example `cancel-task`), a display-only English `message`, and for `task-escalated`,
-`tasks-stuck` and `dependency-unsatisfiable` the Tasks it names (`taskIds`; `tasks-stuck` also
-`blocking: [{taskId, cause}]` with `cause` `draft`, `on-hold`, `broken` or
-`dependency-unsatisfiable`). The rules are the
+`edit-dependencies`, `open-project-settings`, `cancel-task`, `resume-task`, `satisfy-gate`),
+`secondaryAction` (an alternative, for example `cancel-task`), a display-only English `message`, and
+for the Specification's `task-escalated`, `tasks-stuck` and `dependency-unsatisfiable` the Tasks it
+names (`taskIds`; `tasks-stuck` also `blocking: [{taskId, cause}]` with `cause` `draft`, `on-hold`,
+`broken` or `dependency-unsatisfiable`). A Task on hold that the user has to resume or cancel has its
+own item (`resume-task`, then `cancel-task`): `task-escalated` on the Task when it escalated and no
+Specification item names it, otherwise `on-hold-blocking` with `blocks: {taskIds?, finish?}` (the
+open Tasks that wait on it directly, and the Specification step whose finish to `completed` it
+refuses, also its `step`). A hold that nothing waits on and that blocks no finish has none. The
+rules are the
 [workflow kernel's](../../architecture/workflow/workflow-kernel.md#continuation-and-attention).
 
 ## Task commands

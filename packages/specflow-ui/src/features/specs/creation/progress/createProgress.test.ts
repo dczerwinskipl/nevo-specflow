@@ -28,7 +28,7 @@ describe('Create progress copy', () => {
             { id: 'writing-specification', status: 'pending' },
             { id: 'registering', status: 'pending' },
           ],
-          { kind: 'new-worktree' },
+          true,
         ),
       ),
     ).toEqual([
@@ -40,27 +40,19 @@ describe('Create progress copy', () => {
   });
 
   it('names a branch only when Create makes a new workspace', () => {
-    const reserving = (target: Parameters<typeof createProgressSteps>[1]) =>
+    const reserving = (newWorkspace?: boolean) =>
       words(
         createProgressSteps(
           [
             { id: 'reserving', status: 'done' },
             { id: 'writing-specification', status: 'running' },
           ],
-          target,
+          newWorkspace,
         ),
       )[0];
 
-    expect(reserving({ kind: 'new-worktree' })).toEqual([
-      'Reserving the name',
-      'Name and branch reserved',
-      'done',
-    ]);
-    expect(reserving({ kind: 'existing', workspaceId: 'w-1' })).toEqual([
-      'Reserving the name',
-      'Name reserved',
-      'done',
-    ]);
+    expect(reserving(true)).toEqual(['Reserving the name', 'Name and branch reserved', 'done']);
+    expect(reserving(false)).toEqual(['Reserving the name', 'Name reserved', 'done']);
     expect(reserving(undefined)?.[1]).toBe('Name reserved');
   });
 

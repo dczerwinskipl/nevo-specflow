@@ -1,7 +1,7 @@
 import type { SpecFlowEngine } from '../../application';
 import { closeSpecification } from '../lifecycle';
 import { closeWorktree, closeWorkspace } from '../lifecycle';
-import { previewCloseOperation, previewWithDocumentFlush, type CloseRequest } from '../lifecycle';
+import { previewWithDocumentFlush, previewWithDocumentHold, type CloseRequest } from '../lifecycle';
 import { inspectCloseOperation } from '../lifecycle';
 import { reconcileArchivedConflictScratch } from '../lifecycle';
 import { CloseOperationError } from '../lifecycle';
@@ -45,7 +45,8 @@ export async function previewPublicCloseOperation(
   engine: SpecFlowEngine,
   request: CloseRequest,
 ): Promise<PublicClosePreview> {
-  return projectClosePreview(await previewCloseOperation(engine, request));
+  // A dirty tree held by document commits is answered as the Close would: DOCUMENT_COMMITS_PENDING.
+  return projectClosePreview(await previewWithDocumentHold(engine, request));
 }
 
 /** Resolve immutable retry authorization from the journal, never mutable query options. */
@@ -154,7 +155,7 @@ export async function planPublicWorkspaceCloseOperation(
   return projectWorkspaceClosePreview(
     options.flushDocumentCommits === true
       ? await previewWithDocumentFlush(engine, intent, {})
-      : await previewCloseOperation(engine, intent),
+      : await previewWithDocumentHold(engine, intent),
   );
 }
 

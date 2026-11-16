@@ -10,6 +10,7 @@ import { workflowRefusalKey, type WorkflowRefusal } from '../refusal';
  * - `cannot-start`: the preview refused for a reason that is not a blocker list;
  * - `not-closed`: the Close itself was refused (the same planned Close may be confirmed again);
  * - `needs-attention`: the Close ran but did not complete;
+ * - `closing`: the confirmed Close runs;
  * - `ready`: the preview planned the Close; the confirm sends it.
  */
 export type CloseDialogOutcome =
@@ -25,6 +26,7 @@ export type CloseDialogOutcome =
       readonly kind: 'needs-attention';
       readonly status: Exclude<CloseSpecificationResult['status'], 'completed'>;
     }
+  | { readonly kind: 'closing' }
   | { readonly kind: 'ready' };
 
 export interface CloseDialogFacts {
@@ -83,6 +85,10 @@ export function closeDialogOutcome(facts: CloseDialogFacts): CloseDialogOutcome 
     return { kind: 'cannot-start', reasonKey: closeRefusalKey(previewRefusal) };
   }
 
+  if (facts.close.status === 'pending') {
+    return { kind: 'closing' };
+  }
+
   return facts.preview.status === 'pending' ? { kind: 'checking' } : { kind: 'ready' };
 }
 
@@ -97,6 +103,8 @@ export type CloseRefusalKey =
       | 'gitConfig'
       | 'git'
       | 'documentsPending'
+      | 'documentsUncommitted'
+      | 'documentsFailed'
       | 'commitBlocked'
       | 'engine'
       | 'unknown'}`;
@@ -138,7 +146,12 @@ export function closeRefusalKey(refusal: WorkflowRefusal): CloseRefusalKey {
     case 'GIT_OPERATION_UNCERTAIN':
       return 'workflowExecution.close.refusal.git';
     case 'DOCUMENT_COMMITS_PENDING':
-      return 'workflowExecution.close.refusal.documentsPending';
+      // Manual commit mode: nothing commits them by itself; the owner commits them from Documents.
+      return refusal.documentCause === 'commit-uncommitted'
+        ? 'workflowExecution.close.refusal.documentsUncommitted'
+        : refusal.documentCause === 'commit-failed'
+          ? 'workflowExecution.close.refusal.documentsFailed'
+          : 'workflowExecution.close.refusal.documentsPending';
     case 'BRANCH_PROTECTED':
     case 'COMMIT_BLOCKED':
     case 'COMMIT_FAILED':

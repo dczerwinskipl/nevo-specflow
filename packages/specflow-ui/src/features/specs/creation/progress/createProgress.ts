@@ -62,20 +62,18 @@ export const createNeutralProgress = (lost: boolean): OperationProgressNeutral =
  * (running: what is happening, done: what happened); a pending step is only its muted title, with
  * no repeated "waiting" line. Skipped steps are omitted
  * (an existing workspace has no "preparing the workspace"); an unknown id gets the generic copy.
- * Only a Create into a new workspace reserves a branch; any other (or an unknown target) says
+ * Only a Create into a new workspace (`newWorkspace`) reserves a branch; any other says
  * "name" only.
  */
 export function createProgressSteps(
   steps: readonly OperationStepView[],
-  target?: CreateSpecRequest['target'],
+  newWorkspace = false,
 ): readonly OperationProgressStep[] {
-  const branch = target?.kind === 'new-worktree';
-
   return steps
     .filter((step) => step.status !== 'skipped')
     .map((step) => {
       const copy =
-        step.id === 'reserving' && !branch
+        step.id === 'reserving' && !newWorkspace
           ? reservingNameCopy
           : ((stepCopy as Readonly<Record<string, StepCopy | undefined>>)[step.id] ??
             unknownStepCopy);
@@ -109,13 +107,14 @@ const stepOrder: readonly SpecificationCreateStep[] = [
 export function createCompletedSteps(
   target: CreateSpecRequest['target'],
   commits = false,
+  newWorkspace = target?.kind === 'new-worktree',
 ): readonly OperationProgressStep[] {
   return createProgressSteps(
     stepOrder
-      .filter((id) => id !== 'preparing-workspace' || target?.kind === 'new-worktree')
+      .filter((id) => id !== 'preparing-workspace' || newWorkspace)
       .filter((id) => id !== 'committing-specification' || commits)
       .map((id) => ({ id, status: 'done' as const })),
-    target,
+    newWorkspace,
   );
 }
 

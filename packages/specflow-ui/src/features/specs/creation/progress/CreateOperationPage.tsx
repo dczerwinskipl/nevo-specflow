@@ -222,6 +222,7 @@ export function CreateOperationPage({
                 working={working}
                 completed={Boolean(created)}
                 commits={settings?.commit === true && !created?.uncommitted}
+                newWorkspace={newWorkspace}
                 monitoring={flags.monitoring}
               />
             </div>

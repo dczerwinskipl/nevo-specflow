@@ -2423,10 +2423,12 @@
         "recovery": "An earlier Close of this specification stopped part way. Finish it from the command line before closing again.",
         "gitConfig": "The git section of .nevo/config.yaml is invalid or incomplete. Correct it, then close again.",
         "git": "Git cannot run in the project folder now. Check the repository, then try again.",
-        "documentsPending": "Saved documents are still waiting for their commit. Wait a moment, then close again.",
+        "documentsPending": "Saved documents of this specification are still being committed. Wait a moment, then close again.",
         "commitBlocked": "Git does not accept a commit on this branch now. Check the branch protection and the repository state, then close again.",
         "engine": "Close is not available in this Runtime.",
-        "unknown": "Close did not start, and the reason cannot be shown here. Try again; if it fails again, run “nevo-specflow specs close <specification id> --preview” in the project folder."
+        "unknown": "Close did not start, and the reason cannot be shown here. Try again; if it fails again, run “nevo-specflow specs close <specification id> --preview” in the project folder.",
+        "documentsUncommitted": "Saved documents of this specification are not committed (manual commit mode). Commit them from Documents, then close again.",
+        "documentsFailed": "A document commit failed. Retry or resolve it in Documents, then close again."
       },
       "repository": {
         "checkout": {
@@ -2436,7 +2438,7 @@
         "reason": {
           "uncommitted": "{{checkout}} has files that are not committed",
           "targetMissing": "no integration branch is configured",
-          "targetBranch": "the main checkout is not on {{expected}}",
+          "targetBranch": "the integration checkout is not on {{expected}}",
           "gitOperation": "a Git operation is unfinished in {{checkout}}",
           "detached": "{{checkout}} is not on a branch"
         },
@@ -2450,8 +2452,8 @@
           "explanation": "Close archives the specification on the branch set as git.integrationTargetBranch in .nevo/config.yaml, and none is set. Add it (for example “integrationTargetBranch: main” under “git:”), commit the change, then close again."
         },
         "targetBranch": {
-          "title": "Main checkout on another branch",
-          "explanation": "Close archives the specification on {{expected}}, but the main checkout is on {{branch}}. Switch it to {{expected}}, then close again."
+          "title": "Integration checkout on another branch",
+          "explanation": "Close integrates the specification into {{expected}}, but the checkout of {{expected}} is on {{branch}}. Switch it back to {{expected}}, then close again."
         },
         "gitOperation": {
           "title": "Unfinished Git operation",
@@ -2461,7 +2463,9 @@
           "title": "Not on a branch",
           "explanation": "HEAD is detached in {{checkout}}: it is not on a local branch. Check out its branch, then close again."
         }
-      }
+      },
+      "closingTitle": "Closing",
+      "closingBody": "Close is running. This can take a moment."
     },
     "abandon": {
       "action": "Abandon specification",

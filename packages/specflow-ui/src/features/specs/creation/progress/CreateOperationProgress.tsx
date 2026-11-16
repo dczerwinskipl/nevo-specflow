@@ -26,6 +26,7 @@ export function CreateOperationProgress({
   working,
   completed,
   commits = false,
+  newWorkspace,
   monitoring,
 }: {
   progress: OperationProgressView;
@@ -36,6 +37,8 @@ export function CreateOperationProgress({
   completed: boolean;
   /** The Engine commits the scaffold (Git enabled): a finished checklist includes that step. */
   commits?: boolean;
+  /** The Create makes a new workspace (and so reserves a branch), as the page derives it. */
+  newWorkspace: boolean;
   /** The Runtime accepted the operation and it is watched through the inspection endpoint. */
   monitoring: boolean;
 }) {
@@ -43,7 +46,7 @@ export function CreateOperationProgress({
   if (completed) {
     return (
       <OperationProgress
-        steps={createCompletedSteps(target, commits)}
+        steps={createCompletedSteps(target, commits, newWorkspace)}
         label={createProgressLabel}
       />
     );
@@ -56,7 +59,7 @@ export function CreateOperationProgress({
   return (
     <>
       <OperationProgress
-        steps={createProgressSteps(progress.steps, target)}
+        steps={createProgressSteps(progress.steps, newWorkspace)}
         label={createProgressLabel}
         neutral={createNeutralProgress(monitoring && progress.lost)}
       />

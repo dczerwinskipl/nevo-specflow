@@ -217,8 +217,13 @@ export async function inspectCleanGitWorkspace(
     );
   const symbolic = await executeGit(root, ['symbolic-ref', '--quiet', 'HEAD']);
   const branchRef = symbolic.stdout.trim();
-  if (symbolic.exitCode !== 0 || !branchRef) {
+  // Exit 1 is a detached HEAD; anything else is a repository Git cannot read (not the owner's branch).
+  if (symbolic.exitCode === 1) {
     throw detached('Checkout must be on an attached local branch.');
+  }
+
+  if (symbolic.exitCode !== 0 || !branchRef) {
+    throw invalid('Checkout must be on an attached local branch.');
   }
 
   if (!branchRef.startsWith('refs/heads/')) {
@@ -367,7 +372,14 @@ export async function previewCloseOperation(
       'specification',
     );
   } catch (error) {
-    if (targetMissing && error instanceof CloseOperationError && error.code === 'CLOSE_PREFLIGHT') {
+    // Only a refusal that names repository preconditions takes the missing branch along; any other
+    // stays as it is.
+    if (
+      targetMissing &&
+      error instanceof CloseOperationError &&
+      error.code === 'CLOSE_PREFLIGHT' &&
+      error.repository.length > 0
+    ) {
       throw new CloseOperationError('CLOSE_PREFLIGHT', `${error.message} ${TARGET_MISSING}`, {
         paths: error.paths,
         repository: [...error.repository, TARGET_MISSING_BLOCKER],
@@ -409,7 +421,19 @@ export async function previewCloseOperation(
       target = await inspectCleanGitWorkspace(registration, undefined, 'integration-target');
       targetBranch = pinned.branch;
       if (target.branch !== targetBranch) {
-        throw invalid('Integration destination changed its attached local branch.');
+        throw new CloseOperationError(
+          'CLOSE_PREFLIGHT',
+          'Integration destination changed its attached local branch.',
+          {
+            repository: [
+              {
+                kind: 'integration-target-branch',
+                expectedBranch: pinned.branch,
+                branch: target.branch,
+              },
+            ],
+          },
+        );
       }
     } else {
       // Legacy/default target: retain the configured primary semantics.

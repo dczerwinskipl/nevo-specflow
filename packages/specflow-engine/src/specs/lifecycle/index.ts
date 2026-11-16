@@ -6,6 +6,7 @@ export {
   reserveCloseOperation,
   inspectCloseOperation,
   previewWithDocumentFlush,
+  previewWithDocumentHold,
 } from './reservation';
 export {
   CloseOperationError,

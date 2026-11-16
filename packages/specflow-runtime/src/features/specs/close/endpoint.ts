@@ -188,7 +188,13 @@ function blockersOf(error: unknown): { blockers?: ExitBlocker[] } {
 /** `CLOSE_PREFLIGHT`: the repository preconditions the owner fixes before the Close can start. */
 function repositoryOf(error: unknown): { repository?: RepositoryBlocker[] } {
   return error instanceof CloseOperationError && error.repository.length > 0
-    ? { repository: error.repository.map((blocker) => ({ ...blocker })) as RepositoryBlocker[] }
+    ? {
+        repository: error.repository.map((blocker) =>
+          blocker.kind === 'uncommitted-changes'
+            ? { ...blocker, paths: [...blocker.paths] }
+            : { ...blocker },
+        ),
+      }
     : {};
 }
 
@@ -434,6 +440,12 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
           const busy = busyRefusal(error);
           if (busy) {
             return reply.code(409).send(busy);
+          }
+
+          // Documents the Close would commit first, or wait for: answered as the Close would.
+          const refusal = documentRefusal(error);
+          if (refusal) {
+            return reply.code(refusal.status).send(refusal.body);
           }
 
           const code = safeCode(error);

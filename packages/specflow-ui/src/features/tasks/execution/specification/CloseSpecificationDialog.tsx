@@ -226,6 +226,11 @@ function CloseBody({
             {t(`workflowExecution.close.status.${outcome.status}`)}
           </Alert>
         ) : null}
+        {outcome.kind === 'closing' ? (
+          <Alert role="status" tone="neutral" title={t('workflowExecution.close.closingTitle')}>
+            {t('workflowExecution.close.closingBody')}
+          </Alert>
+        ) : null}
         {outcome.kind === 'ready' ? (
           <Alert tone="success" title={t('workflowExecution.close.readyTitle')}>
             {abandonment

@@ -176,6 +176,32 @@ function assertMatchingRequest(
 }
 
 /**
+ * The preview a Close dialog reads before the Close: the pure preview, without a flush. When it
+ * refuses a dirty tree while document commits still hold one of the checkouts the request names, it
+ * answers DOCUMENT_COMMITS_PENDING as the Close itself would after its flush, so documents Nevo
+ * commits (or waits for) are never reported as files to commit by hand. No Git write and no queue
+ * pass; the hold read may prune ledger entries that are already committed.
+ */
+export async function previewWithDocumentHold(
+  engine: SpecFlowEngine,
+  request: CloseRequest,
+): Promise<ClosePlan> {
+  try {
+    return await previewCloseOperation(engine, request);
+  } catch (error) {
+    if (error instanceof CloseOperationError && error.code === 'CLOSE_PREFLIGHT') {
+      await assertNoDocumentCommitsHold(
+        engine,
+        await workspacesNamedBy(engine, request),
+        await allowanceOfRequest(engine, request),
+      );
+    }
+
+    throw error;
+  }
+}
+
+/**
  * The pure preview, retried once after a flush when it refuses a dirty tree: the changes a person
  * saved may be waiting for their commit, and a checkout that is dirty because of Nevo is not a
  * Close problem (ADR 0016 decision 16). The preview itself stays free of Git writes and of the queue.

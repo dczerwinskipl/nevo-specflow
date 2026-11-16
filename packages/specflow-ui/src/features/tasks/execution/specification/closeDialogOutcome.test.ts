@@ -99,6 +99,36 @@ describe('closeDialogOutcome', () => {
     });
   });
 
+  it('shows the running Close instead of the ready state', () => {
+    expect(
+      closeDialogOutcome({ preview: { status: 'success' }, close: { status: 'pending' } }),
+    ).toEqual({ kind: 'closing' });
+  });
+
+  it('says how document commits hold the Close, by their cause', () => {
+    const held = (documentCause: string) =>
+      closeDialogOutcome({
+        preview: {
+          status: 'error',
+          refusal: refusal('DOCUMENT_COMMITS_PENDING', { documentCause }),
+        },
+        close: idle,
+      });
+
+    expect(held('commit-pending')).toEqual({
+      kind: 'cannot-start',
+      reasonKey: 'workflowExecution.close.refusal.documentsPending',
+    });
+    expect(held('commit-uncommitted')).toEqual({
+      kind: 'cannot-start',
+      reasonKey: 'workflowExecution.close.refusal.documentsUncommitted',
+    });
+    expect(held('commit-failed')).toEqual({
+      kind: 'cannot-start',
+      reasonKey: 'workflowExecution.close.refusal.documentsFailed',
+    });
+  });
+
   it('shows a Close that did not complete as needing attention', () => {
     expect(
       closeDialogOutcome({

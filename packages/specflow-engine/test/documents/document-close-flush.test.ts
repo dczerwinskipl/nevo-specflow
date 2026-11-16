@@ -20,6 +20,7 @@ import {
 } from '../../src/specs/documents/queue/flush';
 import { runQueueOnce } from '../../src/specs/documents/queue/worker';
 import { readCloseJournal } from '../../src/specs/lifecycle/journal/store';
+import { previewPublicCloseOperation } from '../../src/specs/operations/api';
 import {
   CloseOperationError,
   previewCloseOperation,
@@ -337,6 +338,21 @@ describe('Close and the uncommitted-changes ledger', () => {
     });
     expect(admitted.existing).toBe(false);
     expect(await ledgerOf(project)).toBeUndefined();
+  });
+
+  it('answers the dialog preview as the Close would: manual-mode documents hold it, not files to commit by hand', async () => {
+    const project = await closeProject();
+    await setLocalAutoCommit(project, false);
+    await queueSave(project, 1, 'written, not committed\n');
+    const before = commitCount(project);
+
+    const error = await failure(previewPublicCloseOperation(project.engine, closeRequest(project)));
+    expect(error).toBeInstanceOf(DocumentError);
+    expect(error).toMatchObject({
+      code: 'DOCUMENT_COMMITS_PENDING',
+      details: { cause: 'commit-uncommitted' },
+    });
+    expect(commitCount(project)).toBe(before);
   });
 
   it('judges a manual-mode save that lands between the flush and the lock inside the lock and reserves nothing', async () => {

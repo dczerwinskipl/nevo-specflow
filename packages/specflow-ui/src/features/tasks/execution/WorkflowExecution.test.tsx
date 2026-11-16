@@ -570,6 +570,37 @@ describe('manual workflow execution', () => {
     expect(close).not.toHaveBeenCalled();
   });
 
+  it('tells to commit saved documents from Documents when manual commits hold the Close', async () => {
+    const held = refusal('DOCUMENT_COMMITS_PENDING', 409, { cause: 'commit-uncommitted' });
+    renderWith(
+      <CloseSpecificationDialog
+        open
+        onOpenChange={vi.fn()}
+        specId={SPEC}
+        specTitle="Single sign-on"
+        projection={specificationWorkflowProjection('abandoned')}
+        tasks={new Map()}
+        cancelledTasks={[]}
+        onSeeWorkflow={vi.fn()}
+        onSeeTasks={vi.fn()}
+        onOpenTask={vi.fn()}
+        onClosed={vi.fn()}
+      />,
+      { execution: fakeExecutionApi({ closePreview: vi.fn(() => Promise.reject(held)) }) },
+    );
+    const dialog = screen.getByRole('dialog');
+
+    expect((await within(dialog).findByRole('alert')).textContent).toContain(
+      'Commit them from Documents, then close again.',
+    );
+    expect(within(dialog).queryByText('Files not committed', { exact: false })).toBeNull();
+    expect(within(dialog).queryByText('Ready to close')).toBeNull();
+    expect(
+      within(dialog).getByRole<HTMLButtonElement>('button', { name: 'Close specification' })
+        .disabled,
+    ).toBe(true);
+  });
+
   it('says the repository is being checked, then shows one outcome for an abandoned Specification', async () => {
     let planned: (value: { operationId: string }) => void = () => undefined;
     const closePreview = vi.fn(

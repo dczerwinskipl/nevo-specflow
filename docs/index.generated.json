@@ -4087,7 +4087,7 @@
         "triaging why an agent Session cannot finish a Specification workflow unaided",
         "planning Ask agent (stage 2), Task creation during a turn, or Finish commit behaviour"
       ],
-      "summary": "Evidence, not rules: an agent Session driven through a whole Specification workflow for issue #156 in the dogfood Runtime, with each step, 13 bugs (B1 to B13), the gaps for Ask agent and the verdict. Screenshots and briefs live on the review-only branch ux-audit/2026-11-16.",
+      "summary": "Evidence, not rules: an agent Session driven through a whole Specification workflow for issue #156 in the dogfood Runtime, with each step and its screenshots, 13 bugs (B1 to B13), the gaps for Ask agent and the verdict. Images and briefs live on the review-only branch ux-audit/2026-11-16.",
       "related": [
         "ideas.audits.2026-11-16-ui-ux-audit",
         "engineering.repository.dogfooding"
@@ -4115,7 +4115,7 @@
         "triaging UI/UX findings for the Specifications list, Create, Overview, Tasks, Documents, Sessions, workflow actions, navigation or the documentation reader",
         "planning UX fixes and wanting screenshot evidence across desktop, tablet and phone"
       ],
-      "summary": "Evidence, not rules: a screenshot audit of the SpecFlow UI at commit e0fd4d33 across the demo app, an empty project and Storybook on four devices, with 49 findings ranked by impact. The scenario pages and 949 screenshots live on the review-only branch ux-audit/2026-11-16.",
+      "summary": "Evidence, not rules: a screenshot audit of the SpecFlow UI at commit e0fd4d33 across the demo app, an empty project and Storybook on four devices, with 49 findings ranked by impact and nine scenario pages. The 949 screenshots live on the review-only branch ux-audit/2026-11-16.",
       "related": [
         "ideas.specflow-ui",
         "ideas.audits.2026-11-16-agent-e2e"
@@ -4129,6 +4129,213 @@
         "audit",
         "ux",
         "evidence",
+        "screenshots"
+      ]
+    },
+    {
+      "id": "ideas.audits.2026-11-16-ui-ux-audit.s01-first-run",
+      "type": "product",
+      "title": "UI/UX audit 2026-11-16, S01-first-run: First run: Specifications list and Documentation home",
+      "status": "draft",
+      "file": "docs/ideas/audits/2026-11-16-ui-ux-audit/S01-first-run.md",
+      "read_when": [
+        "reviewing screenshot evidence for scenario S01-first-run of the 2026-11-16 UI/UX audit"
+      ],
+      "summary": "Evidence, not rules: every captured step of scenario S01-first-run per device, with observations. See what a person meets on first launch with an empty project, and how the list evolves as the first Specifications appear, compared with a populated list.",
+      "related": [
+        "ideas.audits.2026-11-16-ui-ux-audit"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "audit",
+        "ux",
+        "screenshots"
+      ]
+    },
+    {
+      "id": "ideas.audits.2026-11-16-ui-ux-audit.s02-create",
+      "type": "product",
+      "title": "UI/UX audit 2026-11-16, S02-create: Creating a Specification",
+      "status": "draft",
+      "file": "docs/ideas/audits/2026-11-16-ui-ux-audit/S02-create.md",
+      "read_when": [
+        "reviewing screenshot evidence for scenario S02-create of the 2026-11-16 UI/UX audit"
+      ],
+      "summary": "Evidence, not rules: every captured step of scenario S02-create per device, with observations. Check the Create form in its empty, invalid and filled states, the workspace/branch explanation, and what happens right after Create.",
+      "related": [
+        "ideas.audits.2026-11-16-ui-ux-audit"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "audit",
+        "ux",
+        "screenshots"
+      ]
+    },
+    {
+      "id": "ideas.audits.2026-11-16-ui-ux-audit.s03-overview",
+      "type": "product",
+      "title": "UI/UX audit 2026-11-16, S03-overview: Specification Overview through its lifecycle",
+      "status": "draft",
+      "file": "docs/ideas/audits/2026-11-16-ui-ux-audit/S03-overview.md",
+      "read_when": [
+        "reviewing screenshot evidence for scenario S03-overview of the 2026-11-16 UI/UX audit"
+      ],
+      "summary": "Evidence, not rules: every captured step of scenario S03-overview per device, with observations. Follow one Specification from “not started” through writing, Tasks, blocked/attention, completed and abandoned, and compare with the populated demo states and the Storybook early-state designs.",
+      "related": [
+        "ideas.audits.2026-11-16-ui-ux-audit"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "audit",
+        "ux",
+        "screenshots"
+      ]
+    },
+    {
+      "id": "ideas.audits.2026-11-16-ui-ux-audit.s04-tasks",
+      "type": "product",
+      "title": "UI/UX audit 2026-11-16, S04-tasks: Tasks page and Task detail",
+      "status": "draft",
+      "file": "docs/ideas/audits/2026-11-16-ui-ux-audit/S04-tasks.md",
+      "read_when": [
+        "reviewing screenshot evidence for scenario S04-tasks of the 2026-11-16 UI/UX audit"
+      ],
+      "summary": "Evidence, not rules: every captured step of scenario S04-tasks per device, with observations. See the Tasks page with no Tasks, while drafting the first ones, grouped by state, and the Task detail at each state; compare with the demo and the designs.",
+      "related": [
+        "ideas.audits.2026-11-16-ui-ux-audit"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "audit",
+        "ux",
+        "screenshots"
+      ]
+    },
+    {
+      "id": "ideas.audits.2026-11-16-ui-ux-audit.s05-documents",
+      "type": "product",
+      "title": "UI/UX audit 2026-11-16, S05-documents: Documents: list, reader, side panel, editor",
+      "status": "draft",
+      "file": "docs/ideas/audits/2026-11-16-ui-ux-audit/S05-documents.md",
+      "read_when": [
+        "reviewing screenshot evidence for scenario S05-documents of the 2026-11-16 UI/UX audit"
+      ],
+      "summary": "Evidence, not rules: every captured step of scenario S05-documents per device, with observations. Check the Documents area in a populated and a template-only Specification: tree, reader, side panel opened from the Overview, and editor mode.",
+      "related": [
+        "ideas.audits.2026-11-16-ui-ux-audit"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "audit",
+        "ux",
+        "screenshots"
+      ]
+    },
+    {
+      "id": "ideas.audits.2026-11-16-ui-ux-audit.s06-sessions",
+      "type": "product",
+      "title": "UI/UX audit 2026-11-16, S06-sessions: Sessions",
+      "status": "draft",
+      "file": "docs/ideas/audits/2026-11-16-ui-ux-audit/S06-sessions.md",
+      "read_when": [
+        "reviewing screenshot evidence for scenario S06-sessions of the 2026-11-16 UI/UX audit"
+      ],
+      "summary": "Evidence, not rules: every captured step of scenario S06-sessions per device, with observations. Record what Sessions look like when disabled, in demo (read-only), and in the Storybook designs for the New session form and Full Session.",
+      "related": [
+        "ideas.audits.2026-11-16-ui-ux-audit"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "audit",
+        "ux",
+        "screenshots"
+      ]
+    },
+    {
+      "id": "ideas.audits.2026-11-16-ui-ux-audit.s07-workflow-actions",
+      "type": "product",
+      "title": "UI/UX audit 2026-11-16, S07-workflow-actions: Workflow actions: Finish step, Close, Abandon",
+      "status": "draft",
+      "file": "docs/ideas/audits/2026-11-16-ui-ux-audit/S07-workflow-actions.md",
+      "read_when": [
+        "reviewing screenshot evidence for scenario S07-workflow-actions of the 2026-11-16 UI/UX audit"
+      ],
+      "summary": "Evidence, not rules: every captured step of scenario S07-workflow-actions per device, with observations. Open every workflow dialog at each stage, try the invalid paths, and confirm the real actions where the project allows it.",
+      "related": [
+        "ideas.audits.2026-11-16-ui-ux-audit"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "audit",
+        "ux",
+        "screenshots"
+      ]
+    },
+    {
+      "id": "ideas.audits.2026-11-16-ui-ux-audit.s08-navigation",
+      "type": "product",
+      "title": "UI/UX audit 2026-11-16, S08-navigation: Navigation: menu, back stack, switching Specifications",
+      "status": "draft",
+      "file": "docs/ideas/audits/2026-11-16-ui-ux-audit/S08-navigation.md",
+      "read_when": [
+        "reviewing screenshot evidence for scenario S08-navigation of the 2026-11-16 UI/UX audit"
+      ],
+      "summary": "Evidence, not rules: every captured step of scenario S08-navigation per device, with observations. Check the hamburger drawer on narrow screens, the Specification switcher with 1, 2 and 6 Specifications, browser Back, and where switching leads.",
+      "related": [
+        "ideas.audits.2026-11-16-ui-ux-audit"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "audit",
+        "ux",
+        "screenshots"
+      ]
+    },
+    {
+      "id": "ideas.audits.2026-11-16-ui-ux-audit.s09-docs-reader",
+      "type": "product",
+      "title": "UI/UX audit 2026-11-16, S09-docs-reader: Documentation reader and search",
+      "status": "draft",
+      "file": "docs/ideas/audits/2026-11-16-ui-ux-audit/S09-docs-reader.md",
+      "read_when": [
+        "reviewing screenshot evidence for scenario S09-docs-reader of the 2026-11-16 UI/UX audit"
+      ],
+      "summary": "Evidence, not rules: every captured step of scenario S09-docs-reader per device, with observations. See the project Documentation reader with no docs, with plain Markdown files, with a few valid documents, and search results.",
+      "related": [
+        "ideas.audits.2026-11-16-ui-ux-audit"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "audit",
+        "ux",
         "screenshots"
       ]
     },

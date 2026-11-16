@@ -23,7 +23,7 @@
     "test:packaged": "vitest run test/packaging.smoke.test.ts --no-file-parallelism"
   },
   "dependencies": {
-    "@clack/prompts": "1.8.1",
+    "@clack/prompts": "1.9.0",
     "@nevo/specflow-docs": "workspace:*",
     "@nevo/specflow-engine": "workspace:*",
     "@nevo/specflow-runtime": "workspace:*",
@@ -31,7 +31,7 @@
   },
   "devDependencies": {
     "@types/cross-spawn": "6.0.6",
-    "commander": "15.0.0",
+    "commander": "15.1.0",
     "cross-spawn": "7.0.6",
     "esbuild": "0.28.2",
     "vitest": "5.1.0",

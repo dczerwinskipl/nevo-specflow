@@ -409,9 +409,9 @@ describe('manual workflow execution', () => {
     const finished = taskWorkflowProjection('review');
     act(() => show({ ...finished, actions: {} }));
     const held =
-      'The step is finished. Some workflow files stay uncommitted because ' +
-      'specs/active/s/tasks/a/task.md changed outside SpecFlow after SpecFlow wrote it. ' +
-      'Commit them with Git; otherwise Close includes them.';
+      'The step is finished. specs/active/s/tasks/a/task.md changed outside SpecFlow after ' +
+      'SpecFlow wrote it, so the files of its Task stay uncommitted; the rest of the workflow state ' +
+      'is committed. Commit those files with Git; otherwise Close includes them.';
     expect(screen.getByText(held)).toBeTruthy();
 
     // The next attempt is active: the earlier commit's note does not carry over into it.

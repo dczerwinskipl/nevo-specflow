@@ -325,6 +325,7 @@ function busy(
     | 'busy-write-in-progress'
     | 'busy-create-or-close'
     | 'busy-agent-turn'
+    | 'busy-agent-turn-unknown'
     | 'busy-task-resource-change',
   message: string,
   waitable: boolean,
@@ -337,7 +338,8 @@ function busy(
       // A wait does not help: a person acts, or the agent Turn holding the project has to end.
       cause === 'busy-recovery-required' ||
         cause === 'busy-held-limit' ||
-        cause === 'busy-agent-turn'
+        cause === 'busy-agent-turn' ||
+        cause === 'busy-agent-turn-unknown'
         ? {}
         : { retryAfterMs: BUSY_RETRY_AFTER_MS },
     ),

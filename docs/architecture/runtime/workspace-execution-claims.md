@@ -124,7 +124,10 @@ The `SharedResourceError` names the claim it met (`holder`: its kind and operati
 execution its `ownerId`, the Session). Callers word the refusal from it, never from the resource
 alone: a document change, a workflow-state change (a Task created or edited) and a manual commit
 refused by an execution claim are `SPEC_BUSY` with `details.cause: agent-turn` and a message that
-names the Session; Create and Close keep their own codes with the same message. This includes the
+names the Session; Create and Close keep their own codes with the same message. A claim in phase
+`unknown` belongs to a Turn that has already ended without a verified outcome: its refusal is
+`agent-turn-unknown` and says to resolve the Session (Check outcome, or its recovery) instead of
+waiting for the Turn. This includes the
 Engine commands the agent runs inside its own Turn (`tasks create`, `tasks edit`): they are refused
 until the Turn ends.
 

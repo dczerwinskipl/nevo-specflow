@@ -167,15 +167,28 @@ cancelled), **Documents**, **Context** and **Depends on**. Task history is the S
 ## Close
 
 **Close specification** is in the Overview header overflow and, once the workflow ended, the Now
-block's main action. It opens the Close preflight:
+block's main action. It opens the Close preflight, which shows exactly one outcome at a time:
 
-- **Blocked:** one sentence saying why, then the groups in a fixed order — **Workflow**, **Unfinished
-  tasks**, **Broken tasks**, **Pending writes**, **Workflow state** — each with its count, one
-  explanation, its items as links (at most five, then "and N more") and its resolving action where one
-  exists. Below them "Not going to finish this work? **Abandon instead**". The footer has only
-  **Dismiss**.
-- **Ready:** a summary, the cancelled Tasks listed as not delivered, and **Close specification**; the
-  Git and workspace checks still run.
+- **Blocked:** one sentence saying why, then the groups in a fixed order — **Running sessions**,
+  **Workflow**, **Unfinished tasks**, **Broken tasks**, **Pending writes**, **Workflow state** — each
+  with its count, one explanation, its items as links (at most five, then "and N more") and its
+  resolving action where one exists. The repository preconditions the Close preview reports follow,
+  each saying what holds the Close, why and what to do: **Files not committed** (with the paths),
+  **No integration branch configured**, **Integration checkout on another branch**, **Unfinished
+  Git operation**, **Not on a branch**. Below them "Not going to finish this work? **Abandon
+  instead**". The footer has only **Dismiss**, so nothing can be confirmed while something holds it.
+- **Checking the repository:** while the preview runs, a neutral status; **Close specification** is
+  disabled. When saved documents in the checkout are still queued for their automatic commit
+  (`DOCUMENT_COMMITS_PENDING`, `commit-pending`), it reads **Saving document commits…** and the
+  preview is read again by itself (every 1.5 s, about 30 s at most); after that it becomes a refusal
+  with **Check again**.
+- **Cannot start:** the preview refused for a reason that is not a blocker list, in one sentence by
+  its code (documents in manual commit mode: commit them from Documents; a failed document commit:
+  retry or resolve it in Documents).
+- **Ready:** "Ready to close" (the workflow is complete, or ended as abandoned, and the repository
+  checks passed), the cancelled Tasks listed as not delivered, and **Close specification**.
+- **Closing:** a neutral status while the confirmed Close runs; then the dialog closes, or shows
+  **Not closed** with the reason, or **Close needs attention** when it stopped part way.
 
 ## Abandon (close without realization)
 

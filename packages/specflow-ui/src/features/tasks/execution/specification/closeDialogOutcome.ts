@@ -38,7 +38,12 @@ export interface CloseDialogFacts {
   readonly occupancyBlockers?: readonly CloseRefusalBlocker[];
   readonly preview:
     | { readonly status: 'pending' }
-    | { readonly status: 'error'; readonly refusal: WorkflowRefusal }
+    | {
+        readonly status: 'error';
+        readonly refusal: WorkflowRefusal;
+        /** The preview was read again for document commits as often as it is, without a change. */
+        readonly documentRechecksExhausted?: boolean;
+      }
     | { readonly status: 'success' };
   readonly close:
     | { readonly status: 'idle' | 'pending' }
@@ -83,7 +88,11 @@ export function closeDialogOutcome(facts: CloseDialogFacts): CloseDialogOutcome 
     return { kind: 'needs-attention', status: facts.close.result.status };
   }
 
-  if (previewRefusal && waitsForDocumentCommits(previewRefusal)) {
+  if (
+    previewRefusal &&
+    waitsForDocumentCommits(previewRefusal) &&
+    !(facts.preview.status === 'error' && facts.preview.documentRechecksExhausted)
+  ) {
     return { kind: 'checking', waitingFor: 'documents' };
   }
 
@@ -107,8 +116,17 @@ export function waitsForDocumentCommits(refusal: WorkflowRefusal): boolean {
   return refusal.code === 'DOCUMENT_COMMITS_PENDING' && refusal.documentCause === 'commit-pending';
 }
 
-/** How often the preview is read again while it waits for document commits. */
-export const DOCUMENT_COMMIT_RECHECK_MS = 1500;
+/**
+ * How the preview is read again while it waits for document commits: every `intervalMs`, at most
+ * `attempts` times (about 30 s). A commit that never settles (a crashed write keeps its journal
+ * pending) then shows as a refusal with a way to check again, never as an endless wait.
+ */
+export interface DocumentCommitRecheck {
+  readonly intervalMs: number;
+  readonly attempts: number;
+}
+
+export const DOCUMENT_COMMIT_RECHECK: DocumentCommitRecheck = { intervalMs: 1500, attempts: 20 };
 
 export type CloseRefusalKey =
   | ReturnType<typeof workflowRefusalKey>

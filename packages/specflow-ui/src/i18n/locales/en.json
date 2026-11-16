@@ -2467,7 +2467,8 @@
       "closingTitle": "Closing",
       "closingBody": "Close is running. This can take a moment.",
       "documentsCheckingTitle": "Saving document commits…",
-      "documentsCheckingBody": "Saved documents in this checkout are still being committed. The check runs again by itself, and Close can start once they are committed."
+      "documentsCheckingBody": "Saved documents in this checkout are still being committed. The check runs again by itself, and Close can start once they are committed.",
+      "checkAgain": "Check again"
     },
     "abandon": {
       "action": "Abandon specification",

@@ -117,6 +117,20 @@ describe('closeDialogOutcome', () => {
 
     // Queued for the automatic commit: it settles by itself, so the dialog keeps checking.
     expect(held('commit-pending')).toEqual({ kind: 'checking', waitingFor: 'documents' });
+    // A commit that never settles: after the bounded rechecks it is a refusal, not an endless wait.
+    expect(
+      closeDialogOutcome({
+        preview: {
+          status: 'error',
+          refusal: refusal('DOCUMENT_COMMITS_PENDING', { documentCause: 'commit-pending' }),
+          documentRechecksExhausted: true,
+        },
+        close: idle,
+      }),
+    ).toEqual({
+      kind: 'cannot-start',
+      reasonKey: 'workflowExecution.close.refusal.documentsPending',
+    });
     expect(held('commit-uncommitted')).toEqual({
       kind: 'cannot-start',
       reasonKey: 'workflowExecution.close.refusal.documentsUncommitted',

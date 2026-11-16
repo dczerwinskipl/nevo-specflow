@@ -2467,7 +2467,8 @@
       "closingTitle": "Zamykanie",
       "closingBody": "Zamknięcie trwa. Może to chwilę potrwać.",
       "documentsCheckingTitle": "Zapisywanie commitów dokumentów…",
-      "documentsCheckingBody": "Zapisane dokumenty w tym katalogu roboczym wciąż są commitowane. Sprawdzenie powtórzy się samo, a zamknięcie będzie można rozpocząć, gdy commity się zakończą."
+      "documentsCheckingBody": "Zapisane dokumenty w tym katalogu roboczym wciąż są commitowane. Sprawdzenie powtórzy się samo, a zamknięcie będzie można rozpocząć, gdy commity się zakończą.",
+      "checkAgain": "Sprawdź ponownie"
     },
     "abandon": {
       "action": "Porzuć specyfikację",

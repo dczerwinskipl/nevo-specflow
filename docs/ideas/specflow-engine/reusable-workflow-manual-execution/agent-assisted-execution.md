@@ -1,222 +1,422 @@
 ---
 id: ideas.specflow-engine.reusable-workflow.agent-execution
 type: engineering
-title: Agent-assisted deterministic Specification and Task execution
+title: Ask agent — agent execution of workflow steps and Tasks (contract)
 status: draft
 scope: specflow
 areas: [workflow, runtime, ai, ui, cli, security, testing]
-tags: [agent-execution, task-authoring, managed-sessions, deterministic]
+tags: [agent-execution, ask-agent, task-authoring, managed-sessions, claims, commits, deterministic]
 read_when:
   - adding an Ask agent action beside manual Workflow execution
-  - implementing agent-written Specification documents and Task resources
-  - integrating Managed Sessions with Workflow start and finish
+  - letting an agent write Specification documents or Task resources during its own Turn
+  - integrating Managed Sessions with Workflow start, finish, approval and recovery
+  - deciding which Engine writes an agent may make and which decisions stay with a person
+  - changing what is committed after an agent step, or what Close does with uncommitted work
 summary: >
-  Owner-delegated execution of one declared Workflow step by an agent, including
-  Specification authoring, Task descriptions, dependencies and context, with
-  durable Session and attempt correlation and shared Engine validation.
+  The proposed architecture contract for executing one Specification step or one Task step through
+  an agent: the context built from the step, the definition, the Specification and its documents;
+  Engine writes during the agent's Turn through a trusted Runtime broker bound to the invocation,
+  without weakening the project-wide claim; document registration through the Engine; a finish
+  proposal finalized with the claim settlement; owner-only decisions and approvals; a controlled
+  commit policy for documents, Tasks and code; and error recovery. Open decisions D11 to D20.
 related:
+  - ideas.specflow-engine.reusable-workflow.ask-agent-plan
   - adr.0024-tasks-are-resources
   - adr.0023-neutral-workflow-coordinator-and-manual-execution
+  - adr.0018-engine-commit-policy-and-manual-commit
   - product.specflow.ui.workflow-execution
-  - ideas.specflow-engine.plan-06
   - architecture.workflow.workflow-kernel
   - architecture.runtime.workspace-execution-claims
+  - architecture.runtime.specification-documents
+  - architecture.runtime.specflow-lifecycle
+  - architecture.ai.session-storage-and-lifecycle
+  - ideas.specflow-engine.plan-06
+  - ideas.specflow-engine.managed-session-integration
+  - ideas.specflow-engine.local-actors
+  - ideas.specflow-engine.execution-scopes
   - reference.api.workspace-docs
   - reference.cli.nevo-specflow-docs
 ---
 
-# E6 — Agent-assisted deterministic Workflow (proposal)
+# Ask agent — agent execution of workflow steps and Tasks (contract)
 
-**Open idea.** Manual execution, the neutral coordinator, executors and actors, Tasks as resources and
-the Ask agent attachment point are implemented
-([ADR 0024](../../../architecture/decisions/0024-tasks-are-resources.md),
-[ADR 0023](../../../architecture/decisions/0023-neutral-workflow-coordinator-and-manual-execution.md),
+**Draft proposal, not implemented.** This document restructures the earlier E6 proposal in place
+(same stable id): its candidate invocation protocol, durable partial work and context sections are
+now the contract below, and its open decisions D11 to D13 carry options and a recommendation. The
+delivery order, one PR per slice with its tests, is the sibling
+[Ask agent delivery plan](ask-agent-delivery-plan.md). Nothing here overrides a current document;
+where it proposes a change to one, it says which.
+
+Already decided and implemented: manual execution, the neutral coordinator, executors and actors,
+Tasks as resources and the Ask agent attachment point
+([ADR 0023](../../../architecture/decisions/0023-neutral-workflow-coordinator-and-manual-execution.md),
+[ADR 0024](../../../architecture/decisions/0024-tasks-are-resources.md),
 [Manual workflow execution](../../../product/specflow/ui/workflow-execution.md#later-ask-agent-e6-not-implemented)).
-What follows is still open. Decided already: `session: reuse` after a manual step is
-`session-unavailable`, with no fresh-Session override (D10); the post action that commits a step's
-execution state is the seam for the agent push (ADR 0024, decision 11).
+`session: reuse` after a manual step is `session-unavailable`, with no fresh-Session fallback (D10).
+The finish post action that commits the execution state is the seam for an agent step's commit
+(ADR 0024, decision 11).
 
-## Product path
+## Goal and non-goals
 
-For an eligible step the owner chooses **Do it myself** or **Ask agent**. The two choices share
-one canonical Engine state machine, attempt history and allowed-action projection (`inspectActions`).
-Tasks have their own Task Type workflows; agent-written Task drafts are real resources with
-editable `task.md`, type, dependency graph, typed context and owner approval.
+**Goal.** The owner chooses **Ask agent** on a step an agent may do, and the agent does that one
+step end to end without the owner relaying anything: it receives the step's context, writes the
+Specification documents, Task drafts or code the step needs through supported operations, and
+submits the step's result, feedback and artifacts. The owner then sees one committed step, or an
+unresolved attempt with everything the agent already produced, and makes every decision that needs
+a person. It works for any workflow definition: nothing in the mechanism names a step, archetype or
+document type.
 
-**Default:** exactly one expressly authorized attempt. Neither `continuation: auto` nor a
-successful Turn authorizes a new Managed Session. Unattended F01 and F12 batching are deferred.
+**Non-goals** (deferred, unchanged from E6): unattended continuation into the next step (plan 06
+F01), Task batching (F12), parallel Task worktrees and per-worktree claims (F08), `command` and
+`human` gate types (F03), typed transition inputs (E5), filesystem containment of the agent, and
+bootstrapping dependencies in a fresh worktree.
 
-## Existing implementation constraints
+## Evidence: the dogfood run of 2026-11-16
 
-- [Workspace execution claims](../../../architecture/runtime/workspace-execution-claims.md)
-  currently reserve the **entire project** while a native agent is active. Ordinary Engine
-  Document changes refuse that unsettled claim. The E6 writer needs D11's narrow same-invocation
-  mutation path, not `ignoreClaims` or a second uncoordinated writer.
-- Native providers can write directly to the filesystem under their OS permissions. Engine
-  command authorization is not filesystem containment. Treat use of the Engine writer as a
-  cooperative agent protocol until a sandbox actually enforces it. Validate real output.
-- The agent actor (`{class: agent, details: {provider, model?, sessionId?}}`) must come from a
-  trusted Session binding (F02), never from tool arguments.
-- A terminal Session Turn, an accepted finish _submission_ and a committed Workflow transition
-  are different records, with separate crash windows.
-- Incremental Document writes are **durable when their own Engine mutation commits**. They are
-  not delayed until Workflow finish and must not disappear merely because finish is refused.
+One managed Session wrote a whole Specification (overview, behaviour, UX, backend, decisions), six
+Tasks with bodies and one tested code change on this repository, on the PR #163 build. A person had
+to do every Start, Finish, approval and Task creation. The findings this contract answers:
 
-## Responsibilities and boundary
+| Finding                                                                                                                                     | Answered by                                                                                                        |
+| ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **B1 / D11.** `tasks create` and `tasks edit` fail with `SPEC_BUSY` inside the agent's own Turn; the message names Create/Close             | [Engine writes during a Turn](#engine-writes-during-a-turn-d11)                                                    |
+| **B6.** A new `decisions.md` is not registered: missing from Documents, the attach picker and `spec-doc:` context                           | [Document registration](#document-registration-b6)                                                                 |
+| **B3.** Documents, Tasks and code the agent wrote are never committed; a finish commits only `.execution/`                                  | [Commit ownership](#commit-ownership-and-close-b3)                                                                 |
+| **B4.** Every finish after the agent edited `task.md` directly reports `MANUAL_COMMIT_CONFLICT`; the banner says Close includes the changes | [Commit ownership](#commit-ownership-and-close-b3)                                                                 |
+| Gap: every Start and Finish by hand; the finish input could be the agent's                                                                  | [Lifecycle](#one-agent-attempt), [Completion](#step-completion-d12)                                                |
+| Gap: the owner approved the breakdown and the Task review                                                                                   | [Agent and human authority](#agent-and-human-authority)                                                            |
+| Gap: every brief written by hand (step text, documents, rules)                                                                              | [Context](#context-building-d13)                                                                                   |
+| Gap: about 30 permission prompts for read-only tools and the product CLI                                                                    | D20                                                                                                                |
+| B2: a Turn is lost when a tool runs long or writes outside the workspace                                                                    | Not here: a Session driver defect, see the [delivery plan](ask-agent-delivery-plan.md#findings-outside-the-slices) |
 
-| Layer            | Owns                                                                                                                                                        |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@nevo/workflow` | Legal work/wait/return transitions, recorded attempt history, provider-independent intents                                                                  |
-| SpecFlow Engine  | Subject/Task binding, effective executor validation, Task/document use cases, SpecFlow's `resolveContinuation`, claim-aware mutation and recoverable finish |
-| Runtime          | Authenticated owner request, Session/Turn/invocation binding, native provider dispatch, positive native-stop evidence and reconciliation                    |
-| UI / CLI / skill | Present permitted operations and invoke shared Engine commands; never invent transitions, identity or a privileged claim bypass                             |
+## Current state
 
-The preferred provider/model and `session: fresh | reuse` resolution belong to the SpecFlow
-adapter; Runtime implements a dispatch decision but never chooses Workflow transitions.
+PR #163 (`fix/dogfood-round-1`, not merged when this was written) adds three facts this contract
+relies on: a Specification's Sessions run in its worktree (the claim names that workspace; the
+resource stays project-wide); Close asks a checkout quiescence port, so it never removes a checkout
+a Turn works in, read-only Turns included; and native-stop evidence lets startup recovery or
+reconcile settle a claim and its Turn as `interrupted` without a click.
+
+| Capability                                       | Owner            | Evidence                                                                                                                                                     | Readiness                                                                                                                             |
+| ------------------------------------------------ | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| One writer claim per native agent execution      | Engine           | [Workspace execution claims](../../../architecture/runtime/workspace-execution-claims.md)                                                                    | Established; excludes every other Engine writer, including the agent's own CLI calls (B1)                                             |
+| Kernel start/finish/return consult claims        | Engine           | Same document, "The project-wide resource"                                                                                                                   | Missing (plan 06 F05): today they do not                                                                                              |
+| Agent actor `{class: agent, details}`            | Engine (kernel)  | [Workflow kernel, Executors and actors](../../../architecture/workflow/workflow-kernel.md#executors-and-actors)                                              | Established in the kernel; no trusted producer: the Runtime never builds one (F02 open)                                               |
+| Attempt bound to a Session                       | Engine + Runtime | Kernel: an agent attempt with `sessionId` is resumed and finished only by that Session                                                                       | Established rule, never exercised: nothing starts an agent attempt                                                                    |
+| Session association with Specification and Tasks | Runtime Sessions | [Session storage, associations](../../../architecture/ai/session-storage-and-lifecycle.md#authorization-and-associations)                                    | Established; `associate-tasks` is reserved for the workflow orchestrator and has no caller                                            |
+| Step context at start                            | Engine           | `compileStepContext` (`workflow/operations/step-context.ts`): step, purpose, instructions, transitions, handoff, archetype, Task, Task types, existing Tasks | Established but insufficient: no Specification documents, document types, resolved Task context or Session policy                     |
+| Document create with type, classify              | Engine documents | [Specification documents](../../../architecture/runtime/specification-documents.md#identity-paths-and-the-registry)                                          | Established; refused during the claim                                                                                                 |
+| Commit policy, ledger, manual commit             | Engine documents | [ADR 0018](../../../architecture/decisions/0018-engine-commit-policy-and-manual-commit.md)                                                                   | Established for Engine writes only; a direct file write is not in the ledger and a changed post-image refuses the whole manual commit |
+| Close refuses foreign dirty paths                | Engine lifecycle | [Specification lifecycle](../../../architecture/runtime/specification-lifecycle.md): `CLOSE_PREFLIGHT` names the paths                                       | Established (no silent loss today); the Close preview groups workflow blockers but does not list the dirty paths with them            |
+| Owner-only operations                            | Engine           | Kernel: `returnToStep`, `setTaskStatus`, Task resource commands, `abandonSpecification` take `OwnerActor`                                                    | Established; Task create/edit would have to admit an agent actor in scope (D11)                                                       |
+
+## Agent and human authority
+
+The workflow definition decides **who may execute** a step (`executors`); the Engine decides **who
+may decide**. The split is generic: it follows the step's declared facets and the effect or
+operation class, never a step id.
+
+| An agent actor MAY                                                                                   | Only an owner (`OwnerActor`) MAY                                                                                         |
+| ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Execute an attempt of a work step whose `executors` include `agent`, once the owner asked for it     | Ask an agent to execute a step (each attempt is expressly authorized; no automatic next attempt)                         |
+| Read its step context and the documents it references                                                | Execute a step whose `executors` are `[human]`                                                                           |
+| Create, save and classify documents of its subject Specification; save documents of its subject Task | Approve, cancel, remove, hold or resume a Task (`setTaskStatus`, Task lifecycle)                                         |
+| Create and edit Task drafts, only in an attempt of a `produces: tasks` step                          | Confirm a transition whose effects are owner-authority (`approve-draft-tasks`) or that declares owner confirmation (D17) |
+| Submit one finish proposal for its own attempt: result, feedback, artifacts, kept drafts             | Return, take over (F17), Abandon, Close, manual commit, discard or revert any work                                       |
+| Ask the owner a question inside its Turn (an interactive step)                                       | Answer it; change definitions, configuration, authorization                                                              |
+
+An agent never starts another subject's step, never finishes another attempt and never acts as an
+owner, whatever its tool arguments say: the actor comes only from the trusted Runtime binding.
+
+## One agent attempt
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant O as Owner (UI)
+  participant RT as Runtime
+  participant EN as Engine
+  participant AG as Agent (native CLI)
+
+  O->>RT: Ask agent (subject, step, expected attempt)
+  RT->>EN: start step with AgentActor {archetype, provider, model, sessionId}
+  EN-->>RT: attempt n + StepContext
+  RT->>RT: create or reuse the Session (definition's session policy), associate the subject
+  RT->>EN: admit write claim (invocation, Session, Turn, workspace, attempt)
+  RT->>AG: dispatch the brief built from StepContext, with the invocation capability
+  loop During the Turn
+    AG->>RT: product CLI command with the capability
+    RT->>EN: in-scope operation as AgentActor, under the invocation's own claim
+  end
+  AG->>RT: workflow finish (result, feedback, artifacts, drafts)
+  RT->>EN: record the finish proposal (validated, pending)
+  AG-->>RT: Turn ends, native process proven stopped
+  RT->>EN: finalize the proposal and settle the claim, one lock section
+  EN-->>O: committed step, or the refusal and the unresolved attempt
+```
+
+- The start runs before any provider process: a subject that is not ready, a stale expected attempt
+  or a step without `agent` in its executors refuses before a Session or claim exists.
+- The **attempt binding** `(subject, step, attempt, sessionId, turnId, invocationId, workspace)` is
+  durable in the claim intent and on the attempt before dispatch; a crash between start and claim
+  leaves an active attempt with no process, which the same Session resumes.
+- A Turn ending finishes nothing. Only a finalized proposal advances the Run.
+- One attempt may take several Turns of the same Session (the owner answers questions, the agent
+  continues); each Turn has its own invocation and claim.
+
+## Context building (D13)
+
+The brief is generated, never typed by the owner. The Engine extends the step context it already
+compiles at start (the step, its purpose and instructions, the finish transitions, the handoff with
+the last feedback, the archetype profile and instructions, the Task and its type instructions, the
+allowed Task types, the existing Tasks) with:
+
+- **the subject's documents**: every registered document of the Specification (and, for a Task, of
+  the Task) as `{id, type, title, path, revision, templateOnly}`, with the registered paths relative
+  to the workspace root the Turn runs in;
+- **the document types** the agent may register, from the catalogue: `{id, title, useWhen,
+instructions, defaultFilename}`, plus the archetype's templates and requirements, so the agent
+  creates `decisions` rather than a bare `decisions.md`;
+- **the resolved Task context** (E6, ADR 0024 decision 9): each entry as a reference `{kind, ref,
+path?, sha256, bytes, required}`, in deterministic order, with only `instructions` inline, bounded by
+  the budgets in `workflow/limits.ts`; a digest of the resolved list on the attempt, the full list as
+  local evidence (owner decision Q12);
+- **the operations the agent may call** in this attempt (the broker scope below) and the exact CLI
+  forms, generated from the same scope, so the brief never lists a command the broker refuses.
+
+The Runtime renders the brief from that data with the archetype's profile; the Engine owns the data,
+the Runtime only its presentation. Retrieval stays bound to the verified workspace: Specification and
+Task documents come from their registry, never from project docs search; repository docs search
+covers the configured `docs.root` of the Turn's workspace and says which mode it ran in. A rebind or
+branch switch invalidates the context (the claim already refuses a registry change while held).
+
+## Engine writes during a Turn (D11)
+
+**Constraint (owner decision).** Task create and edit, and any other Engine write during an active
+agent Turn, go through trusted Runtime-mediated operations bound to the invocation's Session and Turn
+identity and its scope. The project-wide execution claim is not weakened, and no CLI process may
+bypass or re-enter it without proven identity and permission scope.
+
+**Proposal.**
+
+1. At dispatch the Runtime creates an **invocation capability**: an unguessable secret bound to
+   `(invocationId, sessionId, turnId, specId[, taskId], workspace, scope)`, stored only in the Runtime
+   process and handed to the provider process in its environment. It is valid only while the
+   invocation's claim is `dispatched` and the Turn is nonterminal; it dies with the Turn.
+2. The product CLI, when it finds the capability in its environment, does **not** open the Engine for
+   writing. It sends the command to the owning Runtime's loopback broker. Without a capability the CLI
+   behaves as today, so an unrelated process is still refused by the claim.
+3. The broker verifies the capability, that the claim of that invocation is the one held, that the
+   workspace and Specification binding are unchanged, and that the operation is in scope. It then calls
+   the same Engine use case the UI calls, with the `AgentActor` from the binding and an **owned-claim
+   admission**: the shared resource check treats the claim whose `operationId` the trusted Runtime
+   names in-process as the caller's own, and every other unsettled writer still conflicts. Nothing is
+   taken from the request: no claim id, actor, owner flag or `ignoreClaims`.
+4. **Scope is derived, not configured.** From the bound attempt: document create, save and classify of
+   the subject Specification (Task documents for a Task subject); Task create and edit only when the
+   step declares `produces: tasks`; the finish proposal of the bound attempt; every read. Never
+   `setTaskStatus`, return, Abandon, Close, manual commit, or a write to another subject. A Turn of a
+   Specification-associated Session without an attempt (an ad-hoc conversation) MAY get a narrower
+   document-and-draft scope (D11b).
+5. A Task created in an attempt of a producing step is recorded with origin `produced` by that step
+   and attempt, so the finish and D06 treat it as that step's draft; a manual draft is never touched.
+   Task create and edit accept an `AgentActor` only through this path; every Task decision still takes
+   an `OwnerActor`.
+6. Every accepted write is its own durable Engine mutation with its own operation id and revision,
+   published at once and committed by the policy below; it is not held until the finish and does not
+   disappear when a finish is refused.
+7. The refusal names the real holder: `SPEC_BUSY` today says "a Create or Close holds this checkout"
+   for an agent's own claim (B1). The broker answers out-of-scope requests with a reason the agent can
+   act on, and an invalid context reference with the field and the accepted form (B7).
+
+**Trust model.** This is a cooperative protocol, not containment. The native agent still has the OS
+user's write access; a process of the same user can read the capability from the agent's
+environment. The claim keeps every other Engine writer out; the finish validates the real workspace
+state ([Commit ownership](#commit-ownership-and-close-b3)), so a write that bypassed the Engine is
+detected rather than trusted.
+
+## Document registration (B6)
+
+A document of a Specification is a registry entry with a type, never a file that happens to end in
+`.md` (owner decision). The agent registers a new document through the Engine's document create with
+a `type` (or a `templateId` of the archetype), or classifies a file it wrote with an explicit type.
+There is no automatic registration by extension, folder or name.
+
+Prevention at the boundary: an agent finish is refused while the Specification directory holds an
+**uncommitted unclassified file** (`WORKFLOW_UNREGISTERED_DOCUMENTS`, naming the paths and the two
+remedies: classify with a type, or delete). Committed unclassified files that existed before are not
+the agent's concern. Because an agent attempt starts from a clean baseline (below), an uncommitted
+unclassified file at finish was written in that attempt.
+
+## Step completion (D12)
+
+The agent submits the same finish input a person does: the transition (`result`), feedback, artifacts
+(registered document ids, Task ids) and, for a producing step, the kept drafts. The Engine validates
+it completely at submission, with the same rules as an owner's finish (legal transition, feedback
+required, exit gates, open Tasks, D06 draft conflicts, unregistered documents), and records a
+deduplicated **finish proposal** on the attempt. A refused submission returns the reasons to the agent
+in the same Turn, so it can fix them.
+
+The proposal is not a transition. After the Turn ends and the native process is proven stopped, the
+Runtime calls one Engine operation that, **in one control-lock section**, re-validates the proposal,
+applies the finish and its effects, runs the post actions, and settles the invocation's claim with
+the native-result receipt. Because the claim is released in the same section that publishes the
+finish, no other writer can enter between them, and no unprotected gap exists. When re-validation
+refuses (a gate changed, the owner edited a Task meanwhile through another path), the claim still
+settles, the attempt stays active and unresolved, and the owner sees the proposal with the refusal.
+
+Replays are idempotent (F16): the proposal has a request digest; the same proposal again returns the
+recorded one; a different one replaces it only while not finalized. A late callback of a stopped or
+replaced invocation is refused.
+
+## Approvals and owner confirmation (D17)
+
+An agent may execute a review step: it reviews and submits a result with feedback. What it may not do
+is grant an approval. The Engine classifies each effect by authority; `approve-draft-tasks` is
+**owner authority**. A workflow author MAY also mark a transition `confirmation: owner` (for example a
+"Requirements agreed" result of an interactive step). An agent proposal whose transition carries an
+owner-authority effect or that marker is finalized into a **pending owner confirmation**: the attempt
+ends, the Run waits at that transition, and the Now block shows **Confirm** and **Reject** with the
+agent's feedback. Confirm applies the transition and its effects with the owner as actor; Reject
+returns to the step with the owner's feedback. A person's own finish needs no confirmation. Task
+approval itself (`setTaskStatus approve`) stays an owner operation, as today.
+
+## Commit ownership and Close (B3)
+
+**Rule.** The Engine commits only paths it can attribute; it never runs `git add -A`, `git commit -a`
+or a commit of the whole tree, and the agent is not expected to commit by itself.
+
+1. **Clean baseline at start.** Ask agent is refused while the workspace has changes the Engine cannot
+   attribute (dirty or untracked paths outside the ledger), naming them, so whatever is dirty at the
+   end of the attempt came from that attempt, the Engine's own ledger aside. This is the
+   "dirty-baseline admission" of [execution scopes](../execution-scopes-and-recovery.md).
+2. **Documents and Tasks** written through the broker are ordinary Engine writes: queued or in the
+   ledger by the commit policy, with their post-images. A registered document or Task file whose bytes
+   differ from its ledger post-image at finish was written past the Engine; the finish is refused,
+   naming it, and the agent saves it through the Engine (B4 then cannot arise from the agent).
+3. **Code and other files** the agent changed are declared in the finish proposal (`changes.paths`).
+   The Engine checks that the declared set equals the dirty set outside the Specification and Engine
+   paths (`specs/**`, `.nevo/**`): an undeclared or a declared-but-clean path refuses the finish, naming
+   it. Ignored files are never committed.
+4. **One attempt commit.** Finalizing an agent finish makes one commit through the Engine commit port
+   holding the attempt's ledger entries (documents, Tasks, execution state) and its declared paths,
+   subject `spec(<subject>): <step title> (attempt n) by agent in <slug>` (no truncation, B5), with
+   the `Nevo-Operation` and attempt trailers. With `git.commits.auto.documents` on, the queued
+   document commits drain first. A failed commit fails nothing already published: the finish stands,
+   the paths stay attributed and uncommitted, and the post action can be retried.
+5. **Close never silently loses work.** Close keeps refusing any dirty path other than the
+   Specification's execution state (`CLOSE_PREFLIGHT`, `DOCUMENT_COMMITS_PENDING`). The Close preview
+   lists these paths as an **Uncommitted changes** blocker group with the remedy for each kind (commit
+   the Engine's changes, retry the attempt commit, or commit or discard foreign changes in Git), so the
+   owner learns it before acting, not from a refusal. A finish banner never says "Close includes them"
+   for paths Close will refuse. There is no product operation that discards work.
+
+## Error recovery
+
+| Situation                                                   | State                                                    | What the owner can do                                                                               |
+| ----------------------------------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Start refused (not ready, dirty baseline, provider missing) | Nothing written                                          | Fix the named precondition; the Ask agent form explains it before submit                            |
+| Turn ends without a finish proposal                         | Attempt active, accepted writes published, claim settled | **Continue** in the same Session (a new Turn of the same attempt), take over (F17) or return        |
+| Proposal refused at finalize                                | Attempt active with the proposal and its refusal         | Fix it (or let the agent fix it in a new Turn), take over or return                                 |
+| Turn `unknown`, process may still run                       | Claim held, project writers blocked                      | Check outcome; native-stop evidence settles it; else the administrative recovery of Session storage |
+| Owner stops the agent                                       | Cancel requested; claim held until proof                 | Wait for proof; then as "Turn ends without a finish"                                                |
+| Owner returns during an agent attempt                       | Attempt `returned`; Runtime cancels the Turn (F13)       | A late proposal of that attempt is refused (`WORKFLOW_ATTEMPT_MISMATCH`)                            |
+| Pending owner confirmation                                  | Run waits at the transition                              | Confirm or Reject                                                                                   |
+| Attempt commit failed                                       | Finish published, paths attributed and uncommitted       | Retry the post action; Close lists them until committed                                             |
+
+Partial work is never rolled back by the product: each accepted write stays, and the attempt's
+history lists its operations (documents, Tasks, declared paths) so the owner can inspect, keep or
+revert them through ordinary versioned operations or Git.
+
+## Invariants
+
+These are the machine-checked rules the slices MUST enforce; each has one owner.
+
+1. An attempt advances only through a finalized finish; a Turn's end, a submission or a reply never
+   advances a Run (Engine, kernel).
+2. Every Engine write during an agent Turn carries an `AgentActor` built by the Runtime from the
+   binding and an owned-claim admission named in-process; a request body never supplies an actor,
+   claim or scope (Engine admission, Runtime broker).
+3. While an agent claim is unsettled, every writer except that invocation's broker calls is refused,
+   kernel operations included (Engine, closes F05 for agent claims).
+4. The finish proposal and the claim settlement are published in one lock section (Engine).
+5. An agent actor never applies an owner-authority effect or a `confirmation: owner` transition, and
+   never calls an owner operation (Engine).
+6. An agent finish is refused while unregistered uncommitted files, Engine files edited past their
+   post-image, or undeclared changes exist (Engine).
+7. The Engine commits only ledger paths and declared, verified attempt paths (Engine commit port).
+8. Close refuses unattributed dirty paths and lists them in its preview (Engine lifecycle).
 
 ## Open decisions
 
-- **D11 claim-owned Engine writes.** A trusted broker admits a Document or Task write under the
-  agent's own `project-write` claim after checking the exact invocation, Session/Turn, workspace
-  incarnation, subject and capability; no caller-supplied claim id and no `ignoreClaims` flag.
-- **D12 durable finish and native stop.** A finish submission is recorded as pending, finalized only
-  after positive native-stop evidence, under the still-held reservation, without a gap for another
-  writer.
-- **D13 agent Task authoring and Workspace-bound context** (below).
+Each needs the owner; the recommendation is what the delivery plan assumes.
 
-## Candidate invocation and finish protocol, gated by D11–D12
+**D11 — How an agent's CLI proves its invocation.**
 
-1. Runtime authenticates a one-step owner request and calls the canonical action projection and commands.
-   Engine verifies the subject, pinned definition, step, allowed executor and revision.
-2. Runtime and Engine durably associate **one** invocation with the exact
-   `(Run, step, attempt, Session, Turn, workspace)`, including retry/fencing identity, before
-   native execution. The project-wide writer claim is admitted and marked dispatched using the
-   existing durable claim lifecycle. Unknown native launch is reconciled, never replayed blindly.
-3. Native agent reads pinned StepContext and source-scoped F20 context. When allowed, it writes
-   registered Specification/Task documents through a **trusted claim-owned Engine broker**. Each
-   accepted write has its own recoverable journal, idempotency identity and document revision;
-   it is already published, not awaiting step finish. All unrelated writers, including the UI,
-   remain blocked while the native claim is active.
-4. The agent submits declared result/feedback/artifacts, through F02's authenticated finish
-   adapter. Engine records a deduplicated **pending finish proposal**; a reply acknowledging that
-   proposal is not a completed Workflow transition. Agent is instructed to stop.
-5. Runtime proves the native process stopped. Engine then finalizes the **remaining declared
-   transition/effects** under the exclusive claim and Project lock. This does not retroactively
-   commit or roll back previously published Document edits. Claim settlement/release must not
-   expose an unprotected gap before the final Run/effect publication. Fault injection proves the
-   chosen D12 journal stage order.
-6. Only after both the required finish publication and native claim settlement may the owner see
-   this step as fully committed and select the next step. No new Session starts automatically.
-   A stopped agent lacking valid finish leaves an unresolved attempt **and its already accepted
-   Document revisions intact**; an unknown-stop process keeps its claim pending reconciliation.
+- (a) Per-invocation capability in the provider environment; the CLI forwards to the Runtime loopback
+  broker, which calls the Engine with an owned-claim admission. Cooperative trust, simplest, works with
+  every provider and the existing CLI and skills.
+- (b) A product MCP tool served by the Runtime, same broker. Providers start with an empty MCP
+  configuration today, and each needs its own wiring.
+- (c) A delegated claim file the CLI presents to the Engine. Any process that reads the file holds the
+  claim; it weakens the lock.
+- (d) Release the claim around each CLI call. Breaks exclusion while the agent still runs.
 
-Persisted identities and fingerprinted commands prevent duplicate Sessions, Tasks and finishes.
-Late callbacks from a stopped/replaced invocation are rejected. Cancellation or takeover follows
-F13/F17 and cannot turn a native stop attempt into a fabricated successful Workflow result.
+**Recommendation: (a)**, with (b) later as a second transport over the same broker.
 
-**Do not implement this as a single synchronous callback running under the project lock.**
-The native process and Session lifecycle are long-lived. Keep locks short; journals/claims
-bridge asynchronous stages without losing exclusivity.
+**D11b — Scope of a Turn without an attempt.** (a) None: ad-hoc Turns keep today's refusals; (b)
+documents of the home Specification only; (c) documents plus Task drafts with origin `manual` and the
+agent actor. **Recommendation: (b)**, so a conversation can still write the documents it discusses;
+Task drafts need an attempt of a producing step.
 
-## Durable partial work, recovery and retry
+**D12 — Finalizing the finish.** (a) Record a proposal, finalize it together with the claim
+settlement after native-stop proof; (b) apply the finish at once during the Turn (the agent may keep
+writing after the step is committed); (c) derive the result from the Turn's last message. Fragile and
+unverifiable. **Recommendation: (a)**.
 
-One agent step is **not** an ACID transaction over the native process's lifetime. Separate:
+**D13 — Context form.** (a) References with digests, the agent reads the files (budgets bound the
+list, not the files); (b) inline document bodies (large prompts, stale on edit). **Recommendation:
+(a)**, inline only `instructions`.
 
-- **Incremental Documents:** each successful claim-owned Engine write publishes a durable,
-  individually versioned document. A failed finish does not erase these bytes. A direct OS
-  write outside Engine is a separately reconciled side effect, not an Engine-journal promise.
-- **Task drafts:** each Task create/edit must be internally atomic across its index, manifest
-  and documents (D03); multiple successful Task creates may already be visible as unapproved
-  drafts before the producing step finishes. A finish-time batch of effects can be atomic without
-  rolling back earlier accepted Task mutations.
-- **Workflow finish:** only the accepted, fenced and durable transition advances Run. A pending
-  finish submission and a terminated Turn do not.
+**D14 — Unregistered documents at finish (B6).** (a) Refuse an agent finish while uncommitted
+unclassified files exist in the Specification directory; (b) warn and list them; (c) register by a
+filename-to-type rule. (c) contradicts the owner decision. **Recommendation: (a)**.
 
-If an agent writes two documents then crashes without a valid finish, retain both revisions,
-keep the attempt unresolved and preserve its writer claim until **positive native-stop proof**.
-After reconciliation, expose the partial-work list and origin to the owner. The owner may inspect,
-repair, resume an eligible step or **explicitly revert** selected revisions through ordinary
-versioned Document operations. Never silently roll back or announce completed Workflow. Retried
-invocations reconcile accepted operation IDs/revisions and do not duplicate edits or Task drafts;
-they do not blindly re-dispatch an unknown native process.
+**D15 — Code commit at an agent finish (B3).** (a) One attempt commit of the ledger entries and
+the declared, verified paths, at finalize, whatever `git.commits.auto.documents` says; (b) the same,
+only when the policy is on, else the paths join the ledger and wait for a manual commit; (c) the agent
+commits with Git itself. (c) is unverifiable and races the commit lease. **Recommendation: (a)**:
+an agent step is a reviewable unit and its boundary is the natural commit, as the execution-state
+"Next" commit is today. Owner question: is (b) wanted for teams that keep commits off?
 
-**Recovery test:** two accepted edits -> crash -> restart -> same two document revisions and
-unresolved Run/claim -> positive stop -> owner chooses repair/retry. Conflicting writers remain
-blocked until safe release, duplicate writes replay idempotently, and selective revert requires
-an authorized action.
+**D16 — Uncommitted work at Close.** (a) Keep refusing, and list the paths in the preview as their
+own group with remedies; (b) let Close commit them into its archive commit. This takes unreviewed
+foreign changes. (c) a product "discard" action. **Recommendation: (a)**, no discard in the product.
 
-## Specification writing and Workspace-scoped context
+**D17 — Human-only decisions.** (a) Engine-owned effect authority (approval effects are owner) plus an
+optional `confirmation: owner` marker on transitions, finalized into a pending owner confirmation; (b)
+make review steps `executors: [human]`, which loses the agent review; (c) let agents approve.
+**Recommendation: (a)**.
 
-The agent edits Specification documents through registered Engine Documents operations and
-revision checks. F20 context references for Specification and Task documents resolve from the
-actual resource registry, with required/optional semantics and revision provenance.
+**D18 — Which Session runs the step.** (a) The kernel's continuation resolution decides (`session:
+reuse` reuses the previous attempt's Session, otherwise a fresh Session with the archetype's
+preferred provider and model); the owner may change provider and model only for a fresh Session, and
+the choice is recorded on the attempt; (b) the owner always picks. **Recommendation: (a)**: one
+rule for Ask agent and the future orchestrator.
 
-The current [`nevo-specflow docs search`](../../../reference/cli/nevo-specflow-docs.md#search)
-and [`GET /api/workspaces/:workspaceId/docs/search`](../../../reference/api/workspace-docs.md)
-search the configured **`docs.root`** of one checkout (the CLI's, or a registered workspace's).
-They do not search Specification/Task files. Search may be hybrid semantic/BM25 or lexical; it is not automatically
-wired to a running agent.
+**D19 — Stop and takeover.** (a) Stop cancels the Turn and keeps the claim until proof; Take over
+(F17) is an explicit owner operation, allowed only once the claim is settled, that ends the agent
+attempt as `taken-over` and starts an owner attempt of the same step; (b) let the owner finish the
+agent's attempt, which the kernel forbids today. **Recommendation: (a)**.
 
-For E6, bind retrieval to the verified project, Workspace/incarnation, checkout path,
-branch/HEAD and document revisions as applicable. If context must reflect a particular
-Worktree's repository docs, provide a scoped corpus/index with its own freshness checks **or**
-read verified files from that Worktree and record their origin. A project-wide search result
-must not masquerade as that Worktree's document. Branch switching or Worktree rebind invalidates
-old context evidence. The agent interface must explicitly expose/test the chosen CLI/skill/tool
-path; search alone conveys no write permission.
+**D20 — Permission prompts.** (a) The Runtime starts an Ask agent Turn with the provider's
+allowlist for read-only tools and the product CLI, from the archetype; (b) keep every prompt; (c)
+leave it to the work mode. **Recommendation: (a)**, as an owner choice per archetype; it is
+provider configuration, not an Engine rule.
 
-**Verification:** two Worktrees with different docs give different, correct evidence; switching
-a branch forces re-resolution/refusal of stale references. Specification `overview.md` and
-Task `task.md` always come from the registered resource, never project docs search.
+## Readiness
 
-## Context resolution for agents
-
-Task context is authored and validated today (ADR 0024); resolving it for an agent is open:
-
-- the step context carries each resolved entry as a reference `{kind, ref, path?, sha256, bytes}`
-  (only `instructions` inline), in deterministic order (workflow-provided parts, then the entries in
-  declared order, glob matches by path);
-- budgets in `workflow/limits.ts` for entries, glob matches, inline characters and total bytes;
-- per attempt, a digest of the resolved list in the run record and the full list as local evidence
-  (owner decision Q12);
-- `path-hint` entries (`allowed[]`, `forbidden[]`), passed as hints and never enforced (owner decision
-  Q9); not implemented.
-
-## Task creation and editing
-
-For a metadata-declared Task-producing step, the agent uses the **same** Task Resource create/edit
-operations as UI, under the invocation-bound claim. Each draft has a stable id, title, summary,
-allowed Task Type, substantive `task.md` (purpose, work, deliverables, acceptance checks),
-registered optional documents, DAG dependencies and F20 typed context. Context includes
-subject document, Specification document, repository document, path, instructions and path hint
-with required/optional flags and bounded budgets. Engine validates all references and revisions.
-
-D06 separates a producing attempt's proposals from other manual drafts: empty or incomplete
-agent results cannot silently delete another author's Tasks. Each Task create/edit is one
-recoverable multi-file D03 mutation; different accepted draft creates may persist before
-Workflow finish. Finish-time effects are separately atomic. Retry cannot publish half a Task
-or recreate a previously accepted draft.
-An agent's direct edit of `task.yaml` or `.execution` is outside the supported cooperative
-contract but is **not technically impossible** without sandboxing.
-
-## Acceptance and failure tests
-
-1. Same-invocation Engine writes work while the agent holds a `project-write` claim. Other
-   writers, stale invocations, wrong workspace and forged owner approval are refused.
-2. Three complete linked Task drafts, typed context, document content and revisions become
-   visible and editable to the owner; no manual draft is lost on finishing a producing step.
-3. An agent finishes one selected Task attempt and stops; manual steps in the same Run retain
-   correct executor history and definition pins. Manual requirements -> agent specification
-   honors the explicit `session: reuse` policy.
-4. Two successful document writes followed by native crash remain visible but do not finish
-   the Workflow. Loss after pending submission, stop evidence, Run publication and claim
-   settlement is recoverable without duplicate execution or an unlocked write gap.
-   A finished Turn without a valid Workflow finish cannot advance the Run.
-5. Documentation retrieval is exercised via a real agent adapter. Two Worktrees with differing
-   docs cannot share stale context; Task/Specification documents come from their own registry,
-   and reported hybrid/lexical mode matches the tested retrieval. No inferred automatic RAG.
-6. Existing CLI+skill callers obey their independently documented local OS trust limitations.
-
-**Deferred:** unattended continuation, automatic Task batching, scheduler, generic plugins,
-parallel Task worktrees, non-existent automated F03 evidence and claims of unimplemented
-filesystem containment.
+**Partially ready for decomposition.** The slices of the delivery plan that depend only on
+established contracts (Close preservation, context) can be planned now. Engine writes during a Turn,
+completion, approvals and the commit policy are ready once D11, D12, D15 and D17 are decided; the
+rest of the decisions change only their own slice.

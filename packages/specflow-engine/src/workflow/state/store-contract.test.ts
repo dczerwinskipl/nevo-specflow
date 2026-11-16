@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach } from 'vitest';
 
 import { createFilesystemWorkflowStore } from './filesystem-store';
-import { createMemoryWorkflowStore } from './memory-store.test-support';
+import { createMemoryWorkflowStore } from './memory-store';
 import { describeWorkflowStoreContract } from './store-contract.test-support';
 
 let root: string;

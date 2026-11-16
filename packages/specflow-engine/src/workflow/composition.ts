@@ -306,7 +306,7 @@ function enginePostActions(engine: SpecFlowEngine): WorkflowPostActions {
  * Close and Abandon availability of the action projection (D07), from the snapshot it read. Records
  * that cannot be interpreted are one blocker for both, as in the Close guard.
  */
-function specificationExitPort(
+export function specificationExitPort(
   dependencies: Omit<WorkflowDependencies, 'specificationExit'>,
 ): SpecificationExitPort {
   return {

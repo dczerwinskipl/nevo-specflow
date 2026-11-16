@@ -248,6 +248,41 @@ export const ManagedProviderNotForSpecificationWorktree: Story = {
   },
 };
 
+/**
+ * Why a provider cannot start, by who can change it: the project does not allow it (a maintainer,
+ * `.nevo/config.yaml`), this machine turned it off (the user, `.nevo/local/config.yaml`), or it is
+ * enabled but its CLI is missing (install it or set its path). Each tile says what and what to do.
+ */
+export const ManagedProviderWithheldByConfiguration: Story = {
+  args: {
+    providers: [
+      claudeDescriptor,
+      {
+        ...codexDescriptor,
+        readiness: 'unavailable' as const,
+        reasonCode: 'NOT_ENABLED_ON_WORKSTATION' as const,
+        reason: 'This provider is turned off on this machine.',
+      },
+      {
+        ...antigravityDescriptor,
+        readiness: 'unavailable' as const,
+        reasonCode: 'NOT_ALLOWED_BY_PROJECT' as const,
+        reason: 'The project does not allow this provider.',
+      },
+    ],
+  },
+  play: async ({ canvas }) => {
+    await settle();
+    await expect(await canvas.findByRole('radio', { name: /Claude/ })).toBeChecked();
+    await expect(canvas.getByText('Wyłączony na tym komputerze')).toBeVisible();
+    await expect(canvas.getByText(/usuń sessions\.providers\.codex\.enabled: false/)).toBeVisible();
+    await expect(canvas.getByText('Niedozwolony w projekcie')).toBeVisible();
+    await expect(
+      canvas.getByText(/sessions\.providers\.antigravity\.allowed: true w \.nevo\/config\.yaml/),
+    ).toBeVisible();
+  },
+};
+
 /** A ready provider that can run no work mode is not startable: disabled with its reason. */
 export const ManagedProviderWithoutUsableMode: Story = {
   args: {

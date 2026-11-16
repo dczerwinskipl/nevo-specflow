@@ -31,17 +31,26 @@ legacy-history import or resume-to-new fallback.
 ## Enablement
 
 ```yaml
-# .nevo/config.yaml (committed; no local override)
+# .nevo/config.yaml (committed): the project allows Claude
 sessions:
   enabled: true
   providers:
     claude:
-      enabled: true
+      allowed: true
+```
+
+```yaml
+# .nevo/local/config.yaml (this workstation; optional)
+sessions:
+  providers:
+    claude:
+      # enabled by default once allowed; `enabled: false` turns it off on this machine
       # optional absolute native executable; default ~/.local/bin/claude.exe
       executable: C:/Users/example/.local/bin/claude.exe
 ```
 
-Disabled Claude inspects no login and launches no process. An unsupported installation leaves the
+Disabled Claude (not allowed by the project, or turned off on this machine) inspects no login and
+launches no process. An unsupported installation leaves the
 provider unavailable; Runtime and other providers stay usable. Startup warms discovery; ordinary
 snapshots launch no subprocess. Discovery and caching follow
 [provider compatibility](compatibility.md).

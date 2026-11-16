@@ -1952,7 +1952,13 @@
     "provider": {
       "noMode": "Brak dostępnego trybu pracy",
       "worktreeUnsupported": "Niedostępny w worktree",
-      "worktreeUnsupportedNote": "Niektórzy dostawcy są niedostępni w tej specyfikacji: działają tylko w folderze projektu, a ta specyfikacja ma własny worktree. Wybierz dostawcę, który obsługuje worktree, albo rozpocznij sesję poza specyfikacją."
+      "worktreeUnsupportedNote": "Niektórzy dostawcy są niedostępni w tej specyfikacji: działają tylko w folderze projektu, a ta specyfikacja ma własny worktree. Wybierz dostawcę, który obsługuje worktree, albo rozpocznij sesję poza specyfikacją.",
+      "notAllowed": "Niedozwolony w projekcie",
+      "notAllowedHelp": "Opiekun projektu może go dopuścić ustawieniem {{key}}.allowed: true w .nevo/config.yaml, a następnie uruchomić ponownie Nevo SpecFlow.",
+      "notEnabled": "Wyłączony na tym komputerze",
+      "notEnabledHelp": "Aby go włączyć, usuń {{key}}.enabled: false z .nevo/local/config.yaml, a następnie uruchom ponownie Nevo SpecFlow.",
+      "notReady": "Niezainstalowany lub niegotowy",
+      "notReadyHelp": "Sprawdź, czy CLI dostawcy jest zainstalowane i działa na tym komputerze. Jeśli jest zainstalowane w innym miejscu, ustaw jego ścieżkę jako {{key}}.executable w .nevo/local/config.yaml."
     },
     "forbiddenSpecification": "Nie możesz rozpoczynać sesji w tej specyfikacji.",
     "sessionsDisabled": "Sesje są wyłączone w tym projekcie."

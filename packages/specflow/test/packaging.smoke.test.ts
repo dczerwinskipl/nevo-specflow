@@ -563,7 +563,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
         '  enabled: true',
         '  providers:',
         '    mock:',
-        '      enabled: true',
+        '      allowed: true',
         '',
       ].join('\n'),
       'utf8',

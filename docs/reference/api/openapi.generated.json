@@ -10456,6 +10456,18 @@
                                 "enum": [
                                   "SPECIFICATION_WORKTREE_UNSUPPORTED"
                                 ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "NOT_ALLOWED_BY_PROJECT"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "NOT_ENABLED_ON_WORKSTATION"
+                                ]
                               }
                             ]
                           },

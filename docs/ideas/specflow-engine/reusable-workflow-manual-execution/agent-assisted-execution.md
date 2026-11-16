@@ -18,7 +18,7 @@ summary: >
   Engine writes during the agent's Turn through a trusted Runtime broker bound to the invocation,
   without weakening the project-wide claim; document registration through the Engine; a finish
   proposal finalized with the claim settlement; owner-only decisions and approvals; a controlled
-  commit policy for documents, Tasks and code; and error recovery. Open decisions D11 to D20.
+  commit policy for documents, Tasks and code; and error recovery. Open decisions D11 to D21.
 related:
   - ideas.specflow-engine.reusable-workflow.ask-agent-plan
   - adr.0024-tasks-are-resources
@@ -77,17 +77,18 @@ One managed Session wrote a whole Specification (overview, behaviour, UX, backen
 Tasks with bodies and one tested code change on this repository, on the PR #163 build. A person had
 to do every Start, Finish, approval and Task creation. The findings this contract answers:
 
-| Finding                                                                                                                                     | Answered by                                                                                                        |
-| ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| **B1 / D11.** `tasks create` and `tasks edit` fail with `SPEC_BUSY` inside the agent's own Turn; the message names Create/Close             | [Engine writes during a Turn](#engine-writes-during-a-turn-d11)                                                    |
-| **B6.** A new `decisions.md` is not registered: missing from Documents, the attach picker and `spec-doc:` context                           | [Document registration](#document-registration-b6)                                                                 |
-| **B3.** Documents, Tasks and code the agent wrote are never committed; a finish commits only `.execution/`                                  | [Commit ownership](#commit-ownership-and-close-b3)                                                                 |
-| **B4.** Every finish after the agent edited `task.md` directly reports `MANUAL_COMMIT_CONFLICT`; the banner says Close includes the changes | [Commit ownership](#commit-ownership-and-close-b3)                                                                 |
-| Gap: every Start and Finish by hand; the finish input could be the agent's                                                                  | [Lifecycle](#one-agent-attempt), [Completion](#step-completion-d12)                                                |
-| Gap: the owner approved the breakdown and the Task review                                                                                   | [Agent and human authority](#agent-and-human-authority)                                                            |
-| Gap: every brief written by hand (step text, documents, rules)                                                                              | [Context](#context-building-d13)                                                                                   |
-| Gap: about 30 permission prompts for read-only tools and the product CLI                                                                    | D20                                                                                                                |
-| B2: a Turn is lost when a tool runs long or writes outside the workspace                                                                    | Not here: a Session driver defect, see the [delivery plan](ask-agent-delivery-plan.md#findings-outside-the-slices) |
+| Finding                                                                                                                         | Answered by                                                                                                        |
+| ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **B1 / D11.** `tasks create` and `tasks edit` fail with `SPEC_BUSY` inside the agent's own Turn; the message names Create/Close | [Engine writes during a Turn](#engine-writes-during-a-turn-d11)                                                    |
+| **B6.** A new `decisions.md` is not registered: missing from Documents, the attach picker and `spec-doc:` context               | [Document registration](#document-registration-b6)                                                                 |
+| **B3.** Documents, Tasks and code the agent wrote are never committed; a finish commits only `.execution/`                      | [Commit ownership](#commit-ownership-and-close-b3)                                                                 |
+| **B4.** Every finish from the breakdown onward reports `MANUAL_COMMIT_CONFLICT`; the banner says Close includes the changes     | Root cause being fixed in PR #163; the agent path is covered by [Commit ownership](#commit-ownership-and-close-b3) |
+| Gap: every Start and Finish by hand; the finish input could be the agent's                                                      | [Lifecycle](#one-agent-attempt), [Completion](#step-completion-d12)                                                |
+| Gap: the owner approved the breakdown and the Task review                                                                       | [Agent and human authority](#agent-and-human-authority)                                                            |
+| Gap: every brief written by hand (step text, documents, rules)                                                                  | [Context](#context-building-d13)                                                                                   |
+| Gap: about 30 permission prompts for read-only tools and the product CLI                                                        | D20                                                                                                                |
+| Review of this plan: with authentication `none`, an agent can call the owner routes itself                                      | [Owner routes](#engine-writes-during-a-turn-d11), D21                                                              |
+| B2: a Turn is lost when a tool runs long or writes outside the workspace                                                        | Not here: a Session driver defect, see the [delivery plan](ask-agent-delivery-plan.md#findings-outside-the-slices) |
 
 ## Current state
 
@@ -199,41 +200,65 @@ bypass or re-enter it without proven identity and permission scope.
 
 **Proposal.**
 
-1. At dispatch the Runtime creates an **invocation capability**: an unguessable secret bound to
-   `(invocationId, sessionId, turnId, specId[, taskId], workspace, scope)`, stored only in the Runtime
-   process and handed to the provider process in its environment. It is valid only while the
-   invocation's claim is `dispatched` and the Turn is nonterminal; it dies with the Turn.
+1. At dispatch the Runtime creates an **invocation capability**: an unguessable secret (at least 256
+   random bits) bound to `(invocationId, sessionId, turnId, specId[, taskId], workspace, scope)`,
+   stored only in the Runtime process and handed to the provider process in its environment, together
+   with the broker's endpoint. It is valid only while the invocation's claim is `dispatched` and the
+   Turn is nonterminal; it dies with the Turn.
 2. The product CLI, when it finds the capability in its environment, does **not** open the Engine for
-   writing. It sends the command to the owning Runtime's loopback broker. Without a capability the CLI
-   behaves as today, so an unrelated process is still refused by the claim.
+   writing. It sends the command to the owning Runtime's broker. Without a capability the CLI behaves
+   as today, so an unrelated process is still refused by the claim.
 3. The broker verifies the capability, that the claim of that invocation is the one held, that the
    workspace and Specification binding are unchanged, and that the operation is in scope. It then calls
    the same Engine use case the UI calls, with the `AgentActor` from the binding and an **owned-claim
    admission**: the shared resource check treats the claim whose `operationId` the trusted Runtime
    names in-process as the caller's own, and every other unsettled writer still conflicts. Nothing is
-   taken from the request: no claim id, actor, owner flag or `ignoreClaims`.
-4. **Scope is derived, not configured.** From the bound attempt: document create, save and classify of
+   taken from the request: no claim id, actor, owner flag or `ignoreClaims`; a body that carries one
+   is refused, not ignored.
+4. **Broker surface.** The broker is not a TCP port: it listens on a per-user local endpoint (a
+   Windows named pipe whose ACL grants only the Runtime's user SID, or a Unix domain socket in a
+   directory of mode `0700` owned by that user), separate from the HTTP listener. The capability is
+   compared in constant time. The Runtime redacts the capability's value from the Session transcript,
+   tool output it stores, logs and diagnostics. The broker derives each Engine operation id from the
+   invocation id and the client's id, so an id cannot be replayed under another invocation.
+5. **Child processes.** The capability is in the environment of every process the agent starts
+   (install scripts, test runners): the scope is the Turn's, not a tool's, and a descendant acts with
+   the agent's scope. It cannot outlive the Turn: the capability is refused once the Turn ends, and the
+   provider tree is stopped (process group, Job Object) before the claim settles. This is stated as a
+   limit, not hidden.
+6. **Scope is derived, not configured.** From the bound attempt: document create, save and classify of
    the subject Specification (Task documents for a Task subject); Task create and edit only when the
    step declares `produces: tasks`; the finish proposal of the bound attempt; every read. Never
    `setTaskStatus`, return, Abandon, Close, manual commit, or a write to another subject. A Turn of a
    Specification-associated Session without an attempt (an ad-hoc conversation) MAY get a narrower
    document-and-draft scope (D11b).
-5. A Task created in an attempt of a producing step is recorded with origin `produced` by that step
+7. A Task created in an attempt of a producing step is recorded with origin `produced` by that step
    and attempt, so the finish and D06 treat it as that step's draft; a manual draft is never touched.
    Task create and edit accept an `AgentActor` only through this path; every Task decision still takes
    an `OwnerActor`.
-6. Every accepted write is its own durable Engine mutation with its own operation id and revision,
+8. Every accepted write is its own durable Engine mutation with its own operation id and revision,
    published at once and committed by the policy below; it is not held until the finish and does not
    disappear when a finish is refused.
-7. The refusal names the real holder: `SPEC_BUSY` today says "a Create or Close holds this checkout"
+9. The refusal names the real holder: `SPEC_BUSY` today says "a Create or Close holds this checkout"
    for an agent's own claim (B1). The broker answers out-of-scope requests with a reason the agent can
    act on, and an invalid context reference with the field and the accepted form (B7).
 
+**Owner routes.** The broker gives the agent its own scope; it must not be able to use the owner's.
+Today, with `runtime.authentication.mode: none` (the dogfood setup of this repository), any local
+process, the agent and its subprocesses included, can call the owner HTTP routes (Finish, Approve,
+Return) and the Runtime builds an `OwnerActor` for it. The offline CLI builds `local:<os-user>` the
+same way. So "the actor comes only from the trusted binding" holds only once owner routes require
+something the agent's environment does not have (D21), and once kernel operations consult the claim
+(F05), which refuses the offline owner CLI while an agent Turn runs.
+
 **Trust model.** This is a cooperative protocol, not containment. The native agent still has the OS
 user's write access; a process of the same user can read the capability from the agent's
-environment. The claim keeps every other Engine writer out; the finish validates the real workspace
-state ([Commit ownership](#commit-ownership-and-close-b3)), so a write that bypassed the Engine is
-detected rather than trusted.
+environment, and, with enough effort, any credential that user can read. What the contract enforces:
+the claim keeps every other Engine writer out; owner routes refuse a caller without the owner
+credential (D21); the finish validates the real workspace state
+([Commit ownership](#commit-ownership-and-close-b3)), so a write that bypassed the Engine is detected
+rather than trusted. What it does not: a deliberately hostile process of the same OS user. Stronger
+separation needs OS user separation or a sandbox, outside this scope.
 
 ## Document registration (B6)
 
@@ -278,7 +303,10 @@ is grant an approval. The Engine classifies each effect by authority; `approve-d
 owner-authority effect or that marker is finalized into a **pending owner confirmation**: the attempt
 ends, the Run waits at that transition, and the Now block shows **Confirm** and **Reject** with the
 agent's feedback. Confirm applies the transition and its effects with the owner as actor; Reject
-returns to the step with the owner's feedback. A person's own finish needs no confirmation. Task
+returns to the step with the owner's feedback. A person's own finish needs no confirmation. Effect
+authority ships with the first agent finish: until pending owner confirmation exists, the Engine
+refuses such an agent proposal outright (`WORKFLOW_OWNER_DECISION_REQUIRED`), so no slice lets an
+agent approve. Task
 approval itself (`setTaskStatus approve`) stays an owner operation, as today.
 
 ## Commit ownership and Close (B3)
@@ -290,21 +318,29 @@ or a commit of the whole tree, and the agent is not expected to commit by itself
    attribute (dirty or untracked paths outside the ledger), naming them, so whatever is dirty at the
    end of the attempt came from that attempt, the Engine's own ledger aside. This is the
    "dirty-baseline admission" of [execution scopes](../execution-scopes-and-recovery.md).
-2. **Documents and Tasks** written through the broker are ordinary Engine writes: queued or in the
+2. **Baseline at every Turn.** The claim is released between the Turns of one attempt, so the owner or
+   an IDE may edit files meanwhile. When a Turn's claim settles, the Engine records the attempt's
+   dirty set (path and content hash). The dispatch of the next Turn of that attempt (**Continue**)
+   is refused while the dirty set differs from that record outside the ledger, naming the paths
+   changed since, so an edit made between Turns is never attributed to the agent. The owner commits,
+   reverts or keeps them by hand and continues.
+3. **Documents and Tasks** written through the broker are ordinary Engine writes: queued or in the
    ledger by the commit policy, with their post-images. A registered document or Task file whose bytes
    differ from its ledger post-image at finish was written past the Engine; the finish is refused,
-   naming it, and the agent saves it through the Engine (B4 then cannot arise from the agent).
-3. **Code and other files** the agent changed are declared in the finish proposal (`changes.paths`).
-   The Engine checks that the declared set equals the dirty set outside the Specification and Engine
-   paths (`specs/**`, `.nevo/**`): an undeclared or a declared-but-clean path refuses the finish, naming
+   naming it, and the agent saves it through the Engine. (B4 on the manual path is being fixed in
+   PR #163; this contract does not depend on its cause.)
+4. **Code and other files** the agent changed are declared in the finish proposal (`changes.paths`).
+   The Engine checks that the declared set equals the dirty set outside the Specification directories
+   and the Engine's own namespace, both derived from the configured Specification root and Project
+   Home (never hardcoded paths): an undeclared or a declared-but-clean path refuses the finish, naming
    it. Ignored files are never committed.
-4. **One attempt commit.** Finalizing an agent finish makes one commit through the Engine commit port
+5. **One attempt commit.** Finalizing an agent finish makes one commit through the Engine commit port
    holding the attempt's ledger entries (documents, Tasks, execution state) and its declared paths,
    subject `spec(<subject>): <step title> (attempt n) by agent in <slug>` (no truncation, B5), with
    the `Nevo-Operation` and attempt trailers. With `git.commits.auto.documents` on, the queued
    document commits drain first. A failed commit fails nothing already published: the finish stands,
    the paths stay attributed and uncommitted, and the post action can be retried.
-5. **Close never silently loses work.** Close keeps refusing any dirty path other than the
+6. **Close never silently loses work.** Close keeps refusing any dirty path other than the
    Specification's execution state (`CLOSE_PREFLIGHT`, `DOCUMENT_COMMITS_PENDING`). The Close preview
    lists these paths as an **Uncommitted changes** blocker group with the remedy for each kind (commit
    the Engine's changes, retry the attempt commit, or commit or discard foreign changes in Git), so the
@@ -341,11 +377,16 @@ These are the machine-checked rules the slices MUST enforce; each has one owner.
    kernel operations included (Engine, closes F05 for agent claims).
 4. The finish proposal and the claim settlement are published in one lock section (Engine).
 5. An agent actor never applies an owner-authority effect or a `confirmation: owner` transition, and
-   never calls an owner operation (Engine).
-6. An agent finish is refused while unregistered uncommitted files, Engine files edited past their
-   post-image, or undeclared changes exist (Engine).
-7. The Engine commits only ledger paths and declared, verified attempt paths (Engine commit port).
-8. Close refuses unattributed dirty paths and lists them in its preview (Engine lifecycle).
+   never calls an owner operation (Engine). Before owner confirmation exists, such an agent proposal
+   is refused outright.
+6. An owner operation requires the owner credential of D21 on every route, in every authentication
+   mode; the provider environment never receives it (Runtime). Within the cooperative trust model
+   above, this is what makes invariant 5 hold against the agent's own HTTP calls.
+7. An agent finish is refused while unregistered uncommitted files, Engine files edited past their
+   post-image, or undeclared changes exist; a Turn of an attempt is not dispatched while the dirty
+   set changed since the previous Turn (Engine).
+8. The Engine commits only ledger paths and declared, verified attempt paths (Engine commit port).
+9. Close refuses unattributed dirty paths and lists them in its preview (Engine lifecycle).
 
 ## Open decisions
 
@@ -401,8 +442,12 @@ make review steps `executors: [human]`, which loses the agent review; (c) let ag
 **D18 — Which Session runs the step.** (a) The kernel's continuation resolution decides (`session:
 reuse` reuses the previous attempt's Session, otherwise a fresh Session with the archetype's
 preferred provider and model); the owner may change provider and model only for a fresh Session, and
-the choice is recorded on the attempt; (b) the owner always picks. **Recommendation: (a)**: one
-rule for Ask agent and the future orchestrator.
+the choice is recorded on the attempt; (b) the owner always picks; (c) as (a), and a step whose
+archetype declares itself independent (a review facet, for example `independent: true` on the
+reviewer archetype) always gets a fresh Session, never `reuse`: definition validation refuses
+`session: reuse` into such a step, and the Ask agent form cannot pick the author's Session.
+**Recommendation: (c)**: one rule for Ask agent and the future orchestrator, and a review by a
+separate agent, as the owner's role-separation rule asks. The facet is declared data, not a step id.
 
 **D19 — Stop and takeover.** (a) Stop cancels the Turn and keeps the claim until proof; Take over
 (F17) is an explicit owner operation, allowed only once the claim is settled, that ends the agent
@@ -414,9 +459,28 @@ allowlist for read-only tools and the product CLI, from the archetype; (b) keep 
 leave it to the work mode. **Recommendation: (a)**, as an owner choice per archetype; it is
 provider configuration, not an Engine rule.
 
+**D21 — Owner routes while an agent can reach them.** With `runtime.authentication.mode: none`, the
+agent and its subprocesses can call Finish, Approve and Return on the loopback HTTP listener as the
+owner.
+
+- (a) Owner routes require an **owner credential** the provider environment never gets: in every
+  authentication mode, the Runtime mints a per-start secret that the UI receives as an `HttpOnly`,
+  `SameSite=Strict` cookie through a first-party open (or that the authenticated subject carries), and
+  every owner mutation requires it. The Runtime strips any Runtime credential from the provider's
+  environment. The offline owner CLI is refused by the claim while an agent Turn runs (F05).
+- (b) Document that owner separation is cooperative in `none` mode: an agent can act as the owner,
+  and history records it as the owner.
+- (c) Refuse agent execution while authentication is `none`.
+
+**Recommendation: (a)**. It closes the direct path (an agent calling a route) without asking local
+users to configure authentication. Its limit stays stated: a hostile same-user process that reads the
+browser's cookie store is outside the trust model. (c) would stop the dogfood setup, and (b) leaves
+invariant 5 unenforced.
+
 ## Readiness
 
 **Partially ready for decomposition.** The slices of the delivery plan that depend only on
-established contracts (Close preservation, context) can be planned now. Engine writes during a Turn,
-completion, approvals and the commit policy are ready once D11, D12, D15 and D17 are decided; the
+established contracts (Close preservation, claim-aware kernel operations and their messages) can be
+planned now. Engine writes during a Turn, completion, approvals and the commit policy are ready once
+D11, D12, D15, D17 and D21 are decided; the
 rest of the decisions change only their own slice.

@@ -10,10 +10,11 @@ read_when:
   - planning or reviewing a PR that delivers part of Ask agent
   - deciding where a dogfood finding about agent execution is fixed
 summary: >
-  The ordered delivery of the Ask agent contract: seven small slices, each one PR, from Close
-  preservation and the agent step context through Runtime-mediated Engine writes, starting and
-  finishing an agent attempt, the controlled commit policy, owner confirmation and recovery, each
-  with its test strategy within a strict test budget, plus where the remaining dogfood findings go.
+  The ordered delivery of the Ask agent contract: nine small slices, each one PR, from Close
+  preservation and claim-aware kernel operations through Runtime-mediated Engine writes, the owner
+  credential, the agent step context, starting and finishing an agent attempt with its boundary
+  checks, the attempt commit, owner confirmation and recovery, each with its test strategy within a
+  strict test budget, plus where the remaining dogfood findings go and who owns them.
 related:
   - ideas.specflow-engine.reusable-workflow.agent-execution
   - product.specflow.ui.workflow-execution
@@ -26,8 +27,9 @@ related:
 
 The order in which the [Ask agent contract](agent-assisted-execution.md) is delivered. Each slice
 is one PR, a vertical slice through Engine, Runtime, CLI and UI where it needs them, and leaves the
-product working. The decisions each slice assumes are the contract's recommendations; a different
-owner decision changes only the slices that name it.
+product working: no slice opens a path the next slice has to close (an agent approving, an
+unregistered document, unattributed changes). The decisions each slice assumes are the contract's
+recommendations; a different owner decision changes only the slices that name it.
 
 ## Test budget
 
@@ -39,7 +41,7 @@ The suites are already slow. Every slice:
   network;
 - adds at most one Runtime integration test file, and UI tests as component tests or stories with
   `play` checks, not new browser end-to-end tests;
-- runs fault injection only at the journal boundaries the slice adds (slice 4);
+- runs fault injection only at the journal boundaries the slice adds (slice 6);
 - runs targeted test files locally on Windows; full suites run on Linux and CI.
 
 One manual dogfood rerun of the 2026-11-16 flow closes the plan (not in CI).
@@ -50,90 +52,136 @@ One manual dogfood rerun of the 2026-11-16 flow closes the plan (not in CI).
 
 - **Delivers:** the Close preview (UI dialog and `specs close --preview`) adds an **Uncommitted
   changes** group with the paths Close would refuse (`CLOSE_PREFLIGHT`, ledger holds) and the remedy
-  per kind; the finish banner after a failed commit no longer says that Close includes paths it will
-  refuse (B4 wording).
+  per kind.
 - **Decisions:** D16.
-- **Depends on:** nothing; useful today for manual execution.
+- **Depends on:** PR #163, which fixes B4's root cause and its banner; this slice rebases on it and
+  does not assume that cause. If #163 leaves the manual-path banner wording wrong, the correction is
+  part of this slice.
 - **Tests:** Engine unit for the preview's blocker list from a fixture with one ledger path and one
   foreign path; one UI component test of the group; CLI preview output test.
 
-### 2. Agent step context
+### 2. Claim-aware kernel operations and honest refusals
 
-- **Delivers:** the step context gains the subject's registered documents, the document types and
-  templates, the resolved Task context references with budgets and the attempt digest, and the
-  operations and CLI forms of the attempt's scope; `nevo-specflow workflow context` prints it; the
-  Runtime renders a brief from it.
-- **Decisions:** D13.
-- **Depends on:** nothing (read-only).
-- **Tests:** `compileStepContext` unit tests for ordering, budgets and a missing required entry; one
-  brief-rendering snapshot per subject kind (Specification, Task); no provider.
+- **Delivers:** workflow start, finish and return consult the claims like every other writer (plan 06
+  F05), so an offline owner CLI or another writer cannot move a Run while an agent Turn runs;
+  `SPEC_BUSY` and `RESOURCE_CONFLICT` name the real holder (an agent Turn, Create, Close) (B1); an
+  invalid context reference names the field and the accepted form (B7).
+- **Decisions:** none new.
+- **Depends on:** nothing; useful today.
+- **Tests:** Engine unit: a finish and a return refuse during a foreign claim and succeed after it
+  settles; refusal messages for each holder kind; the `spec-doc:overview.md` case.
 
 ### 3. Runtime-mediated Engine writes
 
-- **Delivers:** the invocation capability, the Runtime loopback broker, the CLI routing when a
-  capability is present, the Engine owned-claim admission for document create, save and classify and
-  for Task create and edit with an `AgentActor`, kernel operations that consult claims, and refusals
-  that name the real holder (B1) and the accepted reference form (B7). Scope for ad-hoc Turns per
-  D11b; attempt scope arrives with slice 4.
+- **Delivers:** the invocation capability, the broker on a per-user named pipe or Unix socket,
+  constant-time comparison, redaction from transcripts and logs, operation ids bound to the
+  invocation, the CLI routing when a capability is present, and the Engine owned-claim admission for
+  document create, save and classify with an `AgentActor`. Scope for ad-hoc Turns per D11b
+  (documents only); attempt scope and Task drafts arrive with slice 6.
 - **Decisions:** D11, D11b.
-- **Depends on:** nothing beyond the current claims.
-- **Tests:** Engine unit: own claim admits, another unsettled claim refuses, a stale or settled
-  invocation refuses, out-of-scope operations refuse, a kernel finish refuses during a foreign claim.
-  One Runtime integration test with the mock driver: a Turn runs `docs create --type` and succeeds, the
-  same command without the capability is refused.
+- **Depends on:** 2.
+- **Tests:** Engine unit: the own claim admits, another unsettled claim refuses, a stale or settled
+  invocation refuses, out-of-scope operations refuse. Broker unit: a body carrying an actor or claim
+  id is refused, another invocation's capability is refused, a call without a capability is refused,
+  a replayed operation id from another invocation is refused, the capability never appears in a
+  stored transcript entry. One Runtime integration test with the mock driver: a Turn runs `docs
+create --type` and succeeds.
 
-### 4. Ask agent: start and finish one attempt
+### 4. Owner credential on owner routes
 
-- **Delivers:** the projection's agent option (available, or unavailable with its reason), the Ask
-  agent command (start with the trusted `AgentActor`, Session per D18, association, claim with the
-  attempt binding, dispatch of the brief), attempt scope in the broker including origin `produced`
-  Task drafts, the finish proposal, finalize-with-settle, the unresolved-attempt state and
-  **Continue**; the Now block's split action and the position line's Session and Stop.
-- **Decisions:** D12, D18.
-- **Depends on:** 2, 3.
-- **Tests:** Engine unit for proposal validation and replay; fault injection at the three new
-  boundaries (proposal recorded, finish published, claim settled) proving no duplicate finish and no
-  gap; one Runtime integration test with the mock driver running start, a document write, a Task draft
-  and a finish; Now block stories for each position.
+- **Delivers:** the owner credential of D21 on every owner mutation route in every authentication
+  mode, the UI's first-party session that carries it, and a provider environment stripped of any
+  Runtime credential.
+- **Decisions:** D21.
+- **Depends on:** nothing; it must land before slice 6 makes agent execution reachable.
+- **Tests:** Runtime route tests: in mode `none`, Finish, Approve and Return without the credential
+  are refused and with it succeed; the provider launch environment holds no credential; one UI test
+  that the session is established on open.
 
-### 5. Controlled commit of an agent attempt
+### 5. Agent step context
 
-- **Delivers:** clean-baseline admission for Ask agent, the finish checks (unregistered documents,
-  Engine files past their post-image, undeclared or clean declared paths), the declared `changes.paths`
-  in the finish input, and the attempt commit at finalize with full subjects (B5).
-- **Decisions:** D14, D15.
-- **Depends on:** 4.
-- **Tests:** Engine unit with a temporary Git fixture: a declared path is committed and nothing else;
-  an undeclared file, an unclassified document and a direct `task.md` edit each refuse with their
-  paths; a failed commit leaves the finish published and the paths listed by Close.
+- **Delivers:** the step context gains the subject's registered documents, the document types and
+  templates, and the resolved Task context references with budgets and the attempt digest;
+  `nevo-specflow workflow context` prints it; the Runtime renders a brief from it, with the
+  operations of the ad-hoc scope from slice 3. The attempt scope's operations are added to the brief
+  by slice 6, from the same generator.
+- **Decisions:** D13.
+- **Depends on:** 3 (the scope the brief lists).
+- **Tests:** `compileStepContext` unit tests for ordering, budgets and a missing required entry; one
+  brief-rendering snapshot per subject kind (Specification, Task); no provider.
 
-### 6. Owner confirmation of approvals
+### 6. Ask agent: start and finish one attempt
 
-- **Delivers:** effect authority in the Engine, the `confirmation: owner` transition marker in the
-  definition schema, the pending owner confirmation position, Confirm and Reject in the projection,
-  API, CLI and Now block.
+- **Delivers:**
+  - the projection's agent option (available, or unavailable with its reason);
+  - the Ask agent command: start with the trusted `AgentActor`, Session per D18 (a fresh Session for
+    an independent archetype), association, claim with the attempt binding, dispatch of the brief;
+  - attempt scope in the broker, including Task drafts with origin `produced`;
+  - the boundary checks: clean-baseline admission, the baseline re-check at every Turn's dispatch,
+    and the finish refusals for unregistered documents (D14), Engine files past their post-image and
+    undeclared or clean declared `changes.paths`;
+  - effect authority: an agent proposal whose transition carries an owner-authority effect or
+    `confirmation: owner` is refused (`WORKFLOW_OWNER_DECISION_REQUIRED`);
+  - the finish proposal, finalize-with-settle, the unresolved-attempt state and **Continue**;
+  - the Now block's split action and the position line's Session and Stop.
+
+  After this slice the agent's work is attributed and visible, but not yet committed: the ledger and
+  the declared paths stay uncommitted, Close lists them (slice 1), and the owner commits them by hand.
+
+- **Decisions:** D12, D14, D18.
+- **Depends on:** 1 to 5.
+- **Tests:** Engine unit for proposal validation and replay, each boundary refusal with its paths
+  (an undeclared file, an unclassified document, a direct `task.md` edit, a file changed between
+  Turns), and the refused approval effect; fault injection at the three new boundaries (proposal
+  recorded, finish published, claim settled) proving no duplicate finish and no gap; one Runtime
+  integration test with the mock driver running start, a document write, a Task draft and a finish;
+  Now block stories for each position.
+
+### 7. Attempt commit
+
+- **Delivers:** the one attempt commit at finalize of the attempt's ledger entries and declared,
+  verified paths, with full subjects (B5), and its retryable post action.
+- **Decisions:** D15.
+- **Depends on:** 6.
+- **Tests:** Engine unit with a temporary Git fixture: exactly the declared path and the ledger
+  entries are committed and nothing else; a failed commit leaves the finish published and the paths
+  listed by Close; the retry commits once.
+
+### 8. Owner confirmation of approvals
+
+- **Delivers:** the `confirmation: owner` transition marker in the definition schema, the
+  `independent` archetype facet and its validation, the pending owner confirmation position, and
+  Confirm and Reject in the projection, API, CLI and Now block. Slice 6's refusal becomes a pending
+  confirmation.
 - **Decisions:** D17.
-- **Depends on:** 4.
+- **Depends on:** 6.
 - **Tests:** kernel unit: an agent proposal with `approve-draft-tasks` waits, the owner confirms and
   the drafts are approved, Reject returns with feedback, a person's finish is direct; definition
-  validation for the marker; one story per new Now block state.
+  validation for the marker and for `session: reuse` into an independent step; one story per new Now
+  block state.
 
-### 7. Stop, return and takeover
+### 9. Stop, return and takeover
 
-- **Delivers:** Return cancels an agent attempt's Turn (F13), Take over (F17) once the claim is settled,
-  the attempt's partial-work list in the Task and Activity history, and the permission allowlist per
-  archetype if the owner chooses D20 (a).
+- **Delivers:** Return cancels an agent attempt's Turn (F13), Take over (F17) once the claim is
+  settled, the attempt's partial-work list and its step events in the Task and Activity history, and
+  the permission allowlist per archetype if the owner chooses D20 (a).
 - **Decisions:** D19, D20.
-- **Depends on:** 4.
+- **Depends on:** 6.
 - **Tests:** kernel unit for `taken-over` and a refused late proposal; one Runtime test with the mock
   driver that a return cancels the Turn; history component test.
 
 ## Findings outside the slices
 
-| Finding                                                                  | Where                                                                     |
-| ------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
-| B2 Turn lost on a long tool call or a write outside the workspace        | Session driver bug, its own fix PR; slice 4's dogfood check depends on it |
-| B8 Session never named, B9 frozen cost                                   | Session UI fixes, independent                                             |
-| B10 attach picker titles, B11 `pass`/`fail` labels, B12 Task Now purpose | Workflow UI fixes, independent; B10 also helps slice 4's artifacts        |
-| B13 fresh worktree without dependencies                                  | Workspace bootstrap, deferred with the contract's non-goals               |
-| Issue link in the brief                                                  | Not modelled on the Specification; the overview carries it until it is    |
+Outside Ask agent, each with its owner:
+
+| Finding                                                                        | Owner and route                                                                                                                                |
+| ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| B2 Turn lost on a long tool call or a write outside the workspace              | Runtime Sessions (provider driver), its own fix PR; slice 6's dogfood check depends on it                                                      |
+| B4 `MANUAL_COMMIT_CONFLICT` on the manual path                                 | Engine documents, fixed in PR #163                                                                                                             |
+| Step events missing from the Specification Activity history (manual steps too) | Workflow UI ([Specification Overview](../../../product/specflow/ui/specification-overview.md)); slice 9 adds the agent attempt's events on top |
+| New task dialog without dependencies, context and body                         | Workflow UI ([Manual workflow execution](../../../product/specflow/ui/workflow-execution.md)), a UX decision first                             |
+| Create taking about 85 s (registration about 60 s)                             | Engine Create ([Specification lifecycle](../../../architecture/runtime/specification-lifecycle.md)), a performance investigation               |
+| B8 Session never named, B9 frozen cost                                         | Session UI fixes, independent                                                                                                                  |
+| B10 attach picker titles, B11 `pass`/`fail` labels, B12 Task Now purpose       | Workflow UI fixes, independent; B10 also helps slice 6's artifacts                                                                             |
+| B13 fresh worktree without dependencies                                        | Workspace bootstrap, deferred with the contract's non-goals                                                                                    |
+| Issue link in the brief                                                        | Not modelled on the Specification; the overview carries it until it is                                                                         |

@@ -279,8 +279,15 @@ it('settles a lost Turn and its claim as interrupted on native-stop evidence, ne
       runtime!.reconcile('actor', f.sessionId, turnId, randomUUID()),
     ).rejects.toMatchObject({
       code: 'SESSION_RECOVERY_REQUIRED',
-      message: expect.stringContaining('still running') as string,
+      // Linux and Windows compare the start time and see the process alive; elsewhere (macOS) a
+      // live group without a start time cannot be told apart from a reused id: fail closed either way.
+      message: expect.stringContaining(
+        process.platform === 'linux' || process.platform === 'win32'
+          ? 'still running'
+          : 'cannot be established',
+      ) as string,
     });
+    expect(f.phase()).toBe('unknown');
 
     // Check outcome once it stopped: the claim settles first, then the Turn.
     await agent.stop();

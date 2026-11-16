@@ -100,6 +100,48 @@ export const CloseOccupancySchema = Type.Object(
   { additionalProperties: false },
 );
 export type CloseOccupancy = Static<typeof CloseOccupancySchema>;
+const CloseCheckoutRoleSchema = Type.Union([
+  Type.Literal('specification'),
+  Type.Literal('integration-target'),
+]);
+/**
+ * A repository precondition of a Close the owner fixes in the repository (`CLOSE_PREFLIGHT`, from the
+ * preview or the Close): `checkout` is the Specification's own checkout or the one it is integrated
+ * into. `uncommitted-changes` names at most 10 `paths` of `count`; `integration-target-branch` is a
+ * primary checkout on `branch` instead of the configured `expectedBranch`.
+ */
+export const RepositoryBlockerSchema = Type.Union([
+  Type.Object(
+    {
+      kind: Type.Literal('uncommitted-changes'),
+      checkout: CloseCheckoutRoleSchema,
+      paths: Type.Array(Type.String({ maxLength: 4096 }), { maxItems: 10 }),
+      count: Type.Integer({ minimum: 1 }),
+    },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    { kind: Type.Literal('integration-target-missing') },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      kind: Type.Literal('integration-target-branch'),
+      expectedBranch: Type.String(),
+      branch: Type.String(),
+    },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    { kind: Type.Literal('git-operation-in-progress'), checkout: CloseCheckoutRoleSchema },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    { kind: Type.Literal('branch-detached'), checkout: CloseCheckoutRoleSchema },
+    { additionalProperties: false },
+  ),
+]);
+export type RepositoryBlocker = Static<typeof RepositoryBlockerSchema>;
 /** One group of a `CLOSE_BLOCKED` refusal: a workflow blocker, or running Session Turns. */
 export const CloseRefusalBlockerSchema = Type.Union([ExitBlockerSchema, SessionTurnBlockerSchema]);
 export type CloseRefusalBlocker = Static<typeof CloseRefusalBlockerSchema>;
@@ -116,6 +158,11 @@ export const CloseErrorSchema = Type.Object(
      * links. `message` of a blocker is display-only.
      */
     blockers: Type.Optional(Type.Array(CloseRefusalBlockerSchema)),
+    /**
+     * `CLOSE_PREFLIGHT` (422): the repository preconditions the owner fixes in the repository before
+     * the Close can start, all that are known at once. Absent for a preflight refusal without one.
+     */
+    repository: Type.Optional(Type.Array(RepositoryBlockerSchema, { maxItems: 8 })),
     /**
      * Present for `CLOSE_LOCAL_CONFIG_MODIFIED`: the worktree's `.nevo/local/config.yaml` was
      * edited (`changed`), was not copied by Create (`unrecorded`), or cannot be read

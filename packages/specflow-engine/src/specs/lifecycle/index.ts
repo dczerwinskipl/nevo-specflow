@@ -10,6 +10,8 @@ export {
 export {
   CloseOperationError,
   resourcesForClosePlan,
+  type CloseRepositoryBlocker,
+  type CloseCheckoutRole,
   type CloseJournal,
   type ClosePlan,
   type CloseOutcome,

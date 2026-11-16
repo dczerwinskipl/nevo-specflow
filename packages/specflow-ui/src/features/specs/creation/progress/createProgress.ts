@@ -34,6 +34,13 @@ const stepCopy = {
 /** A step id this build does not know (a newer Runtime): drawn generically, never dropped. */
 const unknownStepCopy: StepCopy = stepEntry('unknown');
 
+/** `reserving` of a Create that makes no branch (current folder, existing workspace): the name only. */
+const reservingNameCopy: StepCopy = {
+  title: message('create.progress.steps.reserving.title'),
+  running: message('create.progress.steps.reserving.runningName'),
+  done: message('create.progress.steps.reserving.doneName'),
+};
+
 function stepEntry(id: SpecificationCreateStep | 'unknown'): StepCopy {
   return {
     title: message(`create.progress.steps.${id}.title`),
@@ -55,15 +62,23 @@ export const createNeutralProgress = (lost: boolean): OperationProgressNeutral =
  * (running: what is happening, done: what happened); a pending step is only its muted title, with
  * no repeated "waiting" line. Skipped steps are omitted
  * (an existing workspace has no "preparing the workspace"); an unknown id gets the generic copy.
+ * Only a Create into a new workspace reserves a branch; any other (or an unknown target) says
+ * "name" only.
  */
 export function createProgressSteps(
   steps: readonly OperationStepView[],
+  target?: CreateSpecRequest['target'],
 ): readonly OperationProgressStep[] {
+  const branch = target?.kind === 'new-worktree';
+
   return steps
     .filter((step) => step.status !== 'skipped')
     .map((step) => {
       const copy =
-        (stepCopy as Readonly<Record<string, StepCopy | undefined>>)[step.id] ?? unknownStepCopy;
+        step.id === 'reserving' && !branch
+          ? reservingNameCopy
+          : ((stepCopy as Readonly<Record<string, StepCopy | undefined>>)[step.id] ??
+            unknownStepCopy);
 
       return {
         id: step.id,
@@ -100,6 +115,7 @@ export function createCompletedSteps(
       .filter((id) => id !== 'preparing-workspace' || target?.kind === 'new-worktree')
       .filter((id) => id !== 'committing-specification' || commits)
       .map((id) => ({ id, status: 'done' as const })),
+    target,
   );
 }
 

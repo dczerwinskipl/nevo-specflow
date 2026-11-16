@@ -38,6 +38,7 @@ import {
   CloseWorkspaceResultSchema,
   ProjectGitCapabilities,
   SpecCapabilities,
+  type RepositoryBlocker,
 } from '@nevo/specflow-contracts/specs';
 import {
   AuthenticationRequiredErrorResponseSchema,
@@ -181,6 +182,13 @@ function safeCode(error: unknown): SafeCode | undefined {
 function blockersOf(error: unknown): { blockers?: ExitBlocker[] } {
   return error instanceof CloseOperationError && error.blockers.length > 0
     ? { blockers: error.blockers as ExitBlocker[] }
+    : {};
+}
+
+/** `CLOSE_PREFLIGHT`: the repository preconditions the owner fixes before the Close can start. */
+function repositoryOf(error: unknown): { repository?: RepositoryBlocker[] } {
+  return error instanceof CloseOperationError && error.repository.length > 0
+    ? { repository: error.repository.map((blocker) => ({ ...blocker })) as RepositoryBlocker[] }
     : {};
 }
 
@@ -380,6 +388,7 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
             code,
             error: code,
             ...blockersOf(error),
+            ...repositoryOf(error),
             ...closeRefusalDetails(error),
           });
         }
@@ -436,6 +445,7 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
             code,
             error: code,
             ...blockersOf(error),
+            ...repositoryOf(error),
             ...closeRefusalDetails(error),
           });
         }

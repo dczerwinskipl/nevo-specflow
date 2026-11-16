@@ -1,4 +1,4 @@
-import type { CloseRefusalBlocker } from '@nevo/specflow-contracts/specs';
+import type { CloseRefusalBlocker, RepositoryBlocker } from '@nevo/specflow-contracts/specs';
 import { isHttpClientError } from '@nevo/http-client';
 import type { GateStatus, OpenTask, WorkflowError } from '@nevo/specflow-contracts/workflow';
 import { isApiError } from '../../../api';
@@ -16,6 +16,8 @@ export interface WorkflowRefusal {
   readonly gates: readonly GateStatus[];
   /** `WORKFLOW_EXIT_BLOCKED` (`details.blockers`) or `CLOSE_BLOCKED` (`blockers`). */
   readonly blockers: readonly CloseRefusalBlocker[];
+  /** `CLOSE_PREFLIGHT`: the repository preconditions of a Close (`repository`). */
+  readonly repository: readonly RepositoryBlocker[];
   /** A producing finish kept drafts that depend on drafts it cancels (`details.draftConflicts`). */
   readonly draftConflicts: NonNullable<Details['draftConflicts']>;
   /** `WORKFLOW_TASKS_OPEN`: the open Tasks the Specification's completion waits for. */
@@ -44,6 +46,9 @@ export function workflowRefusalOf(error: unknown): WorkflowRefusal {
     code: apiErrorCode(error),
     gates: details?.gate?.gates ?? [],
     blockers: details?.blockers ?? closeBlockers ?? [],
+    repository: Array.isArray(body?.repository)
+      ? (body.repository as readonly RepositoryBlocker[])
+      : [],
     draftConflicts: details?.draftConflicts ?? [],
     openTasks: details?.openTasks ?? [],
     outcomeUnknown: isApiError(error) && error.outcome === 'unknown',

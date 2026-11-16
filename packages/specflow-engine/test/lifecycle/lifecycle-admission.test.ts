@@ -402,14 +402,19 @@ describe('E2.T10 — read-only lifecycle admission and durable shared Git resour
   }, 120000);
 
   it('blocks wrong primary branch, uncommitted content and primary Worktree close', async () => {
-    const { engine: wrong } = await fixture('different');
+    const { engine: wrong, branch: wrongBranch } = await fixture('different');
     const wrongSpec = await specification(wrong, 'Wrong configured branch');
     await expect(
       previewCloseOperation(wrong, {
         kind: 'specification-close',
         specId: wrongSpec.specId,
       }),
-    ).rejects.toMatchObject({ code: 'CLOSE_PREFLIGHT' });
+    ).rejects.toMatchObject({
+      code: 'CLOSE_PREFLIGHT',
+      repository: [
+        { kind: 'integration-target-branch', expectedBranch: 'other-branch', branch: wrongBranch },
+      ],
+    });
     const { engine: current, root } = await fixture();
     const spec = await specification(current, 'Dirty worktree');
     await writeFile(join(root, 'do-not-touch.txt'), 'untouched\n');
@@ -418,11 +423,43 @@ describe('E2.T10 — read-only lifecycle admission and durable shared Git resour
         kind: 'specification-close',
         specId: spec.specId,
       }),
-    ).rejects.toMatchObject({ code: 'CLOSE_PREFLIGHT' });
+    ).rejects.toMatchObject({
+      code: 'CLOSE_PREFLIGHT',
+      repository: [
+        {
+          kind: 'uncommitted-changes',
+          checkout: 'specification',
+          paths: ['do-not-touch.txt'],
+          count: 1,
+        },
+      ],
+    });
     expect(await readFile(join(root, 'do-not-touch.txt'), 'utf8')).toBe('untouched\n');
     await expect(
       previewCloseOperation(current, { kind: 'worktree-close', specId: spec.specId }),
     ).rejects.toMatchObject({ code: 'CLOSE_PREFLIGHT' });
+  }, 120000);
+
+  it('names every repository precondition at once: uncommitted files and no integration branch', async () => {
+    const { engine, root } = await fixture('none');
+    const spec = await specification(engine, 'No integration branch');
+    await writeFile(join(root, 'untracked.txt'), 'new\n');
+    await expect(
+      previewCloseOperation(engine, { kind: 'specification-close', specId: spec.specId }),
+    ).rejects.toMatchObject({
+      code: 'CLOSE_PREFLIGHT',
+      repository: [
+        { kind: 'uncommitted-changes', checkout: 'specification', count: 1 },
+        { kind: 'integration-target-missing' },
+      ],
+    });
+    await rm(join(root, 'untracked.txt'));
+    await expect(
+      previewCloseOperation(engine, { kind: 'specification-close', specId: spec.specId }),
+    ).rejects.toMatchObject({
+      code: 'CLOSE_PREFLIGHT',
+      repository: [{ kind: 'integration-target-missing' }],
+    });
   }, 120000);
 
   it('rejects an unfinished Git merge even when porcelain reports a clean checkout', async () => {
@@ -459,7 +496,10 @@ describe('E2.T10 — read-only lifecycle admission and durable shared Git resour
         operationId: randomUUID(),
         specId: spec.specId,
       }),
-    ).rejects.toMatchObject({ code: 'CLOSE_PREFLIGHT' });
+    ).rejects.toMatchObject({
+      code: 'CLOSE_PREFLIGHT',
+      repository: [{ kind: 'git-operation-in-progress', checkout: 'specification' }],
+    });
     expect(await listCloseJournals(engine.context)).toEqual([]);
   }, 90000);
 

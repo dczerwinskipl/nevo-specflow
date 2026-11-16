@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { createPageView, createSettingsModel, shortenGoal } from './createPageView';
+import { message } from '../../../../i18n/message';
+import {
+  createPageStatus,
+  createPageView,
+  createSettingsModel,
+  shortenGoal,
+} from './createPageView';
 import type { CreatePhase } from '../operation/createOperationReducer';
 
 describe('createPageView', () => {
@@ -17,6 +23,25 @@ describe('createPageView', () => {
 
   it('an operation the server does not know is not found whatever the phase', () => {
     expect(createPageView({ phase: 'outcome-unknown' }, true)).toBe('not-found');
+  });
+});
+
+describe('createPageStatus', () => {
+  const completed = {
+    view: 'completed' as const,
+    failure: null,
+    stillWorking: false,
+    runningStep: undefined,
+    monitoring: false,
+    reading: false,
+    newWorkspace: false,
+  };
+
+  it('opens a committed specification, and says when the files are not committed', () => {
+    expect(createPageStatus(completed)).toEqual(message('create.page.status.completed'));
+    expect(createPageStatus({ ...completed, uncommitted: true })).toEqual(
+      message('create.page.status.completedUncommitted'),
+    );
   });
 });
 

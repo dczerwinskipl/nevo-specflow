@@ -12,13 +12,12 @@ import {
   DialogTitle,
   Typography,
 } from '@nevo/ui';
-import type { CloseRefusalBlocker } from '@nevo/specflow-contracts/specs';
 import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { useAppServices } from '../../../../app/useAppServices';
 import { InlineAction } from '../InlineAction';
 import { specsOverviewKeys } from '../../../specs/read-model';
 import { invalidateAfterTaskChange } from '../../authoring/queries';
-import { workflowRefusalKey, workflowRefusalOf } from '../refusal';
+import { workflowRefusalOf } from '../refusal';
 import { focusInitial } from '../focusInitial';
 import {
   BlockerGroups,
@@ -27,6 +26,8 @@ import {
   workflowAtOf,
   type BlockerTask,
 } from './BlockerGroups';
+import { closeDialogOutcome } from './closeDialogOutcome';
+import { RepositoryBlockers, repositoryReasons } from './RepositoryBlockers';
 
 type Position = WorkflowActionProjection['position'];
 
@@ -48,9 +49,10 @@ export interface CloseSpecificationDialogProps {
 
 /**
  * Close preflight: the workflow blockers of the projection with the agent Turns running in the
- * checkout (the occupancy read), or the blockers of a `CLOSE_BLOCKED` preview, as grouped blockers
- * with only Dismiss; otherwise the Close the preview planned, with the cancelled
- * Tasks named as not delivered. Git and workspace rules are still checked by the Close itself.
+ * checkout (the occupancy read), or the blockers and repository preconditions a preview or Close
+ * refused with, as grouped blockers with only Dismiss; otherwise exactly one outcome of the preview
+ * (`closeDialogOutcome`: checking, cannot start, ready) or of the Close, with the cancelled Tasks
+ * named as not delivered.
  */
 export function CloseSpecificationDialog(props: CloseSpecificationDialogProps) {
   const { t } = useTranslation();
@@ -118,14 +120,20 @@ function CloseBody({
       }
     },
   });
-  const previewRefusal = preview.isError ? workflowRefusalOf(preview.error) : undefined;
-  const closeRefusal = close.isError ? workflowRefusalOf(close.error) : undefined;
-  const refusedBlockers = [previewRefusal, closeRefusal].find(
-    (refusal) => refusal?.code === 'CLOSE_BLOCKED',
-  )?.blockers;
-  const blockers: readonly CloseRefusalBlocker[] | undefined = workflowBlockers
-    ? [...workflowBlockers, ...(occupancy.data?.blockers ?? [])]
-    : refusedBlockers;
+  const outcome = closeDialogOutcome({
+    ...(workflowBlockers ? { workflowBlockers } : {}),
+    ...(occupancy.data ? { occupancyBlockers: occupancy.data.blockers } : {}),
+    preview: preview.isError
+      ? { status: 'error', refusal: workflowRefusalOf(preview.error) }
+      : preview.isSuccess
+        ? { status: 'success' }
+        : { status: 'pending' },
+    close: close.isError
+      ? { status: 'error', refusal: workflowRefusalOf(close.error) }
+      : close.isSuccess
+        ? { status: 'success', result: close.data }
+        : { status: close.isPending ? 'pending' : 'idle' },
+  });
   const position: Position = projection.position;
   const abandonment =
     position.kind === 'terminal' && position.abandonment ? position.abandonment : undefined;
@@ -135,7 +143,9 @@ function CloseBody({
     action();
   };
 
-  if (blockers) {
+  if (outcome.kind === 'blocked') {
+    const { blockers, repository } = outcome;
+
     return (
       <>
         <DialogHeader>
@@ -143,20 +153,30 @@ function CloseBody({
           <DialogDescription>
             {t('workflowExecution.close.blocked', {
               title: specTitle,
-              reasons: closeReasons(t, i18n.language, blockers, tasks, workflowAtOf(position)),
+              reasons: closeReasons(
+                t,
+                i18n.language,
+                blockers,
+                tasks,
+                workflowAtOf(position),
+                repositoryReasons(t, repository),
+              ),
             })}
           </DialogDescription>
         </DialogHeader>
         <DialogBody className="grid gap-5">
-          <BlockerGroups
-            blockers={blockers}
-            order="close"
-            tasks={tasks}
-            workflowAt={workflowAtOf(position)}
-            onOpenTask={(id) => go(() => onOpenTask(id))()}
-            onSeeWorkflow={go(onSeeWorkflow)}
-            onSeeTasks={go(onSeeTasks)}
-          />
+          {blockers.length > 0 ? (
+            <BlockerGroups
+              blockers={blockers}
+              order="close"
+              tasks={tasks}
+              workflowAt={workflowAtOf(position)}
+              onOpenTask={(id) => go(() => onOpenTask(id))()}
+              onSeeWorkflow={go(onSeeWorkflow)}
+              onSeeTasks={go(onSeeTasks)}
+            />
+          ) : null}
+          {repository.length > 0 ? <RepositoryBlockers repository={repository} /> : null}
           {onAbandonInstead ? (
             <Typography as="p" variant="body-sm" className="text-content-secondary">
               {t('workflowExecution.close.abandonPrompt')}{' '}
@@ -175,8 +195,6 @@ function CloseBody({
     );
   }
 
-  const closed = close.data;
-
   return (
     <>
       <DialogHeader>
@@ -188,24 +206,33 @@ function CloseBody({
         </DialogDescription>
       </DialogHeader>
       <DialogBody className="grid gap-5">
-        {previewRefusal ? (
+        {outcome.kind === 'checking' ? (
+          <Alert role="status" tone="neutral" title={t('workflowExecution.close.checkingTitle')}>
+            {t('workflowExecution.close.checkingBody')}
+          </Alert>
+        ) : null}
+        {outcome.kind === 'cannot-start' ? (
           <Alert role="alert" tone="danger" title={t('workflowExecution.close.previewFailed')}>
-            {t(workflowRefusalKey(previewRefusal))}
+            {t(outcome.reasonKey)}
           </Alert>
         ) : null}
-        {closeRefusal ? (
+        {outcome.kind === 'not-closed' ? (
           <Alert role="alert" tone="danger" title={t('workflowExecution.close.failed')}>
-            {t(workflowRefusalKey(closeRefusal))}
+            {t(outcome.reasonKey)}
           </Alert>
         ) : null}
-        {closed && closed.status !== 'completed' ? (
+        {outcome.kind === 'needs-attention' ? (
           <Alert role="status" tone="attention" title={t('workflowExecution.close.notCompleted')}>
-            {t(`workflowExecution.close.status.${closed.status}`)}
+            {t(`workflowExecution.close.status.${outcome.status}`)}
           </Alert>
         ) : null}
-        {position.kind === 'terminal' && position.outcome === 'completed' ? (
+        {outcome.kind === 'ready' ? (
           <Alert tone="success" title={t('workflowExecution.close.readyTitle')}>
-            {t('workflowExecution.close.readyBody')}
+            {abandonment
+              ? t('workflowExecution.close.readyAbandonedBody')
+              : position.kind === 'terminal'
+                ? t('workflowExecution.close.readyBody')
+                : t('workflowExecution.close.readyChecksBody')}
           </Alert>
         ) : null}
         {cancelledTasks.length > 0 ? (
@@ -245,7 +272,7 @@ function CloseBody({
           {t('common.cancel')}
         </Button>
         <Button
-          disabled={!preview.data || close.isPending || closed?.status === 'completed'}
+          disabled={!preview.data || close.isPending || close.data?.status === 'completed'}
           onClick={() => preview.data && close.mutate(preview.data.operationId)}
         >
           {t('workflowExecution.close.submit')}

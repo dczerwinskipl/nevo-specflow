@@ -172,6 +172,39 @@ describe('E2.T16 authorized HTTP lifecycle adapters', () => {
     }
   }, 120000);
 
+  it('names the repository preconditions of a refused preview and Close (422 CLOSE_PREFLIGHT)', async () => {
+    const { root, engine, spec } = await fixture(false);
+    const { app, headers } = await authedApp(engine, 'admin');
+    await writeFile(join(root, 'stray.txt'), 'not committed\n');
+    const expected = {
+      code: 'CLOSE_PREFLIGHT',
+      error: 'CLOSE_PREFLIGHT',
+      repository: [
+        { kind: 'uncommitted-changes', checkout: 'specification', paths: ['stray.txt'], count: 1 },
+      ],
+    };
+    try {
+      const preview = await app.inject({
+        method: 'GET',
+        url: '/api/specs/' + spec.specId + '/close/preview',
+        headers,
+      });
+      expect(preview.statusCode, preview.body).toBe(422);
+      expect(preview.json()).toEqual(expected);
+
+      const close = await app.inject({
+        method: 'POST',
+        url: '/api/specs/' + spec.specId + '/close',
+        headers,
+        payload: { operationId: randomUUID() },
+      });
+      expect(close.statusCode, close.body).toBe(422);
+      expect(close.json()).toEqual(expected);
+    } finally {
+      await app.close();
+    }
+  }, 120000);
+
   it('rejects anonymous and viewer before any archive mutation', async () => {
     const { root, engine, spec } = await fixture(false);
     const { app, headers } = await authedApp(engine, 'viewer');

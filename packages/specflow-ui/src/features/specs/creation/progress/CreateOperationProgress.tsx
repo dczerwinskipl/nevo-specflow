@@ -56,7 +56,7 @@ export function CreateOperationProgress({
   return (
     <>
       <OperationProgress
-        steps={createProgressSteps(progress.steps)}
+        steps={createProgressSteps(progress.steps, target)}
         label={createProgressLabel}
         neutral={createNeutralProgress(monitoring && progress.lost)}
       />

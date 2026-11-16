@@ -982,7 +982,9 @@
         "reserving": {
           "title": "Reserving the name",
           "running": "Checking that the name and branch are free",
-          "done": "Name and branch reserved"
+          "done": "Name and branch reserved",
+          "runningName": "Checking that the name is free",
+          "doneName": "Name reserved"
         },
         "preparing-workspace": {
           "title": "Preparing the workspace",
@@ -1049,7 +1051,8 @@
         "stillWorking": "Still working — this can take a minute.",
         "reading": "Reading the operation…",
         "completed": "Done. Opening the specification…",
-        "workingNew": "Preparing a new workspace and the specification."
+        "workingNew": "Preparing a new workspace and the specification.",
+        "completedUncommitted": "Done, but the files are not committed yet."
       },
       "leaveNote": "You can leave this page. Creation continues on the server, and you can return to check its status from the specification list.",
       "openSpecification": "Open specification",
@@ -1067,7 +1070,11 @@
       "backToSpecifications": "Back to specifications",
       "notCreated": "Nothing was created. Your entries are kept, so you can fix this and try again.",
       "location": "Creating specification",
-      "createdNotCommitted": "The specification files were created but could not be committed."
+      "createdNotCommitted": "The specification files were created but could not be committed.",
+      "uncommitted": {
+        "title": "The specification files are not committed",
+        "body": "Git is disabled in this project (git.enabled in .nevo/config.yaml), so Nevo wrote the files without committing them. Commit them with Git yourself: Close refuses while they are uncommitted."
+      }
     },
     "operations": {
       "kind": "Creating a specification"
@@ -2364,10 +2371,10 @@
       "blocked": "{{title}} cannot close yet: {{reasons}}.",
       "abandonPrompt": "Not going to finish this work?",
       "abandonInstead": "Abandon instead",
-      "ready": "Everything required is finished. Closing also runs the repository checks.",
-      "afterAbandon": "Abandoned: “{{reason}}” Closing records it as not delivered and runs the repository checks.",
+      "ready": "Everything required is finished.",
+      "afterAbandon": "Abandoned: “{{reason}}” Closing records it as not delivered.",
       "readyTitle": "Ready to close",
-      "readyBody": "The workflow is complete.",
+      "readyBody": "The workflow is complete and the repository checks passed.",
       "notDelivered": "Cancelled, not delivered",
       "notDeliveredExplanation": "Recorded as not delivered when the specification closes.",
       "previewFailed": "Close cannot start now",
@@ -2404,6 +2411,57 @@
         "sessions_few": "{{count}} agent Sessions are working in its worktree",
         "sessions_many": "{{count}} agent Sessions are working in its worktree",
         "sessions_other": "{{count}} agent Sessions are working in its worktree"
+      },
+      "readyAbandonedBody": "The workflow ended as abandoned and the repository checks passed.",
+      "readyChecksBody": "The repository checks passed.",
+      "checkingTitle": "Checking the repository",
+      "checkingBody": "Close can start once the repository checks pass. This can take a few seconds.",
+      "refusal": {
+        "preflight": "A repository check stops the Close. To see which one, run “nevo-specflow specs close <specification id> --preview” in the project folder.",
+        "sharedWorktree": "Other specifications share this worktree, so it cannot be integrated for this one alone. Close the whole workspace, or archive this specification without integration from the command line.",
+        "conflict": "The project changed while Close was being prepared. Open the dialog again to check once more.",
+        "unavailable": "The specification files cannot be read now. Check that its checkout is present, then try again.",
+        "recovery": "An earlier Close of this specification stopped part way. Finish it from the command line before closing again.",
+        "gitConfig": "The git section of .nevo/config.yaml is invalid or incomplete. Correct it, then close again.",
+        "git": "Git cannot run in the project folder now. Check the repository, then try again.",
+        "documentsPending": "Saved documents are still waiting for their commit. Wait a moment, then close again.",
+        "commitBlocked": "Git does not accept a commit on this branch now. Check the branch protection and the repository state, then close again.",
+        "engine": "Close is not available in this Runtime.",
+        "unknown": "Close did not start, and the reason cannot be shown here. Try again; if it fails again, run “nevo-specflow specs close <specification id> --preview” in the project folder."
+      },
+      "repository": {
+        "checkout": {
+          "specification": "the checkout of the specification",
+          "integrationTarget": "the checkout it is integrated into"
+        },
+        "reason": {
+          "uncommitted": "{{checkout}} has files that are not committed",
+          "targetMissing": "no integration branch is configured",
+          "targetBranch": "the main checkout is not on {{expected}}",
+          "gitOperation": "a Git operation is unfinished in {{checkout}}",
+          "detached": "{{checkout}} is not on a branch"
+        },
+        "uncommitted": {
+          "title": "Files not committed",
+          "specification": "Close commits only the workflow state of the specification; it does not take other changes along. Commit these files with Git (or remove them), then close again.",
+          "integrationTarget": "The checkout the specification is integrated into must be clean. Commit these files with Git (or remove them), then close again."
+        },
+        "targetMissing": {
+          "title": "No integration branch configured",
+          "explanation": "Close archives the specification on the branch set as git.integrationTargetBranch in .nevo/config.yaml, and none is set. Add it (for example “integrationTargetBranch: main” under “git:”), commit the change, then close again."
+        },
+        "targetBranch": {
+          "title": "Main checkout on another branch",
+          "explanation": "Close archives the specification on {{expected}}, but the main checkout is on {{branch}}. Switch it to {{expected}}, then close again."
+        },
+        "gitOperation": {
+          "title": "Unfinished Git operation",
+          "explanation": "A merge, rebase, cherry-pick or revert is still in progress in {{checkout}}. Finish or abort it, then close again."
+        },
+        "detached": {
+          "title": "Not on a branch",
+          "explanation": "HEAD is detached in {{checkout}}: it is not on a local branch. Check out its branch, then close again."
+        }
       }
     },
     "abandon": {

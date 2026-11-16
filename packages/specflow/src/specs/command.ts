@@ -129,6 +129,11 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
           context.stdout('Manifest: ' + result.relativeManifestPath);
           context.stdout('Operation ID: ' + result.operationId);
           context.stdout('Documents: ' + result.documentIds.join(', '));
+          if (result.uncommitted) {
+            context.stdout(
+              'Not committed: Git is disabled in this project. Commit the new files before closing the Specification.',
+            );
+          }
         }
       },
     );

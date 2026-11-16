@@ -83,6 +83,21 @@ describe('Q05 transport-neutral operation projections', () => {
     expect(JSON.stringify(result)).not.toContain('/private/');
   });
 
+  it('says when Create left its files uncommitted (Git disabled)', () => {
+    const result = projectCreatedSpecification({
+      operationId,
+      specId,
+      slug: 'example',
+      workspaceId: randomUUID(),
+      workspaceRoot: '/private/worktree',
+      relativeManifestPath: 'specs/active/example/specification.yaml',
+      documentIds: ['overview'],
+      uncommitted: true,
+    });
+
+    expect(result.uncommitted).toBe(true);
+  });
+
   it.each([
     ['completed', 'completed'],
     ['reserved', 'in-progress'],

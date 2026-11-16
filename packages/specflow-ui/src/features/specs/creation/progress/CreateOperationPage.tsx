@@ -118,7 +118,8 @@ export function CreateOperationPage({
     openLatest.current = onOpen;
   });
   useEffect(() => {
-    if (!created) {
+    // Files left uncommitted stay on this page: what to do about them is read before it opens.
+    if (!created || created.uncommitted) {
       return;
     }
 
@@ -169,6 +170,7 @@ export function CreateOperationPage({
     monitoring: flags.monitoring,
     reading: Boolean(state.sent && state.resumedFrom),
     newWorkspace,
+    uncommitted: created?.uncommitted === true,
   });
   const statusText = status ? text(status) : undefined;
   useEffect(() => {
@@ -191,7 +193,10 @@ export function CreateOperationPage({
         <div className="grid gap-8">
           <header className="flex min-w-0 items-start gap-4">
             {/* Static while running: the active step of the checklist carries the page's only spinner. */}
-            <OperationStatusTile tone={toneOf[view]} animated={false} />
+            <OperationStatusTile
+              tone={created?.uncommitted ? 'attention' : toneOf[view]}
+              animated={false}
+            />
             <div className="grid min-w-0 gap-1">
               <Typography
                 as="h1"
@@ -216,10 +221,16 @@ export function CreateOperationPage({
                 target={target}
                 working={working}
                 completed={Boolean(created)}
-                commits={settings?.commit === true}
+                commits={settings?.commit === true && !created?.uncommitted}
                 monitoring={flags.monitoring}
               />
             </div>
+          )}
+
+          {created?.uncommitted && (
+            <Alert role="status" tone="attention" title={t('create.page.uncommitted.title')}>
+              <p>{t('create.page.uncommitted.body')}</p>
+            </Alert>
           )}
 
           {view === 'not-found' && (

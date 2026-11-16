@@ -85,6 +85,8 @@ export function closeReasons(
   blockers: readonly CloseRefusalBlocker[],
   tasks: ReadonlyMap<string, BlockerTask>,
   at: WorkflowAt = { waiting: false },
+  /** Clauses after the workflow ones (the repository preconditions of a Close). */
+  extra: readonly string[] = [],
 ): string {
   const has = (group: Group) => blockers.some((blocker) => GROUP_OF[blocker.kind] === group);
   const unfinished = taskIdsOf(blockers, 'tasks', tasks).length;
@@ -133,6 +135,8 @@ export function closeReasons(
   if (has('state')) {
     reasons.push(t('workflowExecution.close.reason.state'));
   }
+
+  reasons.push(...extra);
 
   return new Intl.ListFormat(locale, { type: 'conjunction' }).format(reasons);
 }

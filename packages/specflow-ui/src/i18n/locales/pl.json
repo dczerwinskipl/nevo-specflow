@@ -982,7 +982,9 @@
         "reserving": {
           "title": "Rezerwowanie nazwy",
           "running": "Sprawdzamy, czy nazwa i gałąź są wolne",
-          "done": "Nazwa i gałąź zarezerwowane"
+          "done": "Nazwa i gałąź zarezerwowane",
+          "runningName": "Sprawdzamy, czy nazwa jest wolna",
+          "doneName": "Nazwa zarezerwowana"
         },
         "preparing-workspace": {
           "title": "Przygotowanie środowiska pracy",
@@ -1049,7 +1051,8 @@
         "stillWorking": "Nadal pracujemy — to może potrwać minutę.",
         "reading": "Odczytywanie operacji…",
         "completed": "Gotowe. Otwieramy specyfikację…",
-        "workingNew": "Przygotowujemy nowe środowisko pracy i specyfikację."
+        "workingNew": "Przygotowujemy nowe środowisko pracy i specyfikację.",
+        "completedUncommitted": "Gotowe, ale pliki nie mają jeszcze commita."
       },
       "leaveNote": "Możesz opuścić tę stronę. Tworzenie trwa dalej na serwerze, a jego stan sprawdzisz, wracając z listy specyfikacji.",
       "openSpecification": "Otwórz specyfikację",
@@ -1067,7 +1070,11 @@
       "backToSpecifications": "Wróć do specyfikacji",
       "notCreated": "Nic nie zostało utworzone. Wpisane dane są zachowane, więc możesz to poprawić i spróbować ponownie.",
       "location": "Tworzenie specyfikacji",
-      "createdNotCommitted": "Pliki specyfikacji powstały, ale nie udało się zapisać ich w commicie."
+      "createdNotCommitted": "Pliki specyfikacji powstały, ale nie udało się zapisać ich w commicie.",
+      "uncommitted": {
+        "title": "Pliki specyfikacji nie mają commita",
+        "body": "Git jest w tym projekcie wyłączony (git.enabled w .nevo/config.yaml), więc Nevo zapisało pliki bez commita. Zrób commit w Git samodzielnie: zamknięcie odmówi, dopóki pliki są bez commita."
+      }
     },
     "operations": {
       "kind": "Tworzenie specyfikacji"
@@ -2364,10 +2371,10 @@
       "blocked": "Nie można jeszcze zamknąć {{title}}: {{reasons}}.",
       "abandonPrompt": "Nie zamierzasz kończyć tej pracy?",
       "abandonInstead": "Porzuć zamiast tego",
-      "ready": "Wszystko, co wymagane, jest ukończone. Zamknięcie uruchamia też kontrole repozytorium.",
-      "afterAbandon": "Porzucono: „{{reason}}” Zamknięcie zapisze ją jako niedostarczoną i uruchomi kontrole repozytorium.",
+      "ready": "Wszystko, co wymagane, jest ukończone.",
+      "afterAbandon": "Porzucono: „{{reason}}” Zamknięcie zapisze ją jako niedostarczoną.",
       "readyTitle": "Gotowe do zamknięcia",
-      "readyBody": "Przepływ jest ukończony.",
+      "readyBody": "Przepływ jest ukończony, a kontrole repozytorium przeszły.",
       "notDelivered": "Anulowane, niedostarczone",
       "notDeliveredExplanation": "Zapisywane jako niedostarczone przy zamknięciu specyfikacji.",
       "previewFailed": "Nie można teraz rozpocząć zamknięcia",
@@ -2404,6 +2411,57 @@
         "sessions_few": "w jej worktree pracują {{count}} sesje agenta",
         "sessions_many": "w jej worktree pracuje {{count}} sesji agenta",
         "sessions_other": "w jej worktree pracuje {{count}} sesji agenta"
+      },
+      "readyAbandonedBody": "Przepływ zakończył się porzuceniem, a kontrole repozytorium przeszły.",
+      "readyChecksBody": "Kontrole repozytorium przeszły.",
+      "checkingTitle": "Sprawdzanie repozytorium",
+      "checkingBody": "Zamknięcie można rozpocząć, gdy kontrole repozytorium przejdą. Może to potrwać kilka sekund.",
+      "refusal": {
+        "preflight": "Zamknięcie zatrzymuje kontrola repozytorium. Aby zobaczyć którą, uruchom „nevo-specflow specs close <id specyfikacji> --preview” w folderze projektu.",
+        "sharedWorktree": "Z tego worktree korzystają też inne specyfikacje, więc nie można go zintegrować tylko dla tej. Zamknij cały workspace albo zarchiwizuj tę specyfikację bez integracji z wiersza poleceń.",
+        "conflict": "Projekt zmienił się podczas przygotowania zamknięcia. Otwórz okno ponownie, aby sprawdzić jeszcze raz.",
+        "unavailable": "Nie można teraz odczytać plików specyfikacji. Sprawdź, czy jej katalog roboczy istnieje, i spróbuj ponownie.",
+        "recovery": "Wcześniejsze zamknięcie tej specyfikacji zatrzymało się w połowie. Dokończ je z wiersza poleceń, zanim zamkniesz ponownie.",
+        "gitConfig": "Sekcja git w .nevo/config.yaml jest nieprawidłowa lub niepełna. Popraw ją i zamknij ponownie.",
+        "git": "Git nie może teraz działać w folderze projektu. Sprawdź repozytorium i spróbuj ponownie.",
+        "documentsPending": "Zapisane dokumenty wciąż czekają na commit. Poczekaj chwilę i zamknij ponownie.",
+        "commitBlocked": "Git nie przyjmie teraz commita na tej gałęzi. Sprawdź ochronę gałęzi i stan repozytorium, a potem zamknij ponownie.",
+        "engine": "Zamykanie nie jest dostępne w tym Runtime.",
+        "unknown": "Zamknięcie się nie rozpoczęło, a powodu nie można tu pokazać. Spróbuj ponownie; jeśli znów się nie uda, uruchom „nevo-specflow specs close <id specyfikacji> --preview” w folderze projektu."
+      },
+      "repository": {
+        "checkout": {
+          "specification": "katalog roboczy specyfikacji",
+          "integrationTarget": "katalog roboczy, do którego jest integrowana"
+        },
+        "reason": {
+          "uncommitted": "{{checkout}} ma pliki bez commita",
+          "targetMissing": "nie skonfigurowano gałęzi integracji",
+          "targetBranch": "główny katalog roboczy nie jest na {{expected}}",
+          "gitOperation": "w: {{checkout}} trwa niedokończona operacja Git",
+          "detached": "{{checkout}} nie jest na gałęzi"
+        },
+        "uncommitted": {
+          "title": "Pliki bez commita",
+          "specification": "Zamknięcie commituje tylko stan przepływu specyfikacji; innych zmian nie zabiera. Zrób commit tych plików w Git (albo je usuń) i zamknij ponownie.",
+          "integrationTarget": "Katalog roboczy, do którego specyfikacja jest integrowana, musi być czysty. Zrób commit tych plików w Git (albo je usuń) i zamknij ponownie."
+        },
+        "targetMissing": {
+          "title": "Nie skonfigurowano gałęzi integracji",
+          "explanation": "Zamknięcie archiwizuje specyfikację na gałęzi ustawionej jako git.integrationTargetBranch w .nevo/config.yaml, a żadna nie jest ustawiona. Dodaj ją (na przykład „integrationTargetBranch: main” pod „git:”), zrób commit tej zmiany i zamknij ponownie."
+        },
+        "targetBranch": {
+          "title": "Główny katalog roboczy na innej gałęzi",
+          "explanation": "Zamknięcie archiwizuje specyfikację na {{expected}}, ale główny katalog roboczy jest na {{branch}}. Przełącz go na {{expected}} i zamknij ponownie."
+        },
+        "gitOperation": {
+          "title": "Niedokończona operacja Git",
+          "explanation": "W: {{checkout}} wciąż trwa scalanie, rebase, cherry-pick albo revert. Dokończ je lub przerwij i zamknij ponownie."
+        },
+        "detached": {
+          "title": "Poza gałęzią",
+          "explanation": "W: {{checkout}} HEAD jest odłączony, poza lokalną gałęzią. Przełącz się na gałąź i zamknij ponownie."
+        }
       }
     },
     "abandon": {

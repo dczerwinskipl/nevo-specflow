@@ -101,6 +101,9 @@ describe('Create request with an archetype', () => {
     expect(Value.Check(CreateOperationInspectionSchema, created)).toBe(true);
     const { documentIds: _ids, ...without } = created;
     expect(Value.Check(CreatedSpecSchema, without)).toBe(false);
+    // Files written without a commit (Git disabled) say so; only `true` is a valid value.
+    expect(Value.Check(CreatedSpecSchema, { ...created, uncommitted: true })).toBe(true);
+    expect(Value.Check(CreatedSpecSchema, { ...created, uncommitted: false })).toBe(false);
   });
 
   it('carries the cause of a document error in the details of the Create error body', () => {

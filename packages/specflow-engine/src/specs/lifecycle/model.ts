@@ -230,6 +230,37 @@ export type CloseOperationErrorCode =
  */
 export type CloseLocalConfigRefusal = 'changed' | 'unrecorded' | 'unreadable';
 
+/**
+ * A repository precondition of a Close the owner can fix in the repository (`CLOSE_PREFLIGHT`):
+ * - `uncommitted-changes`: the checkout has staged, modified or untracked files (`paths`, at most
+ *   {@link REPOSITORY_PATHS_NAMED}; `count` is the total) that a Close does not take along;
+ * - `integration-target-missing`: the project configures no `git.integrationTargetBranch`;
+ * - `integration-target-branch`: the primary checkout is on `branch`, not on `expectedBranch`;
+ * - `git-operation-in-progress`: a merge, rebase, cherry-pick or revert is unfinished;
+ * - `branch-detached`: the checkout is not on a local branch.
+ * `checkout` names which checkout: the Specification's own or the one it is integrated into.
+ */
+export type CloseRepositoryBlocker =
+  | {
+      readonly kind: 'uncommitted-changes';
+      readonly checkout: CloseCheckoutRole;
+      readonly paths: readonly string[];
+      readonly count: number;
+    }
+  | { readonly kind: 'integration-target-missing' }
+  | {
+      readonly kind: 'integration-target-branch';
+      readonly expectedBranch: string;
+      readonly branch: string;
+    }
+  | { readonly kind: 'git-operation-in-progress'; readonly checkout: CloseCheckoutRole }
+  | { readonly kind: 'branch-detached'; readonly checkout: CloseCheckoutRole };
+
+export type CloseCheckoutRole = 'specification' | 'integration-target';
+
+/** How many unclean paths a repository blocker names. */
+export const REPOSITORY_PATHS_NAMED = 10;
+
 export class CloseOperationError extends Error {
   readonly code: CloseOperationErrorCode;
   /** `CLOSE_BLOCKED`: the grouped blockers of the Specification exit gate; empty otherwise. */
@@ -238,6 +269,8 @@ export class CloseOperationError extends Error {
   readonly paths: readonly string[];
   /** Present only for `CLOSE_LOCAL_CONFIG_MODIFIED`. */
   readonly localConfig?: CloseLocalConfigRefusal;
+  /** `CLOSE_PREFLIGHT`: the repository preconditions the owner can fix; empty otherwise. */
+  readonly repository: readonly CloseRepositoryBlocker[];
 
   constructor(
     code: CloseOperationErrorCode,
@@ -246,6 +279,7 @@ export class CloseOperationError extends Error {
       readonly blockers?: readonly SpecificationExitBlocker[];
       readonly paths?: readonly string[];
       readonly localConfig?: CloseLocalConfigRefusal;
+      readonly repository?: readonly CloseRepositoryBlocker[];
     } = {},
   ) {
     super(message);
@@ -253,6 +287,7 @@ export class CloseOperationError extends Error {
     this.code = code;
     this.blockers = details.blockers ?? [];
     this.paths = details.paths ?? [];
+    this.repository = details.repository ?? [];
     if (details.localConfig) {
       this.localConfig = details.localConfig;
     }

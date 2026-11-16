@@ -15,10 +15,13 @@ import { isExecutionStatePathOf } from '../execution-paths';
 import { isValidSpecificationId } from '../model';
 import {
   CloseOperationError,
+  REPOSITORY_PATHS_NAMED,
   assertSpecificationExit,
   fingerprintCloseIntent,
   resourcesForClosePlan,
+  type CloseCheckoutRole,
   type ClosePlan,
+  type CloseRepositoryBlocker,
   type CloseWorkspaceEvidence,
 } from './model';
 import { sortedResources } from './resources';
@@ -36,6 +39,10 @@ export type CloseRequest =
       readonly specId: string;
       readonly integrateToTargetBranch?: boolean;
     };
+
+const TARGET_MISSING =
+  'Project Home requires explicit git.integrationTargetBranch configuration before this operation.';
+const TARGET_MISSING_BLOCKER: CloseRepositoryBlocker = { kind: 'integration-target-missing' };
 
 function invalid(message: string): CloseOperationError {
   return new CloseOperationError('CLOSE_PREFLIGHT', message);
@@ -56,11 +63,17 @@ async function gitValue(root: string, args: readonly string[], reason: string): 
  * status (e.g. an empty-content merge --no-commit). Verify Git admin state
  * rather than trusting a clean index as evidence that no operation is active.
  */
-async function requireNoGitOperation(root: string): Promise<void> {
+async function requireNoGitOperation(root: string, role?: CloseCheckoutRole): Promise<void> {
+  const unfinished = (message: string) =>
+    new CloseOperationError(
+      'CLOSE_PREFLIGHT',
+      message,
+      role ? { repository: [{ kind: 'git-operation-in-progress', checkout: role }] } : {},
+    );
   for (const name of ['MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD', 'REBASE_HEAD']) {
     const result = await executeGit(root, ['rev-parse', '--verify', '--quiet', name]);
     if (result.exitCode === 0) {
-      throw invalid('Checkout has an unfinished Git operation: ' + name + '.');
+      throw unfinished('Checkout has an unfinished Git operation: ' + name + '.');
     }
 
     if (result.exitCode !== 1) {
@@ -77,7 +90,7 @@ async function requireNoGitOperation(root: string): Promise<void> {
     try {
       await lstat(resolve(root, path));
 
-      throw invalid('Checkout has unfinished Git sequencer state: ' + name + '.');
+      throw unfinished('Checkout has unfinished Git sequencer state: ' + name + '.');
     } catch (error) {
       if (!isMissing(error)) {
         throw error;
@@ -97,7 +110,7 @@ export interface UncleanPath {
 }
 
 /** How many unclean paths a refusal names. */
-const UNCLEAN_PATHS_NAMED = 10;
+const UNCLEAN_PATHS_NAMED = REPOSITORY_PATHS_NAMED;
 
 /**
  * Every path `git status` reports as staged, modified, removed or untracked (renames name both
@@ -146,7 +159,11 @@ export interface CleanTreeAllowance {
   readonly executionStateOf: string;
 }
 
-/** Read-only: git status may refresh index by default; disable optional locks. */
+/**
+ * Read-only: git status may refresh index by default; disable optional locks. With `role` (the
+ * Close preflight), a refusal the owner can fix in the repository carries its
+ * {@link CloseRepositoryBlocker} for that checkout.
+ */
 export async function inspectCleanGitWorkspace(
   workspace: {
     readonly workspaceId: string;
@@ -154,9 +171,10 @@ export async function inspectCleanGitWorkspace(
     readonly instanceId?: string;
   },
   allowance?: CleanTreeAllowance,
+  role?: CloseCheckoutRole,
 ): Promise<CloseWorkspaceEvidence> {
   const root = workspace.root;
-  await requireNoGitOperation(root);
+  await requireNoGitOperation(root, role);
   const unclean = (await listUncleanPaths(root))
     .map((entry) => entry.path)
     .filter(
@@ -173,17 +191,38 @@ export async function inspectCleanGitWorkspace(
     throw new CloseOperationError(
       'CLOSE_PREFLIGHT',
       `Checkout has staged, modified or untracked files: ${named}${more}.`,
-      { paths: unclean },
+      {
+        paths: unclean,
+        ...(role
+          ? {
+              repository: [
+                {
+                  kind: 'uncommitted-changes',
+                  checkout: role,
+                  paths: unclean.slice(0, UNCLEAN_PATHS_NAMED),
+                  count: unclean.length,
+                },
+              ],
+            }
+          : {}),
+      },
     );
   }
 
-  const branchRef = await gitValue(
-    root,
-    ['symbolic-ref', '--quiet', 'HEAD'],
-    'Checkout must be on an attached local branch.',
-  );
+  const detached = (message: string) =>
+    new CloseOperationError(
+      'CLOSE_PREFLIGHT',
+      message,
+      role ? { repository: [{ kind: 'branch-detached', checkout: role }] } : {},
+    );
+  const symbolic = await executeGit(root, ['symbolic-ref', '--quiet', 'HEAD']);
+  const branchRef = symbolic.stdout.trim();
+  if (symbolic.exitCode !== 0 || !branchRef) {
+    throw detached('Checkout must be on an attached local branch.');
+  }
+
   if (!branchRef.startsWith('refs/heads/')) {
-    throw invalid('Checkout branch is not a local ref.');
+    throw detached('Checkout branch is not a local ref.');
   }
 
   const head = await gitValue(
@@ -307,22 +346,41 @@ export async function previewCloseOperation(
     }
   }
 
-  // A Specification Close commits the Specification's uncommitted execution state with its archive.
-  const source = await inspectCleanGitWorkspace(
-    sourceWorkspace,
-    request.kind === 'specification-close'
-      ? { executionStateOf: 'specs/active/' + canonical.specification.slug }
-      : undefined,
-  );
   const needsTarget = integrate || !linked;
+  const pinned =
+    integrate && sourceWorkspace.kind === 'linked'
+      ? sourceWorkspace.integrationDestination
+      : undefined;
+  // The configured default destination is read before the checkout is inspected, so a refusal names
+  // every repository precondition the owner has to fix at once, not one per attempt.
+  const configured =
+    needsTarget && !pinned ? await readProjectGitPolicy(engine.context) : undefined;
+  const targetMissing = configured !== undefined && !configured.policy.integrationTargetBranch;
+  // A Specification Close commits the Specification's uncommitted execution state with its archive.
+  let source: CloseWorkspaceEvidence;
+  try {
+    source = await inspectCleanGitWorkspace(
+      sourceWorkspace,
+      request.kind === 'specification-close'
+        ? { executionStateOf: 'specs/active/' + canonical.specification.slug }
+        : undefined,
+      'specification',
+    );
+  } catch (error) {
+    if (targetMissing && error instanceof CloseOperationError && error.code === 'CLOSE_PREFLIGHT') {
+      throw new CloseOperationError('CLOSE_PREFLIGHT', `${error.message} ${TARGET_MISSING}`, {
+        paths: error.paths,
+        repository: [...error.repository, TARGET_MISSING_BLOCKER],
+      });
+    }
+
+    throw error;
+  }
+
   let target: CloseWorkspaceEvidence | undefined;
   let targetBranch: string | undefined;
   let configRevision: string | undefined;
   if (needsTarget) {
-    const pinned =
-      integrate && sourceWorkspace.kind === 'linked'
-        ? sourceWorkspace.integrationDestination
-        : undefined;
     if (pinned) {
       if (pinned.workspaceId === source.workspaceId) {
         throw invalid('Integration source and destination are the same physical checkout.');
@@ -348,19 +406,18 @@ export async function previewCloseOperation(
         throw invalid('Pinned integration target checkout is unavailable.');
       }
 
-      target = await inspectCleanGitWorkspace(registration);
+      target = await inspectCleanGitWorkspace(registration, undefined, 'integration-target');
       targetBranch = pinned.branch;
       if (target.branch !== targetBranch) {
         throw invalid('Integration destination changed its attached local branch.');
       }
     } else {
       // Legacy/default target: retain the configured primary semantics.
-      const configured = await readProjectGitPolicy(engine.context);
-      targetBranch = configured.policy.integrationTargetBranch;
-      if (!targetBranch) {
-        throw invalid(
-          'Project Home requires explicit git.integrationTargetBranch configuration before this operation.',
-        );
+      targetBranch = configured?.policy.integrationTargetBranch;
+      if (!configured || !targetBranch) {
+        throw new CloseOperationError('CLOSE_PREFLIGHT', TARGET_MISSING, {
+          repository: [TARGET_MISSING_BLOCKER],
+        });
       }
 
       configRevision = configured.revision;
@@ -383,10 +440,20 @@ export async function previewCloseOperation(
       target =
         source.workspaceId === primary.workspaceId
           ? source
-          : await inspectCleanGitWorkspace(primary);
+          : await inspectCleanGitWorkspace(primary, undefined, 'integration-target');
       if (target.branch !== targetBranch) {
-        throw invalid(
+        throw new CloseOperationError(
+          'CLOSE_PREFLIGHT',
           'Primary worktree is checked out on a different branch from git.integrationTargetBranch.',
+          {
+            repository: [
+              {
+                kind: 'integration-target-branch',
+                expectedBranch: targetBranch,
+                branch: target.branch,
+              },
+            ],
+          },
         );
       }
     }

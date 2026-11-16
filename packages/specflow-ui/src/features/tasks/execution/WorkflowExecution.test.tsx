@@ -518,6 +518,102 @@ describe('manual workflow execution', () => {
       'Move or delete it, then close again.',
     );
   });
+
+  it('names the repository preconditions before the confirm, never next to "Ready to close"', async () => {
+    const refused = refusal('CLOSE_PREFLIGHT', 422);
+    (refused.cause as { data: Record<string, unknown> }).data.repository = [
+      {
+        kind: 'uncommitted-changes',
+        checkout: 'specification',
+        paths: ['specs/active/sso/overview.md'],
+        count: 3,
+      },
+      { kind: 'integration-target-missing' },
+    ];
+    const close = vi.fn(never);
+    renderWith(
+      <CloseSpecificationDialog
+        open
+        onOpenChange={vi.fn()}
+        specId={SPEC}
+        specTitle="Single sign-on"
+        projection={specificationWorkflowProjection('abandoned')}
+        tasks={new Map()}
+        cancelledTasks={[]}
+        onSeeWorkflow={vi.fn()}
+        onSeeTasks={vi.fn()}
+        onOpenTask={vi.fn()}
+        onClosed={vi.fn()}
+      />,
+      {
+        execution: fakeExecutionApi({
+          closePreview: vi.fn(() => Promise.reject(refused)),
+          close,
+        }),
+      },
+    );
+
+    expect((await screen.findByText(/cannot close yet/)).textContent).toBe(
+      'Single sign-on cannot close yet: the checkout of the specification has files that are not committed and no integration branch is configured.',
+    );
+    const dialog = screen.getByRole('dialog');
+    expect(
+      within(dialog)
+        .getAllByRole('heading', { level: 3 })
+        .map((heading) => heading.textContent),
+    ).toEqual(['Files not committed · 3', 'No integration branch configured']);
+    expect(within(dialog).getByText('specs/active/sso/overview.md')).toBeTruthy();
+    expect(within(dialog).getByText('and 2 more')).toBeTruthy();
+    expect(within(dialog).queryByText('Ready to close')).toBeNull();
+    // Only Dismiss: nothing to confirm while the repository holds the Close.
+    expect(within(dialog).queryByRole('button', { name: 'Close specification' })).toBeNull();
+    expect(close).not.toHaveBeenCalled();
+  });
+
+  it('says the repository is being checked, then shows one outcome for an abandoned Specification', async () => {
+    let planned: (value: { operationId: string }) => void = () => undefined;
+    const closePreview = vi.fn(
+      () =>
+        new Promise<{ operationId: string }>((resolve) => {
+          planned = resolve;
+        }),
+    );
+    renderWith(
+      <CloseSpecificationDialog
+        open
+        onOpenChange={vi.fn()}
+        specId={SPEC}
+        specTitle="Single sign-on"
+        projection={specificationWorkflowProjection('abandoned')}
+        tasks={new Map()}
+        cancelledTasks={[]}
+        onSeeWorkflow={vi.fn()}
+        onSeeTasks={vi.fn()}
+        onOpenTask={vi.fn()}
+        onClosed={vi.fn()}
+      />,
+      { execution: fakeExecutionApi({ closePreview }) },
+    );
+    const dialog = screen.getByRole('dialog');
+    const submit = within(dialog).getByRole<HTMLButtonElement>('button', {
+      name: 'Close specification',
+    });
+
+    expect((await within(dialog).findByRole('status')).textContent).toContain(
+      'Checking the repository',
+    );
+    expect(submit.disabled).toBe(true);
+    expect(within(dialog).queryByText('Ready to close')).toBeNull();
+
+    act(() => planned({ operationId: 'op-1' }));
+
+    expect(await within(dialog).findByText('Ready to close')).toBeTruthy();
+    expect(
+      within(dialog).getByText('The workflow ended as abandoned and the repository checks passed.'),
+    ).toBeTruthy();
+    expect(within(dialog).queryByText('Checking the repository')).toBeNull();
+    expect(submit.disabled).toBe(false);
+  });
   it('names the open Tasks that keep the Specification from completing, in Now and in Finish', () => {
     renderWith(
       <WorkflowNow

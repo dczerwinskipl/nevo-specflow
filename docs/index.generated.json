@@ -4078,6 +4078,61 @@
       ]
     },
     {
+      "id": "ideas.audits.2026-11-16-agent-e2e",
+      "type": "product",
+      "title": "Agent end-to-end dogfood run, 2026-11-16",
+      "status": "draft",
+      "file": "docs/ideas/audits/2026-11-16-agent-e2e.md",
+      "read_when": [
+        "triaging why an agent Session cannot finish a Specification workflow unaided",
+        "planning Ask agent (stage 2), Task creation during a turn, or Finish commit behaviour"
+      ],
+      "summary": "Evidence, not rules: an agent Session driven through a whole Specification workflow for issue #156 in the dogfood Runtime, with each step, 13 bugs (B1 to B13), the gaps for Ask agent and the verdict. Screenshots and briefs live on the review-only branch ux-audit/2026-11-16.",
+      "related": [
+        "ideas.audits.2026-11-16-ui-ux-audit",
+        "engineering.repository.dogfooding"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "workflow",
+        "ui"
+      ],
+      "tags": [
+        "audit",
+        "dogfooding",
+        "evidence",
+        "agent-session"
+      ]
+    },
+    {
+      "id": "ideas.audits.2026-11-16-ui-ux-audit",
+      "type": "product",
+      "title": "UI/UX audit of Nevo SpecFlow, 2026-11-16",
+      "status": "draft",
+      "file": "docs/ideas/audits/2026-11-16-ui-ux-audit.md",
+      "read_when": [
+        "triaging UI/UX findings for the Specifications list, Create, Overview, Tasks, Documents, Sessions, workflow actions, navigation or the documentation reader",
+        "planning UX fixes and wanting screenshot evidence across desktop, tablet and phone"
+      ],
+      "summary": "Evidence, not rules: a screenshot audit of the SpecFlow UI at commit e0fd4d33 across the demo app, an empty project and Storybook on four devices, with 49 findings ranked by impact. The scenario pages and 949 screenshots live on the review-only branch ux-audit/2026-11-16.",
+      "related": [
+        "ideas.specflow-ui",
+        "ideas.audits.2026-11-16-agent-e2e"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "workflow"
+      ],
+      "tags": [
+        "audit",
+        "ux",
+        "evidence",
+        "screenshots"
+      ]
+    },
+    {
       "id": "ideas.specflow-engine.reusable-workflow.ux-contract",
       "type": "product",
       "title": "Manual Specification and Task workflow execution — UX contract (superseded)",

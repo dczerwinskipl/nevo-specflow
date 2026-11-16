@@ -84,6 +84,10 @@ rationale whose premise no longer holds is marked superseded or removed.
 - [SpecFlow UI / open screen and component ideas](specflow-ui/README.md)
 - [Semantic documentation search follow-ups](semantic-docs/README.md)
 
+Audit evidence (findings to triage, not rules):
+[UI/UX audit, 2026-11-16](audits/2026-11-16-ui-ux-audit.md),
+[agent end-to-end dogfood run, 2026-11-16](audits/2026-11-16-agent-e2e.md).
+
 Decision records (proposals) with open follow-ups:
 [Session association registry](specflow-runtime/session-association/README.md),
 [Project-mode Specification Overview](specflow-runtime/project-mode-spec-overview/README.md).

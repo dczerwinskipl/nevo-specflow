@@ -217,6 +217,16 @@ describe("A Specification's Session workspace", () => {
         }),
       'specification-workspace-changed',
     ],
+    [
+      'a checkout recreated under the same path before the Turn registered',
+      () =>
+        Promise.resolve({
+          root: join(root, 'worktree'),
+          workspaceId: 'worktree-1',
+          workspaceIdentity: '4'.repeat(64),
+        }),
+      'specification-workspace-changed',
+    ],
   ])('verifies again after registering and refuses %s', async (_name, second, reason) => {
     const { start, create, occupancy, resolve } = await fixture();
     const sessionId = await create('read-only', 'S1');

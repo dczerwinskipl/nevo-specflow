@@ -65,11 +65,12 @@ transitions, `return` with its targets) and, per subject, `task` (the Task lifec
 A Specification whose workflow resolves also has `outline`: `stepCount`, the `current` step (absent
 before the first start and once the run ended), the `next` step and `tasksStep`, each
 `{step, title, position}` with a 1-based position in the definition's declared order. `next` is
-present only when it is unambiguous: every transition of `current` that leads to a step leads to
-the same step (transitions that end the run do not count); it is absent when they lead to several
-steps or none, and before the first start it is the entry step. `tasksStep` is the first step that
-declares `produces: tasks`, present only while the run is certain to get there: following `next`
-from `current` (itself included), or from the entry step, arrives at it without a branch. These are
+present only when it is certain: every transition of `current` leads to the same step. It is absent
+when any transition ends the run (a Review whose approval completes the run has no `next`, even if
+its other transition goes back to Implement) or when they lead to several steps; before the first
+start it is the entry step. `tasksStep` is the first step that declares `produces: tasks`, present
+only while the run is certain to get there: following `next` from `current` (itself included), or
+from the entry step, arrives at it, so no step on the way branches or can end the run. These are
 display facts: "Step 2 of 7" is the step's position in the definition, not progress, since a
 workflow may loop or branch and declared order is no execution order.
 Once the Specification run ended (completed or abandoned), `createTask` and a Task's edit and `remove`

@@ -16,12 +16,13 @@ export interface OutlineStep {
  * - `stepCount`: how many steps the workflow declares;
  * - `current`: the step the run is at (active, waiting or ready); absent before the first start and
  *   once the run ended;
- * - `next`: the step a finish of `current` leads to, only when that is unambiguous: every transition
- *   of `current` that leads to a step leads to the same one (transitions that end the run do not
- *   count). Absent when they lead to several steps or none. Before the first start, the entry step.
+ * - `next`: the step a finish of `current` leads to, only when that is certain: every transition of
+ *   `current` leads to the same step. Absent when one of them ends the run or they lead to several
+ *   steps. Before the first start, the entry step.
  * - `tasksStep`: the first step that declares `produces: tasks`, only when the run is certain to get
- *   there through unambiguous steps: following `next` from `current` (itself included), or from the
- *   entry step before the first start, arrives at it. Absent otherwise and once the run ended.
+ *   there: following `next` from `current` (itself included), or from the entry step before the
+ *   first start, arrives at it, so no step on the way branches or can end the run. Absent otherwise
+ *   and once the run ended.
  */
 export interface WorkflowOutline {
   readonly stepCount: number;
@@ -40,23 +41,28 @@ function producesTasks(step: WorkflowStep): boolean {
   return step.kind === 'work' && step.annotations.produces === 'tasks';
 }
 
-/** The distinct steps the transitions of `step` lead to, in declared order. */
-function stepTargets(step: WorkflowStep): string[] {
-  const targets = step.transitions.flatMap((transition) =>
-    transition.target.kind === 'step' ? [transition.target.step] : [],
-  );
-
-  return [...new Set(targets)];
-}
-
-/** The one step every step-leading transition of `step` leads to; none when ambiguous or none. */
+/**
+ * The one step every transition of `step` leads to. None when a transition ends the run (the run
+ * may stop there) or when two transitions lead to different steps.
+ */
 function onlyTarget(step: WorkflowStep): string | undefined {
-  const targets = stepTargets(step);
+  let only: string | undefined;
+  for (const { target } of step.transitions) {
+    if (target.kind !== 'step' || (only !== undefined && target.step !== only)) {
+      return undefined;
+    }
 
-  return targets.length === 1 ? targets[0] : undefined;
+    only = target.step;
+  }
+
+  return only;
 }
 
-/** Whether following only unambiguous successors from `from` arrives at `goal` (`from` counts). */
+/**
+ * Whether following only unambiguous successors from `from` arrives at `goal` (`from` counts): no
+ * step on the way branches or can end the run. A loop that never reaches `goal` stops at a step
+ * already seen.
+ */
 function certainlyReaches(definition: WorkflowDefinition, from: string, goal: string): boolean {
   const seen = new Set<string>();
   for (let id: string | undefined = from; id !== undefined && !seen.has(id);) {

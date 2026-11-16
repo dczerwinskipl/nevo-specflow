@@ -2164,6 +2164,24 @@
       ]
     },
     {
+      "id": "adr.0025-demo-runs-the-engine-in-memory",
+      "type": "adr",
+      "title": "The demo Runtime runs the Engine's workflow in memory",
+      "status": "current",
+      "file": "docs/architecture/decisions/0025-demo-runs-the-engine-in-memory.md",
+      "read_when": [],
+      "summary": "The `--demo` Runtime runs the real Engine workflow operations over an in-memory execution store seeded through Engine commands, and serves the project routes over it, so the UI shows the same Overview Now, Tasks page and Full Task in both modes. In-memory implementations sit behind the Engine's existing ports; no demo branch enters Engine logic or the UI. The snapshot-based demo Task screen and its sections are removed.",
+      "related": [
+        "adr.0019-workflow-kernel-and-automatic-continuation",
+        "adr.0023-neutral-workflow-coordinator-and-manual-execution",
+        "adr.0024-tasks-are-resources",
+        "architecture.workflow.workflow-kernel",
+        "engineering.shared.code-organization",
+        "reference.api.task-reads",
+        "reference.api.specification-workflow"
+      ]
+    },
+    {
       "id": "design-system.implementation.library-packaging",
       "type": "engineering",
       "title": "UI library packaging boundary",

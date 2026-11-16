@@ -98,7 +98,6 @@ These findings came from the audit and stay open. None of them is part of the ge
   - The Session has no header with its name and state.
   - The Specification header only says Overview.
   - The Session start card cuts off Start session.
-  - Back from a pushed Task preview leaves the Specification instead of closing the preview.
 - **Demo mode:** Managed Sessions are not configured, so Open session leads to an error.
 - **Smaller items:**
   - A Task row shows its key twice.

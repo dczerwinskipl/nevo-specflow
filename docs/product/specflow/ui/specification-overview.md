@@ -140,11 +140,16 @@ Its search is router-owned and validated; absence is the default:
 Without Tasks the page names the step that produces them with the Overview's line ("Tasks appear
 when … finishes."), from the same projection; without such a step it keeps its own description.
 
-The demo Runtime has no Tasks page read; the page renders the workspace read's grouping instead.
+The demo Runtime serves the same Tasks page read: it runs the Engine's workflow over in-memory
+state ([ADR 0025](../../../architecture/decisions/0025-demo-runs-the-engine-in-memory.md)).
 
-## Project mode: what the sections show today
+## What the sections show today
 
-On a project Runtime (not `--demo`) the Overview shows what the Engine and the Session store hold
+The Overview shows what the Engine and the Session store hold. The demo Runtime renders the same
+screens from the same reads: its Engine runs in memory over seeded state (Now, Requires attention,
+Tasks and Full Task are a project's; Start, Finish and Task commands change that state until the
+Runtime stops), and its documents, Sessions and history are the demo data
+([Specification Workspace API, Data source](../../../reference/api/specification-workspace.md#data-source)):
 ([Specification Workspace API, Data source](../../../reference/api/specification-workspace.md#data-source)):
 
 - **Description** — the first paragraph of the overview document's **Goal** section (else its

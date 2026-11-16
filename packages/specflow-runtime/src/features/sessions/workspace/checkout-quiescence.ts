@@ -110,10 +110,11 @@ export function quiescenceFromOwnership(
 
 /** Checkout quiescence of a process that does not own the Project's Session store (the CLI). */
 export function sessionStoreCheckoutQuiescence(engine: SpecFlowEngine): CheckoutQuiescence {
-  const directory = projectSessionStoreDirectory(engine);
-
+  // Read at the question, not at composition: composing a Runtime reads no Project state.
   return async (checkout) =>
-    quiescenceFromOwnership(await inspectSessionStoreOwnership(directory, checkout.root));
+    quiescenceFromOwnership(
+      await inspectSessionStoreOwnership(projectSessionStoreDirectory(engine), checkout.root),
+    );
 }
 
 /**

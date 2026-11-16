@@ -170,7 +170,6 @@
     "tasksHeading": "Tasks",
     "tasksEmptyTitle": "No tasks yet",
     "tasksEmptyDescription": "Tasks appear here once the specification is prepared for work.",
-    "tasksAppearAt": "Tasks appear when the workflow reaches {{step}} (step {{position}} of {{total}}).",
     "tasksAppearAfter": "Tasks appear when {{step}} (step {{position}} of {{total}}) finishes.",
     "documentTemplateOnly": "Template only",
     "documentsEmptyTitle": "No documents yet",

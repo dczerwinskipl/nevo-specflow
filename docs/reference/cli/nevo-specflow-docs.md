@@ -66,7 +66,10 @@ nevo-specflow docs semantic index
   instead of refusing the whole corpus. A file is skipped when it has no frontmatter, when its own
   frontmatter fails the contract or taxonomy, or when its `id` is shared with another file (every
   file with that id is skipped). An unresolved `related`, `supersedes` or `superseded_by` does not
-  skip a document. Text output prints one `warning: skipped <path>: <error>` line per skipped
+  skip a document. A skipped file's error names every problem of the file at once (`; `-separated),
+  and a file without frontmatter or without a known `type` also gets the required format: the
+  allowed types and statuses and the required fields of every type, so one round of fixes is
+  enough. `check` reports the same messages. Text output prints one `warning: skipped <path>: <error>` line per skipped
   document on stderr; `--json` output carries `skipped` (see below). `get` on the id of a skipped
   document fails (exit 2) naming the error. Extra host rules (`corpusRules`) apply to `check` only.
 - `check` stays strict: it validates the whole corpus (frontmatter contract, taxonomy, unique ids, resolvable
@@ -205,7 +208,8 @@ the section with its subsections.
 280 characters, ellipses included) taken from the section's own text, never generated, as plain
 text: links show their text, code spans their content and images their alt text; emphasis, list,
 quote and table markers and HTML are removed. The section is read as fragments: the paragraphs
-(split into sentences), the list items, the table rows and the lines of code blocks; the header row
+(split into sentences), the list items, the table rows and the lines of code blocks (a `mermaid` block
+is diagram source and gives no text); the header row
 of a table is dropped and a row reads as `first cell — cell; cell`. The sentence with the most
 query words wins, each word weighted by how few sentences of the section contain it (words of at
 least four letters also match by a long common prefix, so `taski` matches `taskami` and `session`

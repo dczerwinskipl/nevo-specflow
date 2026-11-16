@@ -92,8 +92,9 @@ dashboard configuration). The Overview renders what the reads deliver.
   the diagnosis. On a narrow row the actions follow the title and reason.
 - **Tasks** — a preview of the configured grouping. Without Tasks: "No tasks yet" and, when the
   run is certain to get to a step that produces Tasks (`outline.tasksStep`, never a step id: no
-  branch on the way), "Tasks appear when the workflow reaches Break the solution down (step 4 of
-  7)." while the run is not yet at that step, "Tasks appear when Break the solution down (step 4 of 7) finishes." while it is at it, and no line otherwise. Each group the configuration marks as a summary row gets one row: its name, then
+  branch on the way), "Tasks appear when Break the solution down (step 4 of 7) finishes.", the same
+  line before the run reaches that step and while it is at it (a producing step creates its Tasks
+  with its finish), and no line otherwise. Each group the configuration marks as a summary row gets one row: its name, then
   "1 task · T-04 Return users to where they were" (count, up to two Tasks, "N more", at most two
   lines), opening the Tasks page at that group. Every Task appears by id and title, also one
   Requires attention or Now already names, so every group reads alike (owner decision, dogfood
@@ -137,7 +138,7 @@ Its search is router-owned and validated; absence is the default:
 - `group=<id>` opens the page at that group, expanded, and moves focus to its header.
 
 Without Tasks the page names the step that produces them with the Overview's line ("Tasks appear
-when the workflow reaches …"); without such a step it keeps its own description.
+when … finishes."), from the same projection; without such a step it keeps its own description.
 
 The demo Runtime has no Tasks page read; the page renders the workspace read's grouping instead.
 

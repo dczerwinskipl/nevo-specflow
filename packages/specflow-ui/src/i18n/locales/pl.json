@@ -170,7 +170,6 @@
     "tasksHeading": "Zadania",
     "tasksEmptyTitle": "Nie ma jeszcze zadań",
     "tasksEmptyDescription": "Zadania pojawią się tutaj, gdy specyfikacja zostanie przygotowana do realizacji.",
-    "tasksAppearAt": "Zadania pojawią się, gdy workflow dojdzie do kroku {{step}} (krok {{position}} z {{total}}).",
     "tasksAppearAfter": "Zadania pojawią się po zakończeniu kroku {{step}} (krok {{position}} z {{total}}).",
     "documentTemplateOnly": "Tylko szablon",
     "documentsEmptyTitle": "Nie ma jeszcze dokumentów",

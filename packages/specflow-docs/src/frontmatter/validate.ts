@@ -3,7 +3,13 @@
 // value.
 
 import type { DocsTaxonomy } from '../config/docs-file';
-import { asString, KNOWN_STATUSES, KNOWN_TYPES, REQUIRED_FIELDS } from './contract';
+import {
+  asString,
+  KNOWN_STATUSES,
+  KNOWN_TYPES,
+  REQUIRED_FIELDS,
+  requiredFieldsByType,
+} from './contract';
 import type { DocRecord, DocType } from './contract';
 
 function isKnownType(v: unknown): v is DocType {
@@ -67,13 +73,16 @@ export function validateDoc(doc: DocRecord, taxonomy: DocsTaxonomy = {}): string
     problems.push(`${loc}: missing 'id'`);
   }
 
+  // The fields a document needs depend on its type: without a known type, name them for every type
+  // so the next round does not reveal more missing fields.
+  const byType = `required fields by type: ${requiredFieldsByType()}`;
   if (!doc.type) {
-    problems.push(`${loc}: missing 'type'`);
+    problems.push(`${loc}: missing 'type' (one of: ${KNOWN_TYPES.join(', ')}; ${byType})`);
   }
 
   if (doc.type !== undefined && !isKnownType(doc.type)) {
     problems.push(
-      `${loc}: unknown type '${asString(doc.type)}' (expected one of: ${KNOWN_TYPES.join(', ')})`,
+      `${loc}: unknown type '${asString(doc.type)}' (expected one of: ${KNOWN_TYPES.join(', ')}; ${byType})`,
     );
   }
 

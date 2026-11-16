@@ -79,8 +79,10 @@ describe('docs command', () => {
     const excluded = await runDocs(root, ['check']);
     rmSync(join(root, 'docs', 'docs.yaml'));
     rmSync(join(root, 'docs', 'templates'), { recursive: true });
-    expect(unexcluded.stderr).toContain(
-      'docs/templates/page.md: missing frontmatter (every authored docs/**.md file needs it)',
+    expect(unexcluded.stderr).toContainEqual(
+      expect.stringContaining(
+        "docs/templates/page.md: missing frontmatter (every authored docs/**.md file needs a '---' block at the top; type is one of:",
+      ),
     );
     expect(excluded).toMatchObject({ exitCode: 0, stderr: [] });
   });

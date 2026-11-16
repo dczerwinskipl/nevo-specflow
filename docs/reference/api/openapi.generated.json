@@ -137,6 +137,11 @@
                   }
                 },
                 "additionalProperties": false
+              },
+              "localActorId": {
+                "type": "string",
+                "minLength": 7,
+                "pattern": "^local:"
               }
             },
             "additionalProperties": false
@@ -220,6 +225,11 @@
                   }
                 },
                 "additionalProperties": false
+              },
+              "localActorId": {
+                "type": "string",
+                "minLength": 7,
+                "pattern": "^local:"
               }
             },
             "additionalProperties": false

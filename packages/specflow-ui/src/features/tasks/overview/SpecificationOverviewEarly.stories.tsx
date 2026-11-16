@@ -65,9 +65,7 @@ export const NotStarted: Story = {
     await expect(canvas.queryByText('Requires attention')).toBeNull();
     await expect(canvas.getByText('No tasks yet')).toBeVisible();
     await expect(
-      canvas.getByText(
-        'Tasks appear when the workflow reaches Break the solution down (step 4 of 7).',
-      ),
+      canvas.getByText('Tasks appear when Break the solution down (step 4 of 7) finishes.'),
     ).toBeVisible();
     await expect(canvas.getByText('This specification has no sessions yet.')).toBeVisible();
     // New session is the Sessions section's own action, never beside Start workflow.
@@ -136,7 +134,7 @@ export const TasksPageEmpty: Story = {
     const canvas = within(canvasElement);
     await expect(
       await canvas.findByText(
-        'Tasks appear when the workflow reaches Break the solution down (step 4 of 7). Create tasks with New task, also before the workflow starts.',
+        'Tasks appear when Break the solution down (step 4 of 7) finishes. Create tasks with New task, also before the workflow starts.',
       ),
     ).toBeVisible();
   },

@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import type { CorpusSettings } from '../config/docs-file';
 import type { DocsSettings } from '../config/docs-settings';
 import { loadDocsFile } from '../config/load-docs-settings';
-import type { DocRecord } from '../frontmatter/contract';
+import { frontmatterFormat, type DocRecord } from '../frontmatter/contract';
 import { validateCorpus, validateDoc } from '../frontmatter/validate';
 import { DocsConfigError } from '../errors';
 import { createFileSystemDocRepository, type DocRepository, type ScanResult } from './repository';
@@ -85,7 +85,7 @@ export function collectCorpusProblems(
   const problems: string[] = [];
   for (const file of scan.missingFrontmatter) {
     problems.push(
-      `${file}: missing frontmatter (every authored ${settings.root}/**.md file needs it)`,
+      `${file}: missing frontmatter (every authored ${settings.root}/**.md file needs a '---' block at the top; ${frontmatterFormat()})`,
     );
   }
 

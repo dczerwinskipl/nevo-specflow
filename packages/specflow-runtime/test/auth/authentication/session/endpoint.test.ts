@@ -1,3 +1,5 @@
+import { userInfo } from 'node:os';
+
 import { describe, expect, it } from 'vitest';
 
 import { InMemoryAuthenticationStore } from '../../../../src/features/auth/authentication/store/in-memory-store';
@@ -20,6 +22,7 @@ describe('authentication session HTTP adapter', () => {
         authenticated: false,
         user: { id: 'demo-user', name: 'Demo User' },
         loginMethods: { password: { enabled: false }, oidc: [] },
+        localActorId: `local:${userInfo().username}`,
       });
     } finally {
       await app.close();

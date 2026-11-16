@@ -7,7 +7,7 @@ import { InlineAction } from './InlineAction';
 import { closableInFinishDialog } from './FinishTasksOpen';
 import { actorLabel, formatWhen, openTasksText, transitionLabel } from './presentation';
 import { StartBlockerLines, type NowLinks } from './StartBlockerLines';
-import { useViewerId } from './useViewerId';
+import { useViewer } from './useViewer';
 
 /** An icon inside running text: on the text line, no flex box that would shift the line. */
 function InlineIcon({ name }: { name: ComponentProps<typeof Icon>['name'] }) {
@@ -75,7 +75,7 @@ export function NowBlock({
   summary,
 }: NowBlockProps) {
   const { t, i18n } = useTranslation();
-  const viewerId = useViewerId();
+  const viewer = useViewer();
   const { position, workflow, handoff } = projection;
   const when = (at: string) => formatWhen(t, at, i18n.language);
   const workflowLine = workflow
@@ -101,7 +101,7 @@ export function NowBlock({
       facts = t('workflowExecution.now.active', {
         attempt: position.attempt.number,
         since: formatWhen(t, position.attempt.startedAt, i18n.language, { timeOnlyToday: true }),
-        actor: actorLabel(t, position.attempt.actor, viewerId),
+        actor: actorLabel(t, position.attempt.actor, viewer),
       });
       stepId = position.step.id;
       break;
@@ -161,7 +161,7 @@ export function NowBlock({
       facts = position.abandonment
         ? t('workflowExecution.now.abandonedBy', {
             at: when(position.abandonment.at),
-            actor: actorLabel(t, position.abandonment.actor, viewerId),
+            actor: actorLabel(t, position.abandonment.actor, viewer),
           })
         : undefined;
       break;
@@ -290,7 +290,7 @@ export function NowBlock({
                     <InlineIcon name="arrow-right" />
                     {transitionLabel({ ...handoff, id: handoff.transition })}
                   </span>
-                  {handoff.from.actor ? ` · ${actorLabel(t, handoff.from.actor, viewerId)}` : null}
+                  {handoff.from.actor ? ` · ${actorLabel(t, handoff.from.actor, viewer)}` : null}
                   {handoff.from.at ? `, ${when(handoff.from.at)}` : null}
                 </>
               ) : (

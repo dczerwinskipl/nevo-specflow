@@ -10,14 +10,22 @@ import type {
 /** The recorded identity of the trusted local person (no authentication configured). */
 const TRUSTED_LOCAL_ACTOR = 'runtime:trusted-local';
 
+/** Who is looking: the session's user id and the actor id the CLI records for this machine's user. */
+export interface Viewer {
+  readonly userId?: string;
+  readonly localActorId?: string;
+}
+
 /**
- * A person as recorded (`user:ann`, `local:ann`): "you" for the viewer or the trusted local person,
+ * A person as recorded (`user:ann`, `local:ann`): "you" for the viewer (their user id, or, without
+ * required authentication, the CLI's `local:<os-user>` of this machine) or the trusted local person,
  * else the id without its identity-source prefix (the id itself is shown as it is).
  */
-export function personLabel(t: TFunction, actorId: string, viewerId?: string): string {
+export function personLabel(t: TFunction, actorId: string, viewer: Viewer = {}): string {
   if (
     actorId === TRUSTED_LOCAL_ACTOR ||
-    (viewerId !== undefined && actorId === `user:${viewerId}`)
+    (viewer.userId !== undefined && actorId === `user:${viewer.userId}`) ||
+    (viewer.localActorId !== undefined && actorId === viewer.localActorId)
   ) {
     return t('workflowExecution.actor.you');
   }
@@ -26,9 +34,9 @@ export function personLabel(t: TFunction, actorId: string, viewerId?: string): s
 }
 
 /** Who acted, as recorded: a person by {@link personLabel}, an agent by provider and model. */
-export function actorLabel(t: TFunction, actor: WorkflowActor, viewerId?: string): string {
+export function actorLabel(t: TFunction, actor: WorkflowActor, viewer: Viewer = {}): string {
   if (actor.class === 'human') {
-    return personLabel(t, actor.details.actorId, viewerId);
+    return personLabel(t, actor.details.actorId, viewer);
   }
 
   return [actor.details.provider, actor.details.model].filter(Boolean).join(' · ');

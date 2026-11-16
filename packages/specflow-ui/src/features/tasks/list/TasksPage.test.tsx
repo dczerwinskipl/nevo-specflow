@@ -102,12 +102,12 @@ describe('Tasks page', () => {
     renderPage({
       state: { status: 'ready', view: taskListViewOf(controlCenterTaskList('empty')) },
       onNewTask: vi.fn(),
-      emptyLine: 'Tasks appear when the workflow reaches Plan (step 2 of 3).',
+      emptyLine: 'Tasks appear when Plan (step 2 of 3) finishes.',
     });
 
     expect(
       screen.getByText(
-        'Tasks appear when the workflow reaches Plan (step 2 of 3). Create tasks with New task, also before the workflow starts.',
+        'Tasks appear when Plan (step 2 of 3) finishes. Create tasks with New task, also before the workflow starts.',
       ),
     ).not.toBeNull();
   });

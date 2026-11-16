@@ -405,7 +405,15 @@ Login methods are represented according to their actual semantics:
 
 - password is a single enabled/disabled capability;
 - OIDC is a list of named configured instances;
-- an authenticated session records password, or OIDC plus the concrete provider id.
+- an authenticated session records password, or OIDC plus the concrete provider id;
+- without required authentication the response also carries `localActorId`, the owner actor id the
+  offline CLI records for the OS user the Runtime runs as (`local:<os-user>`; left out when the OS
+  account has no user name).
+
+Recorded people read as "you" for the viewer whichever channel recorded them: `user:<session user
+id>`, the trusted local identity (`runtime:trusted-local`) and that `localActorId`. Anyone else is shown
+by the recorded id without its `user:`/`local:` prefix. With required authentication a CLI action
+(`local:<os-user>`) has no link to an authenticated user and is shown by its OS user name.
 
 The browser UI never reads Runtime YAML to discover login methods.
 

@@ -5,26 +5,37 @@ import { actorLabel, personLabel, progressLine } from './presentation';
 const t = ((key: string) => (key === 'workflowExecution.actor.you' ? 'you' : key)) as TFunction;
 
 describe('recorded actor labels', () => {
+  const ann = { userId: 'ann' };
+
   it('names the viewer and the trusted local person "you"', () => {
-    expect(personLabel(t, 'user:ann', 'ann')).toBe('you');
+    expect(personLabel(t, 'user:ann', ann)).toBe('you');
     expect(personLabel(t, 'runtime:trusted-local')).toBe('you');
   });
 
+  it('names the CLI actor of this machine "you", whichever channel recorded it', () => {
+    const local = { userId: 'ann', localActorId: 'local:domin' };
+
+    expect(personLabel(t, 'local:domin', local)).toBe('you');
+    expect(personLabel(t, 'user:ann', local)).toBe('you');
+    expect(personLabel(t, 'local:bob', local)).toBe('bob');
+  });
+
   it('names anyone else by the recorded id without its identity-source prefix', () => {
-    expect(personLabel(t, 'user:bob', 'ann')).toBe('bob');
+    expect(personLabel(t, 'user:bob', ann)).toBe('bob');
     expect(personLabel(t, 'local:bob')).toBe('bob');
+    expect(personLabel(t, 'local:ann', ann)).toBe('ann');
     expect(personLabel(t, 'user:ann')).toBe('ann');
   });
 
   it('names an agent by provider and model', () => {
     expect(
-      actorLabel(t, { class: 'agent', details: { provider: 'claude', model: 'opus' } }, 'ann'),
+      actorLabel(t, { class: 'agent', details: { provider: 'claude', model: 'opus' } }, ann),
     ).toBe('claude · opus');
     expect(
       actorLabel(
         t,
         { class: 'human', details: { actorId: 'user:ann', trust: 'authenticated' } },
-        'ann',
+        ann,
       ),
     ).toBe('you');
   });

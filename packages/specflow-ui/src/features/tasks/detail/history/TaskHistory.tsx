@@ -11,7 +11,7 @@ import type { TaskSnapshot } from '@nevo/specflow-contracts/specs/workspace';
 import { TaskSourceState } from '../TaskDetails';
 import { useTaskHistory } from '../useTaskPages';
 import { formatWhen, personLabel } from '../../execution/presentation';
-import { useViewerId } from '../../execution/useViewerId';
+import { useViewer } from '../../execution/useViewer';
 
 export function TaskHistory({
   specId,
@@ -25,7 +25,7 @@ export function TaskHistory({
   readonly onOpenResource?: (params: TaskHistoryResourceParams) => void;
 }) {
   const { t, i18n } = useTranslation();
-  const viewerId = useViewerId();
+  const viewer = useViewer();
   // Who actually worked on an attempt: a person as the Now block names them ("you", else the
   // recorded id), an agent by its class; a wait step has no actor.
   const actorOf = (
@@ -33,7 +33,7 @@ export function TaskHistory({
   ) =>
     actor
       ? actor.class === 'human' && actor.actorId
-        ? personLabel(t, actor.actorId, viewerId)
+        ? personLabel(t, actor.actorId, viewer)
         : t(`taskDetails.executor.${actor.class}`)
       : undefined;
   const titleOf = (step: {

@@ -95,8 +95,9 @@ dashboard configuration). The Overview renders what the reads deliver.
   branch on the way), "Tasks appear when the workflow reaches Break the solution down (step 4 of
   7)." while the run is not yet at that step, "Tasks appear when Break the solution down (step 4 of 7) finishes." while it is at it, and no line otherwise. Each group the configuration marks as a summary row gets one row: its name, then
   "1 task · T-04 Return users to where they were" (count, up to two Tasks, "N more", at most two
-  lines), opening the Tasks page at that group. A Task
-  already named by Requires attention or Now appears by id only. Compact groups (Done, Cancelled,
+  lines), opening the Tasks page at that group. Every Task appears by id and title, also one
+  Requires attention or Now already names, so every group reads alike (owner decision, dogfood
+  round 1, 2026-11-16: "In progress" showed a bare id beside "Needs approval" with titles). Compact groups (Done, Cancelled,
   Ended) share one line of links that open the Tasks page with that group expanded (owner decision at the
   final Overview approval, 2026-11-14). **All tasks**
   in the header opens the page. No checkboxes and no bulk actions.

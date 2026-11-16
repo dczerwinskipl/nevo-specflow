@@ -67,14 +67,13 @@ const SUMMARY_TASKS = 2;
 
 /**
  * The Overview's compact summary of grouped Tasks (owner decisions 4A, 7A): a `row` group names its
- * count and its first two Tasks, a `compact` group only its count. A Task the Overview already names
- * elsewhere (`named`: attention items, Now) appears by id only.
+ * count and its first two Tasks, each by id and title in every group (also a Task the Overview
+ * names elsewhere, so the groups read alike), a `compact` group only its count.
  */
 export function overviewSummary(
   groups: readonly (Presented & {
     readonly tasks: readonly { readonly id: string; readonly title: string }[];
   })[],
-  named: ReadonlySet<string>,
 ): Pick<TaskOverview, 'rows' | 'compact'> {
   return {
     rows: groups
@@ -85,9 +84,7 @@ export function overviewSummary(
         count: group.tasks.length,
         tasks: group.tasks
           .slice(0, SUMMARY_TASKS)
-          .map((task) =>
-            named.has(task.id) ? { id: task.id } : { id: task.id, title: task.title },
-          ),
+          .map((task) => ({ id: task.id, title: task.title })),
         more: Math.max(0, group.tasks.length - SUMMARY_TASKS),
       })),
     compact: groups

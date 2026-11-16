@@ -409,21 +409,17 @@ export function createSpecificationWorkspaceFixture(
     completedTasksCount: isEmpty ? 0 : 2,
     totalTasksCount: isEmpty ? 0 : 7,
     taskProgress: isEmpty ? { completed: 0, total: 0 } : { completed: 2, total: 7 },
-    taskOverview: fixtureTaskOverview(
-      taskGroups,
-      new Set(attentionItems.flatMap((item) => (item.kind === 'task' ? [item.targetId] : []))),
-    ),
+    taskOverview: fixtureTaskOverview(taskGroups),
     changes,
   };
 }
 
 /**
  * The Overview summary as the Runtime sends it for these groups: Ukończone compact, the others
- * rows with up to two Tasks (a Task named by Requires attention by id only).
+ * rows with up to two Tasks, each by id and title.
  */
 export function fixtureTaskOverview(
   groups: readonly TaskGroup[],
-  named: ReadonlySet<string | undefined>,
 ): NonNullable<SpecificationWorkspaceData['taskOverview']> {
   const compact = (group: TaskGroup) =>
     (group.summary ?? (group.id === 'done' ? 'compact' : 'row')) === 'compact';
@@ -435,11 +431,7 @@ export function fixtureTaskOverview(
         groupId: group.id,
         name: group.name,
         count: group.tasks.length,
-        tasks: group.tasks
-          .slice(0, 2)
-          .map((task) =>
-            named.has(task.id) ? { id: task.id } : { id: task.id, title: task.title },
-          ),
+        tasks: group.tasks.slice(0, 2).map((task) => ({ id: task.id, title: task.title })),
         more: Math.max(0, group.tasks.length - 2),
       })),
     compact: groups

@@ -45908,7 +45908,8 @@
                                                 "items": {
                                                   "type": "object",
                                                   "required": [
-                                                    "id"
+                                                    "id",
+                                                    "title"
                                                   ],
                                                   "properties": {
                                                     "id": {

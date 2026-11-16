@@ -10,8 +10,8 @@ import { tasksStepLine } from '../../overview/tasksStepLine';
 
 /**
  * The Overview's Tasks: a preview of the Runtime's configured grouping, rendered as delivered. A
- * `row` group has a row (name, count, up to two Tasks; a Task already named by Requires attention
- * or Now comes by id only), opening the Tasks page at that group; `compact` groups share one quiet
+ * `row` group has a row (name, count, up to two Tasks, each by id and title in every group), opening
+ * the Tasks page at that group; `compact` groups share one quiet
  * line of links. The full inventory, New task and the row actions are on the Tasks page. Without
  * Tasks the section keeps its place with an inline empty state naming the workflow step that
  * produces them, when the workflow has one.
@@ -77,7 +77,7 @@ export function TasksSummarySection({ specId, data, actions }: SpecificationWork
           {overview.rows.map((row) => {
             const parts = [
               t('taskOverview.summary.count', { count: row.count }),
-              ...row.tasks.map((task) => (task.title ? `${task.id} ${task.title}` : task.id)),
+              ...row.tasks.map((task) => `${task.id} ${task.title}`),
               ...(row.more > 0 ? [t('taskOverview.summary.more', { count: row.more })] : []),
             ];
 

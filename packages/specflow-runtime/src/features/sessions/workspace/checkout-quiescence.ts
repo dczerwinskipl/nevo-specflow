@@ -2,10 +2,11 @@ import { lstat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Worker } from 'node:worker_threads';
 
-import type {
-  CheckoutQuiescence,
-  CheckoutQuiescenceVerdict,
-  SpecFlowEngine,
+import {
+  readRegistrySnapshot,
+  type CheckoutQuiescence,
+  type CheckoutQuiescenceVerdict,
+  type SpecFlowEngine,
 } from '@nevo/specflow-engine';
 
 import type { SessionsRuntime } from '../feature';
@@ -85,7 +86,7 @@ export function quiescenceFromOwnership(
         message:
           'A SpecFlow Runtime (process ' +
           ownership.pid +
-          ') runs agent Sessions for this Project, and one of them may work in this worktree. Close it from the SpecFlow UI, or stop that Runtime and resume this Close.',
+          ') runs agent Sessions for this Project, and one of them may work in this worktree. Close it from the SpecFlow UI, or stop that Runtime and resume this Close. If no SpecFlow Runtime runs, another program reuses that process number: start the Runtime and stop it again to clear the record.',
       };
     case 'stopped':
       return ownership.unsettledSessionIds.length === 0
@@ -117,23 +118,68 @@ export function sessionStoreCheckoutQuiescence(engine: SpecFlowEngine): Checkout
     );
 }
 
+/** The Turns of this Runtime that run in a checkout now (its in-process workspace occupancy). */
+type InProcessTurns = (workspaceId: string) => readonly string[];
+
+/**
+ * The Sessions that may have an agent in a checkout, as the Runtime that owns the Session store
+ * sees them: its running Turns, and every native Turn there the store holds unsettled (a Turn an
+ * earlier run left `unknown` is in no occupancy, yet its provider may outlive that run on POSIX).
+ */
+async function ownedCheckoutSessions(
+  coordinator: NonNullable<SessionsRuntime['coordinator']>,
+  runningSessions: InProcessTurns,
+  checkout: { readonly workspaceId: string; readonly root: string },
+): Promise<readonly string[]> {
+  const unsettled = await coordinator.unsettledTurnsIn(checkout.root);
+
+  return [...new Set([...runningSessions(checkout.workspaceId), ...unsettled])];
+}
+
+/**
+ * The Sessions that may have an agent in a registered workspace's checkout, for the Close preview
+ * and dialog: {@link ownedCheckoutSessions} while this Runtime owns the Session store, else its
+ * in-process Turns (none).
+ */
+export function checkoutSessions(options: {
+  readonly engine: SpecFlowEngine;
+  readonly sessions: SessionsRuntime;
+  readonly runningSessions: InProcessTurns;
+}): (workspaceId: string) => Promise<readonly string[]> {
+  return async (workspaceId) => {
+    const coordinator = options.sessions.coordinator;
+    if (!coordinator) {
+      return options.runningSessions(workspaceId);
+    }
+
+    const registry = await readRegistrySnapshot(options.engine);
+    const root = registry.workspaces.find((item) => item.workspaceId === workspaceId)?.root;
+
+    return root === undefined
+      ? options.runningSessions(workspaceId)
+      : ownedCheckoutSessions(coordinator, options.runningSessions, { workspaceId, root });
+  };
+}
+
 /**
  * Checkout quiescence of the Runtime: while it owns the Session store (managed Sessions run), its
- * own Turns decide; otherwise it is a non-owner like the CLI.
+ * own Turns and the store's unsettled Turns in the checkout decide; otherwise it is a non-owner like
+ * the CLI.
  */
 export function runtimeCheckoutQuiescence(options: {
   readonly engine: SpecFlowEngine;
   readonly sessions: SessionsRuntime;
-  readonly runningSessions: (workspaceId: string) => readonly string[];
+  readonly runningSessions: InProcessTurns;
 }): CheckoutQuiescence {
   const outsideOwner = sessionStoreCheckoutQuiescence(options.engine);
 
   return async (checkout) => {
-    if (!options.sessions.coordinator) {
+    const coordinator = options.sessions.coordinator;
+    if (!coordinator) {
       return outsideOwner(checkout);
     }
 
-    const sessionIds = options.runningSessions(checkout.workspaceId);
+    const sessionIds = await ownedCheckoutSessions(coordinator, options.runningSessions, checkout);
 
     return sessionIds.length === 0
       ? { quiet: true }

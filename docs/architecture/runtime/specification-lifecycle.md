@@ -231,7 +231,9 @@ Runtime that owns the Project's Session store (one local owner, see
 [Session storage](../ai/session-storage-and-lifecycle.md#storage-choice-and-process-model)), so:
 
 - the owning Runtime answers from its own Turns (its in-process workspace occupancy, which also holds
-  the checkout against new Turns while Close runs);
+  the checkout against new Turns while Close runs) and from the native Turns its store holds unsettled
+  in that checkout: a Turn that restart recovery left `unknown` is in no occupancy, yet its agent may
+  outlive the earlier run, so it counts too (the Close preview and dialog show it as well);
 - any other process (the CLI, or a Runtime without managed Sessions) reads the store's durable owner
   record read-only, in a short-lived Worker. A recorded owner whose process is alive, or cannot be
   proven stopped (only `ESRCH` proves it), refuses: close from the SpecFlow UI or stop that Runtime. No

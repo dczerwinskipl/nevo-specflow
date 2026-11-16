@@ -1,5 +1,6 @@
 export { createSessionsFeature, type SessionsRuntime } from './feature';
 export {
+  checkoutSessions,
   projectSessionStoreDirectory,
   runtimeCheckoutQuiescence,
   sessionStoreCheckoutQuiescence,

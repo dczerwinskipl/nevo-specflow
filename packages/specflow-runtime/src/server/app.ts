@@ -12,6 +12,7 @@ import Fastify, {
 import { authCookieNames, createAuthFeature, type AuthFeatureDependencies } from '../features/auth';
 import type { RuntimeConfig } from '../config/types';
 import {
+  checkoutSessions,
   createSessionsFeature,
   projectSessionStoreDirectory,
   runtimeCheckoutQuiescence,
@@ -314,7 +315,15 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
           workspaceOccupancy,
           docsFeature.releaseWorkspaceDocs,
         ),
-        runningSessions: (workspaceId) => workspaceOccupancy.runningSessions(workspaceId),
+        ...(engine
+          ? {
+              runningSessions: checkoutSessions({
+                engine,
+                sessions: sessionsFeature.runtime,
+                runningSessions: (workspaceId) => workspaceOccupancy.runningSessions(workspaceId),
+              }),
+            }
+          : {}),
         // The demo Runtime serves its own Create routes (and events route) below.
         ...(demo
           ? {}

@@ -2,6 +2,8 @@ import { isMainThread, parentPort, workerData } from 'node:worker_threads';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 
+import { UNSETTLED_CHECKOUT_TURNS_SQL } from './checkout-turns';
+
 /**
  * What the Session store's durable owner record says, read by a process that does not own the
  * store. `live`: a Runtime owns it now. `stopped`: no Runtime owns it, with the Sessions whose
@@ -54,12 +56,9 @@ export function probeSessionStoreOwner(
       }
     }
 
-    const rows = db
-      .prepare(
-        `SELECT DISTINCT t.session AS session FROM turns t JOIN provider_contexts p ON p.session=t.session
-         WHERE t.state!='terminal' AND p.workspace=? ORDER BY t.session`,
-      )
-      .all(request.checkoutRoot) as { session: string }[];
+    const rows = db.prepare(UNSETTLED_CHECKOUT_TURNS_SQL).all(request.checkoutRoot) as {
+      session: string;
+    }[];
 
     return { kind: 'stopped', unsettledSessionIds: rows.map((row) => String(row.session)) };
   } catch {

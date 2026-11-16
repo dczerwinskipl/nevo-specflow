@@ -320,6 +320,11 @@ export function createSessionCoordinator(
     /** Some enabled provider is ready now (its last known readiness; no discovery is run). */
     usable: () =>
       available && [...registry.values()].some((driver) => driver.describe().readiness === 'ready'),
+    /**
+     * The Sessions with an unsettled native Turn in the checkout at `root`, this run's and those an
+     * earlier run left `unknown` (which never enter the in-process workspace occupancy).
+     */
+    unsettledTurnsIn: (root: string) => call<readonly string[]>({ op: 'checkout-turns', root }),
     async recoverEffects() {
       if (!effects) {
         return;

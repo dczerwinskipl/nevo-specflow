@@ -9,8 +9,11 @@ import type { SessionTurnBlocker } from '@nevo/specflow-contracts/specs';
  */
 export type ReleaseWorkspace = (workspaceId: string) => Promise<{ end(): void }>;
 
-/** The Sessions whose Turn runs in a workspace now (read-only, for a preview). */
-export type RunningSessions = (workspaceId: string) => readonly string[];
+/**
+ * The Sessions that may have an agent in a workspace's checkout now (read-only, for a preview): the
+ * running Turns and, while the Runtime owns the Session store, its unsettled ones there.
+ */
+export type RunningSessions = (workspaceId: string) => Promise<readonly string[]>;
 
 /** Close refused: agent Session Turns work in the checkout it would remove. */
 export class WorkspaceBusyError extends Error {
@@ -38,14 +41,14 @@ export function sessionTurnBlocker(sessionIds: readonly string[]): SessionTurnBl
  * Close planning): the running Turns of its linked checkout; nothing for the primary checkout, which
  * Close never removes.
  */
-export function specificationOccupancy(
+export async function specificationOccupancy(
   registry: {
     readonly primaryWorkspaceId: string;
     readonly specBindings: readonly { readonly specId: string; readonly workspaceId: string }[];
   },
   specId: string,
   running: RunningSessions | undefined,
-): SessionTurnBlocker[] {
+): Promise<SessionTurnBlocker[]> {
   const workspaceId = registry.specBindings.find(
     (binding) => binding.specId === specId,
   )?.workspaceId;
@@ -53,21 +56,21 @@ export function specificationOccupancy(
     return [];
   }
 
-  const sessionIds = running(workspaceId);
+  const sessionIds = await running(workspaceId);
 
   return sessionIds.length > 0 ? [sessionTurnBlocker(sessionIds)] : [];
 }
 
 /** A preview refuses like the Close itself would while Turns run in the linked checkout. */
-export function assertNoRunningTurns(
+export async function assertNoRunningTurns(
   running: RunningSessions | undefined,
   source: PublicCloseSourceWorkspace,
-): void {
+): Promise<void> {
   if (!running || source.kind !== 'linked') {
     return;
   }
 
-  const sessionIds = running(source.workspaceId);
+  const sessionIds = await running(source.workspaceId);
   if (sessionIds.length > 0) {
     throw new WorkspaceBusyError(sessionIds);
   }

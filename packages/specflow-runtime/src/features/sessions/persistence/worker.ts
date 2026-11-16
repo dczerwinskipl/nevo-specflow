@@ -23,6 +23,7 @@ import {
 } from '../lifecycle/work-aggregate';
 import { StoreFault, fail, decode, type Row } from './encoding';
 import { CREATED_SEQ_KEY, initializeSessionSchema } from './schema';
+import { UNSETTLED_CHECKOUT_TURNS_SQL } from './checkout-turns';
 import { createContentStorage } from './content';
 import { createRequestJournal } from './requests';
 import { createSessionCursors } from './cursors';
@@ -707,6 +708,10 @@ export async function runSessionWorker(): Promise<void> {
 
     if (c.op === 'rename' || c.op === 'archive' || c.op === 'unarchive' || c.op === 'delete') {
       return transaction(() => management.execute(c));
+    }
+
+    if (c.op === 'checkout-turns') {
+      return all(UNSETTLED_CHECKOUT_TURNS_SQL, c.root).map((row) => String(row.session));
     }
 
     if (c.op === 'effect-candidates') {

@@ -249,18 +249,49 @@ describe('Close outside the Session store owner', () => {
     expect(refused.quiet || refused.message).toMatch(/^Cannot tell whether a SpecFlow Runtime/);
   });
 
-  it('the owning Runtime answers from its own Turns, without reading the store', async () => {
+  it("the owning Runtime counts its running Turns and the store's unsettled ones", async () => {
     const running = new Map([['w1', ['session-1']]]);
+    // An earlier run left `session-0` unknown in /w1 and `session-9` in /w3: in no occupancy.
+    const unsettled = new Map([
+      ['/w1', ['session-0', 'session-1']],
+      ['/w3', ['session-9']],
+    ]);
     const quiescence = runtimeCheckoutQuiescence({
       engine: { context: { project: { stateRoot: '/nonexistent' } } } as SpecFlowEngine,
-      sessions: { coordinator: {}, projectId: 'project' } as unknown as SessionsRuntime,
+      sessions: {
+        coordinator: {
+          unsettledTurnsIn: (root: string) => Promise.resolve(unsettled.get(root) ?? []),
+        },
+        projectId: 'project',
+      } as unknown as SessionsRuntime,
       runningSessions: (workspaceId) => running.get(workspaceId) ?? [],
     });
 
     expect(await quiescence({ workspaceId: 'w1', root: '/w1' })).toMatchObject({
       quiet: false,
-      sessionIds: ['session-1'],
+      sessionIds: ['session-1', 'session-0'],
+    });
+    expect(await quiescence({ workspaceId: 'w3', root: '/w3' })).toMatchObject({
+      quiet: false,
+      sessionIds: ['session-9'],
     });
     expect(await quiescence({ workspaceId: 'w2', root: '/w2' })).toEqual({ quiet: true });
+  });
+
+  it('the owning store reports a Turn an earlier run left unknown', async () => {
+    const { store, checkout } = await directories();
+    const owner = await ownerProcess(store, checkout);
+    const exited = once(owner.child, 'exit');
+    owner.child.kill('SIGKILL');
+    await exited;
+    // Restart recovery turns the dispatched Turn `unknown`; the new owner still reports it.
+    const restarted = await openSessionStore({ directory: store, projectId: 'project' });
+    try {
+      expect(
+        await restarted.call<readonly string[]>({ op: 'checkout-turns', root: checkout }),
+      ).toEqual([owner.sessionId]);
+    } finally {
+      await restarted.close();
+    }
   });
 });

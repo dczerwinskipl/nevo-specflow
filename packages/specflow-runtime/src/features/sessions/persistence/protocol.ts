@@ -124,6 +124,8 @@ export type StoreCommand =
     }
   | { op: 'dispatch-intent'; sessionId: string; turnId: string; invocationId: string }
   | { op: 'effect-candidates'; sessionId?: string; turnId?: string; afterSession?: string }
+  /** The Sessions with an unsettled native Turn in the checkout at `root` (`checkout-turns.ts`). */
+  | { op: 'checkout-turns'; root: string }
   | {
       op: 'reconcile-effect';
       sessionId: string;

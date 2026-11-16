@@ -93,8 +93,9 @@ Availability and action states describe only what actually exists.
 - `sections.documents.data.items[].templateOnly` (project mode) is `true` while the file still has
   exactly the content the Engine created it with from an archetype template (at Create or by a
   template create): its revision, the sha256 of its bytes, equals the `templateRevision` its registry
-  entry recorded then. It is `false` once a byte differs (line endings included) and for a document
-  the Engine did not create from a template. The current catalogue is not consulted. The demo Runtime
+  entry recorded then. It is `false` once a byte differs and for a document the Engine did not create
+  from a template. The comparison is of raw bytes: a checkout whose Git converts line endings (for
+  example `core.autocrlf` on Windows) shows the document as written. The current catalogue is not consulted. The demo Runtime
   omits it.
 - `sections.tasks` is one Engine read (`readExecution`) of the Specification's Task resources
   (`tasks/index.yaml`, `tasks/<id>/task.yaml`), runs and action projections, presented in the

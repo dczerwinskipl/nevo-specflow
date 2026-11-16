@@ -418,7 +418,7 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
             operationId,
             request.query.integrateToTargetBranch,
           );
-          assertNoRunningTurns(options.runningSessions, plan.sourceWorkspace);
+          await assertNoRunningTurns(options.runningSessions, plan.sourceWorkspace);
 
           return reply.code(200).send(plan);
         } catch (error) {
@@ -466,7 +466,7 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
         const registry = await readRegistrySnapshot(options.engine);
 
         return reply.code(200).send({
-          blockers: specificationOccupancy(
+          blockers: await specificationOccupancy(
             registry,
             request.params.specId,
             options.runningSessions,
@@ -511,7 +511,7 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
           workspaceId: request.params.workspaceId,
           operationId: randomUUID(),
         });
-        assertNoRunningTurns(options.runningSessions, plan.sourceWorkspace);
+        await assertNoRunningTurns(options.runningSessions, plan.sourceWorkspace);
 
         return reply.code(200).send(plan);
       } catch (error) {

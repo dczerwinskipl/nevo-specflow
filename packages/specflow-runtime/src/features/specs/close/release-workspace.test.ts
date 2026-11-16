@@ -41,9 +41,9 @@ describe('releasing a workspace around Close', () => {
     const turn = occupancy.beginTurn('linked-1', 'session-1')!;
 
     // The preview refuses the same way, without holding anything.
-    expect(() => assertNoRunningTurns((id) => occupancy.runningSessions(id), linked)).toThrow(
-      WorkspaceBusyError,
-    );
+    await expect(
+      assertNoRunningTurns((id) => Promise.resolve(occupancy.runningSessions(id)), linked),
+    ).rejects.toThrow(WorkspaceBusyError);
     await expect(whileReleased(release, linked, () => Promise.resolve())).rejects.toMatchObject({
       sessionIds: ['session-1'],
     });
@@ -61,7 +61,7 @@ describe('releasing a workspace around Close', () => {
     expect(occupancy.beginTurn('linked-1', 'session-2')).toBeDefined();
   });
 
-  it('reads the running Turns of a Specification checkout from its binding, never of the primary', () => {
+  it('reads the running Turns of a Specification checkout from its binding, never of the primary', async () => {
     const registry = {
       primaryWorkspaceId: 'primary',
       specBindings: [
@@ -70,15 +70,15 @@ describe('releasing a workspace around Close', () => {
       ],
     };
     const running = vi.fn((workspaceId: string) =>
-      workspaceId === 'linked-1' || workspaceId === 'primary' ? ['session-1'] : [],
+      Promise.resolve(workspaceId === 'linked-1' || workspaceId === 'primary' ? ['session-1'] : []),
     );
 
-    expect(specificationOccupancy(registry, 'spec-linked', running)).toEqual([
+    expect(await specificationOccupancy(registry, 'spec-linked', running)).toEqual([
       expect.objectContaining({ kind: 'session-turn-running', subjectIds: ['session-1'] }),
     ]);
-    expect(specificationOccupancy(registry, 'spec-primary', running)).toEqual([]);
-    expect(specificationOccupancy(registry, 'spec-unbound', running)).toEqual([]);
+    expect(await specificationOccupancy(registry, 'spec-primary', running)).toEqual([]);
+    expect(await specificationOccupancy(registry, 'spec-unbound', running)).toEqual([]);
     expect(running).toHaveBeenCalledOnce();
-    expect(specificationOccupancy(registry, 'spec-linked', undefined)).toEqual([]);
+    expect(await specificationOccupancy(registry, 'spec-linked', undefined)).toEqual([]);
   });
 });

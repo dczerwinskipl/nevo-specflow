@@ -1,5 +1,5 @@
 import type { PublicCloseSourceWorkspace } from '@nevo/specflow-engine';
-import type { CloseRefusalBlocker } from '@nevo/specflow-contracts/specs';
+import type { SessionTurnBlocker } from '@nevo/specflow-contracts/specs';
 
 /**
  * Releases what the Runtime holds open in a workspace's checkout (the documentation index), so Close
@@ -24,13 +24,38 @@ export class WorkspaceBusyError extends Error {
 }
 
 /** The `CLOSE_BLOCKED` blocker of running Session Turns (subjects are Session ids). */
-export function sessionTurnBlocker(sessionIds: readonly string[]): CloseRefusalBlocker {
+export function sessionTurnBlocker(sessionIds: readonly string[]): SessionTurnBlocker {
   return {
     kind: 'session-turn-running',
     subjectIds: [...sessionIds],
     message:
       'An agent Session is working in this worktree. Wait for its Turn to finish or cancel it, then close.',
   };
+}
+
+/**
+ * What occupies the checkout a Close of `specId` would remove, from the registry binding alone (no
+ * Close planning): the running Turns of its linked checkout; nothing for the primary checkout, which
+ * Close never removes.
+ */
+export function specificationOccupancy(
+  registry: {
+    readonly primaryWorkspaceId: string;
+    readonly specBindings: readonly { readonly specId: string; readonly workspaceId: string }[];
+  },
+  specId: string,
+  running: RunningSessions | undefined,
+): SessionTurnBlocker[] {
+  const workspaceId = registry.specBindings.find(
+    (binding) => binding.specId === specId,
+  )?.workspaceId;
+  if (!running || workspaceId === undefined || workspaceId === registry.primaryWorkspaceId) {
+    return [];
+  }
+
+  const sessionIds = running(workspaceId);
+
+  return sessionIds.length > 0 ? [sessionTurnBlocker(sessionIds)] : [];
 }
 
 /** A preview refuses like the Close itself would while Turns run in the linked checkout. */

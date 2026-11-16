@@ -4,6 +4,7 @@ import { createWorkspaceOccupancy } from '../../workspaces';
 import {
   assertNoRunningTurns,
   releaseAfterQuiescence,
+  specificationOccupancy,
   whileReleased,
   WorkspaceBusyError,
 } from './release-workspace';
@@ -58,5 +59,26 @@ describe('releasing a workspace around Close', () => {
     expect(duringClose).toBeUndefined();
     expect(docsEnd).toHaveBeenCalledOnce();
     expect(occupancy.beginTurn('linked-1', 'session-2')).toBeDefined();
+  });
+
+  it('reads the running Turns of a Specification checkout from its binding, never of the primary', () => {
+    const registry = {
+      primaryWorkspaceId: 'primary',
+      specBindings: [
+        { specId: 'spec-linked', workspaceId: 'linked-1' },
+        { specId: 'spec-primary', workspaceId: 'primary' },
+      ],
+    };
+    const running = vi.fn((workspaceId: string) =>
+      workspaceId === 'linked-1' || workspaceId === 'primary' ? ['session-1'] : [],
+    );
+
+    expect(specificationOccupancy(registry, 'spec-linked', running)).toEqual([
+      expect.objectContaining({ kind: 'session-turn-running', subjectIds: ['session-1'] }),
+    ]);
+    expect(specificationOccupancy(registry, 'spec-primary', running)).toEqual([]);
+    expect(specificationOccupancy(registry, 'spec-unbound', running)).toEqual([]);
+    expect(running).toHaveBeenCalledOnce();
+    expect(specificationOccupancy(registry, 'spec-linked', undefined)).toEqual([]);
   });
 });

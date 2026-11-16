@@ -17,11 +17,13 @@ import {
   planPublicCloseOperation,
   reconcileArchivedConflictScratchOperation,
   type PlanPublicCloseOptions,
+  readRegistrySnapshot,
   type PublicClosePreview,
   type SpecFlowEngine,
 } from '@nevo/specflow-engine';
 import {
   CloseErrorSchema,
+  CloseOccupancySchema,
   CloseOperationParamsSchema,
   ClosePreviewQuerySchema,
   ClosePreviewSchema,
@@ -53,6 +55,7 @@ import { contractRef } from '../../../server/shared-contracts';
 import {
   assertNoRunningTurns,
   sessionTurnBlocker,
+  specificationOccupancy,
   whileReleased,
   WorkspaceBusyError,
   type ReleaseWorkspace,
@@ -439,6 +442,46 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
       },
     );
   }
+
+  // A Close the workflow blocks is not planned: its dialog reads what else holds the checkout here.
+  typed.get(
+    '/api/specs/:specId/close/occupancy',
+    {
+      preHandler: authSpec,
+      schema: {
+        tags: ['Specifications'],
+        summary:
+          'Read the agent Session Turns that keep a Specification Close from removing its worktree',
+        params: CloseSpecParamsSchema,
+        response: { 200: CloseOccupancySchema, ...errors },
+      },
+    },
+    async (request, reply) => {
+      reply.header('Cache-Control', 'no-store');
+      if (!options.engine) {
+        return reply.code(503).send({ code: 'ENGINE_UNAVAILABLE', error: 'ENGINE_UNAVAILABLE' });
+      }
+
+      try {
+        const registry = await readRegistrySnapshot(options.engine);
+
+        return reply.code(200).send({
+          blockers: specificationOccupancy(
+            registry,
+            request.params.specId,
+            options.runningSessions,
+          ),
+        });
+      } catch (error) {
+        const code = safeCode(error);
+        if (!code) {
+          throw error;
+        }
+
+        return reply.code(statusForCloseError(code)).send({ code, error: code });
+      }
+    },
+  );
 
   // Workspace scope is not an alias for an arbitrary Spec ID. Authorization
   // runs BEFORE the read-only preview or journal inspection: unauthorized

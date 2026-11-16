@@ -80,6 +80,7 @@ function services(source: ControlCenterSource) {
       returnTo: never,
       abandon: never,
       closePreview: never,
+      closeOccupancy: never,
       close: never,
     },
     documentApi: source.documents ?? taskDocumentApi,

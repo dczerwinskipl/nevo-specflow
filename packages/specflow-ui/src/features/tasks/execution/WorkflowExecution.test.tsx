@@ -36,6 +36,7 @@ function fakeExecutionApi(overrides: Partial<WorkflowExecutionApi> = {}) {
     returnTo: vi.fn(never),
     abandon: vi.fn(never),
     closePreview: vi.fn(never),
+    closeOccupancy: vi.fn(() => Promise.resolve({ blockers: [] })),
     close: vi.fn(never),
     ...overrides,
   } satisfies WorkflowExecutionApi;
@@ -254,6 +255,54 @@ describe('manual workflow execution', () => {
     expect(within(dialog).getByRole('button', { name: 'Abandon instead' })).toBeTruthy();
     expect(within(dialog).queryByRole('button', { name: 'Close specification' })).toBeNull();
     expect(within(dialog).getAllByRole('button', { name: 'Dismiss' })).toHaveLength(1);
+  });
+
+  it('lists the agent Turns running in the worktree beside the workflow blockers, without planning the Close', async () => {
+    const execution = fakeExecutionApi({
+      closeOccupancy: vi.fn(() =>
+        Promise.resolve({
+          blockers: [
+            {
+              kind: 'session-turn-running' as const,
+              subjectIds: ['session-1'],
+              message: 'display only',
+            },
+          ],
+        }),
+      ),
+    });
+    renderWith(
+      <CloseSpecificationDialog
+        open
+        onOpenChange={vi.fn()}
+        specId={SPEC}
+        specTitle="Single sign-on"
+        projection={specificationWorkflowProjection('close-blocked')}
+        tasks={new Map([['t-02', { id: 't-02', title: 'Token exchange', state: 'In progress' }]])}
+        cancelledTasks={[]}
+        onSeeWorkflow={vi.fn()}
+        onSeeTasks={vi.fn()}
+        onOpenTask={vi.fn()}
+        onClosed={vi.fn()}
+      />,
+      { execution },
+    );
+    const dialog = screen.getByRole('dialog');
+
+    await waitFor(() =>
+      expect(
+        within(dialog)
+          .getAllByRole('heading', { level: 3 })
+          .map((heading) => heading.textContent),
+      ).toEqual([
+        'Running sessions · 1',
+        'Workflow · 1',
+        'Unfinished tasks · 1',
+        'Pending writes · 1',
+      ]),
+    );
+    expect(execution.closeOccupancy).toHaveBeenCalledWith(SPEC, expect.anything());
+    expect(execution.closePreview).not.toHaveBeenCalled();
   });
 
   it('abandons only with a reason', async () => {

@@ -89,6 +89,17 @@ export const SessionTurnBlockerSchema = Type.Object({
   subjectIds: Type.Array(Type.String(), { maxItems: 1000 }),
   message: Type.String({ maxLength: 20_000 }),
 });
+export type SessionTurnBlocker = Static<typeof SessionTurnBlockerSchema>;
+/**
+ * `GET /api/specs/:specId/close/occupancy`: the agent Session Turns that work now in the linked
+ * checkout a Close of the Specification would remove, read without planning the Close (for a Close
+ * the workflow already blocks). Empty when none run or the Specification has no linked checkout.
+ */
+export const CloseOccupancySchema = Type.Object(
+  { blockers: Type.Array(SessionTurnBlockerSchema, { maxItems: 1 }) },
+  { additionalProperties: false },
+);
+export type CloseOccupancy = Static<typeof CloseOccupancySchema>;
 /** One group of a `CLOSE_BLOCKED` refusal: a workflow blocker, or running Session Turns. */
 export const CloseRefusalBlockerSchema = Type.Union([ExitBlockerSchema, SessionTurnBlockerSchema]);
 export type CloseRefusalBlocker = Static<typeof CloseRefusalBlockerSchema>;

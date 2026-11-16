@@ -28,8 +28,8 @@ export function withCheckoutQuiescence(
   engine: SpecFlowEngine,
   checkoutQuiescence: CheckoutQuiescence,
 ): SpecFlowEngine {
-  // Everything else is read through to the opened Engine, when it is used, never copied.
-  return Object.assign(Object.create(engine) as SpecFlowEngine, { checkoutQuiescence });
+  // A plain own-property copy: callers derive Engines with object spread, which drops prototypes.
+  return { ...engine, checkoutQuiescence };
 }
 
 /** `CLOSE_BLOCKED` (resumable) unless the host attests that no agent works in the checkout. */

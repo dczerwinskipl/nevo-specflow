@@ -14,7 +14,6 @@ export interface TasksPageTarget {
 
 /** Semantic operations provided by the specification workspace host. */
 export interface WorkspaceRuntime {
-  readonly previewTask: (taskId: string) => void;
   readonly openTask: (taskId: string, section?: TaskSection) => void;
   /** Opens the Tasks page (`/specs/:specId/tasks`); a history entry is pushed. */
   readonly openTasks: (target?: TasksPageTarget) => void;
@@ -65,7 +64,6 @@ export function createFakeWorkspaceRuntime(
   overrides: Partial<WorkspaceRuntime> = {},
 ): WorkspaceRuntime {
   return {
-    previewTask: noop,
     openTask: noop,
     openTasks: noop,
     openSession: noop,

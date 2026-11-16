@@ -107,13 +107,13 @@ export function taskAttentionEntry(
   const stuck = item.code === 'tasks-stuck' && (item.taskIds?.length ?? 0) > 0;
   const typeTitle =
     item.kind === 'task' && item.targetId ? typeTitleOf(context.data, item.targetId) : undefined;
-  // An item without a workflow action (the demo Runtime's) previews its Task.
+  // An item without a workflow action opens its Task.
   const primary = item.action
     ? actionOf(item.action, item, context)
     : item.targetId
       ? {
           label: message('specification.attentionViewTask'),
-          onClick: () => context.actions.previewTask(item.targetId!),
+          onClick: () => context.actions.openTask(item.targetId!),
         }
       : undefined;
   const alternative = item.secondaryAction

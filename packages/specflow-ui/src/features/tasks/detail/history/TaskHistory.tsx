@@ -8,7 +8,7 @@ import type { TaskHistoryResourceParams } from './TaskHistoryResourceInspection'
 import { Button, Icon, Timeline, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { TaskSnapshot } from '@nevo/specflow-contracts/specs/workspace';
-import { TaskSourceState } from '../TaskDetails';
+import { TaskSourceState } from './TaskSourceState';
 import { useTaskHistory } from '../useTaskPages';
 import { formatWhen, personLabel } from '../../execution/presentation';
 import { useViewer } from '../../execution/useViewer';

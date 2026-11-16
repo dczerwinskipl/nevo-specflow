@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Button } from '@nevo/ui';
-import { useRuntimeMode } from '../../../app/useRuntimeMode';
 import type { SpecificationWorkspaceData } from '../../specs/read-model';
 import { NewTaskDialog } from '../authoring/NewTaskDialog';
 import { useSpecificationActions } from '../authoring/useTaskAuthoring';
@@ -22,8 +21,8 @@ export interface TasksScreenProps {
 
 /**
  * The Tasks page of a Specification with its data and New task: the Specification projection
- * decides whether a Task may be created (`specification.createTask`) and with which types (project
- * Runtime, current Specification).
+ * decides whether a Task may be created (`specification.createTask`) and with which types (a
+ * current Specification).
  */
 export function TasksScreen({
   specId,
@@ -36,13 +35,8 @@ export function TasksScreen({
   onClearBlocking,
 }: TasksScreenProps) {
   const { t } = useTranslation();
-  const project = useRuntimeMode() === 'project';
-  const state = useTaskListState(
-    specId,
-    blocking,
-    project ? { kind: 'project' } : { kind: 'workspace', data },
-  );
-  const actions = useSpecificationActions(specId, project && collection === 'current');
+  const state = useTaskListState(specId, blocking);
+  const actions = useSpecificationActions(specId, collection === 'current');
   const [open, setOpen] = useState(false);
   const specification = actions.data?.specification;
   const emptyLine = tasksStepLine(t, actions.data?.outline);

@@ -1,5 +1,5 @@
 import type { TaskListResponse } from '@nevo/specflow-contracts/specs/workspace';
-import type { SpecificationWorkspaceData, TaskProgressData } from '../../specs/read-model';
+import type { TaskProgressData } from '../../specs/read-model';
 import type { TaskLifecycle } from '../read-model';
 
 /** One Task row of the Tasks page, as the Runtime presents it. */
@@ -76,38 +76,5 @@ export function taskListViewOf(response: TaskListResponse): TaskListView {
     ...(response.filter
       ? { filter: { matched: response.filter.matched, total: response.filter.total } }
       : {}),
-  };
-}
-
-/**
- * The demo Runtime has no Tasks page read; its workspace read carries the same grouping data
- * (groups with their `collapsed` flag and per-row attention mark), rendered as delivered.
- */
-export function taskListViewOfWorkspace(
-  data: SpecificationWorkspaceData,
-  blocking: boolean,
-): TaskListView {
-  const total = data.taskGroups.reduce((count, group) => count + group.tasks.length, 0);
-
-  return {
-    // The demo has no `tasks-stuck`: nothing blocks the Specification.
-    groups: blocking
-      ? []
-      : data.taskGroups.map((group) => ({
-          id: group.id,
-          name: group.name,
-          collapsed: group.collapsed ?? false,
-          rows: group.tasks.map((task) => ({
-            id: task.id,
-            title: task.title,
-            ...(task.typeTitle ? { typeTitle: task.typeTitle } : {}),
-            ...(task.dependsOn ? { dependsOn: task.dependsOn } : {}),
-            ...(task.statusId ? { statusId: task.statusId } : {}),
-            ...(task.lifecycle ? { lifecycle: task.lifecycle } : {}),
-            ...(task.attention ? { attention: {} } : {}),
-          })),
-        })),
-    ...(data.taskProgress ? { progress: data.taskProgress } : {}),
-    ...(blocking ? { filter: { matched: 0, total } } : {}),
   };
 }

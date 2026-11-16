@@ -122,6 +122,7 @@ export function TreeDocumentRow({
   current,
   disabled,
   onOpen,
+  focusKey,
   buttonRef,
   focus,
   editor,
@@ -140,6 +141,8 @@ export function TreeDocumentRow({
   current: boolean;
   disabled?: boolean;
   onOpen: () => void;
+  /** A stable identity (`data-focus-key`), so a host that remounts the row finds its focus again. */
+  focusKey?: string;
 }) {
   const flat = useFlatLevel();
   const attention = state?.attention === true;
@@ -147,7 +150,7 @@ export function TreeDocumentRow({
   const inChevronColumn = lead && !flat && !attention;
 
   return (
-    <li className={cn(treeNodeClassName, lead && 'mb-2')}>
+    <li className={cn(treeNodeClassName, lead && 'mb-2')} data-focus-key={focusKey}>
       <div className={treeRowClassName}>
         {editor ?? (
           <>

@@ -14,15 +14,36 @@ const engine = {} as SpecFlowEngine;
 describe('createEngineWorkspaceDocuments', () => {
   it('maps registered documents to workspace items with the type id as kind', async () => {
     summaries.mockResolvedValueOnce([
-      { id: 'overview', path: 'overview.md', type: 'overview', title: 'T', revision: 'r1' },
-      { id: 'ux', path: 'sub/ux.md', type: 'ux', title: 'UX', revision: 'r2' },
+      {
+        id: 'overview',
+        path: 'overview.md',
+        type: 'overview',
+        title: 'T',
+        revision: 'r1',
+        templateOnly: false,
+      },
+      { id: 'ux', path: 'sub/ux.md', type: 'ux', title: 'UX', revision: 'r2', templateOnly: true },
     ]);
     expect(await createEngineWorkspaceDocuments(engine)('spec')).toEqual({
       state: 'available',
       data: {
         items: [
-          { id: 'overview', title: 'T', filename: 'overview.md', revision: 'r1', kind: 'overview' },
-          { id: 'ux', title: 'UX', filename: 'sub/ux.md', revision: 'r2', kind: 'ux' },
+          {
+            id: 'overview',
+            title: 'T',
+            filename: 'overview.md',
+            revision: 'r1',
+            kind: 'overview',
+            templateOnly: false,
+          },
+          {
+            id: 'ux',
+            title: 'UX',
+            filename: 'sub/ux.md',
+            revision: 'r2',
+            kind: 'ux',
+            templateOnly: true,
+          },
         ],
         overviewDocumentId: 'overview',
       },

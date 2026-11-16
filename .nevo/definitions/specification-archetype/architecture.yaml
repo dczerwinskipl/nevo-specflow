@@ -23,7 +23,7 @@ templates:
     preselected: true
     instructions: Give at least two options with trade-offs before the chosen structure.
     content: |
-      # {{specificationTitle}} - Architecture
+      # Architecture
 
       ## Context
 
@@ -39,7 +39,7 @@ templates:
     preselected: true
     instructions: Add one section block per decision; do not rewrite earlier decisions, supersede them.
     content: |
-      # {{specificationTitle}} - Decisions
+      # Decisions
 
       ## Context
 
@@ -54,7 +54,7 @@ templates:
     include: optional
     instructions: List the questions first; every finding cites a source.
     content: |
-      # {{specificationTitle}} - Research
+      # Research
 
       ## Questions
 
@@ -67,7 +67,7 @@ templates:
     include: optional
     instructions: State why this note belongs here.
     content: |
-      # {{specificationTitle}} - Note
+      # Note
 execution:
   workflow: specification-standard
   taskTypes: [implementation]

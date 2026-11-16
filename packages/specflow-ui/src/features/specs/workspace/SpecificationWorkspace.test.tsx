@@ -212,7 +212,6 @@ describe('SpecificationWorkspace', () => {
     const markup = renderWorkspaceMarkup();
 
     expect(markup).not.toContain('Task / TASK-03');
-    expect(markup).not.toContain('Kryteria akceptacji');
   });
 
   it('renders Specification Overview independently of the previous tab-view selection model', () => {

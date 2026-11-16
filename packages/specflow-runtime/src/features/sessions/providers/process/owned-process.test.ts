@@ -8,6 +8,8 @@ import { launchOwnedProcess } from './owned-process';
 import { createInvocationScope } from './scope';
 import { projectProviderEnvironment } from './environment';
 import { createDiagnosticStore } from './diagnostics';
+import { nativeStopEvidence } from './native-stop';
+import { parseProcessIdentity, type NativeProcessIdentity } from './process-identity';
 let root = '';
 let running: Awaited<ReturnType<typeof launchOwnedProcess>> | undefined;
 afterEach(async () => {
@@ -60,6 +62,36 @@ describe('owned provider process', () => {
     expect((await running.dispose()).process.state).toBe('stopped');
     await running.endInput();
     await expect(running.write('second-input')).rejects.toThrow();
+  });
+
+  it('records native-stop evidence before the launch returns and sees the tree stop after disposal', async () => {
+    const input = await setup();
+    const recorded: NativeProcessIdentity[] = [];
+    running = await launchOwnedProcess({
+      ...input,
+      args: ['-e', 'setInterval(() => {}, 1000)'],
+      record: (identity) => {
+        recorded.push(identity);
+
+        return Promise.resolve();
+      },
+    });
+    expect(recorded).toHaveLength(1);
+    expect(parseProcessIdentity(recorded[0])).toEqual(recorded[0]);
+    expect(nativeStopEvidence(recorded[0]!)).not.toBe('stopped');
+    expect((await running.dispose()).process.state).toBe('stopped');
+    expect(nativeStopEvidence(recorded[0]!)).toBe('stopped');
+  });
+
+  it('stops the process and fails the launch when its evidence cannot be recorded', async () => {
+    const input = await setup();
+    await expect(
+      launchOwnedProcess({
+        ...input,
+        args: ['-e', 'setInterval(() => {}, 1000)'],
+        record: () => Promise.reject(new Error('store unavailable')),
+      }),
+    ).rejects.toMatchObject({ code: 'START_FAILED' });
   });
 
   it.runIf(process.platform === 'win32')(

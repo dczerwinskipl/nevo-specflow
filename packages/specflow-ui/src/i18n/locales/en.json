@@ -170,6 +170,10 @@
     "tasksHeading": "Tasks",
     "tasksEmptyTitle": "No tasks yet",
     "tasksEmptyDescription": "Tasks appear here once the specification is prepared for work.",
+    "tasksAppearAt": "Tasks appear when the workflow reaches {{step}} (step {{position}} of {{total}}).",
+    "tasksAppearAfter": "Tasks appear when {{step}} (step {{position}} of {{total}}) finishes.",
+    "documentTemplateOnly": "Template only",
+    "documentsEmptyTitle": "No documents yet",
     "documentsHeading": "Documents",
     "allDocumentsLink": "All documents",
     "openFullDocument": "Open full document",
@@ -907,6 +911,7 @@
         "branchLabel": "New branch name",
         "branchPlaceholder": "feature/new-api",
         "branchHelp": "Nevo prepares the worktree folder itself. If the name is taken, you will enter another one.",
+        "branchUntouched": "Until you edit it, the branch is named {{branch}} (… is filled in when the specification is created). Edit the name to use your own.",
         "nameSlug": "slug",
         "unavailableReason": "– {{reason}}",
         "slugDescription": "The slug names the specification folder, the worktree folder and the new branch. It follows the specification name until you edit it.",
@@ -1862,7 +1867,7 @@
         "tool": "{{label}}",
         "toolUnnamed": "Running a tool…",
         "reasoning": "Thinking…",
-        "responding": "Writing the answer…",
+        "responding": "Writing the answer",
         "commentary": "Describing progress…",
         "waiting": "Waiting…",
         "cancelling": "Cancelling…",
@@ -1872,6 +1877,10 @@
       "actions_many": "{{count}} tool actions",
       "actionsAtLeast_few": "at least {{count}} tool actions",
       "actionsAtLeast_many": "at least {{count}} tool actions"
+    },
+    "outcomeReason": {
+      "TURN_CONFLICT": "Another agent or a specification change is still writing to this project. Wait until it finishes, or check the outcome of a Turn whose outcome is unknown, then send the message again.",
+      "PROCESS_STOPPED": "The agent stopped while SpecFlow could not record its result. Review the changes in the workspace before you continue."
     },
     "turnUnknown": "Turn outcome unknown",
     "reconcile": {
@@ -1937,10 +1946,13 @@
       "placeholder": "Choose the agent and start the session"
     },
     "executor": {
-      "notChosen": "not chosen"
+      "notChosen": "not chosen",
+      "modelNotChosen": "model not chosen"
     },
     "provider": {
-      "noMode": "No work mode is available"
+      "noMode": "No work mode is available",
+      "worktreeUnsupported": "Unavailable in a worktree",
+      "worktreeUnsupportedNote": "Some providers are unavailable in this specification: they work only in the project folder, and this specification has its own worktree. Choose a provider that supports worktrees, or start the session outside the specification."
     },
     "forbiddenSpecification": "You can’t start sessions in this specification.",
     "sessionsDisabled": "Sessions are turned off in this project."
@@ -1969,7 +1981,7 @@
     },
     "tasks": {
       "newTask": "New task",
-      "emptyDescription": "Create tasks now or after the breakdown step. Tasks can be created before the workflow starts.",
+      "emptyDescription": "Create tasks with New task, also before the workflow starts.",
       "draftLine": "Draft · needs approval",
       "after": "after {{ids}}",
       "actionsFailed": "Whether tasks can be created could not be loaded."
@@ -2165,11 +2177,16 @@
     }
   },
   "workflowExecution": {
+    "actor": {
+      "you": "you"
+    },
     "now": {
       "heading": "Now",
       "workflow": "{{title}} · rev {{version}}",
       "notStarted": "Not started",
-      "firstStep": "First step {{title}}",
+      "firstStep": "First step · {{title}}",
+      "progress": "Step {{position}} of {{total}}",
+      "progressNext": "Step {{position}} of {{total}} · next: {{next}}",
       "ready": "Ready to start",
       "active": "Attempt {{attempt}} · in progress since {{since}} · started by {{actor}}",
       "waitingNote": "Continues by itself when every task is done or cancelled",
@@ -2195,7 +2212,8 @@
       "finish": "Finish step",
       "return": "Return to earlier step",
       "finishKept": "Your finish is kept: result, feedback and artifacts stay as you left them. Finish step continues it.",
-      "postActionFailed": "Finished. Committing the workflow state failed ({{code}}); the changes stay uncommitted and Close includes them.",
+      "postActionFailed": "The step is finished. Its workflow state was not committed ({{code}}): it stays uncommitted, and Close includes it.",
+      "postActionHeld": "The step is finished. {{edited}} changed outside SpecFlow after SpecFlow wrote it, so the files of its Task, and of Tasks added or removed since, stay uncommitted; the rest of the workflow state is committed. Commit those files with Git; otherwise Close includes them.",
       "lastPrefix": "Last: {{step}} · ",
       "alreadyFinished": "This step was already finished. What you can do now is shown below.",
       "startWorkflow": "Start workflow",
@@ -2247,6 +2265,12 @@
       "openDocument": "Open document"
     },
     "finish": {
+      "blocked": {
+        "noResult": "Choose a result to finish.",
+        "feedback": "This result needs feedback.",
+        "gates": "Not everything needed for this result is done yet.",
+        "unavailable": "This result cannot be taken yet; see above."
+      },
       "title": "Finish {{step}}",
       "description": "Attempt {{attempt}}. You are recorded as the person who finished it.",
       "result": "Result",
@@ -2312,14 +2336,17 @@
         "tasks": "Unfinished tasks",
         "broken": "Broken tasks",
         "writes": "Pending writes",
-        "state": "Workflow state"
+        "state": "Workflow state",
+        "sessions": "Running sessions"
       },
       "explanation": {
         "workflow": "The specification workflow has not ended. A wait for tasks ends by itself once every task is done or cancelled.",
+        "workflowAtStep": "The specification workflow has not ended: it is at “{{step}}”. Take its steps to the end.",
         "tasks": "Finish, cancel or remove each one.",
         "broken": "Their files do not match their workflow records. Repair or remove them.",
         "writes": "A save or another change is still in progress; it settles by itself in a moment.",
-        "state": "The workflow state cannot be read. Check the specification's execution files."
+        "state": "The workflow state cannot be read. Check the specification's execution files.",
+        "sessions": "An agent Session is working in this worktree. Wait for its Turn to finish or cancel it, then close."
       },
       "groupHeading": "{{title}} · {{count}}",
       "more_one": "and {{count}} more",
@@ -2358,6 +2385,7 @@
         "waiting_many": "its workflow is waiting for {{count}} unfinished tasks",
         "waiting_other": "its workflow is waiting for {{count}} unfinished tasks",
         "workflow": "its workflow has not ended",
+        "atStep": "its workflow is still at “{{step}}”",
         "unfinished_one": "{{count}} task is unfinished",
         "unfinished_few": "{{count}} tasks are unfinished",
         "unfinished_many": "{{count}} tasks are unfinished",
@@ -2371,7 +2399,11 @@
         "saving_many": "{{count}} task documents are still being saved",
         "saving_other": "{{count}} task documents are still being saved",
         "change": "a change is still being saved",
-        "state": "its workflow state cannot be read"
+        "state": "its workflow state cannot be read",
+        "sessions_one": "an agent Session is working in its worktree",
+        "sessions_few": "{{count}} agent Sessions are working in its worktree",
+        "sessions_many": "{{count}} agent Sessions are working in its worktree",
+        "sessions_other": "{{count}} agent Sessions are working in its worktree"
       }
     },
     "abandon": {

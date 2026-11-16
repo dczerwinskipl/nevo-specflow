@@ -55,11 +55,7 @@ export function serializeSpecificationManifest(
         minCount: item.minCount,
       })),
     },
-    documents: manifest.documents.map((item) => ({
-      id: item.id,
-      path: item.path,
-      type: item.type,
-    })),
+    documents: plainDocuments(manifest.documents),
     ...(manifest.folders.length > 0 ? { folders: [...manifest.folders] } : {}),
     ...Object.fromEntries(
       Object.entries(preservedTopLevel).filter(([key]) => !KNOWN_TOP_LEVEL_KEYS.has(key)),
@@ -147,7 +143,12 @@ export function updateManifestRegistry(
 }
 
 function plainDocuments(documents: readonly ManifestDocument[]): unknown[] {
-  return documents.map((item) => ({ id: item.id, path: item.path, type: item.type }));
+  return documents.map((item) => ({
+    id: item.id,
+    path: item.path,
+    type: item.type,
+    ...(item.templateRevision !== undefined ? { templateRevision: item.templateRevision } : {}),
+  }));
 }
 
 function plainArchetype(archetype: ManifestArchetype): unknown {

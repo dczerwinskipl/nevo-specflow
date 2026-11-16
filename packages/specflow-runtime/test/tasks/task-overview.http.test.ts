@@ -154,7 +154,7 @@ describe('the Overview Tasks section and the Tasks page against the real Engine'
           groupId: 'cannot-start',
           name: 'Cannot start',
           count: 1,
-          tasks: [{ id: 'context' }],
+          tasks: [{ id: 'context', title: 'Context' }],
           more: 0,
         });
         expect(tasks.overview).not.toHaveProperty('stuck');

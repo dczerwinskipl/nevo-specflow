@@ -14,7 +14,12 @@ const specification = {
   value: { id: 's', key: 'SPEC-1', title: 'Logowanie SSO' },
 } as const;
 const context = (overrides: Partial<Parameters<typeof startContextValue>[0]> = {}) =>
-  startContextValue({ catalogue: ready, choice: none, notChosen: 'not chosen', ...overrides });
+  startContextValue({
+    catalogue: ready,
+    choice: none,
+    notChosen: { agent: 'not chosen', model: 'model not chosen' },
+    ...overrides,
+  });
 
 describe('startContextValue', () => {
   it('pins the Specification when there is one, else carries no association', () => {
@@ -37,7 +42,7 @@ describe('startContextValue', () => {
       value: {
         providerId: 'claude',
         providerTitle: 'Claude',
-        modelTitle: 'not chosen',
+        modelTitle: 'model not chosen',
         effort: undefined,
       },
     });

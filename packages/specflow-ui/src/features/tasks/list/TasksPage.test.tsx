@@ -98,6 +98,20 @@ describe('Tasks page', () => {
     expect(onNewTask).toHaveBeenCalledTimes(1);
   });
 
+  it('names the producing step and keeps the New task hint when both apply', () => {
+    renderPage({
+      state: { status: 'ready', view: taskListViewOf(controlCenterTaskList('empty')) },
+      onNewTask: vi.fn(),
+      emptyLine: 'Tasks appear when the workflow reaches Plan (step 2 of 3).',
+    });
+
+    expect(
+      screen.getByText(
+        'Tasks appear when the workflow reaches Plan (step 2 of 3). Create tasks with New task, also before the workflow starts.',
+      ),
+    ).not.toBeNull();
+  });
+
   it('says so when nothing blocks the Specification any more', () => {
     renderPage({
       blocking: true,

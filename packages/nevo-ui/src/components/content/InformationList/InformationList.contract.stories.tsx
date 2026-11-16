@@ -72,14 +72,15 @@ export const InteractionContract: Story = {
 };
 
 /**
- * `align="row-center"`: a decorative mark centred on the whole row at any row height (here a
- * wrapping three-line row); the default `top` box stays anchored at the row top.
+ * `align="first-line"`: a decorative mark on the first text line at any row height (here a wrapping
+ * three-line row), never centred on the row; the default `top` box is a control-height box at the
+ * row top.
  */
-export const LeadingRowCenter: Story = {
+export const LeadingFirstLine: Story = {
   render: () => (
     <div className="w-72">
       <InformationList>
-        {(['row-center', 'top'] as const).map((align) => (
+        {(['first-line', 'top'] as const).map((align) => (
           <InformationList.Item key={align} data-testid={`row-${align}`}>
             <InformationList.Leading align={align}>
               <span
@@ -102,12 +103,13 @@ export const LeadingRowCenter: Story = {
   ),
   play: async ({ canvas }) => {
     const centre = (box: DOMRect) => box.top + box.height / 2;
-    const mark = canvas.getByTestId('mark-row-center').getBoundingClientRect();
-    const content = canvas.getByTestId('content-row-center').getBoundingClientRect();
+    const mark = canvas.getByTestId('mark-first-line').getBoundingClientRect();
+    const content = canvas.getByTestId('content-first-line').getBoundingClientRect();
     assert(content.height > 70, 'The row must span several lines for the check to mean anything');
+    // The first text line is 20 px high: the mark sits on its centre, at the row top.
     assert(
-      Math.abs(centre(mark) - centre(content)) <= 1,
-      'A row-centred mark sits on the centre of the whole row',
+      Math.abs(centre(mark) - (content.top + 10)) <= 1.5,
+      'A first-line mark sits on the first text line',
     );
     const topMark = canvas.getByTestId('mark-top').getBoundingClientRect();
     const topContent = canvas.getByTestId('content-top').getBoundingClientRect();

@@ -41,8 +41,9 @@ export const ATTENTION_REASONS = [
   /** The provider to use has no model chosen in the archetype. */
   'model-missing',
   /**
-   * The transition continues the Session, but the previous attempt ran in none (for example a person
-   * did it by hand): the Engine never silently starts a fresh Session instead.
+   * The transition continues the Session, but the agent that finished the previous attempt reported
+   * none: the Engine never silently starts a fresh Session instead. After a person's attempt it is
+   * only the blocker of an owner action.
    */
   'session-unavailable',
   /**
@@ -201,11 +202,16 @@ export function resolveContinuation(input: ContinuationInput): ContinuationDecis
         };
   }
 
+  // After a person finished the previous attempt (no agent was involved, for example while agent
+  // Sessions are off), an agent launch that cannot be resolved is not configuration to fix: the
+  // step waits for that person, and the blocker only explains the agent option.
+  const configuration = automatic && input.finishing !== undefined;
+
   return {
     kind: 'attention',
     step: next.id,
-    reason: automatic ? resolution.reason : 'owner-action',
-    ...(automatic ? {} : { blocker: resolution.reason }),
+    reason: configuration ? resolution.reason : 'owner-action',
+    ...(configuration ? {} : { blocker: resolution.reason }),
     ...(resolution.archetype !== undefined ? { archetype: resolution.archetype } : {}),
     ...(resolution.provider !== undefined ? { provider: resolution.provider } : {}),
   };

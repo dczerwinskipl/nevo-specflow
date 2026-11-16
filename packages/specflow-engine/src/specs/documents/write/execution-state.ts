@@ -32,6 +32,7 @@ import {
   type FileState,
 } from '../changes/plan/model';
 import { queueCapacityOf } from '../changes/queue-capacity';
+import { claimConflictOf } from './claim-source';
 import { admitGitCommit, type GitAdmission, type GitPreflightOptions } from './git-preflight';
 import { findDocumentChangeJournal, listDocumentChangeJournals } from './journal-store';
 import { assertNoClaimedBatchOverlap } from './reservation-guard';
@@ -157,7 +158,9 @@ export async function admitExecutionStateCommit(
         throw documentChangeError('journal-corrupt', 'A journal is corrupt; recover it.');
       }
 
-      throw documentChangeError('busy-create-or-close', 'A Create or Close holds this checkout.');
+      const conflict = claimConflictOf(error);
+
+      throw documentChangeError(conflict.cause, conflict.message);
     }
 
     throw error;

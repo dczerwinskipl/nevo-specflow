@@ -50,6 +50,9 @@ function causeOf(overrides: Partial<SpecificationScaffoldInput> & { archetypeId:
   throw new Error('Expected the scaffold to be refused.');
 }
 
+const overviewSha = (scaffold: ReturnType<typeof createSpecificationScaffold>) =>
+  scaffold.files.find((file) => file.relativePath.endsWith('/overview.md'))!.sha256;
+
 const manifestOf = (scaffold: ReturnType<typeof createSpecificationScaffold>) =>
   parseSpecificationManifestText(scaffold.files[0]!.content, scaffold.slug, 'active');
 
@@ -133,9 +136,28 @@ describe('createSpecificationScaffold', () => {
     for (const archetypeId of ['minimal', 'feature', 'architecture']) {
       const scaffold = createSpecificationScaffold(input({ archetypeId }));
       expect(manifestOf(scaffold).documents).toEqual([
-        { id: 'overview', path: 'overview.md', type: 'overview' },
+        {
+          id: 'overview',
+          path: 'overview.md',
+          type: 'overview',
+          templateRevision: overviewSha(scaffold),
+        },
       ]);
       expect(scaffold.files).toHaveLength(2);
+    }
+  });
+
+  it('records the revision of the content it created each template document with', () => {
+    const scaffold = createSpecificationScaffold(
+      input({ archetypeId: 'feature', optionalDocumentIds: ['ux'] }),
+    );
+    const files = new Map(scaffold.files.map((file) => [file.relativePath, file]));
+    for (const document of manifestOf(scaffold).documents) {
+      const file = files.get('specs/active/my-feature/' + document.path)!;
+      expect(document.templateRevision).toBe(file.sha256);
+      expect(document.templateRevision).toBe(
+        createHash('sha256').update(file.content, 'utf8').digest('hex'),
+      );
     }
   });
 
@@ -158,7 +180,7 @@ describe('createSpecificationScaffold', () => {
       input({ archetypeId: 'feature', optionalDocumentIds: ['behaviour'] }),
     );
     expect(scaffold.files[2]!.content).toBe(
-      '# My feature - Behaviour\n\n## Scenarios\n\n## Rules\n\n## Edge cases\n\n## Acceptance scenarios\n',
+      '# Behaviour\n\n## Scenarios\n\n## Rules\n\n## Edge cases\n\n## Acceptance scenarios\n',
     );
   });
 
@@ -219,8 +241,14 @@ describe('createSpecificationScaffold', () => {
         }),
       );
       const manifest = manifestOf(scaffold);
+      // A document the person adds is not created from a template: no template revision.
       expect(manifest.documents).toEqual([
-        { id: 'overview', path: 'overview.md', type: 'overview' },
+        {
+          id: 'overview',
+          path: 'overview.md',
+          type: 'overview',
+          templateRevision: overviewSha(scaffold),
+        },
         { id: 'research', path: 'research/findings.md', type: 'research' },
       ]);
       expect(scaffold.files.map((file) => file.relativePath)).toContain(

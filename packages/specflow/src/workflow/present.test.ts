@@ -210,6 +210,28 @@ describe('finishLines', () => {
       'Post action commit-execution-state failed: MANUAL_COMMIT_CONFLICT A path was edited.',
     );
   });
+
+  it('shows the workflow state a commit left uncommitted because it was edited', () => {
+    const result = {
+      subject,
+      transition: 'implemented',
+      position: { state: 'ready', step: 'review' },
+      continuation: { kind: 'none', reason: 'on-hold' },
+      createdTasks: [],
+      postActions: [
+        {
+          action: 'commit-execution-state',
+          status: 'completed',
+          held: { edited: ['tasks/a/task.md'], paths: ['tasks/a/task.md', 'tasks/index.yaml'] },
+        },
+      ],
+    } as unknown as FinishStepResult;
+
+    expect(finishLines(result).at(-1)).toBe(
+      'Workflow state left uncommitted (2 files), edited outside the Engine since it wrote them: ' +
+        'tasks/a/task.md. Commit them with Git; Close takes them otherwise.',
+    );
+  });
 });
 
 describe('exit lines', () => {

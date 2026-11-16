@@ -25,7 +25,7 @@ const rowText = (container: HTMLElement, group: string) =>
   container.querySelector(`[data-summary-group="${group}"]`)?.textContent;
 
 describe('Overview Tasks summary', () => {
-  it('names a Task in full once: one in Requires attention appears by id only', async () => {
+  it('names every Task by id and title alike, also one Requires attention names', async () => {
     const { container, data } = await renderSummary('waiting');
     const named =
       data.featureAttention?.tasks.state === 'available'
@@ -33,15 +33,13 @@ describe('Overview Tasks summary', () => {
         : [];
 
     expect(named).toEqual(['T-02', 'T-07']);
-    expect(rowText(container, 'in-progress')).toContain('1 task · T-02');
-    expect(rowText(container, 'in-progress')).not.toContain('Token exchange');
-    expect(rowText(container, 'cannot-start')).not.toContain('Rate-limit');
+    expect(rowText(container, 'in-progress')).toMatch(/1 task · T-02 \S/);
     expect(rowText(container, 'needs-approval')).toContain('T-04 Return users to where they were');
-    // The Tasks a Specification item covers (tasks-stuck) are named by id only too.
     cleanup();
     const stuck = await renderSummary('stuck');
-    expect(rowText(stuck.container, 'needs-approval')).toContain('1 task · T-04');
-    expect(rowText(stuck.container, 'needs-approval')).not.toContain('Return users');
+    expect(rowText(stuck.container, 'needs-approval')).toContain(
+      '1 task · T-04 Return users to where they were',
+    );
     expect(screen.queryByRole('checkbox')).toBeNull();
   });
 

@@ -4,7 +4,7 @@ id: reviewer
 title: Reviewer
 description: Independent, evidence-based review of a scoped change, preferably by another provider than the author.
 profile: nevo-agents:reviewer
-preferredProvider: codex
+preferredProvider: claude
 providers:
   - provider: codex
   - provider: claude

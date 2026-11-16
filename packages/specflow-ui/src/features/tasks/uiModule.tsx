@@ -1,10 +1,7 @@
 import { contributeTo, type UiModule } from '../../app/ui-modules/contracts';
 import { specificationAttentionItems, specificationWorkSections } from '../specs';
 import { taskAttentionEntry } from './contributions/specification-overview/attentionEntries';
-import {
-  TasksSummarySection,
-  tasksSummaryVisible,
-} from './contributions/specification-overview/TasksSummarySection';
+import { TasksSummarySection } from './contributions/specification-overview/TasksSummarySection';
 
 export const tasksUiModule: UiModule = {
   id: 'specflow.tasks',
@@ -12,8 +9,7 @@ export const tasksUiModule: UiModule = {
     contributeTo(specificationWorkSections, {
       id: 'specflow.tasks.summary',
       slot: 'main',
-      // Omitted without Tasks: the Tasks page (navigator) holds New task and the empty state.
-      isVisible: tasksSummaryVisible,
+      // Always in its place: without Tasks an inline empty state says when they appear.
       Component: TasksSummarySection,
     }),
     contributeTo(specificationAttentionItems, {

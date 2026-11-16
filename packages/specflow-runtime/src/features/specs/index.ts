@@ -13,6 +13,7 @@ export {
 export { ProjectGitCapabilities, SpecCapabilities } from '@nevo/specflow-contracts/specs';
 export { specScope, type ProjectIdSource } from './scope';
 export { composeWorkspaceActivity } from './workspace/activity';
+export { releaseAfterQuiescence } from './close/release-workspace';
 
 export type { CurrentSpecRecord } from './overview/repository/model';
 export { createDemoSpecsRepositories, type DemoSpecsRepositoriesDeps } from './demo/repositories';

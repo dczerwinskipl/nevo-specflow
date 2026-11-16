@@ -36,6 +36,11 @@ export interface WorkflowDependencies {
   readonly holds: ExecutionHolds;
   readonly now: () => Date;
   readonly serialize: <T>(operation: () => Promise<T>) => Promise<T>;
+  /**
+   * The scope of one whole operation that does more than its `serialize` section (a finish and its
+   * post actions), so the host proves what it verifies once for all of it. Runs `work` as is when absent.
+   */
+  readonly operation?: <T>(work: () => Promise<T>) => Promise<T>;
   /** Close/Abandon availability for the action projection; `openWorkflow` provides it. */
   readonly specificationExit?: SpecificationExitPort;
   /** What the host does after a step's finish (`./post-actions.ts`); none when absent. */

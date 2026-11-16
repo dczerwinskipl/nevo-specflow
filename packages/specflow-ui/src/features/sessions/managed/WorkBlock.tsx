@@ -78,6 +78,11 @@ export function WorkBlock({ block, onInspect }: { block: WorkBlockModel; onInspe
               {text.outcome.text}
             </Typography>
           )}
+          {text.outcome?.reason && (
+            <Typography as="span" variant="body-sm" className="text-content-secondary">
+              {text.outcome.reason}
+            </Typography>
+          )}
           {/* Visible, but `aria-hidden` — the live announcement itself lives in the sr-only sibling
               region below, OUTSIDE this `button` (a `role="status"` live
               region nested INSIDE a button becomes part of that button's own accessible name, so

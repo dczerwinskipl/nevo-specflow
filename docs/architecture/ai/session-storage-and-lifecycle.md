@@ -70,6 +70,12 @@ outside this feature. No force-takeover endpoint is included.
 
 Every write transaction verifies runtime UUID/epoch; callbacks carry the invocation ID as well.
 
+A process that does not own the store (the CLI, or a Runtime without managed Sessions) MAY read the
+owner row and the nonterminal Turns of a checkout through a read-only connection in a short-lived
+Worker, and nothing else: a Close outside the owner refuses to remove a checkout while the owner is
+live, cannot be proven stopped, or left an unsettled native Turn there
+([Specification lifecycle](../runtime/specification-lifecycle.md#safe-integration-rebind-and-disposal)).
+
 Store admission is bounded, not an unbounded retry queue: ordinary requests stop at 48 concurrent
 Worker commands; the remaining slots up to 64 are reserved for lifecycle-critical work (provider
 facts, dispatch, delivery receipts, close). At most 64 lifecycle requests wait, FIFO, each with a
@@ -166,7 +172,8 @@ the driver proves settlement; record no invented success on process exit. On cle
 the read-only mock settles interrupted. On restart, a dead owner's mock Turns become interrupted,
 pending live interactions become expired and open Work is explicitly closed. A future real-driver
 invocation with uncertain external effects remains unknown and cannot be automatically replayed.
-Only positive reconciliation evidence can remove that block. There is no force-recover API.
+Only positive reconciliation evidence (an Engine receipt or native-stop evidence, below) can remove
+that block. There is no force-recover API.
 
 ### Turn flow
 
@@ -188,8 +195,11 @@ sequenceDiagram
   UI->>RT: POST /api/sessions/:id/turns
   RT->>DB: persist Turn and invocation intent
   RT->>EN: admit workspace execution claim (project-write)
-  RT->>EN: mark claim dispatched
   RT->>PR: start the driver invocation (workspace-write)
+  PR-->>RT: provider process started (Windows: job admitted, provider not yet running)
+  RT->>DB: record native-stop evidence (process identity)
+  RT->>EN: mark claim dispatched
+  RT->>DB: cross the dispatch barrier, then send the input
   UI->>RT: GET /api/sessions/:id/events (SSE)
   loop Provider facts
     PR-->>RT: native events
@@ -212,17 +222,74 @@ admission.
 | Persisted native context and dispatch-intent = 0 after owner death       | Interrupt the undispatched Turn; a new explicit intent may use the original confirmed context and bindings. Never retry the message. |
 | Confirmed native context and dispatch-intent = 1                         | Context identity alone does not prove the operation stopped or completed. Retain unknown.                                            |
 | Dispatch-intent = 1 without confirmed native context                     | The request may have executed. Retain unknown; never resend or allocate a replacement native context.                                |
+| Recorded native process identity, and no process of it remains           | Positive native-stop evidence: settle the Engine claim (if any), then the Turn, as interrupted (`PROCESS_STOPPED`). Never resend.    |
+| Recorded native process identity that is still alive, or cannot be told  | Retain unknown; a later reconcile asks again.                                                                                        |
 | Failed native answer delivery or uncertain write                         | Retain admission/idempotency; mark the operation unknown. Never resend an answer automatically.                                      |
 | Missing provider/account/workspace, or unproven process-tree termination | Keep the Session unavailable for new Turns; restore and verify the original binding before any reconciliation.                       |
+
+**Native-stop evidence.** When the provider process of an invocation starts, its identity
+([provider process ownership](provider-process-ownership.md#native-stop-evidence)) is written to the
+Turn record (`process-identity`) before the dispatch barrier can be crossed, once per invocation; a
+record after the barrier is refused, and a launch whose identity cannot be recorded is stopped and
+fails. Startup recovery and the reconcile command use it after the Engine receipt: no process of that
+exact identity remaining is positive evidence that the agent stopped. A write Turn's claim is then
+settled first through the claim lifecycle (a `native-result` receipt with process `stopped`, outcome
+`interrupted`), and the Turn becomes interrupted with `PROCESS_STOPPED`, with commentary saying its
+output after the last persisted fact is unavailable and the workspace needs review. The common case,
+a Runtime that crashed and took its provider with it, therefore needs no click: startup settles it.
+A live identity or an OS answer that cannot be established keeps the Turn unknown and the claim
+held; a PID now used by a process created at another time does not count as alive. A read-only
+Turn with a recorded identity settles the same way, without a claim.
+
+The claim is marked dispatched only after the evidence commit, so every crash window has an
+answer: before the commit (installation discovery, or a spawned process whose identity was never
+recorded and so never received input) the claim is still `admitted` and recovery retires it as not
+dispatched; between the commit and the dispatch mark it is retired the same way once the recorded
+process is proven stopped; after the mark, native-stop evidence settles it. A claim already
+settled on native-stop evidence whose Turn settlement a crash cut off is finished alike, as
+`PROCESS_STOPPED`. Repeated startup recovery and reconcile settle the Turn and release the claim
+once.
+
+Turns recorded before Runtime kept this evidence (pre-production stores) carry no identity and stay
+unknown; there is no migration or backfill. They, and a live POSIX group whose start time cannot be
+compared (macOS), follow the administrative recovery below.
 
 Unknown Turns carry safe reasons distinguishing missing context, unavailable provider evidence and
 missing settlement. There is no force-success or force-failure endpoint. Operators MUST NOT edit
 SQLite, remove a barrier or clear a native context to unblock a Session; preserve the database and
 the original provider state. An operator first establishes that the old Runtime and its owned
-provider tree have stopped. The authenticated reconcile command can consume an exact Engine
-settlement receipt; a dispatched Turn without such evidence stays blocked until provider-specific
-positive reconciliation exists. A separate new Session is a new conversation, not recovery of the
-old one, and must wait until any possibly surviving process affecting the workspace is contained.
+provider tree have stopped. The authenticated reconcile command consumes an exact Engine settlement
+receipt or native-stop evidence; a dispatched Turn with neither stays blocked. A separate new
+Session is a new conversation, not recovery of the old one, and must wait until any possibly
+surviving process affecting the workspace is contained.
+
+### Administrative recovery
+
+For a Turn the evidence cannot settle: no recorded identity (an old record), an identity the OS
+cannot answer for (a live POSIX group without a start time on macOS, a query refused), or a process
+that keeps running. There is deliberately no product action ("Mark as stopped") for it: an operator
+with access to the machine establishes the facts first.
+
+1. **Find the Turn and its evidence.** The UI's unknown-Turn alert names the Session; with the
+   Runtime running, Check outcome states whether the process still runs or cannot be established.
+   The recorded identity can be read without changing anything:
+   `sqlite3 -readonly .nevo/local/state/sessions/sessions.sqlite "SELECT id, json_extract(data,'$.invocationId'), json_extract(data,'$.nativeProcess') FROM turns WHERE state!='terminal'"`.
+   The invocation id is also the Engine claim's file name in
+   `.nevo/local/state/engine/operations/external-execution/`.
+2. **Establish whether an agent still runs in the project.** POSIX: `ps -eo pid,pgid,lstart,args`
+   for the recorded group id (and any provider CLI whose working directory is the project or its
+   worktrees, since a descendant may have left the group). Windows: `Get-CimInstance Win32_Process`
+   filtered by the provider executable, with `CreationDate` and `CommandLine`.
+3. **Contain it.** Stop a surviving provider process tree (POSIX: signal the group; Windows: end the
+   process tree). Then run Check outcome, or restart the Runtime: with a recorded identity the
+   evidence now settles the Turn and the claim, macOS included (an empty group is evidence).
+4. **No identity at all (old records).** Nothing in the product can settle it. Only once step 2 shows
+   no agent process remains: stop the Runtime, copy `.nevo/local/state/` aside as a dated backup,
+   then move the Turn's claim record out of `external-execution/` into the backup (this releases
+   the project writer lock; the Turn stays unknown). If the Session itself must go, move the whole
+   `sessions/` directory aside the same way, which retires every Session of the project. Never edit
+   rows, the dispatch barrier or a native context, and review the workspace with Git for the
+   agent's uncommitted changes before writing again.
 
 ## Archive and delete
 

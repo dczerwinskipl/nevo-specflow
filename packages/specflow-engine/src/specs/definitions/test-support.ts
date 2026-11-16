@@ -310,7 +310,7 @@ export function archetypeFile(id: string, overrides: Fields = {}): string {
         filename: 'note.md',
         include: 'optional',
         preselected: true,
-        content: '# {{specificationTitle}} - Note\n',
+        content: '# Note\n',
       },
     ],
     ...overrides,

@@ -501,7 +501,7 @@ describe('create, folders and structural operations', () => {
     const result = response.json<{ documents: { path: string; type?: string }[] }>();
     expect(Value.Check(DocumentOperationResultSchema, result)).toBe(true);
     expect(result.documents).toMatchObject([{ path: 'notes/decisions.md', type: 'decisions' }]);
-    expect(await readFile(join(fx.dir, 'notes', 'decisions.md'), 'utf8')).toContain('Hand hand');
+    expect(await readFile(join(fx.dir, 'notes', 'decisions.md'), 'utf8')).toMatch(/^# Decisions\n/);
   });
 
   it('refuses a template create made against an outdated catalogue revision', async () => {

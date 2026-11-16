@@ -6,6 +6,7 @@ import type { TaskOverview } from '@nevo/specflow-contracts/specs/workspace';
 import type { TaskProgressData } from '../../../specs/read-model';
 import { progressText, terminalSummary } from '../../overview/progress';
 import { WorkflowNow } from '../WorkflowNow';
+import { progressLine, stepPurpose } from '../presentation';
 import {
   SPECIFICATION_NOW_HEADING,
   useSpecificationNowVisible,
@@ -109,7 +110,28 @@ export function SpecificationNow({
       ) : null}
     </>
   );
-  const summary = terminal && progress ? terminalSummary(progress, position.outcome, t) : undefined;
+  const terminalText =
+    terminal && progress ? terminalSummary(progress, position.outcome, t) : undefined;
+  const purpose = stepPurpose(position);
+  const line = progressLine(t, projection.outline);
+  const summary = terminalText ? (
+    <Typography as="p" variant="body-sm" className="text-content-secondary">
+      {terminalText}
+    </Typography>
+  ) : purpose || line ? (
+    <div className="grid gap-0.5" data-now-progress="">
+      {purpose ? (
+        <Typography as="p" variant="body-sm" className="text-content-secondary">
+          {purpose}
+        </Typography>
+      ) : null}
+      {line ? (
+        <Typography as="p" variant="body-sm" className="text-content-muted">
+          {line}
+        </Typography>
+      ) : null}
+    </div>
+  ) : undefined;
   const gateAction = (gate: GateStatus) => {
     if (gate.scope.kind !== 'specification' || !gate.documentId) {
       return undefined;
@@ -153,15 +175,7 @@ export function SpecificationNow({
               ),
             }
           : {}),
-        ...(summary
-          ? {
-              summary: (
-                <Typography as="p" variant="body-sm" className="text-content-secondary">
-                  {summary}
-                </Typography>
-              ),
-            }
-          : {}),
+        ...(summary ? { summary } : {}),
       }}
     />
   );

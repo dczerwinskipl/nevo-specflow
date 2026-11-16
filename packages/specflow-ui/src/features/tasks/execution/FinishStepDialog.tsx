@@ -29,6 +29,7 @@ import {
   stillOpenAfterFinish,
 } from './FinishTasksOpen';
 import { GateList, type GateAction } from './GateList';
+import { transitionLabel } from './presentation';
 import { workflowRefusalOf } from './refusal';
 import { WorkflowRefusalAlert } from './WorkflowRefusalAlert';
 
@@ -53,10 +54,6 @@ export interface ArtifactOption {
 
 export const attemptKeyOf = (finish: Pick<Finish, 'step' | 'attempt'>) =>
   `${finish.step}#${finish.attempt}`;
-
-export function transitionResult(transition: FinishTransition) {
-  return transition.label ?? transition.result ?? transition.id;
-}
 
 export interface FinishStepDialogProps {
   readonly open: boolean;
@@ -120,6 +117,17 @@ export function FinishStepDialog({
     stillOpenAfterFinish(selected, draft.droppedDrafts).length === 0 &&
     !gatesUnmet;
   const blocked = !selected || feedbackMissing || (unavailable !== undefined && !closedHere);
+  // Why Finish is disabled, next to it: the detail stays where the form shows it.
+  const blockedReason = !selected
+    ? t('workflowExecution.finish.blocked.noResult')
+    : feedbackMissing
+      ? t('workflowExecution.finish.blocked.feedback')
+      : gatesUnmet
+        ? t('workflowExecution.finish.blocked.gates')
+        : blocked
+          ? t('workflowExecution.finish.blocked.unavailable')
+          : undefined;
+  const blockedReasonId = useId();
   const drafts = finish.drafts ?? [];
   // The Engine names each kept draft that depends on an unticked one; shown while it still holds.
   const conflicts = workflowRefusalOf(error).draftConflicts.filter(
@@ -187,7 +195,7 @@ export function FinishStepDialog({
                   <RadioGroupOption
                     key={transition.id}
                     value={transition.id}
-                    label={transitionResult(transition)}
+                    label={transitionLabel(transition)}
                     description={description(transition)}
                   />
                 ))}
@@ -196,12 +204,12 @@ export function FinishStepDialog({
             {selected && gates.length > 0 ? (
               <div className="grid gap-2" aria-live="polite">
                 <Typography as="p" variant="label-sm">
-                  {t('workflowExecution.finish.gatesFor', { result: transitionResult(selected) })}
+                  {t('workflowExecution.finish.gatesFor', { result: transitionLabel(selected) })}
                 </Typography>
                 <GateList
                   gates={gates}
                   label={t('workflowExecution.finish.gatesFor', {
-                    result: transitionResult(selected),
+                    result: transitionLabel(selected),
                   })}
                   actionFor={gateActionFor}
                   {...(gateDocument ? { documentFor: gateDocument } : {})}
@@ -353,10 +361,20 @@ export function FinishStepDialog({
           </form>
         </DialogBody>
         <DialogFooter>
+          {blockedReason && !pending ? (
+            <InlineNote id={blockedReasonId} className="mr-auto min-w-0">
+              {blockedReason}
+            </InlineNote>
+          ) : null}
           <Button variant="secondary" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
           </Button>
-          <Button type="submit" form={formId} disabled={blocked || pending}>
+          <Button
+            type="submit"
+            form={formId}
+            disabled={blocked || pending}
+            aria-describedby={blockedReason && !pending ? blockedReasonId : undefined}
+          >
             {pending
               ? t('workflowExecution.finish.finishing')
               : t('workflowExecution.finish.submit')}

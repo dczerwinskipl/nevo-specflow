@@ -123,8 +123,8 @@ export const TaskListResponseSchema = Type.Object({
 export type TaskListResponse = Static<typeof TaskListResponseSchema>;
 
 /**
- * The Overview's compact Tasks summary. A `row` group names its count and up to two Tasks (a Task
- * already named by an attention item or by Now carries no title, so it is not shown twice in full);
+ * The Overview's compact Tasks summary. A `row` group names its count and up to two Tasks, each by
+ * id and title in every group (also a Task the Overview names elsewhere, so the groups read alike);
  * `compact` groups share one line of counts.
  */
 export const TaskOverviewSchema = Type.Object({
@@ -136,8 +136,7 @@ export const TaskOverviewSchema = Type.Object({
       tasks: Type.Array(
         Type.Object({
           id: TaskIdSchema,
-          /** Absent: the Task is already named elsewhere on the Overview (id only). */
-          title: Type.Optional(Type.String()),
+          title: Type.String(),
         }),
         { maxItems: 2 },
       ),

@@ -1,15 +1,16 @@
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { Typography } from '@nevo/ui';
-import type { ExitBlocker } from '@nevo/specflow-contracts/workflow';
+import type { CloseRefusalBlocker } from '@nevo/specflow-contracts/specs';
+import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { InlineAction } from '../InlineAction';
 
 export const ITEMS_SHOWN = 5;
 
-type Group = 'workflow' | 'tasks' | 'broken' | 'writes' | 'state';
+type Group = 'sessions' | 'workflow' | 'tasks' | 'broken' | 'writes' | 'state';
 
 /** Which group each blocker kind belongs to; the group order is fixed. */
-const GROUP_OF: Record<ExitBlocker['kind'], Group> = {
+const GROUP_OF: Record<CloseRefusalBlocker['kind'], Group> = {
   'specification-run': 'workflow',
   'draft-tasks': 'tasks',
   'on-hold-tasks': 'tasks',
@@ -19,14 +20,29 @@ const GROUP_OF: Record<ExitBlocker['kind'], Group> = {
   'pending-task-documents': 'writes',
   'operation-in-progress': 'writes',
   'execution-state-unreadable': 'state',
+  'session-turn-running': 'sessions',
 };
 
 /** Close: Workflow → Unfinished tasks → Pending writes; Abandon starts with Pending writes. */
-const CLOSE_ORDER: readonly Group[] = ['workflow', 'tasks', 'broken', 'writes', 'state'];
-const ABANDON_ORDER: readonly Group[] = ['writes', 'state', 'workflow', 'tasks', 'broken'];
+const CLOSE_ORDER: readonly Group[] = [
+  'sessions',
+  'workflow',
+  'tasks',
+  'broken',
+  'writes',
+  'state',
+];
+const ABANDON_ORDER: readonly Group[] = [
+  'writes',
+  'state',
+  'sessions',
+  'workflow',
+  'tasks',
+  'broken',
+];
 
 const taskIdsOf = (
-  blockers: readonly ExitBlocker[],
+  blockers: readonly CloseRefusalBlocker[],
   group: Group,
   tasks: ReadonlyMap<string, BlockerTask>,
 ) => [
@@ -38,27 +54,63 @@ const taskIdsOf = (
   ),
 ];
 
+/** Where the Specification's workflow stands: its current step, and whether it waits for Tasks. */
+export interface WorkflowAt {
+  readonly stepTitle?: string;
+  readonly waiting: boolean;
+}
+
+export function workflowAtOf(position: WorkflowActionProjection['position']): WorkflowAt {
+  switch (position.kind) {
+    case 'waiting':
+      return { stepTitle: position.step.title, waiting: true };
+    case 'active':
+      return { stepTitle: position.step.title, waiting: false };
+    case 'ready':
+      return { stepTitle: position.next.step.title, waiting: false };
+    default:
+      return { waiting: false };
+  }
+}
+
 /**
  * Why a Specification cannot close, as one list of clauses with counts ("its workflow is waiting
- * for 4 unfinished tasks and 1 task document is still being saved").
+ * for 4 unfinished tasks and 1 task document is still being saved"). The workflow waits for Tasks
+ * only on its wait step; on any other step it is "still at" that step and the unfinished Tasks are
+ * a clause of their own.
  */
 export function closeReasons(
   t: TFunction,
   locale: string,
-  blockers: readonly ExitBlocker[],
+  blockers: readonly CloseRefusalBlocker[],
   tasks: ReadonlyMap<string, BlockerTask>,
+  at: WorkflowAt = { waiting: false },
 ): string {
   const has = (group: Group) => blockers.some((blocker) => GROUP_OF[blocker.kind] === group);
   const unfinished = taskIdsOf(blockers, 'tasks', tasks).length;
   const reasons: string[] = [];
-  if (has('workflow')) {
-    reasons.push(
-      unfinished > 0
-        ? t('workflowExecution.close.reason.waiting', { count: unfinished })
-        : t('workflowExecution.close.reason.workflow'),
-    );
-  } else if (unfinished > 0) {
-    reasons.push(t('workflowExecution.close.reason.unfinished', { count: unfinished }));
+  if (has('sessions')) {
+    // An agent works in the worktree Close would remove (subjects are Session ids).
+    const sessions = blockers
+      .filter((blocker) => GROUP_OF[blocker.kind] === 'sessions')
+      .reduce((count, blocker) => count + blocker.subjectIds.length, 0);
+    reasons.push(t('workflowExecution.close.reason.sessions', { count: sessions }));
+  }
+
+  if (has('workflow') && at.waiting && unfinished > 0) {
+    reasons.push(t('workflowExecution.close.reason.waiting', { count: unfinished }));
+  } else {
+    if (has('workflow')) {
+      reasons.push(
+        at.stepTitle !== undefined
+          ? t('workflowExecution.close.reason.atStep', { step: at.stepTitle })
+          : t('workflowExecution.close.reason.workflow'),
+      );
+    }
+
+    if (unfinished > 0) {
+      reasons.push(t('workflowExecution.close.reason.unfinished', { count: unfinished }));
+    }
   }
 
   if (has('broken')) {
@@ -92,13 +144,15 @@ export interface BlockerTask {
 }
 
 export interface BlockerGroupsProps {
-  readonly blockers: readonly ExitBlocker[];
+  readonly blockers: readonly CloseRefusalBlocker[];
   readonly order: 'close' | 'abandon';
   /** The Specification's Tasks by id, to name each blocking Task and its state. */
   readonly tasks: ReadonlyMap<string, BlockerTask>;
   readonly onOpenTask: (taskId: string) => void;
   readonly onSeeWorkflow?: () => void;
   readonly onSeeTasks?: () => void;
+  /** Where the workflow stands, to explain the Workflow group; a generic explanation without it. */
+  readonly workflowAt?: WorkflowAt;
 }
 
 /**
@@ -112,6 +166,7 @@ export function BlockerGroups({
   onOpenTask,
   onSeeWorkflow,
   onSeeTasks,
+  workflowAt,
 }: BlockerGroupsProps) {
   const { t } = useTranslation();
   const groups = (order === 'close' ? CLOSE_ORDER : ABANDON_ORDER).flatMap((group) => {
@@ -146,7 +201,11 @@ export function BlockerGroups({
                 {t('workflowExecution.exit.groupHeading', { title, count })}
               </Typography>
               <Typography as="p" variant="body-sm" className="text-content-secondary">
-                {t(`workflowExecution.exit.explanation.${group}`)}
+                {group === 'workflow' && workflowAt?.stepTitle !== undefined && !workflowAt.waiting
+                  ? t('workflowExecution.exit.explanation.workflowAtStep', {
+                      step: workflowAt.stepTitle,
+                    })
+                  : t(`workflowExecution.exit.explanation.${group}`)}
               </Typography>
             </div>
             {shown.length > 0 ? (

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { createSpecFlowQueryClient } from '../../../app/queryClient';
@@ -36,6 +36,7 @@ function fakeExecutionApi(overrides: Partial<WorkflowExecutionApi> = {}) {
     returnTo: vi.fn(never),
     abandon: vi.fn(never),
     closePreview: vi.fn(never),
+    closeOccupancy: vi.fn(() => Promise.resolve({ blockers: [] })),
     close: vi.fn(never),
     ...overrides,
   } satisfies WorkflowExecutionApi;
@@ -116,6 +117,12 @@ describe('manual workflow execution', () => {
       taskActions: () => Promise.resolve(taskWorkflowProjection('review')),
     });
     fireEvent.click(await screen.findByRole('button', { name: 'Finish step' }));
+    // Disabled Finish says why, next to it.
+    expect(finishButton().disabled).toBe(true);
+    expect(finishButton().getAttribute('aria-describedby')).toBeTruthy();
+    expect(
+      document.getElementById(finishButton().getAttribute('aria-describedby')!)?.textContent,
+    ).toBe('Choose a result to finish.');
     fireEvent.click(screen.getByRole('radio', { name: /Changes requested/ }));
 
     expect(screen.getByRole('alert').textContent).toBe(
@@ -156,9 +163,36 @@ describe('manual workflow execution', () => {
       'A findings document · none registered yet',
     );
     expect(finishButton().disabled).toBe(true);
+    expect(
+      within(screen.getByRole('dialog')).getByText(
+        'Not everything needed for this result is done yet.',
+      ),
+    ).toBeTruthy();
     fireEvent.click(screen.getByRole('radio', { name: /Not worth pursuing/ }));
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Too slow.' } });
     expect(finishButton().disabled).toBe(false);
+  });
+
+  it('chooses the only result already and names a result without a label by its readable id', async () => {
+    const review = taskWorkflowProjection('review');
+    const only = { ...review.actions.finish!.transitions[0]!, id: 'ready-for-merge' };
+    delete (only as { label?: string }).label;
+    delete (only as { result?: string }).result;
+    renderWith(<TaskNowHarness />, {
+      taskActions: () =>
+        Promise.resolve({
+          ...review,
+          actions: {
+            ...review.actions,
+            finish: { ...review.actions.finish!, transitions: [only] },
+          },
+        }),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Finish step' }));
+
+    const radio = screen.getByRole<HTMLInputElement>('radio', { name: /Ready for merge/ });
+    expect(radio.getAttribute('aria-checked') ?? String(radio.checked)).toBe('true');
+    expect(finishButton().disabled).toBe(only.feedback === 'required');
   });
 
   it('re-opens the first start on the new revision when the workflow changed meanwhile', async () => {
@@ -223,6 +257,54 @@ describe('manual workflow execution', () => {
     expect(within(dialog).getAllByRole('button', { name: 'Dismiss' })).toHaveLength(1);
   });
 
+  it('lists the agent Turns running in the worktree beside the workflow blockers, without planning the Close', async () => {
+    const execution = fakeExecutionApi({
+      closeOccupancy: vi.fn(() =>
+        Promise.resolve({
+          blockers: [
+            {
+              kind: 'session-turn-running' as const,
+              subjectIds: ['session-1'],
+              message: 'display only',
+            },
+          ],
+        }),
+      ),
+    });
+    renderWith(
+      <CloseSpecificationDialog
+        open
+        onOpenChange={vi.fn()}
+        specId={SPEC}
+        specTitle="Single sign-on"
+        projection={specificationWorkflowProjection('close-blocked')}
+        tasks={new Map([['t-02', { id: 't-02', title: 'Token exchange', state: 'In progress' }]])}
+        cancelledTasks={[]}
+        onSeeWorkflow={vi.fn()}
+        onSeeTasks={vi.fn()}
+        onOpenTask={vi.fn()}
+        onClosed={vi.fn()}
+      />,
+      { execution },
+    );
+    const dialog = screen.getByRole('dialog');
+
+    await waitFor(() =>
+      expect(
+        within(dialog)
+          .getAllByRole('heading', { level: 3 })
+          .map((heading) => heading.textContent),
+      ).toEqual([
+        'Running sessions · 1',
+        'Workflow · 1',
+        'Unfinished tasks · 1',
+        'Pending writes · 1',
+      ]),
+    );
+    expect(execution.closeOccupancy).toHaveBeenCalledWith(SPEC, expect.anything());
+    expect(execution.closePreview).not.toHaveBeenCalled();
+  });
+
   it('abandons only with a reason', async () => {
     const abandon = vi.fn(() => never());
     renderWith(
@@ -276,6 +358,66 @@ describe('manual workflow execution', () => {
       'This step was already finished. What you can do now is shown below.',
     );
     expect(finish).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports what the finish commit left uncommitted, and only until the next attempt is active (B4)', async () => {
+    const finish = vi.fn(() =>
+      Promise.resolve({
+        subject: { kind: 'task' as const, specId: SPEC, taskId: TASK },
+        transition: 'approved',
+        position: { state: 'ready' as const, step: 'review' },
+        continuation: { kind: 'none' as const, reason: 'on-hold' as const },
+        createdTasks: [],
+        postActions: [
+          {
+            action: 'commit-execution-state' as const,
+            status: 'completed' as const,
+            commit: { paths: ['specs/active/s/.execution/specification.yaml'] },
+            held: {
+              edited: ['specs/active/s/tasks/a/task.md'],
+              paths: ['specs/active/s/tasks/a/task.md', 'specs/active/s/tasks/index.yaml'],
+            },
+          },
+        ],
+      }),
+    );
+    let show: (projection: WorkflowActionProjection) => void = () => undefined;
+    function Switching() {
+      const [projection, setProjection] = useState(taskWorkflowProjection('review'));
+      useEffect(() => {
+        show = setProjection;
+      }, []);
+
+      return (
+        <WorkflowNow
+          subject={{ specId: SPEC, taskId: TASK }}
+          projection={projection}
+          headingId="now"
+          links={{}}
+          artifactOptions={[]}
+        />
+      );
+    }
+
+    renderWith(<Switching />, { execution: fakeExecutionApi({ finish }) });
+    fireEvent.click(await screen.findByRole('button', { name: 'Finish step' }));
+    fireEvent.click(screen.getByRole('radio', { name: /^Approved/ }));
+    fireEvent.click(finishButton());
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    // The finished attempt has no Finish any more: the commit's own result is shown beside it.
+    const finished = taskWorkflowProjection('review');
+    act(() => show({ ...finished, actions: {} }));
+    const held =
+      'The step is finished. specs/active/s/tasks/a/task.md changed outside SpecFlow after ' +
+      'SpecFlow wrote it, so the files of its Task, and of Tasks added or removed since, stay ' +
+      'uncommitted; the rest of the workflow state ' +
+      'is committed. Commit those files with Git; otherwise Close includes them.';
+    expect(screen.getByText(held)).toBeTruthy();
+
+    // The next attempt is active: the earlier commit's note does not carry over into it.
+    act(() => show(taskWorkflowProjection('rework')));
+    expect(screen.queryByText(held)).toBeNull();
   });
 
   it('keeps the drafts a producing step made earlier unless the owner unticks them', async () => {
@@ -337,7 +479,8 @@ describe('manual workflow execution', () => {
 
     await waitFor(() => expect(close).toHaveBeenCalledWith(SPEC, 'op-1'));
     expect((await screen.findByText(/cannot close yet/)).textContent).toBe(
-      'Single sign-on cannot close yet: its workflow is waiting for 1 unfinished task and 1 task document is still being saved.',
+      // The projection is not on a wait step: no "waiting for tasks".
+      'Single sign-on cannot close yet: its workflow has not ended, 1 task is unfinished, and 1 task document is still being saved.',
     );
     expect(screen.getByRole('heading', { name: 'Pending writes · 1' })).toBeTruthy();
   });
@@ -651,6 +794,64 @@ describe('manual workflow execution', () => {
     expect(
       screen.getByText('t-09 still depends on t-08: keep t-08, or untick t-09 too.'),
     ).toBeTruthy();
+  });
+
+  it('never hands the focus of a lost finish to the next step’s Start on the Overview', async () => {
+    let finished = false;
+    const finish = vi.fn(() => {
+      finished = true;
+
+      return Promise.reject(
+        new ApiError({
+          kind: 'timeout',
+          operation: 'workflow',
+          outcome: 'unknown',
+          retryable: false,
+        }),
+      );
+    });
+    const review = taskWorkflowProjection('review');
+    const ready: WorkflowActionProjection = {
+      ...review,
+      position: {
+        kind: 'ready',
+        next: { step: { id: 'rework', title: 'Rework', kind: 'work', purpose: '' }, human: true },
+      } as unknown as WorkflowActionProjection['position'],
+      actions: { start: { step: 'rework', firstStart: false } },
+    };
+    function OverviewHarness() {
+      const projection = useTaskActions(SPEC, TASK).data;
+
+      return projection ? (
+        <WorkflowNow
+          subject={{ specId: SPEC, taskId: TASK }}
+          projection={projection}
+          headingId="now"
+          links={{}}
+          artifactOptions={[]}
+          overview={{ specId: SPEC }}
+        />
+      ) : null;
+    }
+
+    const execution = fakeExecutionApi({ finish });
+    renderWith(<OverviewHarness />, {
+      execution,
+      taskActions: () => Promise.resolve(finished ? ready : review),
+    });
+    const open = await screen.findByRole('button', { name: 'Finish step' });
+    open.focus();
+    fireEvent.click(open);
+    fireEvent.click(screen.getByRole('radio', { name: /^Approved/ }));
+    fireEvent.click(finishButton());
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    const start = await screen.findByRole('button', { name: 'Start Rework' });
+    // The button that opened Finish is not the one that now starts the next step: a key press
+    // meant for the Finish (Enter, Space) cannot start a step the owner never chose.
+    expect(start).not.toBe(open);
+    expect(document.activeElement).not.toBe(start);
+    expect(execution.start).not.toHaveBeenCalled();
   });
 
   it('closes after its own finish without saying the step was already finished', async () => {

@@ -125,6 +125,7 @@ export async function openSessionStore(options: {
     const critical = [
       'fact',
       'dispatch-intent',
+      'process-identity',
       'response-delivered',
       'reconcile-effect',
       'close',

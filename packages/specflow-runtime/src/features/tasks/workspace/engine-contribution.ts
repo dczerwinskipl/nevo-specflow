@@ -88,8 +88,8 @@ export function workspaceAttentionOf(
 /**
  * The workspace `tasks` section (the Overview's Tasks) of one Engine reading (`tasks: 'all'`): the
  * configured grouping with a per-row attention mark, the progress with cancelled and on hold apart,
- * the attention projection, and the Overview summary (a Task named by an attention item or by Now
- * appears there by id only) with Now's explanation when the Specification is stuck. Pure.
+ * the attention projection, and the Overview summary (each Task it names by id and title) with
+ * Now's explanation when the Specification is stuck. Pure.
  */
 export function workspaceTasksOf(
   basis: Pick<InspectionBasis, 'reading' | 'catalogue'>,
@@ -131,7 +131,7 @@ export function workspaceTasksOf(
         groups,
         ...board.progress,
         attention: board.attention.map((item) => workspaceAttentionOf(item, titles)),
-        overview: { ...overviewSummary(titled, named), ...(stuck ? { stuck } : {}) },
+        overview: { ...overviewSummary(titled), ...(stuck ? { stuck } : {}) },
       },
     },
     preparationState: basis.reading.preparation,

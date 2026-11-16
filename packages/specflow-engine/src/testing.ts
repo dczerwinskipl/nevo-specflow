@@ -1,5 +1,26 @@
 /** Internal integration-test surface. Not used by production adapters. */
+import type { ResolveProjectHomeOptions } from './project/home/home';
+import { bootstrapProjectHome as bootstrapEngine } from './project/bootstrap';
+import { openSpecFlowEngine as openEngine } from './engine';
+import { withCheckoutQuiescence } from './specs/lifecycle/checkout-quiescence';
+import type { SpecFlowEngine } from './application';
+
 export * from './index';
+
+/** An Engine test process runs no agent Sessions, so no agent can work in a checkout Close removes. */
+const noAgentSessions = () => Promise.resolve({ quiet: true } as const);
+
+/** `bootstrapProjectHome` as a host without agent Sessions (see `withCheckoutQuiescence`). */
+export async function bootstrapProjectHome(cwd: string): Promise<SpecFlowEngine> {
+  return withCheckoutQuiescence(await bootstrapEngine(cwd), noAgentSessions);
+}
+
+/** `openSpecFlowEngine` as a host without agent Sessions (see `withCheckoutQuiescence`). */
+export async function openSpecFlowEngine(
+  options: ResolveProjectHomeOptions,
+): Promise<SpecFlowEngine> {
+  return withCheckoutQuiescence(await openEngine(options), noAgentSessions);
+}
 
 export { normalizeCreateClientIntent } from './specs/create';
 export {

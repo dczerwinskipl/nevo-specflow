@@ -54,11 +54,51 @@ export function createManagedInvocation(options: {
     await options.persist(fact);
   };
 
+  // The claim is marked dispatched only once the provider process's native-stop evidence is
+  // durable, so a dispatched claim always has a recorded process to prove stopped. Until then it
+  // stays admitted: no provider process of this invocation can have received input.
+  let dispatchAttempted = false,
+    dispatched = false;
+
   async function unknown(message: string) {
     options.stop();
-    await claim?.unknown().catch(() => undefined);
+    // An admitted claim keeps its not-dispatched proof for recovery; only a possibly dispatched
+    // one becomes unknown.
+    if (dispatchAttempted) {
+      await claim?.unknown().catch(() => undefined);
+    }
+
     await options.persist({ kind: 'lost', message });
   }
+
+  const recordProcess = options.invocation.recordProcess;
+  const beforeDispatch = options.invocation.beforeDispatch;
+  const evidenceFirst: Pick<Invocation, 'recordProcess' | 'beforeDispatch'> = {
+    ...(recordProcess
+      ? {
+          recordProcess: async (identity) => {
+            await recordProcess(identity);
+            dispatchAttempted = true;
+            await claim!.dispatch();
+            dispatched = true;
+          },
+        }
+      : {}),
+    ...(beforeDispatch
+      ? {
+          beforeDispatch: async () => {
+            if (!dispatched) {
+              throw new SessionError(
+                'SESSION_RECOVERY_REQUIRED',
+                'Agent process evidence was not recorded before dispatch.',
+              );
+            }
+
+            await beforeDispatch();
+          },
+        }
+      : {}),
+  };
 
   const done = (async () => {
     try {
@@ -76,7 +116,17 @@ export function createManagedInvocation(options: {
         binding: options.binding,
         workspace: context.workspace,
         workspaceIdentity: context.workspaceIdentity,
+        ...(context.specId !== undefined ? { specId: context.specId } : {}),
       });
+      // Every write driver works only in the root the Engine claimed; checked before dispatch, so a
+      // mismatch is abandoned as never started.
+      if (claim.workspace !== context.workspace) {
+        throw new SessionError(
+          'CAPABILITY_UNSUPPORTED',
+          'The claimed workspace is not the execution workspace.',
+        );
+      }
+
       if (options.signal.aborted) {
         await claim.abandon();
         await options.finalize(
@@ -90,24 +140,20 @@ export function createManagedInvocation(options: {
         return;
       }
 
-      await claim.dispatch();
-      if (options.signal.aborted) {
-        const outcome = options.signal.reason === 'shutdown' ? 'interrupted' : 'cancelled';
-        await claim.settle({ process: 'stopped', outcome });
-        await options.finalize({ kind: 'outcome', outcome }, 'native-result');
-
-        return;
-      }
-
       driverInvoked = true;
       native = options.driver.start(
         {
           ...options.invocation,
+          ...evidenceFirst,
           executionContext: {
             ...context,
             workspaceIdentity: context.workspaceIdentity,
             kind: 'workspace-write',
-            admission: { operationId: options.invocation.invocationId, scope: 'project' },
+            admission: {
+              operationId: options.invocation.invocationId,
+              scope: 'project',
+              workspace: claim.workspace,
+            },
           },
         },
         emit,
@@ -120,6 +166,31 @@ export function createManagedInvocation(options: {
         outputUncertain = true;
       });
       const evidence = await native.settlement?.catch(() => undefined);
+      if (!dispatchAttempted) {
+        // No provider process of this invocation was recorded, so none received input: the claim
+        // is still admitted and settles as never dispatched.
+        const reported = evidence?.result ?? observed;
+        const result: Outcome = options.signal.aborted
+          ? {
+              kind: 'outcome',
+              outcome: options.signal.reason === 'shutdown' ? 'interrupted' : 'cancelled',
+            }
+          : reported && reported.outcome !== 'completed'
+            ? reported
+            : {
+                kind: 'outcome',
+                outcome: 'failed',
+                error: {
+                  code: 'PROVIDER_UNAVAILABLE',
+                  message: 'Agent execution could not start.',
+                },
+              };
+        await claim.abandon();
+        await options.finalize(result, 'not-dispatched');
+
+        return;
+      }
+
       if (
         evidence?.process !== 'stopped' ||
         !evidence.result ||

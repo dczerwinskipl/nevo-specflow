@@ -3,13 +3,38 @@ import type { ResolvedProjectHome } from '../../project/home/home';
 /** A named claim on a shared resource, for example `checkout-scoped:<workspaceId>`. */
 export type MutationResource = string;
 
+/**
+ * What holds a conflicting claim, as the claim source that found it knows it: callers word their
+ * refusal from it instead of guessing. `external` is a native agent execution (an agent Session
+ * Turn that writes); its `ownerId` is the Session id.
+ */
+export type ClaimHolder =
+  | {
+      readonly kind: 'create' | 'close' | 'document-change' | 'manual-commit';
+      readonly operationId: string;
+    }
+  | {
+      readonly kind: 'external';
+      readonly operationId: string;
+      readonly ownerId: string;
+      /** `unknown`: the Turn ended without a verified outcome; the Session must be resolved. */
+      readonly phase: 'admitted' | 'dispatched' | 'unknown';
+    };
+
 export class SharedResourceError extends Error {
   readonly code: 'RESOURCE_CONFLICT' | 'RESOURCE_JOURNAL_CORRUPT';
+  /** The claim that conflicts (`RESOURCE_CONFLICT`); absent for a corrupt journal. */
+  readonly holder: ClaimHolder | undefined;
 
-  constructor(code: 'RESOURCE_CONFLICT' | 'RESOURCE_JOURNAL_CORRUPT', message: string) {
+  constructor(
+    code: 'RESOURCE_CONFLICT' | 'RESOURCE_JOURNAL_CORRUPT',
+    message: string,
+    holder?: ClaimHolder,
+  ) {
     super(message);
     this.name = 'SharedResourceError';
     this.code = code;
+    this.holder = holder;
   }
 }
 

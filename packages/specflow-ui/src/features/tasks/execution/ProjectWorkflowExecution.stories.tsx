@@ -38,6 +38,7 @@ export const TaskGateUnmet: Story = { tags: ['capture'], args: { scenario: 'spik
 /** Create the findings document from the gate, then Finish step again. */
 export const TaskGateRoundTrip: Story = { args: { scenario: 'spike-gate-round-trip' } };
 export const SpecificationWaiting: Story = { tags: ['capture'], args: { scenario: 'waiting' } };
+/** Close names the workflow blockers and the agent Session still working in the worktree. */
 export const SpecificationCloseBlocked: Story = { args: { scenario: 'close-blocked' } };
 /** Acceptance would complete the Specification while Tasks are open: Finish names them. */
 export const SpecificationTasksOpen: Story = { args: { scenario: 'tasks-open' } };

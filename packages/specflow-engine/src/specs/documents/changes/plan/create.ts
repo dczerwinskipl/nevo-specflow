@@ -118,7 +118,12 @@ export function planCreate(
 
     const id = allocate(snapshot.manifest.specId, entry.type, registry.length, ids);
     ids.add(id);
-    registry.push({ id, path: entry.path, type: entry.type });
+    registry.push({
+      id,
+      path: entry.path,
+      type: entry.type,
+      ...(entry.templateId !== undefined ? { templateRevision: post.sha256 } : {}),
+    });
     draft.allocatedIds.push(id);
     draft.documents.push({ id, path: entry.path, type: entry.type, ...post });
   }

@@ -181,13 +181,16 @@ export const AttentionOnlyAt1408: Story = {
   args: { contentWidth: 1408, kind: 'attention-only' },
   play: async ({ canvasElement }) => {
     await verifyTwoColumns(canvasElement);
-    assert(!canvasElement.querySelector('#resume-heading'), 'No Session, no Sessions section.');
-    // Documents open the context column instead.
+    // Without a Session, Sessions keeps its place (its empty state) and opens the context column.
     assert(
       canvasElement
         .querySelector('[data-overview-column="context"]')
-        ?.firstElementChild?.querySelector('#documents-summary-heading'),
-      'Documents open the context column without a Session.',
+        ?.firstElementChild?.querySelector('#resume-heading'),
+      'Sessions open the context column without a Session.',
+    );
+    assert(
+      canvasElement.textContent?.includes('This specification has no sessions yet.'),
+      'The empty Sessions section says so.',
     );
   },
 };

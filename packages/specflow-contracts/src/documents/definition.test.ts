@@ -50,7 +50,7 @@ function referenceExample(): ArchetypeDefinitionFile {
             filename: 'runbook.md',
             include: 'optional',
             preselected: true,
-            content: '# {{specificationTitle}} - Runbook\n',
+            content: '# Runbook\n',
           },
         ],
       },

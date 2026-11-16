@@ -327,6 +327,20 @@ with a status line; an unconfirmed check reuses the request id. When the stream 
 `unknown` the alert unmounts, and a polite toast confirms only when this view's reconcile resolved
 it. The check never resends or replays the prompt.
 
+## Outcome reason
+
+A Turn's `outcome` entry carries the Turn's error when it ended with one. Where the Runtime records no
+Commentary of its own for that reason, one quiet line under **Turn failed** / **Turn interrupted**
+(in the Work block, or under the outcome row of a Turn without Work) says why and what to do:
+
+- `TURN_CONFLICT` (the write was refused at admission because another project writer, for example
+  an unresolved Turn's claim, is still held): wait for it, or check the outcome of the Turn whose
+  outcome is unknown, then send again.
+- `PROCESS_STOPPED` (settled on native-stop evidence after a Runtime restart): the agent stopped
+  while its result could not be recorded; review the workspace changes before continuing.
+
+Provider failures already have the provider's Commentary in the conversation and get no second line.
+
 ## Session actions
 
 - **Menu.** Rename, Archive/Restore and Delete live in the header `⋯` menu (`direct: 'never'`),

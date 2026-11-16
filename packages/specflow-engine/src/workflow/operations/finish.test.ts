@@ -246,19 +246,21 @@ describe('fail closed', () => {
 });
 
 describe('a step done by hand', () => {
-  it('reports session-unavailable when the next step would reuse the Session of a person (D10)', async () => {
+  it('waits for the person, with no Session to reuse as the blocker, when the next step would reuse their Session (D10)', async () => {
     const dependencies = memoryDependencies(catalogue);
     const result = await work(dependencies, specification, {}, owner);
 
     expect(result.continuation).toEqual({
       kind: 'attention',
       step: 'specification',
-      reason: 'session-unavailable',
+      reason: 'owner-action',
+      blocker: 'session-unavailable',
       archetype: 'spec-writer',
     });
     const inspection = await inspectExecution(dependencies, SPEC);
+    // No agent configuration attention for a step done by hand.
     expect(inspection.attention).toEqual([
-      expect.objectContaining({ step: 'specification', reason: 'session-unavailable' }),
+      expect.objectContaining({ step: 'specification', reason: 'owner-action' }),
     ]);
     expect(inspection.specification?.record.run.attempts[0]).toMatchObject({
       actor: owner,

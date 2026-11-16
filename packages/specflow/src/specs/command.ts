@@ -10,21 +10,23 @@ import {
   closeWorkspaceOperation,
   planPublicWorkspaceCloseOperation,
   inspectPublicWorkspaceCloseOperation,
-  previewPublicCloseOperation,
   reconcileArchivedConflictScratchOperation,
   discoverSpecifications,
   resolveCreateArchetype,
   openSpecFlowEngine,
   resolveSpecification,
+  withCheckoutQuiescence,
   type CreateSpecificationRequest,
   type DiscoveredSpecification,
   type SpecFlowEngine,
 } from '@nevo/specflow-engine';
 import { inspectCloseOperationDiagnostic } from '@nevo/specflow-engine/diagnostics';
+import { sessionStoreCheckoutQuiescence } from '@nevo/specflow-runtime';
 import { Command, InvalidArgumentError } from 'commander';
 
 import { createDocumentsCommand, type DocumentsCommandContext } from '../documents/command';
 import { engineAt } from '../engine-at';
+import { previewCloseForCli } from './close-preview';
 import { openExecution, reportingWorkflowRefusals } from '../execution-session';
 import { localOwner } from '../local-actor';
 import { abandonLines } from '../workflow/present';
@@ -189,7 +191,7 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
       if (options.preview) {
         output(
           context,
-          await previewPublicCloseOperation(engine, {
+          await previewCloseForCli(engine, {
             kind: 'worktree-close',
             operationId,
             specId,
@@ -290,7 +292,7 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
         ...(options.archiveOnly ? { integrateToTargetBranch: false } : {}),
       };
       if (options.preview) {
-        output(context, await previewPublicCloseOperation(engine, request));
+        output(context, await previewCloseForCli(engine, request));
 
         return;
       }
@@ -448,14 +450,19 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
   return specs;
 }
 
-/** Closing the caller's own linked checkout must not invalidate Engine's control workspace. */
+/**
+ * Closing the caller's own linked checkout must not invalidate Engine's control workspace. The CLI
+ * does not own the Session store, so its Close asks the store's owner record whether an agent can
+ * work in a checkout it removes.
+ */
 async function engineForClose(cwd: string, projectRoot?: string): Promise<SpecFlowEngine> {
   const selected = await engineAt(cwd, projectRoot);
-
-  return openSpecFlowEngine({
+  const engine = await openSpecFlowEngine({
     cwd: selected.context.project.homeRoot,
     projectRoot: selected.context.project.homeRoot,
   });
+
+  return withCheckoutQuiescence(engine, sessionStoreCheckoutQuiescence(engine));
 }
 
 interface CliCloseOptions {

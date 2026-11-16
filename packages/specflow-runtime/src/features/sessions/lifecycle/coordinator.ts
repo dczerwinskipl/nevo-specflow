@@ -308,11 +308,25 @@ export function createSessionCoordinator(
       );
     }
 
-    const claim = binding !== undefined ? { ...identity, binding } : undefined;
+    const evidence = nativeProcess ? nativeStopEvidence(nativeProcess) : undefined;
+    const claim =
+      binding !== undefined
+        ? {
+            ...identity,
+            binding,
+            // A recorded process that may still run is never retired as not dispatched.
+            nativeDispatched:
+              identity.nativeDispatched || (evidence !== undefined && evidence !== 'stopped'),
+          }
+        : undefined;
     const receipt = claim ? await effects!.reconcile(claim) : undefined;
-    let stopped = false;
+    // An interrupted native-result receipt of a recorded process is this path's own claim
+    // settlement, committed before a crash interrupted the Turn's settlement: finish it alike.
+    let stopped =
+      nativeProcess !== undefined &&
+      receipt?.source === 'native-result' &&
+      receipt.outcome === 'interrupted';
     if (!receipt && nativeProcess) {
-      const evidence = nativeStopEvidence(nativeProcess);
       if (evidence !== 'stopped') {
         throw new SessionError(
           'SESSION_RECOVERY_REQUIRED',

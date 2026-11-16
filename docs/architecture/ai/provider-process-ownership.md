@@ -95,6 +95,12 @@ Each check is one cheap OS query per identity (no tool is spawned; `tasklist` is
 did: the Turn is interrupted, never completed. The Job Object name lives in the `Local\` namespace, so
 the job check also requires the root identity to be gone.
 
+Limits, the same as for live termination ([POSIX](#posix)): on POSIX a descendant that leaves the
+group (`setsid`, `setpgid`, a daemonizing double fork) is not covered, so an empty group proves only
+that the owned group stopped, and hostile PID or PGID reuse is not certified. A Windows Job Object
+has no such escape (no breakaway). Cases the evidence cannot settle follow the
+[administrative recovery procedure](session-storage-and-lifecycle.md#administrative-recovery).
+
 ## Launch
 
 - `shell: false`, hidden Windows helper windows, absolute executable and working directory, a

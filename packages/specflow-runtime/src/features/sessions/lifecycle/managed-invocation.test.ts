@@ -8,6 +8,12 @@ import type { SessionEffectClaim, SessionEffects } from './effects';
 import { SessionError } from '../errors';
 
 type Result = Extract<DriverFact, { kind: 'outcome' }>;
+/** What a launching driver does: record its process's evidence, then cross the dispatch barrier. */
+async function launched(invocation: Invocation) {
+  await invocation.recordProcess!({ platform: 'posix', groupId: 4242 });
+  await invocation.beforeDispatch!();
+}
+
 function fixture(
   source: 'native-result' | 'forced-stop' = 'native-result',
   claimed = '/verified/workspace',
@@ -55,11 +61,14 @@ function fixture(
     settleStopped: () => Promise.reject(new Error('Unexpected native-stop settlement')),
   };
   const start = vi.fn(
-    (_invocation: Invocation, emit: (fact: DriverFact) => Promise<void>): ProviderOperation => {
+    (invocation: Invocation, emit: (fact: DriverFact) => Promise<void>): ProviderOperation => {
       order.push('driver-start');
 
       return {
-        done: emit(result),
+        done: (async () => {
+          await launched(invocation);
+          await emit(result);
+        })(),
         settlement: Promise.resolve({ process: 'stopped', source, result }),
         respond: () => Promise.resolve({ deliveredKeys: [] }),
       };
@@ -78,6 +87,16 @@ function fixture(
       temporaryRoot: '/owned/temp',
       workspaceIdentity: 'b'.repeat(64),
     },
+    recordProcess: vi.fn(() => {
+      order.push('process-identity');
+
+      return Promise.resolve();
+    }),
+    beforeDispatch: vi.fn(() => {
+      order.push('dispatch-intent');
+
+      return Promise.resolve();
+    }),
   };
   const persist = vi.fn(() => Promise.resolve());
   const finalize = vi.fn(() => {
@@ -105,8 +124,10 @@ it('admits before launching and proves settlement before canonical terminal publ
   await createManagedInvocation(f.options).done;
   expect(f.order).toEqual([
     'engine-admit',
-    'engine-dispatch',
     'driver-start',
+    'process-identity',
+    'engine-dispatch',
+    'dispatch-intent',
     'engine-settle',
     'canonical-outcome',
   ]);
@@ -154,13 +175,16 @@ it('does not manufacture a failed outcome if the driver throws after invocation'
     throw new Error('Unknown driver startup.');
   });
   await createManagedInvocation(f.options).done;
-  expect(f.phase()).toBe('unknown');
+  // Nothing was recorded or dispatched: the claim keeps its not-dispatched proof for recovery.
+  expect(f.phase()).toBe('admitted');
+  expect(f.persist).toHaveBeenCalledWith(expect.objectContaining({ kind: 'lost' }));
   expect(f.finalize).not.toHaveBeenCalled();
 });
 it('rejects contradictory outcome facts despite a later positive receipt', async () => {
   const f = fixture();
-  f.start.mockImplementation((_invocation, emit) => ({
+  f.start.mockImplementation((invocation, emit) => ({
     done: (async () => {
+      await launched(invocation);
       await emit(f.result);
       await emit({ kind: 'outcome', outcome: 'failed' });
     })(),
@@ -173,8 +197,11 @@ it('rejects contradictory outcome facts despite a later positive receipt', async
 });
 it('requires explicit process-owner evidence even if an adapter declares writable support', async () => {
   const f = fixture();
-  f.start.mockImplementation((_invocation, emit) => ({
-    done: emit(f.result),
+  f.start.mockImplementation((invocation, emit) => ({
+    done: (async () => {
+      await launched(invocation);
+      await emit(f.result);
+    })(),
     respond: () => Promise.resolve({ deliveredKeys: [] }),
   }));
   await createManagedInvocation(f.options).done;
@@ -193,4 +220,39 @@ it('never starts a write driver outside the root the Engine claimed', async () =
     expect.objectContaining({ outcome: 'failed' }),
     'not-dispatched',
   );
+});
+
+it('retires a claim as never dispatched when the driver fails before recording its process', async () => {
+  const f = fixture();
+  const failed: Result = {
+    kind: 'outcome',
+    outcome: 'failed',
+    error: { code: 'PROVIDER_UNAVAILABLE', message: 'Claude is unavailable.' },
+  };
+  f.start.mockImplementation((_invocation, emit) => ({
+    done: emit(failed),
+    settlement: Promise.resolve({ process: 'stopped', source: 'not-started', result: failed }),
+    respond: () => Promise.resolve({ deliveredKeys: [] }),
+  }));
+  await createManagedInvocation(f.options).done;
+  expect(f.claim.dispatch).not.toHaveBeenCalled();
+  expect(f.claim.abandon).toHaveBeenCalledOnce();
+  expect(f.finalize).toHaveBeenCalledWith(failed, 'not-dispatched');
+});
+
+it('refuses to cross the dispatch barrier before the process evidence and the claim are durable', async () => {
+  const f = fixture();
+  let refused: unknown;
+  f.start.mockImplementation((invocation) => ({
+    done: invocation.beforeDispatch!().catch((error: unknown) => {
+      refused = error;
+    }),
+    settlement: Promise.resolve({ process: 'stopped', source: 'not-started' }),
+    respond: () => Promise.resolve({ deliveredKeys: [] }),
+  }));
+  await createManagedInvocation(f.options).done;
+  expect(refused).toMatchObject({ code: 'SESSION_RECOVERY_REQUIRED' });
+  expect(f.options.invocation.beforeDispatch).not.toHaveBeenCalled();
+  expect(f.claim.dispatch).not.toHaveBeenCalled();
+  expect(f.phase()).toBe('settled');
 });

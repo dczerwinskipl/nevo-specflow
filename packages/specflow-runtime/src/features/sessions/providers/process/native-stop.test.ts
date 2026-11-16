@@ -90,6 +90,33 @@ describe('native-stop evidence', () => {
     expect(parseProcessIdentity({ ...windows, extra: 1 })).toBeUndefined();
   });
 
+  it.runIf(process.platform === 'linux' || process.platform === 'win32')(
+    'does not take a live PID started at another time for the recorded process (PID reuse)',
+    async () => {
+      const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
+        detached: process.platform !== 'win32',
+        stdio: 'ignore',
+      });
+      await once(child, 'spawn');
+      try {
+        const live = captureProcessIdentity(
+          child.pid!,
+          process.platform === 'win32' ? job : undefined,
+        )!;
+        const reused: NativeProcessIdentity =
+          live.platform === 'windows'
+            ? { ...live, createdAt: String(BigInt(live.createdAt) - 1n) }
+            : { ...live, leaderStart: String(Number(live.leaderStart) - 1) };
+        expect(nativeStopEvidence(live, systemProcessInspection)).toBe('running');
+        expect(nativeStopEvidence(reused, systemProcessInspection)).toBe('stopped');
+      } finally {
+        const exited = once(child, 'exit');
+        child.kill('SIGKILL');
+        await exited;
+      }
+    },
+  );
+
   it('sees a real process stop on this OS', async () => {
     const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
       detached: process.platform !== 'win32',

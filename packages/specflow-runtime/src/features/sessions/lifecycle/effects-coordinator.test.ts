@@ -104,6 +104,7 @@ async function fixture(failTerminal = false, lostProcess?: NativeProcessIdentity
 
     const done = (async () => {
       expect(invocation.executionContext.kind).toBe('workspace-write');
+      await invocation.recordProcess!({ platform: 'posix', groupId: 4242 });
       await invocation.beforeDispatch!();
       await emit({
         kind: 'correlation',

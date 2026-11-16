@@ -168,7 +168,11 @@ export function createWindowsJob(executable: string, args: readonly string[]) {
       }
 
       return new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => finish(new Error('Windows job startup timed out.')), 5000);
+        const handshake = () =>
+          setTimeout(() => finish(new Error('Windows job startup timed out.')), 5000);
+        // Two bounded handshake legs; the durable evidence write between them is bounded by the
+        // launch's own deadline, not by the bootstrap's.
+        let timeout = handshake();
         const onExit = () => finish(new Error('Windows job bootstrap failed.'));
         let owned = false,
           finished = false;
@@ -194,12 +198,14 @@ export function createWindowsJob(executable: string, args: readonly string[]) {
           }
 
           owned = true;
+          clearTimeout(timeout);
           beforeStart().then(
             () => {
               if (closed || finished) {
                 return finish(new Error('Windows job ownership unavailable.'));
               }
 
+              timeout = handshake();
               child.send({ type: 'start', environment }, (error) => {
                 if (error) {
                   finish(error);

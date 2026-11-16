@@ -235,6 +235,8 @@ describe('Claude full-message protocol', () => {
     { heartbeat: false },
     { heartbeat: undefined },
     { tool_name: 'Read' },
+    { tool_use_id: 'tool-1' },
+    { tool_use_id: 'tool-2-heartbeat-0' },
   ])('rejects a heartbeat that is not of an open call of this Turn: %j', async (change) => {
     const f = fixture(['Bash', 'Read']);
     await f.assistant('command', [

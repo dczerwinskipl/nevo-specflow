@@ -245,6 +245,7 @@ export function createSessionFeed(
       }
     }
 
+    const wasUnavailable = state.snapshot.session.readiness === 'unavailable';
     const snapshot = applySessionEvent(state.snapshot, incoming);
     const activeTurnId =
       event.kind === 'turn'
@@ -268,10 +269,11 @@ export function createSessionFeed(
     });
     // A Turn that ended in a provider loss can leave its provider marked for a recheck, which
     // the Runtime runs only on a catalogue read: without one the Composer would stay disabled
-    // until a reload. The manager's feed asks once per such Turn change; a provider that is
-    // really unavailable stays so.
+    // until a reload. The manager's feed asks once per such Turn change, or once when a later
+    // projection first turns an idle Session's provider unavailable (either order); a provider
+    // that is really unavailable stays so, and the reload is a snapshot, not an event: no loop.
     if (
-      event.kind === 'turn' &&
+      (event.kind === 'turn' || !wasUnavailable) &&
       !snapshot.activeTurn &&
       snapshot.session.readiness === 'unavailable' &&
       snapshot.session.capabilities.manage

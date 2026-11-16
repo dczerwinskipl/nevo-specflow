@@ -588,7 +588,10 @@ export function createClaudeProtocol(
             identifier(frame.session_id) !== expectedSessionId ||
             !allowedTools.includes(name) ||
             (parent !== undefined &&
-              (frame.heartbeat !== true || tools.get(parent)?.name !== name)) ||
+              (frame.heartbeat !== true ||
+                tools.get(parent)?.name !== name ||
+                // Recorded heartbeats name the call: `<parent>-heartbeat-<n>`, never the call itself.
+                !String(frame.tool_use_id).startsWith(parent + '-heartbeat-'))) ||
             !Number.isSafeInteger(frame.elapsed_time_seconds) ||
             (frame.heartbeat !== undefined && typeof frame.heartbeat !== 'boolean') ||
             frame.subagent_type !== undefined ||

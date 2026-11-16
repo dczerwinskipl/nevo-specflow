@@ -172,7 +172,8 @@ the driver proves settlement; record no invented success on process exit. On cle
 the read-only mock settles interrupted. On restart, a dead owner's mock Turns become interrupted,
 pending live interactions become expired and open Work is explicitly closed. A future real-driver
 invocation with uncertain external effects remains unknown and cannot be automatically replayed.
-Only positive reconciliation evidence can remove that block. There is no force-recover API.
+Only positive reconciliation evidence (an Engine receipt or native-stop evidence, below) can remove
+that block. There is no force-recover API.
 
 ### Turn flow
 
@@ -218,17 +219,35 @@ admission.
 | Persisted native context and dispatch-intent = 0 after owner death       | Interrupt the undispatched Turn; a new explicit intent may use the original confirmed context and bindings. Never retry the message. |
 | Confirmed native context and dispatch-intent = 1                         | Context identity alone does not prove the operation stopped or completed. Retain unknown.                                            |
 | Dispatch-intent = 1 without confirmed native context                     | The request may have executed. Retain unknown; never resend or allocate a replacement native context.                                |
+| Recorded native process identity, and no process of it remains           | Positive native-stop evidence: settle the Engine claim (if any), then the Turn, as interrupted (`PROCESS_STOPPED`). Never resend.    |
+| Recorded native process identity that is still alive, or cannot be told  | Retain unknown; a later reconcile asks again.                                                                                        |
 | Failed native answer delivery or uncertain write                         | Retain admission/idempotency; mark the operation unknown. Never resend an answer automatically.                                      |
 | Missing provider/account/workspace, or unproven process-tree termination | Keep the Session unavailable for new Turns; restore and verify the original binding before any reconciliation.                       |
+
+**Native-stop evidence.** When the provider process of an invocation starts, its identity
+([provider process ownership](provider-process-ownership.md#native-stop-evidence)) is written to the
+Turn record (`process-identity`) before the dispatch barrier can be crossed, once per invocation; a
+record after the barrier is refused, and a launch whose identity cannot be recorded is stopped and
+fails. Startup recovery and the reconcile command use it after the Engine receipt: no process of that
+exact identity remaining is positive evidence that the agent stopped. A write Turn's claim is then
+settled first through the claim lifecycle (a `native-result` receipt with process `stopped`, outcome
+`interrupted`), and the Turn becomes interrupted with `PROCESS_STOPPED`, with commentary saying its
+output after the last persisted fact is unavailable and the workspace needs review. The common case,
+a Runtime that crashed and took its provider with it, therefore needs no click: startup settles it.
+A live identity, a reused PID or an OS answer that cannot be established keeps the Turn unknown.
+A read-only Turn with a recorded identity settles the same way, without a claim.
+
+Turns recorded before Runtime kept this evidence (pre-production stores) carry no identity and stay
+unknown; there is no migration or backfill.
 
 Unknown Turns carry safe reasons distinguishing missing context, unavailable provider evidence and
 missing settlement. There is no force-success or force-failure endpoint. Operators MUST NOT edit
 SQLite, remove a barrier or clear a native context to unblock a Session; preserve the database and
 the original provider state. An operator first establishes that the old Runtime and its owned
-provider tree have stopped. The authenticated reconcile command can consume an exact Engine
-settlement receipt; a dispatched Turn without such evidence stays blocked until provider-specific
-positive reconciliation exists. A separate new Session is a new conversation, not recovery of the
-old one, and must wait until any possibly surviving process affecting the workspace is contained.
+provider tree have stopped. The authenticated reconcile command consumes an exact Engine settlement
+receipt or native-stop evidence; a dispatched Turn with neither stays blocked. A separate new
+Session is a new conversation, not recovery of the old one, and must wait until any possibly
+surviving process affecting the workspace is contained.
 
 ## Archive and delete
 

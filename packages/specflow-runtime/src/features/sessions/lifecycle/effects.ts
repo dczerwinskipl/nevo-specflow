@@ -29,6 +29,11 @@ export interface SessionEffects {
       }
     | undefined
   >;
+  /**
+   * Settles a dispatched or unknown claim as interrupted on positive native-stop evidence (no
+   * process of the recorded identity remains). Refuses anything the claim lifecycle refuses.
+   */
+  settleStopped(identity: SessionEffectIdentity): Promise<void>;
 }
 export function executionBinding(
   sessionId: string,

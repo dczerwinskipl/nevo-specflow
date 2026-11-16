@@ -307,6 +307,10 @@ existing Session. See [the V10 backend readiness audit](../../ideas/specflow-run
 Reconcile uses session.manage and the existing positive-evidence recovery path. It accepts no
 caller-supplied outcome, native receipt or force flag, and never resends a possibly executed prompt.
 Unavailable evidence leaves the operation unknown rather than manufacturing a terminal result.
+Positive evidence is an exact Engine settlement receipt or native-stop evidence: no process of the
+identity recorded before dispatch remains, which settles the Turn `interrupted` with error
+`PROCESS_STOPPED` (architecture.ai.session-storage-and-lifecycle). Startup recovery applies the same
+evidence without a request. A live process answers 409 SESSION_RECOVERY_REQUIRED.
 
 Every command acknowledgement is a closed contract schema (`CreateSessionResult`,
 `StartTurnResult`, `CancelTurnResult`, `RespondInteractionResult`, `ReconcileTurnResult`, with

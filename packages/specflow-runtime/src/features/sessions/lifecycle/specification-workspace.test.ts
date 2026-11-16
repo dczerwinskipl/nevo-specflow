@@ -96,6 +96,7 @@ async function fixture(
     {
       admit,
       reconcile: () => Promise.resolve(undefined),
+      settleStopped: () => Promise.reject(new Error('Unexpected native-stop settlement')),
     },
     resolve,
     occupancy,

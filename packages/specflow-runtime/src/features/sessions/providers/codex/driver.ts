@@ -451,6 +451,7 @@ export function createCodexDriver(
               cwd: options.workspace,
               args: codexArguments(options.workspace, false, invocation.selection),
               signal: operationSignal,
+              ...(invocation.recordProcess ? { record: invocation.recordProcess } : {}),
             });
           },
         },

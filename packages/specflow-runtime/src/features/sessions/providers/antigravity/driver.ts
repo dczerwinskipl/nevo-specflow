@@ -437,6 +437,7 @@ export function createAntigravityDriver(
                 signal: operationSignal,
                 maxFrameBytes: 1024 * 1024,
                 secrets: [bridge.nativeHookClientConfiguration.token],
+                ...(invocation.recordProcess ? { record: invocation.recordProcess } : {}),
               });
               launched = true;
 

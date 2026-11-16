@@ -178,5 +178,23 @@ export function createEngineSessionEffects(engine: SpecFlowEngine): SessionEffec
 
       return { ...record.settlement.receipt, source: 'native-result' };
     },
+    async settleStopped(identity) {
+      const target = await claimTarget(identity);
+      if (!target) {
+        throw new SessionError(
+          'SESSION_RECOVERY_REQUIRED',
+          'Execution workspace identity is not verified.',
+        );
+      }
+
+      await guarded(() =>
+        settleWorkspaceExecution(
+          engine,
+          intent(identity),
+          { invocationId: identity.invocationId, process: 'stopped', outcome: 'interrupted' },
+          target,
+        ),
+      );
+    },
   };
 }

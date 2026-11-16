@@ -83,8 +83,8 @@ process.once('message', message => {
 process.send('owned');
 `;
 
-/** Job ownership is process liveness evidence, not an OS security sandbox. */
-export function createWindowsJob(executable: string, args: readonly string[]) {
+/** The packaged Koffi binding and the system kernel32, loaded once per Runtime. */
+export function windowsKernel() {
   const require = createRequire(import.meta.url);
   const packaged = new URL('./native/koffi/index.cjs', import.meta.url);
   const koffiPath = existsSync(packaged) ? fileURLToPath(packaged) : require.resolve('koffi');
@@ -96,6 +96,13 @@ export function createWindowsJob(executable: string, args: readonly string[]) {
 
   const kernelPath = join(systemRoot, 'System32', 'kernel32.dll');
   const kernel = (kernelLibrary ??= koffi.load(kernelPath));
+
+  return { koffiPath, kernelPath, systemRoot, kernel };
+}
+
+/** Job ownership is process liveness evidence, not an OS security sandbox. */
+export function createWindowsJob(executable: string, args: readonly string[]) {
+  const { koffiPath, kernelPath, systemRoot, kernel } = windowsKernel();
   const create = kernel.func('void * __stdcall CreateJobObjectW(void *, const char16_t *)') as (
     security: null,
     name: string,
@@ -144,7 +151,18 @@ export function createWindowsJob(executable: string, args: readonly string[]) {
     // never the trusted Node bootstrap before membership is established.
     environment: { SystemRoot: systemRoot },
     args: ['-e', bootstrap, koffiPath, kernelPath, name, executable, ...args],
-    ready(child: ChildProcess, environment: Readonly<Record<string, string>>) {
+    /** The Job Object's name, part of the durable native-stop evidence (`process-identity.ts`). */
+    name,
+    /**
+     * Admits the bootstrap, then lets it start the provider. `beforeStart` runs once the job owns
+     * exactly the bootstrap and before any provider code runs; native-stop evidence is recorded
+     * there.
+     */
+    ready(
+      child: ChildProcess,
+      environment: Readonly<Record<string, string>>,
+      beforeStart: () => Promise<void> = () => Promise.resolve(),
+    ) {
       if (closed || child.exitCode !== null || child.signalCode !== null) {
         return Promise.reject(new Error('Windows job bootstrap is unavailable.'));
       }
@@ -152,7 +170,8 @@ export function createWindowsJob(executable: string, args: readonly string[]) {
       return new Promise<void>((resolve, reject) => {
         const timeout = setTimeout(() => finish(new Error('Windows job startup timed out.')), 5000);
         const onExit = () => finish(new Error('Windows job bootstrap failed.'));
-        let owned = false;
+        let owned = false,
+          finished = false;
         const onMessage = (message: unknown) => {
           if (message === 'unavailable' || message === 'failed') {
             return finish(
@@ -175,14 +194,25 @@ export function createWindowsJob(executable: string, args: readonly string[]) {
           }
 
           owned = true;
-          child.send({ type: 'start', environment }, (error) => {
-            if (error) {
-              finish(error);
-            }
-          });
+          beforeStart().then(
+            () => {
+              if (closed || finished) {
+                return finish(new Error('Windows job ownership unavailable.'));
+              }
+
+              child.send({ type: 'start', environment }, (error) => {
+                if (error) {
+                  finish(error);
+                }
+              });
+            },
+            (error: unknown) =>
+              finish(error instanceof Error ? error : new Error('Windows job startup failed.')),
+          );
         };
 
         function finish(error?: Error) {
+          finished = true;
           clearTimeout(timeout);
           child.removeListener('message', onMessage);
           child.removeListener('exit', onExit);

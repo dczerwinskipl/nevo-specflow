@@ -484,6 +484,7 @@ export function createClaudeDriver(
               environment,
               signal: operationSignal,
               secrets: installation.secrets,
+              ...(invocation.recordProcess ? { record: invocation.recordProcess } : {}),
             });
           },
           async initialize(payload) {

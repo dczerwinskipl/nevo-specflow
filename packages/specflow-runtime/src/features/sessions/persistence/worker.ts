@@ -30,6 +30,7 @@ import { createSessionCursors } from './cursors';
 import { createSessionReads } from './reads';
 import { createProviderFacts } from './facts';
 import { createEffectReconciliation } from './reconciliation';
+import { parseProcessIdentity } from '../providers/process/process-identity';
 import { createSessionTelemetry } from './telemetry';
 import { createSessionManagement } from './session-management';
 import { createFingerprint, createSessionAssociations } from './associations';
@@ -1047,6 +1048,35 @@ export async function runSessionWorker(): Promise<void> {
         }
 
         run('UPDATE provider_contexts SET dispatched=1 WHERE session=?', c.sessionId);
+
+        return true;
+      });
+    }
+
+    if (c.op === 'process-identity') {
+      return transaction(() => {
+        const t = turn(c.turnId, c.sessionId);
+        const identity = parseProcessIdentity(c.identity);
+        const context = get(
+          'SELECT dispatched FROM provider_contexts WHERE session=?',
+          c.sessionId,
+        );
+        // Evidence precedes the dispatch barrier, once per invocation: a dispatched Turn without it
+        // stays unknown rather than gaining evidence of a process recorded afterwards.
+        if (
+          !identity ||
+          t.invocationId !== c.invocationId ||
+          t.summary.state === 'terminal' ||
+          t.summary.state === 'unknown' ||
+          t.nativeProcess ||
+          !context ||
+          Number(context.dispatched) !== 0
+        ) {
+          fail('SESSION_RECOVERY_REQUIRED', 'Native process evidence cannot be recorded.');
+        }
+
+        t.nativeProcess = identity;
+        saveTurn(c.sessionId, t);
 
         return true;
       });

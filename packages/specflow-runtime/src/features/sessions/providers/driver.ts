@@ -6,6 +6,7 @@ import type {
   TelemetryGroup,
 } from '@nevo/specflow-contracts/sessions';
 import type { DriverFact, MeasurementFact } from '../persistence/protocol';
+import type { NativeProcessIdentity } from './process/process-identity';
 
 export interface ProviderTelemetryBinding {
   accountScope: string;
@@ -52,6 +53,12 @@ export interface Invocation {
       };
   providerContext?: { nativeSessionId: string; resume: boolean; scope?: string };
   beforeDispatch?: () => Promise<void>;
+  /**
+   * Durably records the native-stop evidence of the invocation's provider process; a driver passes
+   * it as `record` to the launch of that process (never to discovery helpers). Present with
+   * `beforeDispatch`.
+   */
+  recordProcess?: (identity: NativeProcessIdentity) => Promise<void>;
 }
 export type EmitFact = (fact: DriverFact) => Promise<void>;
 /** Discovery may initialize several bounded native mode profiles on a cold machine. */

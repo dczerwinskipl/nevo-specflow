@@ -52,6 +52,7 @@ function fixture(
       return Promise.resolve(claim);
     }),
     reconcile: () => Promise.resolve(undefined),
+    settleStopped: () => Promise.reject(new Error('Unexpected native-stop settlement')),
   };
   const start = vi.fn(
     (_invocation: Invocation, emit: (fact: DriverFact) => Promise<void>): ProviderOperation => {

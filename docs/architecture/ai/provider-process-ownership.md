@@ -11,6 +11,7 @@ read_when:
   - changing process-tree termination or Windows Job Object ownership
   - adding provider temporary files, cleanup registrations or protocol framing
   - packaging native process bindings
+  - proving after a Runtime crash that a provider process stopped (native-stop evidence)
 summary: >
   One Runtime owner per provider invocation: POSIX process-group and Windows Job Object
   tree ownership, positive settlement evidence, no-shell launch, bounded framing, input,
@@ -74,6 +75,25 @@ handle for the invocation lifetime, including after root exit.
 The Win32 bindings come from the pinned MIT-licensed Koffi dependency. The product tarball carries
 its CommonJS loader and the Windows x64 and arm64 binaries under `native/` with third-party notices,
 on every build platform; installation needs no compiler, install script or registry download.
+
+## Native-stop evidence
+
+A Runtime that dies cannot settle its invocations. So that a later Runtime can prove a provider
+stopped, `launchOwnedProcess` hands the started process's identity to the adapter's `record`
+callback (`process-identity.ts`, `native-stop.ts`), and the Session store keeps it on the Turn before
+the dispatch barrier ([session lifecycle](session-storage-and-lifecycle.md#positive-evidence-and-operator-recovery)).
+A failed record stops the tree and fails the launch. Only the invocation's provider process is
+recorded, never discovery or probe helpers.
+
+| OS      | Recorded                                                                                                                                    | Stopped (positive)                                                                                                                                                                            | Running or unknown                                                                                                                    |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| POSIX   | Process-group id; on Linux also the leader's `/proc/<pid>/stat` start time and `/proc/sys/kernel/random/boot_id`, right after spawn         | Another boot; or `kill(-pgid, 0)` is `ESRCH`; or (Linux) the PID now belongs to a process with another start time, since Linux never reuses a PID that is still a group id                    | A live group with the recorded leader or without its leader is running; without a recorded start time (macOS) a live group is unknown |
+| Windows | Bootstrap root PID and its creation time (`GetProcessTimes`), and the Job Object's name, after job admission and before the provider starts | The root with that PID and creation time is gone (no such PID, another creation time, or exited) and the named job does not exist (kill-on-close ended every member) or has no active process | The root alive or job members active is running; any query failure is unknown                                                         |
+
+Each check is one cheap OS query per identity (no tool is spawned; `tasklist` is never parsed).
+"Cannot tell" is never stopped. The evidence proves only that the owned tree is gone, not what it
+did: the Turn is interrupted, never completed. The Job Object name lives in the `Local\` namespace, so
+the job check also requires the root identity to be gone.
 
 ## Launch
 

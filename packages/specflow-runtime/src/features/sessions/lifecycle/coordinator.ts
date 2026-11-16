@@ -27,6 +27,7 @@ import type {
 import type { SessionDriver, ProviderOperation, Invocation } from '../providers/driver';
 import { ProviderTimeouts } from '../providers/driver';
 import { validateDriverFact } from '../providers/facts';
+import { nativeStopEvidence } from '../providers/process';
 import { executionBinding, type SessionEffects } from './effects';
 import { createManagedInvocation } from './managed-invocation';
 import { createSessionTelemetryService } from './telemetry';
@@ -293,16 +294,42 @@ export function createSessionCoordinator(
     }
   }
 
+  /**
+   * Settles a detached Turn on positive evidence only: the Engine claim's own settlement, else
+   * native-stop evidence (no process of the identity recorded before dispatch remains), which
+   * first settles the claim through its lifecycle. "Cannot tell" and a live process stay unknown.
+   */
   async function recover(candidate: EffectRecoveryCandidate, actor: string, requestId: string) {
-    if (!effects || active.has(candidate.turnId)) {
+    const { nativeProcess, binding, ...identity } = candidate;
+    if (active.has(candidate.turnId) || (binding !== undefined && !effects)) {
       throw new SessionError(
         'SESSION_RECOVERY_REQUIRED',
         'Execution is still attached or has no recovery evidence service.',
       );
     }
 
-    const receipt = await effects.reconcile(candidate);
-    if (!receipt) {
+    const claim = binding !== undefined ? { ...identity, binding } : undefined;
+    const receipt = claim ? await effects!.reconcile(claim) : undefined;
+    let stopped = false;
+    if (!receipt && nativeProcess) {
+      const evidence = nativeStopEvidence(nativeProcess);
+      if (evidence !== 'stopped') {
+        throw new SessionError(
+          'SESSION_RECOVERY_REQUIRED',
+          evidence === 'running'
+            ? 'The agent process of this Turn is still running.'
+            : 'Whether the agent process of this Turn stopped cannot be established.',
+        );
+      }
+
+      if (claim) {
+        await effects!.settleStopped(claim);
+      }
+
+      stopped = true;
+    }
+
+    if (!receipt && !stopped) {
       throw new SessionError(
         'SESSION_RECOVERY_REQUIRED',
         'No positive Engine settlement evidence is available.',
@@ -311,11 +338,20 @@ export function createSessionCoordinator(
 
     return call<ReconcileTurnResult>({
       op: 'reconcile-effect',
-      ...candidate,
+      ...identity,
+      ...(binding !== undefined ? { binding } : {}),
       actor,
       requestId,
-      source: receipt.source,
-      outcome: receipt.outcome,
+      ...(stopped
+        ? {
+            source: 'native-stopped' as const,
+            outcome: 'interrupted' as const,
+            error: {
+              code: 'PROCESS_STOPPED',
+              message: 'The agent process stopped while its outcome was not recorded.',
+            },
+          }
+        : { source: receipt!.source, outcome: receipt!.outcome }),
       recovered: true,
     });
   }
@@ -337,11 +373,8 @@ export function createSessionCoordinator(
      * earlier run left `unknown` (which never enter the in-process workspace occupancy).
      */
     unsettledTurnsIn: (root: string) => call<readonly string[]>({ op: 'checkout-turns', root }),
+    /** Startup recovery: every detached Turn that positive evidence settles, without a click. */
     async recoverEffects() {
-      if (!effects) {
-        return;
-      }
-
       let afterSession: string | undefined;
       while (!closed) {
         const candidates = await call<EffectRecoveryCandidate[]>({
@@ -622,6 +655,15 @@ export function createSessionCoordinator(
               ...(admitted.providerContext
                 ? {
                     providerContext: admitted.providerContext,
+                    recordProcess: async (identity) => {
+                      await call({
+                        op: 'process-identity',
+                        sessionId,
+                        turnId: admitted.turnId,
+                        invocationId: admitted.invocationId,
+                        identity,
+                      });
+                    },
                     beforeDispatch: async () => {
                       await call({
                         op: 'dispatch-intent',

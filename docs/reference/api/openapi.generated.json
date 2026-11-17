@@ -28777,7 +28777,8 @@
             },
             "in": "query",
             "name": "blocking",
-            "required": false
+            "required": false,
+            "description": "Only the Tasks the Specification's current tasks-stuck names. Cannot be combined with `group` (400)."
           },
           {
             "schema": {
@@ -28788,7 +28789,8 @@
             },
             "in": "query",
             "name": "group",
-            "required": false
+            "required": false,
+            "description": "Only the Tasks of this dashboard group (a group id). Cannot be combined with `blocking` (400)."
           },
           {
             "schema": {

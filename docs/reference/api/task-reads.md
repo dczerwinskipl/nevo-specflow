@@ -238,16 +238,18 @@ Specification's Task inventory from one Engine read (`readExecution`, every Task
   `holdReason` (the recorded reason, verbatim) while it is on hold with a reason, and
   `attention`, the attention item that names the Task (its Requires attention overlay): its own
   item, else the Specification's `task-escalated` that names it; at most one, and the
-  Specification's `tasks-stuck` is `blocksSpecification` instead. A broken
+  Specification's `tasks-stuck` is `blocksSpecification` instead. Use `attention` for display;
+  `facts.attention` is the Engine's own-item fact only (never a Specification item). A broken
   Task has a row of what is readable of it: `id`, `title` (when its manifest is readable),
   `status` (`broken`), `broken: {reason}`, `blocksSpecification` and `attention` (its
   `task-broken` item). The Overview's Task preview carries these same rows
   ([Specification workspace](specification-workspace.md)), made by the same Runtime projection.
 - Inside a group the rows are in importance order (owner decision A-Q2), one comparator for this
   page and the Overview preview: a Task that requires attention (an `attention` item,
-  `blocksSpecification` or broken), then one on hold or unable to start that an open Task waits on
-  directly (its `dependencyWait.waitingFor` names it), then one in progress, then the rest; ties
-  keep the Engine's Task order (by id).
+  `blocksSpecification` or broken), then one on hold or Cannot start (status `on-hold` or
+  `blocked`; never a cancelled or ended one) that an open Task waits on directly (its
+  `dependencyWait.waitingFor` names it), then one in progress, then the rest; ties keep the
+  Engine's Task order (by id), broken Tasks in their place.
 - `progress`: `completed`, `total` (every Task except cancelled ones and those ended without
   completing; broken and on hold ones count), `cancelled` (also those an abandon cancelled),
   `ended` (abandoned by its own workflow, not cancelled) and `onHold`.

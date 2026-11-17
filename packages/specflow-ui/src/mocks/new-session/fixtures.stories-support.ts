@@ -6,17 +6,26 @@ import {
   managedProviders,
 } from '../../features/sessions/start/catalogue/providerDescriptors.stories-support';
 
-/** The four reviewed states; `expanded` is `one-unavailable` with its diagnostics open. */
 export type NewSessionState =
   | 'all-available'
   | 'one-unavailable'
+  /** Every agent confirmed unavailable. */
   | 'none-available'
-  /** The longest short statuses on every card (readability at 375 and in three columns). */
+  /** Codex's availability check was interrupted: undetermined, not unavailable. */
+  | 'check-interrupted'
+  /** The longest short statuses on every card; one of them undetermined. */
   | 'longest-statuses';
 export type MockLocale = 'pl' | 'en';
 
 /** The Runtime catalogue of each state, from the production story fixtures. */
 export function providersFor(state: NewSessionState): ProviderDescriptor[] {
+  const settlement: ProviderDescriptor = {
+    ...codexNotFound(),
+    checkedLocations: undefined,
+    reasonCode: 'PROCESS_SETTLEMENT_UNVERIFIED',
+    reason: 'The availability check process did not exit.',
+  };
+
   switch (state) {
     case 'all-available':
       return managedProviders;
@@ -33,10 +42,12 @@ export function providersFor(state: NewSessionState): ProviderDescriptor[] {
         {
           ...antigravityDescriptor,
           readiness: 'unavailable',
-          reasonCode: 'PROBE_FAILED',
-          reason: 'Antigravity did not complete protocol initialization.',
+          reasonCode: 'NOT_ENABLED_ON_WORKSTATION',
+          reason: 'Antigravity is turned off on this workstation.',
         },
       ];
+    case 'check-interrupted':
+      return [claudeDescriptor, settlement, antigravityDescriptor];
     case 'longest-statuses':
       return [
         {
@@ -45,11 +56,7 @@ export function providersFor(state: NewSessionState): ProviderDescriptor[] {
           reasonCode: 'KNOWN_INCOMPATIBILITY',
           reason: 'Claude Code 3.4.0 is recorded as incompatible.',
         },
-        {
-          ...codexNotFound(),
-          reasonCode: 'PROCESS_SETTLEMENT_UNVERIFIED',
-          reason: 'The availability check process did not exit.',
-        },
+        settlement,
         {
           ...antigravityDescriptor,
           readiness: 'unavailable',
@@ -61,91 +68,192 @@ export function providersFor(state: NewSessionState): ProviderDescriptor[] {
 }
 
 /**
- * The full diagnostics of one unavailable provider, shown only on request. Text between backticks
- * is code (config keys, paths, commands). In production these come from the catalogue's `hint`
- * messages, which would need the same code markup (an i18n `<code>` tag); the mock writes them out.
+ * Confirmed availability versus a check that did not reach a result. A failed or interrupted check
+ * (the probe failed, its process did not exit, nothing checked yet) says nothing about the agent
+ * itself: it is undetermined, and checking again is its action.
+ */
+export type Availability = 'available' | 'unavailable' | 'undetermined';
+
+export function availabilityOf(provider: ProviderDescriptor): Availability {
+  if (provider.readiness === 'ready') {
+    return 'available';
+  }
+
+  return provider.readiness === 'unknown' ||
+    provider.reasonCode === 'PROCESS_SETTLEMENT_UNVERIFIED' ||
+    provider.reasonCode === 'PROBE_FAILED'
+    ? 'undetermined'
+    : 'unavailable';
+}
+
+/**
+ * One way to fix an agent, and what makes the Runtime see it (verified on PR #174):
+ * - `recheck`: the next catalogue read re-runs discovery and the sign-in check (a found executable is
+ *   kept while its file is unchanged, a failed search for 30 s), so "Check again" sees it;
+ * - `restart`: `.nevo/config.yaml` and `.nevo/local/config.yaml` are read once, when the Runtime
+ *   starts, so only a restart sees the change; "Check again" cannot.
+ */
+export interface Fix {
+  readonly kind: 'recheck' | 'restart';
+  /** Shown when an agent has more than one way to fix it. */
+  readonly title?: string;
+  /** Text where `code` is code and **text** names an action. */
+  readonly text: string;
+  readonly yaml?: { readonly file: string; readonly body: string };
+  readonly command?: string;
+}
+
+/**
+ * The full diagnostics of one agent, shown only on request. In production these come from the
+ * catalogue's `hint` messages, which would need code markup (an i18n `<code>` tag) and structured
+ * fixes; the mock writes them out.
  */
 export interface ProviderDiagnostics {
-  /** The reason this text is written for (`readiness` when it is not `unavailable`). */
-  readonly reason?: string;
-  /** What was checked or what the Runtime reported. */
+  /** What was checked or what the Runtime found. */
   readonly found?: string;
-  /** What to do, in order. */
-  readonly fix: string;
-  /** A config snippet to add (YAML). */
-  readonly yaml?: { readonly file: string; readonly body: string };
-  /** A command to run in a terminal. */
-  readonly command?: string;
-  readonly after?: string;
+  readonly fixes: readonly Fix[];
   /** Every path discovery checked (behind its own disclosure). */
   readonly checkedPaths?: readonly string[];
 }
 
-const genericFix: Record<MockLocale, string> = {
-  pl: 'Popraw przyczynę podaną powyżej, a następnie wybierz **Sprawdź ponownie**.',
-  en: 'Fix the cause above, then choose **Check again**.',
-};
-
 const codexYaml = 'sessions:\n  providers:\n    codex:\n      executable: C:\\path\\to\\codex.exe';
 
-const diagnostics: Record<MockLocale, Record<string, ProviderDiagnostics>> = {
+const diagnostics: Record<MockLocale, Record<string, Omit<ProviderDiagnostics, 'checkedPaths'>>> = {
   pl: {
-    claude: {
-      reason: 'authenticationRequired',
-      fix: 'Zaloguj się w CLI Claude w terminalu:',
-      command: 'claude auth login',
-      after: 'Następnie wybierz **Sprawdź ponownie**.',
+    'claude:authenticationRequired': {
+      fixes: [
+        {
+          kind: 'recheck',
+          text: 'Zaloguj się w CLI Claude w terminalu:',
+          command: 'claude auth login',
+        },
+      ],
     },
-    codex: {
-      reason: 'EXECUTABLE_NOT_FOUND',
+    'codex:EXECUTABLE_NOT_FOUND': {
       found: 'Sprawdzono: `PATH`, aplikację Codex na komputer i globalny pakiet npm.',
-      fix: 'Zainstaluj CLI Codex albo wskaż jego plik wykonywalny w `.nevo/local/config.yaml`:',
-      yaml: { file: '.nevo/local/config.yaml', body: codexYaml },
-      after: 'Następnie uruchom ponownie Nevo SpecFlow.',
+      fixes: [
+        {
+          kind: 'recheck',
+          title: 'Zainstaluj CLI',
+          text: 'Zainstaluj CLI Codex w jednym z tych miejsc. Nieudane wyszukiwanie jest pamiętane przez 30 s, więc nowa instalacja pojawi się najwyżej po tym czasie.',
+        },
+        {
+          kind: 'restart',
+          title: 'Albo wskaż zainstalowany plik',
+          text: 'Dodaj jego ścieżkę do `.nevo/local/config.yaml`:',
+          yaml: { file: '.nevo/local/config.yaml', body: codexYaml },
+        },
+      ],
     },
-    antigravity: {
-      reason: 'PROBE_FAILED',
-      found: 'Odpowiedź CLI: Antigravity did not complete protocol initialization.',
-      fix: 'Sprawdź, czy `antigravity` uruchamia się i działa w terminalu.',
-      after: 'Następnie wybierz **Sprawdź ponownie**.',
+    'antigravity:NOT_ENABLED_ON_WORKSTATION': {
+      found:
+        'Ten komputer wyłącza Antigravity ustawieniem `sessions.providers.antigravity.enabled: false` w `.nevo/local/config.yaml`.',
+      fixes: [{ kind: 'restart', text: 'Usuń to ustawienie.' }],
+    },
+    'claude:KNOWN_INCOMPATIBILITY': {
+      found:
+        'Wykryta wersja: `3.4.0`, zapisana jako niezgodna. Obsługiwane wersje: `docs/reference/providers/compatibility.md`.',
+      fixes: [{ kind: 'recheck', text: 'Zainstaluj obsługiwaną wersję CLI Claude.' }],
+    },
+    'codex:PROCESS_SETTLEMENT_UNVERIFIED': {
+      found:
+        'Proces uruchomiony przy sprawdzaniu mógł się jeszcze nie zakończyć, więc dostępność nie została ustalona. To nie oznacza, że Codex jest niedostępny.',
+      fixes: [
+        {
+          kind: 'recheck',
+          text: 'Poczekaj chwilę. Jeśli to się powtarza, zakończ proces `codex` w Menedżerze zadań.',
+        },
+      ],
+    },
+    'antigravity:INSTALLATION_UNAVAILABLE': {
+      found:
+        'Antigravity używa zasad zarządzanych na tym komputerze albo innego źródła logowania. Nevo SpecFlow uruchamia CLI tylko z jego domyślnym logowaniem.',
+      fixes: [
+        {
+          kind: 'recheck',
+          text: 'Zaloguj się domyślnym logowaniem CLI albo usuń zasady zarządzane (`docs/reference/providers`).',
+        },
+      ],
     },
   },
   en: {
-    claude: {
-      reason: 'authenticationRequired',
-      fix: 'Sign in to the Claude CLI in a terminal:',
-      command: 'claude auth login',
-      after: 'Then choose **Check again**.',
+    'claude:authenticationRequired': {
+      fixes: [
+        {
+          kind: 'recheck',
+          text: 'Sign in to the Claude CLI in a terminal:',
+          command: 'claude auth login',
+        },
+      ],
     },
-    codex: {
-      reason: 'EXECUTABLE_NOT_FOUND',
+    'codex:EXECUTABLE_NOT_FOUND': {
       found: 'Looked in: `PATH`, the Codex desktop app and the npm global package.',
-      fix: 'Install the Codex CLI, or point to its executable in `.nevo/local/config.yaml`:',
-      yaml: { file: '.nevo/local/config.yaml', body: codexYaml },
-      after: 'Then restart Nevo SpecFlow.',
+      fixes: [
+        {
+          kind: 'recheck',
+          title: 'Install the CLI',
+          text: 'Install the Codex CLI in one of these places. A failed search is remembered for 30 s, so a new installation shows up after that at the latest.',
+        },
+        {
+          kind: 'restart',
+          title: 'Or point to an installed file',
+          text: 'Add its path to `.nevo/local/config.yaml`:',
+          yaml: { file: '.nevo/local/config.yaml', body: codexYaml },
+        },
+      ],
     },
-    antigravity: {
-      reason: 'PROBE_FAILED',
-      found: 'The CLI said: Antigravity did not complete protocol initialization.',
-      fix: 'Check that `antigravity` starts and works in a terminal.',
-      after: 'Then choose **Check again**.',
+    'antigravity:NOT_ENABLED_ON_WORKSTATION': {
+      found:
+        'This machine turns Antigravity off with `sessions.providers.antigravity.enabled: false` in `.nevo/local/config.yaml`.',
+      fixes: [{ kind: 'restart', text: 'Remove that setting.' }],
+    },
+    'claude:KNOWN_INCOMPATIBILITY': {
+      found:
+        'Detected version: `3.4.0`, recorded as incompatible. Supported versions: `docs/reference/providers/compatibility.md`.',
+      fixes: [{ kind: 'recheck', text: 'Install a supported version of the Claude CLI.' }],
+    },
+    'codex:PROCESS_SETTLEMENT_UNVERIFIED': {
+      found:
+        'A process started by the check may still be running, so availability was not determined. This does not mean Codex is unavailable.',
+      fixes: [
+        {
+          kind: 'recheck',
+          text: 'Wait a moment. If it keeps happening, end the `codex` process in Task Manager.',
+        },
+      ],
+    },
+    'antigravity:INSTALLATION_UNAVAILABLE': {
+      found:
+        'Antigravity uses machine-managed policy or another sign-in source. Nevo SpecFlow runs the CLI only with its own default sign-in.',
+      fixes: [
+        {
+          kind: 'recheck',
+          text: 'Sign in with the CLI default sign-in, or remove the managed policy (`docs/reference/providers`).',
+        },
+      ],
     },
   },
+};
+
+const genericFix: Record<MockLocale, string> = {
+  pl: 'Popraw przyczynę podaną powyżej.',
+  en: 'Fix the cause above.',
 };
 
 export function diagnosticsOf(
   locale: MockLocale,
   provider: ProviderDescriptor | undefined,
   providerId: string,
-): ProviderDiagnostics | undefined {
-  const written = diagnostics[locale][providerId];
+): ProviderDiagnostics {
   const reason = provider?.readiness === 'unavailable' ? provider.reasonCode : provider?.readiness;
-  const base: ProviderDiagnostics | undefined =
-    written && written.reason === reason ? written : { fix: genericFix[locale] };
+  const written = diagnostics[locale][`${providerId}:${reason ?? ''}`];
+  if (!written) {
+    return { fixes: [{ kind: 'recheck', text: genericFix[locale] }] };
+  }
 
   const paths = provider?.checkedLocations?.map((location) => location.path);
 
-  return paths?.length && base === written ? { ...base, checkedPaths: paths } : base;
+  return paths?.length ? { ...written, checkedPaths: paths } : written;
 }
 
 /** Mock-only copy; everything else is the production catalogue's own text. */
@@ -153,10 +261,19 @@ export const mockCopy = {
   pl: {
     oneUnavailable: '{{provider}}: {{status}}',
     someUnavailable: 'Niedostępne: {{providers}}',
-    noneAvailable: 'Żaden agent nie jest teraz dostępny.',
+    noneHeading: 'Żaden agent nie jest dostępny',
+    noneLine: 'Sprawdź przyczyny niedostępności i wymagane działania dla poszczególnych agentów.',
+    undeterminedHeading: 'Nie udało się ustalić dostępności',
+    undeterminedLine:
+      'Sprawdzanie części agentów nie dało wyniku. Sprawdź ponownie albo zobacz przyczyny dla poszczególnych agentów.',
+    noneNote: 'Żaden agent nie jest teraz dostępny.',
     howToFix: 'Jak naprawić',
-    panelTitle: 'Niedostępni agenci',
+    details: 'Szczegóły',
+    agents: 'Agent',
     checkedPaths: 'Sprawdzone ścieżki ({{count}})',
+    fixRecheck: 'Następnie wybierz **Sprawdź ponownie**.',
+    fixRestart:
+      'Następnie uruchom ponownie Nevo SpecFlow: konfiguracja jest czytana tylko przy starcie, więc **Sprawdź ponownie** nie zobaczy tej zmiany.',
     settings: 'Ustawienia agenta',
     providerDefaultModel: 'Domyślny dostawcy',
     nameLabel: 'Nazwa sesji',
@@ -167,10 +284,19 @@ export const mockCopy = {
   en: {
     oneUnavailable: '{{provider}}: {{status}}',
     someUnavailable: 'Unavailable: {{providers}}',
-    noneAvailable: 'No agent is available right now.',
+    noneHeading: 'No agent is available',
+    noneLine: 'See why each agent is unavailable and what it needs.',
+    undeterminedHeading: 'Availability could not be determined',
+    undeterminedLine:
+      'Checking some agents gave no result. Check again, or see the cause for each agent.',
+    noneNote: 'No agent is available right now.',
     howToFix: 'How to fix',
-    panelTitle: 'Unavailable agents',
+    details: 'Details',
+    agents: 'Agent',
     checkedPaths: 'Checked paths ({{count}})',
+    fixRecheck: 'Then choose **Check again**.',
+    fixRestart:
+      'Then restart Nevo SpecFlow: the configuration is read only at start, so **Check again** cannot see this change.',
     settings: 'Agent settings',
     providerDefaultModel: 'Provider default',
     nameLabel: 'Session name',
@@ -199,7 +325,7 @@ export function fill(template: string, values: Record<string, string | number>) 
 }
 
 /**
- * The tile's short status: a small fixed vocabulary per reason code, so every tile keeps one line in
+ * The card's short status: a small fixed vocabulary per reason code, so every card keeps one line in
  * both languages. The catalogue's precise reason moves into the diagnostics.
  */
 const shortStatusCopy = {
@@ -262,7 +388,6 @@ export function shortStatus(provider: ProviderDescriptor, locale: MockLocale): s
     case 'KNOWN_INCOMPATIBILITY':
     case 'RESTRICTION_UNSUPPORTED':
       return copy.incompatible;
-    // Temporary: the check's process may still be running; wait, then check again.
     case 'PROCESS_SETTLEMENT_UNVERIFIED':
       return copy.checkUnfinished;
     case 'SPECIFICATION_WORKTREE_UNSUPPORTED':

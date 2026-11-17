@@ -18,6 +18,7 @@ import {
   InformationList,
   cn,
   InlineNote,
+  SegmentedControl,
   StatusIndicator,
   choiceSurfaceCheckClassName,
   choiceSurfaceClassName,
@@ -72,8 +73,11 @@ import {
   StartEnvironment,
   storySpecification,
 } from '../../features/sessions/start/screen/sessionStart.stories-support';
+import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 import {
+  availabilityOf,
   diagnosticsOf,
+  type Availability,
   fill,
   mockCopy,
   agentWording,
@@ -190,38 +194,51 @@ function MockScreen({
         onPress: () => void sidePanel.toggle(),
       };
 
+  const noAgent = !catalogue.providers.some((p) => p.available);
+
   return (
     <SessionContextSourceProvider sessionId={pendingSessionId} value={contextValue}>
-      <AppWorkspace scroll="workspace" fit="available" split="dynamic" labels={labels}>
-        <AppWorkspace.Primary
-          header={
-            <WorkspaceHeader
-              title={t('sessionStart.heading')}
-              actions={[contextAction]}
-              labels={{ moreActions: t('common.moreActions') }}
+      {/* With no agent the form is short: the stacked shell's full-height sheet would read as an
+          empty card, so its surface steps back to the plain workbench background (mock-only
+          override; production needs a shell option, see the handover). */}
+      <div
+        className={cn(
+          'contents',
+          noAgent &&
+            '[&_.mobile-workspace-surface]:border-transparent [&_.mobile-workspace-surface]:![background:none] [&_.mobile-workspace-surface]:![box-shadow:none] [&_.mobile-workspace-surface]:before:hidden [&_.mobile-workspace-surface]:after:hidden',
+        )}
+      >
+        <AppWorkspace scroll="workspace" fit="available" split="dynamic" labels={labels}>
+          <AppWorkspace.Primary
+            header={
+              <WorkspaceHeader
+                title={t('sessionStart.heading')}
+                actions={[contextAction]}
+                labels={{ moreActions: t('common.moreActions') }}
+              />
+            }
+          >
+            <StartColumn
+              catalogue={catalogue}
+              descriptors={descriptors}
+              agent={agent}
+              onAgentChange={setAgent}
+              name={name}
+              onNameChange={setName}
+              copy={copy}
+              locale={locale}
+              diagnosticsOpen={diagnosticsOpen}
             />
-          }
-        >
-          <StartColumn
-            catalogue={catalogue}
-            descriptors={descriptors}
-            agent={agent}
-            onAgentChange={setAgent}
-            name={name}
-            onNameChange={setName}
-            copy={copy}
-            locale={locale}
-            diagnosticsOpen={diagnosticsOpen}
-          />
-        </AppWorkspace.Primary>
-        <AppWorkspace.Secondary
-          open={contextOpen}
-          onOpenChange={setContextOpen}
-          header={<WorkspaceHeader title={t('sessions.context.title')} headingLevel={2} />}
-        >
-          <StartContext value={contextValue} />
-        </AppWorkspace.Secondary>
-      </AppWorkspace>
+          </AppWorkspace.Primary>
+          <AppWorkspace.Secondary
+            open={contextOpen}
+            onOpenChange={setContextOpen}
+            header={<WorkspaceHeader title={t('sessions.context.title')} headingLevel={2} />}
+          >
+            <StartContext value={contextValue} />
+          </AppWorkspace.Secondary>
+        </AppWorkspace>
+      </div>
     </SessionContextSourceProvider>
   );
 }
@@ -299,6 +316,12 @@ function StartColumn({
     configurationUnavailable: false,
   });
   const noAgent = !catalogue.providers.some((p) => p.available);
+  const availabilityFor = (providerId: string): Availability => {
+    const descriptor = descriptors.find((d) => d.providerId === providerId);
+
+    return descriptor ? availabilityOf(descriptor) : 'undetermined';
+  };
+
   const statusOf = (providerId: string) => {
     const descriptor = descriptors.find((d) => d.providerId === providerId);
 
@@ -307,7 +330,7 @@ function StartColumn({
 
   const anyUnavailable = catalogue.providers.some((p) => !p.available);
   // Only a blocker is said next to Start; a ready form needs no sentence.
-  const note = noAgent ? copy.noneAvailable : prerequisite ? text(prerequisite) : '';
+  const note = noAgent ? copy.noneNote : prerequisite ? text(prerequisite) : '';
   const submit = (event: FormEvent<HTMLFormElement>) => event.preventDefault();
 
   const actions = (
@@ -356,6 +379,7 @@ function StartColumn({
                   key={provider.id}
                   provider={provider}
                   status={statusOf(provider.id)}
+                  availability={availabilityFor(provider.id)}
                   checked={agent.providerId === provider.id}
                   onSelect={() => onAgentChange(selectProvider(agent, provider))}
                 />
@@ -416,11 +440,14 @@ function StartColumn({
 function AgentCard({
   provider,
   status,
+  availability,
   checked,
   onSelect,
 }: {
   provider: StartProvider;
   status: string;
+  /** Undetermined (a check without a result) reads as pending, not as an error. */
+  availability: Availability;
   checked: boolean;
   onSelect: () => void;
 }) {
@@ -473,10 +500,15 @@ function AgentCard({
           data-status
           className="flex h-4 items-center gap-1.5 overflow-hidden text-body-sm whitespace-nowrap text-content-secondary"
         >
-          {provider.available ? (
+          {availability === 'available' ? (
             <StatusIndicator tone="success" />
           ) : (
-            <Icon name="circle-alert" size="sm" aria-hidden="true" className="text-content-muted" />
+            <Icon
+              name={availability === 'undetermined' ? 'clock' : 'circle-alert'}
+              size="sm"
+              aria-hidden="true"
+              className="text-content-muted"
+            />
           )}
           {status}
         </span>
@@ -493,10 +525,17 @@ function lowerFirst(value: string) {
   return /^.\p{Ll}/u.test(value) ? value.charAt(0).toLowerCase() + value.slice(1) : value;
 }
 
+interface UnavailableAgent {
+  provider: StartProvider;
+  descriptor: ProviderDescriptor | undefined;
+  availability: Availability;
+  status: string;
+}
+
 /**
- * One shared line under the picker naming what is unavailable. "How to fix" opens the full
- * diagnostics in a side panel (a bottom sheet on narrow layouts) instead of growing the form. With
- * no agent at all the line is the screen's message and carries "Check again" itself.
+ * Under the cards: one line naming what is unavailable, or, with no agent available, the screen's
+ * message. Confirmed unavailability leads with "How to fix"; a check without a result (undetermined)
+ * leads with "Check again". The details open in a side panel (a bottom sheet on narrow layouts).
  */
 function DiagnosticsLine({
   id,
@@ -515,128 +554,271 @@ function DiagnosticsLine({
   statusOf: (providerId: string) => string;
   defaultOpen: boolean;
 }) {
-  const { t } = useTranslation();
-  const text = useMessage();
-  const isSplit = useWorkspaceLayout().mode === 'split';
   const [open, setOpen] = useState(defaultOpen);
-  const unavailable = catalogue.providers.filter((p) => !p.available);
-  const none = unavailable.length === catalogue.providers.length;
-  const [only] = unavailable;
-  const summary = none
-    ? copy.noneAvailable
-    : unavailable.length === 1 && only
-      ? fill(copy.oneUnavailable, { provider: only.title, status: lowerFirst(statusOf(only.id)) })
-      : fill(copy.someUnavailable, { providers: unavailable.map((p) => p.title).join(', ') });
+  const items: UnavailableAgent[] = catalogue.providers
+    .filter((p) => !p.available)
+    .map((provider) => {
+      const descriptor = descriptors.find((d) => d.providerId === provider.id);
+
+      return {
+        provider,
+        descriptor,
+        availability: descriptor ? availabilityOf(descriptor) : 'undetermined',
+        status: statusOf(provider.id),
+      };
+    });
+  const none = items.length === catalogue.providers.length;
+  const anyUndetermined = items.some((item) => item.availability === 'undetermined');
+  const onlyUndetermined = items.every((item) => item.availability === 'undetermined');
+  const [first] = items;
+
+  const openDetails = (primary: boolean) => (
+    <Button
+      type="button"
+      variant={primary ? 'primary' : 'secondary'}
+      size="sm"
+      aria-describedby={id}
+      aria-haspopup="dialog"
+      onClick={() => setOpen(true)}
+    >
+      {onlyUndetermined ? copy.details : copy.howToFix}
+    </Button>
+  );
+  const checkAgain = (primary: boolean) => (
+    <Button type="button" variant={primary ? 'primary' : 'secondary'} size="sm">
+      {copy.checkAgain}
+    </Button>
+  );
+  const panel = (
+    <DiagnosticsPanel
+      open={open}
+      onOpenChange={setOpen}
+      items={items}
+      copy={copy}
+      locale={locale}
+    />
+  );
+
+  if (none) {
+    return (
+      <>
+        <div className="grid gap-3">
+          <div className="flex items-start gap-2">
+            <span className="flex h-5 items-center">
+              <Icon
+                name={anyUndetermined ? 'clock' : 'circle-alert'}
+                size="sm"
+                aria-hidden="true"
+                className={anyUndetermined ? 'text-content-muted' : 'text-status-danger'}
+              />
+            </span>
+            <div className="grid min-w-0 gap-0.5">
+              <Typography as="h2" variant="title-sm" id={id}>
+                {anyUndetermined ? copy.undeterminedHeading : copy.noneHeading}
+              </Typography>
+              <Typography as="p" variant="body-sm" className="text-content-secondary">
+                {anyUndetermined ? copy.undeterminedLine : copy.noneLine}
+              </Typography>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 pl-6">
+            {anyUndetermined ? checkAgain(true) : openDetails(true)}
+            {anyUndetermined ? openDetails(false) : checkAgain(false)}
+          </div>
+        </div>
+        {panel}
+      </>
+    );
+  }
+
+  const summary =
+    items.length === 1 && first
+      ? fill(copy.oneUnavailable, {
+          provider: first.provider.title,
+          status: lowerFirst(first.status),
+        })
+      : fill(copy.someUnavailable, {
+          providers: items.map((item) => item.provider.title).join(', '),
+        });
 
   return (
     <>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <InlineNote tone={none ? 'danger' : 'attention'} className="min-w-0">
+        <InlineNote
+          tone={onlyUndetermined ? 'info' : 'attention'}
+          icon={onlyUndetermined ? 'clock' : undefined}
+          className="min-w-0"
+        >
           <span id={id}>{summary}</span>
         </InlineNote>
         <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            aria-describedby={id}
-            aria-haspopup="dialog"
-            onClick={() => setOpen(true)}
-          >
-            {copy.howToFix}
-          </Button>
-          {none && (
-            <Button type="button" size="sm">
-              {copy.checkAgain}
-            </Button>
-          )}
+          {onlyUndetermined && checkAgain(false)}
+          {openDetails(false)}
         </div>
       </div>
-      <Drawer open={open} onOpenChange={setOpen}>
-        <DrawerContent side={isSplit ? 'right' : 'bottom'} closeLabel={t('common.close')}>
-          <DrawerHeader>
-            <DrawerTitle>{copy.panelTitle}</DrawerTitle>
-            <DrawerDescription>{summary}</DrawerDescription>
-          </DrawerHeader>
-          <DrawerBody>
-            <div className="grid gap-6">
-              {unavailable.map((provider) => {
-                const descriptor = descriptors.find((d) => d.providerId === provider.id);
-
-                return (
-                  <ProviderDiagnosticsBlock
-                    key={provider.id}
-                    provider={provider}
-                    status={statusOf(provider.id)}
-                    // The sign-in reason only restates the short status.
-                    reason={
-                      provider.reason && descriptor?.readiness !== 'authenticationRequired'
-                        ? text(provider.reason)
-                        : ''
-                    }
-                    details={diagnosticsOf(locale, descriptor, provider.id)}
-                    copy={copy}
-                  />
-                );
-              })}
-            </div>
-          </DrawerBody>
-          <DrawerFooter>
-            <Button type="button" className="w-full sm:w-fit">
-              {copy.checkAgain}
-            </Button>
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
+      {panel}
     </>
   );
 }
 
+/**
+ * The details of the unavailable agents. One agent: its name is the title and its status the
+ * description. Several: a segmented control switches between them. The body scrolls between the
+ * fixed header and footer. The footer offers "Check again" only when a fix can be seen by it; a fix
+ * that needs a restart says so instead (the UI cannot restart the Runtime).
+ */
+function DiagnosticsPanel({
+  open,
+  onOpenChange,
+  items,
+  copy,
+  locale,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  items: UnavailableAgent[];
+  copy: Copy;
+  locale: MockLocale;
+}) {
+  const { t } = useTranslation();
+  const text = useMessage();
+  const isSplit = useWorkspaceLayout().mode === 'split';
+  const [selectedId, setSelectedId] = useState(items[0]?.provider.id ?? '');
+  const selected = items.find((item) => item.provider.id === selectedId) ?? items[0];
+  if (!selected) {
+    return null;
+  }
+
+  const details = diagnosticsOf(locale, selected.descriptor, selected.provider.id);
+  const canRecheck = details.fixes.some((fix) => fix.kind === 'recheck');
+  const single = items.length === 1;
+
+  return (
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent side={isSplit ? 'right' : 'bottom'} closeLabel={t('common.close')}>
+        <DrawerHeader>
+          <DrawerTitle>{single ? selected.provider.title : copy.howToFix}</DrawerTitle>
+          {!single && (
+            <SegmentedControl
+              aria-label={copy.agents}
+              className="mt-3 w-full"
+              value={selected.provider.id}
+              onValueChange={setSelectedId}
+            >
+              {items.map((item) => (
+                <SegmentedControl.Item key={item.provider.id} value={item.provider.id}>
+                  {item.provider.title}
+                </SegmentedControl.Item>
+              ))}
+            </SegmentedControl>
+          )}
+          <DrawerDescription className={cn('flex items-center gap-1.5', !single && 'mt-3')}>
+            <Icon
+              name={selected.availability === 'undetermined' ? 'clock' : 'circle-alert'}
+              size="sm"
+              aria-hidden="true"
+              className="text-content-muted"
+            />
+            {selected.status}
+          </DrawerDescription>
+        </DrawerHeader>
+        <DrawerBody>
+          <ProviderDiagnosticsBlock
+            key={selected.provider.id}
+            // The Runtime's own wording, only when the written diagnosis does not already say it.
+            reason={
+              !details.found &&
+              selected.provider.reason &&
+              selected.descriptor?.readiness !== 'authenticationRequired'
+                ? text(selected.provider.reason)
+                : ''
+            }
+            details={details}
+            copy={copy}
+          />
+        </DrawerBody>
+        <DrawerFooter>
+          {canRecheck ? (
+            <Button type="button" className="w-full sm:w-fit">
+              {copy.checkAgain}
+            </Button>
+          ) : (
+            // Nothing here can be seen by a recheck: no button, the restart is the next step.
+            <div className="flex items-start gap-2">
+              <span className="flex h-4 items-center">
+                <Icon name="info" size="sm" aria-hidden="true" className="text-content-muted" />
+              </span>
+              <Prose>{copy.fixRestart}</Prose>
+            </div>
+          )}
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
+  );
+}
+
 function ProviderDiagnosticsBlock({
-  provider,
-  status,
   reason,
   details,
   copy,
 }: {
-  provider: StartProvider;
-  status: string;
-  /** The catalogue's precise reason, when it says more than the short status. */
+  /** The catalogue's precise reason, when no written diagnosis covers it. */
   reason: string;
-  details: ProviderDiagnostics | undefined;
+  details: ProviderDiagnostics;
   copy: Copy;
 }) {
-  const headingId = useId();
-
   return (
-    <section aria-labelledby={headingId} className="grid min-w-0 gap-2">
-      <Typography as="h2" variant="label-md" id={headingId} className="text-content-primary">
-        {provider.title}
-        <span className="font-normal text-content-secondary"> · {status}</span>
-      </Typography>
-      {reason && reason !== status && <Prose>{reason}</Prose>}
-      {details?.found && <Prose>{details.found}</Prose>}
-      {details && <Prose>{details.fix}</Prose>}
-      {details?.yaml && <CodeBlock label={details.yaml.file}>{details.yaml.body}</CodeBlock>}
-      {details?.command && <CodeBlock>{details.command}</CodeBlock>}
-      {details?.after && <Prose>{details.after}</Prose>}
-      {details?.checkedPaths && (
-        <Collapsible density="inline" className="text-body-sm text-content-secondary">
-          <Collapsible.Trigger>
-            {fill(copy.checkedPaths, { count: details.checkedPaths.length })}
-          </Collapsible.Trigger>
-          <Collapsible.Content>
-            <ul className="mt-2 grid gap-1.5">
-              {details.checkedPaths.map((path) => (
-                <li key={path}>
-                  <Code>{path}</Code>
-                </li>
-              ))}
-            </ul>
-          </Collapsible.Content>
-        </Collapsible>
+    <div className="grid min-w-0 gap-5">
+      {(reason || details.found) && (
+        <div className="grid gap-2">
+          {reason && <Prose>{reason}</Prose>}
+          {details.found && <Prose>{details.found}</Prose>}
+          {details.checkedPaths && (
+            <Collapsible density="inline" className="text-body-sm text-content-secondary">
+              <Collapsible.Trigger>
+                {fill(copy.checkedPaths, { count: details.checkedPaths.length })}
+              </Collapsible.Trigger>
+              <Collapsible.Content>
+                <ul className="mt-2 grid gap-1.5">
+                  {details.checkedPaths.map((path) => (
+                    <li key={path}>
+                      <Code>{path}</Code>
+                    </li>
+                  ))}
+                </ul>
+              </Collapsible.Content>
+            </Collapsible>
+          )}
+        </div>
       )}
-    </section>
+      {details.fixes.map((fix, index) => (
+        <section key={index} className="grid min-w-0 gap-2" aria-label={fix.title}>
+          {fix.title && (
+            <Typography as="h3" variant="label-md" className="text-content-primary">
+              {fix.title}
+            </Typography>
+          )}
+          <Prose>{fix.text}</Prose>
+          {fix.yaml && <CodeBlock label={fix.yaml.file}>{fix.yaml.body}</CodeBlock>}
+          {fix.command && <CodeBlock>{fix.command}</CodeBlock>}
+          {/* What makes the Runtime see this fix: a recheck, or only a restart (said once, in
+              the footer, when every fix needs a restart). */}
+          {details.fixes.some((f) => f.kind === 'recheck') && (
+            <div className="flex items-start gap-2 text-body-sm text-content-secondary">
+              <span className="flex h-4 items-center">
+                <Icon
+                  name={fix.kind === 'recheck' ? 'refresh' : 'info'}
+                  size="sm"
+                  aria-hidden="true"
+                  className="text-content-muted"
+                />
+              </span>
+              <Prose>{fix.kind === 'recheck' ? copy.fixRecheck : copy.fixRestart}</Prose>
+            </div>
+          )}
+        </section>
+      ))}
+    </div>
   );
 }
 

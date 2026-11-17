@@ -15,7 +15,13 @@ const meta = {
   argTypes: {
     state: {
       control: 'inline-radio',
-      options: ['all-available', 'one-unavailable', 'none-available', 'longest-statuses'],
+      options: [
+        'all-available',
+        'one-unavailable',
+        'none-available',
+        'check-interrupted',
+        'longest-statuses',
+      ],
     },
     locale: { control: 'inline-radio', options: ['pl', 'en'] },
   },
@@ -32,7 +38,7 @@ export const AllAvailable: Story = {};
 /** 2. Codex: CLI not found. The card says so in one line; the shared line below offers the fix. */
 export const OneUnavailable: Story = { args: { state: 'one-unavailable' } };
 
-/** 3. No agent available: a compact message under the cards with "Check again"; no Start. */
+/** 3. No agent available: a compact message under the cards ("How to fix" first); no Start. */
 export const NoneAvailable: Story = { args: { state: 'none-available' } };
 
 /** 4. State 2 with "How to fix" open: a side panel (a bottom sheet on narrow layouts). */
@@ -41,9 +47,16 @@ export const DiagnosticsExpanded: Story = {
   parameters: panelOpen,
 };
 
-/** State 3 with every agent's diagnostics open. */
+/** State 3 with the diagnostics open: a segmented control switches between the agents. */
 export const NoneAvailableExpanded: Story = {
   args: { state: 'none-available', diagnosticsOpen: true },
+  parameters: panelOpen,
+};
+
+/** Codex's check was interrupted: undetermined (pending, not an error); "Check again" first. */
+export const CheckInterrupted: Story = { args: { state: 'check-interrupted' } };
+export const CheckInterruptedExpanded: Story = {
+  args: { state: 'check-interrupted', diagnosticsOpen: true },
   parameters: panelOpen,
 };
 

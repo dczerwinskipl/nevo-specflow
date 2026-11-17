@@ -8,7 +8,9 @@ import { CloseOperationError, type ClosePlan } from './model';
  *   commit on top);
  * - `not-integrated`: nothing is merged, for `reason` `archive-only` (the linked Specification is
  *   archived on its own branch, as asked) or `primary-checkout` (the Specification lives in the
- *   primary checkout and is archived directly on `sourceBranch`, the integration branch).
+ *   primary checkout and is archived directly on `sourceBranch`, the integration branch), or
+ *   `git-off` (Git is off for the project: the Specification is archived in place in its checkout,
+ *   nothing is committed and no branch is read).
  */
 export type CloseMergeFacts =
   | {
@@ -21,10 +23,15 @@ export type CloseMergeFacts =
       readonly status: 'not-integrated';
       readonly reason: 'archive-only' | 'primary-checkout';
       readonly sourceBranch: string;
-    };
+    }
+  | { readonly status: 'not-integrated'; readonly reason: 'git-off' };
 
 /** Read-only: the merge facts of an admitted (not yet reserved) Specification or Worktree Close plan. */
 export async function readCloseMergeFacts(plan: ClosePlan): Promise<CloseMergeFacts> {
+  if (plan.gitOff) {
+    return { status: 'not-integrated', reason: 'git-off' };
+  }
+
   const sourceBranch = plan.source.branch;
   const integrates = plan.kind !== 'specification-close' || plan.integrateToTargetBranch === true;
   if (!integrates) {

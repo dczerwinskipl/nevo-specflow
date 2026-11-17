@@ -58,7 +58,6 @@ describe('Version Control worktree policy (VC01)', () => {
     });
     expect(parseGitWorktreePolicy({})).toEqual({
       enabled: false,
-      notConfigured: true,
       branchPattern: DEFAULT_BRANCH_PATTERN,
       baseRef: DEFAULT_BASE_REF,
       commits: { protectedBranches: [] },

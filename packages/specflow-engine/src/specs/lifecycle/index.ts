@@ -17,6 +17,8 @@ export {
   type CloseCheckoutRole,
   type CloseJournal,
   type ClosePlan,
+  type GitClosePlan,
+  type GitOffClosePlan,
   type CloseOutcome,
   type CloseKind,
 } from './model';

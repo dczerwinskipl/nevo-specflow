@@ -23,6 +23,7 @@ import {
   type CloseJournal,
   type CloseArchiveEvidence,
   type CloseArchiveInventory,
+  type CloseArchiveMove,
 } from './model';
 import { sha256Hex } from '../../hash';
 
@@ -115,7 +116,7 @@ async function absent(path: string): Promise<boolean> {
   }
 }
 
-function destinationPath(inventory: CloseArchiveEvidence, old: string): string {
+function destinationPath(inventory: CloseArchiveMove, old: string): string {
   return inventory.destinationPath + old.slice(inventory.sourcePath.length);
 }
 
@@ -159,7 +160,7 @@ export function archivedManifestText(parsed: object): string {
   return stringify({ ...parsed, status: 'archived' });
 }
 
-async function assertArchivedFiles(root: string, archive: CloseArchiveEvidence): Promise<void> {
+export async function assertArchivedFiles(root: string, archive: CloseArchiveMove): Promise<void> {
   if (!(await absent(join(root, archive.sourcePath)))) {
     throw failure('Active source still exists after archival.');
   }
@@ -208,6 +209,94 @@ async function publish(
   });
 }
 
+/**
+ * The archive move of the active Specification `plan` names in the checkout at `root`, refused
+ * before any effect: an existing destination, a missing or redirected source, a file that is not a
+ * regular file, an obsolete `change.yaml`, a manifest of another Specification. Returns the move
+ * and the archived manifest text it writes.
+ */
+export async function planArchiveMove(
+  root: string,
+  plan: { readonly specId: string; readonly slug: string },
+): Promise<{ readonly move: CloseArchiveMove; readonly archivedManifest: string }> {
+  const oldPath = 'specs/active/' + plan.slug;
+  const newPath = 'specs/archive/' + plan.slug;
+  if (!(await absent(join(root, newPath)))) {
+    throw invalid('Archive destination already exists; never overwrite.');
+  }
+
+  const files = await physicalInventory(root, oldPath);
+  if (!files.some((x) => x.relativePath === oldPath + '/specification.yaml')) {
+    throw invalid('Canonical specification.yaml missing.');
+  }
+
+  if (files.some((x) => x.relativePath.endsWith('/change.yaml'))) {
+    throw invalid('Obsolete change.yaml cannot be archived.');
+  }
+
+  const sourceManifest = await readFile(join(root, oldPath, 'specification.yaml'), 'utf8');
+  const parsed = parse(sourceManifest) as unknown;
+  if (
+    typeof parsed !== 'object' ||
+    parsed === null ||
+    Array.isArray(parsed) ||
+    !('spec_id' in parsed) ||
+    parsed.spec_id !== plan.specId ||
+    !('id' in parsed) ||
+    parsed.id !== plan.slug ||
+    !('status' in parsed) ||
+    typeof parsed.status !== 'string'
+  ) {
+    throw invalid('Canonical source manifest identity cannot be proved.');
+  }
+
+  const archivedManifest = archivedManifestText(parsed);
+
+  return {
+    move: {
+      sourcePath: oldPath,
+      destinationPath: newPath,
+      files,
+      archivedManifestSha256: sha256Hex(archivedManifest),
+    },
+    archivedManifest,
+  };
+}
+
+/**
+ * The pinned archive move: one directory rename, then the archived manifest, then the proof that
+ * the archive holds exactly the pinned files. The move may tear; it is never re-run automatically.
+ */
+export async function moveToArchive(
+  root: string,
+  move: CloseArchiveMove,
+  archivedManifest: string,
+  afterArchiveMove?: () => Promise<void>,
+): Promise<void> {
+  const archiveParent = join(root, 'specs', 'archive');
+  if (await absent(archiveParent)) {
+    await mkdir(archiveParent);
+  }
+
+  const parentStat = await lstat(archiveParent);
+  if (
+    !parentStat.isDirectory() ||
+    parentStat.isSymbolicLink() ||
+    (await realpath(archiveParent)) !== archiveParent
+  ) {
+    throw failure('Archive parent path is not a physical directory.');
+  }
+
+  await renameWindowsSafe(join(root, move.sourcePath), join(root, move.destinationPath), {
+    directory: true,
+  });
+  // Test-only OS crash boundary at the durable atomic rename, before rewriting
+  // the manifest. No automatic replay of an uncertain archive move.
+  await afterArchiveMove?.();
+  await writeFile(join(root, move.destinationPath, 'specification.yaml'), archivedManifest, 'utf8');
+  await assertArchivedFiles(root, move);
+}
+
 /** An Engine-only archive operation, before any Specification Close settlement. */
 export async function archiveSpecificationWithCommit(
   engine: SpecFlowEngine,
@@ -220,6 +309,7 @@ export async function archiveSpecificationWithCommit(
   const record = await readCloseJournal(engine.context, operationId);
   if (
     record?.stage !== 'reserved' ||
+    record.plan.gitOff ||
     record.plan.kind !== 'specification-close' ||
     record.plan.location !== 'active'
   ) {
@@ -253,18 +343,8 @@ export async function archiveSpecificationWithCommit(
     throw invalid('Source Git commit or physical incarnation changed.');
   }
 
-  if (!(await absent(join(source.root, newPath)))) {
-    throw invalid('Archive destination already exists; never overwrite.');
-  }
-
-  const files = await physicalInventory(source.root, oldPath);
-  if (!files.some((x) => x.relativePath === oldPath + '/specification.yaml')) {
-    throw invalid('Canonical specification.yaml missing.');
-  }
-
-  if (files.some((x) => x.relativePath.endsWith('/change.yaml'))) {
-    throw invalid('Obsolete change.yaml cannot be archived.');
-  }
+  const { move, archivedManifest } = await planArchiveMove(source.root, record.plan);
+  const files = move.files;
 
   // Explicitly disallow ignored/untracked files: every physical file must be
   // indexed in Git at the pinned commit, including ancillary directories. The
@@ -287,30 +367,7 @@ export async function archiveSpecificationWithCommit(
     throw invalid('Archive directory contains ignored or non-versioned data.');
   }
 
-  const sourceManifest = await readFile(join(source.root, oldPath, 'specification.yaml'), 'utf8');
-  const parsed = parse(sourceManifest) as unknown;
-  if (
-    typeof parsed !== 'object' ||
-    parsed === null ||
-    Array.isArray(parsed) ||
-    !('spec_id' in parsed) ||
-    parsed.spec_id !== record.plan.specId ||
-    !('id' in parsed) ||
-    parsed.id !== record.plan.slug ||
-    !('status' in parsed) ||
-    typeof parsed.status !== 'string'
-  ) {
-    throw invalid('Canonical source manifest identity cannot be proved.');
-  }
-
-  const archivedManifest = archivedManifestText(parsed);
-  const archive: CloseArchiveEvidence = {
-    sourceCommit: source.head,
-    sourcePath: oldPath,
-    destinationPath: newPath,
-    files,
-    archivedManifestSha256: sha256Hex(archivedManifest),
-  };
+  const archive: CloseArchiveEvidence = { sourceCommit: source.head, ...move };
   const initiated = await publish(engine, record, {
     ...record,
     stage: 'archive-initiated',
@@ -318,29 +375,7 @@ export async function archiveSpecificationWithCommit(
   });
   // Test-only crash point; journal remains reserved and immutable after error.
   await afterArchiveIntent?.();
-  // Filesystem move may tear; never re-run an uncertain move automatically.
-  const archiveParent = join(source.root, 'specs', 'archive');
-  if (await absent(archiveParent)) {
-    await mkdir(archiveParent);
-  }
-
-  const parentStat = await lstat(archiveParent);
-  if (
-    !parentStat.isDirectory() ||
-    parentStat.isSymbolicLink() ||
-    (await realpath(archiveParent)) !== archiveParent
-  ) {
-    throw failure('Archive parent path is not a physical directory.');
-  }
-
-  await renameWindowsSafe(join(source.root, oldPath), join(source.root, newPath), {
-    directory: true,
-  });
-  // Test-only OS crash boundary at the durable atomic rename, before rewriting
-  // the manifest. No automatic replay of an uncertain archive move.
-  await afterArchiveMove?.();
-  await writeFile(join(source.root, newPath, 'specification.yaml'), archivedManifest, 'utf8');
-  await assertArchivedFiles(source.root, archive);
+  await moveToArchive(source.root, archive, archivedManifest, afterArchiveMove);
   await publish(engine, initiated, {
     ...initiated,
     stage: 'archive-commit-initiated',
@@ -550,6 +585,10 @@ export async function inspectArchivePhysicalRecovery(
   const record = await readCloseJournal(engine.context, operationId);
   if (!record) {
     throw failure('Unknown archive operation.');
+  }
+
+  if (record.plan.gitOff) {
+    throw failure('An archive without Git has no archive commit to inspect.');
   }
 
   const root = record.plan.source.root;

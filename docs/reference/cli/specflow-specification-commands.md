@@ -77,7 +77,13 @@ names everything Close would refuse on. Close from the SpecFlow UI instead, or s
 ([Specification lifecycle](../../architecture/runtime/specification-lifecycle.md#safe-integration-rebind-and-disposal)).
 
 `specs close --preview` prints the plan as JSON, with its merge facts (`merge`: the source branch
-merged into the target branch with the commits ahead, or why nothing is merged). When the project
+merged into the target branch with the commits ahead, or why nothing is merged). When Git is off for
+the project (`git.enabled: false`, or no `git:` block in `.nevo/config.yaml`), `specs close` only
+archives the Specification in place, without a commit, integration or repository precondition:
+the preview's `merge` is `{status: 'not-integrated', reason: 'git-off'}` and, without `--json`,
+stderr adds `Without Git (Git is off for this project): the Specification is archived in place;
+nothing is committed or merged.`; the Close prints `Outcome: archived-without-git` followed by the
+same line. When a project that uses Git
 names no `git.integrationTargetBranch`, the preview (and `specs worktree close --preview`, `specs
 workspace close --preview`) refuses with `CLOSE_PREFLIGHT` and lists the local branches that could
 receive the Close on stderr. Each candidate is shown with the facts that make it one: the default
@@ -86,9 +92,7 @@ this worktree's branch started from; and the branch checked out in the main fold
 branches follow. Nothing is chosen for you and no branch name is assumed. The text depends on the
 Specification's checkout. For a linked worktree, closing merges its branch into the chosen branch.
 For the main folder, closing archives directly on the chosen branch, with nothing to merge. Set
-`git.integrationTargetBranch` in `.nevo/config.yaml`, then preview again. When `.nevo/config.yaml`
-has no `git:` block at all (`git-not-configured`), the text shows the block to add, with `enabled`
-and `integrationTargetBranch`. With `--json` the refusal
+`git.integrationTargetBranch` in `.nevo/config.yaml`, then preview again. With `--json` the refusal
 is also printed on stdout as `{error: {code, message, repository}}`
 ([Close](../api/specflow-specification-operations.md#close)).
 

@@ -11,6 +11,10 @@ import { ReportedFailure } from '../exit-code';
 
 type PreviewRequest = Parameters<typeof previewPublicCloseOperation>[1];
 
+/** The human line of a Close that archives without Git (Git is off for the project). */
+export const ARCHIVED_WITHOUT_GIT =
+  'Without Git (Git is off for this project): the Specification is archived in place; nothing is committed or merged.';
+
 /**
  * `specs close --preview` and `specs worktree close --preview`: the read-only plan, refused with
  * `CLOSE_BLOCKED` exactly where Close would refuse, listing the workflow blockers and the agent
@@ -45,10 +49,7 @@ export async function previewCloseForCli(
   return plan;
 }
 
-type MissingTarget = Extract<
-  CloseRepositoryBlocker,
-  { kind: 'integration-target-missing' | 'git-not-configured' }
->;
+type MissingTarget = Extract<CloseRepositoryBlocker, { kind: 'integration-target-missing' }>;
 
 const FACT_TEXT: Readonly<Record<IntegrationBranchFact, (remote?: string) => string>> = {
   'remote-default': (remote) => 'default branch of remote ' + (remote ?? 'unknown'),
@@ -76,11 +77,8 @@ function choiceEffect(blocker: MissingTarget, branch: string): string {
  * default: nothing is chosen for the user.
  */
 export function integrationTargetMissingLines(blocker: MissingTarget): string[] {
-  const unconfigured = blocker.kind === 'git-not-configured';
   const lines = [
-    (unconfigured
-      ? '.nevo/config.yaml has no git block, so it names no integration branch (git.integrationTargetBranch) and does not say whether Nevo uses Git (git.enabled). '
-      : 'No integration branch is configured: git.integrationTargetBranch in .nevo/config.yaml names none. ') +
+    'No integration branch is configured: git.integrationTargetBranch in .nevo/config.yaml names none. ' +
       closeEffect(blocker),
   ];
   if (blocker.candidates.length === 0 && blocker.otherBranches.length === 0) {
@@ -114,18 +112,9 @@ export function integrationTargetMissingLines(blocker: MissingTarget): string[] 
     );
   }
 
-  if (unconfigured) {
-    lines.push(
-      'Choose the branch, add a git block to .nevo/config.yaml, then preview again:',
-      '  git:',
-      '    enabled: true  # or false: whether Nevo uses Git in this project',
-      '    integrationTargetBranch: <the branch you chose>',
-    );
-  } else {
-    lines.push(
-      'Choose the branch, set git.integrationTargetBranch in .nevo/config.yaml, then preview again.',
-    );
-  }
+  lines.push(
+    'Choose the branch, set git.integrationTargetBranch in .nevo/config.yaml, then preview again.',
+  );
 
   return lines;
 }
@@ -146,9 +135,7 @@ export async function reportingMissingIntegrationTarget<T>(
     const missing =
       error instanceof CloseOperationError
         ? error.repository.find(
-            (blocker): blocker is MissingTarget =>
-              blocker.kind === 'integration-target-missing' ||
-              blocker.kind === 'git-not-configured',
+            (blocker): blocker is MissingTarget => blocker.kind === 'integration-target-missing',
           )
         : undefined;
     if (!(error instanceof CloseOperationError) || !missing) {

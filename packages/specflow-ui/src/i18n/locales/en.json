@@ -2411,7 +2411,6 @@
         "reason": {
           "uncommitted": "{{checkout}} has files that are not committed",
           "targetMissing": "no integration branch is configured",
-          "gitNotConfigured": "the project has no Git configuration",
           "targetBranch": "the integration checkout is not on {{expected}}",
           "gitOperation": "a Git operation is unfinished in {{checkout}}",
           "detached": "{{checkout}} is not on a branch"
@@ -2420,10 +2419,6 @@
           "title": "Files not committed",
           "specification": "Close commits only the workflow state of the specification; it does not take other changes along. Commit these files with Git (or remove them), then close again.",
           "integrationTarget": "The checkout the specification is integrated into must be clean. Commit these files with Git (or remove them), then close again."
-        },
-        "gitNotConfigured": {
-          "title": "No Git configuration",
-          "explanation": "Close archives the specification on the project's integration branch, and .nevo/config.yaml has no “git:” block that names one. Add a “git:” block with “enabled” and “integrationTargetBranch” set to the branch you choose, commit the change, then close again."
         },
         "targetMissing": {
           "title": "No integration branch configured",

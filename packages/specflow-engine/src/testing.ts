@@ -108,7 +108,12 @@ export {
 // Internal verification surface for planned lifecycle operations; no transport mutations yet.
 export { previewCloseOperation, type CloseRequest } from './specs/lifecycle';
 export { reserveCloseOperation, inspectCloseOperation } from './specs/lifecycle';
-export { CloseOperationError, type CloseJournal, type ClosePlan } from './specs/lifecycle';
+export {
+  CloseOperationError,
+  type CloseJournal,
+  type ClosePlan,
+  type GitClosePlan,
+} from './specs/lifecycle';
 export { assertResourcesAvailable, resourcesForCreate } from './specs/lifecycle';
 export { listCloseJournals, closeJournalPath } from './specs/lifecycle';
 

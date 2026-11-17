@@ -2411,7 +2411,6 @@
         "reason": {
           "uncommitted": "{{checkout}} ma pliki bez commita",
           "targetMissing": "nie skonfigurowano gałęzi integracji",
-          "gitNotConfigured": "projekt nie ma konfiguracji Git",
           "targetBranch": "katalog roboczy integracji nie jest na {{expected}}",
           "gitOperation": "trwa niedokończona operacja Git ({{checkout}})",
           "detached": "{{checkout}} nie jest na gałęzi"
@@ -2420,10 +2419,6 @@
           "title": "Pliki bez commita",
           "specification": "Zamknięcie commituje tylko stan przepływu specyfikacji; innych zmian nie zabiera. Zrób commit tych plików w Git (albo je usuń) i zamknij ponownie.",
           "integrationTarget": "Katalog roboczy, do którego specyfikacja jest integrowana, musi być czysty. Zrób commit tych plików w Git (albo je usuń) i zamknij ponownie."
-        },
-        "gitNotConfigured": {
-          "title": "Brak konfiguracji Git",
-          "explanation": "Zamknięcie archiwizuje specyfikację na gałęzi integracji projektu, a .nevo/config.yaml nie ma bloku „git:”, który by ją wskazywał. Dodaj blok „git:” z „enabled” i „integrationTargetBranch” ustawionym na wybraną gałąź, zrób commit tej zmiany i zamknij ponownie."
         },
         "targetMissing": {
           "title": "Nie skonfigurowano gałęzi integracji",

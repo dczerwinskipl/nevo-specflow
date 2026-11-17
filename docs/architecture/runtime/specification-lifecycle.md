@@ -113,7 +113,7 @@ operation trailer makes replay idempotent. See
   (`manifest-written` to `registry-writing`) and no `committing-specification` step. A journal
   reserved before commits existed also keeps that graph.
 - Specifications created untracked earlier are not adopted automatically; Close archive and
-  integration are unchanged by this behaviour.
+  integration are unchanged by this behaviour. With Git disabled, Close archives without Git (below).
 
 ### Recovering a stuck Create (operator procedure and known gap)
 
@@ -172,6 +172,33 @@ Workspace Close derives the full occupant set from verified registry and canonic
 It records exact IDs, locations, statuses and binding generations in its durable journal.
 Callers cannot name an arbitrary subset or disguise a whole-branch merge as one Spec operation.
 Active Specs remain active after whole-workspace rebind; already archived Specs remain archived.
+
+### Close with Git off (owner decision 2026-11-17)
+
+In a project with Git off (`git.enabled: false`, or no `git:` block) a Specification Close is
+**archive-only**: the Specification moves to `specs/archive/<slug>` in its own checkout with the
+archived manifest, the same archive result as a normal Close, with no commit, no integration and no
+repository precondition (no clean tree, no integration branch, no branch check). One pure decision,
+`closeRepositoryMode` (lifecycle), derives the mode from the project Git policy; the preflight and
+the Close use case branch on it once, not per check. Asking such a Close to integrate
+(`integrateToTargetBranch: true`) is `CLOSE_INVALID`. Worktree and Workspace Close are Git
+integrations and keep the Git mode.
+
+- **What still applies.** The Specification exit gate (D07, in the preview and again under the lock),
+  the document commit queue (inert with Git off), resource claims against Create and other Closes,
+  and the Runtime's Session Turn checks on a linked checkout.
+- **Plan and journal.** The plan is marked `gitOff` and pins the registered checkout identity
+  (no branch, no HEAD), the configuration revision that decided the mode, and claims only the
+  Specification and its checkout. The reservation refuses with `CLOSE_CONFLICT` when that revision
+  changed. The journal goes `reserved` -> `archive-initiated` (the pinned file inventory of the move)
+  -> `completed` with outcome `archived-without-git`; the binding and the workspace stay as they
+  are. An operation keeps the mode it was reserved with.
+- **No Git process.** Like a Create into an existing workspace with Git off, the operation runs with
+  the Git-free verification of Project Home and checkouts (`runGitFreeMutation`). Linked worktrees
+  cannot be created with Git off; one created earlier archives in place too.
+- **Interruption.** A move that did not finish leaves the journal at `archive-initiated`
+  (`recovery-required`); it is never re-run automatically. The operator inspects `specs/active` and
+  `specs/archive` of the checkout.
 
 ### Specification exit gate and Abandon (D07)
 

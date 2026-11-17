@@ -192,6 +192,19 @@ and without SSE clients just poll the inspection.
 
 Mutating Close requests include UUID `operationId`; Specification Close optionally sends
 `integrateToTargetBranch:false` for archive-only. Completed results use 200; unsettled use 202.
+
+**Git off.** In a project with Git off (`git.enabled: false`, or no `git:` block in
+`.nevo/config.yaml`) a Specification Close only archives: the Specification is moved to
+`specs/archive/<slug>` in its own checkout (primary or linked), the same archive result as a normal
+Close, with no commit, no integration and no repository precondition (no clean tree, no integration
+branch, no branch check), so it never answers `CLOSE_PREFLIGHT` with `repository`. The workflow
+gate (`CLOSE_BLOCKED`), running Session Turns, `DOCUMENT_COMMITS_PENDING` and resource conflicts
+still apply. Omitting `integrateToTargetBranch` (or `false` for a linked Specification) archives;
+`integrateToTargetBranch: true` is `400 CLOSE_INVALID`. The preview answers `integrationRequired:
+false` and `merge: {status: 'not-integrated', reason: 'git-off'}`, the result `outcome:
+'archived-without-git'`. An operation keeps the mode it was reserved with; a policy change between
+preview and reservation is `409 CLOSE_CONFLICT`. Worktree and Workspace Close are Git integrations
+and are unchanged.
 Spec-scoped Close requires the appropriate Spec capability and whole-branch integration also
 needs project-wide Git `Integrate`. Workspace Close requires project-wide Git
 `CloseWorkspace` **and** `Integrate` before revealing occupants/journals.
@@ -205,14 +218,12 @@ same `409 DOCUMENT_COMMITS_PENDING` the Close would, so documents Nevo commits o
 reported as files to commit by hand. Any other repository precondition is `422 CLOSE_PREFLIGHT`
 with `repository`: the blockers the owner fixes in the repository, all that are known at once
 (`uncommitted-changes` with at most 10 `paths` and the `count`, `integration-target-missing`,
-`git-not-configured`, `integration-target-branch`, `git-operation-in-progress`, `branch-detached`;
+`integration-target-branch`, `git-operation-in-progress`, `branch-detached`;
 `RepositoryBlocker` in `@nevo/specflow-contracts/specs`).
 
 The preview and the Close answer the same blockers. `integration-target-missing` means the
-project's `git:` block names no `git.integrationTargetBranch`. `git-not-configured` means
-`.nevo/config.yaml` has no `git:` block at all, so it needs one with `enabled` and
-`integrationTargetBranch` (`integrationTargetBranch` alone is refused as an invalid Git policy).
-Both list the local branches that could receive the Close, as facts. The server never chooses one
+project uses Git (`git.enabled: true`) and its `git:` block names no `git.integrationTargetBranch`.
+It lists the local branches that could receive the Close, as facts. The server never chooses one
 and never assumes a name such as `main`:
 
 - `sourceCheckout` is the Specification's checkout. With `linked`, the Close merges its branch into
@@ -253,6 +264,9 @@ A successful preview (`ClosePreview`) carries the merge facts in `merge`:
   linked Specification is archived on its own branch, as `integrateToTargetBranch=false` asks.
   `primary-checkout` means the Specification lives in the primary checkout and is archived directly
   on `sourceBranch`, which is the integration branch.
+- `{status: 'not-integrated', reason: 'git-off'}`: Git is off for the project. The Specification is
+  archived in place in its checkout, nothing is committed or merged, and no branch is read (a client
+  says, for example, "Archives without Git (Git is off for this project)").
 
 A Close that the Specification workflow refuses (unfinished Tasks or runs, pending writes) answers 409
 `CLOSE_BLOCKED` with `blockers`: groups `{kind, subjectIds, message}` (`kind` is a stable value, `subjectIds` are

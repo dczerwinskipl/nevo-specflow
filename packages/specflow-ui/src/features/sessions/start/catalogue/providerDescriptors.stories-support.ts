@@ -44,6 +44,12 @@ export const codexDescriptor = providerDescriptor({
   modes: ['read-only', 'workspace-write'],
   defaultModeId: 'agent',
   providerModes: [nativeMode('ask', 'Ask', { mode: 'read-only' }), nativeMode('agent', 'Agent')],
+  executable: {
+    path: 'C:\\Users\\dev\\AppData\\Local\\OpenAI\\Codex\\bin\\5449c1f0f26f1f98\\codex.exe',
+    source: 'discovered',
+    location: 'Codex desktop app',
+    version: '0.167.0',
+  },
 });
 
 /**

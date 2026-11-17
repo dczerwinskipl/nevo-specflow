@@ -37,6 +37,23 @@ vi.mock('../../src/features/sessions/providers/codex/installation', async (impor
       }),
   };
 });
+// Executable discovery is tested with a fake file system; here the controlled entrypoint is the CLI.
+vi.mock('../../src/features/sessions/providers/executable', async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import('../../src/features/sessions/providers/executable')>();
+
+  return {
+    ...original,
+    createExecutableLocator: () => ({
+      resolve: () =>
+        Promise.resolve({
+          path: process.execPath,
+          source: 'configured' as const,
+          version: '1.0.0',
+        }),
+    }),
+  };
+});
 vi.mock('../../src/features/sessions/providers/codex/probe', () => ({
   probeCodex: () =>
     Promise.resolve({

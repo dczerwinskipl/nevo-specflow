@@ -3,6 +3,7 @@ import type {
   TaskResource,
 } from '@nevo/specflow-contracts/specs/workspace';
 import { markdownIntro } from '../../documents/description/markdownIntro';
+import { taskResourceFixture } from '../../../../test-support/tasks/resource';
 
 /** `rich-human`: an active step a person works on, with hints and returned feedback. */
 export type TaskScenario = 'rich-human' | 'not-started';
@@ -71,6 +72,7 @@ export function createTaskDetailFixture(scenario: TaskScenario = 'rich-human') {
       status: { id: 'verification', label: 'Verification', lifecycle: 'in_progress' },
     },
     acceptanceCriteria: [],
+    resource: taskResourceFixture(),
     snapshot: {
       revision: 'fixture-1',
       specification: { id: specId, title: 'Session context' },

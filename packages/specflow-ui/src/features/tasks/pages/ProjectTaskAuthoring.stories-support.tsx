@@ -193,7 +193,7 @@ export function taskResponse(scenario: AuthoringScenario): SpecificationTaskResp
 const documentTree: TaskDocumentTree = {
   taskId: TASK,
   registryRevision: 'reg-1',
-  writable: true,
+  capabilities: { save: true, organize: true },
   documents: [
     {
       id: 'task',

@@ -174,12 +174,21 @@ export function useSpecificationExitActions(): WorkspaceHeaderAction[] {
     return [];
   }
 
+  // A Runtime without a repository (the demo) cannot close: the menu says so instead of a dialog
+  // that would fail.
   const actions: WorkspaceHeaderAction[] = [
-    {
-      id: 'close-specification',
-      label: t('workflowExecution.close.action'),
-      onPress: () => workflow.openExit('close'),
-    },
+    exit.close.kind === 'unavailable'
+      ? {
+          id: 'close-specification',
+          label: t('workflowExecution.close.noRepository'),
+          disabled: true,
+          onPress: () => undefined,
+        }
+      : {
+          id: 'close-specification',
+          label: t('workflowExecution.close.action'),
+          onPress: () => workflow.openExit('close'),
+        },
   ];
   if (exit.abandon.kind !== 'unavailable') {
     actions.push({

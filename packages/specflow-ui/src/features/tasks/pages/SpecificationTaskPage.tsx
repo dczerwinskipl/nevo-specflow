@@ -39,16 +39,13 @@ export function SpecificationTaskPage({
     label: t('navigation.backTo', { parent: t('specification.viewTasks') }),
     onBack,
   };
-  // A Task without its resource cannot be shown: it is the source's unavailable state below.
   if (
     taskState.data?.task.id === taskId &&
-    taskState.data.resource &&
     !(taskState.isError && [401, 403, 404, 409].includes(taskState.errorStatus ?? 0))
   ) {
     return (
       <FullTaskWorkspace
         task={mapFullTaskResponse(taskState.data)}
-        resource={taskState.data.resource}
         specId={specId}
         back={back}
         stale={taskState.isError}

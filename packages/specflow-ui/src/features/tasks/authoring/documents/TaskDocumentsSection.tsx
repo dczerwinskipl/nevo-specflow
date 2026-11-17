@@ -43,7 +43,8 @@ export function TaskDocumentsSection({
   const documents = [...(tree.data?.documents ?? [])].sort(
     (a, b) => Number(b.required) - Number(a.required),
   );
-  const writable = tree.data?.writable === true;
+  // Adding, renaming and deleting are offered only where the Runtime does them (not in the demo).
+  const organize = tree.data?.capabilities.organize === true;
   const role = (main: boolean) =>
     main ? t('taskAuthoring.documents.taskContent') : t('taskAuthoring.documents.taskDocument');
 
@@ -55,7 +56,7 @@ export function TaskDocumentsSection({
       count={tree.data ? documents.length : undefined}
       collapsible={collapsible}
       actions={
-        writable ? (
+        organize ? (
           <SectionAddButton
             label={t('taskAuthoring.documents.newDocument')}
             onPress={() => setRequest({ mode: 'new' })}
@@ -74,7 +75,7 @@ export function TaskDocumentsSection({
           }
         />
       ) : null}
-      {tree.data && !tree.data.writable ? (
+      {tree.data && !tree.data.capabilities.save ? (
         <InlineNote>{t('taskAuthoring.documents.readOnly')}</InlineNote>
       ) : null}
       <InformationList>
@@ -96,7 +97,7 @@ export function TaskDocumentsSection({
                   : [role(document.required), t('taskAuthoring.documents.fileMissing')]
               }
               trailing={
-                writable && registered && !document.required && document.file ? (
+                organize && registered && !document.required && document.file ? (
                   <Menu modal={false}>
                     <MenuTrigger asChild>
                       <IconButton

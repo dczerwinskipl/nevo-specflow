@@ -132,7 +132,7 @@
     "markdownDiagramReset": "Dopasuj diagram",
     "markdownDiagramFullScreen": "Otwórz diagram na pełnym ekranie",
     "thisSpecification": "Ta specyfikacja",
-    "previewTaskAria": "Podgląd zadania: {{title}}",
+    "openTaskAria": "Otwórz zadanie: {{title}}",
     "openSessionAria": "Otwórz sesję: {{title}}",
     "readDocAria": "Czytaj dokument: {{title}}",
     "taskNotFoundTitle": "Nie znaleziono zadania",
@@ -2320,6 +2320,7 @@
     },
     "close": {
       "action": "Zamknij specyfikację",
+      "noRepository": "Zamknięcie specyfikacji wymaga repozytorium, więc nie działa w demo",
       "title": "Zamknij {{title}}",
       "blocked": "Nie można jeszcze zamknąć {{title}}: {{reasons}}.",
       "abandonPrompt": "Nie zamierzasz kończyć tej pracy?",

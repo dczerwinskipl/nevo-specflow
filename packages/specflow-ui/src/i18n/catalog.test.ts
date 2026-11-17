@@ -90,6 +90,8 @@ describe('message catalogues', () => {
       'sessions.context.sessionDetails.contextWindowScopeModelOnly',
       // "{{provider}}, model {{model}}": the same template in both languages (accepted copy).
       'sessions.list.agent',
+      // "{{provider}}: {{status}}": the start screen's line about one unavailable agent.
+      'sessionStart.diagnostics.oneUnavailable',
       // "{{title}} · {{count}}": a group heading template, the same in both languages.
       'workflowExecution.exit.groupHeading',
     ]);

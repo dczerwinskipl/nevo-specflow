@@ -8,7 +8,6 @@ import { newSessionReadiness } from './newSessionReadiness';
 const ready = {
   catalogue,
   agent: { providerId: 'codex', modelId: 'model-a', effort: 'provider-default', mode: 'agent' },
-  name: { mode: 'agent', value: '' },
   configurationUnavailable: false,
 } as const;
 
@@ -26,12 +25,11 @@ describe('newSessionReadiness', () => {
     );
   });
 
-  it('asks for the model before the mode, and for the mode before the name', () => {
-    const unnamed = { mode: 'custom', value: '' } as const;
-    expect(reason({ ...ready, agent: { ...ready.agent, modelId: '' }, name: unnamed })).toBe(
+  it('asks for the model before the mode', () => {
+    expect(reason({ ...ready, agent: { ...ready.agent, modelId: '' } })).toBe(
       'create.prerequisite.model',
     );
-    expect(reason({ ...ready, agent: { ...ready.agent, mode: '' }, name: unnamed })).toBe(
+    expect(reason({ ...ready, agent: { ...ready.agent, mode: '' } })).toBe(
       'create.prerequisite.mode',
     );
   });
@@ -68,14 +66,6 @@ describe('newSessionReadiness', () => {
 
   it('has no first-message prerequisite: the message is written in the Session', () => {
     expect(reason(ready)).toBeUndefined();
-  });
-
-  it('requires the custom name only while the custom name is chosen', () => {
-    expect(reason({ ...ready, name: { mode: 'custom', value: '  ' } })).toBe(
-      'sessionStart.prerequisite.name',
-    );
-    expect(reason({ ...ready, name: { mode: 'agent', value: '  ' } })).toBeUndefined();
-    expect(reason({ ...ready, name: { mode: 'custom', value: 'Review SSO' } })).toBeUndefined();
   });
 
   it('blocks on a configuration that must be refreshed first', () => {

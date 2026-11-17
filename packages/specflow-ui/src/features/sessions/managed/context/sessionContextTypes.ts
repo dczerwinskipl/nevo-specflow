@@ -132,4 +132,9 @@ export interface SessionContextViewModel {
    * the Session; the control itself also needs a `refreshable` limits reading.
    */
   limitsRefresh?: LimitsRefreshControl;
+  /**
+   * The planned areas that mean something for this Session (`placeholderRootTabs` ids); all of them
+   * when absent. Before Start only what the agent will read and work in: Instructions, Environment.
+   */
+  plannedAreas?: readonly string[];
 }

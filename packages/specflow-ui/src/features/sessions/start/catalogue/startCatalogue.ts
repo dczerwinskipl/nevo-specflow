@@ -1,4 +1,5 @@
 import type { Message } from '../../../../i18n/message';
+import type { ProviderDiagnosis } from './providerDiagnosis';
 
 /**
  * What a new Session can be started with, independent of where the catalogue comes from (the demo
@@ -35,17 +36,18 @@ export interface StartProvider {
    * Catalogue-authored text is shown as it is.
    */
   reason?: Message | string;
-  /** What the user can do about an unavailable provider (for example sign in again). */
-  hint?: Message | string;
-  /** The executable the Runtime runs and how it found it (configured, PATH or install location). */
-  executable?: Message;
-  /** Every path discovery checked for a CLI it did not find, shown on request. */
-  checkedPaths?: readonly string[];
   /**
-   * Unavailable because it cannot work in the Specification's own worktree. The provider choice
-   * explains this once, below the tiles, for every such provider.
+   * The short status under the provider's name, from a small fixed vocabulary per reason (so it
+   * stays one line); absent when the catalogue states no reason code (the demo catalogue).
    */
-  unavailableInWorktree?: true;
+  status?: Message;
+  /**
+   * Not available because the availability check gave no result (it failed or did not finish):
+   * this says nothing about the provider itself, and checking again is what to do.
+   */
+  undetermined?: true;
+  /** Why an unavailable provider cannot start and how to fix it, shown on request. */
+  diagnosis?: ProviderDiagnosis;
   /** How the provider is accessed; absent when the catalogue does not state it. */
   access?: 'api' | 'subscription';
   /**

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { StrictMode } from 'react';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppShell, AppWorkspaceProvider } from '@nevo/ui';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -157,7 +157,8 @@ it('shows the shell at once and the catalogue as a skeleton until it is read', a
   f.providers.mockImplementation(() => new Promise(() => undefined));
   view(f.api);
   expect(await screen.findByRole('heading', { level: 1, name: 'New session' })).toBeDefined();
-  expect(screen.getByRole('heading', { level: 2, name: 'Start a session' })).toBeDefined();
+  // One title: the screen's own; the form repeats none.
+  expect(screen.queryByRole('heading', { name: 'Start a session' })).toBeNull();
   expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
 });
 
@@ -176,12 +177,16 @@ it('explains external login and only refreshes discovery after the operator sign
   const provider = (await f.providers({})).items[0]!;
   f.providers.mockResolvedValue({ items: [{ ...provider, readiness: 'authenticationRequired' }] });
   view(f.api);
-  await screen.findByText('Sign-in required');
-  expect(screen.getByText(/Sign in again using the provider CLI/)).toBeDefined();
-  expect(screen.getByText('No executor is available right now.')).toBeDefined();
-  expect(screen.getByRole('button', { name: 'Start session' }).hasAttribute('disabled')).toBe(true);
+  await screen.findByText('Sign-in needed');
+  expect(screen.getByRole('heading', { name: 'No agent is available' })).toBeDefined();
+  // Nothing can start: no fields and no Start, only the way to fix it.
+  expect(screen.queryByRole('button', { name: 'Start session' })).toBeNull();
+  expect(screen.queryByRole('textbox')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'How to fix' }));
+  const panel = await screen.findByRole('dialog', { name: 'Claude' });
+  expect(within(panel).getByText('Sign in to the Claude CLI again in a terminal.')).toBeDefined();
   f.providers.mockResolvedValue({ items: [provider] });
-  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  fireEvent.click(within(panel).getByRole('button', { name: 'Check again' }));
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'Start session' }).hasAttribute('disabled')).toBe(
       false,
@@ -190,13 +195,12 @@ it('explains external login and only refreshes discovery after the operator sign
   expect(f.create).not.toHaveBeenCalled();
 });
 
-it('starts a provider without models at its defaults: Model is disabled, the work mode is decided', async () => {
+it('starts a provider without models at its defaults: Model is a fact, the work mode is decided', async () => {
   const f = fixture();
   view(f.api);
   await clickStart();
-  const model = screen.getByRole('combobox', { name: 'Model' });
-  expect(model.hasAttribute('disabled')).toBe(true);
-  expect(model.textContent).toContain('Executor default');
+  expect(screen.queryByRole('combobox', { name: 'Model' })).toBeNull();
+  expect(screen.getByText('Provider default')).toBeDefined();
   await waitFor(() => expect(f.create).toHaveBeenCalledOnce());
   expect(f.create.mock.calls[0]?.[0]).toMatchObject({ providerId: 'claude', mode: 'read-only' });
   expect(f.create.mock.calls[0]?.[0]).not.toHaveProperty('modelId');
@@ -342,8 +346,7 @@ it('sends the chosen model, effort and an own name, and opens the Session with t
   fireEvent.click(await screen.findByRole('option', { name: 'Model one' }));
   fireEvent.keyDown(screen.getByRole('combobox', { name: 'Effort' }), { key: 'Enter' });
   fireEvent.click(await screen.findByRole('option', { name: 'high' }));
-  fireEvent.click(screen.getByRole('switch', { name: 'Give it your own name' }));
-  fireEvent.change(screen.getByRole('textbox', { name: 'Session name' }), {
+  fireEvent.change(screen.getByRole('textbox', { name: /Session name/ }), {
     target: { value: ' Review SSO ' },
   });
   await clickStart();
@@ -439,8 +442,7 @@ async function startCodexWithLostResponse(f: ReturnType<typeof fixture>) {
   fireEvent.click(await screen.findByRole('radio', { name: /Codex/ }));
   fireEvent.keyDown(screen.getByRole('combobox', { name: 'Model' }), { key: 'Enter' });
   fireEvent.click(await screen.findByRole('option', { name: 'Model one' }));
-  fireEvent.click(screen.getByRole('switch', { name: 'Give it your own name' }));
-  fireEvent.change(screen.getByRole('textbox', { name: 'Session name' }), {
+  fireEvent.change(screen.getByRole('textbox', { name: /Session name/ }), {
     target: { value: 'Review SSO' },
   });
   await clickStart();
@@ -501,16 +503,19 @@ it('treats a ready provider without a usable work mode as unavailable, with the 
     ],
   });
   view(f.api);
-  expect(await screen.findByText('Needs approval')).toBeDefined();
-  expect(screen.getByText('No work mode is available')).toBeDefined();
+  expect(await screen.findByRole('heading', { name: 'No agent is available' })).toBeDefined();
   expect(screen.getByRole('radio', { name: /Claude/ }).hasAttribute('disabled')).toBe(true);
   expect(screen.getByRole('radio', { name: /Codex/ }).hasAttribute('disabled')).toBe(true);
-  // Never preselected; with every provider like that no executor is available.
+  // Never preselected; with every provider like that no agent is available and nothing starts.
   expect(screen.getByRole('radio', { name: /Claude/ }).getAttribute('aria-checked')).not.toBe(
     'true',
   );
-  expect(screen.getByText('No executor is available right now.')).toBeDefined();
-  expect(screen.getByRole('button', { name: 'Start session' }).hasAttribute('disabled')).toBe(true);
+  expect(screen.queryByRole('button', { name: 'Start session' })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'How to fix' }));
+  const panel = await screen.findByRole('dialog', { name: 'How to fix' });
+  expect(within(panel).getByText('Needs approval')).toBeDefined();
+  fireEvent.click(within(panel).getByRole('radio', { name: 'Codex' }));
+  expect(within(panel).getByText('No work mode is available')).toBeDefined();
 });
 
 it('prefers a provider that can start over one that cannot', async () => {

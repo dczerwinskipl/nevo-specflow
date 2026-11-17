@@ -120,8 +120,12 @@ describe('N3 the side-panel toggle of the New Session screen hides the whole pan
   it('with a placeholder tab active: one press hides it, the next shows it again', async () => {
     renderStart(() => Promise.resolve({ items: [provider] }), 1400);
     await settle();
-    // Context lists the planned areas; opening one makes a runtime tab beside the pinned Context.
-    fireEvent.click(screen.getByText('Files / Changes').closest('button')!);
+    // Before Start, Context lists only the planned areas the agent will read and work in.
+    expect(screen.getByText('Environment')).toBeDefined();
+    expect(screen.queryByText('Files / Changes')).toBeNull();
+    expect(screen.queryByText('Handovers')).toBeNull();
+    // Opening one makes a runtime tab beside the pinned Context.
+    fireEvent.click(screen.getByText('Instructions').closest('button')!);
     await settle();
     const placeholderTab = screen.getByTestId('tabs').dataset.active;
     expect(screen.getByTestId('tabs').textContent).toContain('Context|');
@@ -142,7 +146,7 @@ describe('N3 the side-panel toggle of the New Session screen hides the whole pan
   it('with Context active and a placeholder tab in the background it hides everything and brings Context back', async () => {
     renderStart(() => Promise.resolve({ items: [provider] }), 1400);
     await settle();
-    fireEvent.click(screen.getByText('Files / Changes').closest('button')!);
+    fireEvent.click(screen.getByText('Instructions').closest('button')!);
     await settle();
     fireEvent.click(screen.getByRole('tab', { name: 'Context' }));
     await settle();

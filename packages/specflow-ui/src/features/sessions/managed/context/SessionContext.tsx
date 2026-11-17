@@ -191,7 +191,7 @@ export function SessionContext({
               isSectionPresent('specification', scope) ? undefined : onOpenDocumentation
             }
           />
-          <ContextPlannedAreasSection onOpen={openPlaceholderTab} />
+          <ContextPlannedAreasSection only={value.plannedAreas} onOpen={openPlaceholderTab} />
           <SessionTelemetrySection
             telemetry={value.telemetry}
             runningTurnId={value.runningTurnId}

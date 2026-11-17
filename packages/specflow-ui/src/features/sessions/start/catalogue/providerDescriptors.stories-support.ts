@@ -140,14 +140,49 @@ export function codexLauncherWithoutExecutable(): ProviderDescriptor {
   };
 }
 
-/** Every provider needs signing in again, or is unavailable with its reason. */
+/** Antigravity turned off on this workstation: only a restart sees the configuration change. */
+export const antigravityTurnedOff: ProviderDescriptor = {
+  ...antigravityDescriptor,
+  readiness: 'unavailable',
+  reasonCode: 'NOT_ENABLED_ON_WORKSTATION',
+  reason: 'Antigravity is turned off on this workstation.',
+};
+
+/** Codex's availability check did not finish: undetermined, not unavailable. */
+export function codexCheckInterrupted(): ProviderDescriptor {
+  return {
+    ...codexNotFound(),
+    checkedLocations: undefined,
+    reasonCode: 'PROCESS_SETTLEMENT_UNVERIFIED',
+    reason: 'The availability check process did not exit.',
+  };
+}
+
+/** Every provider confirmed unavailable: sign-in, CLI not found, turned off. */
 export const unavailableProviders: ProviderDescriptor[] = [
-  { ...claudeDescriptor, readiness: 'authenticationRequired' },
+  { ...claudeDescriptor, readiness: 'authenticationRequired', signInCommand: 'claude auth login' },
   codexNotFound(),
+  antigravityTurnedOff,
+];
+
+/** No provider available, and one check gave no result: availability is not determined. */
+export const undeterminedProviders: ProviderDescriptor[] = [
+  {
+    ...claudeDescriptor,
+    readiness: 'unavailable',
+    reasonCode: 'KNOWN_INCOMPATIBILITY',
+    reason: 'Claude Code 3.4.0 is recorded as incompatible.',
+    executable: {
+      path: 'C:\\Users\\dev\\.local\\bin\\claude.exe',
+      source: 'path',
+      version: '3.4.0',
+    },
+  },
+  codexCheckInterrupted(),
   {
     ...antigravityDescriptor,
     readiness: 'unavailable',
-    reasonCode: 'PROBE_FAILED',
-    reason: 'Antigravity did not complete protocol initialization.',
+    reasonCode: 'INSTALLATION_UNAVAILABLE',
+    reason: 'Antigravity uses a machine-managed policy.',
   },
 ];

@@ -9,9 +9,13 @@ const providerIcons: Readonly<Record<string, { url: string; kind: 'color' | 'mon
   antigravity: { url: antigravity, kind: 'color' },
 };
 
-/** `default` is the 16px inline mark; `xl` is the design system's large glyph (`Icon` `xl`). */
+/**
+ * `default` is the 16px inline mark; `lg` the 28px mark that leads a choice (the start screen's
+ * agent picker); `xl` is the design system's large glyph (`Icon` `xl`).
+ */
 const sizeClasses = {
   default: { box: 'size-4', glyph: 'sm' },
+  lg: { box: 'size-7', glyph: 'md' },
   xl: { box: 'size-icon-xl', glyph: 'xl' },
 } as const;
 

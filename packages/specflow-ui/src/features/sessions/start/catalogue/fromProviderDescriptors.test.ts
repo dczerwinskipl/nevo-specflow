@@ -24,80 +24,72 @@ describe('startCatalogueFromProviders', () => {
     );
     expect(states).toEqual([true, false, false, false]);
     expect(startCatalogueFromProviders([]).demo).toBe(false);
-  });
-
-  it('gives the Runtime reason of an unavailable provider as the detail of what to do, else the sign-in text', () => {
-    expect(
-      only(providerDescriptor({ providerId: 'p', readiness: 'unavailable', reason: ' No CLI ' }))
-        .hint,
-    ).toMatchObject({ values: { detail: 'No CLI' } });
-    expect(
-      only(providerDescriptor({ providerId: 'p', readiness: 'authenticationRequired' })).reason,
-    ).toEqual({ key: 'managedSession.authenticationRequired' });
-    expect(only(providerDescriptor({ providerId: 'p' })).reason).toBeUndefined();
-  });
-
-  it('marks a provider that cannot work in the Specification worktree with a short reason', () => {
-    const provider = only(
-      providerDescriptor({
-        providerId: 'codex',
-        readiness: 'unavailable',
-        reasonCode: 'SPECIFICATION_WORKTREE_UNSUPPORTED',
-        reason: "This provider runs only in the Runtime's own checkout.",
-      }),
-    );
-    expect(provider).toMatchObject({
-      available: false,
-      reason: { key: 'sessionStart.provider.worktreeUnsupported' },
-      unavailableInWorktree: true,
+    expect(only(providerDescriptor({ providerId: 'p' }))).toMatchObject({
+      status: { key: 'create.provider.available' },
     });
-    expect(provider.hint).toBeUndefined();
+    expect(only(providerDescriptor({ providerId: 'p' })).diagnosis).toBeUndefined();
   });
 
   it.each([
-    ['NOT_ALLOWED_BY_PROJECT', 'notAllowed'],
-    ['NOT_ENABLED_ON_WORKSTATION', 'notEnabled'],
-  ] as const)(
-    'explains a provider withheld by configuration (%s) and what to change',
-    (code, key) => {
+    ['EXECUTABLE_NOT_FOUND', 'notFound'],
+    ['EXECUTABLE_NOT_WORKING', 'failsToStart'],
+    ['INSTALLATION_UNAVAILABLE', 'setup'],
+    ['AUTHENTICATION_REQUIRED', 'signIn'],
+    ['PROTOCOL_UNSUPPORTED', 'incompatible'],
+    ['RESTRICTION_UNSUPPORTED', 'incompatible'],
+    ['KNOWN_INCOMPATIBILITY', 'incompatible'],
+    ['PROBE_FAILED', 'checkFailed'],
+    ['PROCESS_SETTLEMENT_UNVERIFIED', 'checkUnfinished'],
+    ['SPECIFICATION_WORKTREE_UNSUPPORTED', 'worktree'],
+    ['NOT_ALLOWED_BY_PROJECT', 'turnedOff'],
+    ['NOT_ENABLED_ON_WORKSTATION', 'turnedOff'],
+  ] as const)('gives %s the short status %s', (reasonCode, status) => {
+    expect(
+      only(providerDescriptor({ providerId: 'p', readiness: 'unavailable', reasonCode })).status,
+    ).toEqual({ key: `sessionStart.provider.status.${status}` });
+  });
+
+  it('tells a check without a result from a confirmed unavailability', () => {
+    const undetermined = (overrides: Partial<ProviderDescriptor>) =>
+      only(providerDescriptor({ providerId: 'p', readiness: 'unavailable', ...overrides }))
+        .undetermined;
+    expect(undetermined({ reasonCode: 'PROCESS_SETTLEMENT_UNVERIFIED' })).toBe(true);
+    expect(undetermined({ reasonCode: 'PROBE_FAILED' })).toBe(true);
+    expect(undetermined({ readiness: 'unknown' })).toBe(true);
+    expect(undetermined({ reasonCode: 'EXECUTABLE_NOT_FOUND' })).toBeUndefined();
+    expect(undetermined({ reasonCode: 'NOT_ENABLED_ON_WORKSTATION' })).toBeUndefined();
+    expect(undetermined({ readiness: 'authenticationRequired' })).toBeUndefined();
+  });
+
+  it('fixes a configuration policy only with a restart, naming the setting and its file', () => {
+    for (const [reasonCode, found, fix] of [
+      ['NOT_ALLOWED_BY_PROJECT', 'notAllowed', 'notAllowedFix'],
+      ['NOT_ENABLED_ON_WORKSTATION', 'notEnabled', 'notEnabledFix'],
+    ] as const) {
       const provider = only(
         providerDescriptor({
           providerId: 'codex',
+          title: 'Codex',
           readiness: 'unavailable',
-          reasonCode: code,
-          reason: 'Runtime text',
+          reasonCode,
         }),
       );
-      expect(provider).toMatchObject({
-        available: false,
-        reason: { key: `sessionStart.provider.${key}` },
-        hint: {
-          key: `sessionStart.provider.${key}Help`,
-          values: { key: 'sessions.providers.codex' },
+      expect(provider.diagnosis).toEqual({
+        found: {
+          key: `sessionStart.diagnosis.${found}`,
+          values: { provider: 'Codex', key: 'sessions.providers.codex' },
         },
+        fixes: [{ applies: 'restart', text: { key: `sessionStart.diagnosis.${fix}` } }],
       });
-    },
-  );
-
-  it('says a withheld provider is a configuration matter, not a worktree one', () => {
-    // A withheld provider runs no driver, so the Runtime never reads it for the worktree: its
-    // configuration reason stands and the worktree note does not count it.
-    const provider = only(
-      providerDescriptor({
-        providerId: 'codex',
-        readiness: 'unavailable',
-        reasonCode: 'NOT_ENABLED_ON_WORKSTATION',
-      }),
-    );
-    expect(provider.unavailableInWorktree).toBeUndefined();
-    expect(provider.reason).toEqual({ key: 'sessionStart.provider.notEnabled' });
+    }
   });
 
-  it('summarises where it looked for a CLI it did not find, with the full paths on request', () => {
+  it('offers installing (seen by a recheck) or pointing to a file (a restart) for a CLI not found', () => {
     const app = 'C:\\Users\\dev\\AppData\\Local\\OpenAI\\Codex\\bin\\*\\codex.exe';
     const provider = only(
       providerDescriptor({
         providerId: 'codex',
+        title: 'Codex',
         readiness: 'unavailable',
         reasonCode: 'EXECUTABLE_NOT_FOUND',
         reason: 'No Codex CLI was found.',
@@ -109,12 +101,10 @@ describe('startCatalogueFromProviders', () => {
         ],
       }),
     );
-    expect(provider).toMatchObject({
-      reason: { key: 'sessionStart.provider.notFound' },
-      hint: {
-        key: 'sessionStart.provider.notFoundHelp',
+    expect(provider.diagnosis).toEqual({
+      found: {
+        key: 'sessionStart.diagnosis.notFound',
         values: {
-          key: 'sessions.providers.codex',
           sources: [
             { key: 'sessionStart.provider.location.path' },
             { key: 'sessionStart.provider.location.codex-desktop-app' },
@@ -128,8 +118,41 @@ describe('startCatalogueFromProviders', () => {
         'E:\\npm\\a\\codex.exe',
         'E:\\npm\\b\\codex.exe',
       ],
+      fixes: [
+        {
+          applies: 'recheck',
+          title: { key: 'sessionStart.diagnosis.installTitle' },
+          text: { key: 'sessionStart.diagnosis.installText', values: { provider: 'Codex' } },
+        },
+        {
+          applies: 'restart',
+          title: { key: 'sessionStart.diagnosis.pointTitle' },
+          text: { key: 'sessionStart.diagnosis.pointText' },
+          code: {
+            file: '.nevo/local/config.yaml',
+            body: 'sessions:\n  providers:\n    codex:\n      executable: C:\\path\\to\\codex.exe',
+          },
+        },
+      ],
     });
+  });
 
+  it('writes the placeholder path in the style of the machine', () => {
+    const provider = only(
+      providerDescriptor({
+        providerId: 'codex',
+        readiness: 'unavailable',
+        reasonCode: 'EXECUTABLE_NOT_FOUND',
+        checkedLocations: [
+          { source: 'path', path: 'codex' },
+          { source: 'discovered', path: '/opt/codex/bin/codex', location: 'npm-global-package' },
+        ],
+      }),
+    );
+    expect(provider.diagnosis?.fixes[1]?.code?.body).toContain('executable: /path/to/codex');
+  });
+
+  it('reinstalls an npm package without its executable, and corrects a configured path', () => {
     const launcher = only(
       providerDescriptor({
         providerId: 'codex',
@@ -139,13 +162,14 @@ describe('startCatalogueFromProviders', () => {
         unresolvedLauncher: { path: 'E:\\npm\\codex.cmd', package: '@openai/codex' },
       }),
     );
-    expect(launcher).toMatchObject({
-      reason: { key: 'sessionStart.provider.launcherBroken' },
-      hint: {
-        key: 'sessionStart.provider.launcherBrokenHelp',
-        values: { package: '@openai/codex' },
-      },
+    expect(launcher.status).toEqual({ key: 'sessionStart.provider.status.setup' });
+    expect(launcher.diagnosis).toMatchObject({
+      found: { key: 'sessionStart.diagnosis.launcherBroken', values: { package: '@openai/codex' } },
       checkedPaths: ['E:\\npm\\codex.cmd', 'PATH: codex.exe, codex.cmd, codex.bat'],
+      fixes: [
+        { applies: 'recheck', code: { body: 'npm install -g @openai/codex' } },
+        { applies: 'restart' },
+      ],
     });
 
     const configured = only(
@@ -156,104 +180,125 @@ describe('startCatalogueFromProviders', () => {
         checkedLocations: [{ source: 'configured', path: 'E:\\codex.exe' }],
       }),
     );
-    expect(configured.hint).toEqual({
-      key: 'sessionStart.provider.notFoundConfiguredHelp',
-      values: { key: 'sessions.providers.codex', path: 'E:\\codex.exe' },
-    });
-  });
-
-  it.each([
-    ['EXECUTABLE_NOT_WORKING', 'notWorking'],
-    ['INSTALLATION_UNAVAILABLE', 'setupUnsupported'],
-    ['PROTOCOL_UNSUPPORTED', 'protocolUnsupported'],
-    ['KNOWN_INCOMPATIBILITY', 'knownIncompatible'],
-    ['RESTRICTION_UNSUPPORTED', 'restrictionUnsupported'],
-    ['PROCESS_SETTLEMENT_UNVERIFIED', 'settlementUnverified'],
-    ['PROBE_FAILED', 'probeFailed'],
-  ] as const)('says what %s means and what to do, with the Runtime detail', (code, key) => {
-    const provider = only(
-      providerDescriptor({
-        providerId: 'claude',
-        readiness: 'unavailable',
-        reasonCode: code,
-        reason: ' Runtime detail. ',
-      }),
-    );
-    expect(provider).toMatchObject({
-      reason: { key: `sessionStart.provider.${key}` },
-      hint: {
-        key: `sessionStart.provider.${key}Help`,
-        values: { key: 'sessions.providers.claude', detail: 'Runtime detail.' },
+    expect(configured.diagnosis).toEqual({
+      found: {
+        key: 'sessionStart.diagnosis.notFoundConfigured',
+        values: { path: 'E:\\codex.exe' },
       },
+      fixes: [
+        {
+          applies: 'restart',
+          text: {
+            key: 'sessionStart.diagnosis.notFoundConfiguredFix',
+            values: { key: 'sessions.providers.codex' },
+          },
+        },
+      ],
     });
   });
 
-  it('falls back to the generic not-ready text when the Runtime gives no reason', () => {
-    expect(
-      only(providerDescriptor({ providerId: 'claude', readiness: 'unavailable' })),
-    ).toMatchObject({
-      reason: { key: 'sessionStart.provider.notReady' },
-      hint: { key: 'sessionStart.provider.notReadyHelp' },
-    });
-  });
-
-  it('gives the provider sign-in command when sign-in is required', () => {
+  it('gives the sign-in command as a command to run, then a recheck', () => {
     expect(
       only(
         providerDescriptor({
           providerId: 'codex',
+          title: 'Codex',
           readiness: 'authenticationRequired',
           signInCommand: 'codex login',
         }),
-      ).hint,
-    ).toEqual({ key: 'sessionStart.provider.signInHelp', values: { command: 'codex login' } });
+      ).diagnosis,
+    ).toEqual({
+      fixes: [
+        {
+          applies: 'recheck',
+          text: { key: 'sessionStart.diagnosis.signIn', values: { provider: 'Codex' } },
+          code: { body: 'codex login' },
+        },
+      ],
+    });
   });
 
-  it('shows how the executable was found unless the reason already names it', () => {
+  it('keeps the Runtime detail and the detected version of an incompatible build', () => {
+    const provider = only(
+      providerDescriptor({
+        providerId: 'claude',
+        title: 'Claude',
+        readiness: 'unavailable',
+        reasonCode: 'KNOWN_INCOMPATIBILITY',
+        reason: ' Claude Code 3.4.0 is recorded as incompatible. ',
+        executable: { path: '/usr/bin/claude', source: 'path', version: '3.4.0' },
+      }),
+    );
+    expect(provider.diagnosis).toEqual({
+      detail: 'Claude Code 3.4.0 is recorded as incompatible.',
+      executable: {
+        key: 'sessionStart.provider.executable.path',
+        values: { path: '/usr/bin/claude' },
+      },
+      found: {
+        key: 'sessionStart.diagnosis.knownIncompatibleVersion',
+        values: { version: '3.4.0' },
+      },
+      fixes: [
+        {
+          applies: 'recheck',
+          text: { key: 'sessionStart.diagnosis.supportedVersion', values: { provider: 'Claude' } },
+        },
+      ],
+    });
+  });
+
+  it('shows the executable only when the reason concerns it and does not already name it', () => {
     const path = 'C:\\Users\\dev\\AppData\\Local\\OpenAI\\Codex\\bin\\5449\\codex.exe';
     const executable = {
       path,
       source: 'discovered' as const,
       location: 'codex-desktop-app' as const,
-      version: '0.167.0',
     };
-    expect(only(providerDescriptor({ providerId: 'codex', executable })).executable).toEqual({
+    const diagnosis = (overrides: Partial<ProviderDescriptor>) =>
+      only(
+        providerDescriptor({
+          providerId: 'codex',
+          readiness: 'unavailable',
+          executable,
+          ...overrides,
+        }),
+      ).diagnosis;
+    expect(diagnosis({ reasonCode: 'EXECUTABLE_NOT_WORKING' })?.executable).toEqual({
       key: 'sessionStart.provider.executable.discovered',
       values: { path, location: { key: 'sessionStart.provider.location.codex-desktop-app' } },
     });
-    // Unavailable for a reason other than the executable: its path would only distract.
     expect(
-      only(
-        providerDescriptor({
-          providerId: 'codex',
-          readiness: 'unavailable',
-          reasonCode: 'SPECIFICATION_WORKTREE_UNSUPPORTED',
-          executable,
-        }),
-      ).executable,
+      diagnosis({
+        reasonCode: 'EXECUTABLE_NOT_WORKING',
+        reason: `Codex at ${path} did not answer.`,
+      })?.executable,
     ).toBeUndefined();
-    expect(
-      only(
-        providerDescriptor({
-          providerId: 'codex',
-          executable: { path: 'C:\\tools\\codex.exe', source: 'path' },
-        }),
-      ).executable,
-    ).toEqual({
-      key: 'sessionStart.provider.executable.path',
-      values: { path: 'C:\\tools\\codex.exe' },
+    expect(diagnosis({ reasonCode: 'SPECIFICATION_WORKTREE_UNSUPPORTED' })).toEqual({
+      found: { key: 'sessionStart.diagnosis.worktree', values: { provider: 'codex' } },
+      fixes: [],
     });
-    expect(
-      only(
-        providerDescriptor({
-          providerId: 'codex',
-          readiness: 'unavailable',
-          reasonCode: 'EXECUTABLE_NOT_WORKING',
-          reason: `Codex at ${path} did not answer.`,
-          executable,
-        }),
-      ).executable,
-    ).toBeUndefined();
+  });
+
+  it('says a check without a result does not mean the provider is unavailable', () => {
+    const provider = only(
+      providerDescriptor({
+        providerId: 'codex',
+        title: 'Codex',
+        readiness: 'unavailable',
+        reasonCode: 'PROCESS_SETTLEMENT_UNVERIFIED',
+        reason: 'The availability check process did not exit.',
+      }),
+    );
+    expect(provider.diagnosis).toEqual({
+      found: { key: 'sessionStart.diagnosis.settlementUnverified', values: { provider: 'Codex' } },
+      fixes: [
+        {
+          applies: 'recheck',
+          text: { key: 'sessionStart.diagnosis.settlementFix', values: { provider: 'Codex' } },
+        },
+      ],
+    });
   });
 
   it('keeps the provider modes with their availability: ready, authorized and offered', () => {
@@ -346,7 +391,8 @@ describe('startCatalogueFromProviders', () => {
         }),
       );
       expect(provider.available).toBe(false);
-      expect(provider.reason).toBe('Not installed');
+      expect(provider.status).toEqual({ key: 'sessionStart.provider.status.setup' });
+      expect(provider.diagnosis?.detail).toBe('Not installed');
     });
 
     it('says that no work mode is available when the modes give no reason', () => {
@@ -358,7 +404,7 @@ describe('startCatalogueFromProviders', () => {
         }),
       );
       expect(provider.available).toBe(false);
-      expect(provider.reason).toEqual({ key: 'sessionStart.provider.noMode' });
+      expect(provider.diagnosis?.found).toEqual({ key: 'sessionStart.provider.noMode' });
     });
 
     it('needs the read-only mode when it lists no modes of its own', () => {
@@ -395,7 +441,11 @@ describe('startCatalogueFromProviders', () => {
         }),
       );
       expect(provider.available).toBe(false);
-      expect(provider.reason).toEqual({ key: 'sessionStart.provider.probeFailed' });
+      expect(provider).toMatchObject({
+        status: { key: 'sessionStart.provider.status.unknown' },
+        undetermined: true,
+        diagnosis: { detail: 'No CLI' },
+      });
     });
   });
 

@@ -212,13 +212,13 @@ describe('NewSessionScreen', () => {
 
   it('keeps the start form without a usable provider (the form explains it)', async () => {
     renderScreen('project', ok, { available: false, reason: 'no_provider' });
-    expect(await screen.findByRole('heading', { level: 2, name: 'Start a session' })).toBeTruthy();
+    expect(await screen.findByRole('form', { name: 'Start a session' })).toBeTruthy();
   });
 
   it('shows the Session shell at once, with its Composer unavailable before Start', async () => {
     renderScreen('demo', ok);
     expect(await screen.findByRole('heading', { level: 1, name: 'New session' })).toBeTruthy();
-    expect(await screen.findByRole('heading', { level: 2, name: 'Start a session' })).toBeTruthy();
+    expect(await screen.findByRole('form', { name: 'Start a session' })).toBeTruthy();
     expect(await screen.findByText('Choose a model.')).toBeTruthy();
   });
 

@@ -185,6 +185,7 @@ export function useManagedStartSource(
           catalogue,
           configurationUnavailable: providers.isError,
           refresh,
+          refreshing: providers.isFetching,
         }
       : providers.isPending
         ? { status: 'loading' }

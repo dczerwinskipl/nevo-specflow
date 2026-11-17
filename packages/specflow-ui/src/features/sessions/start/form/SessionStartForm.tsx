@@ -6,9 +6,10 @@ import type { StartCatalogue } from '../catalogue/startCatalogue';
 import { selectProvider, type AgentChoice } from '../choice/agentChoice';
 import { newSessionReadiness } from '../choice/newSessionReadiness';
 import type { SessionNameChoice } from '../choice/sessionName';
-import { AgentFields } from '../fields/AgentFields';
-import { ProviderChoice } from '../fields/ProviderChoice';
-import { SessionNameSection } from '../fields/SessionNameSection';
+import { AgentAvailabilityNote } from '../diagnostics/AgentAvailabilityNote';
+import { AgentPicker } from '../fields/AgentPicker';
+import { AgentSettings } from '../fields/AgentSettings';
+import { SessionNameField } from '../fields/SessionNameField';
 import type { SessionStartPending } from '../source/sessionStartSource';
 import { ConfigurationNotice } from './ConfigurationNotice';
 import { pendingLabel } from './pendingLabel';
@@ -19,8 +20,10 @@ export type SessionStartStatus = 'idle' | 'starting' | 'failed';
 
 /**
  * Where a new Session is started, inside the Session screen's conversation column
- * (full-session.md "Starting a Session"): provider tiles, then the labelled Model, Effort and Work
- * mode fields (`AgentFields`), then the optional own name, then the note and **Start session**.
+ * (full-session.md "Starting a Session"), under the screen's one title (**New session**): the agent
+ * picker with the line about the agents that cannot start, the agent's Model, Effort and Work mode
+ * as one group, the optional name, then the note and **Start session**. With no agent available
+ * the form is only the picker and its message: nothing below it can be chosen.
  * Fully controlled: the owner holds the choice and runs the start, the form only presents it and
  * reports `onStart` once, when the choice is complete (or, while an earlier start is unresolved, to
  * resolve it).
@@ -35,6 +38,7 @@ export function SessionStartForm({
   pending,
   notice,
   configurationUnavailable = false,
+  refreshing = false,
   onRefresh,
   onStart,
 }: {
@@ -49,21 +53,22 @@ export function SessionStartForm({
   /** Replaces the generic failure alert (a source's own, with its remedies). */
   notice?: ReactNode;
   configurationUnavailable?: boolean;
-  /** Reads the catalogue again; offered when the configuration is unreadable or no agent is usable. */
+  /** The catalogue is being read again. */
+  refreshing?: boolean;
+  /** Reads the catalogue again: the configuration is unreadable, or an agent may become available. */
   onRefresh?: () => void;
   onStart: () => void;
 }) {
   const { t } = useTranslation();
   const text = useMessage();
-  const titleId = useId();
   const agentId = useId();
+  const availabilityId = useId();
   const noteId = useId();
   const working = status === 'starting' || pending?.checking === true;
   const locked = working || pending !== undefined;
   const { prerequisite, canStart } = newSessionReadiness({
     catalogue,
     agent,
-    name,
     configurationUnavailable,
   });
   const note = pending
@@ -80,6 +85,7 @@ export function SessionStartForm({
         ? pendingLabel(t, pending)
         : t('sessionStart.submit.start');
   const noAgent = !catalogue.providers.some((provider) => provider.available);
+  const anyUnavailable = catalogue.providers.some((provider) => !provider.available);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -89,46 +95,52 @@ export function SessionStartForm({
   };
 
   return (
-    // A container: the provider tiles take their columns from the form's own width.
-    <form aria-labelledby={titleId} onSubmit={submit} className="@container">
+    // A container: the agent cards and the settings row take their layout from the form's width.
+    <form aria-label={t('sessionStart.form.title')} onSubmit={submit} className="@container">
       <div className="grid gap-6">
-        <div className="grid gap-1">
-          <Typography as="h2" variant="title-md" id={titleId}>
-            {t('sessionStart.form.title')}
-          </Typography>
+        <div className="grid min-w-0 gap-3">
+          <fieldset disabled={locked} className="grid min-w-0">
+            {/* A rendered `<legend>` takes no part in the fieldset's grid gap: its own margin gives
+                the label-to-control spacing of a DS `Field` (`gap-1.5`). */}
+            <Typography as="legend" variant="label-md" id={agentId} className="mb-1.5 p-0">
+              {t('sessionStart.agent.heading')}
+            </Typography>
+            <AgentPicker
+              catalogue={catalogue}
+              providerId={agent.providerId}
+              labelledBy={agentId}
+              describedBy={anyUnavailable ? availabilityId : undefined}
+              onSelect={(providerId) =>
+                onAgentChange(
+                  selectProvider(
+                    agent,
+                    catalogue.providers.find((p) => p.id === providerId),
+                  ),
+                )
+              }
+            />
+          </fieldset>
+          {/* Outside the locked fieldset: the diagnostics stay readable while a start is resolved. */}
+          {anyUnavailable && (
+            <AgentAvailabilityNote
+              id={availabilityId}
+              catalogue={catalogue}
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+            />
+          )}
         </div>
-        <fieldset disabled={locked} className="grid min-w-0">
-          {/* A rendered `<legend>` takes no part in the fieldset's grid gap: its own margin gives the
-              label-to-control spacing of a DS `Field` (`gap-1.5`), like Model and Effort below. */}
-          <Typography as="legend" variant="label-md" id={agentId} className="mb-1.5 p-0">
-            {t('sessionStart.agent.heading')}
-          </Typography>
-          <ProviderChoice
-            catalogue={catalogue}
-            providerId={agent.providerId}
-            labelledBy={agentId}
-            onSelect={(providerId) =>
-              onAgentChange(
-                selectProvider(
-                  agent,
-                  catalogue.providers.find((p) => p.id === providerId),
-                ),
-              )
-            }
-          />
-        </fieldset>
-        <AgentFields
-          catalogue={catalogue}
-          choice={agent}
-          locked={locked}
-          onChange={onAgentChange}
-        />
-        <SessionNameSection
-          choice={name}
-          locked={locked}
-          onChange={onNameChange}
-          headingLevel="h3"
-        />
+        {!noAgent && (
+          <>
+            <AgentSettings
+              catalogue={catalogue}
+              choice={agent}
+              locked={locked}
+              onChange={onAgentChange}
+            />
+            <SessionNameField choice={name} locked={locked} onChange={onNameChange} />
+          </>
+        )}
         {configurationUnavailable && onRefresh && <ConfigurationNotice onRefresh={onRefresh} />}
         {notice ??
           (status === 'failed' && (
@@ -136,14 +148,16 @@ export function SessionStartForm({
               {t('sessionStart.form.failedBody')}
             </Alert>
           ))}
-        <StartFormActions
-          noteId={noteId}
-          note={note}
-          label={label}
-          disabled={working || (pending === undefined && !canStart)}
-          pending={working}
-          onRefresh={noAgent && !pending ? onRefresh : undefined}
-        />
+        {/* With no agent the message above is the whole answer; a kept request still needs its row. */}
+        {(!noAgent || pending) && (
+          <StartFormActions
+            noteId={noteId}
+            note={note}
+            label={label}
+            disabled={working || (pending === undefined && !canStart)}
+            pending={working}
+          />
+        )}
       </div>
     </form>
   );

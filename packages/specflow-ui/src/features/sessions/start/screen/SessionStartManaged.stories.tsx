@@ -7,9 +7,11 @@ import {
   antigravityDescriptor,
   claudeDescriptor,
   codexDescriptor,
+  codexCheckInterrupted,
   codexLauncherWithoutExecutable,
   codexNotFound,
   unavailableProviders,
+  undeterminedProviders,
 } from '../catalogue/providerDescriptors.stories-support';
 import { providerDescriptor } from '../catalogue/startCatalogue.stories-support';
 import { creates, ManagedStartPreview } from './sessionStart.stories-support';
@@ -63,32 +65,48 @@ async function pick(canvas: Canvas, field: string, option: string | RegExp) {
   await waitFor(() => expect(body().queryByRole('listbox')).toBeNull());
 }
 
-/** The Specification pinned in Context; the catalogue is the Runtime's own. */
+const agentLegend = (canvas: Canvas) => canvas.findByText('Agent', { selector: 'legend' });
+const howToFix = (canvas: Canvas) => canvas.getByRole('button', { name: 'Jak naprawić' });
+/** The details panel is a modal Drawer: it hides the page from assistive technology. */
+const panelOpen = { a11y: { test: 'off' as const } };
+
+/** Every agent available: the first one is chosen, the model is the one choice left. */
 export const ManagedInSpecification: Story = {
   play: async ({ canvas }) => {
     await settle();
     await expect(canvas.getByRole('heading', { level: 1, name: 'Nowa sesja' })).toBeVisible();
-    await expect(
-      await canvas.findByRole('heading', { level: 2, name: 'Rozpocznij sesję' }),
-    ).toBeVisible();
+    // One title: the form repeats none.
+    await agentLegend(canvas);
+    await expect(canvas.queryByRole('heading', { name: 'Rozpocznij sesję' })).toBeNull();
     // The Runtime's own providers, the first available one chosen; Context pins the Specification.
     await expect(canvas.getByRole('radio', { name: /Claude/ })).toBeChecked();
+    await expect(canvas.getAllByText('Dostępny')).toHaveLength(3);
+    await expect(canvas.queryByRole('button', { name: 'Jak naprawić' })).toBeNull();
     await expect(canvas.getByRole('button', { name: /Logowanie SSO/ })).toBeVisible();
-    // Every provider can work here, so the worktree note is not shown.
-    await expect(canvas.queryByText(/obsługuje worktree/)).toBeNull();
+    // Before Start Context lists only Instructions and Environment of the planned areas.
+    await expect(canvas.getByRole('button', { name: /Środowisko/ })).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: /Przekazania/ })).toBeNull();
     await expect(canvas.getByText('nie wybrano modelu')).toBeVisible();
     await expect(canvas.getByRole('combobox', { name: 'Model' })).toBeEnabled();
     await expect(canvas.getByRole('combobox', { name: 'Effort' })).toBeDisabled();
+    // The optional name: no switch, the placeholder says what it is called otherwise.
+    await expect(canvas.queryByRole('switch')).toBeNull();
+    await expect(canvas.getByRole('textbox', { name: /Nazwa sesji/ })).toHaveAttribute(
+      'placeholder',
+      'Nowa sesja',
+    );
+    // The form's last row: the hint and Start, inside the form.
     await expect(startButton(canvas)).toBeDisabled();
     await expect(canvas.getByText('Wybierz model.')).toBeVisible();
+    await expect(startButton(canvas).closest('form')).not.toBeNull();
   },
 };
 
 /** The inactive Composer is docked only while the form and the Composer fit the column together. */
 export const ComposerOnlyWhenTheFormFits: Story = {
   play: async ({ canvas }) => {
-    await settle(1280, 655);
-    await canvas.findByRole('heading', { level: 2, name: 'Rozpocznij sesję' });
+    await settle(1280, 520);
+    await agentLegend(canvas);
     await waitFor(() => expect(canvas.queryByRole('textbox', { name: 'Wiadomość' })).toBeNull());
     await settle(1920, 1080);
     await expect(await canvas.findByRole('textbox', { name: 'Wiadomość' })).toBeDisabled();
@@ -119,7 +137,7 @@ export const NativeModesWithUnavailableOne: Story = {
   },
 };
 
-/** Scenario (h): a provider that lists no models shows Model disabled at the provider default. */
+/** A provider that lists no models: Model is the fact "Provider default", and there is no Effort. */
 export const ProviderWithoutModels: Story = {
   args: {
     defaults: {
@@ -128,9 +146,9 @@ export const ProviderWithoutModels: Story = {
   },
   play: async ({ canvas }) => {
     await settle();
-    const model = await canvas.findByRole('combobox', { name: 'Model' });
-    await expect(model).toBeDisabled();
-    await expect(model).toHaveTextContent('Domyślny wykonawcy');
+    await expect(await canvas.findByText('Domyślny dostawcy')).toBeVisible();
+    await expect(canvas.queryByRole('combobox', { name: 'Model' })).toBeNull();
+    await expect(canvas.queryByRole('combobox', { name: 'Effort' })).toBeNull();
     // Nothing to wait for: the work mode is decided and Start is possible.
     await expect(canvas.getByRole('radio', { name: 'Agent' })).toBeChecked();
     await expect(startButton(canvas)).toBeEnabled();
@@ -198,29 +216,216 @@ export const ManyWorkModes: Story = {
   },
 };
 
-/** Scenario (e): every provider needs attention; each tile says why and nothing can start. */
-export const ManagedNoProviderAvailable: Story = {
-  args: { providers: unavailableProviders },
+/** One agent cannot start (Codex: CLI not found): its card says so in one line, the line below offers the fix. */
+export const ManagedProviderCliNotFound: Story = {
+  args: { providers: [claudeDescriptor, codexNotFound(), antigravityDescriptor] },
   play: async ({ canvas }) => {
     await settle();
-    await expect(await canvas.findByText('Żaden wykonawca nie jest teraz dostępny.')).toBeVisible();
-    await expect(canvas.getByRole('radio', { name: /Claude/ })).toBeDisabled();
-    await expect(canvas.getByText('Wymagane ponowne logowanie')).toBeVisible();
-    await expect(canvas.getByText(/Zaloguj się ponownie w CLI dostawcy/)).toBeVisible();
-    await expect(canvas.getByText('Nie znaleziono CLI')).toBeVisible();
-    await expect(canvas.getByText('Nie przeszedł sprawdzenia przy starcie')).toBeVisible();
+    await expect(await canvas.findByText('Nie znaleziono CLI')).toBeVisible();
+    await expect(canvas.getByRole('radio', { name: /Codex/ })).toBeDisabled();
+    await expect(canvas.getByText('Codex: nie znaleziono CLI')).toBeVisible();
+    await expect(howToFix(canvas)).toBeVisible();
+    // The rest of the form is unchanged: the agent chosen, its settings and the form's last row.
+    await expect(canvas.getByRole('radio', { name: /Claude/ })).toBeChecked();
+    await expect(canvas.getByRole('combobox', { name: 'Model' })).toBeEnabled();
     await expect(startButton(canvas)).toBeDisabled();
-    // The Runtime is asked again only on request, after signing in.
-    await expect(canvas.getByRole('button', { name: 'Spróbuj ponownie' })).toBeEnabled();
-    await expect(canvas.getByText('nie wybrano')).toBeVisible();
   },
 };
 
 /**
- * A Specification in its own worktree: the Runtime lists the providers bound to its own checkout
- * (Codex, Antigravity) as unavailable here: each tile says so briefly, and one note below the tiles
- * says what, why and what to do.
+ * "How to fix" for one agent: its name is the panel's title. Installing is seen by "Check again";
+ * pointing to a file is a configuration change, seen only after a restart. Every path discovery
+ * checked stays behind a disclosure; code wraps with its indentation kept.
  */
+export const ManagedDiagnosticsOneAgent: Story = {
+  ...ManagedProviderCliNotFound,
+  parameters: panelOpen,
+  play: async ({ canvas }) => {
+    await settle();
+    await userEvent.click(await canvas.findByRole('button', { name: 'Jak naprawić' }));
+    const panel = within(await body().findByRole('dialog', { name: 'Codex' }));
+    await expect(panel.getByText('Nie znaleziono CLI')).toBeVisible();
+    await expect(panel.getByRole('heading', { name: 'Zainstaluj CLI' })).toBeVisible();
+    await expect(
+      panel.getByRole('heading', { name: 'Albo wskaż zainstalowany plik' }),
+    ).toBeVisible();
+    await expect(panel.getByText(/executable: C:\\path\\to\\codex\.exe/)).toBeVisible();
+    await expect(panel.getByText(/konfiguracja jest czytana tylko przy starcie/)).toBeVisible();
+    await expect(panel.getByRole('button', { name: 'Sprawdź ponownie' })).toBeEnabled();
+    await userEvent.click(panel.getByRole('button', { name: 'Sprawdzone ścieżki (5)' }));
+    await expect(await panel.findByText(/\\OpenAI\\Codex\\bin\\\*\\codex\.exe$/)).toBeVisible();
+  },
+};
+
+/** Installed through npm, but the package's native executable is missing: it needs setting up. */
+export const ManagedProviderNpmLauncherBroken: Story = {
+  args: { providers: [claudeDescriptor, codexLauncherWithoutExecutable(), antigravityDescriptor] },
+  parameters: panelOpen,
+  play: async ({ canvas }) => {
+    await settle();
+    await expect(await canvas.findByText('Wymaga konfiguracji')).toBeVisible();
+    await userEvent.click(howToFix(canvas));
+    const panel = within(await body().findByRole('dialog', { name: 'Codex' }));
+    await expect(panel.getByText('npm install -g @openai/codex')).toBeVisible();
+  },
+};
+
+/** Sign-in needed: the panel gives the CLI's own sign-in command, then "Check again". */
+export const ManagedProviderSignInRequired: Story = {
+  args: {
+    providers: [
+      claudeDescriptor,
+      {
+        ...codexDescriptor,
+        readiness: 'authenticationRequired' as const,
+        reasonCode: 'AUTHENTICATION_REQUIRED' as const,
+        signInCommand:
+          'C:\\Users\\dev\\AppData\\Local\\OpenAI\\Codex\\bin\\5449c1f0f26f1f98\\codex.exe login',
+      },
+      antigravityDescriptor,
+    ],
+  },
+  parameters: panelOpen,
+  play: async ({ canvas }) => {
+    await settle();
+    await expect(await canvas.findByText('Wymaga logowania')).toBeVisible();
+    await userEvent.click(howToFix(canvas));
+    const panel = within(await body().findByRole('dialog', { name: 'Codex' }));
+    await expect(panel.getByText(/codex\.exe login$/)).toBeVisible();
+    await expect(panel.getByRole('button', { name: 'Sprawdź ponownie' })).toBeEnabled();
+  },
+};
+
+/**
+ * A configuration change is seen only after a restart: the project does not allow Antigravity and
+ * this machine turned Codex off. The panel has no "Check again"; it says to restart instead (the UI
+ * cannot restart the Runtime).
+ */
+export const ManagedRestartRequired: Story = {
+  args: {
+    providers: [
+      claudeDescriptor,
+      {
+        ...codexDescriptor,
+        readiness: 'unavailable' as const,
+        reasonCode: 'NOT_ENABLED_ON_WORKSTATION' as const,
+        reason: 'This provider is turned off on this machine.',
+      },
+      {
+        ...antigravityDescriptor,
+        readiness: 'unavailable' as const,
+        reasonCode: 'NOT_ALLOWED_BY_PROJECT' as const,
+        reason: 'The project does not allow this provider.',
+      },
+    ],
+  },
+  parameters: panelOpen,
+  play: async ({ canvas }) => {
+    await settle();
+    await expect(await canvas.findByText('Niedostępne: Codex i Antigravity')).toBeVisible();
+    await expect(canvas.getAllByText('Wyłączony')).toHaveLength(2);
+    await userEvent.click(howToFix(canvas));
+    const panel = within(await body().findByRole('dialog', { name: 'Jak naprawić' }));
+    await expect(panel.getByText(/sessions\.providers\.codex\.enabled: false/)).toBeVisible();
+    await expect(panel.queryByRole('button', { name: 'Sprawdź ponownie' })).toBeNull();
+    await expect(panel.getByText(/uruchom ponownie Nevo SpecFlow/)).toBeVisible();
+  },
+};
+
+/** No agent available: a compact message, "How to fix" first; no fields and no Start. */
+export const ManagedNoProviderAvailable: Story = {
+  args: { providers: unavailableProviders },
+  play: async ({ canvas }) => {
+    await settle();
+    await expect(
+      await canvas.findByRole('heading', { name: 'Żaden agent nie jest dostępny' }),
+    ).toBeVisible();
+    await expect(canvas.getByRole('radio', { name: /Claude/ })).toBeDisabled();
+    await expect(canvas.getByText('Wymaga logowania')).toBeVisible();
+    await expect(canvas.getByText('Nie znaleziono CLI')).toBeVisible();
+    await expect(canvas.getByText('Wyłączony')).toBeVisible();
+    await expect(howToFix(canvas)).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Sprawdź ponownie' })).toBeEnabled();
+    await expect(canvas.queryByRole('combobox')).toBeNull();
+    await expect(canvas.queryByRole('textbox', { name: /Nazwa sesji/ })).toBeNull();
+    await expect(canvas.queryByRole('button', { name: 'Rozpocznij sesję' })).toBeNull();
+    await expect(canvas.getByText('nie wybrano')).toBeVisible();
+  },
+};
+
+/** No agent available, with the details open: a segmented control switches between the agents. */
+export const ManagedDiagnosticsSeveralAgents: Story = {
+  ...ManagedNoProviderAvailable,
+  parameters: panelOpen,
+  play: async ({ canvas }) => {
+    await settle();
+    await userEvent.click(await canvas.findByRole('button', { name: 'Jak naprawić' }));
+    const panel = within(await body().findByRole('dialog', { name: 'Jak naprawić' }));
+    await expect(panel.getByText('claude auth login')).toBeVisible();
+    await expect(panel.getByRole('button', { name: 'Sprawdź ponownie' })).toBeEnabled();
+    await userEvent.click(panel.getByRole('radio', { name: 'Antigravity' }));
+    await expect(await panel.findByText(/antigravity\.enabled: false/)).toBeVisible();
+    await expect(panel.queryByRole('button', { name: 'Sprawdź ponownie' })).toBeNull();
+  },
+};
+
+/**
+ * Codex's check did not finish: undetermined, not unavailable. The clock reads as pending, and
+ * "Check again" comes first.
+ */
+export const ManagedCheckInterrupted: Story = {
+  args: { providers: [claudeDescriptor, codexCheckInterrupted(), antigravityDescriptor] },
+  play: async ({ canvas }) => {
+    await settle();
+    await expect(await canvas.findByText('Sprawdzanie przerwane')).toBeVisible();
+    await expect(canvas.getByText('Codex: sprawdzanie przerwane')).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Sprawdź ponownie' })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Szczegóły' })).toBeVisible();
+  },
+};
+
+/** No agent available and one check gave no result: availability is not determined. */
+export const ManagedAvailabilityUndetermined: Story = {
+  args: { providers: undeterminedProviders },
+  play: async ({ canvas }) => {
+    await settle();
+    await expect(
+      await canvas.findByRole('heading', { name: 'Nie udało się ustalić dostępności' }),
+    ).toBeVisible();
+    await expect(canvas.getByText('Niezgodna wersja')).toBeVisible();
+    await expect(canvas.getByText('Wymaga konfiguracji')).toBeVisible();
+    await expectNoHorizontalScroll();
+  },
+};
+
+/** A ready provider that can run no work mode is not startable: disabled, the reason in its details. */
+export const ManagedProviderWithoutUsableMode: Story = {
+  args: {
+    providers: [
+      {
+        ...claudeDescriptor,
+        providerModes: claudeDescriptor.providerModes?.map((mode) => ({
+          ...mode,
+          readiness: 'unavailable' as const,
+          reason: 'Wymaga zgody administratora.',
+        })),
+      },
+      providerDescriptor({ providerId: 'codex', title: 'Codex', modes: [] }),
+    ],
+  },
+  parameters: panelOpen,
+  play: async ({ canvas }) => {
+    await settle();
+    await expect(await canvas.findByRole('radio', { name: /Claude/ })).toBeDisabled();
+    await expect(canvas.getByRole('radio', { name: /Claude/ })).not.toBeChecked();
+    await expect(canvas.getByRole('radio', { name: /Codex/ })).toBeDisabled();
+    await userEvent.click(howToFix(canvas));
+    const panel = within(await body().findByRole('dialog', { name: 'Jak naprawić' }));
+    await expect(panel.getByText('Wymaga zgody administratora.')).toBeVisible();
+  },
+};
+
+/** A Specification in its own worktree: the providers bound to the project checkout say so. */
 export const ManagedProviderNotForSpecificationWorktree: Story = {
   args: {
     providers: [
@@ -240,144 +445,8 @@ export const ManagedProviderNotForSpecificationWorktree: Story = {
       await expect(canvas.getByRole('radio', { name })).toBeDisabled();
     }
 
-    await expect(canvas.getAllByText('Niedostępny w worktree')).toHaveLength(2);
-    await expect(
-      canvas.getAllByText(
-        'Niektórzy dostawcy są niedostępni w tej specyfikacji: działają tylko w folderze projektu, a ta specyfikacja ma własny worktree. Wybierz dostawcę, który obsługuje worktree, albo rozpocznij sesję poza specyfikacją.',
-      ),
-    ).toHaveLength(1);
+    await expect(canvas.getAllByText('Nie w worktree')).toHaveLength(2);
     await expect(canvas.queryByText(/Runtime's own checkout/)).toBeNull();
-    // The reason is not the executable, so its path is not shown.
-    await expect(canvas.queryByText(/codex\.exe/)).toBeNull();
-  },
-};
-
-/**
- * A provider whose CLI was not found: a short status, where discovery looked (by kind of place)
- * and what to do; every path it checked stays behind a disclosure.
- */
-export const ManagedProviderCliNotFound: Story = {
-  args: { providers: [claudeDescriptor, codexNotFound(), antigravityDescriptor] },
-  play: async ({ canvas }) => {
-    await settle();
-    await expect(await canvas.findByText('Nie znaleziono CLI')).toBeVisible();
-    await expect(
-      canvas.getByText(/Sprawdzono: PATH, aplikacja Codex na komputer i globalny pakiet npm\./),
-    ).toBeVisible();
-    for (const path of canvas.getAllByText(/codex-win32-x64/)) {
-      await expect(path).not.toBeVisible();
-    }
-
-    await userEvent.click(canvas.getByRole('button', { name: 'Sprawdzone ścieżki' }));
-    await expect(await canvas.findByText(/\\OpenAI\\Codex\\bin\\\*\\codex\.exe$/)).toBeVisible();
-  },
-};
-
-/** Installed through npm, but the package's native executable is missing: the CLI looks installed. */
-export const ManagedProviderNpmLauncherBroken: Story = {
-  args: { providers: [claudeDescriptor, codexLauncherWithoutExecutable(), antigravityDescriptor] },
-  play: async ({ canvas }) => {
-    await settle();
-    await expect(await canvas.findByText('Niekompletny pakiet npm')).toBeVisible();
-    await expect(canvas.getByText(/npm install -g @openai\/codex/)).toBeVisible();
-  },
-};
-
-/** Sign-in required: the tile gives the CLI's own sign-in command and the executable it runs. */
-export const ManagedProviderSignInRequired: Story = {
-  args: {
-    providers: [
-      claudeDescriptor,
-      {
-        ...codexDescriptor,
-        readiness: 'authenticationRequired' as const,
-        reasonCode: 'AUTHENTICATION_REQUIRED' as const,
-        signInCommand:
-          'C:\\Users\\dev\\AppData\\Local\\OpenAI\\Codex\\bin\\5449c1f0f26f1f98\\codex.exe login',
-      },
-      antigravityDescriptor,
-    ],
-  },
-  play: async ({ canvas }) => {
-    await settle();
-    await expect(await canvas.findByText('Wymagane ponowne logowanie')).toBeVisible();
-    await expect(canvas.getByText(/codex\.exe login w terminalu/)).toBeVisible();
-    // The command already names the executable, so it is not repeated.
-    await expect(canvas.queryByText(/^Źródło:/)).toBeNull();
-  },
-};
-
-/** Ready, with the CLI discovered in the Codex desktop app: the tile says where it runs from. */
-export const ManagedProviderReadyDiscovered: Story = {
-  args: { providers: [claudeDescriptor, codexDescriptor, antigravityDescriptor] },
-  play: async ({ canvas }) => {
-    await settle();
-    await expect(
-      await canvas.findByText(/^Źródło: aplikacja Codex na komputer\. Ścieżka: C:\\/),
-    ).toBeVisible();
-    await expectNoHorizontalScroll();
-  },
-};
-
-/**
- * Why a provider cannot start, by who can change it: the project does not allow it (a maintainer,
- * `.nevo/config.yaml`), this machine turned it off (the user, `.nevo/local/config.yaml`), or it is
- * enabled but its CLI is missing (install it or set its path). Each tile says what and what to do.
- */
-export const ManagedProviderWithheldByConfiguration: Story = {
-  args: {
-    providers: [
-      claudeDescriptor,
-      {
-        ...codexDescriptor,
-        readiness: 'unavailable' as const,
-        reasonCode: 'NOT_ENABLED_ON_WORKSTATION' as const,
-        reason: 'This provider is turned off on this machine.',
-      },
-      {
-        ...antigravityDescriptor,
-        readiness: 'unavailable' as const,
-        reasonCode: 'NOT_ALLOWED_BY_PROJECT' as const,
-        reason: 'The project does not allow this provider.',
-      },
-    ],
-  },
-  play: async ({ canvas }) => {
-    await settle();
-    await expect(await canvas.findByRole('radio', { name: /Claude/ })).toBeChecked();
-    await expect(canvas.getByText('Wyłączony na tym komputerze')).toBeVisible();
-    await expect(canvas.getByText(/usuń sessions\.providers\.codex\.enabled: false/)).toBeVisible();
-    await expect(canvas.getByText('Niedozwolony w projekcie')).toBeVisible();
-    await expect(
-      canvas.getByText(/sessions\.providers\.antigravity\.allowed: true w \.nevo\/config\.yaml/),
-    ).toBeVisible();
-  },
-};
-
-/** A ready provider that can run no work mode is not startable: disabled with its reason. */
-export const ManagedProviderWithoutUsableMode: Story = {
-  args: {
-    providers: [
-      {
-        ...claudeDescriptor,
-        providerModes: claudeDescriptor.providerModes?.map((mode) => ({
-          ...mode,
-          readiness: 'unavailable' as const,
-          reason: 'Wymaga zgody administratora.',
-        })),
-      },
-      providerDescriptor({ providerId: 'codex', title: 'Codex', modes: [] }),
-    ],
-  },
-  play: async ({ canvas }) => {
-    await settle();
-    await expect(await canvas.findByRole('radio', { name: /Claude/ })).toBeDisabled();
-    await expect(canvas.getByRole('radio', { name: /Claude/ })).not.toBeChecked();
-    await expect(canvas.getByRole('radio', { name: /Codex/ })).toBeDisabled();
-    await expect(canvas.getByText('Wymaga zgody administratora.')).toBeVisible();
-    await expect(canvas.getByText('Brak dostępnego trybu pracy')).toBeVisible();
-    await expect(canvas.getByText('Żaden wykonawca nie jest teraz dostępny.')).toBeVisible();
-    await expect(startButton(canvas)).toBeDisabled();
   },
 };
 
@@ -440,8 +509,11 @@ export const ManagedStartFlow: Story = {
     await pick(canvas, 'Model', 'Claude Sonnet');
     await pick(canvas, 'Effort', 'high');
     await userEvent.click(canvas.getByRole('radio', { name: 'Plan' }));
-    await userEvent.click(canvas.getByRole('switch', { name: 'Nadaj własną nazwę' }));
-    await userEvent.type(canvas.getByRole('textbox', { name: 'Nazwa sesji' }), 'Przegląd SSO');
+    await expect(canvas.getByText(/agent nada jej nazwę/)).toBeVisible();
+    await userEvent.type(canvas.getByRole('textbox', { name: /Nazwa sesji/ }), 'Przegląd SSO');
+    await expect(
+      canvas.getByText('Sesja otworzy się bez wiadomości, z Twoją nazwą.'),
+    ).toBeVisible();
     await userEvent.click(startButton(canvas));
     await waitFor(() =>
       expect(creates).toEqual([
@@ -458,7 +530,7 @@ export const ManagedStartFlow: Story = {
     // The Session opens in place of the form: no loading text, the ready empty state, the own name.
     await expect(await canvas.findByText('Claude jest gotowy')).toBeVisible();
     await expect(canvas.queryByText('Wczytywanie sesji…')).toBeNull();
-    await expect(canvas.queryByRole('heading', { name: 'Rozpocznij sesję' })).toBeNull();
+    await expect(canvas.queryByText('Agent', { selector: 'legend' })).toBeNull();
     await expect(canvas.getByRole('heading', { level: 1, name: 'Przegląd SSO' })).toBeVisible();
     await waitFor(() => expect(composer(canvas)).toHaveFocus());
     await expect(composer(canvas)).toBeEnabled();
@@ -474,11 +546,11 @@ export const NarrowManagedInSpecification: Story = {
   globals: mobile,
   play: async ({ canvas }) => {
     await settle(375, 812);
-    await expect(
-      await canvas.findByRole('heading', { level: 2, name: 'Rozpocznij sesję' }),
-    ).toBeVisible();
+    await agentLegend(canvas);
     await expect(canvas.queryByRole('textbox', { name: 'Wiadomość' })).toBeNull();
     await expect(canvas.getByRole('button', { name: 'Kontekst' })).toBeVisible();
+    // The form's last row stays in the form: no bar fixed over the page.
+    await expect(startButton(canvas).closest('form')).not.toBeNull();
     await expectNoHorizontalScroll();
   },
 };
@@ -492,5 +564,36 @@ export const NarrowNativeModes: Story = {
     await expect(await canvas.findByRole('radio', { name: 'Accept edits' })).toBeChecked();
     await expect(startButton(canvas)).toBeEnabled();
     await expectNoHorizontalScroll();
+  },
+};
+
+/** Narrow, no agent available: the sheet steps back, so the short content just ends. */
+export const NarrowManagedNoProviderAvailable: Story = {
+  ...ManagedNoProviderAvailable,
+  globals: mobile,
+  play: async ({ canvas }) => {
+    await settle(375, 812);
+    await canvas.findByRole('heading', { name: 'Żaden agent nie jest dostępny' });
+    await expect(
+      document.querySelector('[data-workspace-surface-material="plain"]'),
+    ).not.toBeNull();
+    await expectNoHorizontalScroll();
+  },
+};
+
+/** Narrow, the details of several agents: a bottom sheet whose body scrolls between fixed edges. */
+export const NarrowManagedDiagnosticsSeveralAgents: Story = {
+  ...ManagedDiagnosticsSeveralAgents,
+  globals: mobile,
+  play: async ({ canvas }) => {
+    await settle(375, 560);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Jak naprawić' }));
+    const dialog = await body().findByRole('dialog', { name: 'Jak naprawić' });
+    await userEvent.click(within(dialog).getByRole('radio', { name: 'Codex' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Sprawdzone ścieżki (5)' }));
+    // The header and the footer stay on screen; nothing scrolls sideways.
+    await expect(within(dialog).getByRole('heading', { name: 'Jak naprawić' })).toBeVisible();
+    await expect(within(dialog).getByRole('button', { name: 'Sprawdź ponownie' })).toBeVisible();
+    await expect(dialog.scrollWidth).toBeLessThanOrEqual(dialog.clientWidth);
   },
 };

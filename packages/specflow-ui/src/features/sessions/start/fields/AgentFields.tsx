@@ -15,8 +15,9 @@ import { WorkModeField } from './WorkModeField';
  * Effort and Work mode. Always all three once a provider is chosen, so choosing a model never adds
  * rows; Effort and Work mode stay disabled until a model decides which efforts and modes exist (a
  * provider that offers no model choice shows Model disabled at the provider default and decides
- * them itself). The same composition serves the start form and Create's agent section; the Composer
- * keeps its compact pickers. The provider itself is chosen with `ProviderChoice`.
+ * them itself). Create's agent section composes it; the start screen groups the same fields in one
+ * row (`AgentSettings`) and the Composer keeps its compact pickers. The provider itself is chosen
+ * with `ProviderChoice`.
  */
 export function AgentFields({
   catalogue,

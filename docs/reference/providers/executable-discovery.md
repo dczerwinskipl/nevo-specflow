@@ -109,16 +109,16 @@ the install `location`: `codex-desktop-app` | `claude-native-installer` | `antig
 | `npm-global-package`, `version`) once one is found; with `EXECUTABLE_NOT_FOUND` it carries
 `checkedLocations` and, for a broken npm install, `unresolvedLauncher` (`path`, `package`)
 instead. The UI names each location in its own language. `signInCommand` is the CLI's own sign-in command, with the resolved path
-when PATH does not find the command. The New Session provider tile shows how the executable was
-found, only while it is ready, needs sign-in or is unavailable because of that executable. A
-not-found tile names the kinds of places checked (PATH, the Codex desktop app, the npm global
-package) and keeps the full paths behind a disclosure.
+when PATH does not find the command. The New Session agent card shows only a short status; its
+**How to fix** details show how the executable was found when the agent is unavailable because of
+that executable, and for a CLI that was not found name the kinds of places checked (PATH, the Codex
+desktop app, the npm global package) with the full paths behind a disclosure.
 
 ## Unavailability reasons
 
 Configuration comes first: `NOT_ALLOWED_BY_PROJECT`, then `NOT_ENABLED_ON_WORKSTATION`, then
-`SPECIFICATION_WORKTREE_UNSUPPORTED`, then the readiness reasons below. Every reason has a short tile
-status and a what-to-do hint in the UI, with the Runtime's `reason` as the detail.
+`SPECIFICATION_WORKTREE_UNSUPPORTED`, then the readiness reasons below. Every reason has a short card
+status and, in its **How to fix** details, what to do, with the Runtime's `reason` as the detail.
 
 | Code                            | Meaning                                                                                                     | What the user can do                                                 |
 | ------------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |

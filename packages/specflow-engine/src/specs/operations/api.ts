@@ -1,5 +1,5 @@
 import type { SpecFlowEngine } from '../../application';
-import { closeSpecification } from '../lifecycle';
+import { closeSpecification, inspectCloseWithoutGit, resumeCloseWithoutGit } from '../lifecycle';
 import { closeWorktree, closeWorkspace } from '../lifecycle';
 import { previewWithDocumentFlush, previewWithDocumentHold, type CloseRequest } from '../lifecycle';
 import { inspectCloseOperation } from '../lifecycle';
@@ -122,6 +122,23 @@ export async function closeSpecificationOperation(
   },
 ): Promise<PublicCloseOperation> {
   return projectCloseOperation((await closeSpecification(engine, request)).journal);
+}
+
+/** Read-only: where an interrupted Close with Git off stopped (`specs close-recover --preview`). */
+export async function inspectCloseWithoutGitOperation(
+  engine: SpecFlowEngine,
+  operationId: string,
+): ReturnType<typeof inspectCloseWithoutGit> {
+  return inspectCloseWithoutGit(engine, operationId);
+}
+
+/** The operator's recovery of a Close with Git off stuck after its archive intent. */
+export async function resumeCloseWithoutGitOperation(
+  engine: SpecFlowEngine,
+  operationId: string,
+  confirmedStopped: true,
+): Promise<PublicCloseOperation> {
+  return projectCloseOperation(await resumeCloseWithoutGit(engine, operationId, confirmedStopped));
 }
 
 export async function reconcileArchivedConflictScratchOperation(

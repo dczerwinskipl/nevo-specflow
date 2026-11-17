@@ -179,26 +179,41 @@ In a project with Git off (`git.enabled: false`, or no `git:` block) a Specifica
 **archive-only**: the Specification moves to `specs/archive/<slug>` in its own checkout with the
 archived manifest, the same archive result as a normal Close, with no commit, no integration and no
 repository precondition (no clean tree, no integration branch, no branch check). One pure decision,
-`closeRepositoryMode` (lifecycle), derives the mode from the project Git policy; the preflight and
-the Close use case branch on it once, not per check. Asking such a Close to integrate
-(`integrateToTargetBranch: true`) is `CLOSE_INVALID`. Worktree and Workspace Close are Git
-integrations and keep the Git mode.
+`closeRepositoryMode` (lifecycle), derives the mode from the project Git policy, read once by the
+preview; the plan carries it and the Close use case branches on the reserved plan, not per check.
+Asking such a Close to integrate (`integrateToTargetBranch: true`) and any Worktree or Workspace
+Close (an integration by definition) are `CLOSE_INVALID` before the workflow gate. A policy that
+cannot be read decides no mode: the preview refuses with its error after the workflow gate and
+before any repository inspection.
 
 - **What still applies.** The Specification exit gate (D07, in the preview and again under the lock),
   the document commit queue (inert with Git off), resource claims against Create and other Closes,
   and the Runtime's Session Turn checks on a linked checkout.
 - **Plan and journal.** The plan is marked `gitOff` and pins the registered checkout identity
   (no branch, no HEAD), the configuration revision that decided the mode, and claims only the
-  Specification and its checkout. The reservation refuses with `CLOSE_CONFLICT` when that revision
-  changed. The journal goes `reserved` -> `archive-initiated` (the pinned file inventory of the move)
+  Specification and its checkout. Under the lock the reservation re-evaluates the mode for every
+  Close plan and refuses with `CLOSE_CONFLICT`, before publishing anything, when it or the pinned
+  revision changed. The journal goes `reserved` -> `archive-initiated` (the pinned file inventory of the move)
   -> `completed` with outcome `archived-without-git`; the binding and the workspace stay as they
   are. An operation keeps the mode it was reserved with.
 - **No Git process.** Like a Create into an existing workspace with Git off, the operation runs with
   the Git-free verification of Project Home and checkouts (`runGitFreeMutation`). Linked worktrees
-  cannot be created with Git off; one created earlier archives in place too.
-- **Interruption.** A move that did not finish leaves the journal at `archive-initiated`
-  (`recovery-required`); it is never re-run automatically. The operator inspects `specs/active` and
-  `specs/archive` of the checkout.
+  cannot be created with Git off; one created while Git was on archives in place too (owner decision
+  2026-11-17), and the archive stays uncommitted in that worktree: a later Worktree Close with Git on
+  meets `uncommitted-changes` until it is committed.
+- **Interruption and operator recovery.** A move that did not finish leaves the journal at
+  `archive-initiated` (`recovery-required`), holding its Specification and checkout claims (so
+  Creates in that checkout are refused); a retry of the Close never re-runs it. The operator:
+  1. runs `nevo-specflow specs close-recover <operation-id> --preview` (read-only): it proves the
+     state against the pinned inventory: `source-unmoved`, `moved-original-manifest` (renamed, the
+     manifest not yet rewritten) or `moved-archived-manifest`; anything else (both or neither
+     directory, other files) is `CLOSE_RECOVERY_REQUIRED` and must be repaired by hand to one of
+     those states;
+  2. makes sure the original Close stopped and nothing else writes the checkout, then runs
+     `specs close-recover <operation-id> --confirmed-stopped`: the proven move is finished
+     deterministically (the source is planned again and must equal the pin before it moves; the
+     archived manifest must hash to the pinned value), the Close completes as
+     `archived-without-git` and its claims are released.
 
 ### Specification exit gate and Abandon (D07)
 

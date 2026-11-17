@@ -949,7 +949,8 @@
                 "type": "object",
                 "required": [
                   "status",
-                  "reason"
+                  "reason",
+                  "checkout"
                 ],
                 "properties": {
                   "status": {
@@ -962,6 +963,22 @@
                     "type": "string",
                     "enum": [
                       "git-off"
+                    ]
+                  },
+                  "checkout": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "primary"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "linked"
+                        ]
+                      }
                     ]
                   }
                 },

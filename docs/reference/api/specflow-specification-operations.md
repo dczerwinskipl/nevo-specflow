@@ -200,11 +200,21 @@ Close, with no commit, no integration and no repository precondition (no clean t
 branch, no branch check), so it never answers `CLOSE_PREFLIGHT` with `repository`. The workflow
 gate (`CLOSE_BLOCKED`), running Session Turns, `DOCUMENT_COMMITS_PENDING` and resource conflicts
 still apply. Omitting `integrateToTargetBranch` (or `false` for a linked Specification) archives;
-`integrateToTargetBranch: true` is `400 CLOSE_INVALID`. The preview answers `integrationRequired:
-false` and `merge: {status: 'not-integrated', reason: 'git-off'}`, the result `outcome:
-'archived-without-git'`. An operation keeps the mode it was reserved with; a policy change between
-preview and reservation is `409 CLOSE_CONFLICT`. Worktree and Workspace Close are Git integrations
-and are unchanged.
+`integrateToTargetBranch: true` is `400 CLOSE_INVALID` before the workflow gate, in the primary
+checkout too (one message: Git is off, a Close cannot integrate). The preview answers
+`integrationRequired: false` and `merge: {status: 'not-integrated', reason: 'git-off', checkout}`,
+the result `outcome: 'archived-without-git'`. The archive stays uncommitted in that checkout; a
+linked worktree created while Git was on keeps it, and a later Worktree Close with Git on meets
+`uncommitted-changes` until it is committed. The mode is decided once from the policy and carried by
+the plan; the reservation re-evaluates it under the lock, and a changed mode or configuration
+revision is `409 CLOSE_CONFLICT` before anything is reserved. An operation keeps the mode it was
+reserved with. A Git policy that cannot be read is never taken for a mode: the Close answers its
+error (`503 GIT_POLICY_INVALID`) after the workflow gate and before any repository inspection.
+Worktree and Workspace Close integrate with Git, so with Git off their preview and Close are
+`400 CLOSE_INVALID` ("Git is off for this project: closing a worktree integrates it with Git;
+archive the Specification instead, or turn Git on."). A Close with Git off that stopped after its
+archive intent is `recovery-required` and holds its claims until the operator recovers it
+([`specs close-recover`](../cli/specflow-specification-commands.md)).
 Spec-scoped Close requires the appropriate Spec capability and whole-branch integration also
 needs project-wide Git `Integrate`. Workspace Close requires project-wide Git
 `CloseWorkspace` **and** `Integrate` before revealing occupants/journals.
@@ -264,9 +274,10 @@ A successful preview (`ClosePreview`) carries the merge facts in `merge`:
   linked Specification is archived on its own branch, as `integrateToTargetBranch=false` asks.
   `primary-checkout` means the Specification lives in the primary checkout and is archived directly
   on `sourceBranch`, which is the integration branch.
-- `{status: 'not-integrated', reason: 'git-off'}`: Git is off for the project. The Specification is
-  archived in place in its checkout, nothing is committed or merged, and no branch is read (a client
-  says, for example, "Archives without Git (Git is off for this project)").
+- `{status: 'not-integrated', reason: 'git-off', checkout}`: Git is off for the project. The
+  Specification is archived in place in `checkout` (`primary`, or `linked`: its worktree), nothing is
+  committed or merged, and no branch is read (a client says, for example, "Archives without Git (Git
+  is off for this project)"). The archive stays uncommitted in that checkout.
 
 A Close that the Specification workflow refuses (unfinished Tasks or runs, pending writes) answers 409
 `CLOSE_BLOCKED` with `blockers`: groups `{kind, subjectIds, message}` (`kind` is a stable value, `subjectIds` are

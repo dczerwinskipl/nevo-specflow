@@ -297,6 +297,83 @@ export async function moveToArchive(
   await assertArchivedFiles(root, move);
 }
 
+/** Where an interrupted archive move stopped, proved against its pinned inventory. */
+export type ArchiveMoveState =
+  'source-unmoved' | 'moved-original-manifest' | 'moved-archived-manifest';
+
+/**
+ * Read-only: the physical state of a pinned archive move. Exactly one of the active source and the
+ * archive must exist and hold exactly the pinned files (with the original or the archived manifest);
+ * anything else is `CLOSE_RECOVERY_REQUIRED`.
+ */
+export async function inspectArchiveMove(
+  root: string,
+  move: CloseArchiveMove,
+): Promise<ArchiveMoveState> {
+  const sourcePresent = !(await absent(join(root, move.sourcePath)));
+  const archivePresent = !(await absent(join(root, move.destinationPath)));
+  if (sourcePresent && !archivePresent) {
+    const inventory = await physicalInventory(root, move.sourcePath);
+    if (!isDeepStrictEqual(inventory, move.files)) {
+      throw failure('Pre-move source differs from the pinned archive inventory.');
+    }
+
+    return 'source-unmoved';
+  }
+
+  if (!sourcePresent && archivePresent) {
+    const inventory = await physicalInventory(root, move.destinationPath);
+    const relocated = move.files.map((file) => ({
+      relativePath: destinationPath(move, file.relativePath),
+      sha256: file.sha256,
+    }));
+    if (isDeepStrictEqual(inventory, relocated)) {
+      return 'moved-original-manifest';
+    }
+
+    await assertArchivedFiles(root, move);
+
+    return 'moved-archived-manifest';
+  }
+
+  throw failure('Neither canonical source nor archived destination can be proved.');
+}
+
+/**
+ * Finishes an interrupted pinned archive move from the state {@link inspectArchiveMove} proves:
+ * the unmoved source is moved (after it is planned again and equals the pin), a moved archive with
+ * the original manifest gets the pinned archived manifest. Only on the operator's confirmation that
+ * nothing else writes the checkout; never automatically.
+ */
+export async function completeArchiveMove(
+  root: string,
+  move: CloseArchiveMove,
+  plan: { readonly specId: string; readonly slug: string },
+): Promise<void> {
+  const state = await inspectArchiveMove(root, move);
+  if (state === 'source-unmoved') {
+    const planned = await planArchiveMove(root, plan);
+    if (!isDeepStrictEqual(planned.move, move)) {
+      throw failure('The source no longer plans the pinned archive move.');
+    }
+
+    await moveToArchive(root, move, planned.archivedManifest);
+
+    return;
+  }
+
+  if (state === 'moved-original-manifest') {
+    const manifestPath = join(root, move.destinationPath, 'specification.yaml');
+    const archived = archivedManifestText(parse(await readFile(manifestPath, 'utf8')) as object);
+    if (sha256Hex(archived) !== move.archivedManifestSha256) {
+      throw failure('The moved manifest does not give the pinned archived manifest.');
+    }
+
+    await writeFile(manifestPath, archived, 'utf8');
+    await assertArchivedFiles(root, move);
+  }
+}
+
 /** An Engine-only archive operation, before any Specification Close settlement. */
 export async function archiveSpecificationWithCommit(
   engine: SpecFlowEngine,
@@ -307,6 +384,10 @@ export async function archiveSpecificationWithCommit(
   afterScopedStaging?: () => Promise<void>,
 ): Promise<CloseJournal> {
   const record = await readCloseJournal(engine.context, operationId);
+  if (record?.plan.gitOff) {
+    throw invalid('A Close with Git off archives without an archive commit.');
+  }
+
   if (
     record?.stage !== 'reserved' ||
     record.plan.gitOff ||
@@ -635,31 +716,7 @@ export async function inspectArchivePhysicalRecovery(
       throw failure('Source HEAD moved before the archive commit intent.');
     }
 
-    if (sourcePresent && !archivePresent) {
-      const inventory = await physicalInventory(root, archive.sourcePath);
-      if (!isDeepStrictEqual(inventory, archive.files)) {
-        throw failure('Pre-move source differs from the pinned archive inventory.');
-      }
-
-      return 'source-unmoved';
-    }
-
-    if (!sourcePresent && archivePresent) {
-      const inventory = await physicalInventory(root, archive.destinationPath);
-      const relocated = archive.files.map((file) => ({
-        relativePath: destinationPath(archive, file.relativePath),
-        sha256: file.sha256,
-      }));
-      if (isDeepStrictEqual(inventory, relocated)) {
-        return 'moved-original-manifest';
-      }
-
-      await assertArchivedFiles(root, archive);
-
-      return 'moved-archived-manifest';
-    }
-
-    throw failure('Neither canonical source nor archived destination can be proved.');
+    return inspectArchiveMove(root, archive);
   }
 
   if (sourcePresent || !archivePresent) {

@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { CloseOperationError, type SpecFlowEngine } from '@nevo/specflow-engine';
 import { ReportedFailure } from '../exit-code';
 import {
+  ARCHIVED_WITHOUT_GIT,
   integrationTargetMissingLines,
   previewCloseForCli,
   reportingMissingIntegrationTarget,
+  withoutGitLines,
 } from './close-preview';
 
 const specId = '00000000-0000-4000-8000-000000000001';
@@ -121,6 +123,17 @@ describe('CLI Close preview without an integration branch', () => {
     expect(lines).toContain(
       '  develop: checked out in the main folder; archives on develop (main folder; nothing to merge)',
     );
+  });
+
+  it('says a Close without Git archives in place, and what stays uncommitted in a worktree', () => {
+    expect(withoutGitLines('primary')).toEqual([ARCHIVED_WITHOUT_GIT]);
+    expect(ARCHIVED_WITHOUT_GIT).toBe(
+      'Without Git (Git is off for this project): the Specification is archived in place; nothing is committed or merged.',
+    );
+    expect(withoutGitLines('linked')).toEqual([
+      ARCHIVED_WITHOUT_GIT,
+      'The archive stays uncommitted in the linked worktree: commit it there before closing the worktree with Git on.',
+    ]);
   });
 
   it('leaves any other refusal to the caller', async () => {

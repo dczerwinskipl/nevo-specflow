@@ -15,6 +15,16 @@ type PreviewRequest = Parameters<typeof previewPublicCloseOperation>[1];
 export const ARCHIVED_WITHOUT_GIT =
   'Without Git (Git is off for this project): the Specification is archived in place; nothing is committed or merged.';
 
+/** The human lines of a preview that archives without Git, by the checkout it archives in. */
+export function withoutGitLines(checkout: 'primary' | 'linked'): string[] {
+  return checkout === 'linked'
+    ? [
+        ARCHIVED_WITHOUT_GIT,
+        'The archive stays uncommitted in the linked worktree: commit it there before closing the worktree with Git on.',
+      ]
+    : [ARCHIVED_WITHOUT_GIT];
+}
+
 /**
  * `specs close --preview` and `specs worktree close --preview`: the read-only plan, refused with
  * `CLOSE_BLOCKED` exactly where Close would refuse, listing the workflow blockers and the agent

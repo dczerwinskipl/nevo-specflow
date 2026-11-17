@@ -8,12 +8,16 @@ import { CloseOperationError } from './model';
  */
 export type CloseRepositoryMode = 'git' | 'git-off';
 
+/** The repository mode the project Git policy sets: Git off with `git.enabled: false` or no `git:` block. */
+export function repositoryModeOf(policy: Pick<GitWorktreePolicy, 'enabled'>): CloseRepositoryMode {
+  return policy.enabled ? 'git' : 'git-off';
+}
+
 /**
- * The one decision of the Close repository mode, from the project Git policy (owner decision
- * 2026-11-17): a Specification Close in a project with Git off (`git.enabled: false`, or no `git:`
- * block) archives in place. Asking such a Close to integrate is refused (`CLOSE_INVALID`) rather
- * than silently archived. A Worktree or Workspace Close is a Git integration by definition and keeps
- * the Git mode.
+ * The one decision of the Close repository mode, from the project Git policy (owner decisions
+ * 2026-11-17): a Specification Close in a project with Git off archives in place. With Git off,
+ * asking a Specification Close to integrate (primary or linked) and any Worktree or Workspace Close
+ * (an integration by definition) are refused with `CLOSE_INVALID` before the workflow gate.
  */
 export function closeRepositoryMode(
   policy: Pick<GitWorktreePolicy, 'enabled'>,
@@ -22,8 +26,15 @@ export function closeRepositoryMode(
     readonly integrateToTargetBranch?: boolean;
   },
 ): CloseRepositoryMode {
-  if (request.kind !== 'specification-close' || policy.enabled) {
+  if (repositoryModeOf(policy) === 'git') {
     return 'git';
+  }
+
+  if (request.kind !== 'specification-close') {
+    throw new CloseOperationError(
+      'CLOSE_INVALID',
+      'Git is off for this project: closing a worktree integrates it with Git; archive the Specification instead, or turn Git on.',
+    );
   }
 
   if (request.integrateToTargetBranch === true) {

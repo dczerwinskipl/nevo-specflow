@@ -169,6 +169,11 @@ export { settleArchivedLinkedConflict } from './specs/lifecycle';
 export { inspectPendingDisposal } from './specs/lifecycle';
 
 export { closeSpecification, type CloseSpecificationResult } from './specs/lifecycle';
+export {
+  finishCloseWithoutGit,
+  inspectCloseWithoutGit,
+  resumeCloseWithoutGit,
+} from './specs/lifecycle';
 
 export { reconcileArchivedConflictScratch } from './specs/lifecycle';
 

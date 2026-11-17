@@ -373,7 +373,7 @@ function isGitOffCloseJournal(
     }
   } else if (value.stage === 'archive-initiated' || value.stage === 'completed') {
     if (
-      !isArchiveMove(value.archiveMove, plan.slug) ||
+      !isArchiveMove(value.archiveMove, plan.slug, MOVE_KEYS) ||
       value.outcome !== (value.stage === 'completed' ? 'archived-without-git' : undefined)
     ) {
       return false;
@@ -400,7 +400,7 @@ function isArchiveEvidence(value: unknown, plan: Record<string, unknown>, stage:
     typeof value.sourceCommit !== 'string' ||
     value.sourceCommit !== plan.source.head ||
     typeof plan.slug !== 'string' ||
-    !isArchiveMove(value, plan.slug)
+    !isArchiveMove(value, plan.slug, ARCHIVE_EVIDENCE_KEYS)
   ) {
     return false;
   }
@@ -419,9 +419,22 @@ function isArchiveEvidence(value: unknown, plan: Record<string, unknown>, stage:
 }
 
 /** The pinned move of `specs/active/<slug>` to `specs/archive/<slug>`: its ordered file inventory. */
-function isArchiveMove(value: unknown, slug: string): value is Record<string, unknown> {
+const MOVE_KEYS = ['sourcePath', 'destinationPath', 'files', 'archivedManifestSha256'];
+const ARCHIVE_EVIDENCE_KEYS = [...MOVE_KEYS, 'sourceCommit', 'committedHead', 'committedTree'];
+
+/** Only `keys`, so a journal cannot carry evidence its plan does not have. */
+function hasOnlyKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  return Object.keys(value).every((key) => keys.includes(key));
+}
+
+function isArchiveMove(
+  value: unknown,
+  slug: string,
+  keys: readonly string[],
+): value is Record<string, unknown> {
   if (
     !isRecord(value) ||
+    !hasOnlyKeys(value, keys) ||
     value.sourcePath !== 'specs/active/' + slug ||
     value.destinationPath !== 'specs/archive/' + slug ||
     typeof value.archivedManifestSha256 !== 'string' ||
@@ -441,6 +454,7 @@ function isArchiveMove(value: unknown, slug: string): value is Record<string, un
   const valid = files.every((file, index) => {
     if (
       !isRecord(file) ||
+      !hasOnlyKeys(file, ['relativePath', 'sha256']) ||
       typeof file.relativePath !== 'string' ||
       !file.relativePath.startsWith(sourcePath + '/') ||
       file.relativePath.includes('\\') ||

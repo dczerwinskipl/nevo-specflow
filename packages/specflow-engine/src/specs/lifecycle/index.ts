@@ -67,3 +67,10 @@ export {
 export { closePreviewCheckoutBlocker } from './close-preview-occupancy';
 export { closeWorktree, closeWorkspace, type CloseWorktreeResult } from './close/worktree';
 export { closeSpecification, type CloseSpecificationResult } from './close/specification';
+export {
+  finishCloseWithoutGit,
+  inspectCloseWithoutGit,
+  resumeCloseWithoutGit,
+  type CloseWithoutGitRecovery,
+} from './close/without-git';
+export { inspectArchiveMove, type ArchiveMoveState } from './archive-effects';

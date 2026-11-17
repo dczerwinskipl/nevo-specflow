@@ -1,5 +1,6 @@
 import type {
   SpecificationWorkspaceResponse,
+  TaskListEntry,
   TaskListResponse,
   WorkspaceSession,
 } from '@nevo/specflow-contracts/specs/workspace';
@@ -365,6 +366,32 @@ const inProgressStatus = {
   lifecycle: 'in_progress',
 } as const;
 
+/** A Task of the scenario as the Runtime's Tasks page and Overview preview row. */
+function earlyRow(
+  task: (typeof drafts)[number],
+  status: typeof draftStatus | typeof doneStatus | typeof inProgressStatus,
+): TaskListEntry {
+  return {
+    ...task,
+    type: { id: 'backend', title: 'Backend' },
+    dependsOn: [],
+    status,
+    facts: {
+      preparation: status === draftStatus ? 'draft' : 'ready',
+      escalated: false,
+      position:
+        status === doneStatus
+          ? { state: 'terminal', outcome: 'completed' }
+          : status === inProgressStatus
+            ? { state: 'active', step: 'implement', attempt: 1 }
+            : { state: 'not-started' },
+      startable: false,
+      startBlockers: [],
+      definitionChanged: false,
+    },
+  };
+}
+
 /** The workspace read of the scenario. */
 export async function earlyWorkspace(
   scenario: EarlyScenario,
@@ -442,7 +469,7 @@ export async function earlyWorkspace(
                       groupId: group.id,
                       name: group.name,
                       count: tasks.length,
-                      tasks: [...tasks],
+                      tasks: tasks.map((task) => earlyRow(task, group.status)),
                       more: 0,
                     },
                   ]
@@ -472,20 +499,7 @@ export function earlyTaskList(scenario: EarlyScenario): TaskListResponse {
               name: 'Needs approval',
               summary: 'row',
               collapsed: false,
-              tasks: tasks.map((task) => ({
-                ...task,
-                type: { id: 'backend', title: 'Backend' },
-                dependsOn: [],
-                status: draftStatus,
-                facts: {
-                  preparation: 'draft',
-                  escalated: false,
-                  position: { state: 'not-started' },
-                  startable: false,
-                  startBlockers: [],
-                  definitionChanged: false,
-                },
-              })),
+              tasks: tasks.map((task) => earlyRow(task, draftStatus)),
             },
           ]
         : [],

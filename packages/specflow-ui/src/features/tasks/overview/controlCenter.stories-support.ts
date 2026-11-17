@@ -311,6 +311,47 @@ function facts(task: FixtureTask, attention?: WorkflowAttentionItem): TaskFacts 
   };
 }
 
+/** A Task of the scenario as the Runtime's Tasks page and Overview preview row. */
+function taskEntry(task: FixtureTask, attention: readonly WorkflowAttentionItem[]): TaskListEntry {
+  const own = attention.find(
+    (candidate) => candidate.subject.kind === 'task' && candidate.subject.taskId === task.id,
+  );
+  const cause = attention
+    .find((entry) => entry.reason === 'tasks-stuck')
+    ?.blocking?.find((candidate) => candidate.taskId === task.id)?.cause;
+  // The row's item, as the Runtime names it: the Task's own, else the escalation naming it.
+  const naming =
+    own ??
+    attention.find(
+      (candidate) =>
+        candidate.reason === 'task-escalated' && (candidate.taskIds ?? []).includes(task.id),
+    );
+  const blocks = {
+    ...(cause ? { blocksSpecification: { cause } } : {}),
+    ...(naming ? { attention: naming } : {}),
+  };
+  if (task.broken) {
+    return {
+      id: task.id,
+      title: task.title,
+      status: task.status,
+      broken: { reason: 'missing-manifest' },
+      ...blocks,
+    };
+  }
+
+  return {
+    id: task.id,
+    title: task.title,
+    type: { id: task.type.toLowerCase(), title: task.type },
+    dependsOn: [...(task.dependsOn ?? [])],
+    status: task.status,
+    facts: facts(task, own),
+    ...blocks,
+    ...(task.holdReason ? { holdReason: task.holdReason } : {}),
+  };
+}
+
 const sessions = {
   implement: {
     id: 'session-impl',
@@ -453,9 +494,7 @@ export async function controlCenterWorkspace(
                 groupId: group.id,
                 name: group.name,
                 count: group.members.length,
-                tasks: group.members
-                  .slice(0, 2)
-                  .map((task) => ({ id: task.id, title: task.title })),
+                tasks: group.members.slice(0, 2).map((task) => taskEntry(task, attention)),
                 more: Math.max(0, group.members.length - 2),
               })),
             compact: groups
@@ -490,33 +529,7 @@ export function controlCenterTaskList(
   const attention = attentionOf(scenario);
   const stuck = attention.find((entry) => entry.reason === 'tasks-stuck');
   const blockingIds = new Set(stuck?.taskIds ?? []);
-  const entry = (task: FixtureTask): TaskListEntry => {
-    const own = attention.find(
-      (candidate) => candidate.subject.kind === 'task' && candidate.subject.taskId === task.id,
-    );
-    const cause = stuck?.blocking?.find((candidate) => candidate.taskId === task.id)?.cause;
-    const blocks = cause ? { blocksSpecification: { cause } } : {};
-    if (task.broken) {
-      return {
-        id: task.id,
-        title: task.title,
-        status: task.status,
-        broken: { reason: 'missing-manifest' },
-        ...blocks,
-      };
-    }
-
-    return {
-      id: task.id,
-      title: task.title,
-      type: { id: task.type.toLowerCase(), title: task.type },
-      dependsOn: [...(task.dependsOn ?? [])],
-      status: task.status,
-      facts: facts(task, own),
-      ...blocks,
-      ...(task.holdReason ? { holdReason: task.holdReason } : {}),
-    };
-  };
+  const entry = (task: FixtureTask) => taskEntry(task, attention);
 
   const listed = blocking ? tasks.filter((task) => blockingIds.has(task.id)) : tasks;
 

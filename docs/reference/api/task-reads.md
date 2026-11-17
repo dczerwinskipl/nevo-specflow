@@ -235,18 +235,32 @@ Specification's Task inventory from one Engine read (`readExecution`, every Task
   (the Tasks page collapses it by default) and its rows. A row is `id`, `title`, `type`
   (`{id, title}`), `dependsOn`, `status` (the status line), `facts` (the neutral facts above) and
   `blocksSpecification: {cause}` when the Specification's current `tasks-stuck` names it, and
-  `holdReason` (the recorded reason, verbatim) while it is on hold with a reason. A broken
+  `holdReason` (the recorded reason, verbatim) while it is on hold with a reason, and
+  `attention`, the attention item that names the Task (its Requires attention overlay): its own
+  item, else the Specification's `task-escalated` that names it; at most one, and the
+  Specification's `tasks-stuck` is `blocksSpecification` instead. A broken
   Task has a row of what is readable of it: `id`, `title` (when its manifest is readable),
-  `status` (`broken`), `broken: {reason}` and `blocksSpecification`; it is also an attention item.
+  `status` (`broken`), `broken: {reason}`, `blocksSpecification` and `attention` (its
+  `task-broken` item). The Overview's Task preview carries these same rows
+  ([Specification workspace](specification-workspace.md)), made by the same Runtime projection.
+- Inside a group the rows are in importance order (owner decision A-Q2), one comparator for this
+  page and the Overview preview: a Task that requires attention (an `attention` item,
+  `blocksSpecification` or broken), then one on hold or unable to start that an open Task waits on
+  directly (its `dependencyWait.waitingFor` names it), then one in progress, then the rest; ties
+  keep the Engine's Task order (by id).
 - `progress`: `completed`, `total` (every Task except cancelled ones and those ended without
   completing; broken and on hold ones count), `cancelled` (also those an abandon cancelled),
   `ended` (abandoned by its own workflow, not cancelled) and `onHold`.
 - `attention`: every attention item of the read, broken Tasks first, then the Specification, then
   Tasks in id order.
-- `?blocking=specification` (the only search value; anything else is `400`) keeps only the Tasks
-  the current `tasks-stuck` item names, in their normal groups, and adds `filter: {blocking,
-matched, total}` (`total`: every row, broken ones too). The Tasks are resolved from the read, never from ids in the URL, so a stale
-  link never shows stale Tasks: when nothing blocks any more, `groups` is empty and `matched` 0.
+- At most one filter; anything else, also both at once, is `400` before the read:
+  - `?blocking=specification` keeps only the Tasks the current `tasks-stuck` item names, in their
+    normal groups, and adds `filter: {blocking, matched, total}` (`total`: every row, broken ones
+    too). The Tasks are resolved from the read, never from ids in the URL, so a stale link never
+    shows stale Tasks: when nothing blocks any more, `groups` is empty and `matched` 0.
+  - `?group=<groupId>` (a group id of the dashboard grouping) keeps only that group, and adds
+    `filter: {group, matched, total}`. It is the Overview's "N more in <group>" target. A group
+    with no Task now, or an id the grouping does not have, answers no group and `matched` 0.
 
 An unknown Specification is `404 specification_not_found`; an execution the Engine cannot read is
 `503 specification_source_unavailable` (`Retry-After: 1` when the lock was busy). The demo Runtime

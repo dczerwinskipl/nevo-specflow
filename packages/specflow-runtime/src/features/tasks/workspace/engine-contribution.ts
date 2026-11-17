@@ -96,7 +96,7 @@ export function workspaceAttentionOf(
 /**
  * The workspace `tasks` section (the Overview's Tasks) of one Engine reading (`tasks: 'all'`): the
  * configured grouping with a per-row attention mark, the progress with cancelled and on hold apart,
- * the attention projection, and the Overview summary (each Task it names by id and title) with
+ * the attention projection, and the Overview summary (its Tasks as the Tasks page rows) with
  * Now's explanation when the Specification is stuck. Pure.
  */
 export function workspaceTasksOf(
@@ -108,19 +108,15 @@ export function workspaceTasksOf(
     board.rows.flatMap((row) => (row.title !== undefined ? [[row.id, row.title] as const] : [])),
   );
   const named = namedTaskIds(board.attention);
-  // A broken Task without a readable title shows its id.
-  const titled = board.groups.map((group) => ({
-    ...group,
-    tasks: group.tasks.map((row) => ({ ...row, title: row.title ?? row.id })),
-  }));
-  const groups: WorkspaceTaskGroup[] = titled.map((group) => ({
+  const groups: WorkspaceTaskGroup[] = board.groups.map((group) => ({
     id: group.id,
     name: group.name,
     summary: group.summary,
     collapsed: group.collapsed,
     tasks: group.tasks.map((row) => ({
       id: row.id,
-      title: row.title,
+      // A broken Task without a readable title shows its id.
+      title: row.title ?? row.id,
       status: row.status,
       ...(isReadable(row) ? { type: row.type, dependsOn: row.dependsOn } : {}),
       ...(named.has(row.id) ? { attention: true } : {}),
@@ -139,7 +135,7 @@ export function workspaceTasksOf(
         groups,
         ...board.progress,
         attention: board.attention.map((item) => workspaceAttentionOf(item, titles)),
-        overview: { ...overviewSummary(titled), ...(stuck ? { stuck } : {}) },
+        overview: { ...overviewSummary(board.groups), ...(stuck ? { stuck } : {}) },
       },
     },
     preparationState: basis.reading.preparation,

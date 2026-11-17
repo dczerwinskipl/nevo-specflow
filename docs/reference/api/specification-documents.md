@@ -582,13 +582,13 @@ the Specification routes; the Engine's Task-scoped Documents own every rule (the
 Task resource refuses a write). Project mode only (not registered in demo mode); a Task the
 Specification does not list is `DOCUMENT_NOT_FOUND`.
 
-| Method | Path                                                     | Capability | Purpose                                                               |
-| ------ | -------------------------------------------------------- | ---------- | --------------------------------------------------------------------- |
-| GET    | `/api/specs/:specId/tasks/:taskId/document-tree`         | View       | `TaskDocumentTree` (`registryRevision`, `writable`, the documents)    |
-| GET    | `/api/specs/:specId/tasks/:taskId/documents/:documentId` | View       | `DocumentContent`                                                     |
-| PUT    | `/api/specs/:specId/tasks/:taskId/documents/:documentId` | Manage     | Save text                                                             |
-| POST   | `/api/specs/:specId/tasks/:taskId/documents`             | Manage     | Create documents (`DocumentOperationResult`, `revision` the registry) |
-| POST   | `/api/specs/:specId/tasks/:taskId/document-operations`   | Manage     | rename / move / delete                                                |
+| Method | Path                                                     | Capability | Purpose                                                                |
+| ------ | -------------------------------------------------------- | ---------- | ---------------------------------------------------------------------- |
+| GET    | `/api/specs/:specId/tasks/:taskId/document-tree`         | View       | `TaskDocumentTree` (`registryRevision`, `capabilities`, the documents) |
+| GET    | `/api/specs/:specId/tasks/:taskId/documents/:documentId` | View       | `DocumentContent`                                                      |
+| PUT    | `/api/specs/:specId/tasks/:taskId/documents/:documentId` | Manage     | Save text                                                              |
+| POST   | `/api/specs/:specId/tasks/:taskId/documents`             | Manage     | Create documents (`DocumentOperationResult`, `revision` the registry)  |
+| POST   | `/api/specs/:specId/tasks/:taskId/document-operations`   | Manage     | rename / move / delete                                                 |
 
 `TaskDocumentTree` lists each document with `id`, `path` (relative to the Task folder), `type`,
 `classification`, `required` and, when its file is readable, `file` (`kind`, `mediaType`, `size`,

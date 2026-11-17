@@ -1,6 +1,14 @@
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
-import { actorLabel, personLabel, progressLine } from './presentation';
+import type { GateStatus, WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
+import {
+  actorLabel,
+  attemptLine,
+  nowSecondary,
+  personLabel,
+  progressLine,
+  stepTrack,
+} from './presentation';
 
 const t = ((key: string) => (key === 'workflowExecution.actor.you' ? 'you' : key)) as TFunction;
 
@@ -59,5 +67,121 @@ describe('progress line', () => {
     expect(progressLine(echo, { stepCount: 7, next: step(1, 'Gather') })).toBeUndefined();
     expect(progressLine(echo, { stepCount: 7 })).toBeUndefined();
     expect(progressLine(echo, undefined)).toBeUndefined();
+  });
+});
+
+describe('attempt line', () => {
+  const echo = ((key: string, values?: Record<string, unknown>) =>
+    [key, JSON.stringify(values)].join(' ')) as unknown as TFunction;
+
+  it('never names a first attempt', () => {
+    expect(attemptLine(echo, { number: 1, since: '11:18', actor: 'you' })).toBe(
+      'workflowExecution.now.active {"since":"11:18","actor":"you"}',
+    );
+  });
+
+  it('names the attempt from the second one on', () => {
+    expect(attemptLine(echo, { number: 2, since: '11:18', actor: 'you' })).toBe(
+      'workflowExecution.now.activeAttempt {"attempt":2,"since":"11:18","actor":"you"}',
+    );
+  });
+});
+
+describe('step track', () => {
+  const key = ((name: string) => name) as unknown as TFunction;
+  const step = (position: number, title: string) => ({ step: 's' + position, title, position });
+  type TrackInput = Pick<WorkflowActionProjection, 'outline' | 'position'>;
+
+  it('places the current step', () => {
+    expect(
+      stepTrack(key, {
+        outline: { stepCount: 7, current: step(4, 'Break'), next: step(5, 'Review') },
+        position: { kind: 'ready', next: { step: { id: 's4', title: 'Break', kind: 'work' } } },
+      } as TrackInput),
+    ).toMatchObject({ position: { state: 'current', step: 4 }, total: 7 });
+  });
+
+  it('outlines the first step before the start, fills a completed run, skips an abandoned one', () => {
+    expect(
+      stepTrack(key, {
+        outline: { stepCount: 7, next: step(1, 'Gather') },
+        position: { kind: 'not-started', preview: { firstStepTitle: 'Gather' } },
+      } as TrackInput)?.position,
+    ).toEqual({ state: 'not-started' });
+    expect(
+      stepTrack(key, {
+        outline: { stepCount: 7 },
+        position: { kind: 'terminal', outcome: 'completed' },
+      })?.position,
+    ).toEqual({ state: 'completed' });
+    expect(
+      stepTrack(key, {
+        outline: { stepCount: 7 },
+        position: { kind: 'terminal', outcome: 'abandoned' },
+      }),
+    ).toBeUndefined();
+    expect(
+      stepTrack(key, { position: { kind: 'terminal', outcome: 'completed' } }),
+    ).toBeUndefined();
+  });
+});
+
+describe('the Now secondary action', () => {
+  const gate = (id: string): GateStatus =>
+    ({
+      id,
+      type: 'document',
+      label: id,
+      scope: { kind: 'specification', specId: 'sso' },
+      status: 'unsatisfied',
+      reason: 'sections-missing',
+      documentId: id,
+    }) as GateStatus;
+  const active = (
+    produces: 'tasks' | undefined,
+    gates: GateStatus[] = [],
+    createTask: 'allowed' | 'unavailable' = 'allowed',
+  ) =>
+    ({
+      position: {
+        kind: 'active',
+        step: { id: 'any', title: 'Any', kind: 'work', ...(produces ? { produces } : {}) },
+        attempt: { number: 1, startedAt: '', actor: { class: 'human', details: {} } },
+      },
+      actions: {
+        finish: {
+          step: 'any',
+          attempt: 1,
+          transitions: [{ id: 'done', target: { kind: 'step', step: 'x' }, gates }],
+        },
+      },
+      specification: {
+        createTask:
+          createTask === 'allowed'
+            ? { kind: 'allowed' }
+            : { kind: 'unavailable', reason: 'task-limit' },
+        taskTypes: [],
+      },
+    }) as unknown as WorkflowActionProjection;
+  const any = () => true;
+
+  it('keeps Finish step beside an unmet gate that is the main action', () => {
+    expect(nowSecondary(active(undefined, [gate('a')]), 'gate', any)).toEqual({ kind: 'finish' });
+  });
+
+  it('offers New task at a step that produces Tasks while a Task may be created', () => {
+    expect(nowSecondary(active('tasks'), 'finish', any)).toEqual({ kind: 'new-task' });
+    expect(nowSecondary(active('tasks', [], 'unavailable'), 'finish', any)).toBeUndefined();
+    expect(nowSecondary(active(undefined), 'finish', any)).toBeUndefined();
+  });
+
+  it('offers an unmet gate that has an action and is not the main action', () => {
+    const projection = active(undefined, [gate('a')]);
+    expect(nowSecondary(projection, 'finish', any)).toEqual({ kind: 'gate', gate: gate('a') });
+    expect(nowSecondary(projection, 'finish', () => false)).toBeUndefined();
+  });
+
+  it('offers nothing beside a lifecycle or Close action', () => {
+    expect(nowSecondary(active('tasks'), 'other', any)).toBeUndefined();
   });
 });

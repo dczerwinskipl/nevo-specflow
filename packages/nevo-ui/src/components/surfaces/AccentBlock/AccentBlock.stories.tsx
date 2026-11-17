@@ -21,10 +21,12 @@ function Sheet({
   width,
   bleed,
   name,
+  padding = 'md',
 }: {
   readonly width: number;
   readonly bleed: boolean | 'narrow';
   readonly name: string;
+  readonly padding?: 'none' | 'md';
 }) {
   return (
     <div
@@ -32,7 +34,7 @@ function Sheet({
       style={{ width }}
       data-sheet={name}
     >
-      <AppWorkspaceBody tabIndex={-1}>
+      <AppWorkspaceBody tabIndex={-1} padding={padding}>
         <AppContentContainer align="start" size="full" className="grid gap-4">
           <Typography as="h3" variant="title-sm" data-gutter-reference="">
             Sign-in screen with the SSO button
@@ -65,6 +67,7 @@ function BleedFixture() {
       <Sheet name="narrow-390" width={390} bleed="narrow" />
       <Sheet name="narrow-834" width={834} bleed="narrow" />
       <Sheet name="always-834" width={834} bleed />
+      <Sheet name="no-padding-390" width={390} bleed="narrow" padding="none" />
     </div>
   );
 }
@@ -72,7 +75,9 @@ function BleedFixture() {
 /**
  * `bleed` turns the card into a flush band across the `AppWorkspaceBody` padding. `bleed="narrow"`
  * does that only while the page content container is narrower than 40rem (here: the 390 sheet), and
- * keeps the card above it (the 834 sheet). `bleed` always bleeds (the last sheet).
+ * keeps the card above it (the 834 sheet). `bleed` always bleeds (the third sheet). In a body with
+ * no inline padding (the last sheet) there is nothing to bleed across: the band keeps a 12 px text
+ * inset instead of touching the edge.
  */
 export const Bleed: Story = {
   render: () => <BleedFixture />,
@@ -122,6 +127,11 @@ export const BleedGeometryContract: Story = {
     const always = edgesOf(canvasElement, 'always-834');
     near(always.blockLeft, 0, 'bleed always spans the body padding');
     near(always.textLeft, always.gutterLeft, 'bleed lines the text up with the gutter');
+
+    const flush = edgesOf(canvasElement, 'no-padding-390');
+    near(flush.blockLeft, 0, 'Without body padding the band stays at the sheet edge');
+    near(flush.textLeft, 12, 'Without body padding the band text keeps the 12 px floor');
+    near(flush.textRight, 12, 'Without body padding the band text keeps the 12 px floor');
   },
 };
 

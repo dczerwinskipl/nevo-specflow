@@ -393,7 +393,7 @@ function ProgressCapture() {
     <DesignCaptureProvider captureComponents={['Progress']}>
       <div className="grid gap-4">
         {(['default', 'compact'] as const).flatMap((size) =>
-          (['continuous', 'segmented', 'position'] as const).map((variant) => (
+          (['continuous', 'segmented', 'segmented-position'] as const).map((variant) => (
             <div key={`${size}-${variant}`} className={size === 'compact' ? 'w-28' : 'w-64'}>
               <Progress
                 aria-label="Canonical progress"
@@ -402,7 +402,7 @@ function ProgressCapture() {
                   size === 'default' && variant === 'continuous' ? 'default' : `${size}-${variant}`
                 }
                 size={size}
-                {...(variant === 'position'
+                {...(variant === 'segmented-position'
                   ? {
                       variant: 'segmented',
                       total: 7,

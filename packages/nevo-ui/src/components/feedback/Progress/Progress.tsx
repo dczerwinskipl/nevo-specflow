@@ -186,7 +186,7 @@ export const Progress = forwardRef<HTMLDivElement, ProgressProps>(function Progr
   }, [segmented, valid]);
   const capture = useDesignMetadata('Progress', {
     size,
-    variant: position ? 'position' : variant,
+    variant: position ? 'segmented-position' : variant,
   });
   if (!valid) {
     return null;

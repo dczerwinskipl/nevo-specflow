@@ -8,6 +8,8 @@ import { InlineAction } from './InlineAction';
 export interface GateAction {
   readonly label: string;
   readonly onSelect: () => void;
+  /** What to do to finish, when this is the main action ("Add the Acceptance section to …"). */
+  readonly hint?: string;
 }
 
 /**

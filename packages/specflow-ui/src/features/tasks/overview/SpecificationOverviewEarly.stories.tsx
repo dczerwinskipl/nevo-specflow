@@ -46,7 +46,18 @@ const meta = {
   argTypes: {
     scenario: {
       control: 'select',
-      options: ['not-started', 'write-spec', 'write-spec-session', 'tasks-created'],
+      options: [
+        'not-started',
+        'not-started-bare',
+        'write-spec',
+        'write-spec-retry',
+        'write-spec-gate',
+        'write-spec-session',
+        'breakdown',
+        'tasks-created',
+        'waiting',
+        'completed',
+      ],
     },
     page: { control: 'inline-radio', options: ['overview', 'tasks'] },
   },
@@ -75,6 +86,23 @@ export const NotStarted: Story = {
   },
 };
 
+/**
+ * A real project just created, without a written goal and with Sessions turned off (audit finding
+ * 14): no goal under the title, no New session.
+ */
+export const NotStartedBare: Story = {
+  tags: ['contract'],
+  args: { scenario: 'not-started-bare' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('button', { name: 'Start workflow' })).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'New session' })).toBeNull();
+    await expect(
+      canvas.getByRole('img', { name: 'Not started, 7 steps. First step: Gather requirements' }),
+    ).toBeVisible();
+  },
+};
+
 /** Writing the Specification by hand: "Step 2 of 7 · next: â€¦", two documents still templates. */
 export const WriteSpec: Story = {
   tags: ['contract'],
@@ -83,9 +111,72 @@ export const WriteSpec: Story = {
     await expect(await canvas.findByRole('button', { name: 'Finish step' })).toBeVisible();
     await expect(canvas.getByText('Step 2 of 7 · next: Design the solution')).toBeVisible();
     await expect(
+      canvas.getByRole('img', { name: 'Step 2 of 7: Write the Specification' }),
+    ).toBeVisible();
+    await expect(
       canvas.getByText('Write the Specification documents from the agreed requirements.'),
     ).toBeVisible();
+    // A first attempt is not named; the step id and revision are in the ⋯ note only.
+    const now = canvas.getByRole('region', { name: 'Now' });
+    await expect(now).not.toHaveTextContent(/Attempt|rev 1/);
+    await expect(within(now).getByText(/^In progress since .+ · started by you$/)).toBeVisible();
     await expect(canvas.getAllByText('Template only')).toHaveLength(2);
+  },
+};
+
+/** The second attempt of a step (after a return) names its attempt. */
+export const WriteSpecRetry: Story = {
+  tags: ['contract'],
+  args: { scenario: 'write-spec-retry' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText(/^Attempt 2 · in progress since /)).toBeVisible();
+  },
+};
+
+/**
+ * An exit gate names a document: opening it is the main action, Finish step stays beside it, and
+ * the line above says what is missing.
+ */
+export const WriteSpecGate: Story = {
+  tags: ['contract'],
+  args: { scenario: 'write-spec-gate' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const open = await canvas.findByRole('button', { name: 'Open behaviour.md' });
+    const actions = open.closest<HTMLElement>('[data-slot="workflow-actions"]')!;
+    await expect(
+      within(actions)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(['Open behaviour.md', 'Finish step']);
+    await expect(
+      canvas.getByText('Add the Acceptance section to behaviour.md to finish.'),
+    ).toBeVisible();
+  },
+};
+
+/** Break the solution down before any Task exists: New task is the one secondary action. */
+export const Breakdown: Story = {
+  tags: ['contract'],
+  args: { scenario: 'breakdown' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const finish = await canvas.findByRole('button', { name: 'Finish step' });
+    const actions = finish.closest<HTMLElement>('[data-slot="workflow-actions"]')!;
+    await expect(
+      within(actions)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(['Finish step', 'New task']);
+    await expect(
+      canvas.getByRole('img', { name: 'Step 4 of 7: Break the solution down' }),
+    ).toBeVisible();
+    await userEvent.click(within(actions).getByRole('button', { name: 'New task' }));
+    // The dialog is portalled to the document body.
+    await expect(
+      await within(canvasElement.ownerDocument.body).findByRole('dialog', { name: 'New task' }),
+    ).toBeVisible();
   },
 };
 
@@ -113,6 +204,28 @@ export const TasksCreated: Story = {
     ).toBeVisible();
     await expect(canvas.queryByText('No tasks yet')).toBeNull();
     await expect(canvas.getByText('Step 4 of 7 · next: Review the breakdown')).toBeVisible();
+  },
+};
+
+/** The wait step: the step track is compact; the Task progress is the dominant one. */
+export const Waiting: Story = {
+  tags: ['contract'],
+  args: { scenario: 'waiting' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const track = await canvas.findByRole('img', { name: 'Step 6 of 7: Implement' });
+    await expect(track).toHaveClass('h-1');
+    await expect(canvas.queryByRole('button', { name: 'New task' })).toBeNull();
+  },
+};
+
+/** The workflow completed: every segment of the track is done. */
+export const Completed: Story = {
+  tags: ['contract'],
+  args: { scenario: 'completed' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('img', { name: 'All 7 steps · completed' })).toBeVisible();
   },
 };
 

@@ -56,23 +56,41 @@ Three concerns stay apart and the UI computes none of them: workflow state (the 
 and neutral Task facts), attention (the attention projection) and grouping (the Runtime's
 dashboard configuration). The Overview renders what the reads deliver.
 
-- **Now** — the Specification workflow's position: the step title and one plain line (attempt,
-  since, by whom; or what the step does), then the step's purpose and where the run is among the
-  workflow's declared steps, "Step 2 of 7 · next: Design the solution" (the projection's `outline`;
-  "Step 7 of 7" at the last step). The number is the step's position in the workflow definition,
-  not progress (a workflow may loop or branch), and "next" appears only when the step leads to one
-  step only. Before the first start the plain line reads "First step · Gather
-  requirements" and no step line follows. For a `wait` step the Task progress appears here only,
+- **Now** — the Specification workflow's position, in this order: the step title; the **step
+  track** (the design system's `Progress` position mode) followed by its label "Step 2 of 7 · next:
+  Design the solution" (the projection's `outline`; "Step 7 of 7" at the last step); one quiet line
+  "In progress since 11:18 · started by you" ("Attempt 2 · …" only from a second attempt on, never
+  "Attempt 1"); then the step's purpose. The track and the number show the step's position in the
+  workflow definition, not progress (a workflow may loop or branch, and after a return the current
+  segment moves back), and "next" appears only when the step leads to one step only. The track is
+  one image named "Step 2 of 7: Write the Specification"; its visible label is not read twice.
+  Before the first start the track outlines the first segment and its label reads "First step ·
+  Gather requirements"; a completed workflow fills every segment ("All 7 steps · completed"); an
+  abandoned one has no track (the outline no longer says where it stopped). On a `wait` step the
+  track is compact and the Task progress bar stays the dominant one. Below a 40rem page the label
+  goes under the track. For a `wait` step the Task progress appears here only,
   once: a segmented bar, "Tasks 1 of 6 done · 1 cancelled · 1 ended · 1 on hold" (zero parts
   omitted) and a line that cancelled (and ended) Tasks are not counted. When the wait cannot
   continue, one note names the blocking Tasks as links ("It cannot continue now: T-04 is a draft,
-  T-05 is on hold and no other task is open."). Now offers the workflow's **main** action only:
-  Start workflow, Finish step, or Close specification once it ended; none while the workflow waits
-  by itself. When every result of the active step needs an unmet exit gate, the gate's action (for
-  example **Open specification.md**) is the main action and Finish step waits, unavailable, in the
-  menu. The **⋯** menu holds Return to an earlier step, Workflow history (Activity history) and
-  one note with the step id and workflow revision. A terminal position shows a summary of the Tasks
-  ("All 6 tasks done · 1 cancelled"); an abandoned one its reason under the title.
+  T-05 is on hold and no other task is open."). Now offers the workflow's **main** action: Start
+  workflow, Finish step, or Close specification once it ended; none while the workflow waits by
+  itself. While a start is being recorded the Start button reads "Starting…" (busy) and the quiet
+  line says the same until the new position is read, never a stale "Ready to start". When every
+  result of the active step needs an unmet exit gate that names a document, opening it (**Open
+  behaviour.md**) is the main action, a line above the actions says what is missing ("Add the
+  Acceptance section to behaviour.md to finish.") and **Finish step** stays beside it as the
+  secondary action (its dialog shows what is still unmet). Beside the main action there is **at most
+  one contextual secondary action**, chosen from projection facts, never from step ids: **New task**
+  at an active step that produces Tasks while a Task may be created (`specification.createTask`;
+  it opens the New task dialog), else **Open <document>** for an unmet exit gate that is not the
+  main action, else nothing. Now never offers "View N tasks": the Tasks section follows it. The
+  **⋯** menu holds Return to an earlier step, Workflow history (Activity history) and one note with
+  the step id and workflow revision; neither appears anywhere else in Now. A terminal position
+  shows a summary of the Tasks ("All 6 tasks done · 1 cancelled"); an abandoned one its reason
+  under the title. **Narrow containment:** below a 40rem page content container Now is a flush band
+  across the body padding (`AccentBlock bleed="narrow"`, a container query, never a viewport
+  check), not a card inside the sheet: its text lines up with the page gutter, the section after it
+  drops its divider, and the tint and the 3 px bar stay. From 40rem (834 included) it is the card.
 - **Preparation block** — in Now's place when the Specification has no workflow, no Tasks and no
   Session. Heading **Prepare specification for execution**. When `actions.startSession` is
   available (or its reason is `no_provider`) it offers **Start session**, which opens

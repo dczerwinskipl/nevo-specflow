@@ -815,8 +815,13 @@ describe('manual workflow execution', () => {
         },
       ]),
     );
-    expect(screen.queryByRole('button', { name: 'Finish step' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Create note' })).toBeTruthy();
+    // The fix is the main action; Finish step stays beside it as the one secondary action.
+    const actions = document.querySelector('[data-slot="workflow-actions"]')!;
+    expect(
+      within(actions as HTMLElement)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(['Create note', 'Finish step']);
   });
 
   it('lets a breakdown complete once its own open drafts are unticked (resolvableByFinish)', async () => {

@@ -574,9 +574,7 @@ export const NarrowManagedNoProviderAvailable: Story = {
   play: async ({ canvas }) => {
     await settle(375, 812);
     await canvas.findByRole('heading', { name: 'Żaden agent nie jest dostępny' });
-    await expect(
-      document.querySelector('[data-workspace-surface-material="plain"]'),
-    ).not.toBeNull();
+    await expect(document.querySelector('[data-workspace-sheet="plain"]')).not.toBeNull();
     await expectNoHorizontalScroll();
   },
 };

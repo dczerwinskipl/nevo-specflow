@@ -918,13 +918,13 @@ describe('AppWorkspace stacked Primary surface', () => {
   it('is the bordered material sheet by default', () => {
     const surface = sheet();
     expect(document.querySelector('[data-layout="stacked"]')).not.toBeNull();
-    expect(surface?.dataset.workspaceSurfaceMaterial).toBe('sheet');
+    expect(surface?.dataset.workspaceSheet).toBe('sheet');
     expect(surface?.className).toContain('border-workspace-edge');
   });
 
   it('keeps the geometry but drops the material when plain', () => {
     const surface = sheet('plain');
-    expect(surface?.dataset.workspaceSurfaceMaterial).toBe('plain');
+    expect(surface?.dataset.workspaceSheet).toBe('plain');
     expect(surface?.className).toContain('min-h-full');
     expect(surface?.className).not.toContain('border-workspace-edge');
     expect(surface?.className).not.toContain('workspace-surface-material');

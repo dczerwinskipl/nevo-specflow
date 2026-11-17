@@ -1065,7 +1065,7 @@ function MobileRuntimeSurfaceRegion({
                               'rounded-t-surface border border-b-0 border-workspace-edge',
                             ],
                       )}
-                      data-workspace-surface-material={surface.stackedSurface ?? 'sheet'}
+                      data-workspace-sheet={surface.stackedSurface ?? 'sheet'}
                       ref={setSheetElement}
                     >
                       <AppContentScrollProvider>

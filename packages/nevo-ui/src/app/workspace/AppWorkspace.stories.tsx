@@ -448,7 +448,7 @@ export const StackedPlainSurfaceContract: Story = {
     );
     const style = getComputedStyle(surface);
     assert(
-      surface.dataset.workspaceSurfaceMaterial === 'plain',
+      surface.dataset.workspaceSheet === 'plain',
       'The sheet should report its plain material.',
     );
     assert(

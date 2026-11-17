@@ -36,7 +36,12 @@ function renderSection(capabilities: TaskDocumentTree['capabilities']) {
     documentTree: vi.fn(() => Promise.resolve(tree(capabilities))),
   });
   renderWithAuthoring(
-    <TaskDocumentsSection specId={SPEC} taskId={TASK} onOpenDocument={() => undefined} />,
+    <TaskDocumentsSection
+      specId={SPEC}
+      taskId={TASK}
+      collapsible={false}
+      onOpenDocument={() => undefined}
+    />,
     api,
   );
 }

@@ -165,9 +165,10 @@ describe('Specification control center', () => {
                   row.groupId === 'in-progress'
                     ? {
                         ...row,
-                        tasks: [
-                          { id: 'T-02', title: 'Token exchange endpoint and session cookie' },
-                        ],
+                        tasks: controlCenterTaskList('waiting')
+                          .groups.flatMap((group) => group.tasks)
+                          .filter((task) => task.id === 'T-02')
+                          .map(({ attention: _started, ...task }) => task),
                       }
                     : row,
                 ),

@@ -150,11 +150,11 @@ describe('the Overview Tasks section and the Tasks page against the real Engine'
             action: 'edit-context',
           }),
         ]);
-        expect(tasks.overview.rows).toContainEqual({
-          groupId: 'cannot-start',
+        // The preview Task is the Tasks page row, with the attention item that names it.
+        expect(tasks.overview.rows.find((row) => row.groupId === 'cannot-start')).toMatchObject({
           name: 'Cannot start',
           count: 1,
-          tasks: [{ id: 'context', title: 'Context' }],
+          tasks: [{ id: 'context', title: 'Context', attention: { reason: 'context-unresolved' } }],
           more: 0,
         });
         expect(tasks.overview).not.toHaveProperty('stuck');

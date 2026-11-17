@@ -111,8 +111,11 @@ Availability and action states describe only what actually exists.
   `code` its reason, with `stepTitle` (when a step resolves), `actor`, `action`, `taskIds`, for
   `tasks-stuck` `blocking`, and for `on-hold-blocking` `blocks` (what the held Task holds up); at most one Specification-level `tasks-stuck` item, never one per
   draft. A broken Task's item has `priority` `critical`, so it comes before every other item. `overview` is the Overview's
-  summary: `rows` (each `row` group with its `count`, up to two `tasks` and `more`; a Task already
-  named by an attention item carries no `title`), `compact` (each `compact` group's `count`, for
+  summary: `rows` (each `row` group with its `count`, its first two `tasks` in the Tasks page's
+  importance order and `more`, the Tasks beyond them, which the Tasks page `?group=<groupId>`
+  lists; each Task is the same row as on the Tasks page, from the same Runtime projection:
+  `status`, `type`, `dependsOn`, `facts`, `holdReason`, `blocksSpecification` and the `attention`
+  item that names it, or the broken row; see [Task reads](task-reads.md#tasks-page)), `compact` (each `compact` group's `count`, for
   example Done and Cancelled) and `stuck` (only while the Specification's wait cannot progress: each
   blocking Task with its `title` and `cause`, Now's explanation). An execution the Engine cannot
   read (also a busy project lock) makes only this section `unavailable` / `source_unavailable`.

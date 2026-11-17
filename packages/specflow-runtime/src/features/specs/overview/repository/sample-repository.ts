@@ -71,18 +71,7 @@ const currentItems: readonly CurrentSpecRecord[] = [
     updatedAt: '2026-10-01T12:00:00Z',
     tags: ['Runtime'],
     progress: { completed: 0, total: 2 },
-    signals: [
-      signal(
-        'security',
-        'decision',
-        'attention',
-        'Owner decision required',
-        100,
-        specTarget('security'),
-        undefined,
-        'decision',
-      ),
-    ],
+    signals: [],
     currentExecutions: [],
   },
   {
@@ -92,19 +81,7 @@ const currentItems: readonly CurrentSpecRecord[] = [
     title: 'Review evidence and verification handover',
     updatedAt: '2026-10-01T12:00:00Z',
     progress: { completed: 1, total: 4 },
-    signals: [
-      signal(
-        'review',
-        'review',
-        'attention',
-        '3 Tasks require review',
-        95,
-        specTarget('review'),
-        undefined,
-        'review',
-        3,
-      ),
-    ],
+    signals: [],
     currentExecutions: [],
   },
   {
@@ -115,7 +92,7 @@ const currentItems: readonly CurrentSpecRecord[] = [
     updatedAt: '2026-10-01T12:00:00Z',
     tags: ['Core'],
     progress: { completed: 2, total: 4 },
-    signals: [signal('packaging', 'ready', 'ready', '2 Tasks ready to start', 60)],
+    signals: [],
     currentExecutions: [],
   },
   {
@@ -126,7 +103,7 @@ const currentItems: readonly CurrentSpecRecord[] = [
     updatedAt: '2026-10-01T12:00:00Z',
     tags: ['Provider'],
     progress: { completed: 1, total: 5 },
-    signals: [signal('providers', 'working', 'working', 'Implementation in progress', 40)],
+    signals: [],
     currentExecutions: [
       {
         sessionId: '00000000-0000-4000-8000-000000000042',

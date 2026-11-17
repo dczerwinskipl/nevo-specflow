@@ -212,8 +212,12 @@ export const TaskDocumentTreeSchema = Type.Object({
   taskId: TaskIdSchema,
   /** sha256 of the `task.yaml` bytes the registry was read from. */
   registryRevision: Revision,
-  /** False when the Specification is archived: nothing can be changed. */
-  writable: Type.Boolean(),
+  /**
+   * What may be changed, each on its own: `save` the content of an editable document; `organize`
+   * add, rename, move and delete documents. Both false when the Specification is archived; the demo
+   * Runtime saves but does not organize.
+   */
+  capabilities: Type.Object({ save: Type.Boolean(), organize: Type.Boolean() }),
   /** Registered documents in registry order, then unclassified files by path. */
   documents: Type.Array(TaskDocumentListingSchema),
 });

@@ -6,6 +6,7 @@ export {
   type DemoGateDocument,
   type DemoWorkflow,
   type DemoWorkflowLookups,
+  type DemoWorkflowOptions,
 } from './demo/demo-workflow';
 export {
   ownerActorOf,

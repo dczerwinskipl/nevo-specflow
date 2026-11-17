@@ -113,7 +113,7 @@ export async function readTaskDetail(
       coherent ? execution.version : null,
       history?.version ?? null,
       // Readiness follows the dependencies, which the definition version does not cover.
-      definition.resource ? JSON.stringify(definition.resource) : null,
+      JSON.stringify(definition.resource),
     ],
     snapshot,
   );
@@ -125,7 +125,7 @@ export async function readTaskDetail(
       purpose: definition.purpose,
       acceptanceCriteria: definition.acceptanceCriteria,
       workflow: definition.workflow,
-      ...(definition.resource ? { resource: definition.resource } : {}),
+      resource: definition.resource,
       snapshot,
     },
   };

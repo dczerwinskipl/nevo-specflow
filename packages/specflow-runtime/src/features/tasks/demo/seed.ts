@@ -19,22 +19,24 @@ import type { DemoClock } from '../../workflow';
 
 const owner: OwnerActor = { class: 'human', details: { actorId: 'demo-user', trust: 'local' } };
 
-/** The agent Sessions of the demo catalogue that work on a Task (`currentExecutions`). */
-export const demoAgentSessions = {
-  admission: '00000000-0000-4000-8000-000000000024',
-  providers: '00000000-0000-4000-8000-000000000042',
-} as const;
+/** Who works on a working Task: its agent Session, else the owner. */
+const workerOf = (sessionId: string | undefined): WorkflowActor =>
+  sessionId === undefined ? owner : { class: 'agent', details: { provider: 'claude', sessionId } };
 
-const agent = (sessionId: string): WorkflowActor => ({
-  class: 'agent',
-  details: { provider: 'claude', sessionId },
-});
+/**
+ * The agent Session the demo catalogue says works on a Task (its `currentExecutions`), the one
+ * source of which Session runs which Task.
+ */
+export type DemoTaskSession = (specId: string, taskId: string) => Promise<string | undefined>;
 
-/** Where a seeded Task stands; `ready` Tasks with an open dependency are blocked by it. */
+/**
+ * Where a seeded Task stands; `ready` Tasks with an open dependency are blocked by it. A `working`
+ * Task is started by the agent Session the catalogue names for it, else by the owner.
+ */
 type TaskState =
   | { readonly kind: 'done' }
   | { readonly kind: 'review' }
-  | { readonly kind: 'working'; readonly actor?: WorkflowActor }
+  | { readonly kind: 'working' }
   | { readonly kind: 'ready' }
   | { readonly kind: 'on-hold'; readonly reason: string };
 
@@ -78,7 +80,7 @@ export const demoWorkflowSeeds: readonly SpecificationSeed[] = [
         title: 'Queue validation after restart',
         type: 'implementation',
         dependsOn: ['admission-contract'],
-        state: { kind: 'working', actor: agent(demoAgentSessions.admission) },
+        state: { kind: 'working' },
       },
       {
         id: 'execution-boundaries',
@@ -182,7 +184,7 @@ export const demoWorkflowSeeds: readonly SpecificationSeed[] = [
         title: 'Replay runner',
         type: 'implementation',
         dependsOn: ['diagnostics-capture'],
-        state: { kind: 'working', actor: agent(demoAgentSessions.providers) },
+        state: { kind: 'working' },
       },
       {
         id: 'provider-errors',
@@ -214,6 +216,7 @@ async function seedSpecification(
   workflow: WorkflowDependencies,
   seed: SpecificationSeed,
   tick: () => void,
+  sessionOf: DemoTaskSession,
 ): Promise<void> {
   const archetype = await workflow.references.archetype(seed.specId);
   const subject = { kind: 'specification', specId: seed.specId } as const;
@@ -249,7 +252,7 @@ async function seedSpecification(
   }
 
   for (const task of seed.tasks ?? []) {
-    await seedTask(workflow, seed.specId, task, tick);
+    await seedTask(workflow, seed.specId, task, tick, sessionOf);
   }
 }
 
@@ -258,6 +261,7 @@ async function seedTask(
   specId: string,
   task: TaskSeed,
   tick: () => void,
+  sessionOf: DemoTaskSession,
 ): Promise<void> {
   const subject = { kind: 'task', specId, taskId: task.id } as const;
   const run = async (actor: WorkflowActor, input?: Record<string, unknown>) => {
@@ -290,7 +294,7 @@ async function seedTask(
 
       return;
     case 'working':
-      await run(task.state.actor ?? owner);
+      await run(workerOf(await sessionOf(specId, task.id)));
 
       return;
     case 'on-hold':
@@ -309,10 +313,14 @@ async function seedTask(
   }
 }
 
-/** Seeds {@link demoWorkflowSeeds}, each step recorded a few minutes after the previous one. */
+/**
+ * Seeds {@link demoWorkflowSeeds}, each step recorded a few minutes after the previous one; a
+ * working Task is started by the Session `sessionOf` names for it.
+ */
 export async function seedDemoWorkflow(
   workflow: WorkflowDependencies,
   clock: DemoClock,
+  sessionOf: DemoTaskSession,
 ): Promise<void> {
   let at = Date.now() - 3 * 24 * 60 * 60 * 1000;
   const tick = () => {
@@ -321,6 +329,6 @@ export async function seedDemoWorkflow(
   };
 
   for (const seed of demoWorkflowSeeds) {
-    await seedSpecification(workflow, seed, tick);
+    await seedSpecification(workflow, seed, tick, sessionOf);
   }
 }

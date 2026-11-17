@@ -1,5 +1,3 @@
-import { isDeepStrictEqual } from 'node:util';
-
 import { sha256Hex } from '../../hash';
 import { foldPathKey } from '../../specs/document-rules/document-paths';
 import { canonicalJson } from '../../specs/definitions/resolved-catalogue';
@@ -9,7 +7,7 @@ import { TASK_MANIFEST_FILE, type TaskIndex, type TaskManifest } from '../../tas
 import { WorkflowError } from '../errors';
 import { serializeSpecificationRecord, serializeTaskRunRecord } from './codec';
 import type { SpecificationExecutionRecord, TaskRunRecord } from './model';
-import type { ExecutionChange, ExecutionSnapshot, Versioned, WorkflowStore } from './store';
+import type { ExecutionSnapshot, Versioned, WorkflowStore } from './store';
 import {
   assertChangeIdentity,
   assertNoNewIssues,
@@ -40,22 +38,34 @@ const settled = <T>(operation: () => T): Promise<T> => Promise.resolve().then(op
  * An in-memory {@link WorkflowStore} with the same revision, identity, coherence
  * ({@link validateExecutionState}), issue and codec checks before any write as the filesystem store;
  * the shared contract is `./store-contract.test-support.ts`. A Task folder exists while it holds its
- * manifest or a document.
+ * manifest or a document. Production store of the demo Runtime (`openInMemoryWorkflow`); it keeps
+ * only the current state, and a read never adds a Specification to it.
  */
 export function createMemoryWorkflowStore(): WorkflowStore & {
-  readonly applied: ExecutionChange[];
-  /** The text of a Task document, for tests. */
+  /** The text of a file of a Task folder (`task.md` as created, or as last saved). */
   readonly document: (specId: string, taskId: string, path: string) => string | undefined;
+  /**
+   * Replace the text of an existing file of a Task folder: the Documents capability's save of a
+   * Task document, as a project writes the file in the folder. The file goes with the Task.
+   */
+  readonly saveDocument: (specId: string, taskId: string, path: string, text: string) => void;
 } {
   const specs = new Map<string, SpecState>();
-  const applied: ExecutionChange[] = [];
+  const emptyState = (): SpecState => ({
+    manifests: new Map(),
+    runs: new Map(),
+    documents: new Map(),
+  });
+  /** The state to read: the stored one, or an empty one that is not stored. */
+  const readState = (specId: string): SpecState => specs.get(specId) ?? emptyState();
+  /** The state to write: stored on first use. */
   const stateOf = (specId: string): SpecState => {
     const existing = specs.get(specId);
     if (existing) {
       return existing;
     }
 
-    const created: SpecState = { manifests: new Map(), runs: new Map(), documents: new Map() };
+    const created = emptyState();
     specs.set(specId, created);
 
     return created;
@@ -96,17 +106,27 @@ export function createMemoryWorkflowStore(): WorkflowStore & {
   };
 
   return {
-    applied,
     document: (specId, taskId, path) =>
       specs.get(specId)?.documents.get(taskId)?.get(foldPathKey(path)),
-    read: (specId) => settled(() => snapshotOf(specId, stateOf(specId))),
+    saveDocument(specId, taskId, path, text) {
+      const files = specs.get(specId)?.documents.get(taskId);
+      if (files?.get(foldPathKey(path)) === undefined) {
+        throw new WorkflowError(
+          'WORKFLOW_SUBJECT_NOT_FOUND',
+          `The Task folder holds no "tasks/${taskId}/${path}".`,
+        );
+      }
+
+      files.set(foldPathKey(path), text);
+    },
+    read: (specId) => settled(() => snapshotOf(specId, readState(specId))),
     taskFolderExists: (specId, taskId) =>
       settled(() =>
-        folderIds(stateOf(specId)).some((id) => foldPathKey(id) === foldPathKey(taskId)),
+        folderIds(readState(specId)).some((id) => foldPathKey(id) === foldPathKey(taskId)),
       ),
     taskFiles: (specId, taskId) =>
       settled(() => {
-        const state = stateOf(specId);
+        const state = readState(specId);
 
         // Paths are kept folded (lower case), as the store compares them.
         return [
@@ -197,10 +217,6 @@ export function createMemoryWorkflowStore(): WorkflowStore & {
 
         for (const write of change.runs ?? []) {
           state.runs.set(write.taskId, versioned(write.next));
-        }
-
-        if (!isDeepStrictEqual(change, {})) {
-          applied.push(structuredClone(change));
         }
       }),
   };

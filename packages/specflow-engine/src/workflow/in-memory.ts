@@ -8,6 +8,7 @@ import {
   type ExecutionEntities,
 } from './definitions/catalogue';
 import type { ExecutionHolds, WorkflowDependencies } from './operations/loaded-execution';
+import type { SpecificationExitPort } from './operations/actions';
 import type { TaskReferences } from './operations/task-references';
 import { createMemoryWorkflowStore } from './state/memory-store';
 import type { WorkflowStore } from './state/store';
@@ -59,7 +60,25 @@ export function openInMemoryWorkflow(options: InMemoryWorkflowOptions): Workflow
     serialize: serialQueue(),
   };
 
-  return { ...dependencies, specificationExit: specificationExitPort(dependencies) };
+  return {
+    ...dependencies,
+    specificationExit: inMemoryExitPort(specificationExitPort(dependencies)),
+  };
+}
+
+/**
+ * Close archives the Specification in its checkout, which state held in memory does not have: it
+ * is projected unavailable (`no-repository`), so a client says so before anyone tries. Abandon is
+ * the workflow's own and stays as the Engine projects it.
+ */
+function inMemoryExitPort(port: SpecificationExitPort): SpecificationExitPort {
+  return {
+    async exitActions(snapshot) {
+      const actions = await port.exitActions(snapshot);
+
+      return { ...actions, close: { kind: 'unavailable', reason: 'no-repository' } };
+    },
+  };
 }
 
 /**

@@ -9,6 +9,7 @@ import {
 } from '@nevo/specflow-contracts/tasks';
 import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import type { TaskDocumentTree } from '@nevo/specflow-contracts/tasks';
+import { createDemoEnvironment } from '../../src/demo';
 import { createRuntimeApp } from '../../src/server/app';
 import { passwordConfig } from '../auth/support/config';
 
@@ -18,18 +19,20 @@ afterEach(async () => {
   app = undefined;
 });
 
-async function open() {
-  const config = passwordConfig();
-  app = await createRuntimeApp(
-    {
-      ...config,
-      authentication: { ...config.authentication, mode: 'none', localUserId: 'demo-user' },
-      authorization: {
-        assignments: [{ userId: 'demo-user', role: 'developer', scope: {} }],
-      },
+function config() {
+  const base = passwordConfig();
+
+  return {
+    ...base,
+    authentication: { ...base.authentication, mode: 'none' as const, localUserId: 'demo-user' },
+    authorization: {
+      assignments: [{ userId: 'demo-user', role: 'developer' as const, scope: {} }],
     },
-    { dataMode: 'demo' },
-  );
+  };
+}
+
+async function open() {
+  app = await createRuntimeApp(config(), { dataMode: 'demo' });
 
   return app;
 }
@@ -71,12 +74,41 @@ describe('demo Runtime: the Engine workflow over in-memory state', () => {
       '/api/specs/admission/workflow/actions',
     );
     expect(projection.position).toMatchObject({ kind: 'waiting' });
+    // No checkout to archive in: Close is unavailable before the click; Abandon is the Engine's.
+    expect(projection.specification?.exit).toEqual({
+      close: { kind: 'unavailable', reason: 'no-repository' },
+      abandon: { kind: 'allowed' },
+    });
+  });
 
-    const tree = await json<TaskDocumentTree>(
-      server,
-      '/api/specs/admission/tasks/expired-sessions/document-tree',
-    );
-    expect(tree.documents).toEqual([expect.objectContaining({ id: 'task', required: true })]);
+  it('saves a Task document with revision checks and says it does not organize them', async () => {
+    const server = await open();
+    const base = '/api/specs/admission/tasks/expired-sessions';
+    const tree = await json<TaskDocumentTree>(server, `${base}/document-tree`);
+    expect(tree.capabilities).toEqual({ save: true, organize: false });
+    const revision = tree.documents.find((document) => document.id === 'task')!.file!.revision;
+    const save = (expectedRevision: string, operationId: string) =>
+      server.inject({
+        method: 'PUT',
+        url: `${base}/documents/task`,
+        payload: { content: '# Expired sessions\n', expectedRevision, operationId },
+      });
+
+    expect((await save(revision, '00000000-0000-4000-8000-0000000000a1')).statusCode).toBe(200);
+    const stale = await save(revision, '00000000-0000-4000-8000-0000000000a2');
+    expect(stale.statusCode).toBe(409);
+    expect(stale.json()).toMatchObject({ code: 'DOCUMENT_REVISION_CONFLICT' });
+  });
+
+  it('does not start when the demo workflow cannot be seeded', async () => {
+    await expect(
+      createRuntimeApp(config(), {
+        dataMode: 'demo',
+        demoEnvironment: createDemoEnvironment({
+          seed: () => Promise.reject(new Error('The demo seed failed.')),
+        }),
+      }),
+    ).rejects.toThrow('The demo seed failed.');
   });
 
   it('applies a Start in memory: the next read shows the step running', async () => {

@@ -41,6 +41,10 @@ describe('openInMemoryWorkflow', () => {
       kind: 'ready',
       next: { step: { id: 'specification' } },
     });
-    expect(projection.specification?.exit?.abandon).toBeDefined();
+    // No checkout to archive in: Close is unavailable before anyone tries; Abandon is the Engine's.
+    expect(projection.specification?.exit).toEqual({
+      close: { kind: 'unavailable', reason: 'no-repository' },
+      abandon: { kind: 'allowed' },
+    });
   });
 });

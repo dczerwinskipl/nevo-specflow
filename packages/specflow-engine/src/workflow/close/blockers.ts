@@ -132,7 +132,12 @@ export function abandonBlockers(state: SpecificationExitState): CloseBlocker[] {
 
 export type CloseAvailability =
   | { readonly kind: 'allowed' }
-  | { readonly kind: 'blocked'; readonly blockers: readonly CloseBlocker[] };
+  | { readonly kind: 'blocked'; readonly blockers: readonly CloseBlocker[] }
+  /**
+   * `no-repository`: the host has no checkout to archive the Specification in (the demo Runtime's
+   * in-memory workflow), so it cannot be closed there at all.
+   */
+  | { readonly kind: 'unavailable'; readonly reason: 'no-repository' };
 
 export type AbandonAvailability =
   | { readonly kind: 'allowed' }

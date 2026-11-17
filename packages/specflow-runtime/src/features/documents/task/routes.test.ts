@@ -40,7 +40,7 @@ function fakeSource(calls: string[], fail?: () => Error): TaskDocumentSource {
       run('tree', {
         taskId,
         registryRevision: 'registry-1',
-        writable: true,
+        capabilities: { save: true, organize: true },
         documents: [
           {
             id: 'task',

@@ -174,6 +174,9 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
             }),
         )
       : undefined;
+  // The demo workflow is built and seeded before anything is served: a demo that cannot be seeded
+  // does not start (never a Runtime that answers 404s for its own catalogue).
+  await demo?.start();
   const progressRegistry = dependencies.operations?.registry ?? createOperationProgressRegistry();
   const progressStream: OperationEventsStreamOptions = {
     ...(dependencies.operations?.heartbeatMs !== undefined

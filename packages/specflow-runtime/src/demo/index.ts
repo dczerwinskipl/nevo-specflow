@@ -37,6 +37,8 @@ export interface DemoEnvironmentOptions extends DemoStateOptions {
   showcase?: boolean;
   /** Simulated commit latency of every document write, in ms (default 0). */
   documentCommitLatencyMs?: number;
+  /** Brings the demo workflow to its catalogue (default: `seedDemoWorkflow`); tests replace it. */
+  seed?: typeof seedDemoWorkflow;
 }
 
 /**
@@ -55,7 +57,7 @@ export function createDemoEnvironment(options: DemoEnvironmentOptions = {}) {
   });
   const specs = createDemoSpecs(state, documents);
 
-  return { state, documents, sessions, specs };
+  return { state, documents, sessions, specs, seed: options.seed ?? seedDemoWorkflow };
 }
 
 export type DemoEnvironment = ReturnType<typeof createDemoEnvironment>;
@@ -91,7 +93,16 @@ export function createDemoRuntime(environment: DemoEnvironment) {
           ? taskDocuments.documentsOfType(scope.specId, scope.taskId, type)
           : documents.documentsOfType(scope.specId, type, find),
     },
-    seed: seedDemoWorkflow,
+    // The catalogue's current executions say which agent Session works on which Task.
+    seed: (workflow, clock) =>
+      environment.seed(
+        workflow,
+        clock,
+        async (specId, taskId) =>
+          (await find(specId))?.currentExecutions?.find((execution) =>
+            execution.taskIds.includes(taskId),
+          )?.sessionId,
+      ),
   });
   const taskDocuments = createDemoTaskDocuments({
     async manifest(specId, taskId) {
@@ -100,8 +111,12 @@ export function createDemoRuntime(environment: DemoEnvironment) {
 
       return manifest && { revision: manifest.revision, documents: manifest.value.documents };
     },
-    initialText: (specId, taskId, path) =>
-      Promise.resolve(workflow.store.document(specId, taskId, path)),
+    text: (specId, taskId, path) => Promise.resolve(workflow.store.document(specId, taskId, path)),
+    // Serialized with the workflow's writes, as a project's Task document change is with its store.
+    save: async (specId, taskId, path, text) =>
+      (await workflow.open()).serialize(() =>
+        Promise.resolve(workflow.store.saveDocument(specId, taskId, path, text)),
+      ),
   });
   const taskEngine = createDemoTaskEngine({
     openWorkflow: workflow.open,
@@ -153,6 +168,8 @@ export function createDemoRuntime(environment: DemoEnvironment) {
     taskDocuments: taskDocuments.source,
     /** The Engine behind the Task reads, lists and commands and the workflow routes. */
     taskEngine,
+    /** Builds and seeds the demo workflow; the Runtime awaits it before it serves anything. */
+    start: workflow.start,
     // `GET /api/workspaces` over the demo registry, with the Specifications bound to each.
     workspaceList: createDemoWorkspaceList({
       registry: () => specs.registry(),

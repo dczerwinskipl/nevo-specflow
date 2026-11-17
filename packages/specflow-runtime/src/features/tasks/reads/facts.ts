@@ -113,8 +113,8 @@ export interface TaskDefinitionFacts {
   taskType: { id: string; label: string } | null;
   document: Availability<{ id: string; revision: string } | null>;
   dependencies: { taskId: string; title: string; link: ReferenceFacts }[];
-  /** The Task resource (project mode); the demo has none. */
-  resource?: TaskResourceFacts;
+  /** The Task resource, from the Engine. */
+  resource: TaskResourceFacts;
 }
 export interface HistoryFacts {
   id: string;

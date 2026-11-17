@@ -5,6 +5,7 @@ import type { RequestAuthorization } from '../../src/features/auth';
 describe('Demo Workspace lifecycle', () => {
   it('never marks active tasks as completed and matches Overview progress', async () => {
     const repositories = createDemoRuntime(createDemoEnvironment());
+    await repositories.start();
     const overview = await repositories.overviewRepository.readCurrent();
     for (const item of overview.items) {
       if (!item.progress || !item.currentExecutions) {

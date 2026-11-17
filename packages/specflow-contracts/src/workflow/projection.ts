@@ -596,6 +596,8 @@ export const SpecificationExitSchema = Type.Object({
   close: Type.Union([
     Type.Object({ kind: Type.Literal('allowed') }),
     Type.Object({ kind: Type.Literal('blocked'), blockers: array(ExitBlockerSchema) }),
+    /** `no-repository`: the Runtime has no checkout to archive in (the demo); never closable there. */
+    Type.Object({ kind: Type.Literal('unavailable'), reason: Type.Literal('no-repository') }),
   ]),
   abandon: Type.Union([
     Type.Object({ kind: Type.Literal('allowed') }),

@@ -21,7 +21,7 @@ describe('sample Specs Overview repository', () => {
       snapshot.items
         .filter((item) => classifyCurrentSpec(item).section === 'requires-attention')
         .map((item) => item.id),
-    ).toEqual(['admission', 'security', 'review']);
+    ).toEqual(['admission']);
     expect(classifyCurrentSpec(snapshot.items.find((item) => item.id === 'providers')!)).toEqual({
       section: 'active',
     });

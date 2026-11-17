@@ -218,7 +218,9 @@ export function exitLines(exit: SpecificationExitActions): string[] {
   return [
     close.kind === 'allowed'
       ? 'Close: allowed (Git and workspace rules are checked by the close itself)'
-      : 'Close: blocked',
+      : close.kind === 'blocked'
+        ? 'Close: blocked'
+        : `Close: unavailable (${close.reason})`,
     ...(close.kind === 'blocked' ? blockerLines(close.blockers) : []),
     abandon.kind === 'allowed'
       ? 'Abandon: allowed ("specs abandon <spec-id> --reason <text> --yes")'

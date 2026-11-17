@@ -132,7 +132,7 @@
     "markdownDiagramReset": "Fit diagram",
     "markdownDiagramFullScreen": "Open diagram full screen",
     "thisSpecification": "This specification",
-    "previewTaskAria": "Preview task: {{title}}",
+    "openTaskAria": "Open task: {{title}}",
     "openSessionAria": "Open session: {{title}}",
     "readDocAria": "Read document: {{title}}",
     "taskNotFoundTitle": "Task not found",
@@ -2320,6 +2320,7 @@
     },
     "close": {
       "action": "Close specification",
+      "noRepository": "Close specification: needs a repository, so not in the demo",
       "title": "Close {{title}}",
       "blocked": "{{title}} cannot close yet: {{reasons}}.",
       "abandonPrompt": "Not going to finish this work?",

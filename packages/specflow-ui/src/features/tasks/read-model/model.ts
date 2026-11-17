@@ -49,8 +49,8 @@ export interface TaskGroup {
 /** Full Task identity and detail are independent of Workspace task-group membership. */
 export interface FullTaskData {
   readonly snapshot?: SpecificationTaskResponse['snapshot'];
-  /** The Task resource (project mode): revision, type, status, documents, context, dependencies. */
-  readonly resource?: SpecificationTaskResponse['resource'];
+  /** The Task resource: revision, type, status, documents, context, dependencies. */
+  readonly resource: SpecificationTaskResponse['resource'];
   readonly id: string;
   readonly title: string;
   readonly status: string;
@@ -74,6 +74,6 @@ export function mapFullTaskResponse(response: SpecificationTaskResponse): FullTa
     acceptanceCriteria: response.acceptanceCriteria,
     workflow: response.workflow,
     snapshot: response.snapshot,
-    ...(response.resource ? { resource: response.resource } : {}),
+    resource: response.resource,
   };
 }

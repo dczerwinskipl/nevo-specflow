@@ -11,7 +11,7 @@ export type {
   ReferenceVisibility,
 } from './reads/facts';
 export { createDemoTaskEngine, type DemoTaskEngineOptions } from './demo/task-engine';
-export { demoAgentSessions, seedDemoWorkflow } from './demo/seed';
+export { seedDemoWorkflow, type DemoTaskSession } from './demo/seed';
 export {
   createEngineTaskSources,
   createProjectTaskEngine,

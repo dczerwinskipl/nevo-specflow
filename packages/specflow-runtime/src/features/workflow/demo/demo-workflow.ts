@@ -2,6 +2,7 @@ import type { ArchetypeDefinition } from '@nevo/specflow-contracts/documents';
 import {
   WorkflowError,
   createExecutionCatalogue,
+  type ExecutionEntities,
   type GateScopeRef,
   type TaskReferences,
   type WorkflowDependencies,
@@ -37,8 +38,8 @@ export interface DemoWorkflowOptions {
   readonly specificationArchetypes: readonly Pick<ArchetypeDefinition, 'id' | 'execution'>[];
   readonly lookups: DemoWorkflowLookups;
   /**
-   * Brings the fresh state to the demo catalogue through the Engine's own commands; runs once,
-   * before the first operation is served. `clock.at` sets the time the seeded steps are recorded at.
+   * Brings the fresh state to the demo catalogue through the Engine's own commands; runs once, in
+   * `start`. `clock.at` sets the time the seeded steps are recorded at.
    */
   readonly seed?: (workflow: WorkflowDependencies, clock: DemoClock) => Promise<void>;
 }
@@ -73,14 +74,17 @@ function demoReferences(lookups: DemoWorkflowLookups): TaskReferences {
   };
 }
 
-/** The shipped definitions do not change while the process runs: loaded once for every demo. */
-let shipped: ReturnType<typeof loadShippedExecutionEntities> | undefined;
+/**
+ * The shipped definitions do not change while the process runs: once loaded, every demo Runtime of
+ * the process uses them (only a successful load is kept).
+ */
+let shipped: ExecutionEntities | undefined;
 
 /**
  * The demo Runtime's workflow: the Engine's real operations over an in-memory store, with the
  * shipped workflows and task types and the demo catalogue's Specification archetypes. The state is
- * writable (Start, Finish, Task commands) and lives until the Runtime stops. It is built, and seeded,
- * on the first call of `open`.
+ * writable (Start, Finish, Task commands) and lives until the Runtime stops. `start` builds and
+ * seeds it, once, while the Runtime starts: a demo that cannot be seeded does not start.
  */
 export function createDemoWorkflow(options: DemoWorkflowOptions) {
   const store = createMemoryWorkflowStore();
@@ -90,13 +94,19 @@ export function createDemoWorkflow(options: DemoWorkflowOptions) {
       moment = next;
     },
   };
-  let opened: Promise<WorkflowDependencies> | undefined;
-  const open = () => {
-    opened ??= (async () => {
-      shipped ??= loadShippedExecutionEntities();
+  let started: WorkflowDependencies | undefined;
+
+  return {
+    /** Builds the workflow and seeds it; the Runtime awaits it before serving anything. */
+    start: async (): Promise<void> => {
+      if (started) {
+        throw new Error('The demo workflow is started already.');
+      }
+
+      shipped ??= await loadShippedExecutionEntities();
       const workflow = openInMemoryWorkflow({
         catalogue: createExecutionCatalogue({
-          ...(await shipped),
+          ...shipped,
           specificationArchetypes: options.specificationArchetypes,
         }),
         store,
@@ -105,16 +115,16 @@ export function createDemoWorkflow(options: DemoWorkflowOptions) {
       });
       await options.seed?.(workflow, clock);
       clock.at(undefined);
+      started = workflow;
+    },
+    /** The workflow operations (`WorkflowDependencies`) of the started demo. */
+    open: (): Promise<WorkflowDependencies> => {
+      if (!started) {
+        return Promise.reject(new Error('The demo workflow is not started.'));
+      }
 
-      return workflow;
-    })();
-
-    return opened;
-  };
-
-  return {
-    /** The workflow operations (`WorkflowDependencies`), seeded on first use. */
-    open,
+      return Promise.resolve(started);
+    },
     /** The in-memory execution store: the Task manifests and initial documents it holds. */
     store,
   };

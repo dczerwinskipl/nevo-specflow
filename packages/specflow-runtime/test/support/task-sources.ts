@@ -143,6 +143,26 @@ export function createFixtureTaskSources(
         taskType: null,
         document: { state: 'available', data: { id: 'task', revision: 'document-1' } },
         dependencies: [],
+        resource: {
+          revision: 'manifest-1',
+          type: 'implementation',
+          status: 'ready',
+          dependsOn: [],
+          origin: { kind: 'manual', actorId: 'demo-user' },
+          documents: [{ id: 'task', path: 'task.md', type: 'task' }],
+          context: null,
+          readiness: { kind: 'ready' },
+          facts: {
+            preparation: 'ready',
+            escalated: false,
+            position: { state: 'active', step: 'verify', attempt: 1 },
+            startable: false,
+            startBlockers: [],
+            definitionChanged: false,
+          },
+          position: { state: 'active', step: 'verify', attempt: 1 },
+          definitionChanged: false,
+        },
       });
     },
   };

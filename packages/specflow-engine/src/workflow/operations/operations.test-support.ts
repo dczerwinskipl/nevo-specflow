@@ -5,7 +5,7 @@ import { loadDefinitions } from '../../specs/definitions/loader';
 import { createDefaultDefinitionRegistry } from '../../definitions/shipped-registry';
 import { locateSeedDirectory, openSeedSource } from '../../definitions/seed';
 import { resolveExecutionCatalogue, type ExecutionCatalogue } from '../definitions/catalogue';
-import { createMemoryWorkflowStore } from '../state/memory-store';
+import { createRecordingMemoryWorkflowStore } from '../state/memory-store.test-support';
 import type { OwnerActor, WorkflowActor, WorkflowSubject } from '../state/model';
 import { finishStep, type FinishStepInput } from './finish';
 import { inspectExecution } from './inspect';
@@ -109,7 +109,7 @@ export function fakeHolds(): ExecutionHolds & {
 
 /** Dependencies over an in-memory store with a clock that advances one second per reading. */
 export function memoryDependencies(catalogue: ExecutionCatalogue): WorkflowDependencies & {
-  readonly store: ReturnType<typeof createMemoryWorkflowStore>;
+  readonly store: ReturnType<typeof createRecordingMemoryWorkflowStore>;
   readonly references: ReturnType<typeof fakeReferences>;
   readonly holds: ReturnType<typeof fakeHolds>;
 } {
@@ -117,7 +117,7 @@ export function memoryDependencies(catalogue: ExecutionCatalogue): WorkflowDepen
   let queue = Promise.resolve();
 
   return {
-    store: createMemoryWorkflowStore(),
+    store: createRecordingMemoryWorkflowStore(),
     catalogue,
     references: fakeReferences(),
     holds: fakeHolds(),

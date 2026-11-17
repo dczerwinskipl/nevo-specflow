@@ -8370,6 +8370,27 @@
                             "maxItems": 1000
                           }
                         }
+                      },
+                      {
+                        "type": "object",
+                        "required": [
+                          "kind",
+                          "reason"
+                        ],
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "unavailable"
+                            ]
+                          },
+                          "reason": {
+                            "type": "string",
+                            "enum": [
+                              "no-repository"
+                            ]
+                          }
+                        }
                       }
                     ]
                   },
@@ -31308,7 +31329,8 @@
                   "type": "object",
                   "required": [
                     "task",
-                    "acceptanceCriteria"
+                    "acceptanceCriteria",
+                    "resource"
                   ],
                   "properties": {
                     "task": {
@@ -35895,7 +35917,7 @@
                   "required": [
                     "taskId",
                     "registryRevision",
-                    "writable",
+                    "capabilities",
                     "documents"
                   ],
                   "properties": {
@@ -35907,8 +35929,20 @@
                       "minLength": 1,
                       "maxLength": 200
                     },
-                    "writable": {
-                      "type": "boolean"
+                    "capabilities": {
+                      "type": "object",
+                      "required": [
+                        "save",
+                        "organize"
+                      ],
+                      "properties": {
+                        "save": {
+                          "type": "boolean"
+                        },
+                        "organize": {
+                          "type": "boolean"
+                        }
+                      }
                     },
                     "documents": {
                       "type": "array",

@@ -31,10 +31,11 @@ workflow facts; Runtime Sessions owns managed conversations and live execution. 
 document-content access. Specification Workspace consumes summaries and contributions from those
 owners. A route containing `specId` does not transfer ownership to Specs.
 
-The Runtime ownership/application refactor is implemented with explicit demo adapters and bounded
-source ports. In project mode the definition, execution and history sources are Engine adapters
-(`features/tasks/engine`) over one `inspectExecution` per read, which reads under the project control
-lock (never half a mutation); execution and history name the manifest revision and execution
+The Runtime ownership/application refactor is implemented with bounded source ports. The
+definition, execution and history sources are Engine adapters (`features/tasks/engine`) over one
+`inspectExecution` per read, in a project Runtime over its Project Home and in the demo Runtime over
+in-memory state ([ADR 0025](../decisions/0025-demo-runs-the-engine-in-memory.md)); a read happens
+under the workflow's serialization (the project control lock in a project; never half a mutation); execution and history name the manifest revision and execution
 version the detail saw, so a newer read is not spliced in. Runtime does not implement or persist
 another workflow engine.
 
@@ -82,16 +83,15 @@ Use cohesive slices, not mandatory forwarding layers:
 specflow-runtime/src/features/
   specs/workspace/       workspace composition + lightweight contribution ports
   tasks/
-    detail/             read-task-detail use case, mapper, source ports, HTTP adapter
-    history/            read-task-history-page use case and paged source port
-    resources/          read-task-resource-page use case and authorized selection
-    reads/              shared identity/read-context and bounded page leases
-    demo/               explicit Task demo adapters
+    detail/             read-task-detail use case and its source ports
+    engine/             the Engine sources (Task Engine: project or demo) and their projection
+    reads/              shared identity/read-context, bounded history page leases and pages
+    demo/               the demo Task Engine and the seed (Engine commands)
     feature.ts          registration/composition
     index.ts            public Runtime boundary
   documents/
     content/            versioned body use case, content port, HTTP adapter
-    demo/               explicit document demo adapter
+    demo/               the demo documents, the demo Task documents among them
     feature.ts
     index.ts
   sessions/             managed Session authority; public read boundary when implemented
@@ -102,7 +102,7 @@ stays shared only when two real operations consume it. Runtime Tasks does not co
 implementation. When Engine reads land, an adapter consumes only its declared package exports.
 Engine does not import Runtime, Fastify, UI, HTTP DTOs, authorization roles or managed Sessions.
 
-Runtime's composition root constructs feature dependencies once, supplies demo adapters only in
+Runtime's composition root constructs feature dependencies once, supplies the demo Engine (in memory) only in
 explicit demo mode, registers routes and injects the common feature capability catalogue into Auth.
 `RuntimeAppDependencies` gains separate Task and Document dependencies; `SpecsFeatureDependencies`
 does not remain their transit container. Runtime data mode becomes composition-owned rather than
@@ -138,7 +138,7 @@ Ports return source facts, source availability and source revision/read handles.
 Avoid a port with one method per screen section: separate definition/execution reads, history
 paging, resource relation paging and content access by their actual lifecycle.
 
-A history/resource page request carries resolved Task identity, an owner-issued read handle,
+A history page request carries resolved Task identity, an owner-issued read handle,
 opaque continuation and bounded limit. Its result contains a bounded set of visible records,
 next continuation and truthful coverage. The owning adapter implements selection near the source.
 A test adapter may use small arrays; the port must not require production to return all records.
@@ -152,9 +152,7 @@ source query. Do not pass Fastify requests, role names or UI state into Engine.
 If a source can only return candidate pages, application scanning has an explicit bounded work
 budget and continuation. Underfilled/empty pages can have a next cursor; they do not prove the end
 of the collection. No unbounded scan to fill a page or compute a count. An exact authorized count
-requires an owner/query that can supply one. The existing wire contract's exact `visibleTotal` is
-therefore an explicit readiness condition; otherwise the resources section is unavailable, rather
-than publishing the size of the unfiltered collection.
+requires an owner/query that can supply one.
 
 ## Coherence and versioning
 
@@ -199,8 +197,7 @@ The Session owner MUST return the exact requested `sessionId`. A mismatched iden
 before checking capabilities; a grant for another Session cannot authorize the original reference.
 
 Do not weaken the working authorization fixes on top of #60. Apply one reference-visibility policy
-to inline resources, page results, history materials, requirement evidence, dependencies and
-recovery. Counts and recommendations are computed after visibility. Denied titles, IDs, paths and
+to page results, history materials and dependencies. Counts are computed after visibility. Denied titles, IDs, paths and
 provenance do not leak through alternative sections.
 The Task projection revision includes the actual authorized view, including ordered evidence
 bindings. A membership/visibility change invalidates pinned inspection even when source versions
@@ -237,10 +234,11 @@ finish a Task, and finishing one step does not implicitly start its successor.
 ## Independent delivery and readiness
 
 **Implemented:** Runtime feature ownership; application use cases; port and
-HTTP adapter separation; owner-specific contract exports; demo adapters; compatible page leases;
-Engine-backed project-mode definition, execution and history sources and the workspace `tasks`
-section; focused boundary tests. Resources, human requirements and recovery have no Engine
-projection and stay unavailable in project mode.
+HTTP adapter separation; owner-specific contract exports; history page leases; Engine-backed
+definition, execution and history sources and the workspace `tasks` section in both Runtimes (the
+demo's Engine in memory); focused boundary tests. The earlier Task snapshot sections for human
+requirements, related resources and recovery, and their synthetic demo sources, are removed (owner
+decision 2026-11-16).
 
 **Dependent on Engine's existing program:** public Task/definition/context/execution/history read
 contracts, immutable/versioned read guarantees and verified workspace binding. Build them on the
@@ -256,7 +254,7 @@ Task projection store is needed for the immediate refactor.
 
 ## Acceptance at architecture boundaries
 
-- Specs has no Task detail/history/resource or document body repository methods/routes.
+- Specs has no Task detail/history or document body repository methods/routes.
 - Tasks composes facts but owns no workflow mutation or managed Session/content persistence.
 - Cross-feature imports use public feature boundaries; Engine dependencies use package exports.
 - HTTP tests prove application outcomes, not handler-owned slicing or authorization algorithms.

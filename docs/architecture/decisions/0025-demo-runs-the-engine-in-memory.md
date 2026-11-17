@@ -15,6 +15,7 @@ related:
   - adr.0023-neutral-workflow-coordinator-and-manual-execution
   - adr.0024-tasks-are-resources
   - architecture.workflow.workflow-kernel
+  - architecture.runtime.task-read-composition
   - engineering.shared.code-organization
   - reference.api.task-reads
   - reference.api.specification-workflow
@@ -47,14 +48,19 @@ Current. Owner decision of 2026-11-16 (UX round 168). Builds on
 2. **Ports, not branches.** What cannot run in memory gets an in-memory implementation behind the
    existing port: the Task references (archetype and documents from the demo documents, no project
    documentation, no checkout paths, nothing pending), no holds, no post actions (nothing is
-   committed). Engine logic has no demo branch.
+   committed), and a Specification exit port that projects Close `unavailable: no-repository`
+   (there is no checkout to archive in) while Abandon stays the Engine's. Engine logic has no demo
+   branch.
 3. **Project routes.** The demo Runtime serves the workflow actions, the Tasks page, the Task
    reads with their resource, the Task commands and the Task document routes through the same
    features as a project Runtime (`TaskEngine`, `WorkflowPort`, `TaskDocumentSource`).
-4. **Seeded through commands.** The demo state is reached at first use through Engine commands
-   (start, finish, set status) from a small catalogue: Specifications at different steps; Tasks
-   done, in review, in progress (by the owner or a demo agent Session), on hold with a reason and
-   blocked by a dependency. It is writable until the Runtime stops.
+4. **Seeded through commands, at startup.** The demo state is reached while the Runtime starts,
+   before it serves anything, through Engine commands (start, finish, set status) from a small
+   catalogue: Specifications at different steps; Tasks done, in review, in progress (by the owner
+   or the agent Session the catalogue's executions name), on hold with a reason and blocked by a
+   dependency. A seed that fails stops the start. The state is writable until the Runtime stops.
+   Workflow facts (progress, Task states) are the Engine's; the demo catalogue keeps only what the
+   Engine does not hold (titles, Sessions and their executions).
 5. **One UI.** The UI has no demo branch for these screens. The snapshot-based Task screen and its
    human requirements, evidence, related resources, recovery and Task preview are removed; they
    come back as new project features if needed.
@@ -62,8 +68,10 @@ Current. Owner decision of 2026-11-16 (UX round 168). Builds on
 ## Consequences
 
 - A demo UX review shows the project screens, and demo changes exercise the real rules.
-- Close is not emulated: its preview and command need a checkout and remain unavailable in demo.
-- Adding, renaming, moving and deleting Task documents is refused in demo (saves work).
+- Close is not emulated: the projection says it is unavailable (`no-repository`), so the UI says
+  so before anyone tries.
+- The Task document tree states its capabilities apart (`save`, `organize`): the demo saves Task
+  documents but does not add, rename, move or delete them, and the UI offers only what is allowed.
 - The demo's history times are those of its seed run, a few days before the Runtime started.
 - A future demo need is met by another in-memory port implementation, never by a synthetic read.
 

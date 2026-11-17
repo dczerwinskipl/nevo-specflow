@@ -11,7 +11,6 @@ import {
   type AppWorkspaceBack,
   type SecondaryScreenProps,
 } from '@nevo/ui';
-import type { TaskResourceFacts } from '@nevo/specflow-contracts/tasks';
 import { WorkspaceRouteLeaveGuard } from '../../../app/navigation/WorkspaceRouteLeaveGuard';
 import type { FullTaskData } from '../read-model/model';
 import {
@@ -110,7 +109,6 @@ const historyStack = defineSecondaryStack<RootParams, TaskContextData, Pages>({
 /** The Full Task: the Task resource its Specification lists, in any Runtime. */
 export function FullTaskWorkspace(props: {
   readonly task: FullTaskData;
-  readonly resource: TaskResourceFacts;
   readonly specId: string;
   /** The header Back of the stacked page (Narrow): "Back to Tasks". */
   readonly back: AppWorkspaceBack;
@@ -137,6 +135,7 @@ function FullTaskWithHistory(props: Parameters<typeof FullTaskWorkspace>[0]) {
   return (
     <ProjectTaskWorkspace
       {...props}
+      resource={props.task.resource}
       onOpenHistory={() => void navigation.open(historyStack, { taskId: props.task.id })}
     />
   );

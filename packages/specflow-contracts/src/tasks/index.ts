@@ -41,8 +41,8 @@ export const SpecificationTaskResponseSchema = Type.Object({
   purpose: Type.Optional(Type.String()),
   acceptanceCriteria: Type.Array(Type.String()),
   workflow: Type.Optional(Type.String()),
-  /** The Task resource (status, dependencies, context, revision); project mode, from the Engine. */
-  resource: Type.Optional(TaskResourceFactsSchema),
+  /** The Task resource (status, dependencies, context, revision), from the Engine. */
+  resource: TaskResourceFactsSchema,
   snapshot: Type.Optional(TaskSnapshotSchema),
 });
 export type SpecificationTaskResponse = Static<typeof SpecificationTaskResponseSchema>;

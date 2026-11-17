@@ -154,9 +154,15 @@ export function SpecificationNow({
       links={{ tasks: () => workflow.openTasks() }}
       primaryAction={
         terminal && projection.specification?.exit ? (
-          <Button onClick={() => workflow.openExit('close')}>
-            {t('workflowExecution.close.action')}
-          </Button>
+          projection.specification.exit.close.kind === 'unavailable' ? (
+            <Typography as="p" variant="body-sm" className="text-content-muted">
+              {t('workflowExecution.close.noRepository')}
+            </Typography>
+          ) : (
+            <Button onClick={() => workflow.openExit('close')}>
+              {t('workflowExecution.close.action')}
+            </Button>
+          )
         ) : undefined
       }
       artifactOptions={documents}

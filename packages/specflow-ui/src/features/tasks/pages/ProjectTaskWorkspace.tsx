@@ -43,7 +43,7 @@ export interface ProjectTaskWorkspaceProps {
 }
 
 function versionOf(task: FullTaskData | undefined): TaskDetailsVersion | undefined {
-  return task?.resource
+  return task
     ? { revision: task.resource.revision, title: task.title, summary: task.snapshot?.summary ?? '' }
     : undefined;
 }
@@ -53,7 +53,8 @@ function versionOf(task: FullTaskData | undefined): TaskDetailsVersion | undefin
  * Secondary base and Task documents as Secondary tabs (pushed pages on Narrow).
  */
 export function ProjectTaskWorkspace(props: ProjectTaskWorkspaceProps) {
-  const writable = useTaskDocumentTree(props.specId, props.task.id).data?.writable !== false;
+  const writable =
+    useTaskDocumentTree(props.specId, props.task.id).data?.capabilities.save !== false;
   const queryClient = useQueryClient();
 
   return (
@@ -161,7 +162,7 @@ function Workspace({
                     </Button>
                   </Alert>
                 ) : null}
-                <FullTaskView task={task} specKey={specId}>
+                <FullTaskView>
                   <TaskAuthoringView
                     specId={specId}
                     task={task}

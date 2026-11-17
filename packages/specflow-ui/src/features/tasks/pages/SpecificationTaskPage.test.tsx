@@ -12,6 +12,7 @@ import { taskKeys } from '../queries';
 import { mapFullTaskResponse } from '../read-model/model';
 import { SpecificationTaskPage } from './SpecificationTaskPage';
 import { useSpecificationTask } from '../useSpecificationTask';
+import { taskResourceFixture } from '../../../../test-support/tasks/resource';
 
 const specId = 'admission';
 const taskId = 'TASK-77';
@@ -23,6 +24,7 @@ const detail: SpecificationTaskResponse = {
   },
   purpose: 'Available without a Workspace collection',
   acceptanceCriteria: ['Can open directly'],
+  resource: taskResourceFixture(),
 };
 
 function renderTask(options: { error?: HttpClientError; seedDetail?: boolean } = {}) {
@@ -77,13 +79,6 @@ describe('direct Full Task page', () => {
       statusCode: 'pending',
     });
     expect(mapped).not.toHaveProperty('group');
-  });
-
-  it('shows a Task read without its resource as unavailable, never a partial Task page', () => {
-    const markup = renderTask();
-    expect(markup).not.toContain('Available without a Workspace collection');
-    expect(markup.match(/<h1\b/g)).toHaveLength(1);
-    expect(markup).not.toContain('Task not found');
   });
 
   it('distinguishes a domain 404 from an unavailable source', () => {

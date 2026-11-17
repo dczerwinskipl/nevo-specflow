@@ -25,8 +25,10 @@ export interface DemoTaskManifest {
 export interface DemoTaskDocumentState {
   /** The manifest of a Task the Specification lists; `undefined` when there is none. */
   manifest(specId: string, taskId: string): Promise<DemoTaskManifest | undefined>;
-  /** The text a Task document was created with (the initial `task.md`). */
-  initialText(specId: string, taskId: string, path: string): Promise<string | undefined>;
+  /** The text of a file of the Task folder (`task.md` as created, or as last saved). */
+  text(specId: string, taskId: string, path: string): Promise<string | undefined>;
+  /** Replaces the text of an existing file of the Task folder; it goes with the Task. */
+  save(specId: string, taskId: string, path: string, text: string): Promise<void>;
 }
 
 /** One registered document of a type with its text, for the workflow's document gates. */
@@ -41,16 +43,12 @@ const notFound = () => new DocumentError('DOCUMENT_NOT_FOUND', 'Unknown document
 
 /**
  * The documents of the demo Tasks (Task-scoped Documents): the registry is the Task manifest of the
- * demo workflow state; the files start with the text the Task was created with and keep the saves
- * made since, in memory. Reads and saves follow the real contract (revisions, conflicts); adding,
- * renaming, moving and deleting Task documents is not part of the demo and is refused.
+ * demo workflow state and the files are its Task folders, so a save lives and goes with its Task.
+ * Reads and saves follow the real contract (revisions, conflicts); adding, renaming, moving and
+ * deleting Task documents is not part of the demo: the tree says so (`capabilities.organize`) and
+ * the routes refuse it.
  */
 export function createDemoTaskDocuments(state: DemoTaskDocumentState) {
-  /** Saved files by `specId/taskId/path`; a file never saved has its initial text. */
-  const saved = new Map<string, DemoFile>();
-  const key = (specId: string, taskId: string, path: string) =>
-    JSON.stringify([specId, taskId, path]);
-
   const manifest = async (specId: string, taskId: string) => {
     const found = await state.manifest(specId, taskId);
     if (!found) {
@@ -65,12 +63,7 @@ export function createDemoTaskDocuments(state: DemoTaskDocumentState) {
     taskId: string,
     path: string,
   ): Promise<DemoFile | undefined> => {
-    const changed = saved.get(key(specId, taskId, path));
-    if (changed) {
-      return changed;
-    }
-
-    const text = await state.initialText(specId, taskId, path);
+    const text = await state.text(specId, taskId, path);
 
     return text === undefined ? undefined : textFile(text);
   };
@@ -148,7 +141,13 @@ export function createDemoTaskDocuments(state: DemoTaskDocumentState) {
         });
       }
 
-      return { taskId, registryRevision: registry.revision, writable: true, documents };
+      // The demo saves Task documents; it does not add, rename, move or delete them.
+      return {
+        taskId,
+        registryRevision: registry.revision,
+        capabilities: { save: true, organize: false },
+        documents,
+      };
     },
     async read(specId, taskId, documentId, revision) {
       const { entry, file } = await located(specId, taskId, documentId);
@@ -180,7 +179,7 @@ export function createDemoTaskDocuments(state: DemoTaskDocumentState) {
       }
 
       const next = textFile(input.content);
-      saved.set(key(specId, taskId, entry.path), next);
+      await state.save(specId, taskId, entry.path, input.content);
 
       return {
         operationId: input.operationId,

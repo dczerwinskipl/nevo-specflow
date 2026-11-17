@@ -2176,6 +2176,7 @@
         "adr.0023-neutral-workflow-coordinator-and-manual-execution",
         "adr.0024-tasks-are-resources",
         "architecture.workflow.workflow-kernel",
+        "architecture.runtime.task-read-composition",
         "engineering.shared.code-organization",
         "reference.api.task-reads",
         "reference.api.specification-workflow"

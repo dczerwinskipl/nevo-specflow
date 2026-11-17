@@ -1,3 +1,4 @@
+import { taskResourceFixture } from '../../tasks/resource';
 import { documentContentFixture } from '../../documents/fixtures';
 import type { SpecificationApi } from '../../../src/features/specs/read-model/api';
 import type { TaskApi } from '../../../src/features/tasks/api';
@@ -69,7 +70,7 @@ export function createWorkspaceIntegrationApi(): SpecificationApi {
 /** Story-only Task detail adapter, separate from Specification Workspace reads. */
 export function createTaskIntegrationApi(): TaskApi {
   return {
-    // The fixture Runtime has no Tasks page read (as the demo Runtime).
+    // The fixture Runtime has no Tasks page read.
     getTaskList: () => Promise.reject(new Error('No Tasks page read in this fixture')),
     getTask: (specId, taskId, signal) => {
       signal?.throwIfAborted();
@@ -85,6 +86,7 @@ export function createTaskIntegrationApi(): TaskApi {
         },
         purpose: 'Latest purpose loaded independently from the detail endpoint.',
         acceptanceCriteria: ['Latest acceptance criterion'],
+        resource: taskResourceFixture(),
       });
     },
   };

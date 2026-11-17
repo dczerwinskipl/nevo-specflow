@@ -93,7 +93,8 @@ describe('startCatalogueFromProviders', () => {
     expect(provider.reason).toEqual({ key: 'sessionStart.provider.notEnabled' });
   });
 
-  it('lists where it looked for a CLI it did not find, and what to set', () => {
+  it('summarises where it looked for a CLI it did not find, with the full paths on request', () => {
+    const app = 'C:\\Users\\dev\\AppData\\Local\\OpenAI\\Codex\\bin\\*\\codex.exe';
     const provider = only(
       providerDescriptor({
         providerId: 'codex',
@@ -102,11 +103,9 @@ describe('startCatalogueFromProviders', () => {
         reason: 'No Codex CLI was found.',
         checkedLocations: [
           { source: 'path', path: 'codex.exe, codex.cmd, codex.bat' },
-          {
-            source: 'discovered',
-            path: 'C:\\Users\\dev\\AppData\\Local\\OpenAI\\Codex\\bin\\*\\codex.exe',
-            location: 'Codex desktop app',
-          },
+          { source: 'discovered', path: app, location: 'codex-desktop-app' },
+          { source: 'discovered', path: 'E:\\npm\\a\\codex.exe', location: 'npm-global-package' },
+          { source: 'discovered', path: 'E:\\npm\\b\\codex.exe', location: 'npm-global-package' },
         ],
       }),
     );
@@ -116,10 +115,37 @@ describe('startCatalogueFromProviders', () => {
         key: 'sessionStart.provider.notFoundHelp',
         values: {
           key: 'sessions.providers.codex',
-          checked:
-            'PATH (codex.exe, codex.cmd, codex.bat); C:\\Users\\dev\\AppData\\Local\\OpenAI\\Codex\\bin\\*\\codex.exe',
+          sources: [
+            { key: 'sessionStart.provider.location.path' },
+            { key: 'sessionStart.provider.location.codex-desktop-app' },
+            { key: 'sessionStart.provider.location.npm-global-package' },
+          ],
         },
       },
+      checkedPaths: [
+        'PATH: codex.exe, codex.cmd, codex.bat',
+        app,
+        'E:\\npm\\a\\codex.exe',
+        'E:\\npm\\b\\codex.exe',
+      ],
+    });
+
+    const launcher = only(
+      providerDescriptor({
+        providerId: 'codex',
+        readiness: 'unavailable',
+        reasonCode: 'EXECUTABLE_NOT_FOUND',
+        checkedLocations: [{ source: 'path', path: 'codex.exe, codex.cmd, codex.bat' }],
+        unresolvedLauncher: { path: 'E:\\npm\\codex.cmd', package: '@openai/codex' },
+      }),
+    );
+    expect(launcher).toMatchObject({
+      reason: { key: 'sessionStart.provider.launcherBroken' },
+      hint: {
+        key: 'sessionStart.provider.launcherBrokenHelp',
+        values: { package: '@openai/codex' },
+      },
+      checkedPaths: ['E:\\npm\\codex.cmd', 'PATH: codex.exe, codex.cmd, codex.bat'],
     });
 
     const configured = only(
@@ -138,7 +164,6 @@ describe('startCatalogueFromProviders', () => {
 
   it.each([
     ['EXECUTABLE_NOT_WORKING', 'notWorking'],
-    ['VERSION_UNSUPPORTED', 'versionUnsupported'],
     ['INSTALLATION_UNAVAILABLE', 'setupUnsupported'],
     ['PROTOCOL_UNSUPPORTED', 'protocolUnsupported'],
     ['KNOWN_INCOMPATIBILITY', 'knownIncompatible'],
@@ -189,13 +214,24 @@ describe('startCatalogueFromProviders', () => {
     const executable = {
       path,
       source: 'discovered' as const,
-      location: 'Codex desktop app',
+      location: 'codex-desktop-app' as const,
       version: '0.167.0',
     };
     expect(only(providerDescriptor({ providerId: 'codex', executable })).executable).toEqual({
       key: 'sessionStart.provider.executable.discovered',
-      values: { path, location: 'Codex desktop app' },
+      values: { path, location: { key: 'sessionStart.provider.location.codex-desktop-app' } },
     });
+    // Unavailable for a reason other than the executable: its path would only distract.
+    expect(
+      only(
+        providerDescriptor({
+          providerId: 'codex',
+          readiness: 'unavailable',
+          reasonCode: 'SPECIFICATION_WORKTREE_UNSUPPORTED',
+          executable,
+        }),
+      ).executable,
+    ).toBeUndefined();
     expect(
       only(
         providerDescriptor({

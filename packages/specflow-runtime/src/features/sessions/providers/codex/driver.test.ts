@@ -141,7 +141,7 @@ it('lists a missing CLI as not found with the places discovery checked', async (
     {
       source: 'discovered' as const,
       path: 'C:\\Users\\dev\\AppData\\Local\\OpenAI\\Codex\\bin\\*\\codex.exe',
-      location: 'Codex desktop app',
+      location: 'codex-desktop-app' as const,
     },
   ];
   f.inspect.mockRejectedValue(

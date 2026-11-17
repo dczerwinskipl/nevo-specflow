@@ -1960,12 +1960,10 @@
       "notReady": "Niezainstalowany lub niegotowy",
       "notReadyHelp": "Sprawdź, czy CLI dostawcy jest zainstalowane i działa na tym komputerze. Jeśli jest zainstalowane w innym miejscu, ustaw jego ścieżkę jako {{key}}.executable w .nevo/local/config.yaml.",
       "notFound": "Nie znaleziono CLI",
-      "notFoundHelp": "Sprawdzono: {{checked}}. Zainstaluj CLI i sprawdź dostępność ponownie albo ustaw jego ścieżkę jako {{key}}.executable w .nevo/local/config.yaml i uruchom ponownie Nevo SpecFlow.",
+      "notFoundHelp": "Sprawdzono: {{sources}}. Zainstaluj CLI albo ustaw {{key}}.executable w .nevo/local/config.yaml i uruchom ponownie Nevo SpecFlow.",
       "notFoundConfiguredHelp": "Pod ścieżką {{path}} nie ma pliku, który można uruchomić. Popraw {{key}}.executable w .nevo/local/config.yaml albo usuń to ustawienie, aby CLI było wyszukiwane w PATH i w miejscach instalacji, a następnie uruchom ponownie Nevo SpecFlow.",
       "notWorking": "Znaleziono CLI, ale nie działa",
       "notWorkingHelp": "{{detail}} Zainstaluj ponownie lub zaktualizuj CLI i sprawdź dostępność ponownie albo ustaw w {{key}}.executable w .nevo/local/config.yaml działające CLI i uruchom ponownie Nevo SpecFlow.",
-      "versionUnsupported": "Nieobsługiwana wersja CLI",
-      "versionUnsupportedHelp": "{{detail}} Zainstaluj obsługiwaną wersję i sprawdź dostępność ponownie albo wskaż ją w {{key}}.executable w .nevo/local/config.yaml i uruchom ponownie Nevo SpecFlow.",
       "setupUnsupported": "Nieobsługiwana konfiguracja",
       "setupUnsupportedHelp": "{{detail}} Nevo SpecFlow uruchamia CLI tylko z jego domyślnym logowaniem i bez zasad zarządzanych na komputerze. Strona dostawcy w docs/reference/providers wymienia, czego nie może być.",
       "protocolUnsupported": "Nieobsługiwany protokół",
@@ -1982,7 +1980,17 @@
       "executable": {
         "configured": "Skonfigurowano: {{path}}",
         "path": "Znaleziono w PATH: {{path}}",
-        "discovered": "Z {{location}}: {{path}}"
+        "discovered": "Źródło: {{location}}. Ścieżka: {{path}}"
+      },
+      "launcherBroken": "Niekompletny pakiet npm",
+      "launcherBrokenHelp": "W pakiecie npm {{package}} brakuje natywnego pliku wykonywalnego. Uruchom npm install -g {{package}} albo ustaw {{key}}.executable w .nevo/local/config.yaml i uruchom ponownie Nevo SpecFlow.",
+      "checkedPaths": "Sprawdzone ścieżki",
+      "location": {
+        "path": "PATH",
+        "codex-desktop-app": "aplikacja Codex na komputer",
+        "claude-native-installer": "natywny instalator Claude",
+        "antigravity-installer": "instalator CLI Antigravity",
+        "npm-global-package": "globalny pakiet npm"
       }
     },
     "forbiddenSpecification": "Nie możesz rozpoczynać sesji w tej specyfikacji.",

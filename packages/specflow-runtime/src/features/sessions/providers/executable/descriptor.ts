@@ -28,11 +28,15 @@ export function executableFields(
   declaration: ProviderExecutableDeclaration,
   resolution: ExecutableResolution | undefined,
   error?: unknown,
-): Pick<ProviderDescriptor, 'executable' | 'checkedLocations' | 'signInCommand'> {
+): Pick<
+  ProviderDescriptor,
+  'executable' | 'checkedLocations' | 'unresolvedLauncher' | 'signInCommand'
+> {
   if (error instanceof ProviderUnavailableError && (error.executable || error.checkedLocations)) {
     return {
       ...(error.executable ? { executable: error.executable } : {}),
       ...(error.checkedLocations ? { checkedLocations: error.checkedLocations } : {}),
+      ...(error.unresolvedLauncher ? { unresolvedLauncher: error.unresolvedLauncher } : {}),
       signInCommand: signInCommand(declaration),
     };
   }
@@ -55,6 +59,10 @@ export function withExecutableFields(
 
   if (!fields.checkedLocations) {
     delete next.checkedLocations;
+  }
+
+  if (!fields.unresolvedLauncher) {
+    delete next.unresolvedLauncher;
   }
 
   return next;

@@ -197,9 +197,11 @@ Every UI start is from a Specification: **New session** opens `/specs/:specId/se
   action row (note, **Start session**) is the form's last row.
 - **Fields.** Provider tiles (first available preselected; an unavailable provider is disabled with
   a short status for its reason code and a note saying what to do, with the Runtime's detail, such
-  as the places checked for a CLI that was not found or the CLI's sign-in command; a provider with
-  no executable work mode is unavailable; a muted last line says which CLI runs and how it was
-  found: configured, on PATH, or from an install location), then labelled **Model**
+  as the kinds of places checked for a CLI that was not found, with the full paths behind a
+  **Checked paths** disclosure, or the CLI's sign-in command; a provider with no executable work
+  mode is unavailable; for a ready provider, one that needs sign-in or one unavailable because of
+  its executable, a muted last line says which CLI runs and how it was found: configured, on PATH,
+  or from an install location), then labelled **Model**
   (required, no preselection), **Effort** (Default plus the model's efforts) and **Work mode** (the
   catalogue's usable modes: a segmented control for up to 4, a picker beyond), then **Session
   name**. Effort and Work mode are rendered disabled until a model is chosen, so choosing one never

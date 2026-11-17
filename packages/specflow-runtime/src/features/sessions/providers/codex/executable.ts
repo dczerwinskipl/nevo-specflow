@@ -21,26 +21,29 @@ export const codexExecutable: ProviderExecutableDeclaration = {
 
     return match ? semanticVersion(match[1]!) : undefined;
   },
-  npmPackageExecutables: [
-    win32.join(
-      'node_modules',
-      '@openai',
-      'codex',
-      'node_modules',
-      '@openai',
-      'codex-win32-x64',
-      ...npmTarget,
-    ),
-    win32.join('node_modules', '@openai', 'codex-win32-x64', ...npmTarget),
-    win32.join('node_modules', '@openai', 'codex', ...npmTarget),
-  ],
+  npmPackage: {
+    name: '@openai/codex',
+    executables: [
+      win32.join(
+        'node_modules',
+        '@openai',
+        'codex',
+        'node_modules',
+        '@openai',
+        'codex-win32-x64',
+        ...npmTarget,
+      ),
+      win32.join('node_modules', '@openai', 'codex-win32-x64', ...npmTarget),
+      win32.join('node_modules', '@openai', 'codex', ...npmTarget),
+    ],
+  },
   installLocations(environment) {
     const local = environment.LOCALAPPDATA;
 
     return local
       ? [
           {
-            label: 'Codex desktop app',
+            location: 'codex-desktop-app',
             pattern: win32.join(local, 'OpenAI', 'Codex', 'bin', '*', 'codex.exe'),
           },
         ]

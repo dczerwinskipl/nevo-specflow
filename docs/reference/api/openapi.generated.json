@@ -10424,12 +10424,6 @@
                               {
                                 "type": "string",
                                 "enum": [
-                                  "VERSION_UNSUPPORTED"
-                                ]
-                              },
-                              {
-                                "type": "string",
-                                "enum": [
                                   "INSTALLATION_UNAVAILABLE"
                                 ]
                               },
@@ -10524,9 +10518,32 @@
                                 ]
                               },
                               "location": {
-                                "type": "string",
-                                "minLength": 1,
-                                "maxLength": 128
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "codex-desktop-app"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "claude-native-installer"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "antigravity-installer"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "npm-global-package"
+                                    ]
+                                  }
+                                ]
                               },
                               "version": {
                                 "type": "string",
@@ -10573,14 +10590,57 @@
                                   "maxLength": 1024
                                 },
                                 "location": {
-                                  "type": "string",
-                                  "minLength": 1,
-                                  "maxLength": 128
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "codex-desktop-app"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "claude-native-installer"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "antigravity-installer"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "npm-global-package"
+                                      ]
+                                    }
+                                  ]
                                 }
                               },
                               "additionalProperties": false
                             },
                             "maxItems": 32
+                          },
+                          "unresolvedLauncher": {
+                            "type": "object",
+                            "required": [
+                              "path",
+                              "package"
+                            ],
+                            "properties": {
+                              "path": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1024
+                              },
+                              "package": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 214
+                              }
+                            },
+                            "additionalProperties": false
                           },
                           "signInCommand": {
                             "type": "string",

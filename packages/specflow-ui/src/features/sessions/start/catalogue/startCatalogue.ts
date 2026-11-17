@@ -39,6 +39,8 @@ export interface StartProvider {
   hint?: Message | string;
   /** The executable the Runtime runs and how it found it (configured, PATH or install location). */
   executable?: Message;
+  /** Every path discovery checked for a CLI it did not find, shown on request. */
+  checkedPaths?: readonly string[];
   /**
    * Unavailable because it cannot work in the Specification's own worktree. The provider choice
    * explains this once, below the tiles, for every such provider.

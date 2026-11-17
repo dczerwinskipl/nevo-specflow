@@ -18,10 +18,11 @@ export class ProviderUnavailableError extends SessionError {
   /** What discovery established: the executable it found, or every place it looked. */
   readonly executable?: ProviderDescriptor['executable'];
   readonly checkedLocations?: ProviderDescriptor['checkedLocations'];
+  readonly unresolvedLauncher?: ProviderDescriptor['unresolvedLauncher'];
   constructor(
     reasonCode: ProviderUnavailableCode,
     message: string,
-    facts: Pick<ProviderDescriptor, 'executable' | 'checkedLocations'> = {},
+    facts: Pick<ProviderDescriptor, 'executable' | 'checkedLocations' | 'unresolvedLauncher'> = {},
   ) {
     super('PROVIDER_UNAVAILABLE', message);
     this.name = 'ProviderUnavailableError';
@@ -32,6 +33,10 @@ export class ProviderUnavailableError extends SessionError {
 
     if (facts.checkedLocations) {
       this.checkedLocations = facts.checkedLocations;
+    }
+
+    if (facts.unresolvedLauncher) {
+      this.unresolvedLauncher = facts.unresolvedLauncher;
     }
   }
 }

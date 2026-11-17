@@ -132,6 +132,13 @@ export const ExecutableSourceSchema = Type.Union([
   Type.Literal('path'),
   Type.Literal('discovered'),
 ]);
+/** The vendor install location an executable was discovered in; the UI names it. */
+export const ExecutableLocationSchema = Type.Union([
+  Type.Literal('codex-desktop-app'),
+  Type.Literal('claude-native-installer'),
+  Type.Literal('antigravity-installer'),
+  Type.Literal('npm-global-package'),
+]);
 export const ProviderDescriptorSchema = Type.Object(
   {
     providerId: choice(128),
@@ -149,8 +156,6 @@ export const ProviderDescriptorSchema = Type.Object(
         Type.Literal('EXECUTABLE_NOT_FOUND'),
         /** An executable was found but its version command failed or did not answer in time. */
         Type.Literal('EXECUTABLE_NOT_WORKING'),
-        /** The found executable's version is outside the range the adapter supports. */
-        Type.Literal('VERSION_UNSUPPORTED'),
         /** A working executable was found; its login source or machine-managed policy is not supported. */
         Type.Literal('INSTALLATION_UNAVAILABLE'),
         Type.Literal('AUTHENTICATION_REQUIRED'),
@@ -177,8 +182,8 @@ export const ProviderDescriptorSchema = Type.Object(
         {
           path: choice(1024),
           source: ExecutableSourceSchema,
-          /** The provider-declared install location it was discovered in, for example "Codex desktop app". */
-          location: Type.Optional(choice(128)),
+          /** The install location it was discovered in, or the npm package a PATH launcher names. */
+          location: Type.Optional(ExecutableLocationSchema),
           /** The version its own version command reported. */
           version: Type.Optional(choice(128)),
         },
@@ -193,12 +198,19 @@ export const ProviderDescriptorSchema = Type.Object(
             source: ExecutableSourceSchema,
             /** The searched file names for `path`; an absolute path or pattern (`*`) otherwise. */
             path: choice(1024),
-            location: Type.Optional(choice(128)),
+            location: Type.Optional(ExecutableLocationSchema),
           },
           closed,
         ),
         { maxItems: 32 },
       ),
+    ),
+    /**
+     * With `EXECUTABLE_NOT_FOUND`: an npm launcher found on PATH whose package's native executable
+     * is missing, so the CLI looks installed but cannot be run.
+     */
+    unresolvedLauncher: Type.Optional(
+      Type.Object({ path: choice(1024), package: choice(214) }, closed),
     ),
     /** The command that signs in to the provider's CLI, for `authenticationRequired`. */
     signInCommand: Type.Optional(choice(1100)),
@@ -282,6 +294,7 @@ export type StartTurn = Static<typeof StartTurnSchema>;
 export type RespondInteraction = Static<typeof RespondInteractionSchema>;
 export type ProviderDescriptor = Static<typeof ProviderDescriptorSchema>;
 export type ExecutableSource = Static<typeof ExecutableSourceSchema>;
+export type ExecutableLocation = Static<typeof ExecutableLocationSchema>;
 export type CreateSessionResult = Static<typeof CreateSessionResultSchema>;
 export type StartTurnResult = Static<typeof StartTurnResultSchema>;
 export type CancelTurnResult = Static<typeof CancelTurnResultSchema>;

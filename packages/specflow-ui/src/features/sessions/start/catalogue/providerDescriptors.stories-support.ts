@@ -47,7 +47,7 @@ export const codexDescriptor = providerDescriptor({
   executable: {
     path: 'C:\\Users\\dev\\AppData\\Local\\OpenAI\\Codex\\bin\\5449c1f0f26f1f98\\codex.exe',
     source: 'discovered',
-    location: 'Codex desktop app',
+    location: 'codex-desktop-app',
     version: '0.167.0',
   },
 });
@@ -88,9 +88,66 @@ export const managedProviders: ProviderDescriptor[] = [
   antigravityDescriptor,
 ];
 
+const profile = 'C:\\Users\\dev';
+const npmPrefix = profile + '\\AppData\\Roaming\\npm';
+
+/**
+ * Codex enabled but not found: discovery looked on PATH, in the Codex desktop app and in the npm
+ * global package, as the Runtime reports it (the app is not installed).
+ */
+export function codexNotFound(): ProviderDescriptor {
+  const npm = '\\node_modules\\@openai';
+  const binary = '\\vendor\\x86_64-pc-windows-msvc\\bin\\codex.exe';
+
+  return {
+    ...codexDescriptor,
+    executable: undefined,
+    readiness: 'unavailable',
+    reasonCode: 'EXECUTABLE_NOT_FOUND',
+    reason: 'No Codex CLI was found on PATH or in its install locations.',
+    checkedLocations: [
+      { source: 'path', path: 'codex.exe, codex.cmd, codex.bat' },
+      {
+        source: 'discovered',
+        path: profile + '\\AppData\\Local\\OpenAI\\Codex\\bin\\*\\codex.exe',
+        location: 'codex-desktop-app',
+      },
+      {
+        source: 'discovered',
+        path: npmPrefix + npm + '\\codex\\node_modules\\@openai\\codex-win32-x64' + binary,
+        location: 'npm-global-package',
+      },
+      {
+        source: 'discovered',
+        path: npmPrefix + npm + '\\codex-win32-x64' + binary,
+        location: 'npm-global-package',
+      },
+      {
+        source: 'discovered',
+        path: npmPrefix + npm + '\\codex' + binary,
+        location: 'npm-global-package',
+      },
+    ],
+  };
+}
+
+/** Codex installed through npm, but the package's native executable is missing. */
+export function codexLauncherWithoutExecutable(): ProviderDescriptor {
+  return {
+    ...codexNotFound(),
+    reason: `${npmPrefix}\\codex.cmd is the npm launcher of @openai/codex, but the package's native executable is missing.`,
+    unresolvedLauncher: { path: npmPrefix + '\\codex.cmd', package: '@openai/codex' },
+  };
+}
+
 /** Every provider needs signing in again, or is unavailable with its reason. */
 export const unavailableProviders: ProviderDescriptor[] = [
   { ...claudeDescriptor, readiness: 'authenticationRequired' },
-  { ...codexDescriptor, readiness: 'unavailable', reason: 'Nie zainstalowano CLI.' },
-  { ...antigravityDescriptor, readiness: 'unavailable', reason: 'Nie zalogowano do CLI.' },
+  codexNotFound(),
+  {
+    ...antigravityDescriptor,
+    readiness: 'unavailable',
+    reasonCode: 'PROBE_FAILED',
+    reason: 'Antigravity did not complete protocol initialization.',
+  },
 ];

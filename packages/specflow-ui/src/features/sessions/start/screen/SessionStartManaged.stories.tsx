@@ -7,6 +7,8 @@ import {
   antigravityDescriptor,
   claudeDescriptor,
   codexDescriptor,
+  codexLauncherWithoutExecutable,
+  codexNotFound,
   unavailableProviders,
 } from '../catalogue/providerDescriptors.stories-support';
 import { providerDescriptor } from '../catalogue/startCatalogue.stories-support';
@@ -205,8 +207,8 @@ export const ManagedNoProviderAvailable: Story = {
     await expect(canvas.getByRole('radio', { name: /Claude/ })).toBeDisabled();
     await expect(canvas.getByText('Wymagane ponowne logowanie')).toBeVisible();
     await expect(canvas.getByText(/Zaloguj się ponownie w CLI dostawcy/)).toBeVisible();
-    await expect(canvas.getByText('Nie zainstalowano CLI.')).toBeVisible();
-    await expect(canvas.getByText('Nie zalogowano do CLI.')).toBeVisible();
+    await expect(canvas.getByText('Nie znaleziono CLI')).toBeVisible();
+    await expect(canvas.getByText('Nie przeszedł sprawdzenia przy starcie')).toBeVisible();
     await expect(startButton(canvas)).toBeDisabled();
     // The Runtime is asked again only on request, after signing in.
     await expect(canvas.getByRole('button', { name: 'Spróbuj ponownie' })).toBeEnabled();
@@ -245,6 +247,75 @@ export const ManagedProviderNotForSpecificationWorktree: Story = {
       ),
     ).toHaveLength(1);
     await expect(canvas.queryByText(/Runtime's own checkout/)).toBeNull();
+    // The reason is not the executable, so its path is not shown.
+    await expect(canvas.queryByText(/codex\.exe/)).toBeNull();
+  },
+};
+
+/**
+ * A provider whose CLI was not found: a short status, where discovery looked (by kind of place)
+ * and what to do; every path it checked stays behind a disclosure.
+ */
+export const ManagedProviderCliNotFound: Story = {
+  args: { providers: [claudeDescriptor, codexNotFound(), antigravityDescriptor] },
+  play: async ({ canvas }) => {
+    await settle();
+    await expect(await canvas.findByText('Nie znaleziono CLI')).toBeVisible();
+    await expect(
+      canvas.getByText(/Sprawdzono: PATH, aplikacja Codex na komputer i globalny pakiet npm\./),
+    ).toBeVisible();
+    for (const path of canvas.getAllByText(/codex-win32-x64/)) {
+      await expect(path).not.toBeVisible();
+    }
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Sprawdzone ścieżki' }));
+    await expect(await canvas.findByText(/\\OpenAI\\Codex\\bin\\\*\\codex\.exe$/)).toBeVisible();
+  },
+};
+
+/** Installed through npm, but the package's native executable is missing: the CLI looks installed. */
+export const ManagedProviderNpmLauncherBroken: Story = {
+  args: { providers: [claudeDescriptor, codexLauncherWithoutExecutable(), antigravityDescriptor] },
+  play: async ({ canvas }) => {
+    await settle();
+    await expect(await canvas.findByText('Niekompletny pakiet npm')).toBeVisible();
+    await expect(canvas.getByText(/npm install -g @openai\/codex/)).toBeVisible();
+  },
+};
+
+/** Sign-in required: the tile gives the CLI's own sign-in command and the executable it runs. */
+export const ManagedProviderSignInRequired: Story = {
+  args: {
+    providers: [
+      claudeDescriptor,
+      {
+        ...codexDescriptor,
+        readiness: 'authenticationRequired' as const,
+        reasonCode: 'AUTHENTICATION_REQUIRED' as const,
+        signInCommand:
+          'C:\\Users\\dev\\AppData\\Local\\OpenAI\\Codex\\bin\\5449c1f0f26f1f98\\codex.exe login',
+      },
+      antigravityDescriptor,
+    ],
+  },
+  play: async ({ canvas }) => {
+    await settle();
+    await expect(await canvas.findByText('Wymagane ponowne logowanie')).toBeVisible();
+    await expect(canvas.getByText(/codex\.exe login w terminalu/)).toBeVisible();
+    // The command already names the executable, so it is not repeated.
+    await expect(canvas.queryByText(/^Źródło:/)).toBeNull();
+  },
+};
+
+/** Ready, with the CLI discovered in the Codex desktop app: the tile says where it runs from. */
+export const ManagedProviderReadyDiscovered: Story = {
+  args: { providers: [claudeDescriptor, codexDescriptor, antigravityDescriptor] },
+  play: async ({ canvas }) => {
+    await settle();
+    await expect(
+      await canvas.findByText(/^Źródło: aplikacja Codex na komputer\. Ścieżka: C:\\/),
+    ).toBeVisible();
+    await expectNoHorizontalScroll();
   },
 };
 

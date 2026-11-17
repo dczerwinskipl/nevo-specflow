@@ -11,14 +11,13 @@ export const antigravityExecutable: ProviderExecutableDeclaration = {
   command: 'agy',
   versionArguments: ['--version'],
   parseVersion: semanticVersion,
-  npmPackageExecutables: [],
   installLocations(environment) {
     const local = environment.LOCALAPPDATA;
 
     return local
       ? [
           {
-            label: 'Antigravity CLI installer',
+            location: 'antigravity-installer',
             pattern: win32.join(local, 'agy', 'bin', 'agy.exe'),
           },
         ]

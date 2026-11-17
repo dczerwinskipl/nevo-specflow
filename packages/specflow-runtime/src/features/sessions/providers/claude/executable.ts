@@ -18,16 +18,17 @@ export const claudeExecutable: ProviderExecutableDeclaration = {
 
     return match ? semanticVersion(match[1]!) : undefined;
   },
-  npmPackageExecutables: [
-    win32.join('node_modules', '@anthropic-ai', 'claude-code', 'bin', 'claude.exe'),
-  ],
+  npmPackage: {
+    name: '@anthropic-ai/claude-code',
+    executables: [win32.join('node_modules', '@anthropic-ai', 'claude-code', 'bin', 'claude.exe')],
+  },
   installLocations(environment) {
     const home = environment.USERPROFILE;
 
     return home
       ? [
           {
-            label: 'Claude native installer',
+            location: 'claude-native-installer',
             pattern: win32.join(home, '.local', 'bin', 'claude.exe'),
           },
         ]

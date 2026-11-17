@@ -1960,12 +1960,10 @@
       "notReady": "Not installed or not ready",
       "notReadyHelp": "Check that the provider CLI is installed and works on this machine. If it is installed elsewhere, set its path as {{key}}.executable in .nevo/local/config.yaml.",
       "notFound": "CLI not found",
-      "notFoundHelp": "Checked {{checked}}. Install the CLI and recheck availability, or set its path as {{key}}.executable in .nevo/local/config.yaml and restart Nevo SpecFlow.",
+      "notFoundHelp": "Looked in: {{sources}}. Install the CLI, or set {{key}}.executable in .nevo/local/config.yaml and restart Nevo SpecFlow.",
       "notFoundConfiguredHelp": "Nothing runnable is at {{path}}. Correct {{key}}.executable in .nevo/local/config.yaml, or remove it so the CLI is looked up on PATH and in its install locations, then restart Nevo SpecFlow.",
       "notWorking": "CLI found but not working",
       "notWorkingHelp": "{{detail}} Reinstall or update the CLI and recheck availability, or set {{key}}.executable in .nevo/local/config.yaml to a working one and restart Nevo SpecFlow.",
-      "versionUnsupported": "Unsupported CLI version",
-      "versionUnsupportedHelp": "{{detail}} Install a supported version and recheck availability, or set {{key}}.executable in .nevo/local/config.yaml to one and restart Nevo SpecFlow.",
       "setupUnsupported": "Setup not supported",
       "setupUnsupportedHelp": "{{detail}} Nevo SpecFlow runs the CLI only with its own default sign-in and without machine-managed policy. The provider page in docs/reference/providers lists what must be absent.",
       "protocolUnsupported": "Protocol not supported",
@@ -1983,6 +1981,16 @@
         "configured": "Configured: {{path}}",
         "path": "Found on PATH: {{path}}",
         "discovered": "From {{location}}: {{path}}"
+      },
+      "launcherBroken": "npm package incomplete",
+      "launcherBrokenHelp": "The npm package {{package}} has no native executable. Run npm install -g {{package}}, or set {{key}}.executable in .nevo/local/config.yaml and restart Nevo SpecFlow.",
+      "checkedPaths": "Checked paths",
+      "location": {
+        "path": "PATH",
+        "codex-desktop-app": "the Codex desktop app",
+        "claude-native-installer": "the Claude native installer",
+        "antigravity-installer": "the Antigravity CLI installer",
+        "npm-global-package": "the npm global package"
       }
     },
     "forbiddenSpecification": "You can’t start sessions in this specification.",

@@ -61,26 +61,3 @@ export function compareVersions(left: string, right: string): number {
 
   return 0;
 }
-
-/**
- * The versions an adapter supports, from known API introduction (`minimum`, inclusive) or removal
- * (`below`, exclusive) boundaries. An empty range accepts every version.
- */
-export interface VersionRange {
-  readonly minimum?: string;
-  readonly below?: string;
-}
-
-export function versionInRange(version: string, range: VersionRange): boolean {
-  return (
-    (range.minimum === undefined || compareVersions(version, range.minimum) >= 0) &&
-    (range.below === undefined || compareVersions(version, range.below) < 0)
-  );
-}
-
-export function describeVersionRange(range: VersionRange): string {
-  return [
-    ...(range.minimum ? ['>=' + range.minimum] : []),
-    ...(range.below ? ['<' + range.below] : []),
-  ].join(' ');
-}

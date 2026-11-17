@@ -1,7 +1,7 @@
 import { win32 } from 'node:path';
 import type { ProviderEnvironment } from '../process';
 import type { ExecutableFiles } from './files';
-import { searchPath } from './search-path';
+import { searchPath, trustedPath } from './search-path';
 
 async function regularFile(files: ExecutableFiles, path: string) {
   try {
@@ -15,16 +15,17 @@ async function regularFile(files: ExecutableFiles, path: string) {
 
 /**
  * The npm global prefix as npm itself reports it (`npm prefix --global`), so a custom `prefix` in
- * the user's `.npmrc` or a Node version manager is honoured. npm runs through the `node.exe` found
- * on PATH and the `npm-cli.js` bundled beside it: a `.cmd` launcher would need a shell. Undefined
- * when Node or npm is not installed there or does not answer in time.
+ * the user's `.npmrc` is honoured. npm runs through the first `node.exe` on PATH and the
+ * `npm-cli.js` bundled beside it (a `.cmd` launcher would need a shell). Undefined when that
+ * `node.exe` has no bundled npm (for example a version manager's shim), npm does not answer in
+ * time, or the prefix is in an untrusted folder.
  */
 export async function npmGlobalPrefix(
   environment: ProviderEnvironment,
-  workspace: string,
+  untrusted: readonly string[],
   files: ExecutableFiles,
 ): Promise<string | undefined> {
-  for (const directory of searchPath(environment, workspace)) {
+  for (const directory of searchPath(environment, untrusted)) {
     const node = win32.join(directory, 'node.exe');
     if (!(await regularFile(files, node))) {
       continue;
@@ -40,7 +41,7 @@ export async function npmGlobalPrefix(
         await files.run(node, [cli, 'prefix', '--global'], { environment, timeoutMs: 5000 })
       ).trim();
 
-      return output && !output.includes('\n') && win32.isAbsolute(output)
+      return output && !output.includes('\n') && trustedPath(output, untrusted)
         ? win32.resolve(output)
         : undefined;
     } catch {

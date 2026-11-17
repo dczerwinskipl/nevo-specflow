@@ -1,4 +1,4 @@
-import { cn, InlineNote, StatusIndicator, Typography } from '@nevo/ui';
+import { cn, Collapsible, InlineNote, StatusIndicator, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { useMessage } from '../../../../i18n/message';
 import { ChoiceTile, ChoiceTileGroup } from '../../../../shared/controls/ChoiceTile';
@@ -77,11 +77,29 @@ export function ProviderChoice({
               )
             }
             note={
-              status.note || p.executable ? (
+              status.note || p.executable || p.checkedPaths ? (
                 <>
                   {status.note ? <span className="block">{text(status.note)}</span> : null}
                   {p.executable ? (
-                    <span className="block break-all text-content-muted">{text(p.executable)}</span>
+                    <span className="block text-content-muted [overflow-wrap:anywhere]">
+                      {text(p.executable)}
+                    </span>
+                  ) : null}
+                  {p.checkedPaths ? (
+                    <Collapsible density="inline" className="mt-1 block">
+                      <Collapsible.Trigger>
+                        {t('sessionStart.provider.checkedPaths')}
+                      </Collapsible.Trigger>
+                      <Collapsible.Content>
+                        <span className="block text-content-muted [overflow-wrap:anywhere]">
+                          {p.checkedPaths.map((path) => (
+                            <span key={path} className="block">
+                              {path}
+                            </span>
+                          ))}
+                        </span>
+                      </Collapsible.Content>
+                    </Collapsible>
                   ) : null}
                 </>
               ) : undefined

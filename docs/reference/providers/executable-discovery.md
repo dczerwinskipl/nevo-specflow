@@ -37,11 +37,15 @@ the inspection, fingerprint and protocol probe then work on the one executable d
 2. **PATH.** Each absolute folder of the projected `PATH`, in order: `<command>.exe`, or an npm
    launcher (`<command>.cmd` / `.bat`) resolved to its package's native executable in the same
    folder (the npm global prefix). A launcher script itself is never run: `cmd.exe` would re-parse
-   every argument. The first verified executable in PATH order wins.
+   every argument. Candidates are verified one at a time in PATH order; the first that works wins
+   and nothing after it runs.
 3. **Install locations.** The vendor install locations the provider declares, then its npm package
    under the npm global prefix as npm reports it (`npm prefix --global`, run through the `node.exe`
-   on PATH and the `npm-cli.js` bundled beside it, so a custom `prefix` or a Node version manager is
-   honoured). Among the verified executables found there, the highest version wins; equal versions
+   on PATH and the `npm-cli.js` bundled beside it, so a custom `prefix` in the user's `.npmrc` is
+   honoured). When the first `node.exe` on PATH is a version manager's shim with no bundled npm (for
+   example Volta or scoop), the prefix resolves to nothing and the npm package is not looked for;
+   setting `executable` covers that setup. Among the verified executables found in the install
+   locations, the highest version wins (at most four version commands run at once); equal versions
    keep the declared location order, then folder name order.
 
 | Provider    | Command  | Install locations (Windows x64)                                                                                                                                                                                    |
@@ -57,35 +61,38 @@ adapters run on Windows x64 only, and discovery refuses other platforms with
 
 ## Verification and choice
 
-- A candidate is a regular file (not a link or junction), at most 512 MiB.
+- A candidate is a regular file, at most 512 MiB. The final file itself must not be a link or
+  junction; the folders on its path are not checked (an app's own folders may be junctions).
 - It is verified by running its version command (`--version`) without a shell, with the projected
-  provider environment, in the system temporary folder, with a 5-second timeout; at most four run at
-  once per provider. The output must be the provider's exact version line (`codex-cli <version>`,
-  `<version> (Claude Code)`, `<version>`).
-- A version outside the provider's known API boundaries in the compatibility catalogue is refused
-  (`VERSION_UNSUPPORTED`). No boundary is recorded yet: an installed or tested version is never used
-  as an arbitrary minimum ([compatibility](compatibility.md)).
+  provider environment and a 5-second timeout. The output must be the provider's exact version line
+  (`codex-cli <version>`, `<version> (Claude Code)`, `<version>`). The command's working folder is
+  the system temporary folder, so neither the project nor the executable's own folder supplies
+  configuration; nothing is run from there.
+- No version range is enforced: no API boundary of a provider is established yet, and an installed
+  or tested version is never used as an arbitrary minimum ([compatibility](compatibility.md)).
 - When the catalogue records a known-incompatible build for the provider, each candidate is hashed
   and such a build is refused (`KNOWN_INCOMPATIBILITY`). Otherwise nothing is hashed during
   discovery.
 - Nothing unverified is ever returned. With no verified candidate, the most specific problem of a
-  found executable is reported (version, then incompatible build, then not working), else
-  `EXECUTABLE_NOT_FOUND` with every place checked.
+  found executable is reported (incompatible build, then not working), else
+  `EXECUTABLE_NOT_FOUND` with every place checked. An npm launcher on PATH whose package lacks its
+  native executable is reported as `unresolvedLauncher`, because the CLI then looks installed.
 
 ## Trust
 
 Discovery runs only executables the user installed in a fixed, provider-declared place:
 
 - the path the user configured;
-- folders the user put on PATH, which is what the user's own shell would run; relative entries,
-  network (UNC) folders and folders inside the project workspace are skipped, because repository
-  content must never choose the executable;
+- folders the user put on PATH, which is what the user's own shell would run;
 - the vendor install locations under the user's profile (`%USERPROFILE%`, `%LOCALAPPDATA%`) and
   the npm global prefix npm reports. These folders are writable by the user, as every per-user
   installer's are; they are trusted to the same degree as the user's own account, not more.
 
-There is no disk search, no wildcard other than one `*` folder segment of a declared location (at
-most 16 folders), and no execution from the workspace or a temporary folder.
+Relative PATH entries, network (UNC) folders, the project workspace and the temporary folders
+(`%TEMP%`, `%TMP%` and the system temporary folder) are never run from: a PATH entry, install
+location or npm prefix inside one of them is skipped, because repository content or any process
+could have put a file there. There is no disk search and no wildcard other than one `*` folder
+segment of a declared location (at most 16 folders).
 
 ## Cache
 
@@ -98,10 +105,14 @@ restart.
 ## Catalogue facts
 
 A catalogue entry carries `executable` (`path`, `source`: `configured` | `path` | `discovered`,
-the install `location` label, `version`) once one is found; with `EXECUTABLE_NOT_FOUND` it carries
-`checkedLocations` instead. `signInCommand` is the CLI's own sign-in command, with the resolved path
+the install `location`: `codex-desktop-app` | `claude-native-installer` | `antigravity-installer`
+| `npm-global-package`, `version`) once one is found; with `EXECUTABLE_NOT_FOUND` it carries
+`checkedLocations` and, for a broken npm install, `unresolvedLauncher` (`path`, `package`)
+instead. The UI names each location in its own language. `signInCommand` is the CLI's own sign-in command, with the resolved path
 when PATH does not find the command. The New Session provider tile shows how the executable was
-found.
+found, only while it is ready, needs sign-in or is unavailable because of that executable. A
+not-found tile names the kinds of places checked (PATH, the Codex desktop app, the npm global
+package) and keeps the full paths behind a disclosure.
 
 ## Unavailability reasons
 
@@ -111,9 +122,8 @@ status and a what-to-do hint in the UI, with the Runtime's `reason` as the detai
 
 | Code                            | Meaning                                                                                                     | What the user can do                                                 |
 | ------------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `EXECUTABLE_NOT_FOUND`          | No candidate exists, or the configured path is missing.                                                     | Install the CLI, or set (or correct) `executable`.                   |
+| `EXECUTABLE_NOT_FOUND`          | No candidate exists, the configured path is missing, or an npm launcher's package lacks its executable.     | Install (or reinstall) the CLI, or set (or correct) `executable`.    |
 | `EXECUTABLE_NOT_WORKING`        | A candidate did not answer its version command, timed out or printed no version.                            | Reinstall or update the CLI, or point `executable` at a working one. |
-| `VERSION_UNSUPPORTED`           | The found version is outside the recorded range; the reason names both.                                     | Install a supported version.                                         |
 | `INSTALLATION_UNAVAILABLE`      | A working CLI was found, but its login source, environment or machine-managed policy is not supported.      | Remove what the provider page lists as unsupported.                  |
 | `AUTHENTICATION_REQUIRED`       | Readiness `authenticationRequired`: the CLI's login is missing, expired or rejected.                        | Run `signInCommand` and recheck.                                     |
 | `PROTOCOL_UNSUPPORTED`          | The CLI answered the probe outside the implemented protocol profile.                                        | Update or downgrade to a supported build.                            |

@@ -122,7 +122,7 @@ describe('executable discovery', () => {
     await expect(locateExecutable(codexExecutable, options(), files)).resolves.toEqual({
       path: newer,
       source: 'discovered',
-      location: 'Codex desktop app',
+      location: 'codex-desktop-app',
       version: '0.167.0-alpha.3.2',
     });
   });
@@ -177,21 +177,26 @@ describe('executable discovery', () => {
     );
 
     expect(found).toEqual({ path: first, source: 'path', version: '0.1.0' });
-    expect(ran.some((command) => command.startsWith(WORKSPACE))).toBe(false);
+    // PATH order decides: the first that works ends the search, nothing after it runs.
+    expect(ran).toEqual([first + ' --version']);
   });
 
   it('resolves an npm launcher on PATH to its package native executable and never runs the launcher', async () => {
     const prefix = HOME + '\\AppData\\Roaming\\npm';
-    const native = win32.join(prefix, claudeExecutable.npmPackageExecutables[0]!);
+    const native = win32.join(prefix, claudeExecutable.npmPackage!.executables[0]!);
     const { files, ran } = fakeFiles(
-      { [prefix + '\\claude.cmd']: 'file', [native]: 'file' },
+      {
+        [prefix + '\\claude.cmd']: 'file',
+        [prefix + '\\node_modules\\@anthropic-ai\\claude-code']: 'dir',
+        [native]: 'file',
+      },
       { [key(native)]: '2.1.312 (Claude Code)\n' },
     );
 
     await expect(locateExecutable(claudeExecutable, options({}, prefix), files)).resolves.toEqual({
       path: native,
       source: 'path',
-      location: 'npm global package',
+      location: 'npm-global-package',
       version: '2.1.312',
     });
     expect(ran).toEqual([native + ' --version']);
@@ -201,7 +206,7 @@ describe('executable discovery', () => {
     const node = 'C:\\Program Files\\nodejs';
     const cli = node + '\\node_modules\\npm\\bin\\npm-cli.js';
     const prefix = 'E:\\npm-global';
-    const native = win32.join(prefix, codexExecutable.npmPackageExecutables[1]!);
+    const native = win32.join(prefix, codexExecutable.npmPackage!.executables[1]!);
     const { files, ran } = fakeFiles(
       { [node + '\\node.exe']: 'file', [cli]: 'file', [native]: 'file' },
       {
@@ -213,7 +218,7 @@ describe('executable discovery', () => {
     await expect(locateExecutable(codexExecutable, options({}, node), files)).resolves.toEqual({
       path: native,
       source: 'discovered',
-      location: 'npm global package',
+      location: 'npm-global-package',
       version: '0.169.0',
     });
     expect(ran[0]).toBe(`${node}\\node.exe ${cli} prefix --global`);
@@ -251,32 +256,70 @@ describe('executable discovery', () => {
     const error = await failure(locateExecutable(codexExecutable, options({}, 'C:\\tools'), files));
 
     expect(error.reasonCode).toBe('EXECUTABLE_NOT_FOUND');
-    expect(error.message).toContain('sessions.providers.codex.executable');
     expect(error.checkedLocations).toEqual([
       { source: 'path', path: 'codex.exe, codex.cmd, codex.bat' },
       {
         source: 'discovered',
         path: APP + '\\*\\codex.exe',
-        location: 'Codex desktop app',
+        location: 'codex-desktop-app',
       },
     ]);
   });
 
-  it('reports a found version outside the supported range with the range', async () => {
-    const installed = HOME + '\\.local\\bin\\claude.exe';
-    const { files } = fakeFiles(
-      { [installed]: 'file' },
-      { [key(installed)]: '1.9.0 (Claude Code)' },
+  it('reports an npm launcher whose package executable is missing, not a bare not found', async () => {
+    const prefix = HOME + '\\AppData\\Roaming\\npm';
+    const { files } = fakeFiles({
+      [prefix + '\\codex.cmd']: 'file',
+      [prefix + '\\node_modules\\@openai\\codex']: 'dir',
+    });
+    const error = await failure(locateExecutable(codexExecutable, options({}, prefix), files));
+
+    expect(error.reasonCode).toBe('EXECUTABLE_NOT_FOUND');
+    expect(error.unresolvedLauncher).toEqual({
+      path: prefix + '\\codex.cmd',
+      package: '@openai/codex',
+    });
+
+    // A launcher script that belongs to no npm package says nothing about the CLI.
+    const other = fakeFiles({ ['C:\\scripts\\codex.cmd']: 'file' });
+    const plain = await failure(
+      locateExecutable(codexExecutable, options({}, 'C:\\scripts'), other.files),
     );
+    expect(plain.unresolvedLauncher).toBeUndefined();
+  });
+
+  it('never runs anything from the temporary folder, on PATH or as the npm prefix', async () => {
+    const temp = LOCAL + '\\Temp';
+    const node = 'C:\\Program Files\\nodejs';
+    const cli = node + '\\node_modules\\npm\\bin\\npm-cli.js';
+    const planted = win32.join(temp, codexExecutable.npmPackage!.executables[1]!);
+    const { files, ran } = fakeFiles(
+      {
+        [temp + '\\codex.exe']: 'file',
+        [node + '\\node.exe']: 'file',
+        [cli]: 'file',
+        [planted]: 'file',
+      },
+      {
+        [key(temp + '\\codex.exe')]: 'codex-cli 1.0.0',
+        [key(node + '\\node.exe')]: temp,
+        [key(planted)]: 'codex-cli 1.0.0',
+      },
+    );
+    const base = options({}, `${temp};${node}`);
     const error = await failure(
-      locateExecutable(claudeExecutable, options({ versions: { minimum: '2.0.0' } }), files),
+      locateExecutable(
+        codexExecutable,
+        {
+          ...base,
+          environment: { ...base.environment, values: { ...base.environment.values, TEMP: temp } },
+        },
+        files,
+      ),
     );
 
-    expect(error.reasonCode).toBe('VERSION_UNSUPPORTED');
-    expect(error.message).toBe(
-      `Claude 1.9.0 at ${installed} is outside the supported range >=2.0.0.`,
-    );
-    expect(error.executable).toMatchObject({ version: '1.9.0', source: 'discovered' });
+    expect(error.reasonCode).toBe('EXECUTABLE_NOT_FOUND');
+    expect(ran).toEqual([`${node}\\node.exe ${cli} prefix --global`]);
   });
 
   it('skips a build the catalogue records as incompatible and reports it when it is the only one', async () => {

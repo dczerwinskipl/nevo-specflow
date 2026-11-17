@@ -61,9 +61,38 @@ function configurationPolicy(provider: ProviderDescriptor) {
   return undefined;
 }
 
-const checkedLocation = (
-  location: NonNullable<ProviderDescriptor['checkedLocations']>[number],
-): string => (location.source === 'path' ? `PATH (${location.path})` : location.path);
+type CheckedLocation = NonNullable<ProviderDescriptor['checkedLocations']>[number];
+
+/** The names of the install locations the Runtime reports. */
+const locationNames = {
+  'codex-desktop-app': message('sessionStart.provider.location.codex-desktop-app'),
+  'claude-native-installer': message('sessionStart.provider.location.claude-native-installer'),
+  'antigravity-installer': message('sessionStart.provider.location.antigravity-installer'),
+  'npm-global-package': message('sessionStart.provider.location.npm-global-package'),
+} as const;
+
+/** Each kind of place discovery looked, once and in order: PATH, then the install locations. */
+function checkedSources(checked: readonly CheckedLocation[]): Message[] {
+  const sources: Message[] = [];
+  const seen = new Set<string>();
+  for (const location of checked) {
+    const id = location.source === 'path' ? 'path' : location.location;
+    if (!id || seen.has(id)) {
+      continue;
+    }
+
+    seen.add(id);
+    sources.push(
+      id === 'path' ? message('sessionStart.provider.location.path') : locationNames[id],
+    );
+  }
+
+  return sources;
+}
+
+/** The full paths behind the summary, for the tile's disclosure. */
+const checkedPath = (location: CheckedLocation): string =>
+  location.source === 'path' ? `PATH: ${location.path}` : location.path;
 
 /**
  * Why an enabled provider cannot start, from its reason code: a short status for the tile and what
@@ -95,22 +124,38 @@ function readinessExplanation(
     case 'EXECUTABLE_NOT_FOUND': {
       const checked = provider.checkedLocations ?? [];
       const configured = checked.find((location) => location.source === 'configured');
+      if (configured) {
+        return {
+          reason: message('sessionStart.provider.notFound'),
+          hint: message('sessionStart.provider.notFoundConfiguredHelp', {
+            key,
+            path: configured.path,
+          }),
+        };
+      }
 
-      return configured
-        ? {
-            reason: message('sessionStart.provider.notFound'),
-            hint: message('sessionStart.provider.notFoundConfiguredHelp', {
-              key,
-              path: configured.path,
-            }),
-          }
-        : explained('notFound', { checked: checked.map(checkedLocation).join('; ') });
+      const launcher = provider.unresolvedLauncher;
+      if (launcher) {
+        return {
+          reason: message('sessionStart.provider.launcherBroken'),
+          hint: message('sessionStart.provider.launcherBrokenHelp', {
+            key,
+            package: launcher.package,
+          }),
+        };
+      }
+
+      return {
+        reason: message('sessionStart.provider.notFound'),
+        hint: message('sessionStart.provider.notFoundHelp', {
+          key,
+          sources: checkedSources(checked),
+        }),
+      };
     }
 
     case 'EXECUTABLE_NOT_WORKING':
       return explained('notWorking');
-    case 'VERSION_UNSUPPORTED':
-      return explained('versionUnsupported');
     case 'INSTALLATION_UNAVAILABLE':
       return explained('setupUnsupported');
     case 'PROTOCOL_UNSUPPORTED':
@@ -137,7 +182,6 @@ function readinessExplanation(
 type ExplainedReason =
   | 'notFound'
   | 'notWorking'
-  | 'versionUnsupported'
   | 'setupUnsupported'
   | 'protocolUnsupported'
   | 'knownIncompatible'
@@ -145,17 +189,40 @@ type ExplainedReason =
   | 'settlementUnverified'
   | 'probeFailed';
 
-/** How the Runtime found the executable it runs, unless the Runtime's reason already names it. */
+/** The unavailable reasons that concern the executable itself, where its path helps. */
+const aboutTheExecutable = new Set<ProviderDescriptor['reasonCode']>([
+  'EXECUTABLE_NOT_WORKING',
+  'PROTOCOL_UNSUPPORTED',
+  'KNOWN_INCOMPATIBILITY',
+  'RESTRICTION_UNSUPPORTED',
+  'PROBE_FAILED',
+]);
+
+/**
+ * How the Runtime found the executable it runs: for a ready provider, one that needs sign-in, or
+ * one unavailable because of that executable; never when the Runtime's reason already names it.
+ */
 function executableLine(provider: ProviderDescriptor, detail: string | undefined) {
   const executable = provider.executable;
-  if (!executable || detail?.includes(executable.path)) {
+  const relevant =
+    provider.readiness === 'ready' ||
+    provider.readiness === 'authenticationRequired' ||
+    (provider.readiness === 'unavailable' && aboutTheExecutable.has(provider.reasonCode));
+  // A reason or sign-in command that already names the path says it once.
+  if (
+    !executable ||
+    !relevant ||
+    detail?.includes(executable.path) ||
+    (provider.readiness === 'authenticationRequired' &&
+      provider.signInCommand?.includes(executable.path))
+  ) {
     return undefined;
   }
 
-  if (executable.source === 'discovered' && executable.location) {
+  if (executable.location) {
     return message('sessionStart.provider.executable.discovered', {
       path: executable.path,
-      location: executable.location,
+      location: locationNames[executable.location],
     });
   }
 
@@ -198,6 +265,19 @@ function startProvider(provider: ProviderDescriptor): StartProvider {
       (provider.providerId === 'mock' ? message('managedSession.mockNote') : undefined));
   const hint = worktreeUnsupported ? undefined : (policy?.hint ?? explanation?.hint);
   const executable = executableLine(provider, given);
+  const checkedPaths =
+    provider.readiness === 'unavailable' &&
+    provider.reasonCode === 'EXECUTABLE_NOT_FOUND' &&
+    !worktreeUnsupported &&
+    !policy
+      ? [
+          // The launcher that made the CLI look installed comes first.
+          ...(provider.unresolvedLauncher ? [provider.unresolvedLauncher.path] : []),
+          ...(provider.checkedLocations ?? [])
+            .filter((location) => location.source !== 'configured')
+            .map(checkedPath),
+        ]
+      : [];
 
   return {
     id: provider.providerId,
@@ -207,6 +287,7 @@ function startProvider(provider: ProviderDescriptor): StartProvider {
     ...(reason ? { reason } : {}),
     ...(hint ? { hint } : {}),
     ...(executable ? { executable } : {}),
+    ...(checkedPaths.length ? { checkedPaths } : {}),
     ...(worktreeUnsupported ? { unavailableInWorktree: true } : {}),
     // A provider that does not accept a model (or an effort) override has nothing to choose: the
     // Session starts at its default.

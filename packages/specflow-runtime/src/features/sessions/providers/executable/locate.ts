@@ -1,5 +1,9 @@
 import { win32 } from 'node:path';
-import type { ExecutableSource, ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
+import type {
+  ExecutableLocation as ExecutableLocationId,
+  ExecutableSource,
+  ProviderDescriptor,
+} from '@nevo/specflow-contracts/sessions';
 import type { ProviderEnvironment } from '../process';
 import { ProviderUnavailableError } from '../unavailable';
 import {
@@ -9,18 +13,13 @@ import {
   type ExecutableFiles,
 } from './files';
 import { npmGlobalPrefix } from './npm';
-import { insideDirectory, searchPath } from './search-path';
-import {
-  compareVersions,
-  describeVersionRange,
-  versionInRange,
-  type VersionRange,
-} from './version';
+import { searchPath, trustedPath, untrustedRoots } from './search-path';
+import { compareVersions } from './version';
 
 /** A fixed place a vendor's installer puts the CLI. */
 export interface ExecutableLocation {
-  /** Who installs it there, shown to the user (for example "Codex desktop app"). */
-  readonly label: string;
+  /** Who installs it there; the catalogue names it (for example the Codex desktop app). */
+  readonly location: ExecutableLocationId;
   /**
    * An absolute path under the user's profile or the program directories. At most one segment is
    * `*`: it matches the real (non-link) folders directly inside its parent, such as an app's
@@ -40,8 +39,8 @@ export interface ProviderExecutableDeclaration {
   readonly versionArguments: readonly string[];
   /** The version the version command's output states, or undefined for any other output. */
   parseVersion(output: string): string | undefined;
-  /** The native executables of the CLI's npm package, relative to the npm global prefix. */
-  readonly npmPackageExecutables: readonly string[];
+  /** The CLI's npm package and its native executables, relative to the npm global prefix. */
+  readonly npmPackage?: { readonly name: string; readonly executables: readonly string[] };
   /** The vendor install locations, in preference order. */
   installLocations(environment: Readonly<Record<string, string>>): readonly ExecutableLocation[];
   /** Arguments of the CLI's own sign-in command, for example `['login']`. */
@@ -51,7 +50,7 @@ export interface ProviderExecutableDeclaration {
 export interface ExecutableResolution {
   readonly path: string;
   readonly source: ExecutableSource;
-  readonly location?: string;
+  readonly location?: ExecutableLocationId;
   readonly version: string;
 }
 
@@ -62,8 +61,6 @@ export interface LocateExecutableOptions {
   readonly environment: ProviderEnvironment;
   /** The project workspace; nothing inside it is ever run. */
   readonly workspace: string;
-  /** Known API boundaries from the compatibility catalogue; absent or empty accepts any version. */
-  readonly versions?: VersionRange;
   /**
    * Whether the compatibility catalogue records this exact build as incompatible. Absent when it
    * records none for the provider, so no candidate is hashed for nothing.
@@ -74,16 +71,15 @@ export interface LocateExecutableOptions {
 }
 
 const VERSION_TIMEOUT_MS = 5000;
-/** Version commands running at once for one provider. */
+/** Version commands running at once for one provider's install locations. */
 const PARALLEL_PROBES = 4;
 /** Folders matched by one `*` segment; an app keeps a handful of version folders. */
 const MAX_PATTERN_FOLDERS = 16;
-const NPM_LOCATION = 'npm global package';
 
 interface Candidate {
   path: string;
   source: ExecutableSource;
-  location?: string;
+  location?: ExecutableLocationId;
 }
 
 type Verified =
@@ -91,7 +87,7 @@ type Verified =
   | {
       ok: false;
       candidate: Candidate;
-      reasonCode: 'EXECUTABLE_NOT_WORKING' | 'VERSION_UNSUPPORTED' | 'KNOWN_INCOMPATIBILITY';
+      reasonCode: 'EXECUTABLE_NOT_WORKING' | 'KNOWN_INCOMPATIBILITY';
       version?: string;
       message: string;
     };
@@ -194,14 +190,6 @@ export async function locateExecutable(
       );
     }
 
-    if (options.versions && !versionInRange(version, options.versions)) {
-      return failed(
-        'VERSION_UNSUPPORTED',
-        `${title} ${version} at ${candidate.path} is outside the supported range ${describeVersionRange(options.versions)}.`,
-        version,
-      );
-    }
-
     if (options.knownIncompatible) {
       let sha256: string;
       try {
@@ -272,9 +260,11 @@ export async function locateExecutable(
 
   // 2. PATH: a native `.exe`, or an npm launcher resolved to its package's native executable
   // (a `.cmd`/`.bat` launcher is never run: cmd.exe re-parses every argument).
+  const untrusted = untrustedRoots(options.environment, options.workspace);
+  const npmPackage = declaration.npmPackage;
   const pathCandidates: Candidate[] = [];
   const launchers: string[] = [];
-  for (const directory of searchPath(options.environment, options.workspace)) {
+  for (const directory of searchPath(options.environment, untrusted)) {
     const native = win32.join(directory, declaration.command + '.exe');
     if (fresh(native) && (await regular(native))) {
       pathCandidates.push({ path: native, source: 'path' });
@@ -282,9 +272,20 @@ export async function locateExecutable(
 
     for (const extension of ['.cmd', '.bat']) {
       const launcher = win32.join(directory, declaration.command + extension);
-      if (
-        !(await files.stat(launcher).then(
+      const isFile = (path: string) =>
+        files.stat(path).then(
           (stat) => stat.isFile(),
+          () => false,
+        );
+      // An npm launcher sits in the global prefix beside the package folder it starts.
+      const packageFolder = npmPackage
+        ? win32.join(directory, 'node_modules', ...npmPackage.name.split('/'))
+        : undefined;
+      if (
+        !packageFolder ||
+        !(await isFile(launcher)) ||
+        !(await files.stat(packageFolder).then(
+          (stat) => stat.isDirectory(),
           () => false,
         ))
       ) {
@@ -292,41 +293,40 @@ export async function locateExecutable(
       }
 
       launchers.push(launcher);
-      for (const relative of declaration.npmPackageExecutables) {
+      for (const relative of npmPackage?.executables ?? []) {
         const target = win32.join(directory, relative);
         if (fresh(target) && (await regular(target))) {
-          pathCandidates.push({ path: target, source: 'path', location: NPM_LOCATION });
+          pathCandidates.push({ path: target, source: 'path', location: 'npm-global-package' });
         }
       }
     }
   }
 
-  const onPath = await mapLimited(pathCandidates, PARALLEL_PROBES, verify);
-  const firstOnPath = onPath.find((result) => result.ok);
-  if (firstOnPath?.ok) {
-    return resolved(firstOnPath);
-  }
+  // PATH order decides, so candidates are verified one at a time and the first that works wins.
+  for (const candidate of pathCandidates) {
+    const result = await verify(candidate);
+    if (result.ok) {
+      return resolved(result);
+    }
 
-  failures.push(...onPath.filter((result) => !result.ok));
+    failures.push(result);
+  }
 
   // 3. The vendor install locations, and the npm global prefix as npm reports it.
   const env = options.environment.values;
   const locations = [...declaration.installLocations(env)];
-  const prefix = declaration.npmPackageExecutables.length
-    ? await npmGlobalPrefix(options.environment, options.workspace, files)
+  const prefix = npmPackage
+    ? await npmGlobalPrefix(options.environment, untrusted, files)
     : undefined;
-  if (prefix) {
-    for (const relative of declaration.npmPackageExecutables) {
-      locations.push({ label: NPM_LOCATION, pattern: win32.join(prefix, relative) });
+  if (prefix && npmPackage) {
+    for (const relative of npmPackage.executables) {
+      locations.push({ location: 'npm-global-package', pattern: win32.join(prefix, relative) });
     }
   }
 
   const installed: Candidate[] = [];
   for (const location of locations) {
-    if (
-      !win32.isAbsolute(location.pattern) ||
-      insideDirectory(options.workspace, location.pattern)
-    ) {
+    if (!trustedPath(location.pattern, untrusted)) {
       continue;
     }
 
@@ -350,7 +350,7 @@ export async function locateExecutable(
 
     for (const path of paths) {
       if (fresh(path) && (await regular(path))) {
-        installed.push({ path, source: 'discovered', location: location.label });
+        installed.push({ path, source: 'discovered', location: location.location });
       }
     }
   }
@@ -372,9 +372,7 @@ export async function locateExecutable(
 
   // Fail closed: report the most specific problem of a found executable, else where it looked.
   const failure =
-    failures.find((item) => item.reasonCode === 'VERSION_UNSUPPORTED') ??
-    failures.find((item) => item.reasonCode === 'KNOWN_INCOMPATIBILITY') ??
-    failures[0];
+    failures.find((item) => item.reasonCode === 'KNOWN_INCOMPATIBILITY') ?? failures[0];
   if (failure) {
     unavailable(failure);
   }
@@ -387,18 +385,23 @@ export async function locateExecutable(
     ...locations.map((location) => ({
       source: 'discovered' as const,
       path: location.pattern,
-      location: location.label,
+      location: location.location,
     })),
   ].slice(0, 32);
-  const launcherNote = launchers.length
-    ? ` ${launchers[0]} is a launcher script, not a native executable, and its package executable is missing.`
-    : '';
+  const launcher = launchers[0];
+  if (launcher && npmPackage) {
+    throw new ProviderUnavailableError(
+      'EXECUTABLE_NOT_FOUND',
+      clamp(
+        `${launcher} is the npm launcher of ${npmPackage.name}, but the package's native executable is missing.`,
+      ),
+      { checkedLocations, unresolvedLauncher: { path: launcher, package: npmPackage.name } },
+    );
+  }
 
   throw new ProviderUnavailableError(
     'EXECUTABLE_NOT_FOUND',
-    clamp(
-      `No ${title} CLI was found on PATH or in its install locations.${launcherNote} Install it, or set sessions.providers.${declaration.providerId}.executable in .nevo/local/config.yaml.`,
-    ),
+    `No ${title} CLI was found on PATH or in its install locations.`,
     { checkedLocations },
   );
 }

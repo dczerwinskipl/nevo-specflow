@@ -6,7 +6,7 @@ import type { TaskOverview } from '@nevo/specflow-contracts/specs/workspace';
 import type { TaskProgressData } from '../../../specs/read-model';
 import { progressText, terminalSummary } from '../../overview/progress';
 import { WorkflowNow } from '../WorkflowNow';
-import { progressLine, stepPurpose } from '../presentation';
+import { stepPurpose } from '../presentation';
 import {
   SPECIFICATION_NOW_HEADING,
   useSpecificationNowVisible,
@@ -112,25 +112,16 @@ export function SpecificationNow({
   );
   const terminalText =
     terminal && progress ? terminalSummary(progress, position.outcome, t) : undefined;
+  // The step's position is the Now block's step track; the purpose follows the quiet line.
   const purpose = stepPurpose(position);
-  const line = progressLine(t, projection.outline);
   const summary = terminalText ? (
     <Typography as="p" variant="body-sm" className="text-content-secondary">
       {terminalText}
     </Typography>
-  ) : purpose || line ? (
-    <div className="grid gap-0.5" data-now-progress="">
-      {purpose ? (
-        <Typography as="p" variant="body-sm" className="text-content-secondary">
-          {purpose}
-        </Typography>
-      ) : null}
-      {line ? (
-        <Typography as="p" variant="body-sm" className="text-content-muted">
-          {line}
-        </Typography>
-      ) : null}
-    </div>
+  ) : purpose ? (
+    <Typography as="p" variant="body-md" className="text-content-primary" data-now-purpose="">
+      {purpose}
+    </Typography>
   ) : undefined;
   const gateAction = (gate: GateStatus) => {
     if (gate.scope.kind !== 'specification' || !gate.documentId) {
@@ -139,10 +130,23 @@ export function SpecificationNow({
 
     const documentId = gate.documentId;
     const name = documentName(documentId) ?? documentId;
+    const sections =
+      gate.status === 'unsatisfied' && gate.reason === 'sections-missing'
+        ? (gate.missingSections ?? [])
+        : [];
 
     return {
       label: t('workflowExecution.now.openDocument', { name }),
       onSelect: () => onOpenDocument(documentId),
+      ...(sections.length > 0
+        ? {
+            hint: t('workflowExecution.now.addSectionsToFinish', {
+              count: sections.length,
+              sections: sections.join(', '),
+              name,
+            }),
+          }
+        : {}),
     };
   };
 
@@ -170,6 +174,7 @@ export function SpecificationNow({
       overview={{
         specId: workflow.specId,
         onOpenHistory,
+        ...(workflow.openNewTask ? { onNewTask: workflow.openNewTask } : {}),
         waitingContent,
         ...(abandonment
           ? {

@@ -290,6 +290,8 @@ it never claims progress (after a return to an earlier step the current segment 
   container's width; past that the segments shrink, the current one staying the widest, and never
   below 4 px.
 - No animation: a position change is a new fact, not a movement.
+- Figma: the design component names the mode by its API, `variant=segmented-position`
+  (`variant="segmented"` with `position`).
 - Accessibility: the track is `role="img"` with no progressbar values. Its required `aria-label`
   names the position ("Step 4 of 7: Break the solution down"). A visible label beside it ("Step 4 of
   7 · next: Review the breakdown", `body-sm` secondary) is `aria-hidden` so it is not read twice.
@@ -305,8 +307,10 @@ named `@container/app-content`) is narrower than 40rem and keeps the card above 
 container query, never a viewport check. Use it where a nested card inside an edge-to-edge sheet
 would be one frame too many (the Narrow Now band). The geometry comes from
 `--app-body-padding-inline`, which `AppWorkspaceBody` sets for every `padding` preset (`0px` for
-`none`), so it needs an `AppWorkspaceBody` ancestor; change a body's inline padding through that
-variable, never with a `px-*` class. The consumer removes its own divider after the band (the band's
+`none`); change a body's inline padding through that variable, never with a `px-*` class. The text
+inset never drops below 12 px (the smallest body gutter): with no body padding, or without an
+`AppWorkspaceBody` ancestor, the band does not bleed and its text keeps that inset rather than
+touching the edge. The consumer removes its own divider after the band (the band's
 edge separates it) and any second rule inside it.
 
 ## Shell footer

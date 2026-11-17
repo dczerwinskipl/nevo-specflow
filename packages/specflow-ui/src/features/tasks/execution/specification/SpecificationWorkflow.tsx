@@ -6,6 +6,7 @@ import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow
 import { useApplicationCollection } from '../../../../app/navigation/ApplicationLocation';
 import { useRuntimeMode } from '../../../../app/useRuntimeMode';
 import { useSpecificationWorkspace } from '../../../specs/read-model';
+import { NewTaskDialog } from '../../authoring/NewTaskDialog';
 import { useSpecificationActions } from '../../authoring/useTaskAuthoring';
 import { goToHeading } from '../InlineAction';
 import { AbandonSpecificationDialog } from './AbandonSpecificationDialog';
@@ -14,6 +15,7 @@ import { CloseSpecificationDialog } from './CloseSpecificationDialog';
 import { TaskAttentionHost } from '../../overview/TaskAttentionHost';
 
 type ExitDialog = 'close' | 'abandon';
+type WorkflowDialog = ExitDialog | 'new-task';
 
 interface SpecificationWorkflowValue {
   readonly specId: string;
@@ -21,6 +23,8 @@ interface SpecificationWorkflowValue {
   readonly openExit: (dialog: ExitDialog) => void;
   /** Opens the Tasks page (`/specs/:specId/tasks`). */
   readonly openTasks: () => void;
+  /** Opens New task; absent while the projection does not allow creating a Task. */
+  readonly openNewTask?: () => void;
 }
 
 const SpecificationWorkflowContext = createContext<SpecificationWorkflowValue | null>(null);
@@ -28,8 +32,8 @@ const SpecificationWorkflowContext = createContext<SpecificationWorkflowValue | 
 export const SPECIFICATION_NOW_HEADING = 'spec-workflow-heading';
 
 /**
- * The Specification's workflow for its Overview: the projection, and the Close and Abandon dialogs
- * that the header overflow and the Now block both open, in every Runtime (the demo runs the same
+ * The Specification's workflow for its Overview: the projection, the Close and Abandon dialogs
+ * that the header overflow and the Now block both open, and the New task dialog Now opens, in every Runtime (the demo runs the same
  * Engine workflow in memory). Only a current (not archived) Specification can still move; an
  * archived one gets nothing and its Overview stays as it was.
  */
@@ -64,7 +68,7 @@ function ProjectSpecificationWorkflow({
   const collection = useApplicationCollection();
   const projection = useSpecificationActions(specId).data;
   const workspace = useSpecificationWorkspace(specId).data;
-  const [dialog, setDialog] = useState<ExitDialog>();
+  const [dialog, setDialog] = useState<WorkflowDialog>();
   const all = (workspace?.taskGroups ?? []).flatMap((group) => group.tasks);
   const asBlocker = (task: (typeof all)[number]): BlockerTask => ({
     id: task.id,
@@ -84,10 +88,17 @@ function ProjectSpecificationWorkflow({
   const openTasks = () =>
     void navigate({ to: '/specs/$specId/tasks', params: { specId }, search: { collection } });
   const specTitle = workspace?.title ?? specId;
+  const canCreateTask = projection?.specification?.createTask.kind === 'allowed';
 
   return (
     <SpecificationWorkflowContext.Provider
-      value={{ specId, projection, openExit: setDialog, openTasks }}
+      value={{
+        specId,
+        projection,
+        openExit: setDialog,
+        openTasks,
+        ...(canCreateTask ? { openNewTask: () => setDialog('new-task') } : {}),
+      }}
     >
       {children}
       <TaskAttentionHost
@@ -96,6 +107,16 @@ function ProjectSpecificationWorkflow({
       />
       {projection ? (
         <>
+          {projection.specification ? (
+            <NewTaskDialog
+              specId={specId}
+              specTitle={specTitle}
+              open={dialog === 'new-task'}
+              onOpenChange={(open) => !open && close()}
+              taskTypes={projection.specification.taskTypes}
+              tasks={all.map((task) => ({ id: task.id, title: task.title }))}
+            />
+          ) : null}
           <CloseSpecificationDialog
             open={dialog === 'close'}
             onOpenChange={(open) => !open && close()}

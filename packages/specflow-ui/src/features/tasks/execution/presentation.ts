@@ -6,6 +6,7 @@ import type {
   WorkflowActor,
   WorkflowOutline,
 } from '@nevo/specflow-contracts/workflow';
+import type { ProgressPosition } from '@nevo/ui';
 
 /** The recorded identity of the trusted local person (no authentication configured). */
 const TRUSTED_LOCAL_ACTOR = 'runtime:trusted-local';
@@ -208,4 +209,122 @@ export function progressLine(
         next: outline.next.title,
       })
     : t('workflowExecution.now.progress', { position: current.position, total: outline.stepCount });
+}
+
+/**
+ * The quiet line of a running attempt: "In progress since 11:18 · started by you". The attempt is
+ * named only from the second one on ("Attempt 2 · in progress since …"): a first attempt is the
+ * normal case and says nothing.
+ */
+export function attemptLine(
+  t: TFunction,
+  attempt: { readonly number: number; readonly since: string; readonly actor: string },
+): string {
+  return attempt.number > 1
+    ? t('workflowExecution.now.activeAttempt', {
+        attempt: attempt.number,
+        since: attempt.since,
+        actor: attempt.actor,
+      })
+    : t('workflowExecution.now.active', { since: attempt.since, actor: attempt.actor });
+}
+
+/** The step track of a Specification's Now: the DS Progress position and its two labels. */
+export interface StepTrack {
+  readonly position: ProgressPosition;
+  readonly total: number;
+  /** The visible label beside the track ("Step 4 of 7 · next: Review the breakdown"). */
+  readonly label: string;
+  /** The track's accessible name ("Step 4 of 7: Break the solution down"). */
+  readonly ariaLabel: string;
+}
+
+/**
+ * Where the run sits among its declared steps, from the outline only: at a step, before the first
+ * start (the first step outlined) or completed. None without an outline and for an abandoned run
+ * (the outline no longer says where it stopped).
+ */
+export function stepTrack(
+  t: TFunction,
+  projection: Pick<WorkflowActionProjection, 'outline' | 'position'>,
+): StepTrack | undefined {
+  const { outline, position } = projection;
+  if (!outline || outline.stepCount <= 0) {
+    return undefined;
+  }
+
+  const total = outline.stepCount;
+  if (outline.current) {
+    return {
+      position: { state: 'current', step: outline.current.position },
+      total,
+      label: progressLine(t, outline) ?? '',
+      ariaLabel: t('workflowExecution.now.track.current', {
+        position: outline.current.position,
+        total,
+        title: outline.current.title,
+      }),
+    };
+  }
+
+  const firstStepTitle =
+    position.kind === 'not-started' || position.kind === 'blocked'
+      ? position.preview?.firstStepTitle
+      : undefined;
+  if (firstStepTitle !== undefined) {
+    return {
+      position: { state: 'not-started' },
+      total,
+      label: t('workflowExecution.now.firstStep', { title: firstStepTitle }),
+      ariaLabel: t('workflowExecution.now.track.notStarted', { total, title: firstStepTitle }),
+    };
+  }
+
+  if (position.kind === 'terminal' && position.outcome === 'completed') {
+    const label = t('workflowExecution.now.track.completed', { total });
+
+    return { position: { state: 'completed' }, total, label, ariaLabel: label };
+  }
+
+  return undefined;
+}
+
+/**
+ * The one contextual secondary action of the Overview's Now, from projection facts only (never a
+ * step id):
+ * - `finish` when the main action is an unmet gate's (Open behaviour.md): Finish step stays beside
+ *   it, and its dialog says what is still missing;
+ * - `new-task` at an active step that produces Tasks while a Task may be created;
+ * - `gate` for an unmet exit gate that has an action and is not the main action;
+ * - none otherwise. Never more than one.
+ */
+export type NowSecondary =
+  | { readonly kind: 'finish' }
+  | { readonly kind: 'new-task' }
+  | { readonly kind: 'gate'; readonly gate: GateStatus };
+
+export function nowSecondary(
+  projection: Pick<WorkflowActionProjection, 'position' | 'actions' | 'specification'>,
+  main: 'start' | 'finish' | 'gate' | 'other' | 'none',
+  hasGateAction: (gate: GateStatus) => boolean,
+): NowSecondary | undefined {
+  if (main === 'gate') {
+    return { kind: 'finish' };
+  }
+
+  const { position, actions, specification } = projection;
+  if (position.kind !== 'active' || main === 'other') {
+    return undefined;
+  }
+
+  if (position.step.produces === 'tasks' && specification?.createTask.kind === 'allowed') {
+    return { kind: 'new-task' };
+  }
+
+  const gate = (actions.finish?.transitions ?? [])
+    .filter((transition) => transition.unavailable !== 'tasks-open')
+    .flatMap((transition) => transition.gates ?? [])
+    .find((candidate) => candidate.status === 'unsatisfied' && hasGateAction(candidate));
+
+  return gate ? { kind: 'gate', gate } : undefined;
 }

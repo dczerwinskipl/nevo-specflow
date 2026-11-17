@@ -12,11 +12,15 @@ export const accentBlockRecipe = tv({
  * padding is the page gutter, so the text lines up with the rest of the page (3 px bar + the rest of
  * the gutter on the left, the gutter on the right). Geometry comes from the body's
  * `--app-body-padding-inline`, never from a copied length. Vertical padding stays the card's.
+ * The text inset never drops below 12 px (`--spacing(3)`, the smallest body gutter): with no body
+ * padding (`none`) or no `AppWorkspaceBody` around it the band does not bleed and its text keeps
+ * an inset instead of touching the edge.
  */
+// Literal class names: Tailwind finds them in the source.
 const flushBand =
-  '-mx-(--app-body-padding-inline) pr-(--app-body-padding-inline) pl-[calc(var(--app-body-padding-inline)_-_3px)]';
+  'mx-[calc(var(--app-body-padding-inline,0px)*-1)] pr-[max(var(--app-body-padding-inline,0px),--spacing(3))] pl-[calc(max(var(--app-body-padding-inline,0px),--spacing(3))_-_3px)]';
 const flushBandBelowNarrowContent =
-  '@max-[40rem]/app-content:-mx-(--app-body-padding-inline) @max-[40rem]/app-content:pr-(--app-body-padding-inline) @max-[40rem]/app-content:pl-[calc(var(--app-body-padding-inline)_-_3px)]';
+  '@max-[40rem]/app-content:mx-[calc(var(--app-body-padding-inline,0px)*-1)] @max-[40rem]/app-content:pr-[max(var(--app-body-padding-inline,0px),--spacing(3))] @max-[40rem]/app-content:pl-[calc(max(var(--app-body-padding-inline,0px),--spacing(3))_-_3px)]';
 
 export interface AccentBlockProps extends HTMLAttributes<HTMLDivElement> {
   /**

@@ -43,9 +43,9 @@ Specification Overview and the Tasks page are described in
 1. **Projection-driven.** The UI renders the Engine's action projection: a position (`not-started`,
    `ready`, `active`, `waiting`, `blocked`, `terminal`) and the actions allowed now. It never branches
    on step ids, never invents results and never mutates to discover actions.
-2. **Titles, not ids.** Steps, workflows, transitions and returns are shown by their title. The step id,
-   attempt numbers and the workflow revision are muted detail (the Now block's line, its menu note,
-   history meta).
+2. **Titles, not ids.** Steps, workflows, transitions and returns are shown by their title. The step id
+   and the workflow revision are detail: on the Overview only in the Now block's ⋯ note and the
+   history meta. An attempt number is shown only from the second attempt on ("Attempt 2 · …").
 3. **Only allowed actions are shown.** A disallowed action is omitted. When nothing is allowed and the
    reason is not evident, one sentence says why. Exception: **Put on hold** during an active attempt
    stays visible, disabled, with its reason ("finish or return the current step first").
@@ -66,8 +66,10 @@ In reading order:
 
 1. **Subject status** when it changes what can happen (a draft needs approval; on hold with its reason;
    an abandoned Specification with its reason).
-2. **Position**: the step title, or Not started / Completed / Abandoned, and one quiet line (attempt,
-   since, by whom; or the first step; or how it continues).
+2. **Position**: the step title, or Not started / Completed / Abandoned; on the Overview the step
+   track and its label (see [Specification Overview](specification-overview.md#sections-and-order));
+   and one quiet line ("In progress since 11:18 · started by you", "Attempt 2 · …" only from the
+   second attempt on; or the first step; or how it continues; "Starting…" while a start is recorded).
 3. **Blocking reasons**, one line each with a link to where it is fixed ("Waiting for 1 dependency ·
    See Depends on", a missing required context entry · See Context). An awaited process artifact is
    one neutral line.
@@ -208,6 +210,9 @@ allows it. **It is final**: there is no reopen.
 
 Wide (1440) and Compact (900): the Primary and the Secondary (history or a document) side by side.
 Narrow (390): one surface; history is the header toggle; a document is a pushed page with Back.
+The Now block (Specification and Task) is a card from a 40rem page content container and a flush
+band across the body padding below it (`AccentBlock bleed="narrow"`); the action row wraps, main
+action first.
 Dialogs keep one column. Blocker and Task rows keep id → title → state order.
 
 ## Later: Ask agent (E6, not implemented)

@@ -1,11 +1,19 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AccentBlock, Icon, InlineNote, Typography, cn } from '@nevo/ui';
+import { AccentBlock, Icon, InlineNote, Progress, Typography, cn } from '@nevo/ui';
 import type { GateStatus, WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { GateList, type GateAction } from './GateList';
 import { InlineAction } from './InlineAction';
 import { closableInFinishDialog } from './FinishTasksOpen';
-import { actorLabel, formatWhen, openTasksText, transitionLabel } from './presentation';
+import {
+  actorLabel,
+  attemptLine,
+  formatWhen,
+  openTasksText,
+  stepTrack,
+  transitionLabel,
+  type StepTrack,
+} from './presentation';
 import { StartBlockerLines, type NowLinks } from './StartBlockerLines';
 import { useViewer } from './useViewer';
 
@@ -15,6 +23,36 @@ function InlineIcon({ name }: { name: ComponentProps<typeof Icon>['name'] }) {
     <span className="mr-1 inline-flex h-[1lh] items-center align-top">
       <Icon name={name} size="sm" aria-hidden="true" />
     </span>
+  );
+}
+
+/**
+ * Where the step sits among the workflow's steps: the DS Progress position track, then its label.
+ * The track carries the accessible name; the visible label is not read twice. Below a 40rem page
+ * the label goes under the track. On a wait step the track is compact: the Task progress dominates.
+ */
+function StepTrackRow({ track, compact }: { track: StepTrack; compact: boolean }) {
+  return (
+    <div
+      className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 @max-[40rem]/app-content:flex-col @max-[40rem]/app-content:items-start"
+      data-now-track=""
+    >
+      <Progress
+        variant="segmented"
+        position={track.position}
+        total={track.total}
+        size={compact ? 'compact' : 'default'}
+        aria-label={track.ariaLabel}
+      />
+      <Typography
+        as="p"
+        variant="body-sm"
+        aria-hidden="true"
+        className="min-w-0 text-content-secondary [overflow-wrap:anywhere]"
+      >
+        {track.label}
+      </Typography>
+    </div>
   );
 }
 
@@ -49,8 +87,10 @@ export interface NowBlockProps {
   readonly waitingContent?: ReactNode;
   /** A line under the position's title (an abandonment's reason). */
   readonly titleNote?: ReactNode;
-  /** A summary under the position (a terminal Specification's Tasks). */
+  /** A summary under the position (the step's purpose, a terminal Specification's Tasks). */
   readonly summary?: ReactNode;
+  /** A start was sent and its new position is not read yet: say so instead of "Ready to start". */
+  readonly starting?: boolean;
 }
 
 /**
@@ -73,11 +113,14 @@ export function NowBlock({
   waitingContent,
   titleNote,
   summary,
+  starting = false,
 }: NowBlockProps) {
   const { t, i18n } = useTranslation();
   const viewer = useViewer();
   const { position, workflow, handoff } = projection;
   const when = (at: string) => formatWhen(t, at, i18n.language);
+  // A Specification's Now places the step among the workflow's steps (Tasks have no outline).
+  const track = stepTrack(t, projection);
   const workflowLine = workflow
     ? t('workflowExecution.now.workflow', { title: workflow.title, version: workflow.version })
     : undefined;
@@ -89,7 +132,10 @@ export function NowBlock({
   switch (position.kind) {
     case 'not-started':
       current = t('workflowExecution.now.notStarted');
-      facts = t('workflowExecution.now.firstStep', { title: position.preview.firstStepTitle });
+      // The track's label names the first step.
+      facts = track
+        ? undefined
+        : t('workflowExecution.now.firstStep', { title: position.preview.firstStepTitle });
       break;
     case 'ready':
       current = <StepTitle step={position.next.step} />;
@@ -98,8 +144,8 @@ export function NowBlock({
       break;
     case 'active':
       current = <StepTitle step={position.step} />;
-      facts = t('workflowExecution.now.active', {
-        attempt: position.attempt.number,
+      facts = attemptLine(t, {
+        number: position.attempt.number,
         since: formatWhen(t, position.attempt.startedAt, i18n.language, { timeOnlyToday: true }),
         actor: actorLabel(t, position.attempt.actor, viewer),
       });
@@ -140,7 +186,9 @@ export function NowBlock({
     case 'blocked':
       if (position.preview) {
         current = t('workflowExecution.now.notStarted');
-        facts = t('workflowExecution.now.firstStep', { title: position.preview.firstStepTitle });
+        facts = track
+          ? undefined
+          : t('workflowExecution.now.firstStep', { title: position.preview.firstStepTitle });
       } else if (position.next) {
         current = <StepTitle step={position.next.step} />;
         facts = t('workflowExecution.now.cannotStart');
@@ -171,6 +219,10 @@ export function NowBlock({
     stepId = undefined;
   }
 
+  if (starting && (position.kind === 'ready' || position.kind === 'not-started')) {
+    facts = t('workflowExecution.now.starting');
+  }
+
   const detailLine = compactDetail ? undefined : workflowLine;
   // The exit gates of the active step that are not met yet, per result ("To finish with Done:").
   // A result that waits for open Tasks is named below instead: meeting its gates would not help.
@@ -195,7 +247,8 @@ export function NowBlock({
       : [];
 
   return (
-    <AccentBlock aria-labelledby={headingId} role="region" data-workflow-now="">
+    // Below a 40rem page the block is a flush band across the body padding, not a card in the sheet.
+    <AccentBlock aria-labelledby={headingId} role="region" bleed="narrow" data-workflow-now="">
       <div className="grid gap-3">
         <div className="flex min-h-6 items-center justify-between gap-2">
           <Typography as="h2" variant="section-label" id={headingId} tabIndex={-1}>
@@ -205,7 +258,7 @@ export function NowBlock({
         </div>
         {status}
         {/* A polite live region: a refresh after an action announces the new position. */}
-        <div className="grid gap-0.5" aria-live="polite">
+        <div className={cn('grid', track ? 'gap-1.5' : 'gap-0.5')} aria-live="polite">
           <Typography
             as="p"
             variant="title-sm"
@@ -219,6 +272,7 @@ export function NowBlock({
             {current}
           </Typography>
           {titleNote}
+          {track ? <StepTrackRow track={track} compact={position.kind === 'waiting'} /> : null}
           <Typography
             as="p"
             variant="body-sm"

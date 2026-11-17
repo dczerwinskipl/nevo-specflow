@@ -8,6 +8,10 @@ import {
   MAX_MANAGED_WORKSPACE_SPECIFICATIONS,
   inspectRegisteredWorkspace,
 } from '../../project/workspace/registry/registry';
+import type {
+  WorkspaceRegistration,
+  WorkspaceRegistry,
+} from '../../project/workspace/registry/types';
 import { readProjectGitPolicy } from '../../version-control/worktrees/config';
 import { resolveSpecification } from '../discovery';
 import { listWorkspaceSpecifications } from '../repository';
@@ -25,6 +29,7 @@ import {
   type CloseWorkspaceEvidence,
 } from './model';
 import { sortedResources } from './resources';
+import { readIntegrationCandidates } from './integration-candidates';
 
 export type CloseRequest =
   | { readonly kind: 'worktree-close'; readonly operationId?: string; readonly specId: string }
@@ -42,7 +47,28 @@ export type CloseRequest =
 
 const TARGET_MISSING =
   'Project Home requires explicit git.integrationTargetBranch configuration before this operation.';
-const TARGET_MISSING_BLOCKER: CloseRepositoryBlocker = { kind: 'integration-target-missing' };
+
+/**
+ * The `integration-target-missing` blocker with the local branches that could receive the Close,
+ * read without fetching or writing anything.
+ */
+async function targetMissingBlocker(
+  registry: WorkspaceRegistry,
+  source: WorkspaceRegistration,
+  branchPattern: string,
+): Promise<CloseRepositoryBlocker> {
+  const primary = registry.workspaces.find(
+    (item) => item.workspaceId === registry.primaryWorkspaceId,
+  );
+  if (primary?.kind !== 'primary') {
+    throw invalid('Verified primary workspace is unavailable.');
+  }
+
+  return {
+    kind: 'integration-target-missing',
+    ...(await readIntegrationCandidates({ primaryRoot: primary.root, source, branchPattern })),
+  };
+}
 
 function invalid(message: string): CloseOperationError {
   return new CloseOperationError('CLOSE_PREFLIGHT', message);
@@ -382,7 +408,10 @@ export async function previewCloseOperation(
     ) {
       throw new CloseOperationError('CLOSE_PREFLIGHT', `${error.message} ${TARGET_MISSING}`, {
         paths: error.paths,
-        repository: [...error.repository, TARGET_MISSING_BLOCKER],
+        repository: [
+          ...error.repository,
+          await targetMissingBlocker(registry, sourceWorkspace, configured.policy.branchPattern),
+        ],
       });
     }
 
@@ -437,10 +466,16 @@ export async function previewCloseOperation(
       }
     } else {
       // Legacy/default target: retain the configured primary semantics.
-      targetBranch = configured?.policy.integrationTargetBranch;
-      if (!configured || !targetBranch) {
+      if (!configured) {
+        throw invalid('The project Git policy was not read.');
+      }
+
+      targetBranch = configured.policy.integrationTargetBranch;
+      if (!targetBranch) {
         throw new CloseOperationError('CLOSE_PREFLIGHT', TARGET_MISSING, {
-          repository: [TARGET_MISSING_BLOCKER],
+          repository: [
+            await targetMissingBlocker(registry, sourceWorkspace, configured.policy.branchPattern),
+          ],
         });
       }
 

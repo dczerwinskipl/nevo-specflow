@@ -20,6 +20,12 @@ const untracked: RepositoryBlocker = {
   paths: ['specs/active/sso/overview.md'],
   count: 1,
 };
+const missingTarget: RepositoryBlocker = {
+  kind: 'integration-target-missing',
+  candidates: [],
+  otherBranches: [],
+  otherBranchCount: 0,
+};
 const idle: CloseDialogFacts['close'] = { status: 'idle' };
 
 describe('closeDialogOutcome', () => {
@@ -41,7 +47,7 @@ describe('closeDialogOutcome', () => {
         preview: {
           status: 'error',
           refusal: refusal('CLOSE_PREFLIGHT', {
-            repository: [untracked, { kind: 'integration-target-missing' }],
+            repository: [untracked, missingTarget],
           }),
         },
         close: idle,
@@ -49,7 +55,7 @@ describe('closeDialogOutcome', () => {
     ).toEqual({
       kind: 'blocked',
       blockers: [],
-      repository: [untracked, { kind: 'integration-target-missing' }],
+      repository: [untracked, missingTarget],
     });
   });
 

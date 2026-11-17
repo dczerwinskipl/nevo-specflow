@@ -12,12 +12,16 @@ export {
   CloseOperationError,
   resourcesForClosePlan,
   type CloseRepositoryBlocker,
+  type IntegrationBranchCandidate,
+  type IntegrationBranchFact,
   type CloseCheckoutRole,
   type CloseJournal,
   type ClosePlan,
   type CloseOutcome,
   type CloseKind,
 } from './model';
+export { readCloseMergeFacts, type CloseMergeFacts } from './merge-facts';
+export { deriveIntegrationCandidates } from './integration-candidates';
 export type { SpecificationExitBlocker, SpecificationExitGuard } from './exit-guard';
 export { assertResourcesAvailable, resourcesForCreate } from './resources';
 export { listCloseJournals, closeJournalPath } from './journal/store';

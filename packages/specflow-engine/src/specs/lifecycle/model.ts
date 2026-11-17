@@ -234,7 +234,9 @@ export type CloseLocalConfigRefusal = 'changed' | 'unrecorded' | 'unreadable';
  * A repository precondition of a Close the owner can fix in the repository (`CLOSE_PREFLIGHT`):
  * - `uncommitted-changes`: the checkout has staged, modified or untracked files (`paths`, at most
  *   {@link REPOSITORY_PATHS_NAMED}; `count` is the total) that a Close does not take along;
- * - `integration-target-missing`: the project configures no `git.integrationTargetBranch`;
+ * - `integration-target-missing`: the project configures no `git.integrationTargetBranch`; it names
+ *   the local branches that could receive the Close ({@link IntegrationBranchCandidates}), none
+ *   chosen;
  * - `integration-target-branch`: the primary checkout is on `branch`, not on `expectedBranch`;
  * - `git-operation-in-progress`: a merge, rebase, cherry-pick or revert is unfinished;
  * - `branch-detached`: the checkout is not on a local branch.
@@ -247,7 +249,7 @@ export type CloseRepositoryBlocker =
       readonly paths: readonly string[];
       readonly count: number;
     }
-  | { readonly kind: 'integration-target-missing' }
+  | ({ readonly kind: 'integration-target-missing' } & IntegrationBranchCandidates)
   | {
       readonly kind: 'integration-target-branch';
       readonly expectedBranch: string;
@@ -257,6 +259,46 @@ export type CloseRepositoryBlocker =
   | { readonly kind: 'branch-detached'; readonly checkout: CloseCheckoutRole };
 
 export type CloseCheckoutRole = 'specification' | 'integration-target';
+
+/**
+ * Why a local branch is offered as the integration branch, in this order:
+ * - `remote-default`: the default branch of a remote, read from the local `refs/remotes/<remote>/HEAD`
+ *   (never fetched);
+ * - `started-from`: the branch the Specification's linked workspace was created from (recorded at
+ *   Create; the workspace may hold other Specifications too);
+ * - `primary-checkout`: the branch checked out in the primary checkout (the main folder).
+ */
+export type IntegrationBranchFact = 'remote-default' | 'started-from' | 'primary-checkout';
+
+export interface IntegrationBranchCandidate {
+  readonly branch: string;
+  /** At least one, each once, in {@link IntegrationBranchFact} order. */
+  readonly facts: readonly IntegrationBranchFact[];
+  /** With `remote-default`: the remote whose default branch it is (`origin` first). */
+  readonly remote?: string;
+}
+
+/**
+ * The local branches a missing `git.integrationTargetBranch` can be set to. Facts only: nothing is
+ * preselected and no name (`main` included) is assumed.
+ */
+export interface IntegrationBranchCandidates {
+  /** Ordered by their first fact, at most {@link INTEGRATION_CANDIDATES_NAMED}; may be empty. */
+  readonly candidates: readonly IntegrationBranchCandidate[];
+  /**
+   * The remaining local branches by name, without the candidates, the Specification's own linked
+   * branch and branches `git.worktrees.branchPattern` names; at most
+   * {@link OTHER_BRANCHES_NAMED} of `otherBranchCount`.
+   */
+  readonly otherBranches: readonly string[];
+  readonly otherBranchCount: number;
+}
+
+/** How many candidates an `integration-target-missing` blocker names. */
+export const INTEGRATION_CANDIDATES_NAMED = 50;
+
+/** How many other local branches an `integration-target-missing` blocker names. */
+export const OTHER_BRANCHES_NAMED = 200;
 
 /** How many unclean paths a repository blocker names. */
 export const REPOSITORY_PATHS_NAMED = 10;

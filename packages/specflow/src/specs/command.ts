@@ -27,7 +27,7 @@ import { Command, InvalidArgumentError } from 'commander';
 import { createDocumentsCommand, type DocumentsCommandContext } from '../documents/command';
 import { engineAt } from '../engine-at';
 import { reportingRefusals } from '../documents/report';
-import { previewCloseForCli } from './close-preview';
+import { previewCloseForCli, reportingMissingIntegrationTarget } from './close-preview';
 import { openExecution, reportingWorkflowRefusals } from '../execution-session';
 import { localOwner } from '../local-actor';
 import { abandonLines } from '../workflow/present';
@@ -58,20 +58,21 @@ function summary(item: DiscoveredSpecification): Record<string, unknown> {
 
 /**
  * A Close preview refused by document commits (`DOCUMENT_COMMITS_PENDING`, answered as the Close
- * would) is printed as a documents refusal with its cause and hint, not as an internal error.
+ * would) is printed as a documents refusal with its cause and hint, not as an internal error; one
+ * refused for a missing integration branch lists the candidate branches.
  */
 function previewRefusals(
   context: SpecsCommandContext,
   json: boolean | undefined,
   body: () => Promise<void>,
 ): Promise<void> {
-  return reportingRefusals(
-    {
-      stdout: context.stdout,
-      stderr: context.stderr ?? ((line: string) => process.stderr.write(line + '\n')),
-    },
-    json,
-    body,
+  const refusalOutput = {
+    stdout: context.stdout,
+    stderr: context.stderr ?? ((line: string) => process.stderr.write(line + '\n')),
+  };
+
+  return reportingRefusals(refusalOutput, json, () =>
+    reportingMissingIntegrationTarget(refusalOutput, json, body),
   );
 }
 

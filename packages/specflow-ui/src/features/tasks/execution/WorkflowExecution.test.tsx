@@ -528,7 +528,12 @@ describe('manual workflow execution', () => {
         paths: ['specs/active/sso/overview.md'],
         count: 3,
       },
-      { kind: 'integration-target-missing' },
+      {
+        kind: 'integration-target-missing',
+        candidates: [{ branch: 'develop', facts: ['primary-checkout'] }],
+        otherBranches: [],
+        otherBranchCount: 0,
+      },
     ];
     const close = vi.fn(never);
     renderWith(

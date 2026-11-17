@@ -207,6 +207,38 @@ with `repository`: the blockers the owner fixes in the repository, all that are 
 (`uncommitted-changes` with at most 10 `paths` and the `count`, `integration-target-missing`,
 `integration-target-branch`, `git-operation-in-progress`, `branch-detached`; `RepositoryBlocker`
 in `@nevo/specflow-contracts/specs`).
+
+The preview and the Close answer the same blockers. `integration-target-missing` (the project
+names no `git.integrationTargetBranch`) lists the local branches that could receive the Close, as
+facts. The server never chooses one and never assumes a name such as `main`:
+
+- `candidates` (at most 50) are `{branch, facts, remote?}`. Each local branch appears once, with
+  every fact that applies, in this order: `remote-default` (the default branch of `remote`, read from
+  the local `refs/remotes/<remote>/HEAD`, which `git clone` or `git remote set-head` sets; the
+  server never fetches, so a missing remote or an unset remote HEAD gives no fact), `started-from` (the Specification's linked workspace was
+  created from it, recorded at Create; other Specifications can share that workspace, and a
+  workspace created before the fact was recorded gives none), and `primary-checkout` (the branch
+  checked out in the main folder). Candidates are ordered by their first fact. A fact about a branch
+  that does not exist locally names no candidate, and the Specification's own linked branch is
+  never a candidate.
+- `otherBranches` lists the remaining local branches by name: at most 200 of `otherBranchCount`,
+  without the candidates, the Specification's own linked branch, and branches that
+  `git.worktrees.branchPattern` names (Specification branches).
+
+Both lists can be empty. The preview only reads Git (no fetch, no ref, config or index write), and
+nothing is written to `.nevo/config.yaml`.
+
+A successful preview (`ClosePreview`) carries the merge facts in `merge`:
+
+- `{status: 'integrates', sourceBranch, targetBranch, commitsAhead}`: the Close merges
+  `sourceBranch` into `targetBranch`. `commitsAhead` counts the source commits that are not on the
+  target when the preview reads them. `0` means there is nothing to merge. A Specification Close
+  still adds its archive commit.
+- `{status: 'not-integrated', reason, sourceBranch}`: nothing is merged. `archive-only` means the
+  linked Specification is archived on its own branch, as `integrateToTargetBranch=false` asks.
+  `primary-checkout` means the Specification lives in the primary checkout and is archived directly
+  on `sourceBranch`, which is the integration branch.
+
 A Close that the Specification workflow refuses (unfinished Tasks or runs, pending writes) answers 409
 `CLOSE_BLOCKED` with `blockers`: groups `{kind, subjectIds, message}` (`kind` is a stable value, `subjectIds` are
 Task ids or the Specification id for Specification-wide holds, `message` is display-only). Abandoning the

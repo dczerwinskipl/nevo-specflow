@@ -45,6 +45,33 @@ export const CloseScratchReconciliationRequestSchema = Type.Object(
   { confirmedNoActiveGitProcess: Type.Literal(true) },
   { additionalProperties: false },
 );
+/**
+ * What the Close merges, read at preview time. `integrates`: `sourceBranch` is merged into
+ * `targetBranch`, and `commitsAhead` counts the source commits not on the target (0: nothing to
+ * merge; a Specification Close adds its archive commit on top). `not-integrated`: nothing is
+ * merged because the linked Specification is archived on its own branch as asked (`archive-only`)
+ * or lives in the primary checkout and is archived directly on its branch (`primary-checkout`).
+ */
+export const CloseMergeSchema = Type.Union([
+  Type.Object(
+    {
+      status: Type.Literal('integrates'),
+      sourceBranch: Type.String(),
+      targetBranch: Type.String(),
+      commitsAhead: Type.Integer({ minimum: 0 }),
+    },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      status: Type.Literal('not-integrated'),
+      reason: Type.Union([Type.Literal('archive-only'), Type.Literal('primary-checkout')]),
+      sourceBranch: Type.String(),
+    },
+    { additionalProperties: false },
+  ),
+]);
+export type CloseMerge = Static<typeof CloseMergeSchema>;
 export const ClosePreviewSchema = Type.Object(
   {
     operationId: OperationIdSchema,
@@ -52,9 +79,11 @@ export const ClosePreviewSchema = Type.Object(
     kind: Type.Union([Type.Literal('worktree-close'), Type.Literal('specification-close')]),
     location: Type.Union([Type.Literal('active'), Type.Literal('archive')]),
     integrationRequired: Type.Boolean(),
+    merge: CloseMergeSchema,
   },
   { $id: 'ClosePreview', additionalProperties: false },
 );
+export type ClosePreview = Static<typeof ClosePreviewSchema>;
 export const CloseResultSchema = Type.Object(
   {
     operationId: OperationIdSchema,
@@ -105,9 +134,36 @@ const CloseCheckoutRoleSchema = Type.Union([
   Type.Literal('integration-target'),
 ]);
 /**
+ * Why a local branch is offered as the integration branch: `remote-default` (the default branch of
+ * `remote`, from the local `refs/remotes/<remote>/HEAD`, never fetched), `started-from` (the
+ * Specification's linked workspace was created from it; the workspace may hold other Specifications
+ * too), `primary-checkout` (checked out in the primary checkout, the main folder).
+ */
+export const IntegrationBranchFactSchema = Type.Union([
+  Type.Literal('remote-default'),
+  Type.Literal('started-from'),
+  Type.Literal('primary-checkout'),
+]);
+export type IntegrationBranchFact = Static<typeof IntegrationBranchFactSchema>;
+/** A local branch with every fact that makes it a candidate, in fact order. Never preselected. */
+export const IntegrationBranchCandidateSchema = Type.Object(
+  {
+    branch: Type.String(),
+    facts: Type.Array(IntegrationBranchFactSchema, { minItems: 1, maxItems: 3, uniqueItems: true }),
+    /** With `remote-default`: the remote whose default branch it is. */
+    remote: Type.Optional(Type.String()),
+  },
+  { additionalProperties: false },
+);
+export type IntegrationBranchCandidate = Static<typeof IntegrationBranchCandidateSchema>;
+/**
  * A repository precondition of a Close the owner fixes in the repository (`CLOSE_PREFLIGHT`, from the
  * preview or the Close): `checkout` is the Specification's own checkout or the one it is integrated
- * into. `uncommitted-changes` names at most 10 `paths` of `count`; `integration-target-branch` is the
+ * into. `uncommitted-changes` names at most 10 `paths` of `count`. `integration-target-missing` (no
+ * `git.integrationTargetBranch`) names at most 50 `candidates` ordered by their first fact, and
+ * `otherBranches`: at most 200 of the `otherBranchCount` remaining local branches by name, without
+ * the Specification's own linked branch and branches `git.worktrees.branchPattern` names. Both may be
+ * empty, and no branch (`main` included) is assumed. `integration-target-branch` is the
  * checkout the Close integrates into (the primary checkout for the configured
  * `git.integrationTargetBranch`, or a pinned integration destination) on `branch` instead of
  * `expectedBranch`.
@@ -123,7 +179,12 @@ export const RepositoryBlockerSchema = Type.Union([
     { additionalProperties: false },
   ),
   Type.Object(
-    { kind: Type.Literal('integration-target-missing') },
+    {
+      kind: Type.Literal('integration-target-missing'),
+      candidates: Type.Array(IntegrationBranchCandidateSchema, { maxItems: 50 }),
+      otherBranches: Type.Array(Type.String(), { maxItems: 200 }),
+      otherBranchCount: Type.Integer({ minimum: 0 }),
+    },
     { additionalProperties: false },
   ),
   Type.Object(

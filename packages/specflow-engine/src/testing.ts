@@ -171,7 +171,11 @@ export { reconcileArchivedConflictScratch } from './specs/lifecycle';
 // application package root. Low-level integration suites use this test surface.
 export { inspectCreateSpecification, type CreatedSpecification } from './specs/create';
 export { type CreateJournal, type CreateStage } from './specs/create';
-export { projectCloseOperation, projectClosePreview } from './specs/operations/projection';
+export {
+  projectCloseOperation,
+  projectClosePlan,
+  projectClosePreview,
+} from './specs/operations/projection';
 
 // The Git commit port, for tests that replace one of its operations (a commit whose outcome is unknown).
 export { createGitCommitPort } from './version-control/commits/git-adapter';

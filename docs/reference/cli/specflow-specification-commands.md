@@ -76,6 +76,18 @@ same way, listing the `session-turn-running` blocker next to any workflow blocke
 names everything Close would refuse on. Close from the SpecFlow UI instead, or stop the Runtime and rerun with the same `--operation-id`
 ([Specification lifecycle](../../architecture/runtime/specification-lifecycle.md#safe-integration-rebind-and-disposal)).
 
+`specs close --preview` prints the plan as JSON, with its merge facts (`merge`: the source branch
+merged into the target branch with the commits ahead, or why nothing is merged). When the project
+names no `git.integrationTargetBranch`, the preview (and `specs worktree close --preview`, `specs
+workspace close --preview`) refuses with `CLOSE_PREFLIGHT` and lists the local branches that could
+receive the Close on stderr. Each candidate is shown with the facts that make it one: the default
+branch of a remote, read from the local `refs/remotes/<remote>/HEAD` without fetching; the branch
+this worktree's branch started from; and the branch checked out in the main folder. The other local
+branches follow. Nothing is chosen for you and no branch name is assumed. Set
+`git.integrationTargetBranch` in `.nevo/config.yaml`, then preview again. With `--json` the refusal
+is also printed on stdout as `{error: {code, message, repository}}`
+([Close](../api/specflow-specification-operations.md#close)).
+
 Usage errors of nested commands (for example a missing required option of `specs create`) now exit with code **2**
 like the top-level ones; they used to end the process with code 1. Operation failures still exit 1.
 

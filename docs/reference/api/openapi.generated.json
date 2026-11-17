@@ -565,7 +565,10 @@
                 {
                   "type": "object",
                   "required": [
-                    "kind"
+                    "kind",
+                    "candidates",
+                    "otherBranches",
+                    "otherBranchCount"
                   ],
                   "properties": {
                     "kind": {
@@ -573,6 +576,65 @@
                       "enum": [
                         "integration-target-missing"
                       ]
+                    },
+                    "candidates": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "branch",
+                          "facts"
+                        ],
+                        "properties": {
+                          "branch": {
+                            "type": "string"
+                          },
+                          "facts": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "remote-default"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "started-from"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "primary-checkout"
+                                  ]
+                                }
+                              ]
+                            },
+                            "minItems": 1,
+                            "maxItems": 3,
+                            "uniqueItems": true
+                          },
+                          "remote": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "maxItems": 50
+                    },
+                    "otherBranches": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "maxItems": 200
+                    },
+                    "otherBranchCount": {
+                      "type": "integer",
+                      "minimum": 0
                     }
                   },
                   "additionalProperties": false
@@ -700,7 +762,8 @@
           "specId",
           "kind",
           "location",
-          "integrationRequired"
+          "integrationRequired",
+          "merge"
         ],
         "properties": {
           "operationId": {
@@ -744,6 +807,74 @@
           },
           "integrationRequired": {
             "type": "boolean"
+          },
+          "merge": {
+            "anyOf": [
+              {
+                "type": "object",
+                "required": [
+                  "status",
+                  "sourceBranch",
+                  "targetBranch",
+                  "commitsAhead"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "integrates"
+                    ]
+                  },
+                  "sourceBranch": {
+                    "type": "string"
+                  },
+                  "targetBranch": {
+                    "type": "string"
+                  },
+                  "commitsAhead": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "required": [
+                  "status",
+                  "reason",
+                  "sourceBranch"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "not-integrated"
+                    ]
+                  },
+                  "reason": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "archive-only"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "primary-checkout"
+                        ]
+                      }
+                    ]
+                  },
+                  "sourceBranch": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
           }
         },
         "additionalProperties": false

@@ -4,15 +4,17 @@ import { closeWorktree, closeWorkspace } from '../lifecycle';
 import { previewWithDocumentFlush, previewWithDocumentHold, type CloseRequest } from '../lifecycle';
 import { inspectCloseOperation } from '../lifecycle';
 import { reconcileArchivedConflictScratch } from '../lifecycle';
-import { CloseOperationError } from '../lifecycle';
+import { CloseOperationError, readCloseMergeFacts } from '../lifecycle';
 import {
   projectCloseOperation,
+  projectClosePlan,
   projectClosePreview,
   projectWorkspaceClosePreview,
   projectWorkspaceCloseOperation,
   type PublicWorkspaceClosePreview,
   type PublicWorkspaceCloseOperation,
   type PublicCloseOperation,
+  type PublicClosePlan,
   type PublicClosePreview,
 } from './projection';
 
@@ -46,7 +48,9 @@ export async function previewPublicCloseOperation(
   request: CloseRequest,
 ): Promise<PublicClosePreview> {
   // A dirty tree held by document commits is answered as the Close would: DOCUMENT_COMMITS_PENDING.
-  return projectClosePreview(await previewWithDocumentHold(engine, request));
+  const plan = await previewWithDocumentHold(engine, request);
+
+  return projectClosePreview(plan, await readCloseMergeFacts(plan));
 }
 
 /** Resolve immutable retry authorization from the journal, never mutable query options. */
@@ -64,11 +68,13 @@ export async function planPublicCloseOperation(
   engine: SpecFlowEngine,
   request: CloseRequest,
   options: PlanPublicCloseOptions = {},
-): Promise<PublicClosePreview> {
-  const preview = async (): Promise<PublicClosePreview> =>
-    options.flushDocumentCommits === true
-      ? projectClosePreview(await previewWithDocumentFlush(engine, request, {}))
-      : previewPublicCloseOperation(engine, request);
+): Promise<PublicClosePlan> {
+  const preview = async (): Promise<PublicClosePlan> =>
+    projectClosePlan(
+      options.flushDocumentCommits === true
+        ? await previewWithDocumentFlush(engine, request, {})
+        : await previewWithDocumentHold(engine, request),
+    );
   if (!request.operationId) {
     return preview();
   }
@@ -84,7 +90,7 @@ export async function planPublicCloseOperation(
       throw new CloseOperationError('CLOSE_CONFLICT', 'Operation identity does not match intent.');
     }
 
-    return projectClosePreview(existing.plan);
+    return projectClosePlan(existing.plan);
   }
 
   return preview();

@@ -441,25 +441,36 @@ describe('E2.T10 — read-only lifecycle admission and durable shared Git resour
   }, 120000);
 
   it('names every repository precondition at once: uncommitted files and no integration branch', async () => {
-    const { engine, root } = await fixture('none');
+    const { engine, root, branch } = await fixture('none');
     const spec = await specification(engine, 'No integration branch');
+    // Candidates come from local facts only: a remote default never fetched; a Specification
+    // branch (git.worktrees.branchPattern) is not offered.
+    git(root, 'branch', 'release');
+    git(root, 'branch', 'feature/nevo-9-other');
+    git(root, 'update-ref', 'refs/remotes/origin/release', 'HEAD');
+    git(root, 'symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/release');
+    const config = await readFile(join(root, '.nevo/config.yaml'), 'utf8');
+    const missing = {
+      kind: 'integration-target-missing',
+      candidates: [
+        { branch: 'release', facts: ['remote-default'], remote: 'origin' },
+        { branch, facts: ['primary-checkout'] },
+      ],
+      otherBranches: [],
+      otherBranchCount: 0,
+    };
     await writeFile(join(root, 'untracked.txt'), 'new\n');
     await expect(
       previewCloseOperation(engine, { kind: 'specification-close', specId: spec.specId }),
     ).rejects.toMatchObject({
       code: 'CLOSE_PREFLIGHT',
-      repository: [
-        { kind: 'uncommitted-changes', checkout: 'specification', count: 1 },
-        { kind: 'integration-target-missing' },
-      ],
+      repository: [{ kind: 'uncommitted-changes', checkout: 'specification', count: 1 }, missing],
     });
     await rm(join(root, 'untracked.txt'));
     await expect(
       previewCloseOperation(engine, { kind: 'specification-close', specId: spec.specId }),
-    ).rejects.toMatchObject({
-      code: 'CLOSE_PREFLIGHT',
-      repository: [{ kind: 'integration-target-missing' }],
-    });
+    ).rejects.toMatchObject({ code: 'CLOSE_PREFLIGHT', repository: [missing] });
+    expect(await readFile(join(root, '.nevo/config.yaml'), 'utf8')).toBe(config);
   }, 120000);
 
   it('rejects an unfinished Git merge even when porcelain reports a clean checkout', async () => {

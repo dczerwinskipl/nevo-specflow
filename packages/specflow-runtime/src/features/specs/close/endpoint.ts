@@ -15,10 +15,11 @@ import {
   planPublicWorkspaceCloseOperation,
   inspectPublicCloseOperation,
   planPublicCloseOperation,
+  previewPublicCloseOperation,
   reconcileArchivedConflictScratchOperation,
   type PlanPublicCloseOptions,
   readRegistrySnapshot,
-  type PublicClosePreview,
+  type PublicClosePlan,
   type SpecFlowEngine,
 } from '@nevo/specflow-engine';
 import {
@@ -111,7 +112,7 @@ async function authorizedPlan(
   operationId: string,
   integrateToTargetBranch?: boolean,
   options: PlanPublicCloseOptions = {},
-): Promise<PublicClosePreview> {
+): Promise<PublicClosePlan> {
   // Spec-scoped authentication precedes every operation-id/immutable-journal read.
   // Integration authority follows the Engine's immutable retry plan, not a
   // caller-supplied selector that could turn off whole-branch checks.
@@ -192,7 +193,16 @@ function repositoryOf(error: unknown): { repository?: RepositoryBlocker[] } {
         repository: error.repository.map((blocker) =>
           blocker.kind === 'uncommitted-changes'
             ? { ...blocker, paths: [...blocker.paths] }
-            : { ...blocker },
+            : blocker.kind === 'integration-target-missing'
+              ? {
+                  ...blocker,
+                  candidates: blocker.candidates.map((candidate) => ({
+                    ...candidate,
+                    facts: [...candidate.facts],
+                  })),
+                  otherBranches: [...blocker.otherBranches],
+                }
+              : { ...blocker },
         ),
       }
     : {};
@@ -424,18 +434,26 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
         try {
           const engine = options.engine;
           const { specId } = request.params;
-          const operationId = randomUUID();
-          const plan = await authorizedPlan(
-            request,
+          const integrateToTargetBranch = request.query.integrateToTargetBranch;
+          // A fresh operation id: the read-only preview with its merge facts, never a journal.
+          const preview = await previewPublicCloseOperation(
             engine,
-            kind,
-            specId,
-            operationId,
-            request.query.integrateToTargetBranch,
+            kind === 'worktree-close'
+              ? { kind, operationId: randomUUID(), specId }
+              : {
+                  kind,
+                  operationId: randomUUID(),
+                  specId,
+                  ...(integrateToTargetBranch === undefined ? {} : { integrateToTargetBranch }),
+                },
           );
-          await assertNoRunningTurns(options.runningSessions, plan.sourceWorkspace);
+          if (preview.integrationRequired) {
+            projectIntegrationAllowed(request, engine);
+          }
 
-          return reply.code(200).send(plan);
+          await assertNoRunningTurns(options.runningSessions, preview.sourceWorkspace);
+
+          return reply.code(200).send(preview);
         } catch (error) {
           const busy = busyRefusal(error);
           if (busy) {

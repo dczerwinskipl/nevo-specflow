@@ -1,6 +1,8 @@
 import {
+  CloseOperationError,
   DocumentError,
   planPublicCloseOperation,
+  previewPublicCloseOperation,
   planPublicWorkspaceCloseOperation,
   type SpecFlowEngine,
 } from '@nevo/specflow-engine';
@@ -17,6 +19,7 @@ import { specsCloseEndpoint } from './endpoint';
 vi.mock('@nevo/specflow-engine', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@nevo/specflow-engine')>()),
   planPublicCloseOperation: vi.fn(),
+  previewPublicCloseOperation: vi.fn(),
   planPublicWorkspaceCloseOperation: vi.fn(),
 }));
 
@@ -43,6 +46,7 @@ function appWithEngine() {
 
 afterEach(() => {
   vi.mocked(planPublicCloseOperation).mockReset();
+  vi.mocked(previewPublicCloseOperation).mockReset();
   vi.mocked(planPublicWorkspaceCloseOperation).mockReset();
 });
 
@@ -52,7 +56,7 @@ describe('Close preview routes', () => {
       new DocumentError('DOCUMENT_COMMITS_PENDING', 'Document commits are not finished.', {
         cause: 'commit-uncommitted',
       });
-    vi.mocked(planPublicCloseOperation).mockRejectedValue(held());
+    vi.mocked(previewPublicCloseOperation).mockRejectedValue(held());
     vi.mocked(planPublicWorkspaceCloseOperation).mockRejectedValue(held());
     const app = appWithEngine();
     const expected = {
@@ -69,6 +73,62 @@ describe('Close preview routes', () => {
         expect(response.statusCode, `${url}: ${response.body}`).toBe(409);
         expect(response.json()).toMatchObject(expected);
       }
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('serve the merge facts of a Specification Close preview', async () => {
+    const merge = {
+      status: 'integrates',
+      sourceBranch: 'feature/nevo-1-sso',
+      targetBranch: 'develop',
+      commitsAhead: 0,
+    } as const;
+    vi.mocked(previewPublicCloseOperation).mockResolvedValue({
+      operationId: '00000000-0000-4000-8000-000000000003',
+      specId: SPEC,
+      kind: 'specification-close',
+      location: 'active',
+      integrationRequired: true,
+      sourceWorkspace: { workspaceId: WORKSPACE, kind: 'linked' },
+      merge,
+    });
+    const app = appWithEngine();
+    try {
+      const response = await app.inject({ method: 'GET', url: `/api/specs/${SPEC}/close/preview` });
+      expect(response.statusCode, response.body).toBe(200);
+      expect(response.json()).toMatchObject({ integrationRequired: true, merge });
+      expect(response.json()).not.toHaveProperty('sourceWorkspace');
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('answer a missing integration branch with its candidates, none chosen (422 CLOSE_PREFLIGHT)', async () => {
+    const blocker = {
+      kind: 'integration-target-missing',
+      candidates: [
+        { branch: 'release/2026.11', facts: ['remote-default', 'started-from'], remote: 'origin' },
+        { branch: 'develop', facts: ['primary-checkout'] },
+      ],
+      otherBranches: ['hotfix'],
+      otherBranchCount: 1,
+    } as const;
+    vi.mocked(previewPublicCloseOperation).mockRejectedValue(
+      new CloseOperationError('CLOSE_PREFLIGHT', 'No integration branch.', {
+        repository: [blocker],
+      }),
+    );
+    const app = appWithEngine();
+    try {
+      const response = await app.inject({ method: 'GET', url: `/api/specs/${SPEC}/close/preview` });
+      expect(response.statusCode, response.body).toBe(422);
+      expect(response.json()).toEqual({
+        code: 'CLOSE_PREFLIGHT',
+        error: 'CLOSE_PREFLIGHT',
+        repository: [blocker],
+      });
     } finally {
       await app.close();
     }

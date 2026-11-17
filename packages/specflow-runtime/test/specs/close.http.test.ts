@@ -276,6 +276,23 @@ describe('E2.T16 authorized HTTP lifecycle adapters', () => {
 
     const admin = await authedApp(engine, 'admin');
     try {
+      const preview = await admin.app.inject({
+        method: 'GET',
+        url: url + '/preview',
+        headers: admin.headers,
+      });
+      expect(preview.statusCode, preview.body).toBe(200);
+      expect(preview.json()).toMatchObject({
+        integrationRequired: true,
+        merge: {
+          status: 'integrates',
+          sourceBranch: git(spec.workspaceRoot, 'symbolic-ref', '--short', 'HEAD'),
+          targetBranch: git(root, 'symbolic-ref', '--short', 'HEAD'),
+          commitsAhead: Number(
+            git(spec.workspaceRoot, 'rev-list', '--count', originalPrimary + '..HEAD'),
+          ),
+        },
+      });
       const result = await admin.app.inject({
         method: 'POST',
         url,

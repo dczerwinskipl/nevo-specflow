@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   projectCloseOperation,
+  projectClosePlan,
   projectClosePreview,
   projectCreatedSpecification,
 } from '../src/specs/operations/projection';
@@ -130,7 +131,7 @@ describe('Q05 transport-neutral operation projections', () => {
       status: 'completed',
       outcome: 'integrated-and-removed',
     });
-    expect(projectClosePreview(completed.plan)).toEqual({
+    expect(projectClosePlan(completed.plan)).toEqual({
       operationId,
       specId,
       kind: 'specification-close',
@@ -138,5 +139,12 @@ describe('Q05 transport-neutral operation projections', () => {
       integrationRequired: true,
       sourceWorkspace: { workspaceId: completed.plan.source.workspaceId, kind: 'primary' },
     });
+    const merge = {
+      status: 'integrates',
+      sourceBranch: 'feature/a',
+      targetBranch: 'develop',
+      commitsAhead: 0,
+    } as const;
+    expect(projectClosePreview(completed.plan, merge)).toMatchObject({ operationId, merge });
   });
 });

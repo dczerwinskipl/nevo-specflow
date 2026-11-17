@@ -597,3 +597,60 @@ export const NarrowManagedDiagnosticsSeveralAgents: Story = {
     await expect(dialog.scrollWidth).toBeLessThanOrEqual(dialog.clientWidth);
   },
 };
+
+/** The Runtime lists no provider at all: the picker says so, nothing below it can be chosen. */
+export const ManagedEmptyCatalogue: Story = {
+  args: { providers: [] },
+  play: async ({ canvas }) => {
+    await settle();
+    await expect(await canvas.findByText('Brak dostępnych agentów.')).toBeVisible();
+    await expect(canvas.queryByRole('combobox')).toBeNull();
+    await expect(canvas.queryByRole('button', { name: 'Rozpocznij sesję' })).toBeNull();
+    await expectNoHorizontalScroll();
+  },
+};
+
+const longName =
+  'Przegląd kryteriów akceptacji logowania SSO z dostawcą tożsamości i obsługą wygasłych sesji';
+
+/**
+ * English, with the longest statuses ("Incompatible version", "Check didn't finish") and a long
+ * own name: every card keeps one line and 72 px, the name wraps nowhere it should not.
+ */
+export const ManagedLongNameAndStatusEn: Story = {
+  decorators: [withLocale('en')],
+  args: {
+    providers: [
+      claudeDescriptor,
+      codexCheckInterrupted(),
+      {
+        ...antigravityDescriptor,
+        readiness: 'unavailable' as const,
+        reasonCode: 'KNOWN_INCOMPATIBILITY' as const,
+        reason: 'Antigravity 2.0.1 is recorded as incompatible.',
+      },
+    ],
+    defaults: {
+      agent: { providerId: 'claude', modelId: 'claude-sonnet', effort: 'high', mode: 'plan' },
+      name: { mode: 'custom', value: longName },
+    },
+  },
+  play: async ({ canvas }) => {
+    await settle();
+    await expect(await canvas.findByText('Incompatible version')).toBeVisible();
+    await expect(canvas.getByText("Check didn't finish")).toBeVisible();
+    await expect(canvas.getByText('Unavailable: Codex and Antigravity')).toBeVisible();
+    await expect(canvas.getByRole('textbox', { name: /Session name/ })).toHaveValue(longName);
+    await expect(
+      canvas.getByText('The session opens without a message, with your name.'),
+    ).toBeVisible();
+    for (const card of within(canvas.getByRole('radiogroup', { name: 'Agent' })).getAllByRole(
+      'radio',
+    )) {
+      const label = card.closest('label');
+      await expect(Math.round(label?.getBoundingClientRect().height ?? 0)).toBe(72);
+    }
+
+    await expectNoHorizontalScroll();
+  },
+};

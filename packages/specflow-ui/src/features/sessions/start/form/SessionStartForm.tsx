@@ -1,4 +1,4 @@
-import { useId, type FormEvent, type ReactNode } from 'react';
+import { useId, useRef, type FormEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Typography } from '@nevo/ui';
 import { useMessage } from '../../../../i18n/message';
@@ -64,6 +64,12 @@ export function SessionStartForm({
   const agentId = useId();
   const availabilityId = useId();
   const noteId = useId();
+  const picker = useRef<HTMLDivElement>(null);
+  // The chosen agent, else the first one that can be chosen: where focus returns from the details.
+  const focusPicker = () =>
+    picker.current?.querySelector<HTMLElement>('input:checked:not(:disabled)') ??
+    picker.current?.querySelector<HTMLElement>('input:not(:disabled)') ??
+    null;
   const working = status === 'starting' || pending?.checking === true;
   const locked = working || pending !== undefined;
   const { prerequisite, canStart } = newSessionReadiness({
@@ -110,6 +116,7 @@ export function SessionStartForm({
               providerId={agent.providerId}
               labelledBy={agentId}
               describedBy={anyUnavailable ? availabilityId : undefined}
+              groupRef={picker}
               onSelect={(providerId) =>
                 onAgentChange(
                   selectProvider(
@@ -120,15 +127,15 @@ export function SessionStartForm({
               }
             />
           </fieldset>
-          {/* Outside the locked fieldset: the diagnostics stay readable while a start is resolved. */}
-          {anyUnavailable && (
-            <AgentAvailabilityNote
-              id={availabilityId}
-              catalogue={catalogue}
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-            />
-          )}
+          {/* Outside the locked fieldset: the diagnostics stay readable while a start is resolved.
+              Always mounted: it is the live region that announces what a recheck changed. */}
+          <AgentAvailabilityNote
+            id={availabilityId}
+            catalogue={catalogue}
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            focusFallback={focusPicker}
+          />
         </div>
         {!noAgent && (
           <>

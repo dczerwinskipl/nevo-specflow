@@ -192,6 +192,12 @@ it('explains external login and only refreshes discovery after the operator sign
       false,
     ),
   );
+  // The panel went with the last agent it explained, and so did the button that opened it:
+  // focus returns to the agent that is now chosen, never to the page.
+  expect(screen.queryByRole('dialog')).toBeNull();
+  await waitFor(() =>
+    expect(document.activeElement).toBe(screen.getByRole('radio', { name: /Claude/ })),
+  );
   expect(f.create).not.toHaveBeenCalled();
 });
 
@@ -516,6 +522,12 @@ it('treats a ready provider without a usable work mode as unavailable, with the 
   expect(within(panel).getByText('Needs approval')).toBeDefined();
   fireEvent.click(within(panel).getByRole('radio', { name: 'Codex' }));
   expect(within(panel).getByText('No work mode is available')).toBeDefined();
+  // Closing returns focus to the button that opened the panel.
+  fireEvent.keyDown(panel, { key: 'Escape' });
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  await waitFor(() =>
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'How to fix' })),
+  );
 });
 
 it('prefers a provider that can start over one that cannot', async () => {

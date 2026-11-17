@@ -62,6 +62,12 @@ export interface ChoiceTileProps {
   readonly blocked?: boolean;
   /** Colour of the icon while the tile is available; the muted tone replaces it when not. */
   readonly iconClassName?: string;
+  /**
+   * `compact`: one 72 px geometry for a short list of named choices (the start screen's agents): a
+   * 28 px mark centred on the left (greyed out while unavailable), the title over a one-line
+   * description, and the check slot. `meta` and `note` are not shown.
+   */
+  readonly size?: 'default' | 'compact';
 }
 
 export function ChoiceTile({
@@ -77,33 +83,85 @@ export function ChoiceTile({
   disabled = false,
   blocked = false,
   iconClassName,
+  size = 'default',
 }: ChoiceTileProps) {
   const id = useId();
   const titleId = `${id}-title`;
   const descriptionId = `${id}-description`;
   const unavailable = disabled || blocked;
+  const radio = (
+    <input
+      className="sr-only"
+      type="radio"
+      name={name}
+      value={value}
+      checked={checked}
+      disabled={disabled}
+      aria-disabled={blocked || undefined}
+      aria-labelledby={titleId}
+      aria-describedby={description ? descriptionId : undefined}
+      onChange={() => {
+        if (!blocked && !disabled) {
+          onSelect();
+        }
+      }}
+    />
+  );
+  const check = (
+    <span className={cn(choiceSurfaceCheckClassName, !checked && 'invisible')} aria-hidden="true">
+      <Icon name="check" size="sm" />
+    </span>
+  );
+
+  if (size === 'compact') {
+    return (
+      <label
+        aria-disabled={blocked || undefined}
+        className={cn(
+          choiceSurfaceClassName,
+          'grid grid-cols-[1.75rem_minmax(0,1fr)_var(--spacing-icon-md)] items-center gap-x-2.5 px-3.5 py-3.5',
+        )}
+      >
+        {radio}
+        <span
+          className={cn(
+            'flex size-7 items-center justify-center',
+            unavailable ? 'text-content-muted opacity-60 grayscale' : iconClassName,
+          )}
+        >
+          {icon}
+        </span>
+        <span className="grid min-w-0 gap-0.5">
+          <span
+            id={titleId}
+            className={cn(
+              'truncate text-title-md',
+              unavailable ? 'text-content-secondary' : 'text-content-primary',
+            )}
+          >
+            {title}
+          </span>
+          {/* One line by contract: the consumer keeps the description short. */}
+          {description ? (
+            <span
+              id={descriptionId}
+              className="flex h-4 items-center gap-1.5 overflow-hidden text-body-sm whitespace-nowrap text-content-secondary"
+            >
+              {description}
+            </span>
+          ) : null}
+        </span>
+        {check}
+      </label>
+    );
+  }
 
   return (
     <label
       aria-disabled={blocked || undefined}
       className={cn(choiceSurfaceClassName, choiceSurfaceTracksClassName)}
     >
-      <input
-        className="sr-only"
-        type="radio"
-        name={name}
-        value={value}
-        checked={checked}
-        disabled={disabled}
-        aria-disabled={blocked || undefined}
-        aria-labelledby={titleId}
-        aria-describedby={description ? descriptionId : undefined}
-        onChange={() => {
-          if (!blocked && !disabled) {
-            onSelect();
-          }
-        }}
-      />
+      {radio}
       <span className={cn(unavailable ? 'text-content-muted' : iconClassName)}>{icon}</span>
       <span className="min-w-0 break-words">
         <strong
@@ -129,9 +187,7 @@ export function ChoiceTile({
           <span className="mt-1 block text-body-sm text-content-secondary">{note}</span>
         ) : null}
       </span>
-      <span className={cn(choiceSurfaceCheckClassName, !checked && 'invisible')} aria-hidden="true">
-        <Icon name="check" size="sm" />
-      </span>
+      {check}
     </label>
   );
 }

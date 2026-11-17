@@ -36,6 +36,7 @@ export function AgentDiagnosisPanel({
   agents,
   refreshing,
   onRefresh,
+  onCloseAutoFocus,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -43,6 +44,8 @@ export function AgentDiagnosisPanel({
   agents: readonly StartProvider[];
   refreshing: boolean;
   onRefresh?: () => void;
+  /** Where focus goes when the panel closes (or goes away with the last agent it explained). */
+  onCloseAutoFocus: (event: Event) => void;
 }) {
   const { t } = useTranslation();
   const text = useMessage();
@@ -60,7 +63,11 @@ export function AgentDiagnosisPanel({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent side={isSplit ? 'right' : 'bottom'} closeLabel={t('common.close')}>
+      <DrawerContent
+        side={isSplit ? 'right' : 'bottom'}
+        closeLabel={t('common.close')}
+        onCloseAutoFocus={onCloseAutoFocus}
+      >
         <DrawerHeader>
           <DrawerTitle>
             {single ? selected.title : t('sessionStart.diagnostics.howToFix')}

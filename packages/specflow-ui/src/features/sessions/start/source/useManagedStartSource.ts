@@ -1,4 +1,4 @@
-import { createElement, useCallback, useMemo, useReducer } from 'react';
+import { createElement, useCallback, useMemo, useReducer, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   CreateSession,
@@ -133,7 +133,13 @@ export function useManagedStartSource(
     () => (items ? startCatalogueFromProviders(items) : undefined),
     [items],
   );
-  const refresh = useCallback(() => void providers.refetch(), [providers]);
+  // Only a read the user asked for ("Check again") is shown as running; a background refetch is not.
+  const [rechecks, setRechecks] = useState(0);
+  const { refetch } = providers;
+  const refresh = useCallback(() => {
+    setRechecks((count) => count + 1);
+    void refetch().finally(() => setRechecks((count) => count - 1));
+  }, [refetch]);
   const discard = useCallback(() => {
     retained.discard();
     reread();
@@ -185,7 +191,7 @@ export function useManagedStartSource(
           catalogue,
           configurationUnavailable: providers.isError,
           refresh,
-          refreshing: providers.isFetching,
+          refreshing: rechecks > 0,
         }
       : providers.isPending
         ? { status: 'loading' }

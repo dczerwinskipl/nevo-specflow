@@ -341,7 +341,9 @@ have two adapters. Production fixture-based adapters remain forbidden.
   all consumers.
 - `src/shared/` holds only code that several features genuinely use (generic controls, the
   retained-request mechanism, the keyed store, notifications, `operations/`, and the product presentational
-  pieces `operational-list/` (`OperationalRow`, `OperationalGroupHeader`) and `workspace-section/`
+  pieces `operational-list/` (`OperationalRow`, `OperationalGroupHeader`, and `CollectionColumns`: the
+  collection column tracks, column header and stacking switch of the Specifications list, Tasks page and
+  Overview Task rows) and `workspace-section/`
   (`WorkspaceSection`) that Documents, Sessions, Tasks, Git and Specs all render, and
   `document-tree/`: the folder and document rows, levels, search field and roving keyboard that the
   Documents explorer and the documentation reader both render through; `document-reading/`: the

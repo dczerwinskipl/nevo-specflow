@@ -89,6 +89,14 @@ Text blocks above the rows (search field, notices) keep the title-track width
 ([App Shell geometry](shell-geometry.md)). Below 48rem each row stacks in the same order and the
 Updated date moves into a line under the title.
 
+The tracks, the column header and the 48rem switch belong to the shared collection pattern
+(`CollectionColumns` in `shared/operational-list`), not to this list: its presets `specification`,
+`specificationFlat`, `specificationFlatWithProgress` and `specificationArchive` are the columns
+above, and the Tasks page and the Overview Task rows use the `task` preset of the same component
+(`Task | Status`, `minmax(0,40rem) minmax(15rem,22rem)`, with an optional column header and one
+supporting line under the status, at most two lines with balanced wrapping). A list changes its
+geometry by choosing or adding a preset there, never with its own container queries.
+
 **Section headers** are full-width list sections, not Cards: a leading disclosure chevron, the
 label in the section's tone and the count, on the rows' content axis. Separation between sections
 is larger than between rows. Rows follow

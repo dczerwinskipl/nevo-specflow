@@ -21,7 +21,7 @@ import { SpecsOverviewCollection } from './SpecsOverviewCollection';
 import { SpecsOverviewEmpty } from './SpecsOverviewEmpty';
 import { SpecsOverviewHeader } from './SpecsOverviewHeader';
 import { SpecsOverviewNotice } from './SpecsOverviewNotice';
-import { specTitleTrackMaxWidth } from './rows/specRowColumns';
+import { collectionTitleTrackMaxWidth } from '../../../shared/operational-list';
 import { overviewCapabilities } from './presentation';
 import { filterSpecsOverview, isSearchable } from './search/search';
 import { useCollectionSearch } from './search/useCollectionSearch';
@@ -91,7 +91,7 @@ export function SpecsOverview({
         }
       >
         {/* The page fills the Focused frame (`fit="bounded"`): the rows span it and their bounded
-            tracks (`specRowColumns`) keep the values together; the search field and notices stay
+            tracks (`CollectionColumns`) keep the values together; the search field and notices stay
             as wide as the title track. */}
         <AppContent className="w-full">
           {/* A flex column down to the list, so an empty collection can centre in the free height. */}
@@ -133,7 +133,7 @@ export function SpecsOverview({
                   placeholder={t('specifications.search')}
                   value={search.term}
                   onChange={(event) => search.setTerm(event.target.value)}
-                  className={cn('w-full', specTitleTrackMaxWidth)}
+                  className={cn('w-full', collectionTitleTrackMaxWidth)}
                 />
               ) : null}
               {state.error ? (

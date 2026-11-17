@@ -52,7 +52,10 @@ export const CloseScratchReconciliationRequestSchema = Type.Object(
  * merged because the linked Specification is archived on its own branch as asked (`archive-only`)
  * or lives in the primary checkout and is archived directly on its branch (`primary-checkout`), or
  * because Git is off for the project (`git-off`: `git.enabled: false` or no `git:` block): the
- * Specification is archived in place in its checkout, nothing is committed and no branch is read.
+ * Specification is archived in place in `checkout` (the primary checkout or its linked worktree),
+ * nothing is committed and no branch is read. The archive stays uncommitted there: a linked
+ * worktree created while Git was on meets `uncommitted-changes` in a later Worktree Close with Git
+ * on until the archive is committed.
  */
 export const CloseMergeSchema = Type.Union([
   Type.Object(
@@ -73,7 +76,11 @@ export const CloseMergeSchema = Type.Union([
     { additionalProperties: false },
   ),
   Type.Object(
-    { status: Type.Literal('not-integrated'), reason: Type.Literal('git-off') },
+    {
+      status: Type.Literal('not-integrated'),
+      reason: Type.Literal('git-off'),
+      checkout: Type.Union([Type.Literal('primary'), Type.Literal('linked')]),
+    },
     { additionalProperties: false },
   ),
 ]);

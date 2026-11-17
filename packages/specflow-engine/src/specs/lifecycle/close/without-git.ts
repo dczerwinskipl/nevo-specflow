@@ -6,10 +6,16 @@ import {
   inspectRegisteredWorkspace,
   readWorkspaceRegistry,
 } from '../../../project/workspace/registry/registry';
-import { assertArchivedFiles, moveToArchive, planArchiveMove } from '../archive-effects';
+import {
+  assertArchivedFiles,
+  completeArchiveMove,
+  inspectArchiveMove,
+  moveToArchive,
+  planArchiveMove,
+  type ArchiveMoveState,
+} from '../archive-effects';
 import { readCloseJournal } from '../journal/store';
 import { CloseOperationError, type CloseJournal } from '../model';
-import { reserveCloseOperation } from '../reservation';
 import { publishCloseCheckpoint } from './checkpoint';
 
 function recovery(message: string): CloseOperationError {
@@ -80,47 +86,124 @@ async function archiveWithoutGit(
 }
 
 /**
- * A Specification Close with Git off (owner decision 2026-11-17): the workflow gate, the reservation
- * and the archive in place, with the Git-free verification of an existing-workspace Create. The
- * caller decided the mode ({@link closeRepositoryMode}); a reservation the Git policy changed under
- * (a Git plan) is left for a retry of the same operation, which then continues with Git.
+ * The rest of a Specification Close with Git off (owner decision 2026-11-17), from its reserved
+ * journal (the reservation decided the mode and kept the Git-free verification): the archive in
+ * place and its proof, with the Git-free verification of an existing-workspace Create. An
+ * interrupted move stays `archive-initiated` and is never re-run here: see
+ * {@link resumeCloseWithoutGit}.
  */
-export async function closeSpecificationWithoutGit(
+export async function finishCloseWithoutGit(
   engine: SpecFlowEngine,
-  request: {
-    readonly operationId: string;
-    readonly specId: string;
-    readonly integrateToTargetBranch?: boolean;
-  },
+  reserved: CloseJournal,
   hooks: { readonly afterArchiveMove?: () => Promise<void> } = {},
 ): Promise<CloseJournal> {
   return runGitFreeMutation(async () => {
-    let journal = (await reserveCloseOperation(engine, { kind: 'specification-close', ...request }))
-      .journal;
-    if (!journal.plan.gitOff) {
-      throw new CloseOperationError(
-        'CLOSE_CONFLICT',
-        'The project Git policy changed during the Close admission: retry the same operation.',
-      );
-    }
-
+    let journal = reserved;
     if (journal.stage === 'reserved') {
       journal = await archiveWithoutGit(engine, journal, hooks.afterArchiveMove);
     }
 
     if (journal.stage !== 'completed' || !journal.archiveMove) {
       throw recovery(
-        'The archive move without Git did not finish: inspect specs/active and specs/archive of the checkout before recovery.',
+        'The archive move without Git did not finish: inspect it with "specs close-recover --preview" before recovery.',
       );
     }
 
-    const final = await readCloseJournal(engine.context, request.operationId);
-    if (!final || !isDeepStrictEqual(final, journal)) {
-      throw recovery('Completion journal changed during final verification.');
+    return verifiedCompletion(engine, journal);
+  });
+}
+
+async function verifiedCompletion(
+  engine: SpecFlowEngine,
+  journal: CloseJournal,
+): Promise<CloseJournal> {
+  const final = await readCloseJournal(engine.context, journal.plan.operationId);
+  if (!final || !isDeepStrictEqual(final, journal) || !final.archiveMove) {
+    throw recovery('Completion journal changed during final verification.');
+  }
+
+  await assertArchivedFiles(final.plan.source.root, final.archiveMove);
+
+  return final;
+}
+
+/** What an interrupted Close with Git off left: its stage and, while not completed, the move state. */
+export type CloseWithoutGitRecovery =
+  | { readonly stage: 'completed' }
+  | { readonly stage: 'archive-initiated'; readonly move: ArchiveMoveState };
+
+async function gitOffJournal(engine: SpecFlowEngine, operationId: string): Promise<CloseJournal> {
+  const journal = await readCloseJournal(engine.context, operationId);
+  if (!journal?.plan.gitOff) {
+    throw new CloseOperationError('CLOSE_INVALID', 'No Close with Git off has this operation id.');
+  }
+
+  return journal;
+}
+
+/**
+ * Read-only: where an interrupted Close with Git off stopped, proved against the pinned inventory.
+ * A `reserved` journal has done nothing yet: the same Close is simply retried.
+ */
+export async function inspectCloseWithoutGit(
+  engine: SpecFlowEngine,
+  operationId: string,
+): Promise<CloseWithoutGitRecovery | { readonly stage: 'reserved' }> {
+  return runGitFreeMutation(async () => {
+    const journal = await gitOffJournal(engine, operationId);
+    if (journal.stage === 'reserved' || journal.stage === 'completed') {
+      return { stage: journal.stage };
     }
 
-    await assertArchivedFiles(journal.plan.source.root, journal.archiveMove);
+    if (journal.stage !== 'archive-initiated' || !journal.archiveMove) {
+      throw recovery('Unexpected stage of a Close with Git off.');
+    }
 
-    return final;
+    return {
+      stage: 'archive-initiated',
+      move: await inspectArchiveMove(journal.plan.source.root, journal.archiveMove),
+    };
+  });
+}
+
+/**
+ * The operator's recovery of a Close with Git off stuck at `archive-initiated` (it holds its
+ * Specification and checkout claims until it ends): after the operator confirms that the original
+ * Close stopped and nothing else writes the checkout, the move proved by {@link inspectArchiveMove}
+ * is finished deterministically and the Close completes as `archived-without-git`, which releases
+ * the claims. A state that cannot be proved stays `CLOSE_RECOVERY_REQUIRED` and changes nothing.
+ */
+export async function resumeCloseWithoutGit(
+  engine: SpecFlowEngine,
+  operationId: string,
+  confirmedStopped: true,
+): Promise<CloseJournal> {
+  if (confirmedStopped !== true) {
+    throw new CloseOperationError('CLOSE_INVALID', 'Confirm that the original Close stopped.');
+  }
+
+  return runGitFreeMutation(async () => {
+    const journal = await gitOffJournal(engine, operationId);
+    if (journal.stage === 'completed') {
+      return verifiedCompletion(engine, journal);
+    }
+
+    if (journal.stage !== 'archive-initiated' || !journal.archiveMove) {
+      throw new CloseOperationError(
+        'CLOSE_INVALID',
+        'Only a Close stuck after its archive intent is recovered; retry a reserved one.',
+      );
+    }
+
+    await completeArchiveMove(journal.plan.source.root, journal.archiveMove, journal.plan);
+
+    return verifiedCompletion(
+      engine,
+      await publish(engine, journal, {
+        ...journal,
+        stage: 'completed',
+        outcome: 'archived-without-git',
+      }),
+    );
   });
 }

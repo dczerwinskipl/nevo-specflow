@@ -34,7 +34,7 @@ import {
 } from './model';
 import { sortedResources } from './resources';
 import { readIntegrationCandidates } from './integration-candidates';
-import { closeRepositoryMode } from './repository-mode';
+import { closeRepositoryMode, type CloseRepositoryMode } from './repository-mode';
 
 export type CloseRequest =
   | { readonly kind: 'worktree-close'; readonly operationId?: string; readonly specId: string }
@@ -334,23 +334,37 @@ function assertIntegrationSelection(
 }
 
 /**
- * Whether the project Git policy turns Git off for this Specification Close
- * ({@link closeRepositoryMode}). A configuration that cannot be read decides nothing here: the Git
- * preflight reads it again after the workflow gate and reports it.
+ * The project Git policy of a Close, read once: the repository mode decided from it
+ * ({@link closeRepositoryMode}) with the policy and its revision, or the error that keeps it from
+ * being read. An unreadable policy never defaults to a mode: the preflight refuses with its error
+ * after the workflow gate and before any repository inspection.
  */
-export async function closeRunsWithoutGit(
-  engine: SpecFlowEngine,
-  request: { readonly kind: 'specification-close'; readonly integrateToTargetBranch?: boolean },
-): Promise<boolean> {
-  const configured = await readProjectGitPolicy(engine.context).catch(() => undefined);
+type CloseRepository =
+  | {
+      readonly mode: CloseRepositoryMode;
+      readonly policy: GitWorktreePolicy;
+      readonly revision: string;
+    }
+  | { readonly mode: 'unreadable'; readonly error: unknown };
 
-  return configured !== undefined && closeRepositoryMode(configured.policy, request) === 'git-off';
+async function decideCloseRepository(
+  engine: SpecFlowEngine,
+  request: Parameters<typeof closeRepositoryMode>[1],
+): Promise<CloseRepository> {
+  let configured: Awaited<ReturnType<typeof readProjectGitPolicy>>;
+  try {
+    configured = await readProjectGitPolicy(engine.context);
+  } catch (error) {
+    return { mode: 'unreadable', error };
+  }
+
+  return { mode: closeRepositoryMode(configured.policy, request), ...configured };
 }
 
 /**
  * The preview of a Specification Close with Git off: the workflow gate and the checkout identity,
- * no Git process and no repository precondition. The plan pins the configuration revision it was
- * decided with, so the reservation refuses when the policy changes in between.
+ * no Git process and no repository precondition. The plan pins the configuration revision the mode
+ * was decided with; the reservation refuses when the policy changed in between.
  */
 async function previewCloseWithoutGit(
   engine: SpecFlowEngine,
@@ -360,6 +374,7 @@ async function previewCloseWithoutGit(
     readonly specId: string;
     readonly integrateToTargetBranch?: boolean;
   },
+  configRevision: string,
 ): Promise<GitOffClosePlan> {
   const operationId = request.operationId ?? randomUUID();
   const { canonical, registry, sourceWorkspace } = await resolveCloseSource(engine, request.specId);
@@ -370,11 +385,6 @@ async function previewCloseWithoutGit(
 
   await assertSpecificationExit(engine.specificationExit, request.specId);
   assertIntegrationSelection(request, linked);
-  const configured = await readProjectGitPolicy(engine.context);
-  if (closeRepositoryMode(configured.policy, request) !== 'git-off') {
-    throw new CloseOperationError('CLOSE_CONFLICT', 'Project Git policy changed during preview.');
-  }
-
   const binding = registry.specBindings.find((item) => item.specId === request.specId);
   const plan: GitOffClosePlan = {
     kind: 'specification-close',
@@ -397,7 +407,7 @@ async function previewCloseWithoutGit(
       ...(sourceWorkspace.instanceId ? { instanceId: sourceWorkspace.instanceId } : {}),
     },
     ...(linked ? { integrateToTargetBranch: false as const } : {}),
-    configRevision: configured.revision,
+    configRevision,
     resources: [],
   };
 
@@ -430,11 +440,14 @@ export async function previewCloseOperation(
   }
 
   // The one decision point of the repository mode: with Git off the Close archives in place.
-  if (request.kind === 'specification-close' && (await closeRunsWithoutGit(engine, request))) {
-    return runGitFreeMutation(() => previewCloseWithoutGit(engine, request));
+  const repository = await decideCloseRepository(engine, request);
+  if (repository.mode === 'git-off' && request.kind === 'specification-close') {
+    const configRevision = repository.revision;
+
+    return runGitFreeMutation(() => previewCloseWithoutGit(engine, request, configRevision));
   }
 
-  return previewGitClose(engine, request, operationId, allowShared);
+  return previewGitClose(engine, request, operationId, allowShared, repository);
 }
 
 /** The preflight of a Specification or Worktree Close with Git (see {@link previewCloseOperation}). */
@@ -443,6 +456,7 @@ async function previewGitClose(
   request: Exclude<CloseRequest, { readonly kind: 'workspace-close' }>,
   operationId: string,
   allowShared: boolean,
+  repository: CloseRepository,
 ): Promise<GitClosePlan> {
   const { canonical, registry, sourceWorkspace } = await resolveCloseSource(engine, request.specId);
   const linked = sourceWorkspace.kind === 'linked';
@@ -462,6 +476,11 @@ async function previewGitClose(
     // D07: the workflow decides first, so a refusal lists its blockers before any Git check.
     await assertSpecificationExit(engine.specificationExit, request.specId);
     assertIntegrationSelection(request, linked);
+  }
+
+  // After the workflow gate, before any repository inspection: an unreadable policy refuses.
+  if (repository.mode === 'unreadable') {
+    throw repository.error;
   }
 
   const integrate =
@@ -498,8 +517,7 @@ async function previewGitClose(
       : undefined;
   // The configured default destination is read before the checkout is inspected, so a refusal names
   // every repository precondition the owner has to fix at once, not one per attempt.
-  const configured =
-    needsTarget && !pinned ? await readProjectGitPolicy(engine.context) : undefined;
+  const configured = needsTarget && !pinned ? repository : undefined;
   const targetMissing = configured !== undefined && !configured.policy.integrationTargetBranch;
   // A Specification Close commits the Specification's uncommitted execution state with its archive.
   let source: CloseWorkspaceEvidence;
@@ -692,6 +710,12 @@ async function previewWorkspaceClose(
     throw new CloseOperationError('CLOSE_INVALID', 'Invalid workspace identity.');
   }
 
+  // Refused with Git off (closeRepositoryMode); there is no workflow gate to precede the policy.
+  const repository = await decideCloseRepository(engine, request);
+  if (repository.mode === 'unreadable') {
+    throw repository.error;
+  }
+
   const registry = await engine.readRegistry();
   const workspace = registry.workspaces.find((x) => x.workspaceId === request.workspaceId);
   if (workspace?.kind !== 'linked' || !workspace.managed || !workspace.instanceId) {
@@ -750,6 +774,7 @@ async function previewWorkspaceClose(
     { kind: 'worktree-close', operationId, specId: occupants[0]!.specId },
     operationId,
     true,
+    repository,
   );
   if (
     base.registryRevision !== registry.revision ||

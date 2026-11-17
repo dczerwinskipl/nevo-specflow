@@ -9,8 +9,10 @@ import { CloseOperationError, type ClosePlan } from './model';
  * - `not-integrated`: nothing is merged, for `reason` `archive-only` (the linked Specification is
  *   archived on its own branch, as asked) or `primary-checkout` (the Specification lives in the
  *   primary checkout and is archived directly on `sourceBranch`, the integration branch), or
- *   `git-off` (Git is off for the project: the Specification is archived in place in its checkout,
- *   nothing is committed and no branch is read).
+ *   `git-off` (Git is off for the project: the Specification is archived in place in `checkout`,
+ *   nothing is committed and no branch is read; the archive stays uncommitted there, so a linked
+ *   worktree created while Git was on later meets `uncommitted-changes` in a Worktree Close with Git
+ *   on until it is committed).
  */
 export type CloseMergeFacts =
   | {
@@ -24,12 +26,20 @@ export type CloseMergeFacts =
       readonly reason: 'archive-only' | 'primary-checkout';
       readonly sourceBranch: string;
     }
-  | { readonly status: 'not-integrated'; readonly reason: 'git-off' };
+  | {
+      readonly status: 'not-integrated';
+      readonly reason: 'git-off';
+      readonly checkout: 'primary' | 'linked';
+    };
 
 /** Read-only: the merge facts of an admitted (not yet reserved) Specification or Worktree Close plan. */
 export async function readCloseMergeFacts(plan: ClosePlan): Promise<CloseMergeFacts> {
   if (plan.gitOff) {
-    return { status: 'not-integrated', reason: 'git-off' };
+    return {
+      status: 'not-integrated',
+      reason: 'git-off',
+      checkout: plan.source.instanceId === undefined ? 'primary' : 'linked',
+    };
   }
 
   const sourceBranch = plan.source.branch;

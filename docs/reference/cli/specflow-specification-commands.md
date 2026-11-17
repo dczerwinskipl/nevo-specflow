@@ -37,6 +37,8 @@ nevo-specflow specs workspace close <workspace-id> --preview
 nevo-specflow specs workspace close <workspace-id> --yes
 nevo-specflow specs workspace inspect <workspace-id> <operation-id>
 nevo-specflow specs close-inspect <operation-id>
+nevo-specflow specs close-recover <operation-id> --preview
+nevo-specflow specs close-recover <operation-id> --confirmed-stopped
 nevo-specflow specs close-reconcile-scratch <operation-id> --confirmed-git-stopped --yes
 nevo-specflow specs recover <operation-id> --confirmed-stopped [--confirmed-git-stopped]
 ```
@@ -80,10 +82,16 @@ names everything Close would refuse on. Close from the SpecFlow UI instead, or s
 merged into the target branch with the commits ahead, or why nothing is merged). When Git is off for
 the project (`git.enabled: false`, or no `git:` block in `.nevo/config.yaml`), `specs close` only
 archives the Specification in place, without a commit, integration or repository precondition:
-the preview's `merge` is `{status: 'not-integrated', reason: 'git-off'}` and, without `--json`,
-stderr adds `Without Git (Git is off for this project): the Specification is archived in place;
-nothing is committed or merged.`; the Close prints `Outcome: archived-without-git` followed by the
-same line. When a project that uses Git
+the preview's `merge` is `{status: 'not-integrated', reason: 'git-off', checkout}` and, without
+`--json`, stderr adds `Without Git (Git is off for this project): the Specification is archived in
+place; nothing is committed or merged.` (for a linked worktree also `The archive stays uncommitted
+in the linked worktree: commit it there before closing the worktree with Git on.`); the Close
+prints `Outcome: archived-without-git` followed by the first line. `specs worktree close` and
+`specs workspace close` refuse with `CLOSE_INVALID` while Git is off. A Close with Git off that
+stopped after its archive intent is finished with `specs close-recover` (`--preview` reports the
+proven state read-only; `--confirmed-stopped` finishes the move and completes the Close), see
+[Specification lifecycle](../../architecture/runtime/specification-lifecycle.md#close-with-git-off-owner-decision-2026-11-17).
+When a project that uses Git
 names no `git.integrationTargetBranch`, the preview (and `specs worktree close --preview`, `specs
 workspace close --preview`) refuses with `CLOSE_PREFLIGHT` and lists the local branches that could
 receive the Close on stderr. Each candidate is shown with the facts that make it one: the default

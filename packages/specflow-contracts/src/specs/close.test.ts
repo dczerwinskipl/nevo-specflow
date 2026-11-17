@@ -115,9 +115,15 @@ describe('Close preview contract', () => {
       Value.Check(ClosePreviewSchema, {
         ...preview,
         integrationRequired: false,
-        merge: { status: 'not-integrated', reason: 'git-off' },
+        merge: { status: 'not-integrated', reason: 'git-off', checkout: 'linked' },
       }),
     ).toBe(true);
+    expect(
+      Value.Check(ClosePreviewSchema, {
+        ...preview,
+        merge: { status: 'not-integrated', reason: 'git-off' },
+      }),
+    ).toBe(false);
     expect(
       Value.Check(ClosePreviewSchema, {
         ...preview,

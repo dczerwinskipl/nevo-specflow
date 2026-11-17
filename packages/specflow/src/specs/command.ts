@@ -11,6 +11,8 @@ import {
   planPublicWorkspaceCloseOperation,
   inspectPublicWorkspaceCloseOperation,
   reconcileArchivedConflictScratchOperation,
+  inspectCloseWithoutGitOperation,
+  resumeCloseWithoutGitOperation,
   discoverSpecifications,
   resolveCreateArchetype,
   openSpecFlowEngine,
@@ -31,6 +33,7 @@ import {
   ARCHIVED_WITHOUT_GIT,
   previewCloseForCli,
   reportingMissingIntegrationTarget,
+  withoutGitLines,
 } from './close-preview';
 import { openExecution, reportingWorkflowRefusals } from '../execution-session';
 import { localOwner } from '../local-actor';
@@ -336,7 +339,7 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
             plan.merge.status === 'not-integrated' &&
             plan.merge.reason === 'git-off'
           ) {
-            stderrOf(context)(ARCHIVED_WITHOUT_GIT);
+            withoutGitLines(plan.merge.checkout).forEach(stderrOf(context));
           }
         });
 
@@ -428,6 +431,41 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
           scratchRetired: result.scratchRetired === true,
           next: 'Start a NEW worktree-close for the still-archived linked Specification',
         });
+      },
+    );
+
+  specs
+    .command('close-recover')
+    .description(
+      'Finish a Close with Git off that stopped after its archive intent (recovery-required); see specification-lifecycle docs',
+    )
+    .argument('<operation-id>', 'Stable Close operation UUID')
+    .option('--preview', 'Only report where the archive move stopped, without writing')
+    .option(
+      '--confirmed-stopped',
+      'Confirm the original Close stopped and nothing else writes the checkout',
+    )
+    .option('--project-root <path>', 'Require this verified Project Home root')
+    .action(
+      async (
+        operationId: string,
+        options: { preview?: boolean; confirmedStopped?: boolean; projectRoot?: string },
+      ) => {
+        const engine = await engineForClose(context.cwd, options.projectRoot);
+        if (options.preview) {
+          output(context, {
+            operationId,
+            ...(await inspectCloseWithoutGitOperation(engine, operationId)),
+          });
+
+          return;
+        }
+
+        if (!options.confirmedStopped) {
+          throw new Error('Recovering a Close requires --confirmed-stopped. Use --preview first.');
+        }
+
+        output(context, await resumeCloseWithoutGitOperation(engine, operationId, true));
       },
     );
 

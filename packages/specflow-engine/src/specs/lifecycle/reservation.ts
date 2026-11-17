@@ -10,6 +10,7 @@ import {
   type FlushOptions,
 } from '../documents/queue/flush';
 import { readWorkspaceRegistry } from '../../project/workspace/registry/registry';
+import { runGitFreeMutation } from '../../project/request-verification-memo';
 import { readProjectGitPolicy } from '../../version-control/worktrees/config';
 import {
   CloseOperationError,
@@ -20,6 +21,7 @@ import {
 import { readCloseJournal, publishCloseJournal } from './journal/store';
 import { assertResourcesAvailable } from './resources';
 import { previewCloseOperation, type CloseRequest } from './preflight';
+import { repositoryModeOf } from './repository-mode';
 import { resolveSpecification } from '../discovery';
 import type { UncommittedAllowance } from '../uncommitted';
 
@@ -67,6 +69,20 @@ export async function reserveCloseOperation(
   // snapshot is verified against registry/config CAS inside the lock, and
   // future effects must re-verify pinned HEAD/index/physical source.
   const plan: ClosePlan = await previewWithDocumentFlush(engine, request, options);
+
+  // With Git off the admission keeps the Git-free verification its preview ran with.
+  return plan.gitOff
+    ? runGitFreeMutation(() => admitClosePlan(engine, request, plan, options))
+    : admitClosePlan(engine, request, plan, options);
+}
+
+/** The flush and the locked admission of a previewed plan (see {@link reserveCloseOperation}). */
+async function admitClosePlan(
+  engine: SpecFlowEngine,
+  request: CloseRequest & { readonly operationId: string },
+  plan: ClosePlan,
+  options: ReserveCloseOptions,
+): Promise<{ readonly journal: CloseJournal; readonly existing: boolean }> {
   // Document commits of every checkout the Close owns are flushed before the lock is taken (Git runs
   // here, never inside the lock); what is still pending, failed or abandoned refuses the Close.
   // The preview and the preflight stay pure: this is the only effect, and only at admission.
@@ -92,18 +108,23 @@ export async function reserveCloseOperation(
       throw new CloseOperationError('CLOSE_CONFLICT', 'Registry revision changed after preview.');
     }
 
-    if (plan.configRevision !== undefined) {
-      const config = await readProjectGitPolicy(engine.context);
-      // With Git off the pinned revision is the policy that turned Git off; any change refuses.
-      if (
-        config.revision !== plan.configRevision ||
-        (!plan.gitOff && config.policy.integrationTargetBranch !== plan.targetBranch)
-      ) {
-        throw new CloseOperationError(
-          'CLOSE_CONFLICT',
-          'Project integration policy changed after preview.',
-        );
-      }
+    // The repository mode the plan was decided with must still hold, for every plan (an
+    // unreadable policy refuses with its error). With Git off the pinned revision is the policy that
+    // turned Git off; with Git the configured default destination must be unchanged.
+    const config = await readProjectGitPolicy(engine.context);
+    if ((repositoryModeOf(config.policy) === 'git-off') !== (plan.gitOff === true)) {
+      throw new CloseOperationError('CLOSE_CONFLICT', 'Project Git policy changed after preview.');
+    }
+
+    if (
+      plan.configRevision !== undefined &&
+      (config.revision !== plan.configRevision ||
+        (!plan.gitOff && config.policy.integrationTargetBranch !== plan.targetBranch))
+    ) {
+      throw new CloseOperationError(
+        'CLOSE_CONFLICT',
+        'Project integration policy changed after preview.',
+      );
     }
 
     // D07, judged again under the lock every workflow mutation takes: no Task or run changed

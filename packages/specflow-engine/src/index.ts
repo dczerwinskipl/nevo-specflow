@@ -295,6 +295,8 @@ export {
   previewPublicCloseOperation,
   planPublicCloseOperation,
   reconcileArchivedConflictScratchOperation,
+  inspectCloseWithoutGitOperation,
+  resumeCloseWithoutGitOperation,
   type PlanPublicCloseOptions,
   type PublicCloseInspection,
 } from './specs/operations/api';

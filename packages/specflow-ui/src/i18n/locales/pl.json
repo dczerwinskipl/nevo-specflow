@@ -2563,6 +2563,13 @@
       "attention": "Wymaga uwagi · {{reason}}",
       "attentionOnly": "Wymaga uwagi",
       "blocksSpecification": "specyfikacja nie może kontynuować, dopóki się nie ruszy",
+      "blocksNamedSpecification": "{{specification}} nie może kontynuować, dopóki się nie ruszy",
+      "escalated": "przekazane do decyzji w specyfikacji",
+      "escalatedFeedback": "przekazane do decyzji w specyfikacji: {{feedback}}",
+      "holdsUp": "wstrzymuje {{ids}}",
+      "holdsUpMore": "wstrzymuje {{ids}} (+{{more}})",
+      "holdsFinish": "{{step}} nie może się zakończyć, dopóki zadanie jest wstrzymane",
+      "holdsFinishUnnamed": "krok nie może się zakończyć, dopóki zadanie jest wstrzymane",
       "waitingFor": "Czeka na {{ids}}"
     },
     "page": {

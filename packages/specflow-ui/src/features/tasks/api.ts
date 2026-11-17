@@ -27,11 +27,21 @@ export interface TaskApi {
   ): Promise<TaskHistoryPage>;
 }
 
+/** The Tasks page read's one filter as its query string (`?blocking=…` or `?group=…`). */
+function taskListSearch(query: TaskListQuery): string {
+  const search = new URLSearchParams({
+    ...(query.blocking ? { blocking: query.blocking } : {}),
+    ...(query.group ? { group: query.group } : {}),
+  }).toString();
+
+  return search ? `?${search}` : '';
+}
+
 export function createRuntimeTaskApi(client: HttpRequestClient): TaskApi {
   return {
     getTaskList: (specId, query, signal) =>
       client.get<TaskListResponse>(
-        `/api/specs/${encodeURIComponent(specId)}/tasks${query.blocking ? `?blocking=${query.blocking}` : ''}`,
+        `/api/specs/${encodeURIComponent(specId)}/tasks${taskListSearch(query)}`,
         { signal },
       ),
     getHistory: (specId, taskId, token, cursor, signal) =>

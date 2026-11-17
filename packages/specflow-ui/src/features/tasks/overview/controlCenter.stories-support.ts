@@ -1,6 +1,7 @@
 import type {
   SpecificationWorkspaceResponse,
   TaskListEntry,
+  TaskListQuery,
   TaskListResponse,
   WorkspaceAttention,
   WorkspaceSession,
@@ -520,10 +521,13 @@ export async function controlCenterWorkspace(
   };
 }
 
-/** The Tasks page read of the scenario; `blocking` keeps the Tasks the `tasks-stuck` names. */
+/**
+ * The Tasks page read of the scenario with at most one filter, as the Runtime answers it:
+ * `blocking` keeps the Tasks the `tasks-stuck` names, `group` the Tasks of one group.
+ */
 export function controlCenterTaskList(
   scenario: ControlCenterScenario,
-  blocking = false,
+  query: TaskListQuery = {},
 ): TaskListResponse {
   const tasks = tasksOf(scenario);
   const attention = attentionOf(scenario);
@@ -531,7 +535,12 @@ export function controlCenterTaskList(
   const blockingIds = new Set(stuck?.taskIds ?? []);
   const entry = (task: FixtureTask) => taskEntry(task, attention);
 
-  const listed = blocking ? tasks.filter((task) => blockingIds.has(task.id)) : tasks;
+  const listed = query.blocking
+    ? tasks.filter((task) => blockingIds.has(task.id))
+    : query.group
+      ? tasks.filter((task) => task.group === query.group)
+      : tasks;
+  const counts = { matched: listed.length, total: tasks.length };
 
   return {
     specId: SPEC,
@@ -544,15 +553,11 @@ export function controlCenterTaskList(
     })),
     progress: progressOf(tasks),
     attention: [...attention],
-    ...(blocking
-      ? {
-          filter: {
-            blocking: 'specification' as const,
-            matched: listed.length,
-            total: tasks.length,
-          },
-        }
-      : {}),
+    ...(query.blocking
+      ? { filter: { blocking: 'specification' as const, ...counts } }
+      : query.group
+        ? { filter: { group: query.group, ...counts } }
+        : {}),
   };
 }
 

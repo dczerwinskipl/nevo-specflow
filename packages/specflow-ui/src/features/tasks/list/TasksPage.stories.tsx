@@ -141,7 +141,7 @@ function TasksPageStory({
           blocking={false}
           fullTaskHref={(taskId) => `/specs/sso/tasks/${taskId}`}
           onOpenTask={() => undefined}
-          onClearBlocking={() => undefined}
+          onClearFilter={() => undefined}
           onNewTask={() => undefined}
           specificationTitle="SSO sign-in"
         />

@@ -1958,7 +1958,32 @@
       "notEnabled": "Wyłączony na tym komputerze",
       "notEnabledHelp": "Aby go włączyć, usuń {{key}}.enabled: false z .nevo/local/config.yaml, a następnie uruchom ponownie Nevo SpecFlow.",
       "notReady": "Niezainstalowany lub niegotowy",
-      "notReadyHelp": "Sprawdź, czy CLI dostawcy jest zainstalowane i działa na tym komputerze. Jeśli jest zainstalowane w innym miejscu, ustaw jego ścieżkę jako {{key}}.executable w .nevo/local/config.yaml."
+      "notReadyHelp": "Sprawdź, czy CLI dostawcy jest zainstalowane i działa na tym komputerze. Jeśli jest zainstalowane w innym miejscu, ustaw jego ścieżkę jako {{key}}.executable w .nevo/local/config.yaml.",
+      "notFound": "Nie znaleziono CLI",
+      "notFoundHelp": "Sprawdzono: {{checked}}. Zainstaluj CLI i sprawdź dostępność ponownie albo ustaw jego ścieżkę jako {{key}}.executable w .nevo/local/config.yaml i uruchom ponownie Nevo SpecFlow.",
+      "notFoundConfiguredHelp": "Pod ścieżką {{path}} nie ma pliku, który można uruchomić. Popraw {{key}}.executable w .nevo/local/config.yaml albo usuń to ustawienie, aby CLI było wyszukiwane w PATH i w miejscach instalacji, a następnie uruchom ponownie Nevo SpecFlow.",
+      "notWorking": "Znaleziono CLI, ale nie działa",
+      "notWorkingHelp": "{{detail}} Zainstaluj ponownie lub zaktualizuj CLI i sprawdź dostępność ponownie albo ustaw w {{key}}.executable w .nevo/local/config.yaml działające CLI i uruchom ponownie Nevo SpecFlow.",
+      "versionUnsupported": "Nieobsługiwana wersja CLI",
+      "versionUnsupportedHelp": "{{detail}} Zainstaluj obsługiwaną wersję i sprawdź dostępność ponownie albo wskaż ją w {{key}}.executable w .nevo/local/config.yaml i uruchom ponownie Nevo SpecFlow.",
+      "setupUnsupported": "Nieobsługiwana konfiguracja",
+      "setupUnsupportedHelp": "{{detail}} Nevo SpecFlow uruchamia CLI tylko z jego domyślnym logowaniem i bez zasad zarządzanych na komputerze. Strona dostawcy w docs/reference/providers wymienia, czego nie może być.",
+      "protocolUnsupported": "Nieobsługiwany protokół",
+      "protocolUnsupportedHelp": "{{detail}} Ta wersja CLI odpowiada protokołem, którego Nevo SpecFlow nie obsługuje. Zaktualizuj CLI lub przywróć obsługiwaną wersję (docs/reference/providers/compatibility.md), a następnie sprawdź dostępność ponownie.",
+      "knownIncompatible": "Znana niezgodna wersja",
+      "knownIncompatibleHelp": "{{detail}} Ta wersja jest zapisana jako niezgodna (docs/reference/providers/compatibility.md). Zainstaluj inną wersję i sprawdź dostępność ponownie albo wskaż ją w {{key}}.executable w .nevo/local/config.yaml i uruchom ponownie Nevo SpecFlow.",
+      "restrictionUnsupported": "Ograniczenia nie zostały zastosowane",
+      "restrictionUnsupportedHelp": "{{detail}} CLI uruchomiło się bez narzędzi, trybu uprawnień lub pustego zestawu MCP i wtyczek, których wymaga Nevo SpecFlow. Zwykle następuje to po aktualizacji CLI: zaktualizuj je lub przywróć obsługiwaną wersję (docs/reference/providers/compatibility.md), a następnie sprawdź dostępność ponownie.",
+      "settlementUnverified": "Proces sprawdzania się nie zakończył",
+      "settlementUnverifiedHelp": "{{detail}} Proces dostawcy uruchomiony przy sprawdzaniu dostępności może nadal działać. Poczekaj, aż się zakończy, albo zakończ go w Menedżerze zadań, a następnie sprawdź dostępność ponownie.",
+      "probeFailed": "Nie przeszedł sprawdzenia przy starcie",
+      "probeFailedHelp": "{{detail}} Sprawdź, czy CLI uruchamia się i działa w terminalu, a następnie sprawdź dostępność ponownie.",
+      "signInHelp": "Uruchom {{command}} w terminalu i zaloguj się, a następnie sprawdź dostępność ponownie. Wiadomości nie zostaną ponowione automatycznie.",
+      "executable": {
+        "configured": "Skonfigurowano: {{path}}",
+        "path": "Znaleziono w PATH: {{path}}",
+        "discovered": "Z {{location}}: {{path}}"
+      }
     },
     "forbiddenSpecification": "Nie możesz rozpoczynać sesji w tej specyfikacji.",
     "sessionsDisabled": "Sesje są wyłączone w tym projekcie."

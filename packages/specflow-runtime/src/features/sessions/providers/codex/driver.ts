@@ -6,7 +6,17 @@ import { createInvocationScope, launchOwnedProcess } from '../process';
 import {
   classifyProviderInstallation,
   compatibilityForExecution,
+  executableCompatibility,
 } from '../compatibility/catalogue';
+import {
+  createExecutableLocator,
+  executableFields,
+  withExecutableFields,
+  type ExecutableResolution,
+} from '../executable';
+import { projectProviderEnvironment } from '../process';
+import { installationUnavailable, ProviderUnavailableError } from '../unavailable';
+import { codexExecutable } from './executable';
 import { admitProvider } from '../compatibility/admission';
 import { inspectCodexInstallation, codexArguments } from './installation';
 import { probeCodex } from './probe';
@@ -30,9 +40,25 @@ export function createCodexDriver(
     readLimits?: typeof readCodexLimits;
   } = {},
 ): SessionDriver {
+  const locator = createExecutableLocator(codexExecutable, {
+    ...(options.executable !== undefined ? { configured: options.executable } : {}),
+    environment: projectProviderEnvironment({ host: process.env, inherit: ['PROGRAMDATA'] }),
+    workspace: options.workspace,
+    ...executableCompatibility('codex'),
+  });
+  /** The executable the last inspection ran; kept on the descriptor when a later check fails. */
+  let resolution: ExecutableResolution | undefined;
   const inspect =
     dependencies.inspect ??
-    ((signal: AbortSignal) => inspectCodexInstallation({ ...options, signal }));
+    (async (signal: AbortSignal) => {
+      resolution = undefined;
+      const found = await locator.resolve(signal);
+      resolution = found;
+
+      return inspectCodexInstallation({ ...options, executable: found.path, signal }).catch(
+        installationUnavailable,
+      );
+    });
   const probe = dependencies.probe ?? probeCodex;
   let descriptor: ProviderDescriptor = {
     providerId: 'codex',
@@ -71,16 +97,22 @@ export function createCodexDriver(
     scope = '';
     const incompatible = error instanceof CodexRpcError && error.kind === 'protocol';
     descriptor = {
-      ...descriptor,
+      ...withExecutableFields(descriptor, executableFields(codexExecutable, resolution, error)),
       models: [],
       readiness: authRequired ? 'authenticationRequired' : 'unavailable',
       reasonCode: authRequired
         ? 'AUTHENTICATION_REQUIRED'
-        : incompatible
-          ? 'PROTOCOL_UNSUPPORTED'
-          : 'PROBE_FAILED',
+        : error instanceof ProviderUnavailableError
+          ? error.reasonCode
+          : incompatible
+            ? 'PROTOCOL_UNSUPPORTED'
+            : 'PROBE_FAILED',
       reason:
-        error instanceof SessionError ? error.message : 'Codex availability must be rechecked.',
+        error instanceof SessionError
+          ? error.message
+          : incompatible
+            ? 'Codex app-server answered outside the implemented protocol.'
+            : 'Codex availability must be rechecked.',
     };
     delete descriptor.compatibility;
     if (incompatible) {
@@ -124,7 +156,7 @@ export function createCodexDriver(
             providerId: 'codex',
           });
           if (compatibility.classification === 'unsupported') {
-            throw new SessionError('PROVIDER_UNAVAILABLE', compatibility.reason);
+            throw new ProviderUnavailableError('KNOWN_INCOMPATIBILITY', compatibility.reason);
           }
 
           const result = await probe({
@@ -172,7 +204,7 @@ export function createCodexDriver(
             };
           });
           descriptor = {
-            ...descriptor,
+            ...withExecutableFields(descriptor, executableFields(codexExecutable, resolution)),
             models: result.models,
             providerModes: modes,
             defaultModeId: options.managedWrites ? 'default' : 'plan',

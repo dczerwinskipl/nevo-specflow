@@ -45,7 +45,8 @@ sessions:
   providers:
     claude:
       # enabled by default once allowed; `enabled: false` turns it off on this machine
-      # optional absolute native executable; default ~/.local/bin/claude.exe
+      # optional absolute native executable; default: discovered on PATH, then the native
+      # installer's ~/.local/bin/claude.exe and the npm global package
       executable: C:/Users/example/.local/bin/claude.exe
 ```
 

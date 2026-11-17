@@ -46,7 +46,8 @@ sessions:
   providers:
     antigravity:
       # enabled by default once allowed; `enabled: false` turns it off on this machine
-      # optional absolute native executable; default %LOCALAPPDATA%/agy/bin/agy.exe
+      # optional absolute native executable; default: discovered on PATH, then
+      # %LOCALAPPDATA%/agy/bin/agy.exe
       executable: C:/Users/example/AppData/Local/agy/bin/agy.exe
 ```
 

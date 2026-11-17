@@ -10412,6 +10412,24 @@
                               {
                                 "type": "string",
                                 "enum": [
+                                  "EXECUTABLE_NOT_FOUND"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "EXECUTABLE_NOT_WORKING"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "VERSION_UNSUPPORTED"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
                                   "INSTALLATION_UNAVAILABLE"
                                 ]
                               },
@@ -10470,6 +10488,104 @@
                                 ]
                               }
                             ]
+                          },
+                          "executable": {
+                            "type": "object",
+                            "required": [
+                              "path",
+                              "source"
+                            ],
+                            "properties": {
+                              "path": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1024
+                              },
+                              "source": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "configured"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "path"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "discovered"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "location": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128
+                              },
+                              "version": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          "checkedLocations": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": [
+                                "source",
+                                "path"
+                              ],
+                              "properties": {
+                                "source": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "configured"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "path"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "discovered"
+                                      ]
+                                    }
+                                  ]
+                                },
+                                "path": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 1024
+                                },
+                                "location": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 128
+                                }
+                              },
+                              "additionalProperties": false
+                            },
+                            "maxItems": 32
+                          },
+                          "signInCommand": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1100
                           },
                           "compatibility": {
                             "type": "object",

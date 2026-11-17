@@ -7,7 +7,16 @@ import { ProviderTitles } from '../titles';
 import { ProviderTimeouts, type Invocation, type SessionDriver } from '../driver';
 import { createInvocationScope, launchOwnedProcess } from '../process';
 import { createProviderAuthentication } from '../authentication';
-import { classifyProviderInstallation } from '../compatibility/catalogue';
+import { classifyProviderInstallation, executableCompatibility } from '../compatibility/catalogue';
+import {
+  createExecutableLocator,
+  executableFields,
+  withExecutableFields,
+  type ExecutableResolution,
+} from '../executable';
+import { projectProviderEnvironment } from '../process';
+import { installationUnavailable, ProviderUnavailableError } from '../unavailable';
+import { antigravityExecutable } from './executable';
 import { admitProvider } from '../compatibility/admission';
 import { antigravityArguments, antigravityMode, antigravityModes } from './discovery';
 import {
@@ -40,9 +49,29 @@ export function createAntigravityDriver(
     helper?: string;
   } = {},
 ): SessionDriver {
+  const locator = createExecutableLocator(antigravityExecutable, {
+    ...(options.executable !== undefined ? { configured: options.executable } : {}),
+    // The version check runs with the user's own profile, so it must not start an update.
+    environment: projectProviderEnvironment({
+      host: process.env,
+      configured: { NO_COLOR: '1', AGY_CLI_DISABLE_AUTO_UPDATE: 'true' },
+    }),
+    workspace: options.workspace,
+    ...executableCompatibility('antigravity'),
+  });
+  /** The executable the last inspection ran; kept on the descriptor when a later check fails. */
+  let resolution: ExecutableResolution | undefined;
   const inspect =
     dependencies.inspect ??
-    ((signal: AbortSignal) => inspectAntigravityInstallation({ ...options, signal }));
+    (async (signal: AbortSignal) => {
+      resolution = undefined;
+      const found = await locator.resolve(signal);
+      resolution = found;
+
+      return inspectAntigravityInstallation({ ...options, executable: found.path, signal }).catch(
+        installationUnavailable,
+      );
+    });
   const probe = dependencies.probe ?? probeAntigravity;
   const launch = dependencies.launch ?? launchOwnedProcess;
   const authentication = createProviderAuthentication();
@@ -75,13 +104,26 @@ export function createAntigravityDriver(
     checkedAt = 0;
     scope = '';
     descriptor = {
-      ...descriptor,
+      ...withExecutableFields(
+        descriptor,
+        executableFields(antigravityExecutable, resolution, error),
+      ),
       models: [],
       readiness: authRequired ? 'authenticationRequired' : 'unavailable',
-      reasonCode: authRequired ? 'AUTHENTICATION_REQUIRED' : 'PROBE_FAILED',
+      reasonCode: authRequired
+        ? 'AUTHENTICATION_REQUIRED'
+        : error instanceof ProviderUnavailableError
+          ? error.reasonCode
+          : error instanceof AntigravityProtocolError
+            ? 'PROTOCOL_UNSUPPORTED'
+            : 'PROBE_FAILED',
       reason: authRequired
         ? 'Sign in using the Antigravity CLI, then recheck availability.'
-        : 'Antigravity availability must be rechecked.',
+        : error instanceof ProviderUnavailableError
+          ? error.message
+          : error instanceof AntigravityProtocolError
+            ? 'Antigravity answered outside the implemented protocol.'
+            : 'Antigravity availability must be rechecked.',
     };
     delete descriptor.compatibility;
   }
@@ -133,7 +175,7 @@ export function createAntigravityDriver(
           providerId: 'antigravity',
         });
         if (compatibility.classification === 'unsupported') {
-          throw new SessionError('PROVIDER_UNAVAILABLE', compatibility.reason);
+          throw new ProviderUnavailableError('KNOWN_INCOMPATIBILITY', compatibility.reason);
         }
 
         // Discovery never rewrites another invocation's MCP or hook configuration.
@@ -176,7 +218,7 @@ export function createAntigravityDriver(
           managedEffectsAvailable: options.managedWrites,
         });
         descriptor = {
-          ...descriptor,
+          ...withExecutableFields(descriptor, executableFields(antigravityExecutable, resolution)),
           models: result.models,
           readiness: admission.allowed ? 'ready' : 'unavailable',
           defaultModeId: 'accept-edits',

@@ -720,7 +720,8 @@ Runtime's checkout is `readiness: 'unavailable'` with `reasonCode`
 its own words.
 
 ProviderDescriptor = {providerId, title, readiness:'ready'|'unavailable'|'authenticationRequired'|
-'unknown', reason?:string, reasonCode?:string, compatibility?:{classification:'tested'|'provisional'|'unsupported',protocolProfile,version?}, capabilities:{questions,permissions,cancel,resume,modelOverride,effortOverride},
+'unknown', reason?:string, reasonCode?:string, executable?:{path,source:'configured'|'path'|'discovered',location?,version?},
+checkedLocations?:[{source,path,location?}], signInCommand?:string, compatibility?:{classification:'tested'|'provisional'|'unsupported',protocolProfile,version?}, capabilities:{questions,permissions,cancel,resume,modelOverride,effortOverride},
 models:[{modelId,title,efforts:string[]}], modes:('read-only'|'workspace-write')[]}.
 Catalogue response is <=128 KiB; <=32 providers, <=100 models each, <=16 efforts per model,
 titles/reasons <=512 bytes. Cap by total bytes as well; oversized provider catalogue is explicit
@@ -736,6 +737,12 @@ only reason: read for a Specification in its own worktree it is not marked
 `SPECIFICATION_WORKTREE_UNSUPPORTED`, which applies only to enabled providers. While the project
 disables Sessions the catalogue answers `SESSION_DISABLED`, whatever the local file says, and the
 demo Runtime serves its own catalogue regardless of either file. The mock identifies itself as a test;
+An enabled provider that cannot start carries a readiness `reasonCode`: `EXECUTABLE_NOT_FOUND` (with
+`checkedLocations`), `EXECUTABLE_NOT_WORKING`, `VERSION_UNSUPPORTED`, `INSTALLATION_UNAVAILABLE`,
+`AUTHENTICATION_REQUIRED` (with `signInCommand`), `PROTOCOL_UNSUPPORTED`, `KNOWN_INCOMPATIBILITY`,
+`RESTRICTION_UNSUPPORTED`, `PROCESS_SETTLEMENT_UNVERIFIED` or `PROBE_FAILED`; `executable` says which
+executable the Runtime resolved and how it found it
+([executable discovery](../providers/executable-discovery.md)).
 Claude discovers native model/effort metadata and reports unavailable when its installation/auth/policy
 fails the supported authentication/policy or protocol checks. Unlisted compatible versions run
 Provisional; a missing catalogue entry or unknown hash is not a refusal reason. Each Session is dispatched through its own selected provider;

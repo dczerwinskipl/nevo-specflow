@@ -26,11 +26,11 @@ describe('startCatalogueFromProviders', () => {
     expect(startCatalogueFromProviders([]).demo).toBe(false);
   });
 
-  it('gives the reason of an unavailable provider, else the sign-in text for authentication', () => {
+  it('gives the Runtime reason of an unavailable provider as the detail of what to do, else the sign-in text', () => {
     expect(
       only(providerDescriptor({ providerId: 'p', readiness: 'unavailable', reason: ' No CLI ' }))
-        .reason,
-    ).toBe('No CLI');
+        .hint,
+    ).toMatchObject({ values: { detail: 'No CLI' } });
     expect(
       only(providerDescriptor({ providerId: 'p', readiness: 'authenticationRequired' })).reason,
     ).toEqual({ key: 'managedSession.authenticationRequired' });
@@ -93,25 +93,131 @@ describe('startCatalogueFromProviders', () => {
     expect(provider.reason).toEqual({ key: 'sessionStart.provider.notEnabled' });
   });
 
-  it('tells how to install or locate a provider that is enabled but not ready', () => {
+  it('lists where it looked for a CLI it did not find, and what to set', () => {
+    const provider = only(
+      providerDescriptor({
+        providerId: 'codex',
+        readiness: 'unavailable',
+        reasonCode: 'EXECUTABLE_NOT_FOUND',
+        reason: 'No Codex CLI was found.',
+        checkedLocations: [
+          { source: 'path', path: 'codex.exe, codex.cmd, codex.bat' },
+          {
+            source: 'discovered',
+            path: 'C:\\Users\\dev\\AppData\\Local\\OpenAI\\Codex\\bin\\*\\codex.exe',
+            location: 'Codex desktop app',
+          },
+        ],
+      }),
+    );
+    expect(provider).toMatchObject({
+      reason: { key: 'sessionStart.provider.notFound' },
+      hint: {
+        key: 'sessionStart.provider.notFoundHelp',
+        values: {
+          key: 'sessions.providers.codex',
+          checked:
+            'PATH (codex.exe, codex.cmd, codex.bat); C:\\Users\\dev\\AppData\\Local\\OpenAI\\Codex\\bin\\*\\codex.exe',
+        },
+      },
+    });
+
+    const configured = only(
+      providerDescriptor({
+        providerId: 'codex',
+        readiness: 'unavailable',
+        reasonCode: 'EXECUTABLE_NOT_FOUND',
+        checkedLocations: [{ source: 'configured', path: 'E:\\codex.exe' }],
+      }),
+    );
+    expect(configured.hint).toEqual({
+      key: 'sessionStart.provider.notFoundConfiguredHelp',
+      values: { key: 'sessions.providers.codex', path: 'E:\\codex.exe' },
+    });
+  });
+
+  it.each([
+    ['EXECUTABLE_NOT_WORKING', 'notWorking'],
+    ['VERSION_UNSUPPORTED', 'versionUnsupported'],
+    ['INSTALLATION_UNAVAILABLE', 'setupUnsupported'],
+    ['PROTOCOL_UNSUPPORTED', 'protocolUnsupported'],
+    ['KNOWN_INCOMPATIBILITY', 'knownIncompatible'],
+    ['RESTRICTION_UNSUPPORTED', 'restrictionUnsupported'],
+    ['PROCESS_SETTLEMENT_UNVERIFIED', 'settlementUnverified'],
+    ['PROBE_FAILED', 'probeFailed'],
+  ] as const)('says what %s means and what to do, with the Runtime detail', (code, key) => {
     const provider = only(
       providerDescriptor({
         providerId: 'claude',
         readiness: 'unavailable',
-        reasonCode: 'INSTALLATION_UNAVAILABLE',
-        reason: 'Claude Code was not found.',
+        reasonCode: code,
+        reason: ' Runtime detail. ',
       }),
     );
     expect(provider).toMatchObject({
-      reason: 'Claude Code was not found.',
+      reason: { key: `sessionStart.provider.${key}` },
       hint: {
-        key: 'sessionStart.provider.notReadyHelp',
-        values: { key: 'sessions.providers.claude' },
+        key: `sessionStart.provider.${key}Help`,
+        values: { key: 'sessions.providers.claude', detail: 'Runtime detail.' },
       },
     });
+  });
+
+  it('falls back to the generic not-ready text when the Runtime gives no reason', () => {
     expect(
-      only(providerDescriptor({ providerId: 'claude', readiness: 'unavailable' })).reason,
-    ).toEqual({ key: 'sessionStart.provider.notReady' });
+      only(providerDescriptor({ providerId: 'claude', readiness: 'unavailable' })),
+    ).toMatchObject({
+      reason: { key: 'sessionStart.provider.notReady' },
+      hint: { key: 'sessionStart.provider.notReadyHelp' },
+    });
+  });
+
+  it('gives the provider sign-in command when sign-in is required', () => {
+    expect(
+      only(
+        providerDescriptor({
+          providerId: 'codex',
+          readiness: 'authenticationRequired',
+          signInCommand: 'codex login',
+        }),
+      ).hint,
+    ).toEqual({ key: 'sessionStart.provider.signInHelp', values: { command: 'codex login' } });
+  });
+
+  it('shows how the executable was found unless the reason already names it', () => {
+    const path = 'C:\\Users\\dev\\AppData\\Local\\OpenAI\\Codex\\bin\\5449\\codex.exe';
+    const executable = {
+      path,
+      source: 'discovered' as const,
+      location: 'Codex desktop app',
+      version: '0.167.0',
+    };
+    expect(only(providerDescriptor({ providerId: 'codex', executable })).executable).toEqual({
+      key: 'sessionStart.provider.executable.discovered',
+      values: { path, location: 'Codex desktop app' },
+    });
+    expect(
+      only(
+        providerDescriptor({
+          providerId: 'codex',
+          executable: { path: 'C:\\tools\\codex.exe', source: 'path' },
+        }),
+      ).executable,
+    ).toEqual({
+      key: 'sessionStart.provider.executable.path',
+      values: { path: 'C:\\tools\\codex.exe' },
+    });
+    expect(
+      only(
+        providerDescriptor({
+          providerId: 'codex',
+          readiness: 'unavailable',
+          reasonCode: 'EXECUTABLE_NOT_WORKING',
+          reason: `Codex at ${path} did not answer.`,
+          executable,
+        }),
+      ).executable,
+    ).toBeUndefined();
   });
 
   it('keeps the provider modes with their availability: ready, authorized and offered', () => {
@@ -253,7 +359,7 @@ describe('startCatalogueFromProviders', () => {
         }),
       );
       expect(provider.available).toBe(false);
-      expect(provider.reason).toBe('No CLI');
+      expect(provider.reason).toEqual({ key: 'sessionStart.provider.probeFailed' });
     });
   });
 

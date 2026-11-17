@@ -1,5 +1,5 @@
 import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
-import { message } from '../../../../i18n/message';
+import { message, type Message } from '../../../../i18n/message';
 import type { StartCatalogue, StartMode, StartProvider } from './startCatalogue';
 
 const safetyModeTitles = {
@@ -61,13 +61,111 @@ function configurationPolicy(provider: ProviderDescriptor) {
   return undefined;
 }
 
-/** Enabled here, but its CLI is missing or did not answer: installing or locating it helps. */
-const notReady = (provider: ProviderDescriptor) =>
-  provider.readiness === 'unavailable' &&
-  provider.providerId !== 'mock' &&
-  (provider.reasonCode === undefined ||
-    provider.reasonCode === 'INSTALLATION_UNAVAILABLE' ||
-    provider.reasonCode === 'PROBE_FAILED');
+const checkedLocation = (
+  location: NonNullable<ProviderDescriptor['checkedLocations']>[number],
+): string => (location.source === 'path' ? `PATH (${location.path})` : location.path);
+
+/**
+ * Why an enabled provider cannot start, from its reason code: a short status for the tile and what
+ * the user can do, with the Runtime's own account of what it found (`reason`) as the detail.
+ */
+function readinessExplanation(
+  provider: ProviderDescriptor,
+  detail: string | undefined,
+): { reason: Message; hint: Message } | undefined {
+  if (provider.readiness === 'authenticationRequired') {
+    return {
+      reason: message('managedSession.authenticationRequired'),
+      hint: provider.signInCommand
+        ? message('sessionStart.provider.signInHelp', { command: provider.signInCommand })
+        : message('managedSession.authenticationHelp'),
+    };
+  }
+
+  if (provider.readiness !== 'unavailable' || provider.providerId === 'mock') {
+    return undefined;
+  }
+
+  const key = configKey(provider);
+  const explained = (name: ExplainedReason, values: Record<string, string> = {}) => ({
+    reason: message(`sessionStart.provider.${name}`),
+    hint: message(`sessionStart.provider.${name}Help`, { key, detail: detail ?? '', ...values }),
+  });
+  switch (provider.reasonCode) {
+    case 'EXECUTABLE_NOT_FOUND': {
+      const checked = provider.checkedLocations ?? [];
+      const configured = checked.find((location) => location.source === 'configured');
+
+      return configured
+        ? {
+            reason: message('sessionStart.provider.notFound'),
+            hint: message('sessionStart.provider.notFoundConfiguredHelp', {
+              key,
+              path: configured.path,
+            }),
+          }
+        : explained('notFound', { checked: checked.map(checkedLocation).join('; ') });
+    }
+
+    case 'EXECUTABLE_NOT_WORKING':
+      return explained('notWorking');
+    case 'VERSION_UNSUPPORTED':
+      return explained('versionUnsupported');
+    case 'INSTALLATION_UNAVAILABLE':
+      return explained('setupUnsupported');
+    case 'PROTOCOL_UNSUPPORTED':
+      return explained('protocolUnsupported');
+    case 'KNOWN_INCOMPATIBILITY':
+      return explained('knownIncompatible');
+    case 'RESTRICTION_UNSUPPORTED':
+      return explained('restrictionUnsupported');
+    case 'PROCESS_SETTLEMENT_UNVERIFIED':
+      return explained('settlementUnverified');
+    case 'PROBE_FAILED':
+    case undefined:
+      return detail
+        ? explained('probeFailed')
+        : {
+            reason: message('sessionStart.provider.notReady'),
+            hint: message('sessionStart.provider.notReadyHelp', { key }),
+          };
+    default:
+      return undefined;
+  }
+}
+
+type ExplainedReason =
+  | 'notFound'
+  | 'notWorking'
+  | 'versionUnsupported'
+  | 'setupUnsupported'
+  | 'protocolUnsupported'
+  | 'knownIncompatible'
+  | 'restrictionUnsupported'
+  | 'settlementUnverified'
+  | 'probeFailed';
+
+/** How the Runtime found the executable it runs, unless the Runtime's reason already names it. */
+function executableLine(provider: ProviderDescriptor, detail: string | undefined) {
+  const executable = provider.executable;
+  if (!executable || detail?.includes(executable.path)) {
+    return undefined;
+  }
+
+  if (executable.source === 'discovered' && executable.location) {
+    return message('sessionStart.provider.executable.discovered', {
+      path: executable.path,
+      location: executable.location,
+    });
+  }
+
+  return message(
+    executable.source === 'configured'
+      ? 'sessionStart.provider.executable.configured'
+      : 'sessionStart.provider.executable.path',
+    { path: executable.path },
+  );
+}
 
 function startProvider(provider: ProviderDescriptor): StartProvider {
   const modes = startModes(provider);
@@ -90,26 +188,16 @@ function startProvider(provider: ProviderDescriptor): StartProvider {
   // explains what, why and what to do once for every such provider.
   const worktreeUnsupported = provider.reasonCode === 'SPECIFICATION_WORKTREE_UNSUPPORTED';
   const policy = configurationPolicy(provider);
+  const explanation = policy ? undefined : readinessExplanation(provider, given);
   const reason = worktreeUnsupported
     ? message('sessionStart.provider.worktreeUnsupported')
     : (policy?.reason ??
       noMode ??
+      explanation?.reason ??
       given ??
-      (provider.readiness === 'authenticationRequired'
-        ? message('managedSession.authenticationRequired')
-        : provider.providerId === 'mock'
-          ? message('managedSession.mockNote')
-          : notReady(provider)
-            ? message('sessionStart.provider.notReady')
-            : undefined));
-  const hint = worktreeUnsupported
-    ? undefined
-    : (policy?.hint ??
-      (provider.readiness === 'authenticationRequired'
-        ? message('managedSession.authenticationHelp')
-        : notReady(provider)
-          ? message('sessionStart.provider.notReadyHelp', { key: configKey(provider) })
-          : undefined));
+      (provider.providerId === 'mock' ? message('managedSession.mockNote') : undefined));
+  const hint = worktreeUnsupported ? undefined : (policy?.hint ?? explanation?.hint);
+  const executable = executableLine(provider, given);
 
   return {
     id: provider.providerId,
@@ -118,6 +206,7 @@ function startProvider(provider: ProviderDescriptor): StartProvider {
     available: startable,
     ...(reason ? { reason } : {}),
     ...(hint ? { hint } : {}),
+    ...(executable ? { executable } : {}),
     ...(worktreeUnsupported ? { unavailableInWorktree: true } : {}),
     // A provider that does not accept a model (or an effort) override has nothing to choose: the
     // Session starts at its default.

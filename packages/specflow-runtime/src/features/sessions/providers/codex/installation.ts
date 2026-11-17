@@ -1,6 +1,6 @@
 import { createReadStream } from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
-import { delimiter, isAbsolute, join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 import type { Invocation } from '../driver';
 import { SessionError } from '../../errors';
 import {
@@ -143,8 +143,9 @@ async function preflight(options: {
   }
 }
 
+/** `executable` is the one executable discovery resolved and verified (`codexExecutable`). */
 export async function inspectCodexInstallation(options: {
-  executable?: string;
+  executable: string;
   workspace: string;
   homeRoot: string;
   temporaryRoot: string;
@@ -187,21 +188,8 @@ export async function inspectCodexInstallation(options: {
   }
 
   try {
-    let executable = options.executable;
-    if (!executable) {
-      for (const path of (base.values.PATH ?? '').split(delimiter)) {
-        const candidate = join(path.replace(/^"|"$/g, ''), 'codex.exe');
-        try {
-          await regularCodexFile(candidate, 512 * 1024 * 1024);
-          executable = candidate;
-          break;
-        } catch {
-          /* Continue native executable discovery. */
-        }
-      }
-    }
-
-    if (!executable || !isAbsolute(executable)) {
+    const executable = options.executable;
+    if (!isAbsolute(executable)) {
       unavailable();
     }
 

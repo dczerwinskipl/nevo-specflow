@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { SessionError } from '../../errors';
 import { createCodexDriver } from './driver';
 import { codexArguments } from './installation';
+import { ProviderUnavailableError } from '../unavailable';
 
 function fixture(options: { write?: boolean; managed?: boolean; modes?: string[] } = {}) {
   let fingerprint = 'a'.repeat(64);
@@ -132,6 +133,41 @@ it('admits an unpinned future version provisionally with native Agent as its def
   f.update();
   await f.driver.validate({ providerId: 'codex', mode: 'workspace-write' });
   expect(f.probe).toHaveBeenCalledTimes(2);
+});
+it('lists a missing CLI as not found with the places discovery checked', async () => {
+  const f = fixture();
+  const checkedLocations = [
+    { source: 'path' as const, path: 'codex.exe, codex.cmd, codex.bat' },
+    {
+      source: 'discovered' as const,
+      path: 'C:\\Users\\dev\\AppData\\Local\\OpenAI\\Codex\\bin\\*\\codex.exe',
+      location: 'Codex desktop app',
+    },
+  ];
+  f.inspect.mockRejectedValue(
+    new ProviderUnavailableError('EXECUTABLE_NOT_FOUND', 'No Codex CLI was found.', {
+      checkedLocations,
+    }),
+  );
+
+  expect(await f.driver.refresh!(signal())).toMatchObject({
+    readiness: 'unavailable',
+    reasonCode: 'EXECUTABLE_NOT_FOUND',
+    reason: 'No Codex CLI was found.',
+    checkedLocations,
+    signInCommand: 'codex login',
+  });
+});
+it('keeps an unverifiable probe settlement as its own reason', async () => {
+  const f = fixture();
+  f.probe.mockRejectedValue(
+    new ProviderUnavailableError('PROCESS_SETTLEMENT_UNVERIFIED', 'Settlement is unknown.'),
+  );
+
+  expect(await f.driver.refresh!(signal())).toMatchObject({
+    readiness: 'unavailable',
+    reasonCode: 'PROCESS_SETTLEMENT_UNVERIFIED',
+  });
 });
 it.each([{ write: false }, { managed: false }, { modes: ['plan'] }])(
   'refuses an unavailable writer without substituting Plan: %j',

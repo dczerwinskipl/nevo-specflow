@@ -126,6 +126,12 @@ export const SessionErrorSchema = Type.Object(
   },
   { ...closed, $id: 'SessionError' },
 );
+/** How a provider executable was found: the local `executable` setting, PATH, or an install location. */
+export const ExecutableSourceSchema = Type.Union([
+  Type.Literal('configured'),
+  Type.Literal('path'),
+  Type.Literal('discovered'),
+]);
 export const ProviderDescriptorSchema = Type.Object(
   {
     providerId: choice(128),
@@ -139,11 +145,19 @@ export const ProviderDescriptorSchema = Type.Object(
     reason: Type.Optional(Type.String({ maxLength: 512 })),
     reasonCode: Type.Optional(
       Type.Union([
+        /** No verified executable in the configured path, on PATH or in the provider's install locations. */
+        Type.Literal('EXECUTABLE_NOT_FOUND'),
+        /** An executable was found but its version command failed or did not answer in time. */
+        Type.Literal('EXECUTABLE_NOT_WORKING'),
+        /** The found executable's version is outside the range the adapter supports. */
+        Type.Literal('VERSION_UNSUPPORTED'),
+        /** A working executable was found; its login source or machine-managed policy is not supported. */
         Type.Literal('INSTALLATION_UNAVAILABLE'),
         Type.Literal('AUTHENTICATION_REQUIRED'),
         Type.Literal('PROTOCOL_UNSUPPORTED'),
         Type.Literal('RESTRICTION_UNSUPPORTED'),
         Type.Literal('KNOWN_INCOMPATIBILITY'),
+        /** A verified executable failed the adapter's protocol probe (crash, timeout, refusal). */
         Type.Literal('PROBE_FAILED'),
         Type.Literal('PROCESS_SETTLEMENT_UNVERIFIED'),
         /**
@@ -157,6 +171,37 @@ export const ProviderDescriptorSchema = Type.Object(
         Type.Literal('NOT_ENABLED_ON_WORKSTATION'),
       ]),
     ),
+    /** The executable the Runtime resolved and verified, and how it was found. */
+    executable: Type.Optional(
+      Type.Object(
+        {
+          path: choice(1024),
+          source: ExecutableSourceSchema,
+          /** The provider-declared install location it was discovered in, for example "Codex desktop app". */
+          location: Type.Optional(choice(128)),
+          /** The version its own version command reported. */
+          version: Type.Optional(choice(128)),
+        },
+        closed,
+      ),
+    ),
+    /** With `EXECUTABLE_NOT_FOUND`: every place discovery looked, in order. */
+    checkedLocations: Type.Optional(
+      Type.Array(
+        Type.Object(
+          {
+            source: ExecutableSourceSchema,
+            /** The searched file names for `path`; an absolute path or pattern (`*`) otherwise. */
+            path: choice(1024),
+            location: Type.Optional(choice(128)),
+          },
+          closed,
+        ),
+        { maxItems: 32 },
+      ),
+    ),
+    /** The command that signs in to the provider's CLI, for `authenticationRequired`. */
+    signInCommand: Type.Optional(choice(1100)),
     compatibility: Type.Optional(
       Type.Object(
         {
@@ -236,6 +281,7 @@ export type CreateSession = Static<typeof CreateSessionSchema>;
 export type StartTurn = Static<typeof StartTurnSchema>;
 export type RespondInteraction = Static<typeof RespondInteractionSchema>;
 export type ProviderDescriptor = Static<typeof ProviderDescriptorSchema>;
+export type ExecutableSource = Static<typeof ExecutableSourceSchema>;
 export type CreateSessionResult = Static<typeof CreateSessionResultSchema>;
 export type StartTurnResult = Static<typeof StartTurnResultSchema>;
 export type CancelTurnResult = Static<typeof CancelTurnResultSchema>;

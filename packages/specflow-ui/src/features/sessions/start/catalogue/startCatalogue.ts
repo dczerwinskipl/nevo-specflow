@@ -37,6 +37,8 @@ export interface StartProvider {
   reason?: Message | string;
   /** What the user can do about an unavailable provider (for example sign in again). */
   hint?: Message | string;
+  /** The executable the Runtime runs and how it found it (configured, PATH or install location). */
+  executable?: Message;
   /**
    * Unavailable because it cannot work in the Specification's own worktree. The provider choice
    * explains this once, below the tiles, for every such provider.

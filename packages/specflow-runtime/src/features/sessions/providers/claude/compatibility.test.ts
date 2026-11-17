@@ -2,7 +2,8 @@ import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createClaudeDriver } from './driver';
-import { ClaudeProbeError, type probeClaude } from './probe';
+import type { probeClaude } from './probe';
+import { ProviderUnavailableError } from '../unavailable';
 import { bundledClaudeBuild } from '../compatibility/catalogue';
 import type { inspectClaudeInstallation } from './installation';
 import type { DriverFact } from '../../persistence/protocol';
@@ -55,7 +56,7 @@ it('discovers native writable modes independently and uses the native default mo
   const f = fixture(true);
   f.probe.mockImplementation((options) =>
     options.selection?.providerModeId === 'auto'
-      ? Promise.reject(new ClaudeProbeError('PROTOCOL_UNSUPPORTED', 'Unsupported mode.'))
+      ? Promise.reject(new ProviderUnavailableError('PROTOCOL_UNSUPPORTED', 'Unsupported mode.'))
       : Promise.resolve({
           models: [{ modelId: 'haiku', title: 'Haiku', efforts: [] }],
           version: '2.1.296',
@@ -201,7 +202,7 @@ it.each(['PROTOCOL_UNSUPPORTED', 'RESTRICTION_UNSUPPORTED'] as const)(
   'blocks an actually failed %s check with a structural reason',
   async (reasonCode) => {
     const f = fixture();
-    f.probe.mockRejectedValue(new ClaudeProbeError(reasonCode, 'Required check failed.'));
+    f.probe.mockRejectedValue(new ProviderUnavailableError(reasonCode, 'Required check failed.'));
     await expect(f.driver.validate({ providerId: 'claude', mode: 'read-only' })).rejects.toThrow();
     expect(f.driver.describe()).toMatchObject({
       readiness: 'unavailable',

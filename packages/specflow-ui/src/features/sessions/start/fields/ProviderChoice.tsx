@@ -76,7 +76,16 @@ export function ProviderChoice({
                 <span>{text(status.availability)}</span>
               )
             }
-            note={status.note ? text(status.note) : undefined}
+            note={
+              status.note || p.executable ? (
+                <>
+                  {status.note ? <span className="block">{text(status.note)}</span> : null}
+                  {p.executable ? (
+                    <span className="block break-all text-content-muted">{text(p.executable)}</span>
+                  ) : null}
+                </>
+              ) : undefined
+            }
           />
         );
       })}

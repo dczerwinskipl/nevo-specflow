@@ -1,5 +1,6 @@
 import { Type, type Static } from 'typebox';
 import { Value } from 'typebox/value';
+import type { VersionRange } from '../executable/version';
 
 const closed = { additionalProperties: false } as const;
 const label = Type.String({ minLength: 1, maxLength: 128 });
@@ -143,5 +144,39 @@ export function classifyProviderInstallation(
   return {
     classification: 'provisional',
     reason: 'Local protocol and execution checks are required.',
+  };
+}
+
+/**
+ * Known API introduction (`minimum`) or removal (`below`) boundaries per provider. None is
+ * established yet: an installed or tested version is never used as an arbitrary minimum.
+ */
+export const supportedProviderVersions: Readonly<Record<string, VersionRange>> = Object.freeze({});
+
+/**
+ * What executable discovery checks a candidate against: the provider's known version boundaries,
+ * and the known-incompatible builds the catalogue records (only then is a candidate hashed).
+ */
+export function executableCompatibility(
+  providerId: string,
+  trustedRecords: readonly ImmutableRecord[] = [bundledClaudeBuild],
+  versionBoundaries: Readonly<Record<string, VersionRange>> = supportedProviderVersions,
+): { versions?: VersionRange; knownIncompatible?: (build: { sha256: string }) => boolean } {
+  const versions = versionBoundaries[providerId];
+  const incompatible = trustedRecords.filter(
+    (record) =>
+      record.providerId === providerId &&
+      validCompatibilityRecord(record) &&
+      (record.revoked || record.classification === 'unsupported'),
+  );
+
+  return {
+    ...(versions ? { versions } : {}),
+    ...(incompatible.length
+      ? {
+          knownIncompatible: (build: { sha256: string }) =>
+            incompatible.some((record) => record.sha256 === build.sha256),
+        }
+      : {}),
   };
 }

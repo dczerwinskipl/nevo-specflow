@@ -2496,7 +2496,7 @@
         "cancel-task": "Anuluj zadanie",
         "restore-task": "Otwórz zadanie",
         "satisfy-gate": "Otwórz zadanie",
-        "resume-task": "Otwórz zadanie",
+        "resume-task": "Wznów",
         "start-step": "Rozpocznij krok",
         "return-to-step": "Wróć do wcześniejszego kroku"
       },
@@ -2507,6 +2507,7 @@
       "stuckTitle_other": "Rozwiąż {{count}} blokujących zadań",
       "stuckReason": "Zatwierdź, wznów lub anuluj je, aby specyfikacja mogła się zakończyć",
       "startFailed": "Nie udało się rozpocząć kroku. Otwórz zadanie, aby zobaczyć, co można zrobić teraz.",
+      "resumeFailed": "Nie udało się wznowić zadania. Otwórz zadanie, aby zobaczyć, co można zrobić teraz.",
       "startNamed": "Rozpocznij: {{step}}"
     },
     "summary": {
@@ -2575,8 +2576,8 @@
       "escalatedFeedback": "przekazane do decyzji w specyfikacji: {{feedback}}",
       "holdsUp": "wstrzymuje {{ids}}",
       "holdsUpMore": "wstrzymuje {{ids}} (+{{more}})",
-      "holdsFinish": "{{step}} nie może się zakończyć, dopóki zadanie jest wstrzymane",
-      "holdsFinishUnnamed": "krok nie może się zakończyć, dopóki zadanie jest wstrzymane",
+      "holdsFinish": "{{step}} nie może się zakończyć, dopóki to zadanie jest wstrzymane",
+      "holdsFinishUnnamed": "krok nie może się zakończyć, dopóki to zadanie jest wstrzymane",
       "waitingFor": "Czeka na {{ids}}"
     },
     "page": {
@@ -2591,7 +2592,9 @@
       "nothingBlocks": "Nic teraz nie blokuje specyfikacji",
       "clearBlocking": "Wyczyść filtr: blokujące specyfikację",
       "shown": "Widoczne: {{matched}} z {{total}}",
-      "noMatch": "Żadne zadanie nie pasuje do filtra."
+      "noMatch": "Żadne zadanie nie pasuje do filtra.",
+      "taskColumn": "Zadanie",
+      "statusColumn": "Status"
     }
   },
   "documentReading": {

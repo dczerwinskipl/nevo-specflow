@@ -2496,7 +2496,7 @@
         "cancel-task": "Cancel task",
         "restore-task": "Open task",
         "satisfy-gate": "Open task",
-        "resume-task": "Open task",
+        "resume-task": "Resume",
         "start-step": "Start step",
         "return-to-step": "Return to earlier step"
       },
@@ -2505,6 +2505,7 @@
       "stuckTitle_other": "Resolve {{count}} blocking tasks",
       "stuckReason": "Approve, resume or cancel them so the specification can finish",
       "startFailed": "The step could not be started. Open the task to see what you can do now.",
+      "resumeFailed": "The task could not be resumed. Open the task to see what you can do now.",
       "startNamed": "Start {{step}}",
       "stuckTitle_few": "Resolve {{count}} blocking tasks",
       "stuckTitle_many": "Resolve {{count}} blocking tasks"
@@ -2575,8 +2576,8 @@
       "escalatedFeedback": "escalated to the specification: {{feedback}}",
       "holdsUp": "holds up {{ids}}",
       "holdsUpMore": "holds up {{ids}} (+{{more}})",
-      "holdsFinish": "{{step}} cannot finish while it is on hold",
-      "holdsFinishUnnamed": "the step cannot finish while it is on hold",
+      "holdsFinish": "{{step}} cannot finish while this task is on hold",
+      "holdsFinishUnnamed": "the step cannot finish while this task is on hold",
       "waitingFor": "Waiting for {{ids}}"
     },
     "page": {
@@ -2590,6 +2591,8 @@
       "clearBlocking": "Clear filter: blocking specification",
       "shown": "{{matched}} of {{total}} shown",
       "noMatch": "No task matches the filter.",
+      "taskColumn": "Task",
+      "statusColumn": "Status",
       "blocking_few": "Blocking specification · {{count}} tasks",
       "blocking_many": "Blocking specification · {{count}} tasks"
     }

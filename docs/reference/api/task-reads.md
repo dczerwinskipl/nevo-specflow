@@ -234,7 +234,8 @@ Specification's Task inventory from one Engine read (`readExecution`, every Task
   with `id`, `name`, `summary` (`row` or `compact`: how the Overview summarizes it), `collapsed`
   (the Tasks page collapses it by default) and its rows. A row is `id`, `title`, `type`
   (`{id, title}`), `dependsOn`, `status` (the status line), `facts` (the neutral facts above) and
-  `blocksSpecification: {cause}` when the Specification's current `tasks-stuck` names it. A broken
+  `blocksSpecification: {cause}` when the Specification's current `tasks-stuck` names it, and
+  `holdReason` (the recorded reason, verbatim) while it is on hold with a reason. A broken
   Task has a row of what is readable of it: `id`, `title` (when its manifest is readable),
   `status` (`broken`), `broken: {reason}` and `blocksSpecification`; it is also an attention item.
 - `progress`: `completed`, `total` (every Task except cancelled ones and those ended without

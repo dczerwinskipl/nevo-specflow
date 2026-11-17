@@ -23,6 +23,14 @@ export const collectionContainer = '@container/collection';
 export const collectionTitleTrackMaxWidth = 'max-w-[40rem]';
 
 /**
+ * A row's title link, stretched over the whole row so the row is one target (the row surface is
+ * `InformationList.Item`): it wraps (never truncates), breaks a long word only when it must, and
+ * draws the focus ring on the row.
+ */
+export const collectionPrimaryLink =
+  'pointer-events-auto static cursor-pointer whitespace-normal [overflow-wrap:anywhere] outline-none after:absolute after:inset-0 after:rounded-control focus-visible:after:outline-2 focus-visible:after:outline-focus-ring hover:text-content-link';
+
+/**
  * Named track presets. The title track is bounded (`minmax(0,40rem)`, a reading measure), so the
  * facts always stay next to the name they qualify, whatever width the list is given; the rest of a
  * wide row stays empty while the row surface, hover and focus span the whole list.
@@ -74,9 +82,12 @@ export const collectionWide = {
   hidden: '@min-[48rem]/collection:hidden',
   /** Read by assistive technology only in columns (the header is `aria-hidden`). */
   srOnly: '@min-[48rem]/collection:sr-only',
-  /** Shown only in columns, inline. */
+  /**
+   * Shown only in columns, inline. It contains `hidden`: do not merge it with another display
+   * class (`flex`, `grid`, …) through `cn`, tailwind-merge keeps only the last display class.
+   */
   inline: 'hidden @min-[48rem]/collection:inline',
-  /** Shown only in columns, as a block. */
+  /** Shown only in columns, as a block. Contains `hidden`: the same caveat as `inline`. */
   block: 'hidden @min-[48rem]/collection:block',
   /** A flex cell that becomes a column: stacked inside its track. */
   flexColumn: '@min-[48rem]/collection:flex-col',
@@ -124,7 +135,8 @@ export interface CollectionRowProps extends ComponentPropsWithoutRef<'div'> {
 
 /**
  * The cell grid of one row, inside the row surface (`InformationList.Content`): the tracks from
- * 48rem, a vertical stack in DOM order below it.
+ * 48rem, a vertical stack in DOM order below it. `className` is merged with tailwind-merge: a
+ * display or `grid-cols-*` class there replaces the row's own grid and breaks the tracks.
  */
 export function CollectionRow({ tracks, className, children, ...rest }: CollectionRowProps) {
   return (
@@ -144,7 +156,7 @@ export interface CollectionSupportingLineProps {
 
 /**
  * The one supporting line under a fact cell's main line (for example a Task's hold reason under its
- * status): secondary, at most two lines, balanced so a short last line does not dangle.
+ * status): secondary, at most two lines, `text-wrap: pretty` so a short last line does not dangle.
  */
 export function CollectionSupportingLine({ children, className }: CollectionSupportingLineProps) {
   return (

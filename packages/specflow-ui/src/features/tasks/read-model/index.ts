@@ -14,6 +14,7 @@ export {
 } from './statusPresentation';
 export {
   taskAttentionOverlay,
+  taskRequiresAttention,
   type TaskAttentionFacts,
   type TaskAttentionOverlay,
   type TaskAttentionSource,

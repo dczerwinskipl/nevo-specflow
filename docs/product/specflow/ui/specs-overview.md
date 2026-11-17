@@ -94,7 +94,7 @@ The tracks, the column header and the 48rem switch belong to the shared collecti
 `specificationFlat`, `specificationFlatWithProgress` and `specificationArchive` are the columns
 above, and the Tasks page and the Overview Task rows use the `task` preset of the same component
 (`Task | Status`, `minmax(0,40rem) minmax(15rem,22rem)`, with an optional column header and one
-supporting line under the status, at most two lines with balanced wrapping). A list changes its
+supporting line under the status, at most two lines with pretty wrapping). A list changes its
 geometry by choosing or adding a preset there, never with its own container queries.
 
 **Section headers** are full-width list sections, not Cards: a leading disclosure chevron, the

@@ -6,6 +6,7 @@ import {
   BROKEN_REASONS,
   WorkflowAttentionItemSchema,
 } from '../workflow/projection';
+import { TASK_STATUS_REASON_MAX_LENGTH } from '../documents/task-resource-files';
 import { TaskFactsSchema } from './task-resource';
 
 const literals = <const T extends readonly string[]>(values: T) =>
@@ -74,6 +75,13 @@ export const TaskListRowSchema = Type.Object({
   status: TaskStatusLineSchema,
   facts: TaskFactsSchema,
   blocksSpecification: BlocksSpecification,
+  /**
+   * The reason recorded when it was put on hold (a person's decision or its escalation's feedback),
+   * verbatim. Present only while the Task is on hold and a reason was given.
+   */
+  holdReason: Type.Optional(
+    Type.String({ minLength: 1, maxLength: TASK_STATUS_REASON_MAX_LENGTH }),
+  ),
 });
 export type TaskListRow = Static<typeof TaskListRowSchema>;
 

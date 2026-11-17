@@ -93,9 +93,10 @@ dashboard configuration). The Overview renders what the reads deliver.
   A Task on hold appears here only when the Engine reports it (never from the status): escalated
   with no Specification step deciding it (`task-escalated` on the Task), or `on-hold-blocking`
   when open Tasks wait on it or the current step cannot finish while it is on hold (`blocks`).
-  Its primary action is `resume-task` (today it opens the Task page, which offers Resume), its
+  Its primary action **Resume** (`resume-task`) sets it ready right there (`on-hold → ready`,
+  without a confirmation, like the Task page's Resume; a refusal is a notification), its
   alternative Cancel task. A hold that nothing waits on is not listed; its row shows
-  "On hold · <reason>" ([workflow kernel, Held Tasks](../../../architecture/workflow/workflow-kernel.md#continuation-and-attention)).
+  "On hold" with the reason as its supporting line ([workflow kernel, Held Tasks](../../../architecture/workflow/workflow-kernel.md#continuation-and-attention)).
 - **Tasks** — a preview of the configured grouping. Without Tasks: "No tasks yet" and, when the
   run is certain to get to a step that produces Tasks (`outline.tasksStep`, never a step id: no
   branch on the way), "Tasks appear when Break the solution down (step 4 of 7) finishes.", the same
@@ -128,36 +129,58 @@ dashboard configuration). The Overview renders what the reads deliver.
 item (a Full Task under it keeps Tasks active). It renders the Runtime's grouping as delivered, in
 configured order, with the groups the configuration collapses (Cancelled, Ended) collapsed; the
 section count is the progress text and the header offers **New task** when the Specification
-projection allows it. A row is the Task row (title, id, Task Type) with one supporting line: a
-flagged Task's "Requires attention · <reason>" (danger for a broken Task, a row of Cannot start
-with what is readable of it), a Task the `tasks-stuck` item names "Requires attention · the
-specification cannot continue until it moves", otherwise its status line with the status mark
-("Draft · needs approval · after T-02", "Waiting for T-02"). The reason is worded from the Engine's
-item: a held Task that holds up others "holds up T-02, T-03 (+N)", one that keeps the step from
-finishing "<step> cannot finish while it is on hold" (named first when both apply), an escalated
-one "escalated to the specification"; other reasons keep the Engine's message. A filter by id or
-title is local state. No checkboxes and no bulk actions (plan 06 F12 is deferred).
+projection allows it. No checkboxes and no bulk actions (plan 06 F12 is deferred).
+
+It follows the [Specifications list](specs-overview.md) collection pattern: the `task` preset of
+`CollectionColumns` (`minmax(0,40rem) minmax(15rem,22rem)`, `gap-x-6`), with a **Task | Status**
+column header from 48rem of list width, group headers (dot, name, count) across both tracks, and
+bounded tracks at any width while the row's hover and focus span the whole row. The filter by id
+or title (local state) and the blocking filter bar are as wide as the title track. Below 48rem the
+header is hidden and every row stacks: title, "id · Type", status, supporting line.
+
+A row is the **Task row** (`TaskRow`, reused by the Overview Tasks section):
+
+- **Task cell:** the title (`h3`, the link to the Full Task stretched over the row), then the id in
+  mono and the Task Type ("`oidc-callback` · Implementation"). The title track is wide enough that
+  an id does not break at Wide.
+- **Status cell:** the status mark and label ([below](#task-status-presentation); "Waiting for
+  T-02", "Draft · needs approval"), then at most one supporting line (two lines at most, pretty
+  wrapping):
+  - the **Requires attention overlay** when the Engine reports one for the Task, in the attention
+    tone with `triangle-alert` (danger and `circle-alert` for a broken Task). It is added under the
+    status, never in its place, and takes the supporting line. The Engine's item may be the Task's
+    own or a Specification item naming it (`task-escalated` with `taskIds`, or the `tasks-stuck`
+    the row's `blocksSpecification` reflects); the row renders it and never derives attention. The
+    reason is worded from the item: a held Task that keeps the step from finishing "<step> cannot
+    finish while this task is on hold" (it names the finish; its dependents only when it holds up
+    no finish), one that holds up others "holds up T-02, T-03 (+N)", an escalated one "escalated
+    to the specification: <feedback>", a Task the `tasks-stuck` names "<specification> cannot
+    continue until it moves"; other reasons keep the Engine's message;
+  - otherwise the hold reason of a Task on hold, verbatim (`holdReason` of the read; the label
+    already says "On hold"), or the dependencies of a Task that has not run ("after T-02").
 
 ### Task status presentation
 
 Every Task surface (Tasks page rows, Overview Task rows, Close blocker items, the Full Task status
 line, Depends on rows) presents a status by its presented id, one mark and tone each:
 
-| Status               | Mark                                                          | Tone               |
-| -------------------- | ------------------------------------------------------------- | ------------------ |
-| Draft                | `edit`                                                        | neutral            |
-| Ready                | info `StatusIndicator` dot                                    | neutral label      |
-| Waiting              | `clock`                                                       | neutral            |
-| In progress          | spinning `loader` (static under reduced motion)               | info               |
-| On hold              | `circle-pause`                                                | neutral            |
-| Blocked              | none (today's presentation until a Blocked state is designed) | neutral            |
-| Completed            | `circle-check`                                                | success            |
-| Cancelled, Abandoned | `close`, muted label                                          | neutral            |
-| Broken               | `circle-alert`                                                | danger (label too) |
+| Status               | Mark                                                    | Tone               |
+| -------------------- | ------------------------------------------------------- | ------------------ |
+| Draft                | `edit`                                                  | neutral            |
+| Ready                | info `StatusIndicator` dot                              | neutral            |
+| Waiting              | `clock`                                                 | neutral            |
+| In progress          | spinning `loader` (static under reduced motion)         | info               |
+| On hold              | `circle-pause`                                          | neutral            |
+| Blocked              | none, its slot kept (until a Blocked state is designed) | neutral            |
+| Completed            | `circle-check`                                          | success            |
+| Cancelled, Abandoned | `close`, muted label                                    | neutral            |
+| Broken               | `circle-alert`                                          | danger (label too) |
 
 One owner each in `features/tasks/read-model`: `getTaskStatePresentation` / `taskStatusSupporting`
-(the status) and `taskAttentionOverlay` (the attention wording). Requires attention is an overlay
-added for the row, never a status, and only when the Engine reports it.
+(the status) and `taskAttentionOverlay` with its predicate `taskRequiresAttention` (the attention
+wording, and whether a row has one at all). Requires attention is an overlay added under the
+status, never a status, and only when the Engine reports it. The Runtime presents only the ids of
+this table; an unknown id is a contract drift that development builds assert.
 
 Its search is router-owned and validated; absence is the default:
 

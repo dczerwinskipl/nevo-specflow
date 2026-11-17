@@ -26,8 +26,9 @@ function previewOf(position: WorkflowActionProjection['position']) {
 
 /**
  * The Tasks flows that Requires attention opens on the Overview: the first-start confirmation (a
- * changed workflow revision), the Cancel confirmation and a direct start of a Task's next step.
- * Each is the flow the Task page offers; the item only names which one.
+ * changed workflow revision), the Cancel confirmation, a direct start of a Task's next step and a
+ * direct Resume of a Task on hold (`on-hold → ready`, like the Task page's Resume, which also acts
+ * without a confirmation). Each is the flow the Task page offers; the item only names which one.
  */
 export function TaskAttentionHost({
   specId,
@@ -38,7 +39,7 @@ export function TaskAttentionHost({
   readonly typeTitle: (taskId: string) => string | undefined;
 }) {
   const { t } = useTranslation();
-  const { workflowExecutionApi } = useAppServices();
+  const { workflowExecutionApi, taskAuthoringApi } = useAppServices();
   const queryClient = useQueryClient();
   const notify = useNotify();
   const [dialog, setDialog] = useState<Dialog>();
@@ -49,6 +50,13 @@ export function TaskAttentionHost({
     onSettled: () => invalidateAfterTaskChange(queryClient, specId),
   });
   const startStep = start.mutate;
+  // A resume acts on the Task it was requested for; the Engine refuses it if it is no longer held.
+  const resume = useMutation({
+    mutationFn: (taskId: string) => taskAuthoringApi.setStatus(specId, taskId, { status: 'ready' }),
+    onError: () => notify(t('taskOverview.attention.resumeFailed')),
+    onSettled: () => invalidateAfterTaskChange(queryClient, specId),
+  });
+  const resumeTask = resume.mutate;
 
   useEffect(
     () =>
@@ -56,6 +64,10 @@ export function TaskAttentionHost({
         switch (request.kind) {
           case 'start-step':
             startStep(request.taskId);
+
+            return true;
+          case 'resume-task':
+            resumeTask(request.taskId);
 
             return true;
           case 'first-start':
@@ -67,7 +79,7 @@ export function TaskAttentionHost({
             return false;
         }
       }),
-    [specId, startStep],
+    [specId, startStep, resumeTask],
   );
 
   const close = () => setDialog(undefined);

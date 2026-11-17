@@ -7,6 +7,8 @@ export interface SemanticSupporting {
   readonly icon?: IconName;
   /** A `StatusIndicator` dot in the icon slot (a status whose mark is a dot); ignored with `icon`. */
   readonly indicator?: StatusTone;
+  /** Without `icon` or `indicator`: keep the empty mark slot, so the text lines up with marked lines. */
+  readonly reserveMark?: boolean;
   readonly iconClassName?: string;
   readonly textClassName?: string;
 }

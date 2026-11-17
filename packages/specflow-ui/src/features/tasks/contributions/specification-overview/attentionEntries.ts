@@ -57,6 +57,7 @@ function actionOf(
       return onTask((id) => actions.openTask(id, 'dependencies'));
     case 'confirm-definition':
     case 'cancel-task':
+    case 'resume-task':
     case 'start-step': {
       const kind = code === 'confirm-definition' ? 'first-start' : code;
 
@@ -65,10 +66,9 @@ function actionOf(
         : undefined;
     }
 
-    // The Task page offers Resume; the Overview has no Resume flow of its own yet.
+    // Restoring files and satisfying a gate happen on the Task page.
     case 'restore-task':
     case 'satisfy-gate':
-    case 'resume-task':
       return onTask(openTask);
     case 'return-to-step':
       // The Specification's own Return dialog (its Now block, which also offers it in its menu

@@ -235,6 +235,33 @@ describe('the Overview tasks section', () => {
       't-05',
     ]);
   });
+
+  it('carries the recorded hold reason of a Task on hold only', () => {
+    const basis = scenario();
+    const records = basis.reading.inspection.tasks.map((entry) => entry.record) as unknown as {
+      taskId: string;
+      status?: string;
+      statusChange?: { source: string; reason?: string };
+    }[];
+    Object.assign(
+      records.find((record) => record.taskId === 't-05')!,
+      {
+        status: 'on-hold',
+        statusChange: { source: 'decision', at: '2026-11-16T10:00:00Z', reason: 'Waiting for IT.' },
+      },
+    );
+    Object.assign(
+      records.find((record) => record.taskId === 'gone-1')!,
+      {
+        status: 'cancelled',
+        statusChange: { source: 'decision', at: '2026-11-16T10:00:00Z', reason: 'Not needed.' },
+      },
+    );
+    const rows = taskListOf(basis, {}).groups.flatMap((group) => group.tasks);
+
+    expect(rows.find((row) => row.id === 't-05')).toMatchObject({ holdReason: 'Waiting for IT.' });
+    expect(rows.find((row) => row.id === 'gone-1')).not.toHaveProperty('holdReason');
+  });
 });
 
 describe('the blocking filter', () => {

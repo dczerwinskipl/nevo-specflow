@@ -17,7 +17,7 @@ describe('Task status presentation', () => {
 
     expect(marks).toEqual({
       draft: ['edit', 'neutral'],
-      ready: ['info', 'info'],
+      ready: ['info', 'neutral'],
       waiting: ['clock', 'neutral'],
       'in-progress': ['loader', 'info'],
       'on-hold': ['circle-pause', 'neutral'],
@@ -48,9 +48,15 @@ describe('Task status presentation', () => {
     expect(taskStatusSupporting('cancelled', 'Cancelled').textClassName).toBe('text-content-muted');
   });
 
-  it('reads an unknown status as its label alone', () => {
-    expect(taskStatusSupporting('something-new', 'Something new')).toEqual({
-      text: 'Something new',
+  it('keeps the mark slot of an unmarked status, so its label lines up', () => {
+    expect(taskStatusSupporting('blocked', 'Cannot start')).toEqual({
+      text: 'Cannot start',
+      reserveMark: true,
     });
+    expect(taskStatusSupporting(undefined, 'Ready')).toEqual({ text: 'Ready', reserveMark: true });
+  });
+
+  it('asserts an unknown status id in development instead of presenting it', () => {
+    expect(() => getTaskStatePresentation('something-new')).toThrow(/something-new/);
   });
 });

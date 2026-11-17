@@ -44,8 +44,8 @@ const SPINNING = 'animate-spin motion-reduce:animate-none';
 
 const PRESENTATION: Record<TaskStatusId, TaskStatePresentation> = {
   draft: { icon: 'edit', tone: 'neutral' },
-  // The next thing that can run: an info dot, the label stays neutral.
-  ready: { indicator: 'info', tone: 'info' },
+  // The next thing that can run: an info dot, the status itself (and its label) stays neutral.
+  ready: { indicator: 'info', tone: 'neutral' },
   waiting: { icon: 'clock', tone: 'neutral' },
   'in-progress': {
     icon: 'loader',
@@ -55,7 +55,8 @@ const PRESENTATION: Record<TaskStatusId, TaskStatePresentation> = {
   },
   // Not attention by itself: the Engine's attention item adds the overlay when it holds up work.
   'on-hold': { icon: 'circle-pause', tone: 'neutral' },
-  // Today's presentation until a Blocked state is designed: the label alone, neutral.
+  // Today's presentation until a Blocked state is designed: no mark (its slot stays reserved, so
+  // the label lines up with marked rows), neutral.
   blocked: { tone: 'neutral' },
   completed: { icon: 'circle-check', tone: 'success', iconClassName: 'text-status-success' },
   cancelled: {
@@ -83,27 +84,40 @@ const isTaskStatusId = (value: string): value is TaskStatusId =>
   Object.prototype.hasOwnProperty.call(PRESENTATION, value);
 
 /**
- * The presentation of a Task status by its presented id. An id the model does not know (the
- * contract's id is an open string) reads like a status without a mark: the label, neutral.
+ * The presentation of a Task status by its presented id. The Runtime presents only the ids above
+ * (`status-line.ts`); an unknown one is a contract drift, asserted in development builds (and
+ * tests) rather than given a presentation of its own. A production build shows its label unmarked.
  */
-export function getTaskStatePresentation(statusId: string | undefined): TaskStatePresentation {
-  return statusId !== undefined && isTaskStatusId(statusId)
-    ? PRESENTATION[statusId]
-    : PRESENTATION.blocked;
+export function getTaskStatePresentation(statusId: string): TaskStatePresentation {
+  if (isTaskStatusId(statusId)) {
+    return PRESENTATION[statusId];
+  }
+
+  if (import.meta.env.DEV) {
+    throw new Error(`Unknown Task status id "${statusId}": add it to the status presentation.`);
+  }
+
+  return PRESENTATION.blocked;
 }
 
-/** A status line for `OperationalRow`'s `supporting`: the status mark with its label `text`. */
+/**
+ * A status line (`SemanticSupporting`, rendered by `SemanticSupportingLine`): the status mark with
+ * its label `text`. A status without a mark (and a Task whose status the surface does not have)
+ * keeps the mark's slot, so its label lines up with marked rows.
+ */
 export function taskStatusSupporting(
   statusId: string | undefined,
   text: string,
 ): SemanticSupporting {
-  const presentation = getTaskStatePresentation(statusId);
+  const presentation =
+    statusId === undefined ? PRESENTATION.blocked : getTaskStatePresentation(statusId);
 
   return {
     text,
     ...(presentation.labelTone ? { tone: presentation.labelTone } : {}),
     ...(presentation.icon ? { icon: presentation.icon } : {}),
     ...(presentation.indicator && !presentation.icon ? { indicator: presentation.indicator } : {}),
+    ...(!presentation.icon && !presentation.indicator ? { reserveMark: true } : {}),
     ...(presentation.iconClassName ? { iconClassName: presentation.iconClassName } : {}),
     ...(presentation.textClassName ? { textClassName: presentation.textClassName } : {}),
   };

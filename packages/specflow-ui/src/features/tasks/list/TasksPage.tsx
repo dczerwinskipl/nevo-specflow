@@ -9,8 +9,14 @@ import {
   InformationList,
   TextInput,
   Typography,
+  cn,
 } from '@nevo/ui';
 import { LoadingPresentation } from '../../../app/loading/LoadingPresentation';
+import {
+  CollectionColumns,
+  collectionContainer,
+  collectionTitleTrackMaxWidth,
+} from '../../../shared/operational-list';
 import { WorkspaceSection } from '../../../shared/workspace-section';
 import { progressText } from '../overview/progress';
 import { getGroupTone } from './presentation';
@@ -39,14 +45,18 @@ export interface TasksPageProps {
   readonly notice?: ReactNode;
   /** When the first Tasks appear (the workflow's step that produces them), for the empty list. */
   readonly emptyLine?: string;
+  /** The Specification's title, named by a row its `tasks-stuck` keeps waiting. */
+  readonly specificationTitle?: string;
 }
 
 const groupHeadingId = (groupId: string) => `task-group-${groupId}-heading`;
 
 /**
  * The Tasks page (`/specs/:specId/tasks`): the full inventory in the Runtime's configured grouping,
- * as delivered. Collapsed groups follow the configuration; `group` opens one expanded and moves the
- * reader to it. Flagged rows carry the attention reason. No selection and no bulk actions.
+ * as delivered, on the Specifications list pattern (the collection's `task` tracks with a Task |
+ * Status column header from 48rem, stacked rows below it). Collapsed groups follow the
+ * configuration; `group` opens one expanded and moves the reader to it. Flagged rows carry the
+ * attention overlay under their status. No selection and no bulk actions.
  */
 export function TasksPage({
   state,
@@ -58,6 +68,7 @@ export function TasksPage({
   onNewTask,
   notice,
   emptyLine,
+  specificationTitle,
 }: TasksPageProps) {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
@@ -123,11 +134,12 @@ export function TasksPage({
 
   return (
     <div className="grid gap-4" data-tasks-page="">
-      <div className="grid max-w-content-standard gap-3">
+      {/* As wide as the title track the filter matches against (the Specifications list's search). */}
+      <div className={cn('grid w-full gap-3', collectionTitleTrackMaxWidth)}>
         <TextInput
           aria-label={t('taskOverview.page.filterLabel')}
           placeholder={t('taskOverview.page.filterPlaceholder')}
-          className="max-w-sm"
+          className="w-full"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
@@ -179,13 +191,19 @@ export function TasksPage({
             {t('taskOverview.page.noMatch')}
           </Typography>
         ) : (
-          <div className="grid gap-4">
+          <div
+            className={cn(collectionContainer, 'grid min-w-0 gap-5 @min-[40rem]/collection:gap-6')}
+          >
+            <CollectionColumns
+              tracks="task"
+              labels={[t('taskOverview.page.taskColumn'), t('taskOverview.page.statusColumn')]}
+            />
             {groups.map((group) => {
               const isCollapsed = collapsed(group.id, group.collapsed);
               const listId = `task-group-${group.id}`;
 
               return (
-                <div key={group.id} className="grid gap-1" data-task-group={group.id}>
+                <div key={group.id} className="grid min-w-0 gap-2" data-task-group={group.id}>
                   <div id={groupHeadingId(group.id)} data-group-header="">
                     <TaskGroupHeader
                       name={group.name}
@@ -206,6 +224,7 @@ export function TasksPage({
                           row={row}
                           fullTaskHref={fullTaskHref(row.id)}
                           onOpen={onOpenTask}
+                          {...(specificationTitle ? { specificationTitle } : {})}
                         />
                       ))}
                     </InformationList>

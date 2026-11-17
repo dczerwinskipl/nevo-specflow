@@ -59,6 +59,9 @@ export function taskBoardOf(
             status: taskStatusOf(facts),
             facts: toWire(facts),
             ...blocks(record.taskId),
+            ...(record.status === 'on-hold' && record.statusChange?.reason
+              ? { holdReason: record.statusChange.reason }
+              : {}),
           },
         ]
       : [];

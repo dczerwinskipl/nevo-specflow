@@ -50,6 +50,7 @@ export function TasksScreen({
         fullTaskHref={fullTaskHref}
         onOpenTask={onOpenTask}
         onClearBlocking={onClearBlocking}
+        specificationTitle={data.title}
         {...(emptyLine ? { emptyLine } : {})}
         {...(specification?.createTask.kind === 'allowed'
           ? { onNewTask: () => setOpen(true) }

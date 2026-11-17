@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { createSpecFlowI18n } from '../../../i18n';
-import { taskAttentionOverlay, type TaskAttentionSource } from './attentionOverlay';
+import {
+  taskAttentionOverlay,
+  taskRequiresAttention,
+  type TaskAttentionSource,
+} from './attentionOverlay';
 
 const en = createSpecFlowI18n('en').t;
 const pl = createSpecFlowI18n('pl').t;
@@ -9,6 +13,10 @@ const text = (source: TaskAttentionSource, t = en) => taskAttentionOverlay(sourc
 describe('Task attention overlay', () => {
   it('adds nothing without an Engine report, whatever the status', () => {
     expect(taskAttentionOverlay({}, en)).toBeUndefined();
+    expect(taskRequiresAttention({ feedback: 'Waiting for IT.' })).toBe(false);
+    expect(taskRequiresAttention({ item: { reason: 'on-hold-blocking' } })).toBe(true);
+    expect(taskRequiresAttention({ blocksSpecification: true })).toBe(true);
+    expect(taskRequiresAttention({ broken: true })).toBe(true);
   });
 
   it('words an escalation with its feedback where the surface has it', () => {
@@ -36,13 +44,13 @@ describe('Task attention overlay', () => {
       'Requires attention · holds up T-02, T-03 (+2)',
     );
     expect(held({ finish: 'breakdown' }, 'Breakdown')).toBe(
-      'Requires attention · Breakdown cannot finish while it is on hold',
+      'Requires attention · Breakdown cannot finish while this task is on hold',
     );
     expect(held({ taskIds: ['T-02'], finish: 'breakdown' }, 'Breakdown')).toBe(
-      'Requires attention · Breakdown cannot finish while it is on hold',
+      'Requires attention · Breakdown cannot finish while this task is on hold',
     );
     expect(held({ finish: 'breakdown' })).toBe(
-      'Requires attention · the step cannot finish while it is on hold',
+      'Requires attention · the step cannot finish while this task is on hold',
     );
   });
 

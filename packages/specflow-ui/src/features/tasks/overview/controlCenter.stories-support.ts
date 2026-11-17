@@ -43,6 +43,8 @@ interface FixtureTask {
   readonly dependsOn?: readonly string[];
   readonly waitingFor?: readonly string[];
   readonly broken?: boolean;
+  /** The recorded reason of a Task on hold. */
+  readonly holdReason?: string;
 }
 
 const status = {
@@ -109,6 +111,7 @@ const T05 = t({
   type: 'Backend',
   group: 'on-hold',
   status: status.onHold,
+  holdReason: 'Waiting for the retention policy from the security team.',
 });
 const T06 = t({
   id: 'T-06',
@@ -511,6 +514,7 @@ export function controlCenterTaskList(
       status: task.status,
       facts: facts(task, own),
       ...blocks,
+      ...(task.holdReason ? { holdReason: task.holdReason } : {}),
     };
   };
 

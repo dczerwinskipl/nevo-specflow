@@ -62,6 +62,56 @@ describe('Tasks page', () => {
     expect(screen.queryByRole('checkbox')).toBeNull();
   });
 
+  it('lays the rows on the Task | Status columns: status kept, one supporting line', () => {
+    const { container } = renderPage();
+    const status = (taskId: string) =>
+      row(container, taskId)!.querySelector<HTMLElement>('[data-task-status-cell]')!;
+
+    expect(container.querySelector('[data-collection-columns="task"]')?.textContent).toBe(
+      'TaskStatus',
+    );
+    expect(row(container, 'T-05')!.querySelector('[data-task-identity]')?.textContent).toBe(
+      'T-05·Backend',
+    );
+    // On hold: the label once, then the reason verbatim as the supporting line.
+    expect(status('T-05').querySelector('p')?.textContent).toBe(
+      'Waiting for the retention policy from the security team.',
+    );
+    expect(status('T-05').textContent).toBe(
+      'On holdWaiting for the retention policy from the security team.',
+    );
+    // A flagged row keeps its status; the overlay is added under it.
+    expect(status('T-07').textContent).toMatch(/^BlockedRequires attention · Cannot start/);
+    expect(row(container, 'T-07')?.dataset.taskAttention).toBe('true');
+    expect(row(container, 'T-07')?.querySelector('[data-mark-slot="empty"]')).not.toBeNull();
+  });
+
+  it('renders a Specification item that names the Task on its row, from the item only', () => {
+    const response = controlCenterTaskList('waiting');
+    const view = taskListViewOf({
+      ...response,
+      attention: [
+        ...response.attention,
+        {
+          subject: { kind: 'specification', specId: response.specId },
+          reason: 'task-escalated',
+          actor: 'owner',
+          action: 'return-to-step',
+          message: 'T-05 escalated.',
+          taskIds: ['T-05'],
+        },
+      ],
+    });
+    const { container } = renderPage({ state: { status: 'ready', view } });
+
+    expect(row(container, 'T-05')?.dataset.taskAttention).toBe('true');
+    expect(row(container, 'T-05')?.textContent).toContain(
+      'On holdRequires attention · escalated to the specification: Waiting for the retention policy',
+    );
+    // Nothing else is derived: the other held or waiting rows stay plain.
+    expect(row(container, 'T-03')?.dataset.taskAttention).toBeUndefined();
+  });
+
   it('opens a collapsed group expanded when the Overview links to it', () => {
     const { container } = renderPage({ group: 'cancelled' });
 

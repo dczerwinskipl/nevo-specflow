@@ -72,6 +72,15 @@ function reasonOf(item: TaskAttentionFacts, source: TaskAttentionSource, t: TFun
 }
 
 /**
+ * Whether a Task row requires attention: the Engine reported it (an item about the Task, a
+ * Specification item that names it, or broken files). The one predicate behind the overlay and
+ * every surface that marks such a row; the UI never decides attention from a status.
+ */
+export function taskRequiresAttention(source: TaskAttentionSource): boolean {
+  return source.item !== undefined || source.blocksSpecification === true || source.broken === true;
+}
+
+/**
  * The Requires attention overlay of a Task, worded from what the Engine reports (the item's reason
  * and `blocks`, the Specification's `tasks-stuck`, a broken Task). The UI never decides attention:
  * without any of them there is no overlay, whatever the status (an On hold Task alone is not
@@ -81,10 +90,11 @@ export function taskAttentionOverlay(
   source: TaskAttentionSource,
   t: TFunction,
 ): TaskAttentionOverlay | undefined {
-  const { item } = source;
-  if (!item && !source.blocksSpecification && !source.broken) {
+  if (!taskRequiresAttention(source)) {
     return undefined;
   }
+
+  const { item } = source;
 
   const reason = item
     ? reasonOf(item, source, t)

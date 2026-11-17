@@ -1,16 +1,10 @@
-import {
-  Icon,
-  InformationList,
-  StatusIndicator,
-  Typography,
-  cn,
-  useOptionalInformationListContext,
-} from '@nevo/ui';
+import { InformationList, Typography, cn, useOptionalInformationListContext } from '@nevo/ui';
 import type {
   CompactFactItem,
   OperationalRowProps,
   SemanticSupporting,
 } from './OperationalRow.types';
+import { SemanticSupportingLine } from './SemanticSupportingLine';
 function isSemanticSupporting(value: unknown): value is SemanticSupporting {
   return (
     typeof value === 'object' &&
@@ -73,35 +67,7 @@ export function OperationalRow({
   let supportingContent: React.ReactNode = null;
   if (supporting) {
     if (isSemanticSupporting(supporting)) {
-      supportingContent = (
-        <span
-          className={cn(
-            'inline-flex min-w-0 gap-1.5 [overflow-wrap:anywhere] text-content-secondary',
-            // The icon sits on the first line of the status, also when the status wraps.
-            'items-start',
-            supporting.tone === 'attention' && 'text-status-attention font-medium',
-            supporting.tone === 'danger' && 'text-status-danger font-medium',
-            supporting.tone === 'success' && 'text-status-success',
-            supporting.tone === 'info' && 'text-status-info font-medium',
-            supporting.textClassName,
-          )}
-        >
-          {supporting.icon ? (
-            <span className="flex h-[1lh] w-4 shrink-0 items-center justify-center">
-              <Icon
-                name={supporting.icon}
-                size="sm"
-                className={cn('shrink-0', supporting.iconClassName)}
-              />
-            </span>
-          ) : supporting.indicator ? (
-            <span className="flex h-[1lh] w-4 shrink-0 items-center justify-center">
-              <StatusIndicator tone={supporting.indicator} />
-            </span>
-          ) : null}
-          <span className="min-w-0">{supporting.text}</span>
-        </span>
-      );
+      supportingContent = <SemanticSupportingLine line={supporting} />;
     } else {
       supportingContent = (
         <div className="[overflow-wrap:anywhere] text-content-secondary">{supporting}</div>

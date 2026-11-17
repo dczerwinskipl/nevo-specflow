@@ -205,28 +205,43 @@ same `409 DOCUMENT_COMMITS_PENDING` the Close would, so documents Nevo commits o
 reported as files to commit by hand. Any other repository precondition is `422 CLOSE_PREFLIGHT`
 with `repository`: the blockers the owner fixes in the repository, all that are known at once
 (`uncommitted-changes` with at most 10 `paths` and the `count`, `integration-target-missing`,
-`integration-target-branch`, `git-operation-in-progress`, `branch-detached`; `RepositoryBlocker`
-in `@nevo/specflow-contracts/specs`).
+`git-not-configured`, `integration-target-branch`, `git-operation-in-progress`, `branch-detached`;
+`RepositoryBlocker` in `@nevo/specflow-contracts/specs`).
 
-The preview and the Close answer the same blockers. `integration-target-missing` (the project
-names no `git.integrationTargetBranch`) lists the local branches that could receive the Close, as
-facts. The server never chooses one and never assumes a name such as `main`:
+The preview and the Close answer the same blockers. `integration-target-missing` means the
+project's `git:` block names no `git.integrationTargetBranch`. `git-not-configured` means
+`.nevo/config.yaml` has no `git:` block at all, so it needs one with `enabled` and
+`integrationTargetBranch` (`integrationTargetBranch` alone is refused as an invalid Git policy).
+Both list the local branches that could receive the Close, as facts. The server never chooses one
+and never assumes a name such as `main`:
 
-- `candidates` (at most 50) are `{branch, facts, remote?}`. Each local branch appears once, with
-  every fact that applies, in this order: `remote-default` (the default branch of `remote`, read from
-  the local `refs/remotes/<remote>/HEAD`, which `git clone` or `git remote set-head` sets; the
-  server never fetches, so a missing remote or an unset remote HEAD gives no fact), `started-from` (the Specification's linked workspace was
-  created from it, recorded at Create; other Specifications can share that workspace, and a
-  workspace created before the fact was recorded gives none), and `primary-checkout` (the branch
-  checked out in the main folder). Candidates are ordered by their first fact. A fact about a branch
-  that does not exist locally names no candidate, and the Specification's own linked branch is
-  never a candidate.
+- `sourceCheckout` is the Specification's checkout. With `linked`, the Close merges its branch into
+  the integration branch. With `primary`, it archives directly on the integration branch in the
+  main folder, and there is nothing to merge.
+- `candidates` (at most 50) are `{branch, facts}`. Each local branch appears once, with every fact
+  that applies, in this order:
+  - `remote-default`: the default branch of `remote`, read from the local
+    `refs/remotes/<remote>/HEAD`, which `git clone` or `git remote set-head` sets. `remote` is
+    present exactly with this fact. The server never fetches, so a missing remote or an unset
+    remote HEAD gives no fact.
+  - `started-from`: the Specification's linked workspace was created from this branch, as recorded
+    at Create. Other Specifications can share that workspace. A workspace created before the fact
+    was recorded gives none.
+  - `primary-checkout`: the branch checked out in the main folder.
+
+  Candidates are ordered by their first fact. A fact about a branch that does not exist locally
+  names no candidate. The Specification's own linked branch is never a candidate: the server takes
+  it from the Close evidence, or else from the branch Create recorded for the workspace (`branch`
+  on the registry entry), so a detached checkout still excludes it.
+
 - `otherBranches` lists the remaining local branches by name: at most 200 of `otherBranchCount`,
   without the candidates, the Specification's own linked branch, and branches that
   `git.worktrees.branchPattern` names (Specification branches).
 
-Both lists can be empty. The preview only reads Git (no fetch, no ref, config or index write), and
-nothing is written to `.nevo/config.yaml`.
+Branch and remote names are at most 255 characters, and a name the blocker cannot carry is not
+offered. Both lists can be empty, and they are empty when Git cannot be read. The refusal still
+names every other repository precondition. The preview only reads Git (no fetch, no ref, config
+or index write), and nothing is written to `.nevo/config.yaml`.
 
 A successful preview (`ClosePreview`) carries the merge facts in `merge`:
 

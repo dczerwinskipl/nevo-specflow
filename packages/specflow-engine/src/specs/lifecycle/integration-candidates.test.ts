@@ -63,6 +63,19 @@ describe('integration branch candidates', () => {
     ).toEqual({ candidates: [], otherBranches: [], otherBranchCount: 0 });
   });
 
+  it('offers no name a blocker cannot carry (longer than 255 characters, or with whitespace)', () => {
+    const long = 'x'.repeat(256);
+    expect(
+      deriveIntegrationCandidates(
+        evidence({
+          localBranches: [long, 'with space', 'develop'],
+          remoteDefaults: [{ remote: 'origin', branch: long }],
+          primaryBranch: long,
+        }),
+      ),
+    ).toEqual({ candidates: [], otherBranches: ['develop'], otherBranchCount: 1 });
+  });
+
   it('names origin first when several remotes default to the same branch', () => {
     expect(
       deriveIntegrationCandidates(

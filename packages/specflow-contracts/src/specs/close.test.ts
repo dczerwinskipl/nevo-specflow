@@ -5,6 +5,7 @@ import { CloseErrorSchema, ClosePreviewSchema } from './close';
 
 const missingTarget = {
   kind: 'integration-target-missing',
+  sourceCheckout: 'linked',
   candidates: [
     { branch: 'release/2026.11', facts: ['remote-default', 'started-from'], remote: 'origin' },
     { branch: 'develop', facts: ['primary-checkout'] },
@@ -53,6 +54,7 @@ describe('Close refusal contract', () => {
     expect(
       blocker({
         kind: 'integration-target-missing',
+        sourceCheckout: 'primary',
         candidates: [],
         otherBranches: [],
         otherBranchCount: 0,
@@ -65,6 +67,18 @@ describe('Close refusal contract', () => {
       blocker({ ...missingTarget, candidates: [{ branch: 'main', facts: ['default'] }] }),
     ).toBe(false);
     expect(blocker({ kind: 'integration-target-missing' })).toBe(false);
+    expect(blocker({ ...missingTarget, kind: 'git-not-configured' })).toBe(true);
+    // `remote` comes exactly with the remote-default fact.
+    expect(
+      blocker({
+        ...missingTarget,
+        candidates: [{ branch: 'develop', facts: ['primary-checkout'], remote: 'origin' }],
+      }),
+    ).toBe(false);
+    expect(
+      blocker({ ...missingTarget, candidates: [{ branch: 'main', facts: ['remote-default'] }] }),
+    ).toBe(false);
+    expect(blocker({ ...missingTarget, otherBranches: ['x'.repeat(256)] })).toBe(false);
   });
 });
 

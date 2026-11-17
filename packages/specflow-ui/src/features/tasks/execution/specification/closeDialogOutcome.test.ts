@@ -22,6 +22,7 @@ const untracked: RepositoryBlocker = {
 };
 const missingTarget: RepositoryBlocker = {
   kind: 'integration-target-missing',
+  sourceCheckout: 'linked',
   candidates: [],
   otherBranches: [],
   otherBranchCount: 0,

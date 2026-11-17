@@ -237,6 +237,8 @@ export type CloseLocalConfigRefusal = 'changed' | 'unrecorded' | 'unreadable';
  * - `integration-target-missing`: the project configures no `git.integrationTargetBranch`; it names
  *   the local branches that could receive the Close ({@link IntegrationBranchCandidates}), none
  *   chosen;
+ * - `git-not-configured`: the project configuration has no `git:` block at all, so there is no
+ *   `git.enabled` and no `git.integrationTargetBranch`; it names the same candidates;
  * - `integration-target-branch`: the primary checkout is on `branch`, not on `expectedBranch`;
  * - `git-operation-in-progress`: a merge, rebase, cherry-pick or revert is unfinished;
  * - `branch-detached`: the checkout is not on a local branch.
@@ -249,7 +251,14 @@ export type CloseRepositoryBlocker =
       readonly paths: readonly string[];
       readonly count: number;
     }
-  | ({ readonly kind: 'integration-target-missing' } & IntegrationBranchCandidates)
+  | ({
+      readonly kind: 'integration-target-missing' | 'git-not-configured';
+      /**
+       * The Specification's checkout: `linked` merges its branch into the integration branch,
+       * `primary` archives directly on it in the main folder (nothing to merge).
+       */
+      readonly sourceCheckout: 'primary' | 'linked';
+    } & IntegrationBranchCandidates)
   | {
       readonly kind: 'integration-target-branch';
       readonly expectedBranch: string;
@@ -270,13 +279,22 @@ export type CloseCheckoutRole = 'specification' | 'integration-target';
  */
 export type IntegrationBranchFact = 'remote-default' | 'started-from' | 'primary-checkout';
 
-export interface IntegrationBranchCandidate {
-  readonly branch: string;
-  /** At least one, each once, in {@link IntegrationBranchFact} order. */
-  readonly facts: readonly IntegrationBranchFact[];
-  /** With `remote-default`: the remote whose default branch it is (`origin` first). */
-  readonly remote?: string;
-}
+/**
+ * A local branch with its facts (at least one, each once, in {@link IntegrationBranchFact} order).
+ * `remote` is present exactly with the `remote-default` fact: the remote whose default branch it is
+ * (`origin` first).
+ */
+export type IntegrationBranchCandidate =
+  | {
+      readonly branch: string;
+      readonly facts: readonly IntegrationBranchFact[];
+      readonly remote: string;
+    }
+  | {
+      readonly branch: string;
+      readonly facts: readonly Exclude<IntegrationBranchFact, 'remote-default'>[];
+      readonly remote?: never;
+    };
 
 /**
  * The local branches a missing `git.integrationTargetBranch` can be set to. Facts only: nothing is

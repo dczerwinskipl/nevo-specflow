@@ -530,6 +530,7 @@ describe('manual workflow execution', () => {
       },
       {
         kind: 'integration-target-missing',
+        sourceCheckout: 'linked',
         candidates: [{ branch: 'develop', facts: ['primary-checkout'] }],
         otherBranches: [],
         otherBranchCount: 0,

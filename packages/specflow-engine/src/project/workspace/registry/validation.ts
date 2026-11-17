@@ -108,6 +108,7 @@ function parseRegistration(value: unknown): WorkspaceRegistration {
       ...(value.startedFrom !== undefined
         ? { startedFrom: parseStartedFrom(value.startedFrom) }
         : {}),
+      ...(value.branch !== undefined ? { branch: parseCreatedBranch(value.branch) } : {}),
     };
   }
 
@@ -135,6 +136,14 @@ export function isWorkspaceBranchName(value: unknown): value is string {
 function parseStartedFrom(value: unknown): string {
   if (!isWorkspaceBranchName(value)) {
     throw corrupt('Invalid workspace started-from branch.');
+  }
+
+  return value;
+}
+
+function parseCreatedBranch(value: unknown): string {
+  if (!isWorkspaceBranchName(value)) {
+    throw corrupt('Invalid workspace branch.');
   }
 
   return value;

@@ -45,7 +45,10 @@ export async function previewCloseForCli(
   return plan;
 }
 
-type MissingTarget = Extract<CloseRepositoryBlocker, { kind: 'integration-target-missing' }>;
+type MissingTarget = Extract<
+  CloseRepositoryBlocker,
+  { kind: 'integration-target-missing' | 'git-not-configured' }
+>;
 
 const FACT_TEXT: Readonly<Record<IntegrationBranchFact, (remote?: string) => string>> = {
   'remote-default': (remote) => 'default branch of remote ' + (remote ?? 'unknown'),
@@ -53,13 +56,32 @@ const FACT_TEXT: Readonly<Record<IntegrationBranchFact, (remote?: string) => str
   'primary-checkout': () => 'checked out in the main folder',
 };
 
+/** What closing does with the Specification, by its checkout. */
+function closeEffect(blocker: MissingTarget): string {
+  return blocker.sourceCheckout === 'primary'
+    ? 'Closing archives the Specification directly on the integration branch in the main folder (nothing to merge).'
+    : "Closing merges this worktree's branch into the integration branch.";
+}
+
+/** What choosing `branch` would do, by the Specification's checkout. */
+function choiceEffect(blocker: MissingTarget, branch: string): string {
+  return blocker.sourceCheckout === 'primary'
+    ? 'archives on ' + branch + ' (main folder; nothing to merge)'
+    : 'merges into ' + branch;
+}
+
 /**
- * The text of a missing integration branch: the candidates with the facts that make them one and
- * the other local branches. It names facts, never a default: nothing is chosen for the user.
+ * The text of a missing integration branch: why it is missing, what closing does, the candidates
+ * with the facts that make them one, and the other local branches. It names facts, never a
+ * default: nothing is chosen for the user.
  */
 export function integrationTargetMissingLines(blocker: MissingTarget): string[] {
+  const unconfigured = blocker.kind === 'git-not-configured';
   const lines = [
-    "No integration branch is configured: closing merges into the project's integration branch, and git.integrationTargetBranch in .nevo/config.yaml names none.",
+    (unconfigured
+      ? '.nevo/config.yaml has no git block, so it names no integration branch (git.integrationTargetBranch) and does not say whether Nevo uses Git (git.enabled). '
+      : 'No integration branch is configured: git.integrationTargetBranch in .nevo/config.yaml names none. ') +
+      closeEffect(blocker),
   ];
   if (blocker.candidates.length === 0 && blocker.otherBranches.length === 0) {
     lines.push(
@@ -76,7 +98,9 @@ export function integrationTargetMissingLines(blocker: MissingTarget): string[] 
         '  ' +
           candidate.branch +
           ': ' +
-          candidate.facts.map((fact) => FACT_TEXT[fact](candidate.remote)).join('; '),
+          candidate.facts.map((fact) => FACT_TEXT[fact](candidate.remote)).join('; ') +
+          '; ' +
+          choiceEffect(blocker, candidate.branch),
       );
     }
   }
@@ -90,9 +114,18 @@ export function integrationTargetMissingLines(blocker: MissingTarget): string[] 
     );
   }
 
-  lines.push(
-    'Choose the branch, set git.integrationTargetBranch in .nevo/config.yaml, then preview again.',
-  );
+  if (unconfigured) {
+    lines.push(
+      'Choose the branch, add a git block to .nevo/config.yaml, then preview again:',
+      '  git:',
+      '    enabled: true  # or false: whether Nevo uses Git in this project',
+      '    integrationTargetBranch: <the branch you chose>',
+    );
+  } else {
+    lines.push(
+      'Choose the branch, set git.integrationTargetBranch in .nevo/config.yaml, then preview again.',
+    );
+  }
 
   return lines;
 }
@@ -113,7 +146,9 @@ export async function reportingMissingIntegrationTarget<T>(
     const missing =
       error instanceof CloseOperationError
         ? error.repository.find(
-            (blocker): blocker is MissingTarget => blocker.kind === 'integration-target-missing',
+            (blocker): blocker is MissingTarget =>
+              blocker.kind === 'integration-target-missing' ||
+              blocker.kind === 'git-not-configured',
           )
         : undefined;
     if (!(error instanceof CloseOperationError) || !missing) {

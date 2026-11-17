@@ -108,6 +108,7 @@ describe('Close preview routes', () => {
   it('answer a missing integration branch with its candidates, none chosen (422 CLOSE_PREFLIGHT)', async () => {
     const blocker = {
       kind: 'integration-target-missing',
+      sourceCheckout: 'linked',
       candidates: [
         { branch: 'release/2026.11', facts: ['remote-default', 'started-from'], remote: 'origin' },
         { branch: 'develop', facts: ['primary-checkout'] },

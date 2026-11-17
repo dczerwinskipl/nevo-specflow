@@ -145,16 +145,36 @@ export const IntegrationBranchFactSchema = Type.Union([
   Type.Literal('primary-checkout'),
 ]);
 export type IntegrationBranchFact = Static<typeof IntegrationBranchFactSchema>;
-/** A local branch with every fact that makes it a candidate, in fact order. Never preselected. */
-export const IntegrationBranchCandidateSchema = Type.Object(
-  {
-    branch: Type.String(),
-    facts: Type.Array(IntegrationBranchFactSchema, { minItems: 1, maxItems: 3, uniqueItems: true }),
-    /** With `remote-default`: the remote whose default branch it is. */
-    remote: Type.Optional(Type.String()),
-  },
-  { additionalProperties: false },
-);
+const BlockerBranchSchema = Type.String({ minLength: 1, maxLength: 255 });
+/**
+ * A local branch with every fact that makes it a candidate, in fact order. Never preselected.
+ * `remote` (the remote whose default branch it is) is present exactly with the `remote-default` fact.
+ */
+export const IntegrationBranchCandidateSchema = Type.Union([
+  Type.Object(
+    {
+      branch: BlockerBranchSchema,
+      facts: Type.Array(IntegrationBranchFactSchema, {
+        minItems: 1,
+        maxItems: 3,
+        uniqueItems: true,
+        contains: Type.Literal('remote-default'),
+      }),
+      remote: BlockerBranchSchema,
+    },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      branch: BlockerBranchSchema,
+      facts: Type.Array(
+        Type.Union([Type.Literal('started-from'), Type.Literal('primary-checkout')]),
+        { minItems: 1, maxItems: 2, uniqueItems: true },
+      ),
+    },
+    { additionalProperties: false },
+  ),
+]);
 export type IntegrationBranchCandidate = Static<typeof IntegrationBranchCandidateSchema>;
 /**
  * A repository precondition of a Close the owner fixes in the repository (`CLOSE_PREFLIGHT`, from the
@@ -163,7 +183,9 @@ export type IntegrationBranchCandidate = Static<typeof IntegrationBranchCandidat
  * `git.integrationTargetBranch`) names at most 50 `candidates` ordered by their first fact, and
  * `otherBranches`: at most 200 of the `otherBranchCount` remaining local branches by name, without
  * the Specification's own linked branch and branches `git.worktrees.branchPattern` names. Both may be
- * empty, and no branch (`main` included) is assumed. `integration-target-branch` is the
+ * empty, and no branch (`main` included) is assumed. `git-not-configured` carries the same lists
+ * when the project configuration has no `git:` block at all (no `git.enabled`, no
+ * `git.integrationTargetBranch`). `integration-target-branch` is the
  * checkout the Close integrates into (the primary checkout for the configured
  * `git.integrationTargetBranch`, or a pinned integration destination) on `branch` instead of
  * `expectedBranch`.
@@ -180,9 +202,17 @@ export const RepositoryBlockerSchema = Type.Union([
   ),
   Type.Object(
     {
-      kind: Type.Literal('integration-target-missing'),
+      kind: Type.Union([
+        Type.Literal('integration-target-missing'),
+        Type.Literal('git-not-configured'),
+      ]),
+      /**
+       * The Specification's checkout: `linked` merges its branch into the integration branch,
+       * `primary` archives directly on the integration branch in the main folder (nothing to merge).
+       */
+      sourceCheckout: Type.Union([Type.Literal('primary'), Type.Literal('linked')]),
       candidates: Type.Array(IntegrationBranchCandidateSchema, { maxItems: 50 }),
-      otherBranches: Type.Array(Type.String(), { maxItems: 200 }),
+      otherBranches: Type.Array(BlockerBranchSchema, { maxItems: 200 }),
       otherBranchCount: Type.Integer({ minimum: 0 }),
     },
     { additionalProperties: false },

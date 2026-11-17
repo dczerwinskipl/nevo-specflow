@@ -13,6 +13,7 @@ import type {
   WorkspaceRegistry,
 } from '../../project/workspace/registry/types';
 import { readProjectGitPolicy } from '../../version-control/worktrees/config';
+import type { GitWorktreePolicy } from '../../version-control/worktrees/policy';
 import { resolveSpecification } from '../discovery';
 import { listWorkspaceSpecifications } from '../repository';
 import { isExecutionStatePathOf } from '../execution-paths';
@@ -47,26 +48,43 @@ export type CloseRequest =
 
 const TARGET_MISSING =
   'Project Home requires explicit git.integrationTargetBranch configuration before this operation.';
+const GIT_NOT_CONFIGURED =
+  'Project Home has no git configuration (a git block with enabled and integrationTargetBranch) for this operation.';
+
+/** The refusal text of a missing integration branch, by why it is missing. */
+function targetMissingMessage(policy: GitWorktreePolicy): string {
+  return policy.notConfigured ? GIT_NOT_CONFIGURED : TARGET_MISSING;
+}
 
 /**
- * The `integration-target-missing` blocker with the local branches that could receive the Close,
- * read without fetching or writing anything.
+ * The blocker of a missing integration branch (`git-not-configured` when the project configuration
+ * has no `git:` block, else `integration-target-missing`) with the local branches that could receive
+ * the Close, read without fetching or writing anything. `ownBranch` is the Specification's branch
+ * (the Close evidence, else the branch Create recorded for the workspace).
  */
 async function targetMissingBlocker(
   registry: WorkspaceRegistry,
   source: WorkspaceRegistration,
-  branchPattern: string,
+  policy: GitWorktreePolicy,
+  ownBranch: string | undefined,
 ): Promise<CloseRepositoryBlocker> {
   const primary = registry.workspaces.find(
     (item) => item.workspaceId === registry.primaryWorkspaceId,
   );
-  if (primary?.kind !== 'primary') {
-    throw invalid('Verified primary workspace is unavailable.');
-  }
+  const branch = ownBranch ?? (source.kind === 'linked' ? source.branch : undefined);
 
   return {
-    kind: 'integration-target-missing',
-    ...(await readIntegrationCandidates({ primaryRoot: primary.root, source, branchPattern })),
+    kind: policy.notConfigured ? 'git-not-configured' : 'integration-target-missing',
+    sourceCheckout: source.kind,
+    // Without a verified primary no branch is offered; the refusal still names it.
+    ...(primary?.kind === 'primary'
+      ? await readIntegrationCandidates({
+          primaryRoot: primary.root,
+          source,
+          ...(branch ? { ownBranch: branch } : {}),
+          branchPattern: policy.branchPattern,
+        })
+      : { candidates: [], otherBranches: [], otherBranchCount: 0 }),
   };
 }
 
@@ -406,13 +424,17 @@ export async function previewCloseOperation(
       error.code === 'CLOSE_PREFLIGHT' &&
       error.repository.length > 0
     ) {
-      throw new CloseOperationError('CLOSE_PREFLIGHT', `${error.message} ${TARGET_MISSING}`, {
-        paths: error.paths,
-        repository: [
-          ...error.repository,
-          await targetMissingBlocker(registry, sourceWorkspace, configured.policy.branchPattern),
-        ],
-      });
+      throw new CloseOperationError(
+        'CLOSE_PREFLIGHT',
+        `${error.message} ${targetMissingMessage(configured.policy)}`,
+        {
+          paths: error.paths,
+          repository: [
+            ...error.repository,
+            await targetMissingBlocker(registry, sourceWorkspace, configured.policy, undefined),
+          ],
+        },
+      );
     }
 
     throw error;
@@ -472,9 +494,9 @@ export async function previewCloseOperation(
 
       targetBranch = configured.policy.integrationTargetBranch;
       if (!targetBranch) {
-        throw new CloseOperationError('CLOSE_PREFLIGHT', TARGET_MISSING, {
+        throw new CloseOperationError('CLOSE_PREFLIGHT', targetMissingMessage(configured.policy), {
           repository: [
-            await targetMissingBlocker(registry, sourceWorkspace, configured.policy.branchPattern),
+            await targetMissingBlocker(registry, sourceWorkspace, configured.policy, source.branch),
           ],
         });
       }

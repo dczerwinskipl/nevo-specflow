@@ -26,6 +26,8 @@ export function repositoryReasons(
         });
       case 'integration-target-missing':
         return t('workflowExecution.close.repository.reason.targetMissing');
+      case 'git-not-configured':
+        return t('workflowExecution.close.repository.reason.gitNotConfigured');
       case 'integration-target-branch':
         return t('workflowExecution.close.repository.reason.targetBranch', {
           expected: blocker.expectedBranch,
@@ -59,6 +61,11 @@ function copyOf(t: TFunction, blocker: RepositoryBlocker): { title: string; expl
       return {
         title: t('workflowExecution.close.repository.targetMissing.title'),
         explanation: t('workflowExecution.close.repository.targetMissing.explanation'),
+      };
+    case 'git-not-configured':
+      return {
+        title: t('workflowExecution.close.repository.gitNotConfigured.title'),
+        explanation: t('workflowExecution.close.repository.gitNotConfigured.explanation'),
       };
     case 'integration-target-branch':
       return {

@@ -449,15 +449,20 @@ describe('E2.T10 — read-only lifecycle admission and durable shared Git resour
     git(root, 'branch', 'feature/nevo-9-other');
     git(root, 'update-ref', 'refs/remotes/origin/release', 'HEAD');
     git(root, 'symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/release');
+    // A tag with a branch's name must not turn the branch name into `heads/develop`.
+    git(root, 'branch', 'develop');
+    git(root, 'tag', 'develop');
+    git(root, 'tag', 'release');
     const config = await readFile(join(root, '.nevo/config.yaml'), 'utf8');
     const missing = {
       kind: 'integration-target-missing',
+      sourceCheckout: 'primary',
       candidates: [
         { branch: 'release', facts: ['remote-default'], remote: 'origin' },
         { branch, facts: ['primary-checkout'] },
       ],
-      otherBranches: [],
-      otherBranchCount: 0,
+      otherBranches: ['develop'],
+      otherBranchCount: 1,
     };
     await writeFile(join(root, 'untracked.txt'), 'new\n');
     await expect(
@@ -471,6 +476,17 @@ describe('E2.T10 — read-only lifecycle admission and durable shared Git resour
       previewCloseOperation(engine, { kind: 'specification-close', specId: spec.specId }),
     ).rejects.toMatchObject({ code: 'CLOSE_PREFLIGHT', repository: [missing] });
     expect(await readFile(join(root, '.nevo/config.yaml'), 'utf8')).toBe(config);
+
+    // No `git:` block at all: its own blocker, with the same candidates.
+    await writeFile(join(root, '.nevo/config.yaml'), 'runtime: {}\n');
+    git(root, 'add', '.nevo/config.yaml');
+    commitStaged(root, 'no git block');
+    await expect(
+      previewCloseOperation(engine, { kind: 'specification-close', specId: spec.specId }),
+    ).rejects.toMatchObject({
+      code: 'CLOSE_PREFLIGHT',
+      repository: [{ ...missing, kind: 'git-not-configured' }],
+    });
   }, 120000);
 
   it('rejects an unfinished Git merge even when porcelain reports a clean checkout', async () => {

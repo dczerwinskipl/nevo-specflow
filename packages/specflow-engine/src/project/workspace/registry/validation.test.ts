@@ -54,3 +54,18 @@ describe('workspace registry started-from branch', () => {
     }
   });
 });
+
+describe('workspace registry created branch', () => {
+  it('keeps the branch Create made, and reads a workspace without one', () => {
+    expect(
+      validateWorkspaceRegistry(registryWith({ branch: 'feature/nevo-1-sso' }), context)
+        .workspaces[1],
+    ).toMatchObject({ branch: 'feature/nevo-1-sso' });
+    expect(validateWorkspaceRegistry(registryWith({}), context).workspaces[1]).not.toHaveProperty(
+      'branch',
+    );
+    expect(() => validateWorkspaceRegistry(registryWith({ branch: 'a..b' }), context)).toThrowError(
+      expect.objectContaining({ code: 'REGISTRY_CORRUPT' }),
+    );
+  });
+});

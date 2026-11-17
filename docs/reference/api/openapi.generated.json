@@ -566,69 +566,150 @@
                   "type": "object",
                   "required": [
                     "kind",
+                    "sourceCheckout",
                     "candidates",
                     "otherBranches",
                     "otherBranchCount"
                   ],
                   "properties": {
                     "kind": {
-                      "type": "string",
-                      "enum": [
-                        "integration-target-missing"
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "integration-target-missing"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "git-not-configured"
+                          ]
+                        }
+                      ]
+                    },
+                    "sourceCheckout": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "primary"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "linked"
+                          ]
+                        }
                       ]
                     },
                     "candidates": {
                       "type": "array",
                       "items": {
-                        "type": "object",
-                        "required": [
-                          "branch",
-                          "facts"
-                        ],
-                        "properties": {
-                          "branch": {
-                            "type": "string"
-                          },
-                          "facts": {
-                            "type": "array",
-                            "items": {
-                              "anyOf": [
-                                {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "required": [
+                              "branch",
+                              "facts",
+                              "remote"
+                            ],
+                            "properties": {
+                              "branch": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 255
+                              },
+                              "facts": {
+                                "type": "array",
+                                "items": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "remote-default"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "started-from"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "primary-checkout"
+                                      ]
+                                    }
+                                  ]
+                                },
+                                "minItems": 1,
+                                "maxItems": 3,
+                                "uniqueItems": true,
+                                "contains": {
                                   "type": "string",
                                   "enum": [
                                     "remote-default"
                                   ]
-                                },
-                                {
-                                  "type": "string",
-                                  "enum": [
-                                    "started-from"
-                                  ]
-                                },
-                                {
-                                  "type": "string",
-                                  "enum": [
-                                    "primary-checkout"
-                                  ]
                                 }
-                              ]
+                              },
+                              "remote": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 255
+                              }
                             },
-                            "minItems": 1,
-                            "maxItems": 3,
-                            "uniqueItems": true
+                            "additionalProperties": false
                           },
-                          "remote": {
-                            "type": "string"
+                          {
+                            "type": "object",
+                            "required": [
+                              "branch",
+                              "facts"
+                            ],
+                            "properties": {
+                              "branch": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 255
+                              },
+                              "facts": {
+                                "type": "array",
+                                "items": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "started-from"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "primary-checkout"
+                                      ]
+                                    }
+                                  ]
+                                },
+                                "minItems": 1,
+                                "maxItems": 2,
+                                "uniqueItems": true
+                              }
+                            },
+                            "additionalProperties": false
                           }
-                        },
-                        "additionalProperties": false
+                        ]
                       },
                       "maxItems": 50
                     },
                     "otherBranches": {
                       "type": "array",
                       "items": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255
                       },
                       "maxItems": 200
                     },

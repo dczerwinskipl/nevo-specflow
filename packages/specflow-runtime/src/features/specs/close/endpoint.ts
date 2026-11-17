@@ -17,6 +17,7 @@ import {
   planPublicCloseOperation,
   previewPublicCloseOperation,
   reconcileArchivedConflictScratchOperation,
+  type CloseRepositoryBlocker,
   type PlanPublicCloseOptions,
   readRegistrySnapshot,
   type PublicClosePlan,
@@ -186,25 +187,33 @@ function blockersOf(error: unknown): { blockers?: ExitBlocker[] } {
     : {};
 }
 
+/** A mutable contract copy of one Engine repository blocker. */
+function repositoryBlocker(blocker: CloseRepositoryBlocker): RepositoryBlocker {
+  switch (blocker.kind) {
+    case 'uncommitted-changes':
+      return { ...blocker, paths: [...blocker.paths] };
+    case 'integration-target-missing':
+    case 'git-not-configured':
+      return {
+        kind: blocker.kind,
+        sourceCheckout: blocker.sourceCheckout,
+        candidates: blocker.candidates.map((candidate) =>
+          candidate.remote !== undefined
+            ? { branch: candidate.branch, facts: [...candidate.facts], remote: candidate.remote }
+            : { branch: candidate.branch, facts: [...candidate.facts] },
+        ),
+        otherBranches: [...blocker.otherBranches],
+        otherBranchCount: blocker.otherBranchCount,
+      };
+    default:
+      return { ...blocker };
+  }
+}
+
 /** `CLOSE_PREFLIGHT`: the repository preconditions the owner fixes before the Close can start. */
 function repositoryOf(error: unknown): { repository?: RepositoryBlocker[] } {
   return error instanceof CloseOperationError && error.repository.length > 0
-    ? {
-        repository: error.repository.map((blocker) =>
-          blocker.kind === 'uncommitted-changes'
-            ? { ...blocker, paths: [...blocker.paths] }
-            : blocker.kind === 'integration-target-missing'
-              ? {
-                  ...blocker,
-                  candidates: blocker.candidates.map((candidate) => ({
-                    ...candidate,
-                    facts: [...candidate.facts],
-                  })),
-                  otherBranches: [...blocker.otherBranches],
-                }
-              : { ...blocker },
-        ),
-      }
+    ? { repository: error.repository.map(repositoryBlocker) }
     : {};
 }
 

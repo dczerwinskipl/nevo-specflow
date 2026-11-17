@@ -83,8 +83,12 @@ workspace close --preview`) refuses with `CLOSE_PREFLIGHT` and lists the local b
 receive the Close on stderr. Each candidate is shown with the facts that make it one: the default
 branch of a remote, read from the local `refs/remotes/<remote>/HEAD` without fetching; the branch
 this worktree's branch started from; and the branch checked out in the main folder. The other local
-branches follow. Nothing is chosen for you and no branch name is assumed. Set
-`git.integrationTargetBranch` in `.nevo/config.yaml`, then preview again. With `--json` the refusal
+branches follow. Nothing is chosen for you and no branch name is assumed. The text depends on the
+Specification's checkout. For a linked worktree, closing merges its branch into the chosen branch.
+For the main folder, closing archives directly on the chosen branch, with nothing to merge. Set
+`git.integrationTargetBranch` in `.nevo/config.yaml`, then preview again. When `.nevo/config.yaml`
+has no `git:` block at all (`git-not-configured`), the text shows the block to add, with `enabled`
+and `integrationTargetBranch`. With `--json` the refusal
 is also printed on stdout as `{error: {code, message, repository}}`
 ([Close](../api/specflow-specification-operations.md#close)).
 

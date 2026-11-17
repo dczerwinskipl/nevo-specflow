@@ -60,6 +60,7 @@ describe('CLI Close preview', () => {
 describe('CLI Close preview without an integration branch', () => {
   const blocker = {
     kind: 'integration-target-missing',
+    sourceCheckout: 'linked',
     candidates: [
       { branch: 'release/2026.11', facts: ['remote-default', 'started-from'], remote: 'origin' },
       { branch: 'develop', facts: ['primary-checkout'] },
@@ -84,10 +85,10 @@ describe('CLI Close preview without an integration branch', () => {
     expect(stdout).toEqual([]);
     expect(stderr).toEqual([
       'CLOSE_PREFLIGHT: No target.',
-      "No integration branch is configured: closing merges into the project's integration branch, and git.integrationTargetBranch in .nevo/config.yaml names none.",
+      "No integration branch is configured: git.integrationTargetBranch in .nevo/config.yaml names none. Closing merges this worktree's branch into the integration branch.",
       'Candidates (none is chosen for you):',
-      "  release/2026.11: default branch of remote origin; this worktree's branch started from it",
-      '  develop: checked out in the main folder',
+      "  release/2026.11: default branch of remote origin; this worktree's branch started from it; merges into release/2026.11",
+      '  develop: checked out in the main folder; merges into develop',
       'Other local branches: hotfix and 2 more',
       'Choose the branch, set git.integrationTargetBranch in .nevo/config.yaml, then preview again.',
     ]);
@@ -97,6 +98,7 @@ describe('CLI Close preview without an integration branch', () => {
     expect(
       integrationTargetMissingLines({
         kind: 'integration-target-missing',
+        sourceCheckout: 'linked',
         candidates: [],
         otherBranches: [],
         otherBranchCount: 0,
@@ -104,6 +106,44 @@ describe('CLI Close preview without an integration branch', () => {
     ).toContain(
       'No local branch can receive it. Create the integration branch in the repository, then preview again.',
     );
+  });
+
+  it('words a primary-checkout Close as archiving on the branch, with nothing to merge', () => {
+    const lines = integrationTargetMissingLines({
+      kind: 'integration-target-missing',
+      sourceCheckout: 'primary',
+      candidates: [{ branch: 'develop', facts: ['primary-checkout'] }],
+      otherBranches: [],
+      otherBranchCount: 0,
+    });
+    expect(lines[0]).toContain('archives the Specification directly on the integration branch');
+    expect(lines[0]).not.toContain('merges');
+    expect(lines).toContain(
+      '  develop: checked out in the main folder; archives on develop (main folder; nothing to merge)',
+    );
+  });
+
+  it('explains the git block a project without Git configuration needs', async () => {
+    const stderr: string[] = [];
+    await expect(
+      reportingMissingIntegrationTarget(
+        { stdout: () => undefined, stderr: (line) => stderr.push(line) },
+        false,
+        () =>
+          Promise.reject(
+            new CloseOperationError('CLOSE_PREFLIGHT', 'No git.', {
+              repository: [{ ...blocker, kind: 'git-not-configured' }],
+            }),
+          ),
+      ),
+    ).rejects.toBeInstanceOf(ReportedFailure);
+    expect(stderr[1]).toContain('.nevo/config.yaml has no git block');
+    expect(stderr.slice(-4)).toEqual([
+      'Choose the branch, add a git block to .nevo/config.yaml, then preview again:',
+      '  git:',
+      '    enabled: true  # or false: whether Nevo uses Git in this project',
+      '    integrationTargetBranch: <the branch you chose>',
+    ]);
   });
 
   it('leaves any other refusal to the caller', async () => {

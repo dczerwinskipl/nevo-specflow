@@ -30,6 +30,10 @@ When that base is a local branch (an explicit `refs/heads/*` or short branch nam
 branch in Project Home), Create also records it as the new workspace's `startedFrom` (Create journal target,
 then the workspace registration). It is a fact for Close to offer as an integration-branch candidate, never a
 merge destination. A commit, a tag or a detached `HEAD` records none, and workspaces created before it have none.
+With `HEAD`, the base commit is read from that branch, so the recorded branch and the base commit name the same
+tip. A name the journal and the registry cannot record (over 255 characters, or with whitespace) is not recorded.
+The registration also records the new worktree's own `branch`. Close uses it to leave the Specification's branch
+out of the integration-branch candidates even when the worktree is detached.
 A new worktree's optional `integrationTargetWorkspaceId` chooses a verified registered checkout;
 the source workspace pins the chosen destination's `workspaceId`, physical incarnation and branch.
 Without an explicit destination the later Close uses project `integrationTargetBranch` through

@@ -53,6 +53,11 @@ export type WorkspaceRegistration =
        * merge destination.
        */
       readonly startedFrom?: string;
+      /**
+       * The branch Create made for this workspace (a fact of its creation; the checkout may be on
+       * another branch or detached now). Absent on workspaces created before it was recorded.
+       */
+      readonly branch?: string;
     };
 
 export interface SpecWorkspaceBinding {

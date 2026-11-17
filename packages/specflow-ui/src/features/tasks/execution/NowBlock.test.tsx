@@ -147,6 +147,83 @@ describe('the Specification Now block', () => {
     expect(onNewTask).toHaveBeenCalledOnce();
   });
 
+  it('makes New task the only action when Finish step is not available', () => {
+    const projection = breakdown();
+    const done = projection.actions.finish!.transitions[0]!;
+    const onNewTask = vi.fn();
+    renderNow(
+      <OverviewNow
+        projection={{
+          ...projection,
+          actions: {
+            finish: {
+              ...projection.actions.finish!,
+              transitions: [
+                {
+                  ...done,
+                  unavailable: 'tasks-open',
+                  openTasks: [{ taskId: 't-02', cause: 'active' }],
+                },
+              ],
+            },
+          },
+        }}
+        onNewTask={onNewTask}
+      />,
+    );
+
+    const actions = document.querySelector<HTMLElement>('[data-slot="workflow-actions"]')!;
+    expect(
+      within(actions)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(['New task']);
+    fireEvent.click(within(actions).getByRole('button', { name: 'New task' }));
+    expect(onNewTask).toHaveBeenCalledOnce();
+  });
+
+  it('keeps New task one tap away beside an unmet gate action and Finish step', () => {
+    const projection = breakdown();
+    const done = projection.actions.finish!.transitions[0]!;
+    const gate = {
+      id: 'breakdown-plan',
+      type: 'document' as const,
+      label: 'plan.md has a Tasks section',
+      documentType: 'plan',
+      scope: { kind: 'specification' as const, specId: SPEC },
+      status: 'unsatisfied' as const,
+      reason: 'sections-missing' as const,
+      missingSections: ['Tasks'],
+      documentId: 'plan',
+    };
+    renderNow(
+      <WorkflowNow
+        subject={{ specId: SPEC }}
+        projection={{
+          ...projection,
+          actions: {
+            finish: {
+              ...projection.actions.finish!,
+              transitions: [{ ...done, unavailable: 'gate-unsatisfied', gates: [gate] }],
+            },
+          },
+        }}
+        headingId="now"
+        links={{}}
+        artifactOptions={[]}
+        gateAction={() => ({ label: 'Open plan.md', onSelect: vi.fn() })}
+        overview={{ specId: SPEC, onNewTask: vi.fn() }}
+      />,
+    );
+
+    const actions = document.querySelector<HTMLElement>('[data-slot="workflow-actions"]')!;
+    expect(
+      within(actions)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(['Open plan.md', 'Finish step', 'New task']);
+  });
+
   it('offers no New task when a Task may not be created', () => {
     const projection = breakdown();
     renderNow(

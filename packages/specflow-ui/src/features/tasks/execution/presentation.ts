@@ -290,41 +290,64 @@ export function stepTrack(
 }
 
 /**
- * The one contextual secondary action of the Overview's Now, from projection facts only (never a
- * step id):
- * - `finish` when the main action is an unmet gate's (Open behaviour.md): Finish step stays beside
- *   it, and its dialog says what is still missing;
- * - `new-task` at an active step that produces Tasks while a Task may be created;
- * - `gate` for an unmet exit gate that has an action and is not the main action;
- * - none otherwise. Never more than one.
+ * A button-styled secondary action of the Overview's Now: Finish step beside an unmet gate's action,
+ * New task, or the action of an unmet exit gate.
  */
 export type NowSecondary =
   | { readonly kind: 'finish' }
   | { readonly kind: 'new-task' }
   | { readonly kind: 'gate'; readonly gate: GateStatus };
 
-export function nowSecondary(
+/** What the Overview's Now offers beside (or instead of) its main action. */
+export interface NowActionPlan {
+  /** The one button-styled secondary action, if any. */
+  readonly secondary?: NowSecondary;
+  /**
+   * New task when it is not the secondary: `primary` when Now has no main action (it is then the
+   * only action), `quiet` (a ghost button, one tap) beside an unmet gate's action and Finish step.
+   */
+  readonly newTask?: 'primary' | 'quiet';
+}
+
+/**
+ * The actions around the Overview Now's main action, from projection facts only (never a step id).
+ * New task is offered at an active step that produces Tasks while a Task may be created, and it is
+ * never dropped:
+ * - main `finish`: New task is the secondary; at another step, an unmet exit gate's action is;
+ * - main `gate` (Open behaviour.md): Finish step is the secondary, New task stays as a quiet button;
+ * - main `none` (Finish step is unavailable): New task is the only action, primary-styled;
+ * - main `start` or `other` (a lifecycle or Close action), or no active step: nothing.
+ */
+export function nowActionPlan(
   projection: Pick<WorkflowActionProjection, 'position' | 'actions' | 'specification'>,
   main: 'start' | 'finish' | 'gate' | 'other' | 'none',
   hasGateAction: (gate: GateStatus) => boolean,
-): NowSecondary | undefined {
-  if (main === 'gate') {
-    return { kind: 'finish' };
-  }
-
+): NowActionPlan {
   const { position, actions, specification } = projection;
-  if (position.kind !== 'active' || main === 'other') {
-    return undefined;
+  const newTask =
+    position.kind === 'active' &&
+    position.step.produces === 'tasks' &&
+    specification?.createTask.kind === 'allowed';
+
+  switch (main) {
+    case 'gate':
+      return { secondary: { kind: 'finish' }, ...(newTask ? { newTask: 'quiet' as const } : {}) };
+    case 'none':
+      return newTask ? { newTask: 'primary' } : {};
+    case 'finish': {
+      if (newTask) {
+        return { secondary: { kind: 'new-task' } };
+      }
+
+      const gate = (actions.finish?.transitions ?? [])
+        .filter((transition) => transition.unavailable !== 'tasks-open')
+        .flatMap((transition) => transition.gates ?? [])
+        .find((candidate) => candidate.status === 'unsatisfied' && hasGateAction(candidate));
+
+      return gate && position.kind === 'active' ? { secondary: { kind: 'gate', gate } } : {};
+    }
+
+    default:
+      return {};
   }
-
-  if (position.step.produces === 'tasks' && specification?.createTask.kind === 'allowed') {
-    return { kind: 'new-task' };
-  }
-
-  const gate = (actions.finish?.transitions ?? [])
-    .filter((transition) => transition.unavailable !== 'tasks-open')
-    .flatMap((transition) => transition.gates ?? [])
-    .find((candidate) => candidate.status === 'unsatisfied' && hasGateAction(candidate));
-
-  return gate ? { kind: 'gate', gate } : undefined;
 }

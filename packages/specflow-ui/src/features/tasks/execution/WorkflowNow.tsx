@@ -22,7 +22,7 @@ import { NowBlock } from './NowBlock';
 import { ReturnStepDialog } from './ReturnStepDialog';
 import { StartTaskDialog, type PinPreview } from './StartTaskDialog';
 import type { NowLinks } from './StartBlockerLines';
-import { nowSecondary } from './presentation';
+import { nowActionPlan } from './presentation';
 import { useWorkflowCommands } from './useWorkflowCommands';
 import { WorkflowRefusalAlert } from './WorkflowRefusalAlert';
 
@@ -287,9 +287,9 @@ export function WorkflowNow({
   const starting = commands.start.isPending;
   const showStart = actions.start !== undefined && startLabel !== undefined;
   const showFinish = finish !== undefined && !finishBlocked;
-  // The Overview's one contextual secondary action, from projection facts (never a step id).
-  const secondary = overview
-    ? nowSecondary(
+  // The Overview's actions around the main one, from projection facts (never a step id).
+  const plan = overview
+    ? nowActionPlan(
         projection,
         primaryAction
           ? 'other'
@@ -302,7 +302,16 @@ export function WorkflowNow({
                 : 'none',
         (gate) => gateAction?.(gate) !== undefined,
       )
-    : undefined;
+    : {};
+  const secondary = plan.secondary;
+  const onNewTask = overview?.onNewTask;
+  // New task beside an unmet gate's action and Finish step: one tap, quieter than a third button.
+  const quietNewTask =
+    plan.newTask === 'quiet' && onNewTask ? (
+      <Button variant="ghost" leadingIcon="plus" onClick={onNewTask}>
+        {t('workflowExecution.now.newTask')}
+      </Button>
+    ) : undefined;
   const secondaryGateStatus = secondary?.kind === 'gate' ? secondary.gate : undefined;
   const secondaryGate = secondaryGateStatus ? finishGateAction(secondaryGateStatus) : undefined;
   const secondaryButton =
@@ -311,8 +320,8 @@ export function WorkflowNow({
       <Button key="finish" variant="secondary" onClick={openFinish} disabled={busy}>
         {t('workflowExecution.now.finish')}
       </Button>
-    ) : secondary?.kind === 'new-task' && overview?.onNewTask ? (
-      <Button variant="secondary" leadingIcon="plus" onClick={overview.onNewTask}>
+    ) : secondary?.kind === 'new-task' && onNewTask ? (
+      <Button variant="secondary" leadingIcon="plus" onClick={onNewTask}>
         {t('workflowExecution.now.newTask')}
       </Button>
     ) : secondaryGate ? (
@@ -346,7 +355,13 @@ export function WorkflowNow({
             {mainGateAction.label}
           </Button>
           {secondaryButton}
+          {quietNewTask}
         </>
+      ) : plan.newTask === 'primary' && onNewTask ? (
+        // No main workflow action (Finish step is unavailable): New task is the only action.
+        <Button key="new-task" leadingIcon="plus" onClick={onNewTask}>
+          {t('workflowExecution.now.newTask')}
+        </Button>
       ) : undefined
     ) : actions.start || finish || actions.return ? (
       <>

@@ -49,14 +49,17 @@ const meta = {
       options: [
         'not-started',
         'not-started-bare',
+        'requirements',
         'write-spec',
         'write-spec-retry',
         'write-spec-gate',
         'write-spec-session',
         'breakdown',
         'tasks-created',
+        'ready',
         'waiting',
         'completed',
+        'abandoned',
       ],
     },
     page: { control: 'inline-radio', options: ['overview', 'tasks'] },
@@ -226,6 +229,56 @@ export const Completed: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('img', { name: 'All 7 steps · completed' })).toBeVisible();
+    // The Tasks of a completed workflow are done, not drafts.
+    await expect(canvas.queryByText(/0 of 2/)).toBeNull();
+  },
+};
+
+/** Step 1 just started: the first segment is current, nothing before it. */
+export const Requirements: Story = {
+  tags: ['contract'],
+  args: { scenario: 'requirements' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('img', { name: 'Step 1 of 7: Gather requirements' }),
+    ).toBeVisible();
+    await expect(canvas.getByText('Step 1 of 7 · next: Write the Specification')).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Finish step' })).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'New task' })).toBeNull();
+  },
+};
+
+/** A step finished; the next one is ready: Start is the only action, the track is on that step. */
+export const Ready: Story = {
+  tags: ['contract'],
+  args: { scenario: 'ready' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('button', { name: 'Start Design the solution' }),
+    ).toBeVisible();
+    await expect(canvas.getByText('Ready to start')).toBeVisible();
+    await expect(
+      canvas.getByRole('img', { name: 'Step 3 of 7: Design the solution' }),
+    ).toBeVisible();
+  },
+};
+
+/**
+ * An abandoned workflow: its reason under the title and no step track. The Engine's outline names
+ * no step once the run ended, so "Ended at step N of M" cannot be shown without a new fact.
+ */
+export const Abandoned: Story = {
+  tags: ['contract'],
+  args: { scenario: 'abandoned' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText('The relevance cutoff moved to the search ranking rework.'),
+    ).toBeVisible();
+    const now = canvas.getByRole('region', { name: 'Now' });
+    await expect(within(now).queryByRole('img')).toBeNull();
   },
 };
 

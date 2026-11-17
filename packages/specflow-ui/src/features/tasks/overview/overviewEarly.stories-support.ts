@@ -26,6 +26,8 @@ export type EarlyScenario =
   | 'not-started'
   /** Just created, as a real project without Sessions may show it: no goal, Sessions off. */
   | 'not-started-bare'
+  /** Gather requirements, the first step, just started. */
+  | 'requirements'
   /** Write the Specification by hand: no Session yet, Sessions are offered. */
   | 'write-spec'
   /** Write the Specification with an agent Session working on it. */
@@ -40,8 +42,12 @@ export type EarlyScenario =
   | 'tasks-created'
   /** The wait step: the Tasks are worked on; the step track is compact. */
   | 'waiting'
-  /** The workflow completed. */
-  | 'completed';
+  /** Write the Specification finished; Design the solution is ready to start. */
+  | 'ready'
+  /** The workflow completed; both Tasks are done. */
+  | 'completed'
+  /** The workflow was abandoned at Write the Specification. */
+  | 'abandoned';
 
 const notStarted = (scenario: EarlyScenario) =>
   scenario === 'not-started' || scenario === 'not-started-bare';
@@ -84,7 +90,7 @@ const outlineStep = (index: number) => ({
 });
 const tasksStep = outlineStep(3);
 /** The Tasks the breakdown created exist from that scenario on. */
-const withTasks = (scenario: EarlyScenario) =>
+const withTasks = (scenario: EarlyScenario): boolean =>
   scenario === 'tasks-created' || scenario === 'waiting' || scenario === 'completed';
 
 const workflow = {
@@ -96,9 +102,11 @@ const workflow = {
 
 /** The active step of each started scenario (an index into `steps`). */
 const activeIndex: Record<
-  Exclude<EarlyScenario, 'not-started' | 'not-started-bare' | 'completed'>,
+  Exclude<EarlyScenario, 'not-started' | 'not-started-bare' | 'completed' | 'abandoned'>,
   number
 > = {
+  requirements: 0,
+  ready: 2,
   'write-spec': 1,
   'write-spec-session': 1,
   'write-spec-retry': 1,
@@ -169,6 +177,30 @@ export function earlyProjection(scenario: EarlyScenario): WorkflowActionProjecti
     };
   }
 
+  if (scenario === 'abandoned') {
+    return {
+      subject,
+      workflow,
+      position: {
+        kind: 'terminal',
+        outcome: 'abandoned',
+        abandonment: {
+          at: minutesAgo(12),
+          reason: 'The relevance cutoff moved to the search ranking rework.',
+          actor: owner,
+        },
+      },
+      actions: {},
+      specification: {
+        ...specification,
+        createTask: { kind: 'unavailable', reason: 'specification-ended' },
+        exit: { close: { kind: 'allowed' }, abandon: { kind: 'unavailable', reason: 'ended' } },
+      },
+      // Once the run ended the outline names no step: the track is not shown.
+      outline: { stepCount: steps.length },
+    };
+  }
+
   if (notStarted(scenario)) {
     const outline: WorkflowOutline = { stepCount: steps.length, next: outlineStep(0), tasksStep };
 
@@ -205,6 +237,20 @@ export function earlyProjection(scenario: EarlyScenario): WorkflowActionProjecti
     // The steps run in a line: past the producing step the Engine claims no Tasks step.
     ...(index <= tasksStep.position - 1 ? { tasksStep } : {}),
   };
+
+  if (scenario === 'ready') {
+    return {
+      subject,
+      workflow,
+      position: {
+        kind: 'ready',
+        next: { step: step(index), human: true, agent: { kind: 'available' } },
+      },
+      actions: { start: { step: steps[index]!.id, firstStart: false } },
+      specification,
+      outline,
+    };
+  }
 
   if (scenario === 'waiting') {
     return {
@@ -312,6 +358,7 @@ const drafts = [
   { id: 'fusion-cutoff', title: 'Drop vector-only hits below minSimilarity' },
 ] as const;
 const draftStatus = { id: 'draft', label: 'Draft', lifecycle: 'pending' } as const;
+const doneStatus = { id: 'completed', label: 'Done', lifecycle: 'completed' } as const;
 const inProgressStatus = {
   id: 'in-progress',
   label: 'In progress',
@@ -324,10 +371,13 @@ export async function earlyWorkspace(
 ): Promise<SpecificationWorkspaceResponse> {
   const base = await createWorkspaceIntegrationApi().getSpecificationWorkspace('api-integration');
   const tasks = withTasks(scenario) ? drafts : [];
-  const working = scenario === 'waiting';
-  const group = working
-    ? { id: 'in-progress', name: 'In progress', status: inProgressStatus }
-    : { id: 'needs-approval', name: 'Needs approval', status: draftStatus };
+  const done = scenario === 'completed';
+  const group =
+    scenario === 'waiting'
+      ? { id: 'in-progress', name: 'In progress', status: inProgressStatus }
+      : done
+        ? { id: 'done', name: 'Done', status: doneStatus }
+        : { id: 'needs-approval', name: 'Needs approval', status: draftStatus };
   const sessions = sessionsOf(scenario);
   const bare = scenario === 'not-started-bare';
   const notImplemented = { state: 'unavailable', reason: 'not_implemented' } as const;
@@ -378,7 +428,7 @@ export async function earlyWorkspace(
                   },
                 ]
               : [],
-          completed: 0,
+          completed: done ? tasks.length : 0,
           total: tasks.length,
           cancelled: 0,
           ended: 0,

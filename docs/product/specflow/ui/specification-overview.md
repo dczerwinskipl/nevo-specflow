@@ -83,7 +83,10 @@ dashboard configuration). The Overview renders what the reads deliver.
   one contextual secondary action**, chosen from projection facts, never from step ids: **New task**
   at an active step that produces Tasks while a Task may be created (`specification.createTask`;
   it opens the New task dialog), else **Open <document>** for an unmet exit gate that is not the
-  main action, else nothing. Now never offers "View N tasks": the Tasks section follows it. The
+  main action, else nothing. New task is never dropped at such a step: when Finish step is not
+  available (and no gate action replaces it) New task is Now's only action, primary-styled; beside
+  an unmet gate's action and Finish step it stays as a quiet (ghost) button, one tap away. Now never
+  offers "View N tasks", on any step, wait steps included: the Tasks section follows it. The
   **⋯** menu holds Return to an earlier step, Workflow history (Activity history) and one note with
   the step id and workflow revision; neither appears anywhere else in Now. A terminal position
   shows a summary of the Tasks ("All 6 tasks done · 1 cancelled"); an abandoned one its reason

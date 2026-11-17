@@ -32,8 +32,10 @@ const following = 'border-t border-border-default py-4 @min-[40rem]/work:py-5';
 const opensColumn = '[&>*:first-child]:border-t-0 [&>*:first-child]:pt-3';
 /**
  * Below a 40rem page the Now block is a flush band whose own edge separates the next section: that
- * section drops its divider and keeps its top padding.
+ * section drops its divider and keeps its top padding, and the band adds no space of its own below,
+ * so one 16 px gap separates them.
  */
+const nowBand = '@max-[40rem]/app-content:pb-0';
 const afterNowBand = '@max-[40rem]/app-content:border-t-0';
 const outletAfterNowBand = '@max-[40rem]/app-content:[&>*:first-child]:border-t-0';
 
@@ -116,7 +118,15 @@ export function WorkView({ specId, data }: WorkViewProps) {
   // With a workflow (project Runtime) the Now block opens the work; without one it renders the
   // preparation block in its place.
   const now = nowBlock ? (
-    <div key="now" className={cn(opening, 'empty:hidden', twoColumns && 'col-start-1 min-w-0')}>
+    <div
+      key="now"
+      className={cn(
+        opening,
+        nowShown && nowBand,
+        'empty:hidden',
+        twoColumns && 'col-start-1 min-w-0',
+      )}
+    >
       <SpecificationNow
         documents={data.documents.map((document) => ({
           value: document.filename ?? document.id,

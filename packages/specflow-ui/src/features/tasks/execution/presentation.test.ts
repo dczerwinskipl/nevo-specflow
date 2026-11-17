@@ -4,7 +4,7 @@ import type { GateStatus, WorkflowActionProjection } from '@nevo/specflow-contra
 import {
   actorLabel,
   attemptLine,
-  nowSecondary,
+  nowActionPlan,
   personLabel,
   progressLine,
   stepTrack,
@@ -166,22 +166,42 @@ describe('the Now secondary action', () => {
   const any = () => true;
 
   it('keeps Finish step beside an unmet gate that is the main action', () => {
-    expect(nowSecondary(active(undefined, [gate('a')]), 'gate', any)).toEqual({ kind: 'finish' });
+    expect(nowActionPlan(active(undefined, [gate('a')]), 'gate', any)).toEqual({
+      secondary: { kind: 'finish' },
+    });
+  });
+
+  it('keeps New task, quiet, beside a gate action and Finish step at a step that produces Tasks', () => {
+    expect(nowActionPlan(active('tasks', [gate('a')]), 'gate', any)).toEqual({
+      secondary: { kind: 'finish' },
+      newTask: 'quiet',
+    });
   });
 
   it('offers New task at a step that produces Tasks while a Task may be created', () => {
-    expect(nowSecondary(active('tasks'), 'finish', any)).toEqual({ kind: 'new-task' });
-    expect(nowSecondary(active('tasks', [], 'unavailable'), 'finish', any)).toBeUndefined();
-    expect(nowSecondary(active(undefined), 'finish', any)).toBeUndefined();
+    expect(nowActionPlan(active('tasks'), 'finish', any)).toEqual({
+      secondary: { kind: 'new-task' },
+    });
+    expect(nowActionPlan(active('tasks', [], 'unavailable'), 'finish', any)).toEqual({});
+    expect(nowActionPlan(active(undefined), 'finish', any)).toEqual({});
+  });
+
+  it('makes New task the only action when Now has no main action', () => {
+    expect(nowActionPlan(active('tasks'), 'none', any)).toEqual({ newTask: 'primary' });
+    expect(nowActionPlan(active('tasks', [], 'unavailable'), 'none', any)).toEqual({});
+    expect(nowActionPlan(active(undefined), 'none', any)).toEqual({});
   });
 
   it('offers an unmet gate that has an action and is not the main action', () => {
     const projection = active(undefined, [gate('a')]);
-    expect(nowSecondary(projection, 'finish', any)).toEqual({ kind: 'gate', gate: gate('a') });
-    expect(nowSecondary(projection, 'finish', () => false)).toBeUndefined();
+    expect(nowActionPlan(projection, 'finish', any)).toEqual({
+      secondary: { kind: 'gate', gate: gate('a') },
+    });
+    expect(nowActionPlan(projection, 'finish', () => false)).toEqual({});
   });
 
-  it('offers nothing beside a lifecycle or Close action', () => {
-    expect(nowSecondary(active('tasks'), 'other', any)).toBeUndefined();
+  it('offers nothing beside a start, a lifecycle or a Close action', () => {
+    expect(nowActionPlan(active('tasks'), 'other', any)).toEqual({});
+    expect(nowActionPlan(active('tasks'), 'start', any)).toEqual({});
   });
 });

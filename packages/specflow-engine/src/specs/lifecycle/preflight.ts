@@ -12,6 +12,7 @@ import type {
   WorkspaceRegistration,
   WorkspaceRegistry,
 } from '../../project/workspace/registry/types';
+import { runGitFreeMutation } from '../../project/request-verification-memo';
 import { readProjectGitPolicy } from '../../version-control/worktrees/config';
 import type { GitWorktreePolicy } from '../../version-control/worktrees/policy';
 import { resolveSpecification } from '../discovery';
@@ -26,11 +27,14 @@ import {
   resourcesForClosePlan,
   type CloseCheckoutRole,
   type ClosePlan,
+  type GitClosePlan,
+  type GitOffClosePlan,
   type CloseRepositoryBlocker,
   type CloseWorkspaceEvidence,
 } from './model';
 import { sortedResources } from './resources';
 import { readIntegrationCandidates } from './integration-candidates';
+import { closeRepositoryMode } from './repository-mode';
 
 export type CloseRequest =
   | { readonly kind: 'worktree-close'; readonly operationId?: string; readonly specId: string }
@@ -48,19 +52,11 @@ export type CloseRequest =
 
 const TARGET_MISSING =
   'Project Home requires explicit git.integrationTargetBranch configuration before this operation.';
-const GIT_NOT_CONFIGURED =
-  'Project Home has no git configuration (a git block with enabled and integrationTargetBranch) for this operation.';
-
-/** The refusal text of a missing integration branch, by why it is missing. */
-function targetMissingMessage(policy: GitWorktreePolicy): string {
-  return policy.notConfigured ? GIT_NOT_CONFIGURED : TARGET_MISSING;
-}
 
 /**
- * The blocker of a missing integration branch (`git-not-configured` when the project configuration
- * has no `git:` block, else `integration-target-missing`) with the local branches that could receive
- * the Close, read without fetching or writing anything. `ownBranch` is the Specification's branch
- * (the Close evidence, else the branch Create recorded for the workspace).
+ * The `integration-target-missing` blocker with the local branches that could receive the Close,
+ * read without fetching or writing anything. `ownBranch` is the Specification's branch (the Close
+ * evidence, else the branch Create recorded for the workspace).
  */
 async function targetMissingBlocker(
   registry: WorkspaceRegistry,
@@ -74,7 +70,7 @@ async function targetMissingBlocker(
   const branch = ownBranch ?? (source.kind === 'linked' ? source.branch : undefined);
 
   return {
-    kind: policy.notConfigured ? 'git-not-configured' : 'integration-target-missing',
+    kind: 'integration-target-missing',
     sourceCheckout: source.kind,
     // Without a verified primary no branch is offered; the refusal still names it.
     ...(primary?.kind === 'primary'
@@ -292,6 +288,122 @@ export async function inspectCleanGitWorkspace(
   };
 }
 
+/** The Specification a Close names, its registry snapshot and its (closable) checkout. */
+async function resolveCloseSource(engine: SpecFlowEngine, specId: string) {
+  const canonical = await resolveSpecification(engine, specId);
+  if (canonical.status !== 'available') {
+    throw new CloseOperationError(
+      'CLOSE_UNAVAILABLE',
+      'Canonical Specification source is unavailable.',
+    );
+  }
+
+  const registry = await engine.readRegistry();
+  const sourceWorkspace = registry.workspaces.find(
+    (item) => item.workspaceId === canonical.workspaceId,
+  );
+  if (!sourceWorkspace) {
+    throw invalid('Canonical workspace registration disappeared.');
+  }
+
+  if (sourceWorkspace.kind === 'linked' && !sourceWorkspace.managed) {
+    throw invalid('Unmanaged linked worktree cannot be closed.');
+  }
+
+  return { canonical, registry, sourceWorkspace };
+}
+
+/** The integration selection of a Specification Close: a boolean, and only for a linked checkout. */
+function assertIntegrationSelection(
+  request: { readonly integrateToTargetBranch?: boolean },
+  linked: boolean,
+): void {
+  if (
+    request.integrateToTargetBranch !== undefined &&
+    typeof request.integrateToTargetBranch !== 'boolean'
+  ) {
+    throw new CloseOperationError('CLOSE_INVALID', 'Invalid integration selection.');
+  }
+
+  if (!linked && request.integrateToTargetBranch !== undefined) {
+    throw new CloseOperationError(
+      'CLOSE_INVALID',
+      'Integration selection is not applicable in primary.',
+    );
+  }
+}
+
+/**
+ * Whether the project Git policy turns Git off for this Specification Close
+ * ({@link closeRepositoryMode}). A configuration that cannot be read decides nothing here: the Git
+ * preflight reads it again after the workflow gate and reports it.
+ */
+export async function closeRunsWithoutGit(
+  engine: SpecFlowEngine,
+  request: { readonly kind: 'specification-close'; readonly integrateToTargetBranch?: boolean },
+): Promise<boolean> {
+  const configured = await readProjectGitPolicy(engine.context).catch(() => undefined);
+
+  return configured !== undefined && closeRepositoryMode(configured.policy, request) === 'git-off';
+}
+
+/**
+ * The preview of a Specification Close with Git off: the workflow gate and the checkout identity,
+ * no Git process and no repository precondition. The plan pins the configuration revision it was
+ * decided with, so the reservation refuses when the policy changes in between.
+ */
+async function previewCloseWithoutGit(
+  engine: SpecFlowEngine,
+  request: {
+    readonly kind: 'specification-close';
+    readonly operationId?: string;
+    readonly specId: string;
+    readonly integrateToTargetBranch?: boolean;
+  },
+): Promise<GitOffClosePlan> {
+  const operationId = request.operationId ?? randomUUID();
+  const { canonical, registry, sourceWorkspace } = await resolveCloseSource(engine, request.specId);
+  const linked = sourceWorkspace.kind === 'linked';
+  if (canonical.specification.location !== 'active') {
+    throw invalid('Only an active Specification can be archived.');
+  }
+
+  await assertSpecificationExit(engine.specificationExit, request.specId);
+  assertIntegrationSelection(request, linked);
+  const configured = await readProjectGitPolicy(engine.context);
+  if (closeRepositoryMode(configured.policy, request) !== 'git-off') {
+    throw new CloseOperationError('CLOSE_CONFLICT', 'Project Git policy changed during preview.');
+  }
+
+  const binding = registry.specBindings.find((item) => item.specId === request.specId);
+  const plan: GitOffClosePlan = {
+    kind: 'specification-close',
+    gitOff: true,
+    operationId,
+    specId: request.specId,
+    fingerprint: fingerprintCloseIntent({
+      kind: 'specification-close',
+      operationId,
+      specId: request.specId,
+      integrateToTargetBranch: false,
+    }),
+    slug: canonical.specification.slug,
+    location: canonical.specification.location,
+    registryRevision: registry.revision,
+    ...(binding ? { bindingGeneration: binding.generation } : {}),
+    source: {
+      workspaceId: sourceWorkspace.workspaceId,
+      root: sourceWorkspace.root,
+      ...(sourceWorkspace.instanceId ? { instanceId: sourceWorkspace.instanceId } : {}),
+    },
+    ...(linked ? { integrateToTargetBranch: false as const } : {}),
+    configRevision: configured.revision,
+    resources: [],
+  };
+
+  return { ...plan, resources: resourcesForClosePlan(plan, engine.context.project.projectId) };
+}
+
 /**
  * Pure read admission: no Git mutation, registry changes, inferred default
  * destination, generated archive commits or workflow/worker fake evidence. A
@@ -317,26 +429,23 @@ export async function previewCloseOperation(
     throw new CloseOperationError('CLOSE_INVALID', 'Invalid Specification identity.');
   }
 
-  const canonical = await resolveSpecification(engine, request.specId);
-  if (canonical.status !== 'available') {
-    throw new CloseOperationError(
-      'CLOSE_UNAVAILABLE',
-      'Canonical Specification source is unavailable.',
-    );
+  // The one decision point of the repository mode: with Git off the Close archives in place.
+  if (request.kind === 'specification-close' && (await closeRunsWithoutGit(engine, request))) {
+    return runGitFreeMutation(() => previewCloseWithoutGit(engine, request));
   }
 
-  const registry = await engine.readRegistry();
-  const sourceWorkspace = registry.workspaces.find(
-    (item) => item.workspaceId === canonical.workspaceId,
-  );
-  if (!sourceWorkspace) {
-    throw invalid('Canonical workspace registration disappeared.');
-  }
+  return previewGitClose(engine, request, operationId, allowShared);
+}
 
+/** The preflight of a Specification or Worktree Close with Git (see {@link previewCloseOperation}). */
+async function previewGitClose(
+  engine: SpecFlowEngine,
+  request: Exclude<CloseRequest, { readonly kind: 'workspace-close' }>,
+  operationId: string,
+  allowShared: boolean,
+): Promise<GitClosePlan> {
+  const { canonical, registry, sourceWorkspace } = await resolveCloseSource(engine, request.specId);
   const linked = sourceWorkspace.kind === 'linked';
-  if (linked && !sourceWorkspace.managed) {
-    throw invalid('Unmanaged linked worktree cannot be closed.');
-  }
 
   // An archive-only Specification Close does not retire its checkout, so
   // sibling bindings and dependent integration destinations are not obstacles.
@@ -352,20 +461,7 @@ export async function previewCloseOperation(
 
     // D07: the workflow decides first, so a refusal lists its blockers before any Git check.
     await assertSpecificationExit(engine.specificationExit, request.specId);
-
-    if (
-      request.integrateToTargetBranch !== undefined &&
-      typeof request.integrateToTargetBranch !== 'boolean'
-    ) {
-      throw new CloseOperationError('CLOSE_INVALID', 'Invalid integration selection.');
-    }
-
-    if (!linked && request.integrateToTargetBranch !== undefined) {
-      throw new CloseOperationError(
-        'CLOSE_INVALID',
-        'Integration selection is not applicable in primary.',
-      );
-    }
+    assertIntegrationSelection(request, linked);
   }
 
   const integrate =
@@ -424,17 +520,13 @@ export async function previewCloseOperation(
       error.code === 'CLOSE_PREFLIGHT' &&
       error.repository.length > 0
     ) {
-      throw new CloseOperationError(
-        'CLOSE_PREFLIGHT',
-        `${error.message} ${targetMissingMessage(configured.policy)}`,
-        {
-          paths: error.paths,
-          repository: [
-            ...error.repository,
-            await targetMissingBlocker(registry, sourceWorkspace, configured.policy, undefined),
-          ],
-        },
-      );
+      throw new CloseOperationError('CLOSE_PREFLIGHT', `${error.message} ${TARGET_MISSING}`, {
+        paths: error.paths,
+        repository: [
+          ...error.repository,
+          await targetMissingBlocker(registry, sourceWorkspace, configured.policy, undefined),
+        ],
+      });
     }
 
     throw error;
@@ -494,7 +586,7 @@ export async function previewCloseOperation(
 
       targetBranch = configured.policy.integrationTargetBranch;
       if (!targetBranch) {
-        throw new CloseOperationError('CLOSE_PREFLIGHT', targetMissingMessage(configured.policy), {
+        throw new CloseOperationError('CLOSE_PREFLIGHT', TARGET_MISSING, {
           repository: [
             await targetMissingBlocker(registry, sourceWorkspace, configured.policy, source.branch),
           ],
@@ -653,13 +745,10 @@ async function previewWorkspaceClose(
   // admission using a verified anchor. The anchor is internal only and never
   // selects or limits the set moved by workspace-level CAS.
   const operationId = request.operationId ?? randomUUID();
-  const base = await previewCloseOperation(
+  const base = await previewGitClose(
     engine,
-    {
-      kind: 'worktree-close',
-      operationId,
-      specId: occupants[0]!.specId,
-    },
+    { kind: 'worktree-close', operationId, specId: occupants[0]!.specId },
+    operationId,
     true,
   );
   if (
@@ -672,7 +761,7 @@ async function previewWorkspaceClose(
     );
   }
 
-  const plan: ClosePlan = {
+  const plan: GitClosePlan = {
     ...base,
     kind: 'workspace-close',
     workspaceId: request.workspaceId,

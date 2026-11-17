@@ -94,9 +94,10 @@ export async function reserveCloseOperation(
 
     if (plan.configRevision !== undefined) {
       const config = await readProjectGitPolicy(engine.context);
+      // With Git off the pinned revision is the policy that turned Git off; any change refuses.
       if (
         config.revision !== plan.configRevision ||
-        config.policy.integrationTargetBranch !== plan.targetBranch
+        (!plan.gitOff && config.policy.integrationTargetBranch !== plan.targetBranch)
       ) {
         throw new CloseOperationError(
           'CLOSE_CONFLICT',
@@ -159,7 +160,19 @@ function assertMatchingRequest(
     );
   }
 
-  if (request.kind === 'specification-close') {
+  if (request.kind === 'specification-close' && journal.plan.gitOff) {
+    // With Git off a Close only archives: omitting the option or `false` replays it, `true` never.
+    if (
+      request.integrateToTargetBranch === true ||
+      (journal.plan.source.instanceId === undefined &&
+        request.integrateToTargetBranch !== undefined)
+    ) {
+      throw new CloseOperationError(
+        'CLOSE_CONFLICT',
+        'OperationId changed immutable integration selection.',
+      );
+    }
+  } else if (request.kind === 'specification-close') {
     // The original linked/primary scope is pinned by the journal, not the
     // current registry. Omitting the option is an intentional default, not a
     // wildcard that may replay an archive-only operation.

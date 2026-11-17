@@ -50,7 +50,9 @@ export const CloseScratchReconciliationRequestSchema = Type.Object(
  * `targetBranch`, and `commitsAhead` counts the source commits not on the target (0: nothing to
  * merge; a Specification Close adds its archive commit on top). `not-integrated`: nothing is
  * merged because the linked Specification is archived on its own branch as asked (`archive-only`)
- * or lives in the primary checkout and is archived directly on its branch (`primary-checkout`).
+ * or lives in the primary checkout and is archived directly on its branch (`primary-checkout`), or
+ * because Git is off for the project (`git-off`: `git.enabled: false` or no `git:` block): the
+ * Specification is archived in place in its checkout, nothing is committed and no branch is read.
  */
 export const CloseMergeSchema = Type.Union([
   Type.Object(
@@ -68,6 +70,10 @@ export const CloseMergeSchema = Type.Union([
       reason: Type.Union([Type.Literal('archive-only'), Type.Literal('primary-checkout')]),
       sourceBranch: Type.String(),
     },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    { status: Type.Literal('not-integrated'), reason: Type.Literal('git-off') },
     { additionalProperties: false },
   ),
 ]);
@@ -102,6 +108,8 @@ export const CloseResultSchema = Type.Object(
         Type.Literal('archived-linked-awaiting-integration'),
         Type.Literal('archived-in-primary'),
         Type.Literal('worktree-integrated-and-removed'),
+        // Git is off for the project: archived in place, nothing committed or merged.
+        Type.Literal('archived-without-git'),
       ]),
     ),
     conflictPaths: Type.Optional(Type.Array(Type.String())),
@@ -183,9 +191,8 @@ export type IntegrationBranchCandidate = Static<typeof IntegrationBranchCandidat
  * `git.integrationTargetBranch`) names at most 50 `candidates` ordered by their first fact, and
  * `otherBranches`: at most 200 of the `otherBranchCount` remaining local branches by name, without
  * the Specification's own linked branch and branches `git.worktrees.branchPattern` names. Both may be
- * empty, and no branch (`main` included) is assumed. `git-not-configured` carries the same lists
- * when the project configuration has no `git:` block at all (no `git.enabled`, no
- * `git.integrationTargetBranch`). `integration-target-branch` is the
+ * empty, and no branch (`main` included) is assumed. With Git off (`git.enabled: false` or no `git:`
+ * block) a Specification Close has no repository precondition. `integration-target-branch` is the
  * checkout the Close integrates into (the primary checkout for the configured
  * `git.integrationTargetBranch`, or a pinned integration destination) on `branch` instead of
  * `expectedBranch`.
@@ -202,10 +209,7 @@ export const RepositoryBlockerSchema = Type.Union([
   ),
   Type.Object(
     {
-      kind: Type.Union([
-        Type.Literal('integration-target-missing'),
-        Type.Literal('git-not-configured'),
-      ]),
+      kind: Type.Literal('integration-target-missing'),
       /**
        * The Specification's checkout: `linked` merges its branch into the integration branch,
        * `primary` archives directly on the integration branch in the main folder (nothing to merge).

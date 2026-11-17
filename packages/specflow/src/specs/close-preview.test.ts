@@ -123,29 +123,6 @@ describe('CLI Close preview without an integration branch', () => {
     );
   });
 
-  it('explains the git block a project without Git configuration needs', async () => {
-    const stderr: string[] = [];
-    await expect(
-      reportingMissingIntegrationTarget(
-        { stdout: () => undefined, stderr: (line) => stderr.push(line) },
-        false,
-        () =>
-          Promise.reject(
-            new CloseOperationError('CLOSE_PREFLIGHT', 'No git.', {
-              repository: [{ ...blocker, kind: 'git-not-configured' }],
-            }),
-          ),
-      ),
-    ).rejects.toBeInstanceOf(ReportedFailure);
-    expect(stderr[1]).toContain('.nevo/config.yaml has no git block');
-    expect(stderr.slice(-4)).toEqual([
-      'Choose the branch, add a git block to .nevo/config.yaml, then preview again:',
-      '  git:',
-      '    enabled: true  # or false: whether Nevo uses Git in this project',
-      '    integrationTargetBranch: <the branch you chose>',
-    ]);
-  });
-
   it('leaves any other refusal to the caller', async () => {
     const other = new CloseOperationError('CLOSE_PREFLIGHT', 'Dirty.');
     await expect(

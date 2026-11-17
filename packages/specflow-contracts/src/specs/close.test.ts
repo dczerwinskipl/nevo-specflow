@@ -67,7 +67,7 @@ describe('Close refusal contract', () => {
       blocker({ ...missingTarget, candidates: [{ branch: 'main', facts: ['default'] }] }),
     ).toBe(false);
     expect(blocker({ kind: 'integration-target-missing' })).toBe(false);
-    expect(blocker({ ...missingTarget, kind: 'git-not-configured' })).toBe(true);
+    expect(blocker({ ...missingTarget, kind: 'git-not-configured' })).toBe(false);
     // `remote` comes exactly with the remote-default fact.
     expect(
       blocker({
@@ -110,6 +110,20 @@ describe('Close preview contract', () => {
         merge: { status: 'not-integrated', reason: 'archive-only', sourceBranch: 'feature/x' },
       }),
     ).toBe(true);
+    // Git off: archived in place, no branch read.
+    expect(
+      Value.Check(ClosePreviewSchema, {
+        ...preview,
+        integrationRequired: false,
+        merge: { status: 'not-integrated', reason: 'git-off' },
+      }),
+    ).toBe(true);
+    expect(
+      Value.Check(ClosePreviewSchema, {
+        ...preview,
+        merge: { status: 'not-integrated', reason: 'archive-only' },
+      }),
+    ).toBe(false);
     expect(Value.Check(ClosePreviewSchema, preview)).toBe(false);
     expect(
       Value.Check(ClosePreviewSchema, {

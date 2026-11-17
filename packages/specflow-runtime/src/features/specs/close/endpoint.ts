@@ -193,7 +193,6 @@ function repositoryBlocker(blocker: CloseRepositoryBlocker): RepositoryBlocker {
     case 'uncommitted-changes':
       return { ...blocker, paths: [...blocker.paths] };
     case 'integration-target-missing':
-    case 'git-not-configured':
       return {
         kind: blocker.kind,
         sourceCheckout: blocker.sourceCheckout,

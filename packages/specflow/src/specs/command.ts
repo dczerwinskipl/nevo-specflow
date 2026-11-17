@@ -27,7 +27,11 @@ import { Command, InvalidArgumentError } from 'commander';
 import { createDocumentsCommand, type DocumentsCommandContext } from '../documents/command';
 import { engineAt } from '../engine-at';
 import { reportingRefusals } from '../documents/report';
-import { previewCloseForCli, reportingMissingIntegrationTarget } from './close-preview';
+import {
+  ARCHIVED_WITHOUT_GIT,
+  previewCloseForCli,
+  reportingMissingIntegrationTarget,
+} from './close-preview';
 import { openExecution, reportingWorkflowRefusals } from '../execution-session';
 import { localOwner } from '../local-actor';
 import { abandonLines } from '../workflow/present';
@@ -66,14 +70,15 @@ function previewRefusals(
   json: boolean | undefined,
   body: () => Promise<void>,
 ): Promise<void> {
-  const refusalOutput = {
-    stdout: context.stdout,
-    stderr: context.stderr ?? ((line: string) => process.stderr.write(line + '\n')),
-  };
+  const refusalOutput = { stdout: context.stdout, stderr: stderrOf(context) };
 
   return reportingRefusals(refusalOutput, json, () =>
     reportingMissingIntegrationTarget(refusalOutput, json, body),
   );
+}
+
+function stderrOf(context: SpecsCommandContext): (line: string) => void {
+  return context.stderr ?? ((line: string) => process.stderr.write(line + '\n'));
 }
 
 function output(context: SpecsCommandContext, value: unknown): void {
@@ -322,9 +327,18 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
         ...(options.archiveOnly ? { integrateToTargetBranch: false } : {}),
       };
       if (options.preview) {
-        await previewRefusals(context, options.json, async () =>
-          output(context, await previewCloseForCli(engine, request)),
-        );
+        await previewRefusals(context, options.json, async () => {
+          const plan = await previewCloseForCli(engine, request);
+          output(context, plan);
+          // stdout stays the JSON plan; the human note goes to stderr.
+          if (
+            !options.json &&
+            plan.merge.status === 'not-integrated' &&
+            plan.merge.reason === 'git-off'
+          ) {
+            stderrOf(context)(ARCHIVED_WITHOUT_GIT);
+          }
+        });
 
         return;
       }
@@ -340,6 +354,9 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
         context.stdout('Specification Close: ' + result.status);
         context.stdout('Operation ID: ' + operationId);
         context.stdout('Outcome: ' + (result.outcome ?? result.status));
+        if (result.outcome === 'archived-without-git') {
+          context.stdout(ARCHIVED_WITHOUT_GIT);
+        }
       }
     });
 

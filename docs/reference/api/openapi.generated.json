@@ -573,19 +573,9 @@
                   ],
                   "properties": {
                     "kind": {
-                      "anyOf": [
-                        {
-                          "type": "string",
-                          "enum": [
-                            "integration-target-missing"
-                          ]
-                        },
-                        {
-                          "type": "string",
-                          "enum": [
-                            "git-not-configured"
-                          ]
-                        }
+                      "type": "string",
+                      "enum": [
+                        "integration-target-missing"
                       ]
                     },
                     "sourceCheckout": {
@@ -954,6 +944,28 @@
                   }
                 },
                 "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "required": [
+                  "status",
+                  "reason"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "not-integrated"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "git-off"
+                    ]
+                  }
+                },
+                "additionalProperties": false
               }
             ]
           }
@@ -1050,6 +1062,12 @@
                 "type": "string",
                 "enum": [
                   "worktree-integrated-and-removed"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "archived-without-git"
                 ]
               }
             ]

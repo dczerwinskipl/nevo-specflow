@@ -40,9 +40,8 @@ export interface EffectiveAutoCommit {
 
 /** Project Home is the only authority for operational Git policy. */
 export interface GitWorktreePolicy {
+  /** `git.enabled`; `false` also when the project configuration has no `git:` block at all. */
   readonly enabled: boolean;
-  /** The project configuration has no `git:` block at all (Git is then disabled). */
-  readonly notConfigured?: true;
   readonly branchPattern: string;
   readonly baseRef: string;
   /** Independently configured destination for existing-worktree integration. */
@@ -100,7 +99,6 @@ export function parseGitWorktreePolicy(
   if (value === undefined) {
     return {
       enabled: false,
-      notConfigured: true,
       branchPattern: DEFAULT_BRANCH_PATTERN,
       baseRef: DEFAULT_BASE_REF,
       commits: { protectedBranches: [] },

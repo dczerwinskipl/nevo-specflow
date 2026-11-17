@@ -359,7 +359,7 @@ export async function disposeReboundWorktree(
   afterGitRemoval?: () => Promise<void>,
 ): Promise<CloseJournal> {
   const current = await readCloseJournal(engine.context, operationId);
-  if (current?.stage !== 'binding-rebound' || !current.reboundRevision) {
+  if (current?.stage !== 'binding-rebound' || !current.reboundRevision || current.plan.gitOff) {
     throw conflict('Managed disposal requires a recorded destination binding.');
   }
 
@@ -518,7 +518,7 @@ export async function inspectPendingDisposal(
   operationId: string,
 ): Promise<'original-checkout-present' | 'source-removed' | 'identity-mismatch'> {
   const record = await readCloseJournal(engine.context, operationId);
-  if (record?.stage !== 'disposal-initiated') {
+  if (record?.stage !== 'disposal-initiated' || record.plan.gitOff) {
     throw conflict('Disposal inspection requires an interrupted durable removal intent.');
   }
 

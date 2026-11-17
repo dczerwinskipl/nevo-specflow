@@ -476,17 +476,6 @@ describe('E2.T10 — read-only lifecycle admission and durable shared Git resour
       previewCloseOperation(engine, { kind: 'specification-close', specId: spec.specId }),
     ).rejects.toMatchObject({ code: 'CLOSE_PREFLIGHT', repository: [missing] });
     expect(await readFile(join(root, '.nevo/config.yaml'), 'utf8')).toBe(config);
-
-    // No `git:` block at all: its own blocker, with the same candidates.
-    await writeFile(join(root, '.nevo/config.yaml'), 'runtime: {}\n');
-    git(root, 'add', '.nevo/config.yaml');
-    commitStaged(root, 'no git block');
-    await expect(
-      previewCloseOperation(engine, { kind: 'specification-close', specId: spec.specId }),
-    ).rejects.toMatchObject({
-      code: 'CLOSE_PREFLIGHT',
-      repository: [{ ...missing, kind: 'git-not-configured' }],
-    });
   }, 120000);
 
   it('rejects an unfinished Git merge even when porcelain reports a clean checkout', async () => {

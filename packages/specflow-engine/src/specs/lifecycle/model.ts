@@ -46,14 +46,20 @@ export type CloseOutcome =
   | 'archive-only-closed'
   | 'archived-linked-awaiting-integration'
   | 'archived-in-primary'
-  | 'worktree-integrated-and-removed';
+  | 'worktree-integrated-and-removed'
+  /** Git is off for the project: the Specification was archived in place, nothing committed or merged. */
+  | 'archived-without-git';
 
-export interface CloseWorkspaceEvidence {
+/** The registered identity of a checkout, without any Git fact (a Close with Git off). */
+export interface CloseCheckoutEvidence {
   readonly workspaceId: string;
   readonly root: string;
+  readonly instanceId?: string;
+}
+
+export interface CloseWorkspaceEvidence extends CloseCheckoutEvidence {
   readonly branch: string;
   readonly head: string;
-  readonly instanceId?: string;
 }
 
 /** Pinned canonical occupants; a workspace-scoped Close never derives its set from one specId. */
@@ -65,25 +71,50 @@ export interface CloseOccupant {
   readonly bindingGeneration: number;
 }
 
-export interface ClosePlan {
-  readonly kind: CloseKind;
+interface ClosePlanIdentity {
   readonly operationId: string;
   /** Exclusive legacy close anchor; on workspace close the first snapshot occupant. */
   readonly specId: string;
-  readonly workspaceId?: string;
-  readonly occupants?: readonly CloseOccupant[];
   readonly fingerprint: string;
   readonly slug: string;
   readonly location: 'active' | 'archive';
   readonly registryRevision: number;
   readonly bindingGeneration?: number;
+  readonly resources: readonly string[];
+}
+
+/** A Close the Engine performs with Git: archive commit, optional integration and disposal. */
+export interface GitClosePlan extends ClosePlanIdentity {
+  readonly kind: CloseKind;
+  readonly gitOff?: never;
+  readonly workspaceId?: string;
+  readonly occupants?: readonly CloseOccupant[];
   readonly source: CloseWorkspaceEvidence;
   readonly target?: CloseWorkspaceEvidence;
   readonly targetBranch?: string;
   readonly integrateToTargetBranch?: boolean;
   readonly configRevision?: string;
-  readonly resources: readonly string[];
 }
+
+/**
+ * A Specification Close in a project with Git off (`git.enabled: false` or no `git:` block, owner
+ * decision 2026-11-17): the Specification is archived in place in its checkout, with no commit, no
+ * integration and no repository precondition. `configRevision` pins the policy that decided it.
+ * `integrateToTargetBranch` is `false` for a linked checkout and absent in the primary.
+ */
+export interface GitOffClosePlan extends ClosePlanIdentity {
+  readonly kind: 'specification-close';
+  readonly gitOff: true;
+  readonly workspaceId?: never;
+  readonly occupants?: never;
+  readonly source: CloseCheckoutEvidence;
+  readonly target?: never;
+  readonly targetBranch?: never;
+  readonly integrateToTargetBranch?: false;
+  readonly configRevision: string;
+}
+
+export type ClosePlan = GitClosePlan | GitOffClosePlan;
 
 /** Durable proof pinned before any subsequent Git publication attempt. */
 export interface CloseIntegrationPreparation {
@@ -116,12 +147,16 @@ export interface CloseArchiveInventory {
   readonly sha256: string;
 }
 
-export interface CloseArchiveEvidence {
-  readonly sourceCommit: string;
+/** The move of `specs/active/<slug>` to `specs/archive/<slug>`, pinned before it is made. */
+export interface CloseArchiveMove {
   readonly sourcePath: string;
   readonly destinationPath: string;
   readonly files: readonly CloseArchiveInventory[];
   readonly archivedManifestSha256: string;
+}
+
+export interface CloseArchiveEvidence extends CloseArchiveMove {
+  readonly sourceCommit: string;
   readonly committedHead?: string;
   readonly committedTree?: string;
 }
@@ -135,6 +170,8 @@ export interface CloseJournal {
   /** Registry CAS revision after verified handover. */
   readonly reboundRevision?: number;
   readonly archive?: CloseArchiveEvidence;
+  /** A Close with Git off only ({@link GitOffClosePlan}): the archive move, no commit evidence. */
+  readonly archiveMove?: CloseArchiveMove;
   readonly integration?: CloseIntegrationPreparation;
   readonly scratch?: CloseIntegrationScratch;
   readonly outcome?: CloseOutcome;
@@ -186,6 +223,11 @@ export function normalizeCloseIntent(input: CloseIntent): CloseIntent {
 
 /** Derived resource identities must agree with persisted intent, not a forged list. */
 export function resourcesForClosePlan(plan: ClosePlan, projectId: string): readonly string[] {
+  // Without Git there is no branch to hold: the Specification and its checkout only.
+  if (plan.gitOff) {
+    return ['checkout:' + plan.source.workspaceId, 'spec:' + plan.specId].sort();
+  }
+
   const integrate =
     plan.kind === 'worktree-close' ||
     plan.kind === 'workspace-close' ||
@@ -234,11 +276,10 @@ export type CloseLocalConfigRefusal = 'changed' | 'unrecorded' | 'unreadable';
  * A repository precondition of a Close the owner can fix in the repository (`CLOSE_PREFLIGHT`):
  * - `uncommitted-changes`: the checkout has staged, modified or untracked files (`paths`, at most
  *   {@link REPOSITORY_PATHS_NAMED}; `count` is the total) that a Close does not take along;
- * - `integration-target-missing`: the project configures no `git.integrationTargetBranch`; it names
- *   the local branches that could receive the Close ({@link IntegrationBranchCandidates}), none
- *   chosen;
- * - `git-not-configured`: the project configuration has no `git:` block at all, so there is no
- *   `git.enabled` and no `git.integrationTargetBranch`; it names the same candidates;
+ * - `integration-target-missing`: the project uses Git but configures no
+ *   `git.integrationTargetBranch`; it names the local branches that could receive the Close
+ *   ({@link IntegrationBranchCandidates}), none chosen (with Git off a Close archives in place and
+ *   has no repository precondition);
  * - `integration-target-branch`: the primary checkout is on `branch`, not on `expectedBranch`;
  * - `git-operation-in-progress`: a merge, rebase, cherry-pick or revert is unfinished;
  * - `branch-detached`: the checkout is not on a local branch.
@@ -252,7 +293,7 @@ export type CloseRepositoryBlocker =
       readonly count: number;
     }
   | ({
-      readonly kind: 'integration-target-missing' | 'git-not-configured';
+      readonly kind: 'integration-target-missing';
       /**
        * The Specification's checkout: `linked` merges its branch into the integration branch,
        * `primary` archives directly on it in the main folder (nothing to merge).

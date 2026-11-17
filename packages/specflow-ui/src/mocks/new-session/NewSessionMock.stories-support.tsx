@@ -6,12 +6,21 @@ import {
   AppWorkspaceBody,
   Button,
   Collapsible,
+  Drawer,
+  DrawerBody,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
   Field,
   Icon,
   InformationList,
   cn,
   InlineNote,
   StatusIndicator,
+  choiceSurfaceCheckClassName,
+  choiceSurfaceClassName,
   TextInput,
   Typography,
   WorkspaceHeader,
@@ -24,7 +33,7 @@ import {
 import { useWorkspaceLabels } from '../../app/navigation/useWorkspaceLabels';
 import { StoryLocalization } from '../../i18n/StoryLocalization';
 import { useMessage } from '../../i18n/message';
-import { ChoiceTile, ChoiceTileGroup } from '../../shared/controls/ChoiceTile';
+import { ChoiceTileGroup } from '../../shared/controls/ChoiceTile';
 import { SessionProviderIcon } from '../../features/sessions/shared/SessionProviderIcon';
 import { ContextExecutorSection } from '../../features/sessions/managed/context/ContextExecutorSection';
 import { ContextNavigationRow } from '../../features/sessions/managed/context/ContextNavigationRow';
@@ -86,7 +95,7 @@ type Copy = (typeof mockCopy)[MockLocale];
 export interface NewSessionMockProps {
   state: NewSessionState;
   locale?: MockLocale;
-  /** The "How to fix" disclosure starts open. */
+  /** The "How to fix" panel (side panel; bottom sheet on narrow) starts open. */
   diagnosticsOpen?: boolean;
   /** The agent chosen at first (else the first available one). */
   selected?: string;
@@ -316,7 +325,8 @@ function StartColumn({
     <SessionStartConversation
       composerOnlyIfFits
       composer={
-        isSplit ? (
+        // No agent: nothing to start, so no bar; "Check again" sits in the message under the cards.
+        noAgent && !isSplit ? undefined : isSplit ? (
           <InertComposer id="start-message" placeholder={t('sessionStart.composer.placeholder')} />
         ) : (
           // Narrow: the primary action is a bar fixed to the bottom of the visible area (the same
@@ -342,7 +352,7 @@ function StartColumn({
               describedBy={anyUnavailable ? diagnosticsId : undefined}
             >
               {catalogue.providers.map((provider) => (
-                <AgentTile
+                <AgentCard
                   key={provider.id}
                   provider={provider}
                   status={statusOf(provider.id)}
@@ -359,7 +369,7 @@ function StartColumn({
                 copy={copy}
                 locale={locale}
                 statusOf={statusOf}
-                defaultExpanded={diagnosticsOpen}
+                defaultOpen={diagnosticsOpen}
               />
             )}
           </fieldset>
@@ -390,7 +400,7 @@ function StartColumn({
               )}
             </Field>
           )}
-          {isSplit && actions}
+          {isSplit && !noAgent && actions}
         </div>
       </form>
     </SessionStartConversation>
@@ -398,11 +408,12 @@ function StartColumn({
 }
 
 /**
- * Icon, name, short status and the selected mark: nothing else drives its height. Narrow: one row
- * (the status at the end of the name's line); wide: the status under the name. The status leads
- * with a dot when available and an alert glyph when not, so the difference is not colour alone.
+ * Variant A: a 28 px logo, the name over the status (never right-aligned) and a fixed slot for the
+ * check mark, reserved while unselected, so selecting moves nothing. One geometry on every card, in
+ * every state and at every width. Product-owned composition on the design system's choice-surface
+ * recipe: `ChoiceTile`'s icon track is 18 px and top-aligned (see the handover).
  */
-function AgentTile({
+function AgentCard({
   provider,
   status,
   checked,
@@ -413,38 +424,67 @@ function AgentTile({
   checked: boolean;
   onSelect: () => void;
 }) {
+  const id = useId();
+  const unavailable = !provider.available;
+
   return (
-    <ChoiceTile
-      name="provider"
-      value={provider.id}
-      checked={checked}
-      disabled={!provider.available}
-      onSelect={onSelect}
-      icon={
-        // Centred on the one-row title on narrow layouts; on the name line when wide.
-        <span className="flex h-8 items-center @2xl:h-auto">
-          <SessionProviderIcon providerId={provider.icon} />
+    <label
+      className={cn(
+        choiceSurfaceClassName,
+        'grid grid-cols-[1.75rem_minmax(0,1fr)_var(--spacing-icon-md)] items-center gap-x-2.5 px-3.5 py-3.5',
+      )}
+    >
+      <input
+        className="sr-only"
+        type="radio"
+        name="provider"
+        value={provider.id}
+        checked={checked}
+        disabled={unavailable}
+        aria-labelledby={`${id}-name`}
+        aria-describedby={`${id}-status`}
+        onChange={() => {
+          if (!unavailable) {
+            onSelect();
+          }
+        }}
+      />
+      <span
+        className={cn(
+          'flex size-7 items-center justify-center [&>*]:!size-7',
+          unavailable && 'text-content-muted opacity-60 grayscale',
+        )}
+      >
+        <SessionProviderIcon providerId={provider.icon} />
+      </span>
+      <span className="grid min-w-0 gap-0.5">
+        <span
+          id={`${id}-name`}
+          className={cn(
+            'text-title-md',
+            unavailable ? 'text-content-secondary' : 'text-content-primary',
+          )}
+        >
+          {provider.title}
         </span>
-      }
-      title={
-        <span className="flex min-h-8 flex-wrap items-center gap-x-3 gap-y-1 @2xl:min-h-0 @2xl:gap-y-1.5">
-          <span>{provider.title}</span>
-          <span className="ml-auto flex h-5 items-center gap-1.5 text-body-sm font-normal whitespace-nowrap text-content-secondary @2xl:ml-0 @2xl:basis-full">
-            {provider.available ? (
-              <StatusIndicator tone="success" />
-            ) : (
-              <Icon
-                name="circle-alert"
-                size="sm"
-                aria-hidden="true"
-                className="text-content-muted"
-              />
-            )}
-            {status}
-          </span>
+        {/* One line by contract: the vocabulary is short enough at 375 and in three columns. */}
+        <span
+          id={`${id}-status`}
+          data-status
+          className="flex h-4 items-center gap-1.5 overflow-hidden text-body-sm whitespace-nowrap text-content-secondary"
+        >
+          {provider.available ? (
+            <StatusIndicator tone="success" />
+          ) : (
+            <Icon name="circle-alert" size="sm" aria-hidden="true" className="text-content-muted" />
+          )}
+          {status}
         </span>
-      }
-    />
+      </span>
+      <span className={cn(choiceSurfaceCheckClassName, !checked && 'invisible')} aria-hidden="true">
+        <Icon name="check" size="sm" />
+      </span>
+    </label>
   );
 }
 
@@ -454,8 +494,9 @@ function lowerFirst(value: string) {
 }
 
 /**
- * One shared line under the picker naming what is unavailable, with "How to fix" disclosing the
- * full diagnostics of every unavailable agent. The cards stay one size whatever the reason.
+ * One shared line under the picker naming what is unavailable. "How to fix" opens the full
+ * diagnostics in a side panel (a bottom sheet on narrow layouts) instead of growing the form. With
+ * no agent at all the line is the screen's message and carries "Check again" itself.
  */
 function DiagnosticsLine({
   id,
@@ -464,7 +505,7 @@ function DiagnosticsLine({
   copy,
   locale,
   statusOf,
-  defaultExpanded,
+  defaultOpen,
 }: {
   id: string;
   catalogue: StartCatalogue;
@@ -472,72 +513,82 @@ function DiagnosticsLine({
   copy: Copy;
   locale: MockLocale;
   statusOf: (providerId: string) => string;
-  defaultExpanded: boolean;
+  defaultOpen: boolean;
 }) {
+  const { t } = useTranslation();
   const text = useMessage();
+  const isSplit = useWorkspaceLayout().mode === 'split';
+  const [open, setOpen] = useState(defaultOpen);
   const unavailable = catalogue.providers.filter((p) => !p.available);
   const none = unavailable.length === catalogue.providers.length;
   const [only] = unavailable;
-  // With every agent unavailable the bar already says so: the line names them instead.
-  const summary =
-    unavailable.length === 1 && only
+  const summary = none
+    ? copy.noneAvailable
+    : unavailable.length === 1 && only
       ? fill(copy.oneUnavailable, { provider: only.title, status: lowerFirst(statusOf(only.id)) })
       : fill(copy.someUnavailable, { providers: unavailable.map((p) => p.title).join(', ') });
 
   return (
-    <Collapsible density="inline" defaultExpanded={defaultExpanded}>
-      <InlineNote tone={none ? 'danger' : 'attention'}>
-        <span className="flex flex-wrap items-center gap-x-3">
+    <>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <InlineNote tone={none ? 'danger' : 'attention'} className="min-w-0">
           <span id={id}>{summary}</span>
-          {/* The chevron and "How to fix" stay together when the line wraps. */}
-          <span className="inline-flex items-center whitespace-nowrap">
-            <Collapsible.Trigger
-              aria-describedby={id}
-              className="font-medium text-content-primary underline decoration-border-strong underline-offset-4"
-            >
-              {copy.howToFix}
-            </Collapsible.Trigger>
-          </span>
-        </span>
-      </InlineNote>
-      <Collapsible.Content>
-        <div className="mt-3 grid gap-5 border-l-2 border-border-default pl-4">
-          {unavailable.map((provider) => {
-            const details = diagnosticsOf(
-              locale,
-              descriptors.find((d) => d.providerId === provider.id),
-              provider.id,
-            );
-
-            return (
-              <ProviderDiagnosticsBlock
-                key={provider.id}
-                provider={provider}
-                status={statusOf(provider.id)}
-                // The sign-in reason only restates the short status.
-                reason={
-                  provider.reason &&
-                  descriptors.find((d) => d.providerId === provider.id)?.readiness !==
-                    'authenticationRequired'
-                    ? text(provider.reason)
-                    : ''
-                }
-                details={details}
-                copy={copy}
-              />
-            );
-          })}
-          {/* With an agent to start, the bar offers Start; checking again lives with the fixes. */}
-          {!none && (
-            <div>
-              <Button type="button" variant="secondary">
-                {copy.checkAgain}
-              </Button>
-            </div>
+        </InlineNote>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            aria-describedby={id}
+            aria-haspopup="dialog"
+            onClick={() => setOpen(true)}
+          >
+            {copy.howToFix}
+          </Button>
+          {none && (
+            <Button type="button" size="sm">
+              {copy.checkAgain}
+            </Button>
           )}
         </div>
-      </Collapsible.Content>
-    </Collapsible>
+      </div>
+      <Drawer open={open} onOpenChange={setOpen}>
+        <DrawerContent side={isSplit ? 'right' : 'bottom'} closeLabel={t('common.close')}>
+          <DrawerHeader>
+            <DrawerTitle>{copy.panelTitle}</DrawerTitle>
+            <DrawerDescription>{summary}</DrawerDescription>
+          </DrawerHeader>
+          <DrawerBody>
+            <div className="grid gap-6">
+              {unavailable.map((provider) => {
+                const descriptor = descriptors.find((d) => d.providerId === provider.id);
+
+                return (
+                  <ProviderDiagnosticsBlock
+                    key={provider.id}
+                    provider={provider}
+                    status={statusOf(provider.id)}
+                    // The sign-in reason only restates the short status.
+                    reason={
+                      provider.reason && descriptor?.readiness !== 'authenticationRequired'
+                        ? text(provider.reason)
+                        : ''
+                    }
+                    details={diagnosticsOf(locale, descriptor, provider.id)}
+                    copy={copy}
+                  />
+                );
+              })}
+            </div>
+          </DrawerBody>
+          <DrawerFooter>
+            <Button type="button" className="w-full sm:w-fit">
+              {copy.checkAgain}
+            </Button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    </>
   );
 }
 
@@ -570,50 +621,22 @@ function ProviderDiagnosticsBlock({
       {details?.command && <CodeBlock>{details.command}</CodeBlock>}
       {details?.after && <Prose>{details.after}</Prose>}
       {details?.checkedPaths && (
-        <CheckedPaths label={fill(copy.checkedPaths, { count: details.checkedPaths.length })}>
-          <ul className="mt-2 grid gap-1.5">
-            {details.checkedPaths.map((path) => (
-              <li key={path}>
-                <Code>{path}</Code>
-              </li>
-            ))}
-          </ul>
-        </CheckedPaths>
+        <Collapsible density="inline" className="text-body-sm text-content-secondary">
+          <Collapsible.Trigger>
+            {fill(copy.checkedPaths, { count: details.checkedPaths.length })}
+          </Collapsible.Trigger>
+          <Collapsible.Content>
+            <ul className="mt-2 grid gap-1.5">
+              {details.checkedPaths.map((path) => (
+                <li key={path}>
+                  <Code>{path}</Code>
+                </li>
+              ))}
+            </ul>
+          </Collapsible.Content>
+        </Collapsible>
       )}
     </section>
-  );
-}
-
-/**
- * A disclosure nested in "How to fix". DS gap: `Collapsible`'s chevron rotates on any expanded
- * ancestor (`group-data-[expanded]/collapsible`), so a nested one shows "open" while closed. The
- * mock drives its own chevron from its own state; the fix belongs in `@nevo/ui` (rotate on the
- * trigger's own `aria-expanded`).
- */
-function CheckedPaths({ label, children }: { label: string; children: ReactNode }) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <Collapsible
-      density="inline"
-      showIndicator={false}
-      isExpanded={open}
-      onExpandedChange={setOpen}
-      className="text-body-sm text-content-secondary"
-    >
-      <Collapsible.Trigger>
-        <span className="inline-flex items-center gap-1">
-          <Icon
-            name="chevron-right"
-            size="sm"
-            aria-hidden="true"
-            className={cn('text-content-muted transition-transform', open && 'rotate-90')}
-          />
-          {label}
-        </span>
-      </Collapsible.Trigger>
-      <Collapsible.Content>{children}</Collapsible.Content>
-    </Collapsible>
   );
 }
 
@@ -657,23 +680,31 @@ function Code({ children }: { children: string }) {
 }
 
 /**
- * A snippet (MarkdownDocument's code-block look). It scrolls sideways and never wraps, so YAML keeps
- * its indentation; the region is focusable so the keyboard can scroll it.
+ * A snippet (MarkdownDocument's code-block look). Long lines wrap with their indentation kept (a
+ * hanging indent marks the continuation), so nothing is cut off and no sideways scroll is needed.
  */
 function CodeBlock({ children, label }: { children: string; label?: string }) {
   return (
-    <div className="min-w-0 overflow-hidden rounded-composite border border-border-default bg-canvas">
+    <div className="min-w-0 rounded-composite border border-border-default bg-canvas">
       {label && (
         <div className="border-b border-border-subtle px-3 py-1.5 text-body-sm text-content-muted">
           <span className="font-mono">{label}</span>
         </div>
       )}
-      <pre
-        tabIndex={0}
-        aria-label={label ?? children}
-        className="scrollbar-subtle overflow-x-auto px-3 py-2 font-mono text-[0.8125rem] leading-5 whitespace-pre text-content-primary"
-      >
-        {children}
+      <pre className="px-3 py-2 font-mono text-[0.8125rem] leading-5 text-content-primary">
+        {children.split('\n').map((line, index) => {
+          const indent = line.length - line.trimStart().length;
+
+          return (
+            <span
+              key={index}
+              className="block whitespace-pre-wrap [overflow-wrap:anywhere]"
+              style={{ paddingLeft: `${indent + 2}ch`, textIndent: '-2ch' }}
+            >
+              {line.trimStart()}
+            </span>
+          );
+        })}
       </pre>
     </div>
   );

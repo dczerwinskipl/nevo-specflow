@@ -7,7 +7,12 @@ import {
 } from '../../features/sessions/start/catalogue/providerDescriptors.stories-support';
 
 /** The four reviewed states; `expanded` is `one-unavailable` with its diagnostics open. */
-export type NewSessionState = 'all-available' | 'one-unavailable' | 'none-available';
+export type NewSessionState =
+  | 'all-available'
+  | 'one-unavailable'
+  | 'none-available'
+  /** The longest short statuses on every card (readability at 375 and in three columns). */
+  | 'longest-statuses';
 export type MockLocale = 'pl' | 'en';
 
 /** The Runtime catalogue of each state, from the production story fixtures. */
@@ -32,6 +37,26 @@ export function providersFor(state: NewSessionState): ProviderDescriptor[] {
           reason: 'Antigravity did not complete protocol initialization.',
         },
       ];
+    case 'longest-statuses':
+      return [
+        {
+          ...claudeDescriptor,
+          readiness: 'unavailable',
+          reasonCode: 'KNOWN_INCOMPATIBILITY',
+          reason: 'Claude Code 3.4.0 is recorded as incompatible.',
+        },
+        {
+          ...codexNotFound(),
+          reasonCode: 'PROCESS_SETTLEMENT_UNVERIFIED',
+          reason: 'The availability check process did not exit.',
+        },
+        {
+          ...antigravityDescriptor,
+          readiness: 'unavailable',
+          reasonCode: 'INSTALLATION_UNAVAILABLE',
+          reason: 'Antigravity uses a machine-managed policy.',
+        },
+      ];
   }
 }
 
@@ -41,6 +66,8 @@ export function providersFor(state: NewSessionState): ProviderDescriptor[] {
  * messages, which would need the same code markup (an i18n `<code>` tag); the mock writes them out.
  */
 export interface ProviderDiagnostics {
+  /** The reason this text is written for (`readiness` when it is not `unavailable`). */
+  readonly reason?: string;
   /** What was checked or what the Runtime reported. */
   readonly found?: string;
   /** What to do, in order. */
@@ -54,22 +81,30 @@ export interface ProviderDiagnostics {
   readonly checkedPaths?: readonly string[];
 }
 
+const genericFix: Record<MockLocale, string> = {
+  pl: 'Popraw przyczynę podaną powyżej, a następnie wybierz **Sprawdź ponownie**.',
+  en: 'Fix the cause above, then choose **Check again**.',
+};
+
 const codexYaml = 'sessions:\n  providers:\n    codex:\n      executable: C:\\path\\to\\codex.exe';
 
 const diagnostics: Record<MockLocale, Record<string, ProviderDiagnostics>> = {
   pl: {
     claude: {
+      reason: 'authenticationRequired',
       fix: 'Zaloguj się w CLI Claude w terminalu:',
       command: 'claude auth login',
       after: 'Następnie wybierz **Sprawdź ponownie**.',
     },
     codex: {
+      reason: 'EXECUTABLE_NOT_FOUND',
       found: 'Sprawdzono: `PATH`, aplikację Codex na komputer i globalny pakiet npm.',
       fix: 'Zainstaluj CLI Codex albo wskaż jego plik wykonywalny w `.nevo/local/config.yaml`:',
       yaml: { file: '.nevo/local/config.yaml', body: codexYaml },
       after: 'Następnie uruchom ponownie Nevo SpecFlow.',
     },
     antigravity: {
+      reason: 'PROBE_FAILED',
       found: 'Odpowiedź CLI: Antigravity did not complete protocol initialization.',
       fix: 'Sprawdź, czy `antigravity` uruchamia się i działa w terminalu.',
       after: 'Następnie wybierz **Sprawdź ponownie**.',
@@ -77,17 +112,20 @@ const diagnostics: Record<MockLocale, Record<string, ProviderDiagnostics>> = {
   },
   en: {
     claude: {
+      reason: 'authenticationRequired',
       fix: 'Sign in to the Claude CLI in a terminal:',
       command: 'claude auth login',
       after: 'Then choose **Check again**.',
     },
     codex: {
+      reason: 'EXECUTABLE_NOT_FOUND',
       found: 'Looked in: `PATH`, the Codex desktop app and the npm global package.',
       fix: 'Install the Codex CLI, or point to its executable in `.nevo/local/config.yaml`:',
       yaml: { file: '.nevo/local/config.yaml', body: codexYaml },
       after: 'Then restart Nevo SpecFlow.',
     },
     antigravity: {
+      reason: 'PROBE_FAILED',
       found: 'The CLI said: Antigravity did not complete protocol initialization.',
       fix: 'Check that `antigravity` starts and works in a terminal.',
       after: 'Then choose **Check again**.',
@@ -100,14 +138,14 @@ export function diagnosticsOf(
   provider: ProviderDescriptor | undefined,
   providerId: string,
 ): ProviderDiagnostics | undefined {
-  const base = diagnostics[locale][providerId];
-  if (!base) {
-    return undefined;
-  }
+  const written = diagnostics[locale][providerId];
+  const reason = provider?.readiness === 'unavailable' ? provider.reasonCode : provider?.readiness;
+  const base: ProviderDiagnostics | undefined =
+    written && written.reason === reason ? written : { fix: genericFix[locale] };
 
   const paths = provider?.checkedLocations?.map((location) => location.path);
 
-  return paths?.length ? { ...base, checkedPaths: paths } : base;
+  return paths?.length && base === written ? { ...base, checkedPaths: paths } : base;
 }
 
 /** Mock-only copy; everything else is the production catalogue's own text. */
@@ -117,6 +155,7 @@ export const mockCopy = {
     someUnavailable: 'Niedostępne: {{providers}}',
     noneAvailable: 'Żaden agent nie jest teraz dostępny.',
     howToFix: 'Jak naprawić',
+    panelTitle: 'Niedostępni agenci',
     checkedPaths: 'Sprawdzone ścieżki ({{count}})',
     settings: 'Ustawienia agenta',
     providerDefaultModel: 'Domyślny dostawcy',
@@ -130,6 +169,7 @@ export const mockCopy = {
     someUnavailable: 'Unavailable: {{providers}}',
     noneAvailable: 'No agent is available right now.',
     howToFix: 'How to fix',
+    panelTitle: 'Unavailable agents',
     checkedPaths: 'Checked paths ({{count}})',
     settings: 'Agent settings',
     providerDefaultModel: 'Provider default',
@@ -169,9 +209,10 @@ const shortStatusCopy = {
     notFound: 'Nie znaleziono CLI',
     setup: 'Wymaga konfiguracji',
     turnedOff: 'Wyłączony',
-    notWorking: 'Nie działa',
+    failsToStart: 'Błąd uruchamiania',
+    checkFailed: 'Błąd sprawdzania',
     incompatible: 'Niezgodna wersja',
-    checkUnfinished: 'Sprawdzanie niezakończone',
+    checkUnfinished: 'Sprawdzanie przerwane',
     worktree: 'Nie w worktree',
     unknown: 'Nie sprawdzono',
   },
@@ -181,7 +222,8 @@ const shortStatusCopy = {
     notFound: 'CLI not found',
     setup: 'Needs setup',
     turnedOff: 'Turned off',
-    notWorking: 'Not working',
+    failsToStart: 'Fails to start',
+    checkFailed: 'Check failed',
     incompatible: 'Incompatible version',
     checkUnfinished: "Check didn't finish",
     worktree: 'Not in worktree',
@@ -213,8 +255,9 @@ export function shortStatus(provider: ProviderDescriptor, locale: MockLocale): s
     case 'NOT_ENABLED_ON_WORKSTATION':
       return copy.turnedOff;
     case 'EXECUTABLE_NOT_WORKING':
+      return copy.failsToStart;
     case 'PROBE_FAILED':
-      return copy.notWorking;
+      return copy.checkFailed;
     case 'PROTOCOL_UNSUPPORTED':
     case 'KNOWN_INCOMPATIBILITY':
     case 'RESTRICTION_UNSUPPORTED':

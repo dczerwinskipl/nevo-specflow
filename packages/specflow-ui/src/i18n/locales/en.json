@@ -2558,6 +2558,13 @@
       "attention": "Requires attention · {{reason}}",
       "attentionOnly": "Requires attention",
       "blocksSpecification": "the specification cannot continue until it moves",
+      "blocksNamedSpecification": "{{specification}} cannot continue until it moves",
+      "escalated": "escalated to the specification",
+      "escalatedFeedback": "escalated to the specification: {{feedback}}",
+      "holdsUp": "holds up {{ids}}",
+      "holdsUpMore": "holds up {{ids}} (+{{more}})",
+      "holdsFinish": "{{step}} cannot finish while it is on hold",
+      "holdsFinishUnnamed": "the step cannot finish while it is on hold",
       "waitingFor": "Waiting for {{ids}}"
     },
     "page": {

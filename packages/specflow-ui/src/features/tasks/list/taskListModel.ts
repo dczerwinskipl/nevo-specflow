@@ -1,6 +1,6 @@
 import type { TaskListResponse } from '@nevo/specflow-contracts/specs/workspace';
 import type { TaskProgressData } from '../../specs/read-model';
-import type { TaskLifecycle } from '../read-model';
+import type { TaskAttentionFacts, TaskLifecycle } from '../read-model';
 
 /** One Task row of the Tasks page, as the Runtime presents it. */
 export interface TaskListRowView {
@@ -14,8 +14,8 @@ export interface TaskListRowView {
   readonly lifecycle?: TaskLifecycle;
   /** It waits for these dependencies (that can all still complete). */
   readonly waitingFor?: readonly string[];
-  /** A person has to act on it: the attention item's reason, when the read carries one. */
-  readonly attention?: { readonly reason?: string };
+  /** A person has to act on it: the Engine's attention item about it. */
+  readonly attention?: TaskAttentionFacts;
   /** The Specification's `tasks-stuck` names it. */
   readonly blocksSpecification?: boolean;
   readonly broken?: boolean;
@@ -37,9 +37,21 @@ export interface TaskListView {
 
 /** The project Runtime's Tasks page read, rendered as delivered (no grouping in the UI). */
 export function taskListViewOf(response: TaskListResponse): TaskListView {
-  const reasons = new Map(
+  const items = new Map(
     response.attention.flatMap((item) =>
-      item.subject.kind === 'task' ? [[item.subject.taskId, item.message] as const] : [],
+      item.subject.kind === 'task'
+        ? [
+            [
+              item.subject.taskId,
+              {
+                reason: item.reason,
+                message: item.message,
+                ...(item.stepTitle !== undefined ? { stepTitle: item.stepTitle } : {}),
+                ...(item.blocks ? { blocks: item.blocks } : {}),
+              } satisfies TaskAttentionFacts,
+            ] as const,
+          ]
+        : [],
     ),
   );
 
@@ -49,13 +61,13 @@ export function taskListViewOf(response: TaskListResponse): TaskListView {
       name: group.name,
       collapsed: group.collapsed,
       rows: group.tasks.map((task): TaskListRowView => {
-        const reason = reasons.get(task.id);
+        const attention = items.get(task.id);
         const common = {
           id: task.id,
           ...(task.title !== undefined ? { title: task.title } : {}),
           statusId: task.status.id,
           lifecycle: task.status.lifecycle,
-          ...(reason !== undefined ? { attention: { reason } } : {}),
+          ...(attention !== undefined ? { attention } : {}),
           ...(task.blocksSpecification ? { blocksSpecification: true } : {}),
         };
         if ('broken' in task) {

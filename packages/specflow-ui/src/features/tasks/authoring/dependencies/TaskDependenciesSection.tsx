@@ -12,30 +12,13 @@ import {
 } from '@nevo/ui';
 import type { TaskAuthoring } from '@nevo/specflow-contracts/workflow';
 import { OperationalRow } from '../../../../shared/operational-list';
-import type { SemanticSupporting } from '../../../../shared/operational-list/OperationalRow.types';
 import { SectionAddButton, SectionCallToAction } from '../SectionAddButton';
 import { SectionEditError } from '../SectionEditError';
 import { SupportSection } from '../SupportSection';
+import { taskStatusSupporting } from '../../read-model';
 import { useTaskCommands } from '../useTaskAuthoring';
 import { AddDependencyDialog } from './AddDependencyDialog';
 import { namedCandidates, type DependencyTask } from './dependencyModel';
-
-/** A dependency's state as a status: words with an icon, never colour alone. */
-function dependencyStatus(task: DependencyTask): SemanticSupporting {
-  switch (task.statusId) {
-    case 'completed':
-      return { text: task.statusLabel, tone: 'success', icon: 'circle-check' };
-    case 'in-progress':
-      return { text: task.statusLabel, tone: 'info', icon: 'workflow' };
-    case 'draft':
-    case 'blocked':
-    case 'on-hold':
-    case 'broken':
-      return { text: task.statusLabel, tone: 'attention', icon: 'triangle-alert' };
-    default:
-      return { text: task.statusLabel, icon: 'clock' };
-  }
-}
 
 export interface TaskDependenciesSectionProps {
   readonly specId: string;
@@ -129,7 +112,8 @@ export function TaskDependenciesSection({
                   }
                   supporting={
                     other
-                      ? dependencyStatus(other)
+                      ? // The dependency's state is its status, presented as on every surface.
+                        taskStatusSupporting(other.statusId, other.statusLabel)
                       : {
                           text: t('taskAuthoring.dependencies.missingTask', { id }),
                           tone: 'attention',

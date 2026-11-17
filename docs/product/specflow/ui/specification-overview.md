@@ -131,9 +131,33 @@ section count is the progress text and the header offers **New task** when the S
 projection allows it. A row is the Task row (title, id, Task Type) with one supporting line: a
 flagged Task's "Requires attention · <reason>" (danger for a broken Task, a row of Cannot start
 with what is readable of it), a Task the `tasks-stuck` item names "Requires attention · the
-specification cannot continue until it moves", otherwise its neutral status line ("Draft · needs
-approval · after T-02", "Waiting for T-02"). A filter by id or title is local state. No checkboxes
-and no bulk actions (plan 06 F12 is deferred).
+specification cannot continue until it moves", otherwise its status line with the status mark
+("Draft · needs approval · after T-02", "Waiting for T-02"). The reason is worded from the Engine's
+item: a held Task that holds up others "holds up T-02, T-03 (+N)", one that keeps the step from
+finishing "<step> cannot finish while it is on hold" (named first when both apply), an escalated
+one "escalated to the specification"; other reasons keep the Engine's message. A filter by id or
+title is local state. No checkboxes and no bulk actions (plan 06 F12 is deferred).
+
+### Task status presentation
+
+Every Task surface (Tasks page rows, Overview Task rows, Close blocker items, the Full Task status
+line, Depends on rows) presents a status by its presented id, one mark and tone each:
+
+| Status               | Mark                                                          | Tone               |
+| -------------------- | ------------------------------------------------------------- | ------------------ |
+| Draft                | `edit`                                                        | neutral            |
+| Ready                | info `StatusIndicator` dot                                    | neutral label      |
+| Waiting              | `clock`                                                       | neutral            |
+| In progress          | spinning `loader` (static under reduced motion)               | info               |
+| On hold              | `circle-pause`                                                | neutral            |
+| Blocked              | none (today's presentation until a Blocked state is designed) | neutral            |
+| Completed            | `circle-check`                                                | success            |
+| Cancelled, Abandoned | `close`, muted label                                          | neutral            |
+| Broken               | `circle-alert`                                                | danger (label too) |
+
+One owner each in `features/tasks/read-model`: `getTaskStatePresentation` / `taskStatusSupporting`
+(the status) and `taskAttentionOverlay` (the attention wording). Requires attention is an overlay
+added for the row, never a status, and only when the Engine reports it.
 
 Its search is router-owned and validated; absence is the default:
 

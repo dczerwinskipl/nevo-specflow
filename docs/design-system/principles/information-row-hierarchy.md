@@ -128,6 +128,22 @@ Comparable collections should preserve one recognizable semantic grammar:
 Different entity types MAY share this row grammar without sharing one generic implementation
 component. Reuse of semantic grammar does not require a `GenericRow<T>` abstraction.
 
+## Status and attention on a row
+
+A status on a row is always **mark + label**: one registry glyph (or the `StatusIndicator` dot)
+chosen by the presented status, never by the surface (the glyph table is under "Status glyphs" in
+`design-system.implementation.react.component-guidelines`). The tone is the mark's: the label stays
+`content-secondary`, except that danger and attention labels take their tone (a cancelled label is
+muted). Tones keep their meaning: **info** only for work that is running, **success** only for a
+finished result, **attention** only when a person has to act now, **danger** only for a failure or
+broken state; everything else is neutral.
+
+Requires attention is an **overlay**, not a status: the row keeps its status, and the attention line
+("Requires attention · <reason>", `triangle-alert`, or `circle-alert` in danger for broken files) is
+added for it. The product never derives attention from a status (On hold alone is neutral); the
+attention line renders what the domain reports. A product keeps one owner for its status
+presentation and one for its attention wording, so every surface agrees.
+
 ## Surface and responsive behavior
 
 Containment, divider ownership, scan geometry, row rhythm, optional track reservation, and responsive

@@ -1,4 +1,11 @@
-import { Icon, InformationList, Typography, cn, useOptionalInformationListContext } from '@nevo/ui';
+import {
+  Icon,
+  InformationList,
+  StatusIndicator,
+  Typography,
+  cn,
+  useOptionalInformationListContext,
+} from '@nevo/ui';
 import type {
   CompactFactItem,
   OperationalRowProps,
@@ -79,7 +86,7 @@ export function OperationalRow({
             supporting.textClassName,
           )}
         >
-          {supporting.icon && (
+          {supporting.icon ? (
             <span className="flex h-[1lh] w-4 shrink-0 items-center justify-center">
               <Icon
                 name={supporting.icon}
@@ -87,7 +94,11 @@ export function OperationalRow({
                 className={cn('shrink-0', supporting.iconClassName)}
               />
             </span>
-          )}
+          ) : supporting.indicator ? (
+            <span className="flex h-[1lh] w-4 shrink-0 items-center justify-center">
+              <StatusIndicator tone={supporting.indicator} />
+            </span>
+          ) : null}
           <span className="min-w-0">{supporting.text}</span>
         </span>
       );

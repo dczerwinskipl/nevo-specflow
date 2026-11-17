@@ -5,6 +5,8 @@ export interface SemanticSupporting {
   readonly text: string;
   readonly tone?: StatusTone;
   readonly icon?: IconName;
+  /** A `StatusIndicator` dot in the icon slot (a status whose mark is a dot); ignored with `icon`. */
+  readonly indicator?: StatusTone;
   readonly iconClassName?: string;
   readonly textClassName?: string;
 }

@@ -61,8 +61,7 @@ const diagnostics: Record<MockLocale, Record<string, ProviderDiagnostics>> = {
     claude: {
       fix: 'Zaloguj się w CLI Claude w terminalu:',
       command: 'claude auth login',
-      after:
-        'Następnie wybierz **Sprawdź ponownie**. Wiadomości nie zostaną ponowione automatycznie.',
+      after: 'Następnie wybierz **Sprawdź ponownie**.',
     },
     codex: {
       found: 'Sprawdzono: `PATH`, aplikację Codex na komputer i globalny pakiet npm.',
@@ -80,7 +79,7 @@ const diagnostics: Record<MockLocale, Record<string, ProviderDiagnostics>> = {
     claude: {
       fix: 'Sign in to the Claude CLI in a terminal:',
       command: 'claude auth login',
-      after: 'Then choose **Check again**. Messages are not retried automatically.',
+      after: 'Then choose **Check again**.',
     },
     codex: {
       found: 'Looked in: `PATH`, the Codex desktop app and the npm global package.',
@@ -116,30 +115,42 @@ export const mockCopy = {
   pl: {
     oneUnavailable: '{{provider}}: {{status}}',
     someUnavailable: 'Niedostępne: {{providers}}',
-    noneAvailable: 'Żaden agent nie jest teraz dostępny',
+    noneAvailable: 'Żaden agent nie jest teraz dostępny.',
     howToFix: 'Jak naprawić',
     checkedPaths: 'Sprawdzone ścieżki ({{count}})',
     settings: 'Ustawienia agenta',
     providerDefaultModel: 'Domyślny dostawcy',
     nameLabel: 'Nazwa sesji',
     optional: 'opcjonalnie',
-    namePlaceholder: 'Automatyczna, na podstawie rozmowy',
+    namePlaceholder: 'Nowa sesja',
     checkAgain: 'Sprawdź ponownie',
-    copy: 'Kopiuj',
   },
   en: {
     oneUnavailable: '{{provider}}: {{status}}',
     someUnavailable: 'Unavailable: {{providers}}',
-    noneAvailable: 'No agent is available right now',
+    noneAvailable: 'No agent is available right now.',
     howToFix: 'How to fix',
     checkedPaths: 'Checked paths ({{count}})',
     settings: 'Agent settings',
     providerDefaultModel: 'Provider default',
     nameLabel: 'Session name',
     optional: 'optional',
-    namePlaceholder: 'Automatic, from the conversation',
+    namePlaceholder: 'New session',
     checkAgain: 'Check again',
-    copy: 'Copy',
+  },
+} as const;
+
+/** Production strings that still say "wykonawca"/"executor", in the mock's one word: "Agent". */
+export const agentWording = {
+  pl: {
+    sessions: { context: { executor: 'Agent' } },
+    create: { prerequisite: { provider: 'Wybierz dostępnego agenta.' } },
+    sessionStart: { prerequisite: { noProvider: 'Żaden agent nie jest teraz dostępny.' } },
+  },
+  en: {
+    sessions: { context: { executor: 'Agent' } },
+    create: { prerequisite: { provider: 'Choose an available agent.' } },
+    sessionStart: { prerequisite: { noProvider: 'No agent is available right now.' } },
   },
 } as const;
 
@@ -157,7 +168,10 @@ const shortStatusCopy = {
     signIn: 'Wymaga logowania',
     notFound: 'Nie znaleziono CLI',
     setup: 'Wymaga konfiguracji',
+    turnedOff: 'Wyłączony',
     notWorking: 'Nie działa',
+    incompatible: 'Niezgodna wersja',
+    checkUnfinished: 'Sprawdzanie niezakończone',
     worktree: 'Nie w worktree',
     unknown: 'Nie sprawdzono',
   },
@@ -166,7 +180,10 @@ const shortStatusCopy = {
     signIn: 'Sign-in needed',
     notFound: 'CLI not found',
     setup: 'Needs setup',
+    turnedOff: 'Turned off',
     notWorking: 'Not working',
+    incompatible: 'Incompatible version',
+    checkUnfinished: "Check didn't finish",
     worktree: 'Not in worktree',
     unknown: 'Not checked',
   },
@@ -190,13 +207,24 @@ export function shortStatus(provider: ProviderDescriptor, locale: MockLocale): s
       return provider.unresolvedLauncher ? copy.setup : copy.notFound;
     case 'AUTHENTICATION_REQUIRED':
       return copy.signIn;
-    case 'NOT_ALLOWED_BY_PROJECT':
-    case 'NOT_ENABLED_ON_WORKSTATION':
     case 'INSTALLATION_UNAVAILABLE':
       return copy.setup;
+    case 'NOT_ALLOWED_BY_PROJECT':
+    case 'NOT_ENABLED_ON_WORKSTATION':
+      return copy.turnedOff;
+    case 'EXECUTABLE_NOT_WORKING':
+    case 'PROBE_FAILED':
+      return copy.notWorking;
+    case 'PROTOCOL_UNSUPPORTED':
+    case 'KNOWN_INCOMPATIBILITY':
+    case 'RESTRICTION_UNSUPPORTED':
+      return copy.incompatible;
+    // Temporary: the check's process may still be running; wait, then check again.
+    case 'PROCESS_SETTLEMENT_UNVERIFIED':
+      return copy.checkUnfinished;
     case 'SPECIFICATION_WORKTREE_UNSUPPORTED':
       return copy.worktree;
-    default:
-      return copy.notWorking;
+    case undefined:
+      return copy.unknown;
   }
 }

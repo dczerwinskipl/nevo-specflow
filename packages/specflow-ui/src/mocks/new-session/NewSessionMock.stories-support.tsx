@@ -7,7 +7,9 @@ import {
   Button,
   Collapsible,
   Field,
+  Icon,
   InformationList,
+  cn,
   InlineNote,
   StatusIndicator,
   TextInput,
@@ -65,6 +67,7 @@ import {
   diagnosticsOf,
   fill,
   mockCopy,
+  agentWording,
   providersFor,
   shortStatus,
   type MockLocale,
@@ -85,26 +88,45 @@ export interface NewSessionMockProps {
   locale?: MockLocale;
   /** The "How to fix" disclosure starts open. */
   diagnosticsOpen?: boolean;
+  /** The agent chosen at first (else the first available one). */
+  selected?: string;
 }
 
-export function NewSessionMock({
-  state,
-  locale = 'pl',
-  diagnosticsOpen = false,
-}: NewSessionMockProps) {
+export function NewSessionMock(props: NewSessionMockProps) {
+  const locale = props.locale ?? 'pl';
+
   return (
     <StoryLocalization locale={locale}>
-      <StartEnvironment>
-        <MockScreen key={state} state={state} locale={locale} diagnosticsOpen={diagnosticsOpen} />
-      </StartEnvironment>
+      <WithMockStrings locale={locale}>
+        <StartEnvironment>
+          <MockScreen key={`${props.state}-${props.selected ?? ''}`} {...props} locale={locale} />
+        </StartEnvironment>
+      </WithMockStrings>
     </StoryLocalization>
   );
+}
+
+/**
+ * One word for the thing being chosen: "Agent" (the start form, the Composer placeholder and the
+ * English Context already say it). The production strings that still say "wykonawca" are
+ * overridden here; implementation changes them in the locale files.
+ */
+function WithMockStrings({ locale, children }: { locale: MockLocale; children: ReactNode }) {
+  const { i18n } = useTranslation();
+  useState(() => i18n.addResourceBundle(locale, 'translation', agentWording[locale], true, true));
+
+  return children;
 }
 
 const pendingSessionId = 'new-session';
 const noop = () => undefined;
 
-function MockScreen({ state, locale = 'pl', diagnosticsOpen = false }: NewSessionMockProps) {
+function MockScreen({
+  state,
+  locale = 'pl',
+  diagnosticsOpen = false,
+  selected,
+}: NewSessionMockProps) {
   const { t } = useTranslation();
   const copy = mockCopy[locale];
   const { supportsSplit } = useWorkspaceCapabilities();
@@ -119,7 +141,12 @@ function MockScreen({ state, locale = 'pl', diagnosticsOpen = false }: NewSessio
 
   const descriptors = useMemo(() => providersFor(state), [state]);
   const catalogue = useMemo(() => startCatalogueFromProviders(descriptors), [descriptors]);
-  const [agent, setAgent] = useState<AgentChoice>(() => initialAgentChoice(catalogue));
+  const [agent, setAgent] = useState<AgentChoice>(() => {
+    const initial = initialAgentChoice(catalogue);
+    const chosen = catalogue.providers.find((p) => p.id === selected && p.available);
+
+    return chosen ? selectProvider(initial, chosen) : initial;
+  });
   const [name, setName] = useState('');
 
   const contextValue = useMemo<SessionContextViewModel>(
@@ -191,10 +218,12 @@ function MockScreen({ state, locale = 'pl', diagnosticsOpen = false }: NewSessio
 }
 
 /**
- * Context before the Session exists: the executor (what will run), the Specification the Session is
- * created in with its Documents, then only the planned areas that mean something before Start
- * (Instructions the agent will read, the Environment it will work in). Files / changes, Handovers
- * and Artifacts are produced by a running Session, so they are absent until then.
+ * Context before the Session exists: the agent (what will run), the Specification the Session is
+ * created in, then only the planned areas that mean something before Start (Instructions the agent
+ * will read, the Environment it will work in); those open a Context tab and leave the form as it
+ * is. Files / changes, Handovers and Artifacts are produced by a running Session, so they are absent
+ * until then. No Documents row: it navigates to the Specification's Documents route, which unmounts
+ * this screen and loses the form.
  */
 function StartContext({ value }: { value: SessionContextViewModel }) {
   const { t } = useTranslation();
@@ -207,11 +236,7 @@ function StartContext({ value }: { value: SessionContextViewModel }) {
       <AppWorkspaceBody scroll="area" contentClassName="flex min-h-full flex-col">
         <div className="grid w-full gap-6">
           <ContextExecutorSection executor={value.executor} scope={value.scope} />
-          <ContextSpecificationSection
-            value={value}
-            onOpenSpecification={noop}
-            onOpenDocuments={noop}
-          />
+          <ContextSpecificationSection value={value} onOpenSpecification={noop} />
           <ContextSection title={t('sessions.context.placeholders.sectionTitle')}>
             <InformationList>
               {beforeStart.map((tab) => (
@@ -273,16 +298,17 @@ function StartColumn({
 
   const anyUnavailable = catalogue.providers.some((p) => !p.available);
   // Only a blocker is said next to Start; a ready form needs no sentence.
-  const note = prerequisite ? text(prerequisite) : '';
+  const note = noAgent ? copy.noneAvailable : prerequisite ? text(prerequisite) : '';
   const submit = (event: FormEvent<HTMLFormElement>) => event.preventDefault();
 
   const actions = (
     <StartActions
       noteId={noteId}
       note={note}
-      label={t('sessionStart.submit.start')}
-      disabled={!canStart}
-      checkAgain={noAgent ? copy.checkAgain : undefined}
+      // With no agent there is nothing to start: checking again is the one action.
+      label={noAgent ? copy.checkAgain : t('sessionStart.submit.start')}
+      action={noAgent ? 'check' : 'start'}
+      disabled={!noAgent && !canStart}
     />
   );
 
@@ -343,25 +369,27 @@ function StartColumn({
             onChange={onAgentChange}
             copy={copy}
           />
-          <Field>
-            <Field.Label>
-              {copy.nameLabel}{' '}
-              <span className="font-normal text-content-muted">({copy.optional})</span>
-            </Field.Label>
-            <TextInput
-              value={name}
-              maxLength={sessionNameMaxLength}
-              placeholder={copy.namePlaceholder}
-              onChange={(event) => onNameChange(event.target.value)}
-            />
-            {sessionNameMaxLength - name.length <= 32 && (
-              <Field.Description>
-                {t('sessionStart.name.remaining', {
-                  remaining: sessionNameMaxLength - name.length,
-                })}
-              </Field.Description>
-            )}
-          </Field>
+          {!noAgent && (
+            <Field>
+              <Field.Label>
+                {copy.nameLabel}{' '}
+                <span className="font-normal text-content-muted">({copy.optional})</span>
+              </Field.Label>
+              <TextInput
+                value={name}
+                maxLength={sessionNameMaxLength}
+                placeholder={copy.namePlaceholder}
+                onChange={(event) => onNameChange(event.target.value)}
+              />
+              {sessionNameMaxLength - name.length <= 32 && (
+                <Field.Description>
+                  {t('sessionStart.name.remaining', {
+                    remaining: sessionNameMaxLength - name.length,
+                  })}
+                </Field.Description>
+              )}
+            </Field>
+          )}
           {isSplit && actions}
         </div>
       </form>
@@ -369,7 +397,11 @@ function StartColumn({
   );
 }
 
-/** Icon, name, one short status line and the selected mark: nothing else drives its height. */
+/**
+ * Icon, name, short status and the selected mark: nothing else drives its height. Narrow: one row
+ * (the status at the end of the name's line); wide: the status under the name. The status leads
+ * with a dot when available and an alert glyph when not, so the difference is not colour alone.
+ */
 function AgentTile({
   provider,
   status,
@@ -388,12 +420,28 @@ function AgentTile({
       checked={checked}
       disabled={!provider.available}
       onSelect={onSelect}
-      icon={<SessionProviderIcon providerId={provider.icon} />}
-      title={provider.title}
-      description={
-        <span className="flex h-5 items-center gap-1.5 whitespace-nowrap">
-          {provider.available && <StatusIndicator tone="success" />}
-          {status}
+      icon={
+        // Centred on the one-row title on narrow layouts; on the name line when wide.
+        <span className="flex h-8 items-center @2xl:h-auto">
+          <SessionProviderIcon providerId={provider.icon} />
+        </span>
+      }
+      title={
+        <span className="flex min-h-8 flex-wrap items-center gap-x-3 gap-y-1 @2xl:min-h-0 @2xl:gap-y-1.5">
+          <span>{provider.title}</span>
+          <span className="ml-auto flex h-5 items-center gap-1.5 text-body-sm font-normal whitespace-nowrap text-content-secondary @2xl:ml-0 @2xl:basis-full">
+            {provider.available ? (
+              <StatusIndicator tone="success" />
+            ) : (
+              <Icon
+                name="circle-alert"
+                size="sm"
+                aria-hidden="true"
+                className="text-content-muted"
+              />
+            )}
+            {status}
+          </span>
         </span>
       }
     />
@@ -439,14 +487,9 @@ function DiagnosticsLine({
   return (
     <Collapsible density="inline" defaultExpanded={defaultExpanded}>
       <InlineNote tone={none ? 'danger' : 'attention'}>
-        <span className="flex flex-wrap items-center gap-x-1.5">
-          <span>
-            <span id={id}>{summary}</span>
-            {/* The separator ends the summary, so a wrapped "How to fix" never starts with it. */}
-            <span aria-hidden="true" className="text-content-muted">
-              {' ·'}
-            </span>
-          </span>
+        <span className="flex flex-wrap items-center gap-x-3">
+          <span id={id}>{summary}</span>
+          {/* The chevron and "How to fix" stay together when the line wraps. */}
           <span className="inline-flex items-center whitespace-nowrap">
             <Collapsible.Trigger
               aria-describedby={id}
@@ -471,12 +514,27 @@ function DiagnosticsLine({
                 key={provider.id}
                 provider={provider}
                 status={statusOf(provider.id)}
-                reason={provider.reason ? text(provider.reason) : ''}
+                // The sign-in reason only restates the short status.
+                reason={
+                  provider.reason &&
+                  descriptors.find((d) => d.providerId === provider.id)?.readiness !==
+                    'authenticationRequired'
+                    ? text(provider.reason)
+                    : ''
+                }
                 details={details}
                 copy={copy}
               />
             );
           })}
+          {/* With an agent to start, the bar offers Start; checking again lives with the fixes. */}
+          {!none && (
+            <div>
+              <Button type="button" variant="secondary">
+                {copy.checkAgain}
+              </Button>
+            </div>
+          )}
         </div>
       </Collapsible.Content>
     </Collapsible>
@@ -512,28 +570,50 @@ function ProviderDiagnosticsBlock({
       {details?.command && <CodeBlock>{details.command}</CodeBlock>}
       {details?.after && <Prose>{details.after}</Prose>}
       {details?.checkedPaths && (
-        // DS gap: a nested Collapsible's chevron follows the OUTER disclosure's expanded state (one
-        // shared `group/collapsible` name), so this inner one goes without the chevron.
-        <Collapsible
-          density="inline"
-          showIndicator={false}
-          className="text-body-sm text-content-secondary"
-        >
-          <Collapsible.Trigger className="underline decoration-border-strong underline-offset-4">
-            {fill(copy.checkedPaths, { count: details.checkedPaths.length })}
-          </Collapsible.Trigger>
-          <Collapsible.Content>
-            <ul className="mt-2 grid gap-1.5">
-              {details.checkedPaths.map((path) => (
-                <li key={path}>
-                  <Code>{path}</Code>
-                </li>
-              ))}
-            </ul>
-          </Collapsible.Content>
-        </Collapsible>
+        <CheckedPaths label={fill(copy.checkedPaths, { count: details.checkedPaths.length })}>
+          <ul className="mt-2 grid gap-1.5">
+            {details.checkedPaths.map((path) => (
+              <li key={path}>
+                <Code>{path}</Code>
+              </li>
+            ))}
+          </ul>
+        </CheckedPaths>
       )}
     </section>
+  );
+}
+
+/**
+ * A disclosure nested in "How to fix". DS gap: `Collapsible`'s chevron rotates on any expanded
+ * ancestor (`group-data-[expanded]/collapsible`), so a nested one shows "open" while closed. The
+ * mock drives its own chevron from its own state; the fix belongs in `@nevo/ui` (rotate on the
+ * trigger's own `aria-expanded`).
+ */
+function CheckedPaths({ label, children }: { label: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Collapsible
+      density="inline"
+      showIndicator={false}
+      isExpanded={open}
+      onExpandedChange={setOpen}
+      className="text-body-sm text-content-secondary"
+    >
+      <Collapsible.Trigger>
+        <span className="inline-flex items-center gap-1">
+          <Icon
+            name="chevron-right"
+            size="sm"
+            aria-hidden="true"
+            className={cn('text-content-muted transition-transform', open && 'rotate-90')}
+          />
+          {label}
+        </span>
+      </Collapsible.Trigger>
+      <Collapsible.Content>{children}</Collapsible.Content>
+    </Collapsible>
   );
 }
 
@@ -576,7 +656,10 @@ function Code({ children }: { children: string }) {
   );
 }
 
-/** A snippet (MarkdownDocument's code-block look); a long value wraps instead of hiding off-screen. */
+/**
+ * A snippet (MarkdownDocument's code-block look). It scrolls sideways and never wraps, so YAML keeps
+ * its indentation; the region is focusable so the keyboard can scroll it.
+ */
 function CodeBlock({ children, label }: { children: string; label?: string }) {
   return (
     <div className="min-w-0 overflow-hidden rounded-composite border border-border-default bg-canvas">
@@ -585,7 +668,11 @@ function CodeBlock({ children, label }: { children: string; label?: string }) {
           <span className="font-mono">{label}</span>
         </div>
       )}
-      <pre className="px-3 py-2 font-mono text-[0.8125rem] leading-5 whitespace-pre-wrap text-content-primary [overflow-wrap:anywhere]">
+      <pre
+        tabIndex={0}
+        aria-label={label ?? children}
+        className="scrollbar-subtle overflow-x-auto px-3 py-2 font-mono text-[0.8125rem] leading-5 whitespace-pre text-content-primary"
+      >
         {children}
       </pre>
     </div>
@@ -672,21 +759,22 @@ function AgentSettings({
 }
 
 /**
- * The form's last row (wide) or the bottom bar (narrow): the blocker, if any, beside Start, on one
- * line where it fits. A ready form says nothing; with no agent, "Check again" reads the catalogue.
+ * The form's last row (wide) or the bottom bar (narrow): the blocker, if any, beside the one primary
+ * action. A ready form says nothing. With no agent the action is "Check again" (reads the catalogue)
+ * instead of Start.
  */
 function StartActions({
   noteId,
   note,
   label,
+  action,
   disabled,
-  checkAgain,
 }: {
   noteId: string;
   note: string;
   label: string;
+  action: 'start' | 'check';
   disabled: boolean;
-  checkAgain?: string;
 }): ReactNode {
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -701,12 +789,11 @@ function StartActions({
         </Typography>
       )}
       <div className="ml-auto flex items-center gap-2">
-        {checkAgain && (
-          <Button type="button" variant="secondary">
-            {checkAgain}
-          </Button>
-        )}
-        <Button type="submit" disabled={disabled} aria-describedby={note ? noteId : undefined}>
+        <Button
+          type={action === 'start' ? 'submit' : 'button'}
+          disabled={disabled}
+          aria-describedby={note ? noteId : undefined}
+        >
           {label}
         </Button>
       </div>

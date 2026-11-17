@@ -42,6 +42,9 @@ export const NoneAvailableExpanded: Story = {
   args: { state: 'none-available', diagnosticsOpen: true },
 };
 
+/** Codex chosen: it offers no model choice, so Model is the fact "Provider default" and no Effort. */
+export const CodexSelected: Story = { args: { selected: 'codex' } };
+
 export const AllAvailableEn: Story = { args: { locale: 'en' } };
 export const OneUnavailableEn: Story = { args: { state: 'one-unavailable', locale: 'en' } };
 export const NoneAvailableEn: Story = { args: { state: 'none-available', locale: 'en' } };

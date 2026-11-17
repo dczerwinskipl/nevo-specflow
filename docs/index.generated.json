@@ -4981,7 +4981,7 @@
         "changing the Overview Tasks summary or the Tasks page (/specs/:specId/tasks)",
         "changing what the Overview shows on a project Runtime (Now, Requires attention, Activity events, description)"
       ],
-      "summary": "Specification Overview as the control center of one Specification: summary, Now, Requires attention, the Tasks summary of the configured grouping, Sessions and Documents; the measured two-column arrangement from 1408 px of content width with 16 px hysteresis, focus restore across a crossing, Activity history as an on-demand Secondary, the preparation block, and the Tasks page (/specs/:specId/tasks) with its validated blocking filter.",
+      "summary": "Specification Overview as the control center of one Specification: summary, Now, Requires attention, the Tasks summary of the configured grouping, Sessions and Documents; the measured two-column arrangement from 1408 px of content width with 16 px hysteresis, focus restore across a crossing, Activity history as an on-demand Secondary, the preparation block, and the Tasks page (/specs/:specId/tasks) with its validated blocking and group filters.",
       "related": [
         "product.specflow.ui.shell-geometry",
         "product.specflow.ui.interaction-model",

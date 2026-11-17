@@ -72,8 +72,7 @@ async function renderAt(
       specificationApi: { getSpecificationWorkspace: workspace },
       taskApi: {
         getTask: () => new Promise(() => undefined),
-        getTaskList: (_specId, query) =>
-          Promise.resolve(controlCenterTaskList(scenario, query.blocking === 'specification')),
+        getTaskList: (_specId, query) => Promise.resolve(controlCenterTaskList(scenario, query)),
       },
       taskAuthoringApi: fakeTaskAuthoringApi({
         specificationActions,
@@ -194,8 +193,48 @@ describe('Specification control center', () => {
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: 'Start Implementation' })).toBeNull(),
     );
-    expect(document.querySelector('[data-summary-group="in-progress"]')?.textContent).toContain(
-      'T-02 Token exchange endpoint and session cookie',
+    // The Overview's row shows the refreshed preview: no attention overlay any more.
+    const row = document.querySelector<HTMLElement>(
+      '[data-summary-group="in-progress"] [data-row-task="T-02"]',
+    );
+    expect(row?.textContent).toBe(
+      'Token exchange endpoint and session cookieT-02·BackendIn progress',
+    );
+    expect(row?.dataset.taskAttention).toBeUndefined();
+  });
+
+  it('sends one start for repeated clicks on a Requires attention action while it runs', async () => {
+    const start = vi.fn(() => new Promise<never>(() => undefined));
+    await renderAt(`/specs/${SPEC}`, 'waiting', undefined, start);
+    await screen.findByRole('region', { name: 'Now' });
+    const action = await screen.findByRole('button', { name: 'Start Implementation' });
+
+    fireEvent.click(action);
+    fireEvent.click(action);
+    await waitFor(() => expect(start).toHaveBeenCalledTimes(1));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(start).toHaveBeenCalledTimes(1);
+  });
+
+  it('honours the group filter in the URL and clears it', async () => {
+    // jsdom has no layout: arriving at a group scrolls its heading into view.
+    Element.prototype.scrollIntoView = () => undefined;
+    const { router } = await renderAt(`/specs/${SPEC}/tasks?group=cancelled`, 'waiting');
+    const chip = await waitFor(() => {
+      const element = document.querySelector<HTMLElement>('[data-group-filter="cancelled"]');
+      expect(element?.textContent).toContain('Cancelled · 1 task');
+
+      return element!;
+    });
+
+    expect(document.querySelectorAll('[data-row-task]')).toHaveLength(1);
+    fireEvent.click(within(chip).getByRole('button', { name: 'Clear filter: Cancelled' }));
+    await waitFor(() => expect(document.querySelector('[data-group-filter]')).toBeNull());
+    expect(router.state.location.search).not.toHaveProperty('group');
+    await waitFor(() =>
+      expect(document.querySelectorAll('[data-row-task]').length).toBeGreaterThan(1),
     );
   });
 

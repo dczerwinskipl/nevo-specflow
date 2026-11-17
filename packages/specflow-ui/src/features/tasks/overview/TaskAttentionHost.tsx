@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Navigate } from '@tanstack/react-router';
@@ -43,18 +43,30 @@ export function TaskAttentionHost({
   const queryClient = useQueryClient();
   const notify = useNotify();
   const [dialog, setDialog] = useState<Dialog>();
+  // The direct commands in flight, by Task: a repeated click on Start or Resume while its command
+  // runs (or its result is still being re-read) is taken and ignored, so no second command is sent.
+  // Owned here: added when a command is sent, removed once it settled and the reads refreshed.
+  const inFlight = useRef(new Set<string>());
+  const settle = async (taskId: string) => {
+    try {
+      await invalidateAfterTaskChange(queryClient, specId);
+    } finally {
+      inFlight.current.delete(taskId);
+    }
+  };
+
   // A start acts on the Task it was requested for (its id is the mutation's variable).
   const start = useMutation({
     mutationFn: (taskId: string) => workflowExecutionApi.start({ specId, taskId }, {}),
     onError: () => notify(t('taskOverview.attention.startFailed')),
-    onSettled: () => invalidateAfterTaskChange(queryClient, specId),
+    onSettled: (_result, _error, taskId) => settle(taskId),
   });
   const startStep = start.mutate;
   // A resume acts on the Task it was requested for; the Engine refuses it if it is no longer held.
   const resume = useMutation({
     mutationFn: (taskId: string) => taskAuthoringApi.setStatus(specId, taskId, { status: 'ready' }),
     onError: () => notify(t('taskOverview.attention.resumeFailed')),
-    onSettled: () => invalidateAfterTaskChange(queryClient, specId),
+    onSettled: (_result, _error, taskId) => settle(taskId),
   });
   const resumeTask = resume.mutate;
 
@@ -63,11 +75,11 @@ export function TaskAttentionHost({
       subscribeTaskAttention(specId, (request) => {
         switch (request.kind) {
           case 'start-step':
-            startStep(request.taskId);
-
-            return true;
           case 'resume-task':
-            resumeTask(request.taskId);
+            if (!inFlight.current.has(request.taskId)) {
+              inFlight.current.add(request.taskId);
+              (request.kind === 'start-step' ? startStep : resumeTask)(request.taskId);
+            }
 
             return true;
           case 'first-start':

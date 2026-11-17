@@ -1936,14 +1936,14 @@
     "status": {
       "draft": "Szkic",
       "in-progress": "W toku",
-      "ready": "Gotowe",
+      "ready": "Gotowe do rozpoczęcia",
       "waiting": "Czeka",
-      "blocked": "Zablokowane",
+      "blocked": "Nie można rozpocząć",
       "completed": "Ukończone",
       "abandoned": "Porzucone",
       "on-hold": "Wstrzymane",
       "cancelled": "Anulowane",
-      "broken": "Uszkodzone"
+      "broken": "Nie można rozpocząć · pliki uszkodzone"
     },
     "tasks": {
       "newTask": "Nowe zadanie",
@@ -2519,15 +2519,11 @@
     },
     "summary": {
       "allTasks": "Wszystkie zadania",
-      "count_one": "{{count}} zadanie",
-      "count_few": "{{count}} zadania",
-      "count_many": "{{count}} zadań",
-      "count_other": "{{count}} zadań",
-      "more_one": "jeszcze {{count}}",
-      "more_few": "jeszcze {{count}}",
-      "more_many": "jeszcze {{count}}",
-      "more_other": "jeszcze {{count}}",
-      "openGroup": "{{group}}: otwórz na stronie Zadania"
+      "moreIn_one": "jeszcze {{count}} w grupie {{group}}",
+      "moreIn_few": "jeszcze {{count}} w grupie {{group}}",
+      "moreIn_many": "jeszcze {{count}} w grupie {{group}}",
+      "moreIn_other": "jeszcze {{count}} w grupie {{group}}",
+      "moreActions": "Zadania: więcej akcji"
     },
     "progress": {
       "label": "Zadania {{progress}}",
@@ -2598,6 +2594,13 @@
       "blocking_other": "Blokujące specyfikację · {{count}} zadań",
       "nothingBlocks": "Nic teraz nie blokuje specyfikacji",
       "clearBlocking": "Wyczyść filtr: blokujące specyfikację",
+      "group_one": "{{group}} · {{count}} zadanie",
+      "group_few": "{{group}} · {{count}} zadania",
+      "group_many": "{{group}} · {{count}} zadań",
+      "group_other": "{{group}} · {{count}} zadań",
+      "groupEmpty": "W tej grupie nie ma teraz zadań",
+      "clearGroup": "Wyczyść filtr: {{group}}",
+      "clearGroupUnnamed": "Wyczyść filtr grupy",
       "shown": "Widoczne: {{matched}} z {{total}}",
       "noMatch": "Żadne zadanie nie pasuje do filtra.",
       "taskColumn": "Zadanie",

@@ -66,12 +66,14 @@ describe('Task attention overlay', () => {
     );
   });
 
-  it('reads broken files in the danger tone', () => {
-    expect(taskAttentionOverlay({ broken: true }, en)).toEqual({
-      text: 'Requires attention',
-      icon: 'circle-alert',
-      tone: 'danger',
-    });
+  it('adds no line for broken files (the status says it), the attention tone otherwise', () => {
+    expect(taskAttentionOverlay({ broken: true }, en)).toBeUndefined();
+    expect(
+      taskAttentionOverlay(
+        { broken: true, item: { reason: 'task-broken', message: 'Broken.' } },
+        en,
+      ),
+    ).toBeUndefined();
     expect(
       taskAttentionOverlay(
         { item: { reason: 'on-hold-blocking', blocks: { taskIds: ['T-02'] } } },

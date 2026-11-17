@@ -19,7 +19,10 @@ const meta = {
         'no-task-workflow',
       ],
     },
-    page: { control: 'inline-radio', options: ['overview', 'tasks', 'tasks-blocking'] },
+    page: {
+      control: 'inline-radio',
+      options: ['overview', 'tasks', 'tasks-blocking', 'tasks-waiting'],
+    },
   },
 } satisfies Meta<typeof ControlCenterApp>;
 export default meta;
@@ -40,3 +43,5 @@ export const NoTaskWorkflow = capture({ scenario: 'no-task-workflow' });
 export const TasksPage = capture({ page: 'tasks' });
 /** Review tasks: only the Tasks blocking the Specification, with the clearable filter bar. */
 export const TasksPageBlocking = capture({ scenario: 'stuck', page: 'tasks-blocking' });
+/** The Overview's "N more in Waiting": only that group, with the clearable group filter. */
+export const TasksPageGroup = capture({ page: 'tasks-waiting' });

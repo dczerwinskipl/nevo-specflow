@@ -16,7 +16,7 @@ export interface TasksScreenProps {
   readonly group?: string;
   readonly fullTaskHref: (taskId: string) => string;
   readonly onOpenTask: (taskId: string) => void;
-  readonly onClearBlocking: () => void;
+  readonly onClearFilter: () => void;
 }
 
 /**
@@ -32,10 +32,14 @@ export function TasksScreen({
   group,
   fullTaskHref,
   onOpenTask,
-  onClearBlocking,
+  onClearFilter,
 }: TasksScreenProps) {
   const { t } = useTranslation();
-  const state = useTaskListState(specId, blocking);
+  // One filter at a time (the route keeps them apart): blocking, else a group.
+  const state = useTaskListState(
+    specId,
+    blocking ? { blocking: 'specification' } : group ? { group } : {},
+  );
   const actions = useSpecificationActions(specId, collection === 'current');
   const [open, setOpen] = useState(false);
   const specification = actions.data?.specification;
@@ -49,7 +53,7 @@ export function TasksScreen({
         {...(group ? { group } : {})}
         fullTaskHref={fullTaskHref}
         onOpenTask={onOpenTask}
-        onClearBlocking={onClearBlocking}
+        onClearFilter={onClearFilter}
         specificationTitle={data.title}
         {...(emptyLine ? { emptyLine } : {})}
         {...(specification?.createTask.kind === 'allowed'

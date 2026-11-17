@@ -1,7 +1,6 @@
 import type { HttpRequestClient } from '@nevo/http-client';
 import type {
   SpecificationTaskResponse,
-  TaskResourcePage,
   TaskHistoryPage,
   TaskListQuery,
   TaskListResponse,
@@ -19,13 +18,6 @@ export interface TaskApi {
     signal?: AbortSignal,
   ): Promise<TaskListResponse>;
   getTask(specId: string, taskId: string, signal?: AbortSignal): Promise<SpecificationTaskResponse>;
-  getResources?(
-    specId: string,
-    taskId: string,
-    token: string,
-    cursor?: string,
-    signal?: AbortSignal,
-  ): Promise<TaskResourcePage>;
   getHistory?(
     specId: string,
     taskId: string,
@@ -42,10 +34,6 @@ export function createRuntimeTaskApi(client: HttpRequestClient): TaskApi {
         `/api/specs/${encodeURIComponent(specId)}/tasks${query.blocking ? `?blocking=${query.blocking}` : ''}`,
         { signal },
       ),
-    getResources: (specId, taskId, token, cursor, signal) =>
-      client.get<TaskResourcePage>(taskPageUrl(specId, taskId, 'resources', token, cursor), {
-        signal,
-      }),
     getHistory: (specId, taskId, token, cursor, signal) =>
       client.get<TaskHistoryPage>(taskPageUrl(specId, taskId, 'history', token, cursor), {
         signal,

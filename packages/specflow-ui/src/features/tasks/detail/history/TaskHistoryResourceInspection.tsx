@@ -3,8 +3,8 @@ import { Typography } from '@nevo/ui';
 import type { TaskSnapshot } from '@nevo/specflow-contracts/specs/workspace';
 import { useTranslation } from 'react-i18next';
 import { useTaskHistory } from '../useTaskPages';
-import { TaskSourceState } from '../TaskDetails';
-import { TaskResourceInspection } from '../TaskInspection';
+import { TaskSourceState } from './TaskSourceState';
+import { TaskReferenceInspection } from './TaskReferenceInspection';
 
 export interface TaskHistoryResourceParams {
   readonly entryId: string;
@@ -59,8 +59,8 @@ export function TaskHistoryResourceInspection({
     .find((item) => item.id === params.entryId);
 
   return (
-    <TaskResourceInspection
-      resource={entry?.resources.find((item) => item.id === params.resourceId)}
+    <TaskReferenceInspection
+      link={entry?.resources.find((item) => item.id === params.resourceId)?.link}
     />
   );
 }

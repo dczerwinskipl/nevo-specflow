@@ -25,9 +25,10 @@ related:
 
 Exact schemas are in `packages/specflow-contracts/src/workflow/` (subpath
 `@nevo/specflow-contracts/workflow`); the routes are `packages/specflow-runtime/src/features/workflow/`.
-The Engine owns every rule; the routes authorize, derive the actor and map refusals. The routes belong to
-project mode (the demo Runtime has no Engine and serves none); without an Engine they answer 503
-`WORKFLOW_UNAVAILABLE`.
+The Engine owns every rule; the routes authorize, derive the actor and map refusals. A project
+Runtime serves them over its Project Home, the demo Runtime over in-memory state
+([ADR 0025](../../architecture/decisions/0025-demo-runs-the-engine-in-memory.md)); without an
+Engine they answer 503 `WORKFLOW_UNAVAILABLE`.
 
 ## Routes
 

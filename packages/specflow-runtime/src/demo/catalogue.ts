@@ -41,7 +41,14 @@ const crossModule: ArchetypeDefinition = {
     { ...seedTemplate('architecture', 'decisions'), include: 'optional', preselected: true },
     { ...seedTemplate('architecture', 'architecture'), include: 'optional', preselected: false },
   ],
+  execution: { workflow: 'specification-standard' },
 };
+
+/** The Specification archetypes of the demo with their execution bindings (the demo workflow). */
+export const demoSpecificationArchetypes: readonly ArchetypeDefinition[] = [
+  ...seedArchetypes,
+  crossModule,
+];
 
 /**
  * The demo archetype catalogue: what a project gets from `definitions install` (the three seed
@@ -50,7 +57,7 @@ const crossModule: ArchetypeDefinition = {
  */
 export const demoArchetypes: ResolvedCatalogue = resolveCatalogue({
   documentTypes: seedDocumentTypes,
-  archetypes: [...seedArchetypes, crossModule],
+  archetypes: demoSpecificationArchetypes,
 });
 
 /**

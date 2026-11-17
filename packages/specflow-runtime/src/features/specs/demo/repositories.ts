@@ -1,9 +1,12 @@
-import type { SpecificationReadModel } from '../workspace/repository';
+import type {
+  SpecificationReadModel,
+  SpecificationWorkspaceRepository,
+  WorkspaceContributions,
+} from '../workspace/repository';
 import { createSampleSpecsOverviewRepository } from '../overview/repository/sample-repository';
 import type { SpecsOverviewRepository } from '../overview/repository/read-repository';
 import type { CurrentSpecRecord, ArchivedSpecRecord } from '../overview/repository/model';
-import type { SpecificationWorkspaceRepository } from '../workspace/repository';
-import { buildDemoTaskContribution } from '../../tasks';
+import type { OverviewTaskProgress } from '../overview/repository/engine-repository';
 import { createDemoSessions, type DemoSessions } from '../../sessions';
 import { createDemoDocuments, type DemoDocuments } from '../../documents';
 import type { DemoCatalogue, DemoSpecification } from '../../demo-catalogue';
@@ -33,23 +36,6 @@ function isCurrent(record: DemoSpec): boolean {
 }
 
 function buildSpecification(record: DemoSpec): SpecificationReadModel {
-  const attention = isCurrent(record)
-    ? (record.signals ?? []).flatMap((signal) =>
-        signal.kind === 'attention' && signal.target.kind === 'specification'
-          ? [
-              {
-                id: signal.id,
-                kind: 'specification' as const,
-                title: signal.label,
-                reason: signal.reason ?? signal.label,
-                priority:
-                  signal.attentionReason === 'input' ? ('high' as const) : ('normal' as const),
-              },
-            ]
-          : [],
-      )
-    : [];
-
   return {
     // Seeded Specifications are bound by the seed; created ones override it with their own.
     revision: 'demo-workspace-1',
@@ -59,13 +45,15 @@ function buildSpecification(record: DemoSpec): SpecificationReadModel {
       ...(record.key ? { key: record.key } : {}),
       title: record.title,
       summary: record.title,
+      // The Tasks contribution replaces it with the state the Tasks imply, as in a project.
       preparationState:
         record.progress.total === 0
           ? 'empty'
           : isCurrent(record) && !record.readyForWork
             ? 'preparing'
             : 'prepared',
-      attention,
+      // As in a project, what needs a person is the workflow's attention (the Tasks section).
+      attention: [],
     },
     sections: {
       repository: { state: 'unavailable', reason: 'not_implemented' },
@@ -82,13 +70,21 @@ export interface DemoSpecsRepositoriesDeps {
   readonly state: DemoState;
   readonly documents: Pick<DemoDocuments, 'contribution'>;
   readonly sessions: Pick<DemoSessions, 'contribution'>;
+  /**
+   * The Tasks owner over the demo workflow: the workspace `tasks` section and the Specs Overview
+   * progress, as the Engine projects them in a project. Without it there are no Tasks.
+   */
+  readonly tasks?: {
+    readonly section: NonNullable<WorkspaceContributions['tasks']>;
+    readonly progress: OverviewTaskProgress;
+  };
 }
 
 export function createDemoSpecsRepositories(deps?: DemoSpecsRepositoriesDeps): {
   overviewRepository: SpecsOverviewRepository;
   workspaceRepository: SpecificationWorkspaceRepository;
   catalogue: DemoCatalogue;
-  contributions: import('../workspace/repository').WorkspaceContributions;
+  contributions: WorkspaceContributions;
 } {
   const state = deps?.state;
   // Without an environment the read side serves the seeded catalogue only (empty state).
@@ -96,7 +92,8 @@ export function createDemoSpecsRepositories(deps?: DemoSpecsRepositoriesDeps): {
   const documents = deps?.documents ?? createDemoDocuments(empty!);
   const sessions = deps?.sessions ?? createDemoSessions(empty!);
   const seeded = createSampleSpecsOverviewRepository();
-  const overviewRepository: SpecsOverviewRepository = {
+  // The catalogue records as seeded and created; the Overview's progress is the Tasks owner's.
+  const records: SpecsOverviewRepository = {
     async readCurrent() {
       const snapshot = await seeded.readCurrent();
       const created = state?.specifications.size ?? 0;
@@ -112,12 +109,30 @@ export function createDemoSpecsRepositories(deps?: DemoSpecsRepositoriesDeps): {
     },
     readArchive: () => seeded.readArchive(),
   };
+  const tasks = deps?.tasks;
+  const overviewRepository: SpecsOverviewRepository = {
+    async readCurrent() {
+      const current = await records.readCurrent();
+      if (!tasks) {
+        return current;
+      }
+
+      const progress = await tasks.progress(current.items.map((item) => item.id));
+
+      return {
+        ...current,
+        items: current.items.map((item) => {
+          const counted = progress.get(item.id);
+
+          return counted ? { ...item, progress: counted } : item;
+        }),
+      };
+    },
+    readArchive: () => records.readArchive(),
+  };
 
   async function find(specId: string): Promise<DemoSpec | undefined> {
-    const [current, archive] = await Promise.all([
-      overviewRepository.readCurrent(),
-      overviewRepository.readArchive(),
-    ]);
+    const [current, archive] = await Promise.all([records.readCurrent(), records.readArchive()]);
     const record = [...current.items, ...archive.items].find((spec) => spec.id === specId);
 
     return record ? normalizeDemoSpec(record) : undefined;
@@ -158,15 +173,7 @@ export function createDemoSpecsRepositories(deps?: DemoSpecsRepositoriesDeps): {
       },
     },
     contributions: {
-      async tasks(specId) {
-        const record = await find(specId);
-
-        return {
-          section: record
-            ? buildDemoTaskContribution(record)
-            : { state: 'unavailable', reason: 'source_unavailable' },
-        };
-      },
+      ...(tasks ? { tasks: tasks.section } : {}),
       async documents(specId) {
         return documents.contribution(specId, find);
       },
@@ -180,8 +187,8 @@ export function createDemoSpecsRepositories(deps?: DemoSpecsRepositoriesDeps): {
       find,
       async all() {
         const [current, archive] = await Promise.all([
-          overviewRepository.readCurrent(),
-          overviewRepository.readArchive(),
+          records.readCurrent(),
+          records.readArchive(),
         ]);
 
         return [...current.items, ...archive.items].map(normalizeDemoSpec);

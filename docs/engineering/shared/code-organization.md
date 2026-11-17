@@ -176,7 +176,13 @@ Operations, validation and endpoints belong to the feature that owns the capabil
 seeded content), `features/sessions/demo/` (Session allocation, seeded details, references, context, and the
 read-only managed Session reads the Session routes serve without a coordinator),
 `features/specs/demo/` (workspace registry and Create options, atomic Create with idempotency and
-operation inspection, the scenario seam) and `features/tasks/demo/`. Each module exposes its demo
+operation inspection, the scenario seam), `features/workflow/demo/` (the Engine's real workflow
+operations over the in-memory store of `@nevo/specflow-engine/demo`, with the demo's lookups) and
+`features/tasks/demo/` (the Task Engine over that workflow and the seed, reached through Engine
+commands; the Task documents are `features/documents/demo/task-documents.ts`). The demo never
+reimplements Engine rules or projections: it injects in-memory implementations behind the
+Engine's ports and serves the project routes over them
+([ADR 0025](../../architecture/decisions/0025-demo-runs-the-engine-in-memory.md)). Each module exposes its demo
 surface through its barrel; a module needs another module's capability only through that barrel or
 an injected narrow function (for example Create validates and seeds documents through
 `documents.plan`/`append`, and the Session routes receive `documentPaths`). `src/demo/index.ts` is

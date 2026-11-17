@@ -5,7 +5,7 @@ import { loadDefinitions } from '../../specs/definitions/loader';
 import { createDefaultDefinitionRegistry } from '../../definitions/shipped-registry';
 import { locateSeedDirectory, openSeedSource } from '../../definitions/seed';
 import { resolveExecutionCatalogue, type ExecutionCatalogue } from '../definitions/catalogue';
-import { createMemoryWorkflowStore } from '../state/memory-store.test-support';
+import { createMemoryWorkflowStore } from '../state/memory-store';
 import type { OwnerActor, WorkflowActor, WorkflowSubject } from '../state/model';
 import { finishStep, type FinishStepInput } from './finish';
 import { inspectExecution } from './inspect';

@@ -22,6 +22,7 @@ import {
 import {
   createEngineTaskProgress,
   createEngineTaskSources,
+  createProjectTaskEngine,
   createEngineWorkspaceTasks,
   createTasksFeature,
   type TasksFeatureDependencies,
@@ -204,13 +205,14 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   // the documentation of each Specification's checkout (for `project-document` context
   // references) as they are now.
   const projectDocument = openProjectDocumentLookup(docsFeature.activeDocumentIds);
+  // Demo mode: the same operations over the demo's in-memory workflow state.
   const taskEngine =
-    engine && !demo
-      ? {
-          engine,
-          openWorkflow: () => openWorkflow(engine, { projectDocument: projectDocument() }),
-        }
-      : undefined;
+    demo?.taskEngine ??
+    (engine
+      ? createProjectTaskEngine(engine, () =>
+          openWorkflow(engine, { projectDocument: projectDocument() }),
+        )
+      : undefined);
   // Which checkouts agent Session Turns work in: Close never removes one of them (and holds a
   // checkout against new Turns while it removes it).
   const workspaceOccupancy = createWorkspaceOccupancy();
@@ -252,8 +254,10 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     createStoreSessionAssociations(sessionsFeature.runtime, associationTargets);
   const sessionReferences: SessionReferenceOwner =
     (demo ? undefined : dependencies.sessions?.references) ?? associations;
-  // Demo mode serves the real document read routes from the demo directories.
+  // Demo mode serves the real document read routes from the demo directories, and the real Task
+  // document routes from the demo Tasks.
   const documentReadSource = dependencies.documents?.readSource ?? demo?.documentReadSource;
+  const taskDocuments = dependencies.documents?.taskDocuments ?? demo?.taskDocuments;
   // The Runtime's single project: every `spec.*` check runs at `specScope(projectId, specId)`.
   const projectId = () =>
     demo
@@ -340,7 +344,6 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       },
     }),
     createTasksFeature({
-      ...(demo ? demo.taskSources : {}),
       ...(taskEngine ? { engine: taskEngine } : {}),
       ...dependencies.tasks,
       sessions: dependencies.tasks?.sessions ?? sessionReferences,
@@ -359,16 +362,11 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       ...(dependencies.documents?.writeSource
         ? { writeSource: dependencies.documents.writeSource }
         : {}),
-      ...(dependencies.documents?.taskDocuments
-        ? { taskDocuments: dependencies.documents.taskDocuments }
-        : {}),
+      ...(taskDocuments ? { taskDocuments } : {}),
     }),
     createWorkflowFeature({
-      ...(engine ? { engine } : {}),
       ...(taskEngine ? { openWorkflow: taskEngine.openWorkflow } : {}),
       ...dependencies.workflow,
-      // The demo Runtime has no Engine and serves no workflow routes.
-      ...(demo ? { routes: false } : {}),
       projectId,
     }),
     sessionsFeature,

@@ -25,21 +25,21 @@ related:
 
 ## Status and compatibility
 
-Runtime Tasks and Documents own these implemented application/HTTP boundaries. Source ports and
-explicit demo adapters are available; in project mode the Engine is the source of the Task
-definition, execution and history reads ([Project mode](#project-mode-engine-reads)) and of the
-[Task commands](#task-commands). Schemas live under `packages/specflow-contracts/src/tasks/` and `documents/`, with compatibility
+Runtime Tasks and Documents own these implemented application/HTTP boundaries. The Engine is the
+source of the Task definition, execution and history reads ([Project mode](#project-mode-engine-reads))
+and of the [Task commands](#task-commands): over the Project Home in a project Runtime, over
+in-memory state in the demo Runtime
+([ADR 0025](../../architecture/decisions/0025-demo-runs-the-engine-in-memory.md)). Schemas live under `packages/specflow-contracts/src/tasks/` and `documents/`, with compatibility
 re-exports from `specs/workspace`. This API is independent of the fixture-only revised workspace UI.
 
 The compatibility migration retains these paths and JSON shapes:
 
-| HTTP operation                                   | New Runtime owner                                    | Application operation                      |
-| ------------------------------------------------ | ---------------------------------------------------- | ------------------------------------------ |
-| `GET /api/specs/:specId/workspace`               | Specs                                                | Read lightweight Specification composition |
-| `GET /api/specs/:specId/tasks/:taskId`           | Tasks                                                | Read Task detail                           |
-| `GET /api/specs/:specId/tasks/:taskId/history`   | Tasks, consuming Engine history                      | Read authorized history page               |
-| `GET /api/specs/:specId/tasks/:taskId/resources` | Tasks, composing resource relations/content metadata | Read authorized resource page              |
-| `GET /api/specs/:specId/documents/:documentId`   | Documents                                            | Read document content                      |
+| HTTP operation                                 | New Runtime owner               | Application operation                      |
+| ---------------------------------------------- | ------------------------------- | ------------------------------------------ |
+| `GET /api/specs/:specId/workspace`             | Specs                           | Read lightweight Specification composition |
+| `GET /api/specs/:specId/tasks/:taskId`         | Tasks                           | Read Task detail                           |
+| `GET /api/specs/:specId/tasks/:taskId/history` | Tasks, consuming Engine history | Read authorized history page               |
+| `GET /api/specs/:specId/documents/:documentId` | Documents                       | Read document content                      |
 
 Each path is registered exactly once. Workspace loading is not a prerequisite to Task detail or
 document access. The route prefix supplies identity/context, not domain ownership.
@@ -48,7 +48,7 @@ document access. The route prefix supplies identity/context, not domain ownershi
 
 Source locations/public exports:
 
-- `specflow-contracts/tasks`: Task detail, task-relative targets, resources and history HTTP types.
+- `specflow-contracts/tasks`: Task detail, task-relative targets and history HTTP types.
 - `specflow-contracts/documents`: document identity, content response and read params/errors.
 - `specflow-contracts/specs/workspace`: lightweight Specification projection and imports/re-exports
   only where needed for existing consumers.
@@ -72,7 +72,7 @@ type Detail = {
   purpose?: string;
   acceptanceCriteria: string[];
   workflow?: string;
-  /** The Task resource (`TaskResourceFacts`); project mode only. */
+  /** The Task resource (`TaskResourceFacts`); every Engine-backed read has it. */
   resource?: TaskResourceFacts;
   snapshot?: ExistingTaskSnapshot;
 };
@@ -87,17 +87,18 @@ The singular `executor` of earlier versions is gone.
 snapshot continues to mean no execution projection. An available section with an empty array is
 a confirmed empty source; `unavailable`/`forbidden` is not an empty source.
 
-Detail composition must not read full history, full document bodies or transcripts. It can obtain
-bounded recommendation metadata, exact visible count when supported, and owner-issued page
-handles. If any prerequisite for a truthful resources page/count is absent, resources remains
-unavailable. Definition identity and Task metadata may remain usable if execution is unavailable.
+Detail composition must not read full history, full document bodies or transcripts; it issues an
+owner-issued history page handle. The snapshot sections are `work`, `document`, `dependencies` and
+`history`; the earlier human-requirement, related-resource and recovery sections and the resources
+page are removed (owner decision 2026-11-16; they return as new features if needed). Definition
+identity and Task metadata may remain usable if execution is unavailable.
 
 No GET in this contract starts work, compiles activating agent context, verifies a gate, records
 sign-off, creates a session or changes recovery state.
 
 ## Page wire format
 
-Retain `token`, optional opaque `cursor`, and `limit` in query. `limit` is a decimal string 1–50;
+Retain `token`, optional opaque `cursor`, and `limit` in query. `limit` is a decimal string 1â€“50;
 omission uses the bounded default advertised by detail. Unknown query fields or invalid syntax
 return 400 through schema validation. Existing identifier constraints remain unchanged.
 
@@ -123,7 +124,7 @@ Lease records bind:
 - runtime instance/data mode and resolved project identity;
 - `specId`, `taskId`, verified workspace/binding identity when applicable;
 - authenticated subject and server-derived visibility/policy context;
-- collection kind (`history` or `resources`);
+- collection kind (`history`);
 - the owner source read handles/versions required by this collection;
 - source order and starting continuation;
 - an expiry deadline.
@@ -154,18 +155,6 @@ History uses the source's stable total order (completed transition order with a 
 not a sort by nullable display timestamps. New history/execution that invalidates the owner's read
 basis causes 409 unless the owner supplies a genuine retained immutable read. Do not silently move
 the cursor into today's history or delete duplicates after an inconsistent fetch.
-
-### Recommendation continuation
-
-The resources source exposes one stable authorized order. Detail selects the first at most three
-records for the existing `recommended` field and records the continuation immediately after those
-actual records. The first resources page starts at that continuation. There is no handler
-`slice(3)`, no reread of all resources, and no global rule that resources always begin at offset 3.
-
-`visibleTotal` is the exact authorized collection count at that read basis. `page: null` means no
-remainder and `visibleTotal === recommended.length`. Any remainder requires a page lease. Preview
-can show two of the three recommendations; revealing the third is UI-local and does not change
-the collection/page contract. Permission-filtered records cannot affect recommendations or count.
 
 ## Authorization and typed application outcomes
 
@@ -227,13 +216,14 @@ version).
   the workflow action projection.
 - `history` pages the run's attempts, newest first; a page whose execution changed since the
   detail answers `409 task_snapshot_expired`.
-- `document` is `task.md` with its revision; `humanRequirements`, `resources` and `recovery` are
-  `unavailable` / `not_implemented` (no Engine projection of them).
+- `document` is `task.md` with its revision.
 
 An unknown Specification or Task is `404 specification_task_not_found`; an execution the Engine
 cannot read (an unavailable checkout, unreadable records) is `503 specification_source_unavailable`,
 with `Retry-After: 1` when the project control lock was busy (a retry soon can succeed). The demo
-Runtime keeps its own sources; a Runtime without either still answers 503.
+Runtime answers the same reads from its Engine over in-memory state
+([ADR 0025](../../architecture/decisions/0025-demo-runs-the-engine-in-memory.md)); a Runtime
+without an Engine still answers 503.
 
 ## Tasks page
 
@@ -259,7 +249,7 @@ matched, total}` (`total`: every row, broken ones too). The Tasks are resolved f
 
 An unknown Specification is `404 specification_not_found`; an execution the Engine cannot read is
 `503 specification_source_unavailable` (`Retry-After: 1` when the lock was busy). The demo Runtime
-has no Tasks page (503).
+serves the same page from its in-memory Engine.
 
 ### Dashboard grouping
 
@@ -307,12 +297,12 @@ authenticated subject with `trust: 'authenticated'`, the trusted local identity 
 routes). A body that names an actor, an executor or a type change fails validation (`400`). Every
 answer is `Cache-Control: no-store`.
 
-| Operation                                                    | Body / query                                                                                               | Success                  |
-| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | ------------------------ |
-| `POST /api/specs/:specId/tasks`                              | `taskId`, `title`, `type`, optional `summary`, `dependsOn`, `context`, `document`                          | `201 TaskChangeResult`   |
-| `PATCH /api/specs/:specId/tasks/:taskId`                     | `expectedRevision`, optional `title`, `summary` (`null` removes), `dependsOn`, `context` (`null`: default) | `200 TaskChangeResult`   |
-| `DELETE /api/specs/:specId/tasks/:taskId?expectedRevision=…` | the revision the removal was planned against                                                               | `200 { taskId }`         |
-| `PUT /api/specs/:specId/tasks/:taskId/status`                | `status` (`ready`, `on-hold`, `cancelled`), optional `reason`                                              | `200 { taskId, status }` |
+| Operation                                                      | Body / query                                                                                               | Success                  |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------ |
+| `POST /api/specs/:specId/tasks`                                | `taskId`, `title`, `type`, optional `summary`, `dependsOn`, `context`, `document`                          | `201 TaskChangeResult`   |
+| `PATCH /api/specs/:specId/tasks/:taskId`                       | `expectedRevision`, optional `title`, `summary` (`null` removes), `dependsOn`, `context` (`null`: default) | `200 TaskChangeResult`   |
+| `DELETE /api/specs/:specId/tasks/:taskId?expectedRevision=â€¦` | the revision the removal was planned against                                                               | `200 { taskId }`         |
+| `PUT /api/specs/:specId/tasks/:taskId/status`                  | `status` (`ready`, `on-hold`, `cancelled`), optional `reason`                                              | `200 { taskId, status }` |
 
 `TaskChangeResult` is `{ taskId, revision }`, the manifest revision for the next edit or removal. A
 refusal is the shared `WorkflowError` body with the statuses of the
@@ -335,7 +325,7 @@ document operation of its Specification, so its status is read at
 
 Documents owns the current response `{ id, title, content, revision }`. Retain the existing
 unversioned read for callers explicitly requesting latest. Add optional `revision` query for an
-exact body, with the same 1–1000 character opaque string bounds as page token syntax. An omitted
+exact body, with the same 1â€“1000 character opaque string bounds as page token syntax. An omitted
 revision means latest; a supplied revision means exactly that revision, never fallback to latest.
 
 For a supplied revision: authorized document absent -> existing 404; known document but requested
@@ -354,7 +344,7 @@ Before enabling each project reader, demonstrate its real owner guarantees: corr
 workspace binding; safe non-mutating read; pinned definition/attempt identity; stable page order and
 continuation; current authorization; supported exact counts; versioned body access where advertised.
 
-Demo can implement the same application ports with explicit in-memory source versions and test
-collections. Its successful requests prove transport composition only. They do not certify Engine
-atomic reads, an external-agent managed Session, production policy-bound paging or filesystem
-recovery. No project reader means unavailable without demo fallback.
+The demo Runtime runs the same Engine operations over in-memory state. Its successful requests
+prove the operations and the transport composition; they do not certify the filesystem store,
+Git-backed commits, an external-agent managed Session or filesystem recovery. No project reader
+means unavailable without demo fallback.

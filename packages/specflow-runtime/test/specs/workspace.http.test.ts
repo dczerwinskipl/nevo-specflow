@@ -9,14 +9,12 @@ import { InMemoryAuthenticationStore } from '../../src/features/auth/authenticat
 import { authCookieNames } from '../../src/features/auth/authentication/http/cookies';
 import { createRuntimeApp } from '../../src/server/app';
 import { passwordConfig } from '../auth/support/config';
-import { createDemoSpecsRepositories } from '../../src/features/specs';
-import { createDemoTaskSources } from '../../src/features/tasks';
+import { createFixtureTaskSources } from '../support/task-sources';
 
 describe('Specification Workspace Runtime HTTP integration', () => {
   it('rejects mismatched document and Task identifiers returned by the source', async () => {
     const config = passwordConfig();
-    const { catalogue } = createDemoSpecsRepositories();
-    const sources = createDemoTaskSources(catalogue);
+    const sources = createFixtureTaskSources();
     const app = await createRuntimeApp(
       { ...config, authentication: { ...config.authentication, mode: 'none' } },
       {
@@ -40,7 +38,7 @@ describe('Specification Workspace Runtime HTTP integration', () => {
         tasks: {
           definitions: {
             async resolve() {
-              const def = (await sources.definitions!.resolve('admission', 'TASK-01'))!;
+              const def = (await sources.definitions.resolve('admission', 'task-01'))!;
 
               return { ...def, task: { ...def.task, id: 'WRONG' } };
             },
@@ -50,7 +48,7 @@ describe('Specification Workspace Runtime HTTP integration', () => {
     );
     try {
       const doc = await app.inject('/api/specs/admission/documents/overview');
-      const task = await app.inject('/api/specs/admission/tasks/TASK-01');
+      const task = await app.inject('/api/specs/admission/tasks/task-01');
       expect(doc.statusCode).toBe(503);
       expect(task.statusCode).toBe(503);
       expect(doc.body).not.toContain('Secret');
@@ -96,7 +94,7 @@ describe('Specification Workspace Runtime HTTP integration', () => {
       }
 
       const ids = taskSection.data.groups.flatMap((group) => group.tasks.map((task) => task.id));
-      expect(ids).toContain('TASK-02');
+      expect(ids).toContain('queue-validation');
       const currentExecutions = admission?.currentExecutions ?? [];
       for (const execution of currentExecutions) {
         for (const activeId of execution.taskIds) {
@@ -127,9 +125,9 @@ describe('Specification Workspace Runtime HTTP integration', () => {
         sessions.data.items.some((item) => item.id === '00000000-0000-4000-8000-000000000023'),
       ).toBe(true);
 
-      const taskResponse = await app.inject('/api/specs/admission/tasks/TASK-02');
+      const taskResponse = await app.inject('/api/specs/admission/tasks/queue-validation');
       expect(taskResponse.statusCode).toBe(200);
-      expect(taskResponse.json<SpecificationTaskResponse>().task.id).toBe('TASK-02');
+      expect(taskResponse.json<SpecificationTaskResponse>().task.id).toBe('queue-validation');
 
       const docResponse = await app.inject('/api/specs/admission/documents/overview');
       expect(docResponse.statusCode).toBe(200);
@@ -179,7 +177,7 @@ describe('Specification Workspace Runtime HTTP integration', () => {
         error: 'DOCUMENT_NOT_FOUND',
         code: 'DOCUMENT_NOT_FOUND',
       });
-      const missingTask = await app.inject('/api/specs/admission/tasks/TASK-99');
+      const missingTask = await app.inject('/api/specs/admission/tasks/task-99');
       expect(missingTask.statusCode).toBe(404);
       expect(missingTask.json()).toEqual({ error: 'specification_task_not_found' });
       const invalid = await app.inject('/api/specs/invalid%20spec/workspace');

@@ -4,7 +4,6 @@ import {
   SpecificationTaskParamsSchema,
   SpecificationTaskResponseSchema,
   TaskPageQuerySchema,
-  TaskResourcePageSchema,
   TaskHistoryPageSchema,
   TaskSnapshotExpiredSchema,
   TaskReadErrorSchema,
@@ -17,7 +16,7 @@ import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
 import { requireCapability } from '../auth';
 import { specScope } from '../specs';
 import { readTaskDetail, type TaskReadDependencies } from './detail/read-task-detail';
-import { readTaskPage } from './reads/read-page';
+import { readTaskHistoryPage } from './reads/read-page';
 import { contractRef } from '../../server/shared-contracts';
 import { TaskSourceUnavailableError } from './engine/sources';
 import type { ReadOutcome } from './reads/outcome';
@@ -96,51 +95,44 @@ export const taskReadEndpoint: FastifyPluginCallback<{ dependencies: TaskReadDep
       return unavailableReply(reply, result.kind === 'unavailable' && result.retryable === true);
     },
   );
-  for (const kind of ['resources', 'history'] as const) {
-    app.withTypeProvider<TypeBoxTypeProvider>().get(
-      `/api/specs/:specId/tasks/:taskId/${kind}`,
-      {
-        preHandler: authorization,
-        schema: {
-          tags: ['Tasks'],
-          summary:
-            kind === 'resources' ? 'Read the resources of a Task' : 'Read the history of a Task',
-          params: SpecificationTaskParamsSchema,
-          querystring: TaskPageQuerySchema,
-          response: {
-            200: kind === 'resources' ? TaskResourcePageSchema : TaskHistoryPageSchema,
-            ...errors,
-          },
-        },
+  app.withTypeProvider<TypeBoxTypeProvider>().get(
+    '/api/specs/:specId/tasks/:taskId/history',
+    {
+      preHandler: authorization,
+      schema: {
+        tags: ['Tasks'],
+        summary: 'Read the history of a Task',
+        params: SpecificationTaskParamsSchema,
+        querystring: TaskPageQuerySchema,
+        response: { 200: TaskHistoryPageSchema, ...errors },
       },
-      async (request, reply) => {
-        reply.header('Cache-Control', 'no-store');
-        const result = await unlessUnavailable(() =>
-          readTaskPage(
-            options.dependencies,
-            kind,
-            request.params.specId,
-            request.params.taskId,
-            request.query,
-            request.authz,
-          ),
-        );
-        if (result.kind === 'ok') {
-          return result.value;
-        }
+    },
+    async (request, reply) => {
+      reply.header('Cache-Control', 'no-store');
+      const result = await unlessUnavailable(() =>
+        readTaskHistoryPage(
+          options.dependencies,
+          request.params.specId,
+          request.params.taskId,
+          request.query,
+          request.authz,
+        ),
+      );
+      if (result.kind === 'ok') {
+        return result.value;
+      }
 
-        if (result.kind === 'expired') {
-          return reply.code(409).send({ error: 'task_snapshot_expired' });
-        }
+      if (result.kind === 'expired') {
+        return reply.code(409).send({ error: 'task_snapshot_expired' });
+      }
 
-        if (result.kind === 'not_found') {
-          return reply.code(404).send({ error: 'specification_task_not_found' });
-        }
+      if (result.kind === 'not_found') {
+        return reply.code(404).send({ error: 'specification_task_not_found' });
+      }
 
-        return unavailableReply(reply, result.kind === 'unavailable' && result.retryable === true);
-      },
-    );
-  }
+      return unavailableReply(reply, result.kind === 'unavailable' && result.retryable === true);
+    },
+  );
 
   done();
 };

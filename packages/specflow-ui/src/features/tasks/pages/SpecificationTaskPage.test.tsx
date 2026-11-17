@@ -79,10 +79,9 @@ describe('direct Full Task page', () => {
     expect(mapped).not.toHaveProperty('group');
   });
 
-  it('shows an independent Task with one view-owned Primary title', () => {
+  it('shows a Task read without its resource as unavailable, never a partial Task page', () => {
     const markup = renderTask();
-    expect(markup).toContain('Independently readable Task');
-    expect(markup).toContain('Available without a Workspace collection');
+    expect(markup).not.toContain('Available without a Workspace collection');
     expect(markup.match(/<h1\b/g)).toHaveLength(1);
     expect(markup).not.toContain('Task not found');
   });

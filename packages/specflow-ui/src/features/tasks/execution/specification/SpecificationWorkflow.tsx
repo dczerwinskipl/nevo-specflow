@@ -29,9 +29,9 @@ export const SPECIFICATION_NOW_HEADING = 'spec-workflow-heading';
 
 /**
  * The Specification's workflow for its Overview: the projection, and the Close and Abandon dialogs
- * that the header overflow and the Now block both open. Only a project Runtime serves workflow
- * routes, and only a current (not archived) Specification can still move; elsewhere it provides
- * nothing and the Overview stays as it was.
+ * that the header overflow and the Now block both open, in every Runtime (the demo runs the same
+ * Engine workflow in memory). Only a current (not archived) Specification can still move; an
+ * archived one gets nothing and its Overview stays as it was.
  */
 export function SpecificationWorkflowProvider({
   specId,
@@ -40,11 +40,12 @@ export function SpecificationWorkflowProvider({
   readonly specId: string;
   readonly children: ReactNode;
 }) {
-  const runtimeMode = useRuntimeMode();
   const collection = useApplicationCollection();
-  const enabled = runtimeMode === 'project' && collection === 'current';
+  // Either Runtime serves the workflow; only a harness without a connected Runtime has none.
+  const runtimeMode = useRuntimeMode();
+  const connected = runtimeMode === 'project' || runtimeMode === 'demo';
 
-  return enabled ? (
+  return connected && collection === 'current' ? (
     <ProjectSpecificationWorkflow specId={specId}>{children}</ProjectSpecificationWorkflow>
   ) : (
     children

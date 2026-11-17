@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { guardCloseReservations } from './close-guard';
-import { createMemoryWorkflowStore } from './memory-store.test-support';
+import { createMemoryWorkflowStore } from './memory-store';
 import type { WorkflowStore } from './store';
 
 describe('guardCloseReservations', () => {

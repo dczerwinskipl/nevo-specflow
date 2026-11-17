@@ -1,6 +1,7 @@
 import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 import { isAbsolute } from 'node:path';
 import { SessionError } from '../../errors';
+import { ProviderTitles } from '../titles';
 import type { SessionDriver, Invocation } from '../driver';
 import { ProviderTimeouts } from '../driver';
 import {
@@ -46,7 +47,7 @@ export function createClaudeDriver(
   };
   let descriptor: ProviderDescriptor = {
     providerId: 'claude',
-    title: 'Claude Code',
+    title: ProviderTitles.claude,
     readiness: 'unknown',
     capabilities: {
       questions: true,

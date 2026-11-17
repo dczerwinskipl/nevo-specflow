@@ -1,5 +1,6 @@
 import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 import { SessionError } from '../../errors';
+import { ProviderTitles } from '../titles';
 import { ProviderTimeouts, type SessionDriver, type Invocation } from '../driver';
 import { createInvocationScope, launchOwnedProcess } from '../process';
 import {
@@ -35,7 +36,7 @@ export function createCodexDriver(
   const probe = dependencies.probe ?? probeCodex;
   let descriptor: ProviderDescriptor = {
     providerId: 'codex',
-    title: 'Codex',
+    title: ProviderTitles.codex,
     readiness: 'unknown',
     models: [],
     modes: ['read-only'],

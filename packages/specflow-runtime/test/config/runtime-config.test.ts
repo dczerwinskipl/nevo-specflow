@@ -64,6 +64,28 @@ it('loads project-owned Current Overview sections in declared order', async () =
   await expect(loadFrom(cwd)).rejects.toThrow('project-owned');
 });
 
+it('composes project Session policy with the local workstation enablement', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'specflow-sessions-config-'));
+  await mkdir(join(cwd, '.nevo/local'), { recursive: true });
+  await writeFile(
+    join(cwd, '.nevo/config.yaml'),
+    `${PROJECT_CONFIG}\nsessions:\n  enabled: true\n  providers:\n    claude: { allowed: true }\n    codex: { allowed: true }\n`,
+    'utf8',
+  );
+  await writeFile(
+    join(cwd, '.nevo/local/config.yaml'),
+    'sessions:\n  providers:\n    codex: { enabled: false }\n',
+    'utf8',
+  );
+  expect((await loadFrom(cwd)).config.sessions?.providers).toEqual({
+    mock: { enabled: false },
+    claude: { enabled: true },
+    codex: { enabled: false },
+  });
+  await writeFile(join(cwd, '.nevo/local/config.yaml'), 'sessions:\n  enabled: true\n', 'utf8');
+  await expect(loadFrom(cwd)).rejects.toThrow('sessions.enabled is project policy');
+});
+
 describe('documentation configuration', () => {
   it('loads the sections an enabled "nevo-specflow init" writes', async () => {
     const docs = await initDocs({

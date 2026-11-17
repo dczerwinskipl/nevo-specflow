@@ -12,9 +12,14 @@ import {
   type SessionListPage,
   type SessionSnapshot,
   type TelemetrySnapshot,
+  type ProviderDescriptor,
 } from '@nevo/specflow-contracts/sessions';
 import type { DemoCatalogue, DemoSessionResult } from '@nevo/specflow-contracts/demo';
 import { createRuntimeApp } from '../../src/server/app';
+import {
+  parseSessionsFeatureConfig,
+  type SessionsFeatureConfig,
+} from '../../src/features/sessions';
 import { passwordConfig } from '../auth/support/config';
 
 /** A well-formed ID that no demo Session, Turn, Work or content has. */
@@ -30,11 +35,15 @@ interface Assignment {
   scope: Record<string, string>;
 }
 
-async function open(assignments: Assignment[] = [{ role: 'developer', scope: {} }]) {
+async function open(
+  assignments: Assignment[] = [{ role: 'developer', scope: {} }],
+  sessions?: SessionsFeatureConfig,
+) {
   const config = passwordConfig();
   app = await createRuntimeApp(
     {
       ...config,
+      ...(sessions ? { sessions } : {}),
       authentication: { ...config.authentication, mode: 'none', localUserId: 'demo-user' },
       authorization: {
         assignments: assignments.map((assignment) => ({ userId: 'demo-user', ...assignment })),
@@ -276,5 +285,38 @@ describe('demo managed Session reads (read-only, no coordinator)', () => {
     expect(refused.status).toBe(429);
     expect(refused.headers.get('retry-after')).toBe('5');
     controller.abort();
+  });
+});
+
+describe('demo isolation from the project Session configuration', () => {
+  it('serves the demo catalogue whatever the project allows or the workstation enables', async () => {
+    const read = async (sessions?: SessionsFeatureConfig) => {
+      const response = await (await open(undefined, sessions)).inject('/api/session-providers');
+      expect(response.statusCode, response.body).toBe(200);
+      await app!.close();
+      app = undefined;
+
+      return response.json<{ items: ProviderDescriptor[] }>().items;
+    };
+
+    const baseline = await read();
+    const configured = await read(
+      parseSessionsFeatureConfig({
+        project: {
+          enabled: true,
+          providers: { mock: { allowed: true }, codex: { allowed: true } },
+        },
+        local: { providers: { codex: { enabled: false } } },
+      }),
+    );
+    expect(configured).toEqual(baseline);
+    expect(configured.some((item) => item.providerId === 'mock')).toBe(false);
+    expect(
+      configured.filter(
+        (item) =>
+          item.reasonCode === 'NOT_ALLOWED_BY_PROJECT' ||
+          item.reasonCode === 'NOT_ENABLED_ON_WORKSTATION',
+      ),
+    ).toEqual([]);
   });
 });

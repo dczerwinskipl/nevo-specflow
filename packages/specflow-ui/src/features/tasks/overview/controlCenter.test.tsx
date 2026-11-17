@@ -204,7 +204,7 @@ describe('Specification control center', () => {
   });
 
   it('sends one start for repeated clicks on a Requires attention action while it runs', async () => {
-    const start = vi.fn(() => new Promise<never>(() => undefined));
+    const start = vi.fn(() => new Promise<never>(() => undefined) as never);
     await renderAt(`/specs/${SPEC}`, 'waiting', undefined, start);
     await screen.findByRole('region', { name: 'Now' });
     const action = await screen.findByRole('button', { name: 'Start Implementation' });

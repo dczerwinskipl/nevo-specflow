@@ -1564,7 +1564,7 @@ export const RefetchInvalidatingAChangedRowFlagsItsField: Story = {
 const formColumn = (canvas: Canvas) =>
   canvas
     .getByRole('heading', { name: 'Nowa specyfikacja' })
-    .closest<HTMLElement>('[class~="@container"]')!;
+    .closest<HTMLElement>('[class~="@container/app-content"]')!;
 const sideBySide = (canvas: Canvas, rightStart = 'Miejsce pracy') => {
   const name = canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' }).getBoundingClientRect();
   const place = canvas.getByText(rightStart).getBoundingClientRect();

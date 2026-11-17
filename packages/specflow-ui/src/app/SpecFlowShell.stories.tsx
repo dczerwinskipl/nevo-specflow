@@ -1,4 +1,5 @@
 import type { AuthSessionResponse } from '@nevo/specflow-contracts/authentication';
+import type { SpecificationTaskResponse } from '@nevo/specflow-contracts/specs/workspace';
 import { DesignCaptureProvider } from '@nevo/figma-capture/metadata';
 import { RouterProvider, createMemoryHistory } from '@tanstack/react-router';
 import type { Meta, StoryObj } from '@storybook/react-vite';
@@ -41,6 +42,7 @@ import {
   createTaskIntegrationApi,
   createDocumentIntegrationApi,
 } from '../../test-support/specs/workspace/api';
+import { taskResourceFixture } from '../../test-support/tasks/resource';
 
 export function RoutedApplication({
   authMode = 'local',
@@ -201,9 +203,10 @@ export function RoutedApplication({
               },
             },
             purpose: task.purpose,
-            acceptanceCriteria: task.acceptanceCriteria ?? [],
+            acceptanceCriteria: [...(task.acceptanceCriteria ?? [])],
             workflow: task.workflow,
-          });
+            resource: taskResourceFixture(),
+          } satisfies SpecificationTaskResponse);
         }
       }
 

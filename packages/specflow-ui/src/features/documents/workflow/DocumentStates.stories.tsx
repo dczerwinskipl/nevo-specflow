@@ -240,6 +240,29 @@ export const DocumentsTreeNarrow: Story = {
   },
 };
 
+/** A workflow without document gates (the shipped ones): content states only, no note. */
+export const DocumentsTreeWithoutGates: Story = {
+  render: () => (
+    <NotificationProvider>
+      <div style={{ padding: 16, width: 560, maxWidth: '100%' }}>
+        <DocumentsExplorer
+          tree={gateTree}
+          relations={new Map()}
+          onSelect={() => undefined}
+          onAdd={() => Promise.resolve()}
+          onOperate={() => Promise.resolve()}
+        />
+      </div>
+    </NotificationProvider>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findAllByText('Initial content only')).toHaveLength(2);
+    await expect(canvas.queryByText(/needed to|used in/i)).toBeNull();
+    await expect(canvas.queryByText(/requirements could not be loaded/)).toBeNull();
+  },
+};
+
 /** The projection could not be read: content states only, and a quiet note says so. */
 export const DocumentsTreeRelationsUnavailable: Story = {
   render: renderTree(560, true),

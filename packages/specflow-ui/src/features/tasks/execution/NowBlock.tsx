@@ -76,39 +76,37 @@ function DoneWhenList({
     result
       ? t('workflowExecution.now.doneWhenWith', { result })
       : t('workflowExecution.now.doneWhen');
-  const groups = done.groups.length > 0 ? done.groups : [{ gates: [] }];
+  // Without gates there is no "Done when" at all (never an empty heading); only "Then".
+  const then = done.then ? (
+    <p className="flex min-w-0 items-start gap-2 text-body-sm text-content-secondary">
+      <span className="flex h-[1lh] shrink-0 items-center">
+        <Icon name="arrow-right" size="sm" aria-hidden="true" className="text-content-muted" />
+      </span>
+      <span className="min-w-0 [overflow-wrap:anywhere]">
+        {t('workflowExecution.now.then', { step: done.then })}
+      </span>
+    </p>
+  ) : null;
+
+  if (done.groups.length === 0) {
+    return <div data-now-then="">{then}</div>;
+  }
 
   return (
     <div className="grid gap-3" data-now-done-when="">
-      {groups.map((group, index) => (
+      {done.groups.map((group, index) => (
         <div key={group.result ?? index} className="grid gap-1.5">
           <Typography as="p" variant="label-sm" className="text-content-secondary">
             {heading(group.result)}
           </Typography>
-          {group.gates.length > 0 ? (
-            <GateList
-              variant="checklist"
-              gates={group.gates}
-              label={heading(group.result)}
-              actionFor={gateActionFor}
-              {...(gateDocument ? { documentFor: gateDocument } : {})}
-            />
-          ) : null}
-          {done.then && index === groups.length - 1 ? (
-            <p className="flex min-w-0 items-start gap-2 text-body-sm text-content-secondary">
-              <span className="flex h-[1lh] shrink-0 items-center">
-                <Icon
-                  name="arrow-right"
-                  size="sm"
-                  aria-hidden="true"
-                  className="text-content-muted"
-                />
-              </span>
-              <span className="min-w-0 [overflow-wrap:anywhere]">
-                {t('workflowExecution.now.then', { step: done.then })}
-              </span>
-            </p>
-          ) : null}
+          <GateList
+            variant="checklist"
+            gates={group.gates}
+            label={heading(group.result)}
+            actionFor={gateActionFor}
+            {...(gateDocument ? { documentFor: gateDocument } : {})}
+          />
+          {index === done.groups.length - 1 ? then : null}
         </div>
       ))}
     </div>

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, within } from 'storybook/test';
 import { WorkflowExecutionFixture } from './ProjectWorkflowExecution.stories-support';
 
 const meta = {
@@ -52,6 +53,21 @@ export const TaskReviewByAgent: Story = {
 export const TaskOnHold: Story = { tags: ['capture'], args: { scenario: 'on-hold' } };
 /** Rework after a review asked for changes: the hand-off, Finish step, and Return in ⋯. */
 export const TaskRework: Story = { tags: ['capture'] };
+/**
+ * A step without document gates (the shipped workflows): no "Done when" at all, only where the work
+ * goes; no document carries a relation ("needed to …").
+ */
+export const TaskWithoutGates: Story = {
+  args: { scenario: 'rework' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const now = await canvas.findByRole('region', { name: 'Now' }, { timeout: 10000 });
+    await expect(await within(now).findByText('Then: Review')).toBeVisible();
+    await expect(now.querySelector('[data-now-done-when]')).toBeNull();
+    await expect(within(now).queryByText(/Done (with .+ )?when/)).toBeNull();
+    await expect(canvas.queryByText(/needed to (finish|start)/i)).toBeNull();
+  },
+};
 export const TaskFirstStart: Story = { tags: ['capture'], args: { scenario: 'first-start' } };
 /** The workflow changes while the first-start dialog is open (confirm to see the refusal). */
 export const TaskStartDrift: Story = { args: { scenario: 'start-drift' } };

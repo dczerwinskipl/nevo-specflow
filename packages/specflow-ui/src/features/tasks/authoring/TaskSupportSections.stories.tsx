@@ -108,6 +108,8 @@ interface Scenario {
   readonly shell?: boolean;
   /** The documents carry their content state and the Task's workflow relations. */
   readonly states?: boolean;
+  /** With `states`: the Task's workflow has no document gates (no relations). */
+  readonly noGates?: boolean;
 }
 
 const ux: Entry = { kind: 'specification-document', id: 'ux', required: true };
@@ -176,7 +178,7 @@ function SupportSections(scenario: Scenario) {
         ? () =>
             Promise.resolve({
               ...taskWorkflowProjection('implement-gate'),
-              documentRelations: taskRelations,
+              documentRelations: scenario.noGates ? [] : taskRelations,
             })
         : never,
       createTask: never,
@@ -194,7 +196,7 @@ function SupportSections(scenario: Scenario) {
       query: createSpecFlowQueryClient(),
       services: createSpecFlowAppServices({ taskAuthoringApi: api }),
     };
-  }, [scenario.documents, scenario.states]);
+  }, [scenario.documents, scenario.states, scenario.noGates]);
   const task = resource(scenario);
   const view = contextView(task, authoring(scenario));
 
@@ -352,5 +354,15 @@ export const DocumentStates: Story = {
     await expect(await canvas.findByText('Needed to finish this step')).toBeVisible();
     await expect(canvas.getByText('Initial content only')).toBeVisible();
     await expect(canvas.getByText('Initial content only · needed to start Review')).toBeVisible();
+  },
+};
+
+/** A Task workflow without document gates (the shipped ones): content states only. */
+export const DocumentStatesWithoutGates: Story = {
+  args: { documents: 3, states: true, noGates: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findAllByText('Initial content only')).toHaveLength(2);
+    await expect(canvas.queryByText(/needed to|used in/i)).toBeNull();
   },
 };

@@ -86,7 +86,9 @@ In reading order:
    or cannot be read). Results that need different gates get one list each ("Done with Approved
    when"); a result that waits for open Tasks is left out (see Open Tasks). A Task adds where the work
    goes, "Then: Review", when every result leads to the same step (the Specification's step track
-   names the next step already); a step with no gates shows only that line.
+   names the next step already). A step with no document gates (the shipped workflows declare none)
+   has no "Done when" at all, never an empty heading: a Task shows only the "Then" line, the
+   Specification nothing; no document carries a relation label then, only its content state.
 5. **Blocking reasons**, one line each with a link to where it is fixed ("Waiting for 1 dependency ·
    See Depends on", a missing required context entry · See Context). An awaited process artifact is
    one neutral line.

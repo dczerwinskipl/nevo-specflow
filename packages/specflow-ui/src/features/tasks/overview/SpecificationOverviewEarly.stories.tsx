@@ -126,6 +126,10 @@ export const WriteSpec: Story = {
     await expect(now).not.toHaveTextContent(/Attempt|rev 1/);
     await expect(within(now).getByText(/^In progress since .+ · started by you$/)).toBeVisible();
     await expect(canvas.getAllByText('Initial content only')).toHaveLength(2);
+    // No document gates on this step (the shipped workflows): no "Done when", no relation labels.
+    await expect(now.querySelector('[data-now-done-when]')).toBeNull();
+    await expect(within(now).queryByText(/Done (with .+ )?when/)).toBeNull();
+    await expect(canvas.queryByText(/needed to (finish|start)|used in/i)).toBeNull();
   },
 };
 

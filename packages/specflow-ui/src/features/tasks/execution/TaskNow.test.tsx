@@ -63,6 +63,15 @@ function renderTaskNow(
 const now = () => screen.getByRole('region', { name: 'Now' });
 
 describe('the Task Now block', () => {
+  it('says only where the work goes when the step has no document gates (no empty "Done when")', () => {
+    renderTaskNow('rework');
+
+    expect(now().querySelector('[data-now-done-when]')).toBeNull();
+    expect(within(now()).queryByText(/Done (with .+ )?when/)).toBeNull();
+    expect(within(now()).queryByText(/needed to (finish|start)/i)).toBeNull();
+    expect(within(now()).getByText('Then: Review')).toBeTruthy();
+  });
+
   it('says what the step is for and what finishes it, with the fix of the unmet gate first', () => {
     const onOpenDocument = vi.fn();
     renderTaskNow('implement-gate', { onOpenDocument });

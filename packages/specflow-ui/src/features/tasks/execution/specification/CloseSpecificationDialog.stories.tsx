@@ -224,6 +224,8 @@ export const ReadyIntegrates: Story = {
     await expect(fact(dialog, 'Tasks')).toBe('All 6 tasks done');
     // Documents still only their initial content: informative, last, in the shared vocabulary.
     await expect(fact(dialog, 'Documents')).toMatch(/^2 with initial content only: /);
+    // The Close names content states only, never a workflow relation.
+    await expect(dialog.queryByText(/needed to (finish|start)/i)).toBeNull();
     await expect(within(canvasElement).queryByText('No tasks yet')).toBeNull();
     await expect(
       dialog.getByText('Closing archives the specification; it cannot be reopened.'),

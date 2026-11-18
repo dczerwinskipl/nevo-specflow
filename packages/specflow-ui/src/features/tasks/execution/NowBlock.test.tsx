@@ -127,6 +127,15 @@ describe('the Specification Now block', () => {
     expect(region.querySelector('.font-mono')).toBeNull();
   });
 
+  it('has no "Done when" at all for a step without document gates (shipped workflows)', () => {
+    renderNow(<OverviewNow projection={breakdown()} />);
+
+    const region = screen.getByRole('region', { name: 'Now' });
+    expect(region.querySelector('[data-now-done-when]')).toBeNull();
+    expect(within(region).queryByText(/Done (with .+ )?when/)).toBeNull();
+    expect(within(region).queryByText(/needed to (finish|start)/i)).toBeNull();
+  });
+
   it('names the attempt from the second one on', () => {
     renderNow(<OverviewNow projection={breakdown(2)} />);
 

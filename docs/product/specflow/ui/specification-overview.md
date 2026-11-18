@@ -80,7 +80,8 @@ dashboard configuration). The Overview renders what the reads deliver.
   line says the same until the new position is read, never a stale "Ready to start". Under the
   step's purpose, **Done when** lists the active step's exit gates as a neutral checklist (an unmet
   gate is an open circle with "not yet"; the list is shared with the Task Now, see
-  [Now block](workflow-execution.md#now-block)). When every
+  [Now block](workflow-execution.md#now-block); a step without document gates has no Done when
+  at all). When every
   result of the active step needs an unmet exit gate that names a document, opening it (**Open
   behaviour.md**) is the main action, a line above the actions says what is missing ("Add the
   Acceptance section to behaviour.md to finish.") and **Finish step** stays beside it as the

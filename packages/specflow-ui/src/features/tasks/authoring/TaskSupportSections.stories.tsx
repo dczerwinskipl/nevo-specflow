@@ -64,6 +64,9 @@ const taskRelations: DocumentRelation[] = [
     gate: {
       id: 'verification',
       label: 'task.md has a Verification section',
+      labelDeclared: true,
+      documentType: 'task',
+      requiredSections: ['Verification'],
       missingSections: ['Verification'],
     },
   },
@@ -73,7 +76,13 @@ const taskRelations: DocumentRelation[] = [
     relation: 'needed-to-start',
     blocksNow: false,
     step: { id: 'review', title: 'Review', active: false },
-    gate: { id: 'findings', label: 'findings.md exists' },
+    gate: {
+      id: 'findings',
+      label: 'findings.md exists',
+      labelDeclared: true,
+      documentType: 'findings',
+      requiredSections: [],
+    },
   },
 ];
 

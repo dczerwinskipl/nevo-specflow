@@ -18,7 +18,13 @@ const relation = (
   relation: kind,
   blocksNow: kind === 'needed-to-finish',
   step: { id: 'write', title: 'Write the specification', active: kind !== 'needed-to-start' },
-  gate: { id: 'acceptance', label: 'behaviour.md has an Acceptance section' },
+  gate: {
+    id: 'acceptance',
+    label: 'behaviour.md has an Acceptance section',
+    labelDeclared: true,
+    documentType: 'behaviour',
+    requiredSections: ['Acceptance'],
+  },
   ...overrides,
 });
 
@@ -125,6 +131,9 @@ describe('documentStateLabel', () => {
       gate: {
         id: 'g',
         label: 'behaviour.md has an Acceptance section',
+        labelDeclared: true,
+        documentType: 'behaviour',
+        requiredSections: ['Acceptance'],
         missingSections: ['Acceptance'],
       },
     });

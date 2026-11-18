@@ -31,6 +31,9 @@ export interface DocumentRelation {
   readonly gate: {
     readonly id: string;
     readonly label: string;
+    readonly labelDeclared: boolean;
+    readonly documentType: string;
+    readonly requiredSections: readonly string[];
     readonly missingSections?: readonly string[];
   };
 }
@@ -115,6 +118,9 @@ export async function documentRelationsOf(
           gate: {
             id: status.id,
             label: status.label,
+            labelDeclared: status.labelDeclared,
+            documentType: status.documentType,
+            requiredSections: status.requiredSections,
             ...(status.missingSections !== undefined
               ? { missingSections: status.missingSections }
               : {}),

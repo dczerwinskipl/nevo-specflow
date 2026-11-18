@@ -143,13 +143,19 @@ export const GateScopeSchema = Type.Union([
 
 /**
  * A declared entry or exit gate of a step with its status now (a `document` gate: a registered
- * document of `documentType` with a file and the required section headings). `label` is display text.
+ * document of `documentType` with a file and the `requiredSections` headings). `label` is display
+ * text: the definition's own when `labelDeclared`, else derived by the Engine (not to be parsed: the
+ * structured facts are `documentType` and `requiredSections`).
  */
 export const GateStatusSchema = Type.Object({
   id: Type.String(),
   type: Type.Literal('document'),
   label: Type.String(),
+  /** The definition declared `label`; false: the Engine derived it from the facts below. */
+  labelDeclared: Type.Boolean(),
   documentType: Type.String(),
+  /** The section headings the document needs, in declared order (empty: any document with a file). */
+  requiredSections: array(Type.String()),
   scope: GateScopeSchema,
   status: Type.Union([Type.Literal('satisfied'), Type.Literal('unsatisfied')]),
   /** Satisfied: the document that satisfies it; `sections-missing`: the closest one. */
@@ -194,8 +200,11 @@ export const DocumentRelationSchema = Type.Object({
   step: Type.Object({ id: StepIdSchema, title: Type.String(), active: Type.Boolean() }),
   gate: Type.Object({
     id: Type.String(),
-    /** Display text. */
+    /** Display text (see `GateStatus.label`). */
     label: Type.String(),
+    labelDeclared: Type.Boolean(),
+    documentType: Type.String(),
+    requiredSections: array(Type.String()),
     /** The required sections the document lacks (an unmet gate). */
     missingSections: Type.Optional(array(Type.String())),
   }),

@@ -9,25 +9,14 @@ function typeWord(id: string): string {
 }
 
 /**
- * The display text the Engine derives for a document gate that declares no `label` of its own
- * (`A "behaviour" document with Acceptance, Risks`). The contract carries no required sections, so
- * this one known form is read back to say it in people's words; a declared label is shown as it is.
+ * The facts of a gate the UI words itself: a declared label is shown as it is; otherwise the
+ * Engine's derived label is never shown or parsed, the words come from `documentType` and
+ * `requiredSections`.
  */
-const DERIVED_LABEL = /^A "([^"]+)" document(?: with (.+))?$/u;
-
-interface DerivedGate {
-  readonly type: string;
-  readonly sections: readonly string[];
-}
-
-function derivedGate(label: string): DerivedGate | undefined {
-  const match = DERIVED_LABEL.exec(label);
-  if (!match) {
-    return undefined;
-  }
-
-  return { type: match[1]!, sections: match[2] ? match[2].split(', ') : [] };
-}
+export type GateFacts = Pick<
+  GateStatus,
+  'label' | 'labelDeclared' | 'documentType' | 'requiredSections'
+>;
 
 export interface GateLine {
   /** What the gate needs: "behaviour.md has an Acceptance section", or the declared label. */
@@ -49,16 +38,15 @@ export interface GateLine {
  * the page knows it, else the document type: "A Behaviour document has …"). A declared label is
  * shown as it is.
  */
-export function gateLabel(label: string, name?: string): Message | string {
-  const derived = derivedGate(label);
-  if (!derived) {
-    return label;
+export function gateLabel(gate: GateFacts, name?: string): Message | string {
+  if (gate.labelDeclared) {
+    return gate.label;
   }
 
   const typeDocument = message('workflowExecution.gate.typeDocument', {
-    type: typeWord(derived.type),
+    type: typeWord(gate.documentType),
   });
-  const { sections } = derived;
+  const sections = gate.requiredSections;
   if (sections.length === 0) {
     return typeDocument;
   }
@@ -69,7 +57,7 @@ export function gateLabel(label: string, name?: string): Message | string {
       : /^[aeiou]/iu.test(sections[0]!)
         ? 'workflowExecution.gate.hasSectionVowel'
         : 'workflowExecution.gate.hasSection',
-    { subject: name ?? typeDocument, sections },
+    { subject: name ?? typeDocument, sections: [...sections] },
   );
 }
 
@@ -79,13 +67,12 @@ export function gateLabel(label: string, name?: string): Message | string {
  * document").
  */
 export function gateLine(
-  gate: Pick<GateStatus, 'label' | 'status' | 'reason' | 'missingSections'>,
+  gate: GateFacts & Pick<GateStatus, 'status' | 'reason' | 'missingSections'>,
   name?: string,
 ): GateLine {
-  const derived = derivedGate(gate.label);
-  const sections = derived?.sections ?? [];
-  const label = gateLabel(gate.label, name);
-  const namesDocument = derived !== undefined && sections.length > 0 && name !== undefined;
+  const sections = gate.requiredSections;
+  const label = gateLabel(gate, name);
+  const namesDocument = !gate.labelDeclared && sections.length > 0 && name !== undefined;
 
   if (gate.status === 'satisfied') {
     return { label, namesDocument, open: false };
@@ -110,9 +97,9 @@ export function gateLine(
       const missing = gate.missingSections ?? [];
       // The label names the missing sections already ("task.md has a Verification section"):
       // "not yet" says the rest. A derived label names them only when they are all it requires.
-      const said = derived
-        ? missing.join('\n') === sections.join('\n')
-        : missing.every((section) => gate.label.toLowerCase().includes(section.toLowerCase()));
+      const said = gate.labelDeclared
+        ? missing.every((section) => gate.label.toLowerCase().includes(section.toLowerCase()))
+        : missing.join('\n') === sections.join('\n');
 
       return {
         label,

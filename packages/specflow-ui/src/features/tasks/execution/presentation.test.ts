@@ -232,6 +232,8 @@ describe('Task Now: Goal and Done when', () => {
     id,
     type: 'document',
     label: `${id}.md is written`,
+    labelDeclared: true,
+    requiredSections: [],
     documentType: id,
     scope: { kind: 'task', specId: 's', taskId: 't' },
     status: met ? 'satisfied' : 'unsatisfied',

@@ -36,6 +36,9 @@ const relation = (
   gate: {
     id: `${documentId}-gate`,
     label: `${documentId}.md has an Acceptance section`,
+    labelDeclared: true,
+    documentType: documentId,
+    requiredSections: ['Acceptance'],
     ...(missingSections ? { missingSections } : {}),
   },
 });

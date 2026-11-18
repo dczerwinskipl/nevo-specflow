@@ -77,7 +77,7 @@ function gateDetails(relation: DocumentRelation): (Message | string)[] {
   const missing = relation.gate.missingSections ?? [];
 
   return [
-    gateLabel(relation.gate.label),
+    gateLabel(relation.gate),
     ...(missing.length
       ? [message('documents.state.missingSections', { count: missing.length, sections: missing })]
       : []),

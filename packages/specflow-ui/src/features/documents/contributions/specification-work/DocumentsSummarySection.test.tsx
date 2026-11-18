@@ -68,7 +68,13 @@ describe('DocumentsSummarySection document state', () => {
               relation: 'needed-to-finish',
               blocksNow: true,
               step: { id: 'specification', title: 'Write the specification', active: true },
-              gate: { id: 'g', label: 'behaviour.md has an Acceptance section' },
+              gate: {
+                id: 'g',
+                label: 'behaviour.md has an Acceptance section',
+                labelDeclared: true,
+                documentType: 'behaviour',
+                requiredSections: ['Acceptance'],
+              },
             },
             // Another registry's document of the same id is not this row's.
             {
@@ -77,7 +83,13 @@ describe('DocumentsSummarySection document state', () => {
               relation: 'used',
               blocksNow: false,
               step: { id: 'implement', title: 'Implement', active: true },
-              gate: { id: 'h', label: 'ux.md exists' },
+              gate: {
+                id: 'h',
+                label: 'ux.md exists',
+                labelDeclared: true,
+                documentType: 'ux',
+                requiredSections: [],
+              },
             },
           ]),
         ),

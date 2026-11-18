@@ -135,7 +135,9 @@ describe('exit gates', () => {
             id: 'findings',
             type: 'document',
             label: 'A "research" document with Findings',
+            labelDeclared: false,
             documentType: 'research',
+            requiredSections: ['Findings'],
             scope: { kind: 'task', specId: SPEC, taskId: 'api' },
             status: 'unsatisfied',
             reason: 'no-document',
@@ -253,7 +255,13 @@ describe('document relations', () => {
         relation: 'needed-to-finish',
         blocksNow: true,
         step: implement,
-        gate: { id: 'findings', label: 'A "research" document with Findings' },
+        gate: {
+          id: 'findings',
+          label: 'A "research" document with Findings',
+          labelDeclared: false,
+          documentType: 'research',
+          requiredSections: ['Findings'],
+        },
       },
       {
         scope: { kind: 'specification', specId: SPEC },
@@ -261,7 +269,13 @@ describe('document relations', () => {
         relation: 'used',
         blocksNow: false,
         step: review,
-        gate: { id: 'entry-1', label: 'A "note" document' },
+        gate: {
+          id: 'entry-1',
+          label: 'A "note" document',
+          labelDeclared: false,
+          documentType: 'note',
+          requiredSections: [],
+        },
       },
     ]);
 

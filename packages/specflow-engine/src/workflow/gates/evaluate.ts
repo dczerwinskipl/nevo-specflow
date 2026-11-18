@@ -42,7 +42,11 @@ export interface GateStatus {
   readonly type: 'document';
   /** Display text: the gate's `label`, else a description derived from it. */
   readonly label: string;
+  /** The definition declared `label` (shown as written); else `label` is derived. */
+  readonly labelDeclared: boolean;
   readonly documentType: string;
+  /** The section headings the document needs, in declared order (may be empty). */
+  readonly requiredSections: readonly string[];
   readonly scope: GateScopeRef;
   readonly status: 'satisfied' | 'unsatisfied';
   /**
@@ -160,7 +164,9 @@ export function evaluateDocumentGate(
     id: gate.id,
     type: gate.type,
     label: labelOf(gate),
+    labelDeclared: gate.label !== undefined,
     documentType: gate.documentType,
+    requiredSections: [...gate.requiredSections],
     scope,
   };
   let closest: { readonly id: string; readonly missing: readonly string[] } | undefined;

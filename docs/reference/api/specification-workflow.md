@@ -84,7 +84,8 @@ each document now, from the exit gates of the step the run is at and the entry g
 certainly goes to next (the outline's `next` rule: every transition leads there; before a start, the
 step a start would activate). One entry per document:
 `{scope, documentId, relation: needed-to-finish|needed-to-start|used, blocksNow, step: {id, title,
-active}, gate: {id, label, missingSections?}}`. `needed-to-finish` is an unmet exit gate of the
+active}, gate: {id, label, labelDeclared, documentType, requiredSections, missingSections?}}` (the
+gate facts as in `GateStatus`). `needed-to-finish` is an unmet exit gate of the
 active step (`active: true`) that applies to every result of the step; an exit gate conditioned by
 `when` on only some results relates nothing while unmet (and is `used` once satisfied).
 `needed-to-start` is an unmet entry gate of the next step, and `used` a satisfied gate of either.
@@ -106,8 +107,11 @@ dispatched.
 
 **Gates.** A step's declared gates
 ([workflow kernel](../../architecture/workflow/workflow-kernel.md#gates)) are reported as `GateStatus`
-`{id, type: document, label, documentType, scope, status: satisfied|unsatisfied, documentId?, reason?,
-missingSections?}`; `scope` is the Specification or Task the gate looked in (`{kind, specId, taskId?}`,
+`{id, type: document, label, labelDeclared, documentType, requiredSections, scope, status:
+satisfied|unsatisfied, documentId?, reason?, missingSections?}`. `label` is display text: the
+definition's own when `labelDeclared` is true, else one the Engine derives (`A "<type>" document with
+<sections>`) that clients MUST NOT parse; they word the gate from `documentType` and
+`requiredSections` (the required section headings in declared order, possibly empty). `scope` is the Specification or Task the gate looked in (`{kind, specId, taskId?}`,
 to link its documents) and `reason` is `no-document`, `file-missing`, `sections-missing` or `unreadable` (fails closed). Each
 `actions.finish.transitions[]` entry lists the exit gates that apply to it in `gates`, and is
 `unavailable: gate-unsatisfied` while one does not hold. The `active` position also carries

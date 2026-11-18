@@ -121,8 +121,10 @@ const activeIndex: Record<
 const acceptanceGate = {
   id: 'behaviour-acceptance',
   type: 'document' as const,
-  label: 'behaviour.md has an Acceptance section',
+  label: 'A "behaviour" document with Acceptance',
+  labelDeclared: false,
   documentType: 'behaviour',
+  requiredSections: ['Acceptance'],
   scope: { kind: 'specification' as const, specId: SPEC },
   status: 'unsatisfied' as const,
   reason: 'sections-missing' as const,
@@ -141,7 +143,14 @@ const gateRelations = [
     relation: 'needed-to-finish' as const,
     blocksNow: true,
     step: { id: steps[1].id, title: steps[1].title, active: true },
-    gate: { id: acceptanceGate.id, label: acceptanceGate.label, missingSections: ['Acceptance'] },
+    gate: {
+      id: acceptanceGate.id,
+      label: acceptanceGate.label,
+      labelDeclared: acceptanceGate.labelDeclared,
+      documentType: acceptanceGate.documentType,
+      requiredSections: acceptanceGate.requiredSections,
+      missingSections: ['Acceptance'],
+    },
   },
   {
     scope: acceptanceGate.scope,
@@ -149,7 +158,13 @@ const gateRelations = [
     relation: 'needed-to-start' as const,
     blocksNow: false,
     step: { id: steps[2].id, title: steps[2].title, active: false },
-    gate: { id: 'ux-present', label: 'ux.md exists' },
+    gate: {
+      id: 'ux-present',
+      label: 'ux.md exists',
+      labelDeclared: true,
+      documentType: 'ux',
+      requiredSections: [],
+    },
   },
 ];
 

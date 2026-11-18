@@ -36,8 +36,8 @@ export function useWorkflowCommands(subject: WorkflowSubjectRef) {
   });
 
   const reevaluateWait = useMutation({
-    mutationFn: (input: ReevaluateWaitRequest) =>
-      workflowExecutionApi.reevaluateWait(specId, input),
+    mutationFn: ({ specId: targetSpecId, ...input }: ReevaluateWaitRequest & { specId: string }) =>
+      workflowExecutionApi.reevaluateWait(targetSpecId, input),
     onSettled: refresh,
   });
 

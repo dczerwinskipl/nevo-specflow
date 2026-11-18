@@ -28,8 +28,9 @@ export function reevaluateWait(
   return dependencies.serialize(async () => {
     assertOwner(actor, 're-evaluates a wait step');
     const subject: WorkflowSubject = { kind: 'specification', specId };
+    const catalogue = (await dependencies.reloadCatalogue?.()) ?? dependencies.catalogue;
     const snapshot = await dependencies.store.read(specId);
-    const { definition, run } = loadSubject(dependencies.catalogue, snapshot, subject);
+    const { definition, run } = loadSubject(catalogue, snapshot, subject);
     const record = run.attempts.find((entry) => entry.step === step && entry.attempt === attempt);
     const transition = waitCompletionTransition(definition, step);
     if (
@@ -55,9 +56,11 @@ export function reevaluateWait(
         'This wait attempt is no longer active.',
       );
     }
+
     if (findStep(definition, step)?.kind !== 'wait') {
       throw new WorkflowError('WORKFLOW_POSITION_INVALID', 'The active step is not a wait step.');
     }
+
     if (!transition) {
       throw new WorkflowError(
         'WORKFLOW_STATE_CORRUPT',
@@ -65,17 +68,23 @@ export function reevaluateWait(
       );
     }
 
-    const set = new ExecutionWorkingSet(snapshot, dependencies.catalogue);
-    const blockers = waitRecoveryBlockers(set.tasks(), set.brokenTasks());
-    if (blockers.length > 0) {
-      throw new WorkflowError(
-        'WORKFLOW_TASK_BLOCKED',
-        `Resolve these Tasks before ending the wait: ${blockers.join(', ')}.`,
-      );
-    }
-
-    settleWait({ set, catalogue: dependencies.catalogue, at: isoNow(dependencies) });
-    await dependencies.store.apply(specId, { ...set.change(), summary: `settle wait ${step}` });
+    const requireClosedTasks = (set: ExecutionWorkingSet) => {
+      const blockers = waitRecoveryBlockers(set.tasks(), set.brokenTasks());
+      if (blockers.length > 0) {
+        throw new WorkflowError(
+          'WORKFLOW_TASK_BLOCKED',
+          `Resolve these Tasks before ending the wait: ${blockers.join(', ')}.`,
+        );
+      }
+    };
+    const set = new ExecutionWorkingSet(snapshot, catalogue);
+    requireClosedTasks(set);
+    settleWait({ set, catalogue, at: isoNow(dependencies) });
+    await dependencies.store.apply(specId, {
+      ...set.change(),
+      verifySnapshot: (current) => requireClosedTasks(new ExecutionWorkingSet(current, catalogue)),
+      summary: `settle wait ${step}`,
+    });
 
     return { step, attempt, status: 'settled' };
   });

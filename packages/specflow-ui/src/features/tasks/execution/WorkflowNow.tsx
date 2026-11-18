@@ -150,6 +150,14 @@ export function WorkflowNow({
     commands.returnTo.isPending ||
     commands.reevaluateWait.isPending;
   const waitAttempt = subject.taskId === undefined ? projection.attention?.waitAttempt : undefined;
+  // The read may already show a journaled transition whose publication still needs retrying.
+  const submittedWait = commands.reevaluateWait.variables;
+  const attemptedWait = subject.taskId === undefined && submittedWait?.specId === subject.specId;
+  const retryWait =
+    attemptedWait && (commands.reevaluateWait.isError || commands.reevaluateWait.isPending)
+      ? submittedWait
+      : undefined;
+  const waitAction = retryWait ?? waitAttempt;
 
   const startNow = () => {
     commands.start.reset();
@@ -287,16 +295,26 @@ export function WorkflowNow({
       : undefined;
 
   const workflowActions =
-    primaryAction ??
-    (waitAttempt ? (
+    (waitAction ? (
       <Button
         key="reevaluate-wait"
-        onClick={() => commands.reevaluateWait.mutate(waitAttempt)}
+        onClick={() =>
+          commands.reevaluateWait.mutate({
+            specId: subject.specId,
+            step: waitAction.step,
+            attempt: waitAction.attempt,
+          })
+        }
         disabled={busy}
       >
-        {t('workflowExecution.now.reevaluateWait')}
+        {t(
+          retryWait && !waitAttempt
+            ? 'workflowExecution.now.retryWait'
+            : 'workflowExecution.now.reevaluateWait',
+        )}
       </Button>
     ) : undefined) ??
+    primaryAction ??
     (overview ? (
       // Distinct keys: the button that opened Finish must never become Start. When a finish whose
       // answer was lost closes its dialog, the dialog returns focus to its opener; a reused element
@@ -416,10 +434,7 @@ export function WorkflowNow({
 
   const note = (
     <>
-      {waitAttempt ? (
-        <InlineNote tone="info">{t('workflowExecution.now.waitReadyToSettle')}</InlineNote>
-      ) : null}
-      {commands.reevaluateWait.isError ? (
+      {attemptedWait && commands.reevaluateWait.isError ? (
         <WorkflowRefusalAlert error={commands.reevaluateWait.error} />
       ) : null}
       {finishMovedOn ? (

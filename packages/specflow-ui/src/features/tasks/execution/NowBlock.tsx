@@ -107,8 +107,13 @@ export function NowBlock({
       break;
     case 'waiting':
       current = <StepTitle step={position.step} />;
-      facts = t('workflowExecution.now.waitingNote');
       stepId = position.step.id;
+      if (projection.attention?.waitAttempt) {
+        facts = t('workflowExecution.now.waitReadyToSettle');
+        break;
+      }
+
+      facts = t('workflowExecution.now.waitingNote');
       supporting = waitingContent ?? (
         <>
           <InlineNote tone="attention" icon="clock">

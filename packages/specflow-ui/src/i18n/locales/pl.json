@@ -2285,6 +2285,7 @@
       "lastPrefix": "Ostatnio: {{step}} · ",
       "alreadyFinished": "Ten krok został już zakończony. Poniżej widać, co można zrobić teraz.",
       "reevaluateWait": "Zakończ oczekiwanie",
+      "retryWait": "Ponów zakończenie oczekiwania",
       "waitReadyToSettle": "Wszystkie zadania są zamknięte. Możesz zakończyć oczekiwanie.",
       "startWorkflow": "Rozpocznij przepływ",
       "operations": "Operacje przepływu",

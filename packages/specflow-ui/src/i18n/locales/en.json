@@ -2285,6 +2285,7 @@
       "lastPrefix": "Last: {{step}} · ",
       "alreadyFinished": "This step was already finished. What you can do now is shown below.",
       "reevaluateWait": "End wait",
+      "retryWait": "Retry ending wait",
       "waitReadyToSettle": "All tasks are closed. You can end the wait.",
       "startWorkflow": "Start workflow",
       "operations": "Workflow operations",

@@ -67,11 +67,11 @@ function renderWith(
   );
 }
 
-it('submits the projected wait attempt from Now', async () => {
+it('can retry the same wait attempt after a failed publication changes the projection', async () => {
   const waitAttempt = { step: 'wait-for-tasks', attempt: 3 };
-  const reevaluateWait = vi.fn(() =>
-    Promise.resolve({ ...waitAttempt, status: 'settled' as const }),
-  );
+  const reevaluateWait = vi
+    .fn(() => Promise.resolve({ ...waitAttempt, status: 'already-settled' as const }))
+    .mockRejectedValueOnce(new Error('publication interrupted'));
   const projection: WorkflowActionProjection = {
     ...specificationWorkflowProjection('waiting'),
     attention: {
@@ -83,19 +83,41 @@ it('submits the projected wait attempt from Now', async () => {
       waitAttempt,
     },
   };
-  renderWith(
-    <WorkflowNow
-      subject={{ specId: SPEC }}
-      projection={projection}
-      headingId="now"
-      links={{}}
-      artifactOptions={[]}
-    />,
-    { execution: fakeExecutionApi({ reevaluateWait }) },
-  );
+  function Harness() {
+    const [published, setPublished] = useState(false);
 
+    return (
+      <>
+        <button type="button" onClick={() => setPublished(true)}>
+          Reload workflow
+        </button>
+        <WorkflowNow
+          subject={{ specId: SPEC }}
+          projection={
+            published
+              ? {
+                  ...specificationWorkflowProjection('waiting'),
+                  position: { kind: 'terminal', outcome: 'completed' },
+                }
+              : projection
+          }
+          headingId="now"
+          links={{}}
+          artifactOptions={[]}
+          overview={{ specId: SPEC }}
+        />
+      </>
+    );
+  }
+
+  renderWith(<Harness />, { execution: fakeExecutionApi({ reevaluateWait }) });
+
+  expect(screen.queryByText(/continues by itself/i)).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'End wait' }));
   await waitFor(() => expect(reevaluateWait).toHaveBeenCalledWith(SPEC, waitAttempt));
+  fireEvent.click(screen.getByRole('button', { name: 'Reload workflow' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Retry ending wait' }));
+  await waitFor(() => expect(reevaluateWait).toHaveBeenNthCalledWith(2, SPEC, waitAttempt));
 });
 
 /** The Task's Now block over its projection query (a command refreshes it). */

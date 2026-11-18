@@ -157,6 +157,28 @@ describe('filesystem workflow store', () => {
       code: 'WORKFLOW_ATTEMPT_MISMATCH',
     });
 
+    const reopened = {
+      ...restarted,
+      store: {
+        ...restarted.store,
+        apply: async (specId: string, change: Parameters<typeof restarted.store.apply>[1]) => {
+          const task = snapshot.manifests[0]!.value;
+          const path = join(resourceDirectory(), task.id, 'task.yaml');
+          await writeFile(path, serializeTaskManifest(task));
+          try {
+            await restarted.store.apply(specId, change);
+          } finally {
+            await writeFile(path, serializeTaskManifest({ ...task, status: 'cancelled' }));
+          }
+        },
+      },
+    };
+    await expect(reevaluateWait(reopened, request)).rejects.toMatchObject({
+      code: 'WORKFLOW_TASK_BLOCKED',
+    });
+    expect(await exists(journalPath())).toBe(false);
+    expect(await readFile(specificationPath(), 'utf8')).toBe(waiting);
+
     const interrupted = {
       ...restarted,
       store: storeWithPublishHook(() => Promise.reject(new Error('publication interrupted'))),
@@ -170,18 +192,12 @@ describe('filesystem workflow store', () => {
     });
     expect(await exists(journalPath())).toBe(false);
     const completed = await readFile(specificationPath(), 'utf8');
-    expect(parseSpecificationRecord(completed)).toMatchObject({
-      run: {
-        position: { state: 'ready', step: 'acceptance' },
-        attempts: expect.arrayContaining([
-          expect.objectContaining({
-            step: 'implementation',
-            attempt: 1,
-            outcome: expect.objectContaining({ kind: 'transition' }),
-          }),
-        ]),
-      },
-    });
+    const { run } = parseSpecificationRecord(completed);
+    expect(run.position).toMatchObject({ state: 'ready', step: 'acceptance' });
+    const attempt = run.attempts.find(
+      (entry) => entry.step === 'implementation' && entry.attempt === 1,
+    );
+    expect(attempt?.outcome?.kind).toBe('transition');
     await expect(reevaluateWait(restarted, request)).resolves.toMatchObject({
       status: 'already-settled',
     });

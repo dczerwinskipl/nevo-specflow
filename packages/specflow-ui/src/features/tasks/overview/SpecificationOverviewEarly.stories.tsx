@@ -77,7 +77,7 @@ export const NotStarted: Story = {
     await expect(await canvas.findByRole('button', { name: 'Start workflow' })).toBeVisible();
     await expect(canvas.getByText('First step · Gather requirements')).toBeVisible();
     await expect(canvas.queryByText('Requires attention')).toBeNull();
-    await expect(canvas.getByText('No tasks yet')).toBeVisible();
+    // Without Tasks the section keeps the step line in place of a title.
     await expect(
       canvas.getByText('Tasks appear when Break the solution down (step 4 of 7) finishes.'),
     ).toBeVisible();
@@ -202,10 +202,9 @@ export const TasksCreated: Story = {
   args: { scenario: 'tasks-created' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(
-      await canvas.findByRole('link', { name: 'Needs approval: open on the Tasks page' }),
-    ).toBeVisible();
-    await expect(canvas.queryByText('No tasks yet')).toBeNull();
+    // The Tasks section lists the drafts as Task rows instead of its step line.
+    await expect(await canvas.findByRole('list', { name: 'Needs approval' })).toBeVisible();
+    await expect(canvas.queryByText(/^Tasks appear when/)).toBeNull();
     await expect(canvas.getByText('Step 4 of 7 · next: Review the breakdown')).toBeVisible();
   },
 };
@@ -245,7 +244,9 @@ export const Requirements: Story = {
     ).toBeVisible();
     await expect(canvas.getByText('Step 1 of 7 · next: Write the Specification')).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Finish step' })).toBeVisible();
-    await expect(canvas.queryByRole('button', { name: 'New task' })).toBeNull();
+    // Now offers no New task before the breakdown (the Tasks section keeps its own quiet one).
+    const now = canvasElement.querySelector<HTMLElement>('[data-workflow-now]')!;
+    await expect(within(now).queryByRole('button', { name: 'New task' })).toBeNull();
   },
 };
 

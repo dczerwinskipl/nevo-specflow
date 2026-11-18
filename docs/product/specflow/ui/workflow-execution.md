@@ -66,9 +66,12 @@ The top of the Full Task page, and of the Overview (its Specification variant is
 In reading order:
 
 1. **Subject status** when it changes what can happen (a draft needs approval; on hold with its reason;
-   an abandoned Specification with its reason). A Task's draft, on hold and cancelled notes sit under
-   its title with the status glyph (`edit`, `circle-pause`, `close`) and a neutral tone: a status
-   alone is not attention.
+   an abandoned Specification with its reason). A Task's draft and cancelled notes sit under
+   its title with the status glyph (`edit`, `close`) and a neutral tone: a status
+   alone is not attention. An on-hold Task's Now leads with the hold: **On hold** (`circle-pause`)
+   as its title, the reason under it, and where the workflow stands as the quiet line ("Not started ·
+   First step · Implement"), with **Resume** as the main action; the header does not repeat the
+   hold while Now shows it.
 2. **Position**: the step title, or Not started / Completed / Abandoned; on the Overview the step
    track and its label (see [Specification Overview](specification-overview.md#sections-and-order));
    and one quiet line ("In progress since 11:18 · started by you", "Attempt 2 · …" only from the
@@ -81,9 +84,13 @@ In reading order:
    Specification and the Task). It is read from the step's results (`position.exits`), so it shows
    whoever runs the attempt, an agent included, when the viewer has no Finish step. A met gate is a
    success check with the document that meets it; an unmet one is an open circle with "not yet",
-   neutral, because the step is being worked on and the main action is its fix, and names the
-   missing sections when the document lacks some ("not yet · missing Verification"). Only a gate that cannot be met as things are says why (its file is missing
-   or cannot be read). Results that need different gates get one list each ("Done with Approved
+   neutral, because the step is being worked on and the main action is its fix. A gate reads as
+   what it needs, by the document's file name, never the type id ("behaviour.md has an Acceptance
+   section · not yet"; without a document yet, by the type's word: "A Behaviour document has an
+   Acceptance section"); a gate with its own declared label shows that label. The missing sections
+   are named only when the label does not name exactly those ("not yet · Risks section missing").
+   The Finish dialog uses the same words in the attention tone. Only a gate that cannot be met as
+   things are says why (its file is missing or cannot be read). Results that need different gates get one list each ("Done with Approved
    when"); a result that waits for open Tasks is left out (see Open Tasks). A Task adds where the work
    goes, "Then: Review", when every result leads to the same step (the Specification's step track
    names the next step already). A step with no document gates (the shipped workflows declare none)
@@ -153,8 +160,8 @@ opened by the header's history toggle.
 
 ## Full Task (`/specs/:specId/tasks/:taskId`)
 
-Back to the Specification, the title, `id · Task Type`, the preparation notice (draft, on hold or
-cancelled with its reason), the summary, then the sections **Workflow** (the Now block; omitted when
+Back to the Specification, the title, `id · Task Type`, the preparation notice (draft, cancelled
+with its reason, or on hold with its reason when Now is not shown), the summary, then the sections **Workflow** (the Now block; omitted when
 cancelled), **Documents**, **Context** and **Depends on**. Task history is the Secondary.
 
 - **Placement.** Structured facts are edited where they are read, in these sections (no edit mode);
@@ -183,8 +190,9 @@ cancelled), **Documents**, **Context** and **Depends on**. Task history is the S
   and Delete in the row menu, none for `task.md`. While the context is the Task's own list, New
   document says that the new document is not added to it ("Add it from Context if a step should
   read it"); with the default context it says nothing (the document joins by itself).
-- **Context.** The effective list in declared order with a one-line explanation of what it is (the
-  inputs a step reads before it starts). Kinds: Task document, Specification document, Project
+- **Context.** The effective list in declared order with a one-line explanation of what it is, by
+  state: before the first start "Inputs this task needs before it starts, in the order they are
+  read", once started "Inputs this task reads, in order". Kinds: Task document, Specification document, Project
   document, Code path (with its current match count) and Instructions, each Required or Optional with an
   optional note. Each entry is the shared document row named by its file name (`overview.md`, not the
   document title), with its kind and note in the tooltip and a trailing label: **Always first**
@@ -240,7 +248,8 @@ or after a refusal.
   check with **Check again**.
 - **Blocked:** one sentence saying why, then flat groups in a fixed order — **Running sessions**,
   **Workflow**, **Unfinished tasks**, **Broken tasks**, **Pending writes**, **Workflow state** — each
-  with one explanation, its Tasks (id, title as a link, then the status with its mark from the one
+  with one explanation, its Tasks (the title as a link, the id on its own secondary line as on a
+  Task row, then the status with its mark from the one
   status model; at most five, then "and N more"; only a group that lists Tasks counts them in its
   heading; an On hold Task adds its hold reason, as its Tasks page row does) and its resolving
   action where one exists. Below them "Not going to finish this work?

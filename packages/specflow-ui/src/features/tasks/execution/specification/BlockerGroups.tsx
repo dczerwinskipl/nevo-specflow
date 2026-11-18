@@ -222,13 +222,21 @@ export function BlockerGroups({
                   const task = tasks.get(id);
 
                   return (
-                    <li key={id} className="grid min-w-0 gap-0.5 text-body-sm">
+                    <li key={id} className="grid min-w-0 gap-0.5 text-body-sm" data-task-id={id}>
+                      {/* As on a Task row: the title, then the id on its own secondary line. */}
                       <span className="min-w-0 [overflow-wrap:anywhere]">
-                        <span className="font-mono text-content-muted">{id}</span>{' '}
                         <InlineAction className="font-normal" onClick={() => onOpenTask(id)}>
                           {task?.title ?? id}
                         </InlineAction>
                       </span>
+                      {task?.title ? (
+                        <span
+                          className="min-w-0 font-mono text-content-muted [overflow-wrap:anywhere]"
+                          data-task-identity=""
+                        >
+                          {id}
+                        </span>
+                      ) : null}
                       {/* A pending write names what is being saved, not the status of the Task. */}
                       {group === 'writes' ? (
                         <span className="text-content-muted">

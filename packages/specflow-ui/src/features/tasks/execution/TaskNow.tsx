@@ -165,6 +165,9 @@ export function TaskNow({
             : undefined
         }
         {...(goal ? { summary: <TaskGoal key={goal.text} goal={goal} /> } : {})}
+        {...(resource.status === 'on-hold'
+          ? { hold: resource.statusChange?.reason ? { reason: resource.statusChange.reason } : {} }
+          : {})}
         {...(onOpenHistory ? { onOpenHistory } : {})}
       />
       {documents.create.isError ? <RefusalAlert error={documents.create.error} /> : null}

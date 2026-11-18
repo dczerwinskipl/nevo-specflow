@@ -10,7 +10,9 @@ import {
   Typography,
   cn,
 } from '@nevo/ui';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
+import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { FeatureUnavailable } from '../../../../app/errors/FeatureUnavailable';
 import { collectionContainer } from '../../../../shared/operational-list';
 import { WorkspaceSection } from '../../../../shared/workspace-section';
@@ -25,7 +27,22 @@ const plainClick = (event: MouseEvent) =>
   !(event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0);
 
 /**
- * The Overview's Tasks: the Runtime's preview of its configured grouping, rendered as delivered.
+ * The line of a Tasks section without Tasks: when the workflow creates them, else "No tasks yet";
+ * a workflow that ended creates no more, so it never says "yet" there.
+ */
+export function emptyTasksLine(
+  t: TFunction,
+  projection: WorkflowActionProjection | undefined,
+): string {
+  if (projection?.position.kind === 'terminal') {
+    return t('specification.tasksNoneCreated');
+  }
+
+  return tasksStepLine(t, projection?.outline) ?? t('specification.tasksEmptyTitle');
+}
+
+/**
+ * The Overview's Tasks:the Runtime's preview of its configured grouping, rendered as delivered.
  * Every `row` group shows its first Tasks (the Runtime picks them in importance order) as the Tasks
  * page's own `TaskRow`, on the same tracks without a column header (stacked below 48rem of
  * section width), then "N more in <group>" opening the Tasks page filtered to that group. There
@@ -89,10 +106,7 @@ export function TasksSummarySection({ specId, data, actions }: SpecificationWork
           variant="inline"
           title={
             <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
-              <span>
-                {tasksStepLine(t, workflow?.projection?.outline) ??
-                  t('specification.tasksEmptyTitle')}
-              </span>
+              <span>{emptyTasksLine(t, workflow?.projection)}</span>
               {openNewTask ? (
                 <Button variant="ghost" size="sm" leadingIcon="plus" onClick={openNewTask}>
                   {t('taskAuthoring.tasks.newTask')}

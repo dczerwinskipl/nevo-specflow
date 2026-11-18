@@ -98,6 +98,8 @@ export function TaskAuthoringView({
   };
 
   const statusChangeReason = resource.statusChange?.reason;
+  // The Now block leads with an on-hold Task's hold and its reason; the header does not repeat it.
+  const nowShown = projection !== undefined && resource.status !== 'cancelled';
 
   return (
     // Below a 40rem page Now is a flush band: its edge separates it, so the section after it drops
@@ -125,7 +127,7 @@ export function TaskAuthoringView({
             </span>
             {` · ${t('taskAuthoring.page.draftNotice')}`}
           </InlineNote>
-        ) : resource.status === 'on-hold' || resource.status === 'cancelled' ? (
+        ) : (resource.status === 'on-hold' && !nowShown) || resource.status === 'cancelled' ? (
           <InlineNote
             icon={resource.status === 'on-hold' ? 'circle-pause' : 'close'}
             className="mt-2"
@@ -162,7 +164,7 @@ export function TaskAuthoringView({
         ) : null}
       </div>
       {/* The Now block, directly under the summary; a cancelled Task has no workflow section. */}
-      {projection && resource.status !== 'cancelled' ? (
+      {projection && nowShown ? (
         <TaskNow
           specId={specId}
           taskId={task.id}
@@ -197,6 +199,7 @@ export function TaskAuthoringView({
         editable={lifecycle?.editContext.kind === 'allowed'}
         openTarget={openTarget}
         onLoadLatest={onReload}
+        started={resource.position.state !== 'not-started'}
       />
       <TaskDependenciesSection
         specId={specId}

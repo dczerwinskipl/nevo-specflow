@@ -101,28 +101,6 @@ export function formatWhen(
   }).format(date);
 }
 
-/** What an unmet gate is missing, in one clause (`none registered yet`). */
-export function gateDetail(t: TFunction, gate: GateStatus): string | undefined {
-  if (gate.status === 'satisfied') {
-    return undefined;
-  }
-
-  switch (gate.reason) {
-    case 'no-document':
-      return t('workflowExecution.gate.noDocument');
-    case 'file-missing':
-      return t('workflowExecution.gate.fileMissing');
-    case 'sections-missing':
-      return t('workflowExecution.gate.sectionsMissing', {
-        sections: (gate.missingSections ?? []).join(', '),
-      });
-    case 'unreadable':
-      return t('workflowExecution.gate.unreadable');
-    default:
-      return undefined;
-  }
-}
-
 export interface PreviewStep {
   readonly id: string;
   readonly title: string;

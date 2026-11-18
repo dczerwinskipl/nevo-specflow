@@ -147,7 +147,8 @@ dashboard configuration). The Overview renders what the reads deliver.
   place with one line, "Tasks appear when Break the solution down (step 4 of 7) finishes." when
   the run is certain to get to a step that produces Tasks (`outline.tasksStep`, never a step id: no
   branch on the way; the same line before the run reaches that step and while it is at it), else
-  "No tasks yet", with a quiet **New task** beside it when allowed. No checkboxes and no bulk
+  "No tasks yet", with a quiet **New task** beside it when allowed; once the workflow ended
+  (completed or abandoned) it reads "No tasks were created", never "yet". No checkboxes and no bulk
   actions.
 - **Sessions** — the recommended Session first, then the Specification's other Sessions, at most
   three; the same row as in the [Specification Sessions list](specification-sessions.md#rows). A
@@ -266,7 +267,9 @@ Runtime stops), and its documents, Sessions and history are the demo data
   first paragraph) as plain text (at most 320 graphemes),
   rendered as delivered, never parsed as Markdown again; empty when there is no readable overview.
   **Show more** (expanding the overview document) appears only when the description was cut (it
-  ends with `…`) or there is none; a whole description has no Show more.
+  ends with `…`) or there is none; a whole description has no Show more. Without a description,
+  **Show description** is offered only when the overview holds more than its initial content (a
+  template's empty headings are no description).
 - **Now, Requires attention and Tasks** — the Engine's workflow projection and one execution read
   presented in the Runtime's dashboard grouping; an execution the Engine cannot read makes the
   Tasks summary say the Tasks are unavailable.

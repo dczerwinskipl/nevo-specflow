@@ -6,7 +6,8 @@ import { LocalizationProvider, createSpecFlowI18n } from '../../../../i18n';
 import { mapWorkspaceResponse } from '../../../specs/read-model/mapWorkspaceResponse';
 import { createFakeWorkspaceRuntime } from '../../../specs/workspace/WorkspaceContext';
 import { controlCenterWorkspace } from '../../overview/controlCenter.stories-support';
-import { TasksSummarySection } from './TasksSummarySection';
+import { specificationWorkflowProjection } from '../../execution/projections.stories-support';
+import { emptyTasksLine, TasksSummarySection } from './TasksSummarySection';
 import { tasksPreviewFixtures } from './tasksPreview.stories-support';
 
 afterEach(cleanup);
@@ -87,5 +88,16 @@ describe('Overview Tasks summary', () => {
 
     expect(screen.getByText('No tasks yet')).not.toBeNull();
     expect(screen.getByRole('button', { name: 'All tasks' })).not.toBeNull();
+  });
+});
+
+describe('the line of a Tasks section without Tasks', () => {
+  it('never says "yet" once the workflow ended', () => {
+    const { t } = createSpecFlowI18n('en');
+
+    expect(emptyTasksLine(t, specificationWorkflowProjection('completed'))).toBe(
+      'No tasks were created',
+    );
+    expect(emptyTasksLine(t, undefined)).toBe('No tasks yet');
   });
 });

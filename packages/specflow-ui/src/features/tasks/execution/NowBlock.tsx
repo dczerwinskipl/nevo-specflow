@@ -125,7 +125,7 @@ export interface NowBlockProps {
   readonly status?: ReactNode;
   readonly links: NowLinks;
   readonly gateActionFor?: (gate: GateStatus) => GateAction | undefined;
-  /** Names the document that meets a gate (`findings.md`), when the page knows it. */
+  /** The file name of a gate's document (`findings.md`), when the page knows it. */
   readonly gateDocument?: (gate: GateStatus) => string | undefined;
   /** A transient line just above the actions (a kept finish draft, a post-action notice). */
   readonly note?: ReactNode;
@@ -146,6 +146,11 @@ export interface NowBlockProps {
   readonly summary?: ReactNode;
   /** A start was sent and its new position is not read yet: say so instead of "Ready to start". */
   readonly starting?: boolean;
+  /**
+   * The subject is on hold: the block says so first ("On hold", then the reason) and where the
+   * workflow stands becomes the quiet line under it ("Not started · First step · Implement").
+   */
+  readonly hold?: { readonly reason?: string };
 }
 
 /**
@@ -168,6 +173,7 @@ export function NowBlock({
   titleNote,
   summary,
   starting = false,
+  hold,
 }: NowBlockProps) {
   const { t, i18n } = useTranslation();
   const viewer = useViewer();
@@ -267,6 +273,23 @@ export function NowBlock({
     facts = t('workflowExecution.now.starting');
   }
 
+  // On hold, the hold leads with its reason; where the workflow stands is the quiet line under it.
+  let quiet: ReactNode = facts;
+  if (hold) {
+    quiet = (
+      <>
+        {current}
+        {facts ? ` · ${facts}` : null}
+      </>
+    );
+    current = (
+      <>
+        <InlineIcon name="circle-pause" />
+        {t('workflowExecution.now.onHold')}
+      </>
+    );
+  }
+
   // The results that would complete the Specification while Tasks are open, naming them.
   const tasksOpen =
     position.kind === 'active'
@@ -301,13 +324,23 @@ export function NowBlock({
             {current}
           </Typography>
           {titleNote}
+          {hold?.reason ? (
+            <Typography
+              as="p"
+              variant="body-md"
+              className="text-content-primary [overflow-wrap:anywhere]"
+              data-now-hold-reason=""
+            >
+              {hold.reason}
+            </Typography>
+          ) : null}
           {track ? <StepTrackRow track={track} compact={position.kind === 'waiting'} /> : null}
           <Typography
             as="p"
             variant="body-sm"
             className="text-content-muted [overflow-wrap:anywhere] empty:hidden"
           >
-            {facts}
+            {quiet}
           </Typography>
         </div>
         {summary}

@@ -142,11 +142,11 @@ describe('shared document tree rows', () => {
     );
     const button = row('behaviour.md');
     expect(button.className).toContain('flex-wrap');
-    // Glyph and name stay together; the label text is cut on its own line, never hidden.
+    // Glyph and name stay together; on its own line the label wraps and keeps every word.
     expect(screen.getByText('behaviour.md').parentElement?.className).toContain('shrink-0');
-    expect(screen.getByText('Needed to finish Write the specification').className).toContain(
-      'truncate',
-    );
+    const text = screen.getByText('Needed to finish Write the specification');
+    expect(text.className).not.toContain('truncate');
+    expect(text.parentElement?.className).not.toContain('whitespace-nowrap');
   });
 
   it('draws a row that opens nothing as the same line, not a button', () => {

@@ -54,6 +54,7 @@ function renderSection(
   api: TaskAuthoringApi,
   resource: TaskResourceFacts = resourceFixture(),
   authoring: TaskAuthoring = defaultAuthoring,
+  started = false,
 ) {
   renderWithAuthoring(
     <TaskContextSection
@@ -70,6 +71,7 @@ function renderSection(
       editable
       openTarget={() => undefined}
       onLoadLatest={vi.fn()}
+      started={started}
     />,
     api,
   );
@@ -86,6 +88,18 @@ function addSpecificationDocument(title: string) {
 }
 
 describe('TaskContextSection', () => {
+  it('says what the context is by state: needed to start, then what the task reads', () => {
+    renderSection(fakeTaskAuthoringApi());
+    expect(screen.getByText(/^Inputs this task needs before it starts/)).toBeTruthy();
+    cleanup();
+
+    renderSection(fakeTaskAuthoringApi(), resourceFixture(), defaultAuthoring, true);
+    expect(
+      screen.getByText('Inputs this task reads, in order. task.md always comes first.'),
+    ).toBeTruthy();
+    expect(screen.queryByText(/before it starts/)).toBeNull();
+  });
+
   it('writes the default context out with the added entry appended, at the read revision', async () => {
     const editTask = vi.fn(() => Promise.resolve({ taskId: TASK, revision: 'rev-2' }));
     renderSection(fakeTaskAuthoringApi({ editTask }));

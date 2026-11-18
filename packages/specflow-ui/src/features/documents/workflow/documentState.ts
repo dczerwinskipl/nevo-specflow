@@ -1,6 +1,7 @@
 import type { DocumentContentState } from '@nevo/specflow-contracts/documents';
 import type { DocumentRelation } from '@nevo/specflow-contracts/workflow';
 import { message, type Message } from '../../../i18n/message';
+import { gateLabel } from './gateLabel';
 
 /*
  * One document state vocabulary for every surface (Overview Documents, the Documents page tree,
@@ -76,7 +77,7 @@ function gateDetails(relation: DocumentRelation): (Message | string)[] {
   const missing = relation.gate.missingSections ?? [];
 
   return [
-    relation.gate.label,
+    gateLabel(relation.gate.label),
     ...(missing.length
       ? [message('documents.state.missingSections', { count: missing.length, sections: missing })]
       : []),

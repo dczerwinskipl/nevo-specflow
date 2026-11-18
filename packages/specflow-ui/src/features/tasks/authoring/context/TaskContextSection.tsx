@@ -58,6 +58,8 @@ export interface TaskContextSectionProps {
   /** Opens the row's target; undefined for entries without one (project documents, paths, text). */
   readonly openTarget: (entry: TaskContextEntry) => (() => void) | undefined;
   readonly onLoadLatest: () => void;
+  /** The task has started: its steps read the context; before, it is what the task needs to start. */
+  readonly started?: boolean;
 }
 
 /**
@@ -163,7 +165,9 @@ export function TaskContextSection(props: TaskContextSectionProps) {
     >
       <div className="grid gap-3">
         <Typography as="p" variant="body-sm" className="text-content-secondary">
-          {t('taskAuthoring.context.explanation')}
+          {props.started
+            ? t('taskAuthoring.context.explanationStarted')
+            : t('taskAuthoring.context.explanation')}
         </Typography>
         <SourceNote explicit={view.explicit} editable={editable} />
         {edit.isError && adding === undefined && !restoring ? editError : null}

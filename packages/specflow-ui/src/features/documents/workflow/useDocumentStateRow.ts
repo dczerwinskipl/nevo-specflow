@@ -13,8 +13,8 @@ export interface DocumentStateRow {
 /**
  * Translates a {@link DocumentStateLabel} into what `TreeDocumentRow` takes. In a narrow row the
  * label either shortens (`short`: beside the active step on screen, the step-less form) or keeps
- * every word on its own line under the name (`wrap`: where the step is named, its title cut with
- * the full label in the tooltip).
+ * every word on its own line under the name (`wrap`: where the step is named; the label wraps there,
+ * never cut).
  */
 export function useDocumentStateRow(
   narrow: 'short' | 'wrap' = 'short',

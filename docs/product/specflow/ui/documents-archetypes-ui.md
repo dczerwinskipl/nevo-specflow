@@ -202,9 +202,9 @@ The attention tone is only for a relation whose gate refuses the action the run 
 the sections it still lacks ("Needs the Acceptance section"). In a narrow row (under `28rem`) the
 Overview and Task detail shorten the label: the relation drops its step ("Needed to finish",
 "Initial content · needed to finish"; "Used in this step" stays as it is), since Now beside it names
-the step. This tree keeps the step: a label that does not fit beside the name takes its own line
-under it, right-aligned, and a long step title is cut with an ellipsis (the tooltip has the full
-label); the name is not cut for it.
+the step. This tree keeps the step: only a label that does not fit beside the name takes its own
+line under it, right-aligned, and wraps there over more lines when it needs them (never cut); the
+name is not cut for it.
 
 While the workflow projection loads, the rows show their content state only (no layout change when
 the relations arrive). When it cannot be read, the rows keep their content state and a quiet note

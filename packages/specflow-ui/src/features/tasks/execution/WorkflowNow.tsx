@@ -60,10 +60,12 @@ export interface WorkflowNowProps {
   readonly artifactOptions: readonly ArtifactOption[];
   /** What resolves an unmet gate here (Create findings document). */
   readonly gateAction?: (gate: GateStatus) => GateAction | undefined;
-  /** Names the document that meets a gate (`findings.md`). */
+  /** The file name of a gate's document (`findings.md`). */
   readonly gateDocument?: (gate: GateStatus) => string | undefined;
   /** Under the position: the step's purpose (Specification) or Goal (Task). */
   readonly summary?: ReactNode;
+  /** The subject is on hold (a Task): Now leads with it and its reason. */
+  readonly hold?: { readonly reason?: string };
   /** Opens the subject's workflow history from the ⋯ menu. */
   readonly onOpenHistory?: () => void;
   /**
@@ -119,6 +121,7 @@ export function WorkflowNow({
   gateDocument,
   summary,
   onOpenHistory,
+  hold,
   specification,
 }: WorkflowNowProps) {
   const { t } = useTranslation();
@@ -508,6 +511,7 @@ export function WorkflowNow({
         starting={starting}
         menu={menu}
         summary={summary}
+        {...(hold ? { hold } : {})}
         {...(specification
           ? {
               showHandoff: false,

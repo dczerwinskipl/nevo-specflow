@@ -193,6 +193,11 @@ export function SpecificationNow({
       }
       artifactOptions={documents}
       gateAction={gateAction}
+      gateDocument={(gate) =>
+        gate.scope.kind === 'specification' && gate.documentId
+          ? documentName(gate.documentId)
+          : undefined
+      }
       onOpenHistory={onOpenHistory}
       {...(summary ? { summary } : {})}
       specification={{

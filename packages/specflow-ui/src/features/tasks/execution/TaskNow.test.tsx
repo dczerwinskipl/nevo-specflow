@@ -10,6 +10,7 @@ import { TestServicesRouterContext } from '../../../../test-support/app/TestServ
 import { stubLayoutApis } from '../../../../test-support/app/stubLayoutApis';
 import { fakeTaskAuthoringApi } from '../authoring/authoring.test-support';
 import {
+  HOLD_REASON,
   SPEC,
   TASK,
   taskResourceFor,
@@ -81,9 +82,7 @@ describe('the Task Now block', () => {
     );
     // An open item, not a warning: the step is being worked on.
     const gates = within(now()).getByRole('list', { name: 'Done when' });
-    expect(gates.textContent).toBe(
-      'task.md has a Verification section · not yet · missing Verification (not met)',
-    );
+    expect(gates.textContent).toBe('task.md has a Verification section · not yet (not met)');
     expect(gates.querySelector('.text-status-attention')).toBeNull();
     expect(within(now()).getByText('Then: Review')).toBeTruthy();
     expect(
@@ -144,7 +143,7 @@ describe('the Task Now block', () => {
     // No Finish step for the viewer, yet the step's results are read: only Approved needs a gate.
     expect(within(now()).queryByRole('button', { name: 'Finish step' })).toBeNull();
     expect(within(now()).getByRole('list', { name: 'Done with Approved when' }).textContent).toBe(
-      'task.md has a Review notes section · not yet · missing Review notes (not met) Open task.md',
+      'task.md has a Review notes section · not yet (not met) Open task.md',
     );
     // The results part ways (done or back to Implementation): no "Then".
     expect(now().textContent).not.toContain('Then:');
@@ -157,12 +156,14 @@ describe('the Task Now block', () => {
     ).toBeTruthy();
   });
 
-  it('before the first start names the first step and its Goal, with Resume as the one action', () => {
+  it('on hold leads with the hold and its reason, the position secondary, Resume the one action', () => {
     const onPress = vi.fn();
     renderTaskNow('on-hold', { primary: { label: 'Resume', busy: false, onPress } });
 
-    expect(now().textContent).toContain('Not started');
-    expect(now().textContent).toContain('First step · Design');
+    const lines = [...now().querySelectorAll('[aria-live="polite"] > p')].map(
+      (line) => line.textContent,
+    );
+    expect(lines).toEqual(['On hold', HOLD_REASON, 'Not started · First step · Design']);
     expect(now().querySelector('[data-now-goal]')?.textContent).toBe('GoalDesign of the change.');
     const actions = now().querySelector<HTMLElement>('[data-slot="workflow-actions"]')!;
     expect(

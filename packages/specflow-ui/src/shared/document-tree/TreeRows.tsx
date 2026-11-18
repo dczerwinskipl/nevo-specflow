@@ -37,9 +37,9 @@ export interface TreeRowState {
   /** The label in a narrow row (below `@md` row width), for example without a step title. */
   readonly shortText?: string;
   /**
-   * The name keeps its width and the label goes to its own line (right-aligned, one line, cut
-   * with an ellipsis; give the full text in the tooltip) when both do not fit on one line, instead
-   * of the name giving way. For a long label that must keep all of its words, such as a step title.
+   * The name keeps its width and, only when both do not fit on one line, the label goes to its own
+   * line (right-aligned, wrapping over more lines when it needs them; never cut), instead of the
+   * name giving way. For a long label that must keep all of its words, such as a step title.
    */
   readonly wrap?: boolean;
 }
@@ -61,20 +61,34 @@ const stateLabelClassName = {
   attention: treeAttentionStateLabelClassName,
 } as const;
 
+/**
+ * A wrapping label on its own line keeps every word: it wraps over more lines, right-aligned,
+ * instead of the one fixed-height, unbroken line of a trailing label.
+ */
+function onOwnLine(className: string): string {
+  return [
+    ...className
+      .split(' ')
+      .filter((name) => !['h-icon-md', 'items-center', 'whitespace-nowrap'].includes(name)),
+    'ml-auto min-w-0 max-w-[calc(100%-var(--spacing-tree-leaf-offset))] items-start text-right',
+  ].join(' ');
+}
+
 function StateLabel({ state }: { state: TreeRowState }) {
   const tone = state.attention ? 'attention' : (state.tone ?? 'muted');
 
   return (
     <span
       className={cn(
-        stateLabelClassName[tone],
+        state.wrap ? onOwnLine(stateLabelClassName[tone]) : stateLabelClassName[tone],
         'gap-1',
-        state.wrap && 'ml-auto min-w-0 max-w-[calc(100%-var(--spacing-tree-leaf-offset))]',
       )}
     >
       {/* A row in attention carries the warning glyph in front; a label in attention its own. */}
       {tone === 'attention' && !state.attention ? (
-        <Icon name="triangle-alert" size="sm" className="shrink-0" />
+        <span className="flex h-[1lh] shrink-0 items-center">
+          <Icon name="triangle-alert" size="sm" className="shrink-0" />
+        </span>
       ) : null}
       {state.shortText ? (
         <>
@@ -82,7 +96,7 @@ function StateLabel({ state }: { state: TreeRowState }) {
           <span className="hidden @max-md/tree-row:inline">{state.shortText}</span>
         </>
       ) : state.wrap ? (
-        <span className="min-w-0 truncate">{state.text}</span>
+        <span className="min-w-0">{state.text}</span>
       ) : (
         state.text
       )}

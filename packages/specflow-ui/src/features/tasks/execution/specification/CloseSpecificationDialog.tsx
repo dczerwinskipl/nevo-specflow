@@ -601,8 +601,9 @@ function CloseFacts({
           </div>
           <ul className="grid gap-1 text-body-sm">
             {notDeliveredTasks.slice(0, ITEMS_SHOWN).map((task) => (
-              <li key={task.id} className="min-w-0 [overflow-wrap:anywhere]">
-                <span className="font-mono text-content-muted">{task.id}</span> {task.title}
+              <li key={task.id} className="grid min-w-0 gap-0.5 [overflow-wrap:anywhere]">
+                <span>{task.title}</span>
+                <span className="font-mono text-content-muted">{task.id}</span>
               </li>
             ))}
             {notDelivered > ITEMS_SHOWN ? (

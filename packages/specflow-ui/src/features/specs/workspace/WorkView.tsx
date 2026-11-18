@@ -112,6 +112,10 @@ export function WorkView({ specId, data }: WorkViewProps) {
         specId={id}
         intro={data.intro}
         overviewDocumentId={data.overviewDocumentId}
+        overviewInitialOnly={
+          data.documents.find((document) => document.id === data.overviewDocumentId)
+            ?.contentState === 'baseline'
+        }
       />
     </div>
   );

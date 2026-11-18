@@ -306,5 +306,13 @@ describe('CloseSpecificationDialog', () => {
     });
 
     expect(await within(dialog).findByText('Waiting for the sandbox account.')).toBeTruthy();
+    // As on a Task row: the title first, the id on its own secondary line, at every width.
+    const row = dialog.querySelector<HTMLElement>('[data-task-id="t-03"]')!;
+    expect([...row.children].map((line) => line.textContent)).toEqual([
+      'Sign-in button',
+      't-03',
+      'On hold',
+      'Waiting for the sandbox account.',
+    ]);
   });
 });

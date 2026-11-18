@@ -195,7 +195,7 @@ describe('manual workflow execution', () => {
     fireEvent.click(screen.getByRole('radio', { name: /^Done/ }));
 
     expect(screen.getByRole('list', { name: 'Needed to finish with Done' }).textContent).toContain(
-      'A findings document · none registered yet',
+      'A findings document · not yet',
     );
     expect(finishButton().disabled).toBe(true);
     expect(

@@ -63,7 +63,7 @@ dashboard configuration). The Overview renders what the reads deliver.
   "Attempt 1"); then the step's purpose. The track and the number show the step's position in the
   workflow definition, not progress (a workflow may loop or branch, and after a return the current
   segment moves back), and "next" appears only when the step leads to one step only. The track is
-  one image named "Step 2 of 7: Write the Specification"; its visible label is not read twice.
+  one image named "Step 2 of 7: Write the specification"; its visible label is not read twice.
   Before the first start the track outlines the first segment and its label reads "First step ·
   Gather requirements"; a completed workflow fills every segment ("All 7 steps · completed"); an
   abandoned one has no track (the outline no longer says where it stopped). On a `wait` step the
@@ -207,6 +207,25 @@ A row is the **Task row** (`TaskRow`, reused by the Overview Tasks section):
   - without an overlay, the hold reason of a Task on hold, verbatim (`holdReason` of the read; the label
     already says "On hold"), or the dependencies of a Task that has not run ("after T-02").
 
+The page's search is router-owned and validated; absence is the default:
+
+- `blocking=specification` (the only value) keeps the Tasks the current `tasks-stuck` names, in
+  their groups, resolved by the Runtime when read, never from ids in the URL. A filter bar shows
+  "Blocking specification · 2 tasks" (or "Nothing blocks the specification now") with a clear
+  button, and the count reads "2 of 7 shown". Review tasks pushes the entry; clearing replaces it.
+- `group=<id>` (the Overview's "N more in <group>" and its compact links) lists only that group's
+  Tasks, resolved by the Runtime when read (`GET /api/specs/:specId/tasks?group=<id>`), as rows
+  without a group header (also a group the configuration collapses); focus stays where the page
+  puts it. A filter chip names the group ("Waiting") with a clear button, and the section count
+  reads "4 of 12 shown" (the one count); with none left, "No tasks in this group now". The link pushes the entry; clearing replaces it.
+- The two never combine: with both in the URL, `blocking` is kept and `group` dropped.
+
+Without Tasks the page names the step that produces them with the Overview's line ("Tasks appear
+when … finishes."), from the same projection; without such a step it keeps its own description.
+
+The demo Runtime serves the same Tasks page read: it runs the Engine's workflow over in-memory
+state ([ADR 0025](../../../architecture/decisions/0025-demo-runs-the-engine-in-memory.md)).
+
 ### Task status presentation
 
 Every Task surface (Tasks page rows, Overview Task rows, Close blocker items, the Full Task status
@@ -231,26 +250,9 @@ One owner each in `features/tasks/read-model`: `getTaskStatePresentation` / `tas
 (the status) and `taskAttentionOverlay` with its predicate `taskRequiresAttention` (the attention
 wording, and whether a row has one at all). Requires attention is an overlay added under the
 status, never a status, and only when the Engine reports it. The Runtime presents only the ids of
-this table; an unknown id is a contract drift that development builds assert.
-
-Its search is router-owned and validated; absence is the default:
-
-- `blocking=specification` (the only value) keeps the Tasks the current `tasks-stuck` names, in
-  their groups, resolved by the Runtime when read, never from ids in the URL. A filter bar shows
-  "Blocking specification · 2 tasks" (or "Nothing blocks the specification now") with a clear
-  button, and the count reads "2 of 7 shown". Review tasks pushes the entry; clearing replaces it.
-- `group=<id>` (the Overview's "N more in <group>" and its compact links) lists only that group's
-  Tasks, resolved by the Runtime when read (`GET /api/specs/:specId/tasks?group=<id>`), as rows
-  without a group header (also a group the configuration collapses); focus stays where the page
-  puts it. A filter chip names the group ("Waiting") with a clear button, and the section count
-  reads "4 of 12 shown" (the one count); with none left, "No tasks in this group now". The link pushes the entry; clearing replaces it.
-- The two never combine: with both in the URL, `blocking` is kept and `group` dropped.
-
-Without Tasks the page names the step that produces them with the Overview's line ("Tasks appear
-when … finishes."), from the same projection; without such a step it keeps its own description.
-
-The demo Runtime serves the same Tasks page read: it runs the Engine's workflow over in-memory
-state ([ADR 0025](../../../architecture/decisions/0025-demo-runs-the-engine-in-memory.md)).
+this table; an unknown id is a contract drift that development builds assert. The general rule
+(mark + label, tone meanings, attention as an overlay) is the design system's
+[Status and attention on a row](../../../design-system/principles/information-row-hierarchy.md#status-and-attention-on-a-row).
 
 ## What the sections show today
 
@@ -258,7 +260,6 @@ The Overview shows what the Engine and the Session store hold. The demo Runtime 
 screens from the same reads: its Engine runs in memory over seeded state (Now, Requires attention,
 Tasks and Full Task are a project's; Start, Finish and Task commands change that state until the
 Runtime stops), and its documents, Sessions and history are the demo data
-([Specification Workspace API, Data source](../../../reference/api/specification-workspace.md#data-source)):
 ([Specification Workspace API, Data source](../../../reference/api/specification-workspace.md#data-source)):
 
 - **Description** — the first paragraph of the overview document's **Goal** section (else its

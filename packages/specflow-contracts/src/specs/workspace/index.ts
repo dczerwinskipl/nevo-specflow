@@ -160,7 +160,7 @@ const TaskCollectionSchema = Type.Object({
   groups: Type.Array(WorkspaceTaskGroupSchema),
   completed: Type.Integer({ minimum: 0 }),
   total: Type.Integer({ minimum: 0 }),
-  /** Cancelled, ended and on hold Tasks, named apart from the progress; absent in the demo. */
+  /** Cancelled, ended and on hold Tasks, named apart from the progress. */
   cancelled: Type.Optional(Type.Integer({ minimum: 0 })),
   /** Ended without completing by their own workflow (abandoned, not cancelled). */
   ended: Type.Optional(Type.Integer({ minimum: 0 })),

@@ -66,7 +66,9 @@ export const CreatedSpecSchema = Type.Object(
     documentIds: Type.Array(RegisteredDocumentIdSchema),
     /**
      * Present when Create wrote the files without committing them (Git is disabled in the project):
-     * they stay untracked until the owner commits them, and a Close refuses until then.
+     * they stay untracked until the owner commits them. While Git stays off a Close archives in
+     * place without Git; once Git is on, a Close refuses (`uncommitted-changes`) until they are
+     * committed.
      */
     uncommitted: Type.Optional(Type.Literal(true)),
   },

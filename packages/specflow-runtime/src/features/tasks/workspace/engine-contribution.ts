@@ -147,8 +147,9 @@ const unavailable: WorkspaceTasksContribution = {
 };
 
 /**
- * Project mode's `tasks` contribution: one Engine reading of every Task. An execution the Engine
- * cannot read now (also a busy lock) degrades only this section (`source_unavailable`).
+ * The `tasks` contribution (a project Runtime's Engine, or the demo's in memory): one Engine
+ * reading of every Task. An execution the Engine cannot read now (also a busy lock) degrades only
+ * this section (`source_unavailable`).
  */
 export function createEngineWorkspaceTasks(
   source: TaskEngine,

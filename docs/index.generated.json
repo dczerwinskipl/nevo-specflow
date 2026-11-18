@@ -5110,6 +5110,46 @@
       ]
     },
     {
+      "id": "product.specflow.ui.workflow-workbench-decisions",
+      "type": "product",
+      "title": "Workflow and Task workbench decisions (November 2026)",
+      "status": "current",
+      "file": "docs/product/specflow/ui/workflow-workbench-decisions.md",
+      "read_when": [
+        "changing how a Task status, Requires attention or a document state is presented",
+        "changing the Overview Now, the Overview Tasks section, the Tasks page or the Full Task sections",
+        "changing the Close dialog, Close with Git off or the demo Runtime's workflow",
+        "looking for why one of these behaves the way it does"
+      ],
+      "summary": "Owner and coordinator decisions of the November 2026 UX round on the workflow and Task workbench: one status presentation model, Requires attention as \"the user must act\", the Now block, Task rows on the Overview and the Tasks page, Full Task sections, one document content state model, the Close dialog, Close with Git off as archive only, and the demo running the Engine. Each entry names the document that owns the rule.",
+      "related": [
+        "product.specflow.ui.specification-overview",
+        "product.specflow.ui.workflow-execution",
+        "product.specflow.ui.documents-archetypes",
+        "product.specflow.ui.shell-geometry",
+        "architecture.workflow.workflow-kernel",
+        "architecture.runtime.specification-documents",
+        "architecture.runtime.specflow-lifecycle",
+        "adr.0023-neutral-workflow-coordinator-and-manual-execution",
+        "adr.0025-demo-runs-the-engine-in-memory"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "workflow"
+      ],
+      "tags": [
+        "decisions",
+        "status",
+        "attention",
+        "now-block",
+        "tasks",
+        "documents",
+        "close",
+        "demo"
+      ]
+    },
+    {
       "id": "ideas.specflow-engine.acceptance",
       "type": "reference",
       "title": "Open Engine workflow and managed execution acceptance criteria",

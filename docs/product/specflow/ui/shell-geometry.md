@@ -83,9 +83,10 @@ These findings came from the audit and stay open. None of them is part of the ge
   session. This needs an information-model decision. The navigator could show places with counts
   and state rather than full object lists, and "2 active" could split into waiting for you and
   working.
-- **Tasks in the navigator is an anchor, not a view.** It scrolls Overview and moves the active
-  highlight away from Overview.
-- **Attention does not roll up** from a Task to its row or to the Specification.
+- **Back from a Full Task is not the navigator's Tasks.** The navigator's Tasks is the Tasks page
+  (`/specs/:specId/tasks`), but the Full Task's Back leads to the Overview's Tasks section.
+- **Attention does not roll up** from a Task to the Specification (a Task row carries its Requires
+  attention overlay; the Specifications list row does not).
 - **The Specification switcher shows no state:** no attention or progress per item, and no New
   specification action.
 - **Session start card:** the Composer placeholder asks to choose an agent that is already chosen.
@@ -98,9 +99,7 @@ These findings came from the audit and stay open. None of them is part of the ge
   - The Session has no header with its name and state.
   - The Specification header only says Overview.
   - The Session start card cuts off Start session.
-- **Demo mode:** Managed Sessions are not configured, so Open session leads to an error.
 - **Smaller items:**
-  - A Task row shows its key twice.
   - The Sessions list shows developer text, and its button says New conversation while the header
     says New session.
   - Section headings skip a level when Requires attention is absent.

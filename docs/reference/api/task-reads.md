@@ -246,7 +246,7 @@ Specification's Task inventory from one Engine read (`readExecution`, every Task
   `status` (`broken`), `broken: {reason}`, `blocksSpecification` and `attention` (its
   `task-broken` item). The Overview's Task preview carries these same rows
   ([Specification workspace](specification-workspace.md)), made by the same Runtime projection.
-- Inside a group the rows are in importance order (owner decision A-Q2), one comparator for this
+- Inside a group the rows are in importance order (owner decision 2026-11-16), one comparator for this
   page and the Overview preview: a Task that requires attention (an `attention` item,
   `blocksSpecification` or broken), then one on hold or Cannot start (status `on-hold` or
   `blocked`; never a cancelled or ended one) that an open Task waits on directly (its

@@ -95,7 +95,7 @@ while a step is active or waiting. A gate names the document that satisfies it, 
 (`sections-missing`) or the unreadable one; one that found no file names every registered document
 of its type in its scope, and one that found none names nothing. A document named by several gates
 keeps the strongest relation (in that order), then the active step's gate. The evaluation is the one
-a start or finish checks; it is empty once the run ended. Clients format these facts (the A6 label)
+a start or finish checks; it is empty once the run ended. Clients format these facts (the UI's [document state label](../../product/specflow/ui/documents-archetypes-ui.md#document-state-label))
 and never derive them from `actions.finish` or `next.entryGates` themselves.
 
 A client renders only what the projection allows. `kind`, `reason` and every code are stable values; the

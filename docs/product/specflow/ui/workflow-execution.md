@@ -244,7 +244,8 @@ or after a refusal.
   status model; at most five, then "and N more"; only a group that lists Tasks counts them in its
   heading; an On hold Task adds its hold reason, as its Tasks page row does) and its resolving
   action where one exists. Below them "Not going to finish this work?
-  **Abandon instead**". The footer has only **Dismiss** (primary).
+  **Abandon instead**". The footer has only **Dismiss** (primary); when repository problems are
+  listed as well (below), it also has **Check again**, as there.
 - **Blocked by the repository:** "<title> cannot close yet: N repository problems." and one group per
   problem:
   - **Uncommitted specification files · N** (or **Uncommitted files where it merges** for the
@@ -268,11 +269,10 @@ or after a refusal.
   - **Integration checkout on another branch**, **Unfinished Git operation**, **Not on a branch**:
     what holds the Close and what to do.
 
-  "Abandon instead" is not offered here (abandoning needs a Close, which meets the same checks). The
-  footer has **Dismiss** and **Check again** (primary), which reads the preview anew (Checking, then
-  the new outcome). Decision (owner-accepted mock, ux-168 package A): with repository problems
-  **Check again** is the primary action, last in the footer (on top when stacked), and Dismiss is
-  secondary; this supersedes "Check again (secondary)" in the package A contract §1.
+  "Abandon instead" is not offered while only repository problems remain (abandoning needs a Close,
+  which meets the same checks). The footer has **Dismiss** (secondary) and **Check again**
+  (primary, last in the footer, on top when stacked), which reads the preview anew (Checking, then
+  the new outcome).
 
 - **Check failed:** the preview refused for a reason that is not a blocker list, or could not be
   read: a danger alert "Could not check whether <title> can close" with what to do (documents in

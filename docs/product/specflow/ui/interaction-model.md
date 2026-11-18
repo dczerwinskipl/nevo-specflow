@@ -92,6 +92,7 @@ Project
 ├── Specifications                        default entry; Current / Archive are collection views
 │   └── Specification overview            /specs/:specId
 │       ├── Documents, Sessions, Changes, Repository   Primary pages under the Specification
+│       ├── Tasks                         /specs/:specId/tasks (optional ?blocking or ?group filter)
 │       └── Full Task                     /specs/:specId/tasks/:taskId
 └── Session                               /sessions/:sessionId, top-level route
     └── Secondary local inspector         Context (default on split entry) and user-selected detail
@@ -135,15 +136,16 @@ Compact/Narrow always open the Session directly, with no miniature floating repl
 
 ## Reachability
 
-| Surface                   | Normal entry                                                                                          | Representation                                            |
-| ------------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| Specifications            | default entry `/`; **Browse all specifications** in the switcher                                      | Primary                                                   |
-| Specification overview    | a Specifications row, the switcher, or its stable route                                               | Primary                                                   |
-| Full Task                 | a Task row, attention or activity item of the Specification, or its stable route                      | routed Primary                                            |
-| New Session               | the Specification's Sessions list, its empty state, Continue session, the preparation block           | routed Primary (`/specs/:specId/sessions/new`)            |
-| Session (Full Session)    | a Session row or Continue session, Create with an agent (demo mode only), a stable route              | routed Primary + Secondary                                |
-| Session Context           | default on split-capable Session entry; the **Context** action on Narrow                              | Secondary or pushed local detail                          |
-| Session inspection detail | an explicit click on a Work block, a Related Task or another Context row (the Task tab is a stand-in) | a tab or the active tab's local stack; never a third pane |
+| Surface                   | Normal entry                                                                                                                                                             | Representation                                            |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
+| Specifications            | default entry `/`; **Browse all specifications** in the switcher                                                                                                         | Primary                                                   |
+| Specification overview    | a Specifications row, the switcher, or its stable route                                                                                                                  | Primary                                                   |
+| Tasks page                | the navigator's Tasks, the Overview's **All tasks**; filtered: "N more in <group>" and the compact group links (`?group=`), **Review tasks** (`?blocking=specification`) | routed Primary                                            |
+| Full Task                 | a Task row, attention or activity item of the Specification, or its stable route                                                                                         | routed Primary                                            |
+| New Session               | the Specification's Sessions list, its empty state, Continue session, the preparation block                                                                              | routed Primary (`/specs/:specId/sessions/new`)            |
+| Session (Full Session)    | a Session row or Continue session, Create with an agent (demo mode only), a stable route                                                                                 | routed Primary + Secondary                                |
+| Session Context           | default on split-capable Session entry; the **Context** action on Narrow                                                                                                 | Secondary or pushed local detail                          |
+| Session inspection detail | an explicit click on a Work block, a Related Task or another Context row (the Task tab is a stand-in)                                                                    | a tab or the active tab's local stack; never a third pane |
 
 The table defines reachability. A product row keeps a stable neutral destination: a Specifications
 row always enters its Specification and never deep-links to whichever Task or issue currently has

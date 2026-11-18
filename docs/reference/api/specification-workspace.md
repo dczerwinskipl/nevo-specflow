@@ -108,7 +108,7 @@ Availability and action states describe only what actually exists.
   names the Task (its own, or the Specification's). `completed` and `total` are the Engine's
   `TaskProgress`: `total` counts the Tasks that are neither cancelled nor ended without completing (a
   broken Task included; on hold counts), `completed` those whose run completed; `cancelled`,
-  `ended` and `onHold` count those apart (absent in the demo Runtime). `attention` is the Engine's attention
+  `ended` and `onHold` count those apart. `attention` is the Engine's attention
   projection ([Attention items](task-reads.md#attention-items)): `reason` is the item's message,
   `code` its reason, with `stepTitle` (when a step resolves), `actor`, `action`, `taskIds`, for
   `tasks-stuck` `blocking`, and for `on-hold-blocking` `blocks` (what the held Task holds up); at most one Specification-level `tasks-stuck` item, never one per

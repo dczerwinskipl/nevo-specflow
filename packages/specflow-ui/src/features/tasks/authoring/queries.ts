@@ -1,12 +1,13 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { invalidateSpecificationWorkspace } from '../../specs/read-model';
+import { specificationActionsKey } from '../read-model/specificationActions';
 
 /**
  * Task authoring caches, under the Specification scope like the Task detail
  * (`['specifications', specId, 'task', taskId]`).
  */
 export const taskAuthoringKeys = {
-  specificationActions: (specId: string) => ['specifications', specId, 'workflow-actions'] as const,
+  specificationActions: specificationActionsKey,
   all: (specId: string) => ['specifications', specId, 'task-authoring'] as const,
   taskActions: (specId: string, taskId: string) =>
     [...taskAuthoringKeys.all(specId), taskId, 'actions'] as const,

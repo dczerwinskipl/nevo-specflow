@@ -31,9 +31,11 @@ export interface TreeRowState {
   /**
    * The label's tone when the row is not in attention: `muted` (default, a standing fact such as
    * "Required"), `secondary` (a relation to the work at hand, such as "needed to finish this
-   * step") or `attention` (the label only; the glyph stays).
+   * step") or `attention` (the label with its warning icon; the row's glyph stays).
    */
   readonly tone?: 'muted' | 'secondary' | 'attention';
+  /** The label in a narrow row (below `@md` row width), for example without a step title. */
+  readonly shortText?: string;
 }
 
 /** What every row takes beyond its own content: focus wiring, the edit entry and the actions. */
@@ -54,9 +56,22 @@ const stateLabelClassName = {
 } as const;
 
 function StateLabel({ state }: { state: TreeRowState }) {
+  const tone = state.attention ? 'attention' : (state.tone ?? 'muted');
+
   return (
-    <span className={stateLabelClassName[state.attention ? 'attention' : (state.tone ?? 'muted')]}>
-      {state.text}
+    <span className={cn(stateLabelClassName[tone], 'gap-1')}>
+      {/* A row in attention carries the warning glyph in front; a label in attention its own. */}
+      {tone === 'attention' && !state.attention ? (
+        <Icon name="triangle-alert" size="sm" className="shrink-0" />
+      ) : null}
+      {state.shortText ? (
+        <>
+          <span className="@max-md/tree-row:hidden">{state.text}</span>
+          <span className="hidden @max-md/tree-row:inline">{state.shortText}</span>
+        </>
+      ) : (
+        state.text
+      )}
     </span>
   );
 }

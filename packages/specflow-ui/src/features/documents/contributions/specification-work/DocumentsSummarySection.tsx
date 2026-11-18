@@ -2,11 +2,18 @@ import { useId } from 'react';
 import { Button, EmptyState, MenuItem, OverflowMenu, TooltipProvider } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { useDocumentsSummaryExpanded } from '../../../specs';
+import { useSpecificationActions } from '../../../tasks/read-model';
 import { type DocumentItem } from '../../../specs/read-model';
 import { TreeDocumentRow, TreeLevel } from '../../../../shared/document-tree';
 import { WorkspaceSection } from '../../../../shared/workspace-section';
 import { declaredTypeIcon, documentRowGlyph, typeTitle } from '../../catalogue/documentTypePolicy';
 import { useDocumentCatalogue } from '../../catalogue/useDocumentCatalogue';
+import {
+  documentRelations,
+  documentStateLabel,
+  sharedContentLabel,
+} from '../../workflow/documentState';
+import { useDocumentStateRow } from '../../workflow/useDocumentStateRow';
 
 /** Documents the section lists before "Show all" (the accepted Overview: a whole archetype set). */
 const OVERVIEW_DOCUMENTS = 8;
@@ -20,9 +27,11 @@ export interface DocumentsSummarySectionProps {
 
 /**
  * The Overview's Documents: the Documents page's own row (type glyph and file name, one line each,
- * the type in the tooltip and read with the name) in a flat list, and a quiet "Template only" for a
- * document that is still only its archetype template. Without documents the section keeps its
- * place with an inline empty state.
+ * the type in the tooltip and read with the name) in a flat list, each with the shared document
+ * state label: its content state ("Initial content only") and how the Specification's workflow uses
+ * it now ("Needed to finish this step"; the active step is on screen, in Now). When every document
+ * would carry the same content-only label, the header says it once ("4 · initial content only")
+ * and the rows carry none. Without documents the section keeps its place with an inline empty state.
  */
 export function DocumentsSummarySection({
   specId,
@@ -35,6 +44,18 @@ export function DocumentsSummarySection({
   // Outside the section: it survives Overview remounting it at a column change.
   const [expanded, setExpanded] = useDocumentsSummaryExpanded(specId);
   const catalogue = useDocumentCatalogue();
+  const relations = documentRelations(useSpecificationActions(specId).data?.documentRelations, {
+    kind: 'specification',
+    specId,
+  });
+  const stateRow = useDocumentStateRow();
+  const labels = new Map(
+    documents.map((doc) => [
+      doc.id,
+      documentStateLabel(doc.contentState, relations.get(doc.id), { stepOnScreen: true }),
+    ]),
+  );
+  const shared = sharedContentLabel([...labels.values()]);
   const shown = expanded ? documents : documents.slice(0, OVERVIEW_DOCUMENTS);
 
   return (
@@ -43,7 +64,11 @@ export function DocumentsSummarySection({
         id="documents-summary-heading"
         title={t('specification.documentsHeading')}
         icon="file"
-        count={documents.length}
+        count={
+          shared
+            ? t('documents.state.allInitialContent', { count: documents.length })
+            : documents.length
+        }
         actions={
           <OverflowMenu
             triggerLabel={t('specification.documentsHeading')}
@@ -65,18 +90,15 @@ export function DocumentsSummarySection({
               {shown.map((doc) => {
                 // The type's catalogue title; the type id while the catalogue loads or is unreadable.
                 const type = typeTitle(catalogue.data, doc.kind);
+                const state = stateRow(shared ? undefined : labels.get(doc.id));
 
                 return (
                   <TreeDocumentRow
                     key={doc.id}
                     name={doc.filename ?? doc.title}
                     glyph={documentRowGlyph({}, declaredTypeIcon(catalogue.data, doc.kind))}
-                    state={
-                      doc.templateOnly
-                        ? { text: t('specification.documentTemplateOnly') }
-                        : undefined
-                    }
-                    details={[t('documents.tree.typeOf', { type })]}
+                    state={state.state}
+                    details={[t('documents.tree.typeOf', { type }), ...state.details]}
                     spokenDetail={type}
                     current={false}
                     onOpen={() => onOpenDocument(doc.id)}

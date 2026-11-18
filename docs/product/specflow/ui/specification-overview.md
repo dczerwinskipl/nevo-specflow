@@ -158,8 +158,15 @@ dashboard configuration). The Overview renders what the reads deliver.
   Sessions read the section is left out.
 - **Documents** — the Documents page's own row (type glyph and file name, the type in the tooltip
   and read with the name) in a flat list, every row the same height, at most eight before **Show
-  all**; a document whose file is still exactly what the Engine created from its archetype
-  template says **Template only** (the workspace read's `contentState: baseline`; the label is reworked in U6). The overflow menu opens all documents. A document opened from
+  all**. Each row carries the shared document state label
+  ([document state](documents-archetypes-ui.md#document-state-label)): **Initial content only**
+  while the file is still the initial content the Engine wrote (the workspace read's
+  `contentState: baseline`), and how the workflow uses the document now, from the Specification
+  projection's `documentRelations`, with "this step" for the active step that Now shows (**Needed to
+  finish this step**, in the attention tone only while it refuses Finish now). Both facts are named
+  together only when both apply (**Initial content only · needed to finish this step**). When every
+  listed document would carry the same content-only label, the header says it once ("4 · initial
+  content only") and the rows carry none. The overflow menu opens all documents. A document opened from
   the Overview takes half of the workspace (50/50), and the Overview reads in one column beside it.
 
 ## Tasks page

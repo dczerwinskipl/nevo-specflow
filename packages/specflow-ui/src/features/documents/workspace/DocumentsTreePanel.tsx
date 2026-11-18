@@ -24,6 +24,7 @@ import { useDocumentsApi } from '../useDocumentsApi';
 import { useMessage } from '../../../i18n/message';
 import { SessionRecoveryNotice, useSessionReturn } from '../../sessions';
 import { useSpecificationWorkspace } from '../../specs/read-model';
+import { useSpecificationActions } from '../../tasks/read-model';
 import {
   archetypeTitle,
   closeRefusingIssues,
@@ -36,6 +37,7 @@ import { useDocumentCatalogue } from '../catalogue/useDocumentCatalogue';
 import { useDirtyDocuments, useDocumentDraftStore } from '../editor/DocumentDraftProvider';
 import { DocumentsExplorer } from '../explorer/DocumentsExplorer';
 import type { DocumentTreeController } from '../explorer/documentRootActions';
+import { documentRelations } from '../workflow/documentState';
 import { documentTreeKeys } from '../read-model/queries';
 import { CloseIssues } from './CloseIssues';
 import { createDiscardConsent } from './discardConsent';
@@ -77,6 +79,8 @@ export function DocumentsTreePanel({
   const catalogue = useDocumentCatalogue();
   const dirtyIds = useDirtyDocuments(specId);
   const specification = useSpecificationWorkspace(specId);
+  // How the workflow uses each document now (the shared document state label of every row).
+  const workflow = useSpecificationActions(specId);
   const data = tree.data;
   const drafts = useDocumentDraftStore();
   // The drafts the user agreed to discard go only once the action is confirmed (see the helper).
@@ -146,6 +150,10 @@ export function DocumentsTreePanel({
               retry: () => void catalogue.refetch(),
             }}
             specificationTitle={specification.data?.title ?? specId}
+            relations={documentRelations(workflow.data?.documentRelations, {
+              kind: 'specification',
+              specId,
+            })}
             onRefresh={operations.refresh}
             dirtyIds={dirtyIds}
             controllerRef={controllerRef}

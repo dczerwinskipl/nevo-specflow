@@ -160,7 +160,6 @@
     "tasksEmptyTitle": "Nie ma jeszcze zadań",
     "tasksEmptyDescription": "Zadania pojawią się tutaj, gdy specyfikacja zostanie przygotowana do realizacji.",
     "tasksAppearAfter": "Zadania pojawią się po zakończeniu kroku {{step}} (krok {{position}} z {{total}}).",
-    "documentTemplateOnly": "Tylko szablon",
     "documentsEmptyTitle": "Nie ma jeszcze dokumentów",
     "documentsHeading": "Dokumenty",
     "allDocumentsLink": "Wszystkie dokumenty",
@@ -1085,6 +1084,38 @@
       "discardAll": "Odrzuć wszystkie",
       "notSaved": "niezapisany",
       "saveAllFailed": "Nie wszystkie dokumenty udało się zapisać. Szkice zostają."
+    },
+    "state": {
+      "initialContent": "Tylko treść początkowa",
+      "initialContentShort": "Treść początkowa",
+      "withContent": "{{content}} · {{relation}}",
+      "allInitialContent": "{{count}} · tylko treść początkowa",
+      "relation": {
+        "neededToFinishThisStep": "Potrzebny do ukończenia tego kroku",
+        "neededToFinishStep": "Potrzebny do ukończenia kroku {{step}}",
+        "neededToFinishShort": "Potrzebny do ukończenia",
+        "neededToStartThisStep": "Potrzebny do rozpoczęcia tego kroku",
+        "neededToStartStep": "Potrzebny do rozpoczęcia kroku {{step}}",
+        "neededToStartShort": "Potrzebny do rozpoczęcia",
+        "usedThisStep": "Używany w tym kroku",
+        "usedStep": "Używany w kroku {{step}}",
+        "usedShort": "Używany"
+      },
+      "afterContent": {
+        "neededToFinishThisStep": "potrzebny do ukończenia tego kroku",
+        "neededToFinishStep": "potrzebny do ukończenia kroku {{step}}",
+        "neededToFinishShort": "potrzebny do ukończenia",
+        "neededToStartThisStep": "potrzebny do rozpoczęcia tego kroku",
+        "neededToStartStep": "potrzebny do rozpoczęcia kroku {{step}}",
+        "neededToStartShort": "potrzebny do rozpoczęcia",
+        "usedThisStep": "używany w tym kroku",
+        "usedStep": "używany w kroku {{step}}",
+        "usedShort": "używany"
+      },
+      "missingSections_one": "Brakuje sekcji {{sections}}",
+      "missingSections_few": "Brakuje sekcji {{sections}}",
+      "missingSections_many": "Brakuje sekcji {{sections}}",
+      "missingSections_other": "Brakuje sekcji {{sections}}"
     },
     "tree": {
       "newFolder": "Nowy folder",

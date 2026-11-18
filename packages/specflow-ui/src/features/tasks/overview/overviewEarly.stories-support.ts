@@ -130,6 +130,29 @@ const acceptanceGate = {
   documentId: 'behaviour',
 };
 
+/**
+ * How the workflow uses the documents while behaviour.md misses its section: needed to finish this
+ * step (it refuses Finish now), ux.md needed to start the next step, the rest named by no gate.
+ */
+const gateRelations = [
+  {
+    scope: acceptanceGate.scope,
+    documentId: 'behaviour',
+    relation: 'needed-to-finish' as const,
+    blocksNow: true,
+    step: { id: steps[1].id, title: steps[1].title, active: true },
+    gate: { id: acceptanceGate.id, label: acceptanceGate.label, missingSections: ['Acceptance'] },
+  },
+  {
+    scope: acceptanceGate.scope,
+    documentId: 'ux',
+    relation: 'needed-to-start' as const,
+    blocksNow: false,
+    step: { id: steps[2].id, title: steps[2].title, active: false },
+    gate: { id: 'ux-present', label: 'ux.md exists' },
+  },
+];
+
 /** The Specification's workflow projection of the scenario, with its outline. */
 export function earlyProjection(scenario: EarlyScenario): WorkflowActionProjection {
   return withExits(earlyFixture(scenario));
@@ -278,6 +301,7 @@ function earlyFixture(scenario: EarlyScenario): FixtureProjection {
   return {
     subject,
     workflow,
+    ...(scenario === 'write-spec-gate' ? { documentRelations: gateRelations } : {}),
     position: {
       kind: 'active',
       step: step(index),

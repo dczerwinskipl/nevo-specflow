@@ -1,5 +1,6 @@
 import type { IconName } from '@nevo/ui';
 import type { TaskOverview, WorkspaceAttention } from '@nevo/specflow-contracts/specs/workspace';
+import type { DocumentContentState } from '@nevo/specflow-contracts/documents';
 import { type TaskGroup } from '../../tasks/read-model';
 
 export {
@@ -24,8 +25,8 @@ export interface DocumentItem {
   readonly title: string;
   readonly kind: string;
   readonly summary?: string;
-  /** Still only its baseline (the Runtime's `contentState: baseline`; renamed with U6). */
-  readonly templateOnly?: boolean;
+  /** What the file holds relative to its initial content; absent when the source cannot tell. */
+  readonly contentState?: DocumentContentState;
   readonly content?: string;
   readonly sections?: readonly DocumentSection[];
 }

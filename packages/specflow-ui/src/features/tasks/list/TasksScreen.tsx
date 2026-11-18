@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Alert, Button } from '@nevo/ui';
 import type { SpecificationWorkspaceData } from '../../specs/read-model';
 import { NewTaskDialog } from '../authoring/NewTaskDialog';
-import { useSpecificationActions } from '../authoring/useTaskAuthoring';
+import { useSpecificationActions } from '../read-model';
 import { tasksStepLine } from '../overview/tasksStepLine';
 import { TasksPage } from './TasksPage';
 import { useTaskListState } from './useTaskListState';

@@ -5,6 +5,7 @@
  * the task screens.
  */
 export { mapFullTaskResponse } from './model';
+export { specificationActionsKey, useSpecificationActions } from './specificationActions';
 export {
   getTaskStatePresentation,
   taskStatusSupporting,

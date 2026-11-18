@@ -77,6 +77,7 @@ export function reevaluateWait(
         );
       }
     };
+
     const set = new ExecutionWorkingSet(snapshot, catalogue);
     requireClosedTasks(set);
     settleWait({ set, catalogue, at: isoNow(dependencies) });

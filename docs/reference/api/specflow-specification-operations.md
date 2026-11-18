@@ -227,8 +227,9 @@ checkout while document commits still hold one of the checkouts the request name
 same `409 DOCUMENT_COMMITS_PENDING` the Close would, so documents Nevo commits or waits for are never
 reported as files to commit by hand. Any other repository precondition is `422 CLOSE_PREFLIGHT`
 with `repository`: the blockers the owner fixes in the repository, all that are known at once
-(`uncommitted-changes` with at most 10 `paths`, the `count` and the absolute `checkoutPath` of the
-checkout that holds them, `integration-target-missing`,
+(`uncommitted-changes` with at most 10 `paths`, the `count` and the `workspaceId` of the
+checkout that holds them (its path is read from `GET /api/workspaces`, gated by `workspace.view`;
+the refusal never carries a filesystem path), `integration-target-missing`,
 `integration-target-branch`, `git-operation-in-progress`, `branch-detached`;
 `RepositoryBlocker` in `@nevo/specflow-contracts/specs`).
 

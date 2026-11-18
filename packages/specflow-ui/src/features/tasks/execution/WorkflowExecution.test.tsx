@@ -553,7 +553,7 @@ describe('manual workflow execution', () => {
       {
         kind: 'uncommitted-changes',
         checkout: 'specification',
-        checkoutPath: '/repo/.nevo/worktrees/nevo-1',
+        workspaceId: '7b1e2c3d-4f5a-4b6c-8d7e-9f0a1b2c3d4e',
         paths: ['specs/active/sso/overview.md'],
         count: 3,
       },
@@ -612,7 +612,7 @@ describe('manual workflow execution', () => {
       {
         kind: 'uncommitted-changes',
         checkout: 'specification',
-        checkoutPath: '/repo',
+        workspaceId: '1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f',
         paths: ['notes.txt'],
         count: 1,
       },
@@ -699,7 +699,7 @@ describe('manual workflow execution', () => {
     const dialog = screen.getByRole('dialog');
 
     expect((await within(dialog).findByRole('alert')).textContent).toContain(
-      'Commit them from Documents, then close again.',
+      'Commit them from Documents, then check again.',
     );
     expect(within(dialog).queryByText('Uncommitted', { exact: false })).toBeNull();
     expect(within(dialog).queryByText('Ready to close')).toBeNull();

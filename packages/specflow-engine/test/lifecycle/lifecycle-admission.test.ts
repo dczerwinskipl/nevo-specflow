@@ -19,6 +19,8 @@ import { createGitTestProject, git, commitStaged } from '../support/git-project'
 import { closeJournalPath } from '../../src/specs/lifecycle/journal/store';
 
 const roots: string[] = [];
+/** A registered workspace id (the checkout a repository blocker names). */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 afterEach(async () => {
   // Linked test worktrees must be removed before their Git common directory.
   // Windows can temporarily hold file handles after Git subprocess exit.
@@ -429,7 +431,7 @@ describe('E2.T10 — read-only lifecycle admission and durable shared Git resour
         {
           kind: 'uncommitted-changes',
           checkout: 'specification',
-          checkoutPath: root,
+          workspaceId: expect.stringMatching(UUID) as string,
           paths: ['do-not-touch.txt'],
           count: 1,
         },

@@ -96,6 +96,11 @@ export const BlockedRepository: Story = {
       await dialog.findByText('Single sign-on cannot close yet: 2 repository problems.'),
     ).toBeVisible();
     await expect(dialog.getByText('Discarding deletes these changes for good.')).toBeVisible();
+    // The worktree's path comes from the registered workspaces.
+    await expect(
+      await dialog.findByText('D:\\repos\\acme-portal\\.nevo\\worktrees\\nevo-1'),
+    ).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Copy path' })).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Copy setting' })).toBeDisabled();
     await expect(dialog.getByLabelText('Setting for .nevo/config.yaml')).toHaveTextContent(
       'integrationTargetBranch: <choose a branch>',
@@ -121,14 +126,71 @@ export const BlockedRepositoryBranchChosen: Story = {
   },
 };
 
-/** "Another local branch…": the other local branches to choose from. */
+/** "Another local branch…", then one chosen from the select: the setting names it. */
 export const BlockedRepositoryOtherBranch: Story = {
   args: { scenario: 'close-repository' },
   play: async ({ canvasElement }) => {
     const dialog = await openFromNow(canvasElement);
     await userEvent.click(await dialog.findByRole('radio', { name: 'Another local branch…' }));
-    await expect(dialog.getByRole('combobox', { name: 'Local branch' })).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Copy setting' })).toBeDisabled();
+    await userEvent.click(dialog.getByRole('combobox', { name: 'Local branch' }));
+    await userEvent.click(
+      await within(document.body).findByRole('option', { name: 'hotfix/login-timeout' }),
+    );
+    await expect(dialog.getByLabelText('Setting for .nevo/config.yaml')).toHaveTextContent(
+      'integrationTargetBranch: hotfix/login-timeout',
+    );
+    await expect(dialog.getByRole('button', { name: 'Copy setting' })).toBeEnabled();
+  },
+};
+
+/** Without `workspace.view` the checkout is only named: no path, nothing to copy. */
+export const BlockedRepositoryWithoutWorkspaces: Story = {
+  args: { scenario: 'close-repository-no-workspaces' },
+  play: async ({ canvasElement }) => {
+    const dialog = await openFromNow(canvasElement);
+    await expect(
+      await dialog.findByText("Commit them in the specification's checkout, then check again."),
+    ).toBeVisible();
+    await expect(dialog.queryByRole('button', { name: 'Copy path' })).toBeNull();
+  },
+};
+
+/**
+ * Files not committed in the main folder the Specification merges into: the lead says they may
+ * not belong to it; five of eight named, then "and 3 more".
+ */
+export const BlockedIntegrationTargetFiles: Story = {
+  args: { scenario: 'close-repository-target' },
+  play: async ({ canvasElement }) => {
+    const dialog = await openFromNow(canvasElement);
+    await expect(
+      await dialog.findByRole('heading', { name: 'Uncommitted files where it merges · 8' }),
+    ).toBeVisible();
+    await expect(dialog.getByText(/They may not belong to this specification/)).toBeVisible();
+    await expect(dialog.getByText('and 3 more')).toBeVisible();
+    await expect(await dialog.findByText('D:\\repos\\acme-portal')).toBeVisible();
+  },
+};
+
+/** No candidate: only the other local branches, "Showing 3 of 240". */
+export const BlockedOtherBranchesOnly: Story = {
+  args: { scenario: 'close-repository-other-branches' },
+  play: async ({ canvasElement }) => {
+    const dialog = await openFromNow(canvasElement);
+    await expect(await dialog.findByText('Showing 3 of 240 local branches.')).toBeVisible();
+    await expect(dialog.queryByRole('radio')).toBeNull();
+    await expect(dialog.getByRole('combobox', { name: 'Local branch' })).toBeVisible();
+  },
+};
+
+/** No local branch can receive the Close: nothing to choose or copy. */
+export const BlockedNoBranches: Story = {
+  args: { scenario: 'close-repository-no-branches' },
+  play: async ({ canvasElement }) => {
+    const dialog = await openFromNow(canvasElement);
+    await expect(await dialog.findByText(/No local branch can receive it/)).toBeVisible();
+    await expect(dialog.queryByRole('button', { name: 'Copy setting' })).toBeNull();
   },
 };
 
@@ -144,6 +206,10 @@ export const BlockedTasks: Story = {
     );
     await expect(dialog.getByRole('button', { name: 'Abandon instead' })).toBeVisible();
     await expect(dialog.queryByRole('button', { name: 'Check again' })).toBeNull();
+    // A held Task names why, as its Tasks page row does.
+    await expect(
+      await dialog.findByText('Waiting for the identity provider sandbox account from IT.'),
+    ).toBeVisible();
   },
 };
 
@@ -154,6 +220,9 @@ export const ReadyIntegrates: Story = {
     const dialog = await openFromNow(canvasElement);
     await expect(await dialog.findByText('Ready to close')).toBeVisible();
     await expect(fact(dialog, 'Merges')).toBe('nevo-1/single-sign-on → release/2026.11');
+    // The same counts and words as Now behind it; the Overview's Tasks section agrees.
+    await expect(fact(dialog, 'Tasks')).toBe('All 6 tasks done');
+    await expect(within(canvasElement).queryByText('No tasks yet')).toBeNull();
     await expect(
       dialog.getByText('Closing archives the specification; it cannot be reopened.'),
     ).toBeVisible();
@@ -188,6 +257,10 @@ export const ReadyGitOff: Story = {
     await expect(fact(dialog, 'Merges')).toContain(
       'Archives without Git (Git is off for this project)',
     );
+    // No repository check ran: the alert does not claim one passed.
+    await expect(
+      dialog.getByText('The workflow is complete. Git is off, so nothing is merged.'),
+    ).toBeVisible();
   },
 };
 
@@ -199,6 +272,11 @@ export const Abandoned: Story = {
     await expect(await dialog.findByText('Recorded as not delivered')).toBeVisible();
     await expect(dialog.queryByText('Ready to close')).toBeNull();
     await expect(dialog.getByRole('button', { name: 'Close and archive' })).toBeEnabled();
+    // Now's words and counts: "5 tasks cancelled · 1 done", in Now and in the dialog.
+    await expect(fact(dialog, 'Tasks')).toBe('5 tasks cancelled · 1 done');
+    await expect(within(canvasElement).getByRole('region', { name: 'Now' })).toHaveTextContent(
+      '5 tasks cancelled · 1 done',
+    );
   },
 };
 

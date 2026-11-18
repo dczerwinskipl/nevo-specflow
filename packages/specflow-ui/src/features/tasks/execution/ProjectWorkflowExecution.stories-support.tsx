@@ -3,6 +3,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider, createMemoryHistory } from '@tanstack/react-router';
 import { HttpClientError } from '@nevo/http-client';
 import type { CloseMerge, RepositoryBlocker } from '@nevo/specflow-contracts/specs';
+import type { WorkspaceList } from '@nevo/specflow-contracts/workspaces';
 import type { SpecificationWorkspaceResponse } from '@nevo/specflow-contracts/specs/workspace';
 import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { ApiError } from '../../../api';
@@ -52,6 +53,10 @@ export type CloseStoryScenario =
   | 'close-commit-pending'
   | 'close-check-failed'
   | 'close-repository'
+  | 'close-repository-no-workspaces'
+  | 'close-repository-target'
+  | 'close-repository-other-branches'
+  | 'close-repository-no-branches'
   | 'close-integrates'
   | 'close-nothing-to-merge'
   | 'close-primary'
@@ -70,6 +75,10 @@ const closeScenarios: readonly string[] = [
   'close-commit-pending',
   'close-check-failed',
   'close-repository',
+  'close-repository-no-workspaces',
+  'close-repository-target',
+  'close-repository-other-branches',
+  'close-repository-no-branches',
   'close-integrates',
   'close-nothing-to-merge',
   'close-primary',
@@ -86,13 +95,87 @@ const specScenarios: readonly string[] = [
 ];
 
 const SOURCE = 'nevo-1/single-sign-on';
+/** The registered workspaces the repository stories name: the Specification's worktree, the main folder. */
+const SPEC_WORKSPACE = '7b1e2c3d-4f5a-4b6c-8d7e-9f0a1b2c3d4e';
+const PRIMARY_WORKSPACE = '1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f';
+
+/** `GET /api/workspaces`: where the repository stories' checkouts are. */
+const storyWorkspaces: WorkspaceList = {
+  projectFolderId: PRIMARY_WORKSPACE,
+  workspaces: [
+    {
+      workspaceId: PRIMARY_WORKSPACE,
+      kind: 'primary',
+      name: 'acme-portal',
+      path: 'D:\\repos\\acme-portal',
+      available: true,
+      isRuntimeWorkspace: true,
+      specifications: [],
+    },
+    {
+      workspaceId: SPEC_WORKSPACE,
+      kind: 'linked',
+      name: 'nevo-1',
+      path: 'D:\\repos\\acme-portal\\.nevo\\worktrees\\nevo-1',
+      available: true,
+      isRuntimeWorkspace: false,
+      specifications: [{ specId: SPEC, title: 'Single sign-on' }],
+    },
+  ],
+};
+
+const noBranch: Extract<RepositoryBlocker, { kind: 'integration-target-missing' }> = {
+  kind: 'integration-target-missing',
+  sourceCheckout: 'linked',
+  candidates: [],
+  otherBranches: [],
+  otherBranchCount: 0,
+};
+
+/** The repository preconditions of each repository story. */
+function repositoryBlockersOf(scenario: WorkflowStoryScenario): readonly RepositoryBlocker[] {
+  switch (scenario) {
+    // Eight files in the main folder the Specification merges into: five named, "and 3 more".
+    case 'close-repository-target':
+      return [
+        {
+          kind: 'uncommitted-changes',
+          checkout: 'integration-target',
+          workspaceId: PRIMARY_WORKSPACE,
+          paths: [
+            'package.json',
+            'pnpm-lock.yaml',
+            'src/app/routes.tsx',
+            'src/app/session/cookie.ts',
+            'src/app/session/refresh.ts',
+            'src/app/session/refresh.test.ts',
+            'docs/notes.md',
+          ],
+          count: 8,
+        },
+      ];
+    // No candidate: only the other local branches, three of 240 listed.
+    case 'close-repository-other-branches':
+      return [
+        {
+          ...noBranch,
+          otherBranches: ['develop', 'release/2026.10', 'release/2026.11'],
+          otherBranchCount: 240,
+        },
+      ];
+    case 'close-repository-no-branches':
+      return [noBranch];
+    default:
+      return storyRepositoryBlockers;
+  }
+}
 
 /** The repository preconditions of the `close-repository` story: three files and no branch. */
 export const storyRepositoryBlockers: readonly RepositoryBlocker[] = [
   {
     kind: 'uncommitted-changes',
     checkout: 'specification',
-    checkoutPath: 'D:\\repos\\acme-portal\\.nevo\\worktrees\\nevo-1',
+    workspaceId: SPEC_WORKSPACE,
     paths: [
       'specs/single-sign-on/overview.md',
       'specs/single-sign-on/behaviour.md',
@@ -147,7 +230,13 @@ function closePreviewOf(scenario: WorkflowStoryScenario) {
     case 'close-check-failed':
       return Promise.reject(refusal('GIT_UNAVAILABLE'));
     case 'close-repository':
-      return Promise.reject(refusal('CLOSE_PREFLIGHT', { repository: storyRepositoryBlockers }));
+    case 'close-repository-no-workspaces':
+    case 'close-repository-target':
+    case 'close-repository-other-branches':
+    case 'close-repository-no-branches':
+      return Promise.reject(
+        refusal('CLOSE_PREFLIGHT', { repository: repositoryBlockersOf(scenario) }),
+      );
     case 'abandoned':
     case 'completed':
     case 'close-integrates':
@@ -190,6 +279,22 @@ export function refusal(code: string, data: Record<string, unknown> = {}) {
 }
 
 const never = () => new Promise<never>(() => undefined);
+
+/** The Tasks page read, as far as the blocked Close story uses it: the held Task's reason. */
+const heldTaskList = {
+  specId: SPEC,
+  groups: [
+    {
+      id: 'held',
+      name: 'On hold or cancelled',
+      summary: 'compact',
+      collapsed: true,
+      tasks: [
+        { id: 't-03', holdReason: 'Waiting for the identity provider sandbox account from IT.' },
+      ],
+    },
+  ],
+};
 
 function services(scenario: WorkflowStoryScenario) {
   const state = { version: 4, findings: false };
@@ -241,8 +346,17 @@ function services(scenario: WorkflowStoryScenario) {
     runtimeInfoApi: { getInfo: () => Promise.resolve({ dataMode: 'project' }) },
     specsOverviewApi: createFixtureSpecsOverviewApi(),
     specificationApi: { getSpecificationWorkspace: () => specificationWorkspace(scenario) },
+    // Where the checkouts are (`workspace.view`); refused without that capability.
+    workspaceApi: {
+      list: () =>
+        scenario === 'close-repository-no-workspaces'
+          ? Promise.reject(refusal('FORBIDDEN'))
+          : Promise.resolve(storyWorkspaces),
+    },
     taskApi: {
-      getTaskList: never,
+      // Only the hold reason of the blocked story's held Task is read from the Tasks page read.
+      getTaskList: () =>
+        scenario === 'close-blocked' ? Promise.resolve(heldTaskList as never) : never(),
       getTask: () => {
         const response = taskResponse('started');
 
@@ -340,9 +454,49 @@ function historyItems() {
   ];
 }
 
+type WorkspaceTasks = Extract<
+  SpecificationWorkspaceResponse['sections']['tasks'],
+  { state: 'available' }
+>['data'];
+
+/**
+ * The Tasks section as the Runtime keeps it consistent: the groups, the counts Now and the Close
+ * facts read (`completed`/`total` without the cancelled ones), and the Overview's compact summary
+ * of the same groups.
+ */
+function tasksSection(
+  data: WorkspaceTasks,
+  groups: WorkspaceTasks['groups'],
+): SpecificationWorkspaceResponse['sections']['tasks'] {
+  const all = groups.flatMap((group) => group.tasks);
+  const count = (id: string) => all.filter((task) => task.status.id === id).length;
+  const cancelled = count('cancelled');
+
+  return {
+    state: 'available',
+    data: {
+      ...data,
+      groups,
+      completed: count('completed'),
+      total: all.length - cancelled,
+      cancelled,
+      onHold: count('on-hold'),
+      overview: {
+        rows: [],
+        compact: groups.map((group) => ({
+          groupId: group.id,
+          name: group.name,
+          count: group.tasks.length,
+        })),
+      },
+    },
+  };
+}
+
 /**
  * The workspace read: the waiting Specification's Tasks, all of them done for a completed one, or
- * the open ones cancelled by abandon.
+ * the open ones cancelled by abandon. Now, the Overview's Tasks section and the Close dialog read
+ * the same counts.
  */
 async function specificationWorkspace(
   scenario: WorkflowStoryScenario,
@@ -352,40 +506,31 @@ async function specificationWorkspace(
     return base;
   }
 
+  const data = base.sections.tasks.data;
+  const withTasks = (groups: WorkspaceTasks['groups']): SpecificationWorkspaceResponse => ({
+    ...base,
+    sections: { ...base.sections, tasks: tasksSection(data, groups) },
+  });
+
   if (specificationScenario(scenario) === 'completed') {
-    const tasks = base.sections.tasks.data.groups
+    const tasks = data.groups
       .flatMap((group) => group.tasks)
       .map((task) => ({
         ...task,
         status: { id: 'completed', label: 'Done', lifecycle: 'completed' as const },
       }));
 
-    return {
-      ...base,
-      sections: {
-        ...base.sections,
-        tasks: {
-          state: 'available',
-          data: {
-            ...base.sections.tasks.data,
-            completed: tasks.length,
-            total: tasks.length,
-            groups: [
-              { id: 'done', name: 'Done', summary: 'compact' as const, collapsed: true, tasks },
-            ],
-          },
-        },
-      },
-    };
+    return withTasks([
+      { id: 'done', name: 'Done', summary: 'compact' as const, collapsed: true, tasks },
+    ]);
   }
 
   if (scenario !== 'abandoned') {
-    return base;
+    return withTasks(data.groups);
   }
 
-  const groups = base.sections.tasks.data.groups;
-  const done = groups.filter((group) => group.id === 'done');
-  const cancelled = groups
+  const done = data.groups.filter((group) => group.id === 'done');
+  const cancelled = data.groups
     .filter((group) => group.id !== 'done')
     .flatMap((group) => group.tasks)
     .map((task) => ({
@@ -393,30 +538,16 @@ async function specificationWorkspace(
       status: { id: 'cancelled', label: 'Cancelled', lifecycle: 'blocked' as const },
     }));
 
-  return {
-    ...base,
-    sections: {
-      ...base.sections,
-      tasks: {
-        state: 'available',
-        data: {
-          ...base.sections.tasks.data,
-          completed: 1,
-          total: 1,
-          groups: [
-            ...done,
-            {
-              id: 'held',
-              name: 'On hold or cancelled',
-              summary: 'compact' as const,
-              collapsed: true,
-              tasks: cancelled,
-            },
-          ],
-        },
-      },
+  return withTasks([
+    ...done,
+    {
+      id: 'held',
+      name: 'On hold or cancelled',
+      summary: 'compact' as const,
+      collapsed: true,
+      tasks: cancelled,
     },
-  };
+  ]);
 }
 
 /** The routed application on a Task page or the Specification Overview. */

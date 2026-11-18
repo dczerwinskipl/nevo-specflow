@@ -2374,6 +2374,7 @@
       "afterAbandon": "Abandoned: “{{reason}}”",
       "readyTitle": "Ready to close",
       "readyBody": "The workflow is complete and the repository checks passed.",
+      "readyGitOffBody": "The workflow is complete. Git is off, so nothing is merged.",
       "notDelivered": "Cancelled, not delivered",
       "notDeliveredExplanation": "Recorded as not delivered when the specification closes.",
       "failed": "Not closed",
@@ -2414,17 +2415,17 @@
       "refusal": {
         "preflight": "A repository check stops the Close. To see which one, run “nevo-specflow specs close <specification id> --preview” in the project folder.",
         "sharedWorktree": "Other specifications share this worktree, so it cannot be integrated for this one alone. Close the whole workspace, or archive this specification without integration from the command line.",
-        "conflict": "The project changed while Close was being prepared. Open the dialog again to check once more.",
-        "unavailable": "The specification files cannot be read now. Check that its checkout is present, then try again.",
+        "conflict": "The project changed while Close was being prepared. Check again to read it once more.",
+        "unavailable": "The specification files cannot be read now. Check that its checkout is present, then check again.",
         "recovery": "An earlier Close of this specification stopped part way. Finish it from the command line before closing again.",
-        "gitConfig": "The git section of .nevo/config.yaml is invalid or incomplete. Correct it, then close again.",
-        "git": "Git cannot run in the project folder now. Check the repository, then try again.",
-        "documentsPending": "Saved documents in this checkout are still being committed. Wait a moment, then close again.",
-        "commitBlocked": "Git does not accept a commit on this branch now. Check the branch protection and the repository state, then close again.",
+        "gitConfig": "The git section of .nevo/config.yaml is invalid or incomplete. Correct it, then check again.",
+        "git": "Git cannot run in the project folder now. Check the repository, then check again.",
+        "documentsPending": "Saved documents in this checkout are still being committed. Wait a moment, then check again.",
+        "commitBlocked": "Git does not accept a commit on this branch now. Check the branch protection and the repository state, then check again.",
         "engine": "Close is not available in this Runtime.",
-        "unknown": "Close did not start, and the reason cannot be shown here. Try again; if it fails again, run “nevo-specflow specs close <specification id> --preview” in the project folder.",
-        "documentsUncommitted": "Saved documents in this checkout are not committed (manual commit mode). Commit them from Documents, then close again.",
-        "documentsFailed": "A document commit failed. Retry or resolve it in Documents, then close again."
+        "unknown": "Close did not start, and the reason cannot be shown here. Check again; if it fails again, run “nevo-specflow specs close <specification id> --preview” in the project folder.",
+        "documentsUncommitted": "Saved documents in this checkout are not committed (manual commit mode). Commit them from Documents, then check again.",
+        "documentsFailed": "A document commit failed. Retry or resolve it in Documents, then check again."
       },
       "repository": {
         "checkout": {
@@ -2436,8 +2437,8 @@
           "titleIntegrationTarget": "Uncommitted files where it merges",
           "leadSpecification": "Closing integrates the specification's committed work. These files are not committed:",
           "leadIntegrationTarget": "These files are not committed in the checkout {{title}} merges into. They may not belong to this specification:",
-          "commitSpecification": "Commit them in the specification's checkout, then check again:",
-          "commitIntegrationTarget": "Commit them in that checkout (or move them to where they belong), then check again:",
+          "commitSpecification": "Commit them in the specification's checkout, then check again.",
+          "commitIntegrationTarget": "Commit them in that checkout (or move them to where they belong), then check again.",
           "discardWarningLead": "Discarding deletes these changes for good.",
           "discardWarning": "Git keeps no copy of uncommitted work, so discard only what you are sure you do not need."
         },
@@ -2462,15 +2463,15 @@
         },
         "targetBranch": {
           "title": "Integration checkout on another branch",
-          "explanation": "Close integrates the specification into {{expected}}, but the checkout of {{expected}} is on {{branch}}. Switch it back to {{expected}}, then close again."
+          "explanation": "Close integrates the specification into {{expected}}, but the checkout of {{expected}} is on {{branch}}. Switch it back to {{expected}}, then check again."
         },
         "gitOperation": {
           "title": "Unfinished Git operation",
-          "explanation": "A merge, rebase, cherry-pick or revert is still in progress in {{checkout}}. Finish or abort it, then close again."
+          "explanation": "A merge, rebase, cherry-pick or revert is still in progress in {{checkout}}. Finish or abort it, then check again."
         },
         "detached": {
           "title": "Not on a branch",
-          "explanation": "HEAD is detached in {{checkout}}: it is not on a local branch. Check out its branch, then close again."
+          "explanation": "HEAD is detached in {{checkout}}: it is not on a local branch. Check out its branch, then check again."
         },
         "copyPath": "Copy path",
         "copySetting": "Copy setting",
@@ -2498,22 +2499,10 @@
         "primary": "Archives on <code>{{branch}}</code> (main folder; nothing to merge)",
         "archiveOnly": "Archives on <code>{{branch}}</code> without merging",
         "gitOff": "Archives without Git (Git is off for this project)",
-        "gitOffLinked": "Archives without Git (Git is off for this project); the archive stays uncommitted in the specification's worktree"
+        "gitOffLinked": "Archives without Git (Git is off for this project); the archive stays uncommitted in the specification's checkout"
       },
       "tasksFact": {
-        "none": "No tasks were created",
-        "allDone_one": "{{count}} task done",
-        "allDone_few": "All {{count}} tasks done",
-        "allDone_many": "All {{count}} tasks done",
-        "allDone_other": "All {{count}} tasks done",
-        "done_one": "{{count}} done",
-        "done_few": "{{count}} done",
-        "done_many": "{{count}} done",
-        "done_other": "{{count}} done",
-        "notDelivered_one": "{{count}} cancelled, not delivered",
-        "notDelivered_few": "{{count}} cancelled, not delivered",
-        "notDelivered_many": "{{count}} cancelled, not delivered",
-        "notDelivered_other": "{{count}} cancelled, not delivered"
+        "none": "No tasks were created"
       },
       "archiveNote": "Closing archives the specification; it cannot be reopened.",
       "submitting": "Closing…"

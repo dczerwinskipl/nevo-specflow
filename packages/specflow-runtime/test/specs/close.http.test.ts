@@ -18,6 +18,8 @@ import { createRuntimeApp } from '../../src/server/app';
 import { passwordConfig } from '../auth/support/config';
 
 const roots: string[] = [];
+/** A registered workspace id (the checkout a repository blocker names). */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 afterEach(async () => {
   for (const root of roots.splice(0).reverse()) {
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 250 });
@@ -183,7 +185,7 @@ describe('E2.T16 authorized HTTP lifecycle adapters', () => {
         {
           kind: 'uncommitted-changes',
           checkout: 'specification',
-          checkoutPath: root,
+          workspaceId: expect.stringMatching(UUID) as string,
           paths: ['stray.txt'],
           count: 1,
         },

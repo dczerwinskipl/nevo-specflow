@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
   Button,
+  DescriptionList,
   Dialog,
   DialogBody,
   DialogContent,
@@ -11,8 +12,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  InlineNote,
+  Spinner,
   Typography,
 } from '@nevo/ui';
+import type { CloseMerge } from '@nevo/specflow-contracts/specs';
 import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { useAppServices } from '../../../../app/useAppServices';
 import { InlineAction } from '../InlineAction';
@@ -33,9 +37,12 @@ import {
   waitsForDocumentCommits,
   type DocumentCommitRecheck,
 } from './closeDialogOutcome';
-import { RepositoryBlockers, repositoryReasons } from './RepositoryBlockers';
+import { RepositoryBlockers } from './RepositoryBlockers';
 
 type Position = WorkflowActionProjection['position'];
+
+/** After this long a check names the slow part (the repository). */
+export const SLOW_CHECK_MS = 3000;
 
 export interface CloseSpecificationDialogProps {
   readonly open: boolean;
@@ -43,9 +50,11 @@ export interface CloseSpecificationDialogProps {
   readonly specId: string;
   readonly specTitle: string;
   readonly projection: WorkflowActionProjection;
+  /**
+   * Every Task of the Specification by id: the blocker items, and the Tasks fact of a planned Close
+   * (the cancelled and abandoned ones are listed as not delivered).
+   */
   readonly tasks: ReadonlyMap<string, BlockerTask>;
-  /** The cancelled Tasks, listed as not delivered. */
-  readonly cancelledTasks: readonly BlockerTask[];
   readonly onAbandonInstead?: () => void;
   readonly onSeeWorkflow: () => void;
   readonly onSeeTasks: () => void;
@@ -56,31 +65,27 @@ export interface CloseSpecificationDialogProps {
 }
 
 /**
- * Close preflight: the workflow blockers of the projection with the agent Turns running in the
+ * Close: exactly one outcome at a time (`closeDialogOutcome`) under the constant title. While the
+ * check runs, only Cancel. Blocked: the workflow blockers with the agent Turns running in the
  * checkout (the occupancy read), or the blockers and repository preconditions a preview or Close
- * refused with, as grouped blockers with only Dismiss; otherwise exactly one outcome of the preview
- * (`closeDialogOutcome`: checking, cannot start, ready) or of the Close, with the cancelled Tasks
- * named as not delivered.
+ * refused with, and Check again for the repository ones. Ready: what closing does (Result for an
+ * abandoned Specification, Merges, Tasks) and that it archives for good. A refused or failed check
+ * says what to do and checks again on request.
  */
 export function CloseSpecificationDialog(props: CloseSpecificationDialogProps) {
-  const { t } = useTranslation();
-
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent closeLabel={t('common.close')} onOpenAutoFocus={focusInitial}>
-        {props.open ? <CloseBody {...props} /> : null}
-      </DialogContent>
+      {props.open ? <CloseContent {...props} /> : null}
     </Dialog>
   );
 }
 
-function CloseBody({
+function CloseContent({
   onOpenChange,
   specId,
   specTitle,
   projection,
   tasks,
-  cancelledTasks,
   onAbandonInstead,
   onSeeWorkflow,
   onSeeTasks,
@@ -96,7 +101,8 @@ function CloseBody({
   const workflowBlockers = exit?.kind === 'blocked' ? exit.blockers : undefined;
   const queryClient = useQueryClient();
   // The preview plans the Close: its operation id must stay the one the Close sends, so it is
-  // read once per opening, outside the Specification caches that a Close refreshes.
+  // read once per opening (and on "Check again"), outside the Specification caches that a Close
+  // refreshes.
   const preview = useQuery({
     queryKey: ['close-preview', specId],
     queryFn: ({ signal }) => workflowExecutionApi.closePreview(specId, signal),
@@ -116,10 +122,6 @@ function CloseBody({
         ? documentCommitRecheck.intervalMs
         : false,
   });
-  const checkAgain = () => {
-    setRechecksFrom(preview.errorUpdateCount);
-    void preview.refetch();
-  };
 
   // A Close the workflow blocks is not planned; the running agent Turns that would hold its
   // checkout too are read on their own, so both are listed at once.
@@ -145,19 +147,32 @@ function CloseBody({
       }
     },
   });
+  const checkAgain = () => {
+    setRechecksFrom(preview.errorUpdateCount);
+    close.reset();
+    void preview.refetch();
+  };
+
+  const previewRefusal = preview.isError ? workflowRefusalOf(preview.error) : undefined;
+  // "Check again" reads the preview anew: checking until it answers. The automatic re-reads for
+  // document commits keep their own checking line.
+  const rereading =
+    preview.isFetching && !(previewRefusal && waitsForDocumentCommits(previewRefusal));
   const outcome = closeDialogOutcome({
     ...(workflowBlockers ? { workflowBlockers } : {}),
     ...(occupancy.data ? { occupancyBlockers: occupancy.data.blockers } : {}),
-    preview: preview.isError
-      ? {
-          status: 'error',
-          refusal: workflowRefusalOf(preview.error),
-          documentRechecksExhausted:
-            preview.errorUpdateCount - rechecksFrom >= documentCommitRecheck.attempts,
-        }
-      : preview.isSuccess
-        ? { status: 'success' }
-        : { status: 'pending' },
+    preview: rereading
+      ? { status: 'pending' }
+      : previewRefusal
+        ? {
+            status: 'error',
+            refusal: previewRefusal,
+            documentRechecksExhausted:
+              preview.errorUpdateCount - rechecksFrom >= documentCommitRecheck.attempts,
+          }
+        : preview.data
+          ? { status: 'success', merge: preview.data.merge }
+          : { status: 'pending' },
     close: close.isError
       ? { status: 'error', refusal: workflowRefusalOf(close.error) }
       : close.isSuccess
@@ -173,159 +188,356 @@ function CloseBody({
     action();
   };
 
-  if (outcome.kind === 'blocked') {
-    const { blockers, repository } = outcome;
+  const title = t('workflowExecution.close.title', { title: specTitle });
 
-    return (
-      <>
-        <DialogHeader>
-          <DialogTitle>{t('workflowExecution.close.title', { title: specTitle })}</DialogTitle>
-          <DialogDescription>
-            {t('workflowExecution.close.blocked', {
-              title: specTitle,
-              reasons: closeReasons(
-                t,
-                i18n.language,
-                blockers,
-                tasks,
-                workflowAtOf(position),
-                repositoryReasons(t, repository),
-              ),
-            })}
-          </DialogDescription>
-        </DialogHeader>
-        <DialogBody className="grid gap-5">
-          {blockers.length > 0 ? (
-            <BlockerGroups
-              blockers={blockers}
-              order="close"
-              tasks={tasks}
-              workflowAt={workflowAtOf(position)}
-              onOpenTask={(id) => go(() => onOpenTask(id))()}
-              onSeeWorkflow={go(onSeeWorkflow)}
-              onSeeTasks={go(onSeeTasks)}
-            />
-          ) : null}
-          {repository.length > 0 ? <RepositoryBlockers repository={repository} /> : null}
-          {onAbandonInstead ? (
-            <Typography as="p" variant="body-sm" className="text-content-secondary">
-              {t('workflowExecution.close.abandonPrompt')}{' '}
-              <InlineAction onClick={onAbandonInstead}>
-                {t('workflowExecution.close.abandonInstead')}
-              </InlineAction>
-            </Typography>
-          ) : null}
-        </DialogBody>
-        <DialogFooter>
-          <Button data-initial-focus="" onClick={dismiss}>
+  const view = ((): { description?: string; body: ReactNode; footer: ReactNode } => {
+    switch (outcome.kind) {
+      case 'blocked': {
+        const { blockers, repository } = outcome;
+        const dismissButton = (
+          <Button
+            data-initial-focus=""
+            variant={repository.length > 0 ? 'secondary' : 'primary'}
+            onClick={dismiss}
+          >
             {t('workflowExecution.exit.dismiss')}
           </Button>
-        </DialogFooter>
-      </>
+        );
+
+        return {
+          // A refusal names workflow blockers or repository preconditions, never both.
+          description:
+            repository.length > 0
+              ? t('workflowExecution.close.blockedRepository', {
+                  title: specTitle,
+                  count: repository.length,
+                })
+              : t('workflowExecution.close.blocked', {
+                  title: specTitle,
+                  reasons: closeReasons(t, i18n.language, blockers, tasks, workflowAtOf(position)),
+                }),
+          body: (
+            <>
+              {blockers.length > 0 ? (
+                <BlockerGroups
+                  blockers={blockers}
+                  order="close"
+                  tasks={tasks}
+                  workflowAt={workflowAtOf(position)}
+                  onOpenTask={(id) => go(() => onOpenTask(id))()}
+                  onSeeWorkflow={go(onSeeWorkflow)}
+                  onSeeTasks={go(onSeeTasks)}
+                />
+              ) : null}
+              {repository.length > 0 ? (
+                <RepositoryBlockers repository={repository} specTitle={specTitle} />
+              ) : null}
+              {/* Abandoning needs a Close too, which meets the same repository checks. */}
+              {onAbandonInstead && blockers.length > 0 ? (
+                <Typography as="p" variant="body-sm" className="text-content-secondary">
+                  {t('workflowExecution.close.abandonPrompt')}{' '}
+                  <InlineAction onClick={onAbandonInstead}>
+                    {t('workflowExecution.close.abandonInstead')}
+                  </InlineAction>
+                </Typography>
+              ) : null}
+            </>
+          ),
+          footer:
+            repository.length > 0 ? (
+              <>
+                {dismissButton}
+                <Button onClick={checkAgain}>{t('workflowExecution.close.checkAgain')}</Button>
+              </>
+            ) : (
+              dismissButton
+            ),
+        };
+      }
+
+      case 'checking':
+        return {
+          body: <Checking specTitle={specTitle} documents={outcome.waitingFor === 'documents'} />,
+          footer: (
+            <Button data-initial-focus="" variant="secondary" onClick={dismiss}>
+              {t('common.cancel')}
+            </Button>
+          ),
+        };
+      case 'cannot-start':
+      case 'not-closed':
+        return {
+          body: (
+            <Alert
+              role="alert"
+              tone="danger"
+              title={
+                outcome.kind === 'cannot-start'
+                  ? t('workflowExecution.close.checkFailed', { title: specTitle })
+                  : t('workflowExecution.close.failed')
+              }
+            >
+              {t(outcome.reasonKey)}
+            </Alert>
+          ),
+          footer: (
+            <>
+              <Button data-initial-focus="" variant="secondary" onClick={dismiss}>
+                {t('workflowExecution.exit.dismiss')}
+              </Button>
+              <Button onClick={checkAgain}>{t('workflowExecution.close.checkAgain')}</Button>
+            </>
+          ),
+        };
+      case 'needs-attention':
+        return {
+          body: (
+            <Alert role="status" tone="attention" title={t('workflowExecution.close.notCompleted')}>
+              {t(`workflowExecution.close.status.${outcome.status}`)}
+            </Alert>
+          ),
+          footer: (
+            <Button data-initial-focus="" onClick={dismiss}>
+              {t('workflowExecution.exit.dismiss')}
+            </Button>
+          ),
+        };
+      case 'ready':
+      case 'closing': {
+        const closing = outcome.kind === 'closing';
+
+        return {
+          ...(abandonment
+            ? {
+                description: t('workflowExecution.close.afterAbandon', {
+                  reason: abandonment.reason,
+                }),
+              }
+            : {}),
+          body: (
+            <>
+              {abandonment ? null : (
+                <Alert tone="success" title={t('workflowExecution.close.readyTitle')}>
+                  {position.kind === 'terminal'
+                    ? t('workflowExecution.close.readyBody')
+                    : t('workflowExecution.close.readyChecksBody')}
+                </Alert>
+              )}
+              <CloseFacts
+                merge={outcome.merge}
+                abandoned={abandonment !== undefined}
+                tasks={tasks}
+                onSeeTasks={go(onSeeTasks)}
+              />
+              <InlineNote>{t('workflowExecution.close.archiveNote')}</InlineNote>
+            </>
+          ),
+          footer: (
+            <>
+              <Button
+                data-initial-focus=""
+                variant="secondary"
+                disabled={closing}
+                onClick={dismiss}
+              >
+                {t('common.cancel')}
+              </Button>
+              <Button
+                aria-busy={closing || undefined}
+                disabled={closing}
+                onClick={() => preview.data && close.mutate(preview.data.operationId)}
+              >
+                {closing
+                  ? t('workflowExecution.close.submitting')
+                  : t('workflowExecution.close.submit')}
+              </Button>
+            </>
+          ),
+        };
+      }
+    }
+  })();
+
+  return (
+    <DialogContent
+      closeLabel={t('common.close')}
+      onOpenAutoFocus={focusInitial}
+      {...(view.description === undefined ? { 'aria-describedby': undefined } : {})}
+      data-close-outcome={outcome.kind}
+    >
+      <DialogHeader>
+        <DialogTitle>{title}</DialogTitle>
+        {view.description !== undefined ? (
+          <DialogDescription>{view.description}</DialogDescription>
+        ) : null}
+      </DialogHeader>
+      <DialogBody className="grid min-w-0 gap-5">{view.body}</DialogBody>
+      <DialogFooter>{view.footer}</DialogFooter>
+    </DialogContent>
+  );
+}
+
+/**
+ * The check in progress: one polite live line, and after {@link SLOW_CHECK_MS} the slow part it
+ * waits for. Waiting for document commits names them instead.
+ */
+function Checking({
+  specTitle,
+  documents,
+}: {
+  readonly specTitle: string;
+  readonly documents: boolean;
+}) {
+  const { t } = useTranslation();
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSlow(true), SLOW_CHECK_MS);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  return (
+    <div
+      className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-1"
+      role="status"
+      aria-live="polite"
+    >
+      <Spinner size="sm" />
+      <span className="text-body-md text-content-primary">
+        {documents
+          ? t('workflowExecution.close.documentsCheckingTitle')
+          : t('workflowExecution.close.checking', { title: specTitle })}
+      </span>
+      {documents || slow ? (
+        <Typography as="p" variant="body-sm" className="col-start-2 text-content-secondary">
+          {documents
+            ? t('workflowExecution.close.documentsCheckingBody')
+            : t('workflowExecution.close.checkingSlow')}
+        </Typography>
+      ) : null}
+    </div>
+  );
+}
+
+const CODE = <span className="font-mono" />;
+
+/** What the Close merges, from the preview's `merge` fact. */
+function MergeFact({ merge }: { readonly merge: CloseMerge }) {
+  const { t } = useTranslation();
+  if (merge.status === 'integrates') {
+    return merge.commitsAhead === 0 ? (
+      t('workflowExecution.close.merge.nothing')
+    ) : (
+      <span className="[overflow-wrap:anywhere]">
+        <span className="font-mono">{merge.sourceBranch}</span> →{' '}
+        <span className="font-mono">{merge.targetBranch}</span>
+      </span>
     );
   }
 
+  switch (merge.reason) {
+    case 'primary-checkout':
+    case 'archive-only':
+      return (
+        <Trans
+          i18nKey={
+            merge.reason === 'primary-checkout'
+              ? 'workflowExecution.close.merge.primary'
+              : 'workflowExecution.close.merge.archiveOnly'
+          }
+          values={{ branch: merge.sourceBranch }}
+          components={{ code: CODE }}
+        />
+      );
+    case 'git-off':
+      return merge.checkout === 'linked'
+        ? t('workflowExecution.close.merge.gitOffLinked')
+        : t('workflowExecution.close.merge.gitOff');
+  }
+}
+
+/**
+ * The facts of a planned Close, in a fixed order: Result (an abandoned Specification), Merges,
+ * Tasks; the Tasks not delivered are listed below them.
+ */
+function CloseFacts({
+  merge,
+  abandoned,
+  tasks,
+  onSeeTasks,
+}: {
+  readonly merge: CloseMerge;
+  readonly abandoned: boolean;
+  readonly tasks: ReadonlyMap<string, BlockerTask>;
+  readonly onSeeTasks: () => void;
+}) {
+  const { t } = useTranslation();
+  const total = tasks.size;
+  const done = [...tasks.values()].filter((task) => task.statusId === 'completed').length;
+  const notDeliveredTasks = [...tasks.values()].filter(
+    (task) => task.statusId === 'cancelled' || task.statusId === 'abandoned',
+  );
+  const notDelivered = notDeliveredTasks.length;
+  const tasksFact =
+    total === 0
+      ? t('workflowExecution.close.tasksFact.none')
+      : notDelivered === 0 && done === total
+        ? t('workflowExecution.close.tasksFact.allDone', { count: total })
+        : [
+            ...(done > 0 ? [t('workflowExecution.close.tasksFact.done', { count: done })] : []),
+            ...(notDelivered > 0
+              ? [t('workflowExecution.close.tasksFact.notDelivered', { count: notDelivered })]
+              : []),
+          ].join(' · ');
+
   return (
     <>
-      <DialogHeader>
-        <DialogTitle>{t('workflowExecution.close.title', { title: specTitle })}</DialogTitle>
-        <DialogDescription>
-          {abandonment
-            ? t('workflowExecution.close.afterAbandon', { reason: abandonment.reason })
-            : t('workflowExecution.close.ready')}
-        </DialogDescription>
-      </DialogHeader>
-      <DialogBody className="grid gap-5">
-        {outcome.kind === 'checking' ? (
-          <Alert
-            role="status"
-            tone="neutral"
-            title={
-              outcome.waitingFor === 'documents'
-                ? t('workflowExecution.close.documentsCheckingTitle')
-                : t('workflowExecution.close.checkingTitle')
-            }
-          >
-            {outcome.waitingFor === 'documents'
-              ? t('workflowExecution.close.documentsCheckingBody')
-              : t('workflowExecution.close.checkingBody')}
-          </Alert>
+      <DescriptionList>
+        {abandoned ? (
+          <DescriptionList.Item>
+            <DescriptionList.Term>{t('workflowExecution.close.facts.result')}</DescriptionList.Term>
+            <DescriptionList.Detail>
+              {t('workflowExecution.close.facts.notDelivered')}
+            </DescriptionList.Detail>
+          </DescriptionList.Item>
         ) : null}
-        {outcome.kind === 'cannot-start' ? (
-          <Alert role="alert" tone="danger" title={t('workflowExecution.close.previewFailed')}>
-            {t(outcome.reasonKey)}{' '}
-            <InlineAction onClick={checkAgain}>
-              {t('workflowExecution.close.checkAgain')}
-            </InlineAction>
-          </Alert>
-        ) : null}
-        {outcome.kind === 'not-closed' ? (
-          <Alert role="alert" tone="danger" title={t('workflowExecution.close.failed')}>
-            {t(outcome.reasonKey)}
-          </Alert>
-        ) : null}
-        {outcome.kind === 'needs-attention' ? (
-          <Alert role="status" tone="attention" title={t('workflowExecution.close.notCompleted')}>
-            {t(`workflowExecution.close.status.${outcome.status}`)}
-          </Alert>
-        ) : null}
-        {outcome.kind === 'closing' ? (
-          <Alert role="status" tone="neutral" title={t('workflowExecution.close.closingTitle')}>
-            {t('workflowExecution.close.closingBody')}
-          </Alert>
-        ) : null}
-        {outcome.kind === 'ready' ? (
-          <Alert tone="success" title={t('workflowExecution.close.readyTitle')}>
-            {abandonment
-              ? t('workflowExecution.close.readyAbandonedBody')
-              : position.kind === 'terminal'
-                ? t('workflowExecution.close.readyBody')
-                : t('workflowExecution.close.readyChecksBody')}
-          </Alert>
-        ) : null}
-        {cancelledTasks.length > 0 ? (
-          <section className="grid gap-2" aria-label={t('workflowExecution.close.notDelivered')}>
-            <div className="grid gap-0.5">
-              <Typography as="h3" variant="label-sm">
-                {t('workflowExecution.exit.groupHeading', {
-                  title: t('workflowExecution.close.notDelivered'),
-                  count: cancelledTasks.length,
-                })}
-              </Typography>
-              <Typography as="p" variant="body-sm" className="text-content-secondary">
-                {t('workflowExecution.close.notDeliveredExplanation')}
-              </Typography>
-            </div>
-            <ul className="grid gap-1 text-body-sm">
-              {cancelledTasks.slice(0, ITEMS_SHOWN).map((task) => (
-                <li key={task.id} className="min-w-0 [overflow-wrap:anywhere]">
-                  <span className="font-mono text-content-muted">{task.id}</span> {task.title}
-                </li>
-              ))}
-              {cancelledTasks.length > ITEMS_SHOWN ? (
-                <li>
-                  <InlineAction onClick={go(onSeeTasks)}>
-                    {t('workflowExecution.exit.more', {
-                      count: cancelledTasks.length - ITEMS_SHOWN,
-                    })}
-                  </InlineAction>
-                </li>
-              ) : null}
-            </ul>
-          </section>
-        ) : null}
-      </DialogBody>
-      <DialogFooter>
-        <Button data-initial-focus="" variant="secondary" onClick={dismiss}>
-          {t('common.cancel')}
-        </Button>
-        <Button
-          disabled={!preview.data || close.isPending || close.data?.status === 'completed'}
-          onClick={() => preview.data && close.mutate(preview.data.operationId)}
-        >
-          {t('workflowExecution.close.submit')}
-        </Button>
-      </DialogFooter>
+        <DescriptionList.Item>
+          <DescriptionList.Term>{t('workflowExecution.close.facts.merges')}</DescriptionList.Term>
+          <DescriptionList.Detail>
+            <MergeFact merge={merge} />
+          </DescriptionList.Detail>
+        </DescriptionList.Item>
+        <DescriptionList.Item>
+          <DescriptionList.Term>{t('workflowExecution.close.facts.tasks')}</DescriptionList.Term>
+          <DescriptionList.Detail>{tasksFact}</DescriptionList.Detail>
+        </DescriptionList.Item>
+      </DescriptionList>
+      {notDelivered > 0 ? (
+        <section className="grid gap-2" aria-label={t('workflowExecution.close.notDelivered')}>
+          <div className="grid gap-0.5">
+            <Typography as="h3" variant="label-sm">
+              {t('workflowExecution.close.notDelivered')}
+            </Typography>
+            <Typography as="p" variant="body-sm" className="text-content-secondary">
+              {t('workflowExecution.close.notDeliveredExplanation')}
+            </Typography>
+          </div>
+          <ul className="grid gap-1 text-body-sm">
+            {notDeliveredTasks.slice(0, ITEMS_SHOWN).map((task) => (
+              <li key={task.id} className="min-w-0 [overflow-wrap:anywhere]">
+                <span className="font-mono text-content-muted">{task.id}</span> {task.title}
+              </li>
+            ))}
+            {notDelivered > ITEMS_SHOWN ? (
+              <li>
+                <InlineAction onClick={onSeeTasks}>
+                  {t('workflowExecution.exit.more', { count: notDelivered - ITEMS_SHOWN })}
+                </InlineAction>
+              </li>
+            ) : null}
+          </ul>
+        </section>
+      ) : null}
     </>
   );
 }

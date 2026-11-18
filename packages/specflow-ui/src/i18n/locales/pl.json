@@ -2373,13 +2373,11 @@
       "blocked": "Nie można jeszcze zamknąć {{title}}: {{reasons}}.",
       "abandonPrompt": "Nie zamierzasz kończyć tej pracy?",
       "abandonInstead": "Porzuć zamiast tego",
-      "ready": "Wszystko, co wymagane, jest ukończone.",
-      "afterAbandon": "Porzucono: „{{reason}}” Zamknięcie zapisze ją jako niedostarczoną.",
+      "afterAbandon": "Porzucono: „{{reason}}”",
       "readyTitle": "Gotowe do zamknięcia",
       "readyBody": "Przepływ jest ukończony, a kontrole repozytorium przeszły.",
       "notDelivered": "Anulowane, niedostarczone",
       "notDeliveredExplanation": "Zapisywane jako niedostarczone przy zamknięciu specyfikacji.",
-      "previewFailed": "Nie można teraz rozpocząć zamknięcia",
       "failed": "Nie zamknięto",
       "notCompleted": "Zamknięcie wymaga uwagi",
       "status": {
@@ -2387,7 +2385,7 @@
         "in-progress": "Zamknięcie wciąż trwa.",
         "recovery-required": "Zamknięcie zatrzymało się w połowie i wymaga odzyskania."
       },
-      "submit": "Zamknij specyfikację",
+      "submit": "Zamknij i zarchiwizuj",
       "reason": {
         "waiting_one": "jej przepływ czeka na {{count}} nieukończone zadanie",
         "waiting_few": "jej przepływ czeka na {{count}} nieukończone zadania",
@@ -2414,10 +2412,7 @@
         "sessions_many": "w jej worktree pracuje {{count}} sesji agenta",
         "sessions_other": "w jej worktree pracuje {{count}} sesji agenta"
       },
-      "readyAbandonedBody": "Przepływ zakończył się porzuceniem, a kontrole repozytorium przeszły.",
       "readyChecksBody": "Kontrole repozytorium przeszły.",
-      "checkingTitle": "Sprawdzanie repozytorium",
-      "checkingBody": "Zamknięcie można rozpocząć, gdy kontrole repozytorium przejdą. Może to potrwać kilka sekund.",
       "refusal": {
         "preflight": "Zamknięcie zatrzymuje kontrola repozytorium. Aby zobaczyć którą, uruchom „nevo-specflow specs close <id specyfikacji> --preview” w folderze projektu.",
         "sharedWorktree": "Z tego worktree korzystają też inne specyfikacje, więc nie można go zintegrować tylko dla tej. Zamknij cały workspace albo zarchiwizuj tę specyfikację bez integracji z wiersza poleceń.",
@@ -2438,21 +2433,34 @@
           "specification": "katalog roboczy specyfikacji",
           "integrationTarget": "katalog roboczy, do którego jest integrowana"
         },
-        "reason": {
-          "uncommitted": "{{checkout}} ma pliki bez commita",
-          "targetMissing": "nie skonfigurowano gałęzi integracji",
-          "targetBranch": "katalog roboczy integracji nie jest na {{expected}}",
-          "gitOperation": "trwa niedokończona operacja Git ({{checkout}})",
-          "detached": "{{checkout}} nie jest na gałęzi"
-        },
         "uncommitted": {
-          "title": "Pliki bez commita",
-          "specification": "Zamknięcie commituje tylko stan przepływu specyfikacji; innych zmian nie zabiera. Zrób commit tych plików w Git (albo je usuń) i zamknij ponownie.",
-          "integrationTarget": "Katalog roboczy, do którego specyfikacja jest integrowana, musi być czysty. Zrób commit tych plików w Git (albo je usuń) i zamknij ponownie."
+          "titleSpecification": "Pliki specyfikacji bez commita",
+          "titleIntegrationTarget": "Pliki bez commita w miejscu scalenia",
+          "leadSpecification": "Zamknięcie integruje zacommitowaną pracę specyfikacji. Te pliki nie mają commita:",
+          "leadIntegrationTarget": "Te pliki nie mają commita w katalogu roboczym, do którego scalana jest {{title}}. Mogą nie należeć do tej specyfikacji:",
+          "commitSpecification": "Zrób ich commit w katalogu roboczym specyfikacji i sprawdź ponownie:",
+          "commitIntegrationTarget": "Zrób ich commit w tym katalogu roboczym (albo przenieś je tam, gdzie należą) i sprawdź ponownie:",
+          "discardWarningLead": "Odrzucenie usuwa te zmiany na zawsze.",
+          "discardWarning": "Git nie przechowuje kopii pracy bez commita, więc odrzucaj tylko to, czego na pewno nie potrzebujesz."
         },
         "targetMissing": {
           "title": "Nie skonfigurowano gałęzi integracji",
-          "explanation": "Zamknięcie archiwizuje specyfikację na gałęzi ustawionej jako git.integrationTargetBranch w .nevo/config.yaml, a żadna nie jest ustawiona. Dodaj ją (na przykład „integrationTargetBranch: main” pod „git:”), zrób commit tej zmiany i zamknij ponownie."
+          "explanationLinked": "Zamknięcie scala tę specyfikację z gałęzią integracji projektu, a projekt żadnej nie wskazuje. Wybierz gałąź, dodaj ją do <code>.nevo/config.yaml</code> jako <code>git.integrationTargetBranch</code> i sprawdź ponownie.",
+          "explanationPrimary": "Zamknięcie archiwizuje tę specyfikację na gałęzi integracji projektu w folderze głównym, a projekt żadnej nie wskazuje. Wybierz gałąź, dodaj ją do <code>.nevo/config.yaml</code> jako <code>git.integrationTargetBranch</code> i sprawdź ponownie.",
+          "choiceLabel": "Gałąź integracji",
+          "fact": {
+            "remoteDefault": "Domyślna gałąź zdalnego repozytorium ({{remote}})",
+            "startedFrom": "Od niej wyszła {{title}}",
+            "primaryCheckout": "Wybrana w folderze głównym"
+          },
+          "other": "Inna lokalna gałąź…",
+          "otherLabel": "Lokalna gałąź",
+          "otherPlaceholder": "Wybierz gałąź",
+          "otherLimited": "Pokazano {{shown}} z {{count}} lokalnych gałęzi.",
+          "noBranch": "Żadna lokalna gałąź nie może jej przyjąć. Utwórz gałąź integracji w repozytorium i sprawdź ponownie.",
+          "placeholder": "<wybierz gałąź>",
+          "settingLabel": "Ustawienie dla .nevo/config.yaml",
+          "chooseFirst": "Najpierw wybierz gałąź"
         },
         "targetBranch": {
           "title": "Katalog roboczy integracji na innej gałęzi",
@@ -2465,13 +2473,52 @@
         "detached": {
           "title": "Poza gałęzią",
           "explanation": "HEAD jest odłączony, poza lokalną gałęzią ({{checkout}}). Przełącz się na gałąź i zamknij ponownie."
-        }
+        },
+        "copyPath": "Kopiuj ścieżkę",
+        "copySetting": "Kopiuj ustawienie",
+        "copied": "Skopiowano",
+        "copyFailed": "Nie udało się skopiować. Zaznacz tekst i skopiuj go ręcznie."
       },
-      "closingTitle": "Zamykanie",
-      "closingBody": "Zamknięcie trwa. Może to chwilę potrwać.",
       "documentsCheckingTitle": "Zapisywanie commitów dokumentów…",
       "documentsCheckingBody": "Zapisane dokumenty w tym katalogu roboczym wciąż są commitowane. Sprawdzenie powtórzy się samo, a zamknięcie będzie można rozpocząć, gdy commity się zakończą.",
-      "checkAgain": "Sprawdź ponownie"
+      "checkAgain": "Sprawdź ponownie",
+      "checking": "Sprawdzanie, czy można zamknąć {{title}}…",
+      "checkingSlow": "Sprawdzanie repozytorium. Może to potrwać kilka sekund.",
+      "checkFailed": "Nie udało się sprawdzić, czy można zamknąć {{title}}",
+      "blockedRepository_one": "Nie można jeszcze zamknąć {{title}}: {{count}} problem z repozytorium.",
+      "blockedRepository_few": "Nie można jeszcze zamknąć {{title}}: {{count}} problemy z repozytorium.",
+      "blockedRepository_many": "Nie można jeszcze zamknąć {{title}}: {{count}} problemów z repozytorium.",
+      "blockedRepository_other": "Nie można jeszcze zamknąć {{title}}: {{count}} problemów z repozytorium.",
+      "facts": {
+        "result": "Wynik",
+        "notDelivered": "Zapisana jako niedostarczona",
+        "merges": "Scalanie",
+        "tasks": "Zadania"
+      },
+      "merge": {
+        "nothing": "Nie ma czego scalać",
+        "primary": "Archiwizuje na <code>{{branch}}</code> (folder główny; nie ma czego scalać)",
+        "archiveOnly": "Archiwizuje na <code>{{branch}}</code> bez scalania",
+        "gitOff": "Archiwizuje bez Gita (Git jest wyłączony w tym projekcie)",
+        "gitOffLinked": "Archiwizuje bez Gita (Git jest wyłączony w tym projekcie); archiwum zostaje bez commita w worktree specyfikacji"
+      },
+      "tasksFact": {
+        "none": "Nie utworzono żadnych zadań",
+        "allDone_one": "{{count}} zadanie ukończone",
+        "allDone_few": "Wszystkie {{count}} zadania ukończone",
+        "allDone_many": "Wszystkie {{count}} zadań ukończonych",
+        "allDone_other": "Wszystkie {{count}} zadań ukończonych",
+        "done_one": "{{count}} ukończone",
+        "done_few": "{{count}} ukończone",
+        "done_many": "{{count}} ukończonych",
+        "done_other": "{{count}} ukończonych",
+        "notDelivered_one": "{{count}} anulowane, niedostarczone",
+        "notDelivered_few": "{{count}} anulowane, niedostarczone",
+        "notDelivered_many": "{{count}} anulowanych, niedostarczonych",
+        "notDelivered_other": "{{count}} anulowanych, niedostarczonych"
+      },
+      "archiveNote": "Zamknięcie archiwizuje specyfikację; nie można jej ponownie otworzyć.",
+      "submitting": "Zamykanie…"
     },
     "abandon": {
       "action": "Porzuć specyfikację",

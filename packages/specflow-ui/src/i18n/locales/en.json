@@ -2371,13 +2371,11 @@
       "blocked": "{{title}} cannot close yet: {{reasons}}.",
       "abandonPrompt": "Not going to finish this work?",
       "abandonInstead": "Abandon instead",
-      "ready": "Everything required is finished.",
-      "afterAbandon": "Abandoned: “{{reason}}” Closing records it as not delivered.",
+      "afterAbandon": "Abandoned: “{{reason}}”",
       "readyTitle": "Ready to close",
       "readyBody": "The workflow is complete and the repository checks passed.",
       "notDelivered": "Cancelled, not delivered",
       "notDeliveredExplanation": "Recorded as not delivered when the specification closes.",
-      "previewFailed": "Close cannot start now",
       "failed": "Not closed",
       "notCompleted": "Close needs attention",
       "status": {
@@ -2385,7 +2383,7 @@
         "in-progress": "Close is still running.",
         "recovery-required": "Close stopped part way and needs recovery."
       },
-      "submit": "Close specification",
+      "submit": "Close and archive",
       "reason": {
         "waiting_one": "its workflow is waiting for {{count}} unfinished task",
         "waiting_few": "its workflow is waiting for {{count}} unfinished tasks",
@@ -2412,10 +2410,7 @@
         "sessions_many": "{{count}} agent Sessions are working in its worktree",
         "sessions_other": "{{count}} agent Sessions are working in its worktree"
       },
-      "readyAbandonedBody": "The workflow ended as abandoned and the repository checks passed.",
       "readyChecksBody": "The repository checks passed.",
-      "checkingTitle": "Checking the repository",
-      "checkingBody": "Close can start once the repository checks pass. This can take a few seconds.",
       "refusal": {
         "preflight": "A repository check stops the Close. To see which one, run “nevo-specflow specs close <specification id> --preview” in the project folder.",
         "sharedWorktree": "Other specifications share this worktree, so it cannot be integrated for this one alone. Close the whole workspace, or archive this specification without integration from the command line.",
@@ -2436,21 +2431,34 @@
           "specification": "the checkout of the specification",
           "integrationTarget": "the checkout it is integrated into"
         },
-        "reason": {
-          "uncommitted": "{{checkout}} has files that are not committed",
-          "targetMissing": "no integration branch is configured",
-          "targetBranch": "the integration checkout is not on {{expected}}",
-          "gitOperation": "a Git operation is unfinished in {{checkout}}",
-          "detached": "{{checkout}} is not on a branch"
-        },
         "uncommitted": {
-          "title": "Files not committed",
-          "specification": "Close commits only the workflow state of the specification; it does not take other changes along. Commit these files with Git (or remove them), then close again.",
-          "integrationTarget": "The checkout the specification is integrated into must be clean. Commit these files with Git (or remove them), then close again."
+          "titleSpecification": "Uncommitted specification files",
+          "titleIntegrationTarget": "Uncommitted files where it merges",
+          "leadSpecification": "Closing integrates the specification's committed work. These files are not committed:",
+          "leadIntegrationTarget": "These files are not committed in the checkout {{title}} merges into. They may not belong to this specification:",
+          "commitSpecification": "Commit them in the specification's checkout, then check again:",
+          "commitIntegrationTarget": "Commit them in that checkout (or move them to where they belong), then check again:",
+          "discardWarningLead": "Discarding deletes these changes for good.",
+          "discardWarning": "Git keeps no copy of uncommitted work, so discard only what you are sure you do not need."
         },
         "targetMissing": {
           "title": "No integration branch configured",
-          "explanation": "Close archives the specification on the branch set as git.integrationTargetBranch in .nevo/config.yaml, and none is set. Add it (for example “integrationTargetBranch: main” under “git:”), commit the change, then close again."
+          "explanationLinked": "Closing merges this specification into the project's integration branch, and the project names none. Choose the branch, add it to <code>.nevo/config.yaml</code> as <code>git.integrationTargetBranch</code>, then check again.",
+          "explanationPrimary": "Closing archives this specification on the project's integration branch in the main folder, and the project names none. Choose the branch, add it to <code>.nevo/config.yaml</code> as <code>git.integrationTargetBranch</code>, then check again.",
+          "choiceLabel": "Integration branch",
+          "fact": {
+            "remoteDefault": "Remote default ({{remote}})",
+            "startedFrom": "{{title}} started from it",
+            "primaryCheckout": "Checked out in the main folder"
+          },
+          "other": "Another local branch…",
+          "otherLabel": "Local branch",
+          "otherPlaceholder": "Choose a branch",
+          "otherLimited": "Showing {{shown}} of {{count}} local branches.",
+          "noBranch": "No local branch can receive it. Create the integration branch in the repository, then check again.",
+          "placeholder": "<choose a branch>",
+          "settingLabel": "Setting for .nevo/config.yaml",
+          "chooseFirst": "Choose a branch first"
         },
         "targetBranch": {
           "title": "Integration checkout on another branch",
@@ -2463,13 +2471,52 @@
         "detached": {
           "title": "Not on a branch",
           "explanation": "HEAD is detached in {{checkout}}: it is not on a local branch. Check out its branch, then close again."
-        }
+        },
+        "copyPath": "Copy path",
+        "copySetting": "Copy setting",
+        "copied": "Copied",
+        "copyFailed": "Could not copy. Select the text and copy it instead."
       },
-      "closingTitle": "Closing",
-      "closingBody": "Close is running. This can take a moment.",
       "documentsCheckingTitle": "Saving document commits…",
       "documentsCheckingBody": "Saved documents in this checkout are still being committed. The check runs again by itself, and Close can start once they are committed.",
-      "checkAgain": "Check again"
+      "checkAgain": "Check again",
+      "checking": "Checking whether {{title}} can close…",
+      "checkingSlow": "Checking the repository. This can take a few seconds.",
+      "checkFailed": "Could not check whether {{title}} can close",
+      "blockedRepository_one": "{{title}} cannot close yet: {{count}} repository problem.",
+      "blockedRepository_few": "{{title}} cannot close yet: {{count}} repository problems.",
+      "blockedRepository_many": "{{title}} cannot close yet: {{count}} repository problems.",
+      "blockedRepository_other": "{{title}} cannot close yet: {{count}} repository problems.",
+      "facts": {
+        "result": "Result",
+        "notDelivered": "Recorded as not delivered",
+        "merges": "Merges",
+        "tasks": "Tasks"
+      },
+      "merge": {
+        "nothing": "Nothing to merge",
+        "primary": "Archives on <code>{{branch}}</code> (main folder; nothing to merge)",
+        "archiveOnly": "Archives on <code>{{branch}}</code> without merging",
+        "gitOff": "Archives without Git (Git is off for this project)",
+        "gitOffLinked": "Archives without Git (Git is off for this project); the archive stays uncommitted in the specification's worktree"
+      },
+      "tasksFact": {
+        "none": "No tasks were created",
+        "allDone_one": "{{count}} task done",
+        "allDone_few": "All {{count}} tasks done",
+        "allDone_many": "All {{count}} tasks done",
+        "allDone_other": "All {{count}} tasks done",
+        "done_one": "{{count}} done",
+        "done_few": "{{count}} done",
+        "done_many": "{{count}} done",
+        "done_other": "{{count}} done",
+        "notDelivered_one": "{{count}} cancelled, not delivered",
+        "notDelivered_few": "{{count}} cancelled, not delivered",
+        "notDelivered_many": "{{count}} cancelled, not delivered",
+        "notDelivered_other": "{{count}} cancelled, not delivered"
+      },
+      "archiveNote": "Closing archives the specification; it cannot be reopened.",
+      "submitting": "Closing…"
     },
     "abandon": {
       "action": "Abandon specification",

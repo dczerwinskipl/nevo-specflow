@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider, createMemoryHistory } from '@tanstack/react-router';
 import { HttpClientError } from '@nevo/http-client';
+import type { CloseMerge, RepositoryBlocker } from '@nevo/specflow-contracts/specs';
 import type { SpecificationWorkspaceResponse } from '@nevo/specflow-contracts/specs/workspace';
 import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { ApiError } from '../../../api';
@@ -40,10 +41,137 @@ import {
  * start; a gate met after its document was created).
  */
 
-export type WorkflowStoryScenario =
-  TaskWorkflowScenario | 'start-drift' | 'spike-gate-round-trip' | SpecificationWorkflowScenario;
+/**
+ * The Close dialog of a completed Specification, one per outcome of its check: the preview never
+ * answers (`checking`), waits for document commits, fails, names repository preconditions, or plans
+ * a Close that merges, has nothing to merge, archives in the main folder or without Git; `closing`
+ * plans one whose Close never answers.
+ */
+export type CloseStoryScenario =
+  | 'close-checking'
+  | 'close-commit-pending'
+  | 'close-check-failed'
+  | 'close-repository'
+  | 'close-integrates'
+  | 'close-nothing-to-merge'
+  | 'close-primary'
+  | 'close-git-off'
+  | 'close-closing';
 
-const specScenarios: readonly string[] = ['waiting', 'close-blocked', 'abandoned', 'tasks-open'];
+export type WorkflowStoryScenario =
+  | TaskWorkflowScenario
+  | 'start-drift'
+  | 'spike-gate-round-trip'
+  | SpecificationWorkflowScenario
+  | CloseStoryScenario;
+
+const closeScenarios: readonly string[] = [
+  'close-checking',
+  'close-commit-pending',
+  'close-check-failed',
+  'close-repository',
+  'close-integrates',
+  'close-nothing-to-merge',
+  'close-primary',
+  'close-git-off',
+  'close-closing',
+];
+const specScenarios: readonly string[] = [
+  'waiting',
+  'close-blocked',
+  'abandoned',
+  'completed',
+  'tasks-open',
+  ...closeScenarios,
+];
+
+const SOURCE = 'nevo-1/single-sign-on';
+
+/** The repository preconditions of the `close-repository` story: three files and no branch. */
+export const storyRepositoryBlockers: readonly RepositoryBlocker[] = [
+  {
+    kind: 'uncommitted-changes',
+    checkout: 'specification',
+    checkoutPath: 'D:\\repos\\acme-portal\\.nevo\\worktrees\\nevo-1',
+    paths: [
+      'specs/single-sign-on/overview.md',
+      'specs/single-sign-on/behaviour.md',
+      'specs/single-sign-on/ux.md',
+    ],
+    count: 3,
+  },
+  {
+    kind: 'integration-target-missing',
+    sourceCheckout: 'linked',
+    candidates: [
+      { branch: 'release/2026.11', facts: ['remote-default', 'started-from'], remote: 'origin' },
+      { branch: 'develop', facts: ['primary-checkout'] },
+    ],
+    otherBranches: ['experiment/oidc-spike', 'hotfix/login-timeout', 'main'],
+    otherBranchCount: 3,
+  },
+];
+
+function mergeOf(scenario: WorkflowStoryScenario): CloseMerge {
+  switch (scenario) {
+    case 'close-nothing-to-merge':
+      return {
+        status: 'integrates',
+        sourceBranch: SOURCE,
+        targetBranch: 'release/2026.11',
+        commitsAhead: 0,
+      };
+    case 'close-primary':
+      return { status: 'not-integrated', reason: 'primary-checkout', sourceBranch: 'develop' };
+    case 'close-git-off':
+      return { status: 'not-integrated', reason: 'git-off', checkout: 'linked' };
+    default:
+      return {
+        status: 'integrates',
+        sourceBranch: SOURCE,
+        targetBranch: 'release/2026.11',
+        commitsAhead: 4,
+      };
+  }
+}
+
+/** The Close preview each Specification story answers with. */
+function closePreviewOf(scenario: WorkflowStoryScenario) {
+  switch (scenario) {
+    case 'close-checking':
+      return never();
+    case 'close-commit-pending':
+      return Promise.reject(
+        refusal('DOCUMENT_COMMITS_PENDING', { details: { cause: 'commit-pending' } }),
+      );
+    case 'close-check-failed':
+      return Promise.reject(refusal('GIT_UNAVAILABLE'));
+    case 'close-repository':
+      return Promise.reject(refusal('CLOSE_PREFLIGHT', { repository: storyRepositoryBlockers }));
+    case 'abandoned':
+    case 'completed':
+    case 'close-integrates':
+    case 'close-nothing-to-merge':
+    case 'close-primary':
+    case 'close-git-off':
+    case 'close-closing':
+      return Promise.resolve({
+        operationId: '6f1c1f43-6c4e-4c5c-9f60-1d3f3a9a1b20',
+        merge: mergeOf(scenario),
+      });
+    default:
+      return Promise.reject(refusal('CLOSE_BLOCKED', { blockers: closeBlockers }));
+  }
+}
+
+/** The projection scenario behind a Specification story. */
+function specificationScenario(scenario: WorkflowStoryScenario): SpecificationWorkflowScenario {
+  return closeScenarios.includes(scenario)
+    ? 'completed'
+    : specScenarios.includes(scenario)
+      ? (scenario as SpecificationWorkflowScenario)
+      : 'waiting';
+}
 
 export function refusal(code: string, data: Record<string, unknown> = {}) {
   return new ApiError({
@@ -90,10 +218,7 @@ function services(scenario: WorkflowStoryScenario) {
     finish: never,
     returnTo: never,
     abandon: never,
-    closePreview: () =>
-      scenario === 'abandoned'
-        ? Promise.resolve({ operationId: '6f1c1f43-6c4e-4c5c-9f60-1d3f3a9a1b20' })
-        : Promise.reject(refusal('CLOSE_BLOCKED', { blockers: closeBlockers })),
+    closePreview: () => closePreviewOf(scenario),
     // An agent Session still works in the worktree of the blocked Specification.
     closeOccupancy: () =>
       Promise.resolve({
@@ -142,13 +267,7 @@ function services(scenario: WorkflowStoryScenario) {
     taskAuthoringApi: {
       ...authoring,
       specificationActions: () =>
-        Promise.resolve({
-          ...specificationWorkflowProjection(
-            specScenarios.includes(scenario)
-              ? (scenario as SpecificationWorkflowScenario)
-              : 'waiting',
-          ),
-        }),
+        Promise.resolve({ ...specificationWorkflowProjection(specificationScenario(scenario)) }),
       taskActions: () => Promise.resolve(taskProjection()),
       addDocuments: () => {
         state.findings = true;
@@ -221,12 +340,46 @@ function historyItems() {
   ];
 }
 
-/** The workspace read: the waiting Specification's Tasks, or all of them cancelled by abandon. */
+/**
+ * The workspace read: the waiting Specification's Tasks, all of them done for a completed one, or
+ * the open ones cancelled by abandon.
+ */
 async function specificationWorkspace(
   scenario: WorkflowStoryScenario,
 ): Promise<SpecificationWorkspaceResponse> {
   const base = await workspaceResponse('draft-problems');
-  if (scenario !== 'abandoned' || base.sections.tasks.state !== 'available') {
+  if (base.sections.tasks.state !== 'available') {
+    return base;
+  }
+
+  if (specificationScenario(scenario) === 'completed') {
+    const tasks = base.sections.tasks.data.groups
+      .flatMap((group) => group.tasks)
+      .map((task) => ({
+        ...task,
+        status: { id: 'completed', label: 'Done', lifecycle: 'completed' as const },
+      }));
+
+    return {
+      ...base,
+      sections: {
+        ...base.sections,
+        tasks: {
+          state: 'available',
+          data: {
+            ...base.sections.tasks.data,
+            completed: tasks.length,
+            total: tasks.length,
+            groups: [
+              { id: 'done', name: 'Done', summary: 'compact' as const, collapsed: true, tasks },
+            ],
+          },
+        },
+      },
+    };
+  }
+
+  if (scenario !== 'abandoned') {
     return base;
   }
 

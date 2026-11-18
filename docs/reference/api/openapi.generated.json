@@ -521,6 +521,7 @@
                   "required": [
                     "kind",
                     "checkout",
+                    "checkoutPath",
                     "paths",
                     "count"
                   ],
@@ -546,6 +547,11 @@
                           ]
                         }
                       ]
+                    },
+                    "checkoutPath": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 4096
                     },
                     "paths": {
                       "type": "array",

@@ -76,6 +76,7 @@ function ProjectSpecificationWorkflow({
     state: task.statusId
       ? t(`taskAuthoring.status.${task.statusId}`, { defaultValue: task.status })
       : task.status,
+    ...(task.statusId ? { statusId: task.statusId } : {}),
   });
   const tasks = new Map(all.map((task) => [task.id, asBlocker(task)]));
   const openTask = (taskId: string) =>
@@ -124,7 +125,6 @@ function ProjectSpecificationWorkflow({
             specTitle={specTitle}
             projection={projection}
             tasks={tasks}
-            cancelledTasks={all.filter((task) => task.statusId === 'cancelled').map(asBlocker)}
             {...(projection.specification?.exit?.abandon.kind === 'allowed' ||
             projection.specification?.exit?.abandon.kind === 'blocked'
               ? { onAbandonInstead: () => setDialog('abandon') }

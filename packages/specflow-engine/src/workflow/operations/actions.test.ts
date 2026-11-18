@@ -297,6 +297,10 @@ describe('Task positions', () => {
               state: 'resolved',
             },
           ],
+          defaultEntries: [
+            { kind: 'task-document', id: 'task', required: true },
+            { kind: 'specification-document', id: 'overview', required: true },
+          ],
         },
         dependencyCandidates: [],
       },
@@ -490,6 +494,24 @@ describe('Task positions', () => {
     expect(projection).toMatchObject({ position: { kind: 'blocked', blockers: [{ kind }] } });
     expect(projection.position).not.toHaveProperty('preview');
     expect(projection).not.toHaveProperty('workflow');
+  });
+
+  it('reports the default context beside an explicit list (what `context: null` returns to)', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    const own = [
+      { kind: 'task-document', id: 'task', required: true },
+      { kind: 'path', path: 'packages/specflow-engine/src', required: false },
+    ] as const;
+    await create(dependencies, 'api', { context: [...own] });
+
+    expect((await project(dependencies, task('api'))).taskAuthoring?.context).toMatchObject({
+      isDefault: false,
+      entries: own.map((entry) => ({ entry })),
+      defaultEntries: [
+        { kind: 'task-document', id: 'task', required: true },
+        { kind: 'specification-document', id: 'overview', required: true },
+      ],
+    });
   });
 
   it('refuses a start while a required context entry does not resolve', async () => {

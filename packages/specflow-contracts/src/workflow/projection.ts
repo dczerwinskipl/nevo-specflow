@@ -689,6 +689,11 @@ export const TaskAuthoringSchema = Type.Object({
         Type.Object({ entry: TaskContextEntrySchema, state: Type.Literal('awaited') }),
       ]),
     ),
+    /**
+     * The default context as the Engine reads it now (read-only): `entries` while `isDefault`,
+     * else the list `context: null` returns to. A client never derives it.
+     */
+    defaultEntries: array(TaskContextEntrySchema),
   }),
   /** The other Tasks in list order; empty once the dependencies cannot change. */
   dependencyCandidates: array(

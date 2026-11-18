@@ -134,10 +134,12 @@ workflow is left out. A client offers exactly these when creating a Task.
 `taskAuthoring` (a Task that is not broken, only in that Task's own projection: the Task lists and
 reads of several Tasks never compute it) is what the owner edits, as the Engine reads it:
 `context` is the **effective** context, `{isDefault, entries: [{entry, state: resolved|unresolved|awaited,
-reason?}]}`. Without an explicit list it is the Engine's single default rule (`task.md`, the Task's
+reason?}], defaultEntries}`. Without an explicit list it is the Engine's single default rule (`task.md`, the Task's
 other documents, then the Specification overview when registered, each required); every start, entry
 check and blocker index uses the same list, and a client's first edit sends these entries as the
-explicit list. `dependencyCandidates` lists the other Tasks in list order, each with `unavailable`
+explicit list. `defaultEntries` is that default rule read now (read-only): the same entries while
+`isDefault`, else the list an edit with `context: null` returns to, so a client can name what the
+return removes without deriving the default itself. `dependencyCandidates` lists the other Tasks in list order, each with `unavailable`
 (`dependency`, `would-create-cycle`, `cancelled`, `broken`) when the edit would refuse it; it is empty
 once the dependencies cannot change.
 

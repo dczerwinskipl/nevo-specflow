@@ -318,7 +318,7 @@ function documentsOf(scenario: EarlyScenario) {
     title: docTitle,
     filename: `${id}.md`,
     kind: id,
-    templateOnly: !(writing && written),
+    ...(writing && written ? {} : { contentState: 'baseline' as const }),
   });
 
   return [

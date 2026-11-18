@@ -6,7 +6,11 @@ import {
   TooltipProvider,
   treeAttentionGlyphClassName,
   treeGlyphSlotClassName,
+  treeAttentionStateLabelClassName,
   treeLeafItemClassName,
+  treeSecondaryStateLabelClassName,
+  treeStateLabelClassName,
+  treeStaticItemClassName,
 } from '@nevo/ui';
 import { TreeLevel } from './TreeLevel';
 import { TreeDocumentRow, TreeFolderRow } from './TreeRows';
@@ -78,5 +82,41 @@ describe('shared document tree rows', () => {
     );
     expect(row('open.md').getAttribute('aria-current')).toBe('true');
     expect(row('other.md').hasAttribute('aria-current')).toBe(false);
+  });
+
+  it('tones the trailing label: muted by default, secondary or attention on request', () => {
+    tree(
+      <>
+        <TreeDocumentRow name="a.md" state={{ text: 'Quiet' }} current={false} onOpen={noop} />
+        <TreeDocumentRow
+          name="b.md"
+          state={{ text: 'Acted on', tone: 'secondary' }}
+          current={false}
+          onOpen={noop}
+        />
+        <TreeDocumentRow
+          name="c.md"
+          state={{ text: 'Look', tone: 'attention' }}
+          current={false}
+          onOpen={noop}
+        />
+      </>,
+      true,
+    );
+    expect(screen.getByText('Quiet').className).toBe(treeStateLabelClassName);
+    expect(screen.getByText('Acted on').className).toBe(treeSecondaryStateLabelClassName);
+    expect(screen.getByText('Look').className).toBe(treeAttentionStateLabelClassName);
+    // The label tone alone keeps the row's own glyph.
+    expect(row('c.md').firstElementChild?.getAttribute('class')).not.toContain(
+      treeAttentionGlyphClassName.split(' ').at(-1),
+    );
+  });
+
+  it('draws a row that opens nothing as the same line, not a button', () => {
+    tree(<TreeDocumentRow name="src/**" state={{ text: 'Required' }} current={false} />, true);
+    expect(screen.queryByRole('button')).toBeNull();
+    const item = screen.getByText('src/**').parentElement!;
+    expect(item.tagName.toLowerCase()).toBe('div');
+    expect(item.className).toBe(treeStaticItemClassName);
   });
 });

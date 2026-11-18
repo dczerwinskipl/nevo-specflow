@@ -14,7 +14,7 @@ import type { TaskAuthoring } from '@nevo/specflow-contracts/workflow';
 import { OperationalRow } from '../../../../shared/operational-list';
 import { SectionAddButton, SectionCallToAction } from '../SectionAddButton';
 import { SectionEditError } from '../SectionEditError';
-import { SupportSection } from '../SupportSection';
+import { OPEN_UP_TO, SupportSection } from '../SupportSection';
 import { taskStatusSupporting } from '../../read-model';
 import { useTaskCommands } from '../useTaskAuthoring';
 import { AddDependencyDialog } from './AddDependencyDialog';
@@ -33,7 +33,6 @@ export interface TaskDependenciesSectionProps {
   readonly editable: boolean;
   /** The Task has started: its dependencies are fixed. */
   readonly started: boolean;
-  readonly collapsible: boolean;
   readonly onOpenTask: (taskId: string) => void;
   readonly onLoadLatest: () => void;
 }
@@ -48,7 +47,6 @@ export function TaskDependenciesSection({
   candidates,
   editable,
   started,
-  collapsible,
   onOpenTask,
   onLoadLatest,
 }: TaskDependenciesSectionProps) {
@@ -71,13 +69,33 @@ export function TaskDependenciesSection({
     <SupportSection
       id="task-dependencies-heading"
       title={t('taskAuthoring.section.dependsOn')}
-      icon="network"
+      taskId={taskId}
       count={dependsOn.length > 0 ? dependsOn.length : undefined}
-      collapsible={collapsible}
+      items={dependsOn.length}
+      openUpTo={OPEN_UP_TO.entries}
+      // A dependency that no longer exists keeps the Task from starting: shown at once.
+      holdsBlocker={dependsOn.some((id) => !byId.has(id))}
       actions={
         editable && dependsOn.length > 0 ? (
           <SectionAddButton label={t('taskAuthoring.dependencies.add')} onPress={openPicker} />
         ) : undefined
+      }
+      dialogs={
+        <>
+          <AddDependencyDialog
+            taskId={taskId}
+            open={adding}
+            onOpenChange={setAdding}
+            candidates={namedCandidates(candidates, tasks)}
+            pending={edit.isPending}
+            error={
+              edit.isError ? (
+                <SectionEditError taskId={taskId} error={edit.error} onLoadLatest={onLoadLatest} />
+              ) : undefined
+            }
+            onAdd={(ids) => save([...dependsOn, ...ids], () => setAdding(false))}
+          />
+        </>
       }
     >
       <div className="grid gap-3">
@@ -147,19 +165,6 @@ export function TaskDependenciesSection({
           </InformationList>
         ) : null}
       </div>
-      <AddDependencyDialog
-        taskId={taskId}
-        open={adding}
-        onOpenChange={setAdding}
-        candidates={namedCandidates(candidates, tasks)}
-        pending={edit.isPending}
-        error={
-          edit.isError ? (
-            <SectionEditError taskId={taskId} error={edit.error} onLoadLatest={onLoadLatest} />
-          ) : undefined
-        }
-        onAdd={(ids) => save([...dependsOn, ...ids], () => setAdding(false))}
-      />
     </SupportSection>
   );
 }

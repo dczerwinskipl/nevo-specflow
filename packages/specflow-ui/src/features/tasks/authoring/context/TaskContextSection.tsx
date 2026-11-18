@@ -2,9 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Button,
-  Icon,
   IconButton,
-  InformationList,
   InlineNote,
   Menu,
   MenuContent,
@@ -14,11 +12,13 @@ import {
   MenuRadioItem,
   MenuSeparator,
   MenuTrigger,
+  TooltipProvider,
   Typography,
+  treeRowActionClassName,
 } from '@nevo/ui';
-import { OperationalRow } from '../../../../shared/operational-list';
+import { TreeDocumentRow, TreeLevel } from '../../../../shared/document-tree';
 import { SectionEditError } from '../SectionEditError';
-import { SupportSection } from '../SupportSection';
+import { OPEN_UP_TO, SupportSection } from '../SupportSection';
 import { useTaskCommands } from '../useTaskAuthoring';
 import {
   AddContextDialog,
@@ -29,6 +29,7 @@ import {
   entriesOf,
   movable,
   moved,
+  removedByDefault,
   withoutEntry,
   withRequired,
   type ContextRow,
@@ -36,12 +37,13 @@ import {
   type TaskContextEntry,
 } from './contextModel';
 import {
-  entryFacts,
+  entryDetails,
   entryName,
-  entrySupporting,
+  entryState,
   kindIcon,
   type ContextNames,
 } from './contextPresentation';
+import { UseDefaultContextDialog } from './UseDefaultContextDialog';
 
 export interface TaskContextSectionProps {
   readonly specId: string;
@@ -53,16 +55,17 @@ export interface TaskContextSectionProps {
   readonly specificationDocuments: readonly SpecificationDocumentOption[];
   /** The projection allows editing the context. */
   readonly editable: boolean;
-  readonly collapsible: boolean;
   /** Opens the row's target; undefined for entries without one (project documents, paths, text). */
   readonly openTarget: (entry: TaskContextEntry) => (() => void) | undefined;
   readonly onLoadLatest: () => void;
 }
 
 /**
- * Context: what the person or agent doing a step reads, in declared order. The entries that need
- * attention come first, at every width; "Show all" shows every entry in its declared order. Each
- * edit sends the whole list with the manifest revision it was read at (the default written out).
+ * Context: what the person or agent doing a step reads, in declared order. The section says
+ * whether it shows the Engine's default or the task's own list, and what the first change does
+ * before it happens. The entries that need attention come first; "Show all" shows every entry in
+ * its declared order. Each edit sends the whole list with the manifest revision it was read at
+ * (the default written out); "Use default context" sends `context: null`.
  */
 export function TaskContextSection(props: TaskContextSectionProps) {
   const { t } = useTranslation();
@@ -70,11 +73,15 @@ export function TaskContextSection(props: TaskContextSectionProps) {
   const { edit } = useTaskCommands(props.specId, props.taskId);
   const [showAll, setShowAll] = useState(false);
   const [adding, setAdding] = useState<AddContextKind>();
+  const [restoring, setRestoring] = useState(false);
   const all = showAll || view.attention.length === 0;
   const visible = all ? view.rows : view.attention;
   const entries = entriesOf(view);
-  const save = (next: readonly TaskContextEntry[], onSuccess?: () => void) =>
-    edit.mutate({ expectedRevision: props.revision, context: [...next] }, { onSuccess });
+  const save = (next: readonly TaskContextEntry[] | null, onSuccess?: () => void) =>
+    edit.mutate(
+      { expectedRevision: props.revision, context: next === null ? null : [...next] },
+      { onSuccess },
+    );
   const nameAt = (list: readonly TaskContextEntry[]) => (index: number) =>
     list[index] ? entryName(list[index], names) : String(index + 1);
   const startAdding = (kind: AddContextKind) => {
@@ -82,29 +89,83 @@ export function TaskContextSection(props: TaskContextSectionProps) {
     setAdding(kind);
   };
 
+  const count = `${t('taskAuthoring.context.count', { count: view.rows.length })} · ${
+    view.explicit ? t('taskAuthoring.context.sourceOwn') : t('taskAuthoring.context.sourceDefault')
+  }`;
+  const optionalMissing = view.attention.filter(
+    (row) => row.problem?.kind === 'unresolved' && !row.entry.required,
+  ).length;
+  // Only an own list can go back, and only once the Engine's default is known.
+  const canRestore = editable && view.explicit && view.defaultEntries !== undefined;
+  const editError = edit.isError ? (
+    <SectionEditError
+      taskId={props.taskId}
+      error={edit.error}
+      onLoadLatest={props.onLoadLatest}
+      entryName={nameAt(edit.variables?.context ?? entries)}
+    />
+  ) : undefined;
+
   return (
     <SupportSection
       id="task-context-heading"
       title={t('taskAuthoring.section.context')}
-      icon="book-open"
-      count={t('taskAuthoring.context.count', { count: view.rows.length })}
-      collapsible={props.collapsible}
+      taskId={props.taskId}
+      count={count}
+      summary={
+        optionalMissing > 0
+          ? `${count} · ${t('taskAuthoring.context.summaryOptionalMissing', { count: optionalMissing })}`
+          : count
+      }
+      items={view.rows.length}
+      openUpTo={OPEN_UP_TO.entries}
       holdsBlocker={view.blocking.length > 0}
-      actions={editable ? <AddContextMenu onChoose={startAdding} /> : undefined}
+      actions={
+        editable ? (
+          <AddContextMenu
+            onChoose={startAdding}
+            {...(canRestore
+              ? {
+                  onUseDefault: () => {
+                    edit.reset();
+                    setRestoring(true);
+                  },
+                }
+              : {})}
+          />
+        ) : undefined
+      }
+      dialogs={
+        <>
+          <AddContextDialog
+            kind={adding}
+            onClose={() => setAdding(undefined)}
+            taskId={props.taskId}
+            specTitle={props.specTitle}
+            existing={entries}
+            specificationDocuments={props.specificationDocuments}
+            pending={edit.isPending}
+            error={editError}
+            onAdd={(added) => save([...entries, ...added], () => setAdding(undefined))}
+          />
+          <UseDefaultContextDialog
+            open={restoring}
+            count={entries.length}
+            removed={removedByDefault(view).map((entry) => entryName(entry, names))}
+            pending={edit.isPending}
+            {...(editError ? { error: editError } : {})}
+            onClose={() => setRestoring(false)}
+            onConfirm={() => save(null, () => setRestoring(false))}
+          />
+        </>
+      }
     >
       <div className="grid gap-3">
         <Typography as="p" variant="body-sm" className="text-content-secondary">
           {t('taskAuthoring.context.explanation')}
         </Typography>
-        {!view.explicit ? <InlineNote>{t('taskAuthoring.context.defaultNote')}</InlineNote> : null}
-        {edit.isError && adding === undefined ? (
-          <SectionEditError
-            taskId={props.taskId}
-            error={edit.error}
-            onLoadLatest={props.onLoadLatest}
-            entryName={nameAt(entries)}
-          />
-        ) : null}
+        <SourceNote explicit={view.explicit} editable={editable} />
+        {edit.isError && adding === undefined && !restoring ? editError : null}
         {view.blocking.length > 0 ? (
           <InlineNote tone="danger">
             <span className="font-medium text-content-primary">
@@ -113,19 +174,22 @@ export function TaskContextSection(props: TaskContextSectionProps) {
             {t('taskAuthoring.context.blockingBody')}
           </InlineNote>
         ) : null}
-        <InformationList>
-          {visible.map((row) => (
-            <ContextEntryRow
-              key={`${row.index}:${row.entry.kind}`}
-              row={row}
-              view={view}
-              names={names}
-              editable={editable && !edit.isPending}
-              onOpen={props.openTarget(row.entry)}
-              onChange={(next) => save(next(entries))}
-            />
-          ))}
-        </InformationList>
+        {/* The rows' tooltips (kind, problem, note) delay like the Documents rows'. */}
+        <TooltipProvider delayDuration={300}>
+          <TreeLevel top flat labelledBy="task-context-heading">
+            {visible.map((row) => (
+              <ContextEntryRow
+                key={`${row.index}:${row.entry.kind}`}
+                row={row}
+                view={view}
+                names={names}
+                editable={editable && !edit.isPending}
+                onOpen={props.openTarget(row.entry)}
+                onChange={(next) => save(next(entries))}
+              />
+            ))}
+          </TreeLevel>
+        </TooltipProvider>
         {view.attention.length > 0 ? (
           <div>
             <Button variant="secondary" size="sm" onClick={() => setShowAll(!all)}>
@@ -136,31 +200,39 @@ export function TaskContextSection(props: TaskContextSectionProps) {
           </div>
         ) : null}
       </div>
-      <AddContextDialog
-        kind={adding}
-        onClose={() => setAdding(undefined)}
-        taskId={props.taskId}
-        specTitle={props.specTitle}
-        existing={entries}
-        specificationDocuments={props.specificationDocuments}
-        pending={edit.isPending}
-        error={
-          edit.isError ? (
-            <SectionEditError
-              taskId={props.taskId}
-              error={edit.error}
-              onLoadLatest={props.onLoadLatest}
-              entryName={nameAt(edit.variables?.context ?? entries)}
-            />
-          ) : undefined
-        }
-        onAdd={(added) => save([...entries, ...added], () => setAdding(undefined))}
-      />
     </SupportSection>
   );
 }
 
-function AddContextMenu({ onChoose }: { onChoose: (kind: AddContextKind) => void }) {
+/**
+ * Which list the section shows, and what the first change does before it happens (A2): the
+ * Engine's default follows the task until a change saves it as the task's own list.
+ */
+function SourceNote({ explicit, editable }: { explicit: boolean; editable: boolean }) {
+  const { t } = useTranslation();
+
+  return (
+    <InlineNote icon="info">
+      <span className="font-medium text-content-primary">
+        {explicit ? t('taskAuthoring.context.ownTitle') : t('taskAuthoring.context.defaultTitle')}
+      </span>{' '}
+      {explicit
+        ? t('taskAuthoring.context.ownBody')
+        : editable
+          ? `${t('taskAuthoring.context.defaultBody')} ${t('taskAuthoring.context.defaultFirstChange')}`
+          : t('taskAuthoring.context.defaultBody')}
+    </InlineNote>
+  );
+}
+
+function AddContextMenu({
+  onChoose,
+  onUseDefault,
+}: {
+  onChoose: (kind: AddContextKind) => void;
+  /** Present when the list is the task's own: offers the return to the default. */
+  onUseDefault?: () => void;
+}) {
   const { t } = useTranslation();
 
   return (
@@ -187,11 +259,18 @@ function AddContextMenu({ onChoose }: { onChoose: (kind: AddContextKind) => void
         <MenuItem leadingIcon="info" onSelect={() => onChoose('instructions')}>
           {t('taskAuthoring.context.addInstructions')}
         </MenuItem>
+        {onUseDefault ? (
+          <>
+            <MenuSeparator />
+            <MenuItem onSelect={onUseDefault}>{t('taskAuthoring.context.useDefault')}</MenuItem>
+          </>
+        ) : null}
       </MenuContent>
     </Menu>
   );
 }
 
+/** One entry: the shared document row (kind glyph, name, trailing need or problem) and its menu. */
 function ContextEntryRow({
   row,
   view,
@@ -210,27 +289,24 @@ function ContextEntryRow({
   const { t } = useTranslation();
   const name = entryName(row.entry, names);
   const can = movable(view, row);
+  const details = entryDetails(row, t);
 
   return (
-    <OperationalRow
-      titleAs="h3"
-      primary={
-        row.entry.kind === 'path' ? <span className="font-mono text-body-sm">{name}</span> : name
-      }
-      onPrimaryClick={onOpen}
-      factsLayout="inline"
-      compactFacts={entryFacts(row, t)}
-      supporting={entrySupporting(row, names, t)}
-      leading={
-        <span className="flex items-center justify-center text-content-muted">
-          <Icon name={kindIcon[row.entry.kind]} size="sm" aria-hidden="true" />
-        </span>
-      }
-      trailing={
+    <TreeDocumentRow
+      name={name}
+      wrap={row.entry.kind === 'instructions'}
+      glyph={kindIcon[row.entry.kind]}
+      state={entryState(row, t)}
+      details={details}
+      spokenDetail={details.join('. ')}
+      current={false}
+      {...(onOpen ? { onOpen } : {})}
+      menu={
         editable && !row.locked ? (
           <Menu modal={false}>
             <MenuTrigger asChild>
               <IconButton
+                className={treeRowActionClassName}
                 icon="ellipsis"
                 size="sm"
                 aria-label={t('taskAuthoring.context.actionsFor', { name })}

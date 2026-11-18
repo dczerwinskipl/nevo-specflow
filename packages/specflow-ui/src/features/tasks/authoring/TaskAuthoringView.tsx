@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from '@tanstack/react-router';
 import { useApplicationCollection } from '../../../app/navigation/ApplicationLocation';
-import { Alert, Button, InlineNote, Typography, useWorkspaceCapabilities } from '@nevo/ui';
+import { Alert, Button, InlineNote, Typography } from '@nevo/ui';
 import type { TaskResourceFacts } from '@nevo/specflow-contracts/tasks';
 import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import type { SpecificationWorkspaceData } from '../../specs/read-model';
@@ -65,7 +65,6 @@ export function TaskAuthoringView({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const collection = useApplicationCollection();
-  const { supportsSplit } = useWorkspaceCapabilities();
   const lifecycle = projection?.task;
   const otherTasks: DependencyTask[] = (workspace?.taskGroups ?? []).flatMap((group) =>
     group.tasks.map((other) => ({
@@ -180,7 +179,7 @@ export function TaskAuthoringView({
       <TaskDocumentsSection
         specId={specId}
         taskId={task.id}
-        collapsible={!supportsSplit}
+        ownContext={contextView.explicit}
         onOpenDocument={onOpenDocument}
       />
       <TaskContextSection
@@ -196,7 +195,6 @@ export function TaskAuthoringView({
           ...(document.filename ? { filename: document.filename } : {}),
         }))}
         editable={lifecycle?.editContext.kind === 'allowed'}
-        collapsible={!supportsSplit}
         openTarget={openTarget}
         onLoadLatest={onReload}
       />
@@ -209,7 +207,6 @@ export function TaskAuthoringView({
         candidates={projection?.taskAuthoring?.dependencyCandidates ?? []}
         editable={lifecycle?.editDependencies.kind === 'allowed'}
         started={resource.position.state !== 'not-started'}
-        collapsible={!supportsSplit}
         onOpenTask={(taskId) =>
           void navigate({
             to: '/specs/$specId/tasks/$taskId',

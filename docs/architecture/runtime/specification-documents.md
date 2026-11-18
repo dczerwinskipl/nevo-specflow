@@ -789,8 +789,9 @@ published change is ONE document operation of action `workflow` (contract
 - **Record** (same lock section, after the files are published): the plan lists the paths with their
   `pre`/`post` and `source: written` (the store wrote them) or `none` (removed), plus the `summary`
   the operation gave (`create task api`). Auto-commit on: the journal is published `queued` (its
-  `checkout-scoped` claim held) and the scheduler is woken; the queue commits it like any member
-  (settle period, batches, verification, `Nevo-Action: workflow`, subject
+  `checkout-scoped` claim held) and the scheduler is woken (a CLI command, which runs no scheduler,
+  drains the queue before it exits); the queue commits it like any member (the batch path list
+  admits the execution state: the Task index and the run records as well as Task folders) (settle period, batches, verification, `Nevo-Action: workflow`, subject
   `spec(workflow): <summary> in <slug>`, `spec(documents): change documents and workflow state in
 <slug>` in a mixed batch). Auto-commit off: the ledger entries (owner `specification`, reason
   `auto-commit-off`) then a settled `completed`/`uncommitted` journal. Git disabled: nothing.

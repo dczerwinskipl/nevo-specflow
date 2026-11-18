@@ -18,8 +18,9 @@ const untracked: RepositoryBlocker = {
   kind: 'uncommitted-changes',
   checkout: 'specification',
   workspaceId: '7b1e2c3d-4f5a-4b6c-8d7e-9f0a1b2c3d4e',
-  paths: ['specs/active/sso/overview.md'],
+  paths: [{ path: 'specs/active/sso/overview.md', scope: 'specification' }],
   count: 1,
+  specificationCount: 1,
 };
 const missingTarget: RepositoryBlocker = {
   kind: 'integration-target-missing',
@@ -187,6 +188,43 @@ describe('closeDialogOutcome', () => {
       kind: 'cannot-start',
       reasonKey: 'workflowExecution.close.refusal.documentsFailed',
     });
+
+    // The ledger facts name the real cause: another specification's Task and step changes, or an
+    // abandoned commit, are not "saved documents".
+    const ledger = (uncommittedHold: WorkflowRefusal['uncommittedHold']) =>
+      closeDialogOutcome({
+        preview: {
+          status: 'error',
+          refusal: refusal('DOCUMENT_COMMITS_PENDING', {
+            documentCause: 'commit-uncommitted',
+            ...(uncommittedHold ? { uncommittedHold } : {}),
+          }),
+        },
+        close: idle,
+      });
+    const other = {
+      kind: 'specification' as const,
+      specId: '1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f',
+      workflowState: 3,
+      documents: 0,
+    };
+    expect(
+      ledger({
+        reasons: ['auto-commit-off'],
+        policy: { documents: 'manual', source: 'default' },
+        owners: [other],
+        unreadable: 0,
+      }),
+    ).toEqual({
+      kind: 'cannot-start',
+      reasonKey: 'workflowExecution.close.refusal.workflowStateUncommitted',
+    });
+    expect(
+      ledger({ reasons: ['auto-commit-off'], owners: [{ ...other, documents: 1 }], unreadable: 0 }),
+    ).toMatchObject({ reasonKey: 'workflowExecution.close.refusal.documentsUncommitted' });
+    expect(
+      ledger({ reasons: ['abandoned'], owners: [{ ...other, documents: 1 }], unreadable: 0 }),
+    ).toMatchObject({ reasonKey: 'workflowExecution.close.refusal.uncommittedAbandoned' });
   });
 
   it('shows a Close refused by documents still being committed as not closed', () => {

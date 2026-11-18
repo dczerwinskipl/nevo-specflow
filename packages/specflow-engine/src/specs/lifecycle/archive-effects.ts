@@ -415,7 +415,10 @@ export async function archiveSpecificationWithCommit(
   const oldPath = 'specs/active/' + record.plan.slug;
   const newPath = 'specs/archive/' + record.plan.slug;
   // The Specification's uncommitted execution state goes into the archive commit; nothing else may be dirty.
-  const facts = await inspectCleanGitWorkspace(actual.workspace, { executionStateOf: oldPath });
+  const facts = await inspectCleanGitWorkspace(actual.workspace, {
+    specificationDirectory: oldPath,
+    acceptExecutionState: true,
+  });
   if (
     facts.head !== source.head ||
     facts.branch !== source.branch ||

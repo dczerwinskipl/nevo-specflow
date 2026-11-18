@@ -3,6 +3,7 @@ import {
   TaskContextInvalidError,
   TaskContextUnresolvedError,
   TasksOpenError,
+  flushAllDocumentCommits,
   openWorkflow,
   type AwaitedContextEntry,
   type CloseBlocker,
@@ -16,6 +17,7 @@ import {
 
 import { engineAt } from './engine-at';
 import { gateLine } from './workflow/present';
+import { drainDocumentQueueAtExit } from './documents/drain';
 import { reportingRefusals } from './documents/report';
 import { ReportedFailure } from './exit-code';
 import { projectDocumentLookup } from './project-document-lookup';
@@ -41,6 +43,35 @@ export async function openExecution(cwd: string, projectRoot?: string): Promise<
     }),
   };
 }
+
+/**
+ * Runs a `tasks`, `workflow` or Abandon command body over a fresh {@link ExecutionSession}, refusals
+ * reported as {@link reportingWorkflowRefusals}. A `change` commits what it queued before the command
+ * exits: with automatic commits on, the execution store queues each change for the document queue,
+ * which in the Runtime its scheduler commits; a one-shot CLI process runs no scheduler, so without
+ * this drain the Task and `.execution` files would stay uncommitted (and journaled) after the command.
+ * With automatic commits off the queue is empty and the drain does nothing.
+ */
+export async function runExecution(
+  context: ExecutionOutput & { readonly cwd: string },
+  options: { readonly projectRoot?: string; readonly json?: boolean },
+  kind: 'read' | 'change',
+  body: (session: ExecutionSession) => Promise<void>,
+): Promise<void> {
+  await reportingWorkflowRefusals(context, options.json, async () => {
+    const session = await openExecution(context.cwd, options.projectRoot);
+    try {
+      await body(session);
+    } finally {
+      if (kind === 'change') {
+        await drainDocumentQueueAtExit(session.engine, flushAllForExit, context.stderr);
+      }
+    }
+  });
+}
+
+const flushAllForExit = (engine: SpecFlowEngine, deadlineMs: number) =>
+  flushAllDocumentCommits(engine, { deadlineMs });
 
 interface CodedError {
   readonly code: string;

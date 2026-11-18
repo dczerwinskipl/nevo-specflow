@@ -186,8 +186,9 @@ describe('E2.T16 authorized HTTP lifecycle adapters', () => {
           kind: 'uncommitted-changes',
           checkout: 'specification',
           workspaceId: expect.stringMatching(UUID) as string,
-          paths: ['stray.txt'],
+          paths: [{ path: 'stray.txt', scope: 'other' }],
           count: 1,
+          specificationCount: 0,
         },
       ],
     };

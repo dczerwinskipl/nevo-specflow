@@ -554,8 +554,9 @@ describe('manual workflow execution', () => {
         kind: 'uncommitted-changes',
         checkout: 'specification',
         workspaceId: '7b1e2c3d-4f5a-4b6c-8d7e-9f0a1b2c3d4e',
-        paths: ['specs/active/sso/overview.md'],
+        paths: [{ path: 'specs/active/sso/overview.md', scope: 'specification' }],
         count: 3,
+        specificationCount: 1,
       },
       {
         kind: 'integration-target-missing',
@@ -595,7 +596,7 @@ describe('manual workflow execution', () => {
       within(dialog)
         .getAllByRole('heading', { level: 3 })
         .map((heading) => heading.textContent),
-    ).toEqual(['Uncommitted specification files · 3', 'No integration branch configured']);
+    ).toEqual(['Uncommitted files in this checkout · 3', 'No integration branch configured']);
     expect(within(dialog).getByText('specs/active/sso/overview.md')).toBeTruthy();
     expect(within(dialog).getByText('and 2 more')).toBeTruthy();
     expect(within(dialog).queryByText('Ready to close')).toBeNull();
@@ -613,8 +614,9 @@ describe('manual workflow execution', () => {
         kind: 'uncommitted-changes',
         checkout: 'specification',
         workspaceId: '1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f',
-        paths: ['notes.txt'],
+        paths: [{ path: 'notes.txt', scope: 'other' }],
         count: 1,
+        specificationCount: 0,
       },
     ];
     const closePreview = vi
@@ -699,7 +701,7 @@ describe('manual workflow execution', () => {
     const dialog = screen.getByRole('dialog');
 
     expect((await within(dialog).findByRole('alert')).textContent).toContain(
-      'Commit them from Documents, then check again.',
+      "Commit them from the specification's Documents, then check again.",
     );
     expect(within(dialog).queryByText('Uncommitted', { exact: false })).toBeNull();
     expect(within(dialog).queryByText('Ready to close')).toBeNull();

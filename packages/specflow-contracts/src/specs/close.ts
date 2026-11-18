@@ -192,10 +192,29 @@ export const IntegrationBranchCandidateSchema = Type.Union([
 ]);
 export type IntegrationBranchCandidate = Static<typeof IntegrationBranchCandidateSchema>;
 /**
+ * One uncommitted path of an `uncommitted-changes` blocker, checkout-relative. `scope`:
+ * `specification` below the Specification's own folder (`specs/active/<slug>/`: its documents,
+ * manifest, Tasks and `.execution`), `other` anywhere else in the checkout (another Specification,
+ * project files such as a note in the repository root).
+ */
+export const UncommittedPathSchema = Type.Object(
+  {
+    path: Type.String({ maxLength: 4096 }),
+    scope: Type.Union([Type.Literal('specification'), Type.Literal('other')]),
+  },
+  { additionalProperties: false },
+);
+export type UncommittedPath = Static<typeof UncommittedPathSchema>;
+/**
  * A repository precondition of a Close the owner fixes in the repository (`CLOSE_PREFLIGHT`, from the
  * preview or the Close): `checkout` is the Specification's own checkout or the one it is integrated
  * into. `uncommitted-changes` names at most 10 `paths` of `count` in the checkout registered as
- * `workspaceId`. `integration-target-missing` (no `git.integrationTargetBranch`) names at most 50 `candidates` ordered by their first fact, and
+ * `workspaceId`, each with its `scope` (the Specification's own first; `specificationCount` of them
+ * in all are its own). A Specification Close accepts its own uncommitted Tasks and `.execution`
+ * (its archive commit takes them along), so its `specification` paths are its documents and manifest;
+ * any other uncommitted file of the checkout still refuses: the Close pins the checkout's HEAD, index
+ * and tree and proves its archive commit (and merge) against them, so it starts from a committed
+ * checkout and never commits, stashes or discards files that are not the Specification's. `integration-target-missing` (no `git.integrationTargetBranch`) names at most 50 `candidates` ordered by their first fact, and
  * `otherBranches`: at most 200 of the `otherBranchCount` remaining local branches by name, without
  * the Specification's own linked branch and branches `git.worktrees.branchPattern` names. Both may be
  * empty, and no branch (`main` included) is assumed. With Git off (`git.enabled: false` or no `git:`
@@ -214,8 +233,11 @@ export const RepositoryBlockerSchema = Type.Union([
        * read from `GET /api/workspaces` (`workspace.view`), never sent here.
        */
       workspaceId: WorkspaceIdSchema,
-      paths: Type.Array(Type.String({ maxLength: 4096 }), { maxItems: 10 }),
+      /** The Specification's own paths first, then the others, each group in Git's order. */
+      paths: Type.Array(UncommittedPathSchema, { maxItems: 10 }),
       count: Type.Integer({ minimum: 1 }),
+      /** How many of the `count` paths are the Specification's own (`scope: 'specification'`). */
+      specificationCount: Type.Integer({ minimum: 0 }),
     },
     { additionalProperties: false },
   ),

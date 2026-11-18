@@ -275,7 +275,8 @@ export type CloseLocalConfigRefusal = 'changed' | 'unrecorded' | 'unreadable';
 /**
  * A repository precondition of a Close the owner can fix in the repository (`CLOSE_PREFLIGHT`):
  * - `uncommitted-changes`: the checkout has staged, modified or untracked files (`paths`, at most
- *   {@link REPOSITORY_PATHS_NAMED}; `count` is the total) that a Close does not take along;
+ *   {@link REPOSITORY_PATHS_NAMED}, the Specification's own first; `count` is the total and
+ *   `specificationCount` how many of them are the Specification's) that a Close does not take along;
  * - `integration-target-missing`: the project uses Git but configures no
  *   `git.integrationTargetBranch`; it names the local branches that could receive the Close
  *   ({@link IntegrationBranchCandidates}), none chosen (with Git off a Close archives in place and
@@ -291,8 +292,9 @@ export type CloseRepositoryBlocker =
       readonly checkout: CloseCheckoutRole;
       /** The registered workspace of that checkout, where the owner commits the files. */
       readonly workspaceId: string;
-      readonly paths: readonly string[];
+      readonly paths: readonly UncommittedPath[];
       readonly count: number;
+      readonly specificationCount: number;
     }
   | ({
       readonly kind: 'integration-target-missing';
@@ -311,6 +313,16 @@ export type CloseRepositoryBlocker =
   | { readonly kind: 'branch-detached'; readonly checkout: CloseCheckoutRole };
 
 export type CloseCheckoutRole = 'specification' | 'integration-target';
+
+/**
+ * One uncommitted path of an `uncommitted-changes` blocker, checkout-relative. `specification`: below
+ * the Specification's own directory (`specs/active/<slug>/`: its documents, manifest, Tasks and
+ * `.execution`); `other`: anywhere else in the checkout (another Specification, project files).
+ */
+export interface UncommittedPath {
+  readonly path: string;
+  readonly scope: 'specification' | 'other';
+}
 
 /**
  * Why a local branch is offered as the integration branch, in this order:

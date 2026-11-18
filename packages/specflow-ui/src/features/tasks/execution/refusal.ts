@@ -1,3 +1,4 @@
+import type { UncommittedHoldDetails } from '@nevo/specflow-contracts/documents';
 import type { CloseRefusalBlocker, RepositoryBlocker } from '@nevo/specflow-contracts/specs';
 import { isHttpClientError } from '@nevo/http-client';
 import type { GateStatus, OpenTask, WorkflowError } from '@nevo/specflow-contracts/workflow';
@@ -20,6 +21,8 @@ export interface WorkflowRefusal {
   readonly repository: readonly RepositoryBlocker[];
   /** `DOCUMENT_COMMITS_PENDING`: why document commits hold the checkout (`details.cause`). */
   readonly documentCause?: string;
+  /** `DOCUMENT_COMMITS_PENDING` (`commit-uncommitted`): whose files are uncommitted and why. */
+  readonly uncommittedHold?: UncommittedHoldDetails;
   /** A producing finish kept drafts that depend on drafts it cancels (`details.draftConflicts`). */
   readonly draftConflicts: NonNullable<Details['draftConflicts']>;
   /** `WORKFLOW_TASKS_OPEN`: the open Tasks the Specification's completion waits for. */
@@ -40,7 +43,9 @@ function bodyOf(error: unknown): Record<string, unknown> | undefined {
 export function workflowRefusalOf(error: unknown): WorkflowRefusal {
   const body = bodyOf(error);
   const details = body?.details as Details | undefined;
-  const documentCause = (body?.details as { cause?: unknown } | undefined)?.cause;
+  const documentDetails = body?.details as
+    { cause?: unknown; uncommitted?: UncommittedHoldDetails } | undefined;
+  const documentCause = documentDetails?.cause;
   const closeBlockers = Array.isArray(body?.blockers)
     ? (body.blockers as readonly CloseRefusalBlocker[])
     : undefined;
@@ -53,6 +58,9 @@ export function workflowRefusalOf(error: unknown): WorkflowRefusal {
       ? (body.repository as readonly RepositoryBlocker[])
       : [],
     ...(typeof documentCause === 'string' ? { documentCause } : {}),
+    ...(typeof documentDetails?.uncommitted === 'object' && documentDetails.uncommitted !== null
+      ? { uncommittedHold: documentDetails.uncommitted }
+      : {}),
     draftConflicts: details?.draftConflicts ?? [],
     openTasks: details?.openTasks ?? [],
     outcomeUnknown: isApiError(error) && error.outcome === 'unknown',

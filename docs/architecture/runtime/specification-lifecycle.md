@@ -252,7 +252,13 @@ untracked or removed), the archive inventory admits them as untracked or removed
 and its proof expect the paths of the source directory at the pinned commit plus every archived file. Any other
 staged, modified or untracked path still refuses with `CLOSE_PREFLIGHT`, and the refusal names the paths
 (`CloseOperationError.paths`, at most ten in the message). Worktree and Workspace Close archive nothing and keep
-the strict check. So an Abandon followed by Close needs no manual commit.
+the strict check. So an Abandon followed by Close needs no manual commit. The `uncommitted-changes` blocker
+names each path with its `scope`: `specification` below `specs/active/<slug>/` (listed first, counted in
+`specificationCount`) or `other` (another Specification, project files), so a refusal never calls a file in the
+repository root a Specification file. The ledger hold (`DOCUMENT_COMMITS_PENDING`, `commit-uncommitted`) carries
+whose paths it holds and why (`details.uncommitted`): with automatic commits off (the default) another
+Specification's Task and step changes stay in the ledger until its next step finish, and hold a Close of a
+Specification sharing its checkout until they are committed.
 
 ## Safe integration, rebind and disposal
 

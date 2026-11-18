@@ -2,8 +2,8 @@
 // before it takes the control lock, and its errors have a fixed precedence
 // (DOCUMENT_COMMITS_PENDING, then the claim conflict, then the preflight).
 import { randomUUID } from 'node:crypto';
-import { writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -21,12 +21,13 @@ import {
 import { runQueueOnce } from '../../src/specs/documents/queue/worker';
 import { readCloseJournal } from '../../src/specs/lifecycle/journal/store';
 import { previewPublicCloseOperation } from '../../src/specs/operations/api';
+import { recordLedgerEntries, withLedgerLock } from '../../src/specs/durable';
 import {
   CloseOperationError,
   previewCloseOperation,
   reserveCloseOperation,
 } from '../../src/testing';
-import { failure, removeTrackedRoots } from '../support/documents-fixture';
+import { failure, handBuiltSpecification, removeTrackedRoots } from '../support/documents-fixture';
 import {
   GIT_ON,
   ledgerOf,
@@ -323,9 +324,25 @@ describe('Close and the uncommitted-changes ledger', () => {
       reserveCloseOperation(project.engine, closeRequest(project), { flush: flushOptions() }),
     );
     expect(error).toBeInstanceOf(DocumentError);
+    // The refusal says why (manual commit mode, set locally) and whose files (a document).
     expect(error).toMatchObject({
       code: 'DOCUMENT_COMMITS_PENDING',
-      details: { cause: 'commit-uncommitted' },
+      details: {
+        cause: 'commit-uncommitted',
+        uncommitted: {
+          reasons: ['auto-commit-off'],
+          policy: { documents: 'manual', source: 'local' },
+          owners: [
+            {
+              kind: 'specification',
+              specId: closeRequest(project).specId,
+              workflowState: 0,
+              documents: 1,
+            },
+          ],
+          unreadable: 0,
+        },
+      },
     });
     // The Engine committed nothing on its own.
     expect(commitCount(project)).toBe(before);
@@ -376,6 +393,61 @@ describe('Close and the uncommitted-changes ledger', () => {
       details: { cause: 'commit-uncommitted' },
     });
     expect(await readCloseJournal(project.engine.context, request.operationId)).toBeUndefined();
+  });
+
+  it('names whose files hold it: the workflow state of another Specification', async () => {
+    const project = await closeProject();
+    // No setting names the policy: automatic commits are off by default.
+    await setLocalAutoCommit(project, undefined);
+    const { specId: other } = await handBuiltSpecification(project, { slug: 'other' });
+    git(project.root, 'add', 'specs');
+    commitStaged(project.root, 'another specification');
+    // As `tasks create` and `workflow start` leave them with automatic commits off, until a finish.
+    const paths = [
+      'specs/active/other/.execution/specification.yaml',
+      'specs/active/other/tasks/index.yaml',
+      'specs/active/other/tasks/build/task.yaml',
+    ];
+    for (const path of paths) {
+      await mkdir(dirname(join(project.root, path)), { recursive: true });
+      await writeFile(join(project.root, path), 'state\n');
+    }
+
+    await withLedgerLock(project.engine.context, () =>
+      recordLedgerEntries(
+        project.engine.context,
+        {
+          projectId: project.engine.context.project.projectId,
+          workspaceId: project.workspaceId,
+          workspaceRoot: project.root,
+          owner: { kind: 'specification', id: other },
+        },
+        {
+          operationId: randomUUID(),
+          reason: 'auto-commit-off',
+          recordedAt: new Date().toISOString(),
+          branch: git(project.root, 'symbolic-ref', '--short', 'HEAD'),
+          head: null,
+          paths: paths.map((path) => ({ path, postSha256: sha256Hex('state\n') })),
+        },
+      ),
+    );
+
+    const error = await failure(
+      reserveCloseOperation(project.engine, closeRequest(project), { flush: flushOptions() }),
+    );
+    expect(error).toMatchObject({
+      code: 'DOCUMENT_COMMITS_PENDING',
+      details: {
+        cause: 'commit-uncommitted',
+        uncommitted: {
+          reasons: ['auto-commit-off'],
+          policy: { documents: 'manual', source: 'default' },
+          owners: [{ kind: 'specification', specId: other, workflowState: 3, documents: 0 }],
+          unreadable: 0,
+        },
+      },
+    });
   });
 
   it('keeps refusing a ledger whose files were changed again after the hand commit', async () => {

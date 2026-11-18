@@ -2455,7 +2455,9 @@
         "commitBlocked": "Git does not accept a commit on this branch now. Check the branch protection and the repository state, then check again.",
         "engine": "Close is not available in this Runtime.",
         "unknown": "Close did not start, and the reason cannot be shown here. Check again; if it fails again, run “nevo-specflow specs close <specification id> --preview” in the project folder.",
-        "documentsUncommitted": "Saved documents in this checkout are not committed (manual commit mode). Commit them from Documents, then check again.",
+        "documentsUncommitted": "Saved documents in this checkout are not committed: automatic commits were off when they were saved. Commit them from the specification's Documents, then check again.",
+        "workflowStateUncommitted": "Task and step changes of another specification in this checkout are not committed yet: with automatic commits off, they are committed when its current step finishes. Finish that step or commit them with Git, then check again.",
+        "uncommittedAbandoned": "Changes in this checkout whose commit was abandoned are not committed. Commit them with Git, then check again.",
         "documentsFailed": "A document commit failed. Retry or resolve it in Documents, then check again."
       },
       "repository": {
@@ -2464,11 +2466,12 @@
           "integrationTarget": "the checkout it is integrated into"
         },
         "uncommitted": {
-          "titleSpecification": "Uncommitted specification files",
+          "titleSpecification": "Uncommitted files in this checkout",
           "titleIntegrationTarget": "Uncommitted files where it merges",
-          "leadSpecification": "Closing integrates the specification's committed work. These files are not committed:",
+          "leadSpecification": "Closing commits only this specification and starts from a committed checkout. These files are not committed:",
           "leadIntegrationTarget": "These files are not committed in the checkout {{title}} merges into. They may not belong to this specification:",
-          "commitSpecification": "Commit them in the specification's checkout, then check again.",
+          "ofSpecification": "(this specification)",
+          "commitSpecification": "Commit them in this checkout (or move the ones that do not belong here), then check again.",
           "commitIntegrationTarget": "Commit them in that checkout (or move them to where they belong), then check again.",
           "discardWarningLead": "Discarding deletes these changes for good.",
           "discardWarning": "Git keeps no copy of uncommitted work, so discard only what you are sure you do not need."

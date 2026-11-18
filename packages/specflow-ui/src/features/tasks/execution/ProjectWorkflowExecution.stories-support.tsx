@@ -150,8 +150,9 @@ function repositoryBlockersOf(scenario: WorkflowStoryScenario): readonly Reposit
             'src/app/session/refresh.ts',
             'src/app/session/refresh.test.ts',
             'docs/notes.md',
-          ],
+          ].map((path) => ({ path, scope: 'other' as const })),
           count: 8,
+          specificationCount: 0,
         },
       ];
     // No candidate: only the other local branches, three of 240 listed.
@@ -177,11 +178,12 @@ export const storyRepositoryBlockers: readonly RepositoryBlocker[] = [
     checkout: 'specification',
     workspaceId: SPEC_WORKSPACE,
     paths: [
-      'specs/single-sign-on/overview.md',
-      'specs/single-sign-on/behaviour.md',
-      'specs/single-sign-on/ux.md',
+      { path: 'specs/active/single-sign-on/overview.md', scope: 'specification' },
+      { path: 'specs/active/single-sign-on/behaviour.md', scope: 'specification' },
+      { path: 'scratch-notes.txt', scope: 'other' },
     ],
     count: 3,
+    specificationCount: 2,
   },
   {
     kind: 'integration-target-missing',

@@ -5,9 +5,14 @@ import type { DocumentChangeStage } from '../changes/journal/stages';
 import { listDocumentChangeJournals } from '../write/journal-store';
 import { listManualCommitJournals } from '../../manual-commit';
 import {
+  UNCOMMITTED_HOLD_OWNERS_MAX,
+  type UncommittedHoldDetails,
+} from '@nevo/specflow-contracts/documents';
+import {
   pruneUncommitted,
   readUncommittedHold,
   type UncommittedAllowance,
+  type UncommittedHold,
 } from '../../uncommitted';
 import { systemQueueClock, type QueueClock } from './settle-ledger';
 import { systemQueueTimers, withDeadline, type QueueTimers } from './timers';
@@ -37,6 +42,8 @@ export interface DocumentCommitHold {
   readonly workspaceId: string;
   readonly cause: DocumentCommitHoldCause;
   readonly operationIds: readonly string[];
+  /** `commit-uncommitted`: whose paths the ledger holds and why they are uncommitted. */
+  readonly uncommitted?: UncommittedHold;
 }
 
 const HOLD_OF_STAGE: Readonly<Record<DocumentChangeStage, DocumentCommitHoldCause | undefined>> = {
@@ -121,24 +128,51 @@ export async function readCloseHold(
   await pruneUncommitted(engine, { workspaceId }).catch(() => undefined);
   const ledger = await readUncommittedHold(engine, workspaceId, allowance);
 
-  return ledger !== undefined
-    ? { workspaceId, cause: 'commit-uncommitted', operationIds: ledger.operationIds }
-    : undefined;
+  return ledger !== undefined ? uncommittedHoldOf(ledger) : undefined;
 }
 
-/** The `DOCUMENT_COMMITS_PENDING` error of a hold (Close, integration). */
+const uncommittedHoldOf = (ledger: UncommittedHold): DocumentCommitHold => ({
+  workspaceId: ledger.workspaceId,
+  cause: 'commit-uncommitted',
+  operationIds: ledger.operationIds,
+  uncommitted: ledger,
+});
+
+/**
+ * The `DOCUMENT_COMMITS_PENDING` error of a hold (Close, integration). `commit-uncommitted` carries
+ * the facts of the ledger (`details.uncommitted`): why the paths are uncommitted (the policy and its
+ * source, or an abandoned commit) and whose they are (workflow state or documents of which
+ * Specification, definitions), so the refusal names the real cause.
+ */
 export function documentCommitsPendingError(hold: DocumentCommitHold): Error {
-  const cause =
-    hold.cause === 'commit-pending'
-      ? 'close-commit-pending'
-      : hold.cause === 'commit-failed'
-        ? 'close-commit-failed'
-        : 'close-commit-uncommitted';
+  if (hold.cause === 'commit-uncommitted') {
+    return documentChangeError(
+      'close-commit-uncommitted',
+      'The Engine left changes of this checkout uncommitted; commit them, then try again.',
+      hold.uncommitted !== undefined ? { uncommitted: uncommittedDetails(hold.uncommitted) } : {},
+    );
+  }
 
   return documentChangeError(
-    cause,
+    hold.cause === 'commit-pending' ? 'close-commit-pending' : 'close-commit-failed',
     'Document commits of this checkout are not finished; flush them, retry or resolve the failed ones.',
   );
+}
+
+function uncommittedDetails(hold: UncommittedHold): UncommittedHoldDetails {
+  return {
+    reasons: [...hold.reasons],
+    ...(hold.policy !== undefined
+      ? {
+          policy: {
+            documents: hold.policy.auto ? ('auto' as const) : ('manual' as const),
+            source: hold.policy.source,
+          },
+        }
+      : {}),
+    owners: hold.owners.slice(0, UNCOMMITTED_HOLD_OWNERS_MAX).map((owner) => ({ ...owner })),
+    unreadable: hold.unreadable,
+  };
 }
 
 export interface FlushDependencies {
@@ -408,11 +442,7 @@ export async function assertNoUncommittedHold(
   for (const workspaceId of new Set(workspaceIds)) {
     const hold = await readUncommittedHold(engine, workspaceId, allowance);
     if (hold !== undefined) {
-      throw documentCommitsPendingError({
-        workspaceId,
-        cause: 'commit-uncommitted',
-        operationIds: hold.operationIds,
-      });
+      throw documentCommitsPendingError(uncommittedHoldOf(hold));
     }
   }
 }

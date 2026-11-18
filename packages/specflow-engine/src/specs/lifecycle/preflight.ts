@@ -31,6 +31,7 @@ import {
   type GitOffClosePlan,
   type CloseRepositoryBlocker,
   type CloseWorkspaceEvidence,
+  type UncommittedPath,
 } from './model';
 import { sortedResources } from './resources';
 import { readIntegrationCandidates } from './integration-candidates';
@@ -189,20 +190,45 @@ export async function listUncleanPaths(root: string): Promise<readonly UncleanPa
   return paths;
 }
 
-/**
- * The paths a clean-tree check accepts: the execution state (`.execution/**`, `tasks/**`) of the
- * Specification a Specification Close archives, which its archive commit takes along (owner decision
- * 2026-11-12). Absent: nothing is accepted.
- */
-export interface CleanTreeAllowance {
-  /** The checkout-relative directory of the Specification (`specs/active/<slug>`). */
-  readonly executionStateOf: string;
+/** What a clean-tree check knows of the Specification it serves. Absent: every path is `other`. */
+export interface CleanTreeCheck {
+  /**
+   * The checkout-relative directory of the Specification (`specs/active/<slug>`): unclean paths below
+   * it (its documents, manifest, Tasks and `.execution`) are named `specification`, the rest `other`.
+   */
+  readonly specificationDirectory?: string;
+  /**
+   * Accept that Specification's execution state (`.execution/**`, `tasks/**`): a Specification Close
+   * takes it into its archive commit (owner decision 2026-11-12). Needs `specificationDirectory`.
+   */
+  readonly acceptExecutionState?: boolean;
+  /**
+   * The checkout's role in the Close preflight: a refusal the owner can fix in the repository then
+   * carries its {@link CloseRepositoryBlocker} for that checkout.
+   */
+  readonly role?: CloseCheckoutRole;
 }
 
 /**
- * Read-only: git status may refresh index by default; disable optional locks. With `role` (the
- * Close preflight), a refusal the owner can fix in the repository carries its
- * {@link CloseRepositoryBlocker} for that checkout.
+ * The unclean paths of a refusal, the Specification's own first (each group in Git's order), with
+ * the scope that says whose they are.
+ */
+function scopedPaths(
+  paths: readonly string[],
+  directory: string | undefined,
+): readonly UncommittedPath[] {
+  const own = (path: string) => directory !== undefined && path.startsWith(directory + '/');
+
+  return [
+    ...paths.filter(own).map((path) => ({ path, scope: 'specification' as const })),
+    ...paths.filter((path) => !own(path)).map((path) => ({ path, scope: 'other' as const })),
+  ];
+}
+
+/**
+ * Read-only: git status may refresh index by default; disable optional locks. Refuses a checkout
+ * with an unfinished Git operation, any staged, modified or untracked path (but the accepted
+ * execution state) or a HEAD that is not on a local branch.
  */
 export async function inspectCleanGitWorkspace(
   workspace: {
@@ -210,16 +236,18 @@ export async function inspectCleanGitWorkspace(
     readonly root: string;
     readonly instanceId?: string;
   },
-  allowance?: CleanTreeAllowance,
-  role?: CloseCheckoutRole,
+  check: CleanTreeCheck = {},
 ): Promise<CloseWorkspaceEvidence> {
   const root = workspace.root;
+  const { specificationDirectory: directory, role } = check;
   await requireNoGitOperation(root, role);
   const unclean = (await listUncleanPaths(root))
     .map((entry) => entry.path)
     .filter(
       (path) =>
-        allowance === undefined || !isExecutionStatePathOf(allowance.executionStateOf, path),
+        !check.acceptExecutionState ||
+        directory === undefined ||
+        !isExecutionStatePathOf(directory, path),
     );
   if (unclean.length > 0) {
     const named = unclean.slice(0, UNCLEAN_PATHS_NAMED).join(', ');
@@ -227,6 +255,7 @@ export async function inspectCleanGitWorkspace(
       unclean.length > UNCLEAN_PATHS_NAMED
         ? ` and ${unclean.length - UNCLEAN_PATHS_NAMED} more`
         : '';
+    const scoped = scopedPaths(unclean, directory);
 
     throw new CloseOperationError(
       'CLOSE_PREFLIGHT',
@@ -240,8 +269,10 @@ export async function inspectCleanGitWorkspace(
                   kind: 'uncommitted-changes',
                   checkout: role,
                   workspaceId: workspace.workspaceId,
-                  paths: unclean.slice(0, UNCLEAN_PATHS_NAMED),
+                  paths: scoped.slice(0, UNCLEAN_PATHS_NAMED),
                   count: unclean.length,
+                  specificationCount: scoped.filter((entry) => entry.scope === 'specification')
+                    .length,
                 },
               ],
             }
@@ -521,15 +552,14 @@ async function previewGitClose(
   const configured = needsTarget && !pinned ? repository : undefined;
   const targetMissing = configured !== undefined && !configured.policy.integrationTargetBranch;
   // A Specification Close commits the Specification's uncommitted execution state with its archive.
+  const specificationDirectory = 'specs/active/' + canonical.specification.slug;
   let source: CloseWorkspaceEvidence;
   try {
-    source = await inspectCleanGitWorkspace(
-      sourceWorkspace,
-      request.kind === 'specification-close'
-        ? { executionStateOf: 'specs/active/' + canonical.specification.slug }
-        : undefined,
-      'specification',
-    );
+    source = await inspectCleanGitWorkspace(sourceWorkspace, {
+      specificationDirectory,
+      acceptExecutionState: request.kind === 'specification-close',
+      role: 'specification',
+    });
   } catch (error) {
     // Only a refusal that names repository preconditions takes the missing branch along; any other
     // stays as it is.
@@ -580,7 +610,10 @@ async function previewGitClose(
         throw invalid('Pinned integration target checkout is unavailable.');
       }
 
-      target = await inspectCleanGitWorkspace(registration, undefined, 'integration-target');
+      target = await inspectCleanGitWorkspace(registration, {
+        specificationDirectory,
+        role: 'integration-target',
+      });
       targetBranch = pinned.branch;
       if (target.branch !== targetBranch) {
         throw new CloseOperationError(
@@ -632,7 +665,10 @@ async function previewGitClose(
       target =
         source.workspaceId === primary.workspaceId
           ? source
-          : await inspectCleanGitWorkspace(primary, undefined, 'integration-target');
+          : await inspectCleanGitWorkspace(primary, {
+              specificationDirectory,
+              role: 'integration-target',
+            });
       if (target.branch !== targetBranch) {
         throw new CloseOperationError(
           'CLOSE_PREFLIGHT',

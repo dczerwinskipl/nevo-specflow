@@ -44,8 +44,8 @@ function Group({
 const MONO = 'font-mono text-content-primary [overflow-wrap:anywhere]';
 
 /**
- * Files not committed in a checkout the Close needs clean: the files (at most five, then "and N
- * more"), committing them as the way forward, the checkout's path to copy (when it can be read),
+ * Files not committed in a checkout the Close needs clean: the files (at most five, the
+ * specification's own first and marked, then "and N more"), committing them as the way forward, the checkout's path to copy (when it can be read),
  * and the warning that
  * discarding loses them for good. The dialog never offers to discard.
  */
@@ -78,9 +78,16 @@ function UncommittedFiles({
       }
     >
       <ul className="grid list-disc gap-0.5 pl-5 text-body-sm marker:text-content-muted">
-        {shown.map((path) => (
-          <li key={path} className={MONO}>
-            {path}
+        {/* The specification's own files come first; the label tells them from the others. */}
+        {shown.map(({ path, scope }) => (
+          <li key={path}>
+            <span className={MONO}>{path}</span>
+            {scope === 'specification' ? (
+              <span className="text-content-muted">
+                {' '}
+                {t('workflowExecution.close.repository.uncommitted.ofSpecification')}
+              </span>
+            ) : null}
           </li>
         ))}
         {more > 0 ? (

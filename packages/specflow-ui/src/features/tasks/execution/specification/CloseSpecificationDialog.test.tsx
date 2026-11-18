@@ -117,8 +117,12 @@ const uncommitted: RepositoryBlocker = {
   kind: 'uncommitted-changes',
   checkout: 'specification',
   workspaceId: WORKTREE,
-  paths: ['specs/sso/overview.md', 'specs/sso/ux.md'],
+  paths: [
+    { path: 'specs/active/sso/overview.md', scope: 'specification' },
+    { path: 'scratch-notes.txt', scope: 'other' },
+  ],
   count: 2,
+  specificationCount: 1,
 };
 
 function dirtyPreview() {
@@ -142,7 +146,13 @@ describe('CloseSpecificationDialog', () => {
     expect(
       await within(dialog).findByText('SSO sign-in cannot close yet: 1 repository problem.'),
     ).toBeTruthy();
-    expect(within(dialog).getByText('specs/sso/ux.md')).toBeTruthy();
+    // The specification's own file is marked; a file elsewhere in the checkout is not.
+    expect(
+      within(dialog).getByText('specs/active/sso/overview.md').parentElement?.textContent,
+    ).toBe('specs/active/sso/overview.md (this specification)');
+    expect(within(dialog).getByText('scratch-notes.txt').parentElement?.textContent).toBe(
+      'scratch-notes.txt',
+    );
     // The checkout's path comes from the registered workspaces, not from the refusal.
     expect(
       await within(dialog).findByText('D:\\repos\\acme\\.nevo\\worktrees\\nevo-1'),
@@ -173,7 +183,7 @@ describe('CloseSpecificationDialog', () => {
 
     expect(
       await within(dialog).findByText(
-        "Commit them in the specification's checkout, then check again.",
+        'Commit them in this checkout (or move the ones that do not belong here), then check again.',
       ),
     ).toBeTruthy();
     expect(within(dialog).queryByRole('button', { name: 'Copy path' })).toBeNull();

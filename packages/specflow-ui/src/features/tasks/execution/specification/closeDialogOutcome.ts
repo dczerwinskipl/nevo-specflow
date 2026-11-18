@@ -1,3 +1,4 @@
+import type { UncommittedHoldDetails } from '@nevo/specflow-contracts/documents';
 import type {
   CloseMerge,
   CloseRefusalBlocker,
@@ -149,10 +150,32 @@ export type CloseRefusalKey =
       | 'git'
       | 'documentsPending'
       | 'documentsUncommitted'
+      | 'workflowStateUncommitted'
+      | 'uncommittedAbandoned'
       | 'documentsFailed'
       | 'commitBlocked'
       | 'engine'
       | 'unknown'}`;
+
+/**
+ * Why the Engine's uncommitted files hold the Close, from the facts the refusal carries: an abandoned
+ * commit, the workflow state (Tasks, step progress) of another specification that only its next step
+ * finish commits, or saved documents (also the answer when the facts are missing).
+ */
+function uncommittedKey(hold: UncommittedHoldDetails | undefined): CloseRefusalKey {
+  if (hold?.reasons.length === 1 && hold.reasons[0] === 'abandoned') {
+    return 'workflowExecution.close.refusal.uncommittedAbandoned';
+  }
+
+  const workflowStateOnly =
+    hold !== undefined &&
+    hold.owners.length > 0 &&
+    hold.owners.every((owner) => owner.kind === 'specification' && owner.documents === 0);
+
+  return workflowStateOnly
+    ? 'workflowExecution.close.refusal.workflowStateUncommitted'
+    : 'workflowExecution.close.refusal.documentsUncommitted';
+}
 
 /**
  * The one sentence that explains a refused Close preview or Close by its stable code; a refusal the
@@ -191,9 +214,8 @@ export function closeRefusalKey(refusal: WorkflowRefusal): CloseRefusalKey {
     case 'GIT_OPERATION_UNCERTAIN':
       return 'workflowExecution.close.refusal.git';
     case 'DOCUMENT_COMMITS_PENDING':
-      // Manual commit mode: nothing commits them by itself; the owner commits them from Documents.
       return refusal.documentCause === 'commit-uncommitted'
-        ? 'workflowExecution.close.refusal.documentsUncommitted'
+        ? uncommittedKey(refusal.uncommittedHold)
         : refusal.documentCause === 'commit-failed'
           ? 'workflowExecution.close.refusal.documentsFailed'
           : 'workflowExecution.close.refusal.documentsPending';

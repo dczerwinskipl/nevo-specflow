@@ -191,7 +191,7 @@ function blockersOf(error: unknown): { blockers?: ExitBlocker[] } {
 function repositoryBlocker(blocker: CloseRepositoryBlocker): RepositoryBlocker {
   switch (blocker.kind) {
     case 'uncommitted-changes':
-      return { ...blocker, paths: [...blocker.paths] };
+      return { ...blocker, paths: blocker.paths.map((entry) => ({ ...entry })) };
     case 'integration-target-missing':
       return {
         kind: blocker.kind,

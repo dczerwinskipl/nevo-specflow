@@ -420,6 +420,10 @@ describe('E2.T10 — read-only lifecycle admission and durable shared Git resour
     const { engine: current, root } = await fixture();
     const spec = await specification(current, 'Dirty worktree');
     await writeFile(join(root, 'do-not-touch.txt'), 'untouched\n');
+    // The Specification's own edited document is named apart from the other files of the checkout,
+    // and listed first.
+    const overview = join(root, 'specs/active', spec.slug, 'overview.md');
+    await writeFile(overview, (await readFile(overview, 'utf8')) + '\nEdited.\n');
     await expect(
       previewCloseOperation(current, {
         kind: 'specification-close',
@@ -432,8 +436,12 @@ describe('E2.T10 — read-only lifecycle admission and durable shared Git resour
           kind: 'uncommitted-changes',
           checkout: 'specification',
           workspaceId: expect.stringMatching(UUID) as string,
-          paths: ['do-not-touch.txt'],
-          count: 1,
+          paths: [
+            { path: `specs/active/${spec.slug}/overview.md`, scope: 'specification' },
+            { path: 'do-not-touch.txt', scope: 'other' },
+          ],
+          count: 2,
+          specificationCount: 1,
         },
       ],
     });

@@ -723,8 +723,14 @@ the demo endpoints.
 19. **Close refused with pending commits** (`DOCUMENT_COMMITS_PENDING`, `details.cause` `commit-pending`,
     `commit-failed` or `commit-uncommitted`; the Close preview answers it too, without flushing, exactly when the
     Close would): for `commit-pending` the Close dialog shows "Saving document commits…" and reads the preview
-    again for a bounded time, then offers "Check again"; for `commit-uncommitted` it says to commit the documents
-    from Documents; for `commit-failed` it says to retry or resolve the failed commit in Documents. The dialog
+    again for a bounded time, then offers "Check again"; for `commit-uncommitted` it reads `details.uncommitted`
+    (`UncommittedHoldDetails`: the ledger `reasons` `auto-commit-off`/`abandoned`, the documents `policy`
+    `{ documents: manual|auto, source: project|local|default }` (absent when unreadable), the `owners`, each a
+    Specification with its `workflowState` count (its `.execution` and Tasks, which with automatic commits off
+    the finish of its current step commits) and `documents` count, or `definitions` with `paths`, and the
+    `unreadable` record count) and names the real cause: saved documents to commit from Documents, the Task and
+    step changes of another Specification (finish its step or commit them with Git) or an abandoned commit.
+    The archived Specification's own workflow state never holds its Close; for `commit-failed` it says to retry or resolve the failed commit in Documents. The dialog
     itself offers no "Commit now" (see `product.specflow.ui.workflow-execution`, section Close).
 20. **Definitions problems.** `ArchetypeCatalogue.problems[]` (invalid definition files) is shown to people who can
     fix them as a quiet warning on the Create form ("N definitions are invalid"); the valid archetypes remain

@@ -35,7 +35,7 @@ import {
   reportingMissingIntegrationTarget,
   withoutGitLines,
 } from './close-preview';
-import { openExecution, reportingWorkflowRefusals } from '../execution-session';
+import { runExecution } from '../execution-session';
 import { localOwner } from '../local-actor';
 import { abandonLines } from '../workflow/present';
 
@@ -386,8 +386,8 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
           stdout: context.stdout,
           stderr: context.stderr ?? ((line: string) => process.stderr.write(line + '\n')),
         };
-        await reportingWorkflowRefusals(refusalOutput, options.json, async () => {
-          const { workflow } = await openExecution(context.cwd, options.projectRoot);
+        const executionContext = { ...refusalOutput, cwd: context.cwd };
+        await runExecution(executionContext, options, 'change', async ({ workflow }) => {
           const result = await abandonSpecification(workflow, {
             specId,
             reason: options.reason,

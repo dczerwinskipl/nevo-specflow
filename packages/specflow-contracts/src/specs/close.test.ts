@@ -24,8 +24,12 @@ describe('Close refusal contract', () => {
           kind: 'uncommitted-changes',
           checkout: 'specification',
           workspaceId: '7b1e2c3d-4f5a-4b6c-8d7e-9f0a1b2c3d4e',
-          paths: ['specs/a.md'],
+          paths: [
+            { path: 'specs/active/a/a.md', scope: 'specification' },
+            { path: 'scratch-notes.txt', scope: 'other' },
+          ],
           count: 3,
+          specificationCount: 1,
         },
         missingTarget,
         { kind: 'integration-target-branch', expectedBranch: 'main', branch: 'feature' },
@@ -45,6 +49,22 @@ describe('Close refusal contract', () => {
             workspaceId: '1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f',
             paths: [],
             count: 1,
+            specificationCount: 0,
+          },
+        ],
+      }),
+    ).toBe(false);
+    expect(
+      Value.Check(CloseErrorSchema, {
+        ...refusal,
+        repository: [
+          {
+            kind: 'uncommitted-changes',
+            checkout: 'specification',
+            workspaceId: '1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f',
+            paths: [{ path: 'a.md', scope: 'project' }],
+            count: 1,
+            specificationCount: 0,
           },
         ],
       }),

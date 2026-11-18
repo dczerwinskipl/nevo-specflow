@@ -395,6 +395,147 @@
                   "minLength": 1
                 },
                 "maxItems": 25
+              },
+              "uncommitted": {
+                "type": "object",
+                "required": [
+                  "reasons",
+                  "owners",
+                  "unreadable"
+                ],
+                "properties": {
+                  "reasons": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "auto-commit-off"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "abandoned"
+                          ]
+                        }
+                      ]
+                    },
+                    "maxItems": 2,
+                    "uniqueItems": true
+                  },
+                  "policy": {
+                    "type": "object",
+                    "required": [
+                      "documents",
+                      "source"
+                    ],
+                    "properties": {
+                      "documents": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "auto"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "manual"
+                            ]
+                          }
+                        ]
+                      },
+                      "source": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "project"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "local"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "default"
+                            ]
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "owners": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "kind",
+                            "specId",
+                            "workflowState",
+                            "documents"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "specification"
+                              ]
+                            },
+                            "specId": {
+                              "$ref": "#/components/schemas/SpecId"
+                            },
+                            "workflowState": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "documents": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "required": [
+                            "kind",
+                            "paths"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "definitions"
+                              ]
+                            },
+                            "paths": {
+                              "type": "integer",
+                              "minimum": 1
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "maxItems": 64
+                  },
+                  "unreadable": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -523,7 +664,8 @@
                     "checkout",
                     "workspaceId",
                     "paths",
-                    "count"
+                    "count",
+                    "specificationCount"
                   ],
                   "properties": {
                     "kind": {
@@ -554,14 +696,44 @@
                     "paths": {
                       "type": "array",
                       "items": {
-                        "type": "string",
-                        "maxLength": 4096
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "scope"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string",
+                            "maxLength": 4096
+                          },
+                          "scope": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "specification"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "other"
+                                ]
+                              }
+                            ]
+                          }
+                        },
+                        "additionalProperties": false
                       },
                       "maxItems": 10
                     },
                     "count": {
                       "type": "integer",
                       "minimum": 1
+                    },
+                    "specificationCount": {
+                      "type": "integer",
+                      "minimum": 0
                     }
                   },
                   "additionalProperties": false
@@ -1300,6 +1472,147 @@
                   "minLength": 1
                 },
                 "maxItems": 25
+              },
+              "uncommitted": {
+                "type": "object",
+                "required": [
+                  "reasons",
+                  "owners",
+                  "unreadable"
+                ],
+                "properties": {
+                  "reasons": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "auto-commit-off"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "abandoned"
+                          ]
+                        }
+                      ]
+                    },
+                    "maxItems": 2,
+                    "uniqueItems": true
+                  },
+                  "policy": {
+                    "type": "object",
+                    "required": [
+                      "documents",
+                      "source"
+                    ],
+                    "properties": {
+                      "documents": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "auto"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "manual"
+                            ]
+                          }
+                        ]
+                      },
+                      "source": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "project"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "local"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "default"
+                            ]
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "owners": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "kind",
+                            "specId",
+                            "workflowState",
+                            "documents"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "specification"
+                              ]
+                            },
+                            "specId": {
+                              "$ref": "#/components/schemas/SpecId"
+                            },
+                            "workflowState": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "documents": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "required": [
+                            "kind",
+                            "paths"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "definitions"
+                              ]
+                            },
+                            "paths": {
+                              "type": "integer",
+                              "minimum": 1
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "maxItems": 64
+                  },
+                  "unreadable": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -1879,6 +2192,147 @@
                   "minLength": 1
                 },
                 "maxItems": 25
+              },
+              "uncommitted": {
+                "type": "object",
+                "required": [
+                  "reasons",
+                  "owners",
+                  "unreadable"
+                ],
+                "properties": {
+                  "reasons": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "auto-commit-off"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "abandoned"
+                          ]
+                        }
+                      ]
+                    },
+                    "maxItems": 2,
+                    "uniqueItems": true
+                  },
+                  "policy": {
+                    "type": "object",
+                    "required": [
+                      "documents",
+                      "source"
+                    ],
+                    "properties": {
+                      "documents": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "auto"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "manual"
+                            ]
+                          }
+                        ]
+                      },
+                      "source": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "project"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "local"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "default"
+                            ]
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "owners": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "kind",
+                            "specId",
+                            "workflowState",
+                            "documents"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "specification"
+                              ]
+                            },
+                            "specId": {
+                              "$ref": "#/components/schemas/SpecId"
+                            },
+                            "workflowState": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "documents": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "required": [
+                            "kind",
+                            "paths"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "definitions"
+                              ]
+                            },
+                            "paths": {
+                              "type": "integer",
+                              "minimum": 1
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "maxItems": 64
+                  },
+                  "unreadable": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false

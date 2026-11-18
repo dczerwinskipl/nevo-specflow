@@ -150,7 +150,9 @@ export const BlockedRepositoryWithoutWorkspaces: Story = {
   play: async ({ canvasElement }) => {
     const dialog = await openFromNow(canvasElement);
     await expect(
-      await dialog.findByText("Commit them in the specification's checkout, then check again."),
+      await dialog.findByText(
+        'Commit them in this checkout (or move the ones that do not belong here), then check again.',
+      ),
     ).toBeVisible();
     await expect(dialog.queryByRole('button', { name: 'Copy path' })).toBeNull();
   },

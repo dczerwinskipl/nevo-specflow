@@ -92,6 +92,8 @@ describe('message catalogues', () => {
       'sessions.list.agent',
       // "{{title}} · {{count}}": a group heading template, the same in both languages.
       'workflowExecution.exit.groupHeading',
+      // "{{step}} · ": the hand-off source prefix, the same template in both languages.
+      'workflowExecution.now.handoffFrom',
     ]);
     const identical = plKeys.filter(
       (key) =>

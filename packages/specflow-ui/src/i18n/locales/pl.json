@@ -2016,7 +2016,6 @@
       "taskContent": "Treść zadania",
       "taskDocument": "Dokument zadania",
       "fileMissing": "Brak pliku",
-      "open": "Otwórz {{name}}",
       "actionsFor": "Akcje dla {{name}}",
       "rename": "Zmień nazwę",
       "delete": "Usuń dokument",

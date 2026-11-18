@@ -2020,7 +2020,9 @@
       "checkAgain": "Sprawdź ponownie",
       "checkedPaths": "Sprawdzone ścieżki ({{total}})",
       "thenRecheck": "Następnie wybierz <strong>Sprawdź ponownie</strong>.",
-      "thenRestart": "Następnie uruchom ponownie Nevo SpecFlow: konfiguracja jest czytana tylko przy starcie, więc <strong>Sprawdź ponownie</strong> nie zobaczy tej zmiany."
+      "thenRestart": "Następnie uruchom ponownie Nevo SpecFlow: konfiguracja jest czytana tylko przy starcie, więc <strong>Sprawdź ponownie</strong> nie zobaczy tej zmiany.",
+      "emptyHeading": "Brak agentów na liście",
+      "emptyLine": "Nevo SpecFlow nie udostępnia żadnego agenta dla tego projektu. Opiekun projektu dopuszcza agenta ustawieniem sessions.providers.<dostawca>.allowed: true w .nevo/config.yaml; po ponownym uruchomieniu Nevo SpecFlow sprawdź ponownie."
     }
   },
   "sessionNaming": {

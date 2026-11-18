@@ -2,9 +2,8 @@ import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 import { message, type Message } from '../../../../i18n/message';
 
 /**
- * What makes the Runtime see a fix. Every catalogue read re-runs discovery and the sign-in check
- * (a found executable is kept while its file is unchanged, a failed search for 30 s), so
- * `recheck`: **Check again** sees it. The configuration (`.nevo/config.yaml`,
+ * What makes the Runtime see a fix. **Check again** reads the catalogue with `recheck`, so every
+ * provider discovers and probes again from scratch, and `recheck`: it sees the fix. The configuration (`.nevo/config.yaml`,
  * `.nevo/local/config.yaml`) is read once, when the Runtime starts, so `restart`: only a restart of
  * Nevo SpecFlow sees it, and the UI cannot restart the Runtime.
  */

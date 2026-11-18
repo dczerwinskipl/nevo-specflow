@@ -708,7 +708,9 @@ so it can take up to `PROVIDER_DISCOVERY_BUDGET_MS` (30 s) on a cold machine, ev
 startup probe; clients give it that budget plus a margin, not the default read deadline.
 
 Both parameters together are `400 SESSION_INPUT_INVALID`, as is any other parameter or a malformed
-id. `?specId` is a pure authorization check: it does not verify that the Specification exists
+id. `recheck=true` (with either parameter or none) is an explicit recheck: every enabled provider
+discovers its executable again from scratch and probes again instead of reusing its cache
+([executable discovery](../providers/executable-discovery.md#cache)). `?specId` is a pure authorization check: it does not verify that the Specification exists
 (the catalogue is not sensitive and names no Specification; the composed create verifies it). A `workspace-write` provider mode is `authorized` when the caller holds `session.execute-write`
 at `{projectId}` (no context, `?specId`) or at the Session's own execute-write scope
 (`?sessionId`); it never carries `specId`. The UI's New Session in a Specification reads `?specId`,

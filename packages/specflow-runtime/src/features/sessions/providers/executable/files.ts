@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { lstat, readdir } from 'node:fs/promises';
+import { lstat, readdir, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import type { ProviderEnvironment } from '../process';
 
@@ -21,6 +21,8 @@ export interface ExecutableFiles {
     mtimeMs: number;
   }>;
   list(directory: string): Promise<string[]>;
+  /** The physical path, through every junction and symbolic link. */
+  realpath(path: string): Promise<string>;
   /**
    * Runs a fixed command without a shell and returns its standard output. Rejects with a
    * `CommandFailure` when it cannot start, exits unsuccessfully or does not finish in time.
@@ -36,6 +38,7 @@ export interface ExecutableFiles {
 export const nodeExecutableFiles: ExecutableFiles = {
   stat: lstat,
   list: (directory) => readdir(directory),
+  realpath: (path) => realpath(path),
   run(executable, args, options) {
     return new Promise((resolve, reject) => {
       execFile(

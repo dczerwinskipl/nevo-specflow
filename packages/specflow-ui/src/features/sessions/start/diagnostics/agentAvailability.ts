@@ -5,10 +5,12 @@ import type { StartCatalogue, StartProvider } from '../catalogue/startCatalogue'
  * - `some`: one line naming them, the details on request;
  * - `none`: no agent is available and every one is confirmed unavailable;
  * - `undetermined`: no agent is available and at least one check gave no result, so availability
- *   is not known ("check again" leads, not "how to fix").
+ *   is not known ("check again" leads, not "how to fix");
+ * - `empty`: the catalogue lists no agent at all, so there is nothing to diagnose per agent.
  */
 export type AgentAvailabilitySummary =
   | { readonly kind: 'all' }
+  | { readonly kind: 'empty' }
   | {
       readonly kind: 'some' | 'none' | 'undetermined';
       readonly unavailable: readonly StartProvider[];
@@ -17,6 +19,10 @@ export type AgentAvailabilitySummary =
     };
 
 export function agentAvailability(catalogue: StartCatalogue): AgentAvailabilitySummary {
+  if (catalogue.providers.length === 0) {
+    return { kind: 'empty' };
+  }
+
   const unavailable = catalogue.providers.filter((provider) => !provider.available);
   if (unavailable.length === 0) {
     return { kind: 'all' };

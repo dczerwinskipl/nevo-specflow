@@ -2020,7 +2020,9 @@
       "checkAgain": "Check again",
       "checkedPaths": "Checked paths ({{total}})",
       "thenRecheck": "Then choose <strong>Check again</strong>.",
-      "thenRestart": "Then restart Nevo SpecFlow: the configuration is read only at start, so <strong>Check again</strong> cannot see this change."
+      "thenRestart": "Then restart Nevo SpecFlow: the configuration is read only at start, so <strong>Check again</strong> cannot see this change.",
+      "emptyHeading": "No agents are listed",
+      "emptyLine": "Nevo SpecFlow lists no agent for this project. A project maintainer allows one with sessions.providers.<provider>.allowed: true in .nevo/config.yaml; after a restart of Nevo SpecFlow, check again."
     }
   },
   "sessionNaming": {

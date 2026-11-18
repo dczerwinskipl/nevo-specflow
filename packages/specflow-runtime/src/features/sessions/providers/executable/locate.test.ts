@@ -20,19 +20,39 @@ interface Entry {
   mtimeMs?: number;
 }
 
-/** A fake Windows file system: paths compare case-insensitively; `versions` answers `--version`. */
+/**
+ * A fake Windows file system: paths compare case-insensitively; `versions` answers `--version`;
+ * `links` maps a junction or symbolic link to the real folder it points at.
+ */
 function fakeFiles(
-  entries: Record<string, Entry['kind']>,
+  entries: Record<string, Entry['kind'] | Entry>,
   versions: Record<string, string | CommandFailure> = {},
   hashes: Record<string, string> = {},
+  links: Record<string, string> = {},
 ) {
   const tree = new Map<string, Entry>();
-  for (const [path, kind] of Object.entries(entries)) {
-    tree.set(win32.resolve(path).toLowerCase(), { kind, size: 1000, mtimeMs: 1 });
+  for (const [path, entry] of Object.entries(entries)) {
+    tree.set(
+      win32.resolve(path).toLowerCase(),
+      typeof entry === 'string'
+        ? { kind: entry, size: 1000, mtimeMs: 1 }
+        : { size: 1000, mtimeMs: 1, ...entry },
+    );
   }
 
   const ran: string[] = [];
   const files: ExecutableFiles = {
+    realpath(path) {
+      const resolved = win32.resolve(path);
+      for (const [link, target] of Object.entries(links)) {
+        const relative = win32.relative(link, resolved);
+        if (relative === '' || (!relative.startsWith('..') && !win32.isAbsolute(relative))) {
+          return Promise.resolve(win32.join(target, relative));
+        }
+      }
+
+      return Promise.resolve(resolved);
+    },
     stat(path) {
       const entry = tree.get(win32.resolve(path).toLowerCase());
       if (!entry) {
@@ -144,12 +164,80 @@ describe('executable discovery', () => {
         [key(working)]: 'codex-cli 0.100.0',
         [key(APP + '\\cccc\\codex.exe')]: 'codex-cli 9.0.0',
       },
+      {},
+      // A build folder linked into the project is never run, however new its version.
+      { [APP + '\\cccc']: WORKSPACE + '\\planted' },
     );
 
     await expect(locateExecutable(codexExecutable, options(), files)).resolves.toMatchObject({
       path: working,
       version: '0.100.0',
     });
+  });
+
+  it('never runs a PATH folder that is a junction into the workspace or the temporary folder', async () => {
+    const temp = LOCAL + '\\Temp';
+    const legit = 'C:\\tools\\codex.exe';
+    const { files, ran } = fakeFiles(
+      {
+        ['C:\\linked-repo\\codex.exe']: 'file',
+        ['C:\\linked-temp\\codex.exe']: 'file',
+        [legit]: 'file',
+      },
+      { [key(legit)]: 'codex-cli 1.0.0' },
+      {},
+      {
+        'C:\\linked-repo': WORKSPACE + '\\bin',
+        'C:\\linked-temp': temp + '\\x',
+        // A junction to an ordinary folder stays usable.
+        'C:\\tools': 'E:\\real-tools',
+      },
+    );
+    const found = await locateExecutable(
+      codexExecutable,
+      options({ temporaryRoots: [temp] }, 'C:\\linked-repo;C:\\linked-temp;C:\\tools'),
+      files,
+    );
+
+    expect(found.path).toBe(legit);
+    expect(ran).toEqual([legit + ' --version']);
+  });
+
+  it('probes the newest builds first, whatever their folder names, and says when some were skipped', async () => {
+    const entries: Record<string, Entry> = {};
+    const versions: Record<string, string> = {};
+    // Seventeen builds; the only working one is the newest and sorts last by name.
+    for (let index = 0; index < 17; index++) {
+      const folder = APP + '\\' + (index === 16 ? 'zzzz' : 'a' + String(index).padStart(2, '0'));
+      entries[folder] = { kind: 'dir', mtimeMs: index };
+      entries[folder + '\\codex.exe'] = { kind: 'file', mtimeMs: index };
+      if (index === 16) {
+        versions[key(folder + '\\codex.exe')] = 'codex-cli 2.0.0';
+      }
+    }
+
+    // Folders without the executable do not count toward the limit.
+    for (let index = 0; index < 20; index++) {
+      entries[APP + '\\empty' + String(index)] = { kind: 'dir', mtimeMs: 100 + index };
+    }
+
+    const { files, ran } = fakeFiles(entries, versions);
+    await expect(locateExecutable(codexExecutable, options(), files)).resolves.toMatchObject({
+      path: APP + '\\zzzz\\codex.exe',
+      version: '2.0.0',
+    });
+    expect(ran).toHaveLength(16);
+    expect(ran).not.toContain(APP + '\\a00\\codex.exe --version');
+
+    // Seventeen builds that do not answer: the cap is reported, never hidden as not found.
+    const broken = fakeFiles({
+      ...Object.fromEntries(Object.entries(entries).filter(([path]) => !path.includes('zzzz'))),
+      [APP + '\\b99']: { kind: 'dir', mtimeMs: -1 },
+      [APP + '\\b99\\codex.exe']: { kind: 'file', mtimeMs: -1 },
+    });
+    const error = await failure(locateExecutable(codexExecutable, options(), broken.files));
+    expect(error.reasonCode).toBe('EXECUTABLE_NOT_WORKING');
+    expect(error.message).toContain('1 older build folder was not checked.');
   });
 
   it('prefers PATH over install locations, in PATH order, and skips relative and workspace entries', async () => {
@@ -357,6 +445,51 @@ describe('executable discovery', () => {
     tree.get(key(installed))!.mtimeMs = 2;
     await locator.resolve(AbortSignal.timeout(1000));
     expect(ran).toHaveLength(2);
+  });
+
+  it('picks up a desktop app update into a new build folder on the next read', async () => {
+    const old = APP + '\\old1\\codex.exe';
+    const update = APP + '\\new2\\codex.exe';
+    const { files, ran, tree } = fakeFiles(
+      { [APP + '\\old1']: 'dir', [old]: 'file' },
+      { [key(old)]: 'codex-cli 1.0.0', [key(update)]: 'codex-cli 1.1.0' },
+    );
+    const locator = createExecutableLocator(codexExecutable, options(), files);
+
+    await expect(locator.resolve(AbortSignal.timeout(1000))).resolves.toMatchObject({ path: old });
+    await locator.resolve(AbortSignal.timeout(1000));
+    // A cached read lists the folders again but runs nothing.
+    expect(ran).toHaveLength(1);
+
+    tree.set(key(APP + '\\new2'), { kind: 'dir', size: 0, mtimeMs: 2 });
+    tree.set(key(update), { kind: 'file', size: 1000, mtimeMs: 2 });
+    await expect(locator.resolve(AbortSignal.timeout(1000))).resolves.toMatchObject({
+      path: update,
+      version: '1.1.0',
+    });
+  });
+
+  it('discovers from scratch after an explicit recheck', async () => {
+    const installed = LOCAL + '\\agy\\bin\\agy.exe';
+    const onPath = 'C:\\tools\\agy.exe';
+    const { files, tree } = fakeFiles(
+      { [installed]: 'file' },
+      { [key(installed)]: '1.3.3', [key(onPath)]: '1.4.0' },
+    );
+    const locator = createExecutableLocator(antigravityExecutable, options({}, 'C:\\tools'), files);
+
+    await expect(locator.resolve(AbortSignal.timeout(1000))).resolves.toMatchObject({
+      path: installed,
+    });
+    tree.set(key(onPath), { kind: 'file', size: 1000, mtimeMs: 1 });
+    await expect(locator.resolve(AbortSignal.timeout(1000))).resolves.toMatchObject({
+      path: installed,
+    });
+    locator.forget();
+    await expect(locator.resolve(AbortSignal.timeout(1000))).resolves.toMatchObject({
+      path: onPath,
+      source: 'path',
+    });
   });
 
   it('keeps a failure for 30 seconds, then looks again', async () => {

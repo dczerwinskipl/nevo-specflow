@@ -22,8 +22,7 @@ export interface ExecutableLocation {
   readonly location: ExecutableLocationId;
   /**
    * An absolute path under the user's profile or the program directories. At most one segment is
-   * `*`: it matches the real (non-link) folders directly inside its parent, such as an app's
-   * per-version folder.
+   * `*`: it matches the folders directly inside its parent, such as an app's per-version folder.
    */
   readonly pattern: string;
 }
@@ -66,6 +65,11 @@ export interface LocateExecutableOptions {
    * records none for the provider, so no candidate is hashed for nothing.
    */
   readonly knownIncompatible?: (build: { sha256: string; version: string }) => boolean;
+  /**
+   * The temporary folders nothing is run from; default `%TEMP%`, `%TMP%` and the system temporary
+   * folder (tests pass their own).
+   */
+  readonly temporaryRoots?: readonly string[];
   readonly platform?: string;
   readonly architecture?: string;
 }
@@ -73,8 +77,13 @@ export interface LocateExecutableOptions {
 const VERSION_TIMEOUT_MS = 5000;
 /** Version commands running at once for one provider's install locations. */
 const PARALLEL_PROBES = 4;
-/** Folders matched by one `*` segment; an app keeps a handful of version folders. */
-const MAX_PATTERN_FOLDERS = 16;
+/**
+ * Builds probed per `*` location, newest first; an app keeps a handful of version folders. More
+ * are listed, never probed, and the result says so.
+ */
+const MAX_PATTERN_BUILDS = 16;
+/** Folder entries read per `*` location. */
+const MAX_PATTERN_ENTRIES = 256;
 
 interface Candidate {
   path: string;
@@ -118,6 +127,138 @@ async function mapLimited<T, R>(items: readonly T[], limit: number, map: (item: 
   return results;
 }
 
+/** An executable found in an install location, before it is probed. */
+interface InstalledBuild {
+  path: string;
+  location: ExecutableLocationId;
+  /** Newer first: the executable's modification time, then its folder's. */
+  modifiedMs: number;
+  folderModifiedMs: number;
+}
+
+/**
+ * The guard every candidate passes before anything runs: the path, and the real path it resolves
+ * to through junctions and symbolic links, are both outside the workspace and the temporary
+ * folders (compared with those folders' own real paths). A link elsewhere stays usable.
+ */
+async function createTrustGuard(
+  options: LocateExecutableOptions,
+  files: ExecutableFiles,
+): Promise<{ untrusted: string[]; trusted: (path: string) => Promise<boolean> }> {
+  const untrusted = untrustedRoots(options.environment, options.workspace, options.temporaryRoots);
+  const real = await Promise.all(untrusted.map((root) => files.realpath(root).catch(() => root)));
+  const roots = [...untrusted, ...real];
+
+  return {
+    untrusted,
+    async trusted(path) {
+      if (!trustedPath(path, roots)) {
+        return false;
+      }
+
+      try {
+        return trustedPath(await files.realpath(path), roots);
+      } catch {
+        return false;
+      }
+    },
+  };
+}
+
+async function regularFile(files: ExecutableFiles, path: string) {
+  try {
+    const stat = await files.stat(path);
+
+    return stat.isFile() &&
+      !stat.isSymbolicLink() &&
+      stat.size > 0 &&
+      stat.size <= MAX_EXECUTABLE_BYTES
+      ? stat
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The executables present in the install locations, newest first within each location; at most
+ * `MAX_PATTERN_BUILDS` per `*` location are returned and the rest counted. Only lists folders and
+ * reads file metadata: nothing is run.
+ */
+async function installedBuilds(
+  locations: readonly ExecutableLocation[],
+  trusted: (path: string) => Promise<boolean>,
+  files: ExecutableFiles,
+): Promise<{ builds: InstalledBuild[]; omitted: number }> {
+  const builds: InstalledBuild[] = [];
+  let omitted = 0;
+  for (const location of locations) {
+    const segments = location.pattern.split('\\');
+    const wildcard = segments.indexOf('*');
+    const found: InstalledBuild[] = [];
+    if (wildcard < 0) {
+      const stat = await regularFile(files, location.pattern);
+      if (stat && (await trusted(location.pattern))) {
+        found.push({
+          path: location.pattern,
+          location: location.location,
+          modifiedMs: stat.mtimeMs,
+          folderModifiedMs: 0,
+        });
+      }
+    } else {
+      const parent = segments.slice(0, wildcard).join('\\');
+      const rest = segments.slice(wildcard + 1);
+      const entries = (await files.list(parent).catch(() => [] as string[])).slice(
+        0,
+        MAX_PATTERN_ENTRIES,
+      );
+      for (const entry of entries) {
+        const folder = win32.join(parent, entry);
+        const folderStat = await files.stat(folder).catch(() => undefined);
+        if (!folderStat || (!folderStat.isDirectory() && !folderStat.isSymbolicLink())) {
+          continue;
+        }
+
+        const path = win32.join(folder, ...rest);
+        const stat = await regularFile(files, path);
+        if (stat && (await trusted(path))) {
+          found.push({
+            path,
+            location: location.location,
+            modifiedMs: stat.mtimeMs,
+            folderModifiedMs: folderStat.mtimeMs,
+          });
+        }
+      }
+
+      // Build folder names (hashes) say nothing about age: the newest builds come first.
+      found.sort(
+        (a, b) =>
+          b.modifiedMs - a.modifiedMs ||
+          b.folderModifiedMs - a.folderModifiedMs ||
+          (a.path < b.path ? -1 : a.path > b.path ? 1 : 0),
+      );
+      omitted += Math.max(0, found.length - MAX_PATTERN_BUILDS);
+      found.length = Math.min(found.length, MAX_PATTERN_BUILDS);
+    }
+
+    builds.push(...found);
+  }
+
+  return { builds, omitted };
+}
+
+/** A located executable and, when an install location supplied it, what those locations held. */
+interface Located {
+  resolution: ExecutableResolution;
+  /** The install locations searched and the builds they held (`source: 'discovered'` only). */
+  installs?: { locations: readonly ExecutableLocation[]; snapshot: string };
+}
+
+const snapshotOf = (builds: readonly InstalledBuild[]) =>
+  builds.map((build) => build.path.toLowerCase() + '|' + String(build.modifiedMs)).join('\n');
+
 /**
  * Finds the provider's CLI and verifies it by running its version command: the configured path
  * alone when set; else the first verified executable on PATH; else the highest verified version
@@ -129,6 +270,14 @@ export async function locateExecutable(
   options: LocateExecutableOptions,
   files: ExecutableFiles = nodeExecutableFiles,
 ): Promise<ExecutableResolution> {
+  return (await locate(declaration, options, files)).resolution;
+}
+
+async function locate(
+  declaration: ProviderExecutableDeclaration,
+  options: LocateExecutableOptions,
+  files: ExecutableFiles,
+): Promise<Located> {
   const { title } = declaration;
   if (
     (options.platform ?? process.platform) !== 'win32' ||
@@ -140,20 +289,10 @@ export async function locateExecutable(
     );
   }
 
-  async function regular(path: string) {
-    try {
-      const stat = await files.stat(path);
-
-      return (
-        stat.isFile() &&
-        !stat.isSymbolicLink() &&
-        stat.size > 0 &&
-        stat.size <= MAX_EXECUTABLE_BYTES
-      );
-    } catch {
-      return false;
-    }
-  }
+  const regular = async (path: string) => (await regularFile(files, path)) !== undefined;
+  const guard = await createTrustGuard(options, files);
+  /** A candidate that may run: a regular file whose real location is trusted. */
+  const runnable = async (path: string) => (await regular(path)) && (await guard.trusted(path));
 
   async function verify(candidate: Candidate): Promise<Verified> {
     const failed = (
@@ -242,7 +381,7 @@ export async function locateExecutable(
 
     const result = await verify(candidate);
 
-    return result.ok ? resolved(result) : unavailable(result);
+    return { resolution: result.ok ? resolved(result) : unavailable(result) };
   }
 
   const failures: Extract<Verified, { ok: false }>[] = [];
@@ -260,13 +399,12 @@ export async function locateExecutable(
 
   // 2. PATH: a native `.exe`, or an npm launcher resolved to its package's native executable
   // (a `.cmd`/`.bat` launcher is never run: cmd.exe re-parses every argument).
-  const untrusted = untrustedRoots(options.environment, options.workspace);
   const npmPackage = declaration.npmPackage;
   const pathCandidates: Candidate[] = [];
   const launchers: string[] = [];
-  for (const directory of searchPath(options.environment, untrusted)) {
+  for (const directory of searchPath(options.environment, guard.untrusted)) {
     const native = win32.join(directory, declaration.command + '.exe');
-    if (fresh(native) && (await regular(native))) {
+    if (fresh(native) && (await runnable(native))) {
       pathCandidates.push({ path: native, source: 'path' });
     }
 
@@ -295,7 +433,7 @@ export async function locateExecutable(
       launchers.push(launcher);
       for (const relative of npmPackage?.executables ?? []) {
         const target = win32.join(directory, relative);
-        if (fresh(target) && (await regular(target))) {
+        if (fresh(target) && (await runnable(target))) {
           pathCandidates.push({ path: target, source: 'path', location: 'npm-global-package' });
         }
       }
@@ -306,7 +444,7 @@ export async function locateExecutable(
   for (const candidate of pathCandidates) {
     const result = await verify(candidate);
     if (result.ok) {
-      return resolved(result);
+      return { resolution: resolved(result) };
     }
 
     failures.push(result);
@@ -315,45 +453,23 @@ export async function locateExecutable(
   // 3. The vendor install locations, and the npm global prefix as npm reports it.
   const env = options.environment.values;
   const locations = [...declaration.installLocations(env)];
-  const prefix = npmPackage
-    ? await npmGlobalPrefix(options.environment, untrusted, files)
-    : undefined;
+  const prefix = npmPackage ? await npmGlobalPrefix(options.environment, guard, files) : undefined;
   if (prefix && npmPackage) {
     for (const relative of npmPackage.executables) {
       locations.push({ location: 'npm-global-package', pattern: win32.join(prefix, relative) });
     }
   }
 
-  const installed: Candidate[] = [];
-  for (const location of locations) {
-    if (!trustedPath(location.pattern, untrusted)) {
-      continue;
-    }
-
-    const segments = location.pattern.split('\\');
-    const wildcard = segments.indexOf('*');
-    const paths: string[] = [];
-    if (wildcard < 0) {
-      paths.push(location.pattern);
-    } else {
-      const parent = segments.slice(0, wildcard).join('\\');
-      const rest = segments.slice(wildcard + 1);
-      const entries = await files.list(parent).catch(() => [] as string[]);
-      for (const entry of entries.sort().slice(0, MAX_PATTERN_FOLDERS)) {
-        const folder = win32.join(parent, entry);
-        const stat = await files.stat(folder).catch(() => undefined);
-        if (stat?.isDirectory() && !stat.isSymbolicLink()) {
-          paths.push(win32.join(folder, ...rest));
-        }
-      }
-    }
-
-    for (const path of paths) {
-      if (fresh(path) && (await regular(path))) {
-        installed.push({ path, source: 'discovered', location: location.location });
-      }
-    }
-  }
+  const trustedLocations = locations.filter((location) =>
+    trustedPath(location.pattern, guard.untrusted),
+  );
+  const { builds, omitted } = await installedBuilds(trustedLocations, guard.trusted, files);
+  const installed: Candidate[] = builds
+    .filter((build) => fresh(build.path))
+    .map((build) => ({ path: build.path, source: 'discovered', location: build.location }));
+  const omittedNote = omitted
+    ? ` ${omitted} older build folder${omitted === 1 ? ' was' : 's were'} not checked.`
+    : '';
 
   const verifiedInstalls = await mapLimited(installed, PARALLEL_PROBES, verify);
   let best: Extract<Verified, { ok: true }> | undefined;
@@ -361,20 +477,23 @@ export async function locateExecutable(
     if (!result.ok) {
       failures.push(result);
     } else if (!best || compareVersions(result.version, best.version) > 0) {
-      // Equal versions keep the earlier one: declared location order, then folder name order.
+      // Equal versions keep the earlier one: declared location order, then newest build first.
       best = result;
     }
   }
 
   if (best) {
-    return resolved(best);
+    return {
+      resolution: resolved(best),
+      installs: { locations: trustedLocations, snapshot: snapshotOf(builds) },
+    };
   }
 
   // Fail closed: report the most specific problem of a found executable, else where it looked.
   const failure =
     failures.find((item) => item.reasonCode === 'KNOWN_INCOMPATIBILITY') ?? failures[0];
   if (failure) {
-    unavailable(failure);
+    unavailable({ ...failure, message: clamp(failure.message + omittedNote) });
   }
 
   const checkedLocations: NonNullable<ProviderDescriptor['checkedLocations']> = [
@@ -401,15 +520,17 @@ export async function locateExecutable(
 
   throw new ProviderUnavailableError(
     'EXECUTABLE_NOT_FOUND',
-    `No ${title} CLI was found on PATH or in its install locations.`,
+    clamp(`No ${title} CLI was found on PATH or in its install locations.${omittedNote}`),
     { checkedLocations },
   );
 }
 
 /**
- * Discovery once per Runtime: a found executable is kept while its file is unchanged (an update
- * that removes or replaces it discovers again); a failure is kept for 30 seconds, so installing the
- * CLI and rechecking finds it without a restart.
+ * Discovery once per Runtime. A found executable is kept while its file is unchanged; when it came
+ * from an install location, each read also lists those locations again (folder listings and file
+ * metadata only, nothing runs) and discovers again when the builds there changed, so an app update
+ * into a new folder is picked up. A failure is kept for 30 seconds. `forget` makes the next read a
+ * full discovery (an explicit recheck).
  */
 export function createExecutableLocator(
   declaration: ProviderExecutableDeclaration,
@@ -417,7 +538,7 @@ export function createExecutableLocator(
   files: ExecutableFiles = nodeExecutableFiles,
   now: () => number = Date.now,
 ) {
-  let found: { resolution: ExecutableResolution; size: number; mtimeMs: number } | undefined;
+  let found: { located: Located; size: number; mtimeMs: number } | undefined;
   let failure: { error: ProviderUnavailableError; at: number } | undefined;
   let pending: Promise<ExecutableResolution> | undefined;
 
@@ -426,21 +547,32 @@ export function createExecutableLocator(
       return false;
     }
 
-    const stat = await files.stat(found.resolution.path).catch(() => undefined);
+    const stat = await files.stat(found.located.resolution.path).catch(() => undefined);
+    if (
+      stat?.isFile() !== true ||
+      stat.isSymbolicLink() ||
+      stat.size !== found.size ||
+      stat.mtimeMs !== found.mtimeMs
+    ) {
+      return false;
+    }
 
-    return (
-      stat?.isFile() === true &&
-      !stat.isSymbolicLink() &&
-      stat.size === found.size &&
-      stat.mtimeMs === found.mtimeMs
-    );
+    const installs = found.located.installs;
+    if (!installs) {
+      return true;
+    }
+
+    const guard = await createTrustGuard(options, files);
+    const { builds } = await installedBuilds(installs.locations, guard.trusted, files);
+
+    return snapshotOf(builds) === installs.snapshot;
   }
 
   return {
     async resolve(signal: AbortSignal): Promise<ExecutableResolution> {
       signal.throwIfAborted();
       if (await unchanged()) {
-        return found!.resolution;
+        return found!.located.resolution;
       }
 
       found = undefined;
@@ -450,12 +582,12 @@ export function createExecutableLocator(
 
       pending ??= (async () => {
         try {
-          const resolution = await locateExecutable(declaration, options, files);
-          const stat = await files.stat(resolution.path);
-          found = { resolution, size: stat.size, mtimeMs: stat.mtimeMs };
+          const located = await locate(declaration, options, files);
+          const stat = await files.stat(located.resolution.path);
+          found = { located, size: stat.size, mtimeMs: stat.mtimeMs };
           failure = undefined;
 
-          return resolution;
+          return located.resolution;
         } catch (error) {
           if (error instanceof ProviderUnavailableError) {
             failure = { error, at: now() };
@@ -468,6 +600,11 @@ export function createExecutableLocator(
       })();
 
       return pending;
+    },
+    /** The next read discovers again from scratch (an explicit recheck). */
+    forget() {
+      found = undefined;
+      failure = undefined;
     },
   };
 }

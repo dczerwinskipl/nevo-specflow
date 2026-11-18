@@ -13,6 +13,10 @@ describe('agentAvailability', () => {
     expect(agentAvailability(catalogue(codex, claude))).toEqual({ kind: 'all' });
   });
 
+  it('tells an empty catalogue apart from one whose agents are all available', () => {
+    expect(agentAvailability(catalogue())).toEqual({ kind: 'empty' });
+  });
+
   it('names the agents that cannot start while another can', () => {
     expect(agentAvailability(catalogue(unavailable, claude))).toEqual({
       kind: 'some',

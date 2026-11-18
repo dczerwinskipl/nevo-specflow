@@ -14,7 +14,7 @@ import {
   undeterminedProviders,
 } from '../catalogue/providerDescriptors.stories-support';
 import { providerDescriptor } from '../catalogue/startCatalogue.stories-support';
-import { creates, ManagedStartPreview } from './sessionStart.stories-support';
+import { catalogueReads, creates, ManagedStartPreview } from './sessionStart.stories-support';
 
 /**
  * A Specification's New Session on the managed (project) Runtime (`/specs/$specId/sessions/new`):
@@ -601,7 +601,16 @@ export const ManagedEmptyCatalogue: Story = {
   args: { providers: [] },
   play: async ({ canvas }) => {
     await settle();
-    await expect(await canvas.findByText('Brak dostępnych agentów.')).toBeVisible();
+    // Why no agent is listed, and reading the list again: nothing per agent to diagnose.
+    await expect(
+      await canvas.findByRole('heading', { level: 2, name: 'Brak agentów na liście' }),
+    ).toBeVisible();
+    await expect(canvas.getByText(/sessions\.providers\.<dostawca>\.allowed: true/)).toBeVisible();
+    const recheck = canvas.getByRole('button', { name: 'Sprawdź ponownie' });
+    await expect(recheck).toBeEnabled();
+    await userEvent.click(recheck);
+    // The recheck reads the catalogue again and asks the Runtime to discover from scratch.
+    await waitFor(() => expect(catalogueReads.at(-1)).toMatchObject({ recheck: 'true' }));
     await expect(canvas.queryByRole('combobox')).toBeNull();
     await expect(canvas.queryByRole('button', { name: 'Rozpocznij sesję' })).toBeNull();
     await expectNoHorizontalScroll();

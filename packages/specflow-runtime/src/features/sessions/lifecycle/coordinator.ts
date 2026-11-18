@@ -449,7 +449,7 @@ export function createSessionCoordinator(
      * that Specification's separate worktree is listed unavailable
      * (`SPECIFICATION_WORKTREE_UNSUPPORTED`), as its create and Turn start would refuse it.
      */
-    async providers(specId?: string) {
+    async providers(specId?: string, options: { recheck?: boolean } = {}) {
       if (!available) {
         return [];
       }
@@ -472,7 +472,7 @@ export function createSessionCoordinator(
 
           try {
             if (driver.refresh) {
-              await bounded((signal) => driver.refresh!(signal));
+              await bounded((signal) => driver.refresh!(signal, options));
             }
 
             return driver.describe();

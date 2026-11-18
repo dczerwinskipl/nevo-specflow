@@ -46,7 +46,13 @@ the inspection, fingerprint and protocol probe then work on the one executable d
    example Volta or scoop), the prefix resolves to nothing and the npm package is not looked for;
    setting `executable` covers that setup. Among the verified executables found in the install
    locations, the highest version wins (at most four version commands run at once); equal versions
-   keep the declared location order, then folder name order.
+   keep the declared location order, then the newest build.
+
+A `*` location (the Codex app's build folders) lists the folders of its parent, keeps those that
+hold the executable, and orders them newest first by the executable's modification time, then the
+folder's: build folder names are hashes and say nothing about age. At most the 16 newest builds
+are probed; when more exist and none of those works, the result says how many older build folders
+were not checked, so a limit never reads as a plain not found.
 
 | Provider    | Command  | Install locations (Windows x64)                                                                                                                                                                                    |
 | ----------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -61,8 +67,9 @@ adapters run on Windows x64 only, and discovery refuses other platforms with
 
 ## Verification and choice
 
-- A candidate is a regular file, at most 512 MiB. The final file itself must not be a link or
-  junction; the folders on its path are not checked (an app's own folders may be junctions).
+- A candidate is a regular file, at most 512 MiB, and the final file itself is not a link. The
+  folders on its path may be junctions or links (an app's own folders may be): what decides is where
+  the file physically is (see Trust).
 - It is verified by running its version command (`--version`) without a shell, with the projected
   provider environment and a 5-second timeout. The output must be the provider's exact version line
   (`codex-cli <version>`, `<version> (Claude Code)`, `<version>`). The command's working folder is
@@ -89,18 +96,27 @@ Discovery runs only executables the user installed in a fixed, provider-declared
   installer's are; they are trusted to the same degree as the user's own account, not more.
 
 Relative PATH entries, network (UNC) folders, the project workspace and the temporary folders
-(`%TEMP%`, `%TMP%` and the system temporary folder) are never run from: a PATH entry, install
-location or npm prefix inside one of them is skipped, because repository content or any process
-could have put a file there. There is no disk search and no wildcard other than one `*` folder
-segment of a declared location (at most 16 folders).
+(`%TEMP%`, `%TMP%` and the system temporary folder) are never run from, because repository content
+or any process could have put a file there. The check is physical: before anything runs (the
+version check, `node.exe` and `npm-cli.js` for the npm prefix), the candidate's real path is
+resolved through every junction and symbolic link and compared with the real paths of those
+folders. A PATH folder that is a junction into the project or the temporary folder is therefore
+skipped, while a junction to an ordinary install folder keeps working. There is no disk search and
+no wildcard other than one `*` folder segment of a declared location.
 
 ## Cache
 
 A found executable is kept for the Runtime's lifetime while its file is unchanged (size and
-modification time); an update that removes or replaces it is discovered again on the next check.
-A failure is kept for 30 seconds, so installing the CLI and rechecking availability finds it
-without a restart. Changing `executable` in the local configuration takes effect after a Runtime
-restart.
+modification time); an update that removes or replaces it is discovered again on the next read.
+When it came from an install location, every read also lists those locations again (folder
+listings and file metadata only; nothing runs) and discovers again when the builds there changed,
+so a desktop app update into a new build folder is picked up without a restart. A failure is kept
+for 30 seconds, so installing the CLI and rechecking availability finds it without a restart.
+
+**Check again** in the New Session screen reads the catalogue with `recheck=true`: every enabled
+provider forgets what it found and discovers and probes again from scratch (for example a CLI
+newly put on PATH while an install-location build was in use). Changing `executable` in the local
+configuration takes effect after a Runtime restart.
 
 ## Catalogue facts
 

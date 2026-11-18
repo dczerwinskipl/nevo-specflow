@@ -36,6 +36,8 @@ describe('Session association contract', () => {
     expect(check({ specId: '../x' })).toBe(false);
     expect(check({ sessionId: 'not-a-session' })).toBe(false);
     expect(check({ projectId: 'project' })).toBe(false);
+    expect(check({ specId: 'S1', recheck: 'true' })).toBe(true);
+    expect(check({ recheck: 'yes' })).toBe(false);
   });
 
   it('keeps the composed create body closed and never carries the Specification itself', () => {

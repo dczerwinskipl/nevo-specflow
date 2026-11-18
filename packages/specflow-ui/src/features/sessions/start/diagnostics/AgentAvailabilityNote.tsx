@@ -57,6 +57,41 @@ export function AgentAvailabilityNote({
     return <div role="status" className="empty:hidden" />;
   }
 
+  if (summary.kind === 'empty') {
+    // No agent is listed: there is no per-agent diagnosis, only why and reading the list again.
+    return (
+      <div role="status" className="grid gap-3">
+        <div className="flex items-start gap-2">
+          <span className="flex h-5 items-center">
+            <Icon name="circle-alert" size="sm" aria-hidden="true" className="text-status-danger" />
+          </span>
+          <div className="grid min-w-0 gap-0.5">
+            <Typography as="h2" variant="title-sm" id={id}>
+              {t('sessionStart.diagnostics.emptyHeading')}
+            </Typography>
+            <Typography as="p" variant="body-sm" className="text-content-secondary">
+              {t('sessionStart.diagnostics.emptyLine')}
+            </Typography>
+          </div>
+        </div>
+        {onRefresh && (
+          <div className="flex flex-wrap gap-2 pl-6">
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              disabled={refreshing}
+              aria-busy={refreshing || undefined}
+              onClick={onRefresh}
+            >
+              {t('sessionStart.diagnostics.checkAgain')}
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   const { unavailable, onlyUndetermined } = summary;
   const recheck = unavailable.some(recheckCanHelp);
   const restartOnly = unavailable.every(onlyRestartHelps);

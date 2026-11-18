@@ -1,6 +1,5 @@
 import type { Ref } from 'react';
-import { useTranslation } from 'react-i18next';
-import { cn, Typography } from '@nevo/ui';
+import { cn } from '@nevo/ui';
 import { useMessage } from '../../../../i18n/message';
 import { ChoiceTile, ChoiceTileGroup } from '../../../../shared/controls/ChoiceTile';
 import { SessionProviderIcon } from '../../shared/SessionProviderIcon';
@@ -32,15 +31,11 @@ export function AgentPicker({
   /** The group's element, where focus returns when what led away from it is gone. */
   groupRef?: Ref<HTMLDivElement>;
 }) {
-  const { t } = useTranslation();
   const text = useMessage();
   const { providers } = catalogue;
+  // No agent is listed: the availability note under the picker says why and offers a recheck.
   if (providers.length === 0) {
-    return (
-      <Typography as="p" variant="body-sm" className="text-content-secondary">
-        {t('create.agent.noProviders')}
-      </Typography>
-    );
+    return null;
   }
 
   const columns = cn(

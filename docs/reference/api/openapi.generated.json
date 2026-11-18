@@ -10334,6 +10334,17 @@
             "in": "query",
             "name": "sessionId",
             "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true"
+              ]
+            },
+            "in": "query",
+            "name": "recheck",
+            "required": false
           }
         ],
         "security": [

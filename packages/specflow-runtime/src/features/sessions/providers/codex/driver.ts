@@ -137,7 +137,15 @@ export function createCodexDriver(
     throw error;
   }
 
-  async function refresh(signal: AbortSignal): Promise<ProviderDescriptor> {
+  async function refresh(
+    signal: AbortSignal,
+    refreshOptions: { recheck?: boolean } = {},
+  ): Promise<ProviderDescriptor> {
+    if (refreshOptions.recheck && !discovery) {
+      locator.forget();
+      checkedAt = 0;
+    }
+
     discovery ??= (async () => {
       const bounded = AbortSignal.any([signal, AbortSignal.timeout(ProviderTimeouts.discoveryMs)]);
       let inspectedAuthentication: string | undefined;

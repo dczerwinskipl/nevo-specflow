@@ -13,8 +13,16 @@ export function insideDirectory(root: string, target: string): boolean {
  * The folders nothing is ever run from: the project workspace (repository content must never
  * choose the executable) and the temporary folders (anything may write there).
  */
-export function untrustedRoots(environment: ProviderEnvironment, workspace: string): string[] {
-  return [workspace, environment.values.TEMP, environment.values.TMP, tmpdir()].filter(
+export function untrustedRoots(
+  environment: ProviderEnvironment,
+  workspace: string,
+  temporaryRoots: readonly (string | undefined)[] = [
+    environment.values.TEMP,
+    environment.values.TMP,
+    tmpdir(),
+  ],
+): string[] {
+  return [workspace, ...temporaryRoots].filter(
     (root): root is string => typeof root === 'string' && win32.isAbsolute(root),
   );
 }

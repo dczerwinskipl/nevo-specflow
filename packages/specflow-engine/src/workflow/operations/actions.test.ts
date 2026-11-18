@@ -1012,6 +1012,48 @@ describe('a Specification does not complete while its Tasks are open', () => {
 });
 
 // Owner decision 2026-11-16 (A-Q1): a hold is attention only when the user must act on it now.
+describe('the results of the active step', () => {
+  it('are read for an agent attempt the viewer cannot finish, each with the gates it needs', async () => {
+    // The breakdown needs a `note` of the Specification to finish.
+    const gated = await seedCatalogueWith((text) =>
+      text.replace(
+        /( {4}produces: tasks)(\r?\n)/u,
+        '$1$2    exitGates:$2      - type: document$2        documentType: note$2        scope: specification$2',
+      ),
+    );
+    const dependencies = memoryDependencies(gated);
+    // The agent runs the breakdown: a person never finishes its attempt.
+    await runToBreakdown(dependencies);
+
+    const projection = await project(dependencies, specification);
+    expect(projection.actions.finish).toBeUndefined();
+    const position = projection.position;
+    if (position.kind !== 'active') {
+      throw new Error('Expected an active step.');
+    }
+
+    expect(position.step.id).toBe('breakdown');
+    expect(position.exits.find((exit) => exit.id === 'proposed')).toMatchObject({
+      target: { kind: 'step', step: 'breakdown-review' },
+      gates: [expect.objectContaining({ documentType: 'note', status: 'unsatisfied' })],
+    });
+  });
+
+  it('match what the finish offers, without whether a result can be taken now', async () => {
+    const dependencies = await acceptingWithOpenTasks(withoutWaitGated());
+    const projection = await project(dependencies, specification);
+    const position = projection.position;
+    if (position.kind !== 'active') {
+      throw new Error('Expected an active step.');
+    }
+
+    expect(position.exits.map((exit) => exit.id)).toEqual(
+      projection.actions.finish?.transitions.map((transition) => transition.id),
+    );
+    expect(position.exits.find((exit) => exit.id === 'accepted')).not.toHaveProperty('unavailable');
+  });
+});
+
 describe('the attention of a Task on hold', () => {
   const attentionOf = async (dependencies: Dependencies, taskId: string) =>
     (await project(dependencies, task(taskId))).attention;

@@ -11,7 +11,7 @@ import { TestServicesRouterContext } from '../../../../test-support/app/TestServ
 import { stubLayoutApis } from '../../../../test-support/app/stubLayoutApis';
 import { fakeTaskAuthoringApi } from '../authoring/authoring.test-support';
 import type { WorkflowExecutionApi } from './api';
-import { SPEC, dominik } from './projections.stories-support';
+import { SPEC, dominik, withExits } from './projections.stories-support';
 import { WorkflowNow } from './WorkflowNow';
 
 afterEach(cleanup);
@@ -50,7 +50,7 @@ const outline = (position: number, title: string) => ({
 
 /** Step 4 of 7, a step that produces Tasks, with Finish step available. */
 function breakdown(attempt = 1): WorkflowActionProjection {
-  return {
+  return withExits({
     subject: { kind: 'specification', specId: SPEC },
     workflow: { workflowId: 'feature', title: 'Feature', version: 1, revision: 'rev-1' },
     position: {
@@ -80,7 +80,7 @@ function breakdown(attempt = 1): WorkflowActionProjection {
     },
     specification: { createTask: { kind: 'allowed' }, taskTypes: [] },
     outline: outline(4, 'Break the solution down'),
-  };
+  });
 }
 
 function OverviewNow({

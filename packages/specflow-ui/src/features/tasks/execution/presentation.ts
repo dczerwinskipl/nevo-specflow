@@ -235,22 +235,27 @@ const gateKey = (gates: readonly GateStatus[]) =>
     .join('\n');
 
 /**
- * What finishes the active step, from its finish transitions only (never a step id): every exit
- * gate, met or not, once when all results need the same gates, else per result. A result that
- * waits for open Tasks is left out (Now names those Tasks; meeting its gates would not help).
- * `withThen` adds the step all results lead to (a Task's Now; the Specification's track says it).
+ * What finishes the active step, from the step's results (`position.exits`, read whoever runs the
+ * attempt; never a step id): every exit gate, met or not, once when all results need the same
+ * gates, else per result that needs any. A result the finish says waits for open Tasks is left out
+ * (Now names those Tasks; meeting its gates would not help). `withThen` adds the step all results
+ * lead to (a Task's Now; the Specification's track says it).
  */
 export function doneWhen(
   projection: Pick<WorkflowActionProjection, 'position' | 'actions'>,
   options: { readonly withThen?: boolean } = {},
 ): DoneWhen | undefined {
-  if (projection.position.kind !== 'active') {
+  const { position } = projection;
+  if (position.kind !== 'active') {
     return undefined;
   }
 
-  const transitions = (projection.actions.finish?.transitions ?? []).filter(
-    (transition) => transition.unavailable !== 'tasks-open',
+  const waiting = new Set(
+    (projection.actions.finish?.transitions ?? [])
+      .filter((transition) => transition.unavailable === 'tasks-open')
+      .map((transition) => transition.id),
   );
+  const transitions = position.exits.filter((exit) => !waiting.has(exit.id));
   const gated = transitions.filter((transition) => (transition.gates ?? []).length > 0);
   const sameGates =
     gated.length === transitions.length &&

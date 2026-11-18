@@ -72,7 +72,9 @@ describe('the Task Now block', () => {
     );
     // An open item, not a warning: the step is being worked on.
     const gates = within(now()).getByRole('list', { name: 'Done when' });
-    expect(gates.textContent).toBe('task.md has a Verification section · not yet (not met)');
+    expect(gates.textContent).toBe(
+      'task.md has a Verification section · not yet · missing Verification (not met)',
+    );
     expect(gates.querySelector('.text-status-attention')).toBeNull();
     expect(within(now()).getByText('Then: Review')).toBeTruthy();
     expect(
@@ -115,9 +117,35 @@ describe('the Task Now block', () => {
     expect(within(handoff).getByText('Last hand-off').className).toContain(
       '@min-[40rem]/app-content:hidden',
     );
+    // Under the label the step is not prefixed with "Last:" again; in the card it is.
+    expect(within(handoff).getByText('Last: Review ·', { exact: false }).className).toBe(
+      'hidden @min-[40rem]/app-content:inline',
+    );
+    expect(within(handoff).getByText('Review ·', { exact: true }).className).toBe(
+      '@min-[40rem]/app-content:hidden',
+    );
     // A second attempt is named; the only result leads to Review.
     expect(now().textContent).toContain('Attempt 2 · in progress since');
     expect(within(now()).getByText('Then: Review')).toBeTruthy();
+  });
+
+  it('says what finishes a step an agent runs, per result, with Restart for the step itself', () => {
+    renderTaskNow('review-agent');
+
+    // No Finish step for the viewer, yet the step's results are read: only Approved needs a gate.
+    expect(within(now()).queryByRole('button', { name: 'Finish step' })).toBeNull();
+    expect(within(now()).getByRole('list', { name: 'Done with Approved when' }).textContent).toBe(
+      'task.md has a Review notes section · not yet · missing Review notes (not met) Open task.md',
+    );
+    // The results part ways (done or back to Implementation): no "Then".
+    expect(now().textContent).not.toContain('Then:');
+
+    fireEvent.keyDown(within(now()).getByRole('button', { name: 'Workflow operations' }), {
+      key: 'Enter',
+    });
+    expect(
+      within(screen.getByRole('menu')).getByRole('menuitem', { name: 'Restart Review' }),
+    ).toBeTruthy();
   });
 
   it('before the first start names the first step and its Goal, with Resume as the one action', () => {

@@ -4030,7 +4030,8 @@
                 "required": [
                   "kind",
                   "step",
-                  "attempt"
+                  "attempt",
+                  "exits"
                 ],
                 "properties": {
                   "kind": {
@@ -4222,6 +4223,242 @@
                         ]
                       }
                     }
+                  },
+                  "exits": {
+                    "type": "array",
+                    "items": {
+                      "allOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "id",
+                            "target",
+                            "feedback"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "result": {
+                              "type": "string"
+                            },
+                            "label": {
+                              "type": "string"
+                            },
+                            "target": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "step"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "step"
+                                      ]
+                                    },
+                                    "step": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    }
+                                  }
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "outcome"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "terminal"
+                                      ]
+                                    },
+                                    "outcome": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "completed"
+                                          ]
+                                        },
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "abandoned"
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  }
+                                }
+                              ]
+                            },
+                            "targetTitle": {
+                              "type": "string"
+                            },
+                            "feedback": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "required"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "optional"
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "gates": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": [
+                                  "id",
+                                  "type",
+                                  "label",
+                                  "documentType",
+                                  "scope",
+                                  "status"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "document"
+                                    ]
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "documentType": {
+                                    "type": "string"
+                                  },
+                                  "scope": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "kind",
+                                          "specId"
+                                        ],
+                                        "properties": {
+                                          "kind": {
+                                            "type": "string",
+                                            "enum": [
+                                              "specification"
+                                            ]
+                                          },
+                                          "specId": {
+                                            "$ref": "#/components/schemas/SpecId"
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "kind",
+                                          "specId",
+                                          "taskId"
+                                        ],
+                                        "properties": {
+                                          "kind": {
+                                            "type": "string",
+                                            "enum": [
+                                              "task"
+                                            ]
+                                          },
+                                          "specId": {
+                                            "$ref": "#/components/schemas/SpecId"
+                                          },
+                                          "taskId": {
+                                            "$ref": "#/components/schemas/TaskId"
+                                          }
+                                        }
+                                      }
+                                    ]
+                                  },
+                                  "status": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "satisfied"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "unsatisfied"
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  "documentId": {
+                                    "type": "string"
+                                  },
+                                  "reason": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "no-document"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "file-missing"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "sections-missing"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "unreadable"
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  "missingSections": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    },
+                                    "maxItems": 1000
+                                  }
+                                }
+                              },
+                              "maxItems": 1000
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "maxItems": 1000
                   }
                 }
               },

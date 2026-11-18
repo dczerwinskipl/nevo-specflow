@@ -19,7 +19,8 @@ export interface GateAction {
  * `blocking` (default) is for a list beside the action the gates refuse now (the chosen result of
  * Finish step, a start): an unmet gate takes the attention tone and says what is missing.
  * `checklist` is Now's "Done when": the step is still being worked on, so an unmet gate is an open
- * item ("not yet", neutral). A gate that cannot be met as things are (its file is missing or
+ * item, neutral: "not yet", and the missing sections when its document lacks some ("not yet ·
+ * missing Verification"). A gate that cannot be met as things are (its file is missing or
  * unreadable) still says why.
  */
 export function GateList({
@@ -48,7 +49,11 @@ export function GateList({
         const detail = met
           ? documentFor?.(gate)
           : open
-            ? t('workflowExecution.gate.notYet')
+            ? gate.reason === 'sections-missing' && (gate.missingSections ?? []).length > 0
+              ? t('workflowExecution.gate.notYetSections', {
+                  sections: (gate.missingSections ?? []).join(', '),
+                })
+              : t('workflowExecution.gate.notYet')
             : gateDetail(t, gate);
         const action = met ? undefined : actionFor?.(gate);
 

@@ -8,6 +8,7 @@ import { documentContentFixture } from '../../../../test-support/documents/fixtu
 import { createWorkspaceIntegrationApi } from '../../../../test-support/specs/workspace/api';
 import { createTaskDetailFixture } from '../detail/taskDetail.test-support';
 import type { TaskAuthoringApi } from '../authoring/api';
+import { withExits } from '../execution/projections.stories-support';
 import type { DocumentApi } from '../../documents/api';
 
 /*
@@ -127,7 +128,7 @@ function authoring(scenario: AuthoringScenario): TaskAuthoring {
 export function taskProjection(scenario: AuthoringScenario): WorkflowActionProjection {
   const started = scenario === 'started';
 
-  return {
+  return withExits({
     subject: { kind: 'task', specId: SPEC, taskId: TASK },
     position: started
       ? {
@@ -162,7 +163,7 @@ export function taskProjection(scenario: AuthoringScenario): WorkflowActionProje
       editDependencies: started ? { kind: 'unavailable', reason: 'started' } : allowed,
     },
     taskAuthoring: authoring(scenario),
-  };
+  });
 }
 
 export function taskResponse(scenario: AuthoringScenario): SpecificationTaskResponse {

@@ -13,7 +13,7 @@ import { createWorkspaceIntegrationApi } from '../../../../test-support/specs/wo
 import { documentContentFixture } from '../../../../test-support/documents/fixtures';
 import type { ArchetypeCatalogue } from '@nevo/specflow-contracts/documents';
 import type { DocumentApi } from '../../documents/api';
-import { SPEC } from '../execution/projections.stories-support';
+import { SPEC, withExits, type FixtureProjection } from '../execution/projections.stories-support';
 
 /*
  * The Specification Overview in its early states as the Runtime delivers them: no attention, at
@@ -132,6 +132,10 @@ const acceptanceGate = {
 
 /** The Specification's workflow projection of the scenario, with its outline. */
 export function earlyProjection(scenario: EarlyScenario): WorkflowActionProjection {
+  return withExits(earlyFixture(scenario));
+}
+
+function earlyFixture(scenario: EarlyScenario): FixtureProjection {
   const subject = { kind: 'specification' as const, specId: SPEC };
   const specification = {
     createTask: { kind: 'allowed' as const },

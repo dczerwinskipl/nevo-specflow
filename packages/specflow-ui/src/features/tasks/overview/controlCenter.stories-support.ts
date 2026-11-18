@@ -13,7 +13,12 @@ import type {
   WorkflowAttentionItem,
 } from '@nevo/specflow-contracts/workflow';
 import { createWorkspaceIntegrationApi } from '../../../../test-support/specs/workspace/api';
-import { SPEC, dominik } from '../execution/projections.stories-support';
+import {
+  SPEC,
+  dominik,
+  withExits,
+  type FixtureProjection,
+} from '../execution/projections.stories-support';
 
 /*
  * The Specification control center (Overview and Tasks page) as the Runtime delivers it, in the
@@ -599,6 +604,10 @@ const workStep = (id: string, title: string) => ({
 
 /** The Specification's workflow projection of the scenario. */
 export function controlCenterProjection(scenario: ControlCenterScenario): WorkflowActionProjection {
+  return withExits(controlCenterFixture(scenario));
+}
+
+function controlCenterFixture(scenario: ControlCenterScenario): FixtureProjection {
   const subject = { kind: 'specification' as const, specId: SPEC };
   switch (scenario) {
     case 'empty':

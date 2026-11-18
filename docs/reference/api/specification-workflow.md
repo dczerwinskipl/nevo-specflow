@@ -105,7 +105,11 @@ dispatched.
 missingSections?}`; `scope` is the Specification or Task the gate looked in (`{kind, specId, taskId?}`,
 to link its documents) and `reason` is `no-document`, `file-missing`, `sections-missing` or `unreadable` (fails closed). Each
 `actions.finish.transitions[]` entry lists the exit gates that apply to it in `gates`, and is
-`unavailable: gate-unsatisfied` while one does not hold. A Specification transition to `terminal
+`unavailable: gate-unsatisfied` while one does not hold. The `active` position also carries
+`exits`: the step's results (`{id, result?, label?, target, targetTitle?, feedback}`), each with
+the exit gates that apply to it (a gate's `when` names its results) in `gates`, evaluated now. It
+is a read-only fact present whoever runs the attempt; `actions.finish`, which only the person who
+may finish gets (never on an agent's attempt), adds whether each result can be taken now. A Specification transition to `terminal
 completed` is `unavailable: tasks-open` while any Task is open, with `openTasks` `[{taskId, cause}]`
 in id order (`cause`: `draft`, `on-hold`, `broken`, `dependency-unsatisfiable`, `active`, `waiting`
 or `ready`); see [Workflow kernel, Completion](../../architecture/workflow/workflow-kernel.md#completion-requires-closed-tasks).

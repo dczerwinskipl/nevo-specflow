@@ -20,6 +20,7 @@ import {
   dominik,
   specificationWorkflowProjection,
   taskWorkflowProjection,
+  withExits,
 } from './projections.stories-support';
 import { AbandonSpecificationDialog } from './specification/AbandonSpecificationDialog';
 import { CloseSpecificationDialog } from './specification/CloseSpecificationDialog';
@@ -852,7 +853,7 @@ describe('manual workflow execution', () => {
   it('lets a breakdown complete once its own open drafts are unticked (resolvableByFinish)', async () => {
     const finish = vi.fn(() => never());
     const base = specificationWorkflowProjection('tasks-open');
-    const projection: WorkflowActionProjection = {
+    const projection = withExits({
       ...base,
       position: {
         kind: 'active',
@@ -879,7 +880,7 @@ describe('manual workflow execution', () => {
           drafts: [{ id: 't-08', title: 'Audit log', type: 'backend' }],
         },
       },
-    };
+    });
     renderWith(
       <WorkflowNow
         subject={{ specId: SPEC }}

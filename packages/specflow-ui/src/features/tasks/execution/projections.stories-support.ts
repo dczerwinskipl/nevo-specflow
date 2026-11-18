@@ -6,6 +6,46 @@ import type {
   WorkflowActor,
 } from '@nevo/specflow-contracts/workflow';
 
+type Position = WorkflowActionProjection['position'];
+type ActivePosition = Extract<Position, { kind: 'active' }>;
+
+/** A fixture projection whose active position leaves its `exits` to {@link withExits}. */
+export type FixtureProjection = Omit<WorkflowActionProjection, 'position'> & {
+  readonly position: Exclude<Position, ActivePosition> | Omit<ActivePosition, 'exits'>;
+};
+
+/**
+ * The projection with the active step's `exits` as the Engine reads them: the finish results
+ * without what decides whether one can be taken now. A fixture without `finish` (an agent's
+ * attempt) gives its exits itself; those are kept.
+ */
+export function withExits(projection: FixtureProjection): WorkflowActionProjection {
+  const { position } = projection;
+  if (position.kind !== 'active') {
+    return { ...projection, position };
+  }
+
+  const exits = 'exits' in position ? (position as ActivePosition).exits : undefined;
+
+  return {
+    ...projection,
+    position: {
+      ...position,
+      exits:
+        exits ??
+        (projection.actions.finish?.transitions ?? []).map((transition) => ({
+          id: transition.id,
+          ...(transition.result !== undefined ? { result: transition.result } : {}),
+          ...(transition.label !== undefined ? { label: transition.label } : {}),
+          target: transition.target,
+          ...(transition.targetTitle !== undefined ? { targetTitle: transition.targetTitle } : {}),
+          feedback: transition.feedback,
+          ...(transition.gates ? { gates: transition.gates } : {}),
+        })),
+    },
+  };
+}
+
 /*
  * Workflow projections of the accepted mock's scenarios (Single sign-on), as the Runtime delivers
  * them: shared by the production stories and the component tests of manual workflow execution.
@@ -46,6 +86,7 @@ export type TaskWorkflowScenario =
   | 'review'
   | 'rework'
   | 'implement-gate'
+  | 'review-agent'
   | 'spike-gate'
   | 'spike-gate-met';
 
@@ -95,7 +136,18 @@ export function taskWorkflowProjection(
   scenario: TaskWorkflowScenario,
   options: { readonly version?: number } = {},
 ): WorkflowActionProjection {
+  return withExits(taskFixture(scenario, options));
+}
+
+function taskFixture(
+  scenario: TaskWorkflowScenario,
+  options: { readonly version?: number },
+): FixtureProjection {
   const subject = { kind: 'task' as const, specId: SPEC, taskId: TASK };
+  if (scenario === 'review-agent') {
+    return reviewByAgent();
+  }
+
   if (scenario === 'first-start') {
     const version = options.version ?? buildWorkflow.version;
     const preview = {
@@ -355,6 +407,67 @@ export function taskWorkflowProjection(
   };
 }
 
+/**
+ * Review run by an agent: the viewer has no Finish step, but Now still says what finishes it. Its
+ * exit gate applies only to Approved (`when: [approved]`); Changes requested needs none. The only
+ * return goes to Review itself (start it again).
+ */
+function reviewByAgent(): WorkflowActionProjection {
+  const subject = { kind: 'task' as const, specId: SPEC, taskId: TASK };
+
+  return {
+    subject,
+    workflow: buildWorkflow,
+    position: {
+      kind: 'active',
+      step: {
+        ...step('review', 'Review'),
+        purpose: 'Check the change against task.md and record what was verified.',
+      },
+      attempt: {
+        number: 1,
+        startedAt: '2026-11-13T10:20:00Z',
+        actor: { class: 'agent', details: { provider: 'claude', model: 'opus' } },
+      },
+      exits: [
+        {
+          id: 'approved',
+          result: 'approved',
+          label: 'Approved',
+          target: { kind: 'terminal', outcome: 'completed' },
+          feedback: 'optional',
+          gates: [
+            {
+              id: 'review-notes',
+              type: 'document',
+              label: 'task.md has a Review notes section',
+              documentType: 'task',
+              scope: { kind: 'task', specId: SPEC, taskId: TASK },
+              status: 'unsatisfied',
+              documentId: 'task',
+              reason: 'sections-missing',
+              missingSections: ['Review notes'],
+            },
+          ],
+        },
+        {
+          id: 'changes-requested',
+          result: 'changes-requested',
+          label: 'Changes requested',
+          target: { kind: 'step', step: 'implement' },
+          targetTitle: 'Implementation',
+          feedback: 'required',
+        },
+      ],
+    },
+    actions: {
+      return: { targets: [{ step: 'review', title: 'Review', feedback: 'required' }] },
+    },
+    task: lifecycle(true),
+    taskAuthoring,
+  };
+}
+
 /** The Task resource facts that match a projection scenario. */
 export function taskResourceFor(scenario: TaskWorkflowScenario): TaskResourceFacts {
   const held = scenario === 'on-hold';
@@ -437,7 +550,7 @@ export function specificationWorkflowProjection(
   scenario: SpecificationWorkflowScenario,
 ): WorkflowActionProjection {
   if (scenario === 'tasks-open') {
-    return tasksOpenProjection();
+    return withExits(tasksOpenProjection());
   }
 
   const abandoned = scenario === 'abandoned';
@@ -492,7 +605,7 @@ export function specificationWorkflowProjection(
  * Acceptance, the step that completes the Specification, while Tasks are open: its one result is
  * unavailable (`tasks-open`) and names them.
  */
-function tasksOpenProjection(): WorkflowActionProjection {
+function tasksOpenProjection(): FixtureProjection {
   return {
     subject: { kind: 'specification', specId: SPEC },
     workflow: specWorkflow,

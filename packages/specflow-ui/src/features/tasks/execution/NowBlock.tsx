@@ -360,7 +360,13 @@ export function NowBlock({
               {/* A neutral icon with the result: the projection gives no tone for results. */}
               {handoff.kind === 'transition' ? (
                 <>
-                  {t('workflowExecution.now.lastPrefix', { step: handoff.from.title })}
+                  {/* Under the band's "Last hand-off" label the step is not prefixed again. */}
+                  <span className="hidden @min-[40rem]/app-content:inline">
+                    {t('workflowExecution.now.lastPrefix', { step: handoff.from.title })}
+                  </span>
+                  <span className="@min-[40rem]/app-content:hidden">
+                    {t('workflowExecution.now.handoffFrom', { step: handoff.from.title })}
+                  </span>
                   <span className="font-medium text-content-primary">
                     <InlineIcon name="arrow-right" />
                     {transitionLabel({ ...handoff, id: handoff.transition })}

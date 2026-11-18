@@ -157,6 +157,11 @@ export type ActionPosition =
         readonly startedAt: string;
         readonly actor: WorkflowActor;
       };
+      /**
+       * What finishes the step, read for everyone whoever runs the attempt: each result with where
+       * it goes and the exit gates it needs, evaluated now. Who may finish is `actions.finish`.
+       */
+      readonly exits: readonly StepExit[];
     }
   | {
       readonly kind: 'waiting';
@@ -212,6 +217,9 @@ export type PresentedHandoff =
   | Extract<Handoff, { kind: 'return' }>;
 
 /** The workflow actions the owner may take now; an absent action is not allowed. */
+/** A result of the active step with the exit gates it needs (absent when it needs none). */
+export type StepExit = TransitionDescription & { readonly gates?: readonly GateStatus[] };
+
 export interface WorkflowActions {
   readonly start?: {
     readonly step: string;
@@ -643,13 +651,13 @@ interface RunInput {
 }
 
 /**
- * The finish transitions of an active work step, each with the exit gates that apply to it. Every
- * gate is read once, whichever transitions it applies to.
+ * The results of an active work step, each with the exit gates that apply to it (a gate `when`
+ * names its results). Every gate is read once, whichever results it applies to.
  */
-async function finishTransitions(
+async function stepExits(
   input: RunInput,
   step: Extract<WorkflowStep, { kind: 'work' }>,
-): Promise<NonNullable<WorkflowActions['finish']>['transitions']> {
+): Promise<StepExit[]> {
   const statuses = new Map(
     (
       await evaluateGates(
@@ -660,6 +668,24 @@ async function finishTransitions(
     ).map((status) => [status.id, status] as const),
   );
 
+  return describeTransitions(input.definition, step).map((transition) => {
+    const gates = exitGatesFor(step, transition.result).flatMap(
+      (gate) => statuses.get(gate.id) ?? [],
+    );
+
+    return { ...transition, ...(gates.length > 0 ? { gates } : {}) };
+  });
+}
+
+/**
+ * The finish transitions of an active work step: its results (`stepExits`) with whether each can
+ * be taken now.
+ */
+async function finishTransitions(
+  input: RunInput,
+  step: Extract<WorkflowStep, { kind: 'work' }>,
+  exits: readonly StepExit[],
+): Promise<NonNullable<WorkflowActions['finish']>['transitions']> {
   // The open Tasks whose document change is pending (D03): a finish cannot close them, since that
   // writes their folder. Asked once, only when a transition waits for open Tasks.
   const anyOpen = describeTransitions(input.definition, step).some(
@@ -683,11 +709,9 @@ async function finishTransitions(
     }
   }
 
-  return describeTransitions(input.definition, step).map((transition, index) => {
+  return exits.map((transition, index) => {
     const declared = step.transitions[index];
-    const gates = exitGatesFor(step, transition.result).flatMap(
-      (gate) => statuses.get(gate.id) ?? [],
-    );
+    const gates = transition.gates ?? [];
     // The finish asks the same rule (`advance`) on the state after its own input, so a finish
     // whose own Task list, decisions or effects can close every open Task may still complete.
     const open = tasksOpenAtCompletion(
@@ -725,7 +749,6 @@ async function finishTransitions(
       ...(open.length > 0 ? { openTasks: open } : {}),
       ...(closable ? { resolvableByFinish: true as const, closableTasks: closable } : {}),
       ...(pendingOpen.length > 0 ? { documentChangePending: pendingOpen } : {}),
-      ...(gates.length > 0 ? { gates } : {}),
     };
   });
 }
@@ -824,12 +847,15 @@ async function runProjection(
     throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'The active work attempt has no actor.');
   }
 
+  const exits = await stepExits(input, step);
+
   return {
     ...common,
     position: {
       kind: 'active',
       step: describeStep(step),
       attempt: { number: attempt.attempt, startedAt: attempt.startedAt, actor: attempt.actor },
+      exits,
     },
     actions: {
       // A person never finishes an agent's attempt (the core refuses it).
@@ -838,7 +864,7 @@ async function runProjection(
             finish: {
               step: step.id,
               attempt: attempt.attempt,
-              transitions: await finishTransitions(input, step),
+              transitions: await finishTransitions(input, step, exits),
               ...(describeStep(step).produces === 'tasks'
                 ? { drafts: ownedDrafts(input.tasks, step.id) }
                 : {}),

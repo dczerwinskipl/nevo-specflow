@@ -159,6 +159,13 @@ export const GateStatusSchema = Type.Object({
 });
 export type GateStatus = Static<typeof GateStatusSchema>;
 
+/** A result of the active step with the exit gates it needs (absent when it needs none). */
+export const StepExitSchema = Type.Intersect([
+  WorkflowTransitionSchema,
+  Type.Object({ gates: Type.Optional(array(GateStatusSchema)) }),
+]);
+export type StepExit = Static<typeof StepExitSchema>;
+
 export const DOCUMENT_RELATIONS = ['needed-to-finish', 'needed-to-start', 'used'] as const;
 export type DocumentRelationKind = (typeof DOCUMENT_RELATIONS)[number];
 
@@ -425,6 +432,12 @@ export const WorkflowPositionSchema = Type.Union([
       startedAt: Type.String(),
       actor: WorkflowActorSchema,
     }),
+    /**
+     * What finishes the step, for everyone whoever runs the attempt: each result with where it
+     * goes and the exit gates it needs (a gate's `when` names its results), evaluated now. Who may
+     * finish, and whether a result can be taken now, is `actions.finish`.
+     */
+    exits: array(StepExitSchema),
   }),
   Type.Object({
     kind: Type.Literal('waiting'),

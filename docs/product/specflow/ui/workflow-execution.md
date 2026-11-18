@@ -78,9 +78,11 @@ In reading order:
    **Goal**; without a purpose, the first paragraph of the step's instructions (three lines, **Show
    more**); with neither, nothing. Before a Task's first start it is the first step's Goal.
 4. **Done when**: the active step's exit gates, met or not, as one checklist (the same list for the
-   Specification and the Task). A met gate is a success check with the document that meets it; an
-   unmet one is an open circle with "not yet", neutral, because the step is being worked on and the
-   main action is its fix. Only a gate that cannot be met as things are says why (its file is missing
+   Specification and the Task). It is read from the step's results (`position.exits`), so it shows
+   whoever runs the attempt, an agent included, when the viewer has no Finish step. A met gate is a
+   success check with the document that meets it; an unmet one is an open circle with "not yet",
+   neutral, because the step is being worked on and the main action is its fix, and names the
+   missing sections when the document lacks some ("not yet · missing Verification"). Only a gate that cannot be met as things are says why (its file is missing
    or cannot be read). Results that need different gates get one list each ("Done with Approved
    when"); a result that waits for open Tasks is left out (see Open Tasks). A Task adds where the work
    goes, "Then: Review", when every result leads to the same step (the Specification's step track
@@ -89,15 +91,17 @@ In reading order:
    See Depends on", a missing required context entry · See Context). An awaited process artifact is
    one neutral line.
 6. **Latest hand-off** (Task): the last step, its result, who and when, and its feedback (how a failed
-   review reads on the rework attempt). In the card it is a quote with a left rule; in the Narrow
-   band it is a labelled paragraph ("Last hand-off") with no second rule inside the band's bar. The
+   review reads on the rework attempt). In the card it is a quote with a left rule ("Last: Review ·
+   …"); in the Narrow band it is a labelled paragraph ("Last hand-off", then "Review · …") with no
+   second rule inside the band's bar. The
    Overview leaves the hand-off to the history.
 7. **The main action**, with at most one button-styled secondary, for the Specification and the Task
    alike (one rule, `nowActionPlan`). Finish step is the main action while some result can be taken.
    When every result waits for an unmet gate whose document exists, opening it is the main action
    ("Open task.md", with "Add the Verification section to task.md to finish.") and Finish step is the
-   secondary. Return to an earlier step, an unavailable Finish step, Workflow history and the step id
-   and revision are in the ⋯ menu. A lifecycle main action (Approve, Resume) replaces the workflow
+   secondary. Return to an earlier step (named "Restart Implement" when its only target is the
+   step the run is at), an unavailable Finish step, Workflow history and the step id and revision
+   are in the ⋯ menu. A lifecycle main action (Approve, Resume) replaces the workflow
    actions and is not repeated in the header.
 
 The full attempt history is the Secondary (Task history, Activity history), closed by default and

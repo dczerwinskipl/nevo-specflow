@@ -368,6 +368,21 @@ export function WorkflowNow({
     ) : undefined);
 
   const returnTargets = actions.return?.targets ?? [];
+  // A return to the step the run is at starts it again: say so, not "Return to" where it is.
+  const returnLabel = () => {
+    const only = returnTargets.length === 1 ? returnTargets[0] : undefined;
+    if (!only) {
+      return t('workflowExecution.now.return');
+    }
+
+    const current =
+      position.kind === 'active' || position.kind === 'waiting' ? position.step.id : undefined;
+
+    return only.step === current
+      ? t('workflowExecution.now.restart', { step: only.title })
+      : t('workflowExecution.now.returnTo', { step: only.title });
+  };
+
   const technicalStep =
     position.kind === 'active' || position.kind === 'waiting'
       ? position.step.id
@@ -381,10 +396,7 @@ export function WorkflowNow({
           ? [
               {
                 id: 'return',
-                label:
-                  returnTargets.length === 1
-                    ? t('workflowExecution.now.returnTo', { step: returnTargets[0]!.title })
-                    : t('workflowExecution.now.return'),
+                label: returnLabel(),
                 onSelect: openReturn,
                 disabled: busy,
               },

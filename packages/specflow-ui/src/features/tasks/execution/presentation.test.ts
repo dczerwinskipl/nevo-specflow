@@ -218,10 +218,15 @@ describe('Task Now: Goal and Done when', () => {
     class: 'human' as const,
     details: { actorId: 'local:ann', trust: 'local' as const },
   };
-  const at = (step: { purpose: string; instructions?: string }): Position => ({
+  type Exit = Extract<Position, { kind: 'active' }>['exits'][number];
+  const at = (
+    step: { purpose: string; instructions?: string },
+    exits: readonly Exit[] = [],
+  ): Position => ({
     kind: 'active',
     step: { id: 'implement', title: 'Implement', kind: 'work', ...step },
     attempt: { number: 1, startedAt: '2026-11-13T10:24:00Z', actor },
+    exits: [...exits],
   });
   const gate = (id: string, met = false): GateStatus => ({
     id,
@@ -240,9 +245,15 @@ describe('Task Now: Goal and Done when', () => {
     feedback: 'optional',
     ...(gates ? { gates } : {}),
   });
+  const exitOf = ({ unavailable: _unavailable, ...exit }: Transition): Exit => exit;
   const projectionWith = (...transitions: Transition[]) => ({
-    position: at({ purpose: '' }),
+    position: at({ purpose: '' }, transitions.map(exitOf)),
     actions: { finish: { step: 'implement', attempt: 1, transitions } },
+  });
+  /** An agent's attempt: the step's results are read, but there is no finish for the viewer. */
+  const agentWith = (...transitions: Transition[]) => ({
+    position: at({ purpose: '' }, transitions.map(exitOf)),
+    actions: {},
   });
 
   it('is the purpose, else the first paragraph of the instructions, else nothing', () => {
@@ -285,6 +296,31 @@ describe('Task Now: Goal and Done when', () => {
       then: 'Review',
     });
     expect(doneWhen(projectionWith(toStep('ready', 'review')))).toBeUndefined();
+  });
+
+  it('reads the results of the step whoever runs the attempt (an agent: no finish action)', () => {
+    const gates = [gate('task')];
+
+    expect(doneWhen(agentWith(toStep('ready', 'review', gates)), { withThen: true })).toEqual({
+      groups: [{ gates }],
+      then: 'Review',
+    });
+  });
+
+  it('lists a gate only for the result its `when` names, and no step for results that part', () => {
+    // The Engine applied `when: [approved]`: the gate is on Approved only; Changes needs none.
+    const approved: Transition = {
+      id: 'approved',
+      result: 'approved',
+      label: 'Approved',
+      target: { kind: 'terminal', outcome: 'completed' },
+      feedback: 'optional',
+      gates: [gate('review-notes')],
+    };
+
+    expect(
+      doneWhen(agentWith(approved, toStep('changes', 'implement')), { withThen: true }),
+    ).toEqual({ groups: [{ result: 'Approved', gates: [gate('review-notes')] }] });
   });
 
   it('leaves out a result that waits for open Tasks', () => {

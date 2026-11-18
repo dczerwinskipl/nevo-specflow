@@ -14,6 +14,7 @@ const meta = {
         'first-start',
         'on-hold',
         'implement-gate',
+        'review-agent',
         'start-drift',
         'review',
         'rework',
@@ -37,6 +38,15 @@ type Story = StoryObj<typeof meta>;
 export const TaskImplementGate: Story = {
   tags: ['capture'],
   args: { scenario: 'implement-gate' },
+};
+/**
+ * Review run by an agent: no Finish step for the viewer, yet "Done when" lists the gate that only
+ * Approved needs (with its missing section) and no next step, since the results part ways.
+ * Starting Review again is in ⋯ as "Restart Review".
+ */
+export const TaskReviewByAgent: Story = {
+  tags: ['capture'],
+  args: { scenario: 'review-agent' },
 };
 /** Not started and on hold with a reason: neutral status, the first step's Goal and Resume. */
 export const TaskOnHold: Story = { tags: ['capture'], args: { scenario: 'on-hold' } };

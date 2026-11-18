@@ -36,6 +36,12 @@ export interface TreeRowState {
   readonly tone?: 'muted' | 'secondary' | 'attention';
   /** The label in a narrow row (below `@md` row width), for example without a step title. */
   readonly shortText?: string;
+  /**
+   * The name keeps its width and the label goes to its own line (right-aligned, one line, cut
+   * with an ellipsis; give the full text in the tooltip) when both do not fit on one line, instead
+   * of the name giving way. For a long label that must keep all of its words, such as a step title.
+   */
+  readonly wrap?: boolean;
 }
 
 /** What every row takes beyond its own content: focus wiring, the edit entry and the actions. */
@@ -59,7 +65,13 @@ function StateLabel({ state }: { state: TreeRowState }) {
   const tone = state.attention ? 'attention' : (state.tone ?? 'muted');
 
   return (
-    <span className={cn(stateLabelClassName[tone], 'gap-1')}>
+    <span
+      className={cn(
+        stateLabelClassName[tone],
+        'gap-1',
+        state.wrap && 'ml-auto min-w-0 max-w-[calc(100%-var(--spacing-tree-leaf-offset))]',
+      )}
+    >
       {/* A row in attention carries the warning glyph in front; a label in attention its own. */}
       {tone === 'attention' && !state.attention ? (
         <Icon name="triangle-alert" size="sm" className="shrink-0" />
@@ -69,6 +81,8 @@ function StateLabel({ state }: { state: TreeRowState }) {
           <span className="@max-md/tree-row:hidden">{state.text}</span>
           <span className="hidden @max-md/tree-row:inline">{state.shortText}</span>
         </>
+      ) : state.wrap ? (
+        <span className="min-w-0 truncate">{state.text}</span>
       ) : (
         state.text
       )}
@@ -180,6 +194,8 @@ export function TreeDocumentRow({
 }) {
   const flat = useFlatLevel();
   const attention = state?.attention === true;
+  // The label may take its own line: glyph and name stay together on the first one.
+  const wrapping = state?.wrap === true;
   // Beside folders a leading document starts like a folder: its glyph in the chevron column.
   const inChevronColumn = lead && !flat && !attention;
 
@@ -190,7 +206,7 @@ export function TreeDocumentRow({
           <>
             <TreeRowTooltip name={name} details={details}>
               {(label) => {
-                const content = (
+                const leading = (
                   <>
                     {attention ? (
                       <Icon name="triangle-alert" className={treeAttentionGlyphClassName} />
@@ -211,6 +227,17 @@ export function TreeDocumentRow({
                     >
                       {name}
                     </span>
+                  </>
+                );
+                const content = (
+                  <>
+                    {wrapping ? (
+                      <span className="flex min-w-0 max-w-full shrink-0 items-start gap-tree-gap">
+                        {leading}
+                      </span>
+                    ) : (
+                      leading
+                    )}
                     {spokenDetail && <span className="sr-only">{spokenDetail}</span>}
                     {state && <StateLabel state={state} />}
                   </>
@@ -220,7 +247,10 @@ export function TreeDocumentRow({
                   <button
                     type="button"
                     disabled={disabled}
-                    className={flat || inChevronColumn ? treeItemClassName : treeLeafItemClassName}
+                    className={cn(
+                      flat || inChevronColumn ? treeItemClassName : treeLeafItemClassName,
+                      wrapping && 'flex-wrap',
+                    )}
                     ref={buttonRef}
                     aria-current={current ? 'true' : undefined}
                     onClick={onOpen}
@@ -229,7 +259,13 @@ export function TreeDocumentRow({
                     {content}
                   </button>
                 ) : (
-                  <div className={cn(treeStaticItemClassName, !flat && 'ml-tree-leaf-offset')}>
+                  <div
+                    className={cn(
+                      treeStaticItemClassName,
+                      !flat && 'ml-tree-leaf-offset',
+                      wrapping && 'flex-wrap',
+                    )}
+                  >
                     {content}
                   </div>
                 );

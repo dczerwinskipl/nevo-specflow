@@ -280,7 +280,10 @@ or after a refusal.
   passed."; with Git off "The workflow is complete. Git is off, so nothing is merged.", since no
   repository check ran; an abandoned Specification shows "Abandoned: “<reason>”" under the title
   instead), then the facts in a fixed order: **Result** "Recorded as not delivered"
-  (abandoned only), **Merges** and **Tasks**. Merges comes from the preview's `merge` fact:
+  (abandoned only), **Merges**, **Tasks** and, when some apply, **Documents**: the documents still
+  only their initial content in the shared document state vocabulary ("2 with initial content only:
+  ux.md, backend.md", at most three names then "+N more"), informative and never a blocker, from the
+  workspace read's `contentState`. Merges comes from the preview's `merge` fact:
   "<source> → <target>", "Nothing to merge" (no commits ahead of the target), "Archives on <branch>
   (main folder; nothing to merge)" (the Specification lives in the main folder), "Archives on
   <branch> without merging" (archive only), or "Archives without Git (Git is off for this project)"

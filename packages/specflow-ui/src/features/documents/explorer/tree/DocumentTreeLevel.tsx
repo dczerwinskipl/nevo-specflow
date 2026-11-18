@@ -63,7 +63,8 @@ export function DocumentTreeLevel({
   labelledBy?: string;
 }): ReactNode {
   const { t } = useTranslation();
-  const stateRow = useDocumentStateRow();
+  // The step is named here: a narrow row keeps it, on its own line under the name.
+  const stateRow = useDocumentStateRow('wrap');
   const { index, entry } = context;
   const creatingIn = (path: string) =>
     Boolean(entry && !entry.rename && entry.parent.toLowerCase() === path.toLowerCase());

@@ -213,7 +213,7 @@ export const BlockedTasks: Story = {
   },
 };
 
-/** Ready: Merges and Tasks, the archive note, Close and archive. */
+/** Ready: Merges, Tasks and Documents, the archive note, Close and archive. */
 export const ReadyIntegrates: Story = {
   args: { scenario: 'close-integrates' },
   play: async ({ canvasElement }) => {
@@ -222,6 +222,8 @@ export const ReadyIntegrates: Story = {
     await expect(fact(dialog, 'Merges')).toBe('nevo-1/single-sign-on → release/2026.11');
     // The same counts and words as Now behind it; the Overview's Tasks section agrees.
     await expect(fact(dialog, 'Tasks')).toBe('All 6 tasks done');
+    // Documents still only their initial content: informative, last, in the shared vocabulary.
+    await expect(fact(dialog, 'Documents')).toMatch(/^2 with initial content only: /);
     await expect(within(canvasElement).queryByText('No tasks yet')).toBeNull();
     await expect(
       dialog.getByText('Closing archives the specification; it cannot be reopened.'),

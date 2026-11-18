@@ -126,6 +126,7 @@ function ProjectSpecificationWorkflow({
             projection={projection}
             tasks={tasks}
             {...(workspace?.taskProgress ? { progress: workspace.taskProgress } : {})}
+            documents={workspace?.documents ?? []}
             {...(projection.specification?.exit?.abandon.kind === 'allowed' ||
             projection.specification?.exit?.abandon.kind === 'blocked'
               ? { onAbandonInstead: () => setDialog('abandon') }

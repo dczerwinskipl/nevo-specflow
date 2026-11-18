@@ -130,6 +130,25 @@ describe('shared document tree rows', () => {
     expect(screen.getByText('Needed to finish').className).toContain('@max-md/tree-row:inline');
   });
 
+  it('lets a wrapping label take its own line instead of cutting the name', () => {
+    tree(
+      <TreeDocumentRow
+        name="behaviour.md"
+        state={{ text: 'Needed to finish Write the specification', wrap: true }}
+        current={false}
+        onOpen={noop}
+      />,
+      true,
+    );
+    const button = row('behaviour.md');
+    expect(button.className).toContain('flex-wrap');
+    // Glyph and name stay together; the label text is cut on its own line, never hidden.
+    expect(screen.getByText('behaviour.md').parentElement?.className).toContain('shrink-0');
+    expect(screen.getByText('Needed to finish Write the specification').className).toContain(
+      'truncate',
+    );
+  });
+
   it('draws a row that opens nothing as the same line, not a button', () => {
     tree(<TreeDocumentRow name="src/**" state={{ text: 'Required' }} current={false} />, true);
     expect(screen.queryByRole('button')).toBeNull();

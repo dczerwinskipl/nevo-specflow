@@ -90,6 +90,11 @@ describe('documentStateLabel', () => {
       tone: 'secondary',
     });
     expect(shown('authored', { ...later, blocksNow: true }, elsewhere)?.tone).toBe('attention');
+    // Even before a start (the next step reported as the one to start) the step is named.
+    const startNow = { ...later, blocksNow: true, step: { ...later.step, active: true } };
+    expect(shown('baseline', startNow, onScreen)?.text).toBe(
+      'Initial content only · needed to start Design the solution',
+    );
   });
 
   it.each([

@@ -19,8 +19,13 @@ import {
 import type { CloseMerge } from '@nevo/specflow-contracts/specs';
 import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { useAppServices } from '../../../../app/useAppServices';
+import { documentStateLabel } from '../../../documents';
 import { InlineAction } from '../InlineAction';
-import { specsOverviewKeys, type TaskProgressData } from '../../../specs/read-model';
+import {
+  specsOverviewKeys,
+  type DocumentItem,
+  type TaskProgressData,
+} from '../../../specs/read-model';
 import { progressText, terminalSummary } from '../../overview/progress';
 import { taskKeys } from '../../queries';
 import { invalidateAfterTaskChange } from '../../authoring/queries';
@@ -59,6 +64,11 @@ export interface CloseSpecificationDialogProps {
   readonly tasks: ReadonlyMap<string, BlockerTask>;
   /** The Runtime's Task counts (the same as Now's), for the Tasks fact; no row without them. */
   readonly progress?: TaskProgressData;
+  /**
+   * The Specification's documents with their content state (the workspace read), for the Documents
+   * fact: those still only their initial content. Without them the fact is left out.
+   */
+  readonly documents?: readonly Pick<DocumentItem, 'id' | 'title' | 'filename' | 'contentState'>[];
   readonly onAbandonInstead?: () => void;
   readonly onSeeWorkflow: () => void;
   readonly onSeeTasks: () => void;
@@ -73,7 +83,7 @@ export interface CloseSpecificationDialogProps {
  * check runs, only Cancel. Blocked: the workflow blockers with the agent Turns running in the
  * checkout (the occupancy read), or the blockers and repository preconditions a preview or Close
  * refused with, and Check again for the repository ones. Ready: what closing does (Result for an
- * abandoned Specification, Merges, Tasks) and that it archives for good. A refused or failed check
+ * abandoned Specification, Merges, Tasks, Documents) and that it archives for good. A refused or failed check
  * says what to do and checks again on request.
  */
 export function CloseSpecificationDialog(props: CloseSpecificationDialogProps) {
@@ -91,6 +101,7 @@ function CloseContent({
   projection,
   tasks,
   progress,
+  documents = [],
   onAbandonInstead,
   onSeeWorkflow,
   onSeeTasks,
@@ -361,6 +372,7 @@ function CloseContent({
                 position={position}
                 tasks={tasks}
                 {...(progress ? { progress } : {})}
+                documents={documents}
                 onSeeTasks={go(onSeeTasks)}
               />
               <InlineNote>{t('workflowExecution.close.archiveNote')}</InlineNote>
@@ -490,25 +502,45 @@ function MergeFact({ merge }: { readonly merge: CloseMerge }) {
   }
 }
 
+/** Documents the Documents fact names before "+N". */
+const DOCUMENT_NAMES = 3;
+
 /**
  * The facts of a planned Close, in a fixed order: Result (an abandoned Specification), Merges,
- * Tasks. Tasks reads the Runtime's counts in Now's words (`terminalSummary`); the Tasks not
- * delivered are only named below them.
+ * Tasks, Documents. Tasks reads the Runtime's counts in Now's words (`terminalSummary`); the Tasks
+ * not delivered are only named below them. Documents (only when some apply) names the documents
+ * still only their initial content, in the shared document state vocabulary; informative, never a
+ * blocker.
  */
 function CloseFacts({
   merge,
   position,
   tasks,
   progress,
+  documents,
   onSeeTasks,
 }: {
   readonly merge: CloseMerge;
   readonly position: Position;
   readonly tasks: ReadonlyMap<string, BlockerTask>;
   readonly progress?: TaskProgressData;
+  readonly documents: NonNullable<CloseSpecificationDialogProps['documents']>;
   readonly onSeeTasks: () => void;
 }) {
   const { t } = useTranslation();
+  // The run has ended or ends with the Close: no relation applies, only the content state.
+  const initialOnly = documents
+    .filter(
+      (document) =>
+        documentStateLabel(document.contentState, undefined, { stepOnScreen: false })?.contentOnly,
+    )
+    .map((document) => document.filename ?? document.title);
+  const documentNames = [
+    ...initialOnly.slice(0, DOCUMENT_NAMES),
+    ...(initialOnly.length > DOCUMENT_NAMES
+      ? [t('workflowExecution.close.documentsMore', { count: initialOnly.length - DOCUMENT_NAMES })]
+      : []),
+  ].join(', ');
   const abandoned = position.kind === 'terminal' && position.outcome === 'abandoned';
   const notDeliveredTasks = [...tasks.values()].filter(
     (task) => task.statusId === 'cancelled' || task.statusId === 'abandoned',
@@ -541,6 +573,19 @@ function CloseFacts({
           <DescriptionList.Item>
             <DescriptionList.Term>{t('workflowExecution.close.facts.tasks')}</DescriptionList.Term>
             <DescriptionList.Detail>{tasksFact}</DescriptionList.Detail>
+          </DescriptionList.Item>
+        ) : null}
+        {initialOnly.length > 0 ? (
+          <DescriptionList.Item>
+            <DescriptionList.Term>
+              {t('workflowExecution.close.facts.documents')}
+            </DescriptionList.Term>
+            <DescriptionList.Detail>
+              {t('workflowExecution.close.documentsFact', {
+                count: initialOnly.length,
+                names: documentNames,
+              })}
+            </DescriptionList.Detail>
           </DescriptionList.Item>
         ) : null}
       </DescriptionList>

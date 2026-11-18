@@ -184,22 +184,34 @@ both only when both apply.
   `authored` → nothing. Unknown (no `contentState`) → nothing.
 - **Relation.** How the workflow's gates use the document now: **Needed to finish <step>**,
   **Needed to start <step>**, **Used in <step>**. Where the active step is on screen (Overview, Task
-  detail) its gates read "this step"; this tree names the step.
+  detail) its gates read "this step"; this tree names the step. "Needed to start" is the next step's
+  gate and always names that step. A row shows the relations of its own registry only (`scope`): a
+  Task step's gate on a Specification document is not shown on the Specification's rows.
 - **Together.** "Initial content only · needed to finish Write the specification": the content state
   first, then the relation.
 
-| Content state | Relation                                    | Label (this tree)                                         | Tone                             |
-| ------------- | ------------------------------------------- | --------------------------------------------------------- | -------------------------------- |
-| baseline      | none                                        | Initial content only                                      | muted (a standing fact)          |
-| authored      | none                                        | none                                                      | —                                |
-| any           | needed to finish (refuses the finish now)   | [Initial content only · n]eeded to finish <step>          | attention, with its warning icon |
-| any           | needed to start / used (does not block now) | [Initial content only · n]eeded to start / used in <step> | secondary (the work at hand)     |
+| Content state | Relation                                                       | Label (this tree)                                         | Tone                             |
+| ------------- | -------------------------------------------------------------- | --------------------------------------------------------- | -------------------------------- |
+| baseline      | none                                                           | Initial content only                                      | muted (a standing fact)          |
+| authored      | none                                                           | none                                                      | —                                |
+| any           | needed to finish / needed to start, blocking now (`blocksNow`) | [Initial content only · n]eeded to finish / start <step>  | attention, with its warning icon |
+| any           | needed to start, not blocking now; used                        | [Initial content only · n]eeded to start / used in <step> | secondary (the work at hand)     |
 
 The attention tone is only for a relation whose gate refuses the action the run waits for now
 (`blocksNow`); the content state never adds attention. The tooltip adds the full label, the gate and
 the sections it still lacks ("Needs the Acceptance section"). In a narrow row (under `28rem`) the
-label shortens: the relation drops its step ("Needed to finish", "Initial content · needed to
-finish"; "Used in this step" stays as it is). Once the run ended no gate relates a document, so a closed Specification shows only
+Overview and Task detail shorten the label: the relation drops its step ("Needed to finish",
+"Initial content · needed to finish"; "Used in this step" stays as it is), since Now beside it names
+the step. This tree keeps the step: a label that does not fit beside the name takes its own line
+under it, right-aligned, and a long step title is cut with an ellipsis (the tooltip has the full
+label); the name is not cut for it.
+
+While the workflow projection loads, the rows show their content state only (no layout change when
+the relations arrive). When it cannot be read, the rows keep their content state and a quiet note
+after the list says that the workflow's requirements could not be loaded, so no row silently reads as
+"not needed". (The Overview shows no label until the projection has answered, then the final ones:
+its header never flips between "N · initial content only" and per-row labels.) A save or a tree
+operation refreshes the projection, so a gate the change satisfies stops saying "needed". Once the run ended no gate relates a document, so a closed Specification shows only
 **Initial content only**. Rows are never reordered by their label. The archetype's expected types
 (3.4) are a separate, type-level fact and never say "needed".
 

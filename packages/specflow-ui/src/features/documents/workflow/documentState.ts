@@ -46,11 +46,12 @@ const relationTexts = {
     stepAfter: 'documents.state.afterContent.neededToFinishStep',
     shortAfter: 'documents.state.afterContent.neededToFinishShort',
   },
+  // The next step's gate: never "this step" (see `thisStep` below).
   'needed-to-start': {
-    thisStep: 'documents.state.relation.neededToStartThisStep',
+    thisStep: 'documents.state.relation.neededToStartStep',
     step: 'documents.state.relation.neededToStartStep',
     short: 'documents.state.relation.neededToStartShort',
-    thisStepAfter: 'documents.state.afterContent.neededToStartThisStep',
+    thisStepAfter: 'documents.state.afterContent.neededToStartStep',
     stepAfter: 'documents.state.afterContent.neededToStartStep',
     shortAfter: 'documents.state.afterContent.neededToStartShort',
   },
@@ -106,7 +107,8 @@ export function documentStateLabel(
   }
 
   const keys = relationTexts[relation.relation];
-  const thisStep = stepOnScreen && relation.step.active;
+  // A needed-to-start gate belongs to the next step, so it always names it.
+  const thisStep = stepOnScreen && relation.step.active && relation.relation !== 'needed-to-start';
   const step = { step: relation.step.title };
   const full = baseline
     ? message('documents.state.withContent', {

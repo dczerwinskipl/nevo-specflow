@@ -44,15 +44,20 @@ export function DocumentsSummarySection({
   // Outside the section: it survives Overview remounting it at a column change.
   const [expanded, setExpanded] = useDocumentsSummaryExpanded(specId);
   const catalogue = useDocumentCatalogue();
-  const relations = documentRelations(useSpecificationActions(specId).data?.documentRelations, {
+  const workflow = useSpecificationActions(specId);
+  const relations = documentRelations(workflow.data?.documentRelations, {
     kind: 'specification',
     specId,
   });
   const stateRow = useDocumentStateRow();
+  // The labels appear once the projection has answered (or failed: then the content state alone),
+  // so neither the header nor a row changes what it says when the relations arrive.
   const labels = new Map(
     documents.map((doc) => [
       doc.id,
-      documentStateLabel(doc.contentState, relations.get(doc.id), { stepOnScreen: true }),
+      workflow.isPending
+        ? undefined
+        : documentStateLabel(doc.contentState, relations.get(doc.id), { stepOnScreen: true }),
     ]),
   );
   const shared = sharedContentLabel([...labels.values()]);

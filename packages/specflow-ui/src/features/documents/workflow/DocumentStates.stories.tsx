@@ -181,19 +181,22 @@ const gateRelations = documentRelations(
   scope,
 );
 
-const renderTree = (width: number) => () => (
-  <NotificationProvider>
-    <div style={{ padding: 16, width, maxWidth: '100%' }}>
-      <DocumentsExplorer
-        tree={gateTree}
-        relations={gateRelations}
-        onSelect={() => undefined}
-        onAdd={() => Promise.resolve()}
-        onOperate={() => Promise.resolve()}
-      />
-    </div>
-  </NotificationProvider>
-);
+const renderTree =
+  (width: number, relationsUnavailable = false) =>
+  () => (
+    <NotificationProvider>
+      <div style={{ padding: 16, width, maxWidth: '100%' }}>
+        <DocumentsExplorer
+          tree={gateTree}
+          relations={relationsUnavailable ? new Map() : gateRelations}
+          relationsUnavailable={relationsUnavailable}
+          onSelect={() => undefined}
+          onAdd={() => Promise.resolve()}
+          onOperate={() => Promise.resolve()}
+        />
+      </div>
+    </NotificationProvider>
+  );
 
 /** The Documents tree beside the Overview: the same document reads the same, with the step named. */
 export const DocumentsTree: Story = {
@@ -208,12 +211,46 @@ export const DocumentsTree: Story = {
   },
 };
 
-/** The Documents tree in a phone-width pane: short labels. */
+/**
+ * The Documents tree in a phone-width pane: the step is not on screen, so a label keeps it; one
+ * that does not fit beside the name takes its own line, cut at the end (the tooltip has it all).
+ */
 export const DocumentsTreeNarrow: Story = {
   render: renderTree(390),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Needed to finish')).toBeVisible();
-    await expect(canvas.getByText('Initial content')).toBeVisible();
+    const label = await canvas.findByText(
+      'Initial content only · needed to start Design the solution',
+    );
+    await expect(label).toBeVisible();
+    const name = canvas.getByText('ux.md');
+    // Under the name, not beside it; the name is not cut.
+    await expect(label.getBoundingClientRect().top).toBeGreaterThan(
+      name.getBoundingClientRect().bottom - 1,
+    );
+    await expect(name.scrollWidth).toBeLessThanOrEqual(name.clientWidth);
+    // A label that fits stays beside the name.
+    const short = canvas.getByText('Initial content only');
+    await expect(
+      Math.abs(
+        short.getBoundingClientRect().top -
+          canvas.getByText('decisions.md').getBoundingClientRect().top,
+      ),
+    ).toBeLessThan(4);
+  },
+};
+
+/** The projection could not be read: content states only, and a quiet note says so. */
+export const DocumentsTreeRelationsUnavailable: Story = {
+  render: renderTree(560, true),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText(
+        "The workflow's requirements could not be loaded, so the documents a step needs are not marked.",
+      ),
+    ).toBeVisible();
+    await expect(canvas.getAllByText('Initial content only')).toHaveLength(2);
+    await expect(canvas.queryByText(/needed to/i)).toBeNull();
   },
 };

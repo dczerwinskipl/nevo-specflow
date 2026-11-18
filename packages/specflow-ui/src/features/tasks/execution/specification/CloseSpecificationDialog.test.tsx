@@ -15,7 +15,10 @@ import { refusal } from '../../authoring/authoring.test-support';
 import type { WorkflowExecutionApi } from '../api';
 import { SPEC, specificationWorkflowProjection } from '../projections.stories-support';
 import type { BlockerTask } from './BlockerGroups';
-import { CloseSpecificationDialog } from './CloseSpecificationDialog';
+import {
+  CloseSpecificationDialog,
+  type CloseSpecificationDialogProps,
+} from './CloseSpecificationDialog';
 
 afterEach(cleanup);
 
@@ -55,6 +58,7 @@ function renderDialog({
   projection = specificationWorkflowProjection('completed'),
   listWorkspaces = () => Promise.resolve(workspaces),
   getTaskList = never,
+  documents,
 }: {
   readonly closePreview: WorkflowExecutionApi['closePreview'];
   readonly close?: WorkflowExecutionApi['close'];
@@ -63,6 +67,7 @@ function renderDialog({
   readonly projection?: WorkflowActionProjection;
   readonly listWorkspaces?: () => Promise<WorkspaceList>;
   readonly getTaskList?: () => Promise<never>;
+  readonly documents?: CloseSpecificationDialogProps['documents'];
 }) {
   stubLayoutApis();
   const workflowExecutionApi: WorkflowExecutionApi = {
@@ -93,6 +98,7 @@ function renderDialog({
             projection={projection}
             tasks={tasks}
             progress={progress}
+            {...(documents ? { documents } : {})}
             onAbandonInstead={vi.fn()}
             onSeeWorkflow={vi.fn()}
             onSeeTasks={vi.fn()}
@@ -249,6 +255,41 @@ describe('CloseSpecificationDialog', () => {
 
     expect(fact(dialog, 'Tasks')).toBe('1 task cancelled · 1 done');
     expect(within(dialog).getByRole('region', { name: 'Cancelled, not delivered' })).toBeTruthy();
+  });
+
+  it('names the documents still only their initial content last, and leaves the fact out without them', async () => {
+    const doc = (id: string, contentState?: 'baseline' | 'authored') => ({
+      id,
+      title: id,
+      filename: `${id}.md`,
+      ...(contentState ? { contentState } : {}),
+    });
+    const dialog = renderDialog({
+      closePreview: vi.fn(() => Promise.resolve(planned())),
+      documents: [
+        doc('overview', 'authored'),
+        doc('ux', 'baseline'),
+        doc('backend', 'baseline'),
+        doc('notes'),
+        doc('research', 'baseline'),
+        doc('decisions', 'baseline'),
+      ],
+    });
+    await within(dialog).findByText('Ready to close');
+
+    expect(fact(dialog, 'Documents')).toBe(
+      '4 with initial content only: ux.md, backend.md, research.md, +1 more',
+    );
+    const terms = [...dialog.querySelectorAll('dt')].map((term) => term.textContent);
+    expect(terms.at(-1)).toBe('Documents');
+    cleanup();
+
+    const none = renderDialog({
+      closePreview: vi.fn(() => Promise.resolve(planned())),
+      documents: [doc('overview', 'authored')],
+    });
+    await within(none).findByText('Ready to close');
+    expect(within(none).queryByText('Documents')).toBeNull();
   });
 
   it('gives a held blocking Task its hold reason, as the Tasks page row does', async () => {

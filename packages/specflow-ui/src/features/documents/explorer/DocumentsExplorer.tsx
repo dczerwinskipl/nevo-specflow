@@ -40,6 +40,8 @@ interface Props {
   specificationTitle?: string;
   /** How the Specification's workflow uses each document now, by document id. */
   relations?: ReadonlyMap<string, DocumentRelation>;
+  /** The workflow projection could not be read: the rows carry their content state only. */
+  relationsUnavailable?: boolean;
   active?: string;
   onSelect: (id: string) => void;
   onAdd: (documents: NewDocumentEntry[], folders?: string[]) => Promise<void>;
@@ -72,6 +74,7 @@ export function DocumentsExplorer({
   catalogue = noCatalogue,
   specificationTitle = '',
   relations,
+  relationsUnavailable = false,
   active,
   onSelect,
   onAdd,
@@ -202,6 +205,7 @@ export function DocumentsExplorer({
           tree={tree}
           catalogue={catalogue.data}
           relations={relations}
+          relationsUnavailable={relationsUnavailable}
           rows={allRows}
           filtered={filtered}
           filter={filter}

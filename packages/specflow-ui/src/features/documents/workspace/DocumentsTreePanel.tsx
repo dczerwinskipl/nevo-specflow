@@ -150,10 +150,12 @@ export function DocumentsTreePanel({
               retry: () => void catalogue.refetch(),
             }}
             specificationTitle={specification.data?.title ?? specId}
+            // While the projection loads the rows show their content state only (same height).
             relations={documentRelations(workflow.data?.documentRelations, {
               kind: 'specification',
               specId,
             })}
+            relationsUnavailable={workflow.isError}
             onRefresh={operations.refresh}
             dirtyIds={dirtyIds}
             controllerRef={controllerRef}

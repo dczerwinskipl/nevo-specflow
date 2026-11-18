@@ -507,9 +507,25 @@ async function specificationWorkspace(
   }
 
   const data = base.sections.tasks.data;
+  // Close (ready): two documents are still only their initial content (the Documents fact).
+  const documents = base.sections.documents;
+  const documentsSection =
+    scenario === 'close-integrates' && documents.state === 'available'
+      ? {
+          ...documents,
+          data: {
+            ...documents.data,
+            items: documents.data.items.map((item, index) => ({
+              ...item,
+              contentState:
+                index === 1 || index === 2 ? ('baseline' as const) : ('authored' as const),
+            })),
+          },
+        }
+      : documents;
   const withTasks = (groups: WorkspaceTasks['groups']): SpecificationWorkspaceResponse => ({
     ...base,
-    sections: { ...base.sections, tasks: tasksSection(data, groups) },
+    sections: { ...base.sections, tasks: tasksSection(data, groups), documents: documentsSection },
   });
 
   if (specificationScenario(scenario) === 'completed') {

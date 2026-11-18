@@ -1,5 +1,5 @@
 import { runReadRequest } from './project/request-verification-memo';
-import type { CheckoutQuiescence } from './specs/lifecycle/checkout-quiescence';
+import type { CheckoutQuiescence } from './specs/lifecycle/checkout-quiescence-port';
 import type { SpecificationExitGuard } from './specs/lifecycle/exit-guard';
 import {
   resolveProjectHome,

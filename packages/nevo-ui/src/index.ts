@@ -34,6 +34,8 @@ export {
   treeRowActionClassName,
   treeRowClassName,
   treeStateLabelClassName,
+  treeSecondaryStateLabelClassName,
+  treeStaticItemClassName,
   treeAttentionStateLabelClassName,
   treeAttentionGlyphClassName,
 } from './design-system/treeRecipes';

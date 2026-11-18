@@ -111,6 +111,11 @@ function authoring(scenario: AuthoringScenario): TaskAuthoring {
             ? { entry, state: 'unresolved' as const, reason: 'not-found' as const }
             : { entry, state: 'resolved' as const },
       ),
+      defaultEntries: [
+        { kind: 'task-document', id: 'task', required: true },
+        { kind: 'task-document', id: 'screens', required: true },
+        { kind: 'specification-document', id: 'overview', required: true },
+      ],
     },
     dependencyCandidates:
       scenario === 'started'

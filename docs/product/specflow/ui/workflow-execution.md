@@ -157,23 +157,43 @@ cancelled), **Documents**, **Context** and **Depends on**. Task history is the S
 
 - **Placement.** Structured facts are edited where they are read, in these sections (no edit mode);
   documents open in the **Secondary** editor, several as tabs. On Narrow a document is a pushed page
-  with Back, and Documents, Context and Depends on are disclosures, collapsed unless they hold a
-  blocker.
+  with Back.
+- **Sections open when small.** Documents, Context and Depends on are disclosures with the same
+  spacing at every width. A section starts **open** when it holds at most 3 rows (Documents) or 4
+  entries (Context, Depends on), or a blocker (a missing document file, a required context entry
+  that does not resolve, a dependency that no longer exists); above that it starts **collapsed**
+  with a one-line summary in its header ("Documents 5 · task.md, plan.md, +3", "Context 6 entries ·
+  own list · 1 optional missing"). The user's toggle is kept per Task for the visit (in memory).
 - **Rows and add actions.** A row click opens its object (a document as a Secondary tab, a context
   reference its target, a dependency that Task); the row `⋯` menu holds everything else. A section's
   add action is an icon-only **+** in its header with a label and tooltip ("New document", "Add
   dependency"); Context's **+** opens a menu ("Add context"). An empty section shows one labelled
   button instead.
-- **Documents.** `task.md` first, then the Task's other documents; New document; Rename and Delete in
-  the row menu, none for `task.md`.
+- **Documents.** `task.md` first, then the Task's other documents, on the shared document row of
+  Context and the Overview Documents (glyph, file name, a trailing state label; the role in the
+  tooltip); a file that is not on disk shows **File missing** and opens nothing. New document; Rename
+  and Delete in the row menu, none for `task.md`. While the context is the Task's own list, New
+  document says that the new document is not added to it ("Add it from Context if a step should
+  read it"); with the default context it says nothing (the document joins by itself).
 - **Context.** The effective list in declared order with a one-line explanation of what it is (the
   inputs a step reads before it starts). Kinds: Task document, Specification document, Project
   document, Code path (with its current match count) and Instructions, each Required or Optional with an
-  optional note. Without an explicit list the default (`task.md`, the Task's documents, the
-  Specification overview) is shown, and the first edit writes it out. Entries that need attention come
-  first, then **Show all N entries in order**. A missing required entry is a danger row; a missing
-  optional one an attention row. An entry marked "Created earlier in the process" (a process artifact)
-  is **Awaited** while missing: neutral, no warning. Marking the Task's own document as a required
+  optional note. Each entry is the shared document row named by its file name (`overview.md`, not the
+  document title), with its kind and note in the tooltip and a trailing label: **Always first**
+  (`task.md`), **Required** or **Optional**, or the problem (**Not found**, **Not registered**,
+  **Awaited**). The header says which list it shows: "N entries · default" or "N entries · own list",
+  and a source line under the explanation says it before any change: **Default context.** it follows
+  the task (`task.md`, its other documents and the Specification overview, all required); new task
+  documents join it; the first change saves it as the task's own list, after which new documents are
+  not added by themselves (the last part only when the context is editable). **Own list.** set for
+  this task; new task documents are not added automatically. With an own, editable list the **+**
+  menu ends with **Use default context**: a confirm says the list of N entries is replaced by the
+  default and names the entries that go ("Entries you added are removed: ux.md, src/auth/**, +1"),
+  then sends `context: null` with the read revision. The default it compares with is the Engine's
+  (`taskAuthoring.context.defaultEntries`); the UI never derives it. Entries that need attention come
+  first, then **Show all N entries in order**. A missing required entry also gets the danger note
+  above the rows; a missing optional one is an attention label. An entry marked "Created earlier in
+  the process" (a process artifact) is **Awaited** while missing: neutral, no warning. Marking the Task's own document as a required
   artifact is refused and explained in the dialog: what the Task produces is an exit gate, not context.
 - **Depends on.** Rows with the dependency's state; the add checklist disables existing dependencies
   and cycles with their reason. After the first start dependencies are fixed (a note, no add action).

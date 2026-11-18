@@ -127,6 +127,10 @@ const taskAuthoring: NonNullable<WorkflowActionProjection['taskAuthoring']> = {
         state: 'resolved',
       },
     ],
+    defaultEntries: [
+      { kind: 'task-document', id: 'task', required: true },
+      { kind: 'specification-document', id: 'overview', required: true },
+    ],
   },
   dependencyCandidates: [],
 };

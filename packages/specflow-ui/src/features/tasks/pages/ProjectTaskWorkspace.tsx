@@ -95,7 +95,11 @@ function Workspace({
   const names: ContextNames = {
     taskDocuments: new Map(resource.documents.map((document) => [document.id, document.path])),
     specificationDocuments: new Map(
-      (workspace.data?.documents ?? []).map((document) => [document.id, document.title]),
+      // Entries are named by the file name, as the Overview Documents name them (overview.md).
+      (workspace.data?.documents ?? []).map((document) => [
+        document.id,
+        document.filename ?? document.title,
+      ]),
     ),
   };
   const view = viewOf(resource, projection.data?.taskAuthoring);

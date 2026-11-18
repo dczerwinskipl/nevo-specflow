@@ -38,19 +38,29 @@ export interface EffectiveContext {
 }
 
 /**
- * The effective context of a Task, the single rule of the default: without an explicit list it is
- * `task.md`, the Task's other registered documents and the Specification overview (when the
- * Specification registers it), each required. Every start, gate and projection reads this list.
+ * The effective context of a Task: its explicit list, or else the default one
+ * (`defaultContextOf`). Every start, gate and projection reads this list.
  */
 export async function effectiveContextOf(
   dependencies: Pick<WorkflowDependencies, 'references'>,
   specId: string,
   manifest: Pick<TaskManifest, 'documents' | 'context'>,
 ): Promise<EffectiveContext> {
-  if (manifest.context) {
-    return { entries: manifest.context, isDefault: false };
-  }
+  return manifest.context
+    ? { entries: manifest.context, isDefault: false }
+    : { entries: await defaultContextOf(dependencies, specId, manifest), isDefault: true };
+}
 
+/**
+ * The single rule of the default context: `task.md`, the Task's other registered documents and the
+ * Specification overview (when the Specification registers it), each required. It is what a Task
+ * without an explicit list reads, and what `context: null` returns an explicit list to.
+ */
+export async function defaultContextOf(
+  dependencies: Pick<WorkflowDependencies, 'references'>,
+  specId: string,
+  manifest: Pick<TaskManifest, 'documents'>,
+): Promise<readonly TaskContextEntry[]> {
   const documents = [
     ...manifest.documents.filter((document) => document.id === TASK_MAIN_DOCUMENT.id),
     ...manifest.documents.filter((document) => document.id !== TASK_MAIN_DOCUMENT.id),
@@ -60,25 +70,22 @@ export async function effectiveContextOf(
     OVERVIEW_DOCUMENT_ID,
   );
 
-  return {
-    isDefault: true,
-    entries: [
-      ...documents.map((document): TaskContextEntry => ({
-        kind: 'task-document',
-        id: document.id,
-        required: true,
-      })),
-      ...(overview
-        ? [
-            {
-              kind: 'specification-document',
-              id: OVERVIEW_DOCUMENT_ID,
-              required: true,
-            } satisfies TaskContextEntry,
-          ]
-        : []),
-    ],
-  };
+  return [
+    ...documents.map((document): TaskContextEntry => ({
+      kind: 'task-document',
+      id: document.id,
+      required: true,
+    })),
+    ...(overview
+      ? [
+          {
+            kind: 'specification-document',
+            id: OVERVIEW_DOCUMENT_ID,
+            required: true,
+          } satisfies TaskContextEntry,
+        ]
+      : []),
+  ];
 }
 
 /**

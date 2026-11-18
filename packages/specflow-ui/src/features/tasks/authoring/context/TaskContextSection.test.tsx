@@ -23,9 +23,9 @@ const names = {
     ['screens', 'screens.md'],
   ]),
   specificationDocuments: new Map([
-    ['overview', 'Overview'],
-    ['ux', 'UX'],
-    ['old-flow', 'Old login flow'],
+    ['overview', 'overview.md'],
+    ['ux', 'ux.md'],
+    ['old-flow', 'old-flow.md'],
   ]),
 };
 
@@ -40,6 +40,11 @@ const defaultAuthoring: TaskAuthoring = {
       resolved({ kind: 'task-document', id: 'task', required: true }),
       resolved({ kind: 'task-document', id: 'screens', required: true }),
       resolved({ kind: 'specification-document', id: 'overview', required: true }),
+    ],
+    defaultEntries: [
+      { kind: 'task-document', id: 'task', required: true },
+      { kind: 'task-document', id: 'screens', required: true },
+      { kind: 'specification-document', id: 'overview', required: true },
     ],
   },
   dependencyCandidates: [],
@@ -63,7 +68,6 @@ function renderSection(
         { id: 'ux', title: 'UX', filename: 'ux.md' },
       ]}
       editable
-      collapsible={false}
       openTarget={() => undefined}
       onLoadLatest={vi.fn()}
     />,
@@ -88,7 +92,9 @@ describe('TaskContextSection', () => {
 
     // The default: task.md, the Task's documents and the Specification overview; the overview is
     // already in context, so only UX can be picked.
-    expect(screen.getByText('3 entries')).toBeTruthy();
+    expect(screen.getByText('3 entries · default')).toBeTruthy();
+    // What the first change does is said before it happens.
+    expect(screen.getByText(/Your first change saves it as this task's own list/)).toBeTruthy();
     addSpecificationDocument('UX');
 
     await waitFor(() => expect(editTask).toHaveBeenCalled());
@@ -116,7 +122,7 @@ describe('TaskContextSection', () => {
 
     const alert = await within(dialog).findByRole('alert');
     expect(alert.textContent).toContain('Some context entries do not resolve:');
-    expect(alert.textContent).toContain('UX does not resolve.');
+    expect(alert.textContent).toContain('ux.md does not resolve.');
   });
 
   it("explains the refusal of the Task's own document as a required artifact", async () => {
@@ -156,16 +162,66 @@ describe('TaskContextSection', () => {
           { entry: findings!, state: 'awaited' },
           { entry: oldFlow!, state: 'unresolved', reason: 'not-found' },
         ],
+        defaultEntries: defaultAuthoring.context.defaultEntries,
       },
       dependencyCandidates: [],
     });
 
-    const headings = () => screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
-    expect(headings()).toEqual(['findings', 'Old login flow']);
+    const rows = () => screen.getAllByRole('listitem').map((row) => row.textContent);
+    expect(screen.getByText('4 entries · own list')).toBeTruthy();
+    expect(rows()).toEqual([
+      expect.stringMatching(/^findings.*Awaited$/),
+      expect.stringMatching(/^old-flow\.md.*Not found$/),
+    ]);
     expect(screen.getByText('1 required entry is missing.')).toBeTruthy();
-    expect(screen.getByText(/Awaited: findings is created earlier/)).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Show all 4 entries in order' }));
-    expect(headings()).toEqual(['task.md', 'UX', 'findings', 'Old login flow']);
+    expect(rows()).toEqual([
+      expect.stringMatching(/^task\.md.*Always first$/),
+      expect.stringMatching(/^ux\.md.*Required$/),
+      expect.stringMatching(/^findings/),
+      expect.stringMatching(/^old-flow\.md/),
+    ]);
+  });
+
+  it('returns an own list to the default after a confirm that names the entries it removes', async () => {
+    const editTask = vi.fn(() => Promise.resolve({ taskId: TASK, revision: 'rev-2' }));
+    const own = [
+      { kind: 'task-document', id: 'task', required: true },
+      { kind: 'specification-document', id: 'overview', required: true },
+      { kind: 'specification-document', id: 'ux', required: true },
+      { kind: 'path', path: 'src/auth/**', required: false },
+    ] as const;
+    renderSection(fakeTaskAuthoringApi({ editTask }), resourceFixture({ context: [...own] }), {
+      context: {
+        isDefault: false,
+        entries: own.map((entry) => resolved(entry)),
+        defaultEntries: defaultAuthoring.context.defaultEntries,
+      },
+      dependencyCandidates: [],
+    });
+    expect(screen.getByText(/New task documents are not added to it automatically/)).toBeTruthy();
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Add context' }), { key: 'Enter' });
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Use default context' }));
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.textContent).toContain(
+      "This task's list of 4 entries is replaced by the default",
+    );
+    expect(dialog.textContent).toContain('Entries you added are removed: ux.md, src/auth/**.');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Use default context' }));
+
+    await waitFor(() =>
+      expect(editTask).toHaveBeenCalledWith(SPEC, TASK, {
+        expectedRevision: 'rev-1',
+        context: null,
+      }),
+    );
+  });
+
+  it('offers no return to the default while the context is the default', () => {
+    renderSection(fakeTaskAuthoringApi());
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Add context' }), { key: 'Enter' });
+    expect(screen.queryByRole('menuitem', { name: 'Use default context' })).toBeNull();
   });
 });

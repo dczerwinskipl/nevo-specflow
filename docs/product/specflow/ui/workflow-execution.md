@@ -231,16 +231,20 @@ or after a refusal.
   **Workflow**, **Unfinished tasks**, **Broken tasks**, **Pending writes**, **Workflow state** — each
   with one explanation, its Tasks (id, title as a link, then the status with its mark from the one
   status model; at most five, then "and N more"; only a group that lists Tasks counts them in its
-  heading) and its resolving action where one exists. Below them "Not going to finish this work?
+  heading; an On hold Task adds its hold reason, as its Tasks page row does) and its resolving
+  action where one exists. Below them "Not going to finish this work?
   **Abandon instead**". The footer has only **Dismiss** (primary).
 - **Blocked by the repository:** "<title> cannot close yet: N repository problems." and one group per
   problem:
   - **Uncommitted specification files · N** (or **Uncommitted files where it merges** for the
     checkout it is integrated into, which says the files may not belong to this specification): the
-    files as a list (at most five, then "and N more"), committing them as the way forward, the
-    checkout's path in monospace with **Copy path**, and the attention note "**Discarding deletes
+    files as a list (at most five, then "and N more"), committing them in that checkout as the way
+    forward, the checkout's folder in monospace with **Copy path**, and the attention note "**Discarding deletes
     these changes for good.** Git keeps no copy of uncommitted work, so discard only what you are
-    sure you do not need." The dialog never offers to discard.
+    sure you do not need." The dialog never offers to discard. The refusal names the checkout by
+    its registered workspace (`workspaceId`), never by a filesystem path: the folder is read from
+    the registered workspaces (`GET /api/workspaces`, `workspace.view`). Without that read the
+    sentence names the checkout ("the specification's checkout") and there is no path to copy.
   - **No integration branch configured:** the branch must be set as `git.integrationTargetBranch` in
     `.nevo/config.yaml`. Under **Integration branch** the Runtime's candidates are radio rows with
     the facts that make each one a candidate ("Remote default (origin)", "<title> started from it",
@@ -255,21 +259,25 @@ or after a refusal.
 
   "Abandon instead" is not offered here (abandoning needs a Close, which meets the same checks). The
   footer has **Dismiss** and **Check again** (primary), which reads the preview anew (Checking, then
-  the new outcome).
+  the new outcome). Decision (owner-accepted mock, ux-168 package A): with repository problems
+  **Check again** is the primary action, last in the footer (on top when stacked), and Dismiss is
+  secondary; this supersedes "Check again (secondary)" in the package A contract §1.
 
 - **Check failed:** the preview refused for a reason that is not a blocker list, or could not be
   read: a danger alert "Could not check whether <title> can close" with what to do (documents in
   manual commit mode: commit them from Documents; a failed document commit: retry or resolve it in
   Documents), **Dismiss** and **Check again**.
-- **Ready:** the "Ready to close" alert (an abandoned Specification shows "Abandoned: “<reason>”"
-  under the title instead), then the facts in a fixed order: **Result** "Recorded as not delivered"
+- **Ready:** the "Ready to close" alert ("The workflow is complete and the repository checks
+  passed."; with Git off "The workflow is complete. Git is off, so nothing is merged.", since no
+  repository check ran; an abandoned Specification shows "Abandoned: “<reason>”" under the title
+  instead), then the facts in a fixed order: **Result** "Recorded as not delivered"
   (abandoned only), **Merges** and **Tasks**. Merges comes from the preview's `merge` fact:
   "<source> → <target>", "Nothing to merge" (no commits ahead of the target), "Archives on <branch>
   (main folder; nothing to merge)" (the Specification lives in the main folder), "Archives on
   <branch> without merging" (archive only), or "Archives without Git (Git is off for this project)"
-  (adding, for a linked worktree, that the archive stays uncommitted there). Tasks reads "All N
-  tasks done", "N done · M cancelled, not delivered" or "No tasks were created"; the cancelled and
-  abandoned ones are listed. The note "Closing archives the specification; it cannot be reopened."
+  (adding, for a linked worktree, that the archive stays uncommitted there). Tasks reads the
+  Runtime's Task counts in Now's words ("All 6 tasks done · 1 cancelled", "5 tasks cancelled · 1
+  done", or "No tasks were created"); the cancelled and abandoned Tasks are then named below. The note "Closing archives the specification; it cannot be reopened."
   follows, and the footer has **Cancel** and **Close and archive**.
 - **Closing:** the ready content stays, read-only; the button reads **Closing…** (`aria-busy`) and
   Cancel is off. Then the dialog closes, or shows **Not closed** with the reason (**Dismiss**, **Check

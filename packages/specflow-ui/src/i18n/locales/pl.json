@@ -2374,6 +2374,7 @@
       "afterAbandon": "Porzucono: „{{reason}}”",
       "readyTitle": "Gotowe do zamknięcia",
       "readyBody": "Przepływ jest ukończony, a kontrole repozytorium przeszły.",
+      "readyGitOffBody": "Przepływ jest ukończony. Git jest wyłączony, więc nic nie jest scalane.",
       "notDelivered": "Anulowane, niedostarczone",
       "notDeliveredExplanation": "Zapisywane jako niedostarczone przy zamknięciu specyfikacji.",
       "failed": "Nie zamknięto",
@@ -2414,17 +2415,17 @@
       "refusal": {
         "preflight": "Zamknięcie zatrzymuje kontrola repozytorium. Aby zobaczyć którą, uruchom „nevo-specflow specs close <id specyfikacji> --preview” w folderze projektu.",
         "sharedWorktree": "Z tego worktree korzystają też inne specyfikacje, więc nie można go zintegrować tylko dla tej. Zamknij cały workspace albo zarchiwizuj tę specyfikację bez integracji z wiersza poleceń.",
-        "conflict": "Projekt zmienił się podczas przygotowania zamknięcia. Otwórz okno ponownie, aby sprawdzić jeszcze raz.",
-        "unavailable": "Nie można teraz odczytać plików specyfikacji. Sprawdź, czy jej katalog roboczy istnieje, i spróbuj ponownie.",
+        "conflict": "Projekt zmienił się podczas przygotowania zamknięcia. Sprawdź ponownie, aby odczytać go jeszcze raz.",
+        "unavailable": "Nie można teraz odczytać plików specyfikacji. Sprawdź, czy jej katalog roboczy istnieje, i sprawdź ponownie.",
         "recovery": "Wcześniejsze zamknięcie tej specyfikacji zatrzymało się w połowie. Dokończ je z wiersza poleceń, zanim zamkniesz ponownie.",
-        "gitConfig": "Sekcja git w .nevo/config.yaml jest nieprawidłowa lub niepełna. Popraw ją i zamknij ponownie.",
-        "git": "Git nie może teraz działać w folderze projektu. Sprawdź repozytorium i spróbuj ponownie.",
-        "documentsPending": "Zapisane dokumenty w tym katalogu roboczym wciąż są commitowane. Poczekaj chwilę i zamknij ponownie.",
-        "commitBlocked": "Git nie przyjmie teraz commita na tej gałęzi. Sprawdź ochronę gałęzi i stan repozytorium, a potem zamknij ponownie.",
+        "gitConfig": "Sekcja git w .nevo/config.yaml jest nieprawidłowa lub niepełna. Popraw ją i sprawdź ponownie.",
+        "git": "Git nie może teraz działać w folderze projektu. Sprawdź repozytorium, a potem sprawdź ponownie.",
+        "documentsPending": "Zapisane dokumenty w tym katalogu roboczym wciąż są commitowane. Poczekaj chwilę i sprawdź ponownie.",
+        "commitBlocked": "Git nie przyjmie teraz commita na tej gałęzi. Sprawdź ochronę gałęzi i stan repozytorium, a potem sprawdź ponownie.",
         "engine": "Zamykanie nie jest dostępne w tym Runtime.",
-        "unknown": "Zamknięcie się nie rozpoczęło, a powodu nie można tu pokazać. Spróbuj ponownie; jeśli znów się nie uda, uruchom „nevo-specflow specs close <id specyfikacji> --preview” w folderze projektu.",
-        "documentsUncommitted": "Zapisane dokumenty w tym katalogu roboczym nie mają commita (tryb ręcznych commitów). Zrób commit w Dokumentach i zamknij ponownie.",
-        "documentsFailed": "Commit dokumentu się nie powiódł. Ponów go lub rozwiąż w Dokumentach, a potem zamknij ponownie."
+        "unknown": "Zamknięcie się nie rozpoczęło, a powodu nie można tu pokazać. Sprawdź ponownie; jeśli znów się nie uda, uruchom „nevo-specflow specs close <id specyfikacji> --preview” w folderze projektu.",
+        "documentsUncommitted": "Zapisane dokumenty w tym katalogu roboczym nie mają commita (tryb ręcznych commitów). Zrób commit w Dokumentach i sprawdź ponownie.",
+        "documentsFailed": "Commit dokumentu się nie powiódł. Ponów go lub rozwiąż w Dokumentach, a potem sprawdź ponownie."
       },
       "repository": {
         "checkout": {
@@ -2436,8 +2437,8 @@
           "titleIntegrationTarget": "Pliki bez commita w miejscu scalenia",
           "leadSpecification": "Zamknięcie integruje zacommitowaną pracę specyfikacji. Te pliki nie mają commita:",
           "leadIntegrationTarget": "Te pliki nie mają commita w katalogu roboczym, do którego scalana jest {{title}}. Mogą nie należeć do tej specyfikacji:",
-          "commitSpecification": "Zrób ich commit w katalogu roboczym specyfikacji i sprawdź ponownie:",
-          "commitIntegrationTarget": "Zrób ich commit w tym katalogu roboczym (albo przenieś je tam, gdzie należą) i sprawdź ponownie:",
+          "commitSpecification": "Zrób ich commit w katalogu roboczym specyfikacji i sprawdź ponownie.",
+          "commitIntegrationTarget": "Zrób ich commit w tym katalogu roboczym (albo przenieś je tam, gdzie należą) i sprawdź ponownie.",
           "discardWarningLead": "Odrzucenie usuwa te zmiany na zawsze.",
           "discardWarning": "Git nie przechowuje kopii pracy bez commita, więc odrzucaj tylko to, czego na pewno nie potrzebujesz."
         },
@@ -2449,7 +2450,7 @@
           "fact": {
             "remoteDefault": "Domyślna gałąź zdalnego repozytorium ({{remote}})",
             "startedFrom": "Od niej wyszła {{title}}",
-            "primaryCheckout": "Wybrana w folderze głównym"
+            "primaryCheckout": "Aktywna w folderze głównym"
           },
           "other": "Inna lokalna gałąź…",
           "otherLabel": "Lokalna gałąź",
@@ -2462,15 +2463,15 @@
         },
         "targetBranch": {
           "title": "Katalog roboczy integracji na innej gałęzi",
-          "explanation": "Zamknięcie integruje specyfikację z {{expected}}, ale katalog roboczy {{expected}} jest na {{branch}}. Przełącz go z powrotem na {{expected}} i zamknij ponownie."
+          "explanation": "Zamknięcie integruje specyfikację z {{expected}}, ale katalog roboczy {{expected}} jest na {{branch}}. Przełącz go z powrotem na {{expected}} i sprawdź ponownie."
         },
         "gitOperation": {
           "title": "Niedokończona operacja Git",
-          "explanation": "Wciąż trwa scalanie, rebase, cherry-pick albo revert ({{checkout}}). Dokończ je lub przerwij i zamknij ponownie."
+          "explanation": "Wciąż trwa scalanie, rebase, cherry-pick albo revert ({{checkout}}). Dokończ je lub przerwij i sprawdź ponownie."
         },
         "detached": {
           "title": "Poza gałęzią",
-          "explanation": "HEAD jest odłączony, poza lokalną gałęzią ({{checkout}}). Przełącz się na gałąź i zamknij ponownie."
+          "explanation": "HEAD jest odłączony, poza lokalną gałęzią ({{checkout}}). Przełącz się na gałąź i sprawdź ponownie."
         },
         "copyPath": "Kopiuj ścieżkę",
         "copySetting": "Kopiuj ustawienie",
@@ -2498,22 +2499,10 @@
         "primary": "Archiwizuje na <code>{{branch}}</code> (folder główny; nie ma czego scalać)",
         "archiveOnly": "Archiwizuje na <code>{{branch}}</code> bez scalania",
         "gitOff": "Archiwizuje bez Gita (Git jest wyłączony w tym projekcie)",
-        "gitOffLinked": "Archiwizuje bez Gita (Git jest wyłączony w tym projekcie); archiwum zostaje bez commita w worktree specyfikacji"
+        "gitOffLinked": "Archiwizuje bez Gita (Git jest wyłączony w tym projekcie); archiwum zostaje bez commita w katalogu roboczym specyfikacji"
       },
       "tasksFact": {
-        "none": "Nie utworzono żadnych zadań",
-        "allDone_one": "{{count}} zadanie ukończone",
-        "allDone_few": "Wszystkie {{count}} zadania ukończone",
-        "allDone_many": "Wszystkie {{count}} zadań ukończonych",
-        "allDone_other": "Wszystkie {{count}} zadań ukończonych",
-        "done_one": "{{count}} ukończone",
-        "done_few": "{{count}} ukończone",
-        "done_many": "{{count}} ukończonych",
-        "done_other": "{{count}} ukończonych",
-        "notDelivered_one": "{{count}} anulowane, niedostarczone",
-        "notDelivered_few": "{{count}} anulowane, niedostarczone",
-        "notDelivered_many": "{{count}} anulowanych, niedostarczonych",
-        "notDelivered_other": "{{count}} anulowanych, niedostarczonych"
+        "none": "Nie utworzono żadnych zadań"
       },
       "archiveNote": "Zamknięcie archiwizuje specyfikację; nie można jej ponownie otworzyć.",
       "submitting": "Zamykanie…"

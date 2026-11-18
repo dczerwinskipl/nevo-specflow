@@ -521,7 +521,7 @@
                   "required": [
                     "kind",
                     "checkout",
-                    "checkoutPath",
+                    "workspaceId",
                     "paths",
                     "count"
                   ],
@@ -548,10 +548,8 @@
                         }
                       ]
                     },
-                    "checkoutPath": {
-                      "type": "string",
-                      "minLength": 1,
-                      "maxLength": 4096
+                    "workspaceId": {
+                      "$ref": "#/components/schemas/WorkspaceId"
                     },
                     "paths": {
                       "type": "array",

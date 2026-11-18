@@ -17,7 +17,7 @@ const refusal = (code: string, extra: Partial<WorkflowRefusal> = {}): WorkflowRe
 const untracked: RepositoryBlocker = {
   kind: 'uncommitted-changes',
   checkout: 'specification',
-  checkoutPath: '/repo/.nevo/worktrees/nevo-1',
+  workspaceId: '7b1e2c3d-4f5a-4b6c-8d7e-9f0a1b2c3d4e',
   paths: ['specs/active/sso/overview.md'],
   count: 1,
 };

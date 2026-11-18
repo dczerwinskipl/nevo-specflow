@@ -20,7 +20,9 @@ import type { CloseMerge } from '@nevo/specflow-contracts/specs';
 import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { useAppServices } from '../../../../app/useAppServices';
 import { InlineAction } from '../InlineAction';
-import { specsOverviewKeys } from '../../../specs/read-model';
+import { specsOverviewKeys, type TaskProgressData } from '../../../specs/read-model';
+import { progressText, terminalSummary } from '../../overview/progress';
+import { taskKeys } from '../../queries';
 import { invalidateAfterTaskChange } from '../../authoring/queries';
 import { workflowRefusalOf } from '../refusal';
 import { focusInitial } from '../focusInitial';
@@ -55,6 +57,8 @@ export interface CloseSpecificationDialogProps {
    * (the cancelled and abandoned ones are listed as not delivered).
    */
   readonly tasks: ReadonlyMap<string, BlockerTask>;
+  /** The Runtime's Task counts (the same as Now's), for the Tasks fact; no row without them. */
+  readonly progress?: TaskProgressData;
   readonly onAbandonInstead?: () => void;
   readonly onSeeWorkflow: () => void;
   readonly onSeeTasks: () => void;
@@ -86,6 +90,7 @@ function CloseContent({
   specTitle,
   projection,
   tasks,
+  progress,
   onAbandonInstead,
   onSeeWorkflow,
   onSeeTasks,
@@ -96,7 +101,7 @@ function CloseContent({
   const { t, i18n } = useTranslation();
   // The refusals counted before the last "Check again": the bound applies to each round of checks.
   const [rechecksFrom, setRechecksFrom] = useState(0);
-  const { workflowExecutionApi } = useAppServices();
+  const { taskApi, workflowExecutionApi } = useAppServices();
   const exit = projection.specification?.exit?.close;
   const workflowBlockers = exit?.kind === 'blocked' ? exit.blockers : undefined;
   const queryClient = useQueryClient();
@@ -133,6 +138,31 @@ function CloseContent({
     gcTime: 0,
     refetchOnWindowFocus: false,
   });
+  // The hold reasons of the blocking Tasks, as the Tasks page rows show them (the same read).
+  const holdReasons = useQuery({
+    queryKey: taskKeys.list(specId, {}),
+    queryFn: ({ signal }) => taskApi.getTaskList(specId, {}, signal),
+    enabled: workflowBlockers !== undefined,
+    select: (list) =>
+      new Map(
+        list.groups.flatMap((group) =>
+          group.tasks.flatMap((task) =>
+            'holdReason' in task && task.holdReason !== undefined
+              ? [[task.id, task.holdReason] as const]
+              : [],
+          ),
+        ),
+      ),
+  });
+  const blockerTasks = holdReasons.data
+    ? new Map(
+        [...tasks].map(([id, task]) => {
+          const holdReason = holdReasons.data.get(id);
+
+          return [id, holdReason === undefined ? task : { ...task, holdReason }] as const;
+        }),
+      )
+    : tasks;
   const close = useMutation({
     mutationFn: (operationId: string) => workflowExecutionApi.close(specId, operationId),
     // Whatever the answer, the Specification may have changed (closed, archived, partly done).
@@ -222,7 +252,7 @@ function CloseContent({
                 <BlockerGroups
                   blockers={blockers}
                   order="close"
-                  tasks={tasks}
+                  tasks={blockerTasks}
                   workflowAt={workflowAtOf(position)}
                   onOpenTask={(id) => go(() => onOpenTask(id))()}
                   onSeeWorkflow={go(onSeeWorkflow)}
@@ -318,15 +348,19 @@ function CloseContent({
             <>
               {abandonment ? null : (
                 <Alert tone="success" title={t('workflowExecution.close.readyTitle')}>
-                  {position.kind === 'terminal'
-                    ? t('workflowExecution.close.readyBody')
-                    : t('workflowExecution.close.readyChecksBody')}
+                  {/* With Git off no repository check ran and nothing is merged. */}
+                  {outcome.merge.status === 'not-integrated' && outcome.merge.reason === 'git-off'
+                    ? t('workflowExecution.close.readyGitOffBody')
+                    : position.kind === 'terminal'
+                      ? t('workflowExecution.close.readyBody')
+                      : t('workflowExecution.close.readyChecksBody')}
                 </Alert>
               )}
               <CloseFacts
                 merge={outcome.merge}
-                abandoned={abandonment !== undefined}
+                position={position}
                 tasks={tasks}
+                {...(progress ? { progress } : {})}
                 onSeeTasks={go(onSeeTasks)}
               />
               <InlineNote>{t('workflowExecution.close.archiveNote')}</InlineNote>
@@ -458,37 +492,33 @@ function MergeFact({ merge }: { readonly merge: CloseMerge }) {
 
 /**
  * The facts of a planned Close, in a fixed order: Result (an abandoned Specification), Merges,
- * Tasks; the Tasks not delivered are listed below them.
+ * Tasks. Tasks reads the Runtime's counts in Now's words (`terminalSummary`); the Tasks not
+ * delivered are only named below them.
  */
 function CloseFacts({
   merge,
-  abandoned,
+  position,
   tasks,
+  progress,
   onSeeTasks,
 }: {
   readonly merge: CloseMerge;
-  readonly abandoned: boolean;
+  readonly position: Position;
   readonly tasks: ReadonlyMap<string, BlockerTask>;
+  readonly progress?: TaskProgressData;
   readonly onSeeTasks: () => void;
 }) {
   const { t } = useTranslation();
-  const total = tasks.size;
-  const done = [...tasks.values()].filter((task) => task.statusId === 'completed').length;
+  const abandoned = position.kind === 'terminal' && position.outcome === 'abandoned';
   const notDeliveredTasks = [...tasks.values()].filter(
     (task) => task.statusId === 'cancelled' || task.statusId === 'abandoned',
   );
   const notDelivered = notDeliveredTasks.length;
-  const tasksFact =
-    total === 0
-      ? t('workflowExecution.close.tasksFact.none')
-      : notDelivered === 0 && done === total
-        ? t('workflowExecution.close.tasksFact.allDone', { count: total })
-        : [
-            ...(done > 0 ? [t('workflowExecution.close.tasksFact.done', { count: done })] : []),
-            ...(notDelivered > 0
-              ? [t('workflowExecution.close.tasksFact.notDelivered', { count: notDelivered })]
-              : []),
-          ].join(' · ');
+  const tasksFact = progress
+    ? ((position.kind === 'terminal'
+        ? terminalSummary(progress, position.outcome, t)
+        : progressText(progress, t)) ?? t('workflowExecution.close.tasksFact.none'))
+    : undefined;
 
   return (
     <>
@@ -507,10 +537,12 @@ function CloseFacts({
             <MergeFact merge={merge} />
           </DescriptionList.Detail>
         </DescriptionList.Item>
-        <DescriptionList.Item>
-          <DescriptionList.Term>{t('workflowExecution.close.facts.tasks')}</DescriptionList.Term>
-          <DescriptionList.Detail>{tasksFact}</DescriptionList.Detail>
-        </DescriptionList.Item>
+        {tasksFact !== undefined ? (
+          <DescriptionList.Item>
+            <DescriptionList.Term>{t('workflowExecution.close.facts.tasks')}</DescriptionList.Term>
+            <DescriptionList.Detail>{tasksFact}</DescriptionList.Detail>
+          </DescriptionList.Item>
+        ) : null}
       </DescriptionList>
       {notDelivered > 0 ? (
         <section className="grid gap-2" aria-label={t('workflowExecution.close.notDelivered')}>

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { InlineNote, Typography } from '@nevo/ui';
 import type { RepositoryBlocker } from '@nevo/specflow-contracts/specs';
+import { useWorkspaces } from '../../../workspaces/read-model';
 import { CopyAction } from './CopyAction';
 import { IntegrationBranchChoice } from './IntegrationBranchChoice';
 
@@ -44,7 +45,8 @@ const MONO = 'font-mono text-content-primary [overflow-wrap:anywhere]';
 
 /**
  * Files not committed in a checkout the Close needs clean: the files (at most five, then "and N
- * more"), committing them as the way forward, the checkout's path to copy, and the warning that
+ * more"), committing them as the way forward, the checkout's path to copy (when it can be read),
+ * and the warning that
  * discarding loses them for good. The dialog never offers to discard.
  */
 function UncommittedFiles({
@@ -92,13 +94,7 @@ function UncommittedFiles({
           ? t('workflowExecution.close.repository.uncommitted.commitSpecification')
           : t('workflowExecution.close.repository.uncommitted.commitIntegrationTarget')}
       </Typography>
-      <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1 text-body-sm">
-        <span className={MONO}>{blocker.checkoutPath}</span>
-        <CopyAction
-          text={blocker.checkoutPath}
-          label={t('workflowExecution.close.repository.copyPath')}
-        />
-      </div>
+      <CheckoutPath workspaceId={blocker.workspaceId} />
       <InlineNote tone="attention">
         <strong className="font-medium">
           {t('workflowExecution.close.repository.uncommitted.discardWarningLead')}
@@ -106,6 +102,28 @@ function UncommittedFiles({
         {t('workflowExecution.close.repository.uncommitted.discardWarning')}
       </InlineNote>
     </Group>
+  );
+}
+
+/**
+ * Where the checkout is, with Copy path: its path comes from the registered workspaces
+ * (`GET /api/workspaces`, `workspace.view`), never from the Close refusal. Without that read (no
+ * capability, or it failed) the sentence above names the checkout and there is nothing to copy.
+ */
+function CheckoutPath({ workspaceId }: { readonly workspaceId: string }) {
+  const { t } = useTranslation();
+  const workspace = useWorkspaces().data?.workspaces.find(
+    (candidate) => candidate.workspaceId === workspaceId,
+  );
+  if (!workspace) {
+    return null;
+  }
+
+  return (
+    <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1 text-body-sm">
+      <span className={MONO}>{workspace.path}</span>
+      <CopyAction text={workspace.path} label={t('workflowExecution.close.repository.copyPath')} />
+    </div>
   );
 }
 

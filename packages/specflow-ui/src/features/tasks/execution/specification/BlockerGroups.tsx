@@ -146,6 +146,8 @@ export interface BlockerTask {
   readonly state: string;
   /** The presented status id, for the status mark (`getTaskStatePresentation`). */
   readonly statusId?: string;
+  /** Why an On hold Task is held (the Tasks page row's supporting line). */
+  readonly holdReason?: string;
 }
 
 export interface BlockerGroupsProps {
@@ -236,6 +238,9 @@ export function BlockerGroups({
                         <SemanticSupportingLine
                           line={taskStatusSupporting(task.statusId, task.state)}
                         />
+                      ) : null}
+                      {group !== 'writes' && task?.statusId === 'on-hold' && task.holdReason ? (
+                        <span className="text-content-secondary">{task.holdReason}</span>
                       ) : null}
                     </li>
                   );

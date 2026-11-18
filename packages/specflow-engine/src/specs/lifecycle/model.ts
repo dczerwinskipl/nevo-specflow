@@ -289,8 +289,8 @@ export type CloseRepositoryBlocker =
   | {
       readonly kind: 'uncommitted-changes';
       readonly checkout: CloseCheckoutRole;
-      /** The absolute path of that checkout, where the owner commits the files. */
-      readonly checkoutPath: string;
+      /** The registered workspace of that checkout, where the owner commits the files. */
+      readonly workspaceId: string;
       readonly paths: readonly string[];
       readonly count: number;
     }

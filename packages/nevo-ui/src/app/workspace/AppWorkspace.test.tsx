@@ -881,3 +881,53 @@ describe('AppWorkspace stacked Secondary header (unchanged by the split breadcru
     expect(maxWidth === '100%' || Number.parseFloat(maxWidth) >= 375).toBe(true);
   });
 });
+
+describe('AppWorkspace stacked Primary surface', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe() {}
+        disconnect() {}
+        unobserve() {}
+      },
+    );
+  });
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  function sheet(stackedSurface?: 'sheet' | 'plain') {
+    render(
+      <AppShell navigation={<div>Nav</div>}>
+        <AppWorkspace scroll="workspace">
+          <AppWorkspace.Primary
+            header={<WorkspaceHeader title="Page" />}
+            stackedSurface={stackedSurface}
+          >
+            <p>Short content</p>
+          </AppWorkspace.Primary>
+        </AppWorkspace>
+      </AppShell>,
+    );
+
+    return document.querySelector<HTMLElement>('.mobile-workspace-surface');
+  }
+
+  it('is the bordered material sheet by default', () => {
+    const surface = sheet();
+    expect(document.querySelector('[data-layout="stacked"]')).not.toBeNull();
+    expect(surface?.dataset.workspaceSheet).toBe('sheet');
+    expect(surface?.className).toContain('border-workspace-edge');
+  });
+
+  it('keeps the geometry but drops the material when plain', () => {
+    const surface = sheet('plain');
+    expect(surface?.dataset.workspaceSheet).toBe('plain');
+    expect(surface?.className).toContain('min-h-full');
+    expect(surface?.className).not.toContain('border-workspace-edge');
+    expect(surface?.className).not.toContain('workspace-surface-material');
+    expect(screen.getByText('Short content')).toBeDefined();
+  });
+});

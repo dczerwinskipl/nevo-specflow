@@ -10334,6 +10334,17 @@
             "in": "query",
             "name": "sessionId",
             "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true"
+              ]
+            },
+            "in": "query",
+            "name": "recheck",
+            "required": false
           }
         ],
         "security": [
@@ -10412,6 +10423,18 @@
                               {
                                 "type": "string",
                                 "enum": [
+                                  "EXECUTABLE_NOT_FOUND"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "EXECUTABLE_NOT_WORKING"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
                                   "INSTALLATION_UNAVAILABLE"
                                 ]
                               },
@@ -10470,6 +10493,170 @@
                                 ]
                               }
                             ]
+                          },
+                          "executable": {
+                            "type": "object",
+                            "required": [
+                              "path",
+                              "source"
+                            ],
+                            "properties": {
+                              "path": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1024
+                              },
+                              "source": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "configured"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "path"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "discovered"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "location": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "codex-desktop-app"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "claude-native-installer"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "antigravity-installer"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "npm-global-package"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "version": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          "checkedLocations": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": [
+                                "source",
+                                "path"
+                              ],
+                              "properties": {
+                                "source": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "configured"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "path"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "discovered"
+                                      ]
+                                    }
+                                  ]
+                                },
+                                "path": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 1024
+                                },
+                                "location": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "codex-desktop-app"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "claude-native-installer"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "antigravity-installer"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "npm-global-package"
+                                      ]
+                                    }
+                                  ]
+                                }
+                              },
+                              "additionalProperties": false
+                            },
+                            "maxItems": 32
+                          },
+                          "unresolvedLauncher": {
+                            "type": "object",
+                            "required": [
+                              "path",
+                              "package"
+                            ],
+                            "properties": {
+                              "path": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1024
+                              },
+                              "package": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 214
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          "signInCommand": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1100
                           },
                           "compatibility": {
                             "type": "object",

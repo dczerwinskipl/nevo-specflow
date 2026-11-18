@@ -119,7 +119,8 @@ async function outsideWorkspace(workspace: string, target: string) {
 }
 
 export async function inspectAntigravityInstallation(
-  options: { workspace: string; homeRoot: string; executable?: string; signal: AbortSignal },
+  /** `executable` is the one executable discovery resolved and verified (`antigravityExecutable`). */
+  options: { workspace: string; homeRoot: string; executable: string; signal: AbortSignal },
   dependencies: {
     account?: typeof inspectAntigravityAccount;
     platform?: string;
@@ -142,8 +143,7 @@ export async function inspectAntigravityInstallation(
   await outsideWorkspace(options.workspace, options.homeRoot);
 
   const host = dependencies.host ?? process.env;
-  const local = host.LOCALAPPDATA;
-  const executable = options.executable ?? (local ? join(local, 'agy', 'bin', 'agy.exe') : '');
+  const executable = options.executable;
   if (!isAbsolute(executable)) {
     unavailable();
   }

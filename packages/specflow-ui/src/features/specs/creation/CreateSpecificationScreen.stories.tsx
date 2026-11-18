@@ -554,7 +554,7 @@ export const ZeroProviders: Story = {
   render: () => <Fixture catalogue={withProviders([])} />,
   play: async ({ canvas, userEvent }) => {
     await openAgentForm(canvas, userEvent);
-    await expect(canvas.getByText('Brak dostępnych wykonawców.')).toBeVisible();
+    await expect(canvas.getByText('Brak dostępnych agentów.')).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Utwórz i otwórz sesję' })).toHaveAttribute(
       'aria-disabled',
       'true',

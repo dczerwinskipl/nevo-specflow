@@ -5857,6 +5857,39 @@
         "discovery",
         "admission"
       ]
+    },
+    {
+      "id": "reference.providers.executable-discovery",
+      "type": "reference",
+      "title": "Provider executable discovery and unavailability reasons",
+      "status": "current",
+      "file": "docs/reference/providers/executable-discovery.md",
+      "read_when": [
+        "a provider CLI is installed but the catalogue says it is not found or not working",
+        "adding or changing a provider's install locations or version check",
+        "changing what the provider catalogue says about an unavailable provider"
+      ],
+      "summary": "How the Runtime finds and verifies each provider's CLI (configured path, PATH, vendor install locations), which locations are trusted and why, how a candidate is chosen and cached, and the catalogue's unavailability reason codes with what the user can do about each.",
+      "related": [
+        "reference.providers.compatibility",
+        "reference.providers.claude",
+        "reference.providers.codex",
+        "reference.providers.antigravity",
+        "reference.api.sessions"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "security",
+        "configuration"
+      ],
+      "tags": [
+        "providers",
+        "discovery",
+        "executable",
+        "sessions"
+      ]
     }
   ]
 }

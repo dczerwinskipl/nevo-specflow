@@ -11,6 +11,8 @@ export interface AppWorkspaceSurface {
    */
   detailHeader?: ReactNode;
   content: ReactNode;
+  /** Stacked Primary only: `plain` drops the sheet's material (see `AppWorkspace.Primary`). */
+  stackedSurface?: 'plain';
   /** Explicit compact actions slot; the workspace never introspects a rendered header. */
   renderCompactActions?: (props: {
     navigationAction?: WorkspaceHeaderAction;

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { Invocation } from '../driver';
 import { createInvocationScope, launchOwnedProcess, type ProviderEnvironment } from '../process';
 import { SessionError } from '../../errors';
+import { ProviderUnavailableError } from '../unavailable';
 import { antigravityArguments, antigravityModels } from './discovery';
 import { parseAntigravityFrame, parseAntigravityInit } from './protocol';
 
@@ -47,8 +48,8 @@ export async function probeAntigravity(
 
     const disposition = await owner.dispose();
     if (disposition.process.state !== 'stopped') {
-      throw new SessionError(
-        'PROVIDER_UNAVAILABLE',
+      throw new ProviderUnavailableError(
+        'PROCESS_SETTLEMENT_UNVERIFIED',
         'Antigravity discovery process settlement could not be verified.',
       );
     }

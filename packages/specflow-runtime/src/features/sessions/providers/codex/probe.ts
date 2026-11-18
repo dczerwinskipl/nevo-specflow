@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { mkdir } from 'node:fs/promises';
 import { SessionError } from '../../errors';
+import { ProviderUnavailableError } from '../unavailable';
 import { createInvocationScope, launchOwnedProcess } from '../process';
 import type { inspectCodexInstallation } from './installation';
 import { codexArguments } from './installation';
@@ -19,7 +20,10 @@ import { codexModes } from './modes';
 
 async function closeProbe(peer: CodexPeer) {
   if ((await peer.close()).process.state !== 'stopped') {
-    throw new SessionError('PROVIDER_UNAVAILABLE', 'Codex probe process settlement is unknown.');
+    throw new ProviderUnavailableError(
+      'PROCESS_SETTLEMENT_UNVERIFIED',
+      'Codex probe process settlement could not be verified.',
+    );
   }
 }
 

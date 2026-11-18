@@ -431,8 +431,8 @@ agent on a project Runtime is an open item in the
   working** returns to the choice and keeps the name, archetype, workspace choice and the last agent
   setup. Leaving the method choice returns to the Specifications list.
 - **Form.** Name, archetype and the workspace place as in project mode; with an agent also the
-  **first Session**: provider tiles and the labelled Model, Effort and Work mode fields shared with
-  the Session start form ([Full Session](ui/full-session.md)). The agent applies to the first
+  **first Session**: provider tiles and the labelled Model, Effort and Work mode fields (the Session
+  start form groups the same fields, [Full Session](ui/full-session.md)). The agent applies to the first
   Session only; a Specification can later have many Sessions with other agents. Provider facts
   (availability, limits) come only from a confirmed source; unknown stays unknown. No prompt is sent
   from the form: the first message is written in the opened Session.

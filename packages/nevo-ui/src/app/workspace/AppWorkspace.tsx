@@ -239,6 +239,14 @@ export interface AppWorkspacePrimaryRegionProps extends AppWorkspaceRegionProps 
    * Omit it on root screens (peer areas of the navigation): they keep the navigation trigger.
    */
   back?: AppWorkspaceBack;
+  /**
+   * Stacked layouts only: the material of Primary's sheet. `sheet` (default) is the bordered,
+   * rounded surface that fills the height below the header. `plain` keeps the same geometry and
+   * scrolling but drops the border, fill and shadow, so short content just ends on the workbench
+   * background instead of reading as an empty stretched card (for example a form reduced to one
+   * message). Split layouts ignore it: Primary is the workspace pane there.
+   */
+  stackedSurface?: 'sheet' | 'plain';
 }
 
 export interface AppWorkspaceSecondaryRegionProps extends AppWorkspaceRegionProps {
@@ -442,7 +450,11 @@ function resolveComposedWorkspace(children: ReactNode): {
       }
 
       const props = child.props as AppWorkspacePrimaryRegionProps;
-      primary = { header: props.header, content: props.children };
+      primary = {
+        header: props.header,
+        content: props.children,
+        ...(props.stackedSurface === 'plain' ? { stackedSurface: 'plain' as const } : {}),
+      };
       primaryBack = props.back;
     } else if (child.type === AppWorkspaceSecondary) {
       if (defaultSecondary) {
@@ -1045,9 +1057,15 @@ function MobileRuntimeSurfaceRegion({
                   <div className="mobile-workspace-sheet flex-1">
                     <div
                       className={cn(
-                        workspaceSurfaceClassName,
-                        'mobile-workspace-surface min-h-full overflow-hidden rounded-t-surface border border-b-0 border-workspace-edge',
+                        'mobile-workspace-surface min-h-full overflow-hidden',
+                        surface.stackedSurface === 'plain'
+                          ? 'mobile-workspace-surface--plain'
+                          : [
+                              workspaceSurfaceClassName,
+                              'rounded-t-surface border border-b-0 border-workspace-edge',
+                            ],
                       )}
+                      data-workspace-sheet={surface.stackedSurface ?? 'sheet'}
                       ref={setSheetElement}
                     >
                       <AppContentScrollProvider>

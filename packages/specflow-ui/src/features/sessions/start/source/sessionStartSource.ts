@@ -16,6 +16,8 @@ export type StartCatalogueState =
       /** The configuration could not be read again: Start waits for a refresh. */
       configurationUnavailable: boolean;
       refresh: () => void;
+      /** The catalogue is being read again (its discovery and sign-in checks run again). */
+      refreshing?: boolean;
     };
 
 /**

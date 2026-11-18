@@ -1936,14 +1936,14 @@
     "status": {
       "draft": "Draft",
       "in-progress": "In progress",
-      "ready": "Ready",
+      "ready": "Ready to start",
       "waiting": "Waiting",
-      "blocked": "Blocked",
-      "completed": "Completed",
+      "blocked": "Cannot start",
+      "completed": "Done",
       "abandoned": "Abandoned",
       "on-hold": "On hold",
       "cancelled": "Cancelled",
-      "broken": "Broken"
+      "broken": "Cannot start · files broken"
     },
     "tasks": {
       "newTask": "New task",
@@ -2525,15 +2525,11 @@
     },
     "summary": {
       "allTasks": "All tasks",
-      "count_one": "{{count}} task",
-      "count_other": "{{count}} tasks",
-      "more_one": "{{count}} more",
-      "more_other": "{{count}} more",
-      "openGroup": "{{group}}: open on the Tasks page",
-      "count_few": "{{count}} tasks",
-      "count_many": "{{count}} tasks",
-      "more_few": "{{count}} more",
-      "more_many": "{{count}} more"
+      "moreIn_one": "{{count}} more in {{group}}",
+      "moreIn_other": "{{count}} more in {{group}}",
+      "moreIn_few": "{{count}} more in {{group}}",
+      "moreIn_many": "{{count}} more in {{group}}",
+      "moreActions": "Tasks: more actions"
     },
     "progress": {
       "label": "Tasks {{progress}}",
@@ -2602,6 +2598,13 @@
       "blocking_other": "Blocking specification · {{count}} tasks",
       "nothingBlocks": "Nothing blocks the specification now",
       "clearBlocking": "Clear filter: blocking specification",
+      "group_one": "{{group}} · {{count}} task",
+      "group_other": "{{group}} · {{count}} tasks",
+      "group_few": "{{group}} · {{count}} tasks",
+      "group_many": "{{group}} · {{count}} tasks",
+      "groupEmpty": "No tasks in this group now",
+      "clearGroup": "Clear filter: {{group}}",
+      "clearGroupUnnamed": "Clear group filter",
       "shown": "{{matched}} of {{total}} shown",
       "noMatch": "No task matches the filter.",
       "taskColumn": "Task",

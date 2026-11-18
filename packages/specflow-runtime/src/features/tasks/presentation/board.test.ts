@@ -119,7 +119,7 @@ describe('the default dashboard grouping', () => {
       ready: ['ready-1'],
       'cannot-start': ['t-07'],
       // Normal dependency waiting and an awaited process artifact are waits, not blockers.
-      waiting: ['waiting-1', 'awaited-1'],
+      waiting: ['awaited-1', 'waiting-1'],
       'on-hold': ['t-05'],
       done: ['done-1'],
       cancelled: ['gone-1'],
@@ -156,7 +156,7 @@ describe('the default dashboard grouping', () => {
       }),
       {},
     );
-    expect(groupIds(finished.groups).done).toEqual(['ready-1', 'done-1']);
+    expect(groupIds(finished.groups).done).toEqual(['done-1', 'ready-1']);
     expect(groupIds(finished.groups)).not.toHaveProperty('ready');
 
     // The context was fixed: the blocker and its attention are gone, it is ready to start.
@@ -195,7 +195,7 @@ describe('the Overview tasks section', () => {
       ['in-progress', 1, ['build'], 0],
       ['ready', 1, ['ready-1'], 0],
       ['cannot-start', 1, ['t-07'], 0],
-      ['waiting', 2, ['waiting-1', 'awaited-1'], 0],
+      ['waiting', 2, ['awaited-1', 'waiting-1'], 0],
       ['on-hold', 1, ['t-05'], 0],
     ]);
     // Each preview Task is the Tasks page row itself (one projection), with its attention item.
@@ -453,6 +453,12 @@ describe('the Overview preview of the A3 examples', () => {
   });
 });
 
+/** Every Task in one group, so the order compares Tasks of every kind. */
+const ONE_GROUP = parseDashboardGrouping({
+  groups: [{ id: 'all', name: 'All', summary: 'row', collapsed: false, when: {} }],
+  other: { id: 'other', name: 'Other', summary: 'row', collapsed: false },
+});
+
 describe('the importance order inside a group', () => {
   it('puts attention first, then a held Task others wait on, then the rest in Task order', () => {
     const tasks = {
@@ -470,10 +476,6 @@ describe('the importance order inside a group', () => {
   });
 
   it('ranks in progress after held-with-dependents in a mixed group, stable otherwise', () => {
-    const one = parseDashboardGrouping({
-      groups: [{ id: 'all', name: 'All', summary: 'row', collapsed: false, when: {} }],
-      other: { id: 'other', name: 'Other', summary: 'row', collapsed: false },
-    });
     const tasks = {
       'a-ready': kinds.ready(),
       'b-progress': kinds.progress(),
@@ -487,13 +489,45 @@ describe('the importance order inside a group', () => {
       subject: { kind: 'task', specId: SPEC, taskId: 'f-attention' },
     };
 
-    expect(groupIds(taskListOf(basisOf(tasks, [item]), {}, one).groups).all).toEqual([
+    expect(groupIds(taskListOf(basisOf(tasks, [item]), {}, ONE_GROUP).groups).all).toEqual([
       'f-attention',
       'c-cannot',
       'b-progress',
       'a-ready',
       'd-waiting',
       'e-ready',
+    ]);
+  });
+
+  it('never ranks a cancelled Task up for its dependents: it holds nothing up', () => {
+    const tasks = {
+      'a-ready': kinds.ready(),
+      'b-cancelled': kinds.cancelled(),
+      'c-waiting': kinds.waiting('b-cancelled'),
+    };
+
+    expect(groupIds(taskListOf(basisOf(tasks), {}, ONE_GROUP).groups).all).toEqual([
+      'a-ready',
+      'b-cancelled',
+      'c-waiting',
+    ]);
+  });
+
+  it('keeps the Engine id order on ties, broken Tasks in their place', () => {
+    const own = (taskId: string): AttentionItem => ({
+      ...contextItem,
+      subject: { kind: 'task', specId: SPEC, taskId },
+    });
+    const basis = basisOf(
+      { 'a-attention': kinds.ready(), 'c-attention': kinds.ready() },
+      [own('a-attention'), own('c-attention')],
+      [{ taskId: 'b-gone', reason: 'missing-folder' }],
+    );
+
+    expect(groupIds(taskListOf(basis, {}, ONE_GROUP).groups).all).toEqual([
+      'a-attention',
+      'b-gone',
+      'c-attention',
     ]);
   });
 

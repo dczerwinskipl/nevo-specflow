@@ -17,7 +17,7 @@ summary: >
   attention, the Tasks summary of the configured grouping, Sessions and Documents; the measured
   two-column arrangement from 1408 px of content width with 16 px hysteresis, focus restore across
   a crossing, Activity history as an on-demand Secondary, the preparation block, and the Tasks page
-  (/specs/:specId/tasks) with its validated blocking filter.
+  (/specs/:specId/tasks) with its validated blocking and group filters.
 related:
   - product.specflow.ui.shell-geometry
   - product.specflow.ui.interaction-model
@@ -108,7 +108,7 @@ dashboard configuration). The Overview renders what the reads deliver.
   first text line) and the one action its code maps to an existing flow: Review tasks (the Tasks
   page filtered to the blocking Tasks), Edit context and Edit dependencies (the Task's section),
   Start step, Review new revision (the first-start confirmation), Cancel task (its confirmation),
-  Open task (restore a broken Task, meet an entry gate, and for now resume a held Task), Return to
+  Open task (restore a broken Task, meet an entry gate), Resume (a held Task), Return to
   an earlier step (the Specification's Return dialog), Answer (the Session). Actions without a UI
   of their own yet (project settings, archetype configuration) are shown unavailable. The actor
   shows only when it is not the viewer. The Specification-level `tasks-stuck` item states the
@@ -118,21 +118,31 @@ dashboard configuration). The Overview renders what the reads deliver.
   with no Specification step deciding it (`task-escalated` on the Task), or `on-hold-blocking`
   when open Tasks wait on it or the current step cannot finish while it is on hold (`blocks`).
   Its primary action **Resume** (`resume-task`) sets it ready right there (`on-hold → ready`,
-  without a confirmation, like the Task page's Resume; a refusal is a notification), its
-  alternative Cancel task. A hold that nothing waits on is not listed; its row shows
+  without a confirmation, like the Task page's Resume; a refusal is a notification; a repeated
+  click while it runs sends nothing more, and the same holds for Start step), its alternative
+  Cancel task. A hold that nothing waits on is not listed; its row shows
   "On hold" with the reason as its supporting line ([workflow kernel, Held Tasks](../../../architecture/workflow/workflow-kernel.md#continuation-and-attention)).
-- **Tasks** — a preview of the configured grouping. Without Tasks: "No tasks yet" and, when the
-  run is certain to get to a step that produces Tasks (`outline.tasksStep`, never a step id: no
-  branch on the way), "Tasks appear when Break the solution down (step 4 of 7) finishes.", the same
-  line before the run reaches that step and while it is at it (a producing step creates its Tasks
-  with its finish), and no line otherwise. Each group the configuration marks as a summary row gets one row: its name, then
-  "1 task · T-04 Return users to where they were" (count, up to two Tasks, "N more", at most two
-  lines), opening the Tasks page at that group. Every Task appears by id and title, also one
-  Requires attention or Now already names, so every group reads alike (owner decision, dogfood
-  round 1, 2026-11-16: "In progress" showed a bare id beside "Needs approval" with titles). Compact groups (Done, Cancelled,
-  Ended) share one line of links that open the Tasks page with that group expanded (owner decision at the
-  final Overview approval, 2026-11-14). **All tasks**
-  in the header opens the page. No checkboxes and no bulk actions.
+- **Tasks** — the Runtime's preview of the configured grouping, rendered as delivered, always as
+  Task rows (no mode switch by Task count). Each group the configuration marks `row` shows its first
+  Tasks (at most two, `TaskOverview.rows[].tasks`, chosen by the Runtime in importance order:
+  Requires attention first, then held or unable to start with a Task waiting on it, then in
+  progress, then Task order) as the Tasks page's own **Task row** ([below](#tasks-page)), on the same
+  tracks without a column header, stacked below 48rem of section width (the same switch as the Tasks
+  page, no second width switch). There are no group headers: each row's status names its group.
+  Under a group's last row a quiet link "2 more in Waiting" (the count beyond the preview and the
+  group's name as the Runtime delivers it) opens the Tasks page filtered to that group
+  (`?group=<groupId>`); a group that fits shows no link. The section therefore never exceeds
+  row groups × 2 rows. Compact groups (Done, Cancelled, Ended) share one line of links, "Done 2 ·
+  Cancelled 1", that open the Tasks page filtered to that group (owner decision at the final
+  Overview approval, 2026-11-14). A held Task carries its Requires attention overlay on its row
+  only when the Engine reports it; the Requires attention item with Resume and Cancel task is the
+  section above. **All tasks** in the header opens the page; the header's overflow menu holds
+  **New task** when the projection allows creating a Task. Without Tasks the section keeps its
+  place with one line, "Tasks appear when Break the solution down (step 4 of 7) finishes." when
+  the run is certain to get to a step that produces Tasks (`outline.tasksStep`, never a step id: no
+  branch on the way; the same line before the run reaches that step and while it is at it), else
+  "No tasks yet", with a quiet **New task** beside it when allowed. No checkboxes and no bulk
+  actions.
 - **Sessions** — the recommended Session first, then the Specification's other Sessions, at most
   three; the same row as in the [Specification Sessions list](specification-sessions.md#rows). A
   Session waiting for the person is in Requires attention instead, never twice. **All sessions** is
@@ -159,7 +169,7 @@ It follows the [Specifications list](specs-overview.md) collection pattern: the 
 `CollectionColumns` (`minmax(0,40rem) minmax(15rem,22rem)`, `gap-x-6`), with a **Task | Status**
 column header from 48rem of list width, group headers (dot, name, count) across both tracks, and
 bounded tracks at any width while the row's hover and focus span the whole row. The filter by id
-or title (local state) and the blocking filter bar are as wide as the title track. Below 48rem the
+or title (local state) and the filter chip (blocking or group) are as wide as the title track. Below 48rem the
 header is hidden and every row stacks: title, "id · Type", status, supporting line.
 
 A row is the **Task row** (`TaskRow`, reused by the Overview Tasks section):
@@ -171,10 +181,11 @@ A row is the **Task row** (`TaskRow`, reused by the Overview Tasks section):
   T-02", "Draft · needs approval"), then at most one supporting line (two lines at most, pretty
   wrapping):
   - the **Requires attention overlay** when the Engine reports one for the Task, in the attention
-    tone with `triangle-alert` (danger and `circle-alert` for a broken Task). It is added under the
-    status, never in its place, and takes the supporting line. The Engine's item may be the Task's
-    own or a Specification item naming it (`task-escalated` with `taskIds`, or the `tasks-stuck`
-    the row's `blocksSpecification` reflects); the row renders it and never derives attention. The
+    tone with `triangle-alert`. It is added under the status, never in its place, and takes the
+    supporting line. The row's item is the read's own `attention` field (the Task's own item, or
+    the Specification's `task-escalated` naming it, resolved by the Runtime), or the `tasks-stuck`
+    its `blocksSpecification` reflects; the row renders it and never derives attention. A broken
+    Task gets no overlay line: its status already says it ("Cannot start · files broken"). The
     reason is worded from the item: a held Task that keeps the step from finishing "<step> cannot
     finish while this task is on hold" (it names the finish; its dependents only when it holds up
     no finish), one that holds up others "holds up T-02, T-03 (+N)", an escalated one "escalated
@@ -188,17 +199,20 @@ A row is the **Task row** (`TaskRow`, reused by the Overview Tasks section):
 Every Task surface (Tasks page rows, Overview Task rows, Close blocker items, the Full Task status
 line, Depends on rows) presents a status by its presented id, one mark and tone each:
 
-| Status               | Mark                                                    | Tone               |
-| -------------------- | ------------------------------------------------------- | ------------------ |
-| Draft                | `edit`                                                  | neutral            |
-| Ready                | info `StatusIndicator` dot                              | neutral            |
-| Waiting              | `clock`                                                 | neutral            |
-| In progress          | spinning `loader` (static under reduced motion)         | info               |
-| On hold              | `circle-pause`                                          | neutral            |
-| Blocked              | none, its slot kept (until a Blocked state is designed) | neutral            |
-| Completed            | `circle-check`                                          | success            |
-| Cancelled, Abandoned | `close`, muted label                                    | neutral            |
-| Broken               | `circle-alert`                                          | danger (label too) |
+| Status (label, presented id)           | Mark                                                    | Tone               |
+| -------------------------------------- | ------------------------------------------------------- | ------------------ |
+| Draft                                  | `edit`                                                  | neutral            |
+| Ready to start (`ready`)               | info `StatusIndicator` dot                              | neutral            |
+| Waiting                                | `clock`                                                 | neutral            |
+| In progress                            | spinning `loader` (static under reduced motion)         | info               |
+| On hold                                | `circle-pause`                                          | neutral            |
+| Cannot start (`blocked`)               | none, its slot kept (until a Blocked state is designed) | neutral            |
+| Done (`completed`)                     | `circle-check`                                          | success            |
+| Cancelled, Abandoned                   | `close`, muted label                                    | neutral            |
+| Cannot start · files broken (`broken`) | `circle-alert`                                          | danger (label too) |
+
+One name per state: a status label matches the default grouping's group name ("Ready to start",
+"Cannot start", "Done"; coordinator decision 2026-11-17).
 
 One owner each in `features/tasks/read-model`: `getTaskStatePresentation` / `taskStatusSupporting`
 (the status) and `taskAttentionOverlay` with its predicate `taskRequiresAttention` (the attention
@@ -212,7 +226,12 @@ Its search is router-owned and validated; absence is the default:
   their groups, resolved by the Runtime when read, never from ids in the URL. A filter bar shows
   "Blocking specification · 2 tasks" (or "Nothing blocks the specification now") with a clear
   button, and the count reads "2 of 7 shown". Review tasks pushes the entry; clearing replaces it.
-- `group=<id>` opens the page at that group, expanded, and moves focus to its header.
+- `group=<id>` (the Overview's "N more in <group>" and its compact links) lists only that group's
+  Tasks, resolved by the Runtime when read (`GET /api/specs/:specId/tasks?group=<id>`), expanded
+  even when the configuration collapses it, and moves focus to its header. A filter chip shows
+  "Waiting · 4 tasks" (or "No tasks in this group now") with a clear button, and the count reads
+  "4 of 12 shown". The link pushes the entry; clearing replaces it.
+- The two never combine: with both in the URL, `blocking` is kept and `group` dropped.
 
 Without Tasks the page names the step that produces them with the Overview's line ("Tasks appear
 when … finishes."), from the same projection; without such a step it keeps its own description.

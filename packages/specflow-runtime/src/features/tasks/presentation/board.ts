@@ -82,7 +82,11 @@ export function taskBoardOf(
   }));
   const factsOf = (row: TaskListEntry): GroupingFacts =>
     isReadable(row) ? groupingFactsOf(row.facts) : BROKEN_GROUPING_FACTS;
-  const rows = [...readable, ...broken];
+  // The Engine's Task order (by id, as it orders its execution), broken Tasks in their place: the
+  // order importance ties keep.
+  const rows = [...readable, ...broken].sort((left, right) =>
+    left.id < right.id ? -1 : left.id > right.id ? 1 : 0,
+  );
   const awaited = awaitedTaskIds(rows);
 
   return {

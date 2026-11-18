@@ -16,7 +16,6 @@ const overlays: readonly [string, TaskAttentionSource][] = [
   ],
   ['T-13', { item: { reason: 'task-escalated' }, feedback: 'Which provider should it use?' }],
   ['T-14', { blocksSpecification: true, specificationTitle: 'Single sign-on' }],
-  ['T-15', { item: { reason: 'task-broken', message: 'Its manifest cannot be read.' } }],
 ];
 
 /** Every Task status in its one presentation, then the Requires attention overlays. */

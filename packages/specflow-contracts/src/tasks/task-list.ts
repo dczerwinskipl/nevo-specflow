@@ -61,8 +61,19 @@ export const TaskProgressSchema = Type.Object({
  */
 export const TaskListQuerySchema = Type.Object(
   {
-    blocking: Type.Optional(Type.Literal('specification')),
-    group: Type.Optional(GroupIdSchema),
+    blocking: Type.Optional(
+      Type.Literal('specification', {
+        description:
+          "Only the Tasks the Specification's current tasks-stuck names. Cannot be combined with `group` (400).",
+      }),
+    ),
+    group: Type.Optional(
+      Type.String({
+        ...GroupIdSchema,
+        description:
+          'Only the Tasks of this dashboard group (a group id). Cannot be combined with `blocking` (400).',
+      }),
+    ),
   },
   { additionalProperties: false, not: { required: ['blocking', 'group'] } },
 );
@@ -74,9 +85,11 @@ const BlocksSpecification = Type.Optional(
 );
 
 /**
- * The Engine attention item that names this Task (the row's Requires attention overlay): its own
- * item, else the Specification's `task-escalated` that names it. At most one; the Specification's
- * `tasks-stuck` is `blocksSpecification` instead. Absent when nothing names it.
+ * THE attention item a client shows for the row (its Requires attention overlay): the Task's own
+ * Engine item, else the Specification's `task-escalated` that names it. At most one; the
+ * Specification's `tasks-stuck` is `blocksSpecification` instead. Absent when nothing names it.
+ * Use this for display, not `facts.attention`: that is the Engine's own-item fact only (it never
+ * holds a Specification item, and a broken row has no facts).
  */
 const RowAttention = Type.Optional(WorkflowAttentionItemSchema);
 

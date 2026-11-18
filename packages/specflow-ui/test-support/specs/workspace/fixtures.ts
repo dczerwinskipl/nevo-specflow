@@ -416,6 +416,14 @@ export function createSpecificationWorkspaceFixture(
   };
 }
 
+/** The presented status id of a fixture Task without its own (the Runtime presents only these). */
+const PRESENTED_STATUS = {
+  pending: 'ready',
+  in_progress: 'in-progress',
+  completed: 'completed',
+  blocked: 'blocked',
+} as const;
+
 /** A fixture Task as the Runtime's Overview preview (and Tasks page) row; neutral facts only. */
 function previewRow(task: TaskItem): TaskListEntry {
   const lifecycle = task.lifecycle ?? task.statusCode ?? 'pending';
@@ -425,7 +433,7 @@ function previewRow(task: TaskItem): TaskListEntry {
     title: task.title,
     type: { id: 'task', title: task.typeTitle ?? 'Task' },
     dependsOn: [...(task.dependsOn ?? [])],
-    status: { id: task.statusId ?? lifecycle, label: task.status, lifecycle },
+    status: { id: task.statusId ?? PRESENTED_STATUS[lifecycle], label: task.status, lifecycle },
     facts: {
       preparation: task.statusId === 'draft' ? 'draft' : 'ready',
       escalated: false,

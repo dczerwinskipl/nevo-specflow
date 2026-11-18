@@ -3,9 +3,10 @@ import type { TaskListEntry } from '@nevo/specflow-contracts/tasks';
 /**
  * The importance order of the Tasks inside a group (owner decision A-Q2), one comparator for the
  * Tasks page groups and the Overview preview: a Task that requires attention (the Engine's item
- * that names it, the Specification's `tasks-stuck`, or broken files), then one on hold or unable
- * to start that an open Task waits on directly, then one in progress, then the rest. Ties keep the
- * input order, the Engine's Task order (by id), so the order is deterministic.
+ * that names it, the Specification's `tasks-stuck`, or broken files), then one on hold or Cannot
+ * start that an open Task waits on directly, then one in progress, then the rest. Ties keep the
+ * input order, the Engine's Task order (by id, broken Tasks in their place; `board.ts`), so the
+ * order is deterministic.
  */
 const Rank = { Attention: 0, HoldsUpDependents: 1, InProgress: 2, Other: 3 } as const;
 type Rank = (typeof Rank)[keyof typeof Rank];
@@ -17,7 +18,9 @@ function rankOf(row: TaskListEntry, awaited: ReadonlySet<string>): Rank {
     return Rank.Attention;
   }
 
-  const held = row.status.id === 'on-hold' || row.status.lifecycle === 'blocked';
+  // Only a Task that can still move holds others up: on hold or Cannot start, never a cancelled,
+  // ended or broken one (broken is attention above).
+  const held = row.status.id === 'on-hold' || row.status.id === 'blocked';
   if (held && awaited.has(row.id)) {
     return Rank.HoldsUpDependents;
   }

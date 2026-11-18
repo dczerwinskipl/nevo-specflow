@@ -12,7 +12,7 @@ afterEach(cleanup);
 Element.prototype.scrollIntoView = () => undefined;
 
 function renderPage(props: Partial<TasksPageProps> = {}) {
-  const onClearBlocking = vi.fn();
+  const onClearFilter = vi.fn();
   const view = render(
     <LocalizationProvider instance={createSpecFlowI18n('en')}>
       <TasksPage
@@ -20,13 +20,13 @@ function renderPage(props: Partial<TasksPageProps> = {}) {
         blocking={false}
         fullTaskHref={(taskId) => `/specs/sso/tasks/${taskId}`}
         onOpenTask={vi.fn()}
-        onClearBlocking={onClearBlocking}
+        onClearFilter={onClearFilter}
         {...props}
       />
     </LocalizationProvider>,
   );
 
-  return { ...view, onClearBlocking };
+  return { ...view, onClearFilter };
 }
 
 const row = (container: HTMLElement, taskId: string) =>
@@ -81,26 +81,31 @@ describe('Tasks page', () => {
       'On holdWaiting for the retention policy from the security team.',
     );
     // A flagged row keeps its status; the overlay is added under it.
-    expect(status('T-07').textContent).toMatch(/^BlockedRequires attention · Cannot start/);
+    expect(status('T-07').textContent).toMatch(/^Cannot startRequires attention · Cannot start/);
     expect(row(container, 'T-07')?.dataset.taskAttention).toBe('true');
     expect(row(container, 'T-07')?.querySelector('[data-mark-slot="empty"]')).not.toBeNull();
   });
 
-  it('renders a Specification item that names the Task on its row, from the item only', () => {
+  it('renders the attention the Runtime puts on the row, never the response list', () => {
     const response = controlCenterTaskList('waiting');
+    const escalation = {
+      subject: { kind: 'specification' as const, specId: response.specId },
+      reason: 'task-escalated' as const,
+      actor: 'owner' as const,
+      action: 'return-to-step' as const,
+      message: 'T-05 escalated.',
+      taskIds: ['T-05'],
+    };
     const view = taskListViewOf({
       ...response,
-      attention: [
-        ...response.attention,
-        {
-          subject: { kind: 'specification', specId: response.specId },
-          reason: 'task-escalated',
-          actor: 'owner',
-          action: 'return-to-step',
-          message: 'T-05 escalated.',
-          taskIds: ['T-05'],
-        },
-      ],
+      // The response list names T-03 too: the row (resolved by the Runtime) is the one source.
+      attention: [...response.attention, { ...escalation, taskIds: ['T-03'] }],
+      groups: response.groups.map((group) => ({
+        ...group,
+        tasks: group.tasks.map((task) =>
+          task.id === 'T-05' ? { ...task, attention: escalation } : task,
+        ),
+      })),
     });
     const { container } = renderPage({ state: { status: 'ready', view } });
 
@@ -108,20 +113,47 @@ describe('Tasks page', () => {
     expect(row(container, 'T-05')?.textContent).toContain(
       'On holdRequires attention · escalated to the specification: Waiting for the retention policy',
     );
-    // Nothing else is derived: the other held or waiting rows stay plain.
     expect(row(container, 'T-03')?.dataset.taskAttention).toBeUndefined();
   });
 
-  it('opens a collapsed group expanded when the Overview links to it', () => {
-    const { container } = renderPage({ group: 'cancelled' });
+  it('says what a broken row cannot do once, without a bare Requires attention line', () => {
+    const { container } = renderPage({
+      state: { status: 'ready', view: taskListViewOf(controlCenterTaskList('blocked')) },
+    });
+    const broken = row(container, 'T-07')!;
 
+    expect(broken.dataset.taskAttention).toBe('true');
+    expect(broken.querySelector('[data-task-status-cell]')?.textContent).toBe(
+      'Cannot start · files broken',
+    );
+  });
+
+  it('lists one group with a clearable group filter (the Overview "N more")', () => {
+    const { container, onClearFilter } = renderPage({
+      group: 'cancelled',
+      state: {
+        status: 'ready',
+        view: taskListViewOf(controlCenterTaskList('waiting', { group: 'cancelled' })),
+      },
+    });
+    const chip = container.querySelector<HTMLElement>('[data-group-filter="cancelled"]')!;
+
+    // Collapsed by its configuration, opened by the filter.
     expect(row(container, 'T-06')).not.toBeNull();
+    expect(container.querySelectorAll('[data-row-task]')).toHaveLength(1);
+    expect(chip.textContent).toContain('Cancelled · 1 task');
+    expect(screen.getByText('1 of 7 shown')).not.toBeNull();
+    fireEvent.click(within(chip).getByRole('button', { name: 'Clear filter: Cancelled' }));
+    expect(onClearFilter).toHaveBeenCalledTimes(1);
   });
 
   it('shows the blocking filter with its count and clears it', () => {
-    const { container, onClearBlocking } = renderPage({
+    const { container, onClearFilter } = renderPage({
       blocking: true,
-      state: { status: 'ready', view: taskListViewOf(controlCenterTaskList('stuck', true)) },
+      state: {
+        status: 'ready',
+        view: taskListViewOf(controlCenterTaskList('stuck', { blocking: 'specification' })),
+      },
     });
     const bar = container.querySelector<HTMLElement>('[data-blocking-filter]')!;
 
@@ -133,7 +165,7 @@ describe('Tasks page', () => {
     fireEvent.click(
       within(bar).getByRole('button', { name: 'Clear filter: blocking specification' }),
     );
-    expect(onClearBlocking).toHaveBeenCalledTimes(1);
+    expect(onClearFilter).toHaveBeenCalledTimes(1);
   });
 
   it('holds the empty state and New task of a Specification without Tasks', () => {
@@ -165,17 +197,23 @@ describe('Tasks page', () => {
   it('says so when nothing blocks the Specification any more', () => {
     renderPage({
       blocking: true,
-      state: { status: 'ready', view: taskListViewOf(controlCenterTaskList('waiting', true)) },
+      state: {
+        status: 'ready',
+        view: taskListViewOf(controlCenterTaskList('waiting', { blocking: 'specification' })),
+      },
     });
 
     expect(screen.getByText('Nothing blocks the specification now')).not.toBeNull();
   });
 
-  it('validates its search: one blocking value and a group id, anything else is the default', () => {
+  it('validates its search: one filter (blocking wins), anything else is the default', () => {
+    expect(validateTasksSearch({ group: 'on-hold' })).toEqual({
+      collection: 'current',
+      group: 'on-hold',
+    });
     expect(validateTasksSearch({ blocking: 'specification', group: 'on-hold' })).toEqual({
       collection: 'current',
       blocking: 'specification',
-      group: 'on-hold',
     });
     expect(validateTasksSearch({ blocking: 'T-04,T-05', group: '../x' })).toEqual({
       collection: 'current',

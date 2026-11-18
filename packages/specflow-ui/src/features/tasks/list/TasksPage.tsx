@@ -33,12 +33,15 @@ export interface TasksPageProps {
   readonly state: TaskListState;
   /** `?blocking=specification`: only the Tasks the Specification's `tasks-stuck` names. */
   readonly blocking: boolean;
-  /** `?group=`: the group the page opens at, expanded. */
+  /**
+   * `?group=<groupId>` (the Overview's "N more in <group>"): only the Tasks of that group, which the
+   * page opens expanded. Never together with `blocking`.
+   */
   readonly group?: string;
   readonly fullTaskHref: (taskId: string) => string;
   readonly onOpenTask: (taskId: string) => void;
-  /** Clears the blocking filter (replaces the history entry). */
-  readonly onClearBlocking: () => void;
+  /** Clears the filter, blocking or group (replaces the history entry). */
+  readonly onClearFilter: () => void;
   /** Present when the projection allows creating a Task. */
   readonly onNewTask?: () => void;
   /** A notice above the list (New task could not be checked). */
@@ -55,8 +58,9 @@ const groupHeadingId = (groupId: string) => `task-group-${groupId}-heading`;
  * The Tasks page (`/specs/:specId/tasks`): the full inventory in the Runtime's configured grouping,
  * as delivered, on the Specifications list pattern (the collection's `task` tracks with a Task |
  * Status column header from 48rem, stacked rows below it). Collapsed groups follow the
- * configuration; `group` opens one expanded and moves the reader to it. Flagged rows carry the
- * attention overlay under their status. No selection and no bulk actions.
+ * configuration; a `group` filter lists that group only, expanded, and moves the reader to it.
+ * The active filter (blocking or group) is a removable chip. Flagged rows carry the attention
+ * overlay under their status. No selection and no bulk actions.
  */
 export function TasksPage({
   state,
@@ -64,7 +68,7 @@ export function TasksPage({
   group: focusGroup,
   fullTaskHref,
   onOpenTask,
-  onClearBlocking,
+  onClearFilter,
   onNewTask,
   notice,
   emptyLine,
@@ -129,6 +133,30 @@ export function TasksPage({
     : view.progress && listed > 0
       ? progressText(view.progress, t)
       : undefined;
+  const matched = view.filter?.matched ?? 0;
+  // The group's name is the Runtime's (the one group listed); none when nothing matches now.
+  const groupName = focusGroup
+    ? view.groups.find((group) => group.id === focusGroup)?.name
+    : undefined;
+  const filterChip = blocking
+    ? {
+        text:
+          matched > 0
+            ? t('taskOverview.page.blocking', { count: matched })
+            : t('taskOverview.page.nothingBlocks'),
+        clear: t('taskOverview.page.clearBlocking'),
+      }
+    : focusGroup
+      ? {
+          text:
+            groupName && matched > 0
+              ? t('taskOverview.page.group', { group: groupName, count: matched })
+              : t('taskOverview.page.groupEmpty'),
+          clear: groupName
+            ? t('taskOverview.page.clearGroup', { group: groupName })
+            : t('taskOverview.page.clearGroupUnnamed'),
+        }
+      : undefined;
   const collapsed = (groupId: string, configured: boolean) =>
     toggled[groupId] ?? (groupId === focusGroup ? false : configured);
 
@@ -143,24 +171,22 @@ export function TasksPage({
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
-        {blocking ? (
+        {filterChip ? (
           <div
             role="status"
             className="flex w-fit max-w-full items-center gap-2 rounded-control border border-border-default bg-surface-subtle py-1 pr-1 pl-3"
-            data-blocking-filter=""
+            {...(blocking ? { 'data-blocking-filter': '' } : { 'data-group-filter': focusGroup })}
           >
             <Icon name="filter" size="sm" aria-hidden="true" />
             <Typography as="span" variant="label-sm" className="min-w-0">
-              {view.filter && view.filter.matched > 0
-                ? t('taskOverview.page.blocking', { count: view.filter.matched })
-                : t('taskOverview.page.nothingBlocks')}
+              {filterChip.text}
             </Typography>
             <IconButton
               icon="close"
               size="xs"
               variant="ghost"
-              aria-label={t('taskOverview.page.clearBlocking')}
-              onClick={onClearBlocking}
+              aria-label={filterChip.clear}
+              onClick={onClearFilter}
             />
           </div>
         ) : null}
@@ -175,7 +201,7 @@ export function TasksPage({
           count={count}
           actions={newTask}
         />
-        {listed === 0 && !blocking ? (
+        {listed === 0 && !filterChip ? (
           <EmptyState
             variant="inline"
             title={t('specification.tasksEmptyTitle')}

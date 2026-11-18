@@ -101,7 +101,8 @@ Availability and action states describe only what actually exists.
   (`tasks/index.yaml`, `tasks/<id>/task.yaml`), runs and action projections, presented in the
   Runtime's dashboard grouping ([Task reads](task-reads.md#dashboard-grouping)), the same one the
   Tasks page uses: non-empty groups in configured order, each with `summary` (`row` or `compact`)
-  and `collapsed`. Each row carries `type` (`{id, title}`, the title from the catalogue, the id
+  and `collapsed`, and its `tasks` in the Tasks page's importance order
+  ([Task reads](task-reads.md#tasks-page)). Each row carries `type` (`{id, title}`, the title from the catalogue, the id
   when the type is not defined), `dependsOn` (Task ids) and `attention: true` when an attention item
   names the Task (its own, or the Specification's). `completed` and `total` are the Engine's
   `TaskProgress`: `total` counts the Tasks that are neither cancelled nor ended without completing (a

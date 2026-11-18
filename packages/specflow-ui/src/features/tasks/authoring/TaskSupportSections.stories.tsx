@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { AppShell, AppWorkspace, AppWorkspaceProvider, WorkspaceHeader } from '@nevo/ui';
 import type { TaskDocumentTree, TaskResourceFacts } from '@nevo/specflow-contracts/tasks';
 import type { TaskAuthoring } from '@nevo/specflow-contracts/workflow';
 import { createSpecFlowQueryClient } from '../../../app/queryClient';
@@ -69,18 +70,39 @@ interface Scenario {
   readonly documents: number;
   readonly own: boolean;
   readonly editable: boolean;
+  /** A short own list whose third entry is missing (required) or an awaited process artifact. */
+  readonly problem?: 'missing-required' | 'awaited';
+  /** Inside the application shell: Wide at a wide viewport (sections always expanded). */
+  readonly shell?: boolean;
 }
 
-function authoring({ own }: Scenario): TaskAuthoring {
-  const entries = own ? ownEntries : defaultEntries;
+const ux: Entry = { kind: 'specification-document', id: 'ux', required: true };
+const findings: Entry = {
+  kind: 'specification-document',
+  id: 'findings',
+  required: true,
+  artifact: true,
+};
 
+function entriesOf({ own, problem }: Scenario): Entry[] {
+  if (problem) {
+    return [taskMd, overview, problem === 'awaited' ? findings : ux];
+  }
+
+  return own ? ownEntries : defaultEntries;
+}
+
+function authoring(scenario: Scenario): TaskAuthoring {
   return {
     context: {
-      isDefault: !own,
-      entries: entries.map((entry) =>
-        entry.kind === 'specification-document' && entry.id === 'old-flow'
-          ? { entry, state: 'unresolved' as const, reason: 'not-found' as const }
-          : { entry, state: 'resolved' as const },
+      isDefault: !scenario.own && !scenario.problem,
+      entries: entriesOf(scenario).map((entry) =>
+        entry === findings
+          ? { entry, state: 'awaited' as const }
+          : (entry.kind === 'specification-document' && entry.id === 'old-flow') ||
+              (entry === ux && scenario.problem === 'missing-required')
+            ? { entry, state: 'unresolved' as const, reason: 'not-found' as const }
+            : { entry, state: 'resolved' as const },
       ),
       defaultEntries,
     },
@@ -88,7 +110,7 @@ function authoring({ own }: Scenario): TaskAuthoring {
   };
 }
 
-function resource({ own }: Scenario): TaskResourceFacts {
+function resource(scenario: Scenario): TaskResourceFacts {
   return {
     revision: 'rev-3',
     type: 'implementation',
@@ -96,7 +118,7 @@ function resource({ own }: Scenario): TaskResourceFacts {
     dependsOn: [],
     origin: { kind: 'manual', actorId: 'user:demo' },
     documents: [{ id: 'task', path: 'task.md', type: 'task' }],
-    context: own ? ownEntries : null,
+    context: scenario.own || scenario.problem ? entriesOf(scenario) : null,
     readiness: { kind: 'ready' },
     facts: {
       preparation: 'ready',
@@ -136,32 +158,48 @@ function SupportSections(scenario: Scenario) {
   const task = resource(scenario);
   const view = contextView(task, authoring(scenario));
 
+  const sections = (
+    <div className="@container/task grid min-w-0 p-6">
+      <TaskDocumentsSection
+        specId={SPEC}
+        taskId={TASK}
+        ownContext={view.explicit}
+        onOpenDocument={() => undefined}
+      />
+      <TaskContextSection
+        specId={SPEC}
+        specTitle="SSO sign-in"
+        taskId={TASK}
+        revision={task.revision}
+        view={view}
+        names={names}
+        specificationDocuments={[
+          { id: 'overview', title: 'SSO sign-in', filename: 'overview.md' },
+          { id: 'ux', title: 'UX', filename: 'ux.md' },
+        ]}
+        editable={scenario.editable}
+        openTarget={() => undefined}
+        onLoadLatest={() => undefined}
+      />
+    </div>
+  );
+
   return (
     <QueryClientProvider client={setup.query}>
       <TestServicesRouterContext services={setup.services}>
-        <div className="@container/task grid min-w-0 p-6">
-          <TaskDocumentsSection
-            specId={SPEC}
-            taskId={TASK}
-            ownContext={view.explicit}
-            onOpenDocument={() => undefined}
-          />
-          <TaskContextSection
-            specId={SPEC}
-            specTitle="SSO sign-in"
-            taskId={TASK}
-            revision={task.revision}
-            view={view}
-            names={names}
-            specificationDocuments={[
-              { id: 'overview', title: 'SSO sign-in', filename: 'overview.md' },
-              { id: 'ux', title: 'UX', filename: 'ux.md' },
-            ]}
-            editable={scenario.editable}
-            openTarget={() => undefined}
-            onLoadLatest={() => undefined}
-          />
-        </div>
+        {scenario.shell ? (
+          <AppWorkspaceProvider>
+            <AppShell navigation={<div className="p-4">SpecFlow</div>}>
+              <AppWorkspace fit="available" split="primary">
+                <AppWorkspace.Primary header={<WorkspaceHeader title="oidc-callback" />}>
+                  {sections}
+                </AppWorkspace.Primary>
+              </AppWorkspace>
+            </AppShell>
+          </AppWorkspaceProvider>
+        ) : (
+          sections
+        )}
       </TestServicesRouterContext>
     </QueryClientProvider>
   );
@@ -241,5 +279,24 @@ export const NewDocumentOwnList: Story = {
         'It is not added to the context, because this task has its own list.',
       ),
     );
+  },
+};
+
+/** A required entry that does not resolve: the reason is on the row, the note names it. */
+export const MissingRequiredEntry: Story = {
+  args: { problem: 'missing-required' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Not found · required')).toBeVisible();
+    await expect(canvas.getByText('1 required entry is missing: ux.md.')).toBeVisible();
+  },
+};
+
+/** An awaited process artifact: expected, quiet, and says when it is needed. */
+export const AwaitedEntry: Story = {
+  args: { problem: 'awaited' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Awaited · needed when the step starts')).toBeVisible();
   },
 };

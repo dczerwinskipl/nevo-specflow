@@ -67,6 +67,7 @@ export function TaskDocumentsSection({
     <SupportSection
       id="task-documents-heading"
       title={t('taskAuthoring.section.documents')}
+      icon="file"
       taskId={taskId}
       count={tree.data ? documents.length : undefined}
       summary={summary}
@@ -171,6 +172,9 @@ export function TaskDocumentsSection({
                           </MenuItem>
                         </MenuContent>
                       </Menu>
+                    ) : organize ? (
+                      // Rows without actions keep the `⋯` slot, so trailing labels line up.
+                      <span aria-hidden="true" className="size-control-height-compact shrink-0" />
                     ) : undefined
                   }
                 />

@@ -158,9 +158,10 @@ cancelled), **Documents**, **Context** and **Depends on**. Task history is the S
 - **Placement.** Structured facts are edited where they are read, in these sections (no edit mode);
   documents open in the **Secondary** editor, several as tabs. On Narrow a document is a pushed page
   with Back.
-- **Sections open when small.** Documents, Context and Depends on are disclosures with the same
-  spacing at every width. A section starts **open** when it holds at most 3 rows (Documents) or 4
-  entries (Context, Depends on), or a blocker (a missing document file, a required context entry
+- **Sections open when small.** At Wide (the workspace splits Primary and Secondary) Documents,
+  Context and Depends on are ordinary sections with their icons, always expanded. Below Wide they are
+  disclosures with the same spacing. A section starts **open** when it holds at most 3 rows
+  (Documents) or 4 entries (Context, Depends on), or a blocker (a missing document file, a required context entry
   that does not resolve, a dependency that no longer exists); above that it starts **collapsed**
   with a one-line summary in its header ("Documents 5 · task.md, plan.md, +3", "Context 6 entries ·
   own list · 1 optional missing"). The user's toggle is kept per Task for the visit (in memory).
@@ -180,8 +181,10 @@ cancelled), **Documents**, **Context** and **Depends on**. Task history is the S
   document, Code path (with its current match count) and Instructions, each Required or Optional with an
   optional note. Each entry is the shared document row named by its file name (`overview.md`, not the
   document title), with its kind and note in the tooltip and a trailing label: **Always first**
-  (`task.md`), **Required** or **Optional**, or the problem (**Not found**, **Not registered**,
-  **Awaited**). The header says which list it shows: "N entries · default" or "N entries · own list",
+  (`task.md`), **Required** or **Optional**, or the problem with its short reason, visible at every
+  width (**Not found · required**, **Not found · optional**, **Not registered · required**,
+  **Awaited · needed when the step starts**). Trailing labels line up: while the context is
+  editable every row keeps the `⋯` slot. The header says which list it shows: "N entries · default" or "N entries · own list",
   and a source line under the explanation says it before any change: **Default context.** it follows
   the task (`task.md`, its other documents and the Specification overview, all required); new task
   documents join it; the first change saves it as the task's own list, after which new documents are
@@ -191,8 +194,9 @@ cancelled), **Documents**, **Context** and **Depends on**. Task history is the S
   default and names the entries that go ("Entries you added are removed: ux.md, src/auth/**, +1"),
   then sends `context: null` with the read revision. The default it compares with is the Engine's
   (`taskAuthoring.context.defaultEntries`); the UI never derives it. Entries that need attention come
-  first, then **Show all N entries in order**. A missing required entry also gets the danger note
-  above the rows; a missing optional one is an attention label. An entry marked "Created earlier in
+  first, then **Show all N entries in order**. Missing required entries are also named in the
+  danger note above the rows ("1 required entry is missing: ux.md."); a missing optional one is an
+  attention label only. An entry marked "Created earlier in
   the process" (a process artifact) is **Awaited** while missing: neutral, no warning. Marking the Task's own document as a required
   artifact is refused and explained in the dialog: what the Task produces is an exit gate, not context.
 - **Depends on.** Rows with the dependency's state; the add checklist disables existing dependencies

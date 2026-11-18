@@ -2056,13 +2056,13 @@
       "useDefaultBody_other": "Lista zadania z {{count}} wpisu zostanie zastąpiona domyślną (task.md, dokumenty zadania i przegląd specyfikacji).",
       "useDefaultRemoved": "Dodane przez ciebie wpisy zostaną usunięte: {{names}}.",
       "moreNames": "+{{count}}",
-      "awaitedLabel": "Oczekiwany",
+      "awaitedLabel": "Oczekiwany · potrzebny, gdy krok startuje",
       "notFoundLabel": "Nie znaleziono",
       "notRegisteredLabel": "Niezarejestrowany",
-      "blocking_one": "Brakuje {{count}} wymaganego wpisu.",
-      "blocking_few": "Brakuje {{count}} wymaganych wpisów.",
-      "blocking_many": "Brakuje {{count}} wymaganych wpisów.",
-      "blocking_other": "Brakuje {{count}} wymaganego wpisu.",
+      "blocking_one": "Brakuje {{count}} wymaganego wpisu: {{names}}.",
+      "blocking_few": "Brakuje {{count}} wymaganych wpisów: {{names}}.",
+      "blocking_many": "Brakuje {{count}} wymaganych wpisów: {{names}}.",
+      "blocking_other": "Brakuje {{count}} wymaganego wpisu: {{names}}.",
       "blockingBody": "Następny krok nie wystartuje, dopóki nie zostaną zastąpione lub usunięte.",
       "kind": {
         "task-document": "Dokument zadania",
@@ -2121,7 +2121,9 @@
       "awaitedEntry": "{{ref}} jeszcze nie istnieje.",
       "ownArtifactTitle": "Nie dodano: to własny dokument zadania",
       "ownArtifactBody": "Kontekst wymienia to, czego zadanie potrzebuje przed startem. {{ref}} powstaje w tym zadaniu, więc należy do warunku wyjścia kroku, który go tworzy, na przykład „istnieje dokument z wnioskami” przed zakończeniem.",
-      "notFoundOptional": "Nie znaleziono: {{ref}} przeniesiono lub usunięto. Opcjonalny, więc następny krok go pominie."
+      "notFoundOptional": "Nie znaleziono: {{ref}} przeniesiono lub usunięto. Opcjonalny, więc następny krok go pominie.",
+      "requiredShort": "wymagany",
+      "optionalShort": "opcjonalny"
     },
     "dependencies": {
       "none": "Brak zależności: zadanie może wystartować zaraz po zatwierdzeniu.",

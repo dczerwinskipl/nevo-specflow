@@ -1,13 +1,14 @@
 import type { ReactNode } from 'react';
-import { Collapsible, Icon } from '@nevo/ui';
+import { Collapsible, Icon, useWorkspaceCapabilities, type IconName } from '@nevo/ui';
+import { WorkspaceSection } from '../../../shared/workspace-section';
 import { useSupportSectionChoice } from './supportSectionState';
 
 /** How many items a section shows open by default: Documents rows, or Context / Depends on entries. */
 export const OPEN_UP_TO = { documents: 3, entries: 4 } as const;
 
 /**
- * Whether a supporting section starts open (UX contract, Full Task sections): when it holds few
- * items, or a blocker, at every width; otherwise it starts collapsed with its one-line summary.
+ * Whether a supporting section starts open below Wide (UX contract, Full Task sections): when it
+ * holds few items, or a blocker; otherwise it starts collapsed with its one-line summary.
  */
 export function startsOpen(items: number, openUpTo: number, holdsBlocker: boolean): boolean {
   return holdsBlocker || items <= openUpTo;
@@ -17,6 +18,8 @@ export interface SupportSectionProps {
   /** Id of the section heading (its `aria-labelledby` target and link anchor). */
   readonly id: string;
   readonly title: string;
+  /** The section icon of the Wide header. */
+  readonly icon: IconName;
   /** The Task whose section this is: the user's toggle is kept per Task for the visit. */
   readonly taskId: string;
   /** The header meta while open (a count, "2 entries · default"). */
@@ -36,13 +39,15 @@ export interface SupportSectionProps {
 }
 
 /**
- * A supporting section of the Task page (Documents, Context, Depends on): one disclosure with the
- * same spacing at every width. It starts open when it holds few items or a blocker and collapsed
- * above that, with the summary in its header; the user's toggle wins for the rest of the visit.
+ * A supporting section of the Task page (Documents, Context, Depends on). Wide (the workspace can
+ * split) shows an ordinary, always expanded section with its icon. Below that it is a disclosure
+ * with the same spacing: open when it holds few items or a blocker, collapsed above that with the
+ * summary in its header; the user's toggle wins for the rest of the visit.
  */
 export function SupportSection({
   id,
   title,
+  icon,
   taskId,
   count,
   summary,
@@ -53,10 +58,31 @@ export function SupportSection({
   dialogs,
   children,
 }: SupportSectionProps) {
+  const { supportsSplit } = useWorkspaceCapabilities();
   const [choice, choose] = useSupportSectionChoice(`${taskId}/${id}`);
   // Until the user toggles it, the default follows the live facts (a blocker appearing opens it).
   const open = choice ?? startsOpen(items, openUpTo, holdsBlocker);
   const meta = open ? count : (summary ?? count);
+
+  if (supportsSplit) {
+    return (
+      <WorkspaceSection
+        aria-labelledby={id}
+        className="border-t border-border-default py-4 @min-[40rem]/task:py-5"
+      >
+        <WorkspaceSection.Header
+          id={id}
+          headingTag="h2"
+          title={title}
+          icon={icon}
+          count={count}
+          actions={actions}
+        />
+        {children}
+        {dialogs}
+      </WorkspaceSection>
+    );
+  }
 
   return (
     <section

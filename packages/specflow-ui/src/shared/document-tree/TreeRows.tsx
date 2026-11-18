@@ -29,8 +29,9 @@ export interface TreeRowState {
    */
   readonly attention?: boolean;
   /**
-   * The label's tone when the row is not in attention: `muted` (default, a quiet fact),
-   * `secondary` (a fact the reader acts on) or `attention` (the label only; the glyph stays).
+   * The label's tone when the row is not in attention: `muted` (default, a standing fact such as
+   * "Required"), `secondary` (a relation to the work at hand, such as "needed to finish this
+   * step") or `attention` (the label only; the glyph stays).
    */
   readonly tone?: 'muted' | 'secondary' | 'attention';
 }

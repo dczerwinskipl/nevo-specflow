@@ -21,6 +21,7 @@ function section(taskId: string, items: number) {
     <SupportSection
       id="docs-heading"
       title="Documents"
+      icon="file"
       taskId={taskId}
       count={items}
       summary={`${items} · task.md, plan.md, +${items - 2}`}

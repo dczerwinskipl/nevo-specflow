@@ -32,22 +32,27 @@ export function entryName(entry: TaskContextEntry, names: ContextNames): string 
 }
 
 /**
- * The row's trailing label (the shared document row's state): the problem the projection reports,
- * else when the step needs the entry. An entry that does not resolve is attention; an awaited
- * artifact is expected, so it stays quiet.
+ * The row's trailing label (the shared document row's state): the problem the projection reports
+ * with its short reason, visible at every width ("Not found · required"), else when the step needs
+ * the entry. An entry that does not resolve is attention; an awaited artifact is expected, so it
+ * stays quiet.
  */
 export function entryState(row: ContextRow, t: TFunction): TreeRowState {
   const { entry, problem } = row;
+  const need = entry.required
+    ? t('taskAuthoring.context.requiredShort')
+    : t('taskAuthoring.context.optionalShort');
   if (problem?.kind === 'awaited') {
     return { text: t('taskAuthoring.context.awaitedLabel') };
   }
 
   if (problem?.kind === 'unresolved') {
     return {
-      text:
+      text: `${
         problem.reason === 'not-registered'
           ? t('taskAuthoring.context.notRegisteredLabel')
-          : t('taskAuthoring.context.notFoundLabel'),
+          : t('taskAuthoring.context.notFoundLabel')
+      } · ${need}`,
       attention: true,
     };
   }

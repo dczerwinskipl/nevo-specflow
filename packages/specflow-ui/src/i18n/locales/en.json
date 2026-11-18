@@ -2054,13 +2054,13 @@
       "useDefaultBody_other": "This task's list of {{count}} entries is replaced by the default (task.md, its documents and the specification overview).",
       "useDefaultRemoved": "Entries you added are removed: {{names}}.",
       "moreNames": "+{{count}}",
-      "awaitedLabel": "Awaited",
+      "awaitedLabel": "Awaited · needed when the step starts",
       "notFoundLabel": "Not found",
       "notRegisteredLabel": "Not registered",
-      "blocking_one": "{{count}} required entry is missing.",
-      "blocking_few": "{{count}} required entries are missing.",
-      "blocking_many": "{{count}} required entries are missing.",
-      "blocking_other": "{{count}} required entries are missing.",
+      "blocking_one": "{{count}} required entry is missing: {{names}}.",
+      "blocking_few": "{{count}} required entries are missing: {{names}}.",
+      "blocking_many": "{{count}} required entries are missing: {{names}}.",
+      "blocking_other": "{{count}} required entries are missing: {{names}}.",
       "blockingBody": "The next step cannot start until they are replaced or removed.",
       "kind": {
         "task-document": "Task document",
@@ -2119,7 +2119,9 @@
       "awaitedEntry": "{{ref}} does not exist yet.",
       "ownArtifactTitle": "Not added: this is the task's own document",
       "ownArtifactBody": "Context lists what the task needs before it starts. {{ref}} is produced by this task, so it belongs to an exit gate of the step that produces it, for example “a findings document exists” before finishing.",
-      "notFoundOptional": "Not found: {{ref}} was moved or deleted. Optional, so the next step skips it."
+      "notFoundOptional": "Not found: {{ref}} was moved or deleted. Optional, so the next step skips it.",
+      "requiredShort": "required",
+      "optionalShort": "optional"
     },
     "dependencies": {
       "none": "No dependencies: the task can start as soon as it is approved.",

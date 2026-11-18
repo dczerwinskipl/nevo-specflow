@@ -61,7 +61,7 @@ export function UseDefaultContextDialog({
         </DialogHeader>
         {error ? <DialogBody>{error}</DialogBody> : null}
         <DialogFooter>
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" disabled={pending} onClick={onClose}>
             {t('common.cancel')}
           </Button>
           <Button variant="primary" disabled={pending} onClick={onConfirm}>

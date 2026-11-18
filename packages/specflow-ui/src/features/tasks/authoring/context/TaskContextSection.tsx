@@ -110,6 +110,7 @@ export function TaskContextSection(props: TaskContextSectionProps) {
     <SupportSection
       id="task-context-heading"
       title={t('taskAuthoring.section.context')}
+      icon="book-open"
       taskId={props.taskId}
       count={count}
       summary={
@@ -169,7 +170,10 @@ export function TaskContextSection(props: TaskContextSectionProps) {
         {view.blocking.length > 0 ? (
           <InlineNote tone="danger">
             <span className="font-medium text-content-primary">
-              {t('taskAuthoring.context.blocking', { count: view.blocking.length })}
+              {t('taskAuthoring.context.blocking', {
+                count: view.blocking.length,
+                names: view.blocking.map((row) => entryName(row.entry, names)).join(', '),
+              })}
             </span>{' '}
             {t('taskAuthoring.context.blockingBody')}
           </InlineNote>
@@ -184,6 +188,7 @@ export function TaskContextSection(props: TaskContextSectionProps) {
                 view={view}
                 names={names}
                 editable={editable && !edit.isPending}
+                reserveMenu={editable}
                 onOpen={props.openTarget(row.entry)}
                 onChange={(next) => save(next(entries))}
               />
@@ -276,6 +281,7 @@ function ContextEntryRow({
   view,
   names,
   editable,
+  reserveMenu,
   onOpen,
   onChange,
 }: {
@@ -283,6 +289,8 @@ function ContextEntryRow({
   view: ContextView;
   names: ContextNames;
   editable: boolean;
+  /** The section offers row menus: every row keeps the `⋯` slot, so trailing labels line up. */
+  reserveMenu: boolean;
   onOpen: (() => void) | undefined;
   onChange: (next: (entries: readonly TaskContextEntry[]) => TaskContextEntry[]) => void;
 }) {
@@ -347,6 +355,8 @@ function ContextEntryRow({
               </MenuItem>
             </MenuContent>
           </Menu>
+        ) : reserveMenu ? (
+          <span aria-hidden="true" className="size-control-height-compact shrink-0" />
         ) : undefined
       }
     />

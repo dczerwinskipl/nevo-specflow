@@ -69,6 +69,7 @@ export function TaskDependenciesSection({
     <SupportSection
       id="task-dependencies-heading"
       title={t('taskAuthoring.section.dependsOn')}
+      icon="network"
       taskId={taskId}
       count={dependsOn.length > 0 ? dependsOn.length : undefined}
       items={dependsOn.length}

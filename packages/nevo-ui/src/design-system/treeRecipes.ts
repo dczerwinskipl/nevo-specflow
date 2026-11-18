@@ -159,8 +159,9 @@ export const treeStateLabelClassName =
   'flex h-icon-md shrink-0 items-center self-start whitespace-nowrap text-body-sm text-content-muted';
 
 /**
- * Secondary form of the state label: a fact the reader acts on (for example "Required"), one step
- * stronger than the quiet muted default and still not attention.
+ * Secondary form of the state label: a fact about the row relative to the work at hand (for example
+ * "needed to finish this step"), one step stronger than the quiet muted default (a standing fact such
+ * as "Required") and still not attention.
  */
 export const treeSecondaryStateLabelClassName =
   'flex h-icon-md shrink-0 items-center self-start whitespace-nowrap text-body-sm text-content-secondary';

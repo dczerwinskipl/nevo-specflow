@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, InlineNote, Typography } from '@nevo/ui';
+import { writeOutcomeUnknown } from '../../../shared/http/apiErrorCode';
 import { subscribeTaskAttention } from '../overview/attentionRequests';
 import { NowOperationsMenu } from './NowOperationsMenu';
 import type {
@@ -153,11 +154,12 @@ export function WorkflowNow({
   // The read may already show a journaled transition whose publication still needs retrying.
   const submittedWait = commands.reevaluateWait.variables;
   const attemptedWait = subject.taskId === undefined && submittedWait?.specId === subject.specId;
+  const { isError: waitFailed, isPending: waitPending, error: waitError } = commands.reevaluateWait;
   const retryWait =
-    attemptedWait && (commands.reevaluateWait.isError || commands.reevaluateWait.isPending)
+    attemptedWait && (waitPending || (waitFailed && writeOutcomeUnknown(waitError)))
       ? submittedWait
       : undefined;
-  const waitAction = retryWait ?? waitAttempt;
+  const waitAction = waitAttempt ?? retryWait;
 
   const startNow = () => {
     commands.start.reset();

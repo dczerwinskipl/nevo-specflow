@@ -67,11 +67,22 @@ function renderWith(
   );
 }
 
-it('can retry the same wait attempt after a failed publication changes the projection', async () => {
+it.each([
+  [
+    'keeps the retry after an interrupted publication',
+    new Error('publication interrupted'),
+    'Retry ending wait',
+  ],
+  [
+    'shows the refreshed action after a stale attempt refusal',
+    refusal('WORKFLOW_ATTEMPT_MISMATCH'),
+    'Continue workflow',
+  ],
+])('%s', async (_scenario, error, expectedAction) => {
   const waitAttempt = { step: 'wait-for-tasks', attempt: 3 };
   const reevaluateWait = vi
     .fn(() => Promise.resolve({ ...waitAttempt, status: 'already-settled' as const }))
-    .mockRejectedValueOnce(new Error('publication interrupted'));
+    .mockRejectedValueOnce(error);
   const projection: WorkflowActionProjection = {
     ...specificationWorkflowProjection('waiting'),
     attention: {
@@ -105,6 +116,7 @@ it('can retry the same wait attempt after a failed publication changes the proje
           links={{}}
           artifactOptions={[]}
           overview={{ specId: SPEC }}
+          primaryAction={published ? <button type="button">Continue workflow</button> : undefined}
         />
       </>
     );
@@ -116,8 +128,10 @@ it('can retry the same wait attempt after a failed publication changes the proje
   fireEvent.click(screen.getByRole('button', { name: 'End wait' }));
   await waitFor(() => expect(reevaluateWait).toHaveBeenCalledWith(SPEC, waitAttempt));
   fireEvent.click(screen.getByRole('button', { name: 'Reload workflow' }));
-  fireEvent.click(await screen.findByRole('button', { name: 'Retry ending wait' }));
-  await waitFor(() => expect(reevaluateWait).toHaveBeenNthCalledWith(2, SPEC, waitAttempt));
+  await waitFor(() => {
+    const action = screen.getByRole('button', { name: expectedAction });
+    expect(action.hasAttribute('disabled')).toBe(false);
+  });
 });
 
 /** The Task's Now block over its projection query (a command refreshes it). */

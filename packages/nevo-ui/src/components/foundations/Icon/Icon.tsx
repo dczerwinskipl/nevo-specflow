@@ -6,6 +6,7 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  Circle,
   CircleAlert,
   CircleCheck,
   CirclePause,
@@ -110,6 +111,8 @@ export const iconRegistry = {
   'triangle-alert': TriangleAlert,
   'circle-alert': CircleAlert,
   'circle-pause': CirclePause,
+  // An open checklist item: not met yet (a met one is `circle-check`).
+  circle: Circle,
   users: Users,
   workflow: Workflow,
   'list-checks': ListChecks,

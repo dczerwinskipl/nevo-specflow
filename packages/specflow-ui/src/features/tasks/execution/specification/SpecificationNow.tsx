@@ -6,7 +6,7 @@ import type { TaskOverview } from '@nevo/specflow-contracts/specs/workspace';
 import type { TaskProgressData } from '../../../specs/read-model';
 import { progressText, terminalSummary } from '../../overview/progress';
 import { WorkflowNow } from '../WorkflowNow';
-import { stepPurpose } from '../presentation';
+import { documentGateFix, stepPurpose } from '../presentation';
 import {
   SPECIFICATION_NOW_HEADING,
   useSpecificationNowVisible,
@@ -129,24 +129,10 @@ export function SpecificationNow({
     }
 
     const documentId = gate.documentId;
-    const name = documentName(documentId) ?? documentId;
-    const sections =
-      gate.status === 'unsatisfied' && gate.reason === 'sections-missing'
-        ? (gate.missingSections ?? [])
-        : [];
 
     return {
-      label: t('workflowExecution.now.openDocument', { name }),
+      ...documentGateFix(t, gate, documentName(documentId) ?? documentId),
       onSelect: () => onOpenDocument(documentId),
-      ...(sections.length > 0
-        ? {
-            hint: t('workflowExecution.now.addSectionsToFinish', {
-              count: sections.length,
-              sections: sections.join(', '),
-              name,
-            }),
-          }
-        : {}),
     };
   };
 
@@ -171,9 +157,10 @@ export function SpecificationNow({
       }
       artifactOptions={documents}
       gateAction={gateAction}
-      overview={{
+      onOpenHistory={onOpenHistory}
+      {...(summary ? { summary } : {})}
+      specification={{
         specId: workflow.specId,
-        onOpenHistory,
         ...(workflow.openNewTask ? { onNewTask: workflow.openNewTask } : {}),
         waitingContent,
         ...(abandonment
@@ -186,7 +173,6 @@ export function SpecificationNow({
               ),
             }
           : {}),
-        ...(summary ? { summary } : {}),
       }}
     />
   );

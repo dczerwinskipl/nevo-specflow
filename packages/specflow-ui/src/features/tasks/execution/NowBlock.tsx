@@ -8,10 +8,12 @@ import { closableInFinishDialog } from './FinishTasksOpen';
 import {
   actorLabel,
   attemptLine,
+  doneWhen,
   formatWhen,
   openTasksText,
   stepTrack,
   transitionLabel,
+  type DoneWhen,
   type StepTrack,
 } from './presentation';
 import { StartBlockerLines, type NowLinks } from './StartBlockerLines';
@@ -56,6 +58,63 @@ function StepTrackRow({ track, compact }: { track: StepTrack; compact: boolean }
   );
 }
 
+/**
+ * What finishes the active step: its exit gates as an open checklist (neutral: the step is being
+ * worked on; the main action is the fix) and, for a Task, the step the work goes to next.
+ */
+function DoneWhenList({
+  done,
+  gateActionFor,
+  gateDocument,
+}: {
+  done: DoneWhen;
+  gateActionFor?: (gate: GateStatus) => GateAction | undefined;
+  gateDocument?: (gate: GateStatus) => string | undefined;
+}) {
+  const { t } = useTranslation();
+  const heading = (result?: string) =>
+    result
+      ? t('workflowExecution.now.doneWhenWith', { result })
+      : t('workflowExecution.now.doneWhen');
+  const groups = done.groups.length > 0 ? done.groups : [{ gates: [] }];
+
+  return (
+    <div className="grid gap-3" data-now-done-when="">
+      {groups.map((group, index) => (
+        <div key={group.result ?? index} className="grid gap-1.5">
+          <Typography as="p" variant="label-sm" className="text-content-secondary">
+            {heading(group.result)}
+          </Typography>
+          {group.gates.length > 0 ? (
+            <GateList
+              variant="checklist"
+              gates={group.gates}
+              label={heading(group.result)}
+              actionFor={gateActionFor}
+              {...(gateDocument ? { documentFor: gateDocument } : {})}
+            />
+          ) : null}
+          {done.then && index === groups.length - 1 ? (
+            <p className="flex min-w-0 items-start gap-2 text-body-sm text-content-secondary">
+              <span className="flex h-[1lh] shrink-0 items-center">
+                <Icon
+                  name="arrow-right"
+                  size="sm"
+                  aria-hidden="true"
+                  className="text-content-muted"
+                />
+              </span>
+              <span className="min-w-0 [overflow-wrap:anywhere]">
+                {t('workflowExecution.now.then', { step: done.then })}
+              </span>
+            </p>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** A step by its title; its id is detail (tooltip). */
 function StepTitle({ step }: { step: { readonly id: string; readonly title: string } }) {
   return <span title={step.id}>{step.title || step.id}</span>;
@@ -77,17 +136,15 @@ export interface NowBlockProps {
    * Ask agent) on the start action; nothing else in the block changes for it.
    */
   readonly actions?: ReactNode;
-  /** The block's ⋯ menu beside its heading (other workflow operations, technical detail). */
+  /** The block's ⋯ menu beside its heading (other workflow operations, the step id and revision). */
   readonly menu?: ReactNode;
-  /** Keep the step id and workflow revision off the detail line (they are in `menu`). */
-  readonly compactDetail?: boolean;
   /** Show the latest hand-off (default); the Specification Overview leaves it to the history. */
   readonly showHandoff?: boolean;
   /** Replaces the default waiting lines (the Overview's progress and its explanation). */
   readonly waitingContent?: ReactNode;
   /** A line under the position's title (an abandonment's reason). */
   readonly titleNote?: ReactNode;
-  /** A summary under the position (the step's purpose, a terminal Specification's Tasks). */
+  /** A summary under the position (the step's purpose or Goal, a terminal Specification's Tasks). */
   readonly summary?: ReactNode;
   /** A start was sent and its new position is not read yet: say so instead of "Ready to start". */
   readonly starting?: boolean;
@@ -108,7 +165,6 @@ export function NowBlock({
   note,
   actions,
   menu,
-  compactDetail = false,
   showHandoff = true,
   waitingContent,
   titleNote,
@@ -117,17 +173,15 @@ export function NowBlock({
 }: NowBlockProps) {
   const { t, i18n } = useTranslation();
   const viewer = useViewer();
-  const { position, workflow, handoff } = projection;
+  const { position, handoff } = projection;
   const when = (at: string) => formatWhen(t, at, i18n.language);
   // A Specification's Now places the step among the workflow's steps (Tasks have no outline).
   const track = stepTrack(t, projection);
-  const workflowLine = workflow
-    ? t('workflowExecution.now.workflow', { title: workflow.title, version: workflow.version })
-    : undefined;
+  // Without a track, "Done when" names the step the work goes to.
+  const done = doneWhen(projection, { withThen: track === undefined });
 
   let current: ReactNode;
   let facts: string | undefined;
-  let stepId: string | undefined;
   let supporting: ReactNode;
   switch (position.kind) {
     case 'not-started':
@@ -140,7 +194,6 @@ export function NowBlock({
     case 'ready':
       current = <StepTitle step={position.next.step} />;
       facts = t('workflowExecution.now.ready');
-      stepId = position.next.step.id;
       break;
     case 'active':
       current = <StepTitle step={position.step} />;
@@ -149,12 +202,10 @@ export function NowBlock({
         since: formatWhen(t, position.attempt.startedAt, i18n.language, { timeOnlyToday: true }),
         actor: actorLabel(t, position.attempt.actor, viewer),
       });
-      stepId = position.step.id;
       break;
     case 'waiting':
       current = <StepTitle step={position.step} />;
       facts = t('workflowExecution.now.waitingNote');
-      stepId = position.step.id;
       supporting = waitingContent ?? (
         <>
           <InlineNote tone="attention" icon="clock">
@@ -192,7 +243,6 @@ export function NowBlock({
       } else if (position.next) {
         current = <StepTitle step={position.next.step} />;
         facts = t('workflowExecution.now.cannotStart');
-        stepId = position.next.step.id;
       } else {
         current = t('workflowExecution.now.cannotStartTitle');
       }
@@ -215,29 +265,10 @@ export function NowBlock({
       break;
   }
 
-  if (compactDetail) {
-    stepId = undefined;
-  }
-
   if (starting && (position.kind === 'ready' || position.kind === 'not-started')) {
     facts = t('workflowExecution.now.starting');
   }
 
-  const detailLine = compactDetail ? undefined : workflowLine;
-  // The exit gates of the active step that are not met yet, per result ("To finish with Done:").
-  // A result that waits for open Tasks is named below instead: meeting its gates would not help.
-  const unmet =
-    position.kind === 'active'
-      ? (projection.actions.finish?.transitions ?? []).flatMap((transition) => {
-          if (transition.unavailable === 'tasks-open') {
-            return [];
-          }
-
-          const gates = (transition.gates ?? []).filter((gate) => gate.status === 'unsatisfied');
-
-          return gates.length > 0 ? [{ transition, gates }] : [];
-        })
-      : [];
   // The results that would complete the Specification while Tasks are open, naming them.
   const tasksOpen =
     position.kind === 'active'
@@ -278,40 +309,18 @@ export function NowBlock({
             variant="body-sm"
             className="text-content-muted [overflow-wrap:anywhere] empty:hidden"
           >
-            {[facts, stepId, detailLine].filter(Boolean).length > 0 ? (
-              <>
-                {facts}
-                {facts && (stepId || detailLine) ? ' · ' : null}
-                {stepId ? (
-                  <>
-                    <span className="font-mono">{stepId}</span>
-                    {detailLine ? ' · ' : null}
-                  </>
-                ) : null}
-                {detailLine}
-              </>
-            ) : null}
+            {facts}
           </Typography>
         </div>
         {summary}
+        {done ? (
+          <DoneWhenList
+            done={done}
+            {...(gateActionFor ? { gateActionFor } : {})}
+            {...(gateDocument ? { gateDocument } : {})}
+          />
+        ) : null}
         {supporting}
-        {unmet.map(({ transition, gates }) => {
-          const result = transitionLabel(transition);
-
-          return (
-            <div key={transition.id} className="grid gap-1.5">
-              <Typography as="p" variant="body-sm" className="text-content-secondary">
-                {t('workflowExecution.now.toFinishWith', { result })}
-              </Typography>
-              <GateList
-                gates={gates}
-                label={t('workflowExecution.finish.gatesFor', { result })}
-                actionFor={gateActionFor}
-                {...(gateDocument ? { documentFor: gateDocument } : {})}
-              />
-            </div>
-          );
-        })}
         {tasksOpen.map((transition) => (
           <InlineNote key={transition.id} tone="attention" data-now-tasks-open="">
             {closableInFinishDialog(transition)
@@ -334,7 +343,19 @@ export function NowBlock({
           </InlineNote>
         ))}
         {showHandoff && handoff && position.kind !== 'terminal' ? (
-          <div className="grid gap-1 border-l-2 border-border-default pl-3">
+          // Inside the Narrow band (one bar already) the hand-off is a labelled paragraph; in the
+          // card it keeps its quote rule.
+          <div
+            className="grid gap-1 border-border-default @min-[40rem]/app-content:border-l-2 @min-[40rem]/app-content:pl-3"
+            data-now-handoff=""
+          >
+            <Typography
+              as="p"
+              variant="label-sm"
+              className="text-content-secondary @min-[40rem]/app-content:hidden"
+            >
+              {t('workflowExecution.now.lastHandoff')}
+            </Typography>
             <Typography as="p" variant="body-sm" className="text-content-secondary">
               {/* A neutral icon with the result: the projection gives no tone for results. */}
               {handoff.kind === 'transition' ? (

@@ -31,6 +31,7 @@ export const iconNames = [
   'triangle-alert',
   'circle-alert',
   'circle-pause',
+  'circle',
   'users',
   'workflow',
   'list-checks',

@@ -175,17 +175,136 @@ export function openTasksText(t: TFunction, tasks: readonly OpenTask[]): string 
     .join(', ');
 }
 
+/** The step the position is about: the current step, else the one that starts next. */
+function positionStep(position: WorkflowActionProjection['position']) {
+  return position.kind === 'active' || position.kind === 'waiting'
+    ? position.step
+    : position.kind === 'terminal'
+      ? undefined
+      : position.next?.step;
+}
+
 /** What the step at the position does: the current step's purpose, else the next one's. */
 export function stepPurpose(position: WorkflowActionProjection['position']): string | undefined {
-  const step =
-    position.kind === 'active' || position.kind === 'waiting'
-      ? position.step
-      : position.kind === 'terminal'
-        ? undefined
-        : position.next?.step;
+  const step = positionStep(position);
 
   // An empty purpose says nothing.
   return step?.purpose === '' ? undefined : step?.purpose;
+}
+
+/**
+ * A Task Now's Goal: the step's purpose; without one, the first paragraph of its instructions
+ * (`more` is the full text when there is more to read). None when the step says neither.
+ */
+export function stepGoal(
+  position: WorkflowActionProjection['position'],
+): { readonly text: string; readonly more?: string } | undefined {
+  const purpose = stepPurpose(position);
+  if (purpose !== undefined) {
+    return { text: purpose };
+  }
+
+  const instructions = positionStep(position)?.instructions?.trim();
+  if (!instructions) {
+    return undefined;
+  }
+
+  const first = instructions.split(/\n\s*\n/)[0]!.trim();
+
+  return first === instructions ? { text: first } : { text: first, more: instructions };
+}
+
+/** One "Done when" list: the gates a result needs, named by the result when results differ. */
+export interface DoneWhenGroup {
+  /** The result these gates are for, when another result needs other gates. */
+  readonly result?: string;
+  readonly gates: readonly GateStatus[];
+}
+
+/** The Now's "Done when": the active step's exit gates and, for a Task, where the work goes next. */
+export interface DoneWhen {
+  readonly groups: readonly DoneWhenGroup[];
+  /** The step the finished work goes to ("Then: Review"), when every result leads there. */
+  readonly then?: string;
+}
+
+const gateKey = (gates: readonly GateStatus[]) =>
+  gates
+    .map((gate) => gate.id)
+    .sort()
+    .join('\n');
+
+/**
+ * What finishes the active step, from its finish transitions only (never a step id): every exit
+ * gate, met or not, once when all results need the same gates, else per result. A result that
+ * waits for open Tasks is left out (Now names those Tasks; meeting its gates would not help).
+ * `withThen` adds the step all results lead to (a Task's Now; the Specification's track says it).
+ */
+export function doneWhen(
+  projection: Pick<WorkflowActionProjection, 'position' | 'actions'>,
+  options: { readonly withThen?: boolean } = {},
+): DoneWhen | undefined {
+  if (projection.position.kind !== 'active') {
+    return undefined;
+  }
+
+  const transitions = (projection.actions.finish?.transitions ?? []).filter(
+    (transition) => transition.unavailable !== 'tasks-open',
+  );
+  const gated = transitions.filter((transition) => (transition.gates ?? []).length > 0);
+  const sameGates =
+    gated.length === transitions.length &&
+    new Set(gated.map((transition) => gateKey(transition.gates ?? []))).size <= 1;
+  const groups: DoneWhenGroup[] = sameGates
+    ? gated.slice(0, 1).map((transition) => ({ gates: transition.gates ?? [] }))
+    : gated.map((transition) => ({
+        result: transitionLabel(transition),
+        gates: transition.gates ?? [],
+      }));
+  // Every result leads to the same step: that step is where the work goes.
+  const first = transitions[0];
+  const target = first?.target.kind === 'step' ? first.target.step : undefined;
+  const then =
+    options.withThen &&
+    target !== undefined &&
+    transitions.every(
+      (transition) => transition.target.kind === 'step' && transition.target.step === target,
+    )
+      ? first?.targetTitle
+      : undefined;
+  if (groups.length === 0 && then === undefined) {
+    return undefined;
+  }
+
+  return { groups, ...(then !== undefined ? { then } : {}) };
+}
+
+/**
+ * The fix of an unmet document gate whose document exists: "Open behaviour.md" and, when sections
+ * are missing, what to add to finish. Shared by the Specification and the Task Now.
+ */
+export function documentGateFix(
+  t: TFunction,
+  gate: GateStatus,
+  name: string,
+): { readonly label: string; readonly hint?: string } {
+  const sections =
+    gate.status === 'unsatisfied' && gate.reason === 'sections-missing'
+      ? (gate.missingSections ?? [])
+      : [];
+
+  return {
+    label: t('workflowExecution.now.openDocument', { name }),
+    ...(sections.length > 0
+      ? {
+          hint: t('workflowExecution.now.addSectionsToFinish', {
+            count: sections.length,
+            sections: sections.join(', '),
+            name,
+          }),
+        }
+      : {}),
+  };
 }
 
 /**

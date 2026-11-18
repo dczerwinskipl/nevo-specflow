@@ -62,19 +62,21 @@ export interface WorkflowNowProps {
   readonly gateAction?: (gate: GateStatus) => GateAction | undefined;
   /** Names the document that meets a gate (`findings.md`). */
   readonly gateDocument?: (gate: GateStatus) => string | undefined;
+  /** Under the position: the step's purpose (Specification) or Goal (Task). */
+  readonly summary?: ReactNode;
+  /** Opens the subject's workflow history from the ⋯ menu. */
+  readonly onOpenHistory?: () => void;
   /**
-   * The Specification Overview's layout: only the main action is a button (an unmet gate's action
-   * when every result needs it); Return, an unavailable Finish step, Workflow history and the step
-   * id and revision are in the ⋯ menu. A Requires attention "return" opens the same Return dialog.
+   * The Specification Overview's own parts: Start workflow, New task beside Finish step at a step
+   * that produces Tasks, the wait step's Task progress, and a Requires attention "return" that
+   * opens the Return dialog. Its Now leaves the latest hand-off to the history.
    */
-  readonly overview?: {
+  readonly specification?: {
     readonly specId: string;
-    readonly onOpenHistory?: () => void;
     /** Opens New task; offered beside Finish step at a step that produces Tasks. */
     readonly onNewTask?: () => void;
     readonly waitingContent?: ReactNode;
     readonly titleNote?: ReactNode;
-    readonly summary?: ReactNode;
   };
 }
 
@@ -98,8 +100,11 @@ function previewOf(position: WorkflowActionProjection['position']): PinPreview |
 
 /**
  * The Now block with its workflow actions: Start (a Task's first start confirms its binding), Finish
- * step and Return to an earlier step, each from the projection. The finish draft lives here, so a
- * gate action can close the Finish dialog and the owner can come back to it unchanged.
+ * step and Return to an earlier step, each from the projection. Only the main action is a button
+ * (an unmet gate's fix when every result needs it, with Finish step beside it); Return, an
+ * unavailable Finish step, Workflow history and the step id and revision are in the ⋯ menu. The
+ * finish draft lives here, so a gate action can close the Finish dialog and the owner can come back
+ * to it unchanged.
  */
 export function WorkflowNow({
   subject,
@@ -112,7 +117,9 @@ export function WorkflowNow({
   artifactOptions,
   gateAction,
   gateDocument,
-  overview,
+  summary,
+  onOpenHistory,
+  specification,
 }: WorkflowNowProps) {
   const { t } = useTranslation();
   const commands = useWorkflowCommands(subject);
@@ -253,18 +260,17 @@ export function WorkflowNow({
   };
 
   const startLabel =
-    overview && position.kind === 'not-started'
+    specification && position.kind === 'not-started'
       ? t('workflowExecution.now.startWorkflow')
       : next
         ? t('workflowExecution.now.start', { step: next.step.title || next.step.id })
         : undefined;
-  // Overview: Finish step is the main action only while some result can be taken now. Otherwise it
+  // Finish step is the main action only while some result can be taken now. Otherwise it
   // waits in the menu, unavailable, with why; the main action is the action of an unmet gate, and
   // only of a gate whose result meeting it would make available (`gate-unsatisfied`; open Tasks
   // win over gates in the projection, so meeting the gate of a `tasks-open` result would not help).
   // A `tasks-open` result the dialog closes itself (its own drafts, unticked) can be taken there.
   const finishBlocked =
-    overview !== undefined &&
     finish !== undefined &&
     finish.transitions.length > 0 &&
     finish.transitions.every(
@@ -287,24 +293,22 @@ export function WorkflowNow({
   const starting = commands.start.isPending;
   const showStart = actions.start !== undefined && startLabel !== undefined;
   const showFinish = finish !== undefined && !finishBlocked;
-  // The Overview's actions around the main one, from projection facts (never a step id).
-  const plan = overview
-    ? nowActionPlan(
-        projection,
-        primaryAction
-          ? 'other'
-          : showStart
-            ? 'start'
-            : showFinish
-              ? 'finish'
-              : mainGateAction
-                ? 'gate'
-                : 'none',
-        (gate) => gateAction?.(gate) !== undefined,
-      )
-    : {};
+  // The actions around the main one, from projection facts (never a step id).
+  const plan = nowActionPlan(
+    projection,
+    primaryAction
+      ? 'other'
+      : showStart
+        ? 'start'
+        : showFinish
+          ? 'finish'
+          : mainGateAction
+            ? 'gate'
+            : 'none',
+    (gate) => gateAction?.(gate) !== undefined,
+  );
   const secondary = plan.secondary;
-  const onNewTask = overview?.onNewTask;
+  const onNewTask = specification?.onNewTask;
   // New task beside an unmet gate's action and Finish step: one tap, quieter than a third button.
   const quietNewTask =
     plan.newTask === 'quiet' && onNewTask ? (
@@ -333,54 +337,34 @@ export function WorkflowNow({
 
   const workflowActions =
     primaryAction ??
-    (overview ? (
-      // Distinct keys: the button that opened Finish must never become Start. When a finish whose
-      // answer was lost closes its dialog, the dialog returns focus to its opener; a reused element
-      // would then be the next step's Start, and one Enter or Space would start a step nobody chose.
-      showStart ? (
-        // The busy pattern: the pending label until the new position is read, never a stale one.
-        <Button key="start" onClick={startNow} disabled={busy} aria-busy={starting}>
-          {starting ? t('workflowExecution.now.starting') : startLabel}
-        </Button>
-      ) : showFinish ? (
-        <>
-          <Button key="finish" onClick={openFinish} disabled={busy}>
-            {t('workflowExecution.now.finish')}
-          </Button>
-          {secondaryButton}
-        </>
-      ) : mainGateAction ? (
-        <>
-          <Button key="gate" onClick={mainGateAction.onSelect}>
-            {mainGateAction.label}
-          </Button>
-          {secondaryButton}
-          {quietNewTask}
-        </>
-      ) : plan.newTask === 'primary' && onNewTask ? (
-        // No main workflow action (Finish step is unavailable): New task is the only action.
-        <Button key="new-task" leadingIcon="plus" onClick={onNewTask}>
-          {t('workflowExecution.now.newTask')}
-        </Button>
-      ) : undefined
-    ) : actions.start || finish || actions.return ? (
+    // Distinct keys: the button that opened Finish must never become Start. When a finish whose
+    // answer was lost closes its dialog, the dialog returns focus to its opener; a reused element
+    // would then be the next step's Start, and one Enter or Space would start a step nobody chose.
+    (showStart ? (
+      // The busy pattern: the pending label until the new position is read, never a stale one.
+      <Button key="start" onClick={startNow} disabled={busy} aria-busy={starting}>
+        {starting ? t('workflowExecution.now.starting') : startLabel}
+      </Button>
+    ) : showFinish ? (
       <>
-        {actions.start && startLabel ? (
-          <Button onClick={startNow} disabled={busy} aria-busy={starting}>
-            {starting ? t('workflowExecution.now.starting') : startLabel}
-          </Button>
-        ) : null}
-        {finish ? (
-          <Button onClick={openFinish} disabled={busy}>
-            {t('workflowExecution.now.finish')}
-          </Button>
-        ) : null}
-        {actions.return ? (
-          <Button variant="secondary" disabled={busy} onClick={openReturn}>
-            {t('workflowExecution.now.return')}
-          </Button>
-        ) : null}
+        <Button key="finish" onClick={openFinish} disabled={busy}>
+          {t('workflowExecution.now.finish')}
+        </Button>
+        {secondaryButton}
       </>
+    ) : mainGateAction ? (
+      <>
+        <Button key="gate" onClick={mainGateAction.onSelect}>
+          {mainGateAction.label}
+        </Button>
+        {secondaryButton}
+        {quietNewTask}
+      </>
+    ) : plan.newTask === 'primary' && onNewTask ? (
+      // No main workflow action (Finish step is unavailable): New task is the only action.
+      <Button key="new-task" leadingIcon="plus" onClick={onNewTask}>
+        {t('workflowExecution.now.newTask')}
+      </Button>
     ) : undefined);
 
   const returnTargets = actions.return?.targets ?? [];
@@ -390,7 +374,7 @@ export function WorkflowNow({
       : position.kind === 'ready'
         ? position.next.step.id
         : undefined;
-  const menu = overview ? (
+  const menu = (
     <NowOperationsMenu
       operations={[
         ...(actions.return
@@ -417,7 +401,7 @@ export function WorkflowNow({
             ]
           : []),
       ]}
-      {...(overview.onOpenHistory ? { onOpenHistory: overview.onOpenHistory } : {})}
+      {...(onOpenHistory ? { onOpenHistory } : {})}
       note={[
         ...(gateBlocksFinish && !finishIsSecondary
           ? [t('workflowExecution.now.finishAfterGate')]
@@ -439,12 +423,12 @@ export function WorkflowNow({
           : []),
       ]}
     />
-  ) : undefined;
+  );
 
   // The Overview's Return also opens from Requires attention (a "return to an earlier step" item).
   const canReturn = actions.return !== undefined;
   const resetReturn = commands.returnTo.reset;
-  const overviewSpecId = overview?.specId;
+  const overviewSpecId = specification?.specId;
   useEffect(() => {
     if (!overviewSpecId) {
       return undefined;
@@ -511,13 +495,12 @@ export function WorkflowNow({
         actions={workflowActions}
         starting={starting}
         menu={menu}
-        {...(overview
+        summary={summary}
+        {...(specification
           ? {
-              compactDetail: true,
               showHandoff: false,
-              waitingContent: overview.waitingContent,
-              titleNote: overview.titleNote,
-              summary: overview.summary,
+              waitingContent: specification.waitingContent,
+              titleNote: specification.titleNote,
             }
           : {})}
       />

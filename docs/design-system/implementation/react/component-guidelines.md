@@ -272,6 +272,11 @@ Waiting `clock`, In progress `loader` (it spins except under `prefers-reduced-mo
 label. There is no Blocked glyph yet: keep the existing presentation until a Blocked state is
 designed, and add its glyph to the registry then, not ahead of it.
 
+A checklist of conditions (a workflow step's "Done when") uses `circle-check` (success) for a met
+item and `circle` (muted, the label says "not yet") for an open one. An open item takes the attention
+tone only where it refuses the action the person is about to take (for example the chosen result in
+a Finish dialog).
+
 ## Progress position mode
 
 `Progress variant="segmented"` counts completed parts out of `total`. With `position` instead of

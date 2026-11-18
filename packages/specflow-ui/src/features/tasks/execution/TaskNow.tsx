@@ -1,11 +1,13 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@nevo/ui';
+import { Button, Typography } from '@nevo/ui';
 import type { TaskResourceFacts } from '@nevo/specflow-contracts/tasks';
 import type { GateStatus, WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { useTaskDocumentOperations } from '../authoring/documents/useTaskDocumentOperations';
 import { RefusalAlert } from '../authoring/RefusalAlert';
 import type { GateAction } from './GateList';
-import { goToHeading } from './InlineAction';
+import { goToHeading, InlineAction } from './InlineAction';
+import { documentGateFix, stepGoal } from './presentation';
 import { WorkflowNow } from './WorkflowNow';
 
 /** The Task's lifecycle primary (Approve or Resume), when the projection allows one. */
@@ -25,12 +27,56 @@ export interface TaskNowProps {
   readonly onCancelTask?: () => void;
   readonly onRemoveTask?: () => void;
   readonly onOpenDocument: (documentId: string) => void;
+  /** Opens the Task history (the ⋯ menu's Workflow history). */
+  readonly onOpenHistory?: () => void;
 }
 
 /**
- * The Now block of a Task: its workflow position and actions, with Approve or Resume as the one
- * primary while the Task is a draft or on hold. A missing Task document of an exit gate is created
- * from the gate itself and opened in the Secondary editor; the finish draft is kept meanwhile.
+ * What the step is for: its purpose, else the first paragraph of its instructions (three lines,
+ * Show more for the rest).
+ */
+function TaskGoal({ goal }: { goal: { readonly text: string; readonly more?: string } }) {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+  const fromInstructions = goal.more !== undefined;
+
+  return (
+    <div className="grid gap-1" data-now-goal="">
+      <Typography as="p" variant="label-sm" className="text-content-secondary">
+        {t('workflowExecution.now.goal')}
+      </Typography>
+      <Typography
+        as="p"
+        variant="body-md"
+        className={
+          fromInstructions
+            ? expanded
+              ? 'whitespace-pre-line text-content-primary [overflow-wrap:anywhere]'
+              : 'line-clamp-3 text-content-primary [overflow-wrap:anywhere]'
+            : 'text-content-primary [overflow-wrap:anywhere]'
+        }
+      >
+        {expanded && goal.more ? goal.more : goal.text}
+      </Typography>
+      {fromInstructions ? (
+        <InlineAction
+          className="w-fit text-body-sm"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((open) => !open)}
+        >
+          {expanded ? t('workflowExecution.now.showLess') : t('workflowExecution.now.showMore')}
+        </InlineAction>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * The Now block of a Task: its step, Goal and "Done when", the latest hand-off and one main action
+ * (Approve or Resume while the Task is a draft or on hold). An unmet exit gate whose document
+ * exists makes opening it the main action, with Finish step beside it; a missing Task document of
+ * an exit gate is created from the gate and opened in the Secondary editor, and the finish draft
+ * is kept meanwhile. Return to an earlier step is in the ⋯ menu.
  */
 export function TaskNow({
   specId,
@@ -42,9 +88,13 @@ export function TaskNow({
   onCancelTask,
   onRemoveTask,
   onOpenDocument,
+  onOpenHistory,
 }: TaskNowProps) {
   const { t } = useTranslation();
   const documents = useTaskDocumentOperations(specId, taskId);
+  const goal = stepGoal(projection.position);
+  const documentPath = (documentId: string) =>
+    resource.documents.find((document) => document.id === documentId)?.path;
 
   const gateAction = (gate: GateStatus): GateAction | undefined => {
     if (gate.scope.kind !== 'task' || gate.scope.taskId !== taskId) {
@@ -55,7 +105,7 @@ export function TaskNow({
       const documentId = gate.documentId;
 
       return {
-        label: t('workflowExecution.gate.openDocument'),
+        ...documentGateFix(t, gate, documentPath(documentId) ?? documentId),
         onSelect: () => onOpenDocument(documentId),
       };
     }
@@ -82,7 +132,7 @@ export function TaskNow({
   };
 
   return (
-    <div className="grid gap-3 pb-6">
+    <div className="grid gap-3 pb-6 @max-[40rem]/app-content:pb-0" data-task-now="">
       <WorkflowNow
         subject={{ specId, taskId }}
         projection={projection}
@@ -111,9 +161,11 @@ export function TaskNow({
         gateAction={gateAction}
         gateDocument={(gate) =>
           gate.scope.kind === 'task' && gate.scope.taskId === taskId && gate.documentId
-            ? resource.documents.find((document) => document.id === gate.documentId)?.path
+            ? documentPath(gate.documentId)
             : undefined
         }
+        {...(goal ? { summary: <TaskGoal key={goal.text} goal={goal} /> } : {})}
+        {...(onOpenHistory ? { onOpenHistory } : {})}
       />
       {documents.create.isError ? <RefusalAlert error={documents.create.error} /> : null}
     </div>

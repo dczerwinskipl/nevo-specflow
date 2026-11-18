@@ -2184,7 +2184,13 @@
         "abandoned": "Porzucono"
       },
       "abandonedBy": "{{at}}, porzucone przez {{actor}}",
-      "toFinishWith": "Aby zakończyć z wynikiem {{result}}:",
+      "goal": "Cel",
+      "showMore": "Pokaż więcej",
+      "showLess": "Pokaż mniej",
+      "doneWhen": "Gotowe, gdy",
+      "doneWhenWith": "Gotowe z wynikiem {{result}}, gdy",
+      "then": "Dalej: {{step}}",
+      "lastHandoff": "Ostatnie przekazanie",
       "returned": "Zawrócono do tego kroku",
       "start": "Rozpocznij: {{step}}",
       "finish": "Zakończ krok",
@@ -2237,10 +2243,10 @@
       "fileMissing": "brakuje jego pliku",
       "sectionsMissing": "brakujące sekcje: {{sections}}",
       "unreadable": "nie można go odczytać",
+      "notYet": "jeszcze nie",
       "metHidden": " (spełnione)",
       "unmetHidden": " (niespełnione)",
-      "createDocument": "Utwórz dokument {{type}}",
-      "openDocument": "Otwórz dokument"
+      "createDocument": "Utwórz dokument {{type}}"
     },
     "finish": {
       "blocked": {

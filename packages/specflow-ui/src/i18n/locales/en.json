@@ -2184,7 +2184,13 @@
         "abandoned": "Abandoned"
       },
       "abandonedBy": "{{at}} by {{actor}}",
-      "toFinishWith": "To finish with {{result}}:",
+      "goal": "Goal",
+      "showMore": "Show more",
+      "showLess": "Show less",
+      "doneWhen": "Done when",
+      "doneWhenWith": "Done with {{result}} when",
+      "then": "Then: {{step}}",
+      "lastHandoff": "Last hand-off",
       "returned": "Returned to this step",
       "start": "Start {{step}}",
       "finish": "Finish step",
@@ -2237,10 +2243,10 @@
       "fileMissing": "its file is missing",
       "sectionsMissing": "missing sections: {{sections}}",
       "unreadable": "cannot be read",
+      "notYet": "not yet",
       "metHidden": " (met)",
       "unmetHidden": " (not met)",
-      "createDocument": "Create {{type}} document",
-      "openDocument": "Open document"
+      "createDocument": "Create {{type}} document"
     },
     "finish": {
       "blocked": {

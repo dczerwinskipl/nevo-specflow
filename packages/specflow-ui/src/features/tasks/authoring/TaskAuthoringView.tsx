@@ -33,6 +33,8 @@ export interface TaskAuthoringViewProps {
   readonly onCancelTask?: () => void;
   readonly onRemoveTask?: () => void;
   readonly onOpenDocument: (documentId: string) => void;
+  /** Opens the Task history (also offered in Now's ⋯ menu). */
+  readonly onOpenHistory?: () => void;
   readonly onReload: () => void;
 }
 
@@ -57,6 +59,7 @@ export function TaskAuthoringView({
   onCancelTask,
   onRemoveTask,
   onOpenDocument,
+  onOpenHistory,
   onReload,
 }: TaskAuthoringViewProps) {
   const { t } = useTranslation();
@@ -98,7 +101,9 @@ export function TaskAuthoringView({
   const statusChangeReason = resource.statusChange?.reason;
 
   return (
-    <div className="@container/task grid min-w-0">
+    // Below a 40rem page Now is a flush band: its edge separates it, so the section after it drops
+    // its divider (A1).
+    <div className="@container/task grid min-w-0 @max-[40rem]/app-content:[&>[data-task-now]+*]:border-t-0">
       <div className="grid gap-1 pb-4 @min-[40rem]/task:pb-5">
         <Typography
           as="h1"
@@ -113,15 +118,19 @@ export function TaskAuthoringView({
           <span className="font-mono">{task.id}</span>
           {` · ${typeTitle}`}
         </Typography>
+        {/* The status with its own glyph and a neutral tone: a status alone is not attention. */}
         {resource.status === 'draft' ? (
-          <InlineNote tone="attention" className="mt-2">
+          <InlineNote icon="edit" className="mt-2">
             <span className="font-medium text-content-primary">
               {t('taskAuthoring.page.draft')}
             </span>
             {` · ${t('taskAuthoring.page.draftNotice')}`}
           </InlineNote>
         ) : resource.status === 'on-hold' || resource.status === 'cancelled' ? (
-          <InlineNote tone={resource.status === 'on-hold' ? 'attention' : 'info'} className="mt-2">
+          <InlineNote
+            icon={resource.status === 'on-hold' ? 'circle-pause' : 'close'}
+            className="mt-2"
+          >
             <span className="font-medium text-content-primary">
               {resource.status === 'on-hold'
                 ? t('taskAuthoring.page.onHold')
@@ -165,6 +174,7 @@ export function TaskAuthoringView({
           {...(onCancelTask ? { onCancelTask } : {})}
           {...(onRemoveTask ? { onRemoveTask } : {})}
           onOpenDocument={onOpenDocument}
+          {...(onOpenHistory ? { onOpenHistory } : {})}
         />
       ) : null}
       <TaskDocumentsSection

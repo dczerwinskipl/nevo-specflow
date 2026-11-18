@@ -469,6 +469,40 @@ describe('executable discovery', () => {
     });
   });
 
+  it('rejects a cached PATH executable once a junction on its path points into the workspace', async () => {
+    const onPath = 'C:\\tools\\agy.exe';
+    const links: Record<string, string> = { 'C:\\tools': 'E:\\real-tools' };
+    const { files, ran } = fakeFiles({ [onPath]: 'file' }, { [key(onPath)]: '1.3.3' }, {}, links);
+    const locator = createExecutableLocator(
+      antigravityExecutable,
+      options({ temporaryRoots: [] }, 'C:\\tools'),
+      files,
+    );
+
+    await expect(locator.resolve(AbortSignal.timeout(1000))).resolves.toMatchObject({
+      path: onPath,
+    });
+    // Same file size and modification time, but the junction now leads into the project.
+    links['C:\\tools'] = WORKSPACE + '\\bin';
+    const error = await failure(locator.resolve(AbortSignal.timeout(1000)));
+
+    expect(error.reasonCode).toBe('EXECUTABLE_NOT_FOUND');
+    expect(ran).toHaveLength(1);
+  });
+
+  it('says when a build folder listing was capped instead of a plain not found', async () => {
+    const entries: Record<string, Entry['kind']> = {};
+    for (let index = 0; index < 300; index++) {
+      entries[APP + '\\f' + String(index).padStart(3, '0')] = 'dir';
+    }
+
+    const error = await failure(
+      locateExecutable(codexExecutable, options(), fakeFiles(entries).files),
+    );
+    expect(error.reasonCode).toBe('EXECUTABLE_NOT_FOUND');
+    expect(error.message).toContain(`Only 256 of the 300 entries in ${APP} were read.`);
+  });
+
   it('discovers from scratch after an explicit recheck', async () => {
     const installed = LOCAL + '\\agy\\bin\\agy.exe';
     const onPath = 'C:\\tools\\agy.exe';

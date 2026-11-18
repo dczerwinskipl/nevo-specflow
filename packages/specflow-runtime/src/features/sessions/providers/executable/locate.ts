@@ -189,8 +189,14 @@ async function installedBuilds(
   locations: readonly ExecutableLocation[],
   trusted: (path: string) => Promise<boolean>,
   files: ExecutableFiles,
-): Promise<{ builds: InstalledBuild[]; omitted: number }> {
+): Promise<{
+  builds: InstalledBuild[];
+  omitted: number;
+  /** `*` locations whose folder held more entries than were read. */
+  capped: { parent: string; entries: number }[];
+}> {
   const builds: InstalledBuild[] = [];
+  const capped: { parent: string; entries: number }[] = [];
   let omitted = 0;
   for (const location of locations) {
     const segments = location.pattern.split('\\');
@@ -209,10 +215,12 @@ async function installedBuilds(
     } else {
       const parent = segments.slice(0, wildcard).join('\\');
       const rest = segments.slice(wildcard + 1);
-      const entries = (await files.list(parent).catch(() => [] as string[])).slice(
-        0,
-        MAX_PATTERN_ENTRIES,
-      );
+      const listed = await files.list(parent).catch(() => [] as string[]);
+      if (listed.length > MAX_PATTERN_ENTRIES) {
+        capped.push({ parent, entries: listed.length });
+      }
+
+      const entries = listed.slice(0, MAX_PATTERN_ENTRIES);
       for (const entry of entries) {
         const folder = win32.join(parent, entry);
         const folderStat = await files.stat(folder).catch(() => undefined);
@@ -246,7 +254,7 @@ async function installedBuilds(
     builds.push(...found);
   }
 
-  return { builds, omitted };
+  return { builds, omitted, capped };
 }
 
 /** A located executable and, when an install location supplied it, what those locations held. */
@@ -463,13 +471,21 @@ async function locate(
   const trustedLocations = locations.filter((location) =>
     trustedPath(location.pattern, guard.untrusted),
   );
-  const { builds, omitted } = await installedBuilds(trustedLocations, guard.trusted, files);
+  const { builds, omitted, capped } = await installedBuilds(trustedLocations, guard.trusted, files);
   const installed: Candidate[] = builds
     .filter((build) => fresh(build.path))
     .map((build) => ({ path: build.path, source: 'discovered', location: build.location }));
-  const omittedNote = omitted
-    ? ` ${omitted} older build folder${omitted === 1 ? ' was' : 's were'} not checked.`
-    : '';
+  // A limit is said, never hidden: what was not looked at may hold the CLI.
+  const omittedNote =
+    (omitted
+      ? ` ${omitted} older build folder${omitted === 1 ? ' was' : 's were'} not checked.`
+      : '') +
+    capped
+      .map(
+        (cap) =>
+          ` Only ${MAX_PATTERN_ENTRIES} of the ${cap.entries} entries in ${cap.parent} were read.`,
+      )
+      .join('');
 
   const verifiedInstalls = await mapLimited(installed, PARALLEL_PROBES, verify);
   let best: Extract<Verified, { ok: true }> | undefined;
@@ -557,12 +573,22 @@ export function createExecutableLocator(
       return false;
     }
 
+    // A discovered executable is trusted only while its real location is: a junction on its path
+    // retargeted into the project or a temporary folder makes it a new, untrusted candidate.
+    // (A configured executable follows its own rule: it is used as configured.)
+    const guard =
+      found.located.resolution.source === 'configured'
+        ? undefined
+        : await createTrustGuard(options, files);
+    if (guard && !(await guard.trusted(found.located.resolution.path))) {
+      return false;
+    }
+
     const installs = found.located.installs;
-    if (!installs) {
+    if (!installs || !guard) {
       return true;
     }
 
-    const guard = await createTrustGuard(options, files);
     const { builds } = await installedBuilds(installs.locations, guard.trusted, files);
 
     return snapshotOf(builds) === installs.snapshot;

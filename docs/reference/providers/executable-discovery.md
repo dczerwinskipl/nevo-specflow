@@ -52,7 +52,8 @@ A `*` location (the Codex app's build folders) lists the folders of its parent, 
 hold the executable, and orders them newest first by the executable's modification time, then the
 folder's: build folder names are hashes and say nothing about age. At most the 16 newest builds
 are probed; when more exist and none of those works, the result says how many older build folders
-were not checked, so a limit never reads as a plain not found.
+were not checked, so a limit never reads as a plain not found. Likewise at most 256 entries of
+the parent folder are read; when it holds more, the result says how many and where.
 
 | Provider    | Command  | Install locations (Windows x64)                                                                                                                                                                                    |
 | ----------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -107,7 +108,10 @@ no wildcard other than one `*` folder segment of a declared location.
 ## Cache
 
 A found executable is kept for the Runtime's lifetime while its file is unchanged (size and
-modification time); an update that removes or replaces it is discovered again on the next read.
+modification time) and, unless it is the configured executable, while its real location still
+passes the physical trust check: each read resolves its real path again, so a junction on its path
+retargeted into the project or a temporary folder invalidates it and nothing runs from there. An
+update that removes or replaces it is discovered again on the next read.
 When it came from an install location, every read also lists those locations again (folder
 listings and file metadata only; nothing runs) and discovers again when the builds there changed,
 so a desktop app update into a new build folder is picked up without a restart. A failure is kept

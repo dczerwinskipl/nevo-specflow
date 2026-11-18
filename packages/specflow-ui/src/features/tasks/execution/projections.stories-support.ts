@@ -41,14 +41,23 @@ export const buildWorkflow = {
 };
 
 export type TaskWorkflowScenario =
-  'first-start' | 'review' | 'rework' | 'spike-gate' | 'spike-gate-met';
+  | 'first-start'
+  | 'on-hold'
+  | 'review'
+  | 'rework'
+  | 'implement-gate'
+  | 'spike-gate'
+  | 'spike-gate-met';
 
-/** The Task lifecycle actions: a Task that never started, or one with an active attempt. */
-function lifecycle(started: boolean): NonNullable<WorkflowActionProjection['task']> {
+/** Why the held Task waits (its hold reason). */
+export const HOLD_REASON = 'Waiting for the identity provider sandbox account from IT.';
+
+/** The Task lifecycle actions: a Task that never started (held or not), or one that runs. */
+function lifecycle(started: boolean, held = false): NonNullable<WorkflowActionProjection['task']> {
   return {
     approve: unavailable('status'),
-    hold: started ? unavailable('active-attempt') : allowed,
-    resume: unavailable('status'),
+    hold: started ? unavailable('active-attempt') : held ? unavailable('status') : allowed,
+    resume: held ? allowed : unavailable('status'),
     cancel: allowed,
     remove: started ? unavailable('started') : allowed,
     editDetails: allowed,
@@ -126,6 +135,85 @@ export function taskWorkflowProjection(
         start: { step: 'design', firstStart: true, expectedWorkflowRevision: preview.revision },
       },
       task: lifecycle(false),
+      taskAuthoring,
+    };
+  }
+
+  if (scenario === 'on-hold') {
+    const preview = {
+      ...buildWorkflow,
+      firstStep: 'design',
+      firstStepTitle: 'Design',
+      steps: [
+        { id: 'design', title: 'Design', next: ['implement'] },
+        { id: 'implement', title: 'Implementation', next: ['review'] },
+        { id: 'review', title: 'Review', next: ['end', 'implement'] },
+      ],
+    };
+
+    return {
+      subject,
+      workflow: buildWorkflow,
+      position: {
+        kind: 'blocked',
+        blockers: [{ kind: 'status', status: 'on-hold' }],
+        preview,
+        next: {
+          step: step('design', 'Design'),
+          human: true,
+          agent: unavailable('provider-not-chosen'),
+        },
+      },
+      actions: {},
+      task: lifecycle(false, true),
+      taskAuthoring,
+    };
+  }
+
+  if (scenario === 'implement-gate') {
+    // The accepted mock's Implement: one exit gate on task.md, its Verification section missing.
+    return {
+      subject,
+      workflow: { ...buildWorkflow, title: 'Standard Task', version: 1, revision: 'rev-std-1' },
+      position: {
+        kind: 'active',
+        step: {
+          ...step('implement', 'Implement'),
+          purpose: 'Write the code and its tests so the behaviour in task.md works.',
+        },
+        attempt: { number: 1, startedAt: '2026-11-13T10:24:00Z', actor: dominik },
+      },
+      actions: {
+        finish: {
+          step: 'implement',
+          attempt: 1,
+          transitions: [
+            {
+              id: 'ready-for-review',
+              label: 'Ready for review',
+              target: { kind: 'step', step: 'review' },
+              targetTitle: 'Review',
+              feedback: 'optional',
+              unavailable: 'gate-unsatisfied',
+              gates: [
+                {
+                  id: 'verification',
+                  type: 'document',
+                  label: 'task.md has a Verification section',
+                  documentType: 'task',
+                  scope: { kind: 'task', specId: SPEC, taskId: TASK },
+                  status: 'unsatisfied',
+                  documentId: 'task',
+                  reason: 'sections-missing',
+                  missingSections: ['Verification'],
+                },
+              ],
+            },
+          ],
+        },
+        return: { targets: [{ step: 'design', title: 'Design', feedback: 'required' }] },
+      },
+      task: lifecycle(true),
       taskAuthoring,
     };
   }
@@ -269,12 +357,17 @@ export function taskWorkflowProjection(
 
 /** The Task resource facts that match a projection scenario. */
 export function taskResourceFor(scenario: TaskWorkflowScenario): TaskResourceFacts {
-  const started = scenario !== 'first-start';
+  const held = scenario === 'on-hold';
+  const started = scenario !== 'first-start' && !held;
   const spike = scenario === 'spike-gate' || scenario === 'spike-gate-met';
   const position: TaskResourceFacts['position'] = started
     ? {
         state: 'active',
-        step: spike ? 'spike' : scenario === 'rework' ? 'implement' : 'review',
+        step: spike
+          ? 'spike'
+          : scenario === 'rework' || scenario === 'implement-gate'
+            ? 'implement'
+            : 'review',
         attempt: scenario === 'rework' ? 2 : 1,
       }
     : { state: 'not-started' };
@@ -282,7 +375,16 @@ export function taskResourceFor(scenario: TaskWorkflowScenario): TaskResourceFac
   return {
     revision: 'rev-9',
     type: spike ? 'spike' : 'ui',
-    status: 'ready',
+    status: held ? 'on-hold' : 'ready',
+    ...(held
+      ? {
+          statusChange: {
+            source: 'decision' as const,
+            at: '2026-11-13T09:00:00Z',
+            reason: HOLD_REASON,
+          },
+        }
+      : {}),
     dependsOn: [],
     origin: { kind: 'manual', actorId: 'local:dominik' },
     documents: [
@@ -298,8 +400,8 @@ export function taskResourceFor(scenario: TaskWorkflowScenario): TaskResourceFac
       preparation: 'ready',
       escalated: false,
       position,
-      startable: !started,
-      startBlockers: [],
+      startable: !started && !held,
+      startBlockers: held ? [{ kind: 'status', status: 'on-hold' }] : [],
       definitionChanged: false,
     },
     position,

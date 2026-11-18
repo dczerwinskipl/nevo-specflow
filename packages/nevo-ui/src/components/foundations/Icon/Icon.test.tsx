@@ -73,6 +73,11 @@ describe('Icon', () => {
     expect(isIconName('ban')).toBe(false);
   });
 
+  it('registers the open checklist glyph beside the met one', () => {
+    expect(renderToStaticMarkup(<Icon name="circle" />)).toContain('<svg');
+    expect(iconAssetRef('circle', 'sm')).toBe('Icon/circle/sm');
+  });
+
   it('tells a registered glyph name from data apart from an unknown one', () => {
     expect(isIconName('tag')).toBe(false);
     expect(isIconName('classify')).toBe(true);

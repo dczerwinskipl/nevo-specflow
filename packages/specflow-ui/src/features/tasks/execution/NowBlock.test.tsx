@@ -97,7 +97,7 @@ function OverviewNow({
       headingId="now"
       links={{}}
       artifactOptions={[]}
-      overview={{ specId: SPEC, ...(onNewTask ? { onNewTask } : {}) }}
+      specification={{ specId: SPEC, ...(onNewTask ? { onNewTask } : {}) }}
     />
   );
 }
@@ -212,7 +212,7 @@ describe('the Specification Now block', () => {
         links={{}}
         artifactOptions={[]}
         gateAction={() => ({ label: 'Open plan.md', onSelect: vi.fn() })}
-        overview={{ specId: SPEC, onNewTask: vi.fn() }}
+        specification={{ specId: SPEC, onNewTask: vi.fn() }}
       />,
     );
 

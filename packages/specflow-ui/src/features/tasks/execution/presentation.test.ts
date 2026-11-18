@@ -4,9 +4,12 @@ import type { GateStatus, WorkflowActionProjection } from '@nevo/specflow-contra
 import {
   actorLabel,
   attemptLine,
+  documentGateFix,
+  doneWhen,
   nowActionPlan,
   personLabel,
   progressLine,
+  stepGoal,
   stepTrack,
 } from './presentation';
 
@@ -203,5 +206,112 @@ describe('the Now secondary action', () => {
   it('offers nothing beside a start, a lifecycle or a Close action', () => {
     expect(nowActionPlan(active('tasks'), 'other', any)).toEqual({});
     expect(nowActionPlan(active('tasks'), 'start', any)).toEqual({});
+  });
+});
+
+describe('Task Now: Goal and Done when', () => {
+  type Position = WorkflowActionProjection['position'];
+  type Transition = NonNullable<
+    WorkflowActionProjection['actions']['finish']
+  >['transitions'][number];
+  const actor = {
+    class: 'human' as const,
+    details: { actorId: 'local:ann', trust: 'local' as const },
+  };
+  const at = (step: { purpose: string; instructions?: string }): Position => ({
+    kind: 'active',
+    step: { id: 'implement', title: 'Implement', kind: 'work', ...step },
+    attempt: { number: 1, startedAt: '2026-11-13T10:24:00Z', actor },
+  });
+  const gate = (id: string, met = false): GateStatus => ({
+    id,
+    type: 'document',
+    label: `${id}.md is written`,
+    documentType: id,
+    scope: { kind: 'task', specId: 's', taskId: 't' },
+    status: met ? 'satisfied' : 'unsatisfied',
+    ...(met ? { documentId: id } : { reason: 'no-document' as const }),
+  });
+  const toStep = (id: string, step: string, gates?: GateStatus[]): Transition => ({
+    id,
+    label: id,
+    target: { kind: 'step', step },
+    targetTitle: step === 'review' ? 'Review' : 'Implement',
+    feedback: 'optional',
+    ...(gates ? { gates } : {}),
+  });
+  const projectionWith = (...transitions: Transition[]) => ({
+    position: at({ purpose: '' }),
+    actions: { finish: { step: 'implement', attempt: 1, transitions } },
+  });
+
+  it('is the purpose, else the first paragraph of the instructions, else nothing', () => {
+    expect(stepGoal(at({ purpose: 'Write the code.' }))).toEqual({ text: 'Write the code.' });
+    expect(stepGoal(at({ purpose: '', instructions: 'Only one paragraph.' }))).toEqual({
+      text: 'Only one paragraph.',
+    });
+    expect(stepGoal(at({ purpose: '', instructions: 'First.\n\nSecond.' }))).toEqual({
+      text: 'First.',
+      more: 'First.\n\nSecond.',
+    });
+    expect(stepGoal(at({ purpose: '' }))).toBeUndefined();
+  });
+
+  it('lists every exit gate, met or not, once, and where the work goes', () => {
+    const gates = [gate('task'), gate('notes', true)];
+
+    expect(doneWhen(projectionWith(toStep('ready', 'review', gates)), { withThen: true })).toEqual({
+      groups: [{ gates }],
+      then: 'Review',
+    });
+    // The Specification's track names the next step already.
+    expect(doneWhen(projectionWith(toStep('ready', 'review', gates)))).toEqual({
+      groups: [{ gates }],
+    });
+  });
+
+  it('names the result when results need different gates, and no step when they lead apart', () => {
+    const done = doneWhen(
+      projectionWith(toStep('ready', 'review', [gate('task')]), toStep('again', 'implement')),
+      { withThen: true },
+    );
+
+    expect(done).toEqual({ groups: [{ result: 'ready', gates: [gate('task')] }] });
+  });
+
+  it('is only the next step when the step declares no gates, and nothing without either', () => {
+    expect(doneWhen(projectionWith(toStep('ready', 'review')), { withThen: true })).toEqual({
+      groups: [],
+      then: 'Review',
+    });
+    expect(doneWhen(projectionWith(toStep('ready', 'review')))).toBeUndefined();
+  });
+
+  it('leaves out a result that waits for open Tasks', () => {
+    const waiting: Transition = {
+      ...toStep('accepted', 'review', [gate('task')]),
+      unavailable: 'tasks-open',
+    };
+
+    expect(doneWhen(projectionWith(waiting))).toBeUndefined();
+  });
+
+  it('opens the document of an unmet gate and says which sections finish it', () => {
+    const echo = ((key: string, values?: Record<string, unknown>) =>
+      [key, JSON.stringify(values)].join(' ')) as unknown as TFunction;
+
+    expect(
+      documentGateFix(
+        echo,
+        { ...gate('task'), reason: 'sections-missing', missingSections: ['Verification'] },
+        'task.md',
+      ),
+    ).toEqual({
+      label: 'workflowExecution.now.openDocument {"name":"task.md"}',
+      hint: 'workflowExecution.now.addSectionsToFinish {"count":1,"sections":"Verification","name":"task.md"}',
+    });
+    expect(documentGateFix(echo, gate('task', true), 'task.md')).toEqual({
+      label: 'workflowExecution.now.openDocument {"name":"task.md"}',
+    });
   });
 });

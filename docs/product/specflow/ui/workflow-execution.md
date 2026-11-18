@@ -44,8 +44,9 @@ Specification Overview and the Tasks page are described in
    `ready`, `active`, `waiting`, `blocked`, `terminal`) and the actions allowed now. It never branches
    on step ids, never invents results and never mutates to discover actions.
 2. **Titles, not ids.** Steps, workflows, transitions and returns are shown by their title. The step id
-   and the workflow revision are detail: on the Overview only in the Now block's ⋯ note and the
-   history meta. An attempt number is shown only from the second attempt on ("Attempt 2 · …").
+   and the workflow revision are detail: only in the Now block's ⋯ note ("Step implement · Standard
+   Task rev 1") and the history meta, for a Specification and a Task alike. An attempt number is
+   shown only from the second attempt on ("Attempt 2 · …").
 3. **Only allowed actions are shown.** A disallowed action is omitted. When nothing is allowed and the
    reason is not evident, one sentence says why. Exception: **Put on hold** during an active attempt
    stays visible, disabled, with its reason ("finish or return the current step first").
@@ -65,18 +66,39 @@ The top of the Full Task page, and of the Overview (its Specification variant is
 In reading order:
 
 1. **Subject status** when it changes what can happen (a draft needs approval; on hold with its reason;
-   an abandoned Specification with its reason).
+   an abandoned Specification with its reason). A Task's draft, on hold and cancelled notes sit under
+   its title with the status glyph (`edit`, `circle-pause`, `close`) and a neutral tone: a status
+   alone is not attention.
 2. **Position**: the step title, or Not started / Completed / Abandoned; on the Overview the step
    track and its label (see [Specification Overview](specification-overview.md#sections-and-order));
    and one quiet line ("In progress since 11:18 · started by you", "Attempt 2 · …" only from the
-   second attempt on; or the first step; or how it continues; "Starting…" while a start is recorded).
-3. **Blocking reasons**, one line each with a link to where it is fixed ("Waiting for 1 dependency ·
+   second attempt on; or the first step, "First step · Design" before a Task's first start; or how
+   it continues; "Starting…" while a start is recorded).
+3. **What the step is for.** The Specification shows the step's purpose. A Task shows it as
+   **Goal**; without a purpose, the first paragraph of the step's instructions (three lines, **Show
+   more**); with neither, nothing. Before a Task's first start it is the first step's Goal.
+4. **Done when**: the active step's exit gates, met or not, as one checklist (the same list for the
+   Specification and the Task). A met gate is a success check with the document that meets it; an
+   unmet one is an open circle with "not yet", neutral, because the step is being worked on and the
+   main action is its fix. Only a gate that cannot be met as things are says why (its file is missing
+   or cannot be read). Results that need different gates get one list each ("Done with Approved
+   when"); a result that waits for open Tasks is left out (see Open Tasks). A Task adds where the work
+   goes, "Then: Review", when every result leads to the same step (the Specification's step track
+   names the next step already); a step with no gates shows only that line.
+5. **Blocking reasons**, one line each with a link to where it is fixed ("Waiting for 1 dependency ·
    See Depends on", a missing required context entry · See Context). An awaited process artifact is
    one neutral line.
-4. **Latest hand-off**: the last step, its result, who and when, and its feedback (how a failed review
-   reads on the rework attempt).
-5. **The main action**; Return to an earlier step is in its menu. A lifecycle main action (Approve,
-   Resume) replaces the workflow actions and is not repeated in the header.
+6. **Latest hand-off** (Task): the last step, its result, who and when, and its feedback (how a failed
+   review reads on the rework attempt). In the card it is a quote with a left rule; in the Narrow
+   band it is a labelled paragraph ("Last hand-off") with no second rule inside the band's bar. The
+   Overview leaves the hand-off to the history.
+7. **The main action**, with at most one button-styled secondary, for the Specification and the Task
+   alike (one rule, `nowActionPlan`). Finish step is the main action while some result can be taken.
+   When every result waits for an unmet gate whose document exists, opening it is the main action
+   ("Open task.md", with "Add the Verification section to task.md to finish.") and Finish step is the
+   secondary. Return to an earlier step, an unavailable Finish step, Workflow history and the step id
+   and revision are in the ⋯ menu. A lifecycle main action (Approve, Resume) replaces the workflow
+   actions and is not repeated in the header.
 
 The full attempt history is the Secondary (Task history, Activity history), closed by default and
 opened by the header's history toggle.
@@ -90,9 +112,10 @@ opened by the header's history toggle.
   drafts, unticked ones are cancelled, Tasks created by hand are not affected; keeping a draft that
   depends on an unticked one is refused in the dialog.
 - **Exit gates.** The selected result lists the gates it needs (met ones as satisfied checks, unmet
-  ones with what is missing and an action such as opening or creating the document); while one is
-  unmet Finish is unavailable for that result and other results stay available. The Now block lists
-  the unmet gates of the active step under "To finish". A gate action closes the dialog but keeps its
+  ones with what is missing, in the attention tone, and an action such as opening or creating the
+  document): here the gate refuses the action the person is about to take. While one is unmet Finish
+  is unavailable for that result and other results stay available. The Now block lists the gates as
+  its neutral "Done when" checklist. A gate action closes the dialog but keeps its
   draft (result, feedback, artifacts) and opens the document in the Secondary; Finish step reopens the
   dialog with the draft and evaluates the gates again.
 - **Open Tasks.** A result that completes the Specification is unavailable while any Task is open
@@ -100,14 +123,14 @@ opened by the header's history toggle.
   dialog names each open Task with why it is open ("t-02 is in progress, t-05 waits for other
   tasks") and Finish stays disabled for that result. The Now block says the same for each such result
   with **See Tasks**, and does not list the gates of such a result (meeting them would not help). On
-  the Overview, Finish step is the main action only while some result can be taken; otherwise it
+  the Now block, Finish step is the main action only while some result can be taken; otherwise it
   moves to the ⋯ menu, unavailable, with the reasons, and an unmet gate's action becomes the main
   action only when meeting it would make a result available. When the Engine says the finish itself
   can close the open Tasks (`resolvableByFinish`), the dialog names the Tasks still open after the
   drafts the owner unticked and how each closes: "Untick t-08 below" for a draft of this step,
   "Cancel t-02 in Tasks first" for one only a status decision closes (the dialog sends no
   decisions). Finish becomes available once unticking leaves no Task open ("Finishing cancels the
-  drafts you unticked"); such a result counts as available on the Overview, and the Now block asks
+  drafts you unticked"); such a result counts as available in the Now block, which asks
   to untick those drafts instead of naming them as open. A refused finish (the Tasks changed after
   the projection was read) shows the same explanation. Abandon remains the way to end a
   Specification with open Tasks.

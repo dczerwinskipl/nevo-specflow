@@ -104,6 +104,31 @@ function producingProjection(): WorkflowActionProjection {
   };
 }
 
+/** Another result of Acceptance that is available, so Finish step is the main action. */
+const backToBreakdown = {
+  id: 'rework',
+  label: 'Back to breakdown',
+  target: { kind: 'step' as const, step: 'breakdown' },
+  targetTitle: 'Breakdown',
+  feedback: 'optional' as const,
+};
+
+/** Acceptance while Tasks are open, with a result that does not complete the Specification. */
+function tasksOpenWithRework(): WorkflowActionProjection {
+  const base = specificationWorkflowProjection('tasks-open');
+
+  return {
+    ...base,
+    actions: {
+      ...base.actions,
+      finish: {
+        ...base.actions.finish!,
+        transitions: [...base.actions.finish!.transitions, backToBreakdown],
+      },
+    },
+  };
+}
+
 const finishButton = () =>
   within(screen.getByRole('dialog')).getByRole<HTMLButtonElement>('button', {
     name: 'Finish step',
@@ -725,7 +750,7 @@ describe('manual workflow execution', () => {
     renderWith(
       <WorkflowNow
         subject={{ specId: SPEC }}
-        projection={specificationWorkflowProjection('tasks-open')}
+        projection={tasksOpenWithRework()}
         headingId="now"
         links={{ tasks: vi.fn() }}
         artifactOptions={[]}
@@ -755,7 +780,7 @@ describe('manual workflow execution', () => {
         headingId="now"
         links={{ tasks: vi.fn() }}
         artifactOptions={[]}
-        overview={{ specId: SPEC }}
+        specification={{ specId: SPEC }}
       />,
     );
 
@@ -791,7 +816,7 @@ describe('manual workflow execution', () => {
           links={{ tasks: vi.fn() }}
           artifactOptions={[]}
           gateAction={() => ({ label: 'Create note', onSelect: vi.fn() })}
-          overview={{ specId: SPEC }}
+          specification={{ specId: SPEC }}
         />,
       );
 
@@ -862,7 +887,7 @@ describe('manual workflow execution', () => {
         headingId="now"
         links={{ tasks: vi.fn() }}
         artifactOptions={[]}
-        overview={{ specId: SPEC }}
+        specification={{ specId: SPEC }}
       />,
       { execution: fakeExecutionApi({ finish }) },
     );
@@ -918,6 +943,7 @@ describe('manual workflow execution', () => {
                     { taskId: TASK, by: 'decision' },
                   ],
                 },
+                backToBreakdown,
               ],
             },
           },
@@ -1037,7 +1063,7 @@ describe('manual workflow execution', () => {
           headingId="now"
           links={{}}
           artifactOptions={[]}
-          overview={{ specId: SPEC }}
+          specification={{ specId: SPEC }}
         />
       ) : null;
     }

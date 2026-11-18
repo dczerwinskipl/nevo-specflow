@@ -15,26 +15,41 @@ export interface GateAction {
 /**
  * Gates as a checklist: met ones as satisfied checks, unmet ones with what is missing and, where
  * one exists, the action that resolves them. Each icon sits on the first line of its text.
+ *
+ * `blocking` (default) is for a list beside the action the gates refuse now (the chosen result of
+ * Finish step, a start): an unmet gate takes the attention tone and says what is missing.
+ * `checklist` is Now's "Done when": the step is still being worked on, so an unmet gate is an open
+ * item ("not yet", neutral). A gate that cannot be met as things are (its file is missing or
+ * unreadable) still says why.
  */
 export function GateList({
   gates,
   label,
   actionFor,
   documentFor,
+  variant = 'blocking',
 }: {
   readonly gates: readonly GateStatus[];
   readonly label: string;
   readonly actionFor?: (gate: GateStatus) => GateAction | undefined;
   /** Names the document that meets a satisfied gate (`findings.md`). */
   readonly documentFor?: (gate: GateStatus) => string | undefined;
+  readonly variant?: 'blocking' | 'checklist';
 }) {
   const { t } = useTranslation();
+  const checklist = variant === 'checklist';
 
   return (
     <ul aria-label={label} className="grid gap-1.5">
       {gates.map((gate) => {
         const met = gate.status === 'satisfied';
-        const detail = met ? documentFor?.(gate) : gateDetail(t, gate);
+        const open =
+          checklist && (gate.reason === 'no-document' || gate.reason === 'sections-missing');
+        const detail = met
+          ? documentFor?.(gate)
+          : open
+            ? t('workflowExecution.gate.notYet')
+            : gateDetail(t, gate);
         const action = met ? undefined : actionFor?.(gate);
 
         return (
@@ -44,15 +59,23 @@ export function GateList({
           >
             <span className="flex h-[1lh] shrink-0 items-center">
               <Icon
-                name={met ? 'circle-check' : 'circle-alert'}
+                name={met ? 'circle-check' : checklist ? 'circle' : 'circle-alert'}
                 size="sm"
                 aria-hidden="true"
-                className={met ? 'text-status-success' : 'text-status-attention'}
+                className={
+                  met
+                    ? 'text-status-success'
+                    : checklist
+                      ? 'text-content-muted'
+                      : 'text-status-attention'
+                }
               />
             </span>
             <span className="min-w-0 [overflow-wrap:anywhere]">
               <span className="font-medium text-content-primary">{gate.label}</span>
-              {detail ? ` · ${detail}` : null}
+              {detail ? (
+                <span className={open ? 'text-content-muted' : undefined}>{` · ${detail}`}</span>
+              ) : null}
               <span className="sr-only">
                 {met
                   ? t('workflowExecution.gate.metHidden')

@@ -183,6 +183,7 @@ function Workspace({
                       ? { onRemoveTask: () => lifecycle.request('remove') }
                       : {})}
                     onOpenDocument={openDocument}
+                    onOpenHistory={onOpenHistory}
                     onReload={() => void reload()}
                   />
                 </FullTaskView>

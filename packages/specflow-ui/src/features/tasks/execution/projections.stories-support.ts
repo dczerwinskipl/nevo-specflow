@@ -527,7 +527,7 @@ export function taskResourceFor(scenario: TaskWorkflowScenario): TaskResourceFac
 }
 
 export type SpecificationWorkflowScenario =
-  'waiting' | 'close-blocked' | 'abandoned' | 'tasks-open';
+  'waiting' | 'close-blocked' | 'abandoned' | 'completed' | 'tasks-open';
 
 const specWorkflow = {
   workflowId: 'feature',
@@ -549,7 +549,7 @@ export const closeBlockers: readonly ExitBlocker[] = [
 export const ABANDON_REASON =
   'The provider contract was cancelled; single sign-on moves to next quarter.';
 
-/** The Specification's projection: waiting for its Tasks, or abandoned. */
+/** The Specification's projection: waiting for its Tasks, or ended (abandoned or completed). */
 export function specificationWorkflowProjection(
   scenario: SpecificationWorkflowScenario,
 ): WorkflowActionProjection {
@@ -558,6 +558,8 @@ export function specificationWorkflowProjection(
   }
 
   const abandoned = scenario === 'abandoned';
+  // Both ended runs are terminal: nothing moves any more and Close is allowed.
+  const ended = abandoned || scenario === 'completed';
 
   return {
     subject: { kind: 'specification', specId: SPEC },
@@ -568,13 +570,15 @@ export function specificationWorkflowProjection(
           outcome: 'abandoned',
           abandonment: { at: '2026-11-13T16:40:00Z', reason: ABANDON_REASON, actor: dominik },
         }
-      : {
-          kind: 'waiting',
-          step: { id: 'wait-for-tasks', title: 'Waiting for tasks', kind: 'wait', purpose: '' },
-          blockingTasks: { count: 4, ids: ['t-02', TASK, 't-07', 't-03'] },
-          totalTasks: 5,
-        },
-    ...(abandoned
+      : scenario === 'completed'
+        ? { kind: 'terminal', outcome: 'completed' }
+        : {
+            kind: 'waiting',
+            step: { id: 'wait-for-tasks', title: 'Waiting for tasks', kind: 'wait', purpose: '' },
+            blockingTasks: { count: 4, ids: ['t-02', TASK, 't-07', 't-03'] },
+            totalTasks: 5,
+          },
+    ...(ended
       ? {}
       : {
           handoff: {
@@ -591,15 +595,15 @@ export function specificationWorkflowProjection(
             artifacts: [],
           },
         }),
-    actions: abandoned
+    actions: ended
       ? {}
       : { return: { targets: [{ step: 'breakdown', title: 'Breakdown', feedback: 'optional' }] } },
     specification: {
-      createTask: abandoned ? unavailable('specification-ended') : allowed,
+      createTask: ended ? unavailable('specification-ended') : allowed,
       taskTypes: [],
       exit: {
-        close: abandoned ? allowed : { kind: 'blocked', blockers: [...closeBlockers] },
-        abandon: abandoned ? unavailable('ended') : allowed,
+        close: ended ? allowed : { kind: 'blocked', blockers: [...closeBlockers] },
+        abandon: ended ? unavailable('ended') : allowed,
       },
     },
   };

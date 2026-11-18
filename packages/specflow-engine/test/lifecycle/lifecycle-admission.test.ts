@@ -429,6 +429,7 @@ describe('E2.T10 — read-only lifecycle admission and durable shared Git resour
         {
           kind: 'uncommitted-changes',
           checkout: 'specification',
+          checkoutPath: root,
           paths: ['do-not-touch.txt'],
           count: 1,
         },

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { RepositoryBlocker } from '@nevo/specflow-contracts/specs';
+import type { CloseMerge, RepositoryBlocker } from '@nevo/specflow-contracts/specs';
 import type { WorkflowRefusal } from '../refusal';
 import { closeDialogOutcome, type CloseDialogFacts } from './closeDialogOutcome';
 
@@ -17,6 +17,7 @@ const refusal = (code: string, extra: Partial<WorkflowRefusal> = {}): WorkflowRe
 const untracked: RepositoryBlocker = {
   kind: 'uncommitted-changes',
   checkout: 'specification',
+  checkoutPath: '/repo/.nevo/worktrees/nevo-1',
   paths: ['specs/active/sso/overview.md'],
   count: 1,
 };
@@ -28,6 +29,13 @@ const missingTarget: RepositoryBlocker = {
   otherBranchCount: 0,
 };
 const idle: CloseDialogFacts['close'] = { status: 'idle' };
+const merge: CloseMerge = {
+  status: 'integrates',
+  sourceBranch: 'nevo-1/sso',
+  targetBranch: 'release/2026.11',
+  commitsAhead: 3,
+};
+const planned: CloseDialogFacts['preview'] = { status: 'success', merge };
 
 describe('closeDialogOutcome', () => {
   it('is checking, never ready, while the preview runs the repository checks', () => {
@@ -36,10 +44,42 @@ describe('closeDialogOutcome', () => {
     });
   });
 
-  it('is ready only once the preview planned the Close', () => {
-    expect(closeDialogOutcome({ preview: { status: 'success' }, close: idle })).toEqual({
+  it('is ready only once the preview planned the Close, with what it merges', () => {
+    expect(closeDialogOutcome({ preview: planned, close: idle })).toEqual({
       kind: 'ready',
+      merge,
     });
+  });
+
+  it('is checking again, never ready nor the old answer, while Check again reads the preview', () => {
+    // "Check again" after a refused Close: the dialog resets the Close and re-reads the preview.
+    expect(closeDialogOutcome({ preview: { status: 'pending' }, close: idle })).toEqual({
+      kind: 'checking',
+    });
+  });
+
+  it('never shows ready for a planned Close while a refusal or a failed check stands', () => {
+    const outcomes = [
+      closeDialogOutcome({
+        preview: planned,
+        close: { status: 'error', refusal: refusal('CLOSE_CONFLICT') },
+      }),
+      closeDialogOutcome({
+        preview: { status: 'error', refusal: refusal('GIT_UNAVAILABLE') },
+        close: idle,
+      }),
+      closeDialogOutcome({
+        workflowBlockers: [{ kind: 'specification-run', subjectIds: ['spec'], message: '' }],
+        preview: planned,
+        close: idle,
+      }),
+    ];
+
+    expect(outcomes.map((outcome) => outcome.kind)).toEqual([
+      'not-closed',
+      'cannot-start',
+      'blocked',
+    ]);
   });
 
   it('lists the repository preconditions a preview refused with as blockers', () => {
@@ -85,7 +125,7 @@ describe('closeDialogOutcome', () => {
   it('lets a Close refused with repository preconditions replace the ready state', () => {
     expect(
       closeDialogOutcome({
-        preview: { status: 'success' },
+        preview: planned,
         close: {
           status: 'error',
           refusal: refusal('CLOSE_PREFLIGHT', { repository: [untracked] }),
@@ -97,7 +137,7 @@ describe('closeDialogOutcome', () => {
   it('shows a refused Close as not closed, without the ready state', () => {
     expect(
       closeDialogOutcome({
-        preview: { status: 'success' },
+        preview: planned,
         close: { status: 'error', refusal: refusal('DOCUMENT_COMMITS_PENDING') },
       }),
     ).toEqual({
@@ -107,9 +147,10 @@ describe('closeDialogOutcome', () => {
   });
 
   it('shows the running Close instead of the ready state', () => {
-    expect(
-      closeDialogOutcome({ preview: { status: 'success' }, close: { status: 'pending' } }),
-    ).toEqual({ kind: 'closing' });
+    expect(closeDialogOutcome({ preview: planned, close: { status: 'pending' } })).toEqual({
+      kind: 'closing',
+      merge,
+    });
   });
 
   it('says how document commits hold the Close, by their cause', () => {
@@ -151,7 +192,7 @@ describe('closeDialogOutcome', () => {
   it('shows a Close refused by documents still being committed as not closed', () => {
     expect(
       closeDialogOutcome({
-        preview: { status: 'success' },
+        preview: planned,
         close: {
           status: 'error',
           refusal: refusal('DOCUMENT_COMMITS_PENDING', { documentCause: 'commit-pending' }),
@@ -166,7 +207,7 @@ describe('closeDialogOutcome', () => {
   it('shows a Close that did not complete as needing attention', () => {
     expect(
       closeDialogOutcome({
-        preview: { status: 'success' },
+        preview: planned,
         close: {
           status: 'success',
           result: { operationId: 'op-1', status: 'requires-resolution' },

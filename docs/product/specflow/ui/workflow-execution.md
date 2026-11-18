@@ -216,28 +216,68 @@ cancelled), **Documents**, **Context** and **Depends on**. Task history is the S
 ## Close
 
 **Close specification** is in the Overview header overflow and, once the workflow ended, the Now
-block's main action. It opens the Close preflight, which shows exactly one outcome at a time:
+block's main action (in the demo, which has no repository, it is unavailable with that reason). It
+opens the Close dialog: the title "Close <title>" stays, and exactly one outcome is shown at a time
+(`closeDialogOutcome`). "Ready to close" never appears while a check is pending, failed or blocking,
+or after a refusal.
 
-- **Blocked:** one sentence saying why, then the groups in a fixed order — **Running sessions**,
-  **Workflow**, **Unfinished tasks**, **Broken tasks**, **Pending writes**, **Workflow state** — each
-  with its count, one explanation, its items as links (at most five, then "and N more") and its
-  resolving action where one exists. The repository preconditions the Close preview reports follow,
-  each saying what holds the Close, why and what to do: **Files not committed** (with the paths),
-  **No integration branch configured**, **Integration checkout on another branch**, **Unfinished
-  Git operation**, **Not on a branch**. Below them "Not going to finish this work? **Abandon
-  instead**". The footer has only **Dismiss**, so nothing can be confirmed while something holds it.
-- **Checking the repository:** while the preview runs, a neutral status; **Close specification** is
-  disabled. When saved documents in the checkout are still queued for their automatic commit
+- **Checking:** a spinner with one polite live line, "Checking whether <title> can close…", and after
+  3 s a second line, "Checking the repository. This can take a few seconds." The footer has only
+  **Cancel**. When saved documents in the checkout are still queued for their automatic commit
   (`DOCUMENT_COMMITS_PENDING`, `commit-pending`), it reads **Saving document commits…** and the
-  preview is read again by itself (every 1.5 s, about 30 s at most); after that it becomes a refusal
-  with **Check again**.
-- **Cannot start:** the preview refused for a reason that is not a blocker list, in one sentence by
-  its code (documents in manual commit mode: commit them from Documents; a failed document commit:
-  retry or resolve it in Documents).
-- **Ready:** "Ready to close" (the workflow is complete, or ended as abandoned, and the repository
-  checks passed), the cancelled Tasks listed as not delivered, and **Close specification**.
-- **Closing:** a neutral status while the confirmed Close runs; then the dialog closes, or shows
-  **Not closed** with the reason, or **Close needs attention** when it stopped part way.
+  preview is read again by itself (every 1.5 s, about 30 s at most); after that it becomes a failed
+  check with **Check again**.
+- **Blocked:** one sentence saying why, then flat groups in a fixed order — **Running sessions**,
+  **Workflow**, **Unfinished tasks**, **Broken tasks**, **Pending writes**, **Workflow state** — each
+  with one explanation, its Tasks (id, title as a link, then the status with its mark from the one
+  status model; at most five, then "and N more"; only a group that lists Tasks counts them in its
+  heading) and its resolving action where one exists. Below them "Not going to finish this work?
+  **Abandon instead**". The footer has only **Dismiss** (primary).
+- **Blocked by the repository:** "<title> cannot close yet: N repository problems." and one group per
+  problem:
+  - **Uncommitted specification files · N** (or **Uncommitted files where it merges** for the
+    checkout it is integrated into, which says the files may not belong to this specification): the
+    files as a list (at most five, then "and N more"), committing them as the way forward, the
+    checkout's path in monospace with **Copy path**, and the attention note "**Discarding deletes
+    these changes for good.** Git keeps no copy of uncommitted work, so discard only what you are
+    sure you do not need." The dialog never offers to discard.
+  - **No integration branch configured:** the branch must be set as `git.integrationTargetBranch` in
+    `.nevo/config.yaml`. Under **Integration branch** the Runtime's candidates are radio rows with
+    the facts that make each one a candidate ("Remote default (origin)", "<title> started from it",
+    "Checked out in the main folder"), and nothing is chosen, even with one candidate. **Another
+    local branch…** reveals a select of the other local branches. The setting is shown as two lines
+    of YAML, `git:` / `integrationTargetBranch: <choose a branch>`, until a choice names the branch;
+    **Copy setting** stays off with "Choose a branch first" until then. No branch (`main` included)
+    is ever assumed. Without any local branch the list reads "No local branch can receive it". The
+    choice is not saved: the person edits the file, then checks again.
+  - **Integration checkout on another branch**, **Unfinished Git operation**, **Not on a branch**:
+    what holds the Close and what to do.
+
+  "Abandon instead" is not offered here (abandoning needs a Close, which meets the same checks). The
+  footer has **Dismiss** and **Check again** (primary), which reads the preview anew (Checking, then
+  the new outcome).
+
+- **Check failed:** the preview refused for a reason that is not a blocker list, or could not be
+  read: a danger alert "Could not check whether <title> can close" with what to do (documents in
+  manual commit mode: commit them from Documents; a failed document commit: retry or resolve it in
+  Documents), **Dismiss** and **Check again**.
+- **Ready:** the "Ready to close" alert (an abandoned Specification shows "Abandoned: “<reason>”"
+  under the title instead), then the facts in a fixed order: **Result** "Recorded as not delivered"
+  (abandoned only), **Merges** and **Tasks**. Merges comes from the preview's `merge` fact:
+  "<source> → <target>", "Nothing to merge" (no commits ahead of the target), "Archives on <branch>
+  (main folder; nothing to merge)" (the Specification lives in the main folder), "Archives on
+  <branch> without merging" (archive only), or "Archives without Git (Git is off for this project)"
+  (adding, for a linked worktree, that the archive stays uncommitted there). Tasks reads "All N
+  tasks done", "N done · M cancelled, not delivered" or "No tasks were created"; the cancelled and
+  abandoned ones are listed. The note "Closing archives the specification; it cannot be reopened."
+  follows, and the footer has **Cancel** and **Close and archive**.
+- **Closing:** the ready content stays, read-only; the button reads **Closing…** (`aria-busy`) and
+  Cancel is off. Then the dialog closes, or shows **Not closed** with the reason (**Dismiss**, **Check
+  again**; a refusal that names blockers shows them as Blocked instead), or **Close needs attention**
+  when it stopped part way.
+
+At 390 px the footer buttons are full width and stacked, the primary on top, and long paths and
+branch names wrap.
 
 ## Abandon (close without realization)
 

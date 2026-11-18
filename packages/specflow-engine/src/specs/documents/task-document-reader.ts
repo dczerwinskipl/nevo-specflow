@@ -1,11 +1,12 @@
 import type { ContentKind } from '@nevo/specflow-contracts/documents';
 
 import type { SpecFlowEngine } from '../../application';
+import type { ManifestDocument } from '../model';
 import { mapBounded } from '../../concurrency';
 import { sha256Hex } from '../../hash';
 import { deriveUnclassifiedDocumentId } from '../document-rules/document-ids';
 import { isEditable } from './content-kinds';
-import { isTemplateOnly } from './content-state';
+import { contentStateOf, type DocumentContentState } from './content-state';
 import { isReservedContainerPath, isRequiredDocument } from './changes/plan/container';
 import { listSpecificationFiles } from './directory-scan';
 import { loadDocumentContainer } from './loaded-specification';
@@ -24,11 +25,8 @@ export interface TaskDocumentListing {
   readonly classification: 'registered' | 'unclassified';
   /** The required `task` document: it cannot be deleted or renamed. */
   readonly required: boolean;
-  /**
-   * Template only (`isTemplateOnly`); absent when the entry records no `templateRevision` and for a
-   * document without a (readable) file.
-   */
-  readonly templateOnly?: boolean;
+  /** What the file holds (`contentStateOf`); registered documents with a (readable) file only. */
+  readonly contentState?: DocumentContentState;
   /** Absent for a registered document without a (readable) file. */
   readonly file?: {
     readonly kind: ContentKind;
@@ -98,8 +96,8 @@ export async function readTaskDocuments(
   };
 
   const listing = (
-    entry: Omit<TaskDocumentListing, 'file' | 'templateOnly'>,
-    templateRevision?: string,
+    entry: Omit<TaskDocumentListing, 'file' | 'contentState'>,
+    registered?: Pick<ManifestDocument, 'baselineRevision'>,
   ): TaskDocumentListing => {
     const file = fileOf(entry.path);
     if (file === undefined) {
@@ -108,8 +106,8 @@ export async function readTaskDocuments(
 
     return {
       ...entry,
-      ...(templateRevision !== undefined
-        ? { templateOnly: isTemplateOnly({ templateRevision }, file.revision) }
+      ...(registered !== undefined
+        ? { contentState: contentStateOf(registered, file.revision) }
         : {}),
       file,
     };
@@ -130,7 +128,7 @@ export async function readTaskDocuments(
             classification: 'registered',
             required: isRequiredDocument(loaded.container, document),
           },
-          document.templateRevision,
+          document,
         ),
       ),
       // A file that vanished since the listing is not reported.

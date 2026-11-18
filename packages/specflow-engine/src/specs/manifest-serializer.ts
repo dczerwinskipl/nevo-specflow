@@ -147,7 +147,7 @@ function plainDocuments(documents: readonly ManifestDocument[]): unknown[] {
     id: item.id,
     path: item.path,
     type: item.type,
-    ...(item.templateRevision !== undefined ? { templateRevision: item.templateRevision } : {}),
+    ...(item.baselineRevision !== undefined ? { baselineRevision: item.baselineRevision } : {}),
   }));
 }
 

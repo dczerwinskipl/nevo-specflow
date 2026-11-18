@@ -7,6 +7,7 @@ import {
 } from '../../workflow/projection';
 import { SessionIdSchema } from '../../sessions/model';
 import { SpecIdSchema, TaskIdSchema, WorkspaceIdSchema } from '../../identifiers';
+import { DocumentContentStateSchema } from '../../documents/vocabulary';
 export * from '../../tasks';
 export * from '../../documents';
 
@@ -50,11 +51,8 @@ export const WorkspaceDocumentSchema = Type.Object({
    */
   kind: Type.String(),
   summary: Type.Optional(Type.String()),
-  /**
-   * The file is still only the archetype template it was created from (any goal text aside);
-   * absent when the source cannot tell (the demo Runtime).
-   */
-  templateOnly: Type.Optional(Type.Boolean()),
+  /** `DocumentContentState`; absent when the source cannot tell (the demo Runtime). */
+  contentState: Type.Optional(DocumentContentStateSchema),
 });
 export const WorkspaceSessionSchema = Type.Object(
   {

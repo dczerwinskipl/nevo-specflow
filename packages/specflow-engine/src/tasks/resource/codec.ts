@@ -8,10 +8,16 @@ import {
 import { Value } from 'typebox/value';
 import { parse, stringify } from 'yaml';
 
+import { sha256Hex } from '../../hash';
 import { foldPathKey, validateDocumentPath } from '../../specs/document-rules/document-paths';
 import { WorkflowError } from '../../workflow/errors';
 import { RECORD_BYTES_MAX } from '../../workflow/limits';
-import { TASK_MANIFEST_FILE, type TaskIndex, type TaskManifest } from './model';
+import {
+  TASK_MANIFEST_FILE,
+  type TaskDocumentEntry,
+  type TaskIndex,
+  type TaskManifest,
+} from './model';
 
 /**
  * Strict text format of `tasks/index.yaml` and `tasks/<id>/task.yaml`. Every read checks the shape of
@@ -221,4 +227,14 @@ export function serializeTaskManifest(manifest: TaskManifest): string {
  */
 export function initialTaskDocument(manifest: Pick<TaskManifest, 'title' | 'summary'>): string {
   return `# ${manifest.title}\n${manifest.summary === undefined ? '' : `\n${manifest.summary}\n`}`;
+}
+
+/**
+ * The `task.md` registry entry of a new Task whose first text the Engine generates
+ * ({@link initialTaskDocument}): it records the revision of exactly that text as the document's
+ * baseline, so the document reads `baseline` until a person or an agent changes it. A write of the
+ * Engine that regenerates the text must record the new revision the same way.
+ */
+export function generatedTaskMainDocument(text: string): TaskDocumentEntry {
+  return { ...TASK_MAIN_DOCUMENT, baselineRevision: sha256Hex(text) };
 }

@@ -14,6 +14,7 @@ import { readRegisteredDocumentSummaries } from '../../src/specs/documents/summa
 import { readTaskDocuments } from '../../src/specs/documents/task-document-reader';
 import { readSpecificationDocumentTree } from '../../src/specs/documents/tree-reader';
 import {
+  generatedTaskMainDocument,
   initialTaskDocument,
   parseTaskManifest,
   serializeTaskIndex,
@@ -76,19 +77,19 @@ describe('create documents from a template', () => {
       'docs/behaviour.md',
     );
 
-    // Template only exactly while the file has the content the Engine created it with: the
+    // The baseline exactly while the file has the content the Engine created it with: the
     // overview of Create and this document, whatever their goal or title text. The document tree
     // reports the same value as the workspace summary (one rule).
-    const templateOnly = async () => {
+    const contentState = async () => {
       const summaries = Object.fromEntries(
         (await readRegisteredDocumentSummaries(project.engine, project.specId)).map((summary) => [
           summary.path,
-          summary.templateOnly,
+          summary.contentState,
         ]),
       );
       const tree = Object.fromEntries(
         (await readSpecificationDocumentTree(project.engine, project.specId)).documents.map(
-          (document) => [document.path, document.templateOnly],
+          (document) => [document.path, document.contentState],
         ),
       );
       expect(tree).toEqual(summaries);
@@ -96,17 +97,26 @@ describe('create documents from a template', () => {
       return summaries;
     };
 
-    expect(await templateOnly()).toEqual({ 'overview.md': true, 'docs/behaviour.md': true });
+    expect(await contentState()).toEqual({
+      'overview.md': 'baseline',
+      'docs/behaviour.md': 'baseline',
+    });
     const path = join(project.dir, 'docs', 'behaviour.md');
     await writeFile(path, content + 'Given a written scenario.\n');
-    expect(await templateOnly()).toEqual({ 'overview.md': true, 'docs/behaviour.md': false });
+    expect(await contentState()).toEqual({
+      'overview.md': 'baseline',
+      'docs/behaviour.md': 'authored',
+    });
     await writeFile(path, content);
-    expect(await templateOnly()).toEqual({ 'overview.md': true, 'docs/behaviour.md': true });
+    expect(await contentState()).toEqual({
+      'overview.md': 'baseline',
+      'docs/behaviour.md': 'baseline',
+    });
   });
 
-  it('keeps the template revision a Task registry records, and reports templateOnly by it', async () => {
-    // A Task document is created from its content (admission refuses templates there), so the
-    // record is written by hand as the Engine writes it in specification.yaml.
+  it('keeps the baseline revision a Task registry records, and reports the content state by it', async () => {
+    // The Engine records the baseline of a generated task.md (`generatedTaskMainDocument`); the
+    // second document's record is written by hand (Task documents are created from given content).
     const project = await featureProject();
     const content = '# Behaviour\n';
     const brief: TaskManifest = {
@@ -117,12 +127,12 @@ describe('create documents from a template', () => {
       dependsOn: [],
       origin: { kind: 'manual', actorId: 'local:me' },
       documents: [
-        { id: 'task', path: 'task.md', type: 'task' },
+        generatedTaskMainDocument(initialTaskDocument({ title: 'Write the brief' })),
         {
           id: 'behaviour',
           path: 'behaviour.md',
           type: 'behaviour',
-          templateRevision: sha256Hex(content),
+          baselineRevision: sha256Hex(content),
         },
       ],
     };
@@ -136,14 +146,13 @@ describe('create documents from a template', () => {
     await writeFile(join(taskDir, 'task.md'), initialTaskDocument(brief));
     await writeFile(join(taskDir, 'behaviour.md'), content);
 
-    const templateOnly = async () =>
+    const contentState = async () =>
       Object.fromEntries(
         (await readTaskDocuments(project.engine, project.specId, 'brief')).documents.map(
-          (document) => [document.path, document.templateOnly],
+          (document) => [document.path, document.contentState],
         ),
       );
-    // task.md records no template revision: no content state.
-    expect(await templateOnly()).toEqual({ 'task.md': undefined, 'behaviour.md': true });
+    expect(await contentState()).toEqual({ 'task.md': 'baseline', 'behaviour.md': 'baseline' });
 
     // A registry change through the documents writer keeps the record (task.yaml is re-rendered).
     await applyTaskDocumentChange(
@@ -164,11 +173,13 @@ describe('create documents from a template', () => {
       id: 'behaviour',
       path: 'scenarios.md',
       type: 'behaviour',
-      templateRevision: sha256Hex(content),
+      baselineRevision: sha256Hex(content),
     });
-    expect(await templateOnly()).toEqual({ 'task.md': undefined, 'scenarios.md': true });
+    expect(await contentState()).toEqual({ 'task.md': 'baseline', 'scenarios.md': 'baseline' });
     await writeFile(join(taskDir, 'scenarios.md'), content + 'Given a written scenario.\n');
-    expect(await templateOnly()).toEqual({ 'task.md': undefined, 'scenarios.md': false });
+    // An edit by a person or an agent makes a document authored, task.md included.
+    await writeFile(join(taskDir, 'task.md'), initialTaskDocument(brief) + 'Scope: the login.\n');
+    expect(await contentState()).toEqual({ 'task.md': 'authored', 'scenarios.md': 'authored' });
   });
 
   it('replays the stored rendering after the template changed', async () => {

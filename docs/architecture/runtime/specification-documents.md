@@ -77,7 +77,7 @@ documents: # REQUIRED registry
   - id: overview # stable id
     path: overview.md # relative to the Specification directory
     type: overview # document type id
-    templateRevision: <sha256> # optional, Engine-written: the content it created the file with from a template
+    baselineRevision: <sha256> # optional, Engine-written: the initial content it wrote (template or generated)
 folders: # OPTIONAL: explicit folders that may hold no file (see below)
   - research
 ```
@@ -93,13 +93,20 @@ Parser rules (strict, `SPEC_SOURCE_INVALID` otherwise; no alias, no default, no 
    catalogue (a retired type stays valid and is shown by id).
 4. `documents[].path` is a normalised portable relative path (see "Paths"); paths are unique ignoring case, and a
    registered file path is never an ancestor folder of another registered path.
-   `documents[].templateRevision`, when present, is a lowercase sha256 hex digest. The Engine writes it when it
-   creates the file from an archetype template (Create, or a create naming a `templateId`): the revision of exactly
-   the bytes it wrote. Rename and move keep it; nothing else writes it. A Task registry (`task.yaml`
-   `documents[]`) carries the same optional field with the same rule; Task documents are created from
-   their content today, so the Engine writes none there yet. A document is _template only_ (the
-   workspace read's `templateOnly`) exactly while its current revision equals it, so the check costs no read
-   beyond the revision the documents section computes anyway.
+   `documents[].baselineRevision`, when present, is a lowercase sha256 hex digest: the revision of exactly the
+   bytes of the document's **baseline**, the initial content the Engine itself wrote. Three sources are kept
+   apart: a _template_ is where initial content can come from (an archetype template, at Create or by a create
+   naming a `templateId`); a _generated baseline_ is content the Engine generates at creation (a Task's
+   `task.md` from its title and summary, `task.yaml` carrying the same field); _authored content_ is what a
+   person or an agent writes. Template and generated content are both a baseline: one field, one rule for
+   Specification and Task documents. The Engine records the field in the same change as every write of
+   baseline content, and a write of the Engine that regenerates such content records the new revision the
+   same way, so a system rewrite never makes a document authored (no such rewrite exists today: a Task
+   metadata edit does not touch `task.md`). Rename and move keep it; nothing else writes it. A created document
+   with given content (including a Task's `task.md` given at creation) records none. The read's
+   **content state** (`contentState`) of a registered document with a file is `baseline` exactly while its
+   current revision equals the record, else `authored`, so the check costs no read beyond the revision the
+   documents section computes anyway. Archetype templates are not offered for Task documents.
 5. The registry contains exactly one entry with `id: overview`, `path: overview.md`, `type: overview`. Its id
    and path are fixed, so rename and move of `overview` are refused with the `protected` reason like delete
    (confirmed by the owner).

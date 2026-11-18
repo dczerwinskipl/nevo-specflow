@@ -6,6 +6,7 @@ import {
   CatalogueIdSchema,
   ClassificationSchema,
   ContentKindSchema,
+  DocumentContentStateSchema,
   IdSchema,
   KEBAB_CASE_PATTERN,
   closedUnion,
@@ -71,13 +72,10 @@ export const DocumentTreeDocumentSchema = Type.Object(
     editable: Type.Boolean(),
     satisfiesRequirement: Type.Boolean(),
     /**
-     * The content state of a registered document, by the same rule as the workspace `documents`
-     * section: `true` while the file still has exactly the content the Engine created it with from
-     * an archetype template (its revision equals the registry entry's `templateRevision`), `false`
-     * once a byte differs and for a document the Engine did not create from a template. Absent for
-     * unclassified files and where the source cannot tell (the demo Runtime).
+     * `DocumentContentState` of a registered document (the same value as the workspace `documents`
+     * section). Absent for unclassified files and where the source cannot tell (the demo Runtime).
      */
-    templateOnly: Type.Optional(Type.Boolean()),
+    contentState: Type.Optional(DocumentContentStateSchema),
     /**
      * While a queued, failed or recovery batch covers the path. `uncommitted` is a ledger entry
      * (`reason` `auto-commit-off` or `abandoned`), kept until a commit holds the path.

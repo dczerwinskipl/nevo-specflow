@@ -108,11 +108,12 @@ export const TaskDocumentEntrySchema = closed({
   path: text(DOCUMENT_PATH_MAX_LENGTH),
   type: Type.String({ pattern: CATALOGUE_ID_PATTERN }),
   /**
-   * Engine-written: the revision (sha256 of the bytes) of the content the Engine created the
-   * document with from an archetype template, as `specification.yaml` records it. While the file
-   * still has exactly this revision, it is template only. Absent for a document created otherwise.
+   * Engine-written, as `specification.yaml` records it: the revision (sha256 of the bytes) of the
+   * document's baseline, the initial content the Engine itself wrote (generated `task.md` from the
+   * title and summary). The content state is `baseline` while the file still has exactly this
+   * revision. Absent for a document created from given content.
    */
-  templateRevision: Type.Optional(sha256()),
+  baselineRevision: Type.Optional(sha256()),
 });
 export type TaskDocumentEntry = Static<typeof TaskDocumentEntrySchema>;
 

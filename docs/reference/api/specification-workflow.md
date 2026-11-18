@@ -83,10 +83,15 @@ workflow resolves and is unchanged; never in reads of several Tasks) says how th
 each document now, from the exit gates of the step the run is at and the entry gates of the step it
 certainly goes to next (the outline's `next` rule: every transition leads there; before a start, the
 step a start would activate). One entry per document:
-`{scope, documentId, relation: needed-to-finish|needed-to-start|used, step: {id, title, active},
-gate: {id, label, missingSections?}}`. `needed-to-finish` is an unmet exit gate of the active step
-(`active: true`), `needed-to-start` an unmet entry gate of the next step (it does not block now),
-`used` a satisfied gate of either. A gate names the document that satisfies it, the closest one
+`{scope, documentId, relation: needed-to-finish|needed-to-start|used, blocksNow, step: {id, title,
+active}, gate: {id, label, missingSections?}}`. `needed-to-finish` is an unmet exit gate of the
+active step (`active: true`) that applies to every result of the step; an exit gate conditioned by
+`when` on only some results relates nothing while unmet (and is `used` once satisfied).
+`needed-to-start` is an unmet entry gate of the next step, and `used` a satisfied gate of either.
+`blocksNow` is true when the unmet gate refuses the action the run waits for now: always for
+`needed-to-finish`, and for `needed-to-start` when no step is active (`not-started`, `ready`,
+`blocked`: the start of that step is refused); false for `used` and for the next step's entry gates
+while a step is active or waiting. A gate names the document that satisfies it, the closest one
 (`sections-missing`) or the unreadable one; one that found no file names every registered document
 of its type in its scope, and one that found none names nothing. A document named by several gates
 keeps the strongest relation (in that order), then the active step's gate. The evaluation is the one

@@ -57,6 +57,7 @@ const projection: ActionProjection = {
       scope: { kind: 'specification', specId: SPEC },
       documentId: 'behaviour',
       relation: 'needed-to-finish',
+      blocksNow: true,
       step: { id: 'specify', title: 'Write the specification', active: true },
       gate: { id: 'exit-1', label: 'A behaviour document', missingSections: ['Acceptance'] },
     },

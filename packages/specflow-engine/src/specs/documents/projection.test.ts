@@ -186,7 +186,7 @@ describe('projectDocumentTree', () => {
     expect(byId.behaviour!.satisfiesRequirement).toBe(false);
   });
 
-  it('reports templateOnly of registered documents by their recorded templateRevision', () => {
+  it('reports the content state of registered documents by their recorded baselineRevision', () => {
     const base = input();
     const tree = projectDocumentTree(
       input({
@@ -197,9 +197,9 @@ describe('projectDocumentTree', () => {
               id: 'overview',
               path: 'overview.md',
               type: 'overview',
-              templateRevision: 'r-overview.md',
+              baselineRevision: 'r-overview.md',
             },
-            { id: 'behaviour', path: 'behaviour.md', type: 'behaviour', templateRevision: 'r-old' },
+            { id: 'behaviour', path: 'behaviour.md', type: 'behaviour', baselineRevision: 'r-old' },
             { id: 'notes', path: 'notes.md', type: 'notes' },
           ],
         },
@@ -208,11 +208,11 @@ describe('projectDocumentTree', () => {
     );
     expect(Value.Check(DocumentTreeSchema, tree)).toBe(true);
     expect(
-      Object.fromEntries(tree.documents.map((document) => [document.path, document.templateOnly])),
+      Object.fromEntries(tree.documents.map((document) => [document.path, document.contentState])),
     ).toEqual({
-      'overview.md': true,
-      'behaviour.md': false,
-      'notes.md': false,
+      'overview.md': 'baseline',
+      'behaviour.md': 'authored',
+      'notes.md': 'authored',
       // Unclassified: no registry entry, no content state.
       'loose.md': undefined,
     });

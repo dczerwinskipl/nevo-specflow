@@ -55,7 +55,7 @@ function fakeSource(calls: string[], fail?: () => Error): TaskDocumentSource {
             type: 'behaviour',
             classification: 'registered',
             required: false,
-            templateOnly: true,
+            contentState: 'baseline',
             file: {
               kind: 'text',
               mediaType: 'text/markdown',
@@ -113,7 +113,7 @@ describe('Task document routes', () => {
     // The content state is served as the source read it.
     expect(tree.json<{ documents: unknown[] }>().documents[1]).toMatchObject({
       id: 'behaviour',
-      templateOnly: true,
+      contentState: 'baseline',
     });
     const again = await app.inject({
       url: `${base}/document-tree`,

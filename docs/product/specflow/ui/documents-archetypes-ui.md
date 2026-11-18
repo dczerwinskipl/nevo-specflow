@@ -165,7 +165,7 @@ with the full text; the field keeps focus and the typed name.
 | Dangling                  | `triangle-alert` (attention)                                 | file name, muted                    | `File missing` (attention tone)     | open a missing tab (3.6 / 5.5) | **Remove registration** (danger)                       |
 
 **Data for the document state (A6).** The read carries both facts the shared document state label is
-composed from; the tree never derives them. The content state is the tree document's `templateOnly`
+composed from; the tree never derives them. The content state is the tree document's `contentState` (`baseline` / `authored`)
 (registered documents; the same value as the Overview's workspace read; absent in demo mode, so no
 label). The relation to the workflow is the Specification's workflow projection `documentRelations`
 (`reference.api.specification-workflow`), matched to a row by `documentId` within its `scope`. The

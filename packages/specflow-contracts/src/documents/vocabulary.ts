@@ -48,6 +48,17 @@ export const CLASSIFICATIONS = ['registered', 'unclassified'] as const;
 export const ClassificationSchema = closedUnion(CLASSIFICATIONS);
 export type Classification = (typeof CLASSIFICATIONS)[number];
 
+/**
+ * What a registered document's file holds, one model for Specification and Task documents:
+ * `baseline` while it still has exactly the revision its registry entry records as
+ * `baselineRevision` (the initial content the Engine itself wrote, from an archetype template or
+ * generated, such as `task.md` from the Task's title and summary); `authored` once a person or an
+ * agent changed it, or when it was created from given content.
+ */
+export const DOCUMENT_CONTENT_STATES = ['baseline', 'authored'] as const;
+export const DocumentContentStateSchema = closedUnion(DOCUMENT_CONTENT_STATES);
+export type DocumentContentState = (typeof DOCUMENT_CONTENT_STATES)[number];
+
 /** Reasons an action is unavailable (kebab-case). Advisory in reads, authoritative in write errors. */
 export const ACTION_REASONS = [
   'protected',

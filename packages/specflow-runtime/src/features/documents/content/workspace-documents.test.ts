@@ -20,9 +20,16 @@ describe('createEngineWorkspaceDocuments', () => {
         type: 'overview',
         title: 'T',
         revision: 'r1',
-        templateOnly: false,
+        contentState: 'authored',
       },
-      { id: 'ux', path: 'sub/ux.md', type: 'ux', title: 'UX', revision: 'r2', templateOnly: true },
+      {
+        id: 'ux',
+        path: 'sub/ux.md',
+        type: 'ux',
+        title: 'UX',
+        revision: 'r2',
+        contentState: 'baseline',
+      },
     ]);
     expect(await createEngineWorkspaceDocuments(engine)('spec')).toEqual({
       state: 'available',
@@ -34,7 +41,7 @@ describe('createEngineWorkspaceDocuments', () => {
             filename: 'overview.md',
             revision: 'r1',
             kind: 'overview',
-            templateOnly: false,
+            contentState: 'authored',
           },
           {
             id: 'ux',
@@ -42,7 +49,7 @@ describe('createEngineWorkspaceDocuments', () => {
             filename: 'sub/ux.md',
             revision: 'r2',
             kind: 'ux',
-            templateOnly: true,
+            contentState: 'baseline',
           },
         ],
         overviewDocumentId: 'overview',

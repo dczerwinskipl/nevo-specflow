@@ -537,14 +537,23 @@ function entryGateBlockers(next: StartableStep): StartBlocker[] {
   return unsatisfied.length > 0 ? [{ kind: 'gates-unsatisfied', gates: unsatisfied }] : [];
 }
 
-/** The steps whose gates relate to documents at `position` (`documentRelationsOf`). */
-function relationStepsOf(definition: WorkflowDefinition, position: ActionPosition): RelationSteps {
+/**
+ * The steps whose gates relate to documents at `position` (`documentRelationsOf`): before a start
+ * the step a start would activate (it starts now); at a step, that step and the one every transition
+ * of it leads to (it starts later).
+ */
+export function relationStepsOf(
+  definition: WorkflowDefinition,
+  position: ActionPosition,
+): RelationSteps {
   switch (position.kind) {
     case 'not-started':
     case 'ready':
-      return { next: stepOf(definition, position.next.step.id) };
+      return { next: { step: stepOf(definition, position.next.step.id), startsNow: true } };
     case 'blocked':
-      return position.next ? { next: stepOf(definition, position.next.step.id) } : {};
+      return position.next
+        ? { next: { step: stepOf(definition, position.next.step.id), startsNow: true } }
+        : {};
     case 'active':
     case 'waiting': {
       const step = stepOf(definition, position.step.id);
@@ -552,7 +561,9 @@ function relationStepsOf(definition: WorkflowDefinition, position: ActionPositio
 
       return {
         ...(position.kind === 'active' ? { active: step } : {}),
-        ...(target !== undefined ? { next: stepOf(definition, target) } : {}),
+        ...(target !== undefined
+          ? { next: { step: stepOf(definition, target), startsNow: false } }
+          : {}),
       };
     }
 

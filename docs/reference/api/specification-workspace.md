@@ -90,11 +90,12 @@ Availability and action states describe only what actually exists.
   exists), in project and demo mode alike. Clients expand the summary into this document only; when
   it is absent they offer no expand action and never substitute another document (for example the
   first item).
-- `sections.documents.data.items[].templateOnly` (project mode) is `true` while the file still has
-  exactly the content the Engine created it with from an archetype template (at Create or by a
-  template create): its revision, the sha256 of its bytes, equals the `templateRevision` its registry
-  entry recorded then. It is `false` once a byte differs and for a document the Engine did not create
-  from a template. The comparison is of raw bytes: a checkout whose Git converts line endings (for
+- `sections.documents.data.items[].contentState` (project mode) is `baseline` while the file still
+  has exactly the initial content the Engine wrote (from an archetype template at Create or by a
+  template create, or generated): its revision, the sha256 of its bytes, equals the
+  `baselineRevision` its registry entry recorded then. It is `authored` once a byte differs and for a
+  document created from given content
+  ([architecture, registry rules](../../architecture/runtime/specification-documents.md)). The comparison is of raw bytes: a checkout whose Git converts line endings (for
   example `core.autocrlf` on Windows) shows the document as written. The current catalogue is not consulted. The demo Runtime
   omits it.
 - `sections.tasks` is one Engine read (`readExecution`) of the Specification's Task resources

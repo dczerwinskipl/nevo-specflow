@@ -140,7 +140,7 @@ describe('createSpecificationScaffold', () => {
           id: 'overview',
           path: 'overview.md',
           type: 'overview',
-          templateRevision: overviewSha(scaffold),
+          baselineRevision: overviewSha(scaffold),
         },
       ]);
       expect(scaffold.files).toHaveLength(2);
@@ -154,8 +154,8 @@ describe('createSpecificationScaffold', () => {
     const files = new Map(scaffold.files.map((file) => [file.relativePath, file]));
     for (const document of manifestOf(scaffold).documents) {
       const file = files.get('specs/active/my-feature/' + document.path)!;
-      expect(document.templateRevision).toBe(file.sha256);
-      expect(document.templateRevision).toBe(
+      expect(document.baselineRevision).toBe(file.sha256);
+      expect(document.baselineRevision).toBe(
         createHash('sha256').update(file.content, 'utf8').digest('hex'),
       );
     }
@@ -247,7 +247,7 @@ describe('createSpecificationScaffold', () => {
           id: 'overview',
           path: 'overview.md',
           type: 'overview',
-          templateRevision: overviewSha(scaffold),
+          baselineRevision: overviewSha(scaffold),
         },
         { id: 'research', path: 'research/findings.md', type: 'research' },
       ]);

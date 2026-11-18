@@ -8666,6 +8666,7 @@
                 "scope",
                 "documentId",
                 "relation",
+                "blocksNow",
                 "step",
                 "gate"
               ],
@@ -8738,6 +8739,9 @@
                       ]
                     }
                   ]
+                },
+                "blocksNow": {
+                  "type": "boolean"
                 },
                 "step": {
                   "type": "object",
@@ -25898,8 +25902,21 @@
                           "satisfiesRequirement": {
                             "type": "boolean"
                           },
-                          "templateOnly": {
-                            "type": "boolean"
+                          "contentState": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "baseline"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "authored"
+                                ]
+                              }
+                            ]
                           },
                           "commit": {
                             "type": "object",
@@ -32866,7 +32883,7 @@
                                 "type": "string",
                                 "pattern": "^[a-z][a-z0-9-]{0,31}$"
                               },
-                              "templateRevision": {
+                              "baselineRevision": {
                                 "type": "string",
                                 "pattern": "^[0-9a-f]{64}$"
                               }
@@ -37251,8 +37268,21 @@
                           "required": {
                             "type": "boolean"
                           },
-                          "templateOnly": {
-                            "type": "boolean"
+                          "contentState": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "baseline"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "authored"
+                                ]
+                              }
+                            ]
                           },
                           "file": {
                             "type": "object",
@@ -48637,8 +48667,21 @@
                                           "summary": {
                                             "type": "string"
                                           },
-                                          "templateOnly": {
-                                            "type": "boolean"
+                                          "contentState": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "baseline"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "authored"
+                                                ]
+                                              }
+                                            ]
                                           }
                                         }
                                       }

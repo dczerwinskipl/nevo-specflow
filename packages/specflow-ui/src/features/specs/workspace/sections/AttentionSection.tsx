@@ -8,7 +8,7 @@ import type {
   SpecificationAttentionAction,
   SpecificationAttentionEntry,
 } from '../../extensions/specificationAttentionItems';
-import { useAttentionActionsPending } from '../../extensions/attentionActionPending';
+import { usePendingActions } from '../../../../shared/state/pendingActions';
 
 /** Items shown before **Show N more** (UX contract: at most five). */
 const SHOWN = 5;
@@ -57,7 +57,7 @@ export function AttentionSection({ items }: AttentionSectionProps) {
   const id = useId();
   const [expanded, setExpanded] = useState(false);
   const { matches: beside, setElement } = useContainerMinWidth(ACTION_BESIDE_MIN_WIDTH);
-  const running = useAttentionActionsPending();
+  const running = usePendingActions();
 
   if (items.length === 0) {
     return null;

@@ -1,17 +1,18 @@
 import { useSyncExternalStore } from 'react';
 
 /*
- * The Requires attention actions whose command is running, by a key the owning module chooses
- * (`SpecificationAttentionAction.pendingKey`). An entry is plain data built outside React, so the
- * module that runs the command marks it here and Requires attention shows that button busy until
- * the module clears it. Only the module that runs a command writes its key.
+ * Actions whose command is running, by a key the module that runs the command chooses. It lets a
+ * surface that only shows an action (built as plain data outside React, for example a Requires
+ * attention entry's `pendingKey`) render its button busy while another module runs the command.
+ * Only the module that runs a command writes its key; it marks it when it sends the command and
+ * clears it once the command settled.
  */
 
 let pending: ReadonlySet<string> = new Set();
 const listeners = new Set<() => void>();
 
-/** Marks (or clears) a running action; Requires attention re-renders its button. */
-export function setAttentionActionPending(key: string, isPending: boolean): void {
+/** Marks (or clears) a running action; the surfaces showing it re-render. */
+export function setActionPending(key: string, isPending: boolean): void {
   if (pending.has(key) === isPending) {
     return;
   }
@@ -30,7 +31,7 @@ export function setAttentionActionPending(key: string, isPending: boolean): void
 }
 
 /** Whether an action's command is running now (read in a handler, outside render). */
-export function isAttentionActionPending(key: string): boolean {
+export function isActionPending(key: string): boolean {
   return pending.has(key);
 }
 
@@ -43,6 +44,6 @@ function subscribe(listener: () => void): () => void {
 }
 
 /** The running actions, for rendering their buttons busy. */
-export function useAttentionActionsPending(): ReadonlySet<string> {
+export function usePendingActions(): ReadonlySet<string> {
   return useSyncExternalStore(subscribe, snapshot, snapshot);
 }

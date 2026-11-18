@@ -13,7 +13,7 @@ export interface SpecificationAttentionAction {
   readonly disabled?: boolean;
   readonly disabledTitleKey?: 'common.notImplemented';
   /**
-   * The key its owner marks while the action's command runs (`setAttentionActionPending`): the
+   * The key its owner marks while the action's command runs (`setActionPending` in `shared/state/pendingActions`): the
    * button is then busy and disabled.
    */
   readonly pendingKey?: string;

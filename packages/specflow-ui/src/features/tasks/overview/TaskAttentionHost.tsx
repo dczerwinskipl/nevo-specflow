@@ -11,7 +11,7 @@ import { invalidateAfterTaskChange } from '../authoring/queries';
 import { useTaskActions, useTaskCommands } from '../authoring/useTaskAuthoring';
 import { StartTaskDialog } from '../execution/StartTaskDialog';
 import { useWorkflowCommands } from '../execution/useWorkflowCommands';
-import { isAttentionActionPending, setAttentionActionPending } from '../../specs';
+import { isActionPending, setActionPending } from '../../../shared/state/pendingActions';
 import { subscribeTaskAttention, taskCommandKey } from './attentionRequests';
 
 interface Dialog {
@@ -52,7 +52,7 @@ export function TaskAttentionHost({
     try {
       await invalidateAfterTaskChange(queryClient, specId);
     } finally {
-      setAttentionActionPending(taskCommandKey(specId, kind, taskId), false);
+      setActionPending(taskCommandKey(specId, kind, taskId), false);
     }
   };
 
@@ -78,8 +78,8 @@ export function TaskAttentionHost({
           case 'start-step':
           case 'resume-task': {
             const key = taskCommandKey(specId, request.kind, request.taskId);
-            if (!isAttentionActionPending(key)) {
-              setAttentionActionPending(key, true);
+            if (!isActionPending(key)) {
+              setActionPending(key, true);
               (request.kind === 'start-step' ? startStep : resumeTask)(request.taskId);
             }
 

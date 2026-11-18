@@ -2,11 +2,8 @@ import { randomUUID } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
-import {
-  projectCloseOperation,
-  projectClosePreview,
-  projectCreatedSpecification,
-} from '../src/specs/operations/projection';
+import { projectCreatedSpecification } from '../src/specs/create/projection';
+import { projectCloseOperation, projectClosePreview } from '../src/specs/operations/projection';
 import type { CloseJournal, ClosePlan, CloseStage } from '../src/specs/lifecycle/model';
 
 const operationId = randomUUID();

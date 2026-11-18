@@ -295,9 +295,8 @@ export {
 } from './specs/operations/api';
 
 // Stable, transport-neutral operation summaries. Durable journals stay diagnostic.
+export { projectCreatedSpecification, type PublicCreateOperation } from './specs/create';
 export {
-  projectCreatedSpecification,
-  type PublicCreateOperation,
   type PublicCloseOperation,
   type PublicClosePreview,
   type PublicCloseSourceWorkspace,

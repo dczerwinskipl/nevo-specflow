@@ -1,9 +1,6 @@
 import type { SpecFlowEngine } from '../../../application';
 import { readCreateJournal } from '../journal';
-import {
-  projectCreatedSpecification,
-  type PublicCreateOperation,
-} from '../../operations/projection';
+import { projectCreatedSpecification, type PublicCreateOperation } from '../projection';
 
 export type PublicCreateInspection =
   | PublicCreateOperation

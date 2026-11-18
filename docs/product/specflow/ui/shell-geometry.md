@@ -83,8 +83,6 @@ These findings came from the audit and stay open. None of them is part of the ge
   session. This needs an information-model decision. The navigator could show places with counts
   and state rather than full object lists, and "2 active" could split into waiting for you and
   working.
-- **Back from a Full Task is not the navigator's Tasks.** The navigator's Tasks is the Tasks page
-  (`/specs/:specId/tasks`), but the Full Task's Back leads to the Overview's Tasks section.
 - **Attention does not roll up** from a Task to the Specification (a Task row carries its Requires
   attention overlay; the Specifications list row does not).
 - **The Specification switcher shows no state:** no attention or progress per item, and no New

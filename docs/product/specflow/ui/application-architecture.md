@@ -372,8 +372,9 @@ Locale resolution, persistence, stable-key rules, and CLI/UI ownership are defin
 
 Product navigation starts with the Specification switcher (`SpecificationSwitcher`, with **Browse
 all specifications** leading to the list). Within a selected Specification it shows that
-Specification's views in this order: Overview, Sessions, Tasks (an anchor to the Overview's Tasks
-section), Documents, then Changes and Repository when Git is available (`productNavigationModel.ts`).
+Specification's views in this order: Overview, Sessions, Tasks (the Tasks page, also the parent
+of a Full Task's Back), Documents, then Changes and Repository when Git is available
+(`productNavigationModel.ts`).
 Full Task is not a sidebar list page.
 Project Settings earns a global entry when its real surface exists. UI Playground remains available
 by direct URL for development, never as a persistent product entry.

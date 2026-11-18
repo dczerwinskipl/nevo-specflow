@@ -231,13 +231,15 @@ screen opened from a deep link, a reload or another tab (`app/navigation/backPar
 | A document promoted from the Overview | the Overview it came from (that visit's router state; see below)  |
 | A documentation article               | the previous article, then the documentation (the reader's rules) |
 | Activity history                      | the Overview (the owning Primary)                                 |
-| A Task page                           | the Specification's Tasks (the Overview's Tasks section)          |
+| A Task page                           | the Tasks page (the navigation's Tasks), a deep link included     |
 | A refused new Session (Sessions off)  | the Overview (not the turned-off Sessions area)                   |
 | A deeper Secondary screen             | its parent in the same stack                                      |
 
 Back keeps the context the existing contracts provide: the selected Specification and its
 collection, and the documentation's workspace, search and reading positions (the reader's own
-rules). A Back to a routed parent moves in one of two ways:
+rules). A Task page's Back, and its Tasks crumb on Wide and Compact, open the Tasks page
+unfiltered: a `group` or `blocking` filter of the Tasks page the Task was opened from is not carried
+to the Task page. A Back to a routed parent moves in one of two ways:
 
 - when the previous history entry is the parent's own visit (a document opened from the Overview
   records that entry's index), Back steps back in history, also after a reload of the document

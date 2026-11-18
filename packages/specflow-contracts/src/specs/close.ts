@@ -194,8 +194,8 @@ export type IntegrationBranchCandidate = Static<typeof IntegrationBranchCandidat
 /**
  * A repository precondition of a Close the owner fixes in the repository (`CLOSE_PREFLIGHT`, from the
  * preview or the Close): `checkout` is the Specification's own checkout or the one it is integrated
- * into. `uncommitted-changes` names at most 10 `paths` of `count`. `integration-target-missing` (no
- * `git.integrationTargetBranch`) names at most 50 `candidates` ordered by their first fact, and
+ * into. `uncommitted-changes` names at most 10 `paths` of `count` in the checkout at the absolute
+ * `checkoutPath`. `integration-target-missing` (no `git.integrationTargetBranch`) names at most 50 `candidates` ordered by their first fact, and
  * `otherBranches`: at most 200 of the `otherBranchCount` remaining local branches by name, without
  * the Specification's own linked branch and branches `git.worktrees.branchPattern` names. Both may be
  * empty, and no branch (`main` included) is assumed. With Git off (`git.enabled: false` or no `git:`
@@ -209,6 +209,8 @@ export const RepositoryBlockerSchema = Type.Union([
     {
       kind: Type.Literal('uncommitted-changes'),
       checkout: CloseCheckoutRoleSchema,
+      /** The absolute path of that checkout, where the owner commits the files. */
+      checkoutPath: Type.String({ minLength: 1, maxLength: 4096 }),
       paths: Type.Array(Type.String({ maxLength: 4096 }), { maxItems: 10 }),
       count: Type.Integer({ minimum: 1 }),
     },

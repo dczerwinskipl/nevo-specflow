@@ -1,19 +1,25 @@
-import type { CloseRefusalBlocker, RepositoryBlocker } from '@nevo/specflow-contracts/specs';
+import type {
+  CloseMerge,
+  CloseRefusalBlocker,
+  RepositoryBlocker,
+} from '@nevo/specflow-contracts/specs';
 import type { CloseSpecificationResult } from '../api';
 import { workflowRefusalKey, type WorkflowRefusal } from '../refusal';
 
 /**
- * The one outcome the Close dialog presents (never two at once):
- * - `blocked`: what holds the Close (workflow, running Sessions, repository preconditions), with
- *   only Dismiss;
- * - `checking`: the preview runs the repository checks, or (`documents`) waits for saved documents
- *   that are still being committed and is read again ({@link waitsForDocumentCommits}); the confirm
- *   waits for it;
- * - `cannot-start`: the preview refused for a reason that is not a blocker list;
- * - `not-closed`: the Close itself was refused (the same planned Close may be confirmed again);
+ * The one outcome the Close dialog presents (never two at once; "ready" never while a check is
+ * pending, failed or blocking, or after a refusal):
+ * - `blocked`: what holds the Close (workflow, running Sessions, repository preconditions); the
+ *   repository ones are checked again on request;
+ * - `checking`: the preview runs the repository checks (also after "Check again"), or
+ *   (`documents`) waits for saved documents that are still being committed and is read again
+ *   ({@link waitsForDocumentCommits}); nothing can be confirmed;
+ * - `cannot-start`: the check failed: the preview refused for a reason that is not a blocker list,
+ *   or could not be read;
+ * - `not-closed`: the Close itself was refused for a reason that is not a blocker list;
  * - `needs-attention`: the Close ran but did not complete;
- * - `closing`: the confirmed Close runs;
- * - `ready`: the preview planned the Close; the confirm sends it.
+ * - `closing`: the confirmed Close runs (the planned facts stay on screen, read-only);
+ * - `ready`: the preview planned the Close and what it merges; the confirm sends it.
  */
 export type CloseDialogOutcome =
   | {
@@ -28,14 +34,15 @@ export type CloseDialogOutcome =
       readonly kind: 'needs-attention';
       readonly status: Exclude<CloseSpecificationResult['status'], 'completed'>;
     }
-  | { readonly kind: 'closing' }
-  | { readonly kind: 'ready' };
+  | { readonly kind: 'closing'; readonly merge: CloseMerge }
+  | { readonly kind: 'ready'; readonly merge: CloseMerge };
 
 export interface CloseDialogFacts {
   /** The workflow blockers of the projection; the preview is not read while there are any. */
   readonly workflowBlockers?: readonly CloseRefusalBlocker[];
   /** The running Sessions read beside the workflow blockers. */
   readonly occupancyBlockers?: readonly CloseRefusalBlocker[];
+  /** `pending` also while the preview is read again after "Check again". */
   readonly preview:
     | { readonly status: 'pending' }
     | {
@@ -44,7 +51,7 @@ export interface CloseDialogFacts {
         /** The preview was read again for document commits as often as it is, without a change. */
         readonly documentRechecksExhausted?: boolean;
       }
-    | { readonly status: 'success' };
+    | { readonly status: 'success'; readonly merge: CloseMerge };
   readonly close:
     | { readonly status: 'idle' | 'pending' }
     | { readonly status: 'error'; readonly refusal: WorkflowRefusal }
@@ -100,11 +107,13 @@ export function closeDialogOutcome(facts: CloseDialogFacts): CloseDialogOutcome 
     return { kind: 'cannot-start', reasonKey: closeRefusalKey(previewRefusal) };
   }
 
-  if (facts.close.status === 'pending') {
-    return { kind: 'closing' };
+  if (facts.preview.status !== 'success') {
+    return { kind: 'checking' };
   }
 
-  return facts.preview.status === 'pending' ? { kind: 'checking' } : { kind: 'ready' };
+  return facts.close.status === 'pending'
+    ? { kind: 'closing', merge: facts.preview.merge }
+    : { kind: 'ready', merge: facts.preview.merge };
 }
 
 /**

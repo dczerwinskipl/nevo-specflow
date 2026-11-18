@@ -180,7 +180,13 @@ describe('E2.T16 authorized HTTP lifecycle adapters', () => {
       code: 'CLOSE_PREFLIGHT',
       error: 'CLOSE_PREFLIGHT',
       repository: [
-        { kind: 'uncommitted-changes', checkout: 'specification', paths: ['stray.txt'], count: 1 },
+        {
+          kind: 'uncommitted-changes',
+          checkout: 'specification',
+          checkoutPath: root,
+          paths: ['stray.txt'],
+          count: 1,
+        },
       ],
     };
     try {

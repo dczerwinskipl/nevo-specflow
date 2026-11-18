@@ -239,6 +239,7 @@ export async function inspectCleanGitWorkspace(
                 {
                   kind: 'uncommitted-changes',
                   checkout: role,
+                  checkoutPath: root,
                   paths: unclean.slice(0, UNCLEAN_PATHS_NAMED),
                   count: unclean.length,
                 },

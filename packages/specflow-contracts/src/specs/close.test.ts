@@ -20,7 +20,13 @@ describe('Close refusal contract', () => {
       code: 'CLOSE_PREFLIGHT',
       error: 'CLOSE_PREFLIGHT',
       repository: [
-        { kind: 'uncommitted-changes', checkout: 'specification', paths: ['specs/a.md'], count: 3 },
+        {
+          kind: 'uncommitted-changes',
+          checkout: 'specification',
+          checkoutPath: '/repo/.nevo/worktrees/nevo-1',
+          paths: ['specs/a.md'],
+          count: 3,
+        },
         missingTarget,
         { kind: 'integration-target-branch', expectedBranch: 'main', branch: 'feature' },
         { kind: 'git-operation-in-progress', checkout: 'integration-target' },
@@ -32,7 +38,15 @@ describe('Close refusal contract', () => {
     expect(
       Value.Check(CloseErrorSchema, {
         ...refusal,
-        repository: [{ kind: 'uncommitted-changes', checkout: 'elsewhere', paths: [], count: 1 }],
+        repository: [
+          {
+            kind: 'uncommitted-changes',
+            checkout: 'elsewhere',
+            checkoutPath: '/repo',
+            paths: [],
+            count: 1,
+          },
+        ],
       }),
     ).toBe(false);
     expect(

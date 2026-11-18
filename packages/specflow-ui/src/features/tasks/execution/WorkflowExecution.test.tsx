@@ -28,6 +28,15 @@ import { WorkflowNow } from './WorkflowNow';
 afterEach(cleanup);
 
 const never = () => new Promise<never>(() => undefined);
+const planned = {
+  operationId: 'op-1',
+  merge: {
+    status: 'integrates' as const,
+    sourceBranch: 'nevo-1/sso',
+    targetBranch: 'release/2026.11',
+    commitsAhead: 2,
+  },
+};
 
 function fakeExecutionApi(overrides: Partial<WorkflowExecutionApi> = {}) {
   return {
@@ -262,7 +271,6 @@ describe('manual workflow execution', () => {
         specTitle="Single sign-on"
         projection={specificationWorkflowProjection('close-blocked')}
         tasks={new Map([['t-02', { id: 't-02', title: 'Token exchange', state: 'In progress' }]])}
-        cancelledTasks={[]}
         onAbandonInstead={vi.fn()}
         onSeeWorkflow={vi.fn()}
         onSeeTasks={vi.fn()}
@@ -276,9 +284,11 @@ describe('manual workflow execution', () => {
       within(dialog)
         .getAllByRole('heading', { level: 3 })
         .map((heading) => heading.textContent),
-    ).toEqual(['Workflow · 1', 'Unfinished tasks · 1', 'Pending writes · 1']);
+    ).toEqual(['Workflow', 'Unfinished tasks · 1', 'Pending writes · 1']);
     expect(within(dialog).getByRole('button', { name: 'Abandon instead' })).toBeTruthy();
-    expect(within(dialog).queryByRole('button', { name: 'Close specification' })).toBeNull();
+    expect(within(dialog).queryByRole('button', { name: 'Close and archive' })).toBeNull();
+    // Workflow blockers are not re-checked from here: only Dismiss.
+    expect(within(dialog).queryByRole('button', { name: 'Check again' })).toBeNull();
     expect(within(dialog).getAllByRole('button', { name: 'Dismiss' })).toHaveLength(1);
   });
 
@@ -304,7 +314,6 @@ describe('manual workflow execution', () => {
         specTitle="Single sign-on"
         projection={specificationWorkflowProjection('close-blocked')}
         tasks={new Map([['t-02', { id: 't-02', title: 'Token exchange', state: 'In progress' }]])}
-        cancelledTasks={[]}
         onSeeWorkflow={vi.fn()}
         onSeeTasks={vi.fn()}
         onOpenTask={vi.fn()}
@@ -319,12 +328,7 @@ describe('manual workflow execution', () => {
         within(dialog)
           .getAllByRole('heading', { level: 3 })
           .map((heading) => heading.textContent),
-      ).toEqual([
-        'Running sessions · 1',
-        'Workflow · 1',
-        'Unfinished tasks · 1',
-        'Pending writes · 1',
-      ]),
+      ).toEqual(['Running sessions', 'Workflow', 'Unfinished tasks · 1', 'Pending writes · 1']),
     );
     expect(execution.closeOccupancy).toHaveBeenCalledWith(SPEC, expect.anything());
     expect(execution.closePreview).not.toHaveBeenCalled();
@@ -483,7 +487,6 @@ describe('manual workflow execution', () => {
         specTitle="Single sign-on"
         projection={specificationWorkflowProjection('abandoned')}
         tasks={new Map([['t-02', { id: 't-02', title: 'Token exchange', state: 'Draft' }]])}
-        cancelledTasks={[]}
         onSeeWorkflow={vi.fn()}
         onSeeTasks={vi.fn()}
         onOpenTask={vi.fn()}
@@ -491,13 +494,13 @@ describe('manual workflow execution', () => {
       />,
       {
         execution: fakeExecutionApi({
-          closePreview: vi.fn(() => Promise.resolve({ operationId: 'op-1' })),
+          closePreview: vi.fn(() => Promise.resolve(planned)),
           close,
         }),
       },
     );
     const submit = await screen.findByRole<HTMLButtonElement>('button', {
-      name: 'Close specification',
+      name: 'Close and archive',
     });
     await waitFor(() => expect(submit.disabled).toBe(false));
     fireEvent.click(submit);
@@ -520,7 +523,6 @@ describe('manual workflow execution', () => {
         specTitle="Single sign-on"
         projection={specificationWorkflowProjection('abandoned')}
         tasks={new Map()}
-        cancelledTasks={[]}
         onSeeWorkflow={vi.fn()}
         onSeeTasks={vi.fn()}
         onOpenTask={vi.fn()}
@@ -528,13 +530,13 @@ describe('manual workflow execution', () => {
       />,
       {
         execution: fakeExecutionApi({
-          closePreview: vi.fn(() => Promise.resolve({ operationId: 'op-1' })),
+          closePreview: vi.fn(() => Promise.resolve(planned)),
           close,
         }),
       },
     );
     const submit = await screen.findByRole<HTMLButtonElement>('button', {
-      name: 'Close specification',
+      name: 'Close and archive',
     });
     await waitFor(() => expect(submit.disabled).toBe(false));
     fireEvent.click(submit);
@@ -550,6 +552,7 @@ describe('manual workflow execution', () => {
       {
         kind: 'uncommitted-changes',
         checkout: 'specification',
+        checkoutPath: '/repo/.nevo/worktrees/nevo-1',
         paths: ['specs/active/sso/overview.md'],
         count: 3,
       },
@@ -570,7 +573,6 @@ describe('manual workflow execution', () => {
         specTitle="Single sign-on"
         projection={specificationWorkflowProjection('abandoned')}
         tasks={new Map()}
-        cancelledTasks={[]}
         onSeeWorkflow={vi.fn()}
         onSeeTasks={vi.fn()}
         onOpenTask={vi.fn()}
@@ -585,19 +587,20 @@ describe('manual workflow execution', () => {
     );
 
     expect((await screen.findByText(/cannot close yet/)).textContent).toBe(
-      'Single sign-on cannot close yet: the checkout of the specification has files that are not committed and no integration branch is configured.',
+      'Single sign-on cannot close yet: 2 repository problems.',
     );
     const dialog = screen.getByRole('dialog');
     expect(
       within(dialog)
         .getAllByRole('heading', { level: 3 })
         .map((heading) => heading.textContent),
-    ).toEqual(['Files not committed · 3', 'No integration branch configured']);
+    ).toEqual(['Uncommitted specification files · 3', 'No integration branch configured']);
     expect(within(dialog).getByText('specs/active/sso/overview.md')).toBeTruthy();
     expect(within(dialog).getByText('and 2 more')).toBeTruthy();
     expect(within(dialog).queryByText('Ready to close')).toBeNull();
-    // Only Dismiss: nothing to confirm while the repository holds the Close.
-    expect(within(dialog).queryByRole('button', { name: 'Close specification' })).toBeNull();
+    // Nothing to confirm while the repository holds the Close: Dismiss, or check again.
+    expect(within(dialog).queryByRole('button', { name: 'Close and archive' })).toBeNull();
+    expect(within(dialog).getByRole('button', { name: 'Check again' })).toBeTruthy();
     expect(close).not.toHaveBeenCalled();
   });
 
@@ -605,7 +608,13 @@ describe('manual workflow execution', () => {
     const pending = refusal('DOCUMENT_COMMITS_PENDING', 409, { cause: 'commit-pending' });
     const dirty = refusal('CLOSE_PREFLIGHT', 422);
     (dirty.cause as { data: Record<string, unknown> }).data.repository = [
-      { kind: 'uncommitted-changes', checkout: 'specification', paths: ['notes.txt'], count: 1 },
+      {
+        kind: 'uncommitted-changes',
+        checkout: 'specification',
+        checkoutPath: '/repo',
+        paths: ['notes.txt'],
+        count: 1,
+      },
     ];
     const closePreview = vi
       .fn<WorkflowExecutionApi['closePreview']>()
@@ -619,7 +628,6 @@ describe('manual workflow execution', () => {
         specTitle="Single sign-on"
         projection={specificationWorkflowProjection('abandoned')}
         tasks={new Map()}
-        cancelledTasks={[]}
         onSeeWorkflow={vi.fn()}
         onSeeTasks={vi.fn()}
         onOpenTask={vi.fn()}
@@ -649,7 +657,6 @@ describe('manual workflow execution', () => {
         specTitle="Single sign-on"
         projection={specificationWorkflowProjection('abandoned')}
         tasks={new Map()}
-        cancelledTasks={[]}
         onSeeWorkflow={vi.fn()}
         onSeeTasks={vi.fn()}
         onOpenTask={vi.fn()}
@@ -681,7 +688,6 @@ describe('manual workflow execution', () => {
         specTitle="Single sign-on"
         projection={specificationWorkflowProjection('abandoned')}
         tasks={new Map()}
-        cancelledTasks={[]}
         onSeeWorkflow={vi.fn()}
         onSeeTasks={vi.fn()}
         onOpenTask={vi.fn()}
@@ -694,20 +700,17 @@ describe('manual workflow execution', () => {
     expect((await within(dialog).findByRole('alert')).textContent).toContain(
       'Commit them from Documents, then close again.',
     );
-    expect(within(dialog).queryByText('Files not committed', { exact: false })).toBeNull();
+    expect(within(dialog).queryByText('Uncommitted', { exact: false })).toBeNull();
     expect(within(dialog).queryByText('Ready to close')).toBeNull();
-    expect(
-      within(dialog).getByRole<HTMLButtonElement>('button', { name: 'Close specification' })
-        .disabled,
-    ).toBe(true);
+    expect(within(dialog).queryByRole('button', { name: 'Close and archive' })).toBeNull();
   });
 
   it('says the repository is being checked, then shows one outcome for an abandoned Specification', async () => {
-    let planned: (value: { operationId: string }) => void = () => undefined;
+    let answer: (value: typeof planned) => void = () => undefined;
     const closePreview = vi.fn(
       () =>
-        new Promise<{ operationId: string }>((resolve) => {
-          planned = resolve;
+        new Promise<typeof planned>((resolve) => {
+          answer = resolve;
         }),
     );
     renderWith(
@@ -718,7 +721,6 @@ describe('manual workflow execution', () => {
         specTitle="Single sign-on"
         projection={specificationWorkflowProjection('abandoned')}
         tasks={new Map()}
-        cancelledTasks={[]}
         onSeeWorkflow={vi.fn()}
         onSeeTasks={vi.fn()}
         onOpenTask={vi.fn()}
@@ -727,24 +729,24 @@ describe('manual workflow execution', () => {
       { execution: fakeExecutionApi({ closePreview }) },
     );
     const dialog = screen.getByRole('dialog');
-    const submit = within(dialog).getByRole<HTMLButtonElement>('button', {
-      name: 'Close specification',
-    });
 
     expect((await within(dialog).findByRole('status')).textContent).toContain(
-      'Checking the repository',
+      'Checking whether Single sign-on can close…',
     );
-    expect(submit.disabled).toBe(true);
+    // Only Cancel while checking: nothing to confirm yet.
+    expect(within(dialog).queryByRole('button', { name: 'Close and archive' })).toBeNull();
     expect(within(dialog).queryByText('Ready to close')).toBeNull();
 
-    act(() => planned({ operationId: 'op-1' }));
+    act(() => answer(planned));
 
-    expect(await within(dialog).findByText('Ready to close')).toBeTruthy();
-    expect(
-      within(dialog).getByText('The workflow ended as abandoned and the repository checks passed.'),
-    ).toBeTruthy();
-    expect(within(dialog).queryByText('Checking the repository')).toBeNull();
+    const submit = await within(dialog).findByRole<HTMLButtonElement>('button', {
+      name: 'Close and archive',
+    });
     expect(submit.disabled).toBe(false);
+    // Abandoned: the reason and the facts, without a "ready" banner.
+    expect(within(dialog).queryByText('Ready to close')).toBeNull();
+    expect(within(dialog).getByText('Recorded as not delivered')).toBeTruthy();
+    expect(within(dialog).queryByText(/Checking whether/)).toBeNull();
   });
   it('names the open Tasks that keep the Specification from completing, in Now and in Finish', () => {
     renderWith(

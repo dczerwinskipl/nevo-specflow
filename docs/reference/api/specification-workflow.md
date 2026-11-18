@@ -31,17 +31,18 @@ project mode (the demo Runtime has no Engine and serves none); without an Engine
 
 ## Routes
 
-| HTTP | Route                                               | Capability                 | Meaning                                    |
-| ---- | --------------------------------------------------- | -------------------------- | ------------------------------------------ |
-| GET  | `/api/specs/:specId/workflow/actions`               | `spec.view`                | Projection of the Specification            |
-| GET  | `/api/specs/:specId/tasks/:taskId/workflow/actions` | `spec.view`                | Projection of a Task                       |
-| POST | `/api/specs/:specId/workflow/start`                 | `spec.manage`              | Start or resume the next step              |
-| POST | `/api/specs/:specId/tasks/:taskId/workflow/start`   | `spec.manage`              | Same for a Task                            |
-| POST | `/api/specs/:specId/workflow/finish`                | `spec.manage`              | Finish the active attempt                  |
-| POST | `/api/specs/:specId/tasks/:taskId/workflow/finish`  | `spec.manage`              | Same for a Task                            |
-| POST | `/api/specs/:specId/workflow/return`                | `spec.manage`              | Return to a declared earlier step          |
-| POST | `/api/specs/:specId/tasks/:taskId/workflow/return`  | `spec.manage`              | Same for a Task                            |
-| POST | `/api/specs/:specId/workflow/abandon`               | `spec.close-specification` | End the Specification without realizing it |
+| HTTP | Route                                               | Capability                 | Meaning                                                           |
+| ---- | --------------------------------------------------- | -------------------------- | ----------------------------------------------------------------- |
+| GET  | `/api/specs/:specId/workflow/actions`               | `spec.view`                | Projection of the Specification                                   |
+| GET  | `/api/specs/:specId/tasks/:taskId/workflow/actions` | `spec.view`                | Projection of a Task                                              |
+| POST | `/api/specs/:specId/workflow/start`                 | `spec.manage`              | Start or resume the next step                                     |
+| POST | `/api/specs/:specId/tasks/:taskId/workflow/start`   | `spec.manage`              | Same for a Task                                                   |
+| POST | `/api/specs/:specId/workflow/finish`                | `spec.manage`              | Finish the active attempt                                         |
+| POST | `/api/specs/:specId/tasks/:taskId/workflow/finish`  | `spec.manage`              | Same for a Task                                                   |
+| POST | `/api/specs/:specId/workflow/reevaluate-wait`       | `spec.manage`              | Deliver a missed completion event to a Specification wait attempt |
+| POST | `/api/specs/:specId/workflow/return`                | `spec.manage`              | Return to a declared earlier step                                 |
+| POST | `/api/specs/:specId/tasks/:taskId/workflow/return`  | `spec.manage`              | Same for a Task                                                   |
+| POST | `/api/specs/:specId/workflow/abandon`               | `spec.close-specification` | End the Specification without realizing it                        |
 
 Capabilities are checked on the Specification scope before the body is read. All answers are
 `Cache-Control: no-store`; bodies are limited to 64 KiB.
@@ -162,6 +163,11 @@ reason?}]` (as the CLI's `--task-decisions-file`): applied after `tasks` and bef
   HEAD stays consistent; edits of Tasks HEAD registers are never held with it); the rest is committed. Committing the edited files with Git releases them for the next finish. A failed
   post action does not fail the finish and runs again on a repeated finish. A different finish of that attempt is
   `WORKFLOW_ATTEMPT_MISMATCH` (409).
+- `reevaluate-wait` takes `{step, attempt}` from `attention.waitAttempt` and returns
+  `{step, attempt, status}`. The status is `settled` when the command completes the wait
+  and `already-settled` when the named attempt already took the `tasks-finished` transition.
+  A stale attempt with a different outcome yields `WORKFLOW_ATTEMPT_MISMATCH` (409).
+  Open, escalated or broken Tasks yield `WORKFLOW_TASK_BLOCKED` (409).
 - `abandon` is final. A retry with the same reason returns the same result; it is not a bypass of Close:
   pending writes, broken Tasks and other operations refuse it.
 

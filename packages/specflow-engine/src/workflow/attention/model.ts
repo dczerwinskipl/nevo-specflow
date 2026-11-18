@@ -18,6 +18,8 @@ export { BLOCKING_TASK_CAUSES, type BlockingTask, type BlockingTaskCause } from 
 export const ATTENTION_ITEM_REASONS = [
   ...ATTENTION_REASONS,
   'task-broken',
+  'wait-ready-to-settle',
+  'wait-transition-missing',
   'definition-changed',
   'context-unresolved',
   'dependency-unsatisfiable',
@@ -33,6 +35,7 @@ export const ATTENTION_ACTIONS = [
   'start-step',
   /** Return the run to an earlier step (the workflow menu). */
   'return-to-step',
+  'reevaluate-wait',
   /** Choose a provider or model, or fix the agent archetype, of the step. */
   'configure-archetype',
   /** Open the Specification's Tasks the item names (`taskIds`) and decide them. */
@@ -67,6 +70,7 @@ export interface AttentionItem {
   readonly step?: string;
   /** The step's title, from the definition. */
   readonly stepTitle?: string;
+  readonly waitAttempt?: { readonly step: string; readonly attempt: number };
   readonly reason: AttentionItemReason;
   readonly actor: AttentionActor;
   /** The one primary action. */

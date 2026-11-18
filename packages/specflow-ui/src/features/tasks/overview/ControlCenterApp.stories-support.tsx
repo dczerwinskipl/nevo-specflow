@@ -78,6 +78,7 @@ function services(source: ControlCenterSource) {
       start: never,
       finish: never,
       returnTo: never,
+      reevaluateWait: never,
       abandon: never,
       closePreview: never,
       closeOccupancy: never,

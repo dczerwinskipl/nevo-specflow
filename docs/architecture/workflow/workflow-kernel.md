@@ -50,6 +50,11 @@ coordinator, executors and actors). The code lives in two places:
   applies each decision with its effects in one store change. The Task resource format is
   `packages/specflow-engine/src/tasks/resource/`.
 
+An owner can re-evaluate an active Specification wait after restoring closed Task records.
+Inspection offers the action with the step and attempt. The command validates the pinned definition
+and Task state under the project lock and delivers `tasks-finished` through `settleWait`.
+The recorded attempt outcome makes a retry safe, including after interrupted journal publication.
+
 ## One core, two entry points
 
 The core is subject-neutral. A **subject** is either the Specification or one of its Tasks:

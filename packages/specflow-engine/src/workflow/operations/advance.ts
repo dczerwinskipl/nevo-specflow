@@ -14,6 +14,7 @@ import {
   allTasksClosed,
   applyTaskEffects,
   blockingTasks,
+  isTaskClosed,
   isTaskEscalated,
   tasksOpenAtCompletion,
   tasksStuck,
@@ -150,6 +151,26 @@ export function assertNoOpenTasksAtCompletion(
 const escalatedTasks = (tasks: readonly ExecutionTask[]) =>
   tasks.filter(isTaskEscalated).sort((left, right) => (left.taskId < right.taskId ? -1 : 1));
 
+export function waitRecoveryBlockers(
+  tasks: readonly ExecutionTask[],
+  broken: readonly string[],
+): string[] {
+  return [
+    ...broken,
+    ...tasks
+      .filter((task) => !isTaskClosed(task) || isTaskEscalated(task))
+      .map((task) => task.taskId),
+  ].sort();
+}
+
+export function waitCompletionTransition(definition: WorkflowDefinition, stepId: string) {
+  const step = findStep(definition, stepId);
+
+  return step?.kind === 'wait'
+    ? step.transitions.find((transition) => transition.on === 'tasks-finished')
+    : undefined;
+}
+
 /** Checked on the state the change would produce, before anything is written. */
 function assertTasksDecided(context: AdvanceContext, step: string): void {
   const tasks = [...context.set.tasks()].sort((left, right) =>
@@ -193,8 +214,8 @@ function completeWait(
 
 /**
  * What a Specification active on its wait step needs: escalated Tasks give `task-escalated` (all of
- * them, in id order), otherwise Tasks that can no longer progress (broken Tasks included), or no open
- * Task at all, give `tasks-stuck`; else it waits. Pure.
+ * them, in id order), otherwise Tasks that can no longer progress (broken Tasks included) give
+ * `tasks-stuck`; else it waits. Explicit recovery of a wait with closed Tasks is projected separately.
  */
 export function waitDecision(
   step: string,
@@ -211,9 +232,7 @@ export function waitDecision(
     };
   }
 
-  // Every Task closed while the wait is still active only happens when a Task file changed outside
-  // the Engine (for example a restored record): no Task event will complete the wait any more.
-  if (!tasksStuck(tasks, broken) && !allTasksClosed(tasks, broken)) {
+  if (!tasksStuck(tasks, broken)) {
     return { kind: 'none', reason: 'waiting-for-tasks' };
   }
 

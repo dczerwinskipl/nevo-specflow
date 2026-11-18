@@ -2,6 +2,8 @@ import type {
   AbandonSpecificationResult,
   FinishWorkflowRequest,
   FinishWorkflowResult,
+  ReevaluateWaitRequest,
+  ReevaluateWaitResult,
   ReturnWorkflowRequest,
   ReturnWorkflowResult,
   StartWorkflowRequest,
@@ -40,6 +42,7 @@ export interface WorkflowExecutionApi {
     subject: WorkflowSubjectRef,
     input: ReturnWorkflowRequest,
   ): Promise<ReturnWorkflowResult>;
+  reevaluateWait(specId: string, input: ReevaluateWaitRequest): Promise<ReevaluateWaitResult>;
   abandon(specId: string, reason: string): Promise<AbandonSpecificationResult>;
   closePreview(specId: string, signal?: AbortSignal): Promise<ClosePreviewResult>;
   /** What else holds the checkout a Close would remove (running agent Turns), without planning it. */
@@ -66,6 +69,10 @@ export function createRuntimeWorkflowExecutionApi(transport: ApiTransport): Work
       transport.post(`${workflowBase(subject)}/finish`, input, { operation: 'workflow.finish' }),
     returnTo: (subject, input) =>
       transport.post(`${workflowBase(subject)}/return`, input, { operation: 'workflow.return' }),
+    reevaluateWait: (specId, input) =>
+      transport.post(`${specBase(specId)}/workflow/reevaluate-wait`, input, {
+        operation: 'workflow.reevaluate-wait',
+      }),
     abandon: (specId, reason) =>
       transport.post(
         `${specBase(specId)}/workflow/abandon`,

@@ -14,6 +14,7 @@ import {
   GateStatusSchema,
   OpenTaskSchema,
   WorkflowActorSchema,
+  WorkflowAttemptRefSchema,
   WorkflowRunPositionSchema,
   WorkflowStepSchema,
   WorkflowSubjectSchema,
@@ -51,6 +52,14 @@ export const StartWorkflowRequestSchema = Type.Object(
   { additionalProperties: false },
 );
 export type StartWorkflowRequest = Static<typeof StartWorkflowRequestSchema>;
+
+export const ReevaluateWaitRequestSchema = WorkflowAttemptRefSchema;
+export type ReevaluateWaitRequest = Static<typeof ReevaluateWaitRequestSchema>;
+export const ReevaluateWaitResultSchema = Type.Object({
+  ...WorkflowAttemptRefSchema.properties,
+  status: literals(['settled', 'already-settled'] as const),
+});
+export type ReevaluateWaitResult = Static<typeof ReevaluateWaitResultSchema>;
 
 /** A draft Task a step that produces Tasks proposes (`TaskProposal` of the Engine). */
 export const TaskProposalSchema = Type.Object(

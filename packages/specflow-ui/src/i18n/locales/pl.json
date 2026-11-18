@@ -2284,6 +2284,8 @@
       "postActionHeld": "Krok jest zakończony. {{edited}} zmieniono poza SpecFlow po zapisaniu przez SpecFlow, więc pliki tego zadania oraz zadań dodanych lub usuniętych od tego czasu pozostają niezatwierdzone; reszta stanu przepływu jest zatwierdzona. Zatwierdź te pliki w Git; w przeciwnym razie obejmie je Zamknięcie.",
       "lastPrefix": "Ostatnio: {{step}} · ",
       "alreadyFinished": "Ten krok został już zakończony. Poniżej widać, co można zrobić teraz.",
+      "reevaluateWait": "Zakończ oczekiwanie",
+      "waitReadyToSettle": "Wszystkie zadania są zamknięte. Możesz zakończyć oczekiwanie.",
       "startWorkflow": "Rozpocznij przepływ",
       "operations": "Operacje przepływu",
       "history": "Historia przepływu",
@@ -2535,6 +2537,7 @@
         "restore-task": "Otwórz zadanie",
         "satisfy-gate": "Otwórz zadanie",
         "start-step": "Rozpocznij krok",
+        "reevaluate-wait": "Przejdź do bieżącego kroku",
         "return-to-step": "Wróć do wcześniejszego kroku"
       },
       "specification": "Specyfikacja",

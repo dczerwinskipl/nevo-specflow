@@ -307,6 +307,8 @@ export type ClosableTask = Static<typeof ClosableTaskSchema>;
 export const ATTENTION_ITEM_REASONS = [
   ...ATTENTION_REASONS,
   'task-broken',
+  'wait-ready-to-settle',
+  'wait-transition-missing',
   'definition-changed',
   'context-unresolved',
   'dependency-unsatisfiable',
@@ -318,6 +320,7 @@ export const ATTENTION_ITEM_REASONS = [
 export const ATTENTION_ACTIONS = [
   'start-step',
   'return-to-step',
+  'reevaluate-wait',
   'configure-archetype',
   'review-tasks',
   'restore-task',
@@ -333,11 +336,17 @@ export const ATTENTION_ACTIONS = [
  * A subject a person has to act on, derived on every read and never stored: the reason (a stable
  * code), who has to act, the one action it offers and a display-only English `message`.
  */
+export const WorkflowAttemptRefSchema = Type.Object(
+  { step: StepIdSchema, attempt: Type.Integer({ minimum: 1 }) },
+  { additionalProperties: false },
+);
+
 export const WorkflowAttentionItemSchema = Type.Object({
   subject: WorkflowSubjectSchema,
   /** Absent when no step resolves (a broken Task, an unknown task type). */
   step: Type.Optional(StepIdSchema),
   stepTitle: Type.Optional(Type.String()),
+  waitAttempt: Type.Optional(WorkflowAttemptRefSchema),
   reason: literals(ATTENTION_ITEM_REASONS),
   actor: literals(['owner', 'agent'] as const),
   action: literals(ATTENTION_ACTIONS),

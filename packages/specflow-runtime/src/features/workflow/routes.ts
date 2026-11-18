@@ -9,6 +9,8 @@ import {
   AbandonSpecificationResultSchema,
   FinishWorkflowRequestSchema,
   FinishWorkflowResultSchema,
+  ReevaluateWaitRequestSchema,
+  ReevaluateWaitResultSchema,
   ReturnWorkflowRequestSchema,
   ReturnWorkflowResultSchema,
   StartWorkflowRequestSchema,
@@ -74,7 +76,14 @@ function unavailablePort(port: WorkflowPort | undefined): WorkflowPort {
     throw new WorkflowUnavailableError();
   };
 
-  return { actions: refuse, start: refuse, finish: refuse, return: refuse, abandon: refuse };
+  return {
+    actions: refuse,
+    start: refuse,
+    finish: refuse,
+    return: refuse,
+    reevaluateWait: refuse,
+    abandon: refuse,
+  };
 }
 
 /** Turns a workflow refusal thrown in the handler into the stable answer; a defect propagates. */
@@ -250,6 +259,30 @@ export const workflowEndpoint: FastifyPluginCallback<WorkflowRoutesOptions> = (
       }),
     );
   }
+
+  typed.post(
+    '/api/specs/:specId/workflow/reevaluate-wait',
+    {
+      onRequest: manage,
+      bodyLimit: BODY_LIMIT_BYTES,
+      schema: {
+        tags: ['Workflow'],
+        summary: 'Re-evaluate a Specification wait attempt',
+        params: WorkflowSpecParamsSchema,
+        body: ReevaluateWaitRequestSchema,
+        response: { 200: ReevaluateWaitResultSchema, ...errors },
+      },
+    },
+    refusing(async (request, reply) => {
+      const result = await port.reevaluateWait({
+        ...request.body,
+        specId: request.params.specId,
+        actor: actorOf(request),
+      });
+
+      return reply.code(200).send(result);
+    }),
+  );
 
   typed.post(
     '/api/specs/:specId/workflow/abandon',

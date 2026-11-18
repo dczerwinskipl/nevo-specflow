@@ -89,6 +89,7 @@ function services(scenario: WorkflowStoryScenario) {
     },
     finish: never,
     returnTo: never,
+    reevaluateWait: never,
     abandon: never,
     closePreview: () =>
       scenario === 'abandoned'

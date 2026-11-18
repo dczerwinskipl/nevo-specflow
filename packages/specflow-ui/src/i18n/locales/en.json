@@ -2284,6 +2284,8 @@
       "postActionHeld": "The step is finished. {{edited}} changed outside SpecFlow after SpecFlow wrote it, so the files of its Task, and of Tasks added or removed since, stay uncommitted; the rest of the workflow state is committed. Commit those files with Git; otherwise Close includes them.",
       "lastPrefix": "Last: {{step}} · ",
       "alreadyFinished": "This step was already finished. What you can do now is shown below.",
+      "reevaluateWait": "End wait",
+      "waitReadyToSettle": "All tasks are closed. You can end the wait.",
       "startWorkflow": "Start workflow",
       "operations": "Workflow operations",
       "history": "Workflow history",
@@ -2535,6 +2537,7 @@
         "restore-task": "Open task",
         "satisfy-gate": "Open task",
         "start-step": "Start step",
+        "reevaluate-wait": "Go to current step",
         "return-to-step": "Return to earlier step"
       },
       "specification": "Specification",

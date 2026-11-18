@@ -89,6 +89,11 @@ function fakePort(overrides: Partial<WorkflowPort> = {}): { port: WorkflowPort; 
       position: { state: 'ready', step: 'draft' },
       continuation: { kind: 'none', reason: 'terminal' },
     }),
+    reevaluateWait: record('reevaluateWait', {
+      step: 'implementation',
+      attempt: 1,
+      status: 'already-settled',
+    }),
     abandon: record('abandon', {
       specId: SPEC,
       abandonment: {
@@ -306,6 +311,35 @@ describe('workflow action routes', () => {
     expect(refused.statusCode).toBe(400);
     expect(calls.names).toHaveLength(1);
     await app.close();
+  });
+
+  it('authorizes a Specification wait retry and validates its attempt', async () => {
+    const { port, calls } = fakePort();
+    const app = appWith(port);
+    const viewerApp = appWith(port, viewer);
+    const url = `/api/specs/${SPEC}/workflow/reevaluate-wait`;
+    const payload = { step: 'implementation', attempt: 1 };
+
+    try {
+      const denied = await viewerApp.inject({ method: 'POST', url, payload });
+      expect(denied.statusCode).toBe(403);
+      const invalid = await app.inject({
+        method: 'POST',
+        url,
+        payload: { ...payload, attempt: 0 },
+      });
+      expect(invalid.statusCode).toBe(400);
+      expect(calls.names).toEqual([]);
+
+      const replay = await app.inject({ method: 'POST', url, payload });
+      expect(replay.statusCode).toBe(200);
+      expect(replay.json()).toEqual({ ...payload, status: 'already-settled' });
+      expect(calls.names).toEqual(['reevaluateWait']);
+      expect(calls.last).toMatchObject({ specId: SPEC, ...payload, actor: { class: 'human' } });
+    } finally {
+      await app.close();
+      await viewerApp.close();
+    }
   });
 
   it('returns with the reason as the feedback', async () => {

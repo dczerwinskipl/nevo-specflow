@@ -1,6 +1,7 @@
 import {
   finishStep,
   inspectActions,
+  reevaluateWait,
   resolveSpecification,
   returnToStep,
   startSpecificationExecution,
@@ -224,6 +225,32 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
       emit(options, result, returnLines(result));
     });
   });
+
+  workflow
+    .command('reevaluate-wait')
+    .description('End a Specification wait when all its Tasks are closed')
+    .argument('<spec-id>', 'Specification UUID')
+    .option('--project-root <path>', 'Require this verified Project Home root')
+    .option('--json', 'Print the result as JSON')
+    .requiredOption('--step <step-id>', 'The wait step shown in workflow actions')
+    .requiredOption(
+      '--attempt <number>',
+      'The wait attempt shown in workflow actions',
+      parsePositiveInt,
+    )
+    .action(async (specId: string, options: CommonOptions & { step: string; attempt: number }) => {
+      await run(options, async ({ workflow: dependencies }) => {
+        const result = await reevaluateWait(dependencies, {
+          specId,
+          step: options.step,
+          attempt: options.attempt,
+          actor: owner(),
+        });
+        emit(options, result, [
+          `Wait "${result.step}" attempt ${result.attempt}: ${result.status}`,
+        ]);
+      });
+    });
 
   return workflow;
 }

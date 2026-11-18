@@ -34,6 +34,7 @@ function fakeExecutionApi(overrides: Partial<WorkflowExecutionApi> = {}) {
     start: vi.fn(never),
     finish: vi.fn(never),
     returnTo: vi.fn(never),
+    reevaluateWait: vi.fn(never),
     abandon: vi.fn(never),
     closePreview: vi.fn(never),
     closeOccupancy: vi.fn(() => Promise.resolve({ blockers: [] })),
@@ -65,6 +66,37 @@ function renderWith(
     </QueryClientProvider>,
   );
 }
+
+it('submits the projected wait attempt from Now', async () => {
+  const waitAttempt = { step: 'wait-for-tasks', attempt: 3 };
+  const reevaluateWait = vi.fn(() =>
+    Promise.resolve({ ...waitAttempt, status: 'settled' as const }),
+  );
+  const projection: WorkflowActionProjection = {
+    ...specificationWorkflowProjection('waiting'),
+    attention: {
+      subject: { kind: 'specification', specId: SPEC },
+      actor: 'owner',
+      reason: 'wait-ready-to-settle',
+      action: 'reevaluate-wait',
+      message: 'All tasks are closed.',
+      waitAttempt,
+    },
+  };
+  renderWith(
+    <WorkflowNow
+      subject={{ specId: SPEC }}
+      projection={projection}
+      headingId="now"
+      links={{}}
+      artifactOptions={[]}
+    />,
+    { execution: fakeExecutionApi({ reevaluateWait }) },
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: 'End wait' }));
+  await waitFor(() => expect(reevaluateWait).toHaveBeenCalledWith(SPEC, waitAttempt));
+});
 
 /** The Task's Now block over its projection query (a command refreshes it). */
 function TaskNowHarness() {

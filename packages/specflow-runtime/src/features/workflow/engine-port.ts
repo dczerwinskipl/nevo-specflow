@@ -4,6 +4,7 @@ import {
   finishStep,
   inspectActionsForRead,
   openWorkflow,
+  reevaluateWait,
   resolveSpecification,
   returnToStep,
   startSpecificationExecution,
@@ -60,6 +61,10 @@ export function createEngineWorkflowPort(
 
     async return(input) {
       return returnToStep(await open(), input);
+    },
+
+    async reevaluateWait(input) {
+      return reevaluateWait(await open(), input);
     },
 
     async abandon(input) {

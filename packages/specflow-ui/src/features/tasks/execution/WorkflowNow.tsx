@@ -144,7 +144,12 @@ export function WorkflowNow({
   const next =
     position.kind === 'not-started' || position.kind === 'ready' ? position.next : undefined;
   const step = position.kind === 'active' ? position.step : undefined;
-  const busy = commands.start.isPending || commands.finish.isPending || commands.returnTo.isPending;
+  const busy =
+    commands.start.isPending ||
+    commands.finish.isPending ||
+    commands.returnTo.isPending ||
+    commands.reevaluateWait.isPending;
+  const waitAttempt = subject.taskId === undefined ? projection.attention?.waitAttempt : undefined;
 
   const startNow = () => {
     commands.start.reset();
@@ -283,6 +288,15 @@ export function WorkflowNow({
 
   const workflowActions =
     primaryAction ??
+    (waitAttempt ? (
+      <Button
+        key="reevaluate-wait"
+        onClick={() => commands.reevaluateWait.mutate(waitAttempt)}
+        disabled={busy}
+      >
+        {t('workflowExecution.now.reevaluateWait')}
+      </Button>
+    ) : undefined) ??
     (overview ? (
       // Distinct keys: the button that opened Finish must never become Start. When a finish whose
       // answer was lost closes its dialog, the dialog returns focus to its opener; a reused element
@@ -402,6 +416,12 @@ export function WorkflowNow({
 
   const note = (
     <>
+      {waitAttempt ? (
+        <InlineNote tone="info">{t('workflowExecution.now.waitReadyToSettle')}</InlineNote>
+      ) : null}
+      {commands.reevaluateWait.isError ? (
+        <WorkflowRefusalAlert error={commands.reevaluateWait.error} />
+      ) : null}
       {finishMovedOn ? (
         <InlineNote tone="info" role="status">
           {t('workflowExecution.now.alreadyFinished')}

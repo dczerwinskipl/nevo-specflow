@@ -12,6 +12,11 @@ export interface SpecificationAttentionAction {
   readonly onClick: () => void;
   readonly disabled?: boolean;
   readonly disabledTitleKey?: 'common.notImplemented';
+  /**
+   * The key its owner marks while the action's command runs (`setAttentionActionPending`): the
+   * button is then busy and disabled.
+   */
+  readonly pendingKey?: string;
 }
 
 /** A module contributes presentation/actions for attention sourced from the Runtime snapshot. */

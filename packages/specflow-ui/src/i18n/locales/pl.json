@@ -2526,7 +2526,7 @@
       "moreActions": "Zadania: więcej akcji"
     },
     "progress": {
-      "label": "Zadania {{progress}}",
+      "tasksDone": "ukończone zadania: {{completed}} z {{total}}",
       "done": "ukończone {{completed}} z {{total}}",
       "cancelled_one": "{{count}} anulowane",
       "cancelled_few": "{{count}} anulowane",
@@ -2594,11 +2594,8 @@
       "blocking_other": "Blokujące specyfikację · {{count}} zadań",
       "nothingBlocks": "Nic teraz nie blokuje specyfikacji",
       "clearBlocking": "Wyczyść filtr: blokujące specyfikację",
-      "group_one": "{{group}} · {{count}} zadanie",
-      "group_few": "{{group}} · {{count}} zadania",
-      "group_many": "{{group}} · {{count}} zadań",
-      "group_other": "{{group}} · {{count}} zadań",
       "groupEmpty": "W tej grupie nie ma teraz zadań",
+      "groupUnnamed": "Filtr grupy",
       "clearGroup": "Wyczyść filtr: {{group}}",
       "clearGroupUnnamed": "Wyczyść filtr grupy",
       "shown": "Widoczne: {{matched}} z {{total}}",

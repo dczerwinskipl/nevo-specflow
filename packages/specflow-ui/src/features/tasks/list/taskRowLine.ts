@@ -15,14 +15,14 @@ const NAMES_DEPENDENCIES = new Set(['draft', 'ready', 'on-hold', 'blocked']);
 export interface TaskRowLines {
   /** The status mark and label: "On hold", "Waiting for T-02", "Draft · needs approval". */
   readonly status: SemanticSupporting;
+  /** The attention overlay when the Engine reports one: added under the status, never in its place. */
+  readonly overlay?: TaskAttentionOverlay;
   /**
-   * The one supporting line under the status: the attention overlay when the Engine reports one
-   * (it is added under the status, never in its place), else the hold reason verbatim or the
-   * dependencies ("after T-02").
+   * The supporting text: the hold reason verbatim, else the dependencies ("after T-02"). With an
+   * overlay only a hold reason stays (the reason the Task is held is never hidden by the attention
+   * it causes), and not for an escalation, whose overlay already quotes it.
    */
-  readonly supporting?:
-    | { readonly kind: 'overlay'; readonly overlay: TaskAttentionOverlay }
-    | { readonly kind: 'text'; readonly text: string };
+  readonly text?: string;
 }
 
 /** What the Engine reported about the row, for `taskRequiresAttention` and the overlay. */
@@ -41,9 +41,9 @@ export function taskRowAttention(
 }
 
 /**
- * The status column of a Task row: its status (always, with the status mark) and one supporting
- * line. "On hold" is the label and the reason the supporting line, so the reason is never prefixed
- * with the status again.
+ * The status column of a Task row: its status (always, with the status mark), then the attention
+ * overlay and the supporting text. "On hold" is the label and the reason the supporting text, so
+ * the reason is never prefixed with the status again.
  */
 export function taskRowLines(
   row: TaskListRowView,
@@ -64,14 +64,16 @@ export function taskRowLines(
     NAMES_DEPENDENCIES.has(row.statusId) && row.dependsOn && row.dependsOn.length > 0
       ? t('taskAuthoring.tasks.after', { ids: row.dependsOn.join(', ') })
       : undefined;
-  const text = (row.statusId === 'on-hold' ? row.holdReason : undefined) ?? after;
+  const holdReason = row.statusId === 'on-hold' ? row.holdReason : undefined;
+  const text = overlay
+    ? row.attention?.reason === 'task-escalated'
+      ? undefined
+      : holdReason
+    : (holdReason ?? after);
 
   return {
     status: taskStatusSupporting(row.statusId, label),
-    ...(overlay
-      ? { supporting: { kind: 'overlay', overlay } }
-      : text
-        ? { supporting: { kind: 'text', text } }
-        : {}),
+    ...(overlay ? { overlay } : {}),
+    ...(text ? { text } : {}),
   };
 }

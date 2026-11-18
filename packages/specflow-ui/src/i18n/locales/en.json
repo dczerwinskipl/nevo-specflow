@@ -2526,7 +2526,7 @@
       "moreActions": "Tasks: more actions"
     },
     "progress": {
-      "label": "Tasks {{progress}}",
+      "tasksDone": "{{completed}} of {{total}} tasks done",
       "done": "{{completed}} of {{total}} done",
       "cancelled_one": "{{count}} cancelled",
       "cancelled_other": "{{count}} cancelled",
@@ -2592,11 +2592,8 @@
       "blocking_other": "Blocking specification · {{count}} tasks",
       "nothingBlocks": "Nothing blocks the specification now",
       "clearBlocking": "Clear filter: blocking specification",
-      "group_one": "{{group}} · {{count}} task",
-      "group_other": "{{group}} · {{count}} tasks",
-      "group_few": "{{group}} · {{count}} tasks",
-      "group_many": "{{group}} · {{count}} tasks",
       "groupEmpty": "No tasks in this group now",
+      "groupUnnamed": "Filtered by group",
       "clearGroup": "Clear filter: {{group}}",
       "clearGroupUnnamed": "Clear group filter",
       "shown": "{{matched}} of {{total}} shown",

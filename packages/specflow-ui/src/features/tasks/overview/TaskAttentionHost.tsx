@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Navigate } from '@tanstack/react-router';
@@ -11,7 +11,8 @@ import { invalidateAfterTaskChange } from '../authoring/queries';
 import { useTaskActions, useTaskCommands } from '../authoring/useTaskAuthoring';
 import { StartTaskDialog } from '../execution/StartTaskDialog';
 import { useWorkflowCommands } from '../execution/useWorkflowCommands';
-import { subscribeTaskAttention } from './attentionRequests';
+import { isAttentionActionPending, setAttentionActionPending } from '../../specs';
+import { subscribeTaskAttention, taskCommandKey } from './attentionRequests';
 
 interface Dialog {
   readonly kind: 'first-start' | 'cancel-task';
@@ -43,15 +44,15 @@ export function TaskAttentionHost({
   const queryClient = useQueryClient();
   const notify = useNotify();
   const [dialog, setDialog] = useState<Dialog>();
-  // The direct commands in flight, by Task: a repeated click on Start or Resume while its command
-  // runs (or its result is still being re-read) is taken and ignored, so no second command is sent.
-  // Owned here: added when a command is sent, removed once it settled and the reads refreshed.
-  const inFlight = useRef(new Set<string>());
-  const settle = async (taskId: string) => {
+  // The direct commands running, by action (`taskCommandKey`): Requires attention shows that
+  // button busy, and a repeated click while the command runs (or its result is still being re-read)
+  // is taken and ignored, so no second command is sent. Only this host writes these keys: marked
+  // when a command is sent, cleared once it settled and the reads refreshed.
+  const settle = async (kind: 'start-step' | 'resume-task', taskId: string) => {
     try {
       await invalidateAfterTaskChange(queryClient, specId);
     } finally {
-      inFlight.current.delete(taskId);
+      setAttentionActionPending(taskCommandKey(specId, kind, taskId), false);
     }
   };
 
@@ -59,14 +60,14 @@ export function TaskAttentionHost({
   const start = useMutation({
     mutationFn: (taskId: string) => workflowExecutionApi.start({ specId, taskId }, {}),
     onError: () => notify(t('taskOverview.attention.startFailed')),
-    onSettled: (_result, _error, taskId) => settle(taskId),
+    onSettled: (_result, _error, taskId) => settle('start-step', taskId),
   });
   const startStep = start.mutate;
   // A resume acts on the Task it was requested for; the Engine refuses it if it is no longer held.
   const resume = useMutation({
     mutationFn: (taskId: string) => taskAuthoringApi.setStatus(specId, taskId, { status: 'ready' }),
     onError: () => notify(t('taskOverview.attention.resumeFailed')),
-    onSettled: (_result, _error, taskId) => settle(taskId),
+    onSettled: (_result, _error, taskId) => settle('resume-task', taskId),
   });
   const resumeTask = resume.mutate;
 
@@ -75,13 +76,16 @@ export function TaskAttentionHost({
       subscribeTaskAttention(specId, (request) => {
         switch (request.kind) {
           case 'start-step':
-          case 'resume-task':
-            if (!inFlight.current.has(request.taskId)) {
-              inFlight.current.add(request.taskId);
+          case 'resume-task': {
+            const key = taskCommandKey(specId, request.kind, request.taskId);
+            if (!isAttentionActionPending(key)) {
+              setAttentionActionPending(key, true);
               (request.kind === 'start-step' ? startStep : resumeTask)(request.taskId);
             }
 
             return true;
+          }
+
           case 'first-start':
           case 'cancel-task':
             setDialog({ kind: request.kind, taskId: request.taskId });

@@ -4,6 +4,10 @@
  * model types) is in `specs/read-model`; the route object is in `specs/routes` (composition only).
  */
 export { specificationAttentionItems } from './extensions/specificationAttentionItems';
+export {
+  isAttentionActionPending,
+  setAttentionActionPending,
+} from './extensions/attentionActionPending';
 export type {
   SpecificationAttentionAction,
   SpecificationAttentionEntry,

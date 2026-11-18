@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
@@ -58,8 +58,8 @@ const groupHeadingId = (groupId: string) => `task-group-${groupId}-heading`;
  * The Tasks page (`/specs/:specId/tasks`): the full inventory in the Runtime's configured grouping,
  * as delivered, on the Specifications list pattern (the collection's `task` tracks with a Task |
  * Status column header from 48rem, stacked rows below it). Collapsed groups follow the
- * configuration; a `group` filter lists that group only, expanded, and moves the reader to it.
- * The active filter (blocking or group) is a removable chip. Flagged rows carry the attention
+ * configuration; a `group` filter lists that group's rows only, without a group header (the chip
+ * names it). The active filter (blocking or group) is a removable chip. Flagged rows carry the attention
  * overlay under their status. No selection and no bulk actions.
  */
 export function TasksPage({
@@ -78,20 +78,6 @@ export function TasksPage({
   const [query, setQuery] = useState('');
   // The person's own expand/collapse choices; the configuration decides the rest.
   const [toggled, setToggled] = useState<Readonly<Record<string, boolean>>>({});
-  const ready = state.status === 'ready';
-
-  // Arriving at a group (a link from the Overview): its heading takes the reader's focus.
-  useEffect(() => {
-    if (!ready || !focusGroup) {
-      return;
-    }
-
-    const heading = document.getElementById(groupHeadingId(focusGroup));
-    heading?.scrollIntoView({ block: 'start' });
-    heading?.closest<HTMLElement>('[data-group-header]')?.querySelector('button')?.focus({
-      preventScroll: true,
-    });
-  }, [ready, focusGroup]);
 
   const newTask = onNewTask ? (
     <Button size="sm" variant="secondary" leadingIcon="plus" onClick={onNewTask}>
@@ -148,17 +134,14 @@ export function TasksPage({
       }
     : focusGroup
       ? {
-          text:
-            groupName && matched > 0
-              ? t('taskOverview.page.group', { group: groupName, count: matched })
-              : t('taskOverview.page.groupEmpty'),
+          // The name only: the section count says how many ("1 of 5 shown").
+          text: groupName ?? t('taskOverview.page.groupUnnamed'),
           clear: groupName
             ? t('taskOverview.page.clearGroup', { group: groupName })
             : t('taskOverview.page.clearGroupUnnamed'),
         }
       : undefined;
-  const collapsed = (groupId: string, configured: boolean) =>
-    toggled[groupId] ?? (groupId === focusGroup ? false : configured);
+  const collapsed = (groupId: string, configured: boolean) => toggled[groupId] ?? configured;
 
   return (
     <div className="grid gap-4" data-tasks-page="">
@@ -212,9 +195,9 @@ export function TasksPage({
                 : (emptyLine ?? t('specification.tasksEmptyDescription'))
             }
           />
-        ) : groups.length === 0 && needle ? (
+        ) : groups.length === 0 && (needle || focusGroup) ? (
           <Typography variant="body-sm" className="text-content-secondary">
-            {t('taskOverview.page.noMatch')}
+            {needle ? t('taskOverview.page.noMatch') : t('taskOverview.page.groupEmpty')}
           </Typography>
         ) : (
           <div
@@ -225,6 +208,28 @@ export function TasksPage({
               labels={[t('taskOverview.page.taskColumn'), t('taskOverview.page.statusColumn')]}
             />
             {groups.map((group) => {
+              const rows = (
+                <InformationList id={`task-group-${group.id}`}>
+                  {group.rows.map((row) => (
+                    <TaskRow
+                      key={row.id}
+                      row={row}
+                      fullTaskHref={fullTaskHref(row.id)}
+                      onOpen={onOpenTask}
+                      {...(specificationTitle ? { specificationTitle } : {})}
+                    />
+                  ))}
+                </InformationList>
+              );
+              if (focusGroup) {
+                // Filtered to one group: its rows only, the chip names the group.
+                return (
+                  <div key={group.id} className="grid min-w-0" data-task-group={group.id}>
+                    {rows}
+                  </div>
+                );
+              }
+
               const isCollapsed = collapsed(group.id, group.collapsed);
               const listId = `task-group-${group.id}`;
 
@@ -242,19 +247,7 @@ export function TasksPage({
                       }
                     />
                   </div>
-                  {!isCollapsed ? (
-                    <InformationList id={listId}>
-                      {group.rows.map((row) => (
-                        <TaskRow
-                          key={row.id}
-                          row={row}
-                          fullTaskHref={fullTaskHref(row.id)}
-                          onOpen={onOpenTask}
-                          {...(specificationTitle ? { specificationTitle } : {})}
-                        />
-                      ))}
-                    </InformationList>
-                  ) : null}
+                  {!isCollapsed ? rows : null}
                 </div>
               );
             })}

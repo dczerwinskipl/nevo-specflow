@@ -138,13 +138,46 @@ describe('Tasks page', () => {
     });
     const chip = container.querySelector<HTMLElement>('[data-group-filter="cancelled"]')!;
 
-    // Collapsed by its configuration, opened by the filter.
+    // Collapsed by its configuration, listed by the filter: rows only, no group header to toggle.
     expect(row(container, 'T-06')).not.toBeNull();
     expect(container.querySelectorAll('[data-row-task]')).toHaveLength(1);
-    expect(chip.textContent).toContain('Cancelled · 1 task');
+    expect(container.querySelector('[data-group-header]')).toBeNull();
+    // The chip names the group; the section count is the one count.
+    expect(chip.textContent).toBe('Cancelled');
     expect(screen.getByText('1 of 7 shown')).not.toBeNull();
+    expect(document.activeElement).toBe(document.body);
     fireEvent.click(within(chip).getByRole('button', { name: 'Clear filter: Cancelled' }));
     expect(onClearFilter).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the hold reason of a held row under its Requires attention overlay', () => {
+    const response = controlCenterTaskList('waiting');
+    const held = {
+      subject: { kind: 'task' as const, specId: response.specId, taskId: 'T-05' },
+      reason: 'on-hold-blocking' as const,
+      actor: 'owner' as const,
+      action: 'resume-task' as const,
+      message: 'T-05 holds up T-03.',
+      blocks: { taskIds: ['T-03'] },
+    };
+    const view = taskListViewOf({
+      ...response,
+      groups: response.groups.map((group) => ({
+        ...group,
+        tasks: group.tasks.map((task) =>
+          task.id === 'T-05' ? { ...task, attention: held } : task,
+        ),
+      })),
+    });
+    const { container } = renderPage({ state: { status: 'ready', view } });
+    const cell = row(container, 'T-05')!.querySelector('[data-task-status-cell]')!;
+
+    expect(cell.querySelector('[data-task-overlay]')?.textContent).toBe(
+      'Requires attention · holds up T-03',
+    );
+    expect(cell.querySelector('[data-collection-supporting]')?.textContent).toBe(
+      'Waiting for the retention policy from the security team.',
+    );
   });
 
   it('shows the blocking filter with its count and clears it', () => {

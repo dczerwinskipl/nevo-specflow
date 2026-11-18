@@ -117,9 +117,17 @@ export function TasksSummarySection({ specId, data, actions }: SpecificationWork
   return (
     <WorkspaceSection aria-labelledby="tasks-summary-heading" data-tasks-summary="">
       {header}
+      {/*
+       * One divider style throughout: the groups are divided like the rows inside them (the list
+       * item's divider, on the same rounded box), so a group boundary reads like a row boundary.
+       */}
       <div className={cn(collectionContainer, 'grid min-w-0 divide-y divide-border-subtle')}>
         {overview.rows.map((row) => (
-          <div key={row.groupId} className="grid min-w-0" data-summary-group={row.groupId}>
+          <div
+            key={row.groupId}
+            className="grid min-w-0 rounded-control"
+            data-summary-group={row.groupId}
+          >
             <InformationList aria-label={row.name}>
               {row.tasks.map((entry) => (
                 <TaskRow
@@ -147,11 +155,17 @@ export function TasksSummarySection({ specId, data, actions }: SpecificationWork
           </div>
         ))}
         {overview.compact.length > 0 ? (
-          <Typography as="p" variant="body-sm" className="px-2 py-2 text-content-secondary">
+          <Typography
+            as="p"
+            variant="body-sm"
+            className="rounded-control px-2 py-2 text-content-secondary"
+          >
             {overview.compact.map((group, index) => (
               <span key={group.groupId}>
                 {index > 0 ? ' · ' : null}
+                {/* The same quiet link as "N more in <group>". */}
                 <Link
+                  tone="muted"
                   href={actions.tasksHref({ group: group.groupId })}
                   onClick={openGroup(group.groupId)}
                   data-summary-group={group.groupId}

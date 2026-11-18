@@ -7,7 +7,11 @@ import type { AttentionItem, SpecificationWorkspaceData } from '../../../specs/r
 import { message } from '../../../../i18n/message';
 import { goToHeading } from '../../execution/InlineAction';
 import { SPECIFICATION_NOW_HEADING } from '../../execution/specification/SpecificationWorkflow';
-import { requestTaskAttention, type TaskAttentionRequest } from '../../overview/attentionRequests';
+import {
+  requestTaskAttention,
+  taskCommandKey,
+  type TaskAttentionRequest,
+} from '../../overview/attentionRequests';
 
 type ActionCode = NonNullable<AttentionItem['action']>;
 type Context = Pick<SpecificationWorkSectionContext, 'specId' | 'actions'>;
@@ -62,7 +66,14 @@ function actionOf(
       const kind = code === 'confirm-definition' ? 'first-start' : code;
 
       return taskId
-        ? { label, onClick: handOver({ kind, taskId }, () => openTask(taskId)) }
+        ? {
+            label,
+            onClick: handOver({ kind, taskId }, () => openTask(taskId)),
+            // A direct command shows busy while it runs (the Overview's Tasks flows mark it).
+            ...(kind === 'start-step' || kind === 'resume-task'
+              ? { pendingKey: taskCommandKey(specId, kind, taskId) }
+              : {}),
+          }
         : undefined;
     }
 

@@ -152,15 +152,22 @@ export function CollectionRow({ tracks, className, children, ...rest }: Collecti
 export interface CollectionSupportingLineProps {
   readonly children: ReactNode;
   readonly className?: string;
+  /** The full text, where a tighter clamp (`className`) may cut it. */
+  readonly title?: string;
 }
 
 /**
  * The one supporting line under a fact cell's main line (for example a Task's hold reason under its
  * status): secondary, at most two lines, `text-wrap: pretty` so a short last line does not dangle.
  */
-export function CollectionSupportingLine({ children, className }: CollectionSupportingLineProps) {
+export function CollectionSupportingLine({
+  children,
+  className,
+  title,
+}: CollectionSupportingLineProps) {
   return (
     <Typography
+      {...(title ? { title } : {})}
       as="p"
       variant="body-sm"
       data-collection-supporting

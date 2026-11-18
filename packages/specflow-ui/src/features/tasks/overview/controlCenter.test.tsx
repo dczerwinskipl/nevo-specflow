@@ -204,7 +204,13 @@ describe('Specification control center', () => {
   });
 
   it('sends one start for repeated clicks on a Requires attention action while it runs', async () => {
-    const start = vi.fn(() => new Promise<never>(() => undefined) as never);
+    let finish = () => undefined as void;
+    const start = vi.fn(
+      () =>
+        new Promise<never>((resolve) => {
+          finish = () => resolve(undefined as never);
+        }) as never,
+    );
     await renderAt(`/specs/${SPEC}`, 'waiting', undefined, start);
     await screen.findByRole('region', { name: 'Now' });
     const action = await screen.findByRole('button', { name: 'Start Implementation' });
@@ -212,19 +218,26 @@ describe('Specification control center', () => {
     fireEvent.click(action);
     fireEvent.click(action);
     await waitFor(() => expect(start).toHaveBeenCalledTimes(1));
+    // The clicked button is busy while its command runs.
+    await waitFor(() => expect(action.getAttribute('aria-busy')).toBe('true'));
+    expect((action as HTMLButtonElement).disabled).toBe(true);
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(start).toHaveBeenCalledTimes(1);
+    // Settled and re-read: the action is free again.
+    await act(async () => {
+      finish();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    await waitFor(() => expect(action.getAttribute('aria-busy')).toBeNull());
   });
 
   it('honours the group filter in the URL and clears it', async () => {
-    // jsdom has no layout: arriving at a group scrolls its heading into view.
-    Element.prototype.scrollIntoView = () => undefined;
     const { router } = await renderAt(`/specs/${SPEC}/tasks?group=cancelled`, 'waiting');
     const chip = await waitFor(() => {
       const element = document.querySelector<HTMLElement>('[data-group-filter="cancelled"]');
-      expect(element?.textContent).toContain('Cancelled · 1 task');
+      expect(element?.textContent).toBe('Cancelled');
 
       return element!;
     });

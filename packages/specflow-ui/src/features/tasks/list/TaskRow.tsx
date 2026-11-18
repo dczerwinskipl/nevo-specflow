@@ -22,14 +22,15 @@ export interface TaskRowProps {
 /**
  * The Task row, on the collection's `task` tracks (`CollectionRow`): the Task cell (the title as
  * the row's link, then the mono id · Task Type) and the Status cell (the status mark and label,
- * then one supporting line: the attention overlay the Engine reports, else the hold reason or the
- * dependencies). Below 48rem of collection width it stacks in that order. The title is a real link
+ * then the attention overlay the Engine reports and the hold reason or the dependencies; an overlay
+ * and a hold reason share two lines). Below 48rem of collection width it stacks in that order. The title is a real link
  * to the Full Task (a new window from the browser's own link menu). No row menu and no selection.
  */
 export function TaskRow({ row, fullTaskHref, onOpen, specificationTitle }: TaskRowProps) {
   const { t } = useTranslation();
   const lines = taskRowLines(row, t, specificationTitle);
-  const supporting = lines.supporting;
+  // Two supporting lines (an overlay and the hold reason) share the two-line budget.
+  const both = lines.overlay !== undefined && lines.text !== undefined;
 
   return (
     <InformationList.Item
@@ -79,19 +80,30 @@ export function TaskRow({ row, fullTaskHref, onOpen, specificationTitle }: TaskR
             <Typography as="div" variant="body-sm" className="min-w-0">
               <SemanticSupportingLine line={lines.status} />
             </Typography>
-            {supporting?.kind === 'overlay' ? (
-              <Typography as="p" variant="body-sm" className="min-w-0" data-task-overlay>
+            {lines.overlay ? (
+              <Typography
+                as="p"
+                variant="body-sm"
+                className="min-w-0"
+                data-task-overlay
+                {...(both ? { title: lines.overlay.text } : {})}
+              >
                 <SemanticSupportingLine
                   line={{
-                    text: supporting.overlay.text,
-                    icon: supporting.overlay.icon,
-                    tone: supporting.overlay.tone,
+                    text: lines.overlay.text,
+                    icon: lines.overlay.icon,
+                    tone: lines.overlay.tone,
                   }}
-                  clamp
+                  clamp={both ? 1 : true}
                 />
               </Typography>
-            ) : supporting?.kind === 'text' ? (
-              <CollectionSupportingLine>{supporting.text}</CollectionSupportingLine>
+            ) : null}
+            {lines.text ? (
+              <CollectionSupportingLine
+                {...(both ? { className: 'line-clamp-1', title: lines.text } : {})}
+              >
+                {lines.text}
+              </CollectionSupportingLine>
             ) : null}
           </div>
         </CollectionRow>

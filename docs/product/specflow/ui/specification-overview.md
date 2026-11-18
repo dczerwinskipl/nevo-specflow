@@ -69,8 +69,10 @@ dashboard configuration). The Overview renders what the reads deliver.
   abandoned one has no track (the outline no longer says where it stopped). On a `wait` step the
   track is compact and the Task progress bar stays the dominant one. Below a 40rem page the label
   goes under the track. For a `wait` step the Task progress appears here only,
-  once: a segmented bar, "Tasks 1 of 6 done · 1 cancelled · 1 ended · 1 on hold" (zero parts
-  omitted) and a line that cancelled (and ended) Tasks are not counted. When the wait cannot
+  once: a continuous bar filled in the success tone (never a second segmented track under the step
+  track) with its label to the right, "1 of 6 tasks done · 1 cancelled · 1 ended · 1 on hold" (zero
+  parts omitted; below a 40rem page it goes under the bar); the label's tooltip says that cancelled
+  (and ended) Tasks are not counted. When the wait cannot
   continue, one note names the blocking Tasks as links ("It cannot continue now: T-04 is a draft,
   T-05 is on hold and no other task is open."). Now offers the workflow's **main** action: Start
   workflow, Finish step, or Close specification once it ended; none while the workflow waits by
@@ -124,16 +126,19 @@ dashboard configuration). The Overview renders what the reads deliver.
   Tasks (at most two, `TaskOverview.rows[].tasks`, chosen by the Runtime in importance order:
   Requires attention first, then held or unable to start with a Task waiting on it, then in
   progress, then Task order) as the Tasks page's own **Task row** ([below](#tasks-page)), on the same
-  tracks without a column header, stacked below 48rem of section width (the same switch as the Tasks
-  page, no second width switch). There are no group headers: each row's status names its group.
-  Under a group's last row a quiet link "2 more in Waiting" (the count beyond the preview and the
+  tracks without a column header. The rows switch with the Tasks page's one 48rem container query
+  (no second width switch): at a tablet's 834 px the section is wider than 48rem and keeps the
+  columns; on a phone the rows stack. There are no group headers: each row's status names its
+  group, and groups are divided like the rows inside them. A held Task that requires attention
+  shows the overlay and its hold reason, one line each. Under a group's last row a quiet link
+  "2 more in Waiting" (the count beyond the preview and the
   group's name as the Runtime delivers it) opens the Tasks page filtered to that group
   (`?group=<groupId>`); a group that fits shows no link. The section therefore never exceeds
-  row groups × 2 rows. Compact groups (Done, Cancelled, Ended) share one line of links, "Done 2 ·
-  Cancelled 1", that open the Tasks page filtered to that group (owner decision at the final
+  row groups × 2 rows. Compact groups (Done, Cancelled, Ended) share one line of the same quiet
+  links, "Done 2 · Cancelled 1", that open the Tasks page filtered to that group (owner decision at the final
   Overview approval, 2026-11-14). A held Task carries its Requires attention overlay on its row
   only when the Engine reports it; the Requires attention item with Resume and Cancel task is the
-  section above. **All tasks** in the header opens the page; the header's overflow menu holds
+  section above (its Resume and Start step show busy while their command runs). **All tasks** in the header opens the page; the header's overflow menu holds
   **New task** when the projection allows creating a Task. Without Tasks the section keeps its
   place with one line, "Tasks appear when Break the solution down (step 4 of 7) finishes." when
   the run is certain to get to a step that produces Tasks (`outline.tasksStep`, never a step id: no
@@ -175,11 +180,11 @@ A row is the **Task row** (`TaskRow`, reused by the Overview Tasks section):
   mono and the Task Type ("`oidc-callback` · Implementation"). The title track is wide enough that
   an id does not break at Wide.
 - **Status cell:** the status mark and label ([below](#task-status-presentation); "Waiting for
-  T-02", "Draft · needs approval"), then at most one supporting line (two lines at most, pretty
-  wrapping):
+  T-02", "Draft · needs approval"), then at most two lines of support (pretty wrapping):
   - the **Requires attention overlay** when the Engine reports one for the Task, in the attention
-    tone with `triangle-alert`. It is added under the status, never in its place, and takes the
-    supporting line. The row's item is the read's own `attention` field (the Task's own item, or
+    tone with `triangle-alert`. It is added under the status, never in its place. A Task on hold
+    keeps its reason under the overlay (one line each, the full text in their tooltip), except an
+    escalated one, whose overlay already quotes it. The row's item is the read's own `attention` field (the Task's own item, or
     the Specification's `task-escalated` naming it, resolved by the Runtime), or the `tasks-stuck`
     its `blocksSpecification` reflects; the row renders it and never derives attention. A broken
     Task gets no overlay line: its status already says it ("Cannot start · files broken"). The
@@ -188,7 +193,7 @@ A row is the **Task row** (`TaskRow`, reused by the Overview Tasks section):
     no finish), one that holds up others "holds up T-02, T-03 (+N)", an escalated one "escalated
     to the specification: <feedback>", a Task the `tasks-stuck` names "<specification> cannot
     continue until it moves"; other reasons keep the Engine's message;
-  - otherwise the hold reason of a Task on hold, verbatim (`holdReason` of the read; the label
+  - without an overlay, the hold reason of a Task on hold, verbatim (`holdReason` of the read; the label
     already says "On hold"), or the dependencies of a Task that has not run ("after T-02").
 
 ### Task status presentation
@@ -224,10 +229,10 @@ Its search is router-owned and validated; absence is the default:
   "Blocking specification · 2 tasks" (or "Nothing blocks the specification now") with a clear
   button, and the count reads "2 of 7 shown". Review tasks pushes the entry; clearing replaces it.
 - `group=<id>` (the Overview's "N more in <group>" and its compact links) lists only that group's
-  Tasks, resolved by the Runtime when read (`GET /api/specs/:specId/tasks?group=<id>`), expanded
-  even when the configuration collapses it, and moves focus to its header. A filter chip shows
-  "Waiting · 4 tasks" (or "No tasks in this group now") with a clear button, and the count reads
-  "4 of 12 shown". The link pushes the entry; clearing replaces it.
+  Tasks, resolved by the Runtime when read (`GET /api/specs/:specId/tasks?group=<id>`), as rows
+  without a group header (also a group the configuration collapses); focus stays where the page
+  puts it. A filter chip names the group ("Waiting") with a clear button, and the section count
+  reads "4 of 12 shown" (the one count); with none left, "No tasks in this group now". The link pushes the entry; clearing replaces it.
 - The two never combine: with both in the URL, `blocking` is kept and `group` dropped.
 
 Without Tasks the page names the step that produces them with the Overview's line ("Tasks appear

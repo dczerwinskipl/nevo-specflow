@@ -14,6 +14,15 @@ export type TaskAttentionRequest =
 
 type Listener = (request: TaskAttentionRequest) => boolean;
 
+/** A direct command of Requires attention (Start step, Resume), as one running action's key. */
+export function taskCommandKey(
+  specId: string,
+  kind: 'start-step' | 'resume-task',
+  taskId: string,
+): string {
+  return JSON.stringify(['tasks', specId, kind, taskId]);
+}
+
 const listeners = new Map<string, Set<Listener>>();
 
 /**

@@ -3,8 +3,11 @@ import type { SemanticSupporting } from './OperationalRow.types';
 
 export interface SemanticSupportingLineProps {
   readonly line: SemanticSupporting;
-  /** At most two lines of text, wrapped evenly (a supporting line under a status). */
-  readonly clamp?: boolean;
+  /**
+   * At most two lines of text, wrapped evenly (a supporting line under a status); `1` keeps it to
+   * one line (two supporting lines sharing the two-line budget).
+   */
+  readonly clamp?: boolean | 1;
   readonly className?: string;
 }
 
@@ -46,7 +49,14 @@ export function SemanticSupportingLine({
           {mark}
         </span>
       ) : null}
-      <span className={cn('min-w-0', clamp && 'line-clamp-2 [text-wrap:pretty]')}>{line.text}</span>
+      <span
+        className={cn(
+          'min-w-0',
+          clamp === 1 ? 'line-clamp-1' : clamp && 'line-clamp-2 [text-wrap:pretty]',
+        )}
+      >
+        {line.text}
+      </span>
     </span>
   );
 }

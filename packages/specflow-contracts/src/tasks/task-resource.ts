@@ -195,6 +195,13 @@ export const TaskDocumentListingSchema = Type.Object({
   classification: ClassificationSchema,
   /** The required `task` document (`task.md`): it cannot be deleted or renamed. */
   required: Type.Boolean(),
+  /**
+   * The content state: `true` while the file still has exactly the content the Engine created it
+   * with from an archetype template (its revision equals the entry's `templateRevision`), `false` once
+   * a byte differs. Absent when the entry records no template revision (created without a template,
+   * or before the Engine recorded it) and for a document without a readable file.
+   */
+  templateOnly: Type.Optional(Type.Boolean()),
   /** Absent for a registered document without a readable file. */
   file: Type.Optional(
     Type.Object({

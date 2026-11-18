@@ -51,6 +51,16 @@ const projection: ActionProjection = {
   subject: subjectSpec,
   position: { kind: 'terminal', outcome: 'completed' },
   actions: {},
+  // Served as the Engine read it (the response schema keeps every field).
+  documentRelations: [
+    {
+      scope: { kind: 'specification', specId: SPEC },
+      documentId: 'behaviour',
+      relation: 'needed-to-finish',
+      step: { id: 'specify', title: 'Write the specification', active: true },
+      gate: { id: 'exit-1', label: 'A behaviour document', missingSections: ['Acceptance'] },
+    },
+  ],
 };
 const finished: FinishStepResult = {
   subject: subjectSpec,

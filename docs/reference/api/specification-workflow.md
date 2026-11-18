@@ -78,6 +78,21 @@ Once the Specification run ended (completed or abandoned), `createTask` and a Ta
 actions are `unavailable` with reason `specification-ended`, as the commands refuse them with
 `WORKFLOW_SPECIFICATION_ENDED`.
 
+`documentRelations` (the Specification projection and one Task's own projection, whenever the
+workflow resolves and is unchanged; never in reads of several Tasks) says how the workflow uses
+each document now, from the exit gates of the step the run is at and the entry gates of the step it
+certainly goes to next (the outline's `next` rule: every transition leads there; before a start, the
+step a start would activate). One entry per document:
+`{scope, documentId, relation: needed-to-finish|needed-to-start|used, step: {id, title, active},
+gate: {id, label, missingSections?}}`. `needed-to-finish` is an unmet exit gate of the active step
+(`active: true`), `needed-to-start` an unmet entry gate of the next step (it does not block now),
+`used` a satisfied gate of either. A gate names the document that satisfies it, the closest one
+(`sections-missing`) or the unreadable one; one that found no file names every registered document
+of its type in its scope, and one that found none names nothing. A document named by several gates
+keeps the strongest relation (in that order), then the active step's gate. The evaluation is the one
+a start or finish checks; it is empty once the run ended. Clients format these facts (the A6 label)
+and never derive them from `actions.finish` or `next.entryGates` themselves.
+
 A client renders only what the projection allows. `kind`, `reason` and every code are stable values; the
 only free text is a `message` (and the step `purpose` and `instructions`), which is for display and must
 not be parsed. A step the owner may do has `human: true`; `agent` states whether an agent could do it

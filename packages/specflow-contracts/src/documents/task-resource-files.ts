@@ -99,11 +99,20 @@ export const TaskStatusChangeSchema = closed({
 });
 export type TaskStatusChange = Static<typeof TaskStatusChangeSchema>;
 
+/** A lowercase sha256 hex digest (the revision of a file's bytes). */
+const sha256 = () => Type.String({ pattern: '^[0-9a-f]{64}$' });
+
 /** One registered document of the Task: path relative to the Task folder. */
 export const TaskDocumentEntrySchema = closed({
   id: Type.String({ pattern: DOCUMENT_ID_PATTERN }),
   path: text(DOCUMENT_PATH_MAX_LENGTH),
   type: Type.String({ pattern: CATALOGUE_ID_PATTERN }),
+  /**
+   * Engine-written: the revision (sha256 of the bytes) of the content the Engine created the
+   * document with from an archetype template, as `specification.yaml` records it. While the file
+   * still has exactly this revision, it is template only. Absent for a document created otherwise.
+   */
+  templateRevision: Type.Optional(sha256()),
 });
 export type TaskDocumentEntry = Static<typeof TaskDocumentEntrySchema>;
 

@@ -1,7 +1,7 @@
 // Integration (real project, real files): a template named by a create in an existing Specification
 // is rendered from the project's definitions, pinned in the plan, and replays as stored.
 import { randomUUID } from 'node:crypto';
-import { readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
@@ -9,8 +9,17 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { useSlowGitTestTimeouts } from '../support/platform';
 
 import { sha256Hex } from '../../src/hash';
-import { applyDocumentChange } from '../../src/specs/documents/api';
+import { applyDocumentChange, applyTaskDocumentChange } from '../../src/specs/documents/api';
 import { readRegisteredDocumentSummaries } from '../../src/specs/documents/summaries';
+import { readTaskDocuments } from '../../src/specs/documents/task-document-reader';
+import { readSpecificationDocumentTree } from '../../src/specs/documents/tree-reader';
+import {
+  initialTaskDocument,
+  parseTaskManifest,
+  serializeTaskIndex,
+  serializeTaskManifest,
+} from '../../src/tasks/resource/codec';
+import type { TaskManifest } from '../../src/tasks/resource/model';
 import { getStableProjectCatalogue } from '../../src/definitions';
 import { createSpecificationForTesting } from '../../src/testing';
 import { failure, documentsProject, removeTrackedRoots } from '../support/documents-fixture';
@@ -68,20 +77,98 @@ describe('create documents from a template', () => {
     );
 
     // Template only exactly while the file has the content the Engine created it with: the
-    // overview of Create and this document, whatever their goal or title text.
-    const templateOnly = async () =>
-      Object.fromEntries(
+    // overview of Create and this document, whatever their goal or title text. The document tree
+    // reports the same value as the workspace summary (one rule).
+    const templateOnly = async () => {
+      const summaries = Object.fromEntries(
         (await readRegisteredDocumentSummaries(project.engine, project.specId)).map((summary) => [
           summary.path,
           summary.templateOnly,
         ]),
       );
+      const tree = Object.fromEntries(
+        (await readSpecificationDocumentTree(project.engine, project.specId)).documents.map(
+          (document) => [document.path, document.templateOnly],
+        ),
+      );
+      expect(tree).toEqual(summaries);
+
+      return summaries;
+    };
+
     expect(await templateOnly()).toEqual({ 'overview.md': true, 'docs/behaviour.md': true });
     const path = join(project.dir, 'docs', 'behaviour.md');
     await writeFile(path, content + 'Given a written scenario.\n');
     expect(await templateOnly()).toEqual({ 'overview.md': true, 'docs/behaviour.md': false });
     await writeFile(path, content);
     expect(await templateOnly()).toEqual({ 'overview.md': true, 'docs/behaviour.md': true });
+  });
+
+  it('keeps the template revision a Task registry records, and reports templateOnly by it', async () => {
+    // A Task document is created from its content (admission refuses templates there), so the
+    // record is written by hand as the Engine writes it in specification.yaml.
+    const project = await featureProject();
+    const content = '# Behaviour\n';
+    const brief: TaskManifest = {
+      id: 'brief',
+      title: 'Write the brief',
+      type: 'implementation',
+      status: 'draft',
+      dependsOn: [],
+      origin: { kind: 'manual', actorId: 'local:me' },
+      documents: [
+        { id: 'task', path: 'task.md', type: 'task' },
+        {
+          id: 'behaviour',
+          path: 'behaviour.md',
+          type: 'behaviour',
+          templateRevision: sha256Hex(content),
+        },
+      ],
+    };
+    const taskDir = join(project.dir, 'tasks', 'brief');
+    await mkdir(taskDir, { recursive: true });
+    await writeFile(
+      join(project.dir, 'tasks', 'index.yaml'),
+      serializeTaskIndex({ tasks: [brief] }),
+    );
+    await writeFile(join(taskDir, 'task.yaml'), serializeTaskManifest(brief));
+    await writeFile(join(taskDir, 'task.md'), initialTaskDocument(brief));
+    await writeFile(join(taskDir, 'behaviour.md'), content);
+
+    const templateOnly = async () =>
+      Object.fromEntries(
+        (await readTaskDocuments(project.engine, project.specId, 'brief')).documents.map(
+          (document) => [document.path, document.templateOnly],
+        ),
+      );
+    // task.md records no template revision: no content state.
+    expect(await templateOnly()).toEqual({ 'task.md': undefined, 'behaviour.md': true });
+
+    // A registry change through the documents writer keeps the record (task.yaml is re-rendered).
+    await applyTaskDocumentChange(
+      project.engine,
+      project.specId,
+      'brief',
+      randomUUID(),
+      {
+        action: 'rename',
+        target: { kind: 'document', documentId: 'behaviour' },
+        name: 'scenarios.md',
+        expectedRevision: sha256Hex(content),
+      },
+      { sleep: noSleep },
+    );
+    const stored = parseTaskManifest(await readFile(join(taskDir, 'task.yaml'), 'utf8'), 'brief');
+    expect(stored.documents[1]).toEqual({
+      id: 'behaviour',
+      path: 'scenarios.md',
+      type: 'behaviour',
+      templateRevision: sha256Hex(content),
+    });
+    expect(await templateOnly()).toEqual({ 'task.md': undefined, 'scenarios.md': true });
+    await writeFile(join(taskDir, 'scenarios.md'), content + 'Given a written scenario.\n');
+    expect(await templateOnly()).toEqual({ 'task.md': undefined, 'scenarios.md': false });
   });
 
   it('replays the stored rendering after the template changed', async () => {

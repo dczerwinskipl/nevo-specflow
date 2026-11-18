@@ -228,6 +228,57 @@ describe('entry gates', () => {
   });
 });
 
+describe('document relations', () => {
+  it('name the documents the active and the next step gate, the strongest relation each', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    await implementing(dependencies);
+    const relations = async () =>
+      (await inspectActions(dependencies, task('api'))).documentRelations;
+    const implement = { id: 'implement', title: 'Implement', active: true };
+    const review = { id: 'review', title: 'Review', active: false };
+
+    // No document of either type: a gate that found none names nothing.
+    expect(await relations()).toEqual([]);
+
+    // A registered research document without a file, and a satisfying note of the Specification.
+    dependencies.references.gateDocuments.push(research(undefined), {
+      type: 'note',
+      id: 'decision',
+      present: true,
+    });
+    expect(await relations()).toEqual([
+      {
+        scope: { kind: 'task', specId: SPEC, taskId: 'api' },
+        documentId: 'findings',
+        relation: 'needed-to-finish',
+        step: implement,
+        gate: { id: 'findings', label: 'A "research" document with Findings' },
+      },
+      {
+        scope: { kind: 'specification', specId: SPEC },
+        documentId: 'decision',
+        relation: 'used',
+        step: review,
+        gate: { id: 'entry-1', label: 'A "note" document' },
+      },
+    ]);
+
+    dependencies.references.gateDocuments.splice(0, 1, research('# Notes\n'));
+    expect((await relations())?.[0]).toMatchObject({
+      relation: 'needed-to-finish',
+      gate: { missingSections: ['Findings'] },
+    });
+
+    // After the finish the review is the next step to start: its entry gate is all that is left.
+    dependencies.references.gateDocuments.splice(0, 1, research('## Findings\n'));
+    expect((await relations())?.[0]).toMatchObject({ documentId: 'findings', relation: 'used' });
+    await finishImplement(dependencies);
+    expect(await relations()).toEqual([
+      expect.objectContaining({ documentId: 'decision', relation: 'used', step: review }),
+    ]);
+  });
+});
+
 describe('own documents as context artifacts', () => {
   it('refuses a required one on create and edit (a gate expresses it); an optional one is allowed', async () => {
     const dependencies = memoryDependencies(catalogue);

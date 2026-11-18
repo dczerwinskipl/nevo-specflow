@@ -19,6 +19,7 @@ import {
 import { folderRevisionOf } from './write/folder-revision';
 import { validateDocuments } from './document-validation';
 import { EDITABLE_EXTENSIONS, isEditable } from './content-kinds';
+import { isTemplateOnly } from './content-state';
 import { folderContainsProtectedDocument, isProtectedDocument } from '../document-rules/protection';
 import {
   SUBJECT_FREE,
@@ -278,6 +279,7 @@ function projectDocumentNodes(
         protected: isProtected,
         editable,
         satisfiesRequirement: entry !== undefined && minCount > 0,
+        ...(entry ? { templateOnly: isTemplateOnly(entry, file.revision) } : {}),
         ...(marker !== undefined ? { commit: marker } : {}),
         actions: {
           save: availabilityOf(

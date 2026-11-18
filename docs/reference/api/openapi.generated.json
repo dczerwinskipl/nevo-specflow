@@ -8657,6 +8657,134 @@
                 }
               }
             }
+          },
+          "documentRelations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "scope",
+                "documentId",
+                "relation",
+                "step",
+                "gate"
+              ],
+              "properties": {
+                "scope": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "required": [
+                        "kind",
+                        "specId"
+                      ],
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "specification"
+                          ]
+                        },
+                        "specId": {
+                          "$ref": "#/components/schemas/SpecId"
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "kind",
+                        "specId",
+                        "taskId"
+                      ],
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "task"
+                          ]
+                        },
+                        "specId": {
+                          "$ref": "#/components/schemas/SpecId"
+                        },
+                        "taskId": {
+                          "$ref": "#/components/schemas/TaskId"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "documentId": {
+                  "type": "string"
+                },
+                "relation": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "needed-to-finish"
+                      ]
+                    },
+                    {
+                      "type": "string",
+                      "enum": [
+                        "needed-to-start"
+                      ]
+                    },
+                    {
+                      "type": "string",
+                      "enum": [
+                        "used"
+                      ]
+                    }
+                  ]
+                },
+                "step": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "title",
+                    "active"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "active": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "gate": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "label"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "missingSections": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "maxItems": 1000
+                    }
+                  }
+                }
+              }
+            },
+            "maxItems": 1000
           }
         }
       },
@@ -25770,6 +25898,9 @@
                           "satisfiesRequirement": {
                             "type": "boolean"
                           },
+                          "templateOnly": {
+                            "type": "boolean"
+                          },
                           "commit": {
                             "type": "object",
                             "required": [
@@ -32734,6 +32865,10 @@
                               "type": {
                                 "type": "string",
                                 "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                              },
+                              "templateRevision": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{64}$"
                               }
                             },
                             "additionalProperties": false
@@ -37114,6 +37249,9 @@
                             ]
                           },
                           "required": {
+                            "type": "boolean"
+                          },
+                          "templateOnly": {
                             "type": "boolean"
                           },
                           "file": {

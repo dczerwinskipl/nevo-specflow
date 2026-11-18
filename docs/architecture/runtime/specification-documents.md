@@ -95,7 +95,9 @@ Parser rules (strict, `SPEC_SOURCE_INVALID` otherwise; no alias, no default, no 
    registered file path is never an ancestor folder of another registered path.
    `documents[].templateRevision`, when present, is a lowercase sha256 hex digest. The Engine writes it when it
    creates the file from an archetype template (Create, or a create naming a `templateId`): the revision of exactly
-   the bytes it wrote. Rename and move keep it; nothing else writes it. A document is _template only_ (the
+   the bytes it wrote. Rename and move keep it; nothing else writes it. A Task registry (`task.yaml`
+   `documents[]`) carries the same optional field with the same rule; Task documents are created from
+   their content today, so the Engine writes none there yet. A document is _template only_ (the
    workspace read's `templateOnly`) exactly while its current revision equals it, so the check costs no read
    beyond the revision the documents section computes anyway.
 5. The registry contains exactly one entry with `id: overview`, `path: overview.md`, `type: overview`. Its id

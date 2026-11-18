@@ -1,5 +1,6 @@
 import type { SpecFlowEngine } from '../../application';
 import { mapBounded } from '../../concurrency';
+import { isTemplateOnly } from './content-state';
 import { deriveDocumentTitle } from './document-title';
 import { decodeText } from './file-analysis';
 import { loadSpecification, type LoadedSpecification } from './loaded-specification';
@@ -85,7 +86,7 @@ async function summariesOfLoaded(
         path: document.path,
         type: document.type,
         ...probe.value,
-        templateOnly: probe.value.revision === document.templateRevision,
+        templateOnly: isTemplateOnly(document, probe.value.revision),
       };
     },
   );

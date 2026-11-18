@@ -14,9 +14,10 @@ import {
   treeRowActionClassName,
 } from '@nevo/ui';
 import { TreeDocumentRow, TreeLevel } from '../../../../shared/document-tree';
+import { documentRelations, documentStateLabel, useDocumentStateRow } from '../../../documents';
 import { SectionAddButton } from '../SectionAddButton';
 import { OPEN_UP_TO, SupportSection } from '../SupportSection';
-import { useTaskDocumentTree } from '../useTaskAuthoring';
+import { useTaskActions, useTaskDocumentTree } from '../useTaskAuthoring';
 import { TaskDocumentDialog, type TaskDocumentDialogRequest } from './TaskDocumentDialog';
 
 export interface TaskDocumentsSectionProps {
@@ -35,7 +36,10 @@ const fileName = (path: string) => path.split('/').at(-1) ?? path;
 
 /**
  * Documents: `task.md` (Task content) first, then the Task's other documents, each on the shared
- * document row (glyph, file name, trailing state) as in Context and the Overview. A row opens its
+ * document row (glyph, file name, trailing state) as in Context and the Overview. The trailing
+ * state is the shared document state label: the content state ("Initial content only") and how the
+ * Task's workflow uses the document now ("Needed to finish this step"; its active step is on
+ * screen, in Now). A missing file says so instead. A row opens its
  * document in the Secondary editor; `+` creates one; the row `⋯` renames or deletes it
  * (never `task.md`, which the Documents owner protects).
  */
@@ -47,6 +51,12 @@ export function TaskDocumentsSection({
 }: TaskDocumentsSectionProps) {
   const { t } = useTranslation();
   const tree = useTaskDocumentTree(specId, taskId);
+  const relations = documentRelations(useTaskActions(specId, taskId).data?.documentRelations, {
+    kind: 'task',
+    specId,
+    taskId,
+  });
+  const stateRow = useDocumentStateRow();
   const [request, setRequest] = useState<TaskDocumentDialogRequest>();
   const documents = [...(tree.data?.documents ?? [])].sort(
     (a, b) => Number(b.required) - Number(a.required),
@@ -116,6 +126,11 @@ export function TaskDocumentsSection({
               const name = fileName(document.path);
               const registered = document.classification === 'registered';
               const kind = role(document.required);
+              const state = stateRow(
+                documentStateLabel(document.contentState, relations.get(document.id), {
+                  stepOnScreen: true,
+                }),
+              );
 
               return (
                 <TreeDocumentRow
@@ -124,10 +139,10 @@ export function TaskDocumentsSection({
                   // A registered file that is not on disk keeps its place, as in the Documents tree.
                   state={
                     document.file
-                      ? undefined
+                      ? state.state
                       : { text: t('taskAuthoring.documents.fileMissing'), attention: true }
                   }
-                  details={[kind]}
+                  details={[kind, ...(document.file ? state.details : [])]}
                   spokenDetail={kind}
                   current={false}
                   {...(document.file ? { onOpen: () => onOpenDocument(document.id) } : {})}

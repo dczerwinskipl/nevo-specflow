@@ -7,7 +7,7 @@ import { useApplicationCollection } from '../../../../app/navigation/Application
 import { useRuntimeMode } from '../../../../app/useRuntimeMode';
 import { useSpecificationWorkspace } from '../../../specs/read-model';
 import { NewTaskDialog } from '../../authoring/NewTaskDialog';
-import { useSpecificationActions } from '../../authoring/useTaskAuthoring';
+import { useSpecificationActions } from '../../read-model';
 import { goToHeading } from '../InlineAction';
 import { AbandonSpecificationDialog } from './AbandonSpecificationDialog';
 import type { BlockerTask } from './BlockerGroups';

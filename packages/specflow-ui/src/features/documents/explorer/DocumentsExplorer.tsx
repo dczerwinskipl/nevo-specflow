@@ -2,6 +2,7 @@ import type {
   DocumentOperationResult,
   DocumentTree as Tree,
 } from '@nevo/specflow-contracts/documents';
+import type { DocumentRelation } from '@nevo/specflow-contracts/workflow';
 import { useTranslation } from 'react-i18next';
 import { useId, useImperativeHandle, useMemo, useRef, useState, type Ref } from 'react';
 import { Alert, Button, TooltipProvider } from '@nevo/ui';
@@ -37,6 +38,8 @@ interface Props {
   catalogue?: CatalogueState;
   /** The Specification's name ("In the main folder of <specification>"). */
   specificationTitle?: string;
+  /** How the Specification's workflow uses each document now, by document id. */
+  relations?: ReadonlyMap<string, DocumentRelation>;
   active?: string;
   onSelect: (id: string) => void;
   onAdd: (documents: NewDocumentEntry[], folders?: string[]) => Promise<void>;
@@ -68,6 +71,7 @@ export function DocumentsExplorer({
   tree,
   catalogue = noCatalogue,
   specificationTitle = '',
+  relations,
   active,
   onSelect,
   onAdd,
@@ -197,6 +201,7 @@ export function DocumentsExplorer({
         <ExplorerTree
           tree={tree}
           catalogue={catalogue.data}
+          relations={relations}
           rows={allRows}
           filtered={filtered}
           filter={filter}

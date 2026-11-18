@@ -172,7 +172,12 @@ cancelled), **Documents**, **Context** and **Depends on**. Task history is the S
   button instead.
 - **Documents.** `task.md` first, then the Task's other documents, on the shared document row of
   Context and the Overview Documents (glyph, file name, a trailing state label; the role in the
-  tooltip); a file that is not on disk shows **File missing** and opens nothing. New document; Rename
+  tooltip). The trailing label is the shared document state label
+  ([document state](documents-archetypes-ui.md#document-state-label)): the content state from the
+  Task document listing (**Initial content only**, also for a generated `task.md` nobody edited yet)
+  and the relation from the Task's own projection, with "this step" for the Task's active step
+  (**Needed to finish this step** while `task.md` lacks a section its finish needs). A file that is
+  not on disk shows **File missing** and opens nothing. New document; Rename
   and Delete in the row menu, none for `task.md`. While the context is the Task's own list, New
   document says that the new document is not added to it ("Add it from Context if a step should
   read it"); with the default context it says nothing (the document joins by itself).

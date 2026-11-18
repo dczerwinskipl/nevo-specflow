@@ -4,10 +4,11 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { AppShell, AppWorkspace, AppWorkspaceProvider, WorkspaceHeader } from '@nevo/ui';
 import type { TaskDocumentTree, TaskResourceFacts } from '@nevo/specflow-contracts/tasks';
-import type { TaskAuthoring } from '@nevo/specflow-contracts/workflow';
+import type { DocumentRelation, TaskAuthoring } from '@nevo/specflow-contracts/workflow';
 import { createSpecFlowQueryClient } from '../../../app/queryClient';
 import { withLocale } from '../../../i18n/StoryLocalization';
 import { createSpecFlowAppServices } from '../../../services';
+import { taskWorkflowProjection } from '../execution/projections.stories-support';
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
 import type { TaskAuthoringApi } from './api';
 import { contextView } from './context/contextModel';
@@ -29,7 +30,8 @@ const file = (revision: string) =>
   ({ kind: 'text', mediaType: 'text/markdown', size: 10, revision, editable: true }) as const;
 const documentNames = ['task.md', 'plan.md', 'findings.md', 'screens.md', 'notes.md'];
 
-function documentTree(count: number): TaskDocumentTree {
+/** With `states`: task.md written, the other documents still only their initial content. */
+function documentTree(count: number, states = false): TaskDocumentTree {
   return {
     taskId: TASK,
     registryRevision: 'registry-1',
@@ -40,10 +42,40 @@ function documentTree(count: number): TaskDocumentTree {
       type: index === 0 ? 'task' : 'notes',
       classification: 'registered' as const,
       required: index === 0,
+      ...(states
+        ? { contentState: index === 0 ? ('authored' as const) : ('baseline' as const) }
+        : {}),
       file: file(`r${index}`),
     })),
   };
 }
+
+/**
+ * How the Task's workflow uses its documents at Implement: task.md lacks the Verification section
+ * its finish needs (it refuses Finish now), findings.md is needed to start Review.
+ */
+const taskRelations: DocumentRelation[] = [
+  {
+    scope: { kind: 'task', specId: SPEC, taskId: TASK },
+    documentId: 'task',
+    relation: 'needed-to-finish',
+    blocksNow: true,
+    step: { id: 'implement', title: 'Implement', active: true },
+    gate: {
+      id: 'verification',
+      label: 'task.md has a Verification section',
+      missingSections: ['Verification'],
+    },
+  },
+  {
+    scope: { kind: 'task', specId: SPEC, taskId: TASK },
+    documentId: 'findings',
+    relation: 'needed-to-start',
+    blocksNow: false,
+    step: { id: 'review', title: 'Review', active: false },
+    gate: { id: 'findings', label: 'findings.md exists' },
+  },
+];
 
 const names: ContextNames = {
   taskDocuments: new Map(documentNames.map((path) => [path.replace('.md', ''), path])),
@@ -74,6 +106,8 @@ interface Scenario {
   readonly problem?: 'missing-required' | 'awaited';
   /** Inside the application shell: Wide at a wide viewport (sections always expanded). */
   readonly shell?: boolean;
+  /** The documents carry their content state and the Task's workflow relations. */
+  readonly states?: boolean;
 }
 
 const ux: Entry = { kind: 'specification-document', id: 'ux', required: true };
@@ -138,12 +172,18 @@ function SupportSections(scenario: Scenario) {
     const never = () => new Promise<never>(() => undefined);
     const api: TaskAuthoringApi = {
       specificationActions: never,
-      taskActions: never,
+      taskActions: scenario.states
+        ? () =>
+            Promise.resolve({
+              ...taskWorkflowProjection('implement-gate'),
+              documentRelations: taskRelations,
+            })
+        : never,
       createTask: never,
       editTask: (_spec, taskId) => Promise.resolve({ taskId, revision: 'rev-4' }),
       removeTask: never,
       setStatus: never,
-      documentTree: () => Promise.resolve(documentTree(scenario.documents)),
+      documentTree: () => Promise.resolve(documentTree(scenario.documents, scenario.states)),
       addDocuments: never,
       operateDocument: never,
       catalogue: never,
@@ -154,7 +194,7 @@ function SupportSections(scenario: Scenario) {
       query: createSpecFlowQueryClient(),
       services: createSpecFlowAppServices({ taskAuthoringApi: api }),
     };
-  }, [scenario.documents]);
+  }, [scenario.documents, scenario.states]);
   const task = resource(scenario);
   const view = contextView(task, authoring(scenario));
 
@@ -298,5 +338,19 @@ export const AwaitedEntry: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Awaited · needed to start')).toBeVisible();
+  },
+};
+
+/**
+ * The shared document state label on Task documents: the relation to the Task's active step ("this
+ * step", Now is beside it) and the content state, each named only when it applies.
+ */
+export const DocumentStates: Story = {
+  args: { documents: 3, states: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Needed to finish this step')).toBeVisible();
+    await expect(canvas.getByText('Initial content only')).toBeVisible();
+    await expect(canvas.getByText('Initial content only · needed to start Review')).toBeVisible();
   },
 };

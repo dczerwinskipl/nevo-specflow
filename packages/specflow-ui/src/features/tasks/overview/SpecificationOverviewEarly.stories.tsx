@@ -85,7 +85,9 @@ export const NotStarted: Story = {
     // New session is the Sessions section's own action, never beside Start workflow.
     const newSession = canvas.getByRole('button', { name: 'New session' });
     await expect(newSession.closest('[data-workflow-now]')).toBeNull();
-    await expect(canvas.getAllByText('Template only')).toHaveLength(5);
+    // Every document is only its initial content: the header says it once, the rows say nothing.
+    await expect(canvas.getByText('5 · initial content only')).toBeVisible();
+    await expect(canvas.queryByText('Initial content only')).toBeNull();
   },
 };
 
@@ -123,7 +125,7 @@ export const WriteSpec: Story = {
     const now = canvas.getByRole('region', { name: 'Now' });
     await expect(now).not.toHaveTextContent(/Attempt|rev 1/);
     await expect(within(now).getByText(/^In progress since .+ · started by you$/)).toBeVisible();
-    await expect(canvas.getAllByText('Template only')).toHaveLength(2);
+    await expect(canvas.getAllByText('Initial content only')).toHaveLength(2);
   },
 };
 
@@ -156,6 +158,12 @@ export const WriteSpecGate: Story = {
     await expect(
       canvas.getByText('Add the Acceptance section to behaviour.md to finish.'),
     ).toBeVisible();
+    // Documents: content state and relation are separate facts, named together when both apply.
+    await expect(canvas.getByText('Needed to finish this step')).toBeInTheDocument();
+    await expect(
+      canvas.getByText('Initial content only · needed to start Design the solution'),
+    ).toBeInTheDocument();
+    await expect(canvas.getAllByText('Initial content only')).toHaveLength(1);
   },
 };
 
@@ -230,6 +238,8 @@ export const Completed: Story = {
     await expect(await canvas.findByRole('img', { name: 'All 7 steps · completed' })).toBeVisible();
     // The Tasks of a completed workflow are done, not drafts.
     await expect(canvas.queryByText(/0 of 2/)).toBeNull();
+    // Once the run ended no gate relates a document: only the content state stays.
+    await expect(canvas.getAllByText('Initial content only')).toHaveLength(2);
   },
 };
 

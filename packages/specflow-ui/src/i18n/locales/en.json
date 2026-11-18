@@ -160,7 +160,6 @@
     "tasksEmptyTitle": "No tasks yet",
     "tasksEmptyDescription": "Tasks appear here once the specification is prepared for work.",
     "tasksAppearAfter": "Tasks appear when {{step}} (step {{position}} of {{total}}) finishes.",
-    "documentTemplateOnly": "Template only",
     "documentsEmptyTitle": "No documents yet",
     "documentsHeading": "Documents",
     "allDocumentsLink": "All documents",
@@ -1085,6 +1084,38 @@
       "discardAll": "Discard all",
       "notSaved": "not saved",
       "saveAllFailed": "Not all documents could be saved. The drafts are kept."
+    },
+    "state": {
+      "initialContent": "Initial content only",
+      "initialContentShort": "Initial content",
+      "withContent": "{{content}} · {{relation}}",
+      "allInitialContent": "{{count}} · initial content only",
+      "relation": {
+        "neededToFinishThisStep": "Needed to finish this step",
+        "neededToFinishStep": "Needed to finish {{step}}",
+        "neededToFinishShort": "Needed to finish",
+        "neededToStartThisStep": "Needed to start this step",
+        "neededToStartStep": "Needed to start {{step}}",
+        "neededToStartShort": "Needed to start",
+        "usedThisStep": "Used in this step",
+        "usedStep": "Used in {{step}}",
+        "usedShort": "Used"
+      },
+      "afterContent": {
+        "neededToFinishThisStep": "needed to finish this step",
+        "neededToFinishStep": "needed to finish {{step}}",
+        "neededToFinishShort": "needed to finish",
+        "neededToStartThisStep": "needed to start this step",
+        "neededToStartStep": "needed to start {{step}}",
+        "neededToStartShort": "needed to start",
+        "usedThisStep": "used in this step",
+        "usedStep": "used in {{step}}",
+        "usedShort": "used"
+      },
+      "missingSections_one": "Needs the {{sections}} section",
+      "missingSections_other": "Needs the {{sections}} sections",
+      "missingSections_few": "Needs the {{sections}} sections",
+      "missingSections_many": "Needs the {{sections}} sections"
     },
     "tree": {
       "newFolder": "New folder",
@@ -2016,7 +2047,6 @@
       "taskContent": "Task content",
       "taskDocument": "Task document",
       "fileMissing": "File missing",
-      "open": "Open {{name}}",
       "actionsFor": "Actions for {{name}}",
       "rename": "Rename",
       "delete": "Delete document",
@@ -2052,6 +2082,8 @@
       "useDefaultTitle": "Use the default context?",
       "useDefaultBody_one": "This task's list of {{count}} entry is replaced by the default (task.md, its documents and the specification overview).",
       "useDefaultBody_other": "This task's list of {{count}} entries is replaced by the default (task.md, its documents and the specification overview).",
+      "useDefaultBody_few": "This task's list of {{count}} entries is replaced by the default (task.md, its documents and the specification overview).",
+      "useDefaultBody_many": "This task's list of {{count}} entries is replaced by the default (task.md, its documents and the specification overview).",
       "useDefaultRemoved": "Entries you added are removed: {{names}}.",
       "moreNames": "+{{count}}",
       "awaitedLabel": "Awaited · needed to start",

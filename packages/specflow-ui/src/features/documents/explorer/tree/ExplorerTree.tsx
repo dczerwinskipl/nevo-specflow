@@ -1,4 +1,5 @@
 import type { ArchetypeCatalogue, DocumentTree as Tree } from '@nevo/specflow-contracts/documents';
+import type { DocumentRelation } from '@nevo/specflow-contracts/workflow';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { InlineNote, Spinner, Typography, cn, treeSectionHeaderClassName } from '@nevo/ui';
@@ -30,6 +31,7 @@ import type { TreeFocus } from './useTreeFocus';
 export function ExplorerTree({
   tree,
   catalogue,
+  relations,
   rows,
   filtered,
   filter,
@@ -52,6 +54,8 @@ export function ExplorerTree({
 }: {
   tree: Tree;
   catalogue?: ArchetypeCatalogue;
+  /** How the Specification's workflow uses each document now, by document id. */
+  relations?: ReadonlyMap<string, DocumentRelation>;
   /** The unfiltered rows. */
   rows: TreeRows;
   /** The rows the filter leaves, with its counts. */
@@ -143,6 +147,7 @@ export function ExplorerTree({
           context={{
             index,
             catalogue,
+            relations,
             active,
             locked: busy || unknown,
             expandAll: filtering,

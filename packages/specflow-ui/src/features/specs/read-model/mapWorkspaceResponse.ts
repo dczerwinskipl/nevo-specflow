@@ -153,7 +153,7 @@ export function mapWorkspaceResponse(
             kind: doc.kind,
             ...(doc.filename ? { filename: doc.filename } : {}),
             summary: doc.summary,
-            ...(doc.contentState === 'baseline' ? { templateOnly: true } : {}),
+            ...(doc.contentState ? { contentState: doc.contentState } : {}),
           }))
         : [],
     documentFolders:

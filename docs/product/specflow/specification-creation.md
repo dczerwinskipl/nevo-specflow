@@ -402,7 +402,8 @@ repository folder) and a `path`; the UI shows the name instead of a generic "Cur
 
 A freshly created Specification opens on an Overview that shows everything that exists: the
 overview's Goal (else its first paragraph) as the description, the registered documents, each
-marked **Template only** while it is still its template, the empty Tasks and Sessions sections
+marked **Initial content only** while it is still the initial content the Engine wrote (said once
+in the Documents header when every document is), the empty Tasks and Sessions sections
 (inline empty states under their headers) and, with a workflow, Now with **Start workflow**
 (without one, the preparation block). The block's
 **Start session** opens New Session when the caller may start one; with Sessions turned off or not

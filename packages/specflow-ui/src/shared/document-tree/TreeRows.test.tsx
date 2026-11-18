@@ -103,13 +103,31 @@ describe('shared document tree rows', () => {
       </>,
       true,
     );
-    expect(screen.getByText('Quiet').className).toBe(treeStateLabelClassName);
-    expect(screen.getByText('Acted on').className).toBe(treeSecondaryStateLabelClassName);
-    expect(screen.getByText('Look').className).toBe(treeAttentionStateLabelClassName);
-    // The label tone alone keeps the row's own glyph.
+    expect(screen.getByText('Quiet').className).toContain(treeStateLabelClassName);
+    expect(screen.getByText('Acted on').className).toContain(treeSecondaryStateLabelClassName);
+    expect(screen.getByText('Look').className).toContain(treeAttentionStateLabelClassName);
+    // The label tone alone keeps the row's own glyph; the label carries its own warning icon.
     expect(row('c.md').firstElementChild?.getAttribute('class')).not.toContain(
       treeAttentionGlyphClassName.split(' ').at(-1),
     );
+    expect(screen.getByText('Look').querySelector('svg')).not.toBeNull();
+    expect(screen.getByText('Acted on').querySelector('svg')).toBeNull();
+  });
+
+  it('swaps a long label for its short form in a narrow row (a container query)', () => {
+    tree(
+      <TreeDocumentRow
+        name="behaviour.md"
+        state={{ text: 'Needed to finish Write the specification', shortText: 'Needed to finish' }}
+        current={false}
+        onOpen={noop}
+      />,
+      true,
+    );
+    expect(screen.getByText('Needed to finish Write the specification').className).toContain(
+      '@max-md/tree-row:hidden',
+    );
+    expect(screen.getByText('Needed to finish').className).toContain('@max-md/tree-row:inline');
   });
 
   it('draws a row that opens nothing as the same line, not a button', () => {

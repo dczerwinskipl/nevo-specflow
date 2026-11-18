@@ -2054,7 +2054,7 @@
       "useDefaultBody_other": "This task's list of {{count}} entries is replaced by the default (task.md, its documents and the specification overview).",
       "useDefaultRemoved": "Entries you added are removed: {{names}}.",
       "moreNames": "+{{count}}",
-      "awaitedLabel": "Awaited · needed when the step starts",
+      "awaitedLabel": "Awaited · needed to start",
       "notFoundLabel": "Not found",
       "notRegisteredLabel": "Not registered",
       "blocking_one": "{{count}} required entry is missing: {{names}}.",

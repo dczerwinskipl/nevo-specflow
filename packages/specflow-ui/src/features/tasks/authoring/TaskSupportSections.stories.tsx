@@ -210,7 +210,7 @@ const meta = {
   component: SupportSections,
   decorators: [withLocale('en')],
   parameters: { layout: 'fullscreen' },
-  args: { documents: 1, own: false, editable: true },
+  args: { documents: 1, own: false, editable: true, shell: false },
 } satisfies Meta<typeof SupportSections>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -256,8 +256,8 @@ export const UseDefaultConfirm: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const page = within(canvasElement.ownerDocument.body);
-    await userEvent.click(await canvas.findByRole('button', { name: /Context/ }));
-    await userEvent.click(canvas.getByRole('button', { name: 'Add context' }));
+    // The `+` sits in the header: it works whether or not the section is collapsed.
+    await userEvent.click(await canvas.findByRole('button', { name: 'Add context' }));
     await userEvent.click(await page.findByRole('menuitem', { name: 'Use default context' }));
     const dialog = await page.findByRole('dialog');
     await expect(dialog).toHaveTextContent('Use the default context?');
@@ -297,6 +297,6 @@ export const AwaitedEntry: Story = {
   args: { problem: 'awaited' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Awaited · needed when the step starts')).toBeVisible();
+    await expect(await canvas.findByText('Awaited · needed to start')).toBeVisible();
   },
 };

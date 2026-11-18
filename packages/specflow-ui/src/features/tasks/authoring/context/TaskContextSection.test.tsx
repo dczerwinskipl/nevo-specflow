@@ -170,7 +170,7 @@ describe('TaskContextSection', () => {
     const rows = () => screen.getAllByRole('listitem').map((row) => row.textContent);
     expect(screen.getByText('4 entries · own list')).toBeTruthy();
     expect(rows()).toEqual([
-      expect.stringMatching(/^findings.*Awaited · needed when the step starts$/),
+      expect.stringMatching(/^findings.*Awaited · needed to start$/),
       expect.stringMatching(/^old-flow\.md.*Not found · required$/),
     ]);
     expect(screen.getByText('1 required entry is missing: old-flow.md.')).toBeTruthy();

@@ -2056,7 +2056,7 @@
       "useDefaultBody_other": "Lista zadania z {{count}} wpisu zostanie zastąpiona domyślną (task.md, dokumenty zadania i przegląd specyfikacji).",
       "useDefaultRemoved": "Dodane przez ciebie wpisy zostaną usunięte: {{names}}.",
       "moreNames": "+{{count}}",
-      "awaitedLabel": "Oczekiwany · potrzebny, gdy krok startuje",
+      "awaitedLabel": "Oczekiwany · potrzebny do startu",
       "notFoundLabel": "Nie znaleziono",
       "notRegisteredLabel": "Niezarejestrowany",
       "blocking_one": "Brakuje {{count}} wymaganego wpisu: {{names}}.",

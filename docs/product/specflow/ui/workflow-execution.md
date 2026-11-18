@@ -183,7 +183,7 @@ cancelled), **Documents**, **Context** and **Depends on**. Task history is the S
   document title), with its kind and note in the tooltip and a trailing label: **Always first**
   (`task.md`), **Required** or **Optional**, or the problem with its short reason, visible at every
   width (**Not found · required**, **Not found · optional**, **Not registered · required**,
-  **Awaited · needed when the step starts**). Trailing labels line up: while the context is
+  **Awaited · needed to start**). Trailing labels line up: while the context is
   editable every row keeps the `⋯` slot. The header says which list it shows: "N entries · default" or "N entries · own list",
   and a source line under the explanation says it before any change: **Default context.** it follows
   the task (`task.md`, its other documents and the Specification overview, all required); new task

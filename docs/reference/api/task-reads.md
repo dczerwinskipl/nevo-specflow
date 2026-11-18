@@ -198,7 +198,9 @@ reflects another moment; only `task.md`'s revision is read separately (the Docum
 version).
 
 - `resource` is the Task resource: `revision` (the manifest revision an edit or removal names),
-  `type`, `status`, `statusChange`, `dependsOn`, `origin`, `documents`, `context` (`null`: the
+  `type`, `status`, `statusChange`, `dependsOn`, `origin`, `documents` (the `task.yaml` registry
+  entries `{id, path, type, templateRevision?}`; `templateRevision` is the Engine's record of a
+  template create, see [Task documents](specification-documents.md#task-documents)), `context` (`null`: the
   default context), `readiness`, the run `position`, `facts` and `definitionChanged`.
 - `resource.facts` are the Engine's neutral `TaskFacts` (no group, label or order):
   `preparation` (the status), `escalated` (on hold by its own escalation), the run `position`

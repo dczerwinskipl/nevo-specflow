@@ -186,6 +186,38 @@ describe('projectDocumentTree', () => {
     expect(byId.behaviour!.satisfiesRequirement).toBe(false);
   });
 
+  it('reports templateOnly of registered documents by their recorded templateRevision', () => {
+    const base = input();
+    const tree = projectDocumentTree(
+      input({
+        manifest: {
+          ...base.manifest,
+          documents: [
+            {
+              id: 'overview',
+              path: 'overview.md',
+              type: 'overview',
+              templateRevision: 'r-overview.md',
+            },
+            { id: 'behaviour', path: 'behaviour.md', type: 'behaviour', templateRevision: 'r-old' },
+            { id: 'notes', path: 'notes.md', type: 'notes' },
+          ],
+        },
+        files: [file('overview.md'), file('behaviour.md'), file('notes.md'), file('loose.md')],
+      }),
+    );
+    expect(Value.Check(DocumentTreeSchema, tree)).toBe(true);
+    expect(
+      Object.fromEntries(tree.documents.map((document) => [document.path, document.templateOnly])),
+    ).toEqual({
+      'overview.md': true,
+      'behaviour.md': false,
+      'notes.md': false,
+      // Unclassified: no registry entry, no content state.
+      'loose.md': undefined,
+    });
+  });
+
   it('marks everything archived in the archive location, and nothing editable', () => {
     const tree = projectDocumentTree(input({ location: 'archive' }));
     const archived = { available: false, reason: 'archived' };

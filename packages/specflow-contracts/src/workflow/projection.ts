@@ -159,6 +159,35 @@ export const GateStatusSchema = Type.Object({
 });
 export type GateStatus = Static<typeof GateStatusSchema>;
 
+export const DOCUMENT_RELATIONS = ['needed-to-finish', 'needed-to-start', 'used'] as const;
+export type DocumentRelationKind = (typeof DOCUMENT_RELATIONS)[number];
+
+/**
+ * How the workflow uses one document now, from the gates of the step the run is at (its exit gates)
+ * and of the step it certainly goes to next (that step's entry gates): `needed-to-finish` (an unmet
+ * exit gate of the active step), `needed-to-start` (an unmet entry gate of the next step; it does not
+ * block now), `used` (a satisfied gate of either). A gate names the document that satisfies it or
+ * the closest one; one that found no file names every registered document of its type in its
+ * scope. One entry per document: the strongest relation (in that order), then the active step's
+ * gate before the next step's, in declared order.
+ */
+export const DocumentRelationSchema = Type.Object({
+  /** The Specification or the Task whose registry holds the document. */
+  scope: GateScopeSchema,
+  documentId: Type.String(),
+  relation: literals(DOCUMENT_RELATIONS),
+  /** The gate's step; `active`: the step the run is at ("this step"). */
+  step: Type.Object({ id: StepIdSchema, title: Type.String(), active: Type.Boolean() }),
+  gate: Type.Object({
+    id: Type.String(),
+    /** Display text. */
+    label: Type.String(),
+    /** The required sections the document lacks (an unmet gate). */
+    missingSections: Type.Optional(array(Type.String())),
+  }),
+});
+export type DocumentRelation = Static<typeof DocumentRelationSchema>;
+
 export const StartableStepSchema = Type.Object({
   step: WorkflowStepSchema,
   human: Type.Boolean(),
@@ -714,6 +743,13 @@ export const WorkflowActionProjectionSchema = Type.Object(
     ),
     /** For a Specification subject whose workflow resolves. */
     outline: Type.Optional(WorkflowOutlineSchema),
+    /**
+     * The documents the gates of the active and the next step name, one entry each. On the
+     * Specification projection and on one Task's own projection whenever the workflow resolves and
+     * is unchanged (empty when no gate names a document, for example once the run ended); absent
+     * otherwise and from reads of several Tasks.
+     */
+    documentRelations: Type.Optional(array(DocumentRelationSchema)),
   },
   { $id: 'WorkflowActionProjection' },
 );

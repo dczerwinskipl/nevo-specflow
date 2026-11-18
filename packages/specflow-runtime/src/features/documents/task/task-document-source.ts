@@ -64,6 +64,7 @@ export function createEngineTaskDocumentSource(
         ...(document.type !== undefined ? { type: document.type } : {}),
         classification: document.classification,
         required: document.required,
+        ...(document.templateOnly !== undefined ? { templateOnly: document.templateOnly } : {}),
         ...(document.file ? { file: { ...document.file } } : {}),
       })),
     };

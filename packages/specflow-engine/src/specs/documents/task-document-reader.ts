@@ -5,6 +5,7 @@ import { mapBounded } from '../../concurrency';
 import { sha256Hex } from '../../hash';
 import { deriveUnclassifiedDocumentId } from '../document-rules/document-ids';
 import { isEditable } from './content-kinds';
+import { isTemplateOnly } from './content-state';
 import { isReservedContainerPath, isRequiredDocument } from './changes/plan/container';
 import { listSpecificationFiles } from './directory-scan';
 import { loadDocumentContainer } from './loaded-specification';
@@ -23,6 +24,11 @@ export interface TaskDocumentListing {
   readonly classification: 'registered' | 'unclassified';
   /** The required `task` document: it cannot be deleted or renamed. */
   readonly required: boolean;
+  /**
+   * Template only (`isTemplateOnly`); absent when the entry records no `templateRevision` and for a
+   * document without a (readable) file.
+   */
+  readonly templateOnly?: boolean;
   /** Absent for a registered document without a (readable) file. */
   readonly file?: {
     readonly kind: ContentKind;
@@ -91,10 +97,22 @@ export async function readTaskDocuments(
         };
   };
 
-  const listing = (entry: Omit<TaskDocumentListing, 'file'>): TaskDocumentListing => {
+  const listing = (
+    entry: Omit<TaskDocumentListing, 'file' | 'templateOnly'>,
+    templateRevision?: string,
+  ): TaskDocumentListing => {
     const file = fileOf(entry.path);
+    if (file === undefined) {
+      return entry;
+    }
 
-    return file === undefined ? entry : { ...entry, file };
+    return {
+      ...entry,
+      ...(templateRevision !== undefined
+        ? { templateOnly: isTemplateOnly({ templateRevision }, file.revision) }
+        : {}),
+      file,
+    };
   };
 
   return {
@@ -104,13 +122,16 @@ export async function readTaskDocuments(
     writable,
     documents: [
       ...registered.map((document) =>
-        listing({
-          id: document.id,
-          path: document.path,
-          type: document.type,
-          classification: 'registered',
-          required: isRequiredDocument(loaded.container, document),
-        }),
+        listing(
+          {
+            id: document.id,
+            path: document.path,
+            type: document.type,
+            classification: 'registered',
+            required: isRequiredDocument(loaded.container, document),
+          },
+          document.templateRevision,
+        ),
       ),
       // A file that vanished since the listing is not reported.
       ...unclassified

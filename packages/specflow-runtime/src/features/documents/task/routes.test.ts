@@ -49,6 +49,21 @@ function fakeSource(calls: string[], fail?: () => Error): TaskDocumentSource {
             classification: 'registered',
             required: true,
           },
+          {
+            id: 'behaviour',
+            path: 'behaviour.md',
+            type: 'behaviour',
+            classification: 'registered',
+            required: false,
+            templateOnly: true,
+            file: {
+              kind: 'text',
+              mediaType: 'text/markdown',
+              size: 4,
+              revision: 'r1',
+              editable: true,
+            },
+          },
         ],
       }),
     read: (_specId, _taskId, documentId) =>
@@ -95,6 +110,11 @@ describe('Task document routes', () => {
     const tree = await app.inject(`${base}/document-tree`);
     expect(tree.statusCode, tree.body).toBe(200);
     expect(tree.json()).toMatchObject({ taskId: 'build', registryRevision: 'registry-1' });
+    // The content state is served as the source read it.
+    expect(tree.json<{ documents: unknown[] }>().documents[1]).toMatchObject({
+      id: 'behaviour',
+      templateOnly: true,
+    });
     const again = await app.inject({
       url: `${base}/document-tree`,
       headers: { 'if-none-match': String(tree.headers.etag) },

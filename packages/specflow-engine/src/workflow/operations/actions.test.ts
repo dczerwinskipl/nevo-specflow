@@ -274,6 +274,7 @@ describe('Task positions', () => {
         next: expect.objectContaining({ human: true, agent: { kind: 'available' } }) as unknown,
       },
       actions: {},
+      documentRelations: [],
       task: {
         revision: created.revision,
         approve: ALLOWED,

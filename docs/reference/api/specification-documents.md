@@ -256,6 +256,7 @@ DocumentTree = {
     protected: boolean                 // true only for overview
     editable: boolean                  // md, txt in the first release
     satisfiesRequirement: boolean      // registered and its type has a requirement with minCount > 0
+    templateOnly?: boolean             // registered only: true while the file still has the bytes the Engine created it with from a template (revision == registry templateRevision); false once a byte differs or not created from a template; the same rule and value as the workspace documents section; absent for unclassified files and in demo mode
     actions: { save?: Action; rename: Action; move: Action; delete: Action; classify: Action }   // save: the text can be saved (editable, nothing refuses a write)
     commit?: { state: 'pending' | 'failed' | 'uncommitted'; operationId: string; recoveryRequired?: boolean; reason?: string; blockedBy?: string; attempts?: integer; nextAttemptAt?: string; queuedAt?: string }   // while an operation that has not settled covers the path (pending: queued, committing or still writing; failed: waits for a decision, recoveryRequired when only the operator can resolve it); 'uncommitted' = the path is in the uncommitted-changes ledger (reason auto-commit-off or abandoned), kept until a commit holds the path; reason/blockedBy/attempts/nextAttemptAt as in CommitInfo; a committed operation never appears
   }>
@@ -592,7 +593,11 @@ Specification does not list is `DOCUMENT_NOT_FOUND`.
 
 `TaskDocumentTree` lists each document with `id`, `path` (relative to the Task folder), `type`,
 `classification`, `required` and, when its file is readable, `file` (`kind`, `mediaType`, `size`,
-`revision` for a save, `editable`). Like the Specification tree it answers an `ETag` (over the whole
+`revision` for a save, `editable`) and `templateOnly`, by the same rule as the Specification tree,
+but only when the registry entry records a `templateRevision` (`task.yaml` `documents[]`, kept by
+rename and move like `specification.yaml`'s). An entry without the record (every Task document
+created from its content, `task.md` included, and every entry written before the Engine recorded
+it) has no `templateOnly`: its content state is unknown. Like the Specification tree it answers an `ETag` (over the whole
 listing, so a file change changes it) and `304` to a matching `If-None-Match`. A write's status is
 read at the Specification's `GET /api/specs/:specId/document-operations/:operationId`. The Task's metadata (title, dependencies, context) is not a
 document: it changes through the [Task commands](task-reads.md#task-commands).

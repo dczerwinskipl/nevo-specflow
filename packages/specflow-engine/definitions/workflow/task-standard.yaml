@@ -12,7 +12,7 @@ steps:
     title: Implement
     executors: [agent, human]
     archetype: implementer
-    purpose: The Task's change works, stays in scope and passes its verification.
+    purpose: The Task's change works and stays within its scope.
     transitions:
       - id: implemented
         label: Implemented

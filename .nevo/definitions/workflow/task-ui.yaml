@@ -12,7 +12,7 @@ steps:
     title: Implement
     executors: [agent, human]
     archetype: implementer-ui
-    purpose: The screens match their UX contract and pass the Task's verification.
+    purpose: Working screens that follow their UX contract.
     transitions:
       - id: implemented
         label: Implemented

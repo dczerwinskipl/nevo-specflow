@@ -27,9 +27,9 @@ async function gatedCatalogue(): Promise<ExecutionCatalogue> {
   const workflow = files['workflow/task-standard.yaml'] ?? '';
   files['workflow/task-standard.yaml'] = workflow
     .replace(
-      "    purpose: The Task's change works, stays in scope and passes its verification.\n",
+      "    purpose: The Task's change works and stays within its scope.\n",
       [
-        "    purpose: The Task's change works, stays in scope and passes its verification.",
+        "    purpose: The Task's change works and stays within its scope.",
         '    exitGates:',
         '      - id: findings',
         '        type: document',
@@ -68,9 +68,9 @@ describe('a gate document type', () => {
   it('must be defined, and installing the workflow installs it', async () => {
     const files = await seedDefinitionFiles();
     files['workflow/task-standard.yaml'] = (files['workflow/task-standard.yaml'] ?? '').replace(
-      "    purpose: The Task's change works, stays in scope and passes its verification.\n",
+      "    purpose: The Task's change works and stays within its scope.\n",
       [
-        "    purpose: The Task's change works, stays in scope and passes its verification.",
+        "    purpose: The Task's change works and stays within its scope.",
         '    exitGates: [{ type: document, documentType: findings }]',
         '',
       ].join('\n'),

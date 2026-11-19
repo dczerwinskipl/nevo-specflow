@@ -210,8 +210,10 @@ cancelled), **Documents**, **Context** and **Depends on**. Task history is the S
   summary keeps the source ("6 entries · own list · 1 optional missing"). The first change of an
   editable default has no confirm; it is said where it happens, before it happens: the row `⋯`
   menu opens with a note above a separator, read before any choice ("A change here saves the context
-  as this task's own list…", announced with the menu through `aria-describedby`), and every Add dialog ends with an
-  info note above **Add to context** ("Adding this saves the context as this task's own list…").
+  as this task's own list…", announced with the menu through `aria-describedby`), and every Add dialog opens with an
+  info note directly under its description, before any field, so a long document list cannot
+  scroll it out of view while **Add to context** stays in the footer ("Adding this saves the
+  context as this task's own list…").
   Both disappear once the list is the task's own. The row menu shows Move up / Move down, and
   their separator, only when the entry can move. With an own, editable list the **+** menu ends
   with **Use default context**: a confirm says the list of N entries will be replaced by the

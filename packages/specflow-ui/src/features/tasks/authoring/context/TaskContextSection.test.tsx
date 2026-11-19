@@ -199,9 +199,15 @@ describe('TaskContextSection', () => {
     renderSection(fakeTaskAuthoringApi());
     fireEvent.keyDown(screen.getByRole('button', { name: 'Add context' }), { key: 'Enter' });
     fireEvent.click(screen.getByRole('menuitem', { name: 'Code path' }));
-    expect(screen.getByRole('dialog').textContent).toContain(
-      "Adding this saves the context as this task's own list.",
+    const note = within(screen.getByRole('dialog')).getByText(
+      /^Adding this saves the context as this task's own list\./,
     );
+    // Read before any field: a long picker scrolls, the confirm stays in view.
+    const fields = screen.getByRole('dialog').querySelector('form input, form textarea');
+    expect(fields).not.toBeNull();
+    expect(
+      note.compareDocumentPosition(fields as Node) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     cleanup();
 
     renderSection(fakeTaskAuthoringApi(), ownResource(), ownAuthoring);

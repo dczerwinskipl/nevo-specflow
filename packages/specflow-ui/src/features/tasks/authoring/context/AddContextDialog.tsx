@@ -127,6 +127,10 @@ function AddContextForm({
       </DialogHeader>
       <DialogBody>
         <form id={formId} noValidate onSubmit={submit} className="grid gap-6">
+          {/* First, under the description: a long picker scrolls, the confirm does not. */}
+          {firstChange ? (
+            <InlineNote icon="info">{t('taskAuthoring.context.firstChangeAddNote')}</InlineNote>
+          ) : null}
           {error}
           {kind !== 'instructions' ? (
             <CheckboxField
@@ -237,9 +241,6 @@ function AddContextForm({
             <Field.Label>{t('taskAuthoring.context.noteLabel')}</Field.Label>
             <TextInput value={note} onChange={(event) => setNote(event.target.value)} />
           </Field>
-          {firstChange ? (
-            <InlineNote icon="info">{t('taskAuthoring.context.firstChangeAddNote')}</InlineNote>
-          ) : null}
         </form>
       </DialogBody>
       <DialogFooter>

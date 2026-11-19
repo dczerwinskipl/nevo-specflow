@@ -313,16 +313,23 @@ export const DefaultRowMenu: Story = {
   },
 };
 
-/** The Add dialog over a default list says what adding does, above its confirm. */
+/** The Add dialog over a default list says what adding does first, above its fields. */
 export const DefaultAddDialog: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const page = within(canvasElement.ownerDocument.body);
     await userEvent.click(await canvas.findByRole('button', { name: 'Add context' }));
     await userEvent.click(await page.findByRole('menuitem', { name: 'Code path' }));
-    await expect(await page.findByRole('dialog')).toHaveTextContent(
-      "Adding this saves the context as this task's own list.",
+    const dialog = await page.findByRole('dialog');
+    const note = within(dialog).getByText(
+      /^Adding this saves the context as this task's own list\./,
     );
+    await expect(note).toBeVisible();
+    // It precedes every field of the form.
+    const field = dialog.querySelector('form input, form textarea');
+    await expect(
+      Boolean(note.compareDocumentPosition(field as Node) & Node.DOCUMENT_POSITION_FOLLOWING),
+    ).toBe(true);
   },
 };
 

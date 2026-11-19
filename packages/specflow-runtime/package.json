@@ -34,7 +34,7 @@
     "build": "node ../../tools/build-package.mjs",
     "typecheck": "tsc -p tsconfig.json",
     "lint": "eslint .",
-    "test": "vitest run --testTimeout=20000"
+    "test": "vitest run"
   },
   "dependencies": {
     "@fastify/compress": "9.3.0",

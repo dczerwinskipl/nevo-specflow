@@ -325,7 +325,10 @@ describe('GET /api/specs/create/operations/:operationId/events', () => {
       return false;
     });
     expect(await Promise.race([snapshot.promise, reading.then(() => 'closed')])).toBe('snapshot');
-    await app.close();
+    const closing = app.close();
     await expect(reading).resolves.toContainEqual(expect.objectContaining({ event: 'snapshot' }));
+    // The response has ended. Close any remaining idle HTTP connection before awaiting shutdown.
+    app.server.closeIdleConnections();
+    await closing;
   });
 });

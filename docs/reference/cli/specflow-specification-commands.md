@@ -268,6 +268,10 @@ run. Every command accepts `--project-root <path>` and `--json`.
 ... (required-own-artifact)`, with a hint to use an exit gate on the producing step and an entry gate on the
   consuming step); mark it optional or use gates.
 - **Step names.** Steps are printed as `Title (id)`; the id is what `--step` takes.
+- **Producing Tasks.** `workflow start` of a step that produces Tasks prints `Finish needs: --tasks-file <path>`
+  with the rule of that finish (the step context's `finish.tasks.rule`): the file lists every draft Task of the
+  step, not only the changed ones; an unlisted draft is cancelled. A later attempt, for example after a review
+  sends the step back, lists them all again.
 - **Gates.** `workflow actions` prints the gates of each finish transition and the entry gates of the next step
   as `[x]`/`[ ] gate <id>: <label>, <document type> in <Task|Specification> (<why>)`. A start or finish that a
   gate refuses (`WORKFLOW_GATE_UNSATISFIED`) prints the unsatisfied gates the same way; `--json` adds

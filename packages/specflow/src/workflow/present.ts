@@ -260,6 +260,10 @@ export function startLines(result: StartResult): string[] {
     );
   }
 
+  if (context.finish.tasks) {
+    lines.push(`Finish needs: --tasks-file <path>. ${context.finish.tasks.rule}`);
+  }
+
   return lines;
 }
 

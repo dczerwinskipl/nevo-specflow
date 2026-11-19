@@ -159,7 +159,14 @@ export function WorkflowNow({
     attemptedWait && (waitPending || (waitFailed && writeOutcomeUnknown(waitError)))
       ? submittedWait
       : undefined;
-  const waitAction = waitAttempt ?? retryWait;
+  const retryEarlierWait =
+    retryWait && (retryWait.step !== waitAttempt?.step || retryWait.attempt !== waitAttempt.attempt)
+      ? retryWait
+      : undefined;
+
+  const endWait = (step: string, attempt: number) => {
+    commands.reevaluateWait.mutate({ specId: subject.specId, step, attempt });
+  };
 
   const startNow = () => {
     commands.start.reset();
@@ -297,23 +304,13 @@ export function WorkflowNow({
       : undefined;
 
   const workflowActions =
-    (waitAction ? (
+    (waitAttempt ? (
       <Button
         key="reevaluate-wait"
-        onClick={() =>
-          commands.reevaluateWait.mutate({
-            specId: subject.specId,
-            step: waitAction.step,
-            attempt: waitAction.attempt,
-          })
-        }
+        onClick={() => endWait(waitAttempt.step, waitAttempt.attempt)}
         disabled={busy}
       >
-        {t(
-          retryWait && !waitAttempt
-            ? 'workflowExecution.now.retryWait'
-            : 'workflowExecution.now.reevaluateWait',
-        )}
+        {t('workflowExecution.now.reevaluateWait')}
       </Button>
     ) : undefined) ??
     primaryAction ??
@@ -474,7 +471,23 @@ export function WorkflowNow({
         gateActionFor={gateAction && !mainGateAction ? finishGateAction : undefined}
         {...(gateDocument ? { gateDocument } : {})}
         note={note}
-        actions={workflowActions}
+        actions={
+          retryEarlierWait ? (
+            <>
+              {workflowActions}
+              <Button
+                key="retry-wait"
+                variant="secondary"
+                onClick={() => endWait(retryEarlierWait.step, retryEarlierWait.attempt)}
+                disabled={busy}
+              >
+                {t('workflowExecution.now.retryWait')}
+              </Button>
+            </>
+          ) : (
+            workflowActions
+          )
+        }
         menu={menu}
         {...(overview
           ? {

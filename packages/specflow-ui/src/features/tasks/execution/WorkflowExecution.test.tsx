@@ -68,17 +68,9 @@ function renderWith(
 }
 
 it.each([
-  [
-    'keeps the retry after an interrupted publication',
-    new Error('publication interrupted'),
-    'Retry ending wait',
-  ],
-  [
-    'shows the refreshed action after a stale attempt refusal',
-    refusal('WORKFLOW_ATTEMPT_MISMATCH'),
-    'Continue workflow',
-  ],
-])('%s', async (_scenario, error, expectedAction) => {
+  ['keeps retry available after an unknown outcome', new Error('publication interrupted'), true],
+  ['drops retry after a stale attempt refusal', refusal('WORKFLOW_ATTEMPT_MISMATCH'), false],
+])('%s', async (_scenario, error, canRetry) => {
   const waitAttempt = { step: 'wait-for-tasks', attempt: 3 };
   const reevaluateWait = vi
     .fn(() => Promise.resolve({ ...waitAttempt, status: 'already-settled' as const }))
@@ -128,10 +120,23 @@ it.each([
   fireEvent.click(screen.getByRole('button', { name: 'End wait' }));
   await waitFor(() => expect(reevaluateWait).toHaveBeenCalledWith(SPEC, waitAttempt));
   fireEvent.click(screen.getByRole('button', { name: 'Reload workflow' }));
-  await waitFor(() => {
-    const action = screen.getByRole('button', { name: expectedAction });
-    expect(action.hasAttribute('disabled')).toBe(false);
-  });
+  await screen.findByRole('alert');
+  const continueAction = screen.getByRole('button', { name: 'Continue workflow' });
+  expect(continueAction.hasAttribute('disabled')).toBe(false);
+  expect(screen.queryByRole('button', { name: 'End wait' })).toBeNull();
+
+  if (canRetry) {
+    const retryAction = screen.getByRole('button', { name: 'Retry ending wait' });
+    const buttons = screen.getAllByRole('button');
+    expect(buttons.indexOf(continueAction)).toBeLessThan(buttons.indexOf(retryAction));
+    fireEvent.click(retryAction);
+    await waitFor(() => expect(reevaluateWait).toHaveBeenNthCalledWith(2, SPEC, waitAttempt));
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Retry ending wait' })).toBeNull();
+    });
+  } else {
+    expect(screen.queryByRole('button', { name: 'Retry ending wait' })).toBeNull();
+  }
 });
 
 /** The Task's Now block over its projection query (a command refreshes it). */

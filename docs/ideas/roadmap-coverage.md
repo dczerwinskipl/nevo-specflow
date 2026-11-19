@@ -26,27 +26,27 @@ related:
 
 Source: [Workflow Plan 06](specflow-engine/execution-plans/06-workflow-kernel/README.md). All **19 numbered follow-ups** (F01–F09 and F11–F20) are individually classified. F10 is not defined in that plan.
 
-| Follow-up | Destination and disposition   | Rationale / remaining evidence                                                                  |
-| --------- | ----------------------------- | ----------------------------------------------------------------------------------------------- |
-| F01       | 1.1 candidate → P103          | Automatic continuation after a step, not required by 1.0.                                       |
-| F02       | 1.0 → P102 / T100             | Agent finish via verified CLI/MCP; E6 integration not proven.                                   |
-| F03       | 1.1 candidate → P105          | Command and human verification gates.                                                           |
-| F04       | 1.1 candidate → T102          | Commit/push/finalize after Workflow actions.                                                    |
-| F05       | 1.0 → P102 / I101             | Managed writable claims exist; admission for delegated step remains E6.                         |
-| F06       | 1.0 → P100/P106; Later → L123 | Draft edit/cancel groundwork on #137; ready-Task revisions and abandoned-task policy separate.  |
-| F07       | Untriaged → L124              | Re-pinning and definition snapshots, not a 1.0 commitment.                                      |
-| F08       | Later 1.x candidate → P113    | Parallel Tasks and worktree-scoped claims.                                                      |
-| F09       | 1.0 on #137 → P101 / T100     | Runtime projection, API and manual Workflow UI code exist; full acceptance pending.             |
-| F11       | Untriaged → L122              | Definition catalogue caching and tooling.                                                       |
-| F12       | 1.1 candidate → P104          | Run selected Task batches and orchestrate dependencies.                                         |
-| F13       | 1.0 → I101 / P102             | Safe native Session stop on return and late-finish refusal (E6).                                |
-| F14       | 1.0 on #137 → P101 / P106     | Specification status/Close projections from Workflow state.                                     |
-| F15       | Later 1.x candidate → T110    | Provider/model availability checks; ensure E6 refuses unsupported models.                       |
-| F16       | 1.0 on #137 → P101 / T100     | Idempotent manual finish and HTTP retry have branch tests; failure/recovery acceptance pending. |
-| F17       | 1.0 → I101                    | Owner takeover of agent attempt after verified stop; E6 protocol gate.                          |
-| F18       | 1.0 on #137 → P101 / C004     | Definition kind registration/composition boundary has branch changes; review needed.            |
-| F19       | Untriaged → L125              | Bounded Run history; required before advanced typed input forms (P110).                         |
-| F20       | 1.0 on #137 → P100            | Task Resource, lifecycle, docs and typed context; cross-layer verification pending.             |
+| Follow-up | Destination and disposition   | Rationale / remaining evidence                                                                       |
+| --------- | ----------------------------- | ---------------------------------------------------------------------------------------------------- |
+| F01       | 1.1 candidate → P103          | Automatic continuation after a step, not required by 1.0.                                            |
+| F02       | 1.0 → P102 / T100             | Agent finish via verified CLI/MCP; E6 integration not proven.                                        |
+| F03       | 1.1 candidate → P105          | Command and human verification gates.                                                                |
+| F04       | 1.1 candidate → T102          | Commit/push/finalize after Workflow actions.                                                         |
+| F05       | 1.0 → P102 / I101             | Managed writable claims exist; admission for delegated step remains E6.                              |
+| F06       | 1.0 → P100/P106; Later → L123 | Draft edit/cancel groundwork on main; ready-Task revisions and abandoned-task policy separate.       |
+| F07       | Untriaged → L124              | Re-pinning and definition snapshots, not a 1.0 commitment.                                           |
+| F08       | Later 1.x candidate → P113    | Parallel Tasks and worktree-scoped claims.                                                           |
+| F09       | 1.0 on main → P101 / T100     | Runtime projection, API and manual Workflow UI code exist; full acceptance pending.                  |
+| F11       | Untriaged → L122              | Definition catalogue caching and tooling.                                                            |
+| F12       | 1.1 candidate → P104          | Run selected Task batches and orchestrate dependencies.                                              |
+| F13       | 1.0 → I101 / P102             | Safe native Session stop on return and late-finish refusal (E6).                                     |
+| F14       | 1.0 on main → P101 / P106     | Specification status/Close projections from Workflow state.                                          |
+| F15       | Later 1.x candidate → T110    | Provider/model availability checks; ensure E6 refuses unsupported models.                            |
+| F16       | 1.0 on main → P101 / T100     | Idempotent manual finish and HTTP retry have tests on main; failure/recovery acceptance pending.     |
+| F17       | 1.0 → I101                    | Owner takeover of agent attempt after verified stop; E6 protocol gate.                               |
+| F18       | 1.0 on main → P101 / C004     | Definition kind registration/composition boundary is wired on main; integrated verification pending. |
+| F19       | Untriaged → L125              | Bounded Run history; required before advanced typed input forms (P110).                              |
+| F20       | 1.0 on main → P100            | Task Resource, lifecycle, docs and typed context; cross-layer verification pending.                  |
 
 ## Numbered provider follow-ups
 
@@ -241,6 +241,6 @@ specflow-ui/storybook-rework.md | Mapped. L118 Storybook coverage and governance
 
 **Inventory: 92 unique IDs**, comprising 22 proposed 1.0 entries, 5 suggested 1.1, 10 later 1.x, 7 exploratory 2.0 and 48 untriaged L-series entries. These are counts of tracked outcomes and release gates, not equally sized work items or a completion percentage. **All L131–L147 are Untriaged**, not assigned to a release by this audit.
 
-**Still unresolved:** confirm 1.0 acceptance boundaries, owner-approval trust and native OS/provider certification; check E0–E4 on [#137](https://github.com/dczerwinskipl/nevo-specflow/pull/137) against real user journeys and implement/verify E6. In particular, project-mode Create-with-agent (L131) is **not** equivalent to delegation of one Task step (P102); optional Session artifacts (L134) must not be confused with required Task evidence for 1.0 acceptance. The current repository's Ideas inventory is classified, but this does not certify all conceivable product scope, future external requirements, or passing code.
+**Still unresolved:** confirm 1.0 acceptance boundaries, owner-approval trust and native OS/provider certification; verify the merged E0–E4 implementation against real user journeys and implement/verify E6. In particular, project-mode Create-with-agent (L131) is **not** equivalent to delegation of one Task step (P102); optional Session artifacts (L134) must not be confused with required Task evidence for 1.0 acceptance. The current repository's Ideas inventory is classified, but this does not certify all conceivable product scope, future external requirements, or passing code.
 
-**Evidence policy:** [#137](https://github.com/dczerwinskipl/nevo-specflow/pull/137) contains unmerged code, not completed functionality on `main`; a proposal document is planning evidence, not code. Current API, ADRs, architecture and actual implementation take precedence over Ideas. Any later document that adds an independently deliverable outcome must extend this map instead of inheriting a blanket "covered" status.
+**Evidence policy:** [#137](https://github.com/dczerwinskipl/nevo-specflow/pull/137) records merged manual Workflow implementation. Integrated acceptance requires user-journey evidence; a proposal document provides planning evidence. Current API, ADRs, architecture and actual implementation take precedence over Ideas. Any later document that adds an independently deliverable outcome must extend this map instead of inheriting a blanket "covered" status.

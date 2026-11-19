@@ -53,7 +53,8 @@ Nevo SpecFlow is one local product, `nevo-specflow`, installed into a Git reposi
 There are two kinds of process. An offline command opens the Engine in its own short-lived
 process. `nevo-specflow start` keeps its process running as the Runtime host: the same process
 serves the built UI and `/api`, opens the Engine in-process and owns the provider child processes.
-`start --demo` opens no Engine and serves demonstration data instead.
+`start --demo` runs the same Engine workflow operations over an in-memory store seeded with
+demonstration data. See [ADR 0025](decisions/0025-demo-runs-the-engine-in-memory.md).
 
 ```mermaid
 flowchart LR
@@ -108,12 +109,17 @@ Owners: [CLI contract](../reference/cli/nevo-specflow-contract.md),
   never imports Runtime internals. Reusable components come from the `@nevo/ui` design system.
 - **CLI** (`@nevo/specflow`) is the composition root: it composes the commands and packages the
   single product artifact. Its `init` writes the project configuration.
-- The **workflow kernel** exists in the Engine but is not yet wired to the Runtime, CLI or UI.
+- **Manual Workflow** uses the product-neutral `@nevo/workflow` coordinator through the Engine's
+  SpecFlow adapter. The offline CLI calls the Engine directly. The Runtime exposes Engine workflow
+  operations and read projections over HTTP, and the UI presents those projections and sends
+  actions through the Runtime.
 
 Owners: [Engine boundaries](runtime/specflow-engine.md),
 [Runtime ownership and lifecycle](runtime/ownership-and-lifecycle.md),
 [UI application architecture](../product/specflow/ui/application-architecture.md),
-[Workflow kernel](workflow/workflow-kernel.md).
+[Workflow kernel](workflow/workflow-kernel.md),
+[Specification CLI commands](../reference/cli/specflow-specification-commands.md),
+[Workflow HTTP API](../reference/api/specification-workflow.md).
 
 ## Package dependency direction
 
@@ -126,6 +132,7 @@ flowchart TD
   specflow["@nevo/specflow<br/>composition root, CLI, packaging"]
   runtime["@nevo/specflow-runtime"]
   engine["@nevo/specflow-engine"]
+  workflow["@nevo/workflow"]
   contracts["@nevo/specflow-contracts"]
   authz["@nevo/authorization"]
   ui["@nevo/specflow-ui"]
@@ -139,6 +146,7 @@ flowchart TD
   runtime --> engine
   runtime --> contracts
   runtime --> authz
+  engine --> workflow
   engine -- "./documents only" --> contracts
   contracts --> authz
   ui --> contracts
@@ -169,7 +177,7 @@ flowchart TD
 
   subgraph ws["Bound workspace checkout (primary or worktree)"]
     spec["specs/active|archive/&lt;slug&gt;/specification.yaml<br/>+ documents"]
-    exec["specs/active|archive/&lt;slug&gt;/.execution/<br/>workflow state, not committed yet (F04)"]
+    exec["specs/active|archive/&lt;slug&gt;/.execution/<br/>workflow run records"]
   end
 
   registry -- "specId → workspaceId binding" --> ws
@@ -184,18 +192,18 @@ Owners: [Configuration](runtime/configuration.md),
 
 ## Where to start
 
-| Topic                         | Owner                        | Authoritative document                                                                                                              | Code entry point                                                                |
-| ----------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| CLI commands                  | `@nevo/specflow`             | [CLI contract](../reference/cli/nevo-specflow-contract.md), [CLI architecture](../engineering/cli/architecture.md)                  | `packages/specflow/src/program.ts`                                              |
-| Runtime composition           | `@nevo/specflow-runtime`     | [Ownership and lifecycle](runtime/ownership-and-lifecycle.md)                                                                       | `packages/specflow-runtime/src/runtime.ts`, `src/server/app.ts`                 |
-| Authentication, authorization | Runtime `auth`               | [Runtime auth](runtime/auth/README.md)                                                                                              | `packages/specflow-runtime/src/features/auth/`, `packages/authorization/`       |
-| Project Home, workspaces      | Engine                       | [Project Home and workspaces](runtime/project-home-and-workspaces.md)                                                               | `packages/specflow-engine/src/project/`                                         |
-| Specification Create, Close   | Engine                       | [Specification lifecycle](runtime/specification-lifecycle.md)                                                                       | `packages/specflow-engine/src/specs/create/`, `specs/lifecycle/`                |
-| Documents and commits         | Engine                       | [Specification documents](runtime/specification-documents.md), [ADR 0018](decisions/0018-engine-commit-policy-and-manual-commit.md) | `packages/specflow-engine/src/specs/documents/`, `specs/manual-commit/`         |
-| Definitions                   | Engine                       | [ADR 0017](decisions/0017-definitions-as-project-data.md)                                                                           | `packages/specflow-engine/src/definitions/` (composition), `specs/definitions/` |
-| Workflow kernel               | Engine                       | [Workflow kernel](workflow/workflow-kernel.md)                                                                                      | `packages/specflow-engine/src/workflow/`                                        |
-| Workspace execution claims    | Engine                       | [Workspace execution claims](runtime/workspace-execution-claims.md)                                                                 | `packages/specflow-engine/src/execution/`                                       |
-| Sessions, Turns, Work         | Runtime `sessions`           | [Session storage and lifecycle](ai/session-storage-and-lifecycle.md), [Sessions API](../reference/api/sessions.md)                  | `packages/specflow-runtime/src/features/sessions/lifecycle/coordinator.ts`      |
-| Providers                     | Runtime `sessions/providers` | [Driver protocol](../reference/protocols/session-provider-driver.md), [Provider references](../reference/providers/README.md)       | `packages/specflow-runtime/src/features/sessions/providers/`                    |
-| UI application                | `@nevo/specflow-ui`          | [UI application architecture](../product/specflow/ui/application-architecture.md)                                                   | `packages/specflow-ui/src/app/router.tsx`, `src/services/index.tsx`             |
-| Design system                 | `@nevo/ui`                   | [Design system](../design-system/README.md)                                                                                         | `packages/nevo-ui/src/`                                                         |
+| Topic                         | Owner                                   | Authoritative document                                                                                                              | Code entry point                                                                |
+| ----------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| CLI commands                  | `@nevo/specflow`                        | [CLI contract](../reference/cli/nevo-specflow-contract.md), [CLI architecture](../engineering/cli/architecture.md)                  | `packages/specflow/src/program.ts`                                              |
+| Runtime composition           | `@nevo/specflow-runtime`                | [Ownership and lifecycle](runtime/ownership-and-lifecycle.md)                                                                       | `packages/specflow-runtime/src/runtime.ts`, `src/server/app.ts`                 |
+| Authentication, authorization | Runtime `auth`                          | [Runtime auth](runtime/auth/README.md)                                                                                              | `packages/specflow-runtime/src/features/auth/`, `packages/authorization/`       |
+| Project Home, workspaces      | Engine                                  | [Project Home and workspaces](runtime/project-home-and-workspaces.md)                                                               | `packages/specflow-engine/src/project/`                                         |
+| Specification Create, Close   | Engine                                  | [Specification lifecycle](runtime/specification-lifecycle.md)                                                                       | `packages/specflow-engine/src/specs/create/`, `specs/lifecycle/`                |
+| Documents and commits         | Engine                                  | [Specification documents](runtime/specification-documents.md), [ADR 0018](decisions/0018-engine-commit-policy-and-manual-commit.md) | `packages/specflow-engine/src/specs/documents/`, `specs/manual-commit/`         |
+| Definitions                   | Engine                                  | [ADR 0017](decisions/0017-definitions-as-project-data.md)                                                                           | `packages/specflow-engine/src/definitions/` (composition), `specs/definitions/` |
+| Workflow kernel               | `@nevo/workflow` and the Engine adapter | [Workflow kernel](workflow/workflow-kernel.md)                                                                                      | `packages/workflow/src/`, `packages/specflow-engine/src/workflow/`              |
+| Workspace execution claims    | Engine                                  | [Workspace execution claims](runtime/workspace-execution-claims.md)                                                                 | `packages/specflow-engine/src/execution/`                                       |
+| Sessions, Turns, Work         | Runtime `sessions`                      | [Session storage and lifecycle](ai/session-storage-and-lifecycle.md), [Sessions API](../reference/api/sessions.md)                  | `packages/specflow-runtime/src/features/sessions/lifecycle/coordinator.ts`      |
+| Providers                     | Runtime `sessions/providers`            | [Driver protocol](../reference/protocols/session-provider-driver.md), [Provider references](../reference/providers/README.md)       | `packages/specflow-runtime/src/features/sessions/providers/`                    |
+| UI application                | `@nevo/specflow-ui`                     | [UI application architecture](../product/specflow/ui/application-architecture.md)                                                   | `packages/specflow-ui/src/app/router.tsx`, `src/services/index.tsx`             |
+| Design system                 | `@nevo/ui`                              | [Design system](../design-system/README.md)                                                                                         | `packages/nevo-ui/src/`                                                         |

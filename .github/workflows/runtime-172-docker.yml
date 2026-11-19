@@ -37,6 +37,7 @@ jobs:
       - name: Run full Runtime with the Vitest default timeout
         env:
           WORKERS: ${{ matrix.workers }}
+          GITHUB_WORKFLOW_REF_SHA: ${{ matrix.ref }}
         run: |
-          bash tools/dev/linux-test.sh --ref HEAD --memory 10g --cpus 6 -- \
+          bash tools/dev/linux-test.sh --ref "$GITHUB_WORKFLOW_REF_SHA" --memory 10g --cpus 4 -- \
             "node -e 'console.log(require(\"node:os\").availableParallelism())' && pnpm turbo run build --filter=@nevo/specflow-runtime^... && pnpm --filter @nevo/specflow-runtime exec vitest run --reporter=dot $WORKERS"

@@ -2461,9 +2461,11 @@
         "commitBlocked": "Git does not accept a commit on this branch now. Check the branch protection and the repository state, then check again.",
         "engine": "Close is not available in this Runtime.",
         "unknown": "Close did not start, and the reason cannot be shown here. Check again; if it fails again, run “nevo-specflow specs close <specification id> --preview” in the project folder.",
-        "documentsUncommitted": "Saved documents in this checkout are not committed: automatic commits were off when they were saved. Commit them from the specification's Documents, then check again.",
-        "workflowStateUncommitted": "Task and step changes of another specification in this checkout are not committed yet: with automatic commits off, they are committed when its current step finishes. Finish that step or commit them with Git, then check again.",
+        "documentsUncommitted": "Saved documents in this checkout are not committed: automatic commits were off when they were saved. Commit them from that specification's Documents or with Git, then check again.",
+        "workflowStateUncommitted": "Task and step changes of another specification in this checkout are not committed yet. Commit them with Git, then check again.",
+        "workflowStateUncommittedStep": "Task and step changes of another specification in this checkout are not committed yet. Commit them with Git, or finish the step in progress there (finishing it commits them), then check again.",
         "uncommittedAbandoned": "Changes in this checkout whose commit was abandoned are not committed. Commit them with Git, then check again.",
+        "uncommittedGit": "Files SpecFlow wrote in this checkout are not committed. Commit them with Git, then check again.",
         "documentsFailed": "A document commit failed. Retry or resolve it in Documents, then check again."
       },
       "repository": {
@@ -2479,8 +2481,11 @@
           "ofSpecification": "(this specification)",
           "commitSpecification": "Commit them in this checkout (or move the ones that do not belong here), then check again.",
           "commitIntegrationTarget": "Commit them in that checkout (or move them to where they belong), then check again.",
-          "discardWarningLead": "Discarding deletes these changes for good.",
-          "discardWarning": "Git keeps no copy of uncommitted work, so discard only what you are sure you do not need."
+          "discardWarningLead": "Commit them first.",
+          "discardWarning": "If you discard them instead (for example with git restore or git clean), they are gone for good: Git keeps no copy of uncommitted work.",
+          "ownerThisSpecification": "{{title}} (this specification)",
+          "ownerUnknownSpecification": "Another specification ({{id}})",
+          "ownerDefinitions": "Installed definitions"
         },
         "targetMissing": {
           "title": "No integration branch configured",

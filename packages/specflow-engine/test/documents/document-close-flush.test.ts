@@ -443,7 +443,17 @@ describe('Close and the uncommitted-changes ledger', () => {
         uncommitted: {
           reasons: ['auto-commit-off'],
           policy: { documents: 'manual', source: 'default' },
-          owners: [{ kind: 'specification', specId: other, workflowState: 3, documents: 0 }],
+          // Which Specification and which files: its workflow state, named.
+          owners: [
+            {
+              kind: 'specification',
+              specId: other,
+              workflowState: 3,
+              documents: 0,
+              count: 3,
+              paths: [...paths].sort(),
+            },
+          ],
           unreadable: 0,
         },
       },

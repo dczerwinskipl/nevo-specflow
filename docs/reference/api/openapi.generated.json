@@ -483,7 +483,9 @@
                             "kind",
                             "specId",
                             "workflowState",
-                            "documents"
+                            "documents",
+                            "count",
+                            "paths"
                           ],
                           "properties": {
                             "kind": {
@@ -495,6 +497,9 @@
                             "specId": {
                               "$ref": "#/components/schemas/SpecId"
                             },
+                            "title": {
+                              "type": "string"
+                            },
                             "workflowState": {
                               "type": "integer",
                               "minimum": 0
@@ -502,6 +507,22 @@
                             "documents": {
                               "type": "integer",
                               "minimum": 0
+                            },
+                            "stepInProgress": {
+                              "type": "boolean"
+                            },
+                            "count": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "paths": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 4096
+                              },
+                              "maxItems": 8
                             }
                           },
                           "additionalProperties": false
@@ -510,6 +531,7 @@
                           "type": "object",
                           "required": [
                             "kind",
+                            "count",
                             "paths"
                           ],
                           "properties": {
@@ -519,9 +541,18 @@
                                 "definitions"
                               ]
                             },
-                            "paths": {
+                            "count": {
                               "type": "integer",
                               "minimum": 1
+                            },
+                            "paths": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 4096
+                              },
+                              "maxItems": 8
                             }
                           },
                           "additionalProperties": false
@@ -1560,7 +1591,9 @@
                             "kind",
                             "specId",
                             "workflowState",
-                            "documents"
+                            "documents",
+                            "count",
+                            "paths"
                           ],
                           "properties": {
                             "kind": {
@@ -1572,6 +1605,9 @@
                             "specId": {
                               "$ref": "#/components/schemas/SpecId"
                             },
+                            "title": {
+                              "type": "string"
+                            },
                             "workflowState": {
                               "type": "integer",
                               "minimum": 0
@@ -1579,6 +1615,22 @@
                             "documents": {
                               "type": "integer",
                               "minimum": 0
+                            },
+                            "stepInProgress": {
+                              "type": "boolean"
+                            },
+                            "count": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "paths": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 4096
+                              },
+                              "maxItems": 8
                             }
                           },
                           "additionalProperties": false
@@ -1587,6 +1639,7 @@
                           "type": "object",
                           "required": [
                             "kind",
+                            "count",
                             "paths"
                           ],
                           "properties": {
@@ -1596,9 +1649,18 @@
                                 "definitions"
                               ]
                             },
-                            "paths": {
+                            "count": {
                               "type": "integer",
                               "minimum": 1
+                            },
+                            "paths": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 4096
+                              },
+                              "maxItems": 8
                             }
                           },
                           "additionalProperties": false
@@ -2280,7 +2342,9 @@
                             "kind",
                             "specId",
                             "workflowState",
-                            "documents"
+                            "documents",
+                            "count",
+                            "paths"
                           ],
                           "properties": {
                             "kind": {
@@ -2292,6 +2356,9 @@
                             "specId": {
                               "$ref": "#/components/schemas/SpecId"
                             },
+                            "title": {
+                              "type": "string"
+                            },
                             "workflowState": {
                               "type": "integer",
                               "minimum": 0
@@ -2299,6 +2366,22 @@
                             "documents": {
                               "type": "integer",
                               "minimum": 0
+                            },
+                            "stepInProgress": {
+                              "type": "boolean"
+                            },
+                            "count": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "paths": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 4096
+                              },
+                              "maxItems": 8
                             }
                           },
                           "additionalProperties": false
@@ -2307,6 +2390,7 @@
                           "type": "object",
                           "required": [
                             "kind",
+                            "count",
                             "paths"
                           ],
                           "properties": {
@@ -2316,9 +2400,18 @@
                                 "definitions"
                               ]
                             },
-                            "paths": {
+                            "count": {
                               "type": "integer",
                               "minimum": 1
+                            },
+                            "paths": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 4096
+                              },
+                              "maxItems": 8
                             }
                           },
                           "additionalProperties": false

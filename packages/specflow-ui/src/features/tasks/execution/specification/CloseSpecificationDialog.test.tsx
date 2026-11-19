@@ -158,7 +158,10 @@ describe('CloseSpecificationDialog', () => {
       await within(dialog).findByText('D:\\repos\\acme\\.nevo\\worktrees\\nevo-1'),
     ).toBeTruthy();
     expect(within(dialog).getByRole('button', { name: 'Copy path' })).toBeTruthy();
-    expect(within(dialog).getByText('Discarding deletes these changes for good.')).toBeTruthy();
+    expect(within(dialog).getByText('Commit them first.')).toBeTruthy();
+    expect(
+      within(dialog).getByText(/If you discard them instead \(for example with git restore/u),
+    ).toBeTruthy();
     // Committing is the way forward; the dialog never offers to discard.
     expect(within(dialog).queryByRole('button', { name: /discard/i })).toBeNull();
     // Abandoning needs the same repository checks: not offered for them.

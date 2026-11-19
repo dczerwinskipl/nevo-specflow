@@ -52,6 +52,7 @@ export type CloseStoryScenario =
   | 'close-checking'
   | 'close-commit-pending'
   | 'close-check-failed'
+  | 'close-engine-uncommitted'
   | 'close-repository'
   | 'close-repository-no-workspaces'
   | 'close-repository-target'
@@ -74,6 +75,7 @@ const closeScenarios: readonly string[] = [
   'close-checking',
   'close-commit-pending',
   'close-check-failed',
+  'close-engine-uncommitted',
   'close-repository',
   'close-repository-no-workspaces',
   'close-repository-target',
@@ -231,6 +233,41 @@ function closePreviewOf(scenario: WorkflowStoryScenario) {
       );
     case 'close-check-failed':
       return Promise.reject(refusal('GIT_UNAVAILABLE'));
+    // Another Specification's Task and step changes, left uncommitted with automatic commits off.
+    case 'close-engine-uncommitted':
+      return Promise.reject(
+        refusal('DOCUMENT_COMMITS_PENDING', {
+          details: {
+            cause: 'commit-uncommitted',
+            uncommitted: {
+              reasons: ['auto-commit-off'],
+              policy: { documents: 'manual', source: 'default' },
+              owners: [
+                {
+                  kind: 'specification',
+                  specId: '1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f',
+                  title: 'Passkeys spike',
+                  workflowState: 11,
+                  documents: 0,
+                  stepInProgress: true,
+                  count: 11,
+                  paths: [
+                    'specs/active/passkeys-spike/.execution/specification.yaml',
+                    'specs/active/passkeys-spike/.execution/tasks/oidc-callback.yaml',
+                    'specs/active/passkeys-spike/tasks/index.yaml',
+                    'specs/active/passkeys-spike/tasks/oidc-callback/task.md',
+                    'specs/active/passkeys-spike/tasks/oidc-callback/task.yaml',
+                    'specs/active/passkeys-spike/tasks/sign-in-screen/task.md',
+                    'specs/active/passkeys-spike/tasks/sign-in-screen/task.yaml',
+                    'specs/active/passkeys-spike/tasks/session-refresh/task.md',
+                  ],
+                },
+              ],
+              unreadable: 0,
+            },
+          },
+        }),
+      );
     case 'close-repository':
     case 'close-repository-no-workspaces':
     case 'close-repository-target':

@@ -213,7 +213,7 @@ export interface CleanTreeCheck {
  * The unclean paths of a refusal, the Specification's own first (each group in Git's order), with
  * the scope that says whose they are.
  */
-function scopedPaths(
+export function scopedPaths(
   paths: readonly string[],
   directory: string | undefined,
 ): readonly UncommittedPath[] {
@@ -250,18 +250,20 @@ export async function inspectCleanGitWorkspace(
         !isExecutionStatePathOf(directory, path),
     );
   if (unclean.length > 0) {
-    const named = unclean.slice(0, UNCLEAN_PATHS_NAMED).join(', ');
+    // One order everywhere: the Specification's own paths first (message, `paths`, blocker).
+    const scoped = scopedPaths(unclean, directory);
+    const ordered = scoped.map((entry) => entry.path);
+    const named = ordered.slice(0, UNCLEAN_PATHS_NAMED).join(', ');
     const more =
       unclean.length > UNCLEAN_PATHS_NAMED
         ? ` and ${unclean.length - UNCLEAN_PATHS_NAMED} more`
         : '';
-    const scoped = scopedPaths(unclean, directory);
 
     throw new CloseOperationError(
       'CLOSE_PREFLIGHT',
       `Checkout has staged, modified or untracked files: ${named}${more}.`,
       {
-        paths: unclean,
+        paths: ordered,
         ...(role
           ? {
               repository: [
@@ -610,10 +612,8 @@ async function previewGitClose(
         throw invalid('Pinned integration target checkout is unavailable.');
       }
 
-      target = await inspectCleanGitWorkspace(registration, {
-        specificationDirectory,
-        role: 'integration-target',
-      });
+      // Paths are scoped only in the Specification's own checkout; here every path is `other`.
+      target = await inspectCleanGitWorkspace(registration, { role: 'integration-target' });
       targetBranch = pinned.branch;
       if (target.branch !== targetBranch) {
         throw new CloseOperationError(
@@ -665,10 +665,7 @@ async function previewGitClose(
       target =
         source.workspaceId === primary.workspaceId
           ? source
-          : await inspectCleanGitWorkspace(primary, {
-              specificationDirectory,
-              role: 'integration-target',
-            });
+          : await inspectCleanGitWorkspace(primary, { role: 'integration-target' });
       if (target.branch !== targetBranch) {
         throw new CloseOperationError(
           'CLOSE_PREFLIGHT',

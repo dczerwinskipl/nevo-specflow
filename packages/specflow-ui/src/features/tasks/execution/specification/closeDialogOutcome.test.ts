@@ -180,9 +180,10 @@ describe('closeDialogOutcome', () => {
       kind: 'cannot-start',
       reasonKey: 'workflowExecution.close.refusal.documentsPending',
     });
+    // Without the ledger facts nothing tells that Documents can commit them: Git.
     expect(held('commit-uncommitted')).toEqual({
       kind: 'cannot-start',
-      reasonKey: 'workflowExecution.close.refusal.documentsUncommitted',
+      reasonKey: 'workflowExecution.close.refusal.uncommittedGit',
     });
     expect(held('commit-failed')).toEqual({
       kind: 'cannot-start',
@@ -205,26 +206,51 @@ describe('closeDialogOutcome', () => {
     const other = {
       kind: 'specification' as const,
       specId: '1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f',
+      title: 'SSO sign-in',
       workflowState: 3,
       documents: 0,
+      count: 3,
+      paths: [
+        'specs/active/sso-sign-in/.execution/specification.yaml',
+        'specs/active/sso-sign-in/tasks/index.yaml',
+        'specs/active/sso-sign-in/tasks/build/task.yaml',
+      ],
     };
-    expect(
-      ledger({
-        reasons: ['auto-commit-off'],
-        policy: { documents: 'manual', source: 'default' },
-        owners: [other],
-        unreadable: 0,
-      }),
-    ).toEqual({
+    const facts = {
+      reasons: ['auto-commit-off' as const],
+      policy: { documents: 'manual' as const, source: 'default' as const },
+      owners: [other],
+      unreadable: 0,
+    };
+    // The files go with the reason, for the dialog to list per owner.
+    expect(ledger(facts)).toEqual({
       kind: 'cannot-start',
       reasonKey: 'workflowExecution.close.refusal.workflowStateUncommitted',
+      uncommitted: facts,
+    });
+    // The step finish is named only when a step is in progress there.
+    expect(ledger({ ...facts, owners: [{ ...other, stepInProgress: true }] })).toMatchObject({
+      reasonKey: 'workflowExecution.close.refusal.workflowStateUncommittedStep',
+    });
+    expect(ledger({ ...facts, owners: [{ ...other, stepInProgress: false }] })).toMatchObject({
+      reasonKey: 'workflowExecution.close.refusal.workflowStateUncommitted',
+    });
+    expect(ledger({ ...facts, owners: [{ ...other, documents: 1, count: 4 }] })).toMatchObject({
+      reasonKey: 'workflowExecution.close.refusal.documentsUncommitted',
     });
     expect(
-      ledger({ reasons: ['auto-commit-off'], owners: [{ ...other, documents: 1 }], unreadable: 0 }),
-    ).toMatchObject({ reasonKey: 'workflowExecution.close.refusal.documentsUncommitted' });
-    expect(
-      ledger({ reasons: ['abandoned'], owners: [{ ...other, documents: 1 }], unreadable: 0 }),
+      ledger({ ...facts, reasons: ['abandoned'], owners: [{ ...other, documents: 1, count: 4 }] }),
     ).toMatchObject({ reasonKey: 'workflowExecution.close.refusal.uncommittedAbandoned' });
+    // What Documents cannot commit is committed with Git: definitions, mixed causes, unreadable.
+    const git = { reasonKey: 'workflowExecution.close.refusal.uncommittedGit' };
+    expect(
+      ledger({
+        ...facts,
+        owners: [other, { kind: 'definitions', count: 1, paths: ['.nevo/definitions/a.yaml'] }],
+      }),
+    ).toMatchObject(git);
+    expect(ledger({ ...facts, reasons: ['abandoned', 'auto-commit-off'] })).toMatchObject(git);
+    expect(ledger({ ...facts, unreadable: 1 })).toMatchObject(git);
   });
 
   it('shows a Close refused by documents still being committed as not closed', () => {

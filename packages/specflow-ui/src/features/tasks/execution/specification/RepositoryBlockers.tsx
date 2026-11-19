@@ -2,6 +2,7 @@ import type { TFunction } from 'i18next';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { InlineNote, Typography } from '@nevo/ui';
+import type { UncommittedHoldDetails } from '@nevo/specflow-contracts/documents';
 import type { RepositoryBlocker } from '@nevo/specflow-contracts/specs';
 import { useWorkspaces } from '../../../workspaces/read-model';
 import { CopyAction } from './CopyAction';
@@ -82,7 +83,7 @@ function UncommittedFiles({
         {shown.map(({ path, scope }) => (
           <li key={path}>
             <span className={MONO}>{path}</span>
-            {scope === 'specification' ? (
+            {own && scope === 'specification' ? (
               <span className="text-content-muted">
                 {' '}
                 {t('workflowExecution.close.repository.uncommitted.ofSpecification')}
@@ -102,13 +103,90 @@ function UncommittedFiles({
           : t('workflowExecution.close.repository.uncommitted.commitIntegrationTarget')}
       </Typography>
       <CheckoutPath workspaceId={blocker.workspaceId} />
-      <InlineNote tone="attention">
-        <strong className="font-medium">
-          {t('workflowExecution.close.repository.uncommitted.discardWarningLead')}
-        </strong>{' '}
-        {t('workflowExecution.close.repository.uncommitted.discardWarning')}
-      </InlineNote>
+      <DiscardWarning />
     </Group>
+  );
+}
+
+/**
+ * The risk of the way out SpecFlow does not offer: commit first; discarding outside SpecFlow (git
+ * restore, git clean) loses the files for good.
+ */
+function DiscardWarning() {
+  const { t } = useTranslation();
+
+  return (
+    <InlineNote tone="attention">
+      <strong className="font-medium">
+        {t('workflowExecution.close.repository.uncommitted.discardWarningLead')}
+      </strong>{' '}
+      {t('workflowExecution.close.repository.uncommitted.discardWarning')}
+    </InlineNote>
+  );
+}
+
+/**
+ * The files SpecFlow wrote and did not commit that hold a Close (`DOCUMENT_COMMITS_PENDING`,
+ * `commit-uncommitted`): per owner, which Specification (its title, "this specification" for the one
+ * being closed) or the installed definitions, and its files (at most eight, then "and N more"), with
+ * the discard warning. The sentence above says why and how to resolve it.
+ */
+export function UncommittedOwners({
+  hold,
+  specId,
+}: {
+  readonly hold: UncommittedHoldDetails;
+  /** The Specification being closed. */
+  readonly specId: string;
+}) {
+  const { t } = useTranslation();
+  if (hold.owners.length === 0) {
+    return null;
+  }
+
+  const ownerName = (owner: UncommittedHoldDetails['owners'][number]) =>
+    owner.kind === 'definitions'
+      ? t('workflowExecution.close.repository.uncommitted.ownerDefinitions')
+      : owner.title === undefined
+        ? t('workflowExecution.close.repository.uncommitted.ownerUnknownSpecification', {
+            id: owner.specId.slice(0, 8),
+          })
+        : owner.specId === specId
+          ? t('workflowExecution.close.repository.uncommitted.ownerThisSpecification', {
+              title: owner.title,
+            })
+          : owner.title;
+
+  return (
+    <div className="grid min-w-0 gap-4">
+      {hold.owners.map((owner, index) => {
+        const more = owner.count - owner.paths.length;
+
+        return (
+          <Group
+            key={owner.kind === 'definitions' ? `definitions-${index}` : owner.specId}
+            heading={t('workflowExecution.exit.groupHeading', {
+              title: ownerName(owner),
+              count: owner.count,
+            })}
+          >
+            <ul className="grid list-disc gap-0.5 pl-5 text-body-sm marker:text-content-muted">
+              {owner.paths.map((path) => (
+                <li key={path} className={MONO}>
+                  {path}
+                </li>
+              ))}
+              {more > 0 ? (
+                <li className="list-none text-content-muted">
+                  {t('workflowExecution.exit.more', { count: more })}
+                </li>
+              ) : null}
+            </ul>
+          </Group>
+        );
+      })}
+      <DiscardWarning />
+    </div>
   );
 }
 

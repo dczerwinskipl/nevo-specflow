@@ -22,6 +22,12 @@ export interface SpecFlowEngine {
   /** Close's Specification exit gate (D07), composed from the workflow capability. */
   readonly specificationExit: SpecificationExitGuard;
   /**
+   * Whether a step of the Specification's run or of one of its Task runs is in progress (its finish
+   * commits the execution state with automatic commits off). `undefined` when it cannot be told;
+   * absent where no workflow is composed.
+   */
+  readonly stepInProgress?: (specId: string) => Promise<boolean | undefined>;
+  /**
    * Whether an agent can work in a checkout Close would remove, from the host process (the Runtime
    * or the CLI) through `withCheckoutQuiescence`. Absent, Close does not remove a checkout.
    */
@@ -34,6 +40,9 @@ export interface SpecFlowEngine {
  */
 export interface EnginePorts {
   readonly specificationExit: (engine: SpecFlowEngine) => SpecificationExitGuard;
+  readonly stepInProgress?: (
+    engine: SpecFlowEngine,
+  ) => (specId: string) => Promise<boolean | undefined>;
 }
 
 /**
@@ -61,6 +70,9 @@ export async function openEngineBoundary(
     context,
     workspace,
     specificationExit: (specId) => ports.specificationExit(engine)(specId),
+    ...(ports.stepInProgress
+      ? { stepInProgress: (specId: string) => ports.stepInProgress!(engine)(specId) }
+      : {}),
     async readRegistry() {
       // Revalidate the physical checkout on each use, including linked
       // incarnation, rather than trusting the original open-time snapshot.

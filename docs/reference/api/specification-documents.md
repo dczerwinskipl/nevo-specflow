@@ -726,10 +726,15 @@ the demo endpoints.
     again for a bounded time, then offers "Check again"; for `commit-uncommitted` it reads `details.uncommitted`
     (`UncommittedHoldDetails`: the ledger `reasons` `auto-commit-off`/`abandoned`, the documents `policy`
     `{ documents: manual|auto, source: project|local|default }` (absent when unreadable), the `owners`, each a
-    Specification with its `workflowState` count (its `.execution` and Tasks, which with automatic commits off
-    the finish of its current step commits) and `documents` count, or `definitions` with `paths`, and the
-    `unreadable` record count) and names the real cause: saved documents to commit from Documents, the Task and
-    step changes of another Specification (finish its step or commit them with Git) or an abandoned commit.
+    Specification (`specId`, `title` when readable, its `workflowState` count: its `.execution` and Tasks, and
+    `documents` count, `stepInProgress` when a step of its runs is in progress, whose finish commits the
+    workflow state with automatic commits off) or `definitions`, each with its total `count` and at most 8
+    checkout-relative `paths` (workflow state first), and the `unreadable` record count). The dialog names
+    the real cause and how to resolve it: saved documents to commit from that Specification's Documents or
+    with Git; the Task and step changes of another Specification to commit with Git (or, only when a step is in
+    progress there, by finishing it); an abandoned commit, definitions, unreadable records or mixed causes to
+    commit with Git. Under the sentence it lists each owner by name with its files ("and N more") and warns
+    that files discarded outside SpecFlow (git restore, git clean) are gone for good.
     The archived Specification's own workflow state never holds its Close; for `commit-failed` it says to retry or resolve the failed commit in Documents. The dialog
     itself offers no "Commit now" (see `product.specflow.ui.workflow-execution`, section Close).
 20. **Definitions problems.** `ArchetypeCatalogue.problems[]` (invalid definition files) is shown to people who can

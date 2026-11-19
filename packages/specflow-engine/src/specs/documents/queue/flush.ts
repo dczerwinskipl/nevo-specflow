@@ -170,7 +170,9 @@ function uncommittedDetails(hold: UncommittedHold): UncommittedHoldDetails {
           },
         }
       : {}),
-    owners: hold.owners.slice(0, UNCOMMITTED_HOLD_OWNERS_MAX).map((owner) => ({ ...owner })),
+    owners: hold.owners
+      .slice(0, UNCOMMITTED_HOLD_OWNERS_MAX)
+      .map((owner) => ({ ...owner, paths: [...owner.paths] })),
     unreadable: hold.unreadable,
   };
 }

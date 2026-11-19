@@ -681,8 +681,26 @@ describe('manual workflow execution', () => {
     expect(await within(dialog).findByRole('alert')).toBeTruthy();
   });
 
-  it('tells to commit saved documents from Documents when manual commits hold the Close', async () => {
-    const held = refusal('DOCUMENT_COMMITS_PENDING', 409, { cause: 'commit-uncommitted' });
+  it('names which specification and which files hold the Close, and how to commit them', async () => {
+    const held = refusal('DOCUMENT_COMMITS_PENDING', 409, {
+      cause: 'commit-uncommitted',
+      uncommitted: {
+        reasons: ['auto-commit-off'],
+        policy: { documents: 'manual', source: 'default' },
+        owners: [
+          {
+            kind: 'specification',
+            specId: '1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f',
+            title: 'Passkeys',
+            workflowState: 0,
+            documents: 10,
+            count: 10,
+            paths: Array.from({ length: 8 }, (_, i) => `specs/active/passkeys/notes-${i}.md`),
+          },
+        ],
+        unreadable: 0,
+      },
+    });
     renderWith(
       <CloseSpecificationDialog
         open
@@ -701,9 +719,14 @@ describe('manual workflow execution', () => {
     const dialog = screen.getByRole('dialog');
 
     expect((await within(dialog).findByRole('alert')).textContent).toContain(
-      "Commit them from the specification's Documents, then check again.",
+      "Commit them from that specification's Documents or with Git, then check again.",
     );
-    expect(within(dialog).queryByText('Uncommitted', { exact: false })).toBeNull();
+    expect(within(dialog).getByRole('heading', { name: 'Passkeys · 10' })).toBeTruthy();
+    expect(within(dialog).getByText('specs/active/passkeys/notes-0.md')).toBeTruthy();
+    expect(within(dialog).getByText('and 2 more')).toBeTruthy();
+    expect(within(dialog).getByText('Commit them first.')).toBeTruthy();
+    // Not the repository blocker: these are files SpecFlow wrote, not a dirty checkout.
+    expect(within(dialog).queryByText('Uncommitted files', { exact: false })).toBeNull();
     expect(within(dialog).queryByText('Ready to close')).toBeNull();
     expect(within(dialog).queryByRole('button', { name: 'Close and archive' })).toBeNull();
   });

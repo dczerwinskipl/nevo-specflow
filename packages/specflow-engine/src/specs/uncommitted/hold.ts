@@ -1,22 +1,34 @@
+import { UNCOMMITTED_HOLD_PATHS_MAX } from '@nevo/specflow-contracts/documents';
+
 import type { SpecFlowEngine } from '../../application';
 import { readProjectGitPolicy } from '../../version-control/worktrees/config';
 import { effectiveAutoCommit } from '../../version-control/worktrees/policy';
+import { resolveSpecificationForRead } from '../discovery';
 import { listLedgerRecords, type LedgerReason } from '../durable';
 import { isExecutionStatePath, isExecutionStatePathOf } from '../execution-paths';
 
+/** How many paths of one owner a hold names; `count` is the total. */
+export const UNCOMMITTED_HOLD_PATHS_NAMED = UNCOMMITTED_HOLD_PATHS_MAX;
+
 /**
- * Whose paths hold a checkout. A Specification's are counted as `workflowState` (its `.execution/**`
- * and `tasks/**`, written by the workflow) and `documents` (everything else of it); `definitions` are
- * the files an install wrote.
+ * Whose paths hold a checkout, with the first {@link UNCOMMITTED_HOLD_PATHS_NAMED} of them (`paths`,
+ * checkout-relative, workflow state first) of `count`. A Specification's are counted as
+ * `workflowState` (its `.execution/**` and `tasks/**`, written by the workflow) and `documents`
+ * (everything else of it), with its `title` when it can be read and whether a step of its runs is in
+ * progress (`stepInProgress`; absent when unknown); `definitions` are the files an install wrote.
  */
 export type UncommittedHoldOwner =
   | {
       readonly kind: 'specification';
       readonly specId: string;
+      readonly title?: string;
       readonly workflowState: number;
       readonly documents: number;
+      readonly stepInProgress?: boolean;
+      readonly count: number;
+      readonly paths: readonly string[];
     }
-  | { readonly kind: 'definitions'; readonly paths: number };
+  | { readonly kind: 'definitions'; readonly count: number; readonly paths: readonly string[] };
 
 export interface UncommittedHold {
   readonly workspaceId: string;
@@ -106,20 +118,44 @@ export async function readUncommittedHold(
     paths: entries.length,
     reasons: [...new Set(entries.map((entry) => entry.reason))].sort(),
     ...(policy !== undefined ? { policy } : {}),
-    owners: held.map(({ owner, entries: owned }): UncommittedHoldOwner => {
-      if (owner.kind === 'definitions') {
-        return { kind: 'definitions', paths: owned.length };
-      }
+    owners: await Promise.all(
+      held.map(async ({ owner, entries: owned }): Promise<UncommittedHoldOwner> => {
+        const paths = owned.map((entry) => entry.path);
+        if (owner.kind === 'definitions') {
+          return { kind: 'definitions', count: paths.length, paths: named(paths) };
+        }
 
-      const workflowState = owned.filter((entry) => isWorkflowState(entry.path)).length;
+        const state = paths.filter(isWorkflowState);
+        const title = await titleOf(engine, owner.id);
+        const stepInProgress =
+          state.length > 0 ? await engine.stepInProgress?.(owner.id) : undefined;
 
-      return {
-        kind: 'specification',
-        specId: owner.id,
-        workflowState,
-        documents: owned.length - workflowState,
-      };
-    }),
+        return {
+          kind: 'specification',
+          specId: owner.id,
+          ...(title !== undefined ? { title } : {}),
+          workflowState: state.length,
+          documents: paths.length - state.length,
+          ...(stepInProgress !== undefined ? { stepInProgress } : {}),
+          count: paths.length,
+          paths: named([...state, ...paths.filter((path) => !isWorkflowState(path))]),
+        };
+      }),
+    ),
     unreadable,
   };
+}
+
+const named = (paths: readonly string[]): readonly string[] =>
+  paths.slice(0, UNCOMMITTED_HOLD_PATHS_NAMED);
+
+/** The Specification's title, read without Git; `undefined` when it cannot be read. */
+async function titleOf(engine: SpecFlowEngine, specId: string): Promise<string | undefined> {
+  try {
+    const found = await resolveSpecificationForRead(engine, specId);
+
+    return found.status === 'available' ? found.specification.title : undefined;
+  } catch {
+    return undefined;
+  }
 }

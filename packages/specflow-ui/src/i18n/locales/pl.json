@@ -2461,9 +2461,11 @@
         "commitBlocked": "Git nie przyjmie teraz commita na tej gałęzi. Sprawdź ochronę gałęzi i stan repozytorium, a potem sprawdź ponownie.",
         "engine": "Zamykanie nie jest dostępne w tym Runtime.",
         "unknown": "Zamknięcie się nie rozpoczęło, a powodu nie można tu pokazać. Sprawdź ponownie; jeśli znów się nie uda, uruchom „nevo-specflow specs close <id specyfikacji> --preview” w folderze projektu.",
-        "documentsUncommitted": "Zapisane dokumenty w tym katalogu roboczym nie mają commita: automatyczne commity były wyłączone, gdy je zapisano. Zrób commit w Dokumentach tej specyfikacji i sprawdź ponownie.",
-        "workflowStateUncommitted": "Zmiany zadań i kroków innej specyfikacji w tym katalogu roboczym nie mają jeszcze commita: przy wyłączonych automatycznych commitach dostają go po zakończeniu jej bieżącego kroku. Zakończ ten krok albo zrób commit w Git i sprawdź ponownie.",
+        "documentsUncommitted": "Zapisane dokumenty w tym katalogu roboczym nie mają commita: automatyczne commity były wyłączone, gdy je zapisano. Zrób commit w Dokumentach tej specyfikacji albo w Git i sprawdź ponownie.",
+        "workflowStateUncommitted": "Zmiany zadań i kroków innej specyfikacji w tym katalogu roboczym nie mają jeszcze commita. Zrób ich commit w Git i sprawdź ponownie.",
+        "workflowStateUncommittedStep": "Zmiany zadań i kroków innej specyfikacji w tym katalogu roboczym nie mają jeszcze commita. Zrób ich commit w Git albo zakończ trwający tam krok (zakończenie robi ich commit) i sprawdź ponownie.",
         "uncommittedAbandoned": "Zmiany w tym katalogu roboczym, których commit porzucono, nie mają commita. Zrób ich commit w Git i sprawdź ponownie.",
+        "uncommittedGit": "Pliki zapisane przez SpecFlow w tym katalogu roboczym nie mają commita. Zrób ich commit w Git i sprawdź ponownie.",
         "documentsFailed": "Commit dokumentu się nie powiódł. Ponów go lub rozwiąż w Dokumentach, a potem sprawdź ponownie."
       },
       "repository": {
@@ -2479,8 +2481,11 @@
           "ofSpecification": "(ta specyfikacja)",
           "commitSpecification": "Zrób ich commit w tym katalogu roboczym (albo przenieś te, które tu nie należą) i sprawdź ponownie.",
           "commitIntegrationTarget": "Zrób ich commit w tym katalogu roboczym (albo przenieś je tam, gdzie należą) i sprawdź ponownie.",
-          "discardWarningLead": "Odrzucenie usuwa te zmiany na zawsze.",
-          "discardWarning": "Git nie przechowuje kopii pracy bez commita, więc odrzucaj tylko to, czego na pewno nie potrzebujesz."
+          "discardWarningLead": "Najpierw zrób ich commit.",
+          "discardWarning": "Jeśli zamiast tego je odrzucisz (na przykład przez git restore lub git clean), przepadną na zawsze: Git nie przechowuje kopii pracy bez commita.",
+          "ownerThisSpecification": "{{title}} (ta specyfikacja)",
+          "ownerUnknownSpecification": "Inna specyfikacja ({{id}})",
+          "ownerDefinitions": "Zainstalowane definicje"
         },
         "targetMissing": {
           "title": "Nie skonfigurowano gałęzi integracji",

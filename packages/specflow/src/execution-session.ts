@@ -60,12 +60,11 @@ export async function runExecution(
 ): Promise<void> {
   await reportingWorkflowRefusals(context, options.json, async () => {
     const session = await openExecution(context.cwd, options.projectRoot);
-    try {
-      await body(session);
-    } finally {
-      if (kind === 'change') {
-        await drainDocumentQueueAtExit(session.engine, flushAllForExit, context.stderr);
-      }
+    await body(session);
+    // Only after the change succeeded: a refused change wrote and queued nothing, and a failed one
+    // is reported at once (what it left journaled is the next executor's).
+    if (kind === 'change') {
+      await drainDocumentQueueAtExit(session.engine, flushAllForExit, context.stderr);
     }
   });
 }

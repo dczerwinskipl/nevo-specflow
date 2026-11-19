@@ -188,8 +188,8 @@ Every command accepts `--project-root <path>` and `--json`; every write command 
   checkout first (at most `--wait-ms`, default 30 s) and prints the settled commit. `flush` drains without
   writing; without a Specification it drains every checkout with work.
 - **Drain at exit.** A command that queued commits (a write, `retry`, `recover --resume`, and every changing
-  `tasks` and `workflow` command and `specs abandon`, whose execution-state writes the queue commits with
-  automatic commits on) calls
+  `tasks` and `workflow` command and `specs abandon` once the change succeeded, whose execution-state writes
+  the queue commits with automatic commits on; a refused change queued nothing and does not drain) calls
   `flushAllDocumentCommits` with the 10 s shutdown deadline before it exits, so a one-shot agent does not leave
   commits behind. What does not finish stays journaled for the next executor and a note goes to stderr; the exit
   code is not affected.

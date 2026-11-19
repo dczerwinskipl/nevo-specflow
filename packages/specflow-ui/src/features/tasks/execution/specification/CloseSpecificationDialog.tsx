@@ -44,7 +44,7 @@ import {
   waitsForDocumentCommits,
   type DocumentCommitRecheck,
 } from './closeDialogOutcome';
-import { RepositoryBlockers } from './RepositoryBlockers';
+import { RepositoryBlockers, UncommittedOwners } from './RepositoryBlockers';
 
 type Position = WorkflowActionProjection['position'];
 
@@ -309,17 +309,22 @@ function CloseContent({
       case 'not-closed':
         return {
           body: (
-            <Alert
-              role="alert"
-              tone="danger"
-              title={
-                outcome.kind === 'cannot-start'
-                  ? t('workflowExecution.close.checkFailed', { title: specTitle })
-                  : t('workflowExecution.close.failed')
-              }
-            >
-              {t(outcome.reasonKey)}
-            </Alert>
+            <div className="grid min-w-0 gap-5">
+              <Alert
+                role="alert"
+                tone="danger"
+                title={
+                  outcome.kind === 'cannot-start'
+                    ? t('workflowExecution.close.checkFailed', { title: specTitle })
+                    : t('workflowExecution.close.failed')
+                }
+              >
+                {t(outcome.reasonKey)}
+              </Alert>
+              {outcome.uncommitted ? (
+                <UncommittedOwners hold={outcome.uncommitted} specId={specId} />
+              ) : null}
+            </div>
           ),
           footer: (
             <>

@@ -29,8 +29,17 @@ export type CloseDialogOutcome =
       readonly repository: readonly RepositoryBlocker[];
     }
   | { readonly kind: 'checking'; readonly waitingFor?: 'documents' }
-  | { readonly kind: 'cannot-start'; readonly reasonKey: CloseRefusalKey }
-  | { readonly kind: 'not-closed'; readonly reasonKey: CloseRefusalKey }
+  | {
+      readonly kind: 'cannot-start';
+      readonly reasonKey: CloseRefusalKey;
+      /** `commit-uncommitted`: whose files hold the Close, to list under the reason. */
+      readonly uncommitted?: UncommittedHoldDetails;
+    }
+  | {
+      readonly kind: 'not-closed';
+      readonly reasonKey: CloseRefusalKey;
+      readonly uncommitted?: UncommittedHoldDetails;
+    }
   | {
       readonly kind: 'needs-attention';
       readonly status: Exclude<CloseSpecificationResult['status'], 'completed'>;
@@ -89,7 +98,7 @@ export function closeDialogOutcome(facts: CloseDialogFacts): CloseDialogOutcome 
   }
 
   if (closeRefusal) {
-    return { kind: 'not-closed', reasonKey: closeRefusalKey(closeRefusal) };
+    return { kind: 'not-closed', ...refused(closeRefusal) };
   }
 
   if (facts.close.status === 'success' && facts.close.result.status !== 'completed') {
@@ -105,7 +114,7 @@ export function closeDialogOutcome(facts: CloseDialogFacts): CloseDialogOutcome 
   }
 
   if (previewRefusal) {
-    return { kind: 'cannot-start', reasonKey: closeRefusalKey(previewRefusal) };
+    return { kind: 'cannot-start', ...refused(previewRefusal) };
   }
 
   if (facts.preview.status !== 'success') {
@@ -151,7 +160,9 @@ export type CloseRefusalKey =
       | 'documentsPending'
       | 'documentsUncommitted'
       | 'workflowStateUncommitted'
+      | 'workflowStateUncommittedStep'
       | 'uncommittedAbandoned'
+      | 'uncommittedGit'
       | 'documentsFailed'
       | 'commitBlocked'
       | 'engine'
@@ -163,18 +174,48 @@ export type CloseRefusalKey =
  * finish commits, or saved documents (also the answer when the facts are missing).
  */
 function uncommittedKey(hold: UncommittedHoldDetails | undefined): CloseRefusalKey {
-  if (hold?.reasons.length === 1 && hold.reasons[0] === 'abandoned') {
+  // Facts SpecFlow cannot act on (definitions, unreadable records, mixed causes, none at all): Git.
+  const specifications = hold?.owners.flatMap((owner) =>
+    owner.kind === 'specification' ? [owner] : [],
+  );
+  if (
+    hold === undefined ||
+    specifications === undefined ||
+    hold.unreadable > 0 ||
+    specifications.length === 0 ||
+    specifications.length !== hold.owners.length ||
+    hold.reasons.length !== 1
+  ) {
+    return 'workflowExecution.close.refusal.uncommittedGit';
+  }
+
+  if (hold.reasons[0] === 'abandoned') {
     return 'workflowExecution.close.refusal.uncommittedAbandoned';
   }
 
-  const workflowStateOnly =
-    hold !== undefined &&
-    hold.owners.length > 0 &&
-    hold.owners.every((owner) => owner.kind === 'specification' && owner.documents === 0);
+  if (specifications.every((owner) => owner.documents === 0)) {
+    // The step finish commits them only when a step is in progress.
+    return specifications.every((owner) => owner.stepInProgress === true)
+      ? 'workflowExecution.close.refusal.workflowStateUncommittedStep'
+      : 'workflowExecution.close.refusal.workflowStateUncommitted';
+  }
 
-  return workflowStateOnly
-    ? 'workflowExecution.close.refusal.workflowStateUncommitted'
-    : 'workflowExecution.close.refusal.documentsUncommitted';
+  return 'workflowExecution.close.refusal.documentsUncommitted';
+}
+
+/** The reason of a refusal, with the uncommitted files when the ledger holds the Close. */
+function refused(refusal: WorkflowRefusal): {
+  readonly reasonKey: CloseRefusalKey;
+  readonly uncommitted?: UncommittedHoldDetails;
+} {
+  const reasonKey = closeRefusalKey(refusal);
+
+  return refusal.code === 'DOCUMENT_COMMITS_PENDING' &&
+    refusal.documentCause === 'commit-uncommitted' &&
+    refusal.uncommittedHold !== undefined &&
+    !refusal.outcomeUnknown
+    ? { reasonKey, uncommitted: refusal.uncommittedHold }
+    : { reasonKey };
 }
 
 /**

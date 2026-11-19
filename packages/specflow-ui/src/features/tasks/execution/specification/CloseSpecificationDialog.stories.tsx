@@ -85,6 +85,23 @@ export const CheckFailed: Story = {
 };
 
 /**
+ * Files SpecFlow wrote and did not commit hold the Close: which Specification, which files (eight
+ * named, the rest counted) and how to resolve it (commit with Git, or finish the step in progress).
+ */
+export const BlockedByUncommittedEngineFiles: Story = {
+  args: { scenario: 'close-engine-uncommitted' },
+  play: async ({ canvasElement }) => {
+    const dialog = await openFromNow(canvasElement);
+    await expect(await dialog.findByRole('alert')).toHaveTextContent(
+      'Commit them with Git, or finish the step in progress there',
+    );
+    await expect(dialog.getByRole('heading', { name: 'Passkeys spike · 11' })).toBeVisible();
+    await expect(dialog.getByText('and 3 more')).toBeVisible();
+    await expect(dialog.getByText('Commit them first.')).toBeVisible();
+  },
+};
+
+/**
  * Repository problems: uncommitted files (commit first, the discard warning, Copy path) and no
  * integration branch (candidates with their facts, none chosen, Copy setting off).
  */
@@ -95,7 +112,7 @@ export const BlockedRepository: Story = {
     await expect(
       await dialog.findByText('Single sign-on cannot close yet: 2 repository problems.'),
     ).toBeVisible();
-    await expect(dialog.getByText('Discarding deletes these changes for good.')).toBeVisible();
+    await expect(dialog.getByText('Commit them first.')).toBeVisible();
     // The worktree's path comes from the registered workspaces.
     await expect(
       await dialog.findByText('D:\\repos\\acme-portal\\.nevo\\worktrees\\nevo-1'),

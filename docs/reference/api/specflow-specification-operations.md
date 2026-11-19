@@ -229,7 +229,8 @@ reported as files to commit by hand. Any other repository precondition is `422 C
 with `repository`: the blockers the owner fixes in the repository, all that are known at once
 (`uncommitted-changes` with at most 10 `paths`, each `{ path, scope }` with `scope`
 `specification` for a file below the Specification's own folder `specs/active/<slug>/` (listed
-first) and `other` for any other file of the checkout, the `count`, the `specificationCount` of
+first; only in the Specification's own checkout, every path of the checkout it integrates into is
+`other`) and `other` for any other file of the checkout, the `count`, the `specificationCount` of
 them that are the Specification's own and the `workspaceId` of the checkout that holds them (its
 path is read from `GET /api/workspaces`, gated by `workspace.view`; the refusal never carries a
 filesystem path). A Specification Close accepts its own uncommitted Tasks and `.execution`; any other

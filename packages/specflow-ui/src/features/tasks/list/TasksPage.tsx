@@ -59,9 +59,11 @@ const groupHeadingId = (groupId: string) => `task-group-${groupId}-heading`;
  * The Tasks page (`/specs/:specId/tasks`): the full inventory in the Runtime's configured grouping,
  * as delivered, on the Specifications list pattern (the collection's `task` tracks with a Task |
  * Status column header from 48rem, stacked rows below it). Collapsed groups follow the
- * configuration; a `group` filter lists that group's rows only, without a group header (the chip
- * names it). The active filter (blocking or group) is a removable chip. Flagged rows carry the attention
- * overlay under their status. No selection and no bulk actions.
+ * configuration and the person's toggles; a search shows every group with a match expanded (its
+ * toggle disabled) and clearing it restores them. A `group` filter lists that group's rows only,
+ * without a group header (the chip names it). The active filter (blocking or group) is a removable
+ * chip. Flagged rows carry the attention overlay under their status. No selection and no bulk
+ * actions.
  */
 export function TasksPage({
   state,
@@ -148,7 +150,10 @@ export function TasksPage({
             : t('taskOverview.page.clearGroupUnnamed'),
         }
       : undefined;
-  const collapsed = (groupId: string, configured: boolean) => toggled[groupId] ?? configured;
+  // A search opens every group with a match (the Specifications list's rule): the remembered
+  // choices stay untouched and come back once the search is cleared.
+  const collapsed = (groupId: string, configured: boolean) =>
+    needle ? false : (toggled[groupId] ?? configured);
   // Nothing to search before the Specification has a Task (running or ended alike).
   const searchable = (view.filter?.total ?? listed) > 0;
 
@@ -259,6 +264,7 @@ export function TasksPage({
                       isCollapsed={isCollapsed}
                       tone={getGroupTone(group)}
                       controlsId={listId}
+                      searching={Boolean(needle)}
                       onToggle={() =>
                         setToggled((previous) => ({ ...previous, [group.id]: !isCollapsed }))
                       }

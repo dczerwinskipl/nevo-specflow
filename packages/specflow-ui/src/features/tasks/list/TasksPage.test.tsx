@@ -245,6 +245,31 @@ describe('Tasks page', () => {
     expect(screen.getByText('2 of 7 shown')).not.toBeNull();
   });
 
+  it('opens the groups a search matches in, then restores the collapse once it is cleared', () => {
+    const { container } = renderPage();
+    const search = screen.getByRole('textbox', { name: 'Filter tasks' });
+    // Done collapsed by the person, Cancelled by its configuration.
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse Done section' }));
+    expect(row(container, 'T-01')).toBeNull();
+    expect(row(container, 'T-06')).toBeNull();
+
+    fireEvent.change(search, { target: { value: 'saml' } });
+    expect(row(container, 'T-06')).not.toBeNull();
+    const toggle = screen.getByRole('button', {
+      name: 'Cancelled section expanded while search is active',
+    });
+    expect(toggle.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(toggle);
+    expect(row(container, 'T-06')).not.toBeNull();
+    fireEvent.change(search, { target: { value: 'identity provider' } });
+    expect(row(container, 'T-01')).not.toBeNull();
+
+    fireEvent.change(search, { target: { value: '' } });
+    expect(row(container, 'T-01')).toBeNull();
+    expect(row(container, 'T-06')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Expand Cancelled section' })).not.toBeNull();
+  });
+
   it('holds the empty state and New task of a Specification without Tasks', () => {
     const onNewTask = vi.fn();
     renderPage({

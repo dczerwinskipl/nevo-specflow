@@ -7,6 +7,8 @@ export interface TaskGroupHeaderProps {
   readonly isCollapsed: boolean;
   readonly tone: 'attention' | 'info' | 'neutral' | 'success';
   readonly controlsId?: string;
+  /** A search is active: the group is forced expanded and the toggle does nothing. */
+  readonly searching?: boolean;
   readonly onToggle: () => void;
 }
 
@@ -16,6 +18,7 @@ export function TaskGroupHeader({
   isCollapsed,
   tone,
   controlsId,
+  searching = false,
   onToggle,
 }: TaskGroupHeaderProps) {
   const { t } = useTranslation();
@@ -29,10 +32,15 @@ export function TaskGroupHeader({
       expanded={!isCollapsed}
       controlsId={controlsId}
       ariaLabel={t(
-        isCollapsed ? 'specifications.expandSection' : 'specifications.collapseSection',
+        searching
+          ? 'specifications.sectionSearchExpanded'
+          : isCollapsed
+            ? 'specifications.expandSection'
+            : 'specifications.collapseSection',
         { label: name },
       )}
       onToggle={onToggle}
+      ariaDisabled={searching}
     />
   );
 }

@@ -225,7 +225,11 @@ The filter by id or title narrows the rows on screen, and the section count foll
 shown", N the rows left after the URL filter and the text filter, M all the Specification's Tasks
 (the same M as the URL filter's count), so N always equals the rows listed. Without a URL filter a text filter turns the progress into
 that count ("2 of 7 shown"); with no row left it reads "0 of 7 shown" over "No task matches the
-filter.". The blocking chip keeps the Runtime's count of the Tasks it names.
+filter.". The blocking chip keeps the Runtime's count of the Tasks it names. While a term is
+typed every group with a match is shown expanded, also one collapsed by the configuration or by
+the person, so every counted row is on screen; as on the [Specifications list](specs-overview.md)
+its chevron stays, `aria-disabled="true"`, named "{group} section expanded while search is
+active", and does nothing. Clearing the search restores the collapse the page had before it.
 
 Without Tasks the page shows an empty state with the same logic as the Overview's Tasks, from the
 same projection, and no filter by id or title (there is nothing to filter):

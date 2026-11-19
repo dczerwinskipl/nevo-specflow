@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: 8b9f0642d5dffb4958ea27dfa3802ac13cf2573f
+          ref: 2dad5461112bec13c45b743ea9393a4ab6687ccd
           persist-credentials: false
       - name: Record runner capacity
         run: |
@@ -27,7 +27,7 @@ jobs:
           free -h
       - name: Run full Runtime with an explicit five-second timeout
         env:
-          NEVO_TEST_REF: 8b9f0642d5dffb4958ea27dfa3802ac13cf2573f
+          NEVO_TEST_REF: 2dad5461112bec13c45b743ea9393a4ab6687ccd
         run: |
           bash tools/dev/linux-test.sh --ref "$NEVO_TEST_REF" --memory 10g --cpus 4 -- \
             "node -e 'console.log(require(\"node:os\").availableParallelism())' && git config --global maintenance.auto false && git config --global gc.auto 0 && pnpm exec turbo run build --filter=@nevo/specflow-runtime && pnpm --filter @nevo/specflow-runtime exec vitest run --reporter=dot --testTimeout=5000"

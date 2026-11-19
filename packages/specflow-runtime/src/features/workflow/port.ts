@@ -5,6 +5,8 @@ import type {
   FinishStepInput,
   FinishStepResult,
   OwnerActor,
+  ReevaluateWaitInput,
+  ReevaluateWaitResult,
   ReturnToStepInput,
   ReturnToStepResult,
   StartResult,
@@ -25,5 +27,6 @@ export interface WorkflowPort {
   }): Promise<StartResult>;
   finish(input: FinishStepInput): Promise<FinishStepResult>;
   return(input: ReturnToStepInput): Promise<ReturnToStepResult>;
+  reevaluateWait(input: ReevaluateWaitInput): Promise<ReevaluateWaitResult>;
   abandon(input: AbandonSpecificationInput): Promise<AbandonSpecificationResult>;
 }

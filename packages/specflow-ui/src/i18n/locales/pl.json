@@ -2326,6 +2326,10 @@
       "lastPrefix": "Ostatnio: {{step}} · ",
       "handoffFrom": "{{step}} · ",
       "alreadyFinished": "Ten krok został już zakończony. Poniżej widać, co można zrobić teraz.",
+      "reevaluateWait": "Zakończ oczekiwanie",
+      "retryWait": "Ponów zakończenie oczekiwania",
+      "waitTransitionMissing": "W przypiętej definicji workflow brakuje przejścia po zamknięciu wszystkich zadań. Edycja definicji nie zmieni tego przebiegu.",
+      "waitReadyToSettle": "Wszystkie zadania są zamknięte. Możesz zakończyć oczekiwanie.",
       "startWorkflow": "Rozpocznij przepływ",
       "operations": "Operacje przepływu",
       "history": "Historia przepływu",
@@ -2698,6 +2702,7 @@
         "satisfy-gate": "Otwórz zadanie",
         "resume-task": "Wznów",
         "start-step": "Rozpocznij krok",
+        "reevaluate-wait": "Przejdź do bieżącego kroku",
         "return-to-step": "Wróć do wcześniejszego kroku"
       },
       "specification": "Specyfikacja",

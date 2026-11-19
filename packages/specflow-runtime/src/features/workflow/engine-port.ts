@@ -2,6 +2,7 @@ import {
   abandonSpecification,
   finishStep,
   inspectActionsForRead,
+  reevaluateWait,
   returnToStep,
   startSpecificationExecution,
   startTaskExecution,
@@ -47,6 +48,10 @@ export function createEngineWorkflowPort(open: () => Promise<WorkflowDependencie
 
     async return(input) {
       return returnToStep(await open(), input);
+    },
+
+    async reevaluateWait(input) {
+      return reevaluateWait(await open(), input);
     },
 
     async abandon(input) {

@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, InlineNote, Typography } from '@nevo/ui';
+import { writeOutcomeUnknown } from '../../../shared/http/apiErrorCode';
 import { subscribeTaskAttention } from '../overview/attentionRequests';
 import { NowOperationsMenu } from './NowOperationsMenu';
 import type {
@@ -157,7 +158,28 @@ export function WorkflowNow({
   const next =
     position.kind === 'not-started' || position.kind === 'ready' ? position.next : undefined;
   const step = position.kind === 'active' ? position.step : undefined;
-  const busy = commands.start.isPending || commands.finish.isPending || commands.returnTo.isPending;
+  const busy =
+    commands.start.isPending ||
+    commands.finish.isPending ||
+    commands.returnTo.isPending ||
+    commands.reevaluateWait.isPending;
+  const waitAttempt = subject.taskId === undefined ? projection.attention?.waitAttempt : undefined;
+  // The read may already show a journaled transition whose publication still needs retrying.
+  const submittedWait = commands.reevaluateWait.variables;
+  const attemptedWait = subject.taskId === undefined && submittedWait?.specId === subject.specId;
+  const { isError: waitFailed, isPending: waitPending, error: waitError } = commands.reevaluateWait;
+  const retryWait =
+    attemptedWait && (waitPending || (waitFailed && writeOutcomeUnknown(waitError)))
+      ? submittedWait
+      : undefined;
+  const retryEarlierWait =
+    retryWait && (retryWait.step !== waitAttempt?.step || retryWait.attempt !== waitAttempt.attempt)
+      ? retryWait
+      : undefined;
+
+  const endWait = (step: string, attempt: number) => {
+    commands.reevaluateWait.mutate({ specId: subject.specId, step, attempt });
+  };
 
   const startNow = () => {
     commands.start.reset();
@@ -339,6 +361,15 @@ export function WorkflowNow({
   const finishIsSecondary = secondary?.kind === 'finish';
 
   const workflowActions =
+    (waitAttempt ? (
+      <Button
+        key="reevaluate-wait"
+        onClick={() => endWait(waitAttempt.step, waitAttempt.attempt)}
+        disabled={busy}
+      >
+        {t('workflowExecution.now.reevaluateWait')}
+      </Button>
+    ) : undefined) ??
     primaryAction ??
     // Distinct keys: the button that opened Finish must never become Start. When a finish whose
     // answer was lost closes its dialog, the dialog returns focus to its opener; a reused element
@@ -463,6 +494,9 @@ export function WorkflowNow({
 
   const note = (
     <>
+      {attemptedWait && commands.reevaluateWait.isError ? (
+        <WorkflowRefusalAlert error={commands.reevaluateWait.error} />
+      ) : null}
       {mainGateAction ? (
         <Typography as="p" variant="body-sm" className="text-content-secondary">
           {mainGateAction.hint ?? t('workflowExecution.now.finishAfterGate')}
@@ -507,7 +541,23 @@ export function WorkflowNow({
         }
         {...(gateDocument ? { gateDocument } : {})}
         note={note}
-        actions={workflowActions}
+        actions={
+          retryEarlierWait ? (
+            <>
+              {workflowActions}
+              <Button
+                key="retry-wait"
+                variant="secondary"
+                onClick={() => endWait(retryEarlierWait.step, retryEarlierWait.attempt)}
+                disabled={busy}
+              >
+                {t('workflowExecution.now.retryWait')}
+              </Button>
+            </>
+          ) : (
+            workflowActions
+          )
+        }
         starting={starting}
         menu={menu}
         summary={summary}

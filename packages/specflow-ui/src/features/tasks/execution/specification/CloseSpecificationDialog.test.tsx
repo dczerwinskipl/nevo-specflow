@@ -76,6 +76,7 @@ function renderDialog({
     start: vi.fn(never),
     finish: vi.fn(never),
     returnTo: vi.fn(never),
+    reevaluateWait: vi.fn(never),
     abandon: vi.fn(never),
     closePreview,
     closeOccupancy: vi.fn(() => Promise.resolve({ blockers: [] })),

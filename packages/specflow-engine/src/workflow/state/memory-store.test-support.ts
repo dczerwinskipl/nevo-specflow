@@ -20,8 +20,9 @@ export function createRecordingMemoryWorkflowStore(): ReturnType<
     applied,
     async apply(specId, change) {
       await store.apply(specId, change);
-      if (!isDeepStrictEqual(change, {})) {
-        applied.push(structuredClone(change));
+      const { verifySnapshot: _verifySnapshot, ...writes } = change;
+      if (!isDeepStrictEqual(writes, {})) {
+        applied.push(structuredClone(writes));
       }
     },
   };

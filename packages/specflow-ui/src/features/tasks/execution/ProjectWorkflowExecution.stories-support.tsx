@@ -361,6 +361,7 @@ function services(scenario: WorkflowStoryScenario) {
     },
     finish: never,
     returnTo: never,
+    reevaluateWait: never,
     abandon: never,
     closePreview: () => closePreviewOf(scenario),
     // An agent Session still works in the worktree of the blocked Specification.

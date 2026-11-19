@@ -139,6 +139,7 @@ export function createMemoryWorkflowStore(): WorkflowStore & {
         assertChangeIdentity(change);
         const state = stateOf(specId);
         const snapshot = snapshotOf(specId, state);
+        change.verifySnapshot?.(snapshot);
         if (change.specification) {
           check(state.specification, change.specification.expected);
         }

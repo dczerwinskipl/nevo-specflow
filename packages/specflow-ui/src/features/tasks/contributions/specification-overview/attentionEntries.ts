@@ -81,6 +81,8 @@ function actionOf(
     case 'restore-task':
     case 'satisfy-gate':
       return onTask(openTask);
+    case 'reevaluate-wait':
+      return { label, onClick: () => goToHeading(SPECIFICATION_NOW_HEADING) };
     case 'return-to-step':
       // The Specification's own Return dialog (its Now block, which also offers it in its menu
       // while it loads); a Task's on the Task page.
@@ -149,6 +151,12 @@ export function taskAttentionEntry(
           title: message('taskOverview.attention.stuckTitle', { count: item.taskIds!.length }),
           reason: message('taskOverview.attention.stuckReason'),
         }
+      : {}),
+    ...(item.code === 'wait-transition-missing'
+      ? { reason: message('workflowExecution.now.waitTransitionMissing') }
+      : {}),
+    ...(item.code === 'wait-ready-to-settle'
+      ? { reason: message('workflowExecution.now.waitReadyToSettle') }
       : {}),
     tone: broken ? 'danger' : 'attention',
     reasonIcon: broken ? 'circle-alert' : 'triangle-alert',

@@ -19,7 +19,12 @@ import {
 } from '../tasks/tasks';
 import type { ExecutionTask, WorkflowRun, WorkflowSubject } from '../state/model';
 import type { ExecutionSnapshot } from '../state/store';
-import { continuationOf, waitDecision } from './advance';
+import {
+  continuationOf,
+  waitCompletionTransition,
+  waitDecision,
+  waitRecoveryBlockers,
+} from './advance';
 import { executionTasks, pinnedDefinitionIfUnchanged } from './loaded-execution';
 import type { StartBlocker } from './start-blockers';
 
@@ -95,8 +100,20 @@ export function deriveAttention(
       changed(subject, run);
     } else if (position.state === 'ready') {
       add(subject, continuationOf(run, definition, catalogue), definition);
-    } else if (step?.kind === 'wait') {
-      add(subject, waitDecision(step.id, tasks, broken), definition);
+    } else if (step?.kind === 'wait' && position.state === 'active') {
+      if (waitRecoveryBlockers(tasks, broken).length === 0) {
+        const transition = waitCompletionTransition(definition, position.step);
+        items.push(
+          item(subject, transition ? 'wait-ready-to-settle' : 'wait-transition-missing', {
+            step: position.step,
+            ...(transition
+              ? { waitAttempt: { step: position.step, attempt: position.attempt } }
+              : {}),
+          }),
+        );
+      } else {
+        add(subject, waitDecision(position.step, tasks, broken), definition);
+      }
     } else if (step?.kind === 'work') {
       // The rule the finish and the projection ask (`tasks-open`), on the current Tasks.
       const completes = step.transitions.find(
@@ -336,6 +353,8 @@ const ACTIONS_OF: Readonly<
   'provider-not-chosen': ['configure-archetype'],
   'model-missing': ['configure-archetype'],
   'tasks-stuck': ['review-tasks'],
+  'wait-ready-to-settle': ['reevaluate-wait'],
+  'wait-transition-missing': ['confirm-definition'],
   'task-escalated': ['review-tasks'],
   'task-broken': ['restore-task'],
   'definition-changed': ['confirm-definition'],
@@ -379,13 +398,10 @@ function fromDecision(
 ): AttentionItem {
   const { kind: _kind, reason, ...fields } = decision;
   const title = findStep(definition, decision.step)?.title;
-  // Every Task is closed but the wait did not end: there is no Task to review, only a return.
-  const closed = reason === 'tasks-stuck' && (decision.blocking ?? []).length === 0;
 
   return item(subject, reason, {
     ...fields,
     ...(title !== undefined ? { stepTitle: title } : {}),
-    ...(closed ? { action: 'return-to-step' as const } : {}),
   });
 }
 
@@ -432,12 +448,14 @@ function messageOf(reason: AttentionItemReason, fields: ItemFields): string {
       return `${step}cannot continue: choose a provider for ${archetype}.`;
     case 'model-missing':
       return `${step}cannot continue: choose a model of ${fields.provider ?? 'the provider'} for ${archetype}.`;
+    case 'wait-ready-to-settle':
+      return 'All tasks are closed. You can end the wait.';
+    case 'wait-transition-missing':
+      return 'The pinned workflow has no tasks-finished transition for this step; editing the definition will not update this run.';
     case 'tasks-stuck': {
       const blocking = fields.blocking ?? [];
 
-      return blocking.length === 0
-        ? 'The specification cannot continue: every task is closed but the wait did not end; return it to an earlier step.'
-        : `The specification cannot continue until ${count(blocking.length, 'task moves', 'tasks move')}: ${blocking.map((task) => `${task.taskId} ${CAUSE_TEXT[task.cause]}`).join(', ')}.`;
+      return `The specification cannot continue until ${count(blocking.length, 'task moves', 'tasks move')}: ${blocking.map((task) => `${task.taskId} ${CAUSE_TEXT[task.cause]}`).join(', ')}.`;
     }
 
     case 'task-escalated':

@@ -149,6 +149,12 @@ export function actionLines(projection: ActionProjection): string[] {
   lines.push(...positionLines(projection.position));
   if (projection.attention) {
     lines.push(attentionLine(projection.attention));
+    const wait = projection.attention.waitAttempt;
+    if (wait) {
+      lines.push(
+        `Use workflow reevaluate-wait ${projection.subject.specId} --step "${wait.step}" --attempt ${wait.attempt}`,
+      );
+    }
   }
 
   const { start, finish, return: back } = projection.actions;

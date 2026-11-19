@@ -26,6 +26,7 @@ function renderNow(ui: ReactNode, start: WorkflowExecutionApi['start'] = vi.fn(n
       start,
       finish: vi.fn(never),
       returnTo: vi.fn(never),
+      reevaluateWait: vi.fn(never),
       abandon: vi.fn(never),
       closePreview: vi.fn(never),
       closeOccupancy: vi.fn(never),

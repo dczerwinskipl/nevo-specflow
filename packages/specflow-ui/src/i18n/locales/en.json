@@ -2326,6 +2326,10 @@
       "lastPrefix": "Last: {{step}} · ",
       "handoffFrom": "{{step}} · ",
       "alreadyFinished": "This step was already finished. What you can do now is shown below.",
+      "reevaluateWait": "End wait",
+      "retryWait": "Retry ending wait",
+      "waitTransitionMissing": "The pinned workflow is missing a transition for when all tasks close. Editing the definition does not update this run.",
+      "waitReadyToSettle": "All tasks are closed. You can end the wait.",
       "startWorkflow": "Start workflow",
       "operations": "Workflow operations",
       "history": "Workflow history",
@@ -2698,6 +2702,7 @@
         "satisfy-gate": "Open task",
         "resume-task": "Resume",
         "start-step": "Start step",
+        "reevaluate-wait": "Go to current step",
         "return-to-step": "Return to earlier step"
       },
       "specification": "Specification",

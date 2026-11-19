@@ -192,13 +192,17 @@ export async function openWorkflow(
   engine: SpecFlowEngine,
   options: OpenWorkflowOptions = {},
 ): Promise<WorkflowDependencies> {
-  const loaded = await loadDefinitions(
-    createFilesystemDefinitionSource(definitionsRoot(engine)),
-    createDefaultDefinitionRegistry(),
-  );
+  const reloadCatalogue = async () =>
+    resolveExecutionCatalogue(
+      await loadDefinitions(
+        createFilesystemDefinitionSource(definitionsRoot(engine)),
+        createDefaultDefinitionRegistry(),
+      ),
+    );
 
   const dependencies: Omit<WorkflowDependencies, 'specificationExit'> = {
-    catalogue: resolveExecutionCatalogue(loaded),
+    catalogue: await reloadCatalogue(),
+    reloadCatalogue,
     store: guardCloseReservations(
       guardTaskDocumentChanges(
         createFilesystemWorkflowStore({

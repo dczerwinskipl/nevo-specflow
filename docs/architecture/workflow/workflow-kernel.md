@@ -50,6 +50,11 @@ coordinator, executors and actors). The code lives in two places:
   applies each decision with its effects in one store change. The Task resource format is
   `packages/specflow-engine/src/tasks/resource/`.
 
+An owner can re-evaluate an active Specification wait after restoring closed Task records.
+Inspection offers the action with the step and attempt. The command validates the pinned definition
+and Task state under the project lock and delivers `tasks-finished` through `settleWait`.
+The recorded attempt outcome makes a retry safe, including after interrupted journal publication.
+
 ## One core, two entry points
 
 The core is subject-neutral. A **subject** is either the Specification or one of its Tasks:
@@ -345,8 +350,8 @@ anything is written; it counts as open, so the wait step never completes over it
 it never becomes startable (`dependencies {waitingFor}`); and when nothing else can progress, the
 Specification gets `tasks-stuck`. The Engine never repairs it: restoring the files from Git makes the
 Task usable again. If the restored Task is already closed and no Task is open any more, no Task event
-will complete the wait, so the Specification keeps `tasks-stuck` and the owner returns it (for example
-to the breakdown). A broken Task is open, so a Specification never completes over it (see
+will complete the wait. The owner can re-evaluate the active wait attempt to deliver the
+`tasks-finished` event. A broken Task is open, so a Specification never completes over it (see
 "Completion requires closed Tasks"). A Specification
 step's context lists the broken Tasks by id in `broken`, not in `existingTasks`; a `taskDecisions` entry
 naming one is refused with `WORKFLOW_INPUT_INVALID` (`Unknown Task`).
@@ -678,9 +683,8 @@ off) agent configuration is not the owner's problem, so it is `owner-action` wit
 `blockingTasks` in `tasks/tasks.ts`): each draft, each Task on hold, each broken Task, and each
 `ready` Task with a direct dependency that was cancelled or ended without completing. A Task that
 only waits for other open Tasks is not named, nor one whose only unsatisfiable dependencies are
-broken (the broken Task is named). The list is resolved from the current state on every read and
-is empty when every Task is closed but the wait is still active; that item then offers
-`return-to-step` instead of `review-tasks`.
+broken (the broken Task is named). Reads derive the list from the current state. When every Task is
+closed and the wait is still active, inspection offers `reevaluate-wait` for the current attempt.
 
 Attention is never a question to the agent. The agent's finish succeeds, and the finish (or return)
 returns its `ContinuationDecision`.
@@ -704,7 +708,7 @@ Every item carries the required `actor` (`owner`: neither the steps nor the gate
 derives items from name another actor; `agent` is reserved), the primary `action` it offers and an
 optional `secondaryAction` (`start-step`, `return-to-step`, `configure-archetype`, `review-tasks`,
 `restore-task`, `confirm-definition`, `edit-context`, `edit-dependencies`,
-`open-project-settings`, `cancel-task`, `resume-task`, `satisfy-gate`), the step and its title where one
+`open-project-settings`, `cancel-task`, `resume-task`, `satisfy-gate`, `reevaluate-wait`), the step and its title where one
 resolves, and a display-only English `message`. A type no longer allowed or not defined offers
 `open-project-settings` or `cancel-task`; an unsatisfiable dependency `edit-dependencies` or
 `cancel-task`, and `restore-task` (or `edit-dependencies`) when a dependency is broken. An unmet
@@ -758,9 +762,9 @@ the current archetypes, with the same functions the operations use for their res
 - a subject `ready` on a step gets what its latest event decides: after a finished attempt, the
   recorded transition (from that attempt's step) with the executor that finished it (`finishedBy`,
   the Session a `reuse` continues); after an owner return, an owner action;
-- a Specification active on its wait step gets `task-escalated` or `tasks-stuck` (also when every
-  Task is closed but the wait is still active, which only a Task file changed outside the Engine
-  causes);
+- a Specification active on its wait step gets `task-escalated` or `tasks-stuck` when Tasks block it.
+  When all Tasks are closed, it gets `wait-ready-to-settle` with its wait attempt, or
+  `wait-transition-missing` if the workflow has no `tasks-finished` transition;
 - a Task on hold that the user has to resume or cancel gets `task-escalated` or `on-hold-blocking`
   (see "Held Tasks");
 - a run that has not ended whose pinned workflow is missing or changed gets `definition-changed`

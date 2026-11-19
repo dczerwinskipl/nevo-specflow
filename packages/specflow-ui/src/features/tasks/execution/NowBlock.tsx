@@ -209,6 +209,20 @@ export function NowBlock({
       break;
     case 'waiting':
       current = <StepTitle step={position.step} />;
+      if (projection.attention?.reason === 'wait-transition-missing') {
+        supporting = (
+          <InlineNote tone="attention">
+            {t('workflowExecution.now.waitTransitionMissing')}
+          </InlineNote>
+        );
+        break;
+      }
+
+      if (projection.attention?.waitAttempt) {
+        facts = t('workflowExecution.now.waitReadyToSettle');
+        break;
+      }
+
       facts = t('workflowExecution.now.waitingNote');
       supporting = waitingContent ?? (
         <>

@@ -5,9 +5,9 @@
 // every test starts Git processes and the Engine's queue.
 import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 
 import {
   BatchSaveResultSchema,
@@ -40,7 +40,7 @@ import {
 import { GitCapabilityError, resolveCreateArchetype } from '@nevo/specflow-engine';
 import type { FastifyInstance } from 'fastify';
 import { Value } from 'typebox/value';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it } from 'vitest';
 
 import { authCookieNames } from '../../src/features/auth/authentication/http/cookies';
 import { InMemoryAuthenticationStore } from '../../src/features/auth/authentication/store/in-memory-store';
@@ -49,17 +49,26 @@ import { createRuntimeApp } from '../../src/server/app';
 import { passwordConfig } from '../auth/support/config';
 
 const roots: string[] = [];
+const templateRoots: string[] = [];
 const apps: FastifyInstance[] = [];
 const stops: (() => Promise<unknown>)[] = [];
 afterEach(async () => {
   await Promise.all(stops.splice(0).map((stop) => stop()));
   await Promise.all(apps.splice(0).map((app) => app.close()));
+  await removeRoots(roots);
+});
+
+afterAll(async () => {
+  await removeRoots(templateRoots);
+});
+
+async function removeRoots(directories: string[]): Promise<void> {
   await Promise.all(
-    roots
+    directories
       .splice(0)
       .map((root) => rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })),
   );
-});
+}
 
 function git(cwd: string, ...args: string[]): string {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
@@ -76,10 +85,34 @@ interface Fixture {
   readonly dir: string;
 }
 
-/** A committed project on a work branch with one hand-built Specification of editable notes. */
+type ProjectTemplate = Omit<Fixture, 'engine'>;
+
+const templates = new Map<string, Promise<ProjectTemplate>>();
+
+/** Each test gets an independent checkout, index and Engine from a committed seed. */
 async function project(config = GIT_ON): Promise<Fixture> {
+  let template = templates.get(config);
+  if (!template) {
+    template = createProjectTemplate(config);
+    templates.set(config, template);
+  }
+
+  const seed = await template;
   const root = await realpath(await mkdtemp(join(tmpdir(), 'specflow-http-write-')));
   roots.push(root);
+  await cp(seed.root, root, { recursive: true });
+
+  return {
+    root,
+    specId: seed.specId,
+    dir: join(root, relative(seed.root, seed.dir)),
+    engine: await bootstrapProjectHome(root),
+  };
+}
+
+async function createProjectTemplate(config: string): Promise<ProjectTemplate> {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'specflow-http-write-template-')));
+  templateRoots.push(root);
   git(root, 'init', '-q');
   git(root, 'config', '--local', 'core.autocrlf', 'false');
   await mkdir(join(root, '.nevo'));
@@ -117,7 +150,7 @@ async function project(config = GIT_ON): Promise<Fixture> {
     'specification',
   );
 
-  return { root, engine: await bootstrapProjectHome(root), ...spec };
+  return { root, ...spec };
 }
 
 const notes = (index: number): string => `notes ${index}\n`;

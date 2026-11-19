@@ -154,6 +154,7 @@ async function createFixture(
       },
     },
   );
+
   return { app, headers, calls };
 }
 

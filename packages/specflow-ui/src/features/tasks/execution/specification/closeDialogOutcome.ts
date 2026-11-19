@@ -15,6 +15,9 @@ import { workflowRefusalKey, type WorkflowRefusal } from '../refusal';
  * - `checking`: the preview runs the repository checks (also after "Check again"), or
  *   (`documents`) waits for saved documents that are still being committed and is read again
  *   ({@link waitsForDocumentCommits}); nothing can be confirmed;
+ * - `held`: files SpecFlow wrote and did not commit hold the Close (`DOCUMENT_COMMITS_PENDING`,
+ *   `commit-uncommitted`, from the preview or the Close): an explained blocking state with its
+ *   owners and how to resolve it, checked again on request, never a failed check;
  * - `cannot-start`: the check failed: the preview refused for a reason that is not a blocker list,
  *   or could not be read;
  * - `not-closed`: the Close itself was refused for a reason that is not a blocker list;
@@ -30,16 +33,14 @@ export type CloseDialogOutcome =
     }
   | { readonly kind: 'checking'; readonly waitingFor?: 'documents' }
   | {
-      readonly kind: 'cannot-start';
+      readonly kind: 'held';
+      /** How to resolve it, by the ledger facts. */
       readonly reasonKey: CloseRefusalKey;
-      /** `commit-uncommitted`: whose files hold the Close, to list under the reason. */
+      /** Whose files hold the Close, to list under the reason; absent without the facts. */
       readonly uncommitted?: UncommittedHoldDetails;
     }
-  | {
-      readonly kind: 'not-closed';
-      readonly reasonKey: CloseRefusalKey;
-      readonly uncommitted?: UncommittedHoldDetails;
-    }
+  | { readonly kind: 'cannot-start'; readonly reasonKey: CloseRefusalKey }
+  | { readonly kind: 'not-closed'; readonly reasonKey: CloseRefusalKey }
   | {
       readonly kind: 'needs-attention';
       readonly status: Exclude<CloseSpecificationResult['status'], 'completed'>;
@@ -97,8 +98,13 @@ export function closeDialogOutcome(facts: CloseDialogFacts): CloseDialogOutcome 
     return blocked;
   }
 
+  const held = heldBy(closeRefusal) ?? heldBy(previewRefusal);
+  if (held) {
+    return held;
+  }
+
   if (closeRefusal) {
-    return { kind: 'not-closed', ...refused(closeRefusal) };
+    return { kind: 'not-closed', reasonKey: closeRefusalKey(closeRefusal) };
   }
 
   if (facts.close.status === 'success' && facts.close.result.status !== 'completed') {
@@ -114,7 +120,7 @@ export function closeDialogOutcome(facts: CloseDialogFacts): CloseDialogOutcome 
   }
 
   if (previewRefusal) {
-    return { kind: 'cannot-start', ...refused(previewRefusal) };
+    return { kind: 'cannot-start', reasonKey: closeRefusalKey(previewRefusal) };
   }
 
   if (facts.preview.status !== 'success') {
@@ -203,19 +209,44 @@ function uncommittedKey(hold: UncommittedHoldDetails | undefined): CloseRefusalK
   return 'workflowExecution.close.refusal.documentsUncommitted';
 }
 
-/** The reason of a refusal, with the uncommitted files when the ledger holds the Close. */
-function refused(refusal: WorkflowRefusal): {
-  readonly reasonKey: CloseRefusalKey;
-  readonly uncommitted?: UncommittedHoldDetails;
-} {
+/**
+ * Files SpecFlow wrote and did not commit hold the Close (`commit-uncommitted`): the reason, with
+ * the uncommitted files when the ledger names them. Not a hold when the answer was lost.
+ */
+function heldBy(refusal: WorkflowRefusal | undefined): CloseDialogOutcome | undefined {
+  if (
+    refusal?.code !== 'DOCUMENT_COMMITS_PENDING' ||
+    refusal.documentCause !== 'commit-uncommitted' ||
+    refusal.outcomeUnknown
+  ) {
+    return undefined;
+  }
+
   const reasonKey = closeRefusalKey(refusal);
 
-  return refusal.code === 'DOCUMENT_COMMITS_PENDING' &&
-    refusal.documentCause === 'commit-uncommitted' &&
-    refusal.uncommittedHold !== undefined &&
-    !refusal.outcomeUnknown
-    ? { reasonKey, uncommitted: refusal.uncommittedHold }
-    : { reasonKey };
+  return refusal.uncommittedHold
+    ? { kind: 'held', reasonKey, uncommitted: refusal.uncommittedHold }
+    : { kind: 'held', reasonKey };
+}
+
+/**
+ * Who holds the checkout, for the "cannot close yet" sentence: another Specification (`other`),
+ * only the one being closed (`own`), or files of no named Specification (`checkout`).
+ */
+export function uncommittedHolder(
+  hold: UncommittedHoldDetails | undefined,
+  specId: string,
+): 'other' | 'own' | 'checkout' {
+  const specifications = (hold?.owners ?? []).flatMap((owner) =>
+    owner.kind === 'specification' ? [owner.specId] : [],
+  );
+  if (specifications.some((id) => id !== specId)) {
+    return 'other';
+  }
+
+  return specifications.length > 0 && specifications.length === hold?.owners.length
+    ? 'own'
+    : 'checkout';
 }
 
 /**

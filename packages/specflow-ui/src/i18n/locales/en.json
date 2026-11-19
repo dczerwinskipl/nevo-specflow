@@ -2392,6 +2392,7 @@
         "sessions": "An agent Session is working in this worktree. Wait for its Turn to finish or cancel it, then close."
       },
       "groupHeading": "{{title}} · {{count}}",
+      "groupCount": " · {{count}}",
       "more_one": "and {{count}} more",
       "more_few": "and {{count}} more",
       "more_many": "and {{count}} more",
@@ -2556,7 +2557,12 @@
         "none": "No tasks were created"
       },
       "archiveNote": "Closing archives the specification; it cannot be reopened.",
-      "submitting": "Closing…"
+      "submitting": "Closing…",
+      "heldBy": {
+        "other": "another specification has uncommitted changes in this checkout",
+        "own": "it has uncommitted changes in its checkout",
+        "checkout": "files SpecFlow wrote in this checkout are not committed"
+      }
     },
     "abandon": {
       "action": "Abandon specification",

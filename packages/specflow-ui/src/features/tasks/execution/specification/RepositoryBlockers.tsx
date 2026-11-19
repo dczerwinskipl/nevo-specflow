@@ -5,6 +5,7 @@ import { InlineNote, Typography } from '@nevo/ui';
 import type { UncommittedHoldDetails } from '@nevo/specflow-contracts/documents';
 import type { RepositoryBlocker } from '@nevo/specflow-contracts/specs';
 import { useWorkspaces } from '../../../workspaces/read-model';
+import { InlineAction } from '../InlineAction';
 import { CopyAction } from './CopyAction';
 import { IntegrationBranchChoice } from './IntegrationBranchChoice';
 
@@ -18,10 +19,13 @@ const checkoutName = (t: TFunction, checkout: Checkout) =>
 
 function Group({
   heading,
+  headingContent,
   explanation,
   children,
 }: {
   readonly heading: string;
+  /** The heading's content when it holds more than text (a link); `heading` still names it. */
+  readonly headingContent?: ReactNode;
   readonly explanation?: ReactNode;
   readonly children?: ReactNode;
 }) {
@@ -29,7 +33,7 @@ function Group({
     <section className="grid min-w-0 gap-2" aria-label={heading}>
       <div className="grid gap-0.5">
         <Typography as="h3" variant="label-sm">
-          {heading}
+          {headingContent ?? heading}
         </Typography>
         {explanation ? (
           <Typography as="p" variant="body-sm" className="text-content-secondary">
@@ -134,10 +138,13 @@ function DiscardWarning() {
 export function UncommittedOwners({
   hold,
   specId,
+  onOpenSpecification,
 }: {
   readonly hold: UncommittedHoldDetails;
   /** The Specification being closed. */
   readonly specId: string;
+  /** Opens another owner Specification's Overview: its name is then a link. */
+  readonly onOpenSpecification?: (specId: string) => void;
 }) {
   const { t } = useTranslation();
   if (hold.owners.length === 0) {
@@ -169,6 +176,18 @@ export function UncommittedOwners({
               title: ownerName(owner),
               count: owner.count,
             })}
+            {...(owner.kind === 'specification' && owner.specId !== specId && onOpenSpecification
+              ? {
+                  headingContent: (
+                    <>
+                      <InlineAction onClick={() => onOpenSpecification(owner.specId)}>
+                        {ownerName(owner)}
+                      </InlineAction>
+                      {t('workflowExecution.exit.groupCount', { count: owner.count })}
+                    </>
+                  ),
+                }
+              : {})}
           >
             <ul className="grid list-disc gap-0.5 pl-5 text-body-sm marker:text-content-muted">
               {owner.paths.map((path) => (

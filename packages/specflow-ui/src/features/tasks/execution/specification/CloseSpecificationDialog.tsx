@@ -41,6 +41,7 @@ import {
 import {
   DOCUMENT_COMMIT_RECHECK,
   closeDialogOutcome,
+  uncommittedHolder,
   waitsForDocumentCommits,
   type DocumentCommitRecheck,
 } from './closeDialogOutcome';
@@ -73,6 +74,8 @@ export interface CloseSpecificationDialogProps {
   readonly onSeeWorkflow: () => void;
   readonly onSeeTasks: () => void;
   readonly onOpenTask: (taskId: string) => void;
+  /** Opens another Specification's Overview (an owner of files that hold the Close). */
+  readonly onOpenSpecification?: (specId: string) => void;
   readonly onClosed: () => void;
   /** How the preview is read again while document commits settle; the default outside tests. */
   readonly documentCommitRecheck?: DocumentCommitRecheck;
@@ -106,6 +109,7 @@ function CloseContent({
   onSeeWorkflow,
   onSeeTasks,
   onOpenTask,
+  onOpenSpecification,
   onClosed,
   documentCommitRecheck = DOCUMENT_COMMIT_RECHECK,
 }: CloseSpecificationDialogProps) {
@@ -305,26 +309,55 @@ function CloseContent({
             </Button>
           ),
         };
+      case 'held':
+        // An explained blocking state, not a failed check: whose files, and how to resolve it.
+        return {
+          description: t('workflowExecution.close.blocked', {
+            title: specTitle,
+            reasons: t(
+              `workflowExecution.close.heldBy.${uncommittedHolder(outcome.uncommitted, specId)}`,
+            ),
+          }),
+          body: (
+            <>
+              <Typography as="p" variant="body-sm" className="text-content-secondary">
+                {t(outcome.reasonKey)}
+              </Typography>
+              {outcome.uncommitted ? (
+                <UncommittedOwners
+                  hold={outcome.uncommitted}
+                  specId={specId}
+                  {...(onOpenSpecification
+                    ? { onOpenSpecification: (id: string) => go(() => onOpenSpecification(id))() }
+                    : {})}
+                />
+              ) : null}
+            </>
+          ),
+          footer: (
+            <>
+              <Button data-initial-focus="" variant="secondary" onClick={dismiss}>
+                {t('workflowExecution.exit.dismiss')}
+              </Button>
+              <Button onClick={checkAgain}>{t('workflowExecution.close.checkAgain')}</Button>
+            </>
+          ),
+        };
       case 'cannot-start':
       case 'not-closed':
         return {
           body: (
-            <div className="grid min-w-0 gap-5">
-              <Alert
-                role="alert"
-                tone="danger"
-                title={
-                  outcome.kind === 'cannot-start'
-                    ? t('workflowExecution.close.checkFailed', { title: specTitle })
-                    : t('workflowExecution.close.failed')
-                }
-              >
-                {t(outcome.reasonKey)}
-              </Alert>
-              {outcome.uncommitted ? (
-                <UncommittedOwners hold={outcome.uncommitted} specId={specId} />
-              ) : null}
-            </div>
+            <Alert
+              role="alert"
+              tone="danger"
+              title={
+                outcome.kind === 'cannot-start'
+                  ? t('workflowExecution.close.checkFailed', { title: specTitle })
+                  : t('workflowExecution.close.failed')
+              }
+            >
+              {t(outcome.reasonKey)}
+            </Alert>
           ),
           footer: (
             <>

@@ -718,9 +718,19 @@ describe('manual workflow execution', () => {
     );
     const dialog = screen.getByRole('dialog');
 
-    expect((await within(dialog).findByRole('alert')).textContent).toContain(
-      "Commit them from that specification's Documents or with Git, then check again.",
-    );
+    // An explained blocking state, not a failed check.
+    expect(
+      await within(dialog).findByText(
+        'Single sign-on cannot close yet: another specification has uncommitted changes in this checkout.',
+      ),
+    ).toBeTruthy();
+    expect(within(dialog).queryByRole('alert')).toBeNull();
+    expect(within(dialog).queryByText(/Could not check/)).toBeNull();
+    expect(
+      within(dialog).getByText(
+        "Saved documents in this checkout are not committed: automatic commits were off when they were saved. Commit them from that specification's Documents or with Git, then check again.",
+      ),
+    ).toBeTruthy();
     expect(within(dialog).getByRole('heading', { name: 'Passkeys · 10' })).toBeTruthy();
     expect(within(dialog).getByText('specs/active/passkeys/notes-0.md')).toBeTruthy();
     expect(within(dialog).getByText('and 2 more')).toBeTruthy();

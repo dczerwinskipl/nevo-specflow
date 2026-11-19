@@ -283,10 +283,17 @@ or after a refusal.
   (primary, last in the footer, on top when stacked), which reads the preview anew (Checking, then
   the new outcome).
 
+- **Held by uncommitted files SpecFlow wrote** (`DOCUMENT_COMMITS_PENDING`, `commit-uncommitted`,
+  from the preview or the Close): a blocking state, never a failed check. "<title> cannot close
+  yet: another specification has uncommitted changes in this checkout." (or "it has uncommitted
+  changes in its checkout" when only this Specification's files are named, or "files SpecFlow wrote
+  in this checkout are not committed" without named Specifications), then how to resolve it (commit
+  from that Specification's Documents or with Git, or finish its step in progress), then each owner
+  with its files and the discard warning. Another Specification's name is a link to its Overview
+  (this Specification's is not). The footer has **Dismiss** and **Check again** (primary).
 - **Check failed:** the preview refused for a reason that is not a blocker list, or could not be
-  read: a danger alert "Could not check whether <title> can close" with what to do (documents in
-  manual commit mode: commit them from Documents; a failed document commit: retry or resolve it in
-  Documents), **Dismiss** and **Check again**.
+  read: a danger alert "Could not check whether <title> can close" with what to do (a failed
+  document commit: retry or resolve it in Documents), **Dismiss** and **Check again**.
 - **Ready:** the "Ready to close" alert ("The workflow is complete and the repository checks
   passed."; with Git off "The workflow is complete. Git is off, so nothing is merged.", since no
   repository check ran; an abandoned Specification shows "Abandoned: “<reason>”" under the title

@@ -85,17 +85,26 @@ export const CheckFailed: Story = {
 };
 
 /**
- * Files SpecFlow wrote and did not commit hold the Close: which Specification, which files (eight
- * named, the rest counted) and how to resolve it (commit with Git, or finish the step in progress).
+ * Files SpecFlow wrote and did not commit hold the Close: a blocking state, not a failed check.
+ * Which Specification (a link to its Overview), which files (eight named, the rest counted) and
+ * how to resolve it (commit with Git, or finish the step in progress); Check again is primary.
  */
 export const BlockedByUncommittedEngineFiles: Story = {
   args: { scenario: 'close-engine-uncommitted' },
   play: async ({ canvasElement }) => {
     const dialog = await openFromNow(canvasElement);
-    await expect(await dialog.findByRole('alert')).toHaveTextContent(
-      'Commit them with Git, or finish the step in progress there',
-    );
+    await expect(
+      await dialog.findByText(
+        'Single sign-on cannot close yet: another specification has uncommitted changes in this checkout.',
+      ),
+    ).toBeVisible();
+    await expect(dialog.queryByRole('alert')).toBeNull();
+    await expect(
+      dialog.getByText(/Commit them with Git, or finish the step in progress there/),
+    ).toBeVisible();
     await expect(dialog.getByRole('heading', { name: 'Passkeys spike · 11' })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Passkeys spike' })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Check again' })).toBeVisible();
     await expect(dialog.getByText('and 3 more')).toBeVisible();
     await expect(dialog.getByText('Commit them first.')).toBeVisible();
   },

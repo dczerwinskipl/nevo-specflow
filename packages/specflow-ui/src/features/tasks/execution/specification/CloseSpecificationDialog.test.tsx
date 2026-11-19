@@ -59,6 +59,7 @@ function renderDialog({
   listWorkspaces = () => Promise.resolve(workspaces),
   getTaskList = never,
   documents,
+  onOpenSpecification = vi.fn(),
 }: {
   readonly closePreview: WorkflowExecutionApi['closePreview'];
   readonly close?: WorkflowExecutionApi['close'];
@@ -68,6 +69,7 @@ function renderDialog({
   readonly listWorkspaces?: () => Promise<WorkspaceList>;
   readonly getTaskList?: () => Promise<never>;
   readonly documents?: CloseSpecificationDialogProps['documents'];
+  readonly onOpenSpecification?: (specId: string) => void;
 }) {
   stubLayoutApis();
   const workflowExecutionApi: WorkflowExecutionApi = {
@@ -103,6 +105,7 @@ function renderDialog({
             onSeeWorkflow={vi.fn()}
             onSeeTasks={vi.fn()}
             onOpenTask={vi.fn()}
+            onOpenSpecification={onOpenSpecification}
             onClosed={vi.fn()}
           />
         </LocalizationProvider>
@@ -327,5 +330,44 @@ describe('CloseSpecificationDialog', () => {
       'On hold',
       'Waiting for the sandbox account.',
     ]);
+  });
+
+  it('presents files of another specification as a hold, with its name as a link', async () => {
+    const OTHER = '1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f';
+    const owner = (specId: string, title: string) => ({
+      kind: 'specification' as const,
+      specId,
+      title,
+      workflowState: 1,
+      documents: 0,
+      count: 1,
+      paths: [`specs/active/${title}/.execution/specification.yaml`],
+    });
+    const held = refusal('DOCUMENT_COMMITS_PENDING', 409, {
+      cause: 'commit-uncommitted',
+      uncommitted: {
+        reasons: ['auto-commit-off'],
+        owners: [owner(OTHER, 'passkeys'), owner(SPEC, 'sso')],
+        unreadable: 0,
+      },
+    });
+    const onOpenSpecification = vi.fn();
+    const dialog = renderDialog({
+      closePreview: vi.fn(() => Promise.reject(held)),
+      onOpenSpecification,
+    });
+
+    expect(
+      await within(dialog).findByText(
+        'SSO sign-in cannot close yet: another specification has uncommitted changes in this checkout.',
+      ),
+    ).toBeTruthy();
+    expect(within(dialog).queryByRole('alert')).toBeNull();
+    // Check again is the primary action, Dismiss secondary.
+    expect(within(dialog).getByRole('button', { name: 'Check again' })).toBeTruthy();
+    // This specification is named, not linked.
+    expect(within(dialog).queryByRole('button', { name: /sso/ })).toBeNull();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'passkeys' }));
+    expect(onOpenSpecification).toHaveBeenCalledWith(OTHER);
   });
 });

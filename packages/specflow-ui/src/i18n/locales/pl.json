@@ -2392,6 +2392,7 @@
         "sessions": "W tym worktree pracuje sesja agenta. Poczekaj na zakończenie jej tury albo ją anuluj, a potem zamknij."
       },
       "groupHeading": "{{title}} · {{count}}",
+      "groupCount": " · {{count}}",
       "more_one": "i {{count}} więcej",
       "more_few": "i {{count}} więcej",
       "more_many": "i {{count}} więcej",
@@ -2556,7 +2557,12 @@
         "none": "Nie utworzono żadnych zadań"
       },
       "archiveNote": "Zamknięcie archiwizuje specyfikację; nie można jej ponownie otworzyć.",
-      "submitting": "Zamykanie…"
+      "submitting": "Zamykanie…",
+      "heldBy": {
+        "other": "inna specyfikacja ma zmiany bez commita w tym katalogu roboczym",
+        "own": "ma zmiany bez commita w swoim katalogu roboczym",
+        "checkout": "pliki zapisane przez SpecFlow w tym katalogu roboczym nie mają commita"
+      }
     },
     "abandon": {
       "action": "Porzuć specyfikację",

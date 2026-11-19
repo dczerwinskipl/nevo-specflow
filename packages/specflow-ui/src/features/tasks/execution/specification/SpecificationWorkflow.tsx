@@ -137,6 +137,13 @@ function ProjectSpecificationWorkflow({
               openTasks();
             }}
             onOpenTask={openTask}
+            onOpenSpecification={(id) =>
+              void navigate({
+                to: '/specs/$specId',
+                params: { specId: id },
+                search: { collection: 'current' },
+              })
+            }
             onClosed={() => void navigate({ to: '/', search: { collection: 'archive' } })}
           />
           <AbandonSpecificationDialog

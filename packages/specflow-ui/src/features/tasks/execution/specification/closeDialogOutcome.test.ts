@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CloseMerge, RepositoryBlocker } from '@nevo/specflow-contracts/specs';
 import type { WorkflowRefusal } from '../refusal';
-import { closeDialogOutcome, type CloseDialogFacts } from './closeDialogOutcome';
+import { closeDialogOutcome, uncommittedHolder, type CloseDialogFacts } from './closeDialogOutcome';
 
 const refusal = (code: string, extra: Partial<WorkflowRefusal> = {}): WorkflowRefusal => ({
   code,
@@ -180,9 +180,10 @@ describe('closeDialogOutcome', () => {
       kind: 'cannot-start',
       reasonKey: 'workflowExecution.close.refusal.documentsPending',
     });
-    // Without the ledger facts nothing tells that Documents can commit them: Git.
+    // Without the ledger facts nothing tells that Documents can commit them: Git. Still a hold
+    // the person resolves, never a failed check.
     expect(held('commit-uncommitted')).toEqual({
-      kind: 'cannot-start',
+      kind: 'held',
       reasonKey: 'workflowExecution.close.refusal.uncommittedGit',
     });
     expect(held('commit-failed')).toEqual({
@@ -224,10 +225,37 @@ describe('closeDialogOutcome', () => {
     };
     // The files go with the reason, for the dialog to list per owner.
     expect(ledger(facts)).toEqual({
-      kind: 'cannot-start',
+      kind: 'held',
       reasonKey: 'workflowExecution.close.refusal.workflowStateUncommitted',
       uncommitted: facts,
     });
+    // The Close itself refused for the same hold: held too, not "not closed".
+    expect(
+      closeDialogOutcome({
+        preview: planned,
+        close: {
+          status: 'error',
+          refusal: refusal('DOCUMENT_COMMITS_PENDING', {
+            documentCause: 'commit-uncommitted',
+            uncommittedHold: facts,
+          }),
+        },
+      }),
+    ).toEqual({
+      kind: 'held',
+      reasonKey: 'workflowExecution.close.refusal.workflowStateUncommitted',
+      uncommitted: facts,
+    });
+    // Who holds the checkout, for the "cannot close yet" sentence.
+    expect(uncommittedHolder(facts, 'this-spec')).toBe('other');
+    expect(uncommittedHolder(facts, other.specId)).toBe('own');
+    expect(
+      uncommittedHolder(
+        { ...facts, owners: [{ kind: 'definitions', count: 1, paths: ['.nevo/a.yaml'] }] },
+        'this-spec',
+      ),
+    ).toBe('checkout');
+    expect(uncommittedHolder(undefined, 'this-spec')).toBe('checkout');
     // The step finish is named only when a step is in progress there.
     expect(ledger({ ...facts, owners: [{ ...other, stepInProgress: true }] })).toMatchObject({
       reasonKey: 'workflowExecution.close.refusal.workflowStateUncommittedStep',

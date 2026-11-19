@@ -31728,6 +31728,25 @@
                                         "stepTitle": {
                                           "type": "string"
                                         },
+                                        "waitAttempt": {
+                                          "type": "object",
+                                          "required": [
+                                            "step",
+                                            "attempt"
+                                          ],
+                                          "properties": {
+                                            "step": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 200
+                                            },
+                                            "attempt": {
+                                              "type": "integer",
+                                              "minimum": 1
+                                            }
+                                          },
+                                          "additionalProperties": false
+                                        },
                                         "reason": {
                                           "anyOf": [
                                             {
@@ -31782,6 +31801,18 @@
                                               "type": "string",
                                               "enum": [
                                                 "task-broken"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "wait-ready-to-settle"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "wait-transition-missing"
                                               ]
                                             },
                                             {
@@ -31861,6 +31892,12 @@
                                             {
                                               "type": "string",
                                               "enum": [
+                                                "reevaluate-wait"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
                                                 "configure-archetype"
                                               ]
                                             },
@@ -31932,6 +31969,12 @@
                                               "type": "string",
                                               "enum": [
                                                 "return-to-step"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "reevaluate-wait"
                                               ]
                                             },
                                             {
@@ -32390,6 +32433,25 @@
                                         "stepTitle": {
                                           "type": "string"
                                         },
+                                        "waitAttempt": {
+                                          "type": "object",
+                                          "required": [
+                                            "step",
+                                            "attempt"
+                                          ],
+                                          "properties": {
+                                            "step": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 200
+                                            },
+                                            "attempt": {
+                                              "type": "integer",
+                                              "minimum": 1
+                                            }
+                                          },
+                                          "additionalProperties": false
+                                        },
                                         "reason": {
                                           "anyOf": [
                                             {
@@ -32444,6 +32506,18 @@
                                               "type": "string",
                                               "enum": [
                                                 "task-broken"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "wait-ready-to-settle"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "wait-transition-missing"
                                               ]
                                             },
                                             {
@@ -32523,6 +32597,12 @@
                                             {
                                               "type": "string",
                                               "enum": [
+                                                "reevaluate-wait"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
                                                 "configure-archetype"
                                               ]
                                             },
@@ -32594,6 +32674,12 @@
                                               "type": "string",
                                               "enum": [
                                                 "return-to-step"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "reevaluate-wait"
                                               ]
                                             },
                                             {
@@ -48470,6 +48556,25 @@
                                                                 "stepTitle": {
                                                                   "type": "string"
                                                                 },
+                                                                "waitAttempt": {
+                                                                  "type": "object",
+                                                                  "required": [
+                                                                    "step",
+                                                                    "attempt"
+                                                                  ],
+                                                                  "properties": {
+                                                                    "step": {
+                                                                      "type": "string",
+                                                                      "minLength": 1,
+                                                                      "maxLength": 200
+                                                                    },
+                                                                    "attempt": {
+                                                                      "type": "integer",
+                                                                      "minimum": 1
+                                                                    }
+                                                                  },
+                                                                  "additionalProperties": false
+                                                                },
                                                                 "reason": {
                                                                   "anyOf": [
                                                                     {
@@ -48524,6 +48629,18 @@
                                                                       "type": "string",
                                                                       "enum": [
                                                                         "task-broken"
+                                                                      ]
+                                                                    },
+                                                                    {
+                                                                      "type": "string",
+                                                                      "enum": [
+                                                                        "wait-ready-to-settle"
+                                                                      ]
+                                                                    },
+                                                                    {
+                                                                      "type": "string",
+                                                                      "enum": [
+                                                                        "wait-transition-missing"
                                                                       ]
                                                                     },
                                                                     {
@@ -48603,6 +48720,12 @@
                                                                     {
                                                                       "type": "string",
                                                                       "enum": [
+                                                                        "reevaluate-wait"
+                                                                      ]
+                                                                    },
+                                                                    {
+                                                                      "type": "string",
+                                                                      "enum": [
                                                                         "configure-archetype"
                                                                       ]
                                                                     },
@@ -48674,6 +48797,12 @@
                                                                       "type": "string",
                                                                       "enum": [
                                                                         "return-to-step"
+                                                                      ]
+                                                                    },
+                                                                    {
+                                                                      "type": "string",
+                                                                      "enum": [
+                                                                        "reevaluate-wait"
                                                                       ]
                                                                     },
                                                                     {
@@ -49031,6 +49160,25 @@
                                                             "stepTitle": {
                                                               "type": "string"
                                                             },
+                                                            "waitAttempt": {
+                                                              "type": "object",
+                                                              "required": [
+                                                                "step",
+                                                                "attempt"
+                                                              ],
+                                                              "properties": {
+                                                                "step": {
+                                                                  "type": "string",
+                                                                  "minLength": 1,
+                                                                  "maxLength": 200
+                                                                },
+                                                                "attempt": {
+                                                                  "type": "integer",
+                                                                  "minimum": 1
+                                                                }
+                                                              },
+                                                              "additionalProperties": false
+                                                            },
                                                             "reason": {
                                                               "anyOf": [
                                                                 {
@@ -49085,6 +49233,18 @@
                                                                   "type": "string",
                                                                   "enum": [
                                                                     "task-broken"
+                                                                  ]
+                                                                },
+                                                                {
+                                                                  "type": "string",
+                                                                  "enum": [
+                                                                    "wait-ready-to-settle"
+                                                                  ]
+                                                                },
+                                                                {
+                                                                  "type": "string",
+                                                                  "enum": [
+                                                                    "wait-transition-missing"
                                                                   ]
                                                                 },
                                                                 {
@@ -49164,6 +49324,12 @@
                                                                 {
                                                                   "type": "string",
                                                                   "enum": [
+                                                                    "reevaluate-wait"
+                                                                  ]
+                                                                },
+                                                                {
+                                                                  "type": "string",
+                                                                  "enum": [
                                                                     "configure-archetype"
                                                                   ]
                                                                 },
@@ -49235,6 +49401,12 @@
                                                                   "type": "string",
                                                                   "enum": [
                                                                     "return-to-step"
+                                                                  ]
+                                                                },
+                                                                {
+                                                                  "type": "string",
+                                                                  "enum": [
+                                                                    "reevaluate-wait"
                                                                   ]
                                                                 },
                                                                 {
@@ -49693,6 +49865,25 @@
                                                             "stepTitle": {
                                                               "type": "string"
                                                             },
+                                                            "waitAttempt": {
+                                                              "type": "object",
+                                                              "required": [
+                                                                "step",
+                                                                "attempt"
+                                                              ],
+                                                              "properties": {
+                                                                "step": {
+                                                                  "type": "string",
+                                                                  "minLength": 1,
+                                                                  "maxLength": 200
+                                                                },
+                                                                "attempt": {
+                                                                  "type": "integer",
+                                                                  "minimum": 1
+                                                                }
+                                                              },
+                                                              "additionalProperties": false
+                                                            },
                                                             "reason": {
                                                               "anyOf": [
                                                                 {
@@ -49747,6 +49938,18 @@
                                                                   "type": "string",
                                                                   "enum": [
                                                                     "task-broken"
+                                                                  ]
+                                                                },
+                                                                {
+                                                                  "type": "string",
+                                                                  "enum": [
+                                                                    "wait-ready-to-settle"
+                                                                  ]
+                                                                },
+                                                                {
+                                                                  "type": "string",
+                                                                  "enum": [
+                                                                    "wait-transition-missing"
                                                                   ]
                                                                 },
                                                                 {
@@ -49826,6 +50029,12 @@
                                                                 {
                                                                   "type": "string",
                                                                   "enum": [
+                                                                    "reevaluate-wait"
+                                                                  ]
+                                                                },
+                                                                {
+                                                                  "type": "string",
+                                                                  "enum": [
                                                                     "configure-archetype"
                                                                   ]
                                                                 },
@@ -49897,6 +50106,12 @@
                                                                   "type": "string",
                                                                   "enum": [
                                                                     "return-to-step"
+                                                                  ]
+                                                                },
+                                                                {
+                                                                  "type": "string",
+                                                                  "enum": [
+                                                                    "reevaluate-wait"
                                                                   ]
                                                                 },
                                                                 {

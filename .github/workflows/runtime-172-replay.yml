@@ -1,4 +1,4 @@
-name: Full Runtime Linux package verification
+name: Runtime Linux default-timeout verification
 on:
   push:
     branches: [chore/runtime-172-linux-replay]
@@ -17,5 +17,5 @@ jobs:
           nproc
           free -h
           pnpm exec turbo run build --filter=@nevo/specflow-runtime
-      - name: Run the full Runtime package command
-        run: pnpm --filter @nevo/specflow-runtime test
+      - name: Run the full Runtime suite at Vitest's default timeout
+        run: pnpm --filter @nevo/specflow-runtime exec vitest run --reporter=dot

@@ -26,16 +26,27 @@ export const CloseWorkspaceOperationParamsSchema = Type.Object(
   { additionalProperties: false },
 );
 export const CloseWorktreeRequestSchema = Type.Object(
-  { operationId: OperationIdSchema },
+  {
+    operationId: OperationIdSchema,
+    /** Finish after the content was already merged externally, e.g. a GitHub squash merge (#157). */
+    finishAfterExternalMerge: Type.Optional(Type.Boolean()),
+  },
   { additionalProperties: false },
 );
 export const CloseSpecificationRequestSchema = Type.Object(
-  { operationId: OperationIdSchema, integrateToTargetBranch: Type.Optional(Type.Boolean()) },
+  {
+    operationId: OperationIdSchema,
+    integrateToTargetBranch: Type.Optional(Type.Boolean()),
+    finishAfterExternalMerge: Type.Optional(Type.Boolean()),
+  },
   { additionalProperties: false },
 );
 export type CloseSpecificationRequest = Static<typeof CloseSpecificationRequestSchema>;
 export const ClosePreviewQuerySchema = Type.Object(
-  { integrateToTargetBranch: Type.Optional(Type.Boolean()) },
+  {
+    integrateToTargetBranch: Type.Optional(Type.Boolean()),
+    finishAfterExternalMerge: Type.Optional(Type.Boolean()),
+  },
   { additionalProperties: false },
 );
 // Trusted operator acknowledgement only: `true` asserts the operator has

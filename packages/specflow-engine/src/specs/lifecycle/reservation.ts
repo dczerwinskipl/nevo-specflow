@@ -19,7 +19,11 @@ import {
 } from './model';
 import { readCloseJournal, publishCloseJournal } from './journal/store';
 import { assertResourcesAvailable } from './resources';
-import { previewCloseOperation, type CloseRequest } from './preflight';
+import {
+  activeSpecificationDirectories,
+  previewCloseOperation,
+  type CloseRequest,
+} from './preflight';
 import { resolveSpecification } from '../discovery';
 import type { UncommittedAllowance } from '../uncommitted';
 
@@ -70,7 +74,7 @@ export async function reserveCloseOperation(
   // Document commits of every checkout the Close owns are flushed before the lock is taken (Git runs
   // here, never inside the lock); what is still pending, failed or abandoned refuses the Close.
   // The preview and the preflight stay pure: this is the only effect, and only at admission.
-  const allowance = allowanceOfPlan(plan);
+  const allowance = await allowanceOfPlan(plan);
   await flushCheckoutsForClose(
     engine,
     [plan.source, ...(plan.target !== undefined ? [plan.target] : [])],
@@ -173,6 +177,17 @@ function assertMatchingRequest(
       );
     }
   }
+
+  if (request.kind === 'worktree-close' || request.kind === 'specification-close') {
+    const requestedFinish = request.finishAfterExternalMerge === true;
+    const reservedFinish = journal.plan.finishAfterExternalMerge === true;
+    if (requestedFinish !== reservedFinish) {
+      throw new CloseOperationError(
+        'CLOSE_CONFLICT',
+        'OperationId changed immutable integration selection.',
+      );
+    }
+  }
 }
 
 /**
@@ -212,13 +227,13 @@ export async function previewWithDocumentFlush(
 }
 
 /**
- * What a Specification Close does not wait for in the ledger: the Specification's uncommitted
- * execution state (`.execution/**`, `tasks/**`), which its archive commit takes along (owner decision
- * 2026-11-12). Other Close kinds archive nothing and wait for every entry.
+ * What a Specification Close does not wait for in the ledger: the uncommitted execution state
+ * (`.execution/**`, `tasks/**`) of every active Specification physically present in the same
+ * checkout (owner decision 2026-11-12). Other Close kinds archive nothing and wait for every entry.
  */
-function allowanceOfPlan(plan: ClosePlan): UncommittedAllowance | undefined {
+async function allowanceOfPlan(plan: ClosePlan): Promise<UncommittedAllowance | undefined> {
   return plan.kind === 'specification-close'
-    ? { specId: plan.specId, directory: 'specs/active/' + plan.slug }
+    ? { directories: await activeSpecificationDirectories(plan.source.root) }
     : undefined;
 }
 
@@ -234,7 +249,7 @@ async function allowanceOfRequest(
   const found = await resolveSpecification(engine, request.specId).catch(() => undefined);
 
   return found?.status === 'available' && found.specification.location === 'active'
-    ? { specId: request.specId, directory: 'specs/active/' + found.specification.slug }
+    ? { directories: await activeSpecificationDirectories(found.workspaceRoot) }
     : undefined;
 }
 

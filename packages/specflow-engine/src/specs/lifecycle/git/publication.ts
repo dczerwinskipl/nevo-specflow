@@ -8,6 +8,7 @@ import {
 import {
   inspectGitIntegrationEvidence,
   publishGitFastForward,
+  verifyGitPathEquivalentOrBothAbsent,
   verifyGitTreePathEquivalent,
   verifyPublishedGitCheckout,
 } from '../../../version-control/git/integration';
@@ -27,12 +28,19 @@ function recovery(message: string): CloseOperationError {
   return new CloseOperationError('CLOSE_RECOVERY_REQUIRED', message);
 }
 
-/** Every canonical occupant must retain identical committed subtree bytes. */
+/**
+ * Every canonical occupant must retain identical committed subtree bytes (which must exist at
+ * both commits), and (with `extraPaths`, #157) every other given path too — there, a path the
+ * source branch deleted or renamed away, mirrored by the same absence at the destination, is not
+ * itself a mismatch. Throws on the first mismatch, unless `collectAll` asks for every differing
+ * path instead (named in a `CLOSE_EXTERNAL_MERGE_MISMATCH` refusal, not stopped at the first).
+ */
 async function verifyCloseSpecificationTrees(
   record: CloseJournal,
   sourceCommit: string,
   targetCommit: string,
-): Promise<void> {
+  options: { readonly extraPaths?: readonly string[]; readonly collectAll?: boolean } = {},
+): Promise<readonly string[]> {
   const destination = record.plan.target;
   if (!destination) {
     throw recovery('Missing verified integration destination.');
@@ -44,14 +52,37 @@ async function verifyCloseSpecificationTrees(
       location: record.archive ? ('archive' as const) : record.plan.location,
     },
   ];
+  const differing: string[] = [];
+  const verify = async (path: string, canonical: boolean): Promise<void> => {
+    try {
+      if (canonical) {
+        await verifyGitTreePathEquivalent(destination.root, sourceCommit, targetCommit, path);
+      } else {
+        await verifyGitPathEquivalentOrBothAbsent(
+          destination.root,
+          sourceCommit,
+          targetCommit,
+          path,
+        );
+      }
+    } catch (error) {
+      if (!(error instanceof GitCapabilityError) || !options.collectAll) {
+        throw error;
+      }
+
+      differing.push(path);
+    }
+  };
+
   for (const spec of specs) {
-    await verifyGitTreePathEquivalent(
-      destination.root,
-      sourceCommit,
-      targetCommit,
-      'specs/' + spec.location + '/' + spec.slug,
-    );
+    await verify('specs/' + spec.location + '/' + spec.slug, true);
   }
+
+  for (const path of options.extraPaths ?? []) {
+    await verify(path, false);
+  }
+
+  return differing;
 }
 
 async function requireCurrentAdmission(
@@ -338,6 +369,102 @@ export async function proveAlreadyIntegratedClose(
 }
 
 /**
+ * The source branch's own changed paths (the ownership-proof list {@link inspectCloseGitIntegration}
+ * already computes) that are not already covered by a canonical occupant subtree: #157's content
+ * check must still prove the REST of the branch, not just the Spec(s) it archives.
+ */
+function nonCanonicalBranchPaths(
+  record: CloseJournal,
+  branchPaths: readonly string[],
+): readonly string[] {
+  const specs = record.plan.occupants ?? [
+    {
+      slug: record.plan.slug,
+      location: record.archive ? ('archive' as const) : record.plan.location,
+    },
+  ];
+
+  return branchPaths.filter(
+    (path) =>
+      !specs.some((spec) => path.startsWith('specs/' + spec.location + '/' + spec.slug + '/')),
+  );
+}
+
+/**
+ * Person-initiated finish after the content was already merged externally, e.g. a GitHub squash
+ * merge (#157): proves the canonical subtree(s) AND every other path the source branch changed
+ * are content-equivalent between the pinned source and the pinned CURRENT destination HEAD,
+ * regardless of Git ancestry — the same whole-branch guarantee ancestry gives the
+ * already-integrated path, proved here by content instead. Reuses the exact already-integrated
+ * disposal path. Never inferred from `relationship`; only an explicit request reaches here
+ * (`advanceCloseIntegration`'s dispatch).
+ */
+export async function proveExternallyMergedClose(
+  engine: SpecFlowEngine,
+  operationId: string,
+): Promise<CloseJournal> {
+  const record = await readCloseJournal(engine.context, operationId);
+  if (
+    record?.stage !== 'integration-preparation-initiated' ||
+    (record.plan.kind !== 'worktree-close' &&
+      (record.plan.kind !== 'specification-close' || !record.archive?.committedHead)) ||
+    !record.plan.finishAfterExternalMerge ||
+    !record.integration ||
+    !record.plan.target
+  ) {
+    throw conflict('A prepared, explicit external-merge finish is required.');
+  }
+
+  const proof = await inspectCloseGitIntegration(engine, operationId);
+  const integration = record.integration;
+  const target = record.plan.target;
+  if (
+    proof.sourceCommit !== integration.sourceCommit ||
+    proof.targetCommit !== integration.targetCommit
+  ) {
+    throw conflict('Git input evidence changed after durable preparation.');
+  }
+
+  try {
+    await verifyPublishedGitCheckout({
+      root: target.root,
+      expectedBranch: target.branch,
+      expectedCommit: integration.targetCommit,
+      expectedTree: proof.targetTree,
+    });
+  } catch (error) {
+    if (error instanceof GitCapabilityError) {
+      throw conflict(error.message);
+    }
+
+    throw error;
+  }
+
+  const differing = await verifyCloseSpecificationTrees(
+    record,
+    integration.sourceCommit,
+    integration.targetCommit,
+    {
+      extraPaths: nonCanonicalBranchPaths(record, proof.sourceBranchPaths),
+      collectAll: true,
+    },
+  );
+  if (differing.length > 0) {
+    throw new CloseOperationError(
+      'CLOSE_EXTERNAL_MERGE_MISMATCH',
+      'Destination does not yet have the externally merged content: ' + differing.join(', ') + '.',
+      { paths: differing },
+    );
+  }
+
+  return persistStage(engine, record, {
+    ...record,
+    stage: 'integration-verified',
+    integration: { ...integration, publishedCommit: integration.targetCommit },
+  });
+}
+
+/**
  * Mandatory fail-closed precondition for future rebind / disposal effects.
  * A structurally valid integration-verified journal is NOT an attestation
  * of physical Git state: independently recheck both real checkout identities,
@@ -411,8 +538,11 @@ export async function requireVerifiedCloseIntegration(
       throw conflict('Published commit evidence is missing.');
     }
 
-    const expectedTree =
-      integration.relationship === 'fast-forward'
+    // An externally-merged finish never re-merges: the published tree is the destination's own,
+    // regardless of its ancestry-derived `relationship` (which may still read `divergent`).
+    const expectedTree = record.plan.finishAfterExternalMerge
+      ? integration.targetTree
+      : integration.relationship === 'fast-forward'
         ? integration.sourceTree
         : integration.relationship === 'divergent'
           ? record.scratch?.candidateTree
@@ -454,7 +584,7 @@ export async function requireVerifiedCloseIntegration(
       }
     }
 
-    if (integration.relationship === 'divergent') {
+    if (integration.relationship === 'divergent' && !record.plan.finishAfterExternalMerge) {
       if (record.scratch?.candidateCommit !== expectedCommit) {
         throw conflict('Published commit does not match the scratch candidate.');
       }

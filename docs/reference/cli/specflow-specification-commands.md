@@ -31,8 +31,10 @@ nevo-specflow specs list --json
 nevo-specflow specs resolve <spec-id> --json
 nevo-specflow specs close <spec-id> --preview
 nevo-specflow specs close <spec-id> --archive-only --yes
+nevo-specflow specs close <spec-id> --finish-after-external-merge --yes
 nevo-specflow specs worktree close <spec-id> --preview
 nevo-specflow specs worktree close <spec-id> --yes
+nevo-specflow specs worktree close <spec-id> --finish-after-external-merge --yes
 nevo-specflow specs workspace close <workspace-id> --preview
 nevo-specflow specs workspace close <workspace-id> --yes
 nevo-specflow specs workspace inspect <workspace-id> <operation-id>
@@ -66,6 +68,16 @@ Use `--preview` before any destructive Close; mutation requires `--yes`.
 Workspace Close takes `workspaceId`, not one of its Specs. Reuse the original
 `--operation-id` on retries. These commands work offline; the CLI does **not** call Runtime
 HTTP and its local OS-account trust is distinct from authenticated HTTP grants.
+
+`--finish-after-external-merge` on `specs close` and `specs worktree close` is person-initiated, never
+inferred from Git ancestry: it finishes a linked integration whose content was already merged
+externally (e.g. a GitHub squash merge) without re-integrating, proving the Specification's canonical
+subtree AND every other path the source branch changed are content-equivalent in the destination's
+current HEAD (the same whole-branch guarantee true Git ancestry gives an already-integrated Close
+for free) and reusing the already-integrated archive/rebind/disposal effects. A partial external
+merge, or any in-scope path that still differs or is missing, refuses with
+`CLOSE_EXTERNAL_MERGE_MISMATCH`, naming every differing path
+([Specification lifecycle](../../architecture/runtime/specification-lifecycle.md#safe-integration-rebind-and-disposal)).
 
 A Close that removes a linked worktree (Worktree and Workspace Close, `specs close` with integration)
 refuses with `CLOSE_BLOCKED` while a running Runtime owns the Project's Session store, because an agent

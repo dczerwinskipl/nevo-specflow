@@ -12,12 +12,12 @@ export interface UncommittedHold {
 
 /**
  * Ledger entries a Specification Close does not wait for: the execution state (`.execution/**`,
- * `tasks/**`) of the Specification it archives, which its archive commit takes along.
+ * `tasks/**`) of every active Specification physically present in the same checkout, which an
+ * archive commit (its own, or a sibling's already-committed one) accounts for.
  */
 export interface UncommittedAllowance {
-  readonly specId: string;
-  /** The checkout-relative directory of the Specification (`specs/active/<slug>`). */
-  readonly directory: string;
+  /** Each Specification's own checkout-relative directory (`specs/active/<slug>`), by its id. */
+  readonly directories: ReadonlyMap<string, string>;
 }
 
 /**
@@ -32,15 +32,17 @@ export async function readUncommittedHold(
   allowance?: UncommittedAllowance,
 ): Promise<UncommittedHold | undefined> {
   const { records, unreadable } = await listLedgerRecords(engine.context, { workspaceId });
-  const entries = records.flatMap((record) =>
-    record.entries.filter(
-      (entry) =>
-        allowance === undefined ||
-        record.owner.kind !== 'specification' ||
-        record.owner.id !== allowance.specId ||
-        !isExecutionStatePathOf(allowance.directory, entry.path),
-    ),
-  );
+  const entries = records.flatMap((record) => {
+    // Each owner's entries are checked only against ITS OWN directory, never a sibling's.
+    const directory =
+      record.owner.kind === 'specification'
+        ? allowance?.directories.get(record.owner.id)
+        : undefined;
+
+    return record.entries.filter(
+      (entry) => directory === undefined || !isExecutionStatePathOf(directory, entry.path),
+    );
+  });
   // A record that cannot be read is a fact nobody can judge: it holds the checkout like an entry.
   if (entries.length === 0 && unreadable === 0) {
     return undefined;

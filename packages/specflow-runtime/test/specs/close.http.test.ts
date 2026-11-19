@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
@@ -300,6 +300,70 @@ describe('E2.T16 authorized HTTP lifecycle adapters', () => {
         outcome: 'worktree-integrated-and-removed',
       });
       expect((await readWorkspaceSpecification(root, spec.specId)).location).toBe('active');
+    } finally {
+      await admin.app.close();
+    }
+  }, 120000);
+
+  it('#157: finishAfterExternalMerge finishes a squash-merged Worktree Close with no new merge commit', async () => {
+    const { root, engine, spec } = await fixture(true);
+    const url = '/api/specs/' + spec.specId + '/worktree/close';
+    const squashDestination = join(root, 'specs', 'active', spec.slug);
+    await mkdir(join(root, 'specs', 'active'), { recursive: true });
+    await cp(join(spec.workspaceRoot, 'specs', 'active', spec.slug), squashDestination, {
+      recursive: true,
+    });
+    git(root, 'add', '-A', '--', 'specs/active/' + spec.slug);
+    git(
+      root,
+      '-c',
+      'user.name=Test',
+      '-c',
+      'user.email=test@example.invalid',
+      'commit',
+      '-qm',
+      'simulate external squash merge',
+    );
+    const squashedHead = git(root, 'rev-parse', 'HEAD');
+    const admin = await authedApp(engine, 'admin');
+    try {
+      const result = await admin.app.inject({
+        method: 'POST',
+        url,
+        headers: admin.headers,
+        payload: { operationId: randomUUID(), finishAfterExternalMerge: true },
+      });
+      expect(result.statusCode, result.body).toBe(200);
+      expect(result.json()).toMatchObject({
+        status: 'completed',
+        outcome: 'worktree-integrated-and-removed',
+      });
+      expect(git(root, 'rev-parse', 'HEAD')).toBe(squashedHead);
+      expect((await readWorkspaceSpecification(root, spec.specId)).location).toBe('active');
+    } finally {
+      await admin.app.close();
+    }
+  }, 120000);
+
+  it('#157: refuses finishAfterExternalMerge with 422 CLOSE_EXTERNAL_MERGE_MISMATCH on a diverged subtree', async () => {
+    const { root, engine, spec } = await fixture(true);
+    const url = '/api/specs/' + spec.specId + '/worktree/close';
+    const originalPrimary = git(root, 'rev-parse', 'HEAD');
+    const admin = await authedApp(engine, 'admin');
+    try {
+      const operationId = randomUUID();
+      const result = await admin.app.inject({
+        method: 'POST',
+        url,
+        headers: admin.headers,
+        payload: { operationId, finishAfterExternalMerge: true },
+      });
+      expect(result.statusCode, result.body).toBe(422);
+      expect(result.json()).toMatchObject({
+        code: 'CLOSE_EXTERNAL_MERGE_MISMATCH',
+        error: 'CLOSE_EXTERNAL_MERGE_MISMATCH',
+      });
+      expect(git(root, 'rev-parse', 'HEAD')).toBe(originalPrimary);
     } finally {
       await admin.app.close();
     }

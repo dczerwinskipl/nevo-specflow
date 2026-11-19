@@ -16,12 +16,15 @@ export type CloseIntent =
       readonly kind: 'worktree-close';
       readonly operationId: string;
       readonly specId: string;
+      /** Person-initiated: finish after the content was already merged externally (#157). */
+      readonly finishAfterExternalMerge: boolean;
     }
   | {
       readonly kind: 'specification-close';
       readonly operationId: string;
       readonly specId: string;
       readonly integrateToTargetBranch: boolean;
+      readonly finishAfterExternalMerge: boolean;
     };
 
 export type CloseStage =
@@ -81,6 +84,8 @@ export interface ClosePlan {
   readonly target?: CloseWorkspaceEvidence;
   readonly targetBranch?: string;
   readonly integrateToTargetBranch?: boolean;
+  /** Person-initiated: finish after the content was already merged externally (#157). */
+  readonly finishAfterExternalMerge?: boolean;
   readonly configRevision?: string;
   readonly resources: readonly string[];
 }
@@ -169,7 +174,12 @@ export function normalizeCloseIntent(input: CloseIntent): CloseIntent {
   }
 
   if (input.kind === 'worktree-close') {
-    return { kind: 'worktree-close', operationId: input.operationId, specId: input.specId };
+    return {
+      kind: 'worktree-close',
+      operationId: input.operationId,
+      specId: input.specId,
+      finishAfterExternalMerge: input.finishAfterExternalMerge,
+    };
   }
 
   if (input.kind === 'specification-close' && typeof input.integrateToTargetBranch === 'boolean') {
@@ -178,6 +188,7 @@ export function normalizeCloseIntent(input: CloseIntent): CloseIntent {
       operationId: input.operationId,
       specId: input.specId,
       integrateToTargetBranch: input.integrateToTargetBranch,
+      finishAfterExternalMerge: input.finishAfterExternalMerge,
     };
   }
 
@@ -216,6 +227,8 @@ export type CloseOperationErrorCode =
   /** The workflow of the Specification is not finished (D07); `blockers` lists what holds it. */
   | 'CLOSE_BLOCKED'
   | 'CLOSE_SHARED_WORKTREE'
+  /** Finish after external merge (#157): the destination does not yet have the proven content. */
+  | 'CLOSE_EXTERNAL_MERGE_MISMATCH'
   | 'CLOSE_RECOVERY_REQUIRED'
   /**
    * Resumable stop before disposal: the worktree's `.nevo/local/config.yaml` is not the unchanged
@@ -234,7 +247,10 @@ export class CloseOperationError extends Error {
   readonly code: CloseOperationErrorCode;
   /** `CLOSE_BLOCKED`: the grouped blockers of the Specification exit gate; empty otherwise. */
   readonly blockers: readonly SpecificationExitBlocker[];
-  /** `CLOSE_PREFLIGHT` of a dirty checkout: the paths that are not clean; empty otherwise. */
+  /**
+   * `CLOSE_PREFLIGHT` of a dirty checkout, or `CLOSE_EXTERNAL_MERGE_MISMATCH`: the paths that are
+   * not clean, or not yet content-equivalent in the destination; empty otherwise.
+   */
   readonly paths: readonly string[];
   /** Present only for `CLOSE_LOCAL_CONFIG_MODIFIED`. */
   readonly localConfig?: CloseLocalConfigRefusal;

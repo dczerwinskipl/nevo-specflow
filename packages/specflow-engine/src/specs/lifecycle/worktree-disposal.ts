@@ -103,8 +103,11 @@ async function assertPublication(engine: SpecFlowEngine, record: CloseJournal): 
     throw recovery('Close integration has no durable published target proof.');
   }
 
-  const tree =
-    integration.relationship === 'fast-forward'
+  // An externally-merged finish never re-merges: the published tree is the destination's own,
+  // regardless of its ancestry-derived `relationship` (which may still read `divergent`).
+  const tree = record.plan.finishAfterExternalMerge
+    ? integration.targetTree
+    : integration.relationship === 'fast-forward'
       ? integration.sourceTree
       : integration.relationship === 'divergent'
         ? record.scratch?.candidateTree
@@ -119,7 +122,7 @@ async function assertPublication(engine: SpecFlowEngine, record: CloseJournal): 
     expectedCommit: integration.publishedCommit,
     expectedTree: tree,
   });
-  if (integration.relationship === 'divergent') {
+  if (integration.relationship === 'divergent' && !record.plan.finishAfterExternalMerge) {
     const candidate = record.scratch?.candidateCommit;
     const candidateTree = record.scratch?.candidateTree;
     if (candidate !== integration.publishedCommit || !candidateTree) {

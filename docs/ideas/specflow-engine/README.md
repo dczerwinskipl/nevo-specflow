@@ -43,6 +43,7 @@ Open proposals (drafts, not current rules; current documentation and code win):
 | [Execution scopes and recovery](execution-scopes-and-recovery.md)                                     | Which steps need a claim; operator inspect/reconcile/release/takeover; batches                       |
 | [Locking and admission](locking-and-admission.md)                                                     | Workflow step claims, external agent liveness, lock ordering                                         |
 | [Durable operations](durable-operations-and-recovery.md)                                              | Git stages in the finish journal; external writer recovery; Close protection and conflict resolution |
+| [Close hardening](close-hardening-shared-checkout-and-external-merge.md)                              | Shared-checkout ledger/clean-tree scoping (#181); finish Close after an external PR merge (#157)     |
 | [Managed Session integration](managed-session-integration.md)                                         | Sessions driving workflow steps; batch, handover, rebind                                             |
 | [Workspace binding lifecycle](workspace-binding-lifecycle.md)                                         | Relocate, repair, active Turn blocking rebind                                                        |
 | [Ownership and state](ownership-and-state.md)                                                         | Human approval provenance; external claim reconciliation on boot                                     |

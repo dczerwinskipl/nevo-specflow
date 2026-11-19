@@ -100,6 +100,7 @@ export async function closeSpecification(
     readonly operationId: string;
     readonly specId: string;
     readonly integrateToTargetBranch?: boolean;
+    readonly finishAfterExternalMerge?: boolean;
   },
 ): Promise<CloseSpecificationResult> {
   const admission = await reserveCloseOperation(engine, {

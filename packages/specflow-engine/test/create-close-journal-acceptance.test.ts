@@ -178,12 +178,18 @@ describe('Q00 Close journal current-format acceptance baseline', () => {
       const needsTarget = mode !== 'linked-archive';
       const request =
         kind === 'worktree-close'
-          ? { kind: 'worktree-close' as const, operationId, specId }
+          ? {
+              kind: 'worktree-close' as const,
+              operationId,
+              specId,
+              finishAfterExternalMerge: false,
+            }
           : {
               kind: 'specification-close' as const,
               operationId,
               specId,
               integrateToTargetBranch: mode === 'linked-integrate',
+              finishAfterExternalMerge: false,
             };
       const proposed: ClosePlan = {
         kind,

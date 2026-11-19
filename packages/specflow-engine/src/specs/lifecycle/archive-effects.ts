@@ -14,7 +14,11 @@ import {
   readWorkspaceRegistry,
 } from '../../project/workspace/registry/registry';
 import { renameWindowsSafe } from '../../project/fs/windows-safe-fs';
-import { inspectCleanGitWorkspace, listUncleanPaths } from './preflight';
+import {
+  activeSpecificationDirectories,
+  inspectCleanGitWorkspace,
+  listUncleanPaths,
+} from './preflight';
 import { isExecutionStatePathOf } from '../execution-paths';
 import { disabledIntegrationHooksDirectory } from './git/scratch';
 import { readCloseJournal } from './journal/store';
@@ -90,6 +94,20 @@ async function git(root: string, args: readonly string[]): Promise<string> {
   }
 
   return result.stdout.trim();
+}
+
+/**
+ * After the scoped archive commit, the checkout must be clean except for a sibling active
+ * Specification's own uncommitted execution state (its archive commit, if any, is separate).
+ */
+async function assertNoForeignDirt(root: string): Promise<void> {
+  const directories = [...(await activeSpecificationDirectories(root)).values()];
+  const foreign = (await listUncleanPaths(root))
+    .map((entry) => entry.path)
+    .filter((path) => !directories.some((directory) => isExecutionStatePathOf(directory, path)));
+  if (foreign.length > 0) {
+    throw failure('Archive checkout contains staged, modified or untracked files.');
+  }
 }
 
 async function gitRaw(root: string, args: readonly string[]): Promise<string> {
@@ -243,8 +261,11 @@ export async function archiveSpecificationWithCommit(
 
   const oldPath = 'specs/active/' + record.plan.slug;
   const newPath = 'specs/archive/' + record.plan.slug;
-  // The Specification's uncommitted execution state goes into the archive commit; nothing else may be dirty.
-  const facts = await inspectCleanGitWorkspace(actual.workspace, { executionStateOf: oldPath });
+  // The Specification's uncommitted execution state goes into the archive commit; a sibling active
+  // Specification's own uncommitted execution state is also known, accounted for; nothing else may be dirty.
+  const facts = await inspectCleanGitWorkspace(actual.workspace, {
+    directories: [...(await activeSpecificationDirectories(actual.root)).values()],
+  });
   if (
     facts.head !== source.head ||
     facts.branch !== source.branch ||
@@ -441,19 +462,7 @@ export async function reconcileArchiveCommit(
     throw failure('Archive index does not match committed tree.');
   }
 
-  if (
-    (await gitRaw(root, [
-      '-c',
-      'core.optionalLocks=false',
-      'status',
-      '--porcelain=v1',
-      '-z',
-      '--untracked-files=all',
-    ])) !== ''
-  ) {
-    throw failure('Archive checkout contains staged, modified or untracked files.');
-  }
-
+  await assertNoForeignDirt(root);
   await assertArchivedFiles(root, archive);
   const diffs = (
     await gitRaw(root, [
@@ -498,18 +507,7 @@ async function proveArchiveCommitPhysical(
     throw failure('Archive index does not match committed tree.');
   }
 
-  if (
-    (await gitRaw(root, [
-      '-c',
-      'core.optionalLocks=false',
-      'status',
-      '--porcelain=v1',
-      '-z',
-      '--untracked-files=all',
-    ])) !== ''
-  ) {
-    throw failure('Archive checkout contains staged, modified or untracked files.');
-  }
+  await assertNoForeignDirt(root);
 
   const diffs = (
     await gitRaw(root, [

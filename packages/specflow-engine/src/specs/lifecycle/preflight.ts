@@ -24,7 +24,13 @@ import {
 import { sortedResources } from './resources';
 
 export type CloseRequest =
-  | { readonly kind: 'worktree-close'; readonly operationId?: string; readonly specId: string }
+  | {
+      readonly kind: 'worktree-close';
+      readonly operationId?: string;
+      readonly specId: string;
+      /** Finish after the content was already merged externally, e.g. a GitHub squash merge (#157). */
+      readonly finishAfterExternalMerge?: boolean;
+    }
   | {
       readonly kind: 'workspace-close';
       readonly operationId?: string;
@@ -35,6 +41,7 @@ export type CloseRequest =
       readonly operationId?: string;
       readonly specId: string;
       readonly integrateToTargetBranch?: boolean;
+      readonly finishAfterExternalMerge?: boolean;
     };
 
 function invalid(message: string): CloseOperationError {
@@ -137,13 +144,26 @@ export async function listUncleanPaths(root: string): Promise<readonly UncleanPa
 }
 
 /**
- * The paths a clean-tree check accepts: the execution state (`.execution/**`, `tasks/**`) of the
- * Specification a Specification Close archives, which its archive commit takes along (owner decision
- * 2026-11-12). Absent: nothing is accepted.
+ * The paths a clean-tree check accepts: the execution state (`.execution/**`, `tasks/**`) of every
+ * active Specification physically present in the checkout, which an archive commit (its own, or a
+ * sibling's already-committed one) takes along (owner decision 2026-11-12). Absent: nothing is accepted.
  */
 export interface CleanTreeAllowance {
-  /** The checkout-relative directory of the Specification (`specs/active/<slug>`). */
-  readonly executionStateOf: string;
+  /** The checkout-relative directory of each known Specification (`specs/active/<slug>`). */
+  readonly directories: readonly string[];
+}
+
+/** Every active Specification physically present in `root`, by id, as its own directory. */
+export async function activeSpecificationDirectories(
+  root: string,
+): Promise<ReadonlyMap<string, string>> {
+  const specifications = await listWorkspaceSpecifications(root);
+
+  return new Map(
+    specifications
+      .filter((item) => item.location === 'active')
+      .map((item) => [item.specId, 'specs/active/' + item.slug] as const),
+  );
 }
 
 /** Read-only: git status may refresh index by default; disable optional locks. */
@@ -161,7 +181,7 @@ export async function inspectCleanGitWorkspace(
     .map((entry) => entry.path)
     .filter(
       (path) =>
-        allowance === undefined || !isExecutionStatePathOf(allowance.executionStateOf, path),
+        !allowance?.directories.some((directory) => isExecutionStatePathOf(directory, path)),
     );
   if (unclean.length > 0) {
     const named = unclean.slice(0, UNCLEAN_PATHS_NAMED).join(', ');
@@ -229,6 +249,13 @@ export async function previewCloseOperation(
     throw new CloseOperationError('CLOSE_INVALID', 'Invalid Specification identity.');
   }
 
+  if (
+    request.finishAfterExternalMerge !== undefined &&
+    typeof request.finishAfterExternalMerge !== 'boolean'
+  ) {
+    throw new CloseOperationError('CLOSE_INVALID', 'Invalid external-merge finish selection.');
+  }
+
   const canonical = await resolveSpecification(engine, request.specId);
   if (canonical.status !== 'available') {
     throw new CloseOperationError(
@@ -283,6 +310,14 @@ export async function previewCloseOperation(
   const integrate =
     request.kind === 'worktree-close' ||
     (request.kind === 'specification-close' && linked && (request.integrateToTargetBranch ?? true));
+  // Never inferred from Git ancestry: only an explicit request may skip re-integration (#157).
+  if (request.finishAfterExternalMerge && !(linked && integrate)) {
+    throw new CloseOperationError(
+      'CLOSE_INVALID',
+      'External-merge finish requires explicit linked integration.',
+    );
+  }
+
   if (linked && integrate) {
     if (
       registry.workspaces.some(
@@ -307,11 +342,12 @@ export async function previewCloseOperation(
     }
   }
 
-  // A Specification Close commits the Specification's uncommitted execution state with its archive.
+  // A Specification Close commits the Specification's uncommitted execution state with its archive;
+  // a sibling active Specification's own uncommitted execution state is also known, accounted for.
   const source = await inspectCleanGitWorkspace(
     sourceWorkspace,
     request.kind === 'specification-close'
-      ? { executionStateOf: 'specs/active/' + canonical.specification.slug }
+      ? { directories: [...(await activeSpecificationDirectories(sourceWorkspace.root)).values()] }
       : undefined,
   );
   const needsTarget = integrate || !linked;
@@ -393,14 +429,21 @@ export async function previewCloseOperation(
   }
 
   const binding = registry.specBindings.find((item) => item.specId === request.specId);
+  const finishAfterExternalMerge = request.finishAfterExternalMerge === true;
   const normalized =
     request.kind === 'worktree-close'
-      ? { kind: 'worktree-close' as const, operationId, specId: request.specId }
+      ? {
+          kind: 'worktree-close' as const,
+          operationId,
+          specId: request.specId,
+          finishAfterExternalMerge,
+        }
       : {
           kind: 'specification-close' as const,
           operationId,
           specId: request.specId,
           integrateToTargetBranch: linked ? (request.integrateToTargetBranch ?? true) : false,
+          finishAfterExternalMerge,
         };
 
   const resources = sortedResources([
@@ -430,6 +473,7 @@ export async function previewCloseOperation(
     ...(request.kind === 'specification-close' && linked
       ? { integrateToTargetBranch: integrate }
       : {}),
+    ...(finishAfterExternalMerge ? { finishAfterExternalMerge } : {}),
     ...(configRevision ? { configRevision } : {}),
     resources,
   };

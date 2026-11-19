@@ -182,40 +182,45 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
     .argument('<spec-id>', 'Canonical Specification UUID')
     .option('--operation-id <uuid>', 'Stable operation UUID; reuse it for idempotent retry')
     .option('--project-root <path>', 'Require this verified Project Home root')
+    .option(
+      '--finish-after-external-merge',
+      'Finish after the content was already merged externally (e.g. a GitHub squash merge), without re-integrating',
+    )
     .option('--preview', 'Inspect the Close plan without writing')
     .option('--yes', 'Confirm whole-branch integration and worktree removal')
     .option('--json', 'Output machine-readable result')
-    .action(async (specId: string, options: CliCloseOptions) => {
-      const engine = await engineForClose(context.cwd, options.projectRoot);
-      const operationId = options.operationId ?? randomUUID();
-      if (options.preview) {
-        output(
-          context,
-          await previewCloseForCli(engine, {
-            kind: 'worktree-close',
-            operationId,
-            specId,
-          }),
-        );
+    .action(
+      async (specId: string, options: CliCloseOptions & { finishAfterExternalMerge?: boolean }) => {
+        const engine = await engineForClose(context.cwd, options.projectRoot);
+        const operationId = options.operationId ?? randomUUID();
+        const request = {
+          kind: 'worktree-close' as const,
+          operationId,
+          specId,
+          ...(options.finishAfterExternalMerge ? { finishAfterExternalMerge: true } : {}),
+        };
+        if (options.preview) {
+          output(context, await previewCloseForCli(engine, request));
 
-        return;
-      }
-
-      if (!options.yes) {
-        throw new Error('Closing a Git worktree requires --yes. Use --preview first.');
-      }
-
-      const result = await closeWorktreeOperation(engine, { operationId, specId });
-      if (options.json) {
-        output(context, result);
-      } else {
-        context.stdout('Worktree Close: ' + result.status);
-        context.stdout('Operation ID: ' + operationId);
-        if (result.status === 'requires-resolution') {
-          context.stdout('Merge conflict requires operator resolution; inspect: ' + operationId);
+          return;
         }
-      }
-    });
+
+        if (!options.yes) {
+          throw new Error('Closing a Git worktree requires --yes. Use --preview first.');
+        }
+
+        const result = await closeWorktreeOperation(engine, request);
+        if (options.json) {
+          output(context, result);
+        } else {
+          context.stdout('Worktree Close: ' + result.status);
+          context.stdout('Operation ID: ' + operationId);
+          if (result.status === 'requires-resolution') {
+            context.stdout('Merge conflict requires operator resolution; inspect: ' + operationId);
+          }
+        }
+      },
+    );
 
   const workspace = specs
     .command('workspace')
@@ -279,37 +284,47 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
     .option('--operation-id <uuid>', 'Stable operation UUID; reuse it for idempotent retry')
     .option('--project-root <path>', 'Require this verified Project Home root')
     .option('--archive-only', 'Archive linked Specification without merging or removing worktree')
+    .option(
+      '--finish-after-external-merge',
+      'Finish after the content was already merged externally (e.g. a GitHub squash merge), without re-integrating',
+    )
     .option('--preview', 'Inspect the Close plan without writing')
     .option('--yes', 'Confirm archival mutation')
     .option('--json', 'Output machine-readable result')
-    .action(async (specId: string, options: CliCloseOptions & { archiveOnly?: boolean }) => {
-      const engine = await engineForClose(context.cwd, options.projectRoot);
-      const operationId = options.operationId ?? randomUUID();
-      const request = {
-        kind: 'specification-close' as const,
-        operationId,
-        specId,
-        ...(options.archiveOnly ? { integrateToTargetBranch: false } : {}),
-      };
-      if (options.preview) {
-        output(context, await previewCloseForCli(engine, request));
+    .action(
+      async (
+        specId: string,
+        options: CliCloseOptions & { archiveOnly?: boolean; finishAfterExternalMerge?: boolean },
+      ) => {
+        const engine = await engineForClose(context.cwd, options.projectRoot);
+        const operationId = options.operationId ?? randomUUID();
+        const request = {
+          kind: 'specification-close' as const,
+          operationId,
+          specId,
+          ...(options.archiveOnly ? { integrateToTargetBranch: false } : {}),
+          ...(options.finishAfterExternalMerge ? { finishAfterExternalMerge: true } : {}),
+        };
+        if (options.preview) {
+          output(context, await previewCloseForCli(engine, request));
 
-        return;
-      }
+          return;
+        }
 
-      if (!options.yes) {
-        throw new Error('Archiving a Specification requires --yes. Use --preview first.');
-      }
+        if (!options.yes) {
+          throw new Error('Archiving a Specification requires --yes. Use --preview first.');
+        }
 
-      const result = await closeSpecificationOperation(engine, request);
-      if (options.json) {
-        output(context, result);
-      } else {
-        context.stdout('Specification Close: ' + result.status);
-        context.stdout('Operation ID: ' + operationId);
-        context.stdout('Outcome: ' + (result.outcome ?? result.status));
-      }
-    });
+        const result = await closeSpecificationOperation(engine, request);
+        if (options.json) {
+          output(context, result);
+        } else {
+          context.stdout('Specification Close: ' + result.status);
+          context.stdout('Operation ID: ' + operationId);
+          context.stdout('Outcome: ' + (result.outcome ?? result.status));
+        }
+      },
+    );
 
   specs
     .command('abandon')

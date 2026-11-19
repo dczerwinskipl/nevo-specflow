@@ -143,6 +143,7 @@ export function isCloseJournal(
     }
 
     if (
+      plan.finishAfterExternalMerge !== true &&
       (value.stage === 'integration-publish-initiated' ||
         value.stage === 'integration-verified' ||
         afterRebind) &&
@@ -191,6 +192,8 @@ export function isCloseJournal(
     (plan.targetBranch !== undefined && typeof plan.targetBranch !== 'string') ||
     (plan.integrateToTargetBranch !== undefined &&
       typeof plan.integrateToTargetBranch !== 'boolean') ||
+    (plan.finishAfterExternalMerge !== undefined &&
+      typeof plan.finishAfterExternalMerge !== 'boolean') ||
     (plan.configRevision !== undefined &&
       (typeof plan.configRevision !== 'string' || !SHA.test(plan.configRevision))) ||
     !Array.isArray(plan.resources)
@@ -224,12 +227,18 @@ export function isCloseJournal(
     plan.kind === 'workspace-close'
       ? { kind: 'workspace-close' as const, operationId, workspaceId: String(plan.workspaceId) }
       : plan.kind === 'worktree-close'
-        ? { kind: 'worktree-close' as const, operationId, specId: plan.specId }
+        ? {
+            kind: 'worktree-close' as const,
+            operationId,
+            specId: plan.specId,
+            finishAfterExternalMerge: plan.finishAfterExternalMerge === true,
+          }
         : {
             kind: 'specification-close' as const,
             operationId,
             specId: plan.specId,
             integrateToTargetBranch: plan.integrateToTargetBranch ?? false,
+            finishAfterExternalMerge: plan.finishAfterExternalMerge === true,
           };
   if (plan.fingerprint !== fingerprintCloseIntent(intent)) {
     return false;
@@ -260,6 +269,10 @@ function isCoherentCloseScope(plan: Record<string, unknown>): boolean {
     if (!linked || plan.integrateToTargetBranch !== undefined) {
       return false;
     }
+
+    if (plan.kind === 'workspace-close' && plan.finishAfterExternalMerge !== undefined) {
+      return false;
+    }
   } else if (plan.kind === 'specification-close') {
     if ((typeof plan.integrateToTargetBranch === 'boolean') !== linked) {
       return false;
@@ -274,6 +287,11 @@ function isCoherentCloseScope(plan: Record<string, unknown>): boolean {
     plan.kind === 'worktree-close' ||
     plan.kind === 'workspace-close' ||
     plan.integrateToTargetBranch === true;
+  // Never inferred from Git ancestry: only an explicit, linked integration may carry it.
+  if (plan.finishAfterExternalMerge === true && !(linked && integrate)) {
+    return false;
+  }
+
   const needsTarget = integrate || !linked;
   if (!needsTarget) {
     return (
@@ -430,15 +448,19 @@ function isIntegrationPreparation(
     stage === 'disposal-initiated' ||
     stage === 'completed'
   ) {
-    if (
+    // Never re-merged, regardless of the ancestry-derived `relationship`: the published
+    // commit is always the destination's own pinned target.
+    if (plan.finishAfterExternalMerge === true) {
+      if (published !== value.targetCommit) {
+        return false;
+      }
+    } else if (
       value.relationship !== 'divergent' &&
       published !==
         (value.relationship === 'fast-forward' ? value.sourceCommit : value.targetCommit)
     ) {
       return false;
-    }
-
-    if (
+    } else if (
       value.relationship === 'divergent' &&
       (typeof published !== 'string' || !sha.test(published))
     ) {

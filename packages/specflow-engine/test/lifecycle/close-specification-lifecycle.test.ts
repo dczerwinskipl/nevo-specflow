@@ -317,6 +317,81 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
     expect((await engine.readRegistry()).specBindings).toEqual(before.specBindings);
   }, 120000);
 
+  it('#181: archive-only Close of B succeeds while sibling A has its own pending ledger entry, and leaves A untouched', async () => {
+    const { root, engine, spec: a } = await fixture(false, 'feature');
+    const owner = { class: 'human', details: { actorId: 'local:owner', trust: 'local' } } as const;
+    const registry = await engine.readRegistry();
+    const b = await createSpecificationForTesting(engine, {
+      operationId: randomUUID(),
+      title: 'Sibling B in shared primary checkout',
+      created: '2026-10-21',
+      archetype: { id: 'minimal', version: 1 },
+      target: { kind: 'existing', workspaceId: registry.primaryWorkspaceId },
+    });
+    git(root, 'add', '--', b.relativeManifestPath, 'specs/active/' + b.slug + '/overview.md');
+    commitStaged(root, 'commit sibling specification B');
+
+    const directory = 'specs/active/' + a.slug;
+    const dirty = () =>
+      git(root, 'status', '--porcelain', '--untracked-files=all')
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => line.slice(3))
+        .sort();
+    await createTask(await openWorkflow(engine), {
+      specId: a.specId,
+      taskId: 'docs',
+      title: 'Document it',
+      type: 'implementation',
+      actor: owner,
+    });
+    const aDirty = [
+      `${directory}/tasks/docs/task.md`,
+      `${directory}/tasks/docs/task.yaml`,
+      `${directory}/tasks/index.yaml`,
+    ];
+    expect(dirty()).toEqual(aDirty);
+
+    const result = await closeSpecification(engine, {
+      operationId: randomUUID(),
+      specId: b.specId,
+    });
+    expect(result).toMatchObject({
+      status: 'completed',
+      journal: { outcome: 'archived-in-primary' },
+    });
+    expect((await readWorkspaceSpecification(root, b.specId)).location).toBe('archive');
+
+    // A's own uncommitted execution state and ledger entry are untouched by B's Close.
+    expect(dirty()).toEqual(aDirty);
+    await expect(
+      closeSpecification(engine, { operationId: randomUUID(), specId: a.specId }),
+    ).rejects.toMatchObject({
+      code: 'CLOSE_BLOCKED',
+      blockers: [{ kind: 'draft-tasks', subjectIds: ['docs'] }],
+    });
+  }, 120000);
+
+  it('#181: an unexplained dirty path still refuses archive-only Close of a sibling, naming it', async () => {
+    const { root, engine } = await fixture(false);
+    const registry = await engine.readRegistry();
+    const b = await createSpecificationForTesting(engine, {
+      operationId: randomUUID(),
+      title: 'Sibling B, foreign dirt',
+      created: '2026-10-21',
+      archetype: { id: 'minimal', version: 1 },
+      target: { kind: 'existing', workspaceId: registry.primaryWorkspaceId },
+    });
+    git(root, 'add', '--', b.relativeManifestPath, 'specs/active/' + b.slug + '/overview.md');
+    commitStaged(root, 'commit sibling specification B');
+
+    await writeFile(join(root, 'stray.txt'), 'not any Specification execution state\n');
+    await expect(
+      closeSpecification(engine, { operationId: randomUUID(), specId: b.specId }),
+    ).rejects.toMatchObject({ code: 'CLOSE_PREFLIGHT', paths: ['stray.txt'] });
+    await rm(join(root, 'stray.txt'));
+  }, 120000);
+
   it('I03: verifies registered incarnation before reading workspace manifests', async () => {
     const { root, engine, spec } = await fixture(true);
     const registry = await engine.readRegistry();

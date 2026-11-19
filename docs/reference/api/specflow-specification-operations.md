@@ -192,6 +192,17 @@ and without SSE clients just poll the inspection.
 
 Mutating Close requests include UUID `operationId`; Specification Close optionally sends
 `integrateToTargetBranch:false` for archive-only. Completed results use 200; unsettled use 202.
+Specification Close and Worktree Close also optionally send `finishAfterExternalMerge:true`:
+person-initiated, never inferred from Git ancestry, for a linked integration whose content was
+already merged externally (e.g. a GitHub squash merge). It proves the Specification's canonical
+subtree, AND every other path the source branch changed (the same whole-branch guarantee true Git
+ancestry gives the already-integrated Close for free), are content-equivalent between the source
+and the destination's current HEAD regardless of ancestry, then reuses the same
+archive/rebind/disposal effects as an already-integrated Close, without a new merge commit. A
+partial external merge — only the Specification's files landed, an ordinary code change from the
+same source branch did not — refuses exactly like a subtree mismatch. Any in-scope path that still
+differs or is missing in the destination refuses with 422 `CLOSE_EXTERNAL_MERGE_MISMATCH`, naming
+every differing path in the message.
 Spec-scoped Close requires the appropriate Spec capability and whole-branch integration also
 needs project-wide Git `Integrate`. Workspace Close requires project-wide Git
 `CloseWorkspace` **and** `Integrate` before revealing occupants/journals.

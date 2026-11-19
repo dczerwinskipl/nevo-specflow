@@ -4,7 +4,7 @@ import type { WorkflowActionProjection, WorkflowOutline } from '@nevo/specflow-c
 /**
  * Which step creates the first Tasks (the Specification projection's `outline.tasksStep`, present
  * only while the run is certain to get there: every step on the way leads to one step only):
- * "Break the solution down (step 4 of 7) creates the tasks." A producing step creates its Tasks with its finish (`materializeTasks`), so the line
+ * `The "Break the solution down" step (4 of 7) creates the tasks.` A producing step creates its Tasks with its finish (`materializeTasks`), so the line
  * is the same before the run reaches that step and while it is at it; the Overview and the Tasks
  * page both use it. The step number is its position in the workflow definition. Nothing without
  * `tasksStep` (no producing step, or a branch on the way) or while the projection is unknown.

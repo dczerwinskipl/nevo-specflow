@@ -79,7 +79,7 @@ export const NotStarted: Story = {
     await expect(canvas.queryByText('Requires attention')).toBeNull();
     // Without Tasks the section keeps the step line in place of a title.
     await expect(
-      canvas.getByText('Break the solution down (step 4 of 7) creates the tasks.'),
+      canvas.getByText('The "Break the solution down" step (4 of 7) creates the tasks.'),
     ).toBeVisible();
     await expect(canvas.getByText('This specification has no sessions yet.')).toBeVisible();
     // New session is the Sessions section's own action, never beside Start workflow.
@@ -315,7 +315,7 @@ export const TasksPageEmpty: Story = {
     const canvas = within(canvasElement);
     await expect(
       await canvas.findByText(
-        'Break the solution down (step 4 of 7) creates the tasks. You can also create them now with New task.',
+        'The "Break the solution down" step (4 of 7) creates the tasks. You can also create them now with New task.',
       ),
     ).toBeVisible();
   },

@@ -248,7 +248,7 @@ describe('Tasks page', () => {
       onNewTask: vi.fn(),
       empty: {
         title: 'No tasks yet',
-        line: 'Plan (step 2 of 3) creates the tasks.',
+        line: 'The "Plan" step (2 of 3) creates the tasks.',
         ended: false,
       },
     });
@@ -256,7 +256,7 @@ describe('Tasks page', () => {
     expect(screen.getByText('No tasks yet')).not.toBeNull();
     expect(
       screen.getByText(
-        'Plan (step 2 of 3) creates the tasks. You can also create them now with New task.',
+        'The "Plan" step (2 of 3) creates the tasks. You can also create them now with New task.',
       ),
     ).not.toBeNull();
   });

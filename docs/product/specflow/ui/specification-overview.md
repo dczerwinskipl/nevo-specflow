@@ -144,7 +144,7 @@ dashboard configuration). The Overview renders what the reads deliver.
   only when the Engine reports it; the Requires attention item with Resume and Cancel task is the
   section above (its Resume and Start step show busy while their command runs). **All tasks** in the header opens the page; the header's overflow menu holds
   **New task** when the projection allows creating a Task. Without Tasks the section keeps its
-  place with one line, "Break the solution down (step 4 of 7) creates the tasks." when
+  place with one line, `The "Break the solution down" step (4 of 7) creates the tasks.` when
   the run is certain to get to a step that produces Tasks (`outline.tasksStep`, never a step id: no
   branch on the way; the same line before the run reaches that step and while it is at it), else
   "No tasks yet", with a quiet **New task** beside it when allowed; once the workflow ended
@@ -231,7 +231,7 @@ Without Tasks the page shows an empty state with the same logic as the Overview'
 same projection:
 
 - While the workflow runs the title is "No tasks yet" and the description names the step that
-  creates them ("Break the solution down (step 4 of 7) creates the tasks."); without such a step
+  creates them (`The "Break the solution down" step (4 of 7) creates the tasks.`); without such a step
   it says "Tasks appear here once the specification is prepared for work."
 - Once the workflow ended (completed or abandoned) the title is "No tasks were created", with no
   step line and no "yet".

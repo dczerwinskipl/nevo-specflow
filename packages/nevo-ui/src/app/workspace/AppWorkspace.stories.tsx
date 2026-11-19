@@ -411,6 +411,57 @@ export const NarrowSurfaceContract: Story = {
   },
 };
 
+/**
+ * `stackedSurface="plain"`: a stacked Primary whose content is short (a form reduced to one
+ * message) keeps the sheet's geometry and scrolling without its border, fill or shadow, so the
+ * content just ends on the workbench background instead of reading as an empty stretched card.
+ */
+export const StackedPlainSurfaceContract: Story = {
+  render: () => (
+    <AppShell
+      data-plain-surface-shell="true"
+      navigation={<Region label="Navigation" />}
+      style={{ height: 600, width: 390 }}
+    >
+      <AppWorkspace scroll="workspace">
+        <AppWorkspace.Primary
+          stackedSurface="plain"
+          header={<WorkspaceHeader title="New session" />}
+        >
+          <div className="grid gap-2 p-4">
+            <Typography as="h2" variant="title-sm">
+              No agent is available
+            </Typography>
+            <Typography as="p" variant="body-sm" className="text-content-secondary">
+              See why each agent is unavailable and what it needs.
+            </Typography>
+          </div>
+        </AppWorkspace.Primary>
+      </AppWorkspace>
+    </AppShell>
+  ),
+  tags: ['contract', '!autodocs'],
+  play: async ({ canvasElement }) => {
+    const surface = await waitFor(
+      () => canvasElement.querySelector<HTMLElement>('.mobile-workspace-surface'),
+      'The workspace should stack at 390px and render its Primary sheet.',
+    );
+    const style = getComputedStyle(surface);
+    assert(
+      surface.dataset.workspaceSheet === 'plain',
+      'The sheet should report its plain material.',
+    );
+    assert(
+      style.boxShadow === 'none' && style.borderTopWidth === '0px',
+      'A plain sheet should have no shadow and no border.',
+    );
+    assert(
+      !surface.classList.contains('workspace-surface-material'),
+      'A plain sheet should not paint the workspace material.',
+    );
+  },
+};
+
 const defaultDetailStack = defineSecondaryStack<
   Record<never, never>,
   string,

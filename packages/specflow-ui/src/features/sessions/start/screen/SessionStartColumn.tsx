@@ -74,6 +74,7 @@ export function SessionStartColumn({
           pending={source.pending}
           notice={source.notice}
           configurationUnavailable={catalogue.configurationUnavailable}
+          refreshing={catalogue.refreshing}
           onRefresh={catalogue.refresh}
           onStart={onStart}
         />

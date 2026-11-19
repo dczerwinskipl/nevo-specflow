@@ -1,6 +1,7 @@
-// Lifecycle (Close/Archive) capability boundary: the only entry other capabilities and the
-// package surfaces (index, testing, diagnostics) use. Sub-folders: close/ (use cases),
-// git/ (integration evidence and publication), journal/ (durable close journal).
+// Lifecycle (Close/Archive) capability entry point. Resource coordination imports the lower-level
+// claim source directly, and the Engine application imports the host quiescence port directly.
+// Sub-folders: close/ (use cases), git/ (integration evidence and publication),
+// journal/ (durable close journal).
 export { previewCloseOperation, inspectCleanGitWorkspace, type CloseRequest } from './preflight';
 export {
   reserveCloseOperation,
@@ -58,12 +59,12 @@ export {
   reconcileDisposedWorktree,
   inspectPendingDisposal,
 } from './worktree-disposal';
-export {
-  withCheckoutQuiescence,
-  type CheckoutQuiescence,
-  type CheckoutQuiescenceVerdict,
-  type CloseCheckout,
-} from './checkout-quiescence';
+export { withCheckoutQuiescence } from './checkout-quiescence';
+export type {
+  CheckoutQuiescence,
+  CheckoutQuiescenceVerdict,
+  CloseCheckout,
+} from './checkout-quiescence-port';
 export { closePreviewCheckoutBlocker } from './close-preview-occupancy';
 export { closeWorktree, closeWorkspace, type CloseWorktreeResult } from './close/worktree';
 export { closeSpecification, type CloseSpecificationResult } from './close/specification';

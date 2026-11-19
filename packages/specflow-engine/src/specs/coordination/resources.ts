@@ -14,7 +14,7 @@ import {
 } from '../durable';
 import { documentChangeClaims } from '../documents/write/claim-source';
 import { manualCommitClaims } from '../manual-commit/claims';
-import { listCloseJournals, resourcesForClosePlan, type CloseJournal } from '../lifecycle';
+import { closeClaims } from '../lifecycle/claim-source';
 
 // The resource algebra and the claim check live in the generic durable core; these re-exports keep
 // the existing import path of Create and Close.
@@ -48,13 +48,8 @@ export function resourcesForCreate(record: CreateJournal): readonly MutationReso
   ]);
 }
 
-function settledClose(stage: string): boolean {
-  return stage === 'completed' || stage === 'archived-linked-awaiting-integration';
-}
-
 const createClaims: ClaimSource<CreateJournal> = {
-  // Resolved at the call: this module sits in an import cycle and is first loaded from different entry points.
-  list: (context) => listCreateJournals(context),
+  list: listCreateJournals,
   assertAvailable(records, requested, self) {
     for (const record of records) {
       if (self?.kind === 'create' && self.operationId === record.operationId) {
@@ -70,64 +65,6 @@ const createClaims: ClaimSource<CreateJournal> = {
           'RESOURCE_CONFLICT',
           'Unfinished Create reserves a conflicting checkout/ref; inspect or recover it.',
           { kind: 'create', operationId: record.operationId },
-        );
-      }
-    }
-  },
-};
-
-const closeClaims: ClaimSource<CloseJournal> = {
-  list: (context) => listCloseJournals(context),
-  assertAvailable(records, requested, self) {
-    for (const record of records) {
-      if (
-        record.plan.resources.join('\0') !==
-        resourcesForClosePlan(record.plan, record.projectId).join('\0')
-      ) {
-        throw new SharedResourceError(
-          'RESOURCE_JOURNAL_CORRUPT',
-          'Close journal resource inventory is inconsistent.',
-        );
-      }
-
-      if (self?.kind === 'close' && self.operationId === record.plan.operationId) {
-        continue;
-      }
-
-      if (record.stage === 'archived-linked-awaiting-integration') {
-        // A separate operator-reconciled checkpoint proves the scratch checkout
-        // was removed from the filesystem AND Git metadata before releasing admin.
-        if (record.scratchRetired === true) {
-          continue;
-        }
-
-        // Original source/target claims settle after a positively proven known
-        // conflict; retained scratch still owns Git worktree metadata. A NEW
-        // Worktree Close cannot race removal or reuse this scratch checkout.
-        const scratchClaims = [
-          'git-worktree-admin:' + record.projectId,
-          ...(record.scratch ? ['worktree-path:' + record.scratch.root.toLowerCase()] : []),
-        ];
-        if (overlaps(requested, scratchClaims)) {
-          throw new SharedResourceError(
-            'RESOURCE_CONFLICT',
-            'Retained conflicting scratch must be reconciled before another Git worktree lifecycle.',
-            { kind: 'close', operationId: record.plan.operationId },
-          );
-        }
-
-        continue;
-      }
-
-      if (settledClose(record.stage)) {
-        continue;
-      }
-
-      if (overlaps(requested, record.plan.resources)) {
-        throw new SharedResourceError(
-          'RESOURCE_CONFLICT',
-          'Unfinished Close reserves a conflicting checkout/ref; inspect or recover it.',
-          { kind: 'close', operationId: record.plan.operationId },
         );
       }
     }

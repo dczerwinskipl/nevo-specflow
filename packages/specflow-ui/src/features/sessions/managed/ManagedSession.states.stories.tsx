@@ -564,7 +564,7 @@ export const RealRouteContext: Story = {
   globals: WIDE_VIEWPORT,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Wykonawca')).toBeVisible();
+    await expect(await canvas.findByText('Agent')).toBeVisible();
     await expect(await canvas.findByRole('button', { name: /^Historia pracy/ })).toBeVisible();
     await expect(canvas.queryByText(/Nie udało się wczytać powiązań/)).toBeNull();
     await expect(canvas.getByText('Planowane obszary')).toBeVisible();

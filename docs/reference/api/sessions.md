@@ -708,7 +708,9 @@ so it can take up to `PROVIDER_DISCOVERY_BUDGET_MS` (30 s) on a cold machine, ev
 startup probe; clients give it that budget plus a margin, not the default read deadline.
 
 Both parameters together are `400 SESSION_INPUT_INVALID`, as is any other parameter or a malformed
-id. `?specId` is a pure authorization check: it does not verify that the Specification exists
+id. `recheck=true` (with either parameter or none) is an explicit recheck: every enabled provider
+discovers its executable again from scratch and probes again instead of reusing its cache
+([executable discovery](../providers/executable-discovery.md#cache)). `?specId` is a pure authorization check: it does not verify that the Specification exists
 (the catalogue is not sensitive and names no Specification; the composed create verifies it). A `workspace-write` provider mode is `authorized` when the caller holds `session.execute-write`
 at `{projectId}` (no context, `?specId`) or at the Session's own execute-write scope
 (`?sessionId`); it never carries `specId`. The UI's New Session in a Specification reads `?specId`,
@@ -720,7 +722,8 @@ Runtime's checkout is `readiness: 'unavailable'` with `reasonCode`
 its own words.
 
 ProviderDescriptor = {providerId, title, readiness:'ready'|'unavailable'|'authenticationRequired'|
-'unknown', reason?:string, reasonCode?:string, compatibility?:{classification:'tested'|'provisional'|'unsupported',protocolProfile,version?}, capabilities:{questions,permissions,cancel,resume,modelOverride,effortOverride},
+'unknown', reason?:string, reasonCode?:string, executable?:{path,source:'configured'|'path'|'discovered',location?,version?},
+checkedLocations?:[{source,path,location?}], unresolvedLauncher?:{path,package}, signInCommand?:string, compatibility?:{classification:'tested'|'provisional'|'unsupported',protocolProfile,version?}, capabilities:{questions,permissions,cancel,resume,modelOverride,effortOverride},
 models:[{modelId,title,efforts:string[]}], modes:('read-only'|'workspace-write')[]}.
 Catalogue response is <=128 KiB; <=32 providers, <=100 models each, <=16 efforts per model,
 titles/reasons <=512 bytes. Cap by total bytes as well; oversized provider catalogue is explicit
@@ -736,6 +739,13 @@ only reason: read for a Specification in its own worktree it is not marked
 `SPECIFICATION_WORKTREE_UNSUPPORTED`, which applies only to enabled providers. While the project
 disables Sessions the catalogue answers `SESSION_DISABLED`, whatever the local file says, and the
 demo Runtime serves its own catalogue regardless of either file. The mock identifies itself as a test;
+An enabled provider that cannot start carries a readiness `reasonCode`: `EXECUTABLE_NOT_FOUND` (with
+`checkedLocations`, and `unresolvedLauncher` for an npm launcher without its package executable),
+`EXECUTABLE_NOT_WORKING`, `INSTALLATION_UNAVAILABLE`,
+`AUTHENTICATION_REQUIRED` (with `signInCommand`), `PROTOCOL_UNSUPPORTED`, `KNOWN_INCOMPATIBILITY`,
+`RESTRICTION_UNSUPPORTED`, `PROCESS_SETTLEMENT_UNVERIFIED` or `PROBE_FAILED`; `executable` says which
+executable the Runtime resolved and how it found it
+([executable discovery](../providers/executable-discovery.md)).
 Claude discovers native model/effort metadata and reports unavailable when its installation/auth/policy
 fails the supported authentication/policy or protocol checks. Unlisted compatible versions run
 Provisional; a missing catalogue entry or unknown hash is not a refusal reason. Each Session is dispatched through its own selected provider;

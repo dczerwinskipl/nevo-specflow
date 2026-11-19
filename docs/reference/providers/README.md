@@ -16,6 +16,7 @@ Future provider capabilities live in the
 [provider capability backlog](../../ideas/specflow-runtime/provider-migration-plan.md).
 
 - [Build compatibility and admission](compatibility.md)
+- [Executable discovery and unavailability reasons](executable-discovery.md)
 - [Claude](claude-provider.md)
 - [Codex](codex-provider.md)
 - [Antigravity](antigravity-provider.md)

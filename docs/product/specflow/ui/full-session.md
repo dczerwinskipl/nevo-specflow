@@ -193,23 +193,54 @@ Every UI start is from a Specification: **New session** opens `/specs/:specId/se
   session**, Context with the Specification pinned, the start form, and the Composer. Regions that
   need a started Session are inactive until Start.
 - **Start form in the conversation column** on the conversation background, at the messages'
-  content width, starting at the top; no `Card`, border or fill. Title **Start a session**; the
-  action row (note, **Start session**) is the form's last row.
-- **Fields.** Provider tiles (first available preselected; an unavailable provider is disabled with
-  its reason, and a provider with no executable work mode is unavailable), then labelled **Model**
-  (required, no preselection), **Effort** (Default plus the model's efforts) and **Work mode** (the
-  catalogue's usable modes: a segmented control for up to 4, a picker beyond), then **Session
-  name**. Effort and Work mode are rendered disabled until a model is chosen, so choosing one never
-  adds rows. Changing the provider resets everything below it. The same labelled fields serve
-  Create with an agent, which exists only in demo mode
+  content width, starting at the top; no `Card`, border or fill. No title of its own: the header
+  **New session** is the screen's one title. The action row (the note, **Start session**) is the
+  form's last row, inside the form; on a phone too it stays in the form, never a bar fixed to the
+  screen.
+- **Agent picker.** One radio card per catalogue provider, the first available one preselected.
+  Every card has one 72 px geometry in every state and at every width: the 28 px logo on the left,
+  the name over a one-line status, and a fixed slot for the check mark. An unavailable agent is
+  disabled, with a grey logo and a short status from a fixed vocabulary per reason code: **Sign-in
+  needed**, **CLI not found**, **Needs setup**, **Turned off**, **Fails to start**, **Check
+  failed**, **Incompatible version**, **Check didn't finish**, **Not in worktree**, **Not
+  checked**. A check that gave no result (**Check didn't finish**, **Check failed**, **Not
+  checked**) is undetermined, not an unavailability: it shows a neutral clock instead of the alert.
+- **Diagnostics.** Under the picker one line names the agents that cannot start ("Codex: CLI not
+  found", or "Unavailable: Codex and Antigravity") with **How to fix**; when every one is only
+  undetermined, the line uses the neutral clock and offers **Check again** and **Details**. The
+  details open in a Drawer: a side panel on the split layout, a bottom sheet on a phone. One agent:
+  its name is the title and its status the description; several: the title is **How to fix** and a
+  segmented control switches between them. Only the body scrolls; the header and the footer stay.
+  The body gives the Runtime's own account, what was checked (the full paths behind **Checked
+  paths (n)**) and each fix, with code blocks that wrap and keep their indentation. Each fix says how
+  it takes effect: installing a CLI or signing in is seen by **Check again** (a catalogue read
+  re-runs discovery; a failed search is remembered for 30 s), while a configuration change
+  (`executable`, `enabled`, `allowed`) is read only when Nevo SpecFlow starts and needs a
+  restart. The footer offers **Check again** only when a fix can be seen by it; when every fix needs
+  a restart it says so instead, since the UI cannot restart the Runtime.
+- **No agent available.** When no agent can start, the form is only the picker and a compact
+  message: **No agent is available**, a line pointing to the causes, **How to fix** (primary) and
+  **Check again**; no fields and no action row (a kept request still shows its row). This counts
+  only confirmed unavailability: with an undetermined agent among them the heading is
+  **Availability could not be determined** and **Check again** comes first. On a phone the
+  workspace sheet steps back (`AppWorkspace.Primary stackedSurface="plain"`), so the short content
+  just ends on the workbench background instead of reading as an empty card.
+- **Fields.** Under the picker, the chosen agent's **Model** (required, no preselection), **Effort**
+  (Default plus the model's efforts) and **Work mode** (the catalogue's usable modes: a segmented
+  control for up to 4, a picker beyond) form one group: one row on a wide form, stacked on a narrow
+  one. They follow the provider's capabilities: a provider without a model choice shows Model as
+  the fact **Provider default**, and Effort appears only for a provider whose models have efforts.
+  Effort and Work mode stay disabled until a model is chosen, so choosing one never adds rows.
+  Changing the provider resets everything below it. Then **Session name** (optional), see Naming.
+  Create with an agent, which exists only in demo mode, keeps its labelled fields and tiles
   ([Create Specification, Demo mode](../specification-creation.md#demo-mode)); the Composer keeps
   its compact pickers.
 - **Composer before Start.** Split layout: inactive in its final place, placeholder **Choose the
   agent and start the session**, no pickers, Send disabled. Single-surface (narrow) layout: not shown
   until Start.
 - **Blocked.** Start is disabled and the note names the first reason in reading order:
-  configuration to refresh → **No executor is available right now** → choose an available executor
-  → **Choose a model** → choose a supported mode → **Enter a name or let the agent name it**.
+  configuration to refresh → choose an available agent → **Choose a model** → choose a supported
+  mode. The name is optional, so it never blocks Start.
 - **Start.** Start locks the form and reads **Starting…**. On success the URL is **replaced** with
   `/sessions/:sessionId` (Back does not return to the empty start state) with no visible change of
   the shell: the start values stand in until the first snapshot loads, the form becomes the ready
@@ -228,13 +259,14 @@ Every UI start is from a Specification: **New session** opens `/specs/:specId/se
 `pane` with the provider's colour logo, **{Provider} is ready** and **Write a message below to start
 the conversation.** It names the provider only; model and mode are visible in the Composer.
 
-**Naming.** The **Give it your own name** switch is off by default; on, it reveals the name field
-(at most 256 characters, a counter in the last 32). Switching off keeps the typed text. A Session
-without an own name keeps the title **New session** until the person renames it.
+**Naming.** **Session name** is an optional field with the placeholder **New session** (at most
+256 characters, a counter in the last 32); no switch. A name typed there is the Session's title;
+left empty (or blank), the Session is created without one and keeps the title **New session** until
+the person renames it. The note next to Start says which applies.
 
 Agent naming is not implemented: the Runtime reports no naming signal, so the header **Naming…**
-status is never shown, and the switch's hint ("The agent names the session from your first
-message.") describes the planned behaviour
+status is never shown, and the note next to Start ("the agent names it after the first one")
+describes the planned behaviour
 ([open idea](../../../ideas/specflow-ui/full-session-screen-structure.md#6-still-deferred)).
 
 ## Secondary tabs
@@ -275,7 +307,7 @@ the tab rail are the design-system contract linked above.
 Sections render in a fixed order; a section changing state replaces its own slot and never moves its
 neighbours:
 
-1. **Executor** — provider, model and effort (always first); a panel note follows when the Session's
+1. **Agent** — provider, model and effort (always first); a panel note follows when the Session's
    links cannot be read.
 2. **Specification** — the Specification row and a **Documents** row (Documents shows the Session
    as its way back).
@@ -284,7 +316,8 @@ neighbours:
 5. **Related Tasks** — the associated Tasks, one row each (title and key), each opening its Task tab.
 6. **Work** — Work history of the current or last Turn.
 7. **Planned areas** — preview rows (Files / Changes, Handovers, Artifacts, Instructions,
-   Environment) that open a placeholder tab.
+   Environment) that open a placeholder tab. Before Start only Instructions and Environment are
+   listed: the others are produced by a running Session.
 8. **Session details** — token usage, cost, context window and provider limits, always last.
 
 **Execution scope wording.** An association is context, never execution: rows say **associated**

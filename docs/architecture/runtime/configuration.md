@@ -229,6 +229,12 @@ sessions:
     codex: { enabled: false } # allowed, but not used on this machine
 ```
 
+Without `executable` the Runtime finds the CLI itself: on PATH, then in the vendor's install
+locations, running only a candidate whose version command answers. A configured `executable` is the
+only candidate and is never replaced by another copy: when it is missing or fails, the provider is
+unavailable and says so. Changing it takes effect after a Runtime restart. The order, locations and
+trust rules are in [executable discovery](../../reference/providers/executable-discovery.md).
+
 **An allowed provider is enabled on a workstation unless its local config sets `enabled: false`.**
 Zero setup was chosen over an explicit local opt-in because enablement only starts the provider's
 own readiness check: a provider whose CLI is not installed, not signed in or incompatible is listed

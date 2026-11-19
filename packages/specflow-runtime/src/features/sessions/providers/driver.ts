@@ -91,7 +91,8 @@ export interface SessionDriver {
    */
   supportsSessionWorkspaces?: boolean;
   describe(): ProviderDescriptor;
-  refresh?(signal: AbortSignal): Promise<ProviderDescriptor>;
+  /** `recheck`: discover the executable again from scratch and probe again (an explicit recheck). */
+  refresh?(signal: AbortSignal, options?: { recheck?: boolean }): Promise<ProviderDescriptor>;
   contextScope?(): string;
   validate(selection: Invocation['selection'], signal?: AbortSignal): void | Promise<void>;
   start(invocation: Invocation, emit: EmitFact, signal: AbortSignal): ProviderOperation;

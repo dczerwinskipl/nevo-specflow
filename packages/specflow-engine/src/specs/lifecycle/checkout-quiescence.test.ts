@@ -6,8 +6,8 @@ import {
   requireQuietCheckout,
   requireQuietCheckoutBeforeClose,
   withCheckoutQuiescence,
-  type CheckoutQuiescence,
 } from './checkout-quiescence';
+import type { CheckoutQuiescence } from './checkout-quiescence-port';
 import type { CloseJournal } from './model';
 
 const engine = {} as SpecFlowEngine;

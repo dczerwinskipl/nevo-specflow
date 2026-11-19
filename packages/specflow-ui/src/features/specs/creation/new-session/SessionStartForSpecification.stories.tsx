@@ -129,9 +129,9 @@ export const Open: Story = {
   play: async ({ canvas }) => {
     await settle();
     await expect(canvas.getByRole('heading', { level: 1, name: 'Nowa sesja' })).toBeVisible();
-    await expect(
-      await canvas.findByRole('heading', { level: 2, name: 'Rozpocznij sesję' }),
-    ).toBeVisible();
+    // One title: the form repeats none.
+    await expect(await canvas.findByRole('form', { name: 'Rozpocznij sesję' })).toBeVisible();
+    await expect(canvas.queryByRole('heading', { name: 'Rozpocznij sesję' })).toBeNull();
     // The three field rows exist before a model is chosen; Effort and Work mode wait for it.
     await expect(canvas.getByRole('combobox', { name: 'Model' })).toBeEnabled();
     await expect(canvas.getByRole('combobox', { name: 'Effort' })).toBeDisabled();
@@ -325,15 +325,17 @@ export const StartFailed: Story = {
   },
 };
 
-/** Scenario (e): no executor is available; every tile says why and nothing can start. */
+/** Scenario (e): no agent is available; every card says why and nothing can start. */
 export const NoProviderAvailable: Story = {
   args: { catalogue: noProviderCatalogue },
   play: async ({ canvas }) => {
     await settle();
-    await expect(await canvas.findByText('Żaden wykonawca nie jest teraz dostępny.')).toBeVisible();
+    await expect(
+      await canvas.findByRole('heading', { name: 'Żaden agent nie jest dostępny' }),
+    ).toBeVisible();
     await expect(provider(canvas, /Codex/)).toBeDisabled();
     await expect(canvas.getAllByText('Nie zalogowano do CLI.')).toHaveLength(3);
-    await expect(startButton(canvas)).toBeDisabled();
+    await expect(canvas.queryByRole('button', { name: 'Rozpocznij sesję' })).toBeNull();
     await expect(composer(canvas)).toBeDisabled();
     await expect(canvas.getByText('nie wybrano')).toBeVisible();
   },
@@ -373,11 +375,8 @@ export const AgentNamesSession: Story = {
     await expect(await canvas.findByText('Logowanie SSO')).toBeVisible();
     await expect(canvas.queryByRole('textbox', { name: 'Pierwsza wiadomość' })).toBeNull();
     await expect(canvas.queryByText('Miejsce pracy')).toBeNull();
-    // (c) The default is legible before starting: the agent names the Session, no name field.
-    await expect(
-      canvas.getByText('Agent nada sesji nazwę na podstawie Twojej pierwszej wiadomości.'),
-    ).toBeVisible();
-    await expect(canvas.queryByRole('textbox', { name: 'Nazwa sesji' })).toBeNull();
+    // (c) The default is legible before starting: the name is optional, empty means the agent names it.
+    await expect(canvas.getByRole('textbox', { name: /Nazwa sesji/ })).toHaveValue('');
     // (b) Tiles, then the labelled fields.
     await expect(provider(canvas, /Codex/)).toBeChecked();
     await expect(startButton(canvas)).toBeDisabled();
@@ -410,34 +409,28 @@ export const AgentNamesSession: Story = {
   },
 };
 
-/** Scenario (c) alternative: an own name, switching back keeps the text but the agent names it. */
+/** Scenario (c) alternative: an own name in the optional field; cleared, the agent names it again. */
 export const OwnName: Story = {
   play: async ({ canvas }) => {
     await settle();
     await canvas.findByText('Logowanie SSO');
     await pick(canvas, 'Model', 'codex model A');
-    await userEvent.click(canvas.getByRole('switch', { name: 'Nadaj własną nazwę' }));
-    const field = canvas.getByRole('textbox', { name: 'Nazwa sesji' });
-    await expect(canvas.getByRole('switch', { name: 'Nadaj własną nazwę' })).toBeChecked();
+    const field = canvas.getByRole('textbox', { name: /Nazwa sesji/ });
     await expect(field).toHaveAttribute('maxlength', '256');
-    await expect(canvas.getByText('Do 256 znaków.')).toBeVisible();
-    // A chosen own name must not be blank.
-    await expect(startButton(canvas)).toBeDisabled();
-    await expect(canvas.getByText('Wpisz nazwę albo pozwól agentowi ją nadać.')).toBeVisible();
-    await userEvent.type(field, 'Przegląd SSO — błędy');
+    await expect(field).toHaveAttribute('placeholder', 'Nowa sesja');
+    await expect(canvas.getByText(/agent nada jej nazwę/)).toBeVisible();
+    // Blank is not an own name: Start stays possible and the agent names the Session.
+    await userEvent.type(field, '   ');
     await expect(startButton(canvas)).toBeEnabled();
-    // Switching back hides the field and keeps the text; the agent names the Session again.
-    await userEvent.click(canvas.getByRole('switch', { name: 'Nadaj własną nazwę' }));
-    await expect(canvas.queryByRole('textbox', { name: 'Nazwa sesji' })).toBeNull();
+    await expect(canvas.getByText(/agent nada jej nazwę/)).toBeVisible();
+    await userEvent.clear(field);
+    await userEvent.type(field, 'Przegląd SSO — błędy');
     await expect(
-      canvas.getByText('Agent nada sesji nazwę na podstawie Twojej pierwszej wiadomości.'),
+      canvas.getByText('Sesja otworzy się bez wiadomości, z Twoją nazwą.'),
     ).toBeVisible();
-    await userEvent.click(canvas.getByRole('switch', { name: 'Nadaj własną nazwę' }));
-    await expect(canvas.getByRole('textbox', { name: 'Nazwa sesji' })).toHaveValue(
-      'Przegląd SSO — błędy',
-    );
+    await expect(startButton(canvas)).toBeEnabled();
     // Enter in the name field starts the Session; the own name is the title at once.
-    await userEvent.type(canvas.getByRole('textbox', { name: 'Nazwa sesji' }), '{Enter}');
+    await userEvent.type(field, '{Enter}');
     await expect(
       await canvas.findByRole('heading', { level: 1, name: 'Przegląd SSO — błędy' }),
     ).toBeVisible();
@@ -450,8 +443,10 @@ export const OwnNameMobile: Story = {
   play: async ({ canvas }) => {
     await settle(375, 812);
     await canvas.findByText('Logowanie SSO').catch(() => undefined);
-    await userEvent.click(await canvas.findByRole('switch', { name: 'Nadaj własną nazwę' }));
-    await userEvent.type(canvas.getByRole('textbox', { name: 'Nazwa sesji' }), 'x'.repeat(240));
+    await userEvent.type(
+      await canvas.findByRole('textbox', { name: /Nazwa sesji/ }),
+      'x'.repeat(240),
+    );
     await expect(canvas.getByText('Pozostało znaków: 16.')).toBeVisible();
     await expectNoHorizontalScroll();
   },
@@ -529,9 +524,7 @@ export const NarrowOpen: Story = {
   globals: mobile,
   play: async ({ canvas }) => {
     await settle(375, 812);
-    await expect(
-      await canvas.findByRole('heading', { level: 2, name: 'Rozpocznij sesję' }),
-    ).toBeVisible();
+    await expect(await canvas.findByRole('form', { name: 'Rozpocznij sesję' })).toBeVisible();
     // No Composer before Start on a phone: it would only take space from the form.
     await expect(canvas.queryByRole('textbox', { name: 'Wiadomość' })).toBeNull();
     await expect(canvas.getByRole('button', { name: 'Kontekst' })).toBeVisible();
@@ -580,7 +573,9 @@ export const NarrowNoProviderAvailable: Story = {
   globals: mobile,
   play: async ({ canvas }) => {
     await settle(375, 812);
-    await expect(await canvas.findByText('Żaden wykonawca nie jest teraz dostępny.')).toBeVisible();
+    await expect(
+      await canvas.findByRole('heading', { name: 'Żaden agent nie jest dostępny' }),
+    ).toBeVisible();
     await expectNoHorizontalScroll();
   },
 };

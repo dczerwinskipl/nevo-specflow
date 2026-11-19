@@ -522,7 +522,7 @@
     "agent": {
       "initialTitle": "Początkowa sesja agenta",
       "introInitial": "Wybierz wykonawcę pierwszej sesji Spec Writera. Kolejne sesje mogą korzystać z innych agentów.",
-      "noProviders": "Brak dostępnych wykonawców."
+      "noProviders": "Brak dostępnych agentów."
     },
     "provider": {
       "accessApi": "API",
@@ -537,7 +537,7 @@
       "forbidden": "Nie masz uprawnień do tworzenia specyfikacji.",
       "refreshConfiguration": "Odśwież konfigurację przed utworzeniem.",
       "title": "Podaj nazwę specyfikacji.",
-      "provider": "Wybierz dostępnego wykonawcę.",
+      "provider": "Wybierz dostępnego agenta.",
       "model": "Wybierz model.",
       "effort": "Wybierz wysiłek, który obsługuje ten model.",
       "mode": "Wybierz obsługiwany tryb pracy.",
@@ -1388,7 +1388,7 @@
   },
   "sessions": {
     "context": {
-      "executor": "Wykonawca",
+      "executor": "Agent",
       "title": "Kontekst",
       "executionScope": "Aktualne wykonanie",
       "generic": "Ogólne / na poziomie specyfikacji",
@@ -1897,19 +1897,13 @@
       "heading": "Agent"
     },
     "name": {
-      "heading": "Nazwa sesji",
-      "intro": "Nazwa pojawi się na liście sesji i w nagłówku.",
-      "agentDefault": "Agent nada sesji nazwę na podstawie Twojej pierwszej wiadomości.",
-      "customDescription": "Agent nie będzie zmieniał tej nazwy.",
-      "useCustom": "Nadaj własną nazwę",
       "label": "Nazwa sesji",
-      "placeholder": "np. Przegląd kryteriów akceptacji",
-      "limit": "Do {{max}} znaków.",
+      "optional": "opcjonalnie",
+      "placeholder": "Nowa sesja",
       "remaining": "Pozostało znaków: {{remaining}}."
     },
     "prerequisite": {
-      "name": "Wpisz nazwę albo pozwól agentowi ją nadać.",
-      "noProvider": "Żaden wykonawca nie jest teraz dostępny."
+      "noProvider": "Żaden agent nie jest teraz dostępny."
     },
     "footer": {
       "agentNames": "Sesja otworzy się bez wiadomości, a agent nada jej nazwę po pierwszej.",
@@ -1927,7 +1921,9 @@
     },
     "fields": {
       "effort": "Effort",
-      "effortDefault": "Domyślny"
+      "effortDefault": "Domyślny",
+      "settings": "Ustawienia agenta",
+      "providerDefaultModel": "Domyślny dostawcy"
     },
     "modes": {
       "readOnly": "Tylko odczyt",
@@ -1942,17 +1938,83 @@
     },
     "provider": {
       "noMode": "Brak dostępnego trybu pracy",
-      "worktreeUnsupported": "Niedostępny w worktree",
-      "worktreeUnsupportedNote": "Niektórzy dostawcy są niedostępni w tej specyfikacji: działają tylko w folderze projektu, a ta specyfikacja ma własny worktree. Wybierz dostawcę, który obsługuje worktree, albo rozpocznij sesję poza specyfikacją.",
-      "notAllowed": "Niedozwolony w projekcie",
-      "notAllowedHelp": "Opiekun projektu może go dopuścić ustawieniem {{key}}.allowed: true w .nevo/config.yaml, a następnie uruchomić ponownie Nevo SpecFlow.",
-      "notEnabled": "Wyłączony na tym komputerze",
-      "notEnabledHelp": "Aby go włączyć, usuń {{key}}.enabled: false z .nevo/local/config.yaml, a następnie uruchom ponownie Nevo SpecFlow.",
-      "notReady": "Niezainstalowany lub niegotowy",
-      "notReadyHelp": "Sprawdź, czy CLI dostawcy jest zainstalowane i działa na tym komputerze. Jeśli jest zainstalowane w innym miejscu, ustaw jego ścieżkę jako {{key}}.executable w .nevo/local/config.yaml."
+      "executable": {
+        "configured": "Skonfigurowano: {{path}}",
+        "path": "Znaleziono w PATH: {{path}}",
+        "discovered": "Źródło: {{location}}. Ścieżka: {{path}}"
+      },
+      "location": {
+        "path": "PATH",
+        "codex-desktop-app": "aplikacja Codex na komputer",
+        "claude-native-installer": "natywny instalator Claude",
+        "antigravity-installer": "instalator CLI Antigravity",
+        "npm-global-package": "globalny pakiet npm"
+      },
+      "status": {
+        "signIn": "Wymaga logowania",
+        "notFound": "Nie znaleziono CLI",
+        "setup": "Wymaga konfiguracji",
+        "turnedOff": "Wyłączony",
+        "failsToStart": "Błąd uruchamiania",
+        "checkFailed": "Błąd sprawdzania",
+        "incompatible": "Niezgodna wersja",
+        "checkUnfinished": "Sprawdzanie przerwane",
+        "worktree": "Nie w worktree",
+        "unknown": "Nie sprawdzono"
+      }
     },
     "forbiddenSpecification": "Nie możesz rozpoczynać sesji w tej specyfikacji.",
-    "sessionsDisabled": "Sesje są wyłączone w tym projekcie."
+    "sessionsDisabled": "Sesje są wyłączone w tym projekcie.",
+    "diagnosis": {
+      "genericFix": "Popraw przyczynę podaną powyżej.",
+      "signIn": "Zaloguj się w CLI {{provider}} w terminalu:",
+      "signInAgain": "Zaloguj się ponownie w CLI {{provider}} w terminalu.",
+      "notChecked": "Dostępność nie została jeszcze ustalona.",
+      "checkInTerminal": "Sprawdź, czy CLI {{provider}} uruchamia się i działa w terminalu.",
+      "notAllowed": "Projekt nie dopuszcza {{provider}}: w <code>.nevo/config.yaml</code> brakuje ustawienia <code>{{key}}.allowed: true</code>.",
+      "notAllowedFix": "Opiekun projektu może dodać to ustawienie.",
+      "notEnabled": "Ten komputer wyłącza {{provider}} ustawieniem <code>{{key}}.enabled: false</code> w <code>.nevo/local/config.yaml</code>.",
+      "notEnabledFix": "Usuń to ustawienie.",
+      "worktree": "{{provider}} działa tylko w folderze projektu, a ta specyfikacja ma własny worktree. Wybierz innego agenta albo rozpocznij sesję poza specyfikacją.",
+      "notFound": "Sprawdzono: {{sources}}.",
+      "notFoundConfigured": "Pod ścieżką <code>{{path}}</code> nie ma pliku, który można uruchomić.",
+      "notFoundConfiguredFix": "Popraw <code>{{key}}.executable</code> w <code>.nevo/local/config.yaml</code> albo usuń to ustawienie, aby CLI było wyszukiwane w PATH i w miejscach instalacji.",
+      "launcherBroken": "W pakiecie npm <code>{{package}}</code> brakuje natywnego pliku wykonywalnego.",
+      "reinstallTitle": "Zainstaluj pakiet ponownie",
+      "reinstallText": "Uruchom w terminalu:",
+      "installTitle": "Zainstaluj CLI",
+      "installText": "Zainstaluj CLI {{provider}} w jednym z tych miejsc. Nieudane wyszukiwanie jest pamiętane przez 30 s, więc nowa instalacja pojawi się najwyżej po tym czasie.",
+      "pointTitle": "Albo wskaż zainstalowany plik",
+      "pointWorkingTitle": "Albo wskaż działające CLI",
+      "pointText": "Dodaj jego ścieżkę do <code>.nevo/local/config.yaml</code>:",
+      "repairTitle": "Zainstaluj CLI ponownie",
+      "repairText": "Zainstaluj ponownie lub zaktualizuj CLI {{provider}}.",
+      "setupUnsupported": "Nevo SpecFlow uruchamia CLI tylko z jego domyślnym logowaniem i bez zasad zarządzanych na komputerze.",
+      "setupUnsupportedFix": "Zaloguj się domyślnym logowaniem CLI albo usuń zasady zarządzane (<code>docs/reference/providers</code>).",
+      "protocolUnsupported": "Ta wersja CLI odpowiada protokołem, którego Nevo SpecFlow nie obsługuje.",
+      "knownIncompatible": "Ta wersja CLI jest zapisana jako niezgodna.",
+      "knownIncompatibleVersion": "Wykryta wersja: <code>{{version}}</code>, zapisana jako niezgodna.",
+      "restrictionUnsupported": "CLI uruchomiło się bez narzędzi, trybu uprawnień lub pustego zestawu MCP i wtyczek, których wymaga Nevo SpecFlow. Zwykle następuje to po aktualizacji CLI.",
+      "supportedVersion": "Zainstaluj obsługiwaną wersję CLI {{provider}} (<code>docs/reference/providers/compatibility.md</code>).",
+      "settlementUnverified": "Proces uruchomiony przy sprawdzaniu mógł się jeszcze nie zakończyć, więc dostępność nie została ustalona. To nie oznacza, że {{provider}} jest niedostępny.",
+      "settlementFix": "Poczekaj chwilę. Jeśli to się powtarza, zakończ proces CLI {{provider}} w Menedżerze zadań."
+    },
+    "diagnostics": {
+      "oneUnavailable": "{{provider}}: {{status}}",
+      "someUnavailable": "Niedostępne: {{providers}}",
+      "noneHeading": "Żaden agent nie jest dostępny",
+      "noneLine": "Sprawdź przyczyny niedostępności i wymagane działania dla poszczególnych agentów.",
+      "undeterminedHeading": "Nie udało się ustalić dostępności",
+      "undeterminedLine": "Sprawdzanie części agentów nie dało wyniku. Sprawdź ponownie albo zobacz przyczyny dla poszczególnych agentów.",
+      "howToFix": "Jak naprawić",
+      "details": "Szczegóły",
+      "checkAgain": "Sprawdź ponownie",
+      "checkedPaths": "Sprawdzone ścieżki ({{total}})",
+      "thenRecheck": "Następnie wybierz <strong>Sprawdź ponownie</strong>.",
+      "thenRestart": "Następnie uruchom ponownie Nevo SpecFlow: konfiguracja jest czytana tylko przy starcie, więc <strong>Sprawdź ponownie</strong> nie zobaczy tej zmiany.",
+      "emptyHeading": "Brak agentów na liście",
+      "emptyLine": "Nevo SpecFlow nie udostępnia żadnego agenta dla tego projektu. Opiekun projektu dopuszcza agenta ustawieniem sessions.providers.<dostawca>.allowed: true w .nevo/config.yaml; po ponownym uruchomieniu Nevo SpecFlow sprawdź ponownie."
+    }
   },
   "sessionNaming": {
     "pending": "Nadawanie nazwy…",

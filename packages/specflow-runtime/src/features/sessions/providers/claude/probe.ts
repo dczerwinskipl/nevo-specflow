@@ -1,17 +1,10 @@
 import { randomUUID } from 'node:crypto';
+import { ProviderUnavailableError } from '../unavailable';
 import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 import { createInvocationScope, launchOwnedProcess, type ProviderEnvironment } from '../process';
 import { object, ClaudeProtocolError } from './protocol';
 import { claudeArguments, claudeModels, claudeVersion } from './discovery';
 import type { Invocation } from '../driver';
-
-export class ClaudeProbeError extends Error {
-  readonly reasonCode: NonNullable<ProviderDescriptor['reasonCode']>;
-  constructor(reasonCode: ClaudeProbeError['reasonCode'], message: string) {
-    super(message);
-    this.reasonCode = reasonCode;
-  }
-}
 
 /** Initialize without a user message: no paid inference and no invented semantic-resume evidence. */
 export async function probeClaude(
@@ -69,7 +62,7 @@ export async function probeClaude(
     }
 
     if (!result) {
-      throw new ClaudeProbeError(
+      throw new ProviderUnavailableError(
         'PROBE_FAILED',
         'Claude did not complete protocol initialization.',
       );
@@ -77,7 +70,7 @@ export async function probeClaude(
   } catch (error) {
     failure =
       error instanceof ClaudeProtocolError || error instanceof SyntaxError
-        ? new ClaudeProbeError(
+        ? new ProviderUnavailableError(
             'PROTOCOL_UNSUPPORTED',
             'Claude initialization does not match the implemented protocol.',
           )
@@ -88,7 +81,7 @@ export async function probeClaude(
       () => false,
     );
     if (!stopped) {
-      failure = new ClaudeProbeError(
+      failure = new ProviderUnavailableError(
         'PROCESS_SETTLEMENT_UNVERIFIED',
         'Claude probe process settlement could not be verified.',
       );
@@ -100,11 +93,11 @@ export async function probeClaude(
   }
 
   if (failure) {
-    throw new ClaudeProbeError('PROBE_FAILED', 'Claude initialization failed.');
+    throw new ProviderUnavailableError('PROBE_FAILED', 'Claude initialization failed.');
   }
 
   if (!result) {
-    throw new ClaudeProbeError('PROBE_FAILED', 'Claude initialization is unavailable.');
+    throw new ProviderUnavailableError('PROBE_FAILED', 'Claude initialization is unavailable.');
   }
 
   return result;

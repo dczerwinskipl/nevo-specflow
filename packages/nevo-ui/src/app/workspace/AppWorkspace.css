@@ -30,6 +30,11 @@
     0 -8px 24px rgb(0 0 0 / 0.2);
 }
 
+/* A sheet without material: same geometry, no border, fill or shadow (`stackedSurface="plain"`). */
+.mobile-workspace-surface--plain {
+  box-shadow: none;
+}
+
 .mobile-workspace-sheet {
   min-height: max(
     0px,

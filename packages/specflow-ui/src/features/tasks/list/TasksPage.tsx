@@ -19,6 +19,7 @@ import {
 } from '../../../shared/operational-list';
 import { WorkspaceSection } from '../../../shared/workspace-section';
 import { progressText } from '../overview/progress';
+import type { EmptyTasks } from '../overview/tasksStepLine';
 import { getGroupTone } from './presentation';
 import { TaskGroupHeader } from './TaskGroupHeader';
 import { TaskRow } from './TaskRow';
@@ -46,8 +47,8 @@ export interface TasksPageProps {
   readonly onNewTask?: () => void;
   /** A notice above the list (New task could not be checked). */
   readonly notice?: ReactNode;
-  /** When the first Tasks appear (the workflow's step that produces them), for the empty list. */
-  readonly emptyLine?: string;
+  /** What the list without Tasks says (shared with the Overview); "No tasks yet" when absent. */
+  readonly empty?: EmptyTasks;
   /** The Specification's title, named by a row its `tasks-stuck` keeps waiting. */
   readonly specificationTitle?: string;
 }
@@ -71,7 +72,7 @@ export function TasksPage({
   onClearFilter,
   onNewTask,
   notice,
-  emptyLine,
+  empty,
   specificationTitle,
 }: TasksPageProps) {
   const { t } = useTranslation();
@@ -195,12 +196,16 @@ export function TasksPage({
         {listed === 0 && !filterChip ? (
           <EmptyState
             variant="inline"
-            title={t('specification.tasksEmptyTitle')}
-            // When the workflow's Tasks appear, and that New task creates them sooner when offered.
+            title={empty?.title ?? t('specification.tasksEmptyTitle')}
+            // The step that creates the Tasks, and that New task creates them now when offered
+            // (whatever the stage); an ended workflow promises nothing.
             description={
               onNewTask
-                ? [emptyLine, t('taskAuthoring.tasks.emptyDescription')].filter(Boolean).join(' ')
-                : (emptyLine ?? t('specification.tasksEmptyDescription'))
+                ? empty?.line
+                  ? `${empty.line} ${t('taskAuthoring.tasks.emptyDescription')}`
+                  : t('taskAuthoring.tasks.emptyDescriptionAlone')
+                : (empty?.line ??
+                  (empty?.ended ? undefined : t('specification.tasksEmptyDescription')))
             }
           />
         ) : groups.length === 0 && (needle || focusGroup) ? (

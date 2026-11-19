@@ -144,7 +144,7 @@ dashboard configuration). The Overview renders what the reads deliver.
   only when the Engine reports it; the Requires attention item with Resume and Cancel task is the
   section above (its Resume and Start step show busy while their command runs). **All tasks** in the header opens the page; the header's overflow menu holds
   **New task** when the projection allows creating a Task. Without Tasks the section keeps its
-  place with one line, "Tasks appear when Break the solution down (step 4 of 7) finishes." when
+  place with one line, "Break the solution down (step 4 of 7) creates the tasks." when
   the run is certain to get to a step that produces Tasks (`outline.tasksStep`, never a step id: no
   branch on the way; the same line before the run reaches that step and while it is at it), else
   "No tasks yet", with a quiet **New task** beside it when allowed; once the workflow ended
@@ -227,8 +227,17 @@ shown", N the rows left after the URL filter and the text filter, M all the Spec
 that count ("2 of 7 shown"); with no row left it reads "0 of 7 shown" over "No task matches the
 filter.". The blocking chip keeps the Runtime's count of the Tasks it names.
 
-Without Tasks the page names the step that produces them with the Overview's line ("Tasks appear
-when … finishes."), from the same projection; without such a step it keeps its own description.
+Without Tasks the page shows an empty state with the same logic as the Overview's Tasks, from the
+same projection:
+
+- While the workflow runs the title is "No tasks yet" and the description names the step that
+  creates them ("Break the solution down (step 4 of 7) creates the tasks."); without such a step
+  it says "Tasks appear here once the specification is prepared for work."
+- Once the workflow ended (completed or abandoned) the title is "No tasks were created", with no
+  step line and no "yet".
+- When the projection allows creating a Task (`specification.createTask`, independent of the
+  stage) the description adds "You can also create them now with New task." after the step line,
+  or reads "You can create them now with New task." alone.
 
 The demo Runtime serves the same Tasks page read: it runs the Engine's workflow over in-memory
 state ([ADR 0025](../../../architecture/decisions/0025-demo-runs-the-engine-in-memory.md)).

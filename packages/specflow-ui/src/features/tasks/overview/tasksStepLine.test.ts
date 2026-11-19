@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
-import { tasksStepLine } from './tasksStepLine';
+import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
+import { emptyTasks, tasksStepLine } from './tasksStepLine';
 
 const t = ((key: string, values?: Record<string, unknown>) =>
   [key, JSON.stringify(values)].join(' ')) as unknown as TFunction;
@@ -20,5 +21,28 @@ describe('tasksStepLine', () => {
   it('says nothing when the Engine claims no Tasks step, or while the projection is unknown', () => {
     expect(tasksStepLine(t, { stepCount: 7, current: step(2) })).toBeUndefined();
     expect(tasksStepLine(t, undefined)).toBeUndefined();
+  });
+});
+
+describe('emptyTasks', () => {
+  const projection = (position: WorkflowActionProjection['position']) =>
+    ({
+      position,
+      outline: { stepCount: 7, current: step(2), tasksStep: step(4) },
+    }) as WorkflowActionProjection;
+
+  it('names the producing step while the workflow runs', () => {
+    expect(emptyTasks(t, projection({ kind: 'active', step: 's2' } as never))).toEqual({
+      title: 'specification.tasksEmptyTitle ',
+      line: finishes,
+      ended: false,
+    });
+  });
+
+  it('says none were created once the workflow ended, without a step line', () => {
+    expect(emptyTasks(t, projection({ kind: 'terminal', outcome: 'completed' }))).toEqual({
+      title: 'specification.tasksNoneCreated ',
+      ended: true,
+    });
   });
 });

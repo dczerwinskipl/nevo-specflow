@@ -79,7 +79,7 @@ export const NotStarted: Story = {
     await expect(canvas.queryByText('Requires attention')).toBeNull();
     // Without Tasks the section keeps the step line in place of a title.
     await expect(
-      canvas.getByText('Tasks appear when Break the solution down (step 4 of 7) finishes.'),
+      canvas.getByText('Break the solution down (step 4 of 7) creates the tasks.'),
     ).toBeVisible();
     await expect(canvas.getByText('This specification has no sessions yet.')).toBeVisible();
     // New session is the Sessions section's own action, never beside Start workflow.
@@ -216,7 +216,7 @@ export const TasksCreated: Story = {
     const canvas = within(canvasElement);
     // The Tasks section lists the drafts as Task rows instead of its step line.
     await expect(await canvas.findByRole('list', { name: 'Needs approval' })).toBeVisible();
-    await expect(canvas.queryByText(/^Tasks appear when/)).toBeNull();
+    await expect(canvas.queryByText(/creates the tasks\.$/)).toBeNull();
     await expect(canvas.getByText('Step 4 of 7 · next: Review the breakdown')).toBeVisible();
   },
 };
@@ -315,8 +315,19 @@ export const TasksPageEmpty: Story = {
     const canvas = within(canvasElement);
     await expect(
       await canvas.findByText(
-        'Tasks appear when Break the solution down (step 4 of 7) finishes. Create tasks with New task, also before the workflow starts.',
+        'Break the solution down (step 4 of 7) creates the tasks. You can also create them now with New task.',
       ),
     ).toBeVisible();
+  },
+};
+
+/** The empty Tasks page of an ended workflow: like the Overview, nothing more is promised. */
+export const TasksPageEmptyEnded: Story = {
+  tags: ['contract'],
+  args: { scenario: 'abandoned', page: 'tasks' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('No tasks were created')).toBeVisible();
+    await expect(canvas.queryByText(/yet|appear here once|creates the tasks/)).toBeNull();
   },
 };

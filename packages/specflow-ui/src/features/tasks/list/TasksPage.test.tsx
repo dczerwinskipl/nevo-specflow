@@ -246,14 +246,29 @@ describe('Tasks page', () => {
     renderPage({
       state: { status: 'ready', view: taskListViewOf(controlCenterTaskList('empty')) },
       onNewTask: vi.fn(),
-      emptyLine: 'Tasks appear when Plan (step 2 of 3) finishes.',
+      empty: {
+        title: 'No tasks yet',
+        line: 'Plan (step 2 of 3) creates the tasks.',
+        ended: false,
+      },
     });
 
+    expect(screen.getByText('No tasks yet')).not.toBeNull();
     expect(
       screen.getByText(
-        'Tasks appear when Plan (step 2 of 3) finishes. Create tasks with New task, also before the workflow starts.',
+        'Plan (step 2 of 3) creates the tasks. You can also create them now with New task.',
       ),
     ).not.toBeNull();
+  });
+
+  it('promises no tasks once the workflow ended', () => {
+    renderPage({
+      state: { status: 'ready', view: taskListViewOf(controlCenterTaskList('empty')) },
+      empty: { title: 'No tasks were created', ended: true },
+    });
+
+    expect(screen.getByText('No tasks were created')).not.toBeNull();
+    expect(screen.queryByText(/yet|appear here once/)).toBeNull();
   });
 
   it('says so when nothing blocks the Specification any more', () => {

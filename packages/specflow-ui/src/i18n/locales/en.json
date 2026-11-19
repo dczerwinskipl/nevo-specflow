@@ -160,7 +160,7 @@
     "tasksEmptyTitle": "No tasks yet",
     "tasksNoneCreated": "No tasks were created",
     "tasksEmptyDescription": "Tasks appear here once the specification is prepared for work.",
-    "tasksAppearAfter": "Tasks appear when {{step}} (step {{position}} of {{total}}) finishes.",
+    "tasksAppearAfter": "{{step}} (step {{position}} of {{total}}) creates the tasks.",
     "documentsEmptyTitle": "No documents yet",
     "documentsHeading": "Documents",
     "allDocumentsLink": "All documents",
@@ -2040,7 +2040,8 @@
     },
     "tasks": {
       "newTask": "New task",
-      "emptyDescription": "Create tasks with New task, also before the workflow starts.",
+      "emptyDescription": "You can also create them now with New task.",
+      "emptyDescriptionAlone": "You can create them now with New task.",
       "draftLine": "Draft · needs approval",
       "after": "after {{ids}}",
       "actionsFailed": "Whether tasks can be created could not be loaded."

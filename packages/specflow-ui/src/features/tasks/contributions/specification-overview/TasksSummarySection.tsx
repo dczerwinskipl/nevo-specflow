@@ -20,7 +20,7 @@ import type { SpecificationWorkSectionContext } from '../../../specs';
 import { useSpecificationWorkflow } from '../../execution/specification/SpecificationWorkflow';
 import { TaskRow } from '../../list/TaskRow';
 import { taskRowViewOf } from '../../list/taskListModel';
-import { tasksStepLine } from '../../overview/tasksStepLine';
+import { emptyTasks } from '../../overview/tasksStepLine';
 
 /** A plain click opens in the app; a modified click keeps the browser's own behaviour. */
 const plainClick = (event: MouseEvent) =>
@@ -34,11 +34,9 @@ export function emptyTasksLine(
   t: TFunction,
   projection: WorkflowActionProjection | undefined,
 ): string {
-  if (projection?.position.kind === 'terminal') {
-    return t('specification.tasksNoneCreated');
-  }
+  const empty = emptyTasks(t, projection);
 
-  return tasksStepLine(t, projection?.outline) ?? t('specification.tasksEmptyTitle');
+  return empty.line ?? empty.title;
 }
 
 /**

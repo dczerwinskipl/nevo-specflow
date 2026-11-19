@@ -4,7 +4,7 @@ import { Alert, Button } from '@nevo/ui';
 import type { SpecificationWorkspaceData } from '../../specs/read-model';
 import { NewTaskDialog } from '../authoring/NewTaskDialog';
 import { useSpecificationActions } from '../read-model';
-import { tasksStepLine } from '../overview/tasksStepLine';
+import { emptyTasks } from '../overview/tasksStepLine';
 import { TasksPage } from './TasksPage';
 import { useTaskListState } from './useTaskListState';
 
@@ -43,7 +43,8 @@ export function TasksScreen({
   const actions = useSpecificationActions(specId, collection === 'current');
   const [open, setOpen] = useState(false);
   const specification = actions.data?.specification;
-  const emptyLine = tasksStepLine(t, actions.data?.outline);
+  // The same empty line as the Overview's Tasks.
+  const empty = emptyTasks(t, actions.data);
 
   return (
     <>
@@ -55,7 +56,7 @@ export function TasksScreen({
         onOpenTask={onOpenTask}
         onClearFilter={onClearFilter}
         specificationTitle={data.title}
-        {...(emptyLine ? { emptyLine } : {})}
+        empty={empty}
         {...(specification?.createTask.kind === 'allowed'
           ? { onNewTask: () => setOpen(true) }
           : {})}

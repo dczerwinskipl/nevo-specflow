@@ -160,7 +160,7 @@
     "tasksEmptyTitle": "Nie ma jeszcze zadań",
     "tasksNoneCreated": "Nie utworzono żadnych zadań",
     "tasksEmptyDescription": "Zadania pojawią się tutaj, gdy specyfikacja zostanie przygotowana do realizacji.",
-    "tasksAppearAfter": "Zadania pojawią się po zakończeniu kroku {{step}} (krok {{position}} z {{total}}).",
+    "tasksAppearAfter": "Zadania tworzy krok {{step}} ({{position}} z {{total}}).",
     "documentsEmptyTitle": "Nie ma jeszcze dokumentów",
     "documentsHeading": "Dokumenty",
     "allDocumentsLink": "Wszystkie dokumenty",
@@ -2040,7 +2040,8 @@
     },
     "tasks": {
       "newTask": "Nowe zadanie",
-      "emptyDescription": "Utwórz zadania przyciskiem Nowe zadanie, także zanim workflow wystartuje.",
+      "emptyDescription": "Możesz też utworzyć je teraz przyciskiem Nowe zadanie.",
+      "emptyDescriptionAlone": "Możesz utworzyć je teraz przyciskiem Nowe zadanie.",
       "draftLine": "Szkic · wymaga zatwierdzenia",
       "after": "po {{ids}}",
       "actionsFailed": "Nie udało się wczytać, czy można tworzyć zadania."

@@ -275,7 +275,13 @@ function SourceLabel({
             }
           />
         </PopoverTrigger>
-        <PopoverContent align="start" aria-labelledby={titleId} className="w-80 p-3">
+        {/* 16 px from the viewport edge: the page's mobile gutter. */}
+        <PopoverContent
+          align="start"
+          collisionPadding={16}
+          aria-labelledby={titleId}
+          className="w-80 p-3"
+        >
           {/* The surface wraps its children in a scroll container: the gap goes on our own grid. */}
           <div className="grid gap-2">
             <Typography as="p" variant="label-md" id={titleId}>

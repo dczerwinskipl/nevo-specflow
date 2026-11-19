@@ -10,19 +10,24 @@ permissions:
 jobs:
   runtime:
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        attempt: [1, 2]
+    name: Full Runtime at 5 seconds (${{ matrix.attempt }})
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: fd167d8d5f07f705f29d1bd2d81ec7d4e580b4b0
+          ref: 8b9f0642d5dffb4958ea27dfa3802ac13cf2573f
           persist-credentials: false
       - name: Record runner capacity
         run: |
           nproc
           free -h
-      - name: Verify direct Vitest uses the Runtime test configuration
+      - name: Run full Runtime with an explicit five-second timeout
         env:
-          NEVO_TEST_REF: fd167d8d5f07f705f29d1bd2d81ec7d4e580b4b0
+          NEVO_TEST_REF: 8b9f0642d5dffb4958ea27dfa3802ac13cf2573f
         run: |
           bash tools/dev/linux-test.sh --ref "$NEVO_TEST_REF" --memory 10g --cpus 4 -- \
-            "node -e 'console.log(require(\"node:os\").availableParallelism())' && git config --global maintenance.auto false && git config --global gc.auto 0 && pnpm exec turbo run build --filter=@nevo/specflow-runtime && pnpm --filter @nevo/specflow-runtime exec vitest run --reporter=dot"
+            "node -e 'console.log(require(\"node:os\").availableParallelism())' && git config --global maintenance.auto false && git config --global gc.auto 0 && pnpm exec turbo run build --filter=@nevo/specflow-runtime && pnpm --filter @nevo/specflow-runtime exec vitest run --reporter=dot --testTimeout=5000"

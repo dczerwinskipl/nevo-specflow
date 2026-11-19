@@ -201,6 +201,35 @@ describe('Tasks page', () => {
     expect(onClearFilter).toHaveBeenCalledTimes(1);
   });
 
+  it('counts the rows the search leaves, under a filter or without one', () => {
+    const { container } = renderPage({
+      blocking: true,
+      state: {
+        status: 'ready',
+        view: taskListViewOf(controlCenterTaskList('stuck', { blocking: 'specification' })),
+      },
+    });
+    const search = screen.getByRole('textbox', { name: 'Filter tasks' });
+
+    fireEvent.change(search, { target: { value: 'audit' } });
+    expect(container.querySelectorAll('[data-row-task]')).toHaveLength(1);
+    expect(screen.getByText('1 of 7 shown')).not.toBeNull();
+    // The chip keeps the filter's own count.
+    expect(container.querySelector('[data-blocking-filter]')?.textContent).toContain(
+      'Blocking specification · 2 tasks',
+    );
+    fireEvent.change(search, { target: { value: 'nothing like this' } });
+    expect(screen.getByText('0 of 7 shown')).not.toBeNull();
+    expect(screen.getByText('No task matches the filter.')).not.toBeNull();
+
+    cleanup();
+    renderPage();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Filter tasks' }), {
+      target: { value: 'sign-in' },
+    });
+    expect(screen.getByText('2 of 7 shown')).not.toBeNull();
+  });
+
   it('holds the empty state and New task of a Specification without Tasks', () => {
     const onNewTask = vi.fn();
     renderPage({

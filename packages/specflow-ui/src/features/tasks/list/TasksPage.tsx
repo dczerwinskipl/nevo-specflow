@@ -114,11 +114,19 @@ export function TasksPage({
     }))
     .filter((group) => group.rows.length > 0);
   const listed = view.groups.reduce((count, group) => count + group.rows.length, 0);
+  const visible = groups.reduce((count, group) => count + group.rows.length, 0);
+  // "N of M shown": N the rows on screen (the filter, then the search), M all the Specification's
+  // Tasks; without either the progress counts the whole inventory instead.
   const count = view.filter
-    ? t('taskOverview.page.shown', { matched: view.filter.matched, total: view.filter.total })
-    : view.progress && listed > 0
-      ? progressText(view.progress, t)
-      : undefined;
+    ? t('taskOverview.page.shown', {
+        matched: needle ? visible : view.filter.matched,
+        total: view.filter.total,
+      })
+    : needle && listed > 0
+      ? t('taskOverview.page.shown', { matched: visible, total: listed })
+      : view.progress && listed > 0
+        ? progressText(view.progress, t)
+        : undefined;
   const matched = view.filter?.matched ?? 0;
   // The group's name is the Runtime's (the one group listed); none when nothing matches now.
   const groupName = focusGroup

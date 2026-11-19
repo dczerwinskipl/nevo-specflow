@@ -221,6 +221,12 @@ The page's search is router-owned and validated; absence is the default:
   reads "4 of 12 shown" (the one count); with none left, "No tasks in this group now". The link pushes the entry; clearing replaces it.
 - The two never combine: with both in the URL, `blocking` is kept and `group` dropped.
 
+The filter by id or title narrows the rows on screen, and the section count follows it: "N of M
+shown", N the rows left after the URL filter and the text filter, M all the Specification's Tasks
+(the same M as the URL filter's count). Without a URL filter a text filter turns the progress into
+that count ("2 of 7 shown"); with no row left it reads "0 of 7 shown" over "No task matches the
+filter.". The blocking chip keeps the Runtime's count of the Tasks it names.
+
 Without Tasks the page names the step that produces them with the Overview's line ("Tasks appear
 when … finishes."), from the same projection; without such a step it keeps its own description.
 

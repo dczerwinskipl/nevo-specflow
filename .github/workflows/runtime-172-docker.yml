@@ -1,0 +1,42 @@
+name: Runtime 172 Docker verification
+
+on:
+  push:
+    branches: [chore/runtime-172-docker-5s]
+
+permissions:
+  contents: read
+
+jobs:
+  runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Baseline
+            ref: d5ee048404d6d0e7bdaca34fb00c938401b79049
+            workers: ''
+          - name: After PR 185
+            ref: cc9c7599e859f1f582da7143b1c999ace97fbbb2
+            workers: ''
+          - name: After PR 185 with two workers
+            ref: cc9c7599e859f1f582da7143b1c999ace97fbbb2
+            workers: '--maxWorkers=2'
+    name: ${{ matrix.name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ matrix.ref }}
+          persist-credentials: false
+      - name: Record runner capacity
+        run: |
+          nproc
+          free -h
+      - name: Run full Runtime with the Vitest default timeout
+        env:
+          WORKERS: ${{ matrix.workers }}
+        run: |
+          bash tools/dev/linux-test.sh --ref HEAD --memory 10g --cpus 6 -- \
+            "node -e 'console.log(require(\"node:os\").availableParallelism())' && pnpm turbo run build --filter=@nevo/specflow-runtime^... && pnpm --filter @nevo/specflow-runtime exec vitest run --reporter=dot $WORKERS"

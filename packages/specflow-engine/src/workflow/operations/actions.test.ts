@@ -719,7 +719,7 @@ const withoutWait = () => seedCatalogueWith(skipWait);
 const withoutWaitGated = () =>
   seedCatalogueWith((text) =>
     skipWait(text).replace(
-      /( {4}purpose: The owner accepts the implemented Specification\.)(\r?\n)/u,
+      /( {4}purpose: Confirmation that the delivered work does what the owner asked for\.)(\r?\n)/u,
       '$1$2    exitGates:$2      - type: document$2        documentType: note$2        scope: specification$2',
     ),
   );

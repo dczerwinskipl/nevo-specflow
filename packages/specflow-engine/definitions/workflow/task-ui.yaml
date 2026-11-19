@@ -12,7 +12,7 @@ steps:
     title: Implement
     executors: [agent, human]
     archetype: implementer-ui
-    purpose: Implement the UI change from its UX contract and run its verification.
+    purpose: The screens match their UX contract and pass the Task's verification.
     transitions:
       - id: implemented
         label: Implemented
@@ -23,7 +23,7 @@ steps:
     title: Review
     executors: [agent, human]
     archetype: reviewer
-    purpose: Review the change independently against the Task, the UX contract and the design system.
+    purpose: The UI is confirmed to match its UX contract and the design system.
     transitions:
       - id: approved
         label: Approved

@@ -119,7 +119,7 @@ export const WriteSpec: Story = {
       canvas.getByRole('img', { name: 'Step 2 of 7: Write the Specification' }),
     ).toBeVisible();
     await expect(
-      canvas.getByText('Write the Specification documents from the agreed requirements.'),
+      canvas.getByText('Documents that state what to build and how to tell it is done.'),
     ).toBeVisible();
     // A first attempt is not named; the step id and revision are in the ⋯ note only.
     const now = canvas.getByRole('region', { name: 'Now' });

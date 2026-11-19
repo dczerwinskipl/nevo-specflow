@@ -27,9 +27,9 @@ async function gatedCatalogue(): Promise<ExecutionCatalogue> {
   const workflow = files['workflow/task-standard.yaml'] ?? '';
   files['workflow/task-standard.yaml'] = workflow
     .replace(
-      '    purpose: Implement the Task within its scope and run its verification.\n',
+      "    purpose: The Task's change works, stays in scope and passes its verification.\n",
       [
-        '    purpose: Implement the Task within its scope and run its verification.',
+        "    purpose: The Task's change works, stays in scope and passes its verification.",
         '    exitGates:',
         '      - id: findings',
         '        type: document',
@@ -39,9 +39,9 @@ async function gatedCatalogue(): Promise<ExecutionCatalogue> {
       ].join('\n'),
     )
     .replace(
-      '    purpose: Review the change independently against the Task and the repository rules.\n',
+      '    purpose: The change is confirmed correct, in scope and within repository rules.\n',
       [
-        '    purpose: Review the change independently against the Task and the repository rules.',
+        '    purpose: The change is confirmed correct, in scope and within repository rules.',
         '    entryGates:',
         '      - type: document',
         '        documentType: note',
@@ -68,9 +68,9 @@ describe('a gate document type', () => {
   it('must be defined, and installing the workflow installs it', async () => {
     const files = await seedDefinitionFiles();
     files['workflow/task-standard.yaml'] = (files['workflow/task-standard.yaml'] ?? '').replace(
-      '    purpose: Implement the Task within its scope and run its verification.\n',
+      "    purpose: The Task's change works, stays in scope and passes its verification.\n",
       [
-        '    purpose: Implement the Task within its scope and run its verification.',
+        "    purpose: The Task's change works, stays in scope and passes its verification.",
         '    exitGates: [{ type: document, documentType: findings }]',
         '',
       ].join('\n'),
@@ -335,9 +335,9 @@ describe('document relations', () => {
   it('do not name a document for an unmet exit gate that applies to some results only', async () => {
     const files = await seedDefinitionFiles();
     files['workflow/task-standard.yaml'] = (files['workflow/task-standard.yaml'] ?? '').replace(
-      '    purpose: Review the change independently against the Task and the repository rules.\n',
+      '    purpose: The change is confirmed correct, in scope and within repository rules.\n',
       [
-        '    purpose: Review the change independently against the Task and the repository rules.',
+        '    purpose: The change is confirmed correct, in scope and within repository rules.',
         '    exitGates:',
         '      - id: verdict',
         '        type: document',

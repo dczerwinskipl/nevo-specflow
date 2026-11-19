@@ -65,23 +65,38 @@ const steps = [
   {
     id: 'requirements',
     title: 'Gather requirements',
-    purpose: 'Agree on the goal, scope, constraints and acceptance with the owner in conversation.',
+    purpose: 'A shared, owner-confirmed picture of the goal, scope and acceptance.',
   },
   {
     id: 'specification',
     title: 'Write the Specification',
-    purpose: 'Write the Specification documents from the agreed requirements.',
+    purpose: 'Documents that state what to build and how to tell it is done.',
   },
-  { id: 'solution', title: 'Design the solution', purpose: 'Design the solution.' },
+  {
+    id: 'solution',
+    title: 'Design the solution',
+    purpose: 'A chosen approach, with its trade-offs and decisions written down.',
+  },
   {
     id: 'breakdown',
     title: 'Break the solution down',
-    purpose:
-      'Draft the Tasks, each with its task type, dependencies and verification; the finish input lists every draft Task.',
+    purpose: 'Draft Tasks that together cover the solution, each one verifiable.',
   },
-  { id: 'breakdown-review', title: 'Review the breakdown', purpose: 'Review the breakdown.' },
-  { id: 'implementation', title: 'Implement', purpose: 'The Tasks are implemented.' },
-  { id: 'acceptance', title: 'Acceptance', purpose: 'Accept the result.' },
+  {
+    id: 'breakdown-review',
+    title: 'Review the breakdown',
+    purpose: 'No gaps or conflicts between the Specification, solution and Tasks.',
+  },
+  {
+    id: 'implementation',
+    title: 'Implement',
+    purpose: 'The Specification is built, Task by Task.',
+  },
+  {
+    id: 'acceptance',
+    title: 'Acceptance',
+    purpose: 'Confirmation that the delivered work does what the owner asked for.',
+  },
 ] as const;
 
 const outlineStep = (index: number) => ({

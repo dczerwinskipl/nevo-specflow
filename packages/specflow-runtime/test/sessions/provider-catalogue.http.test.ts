@@ -176,28 +176,37 @@ describe('GET /api/session-providers by start context', () => {
     expect((await catalogue(server, '?sessionId=not-a-session')).statusCode).toBe(400);
   });
 
-  it('authorizes a writer mode by execute-write, never through a Specification grant', async () => {
-    const { inS } = await seed();
-    const writer = async (server: FastifyInstance, query: string) => {
-      const read = await catalogue(server, query);
-      expect(read.statusCode, read.body).toBe(200);
-      const modes = read
-        .json<{ items: ProviderDescriptor[] }>()
-        .items.find((item) => item.providerId === 'mock')?.providerModes;
-      // A read-only mode is always authorized.
-      expect(modes?.find((mode) => mode.modeId === 'plan')?.authorized).toBe(true);
+  async function expectWriterMode(server: FastifyInstance, query: string, authorized: boolean) {
+    const read = await catalogue(server, query);
+    expect(read.statusCode, read.body).toBe(200);
+    const modes = read
+      .json<{ items: ProviderDescriptor[] }>()
+      .items.find((item) => item.providerId === 'mock')?.providerModes;
+    expect(modes?.find((mode) => mode.modeId === 'plan')?.authorized).toBe(true);
+    expect(modes?.find((mode) => mode.modeId === 'agent')?.authorized).toBe(authorized);
+  }
 
-      return modes?.find((mode) => mode.modeId === 'agent')?.authorized;
-    };
+  it('authorizes a writer mode with a project grant', async () => {
+    const project = await open('developer', { projectId: 'project' });
+    await expectWriterMode(project, '', true);
+  });
 
-    expect(await writer(await open('developer', { projectId: 'project' }), '')).toBe(true);
-    expect(await writer(await open('developer', { sessionId: inS }), `?sessionId=${inS}`)).toBe(
-      true,
-    );
-    // As a Turn start refuses execute-write to a Specification-scoped grant.
+  it('authorizes a writer mode with a Session grant', async () => {
+    const project = await open('developer', { projectId: 'project' });
+    const created = await createIn(project, 'S');
+    expect(created.statusCode, created.body).toBe(201);
+    const { sessionId } = created.json<CreateContextSessionResult>();
+    const manager = await open('developer', { sessionId });
+    await expectWriterMode(manager, `?sessionId=${sessionId}`, true);
+  });
+
+  it('refuses a writer mode with a Specification grant in both contexts', async () => {
     const inSpec = await open('developer', { specId: 'S' });
-    expect(await writer(inSpec, '?specId=S')).toBe(false);
-    expect(await writer(inSpec, `?sessionId=${inS}`)).toBe(false);
+    const created = await createIn(inSpec, 'S');
+    expect(created.statusCode, created.body).toBe(201);
+    const { sessionId } = created.json<CreateContextSessionResult>();
+    await expectWriterMode(inSpec, '?specId=S', false);
+    await expectWriterMode(inSpec, `?sessionId=${sessionId}`, false);
   });
 
   it('lets developer@S read the catalogue and start a Session in S, and refuses T', async () => {

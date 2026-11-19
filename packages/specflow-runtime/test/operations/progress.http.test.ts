@@ -315,9 +315,17 @@ describe('GET /api/specs/create/operations/:operationId/events', () => {
     registry.begin({ operationId, kind, steps });
     const { app, url, headers } = await listen(registry);
     const response = await fetch(eventsUrl(url), { headers });
-    const reading = readFrames(response, () => false);
-    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(response.status).toBe(200);
+    const snapshot = Promise.withResolvers<'snapshot'>();
+    const reading = readFrames(response, (frames) => {
+      if (frames.some((frame) => frame.event === 'snapshot')) {
+        snapshot.resolve('snapshot');
+      }
+
+      return false;
+    });
+    expect(await Promise.race([snapshot.promise, reading.then(() => 'closed')])).toBe('snapshot');
     await app.close();
-    await expect(reading).resolves.toBeDefined();
+    await expect(reading).resolves.toContainEqual(expect.objectContaining({ event: 'snapshot' }));
   });
 });

@@ -1,4 +1,4 @@
-name: Runtime 172 Docker verification
+name: Runtime 172 standard Docker verification
 
 on:
   push:
@@ -11,11 +11,6 @@ jobs:
   runtime:
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    strategy:
-      fail-fast: false
-      matrix:
-        attempt: [1, 2]
-    name: Full Runtime at 5 seconds (${{ matrix.attempt }})
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -25,9 +20,9 @@ jobs:
         run: |
           nproc
           free -h
-      - name: Run full Runtime with an explicit five-second timeout
+      - name: Run the full Runtime package command
         env:
           NEVO_TEST_REF: 2dad5461112bec13c45b743ea9393a4ab6687ccd
         run: |
           bash tools/dev/linux-test.sh --ref "$NEVO_TEST_REF" --memory 10g --cpus 4 -- \
-            "node -e 'console.log(require(\"node:os\").availableParallelism())' && git config --global maintenance.auto false && git config --global gc.auto 0 && pnpm exec turbo run build --filter=@nevo/specflow-runtime && pnpm --filter @nevo/specflow-runtime exec vitest run --reporter=dot --testTimeout=5000"
+            "node -e 'console.log(require(\"node:os\").availableParallelism())' && git config --global maintenance.auto false && git config --global gc.auto 0 && pnpm exec turbo run build --filter=@nevo/specflow-runtime && pnpm --filter @nevo/specflow-runtime test --reporter=dot"

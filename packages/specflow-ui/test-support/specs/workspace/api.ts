@@ -1,3 +1,4 @@
+import { taskResourceFixture } from '../../tasks/resource';
 import { documentContentFixture } from '../../documents/fixtures';
 import type { SpecificationApi } from '../../../src/features/specs/read-model/api';
 import type { TaskApi } from '../../../src/features/tasks/api';
@@ -69,8 +70,41 @@ export function createWorkspaceIntegrationApi(): SpecificationApi {
 /** Story-only Task detail adapter, separate from Specification Workspace reads. */
 export function createTaskIntegrationApi(): TaskApi {
   return {
-    // The fixture Runtime has no Tasks page read (as the demo Runtime).
-    getTaskList: () => Promise.reject(new Error('No Tasks page read in this fixture')),
+    // The Tasks page read of the workspace fixture: its one in-progress Task.
+    getTaskList: (specId, query, signal) => {
+      signal?.throwIfAborted();
+      if (specId !== 'api-integration' || query.blocking) {
+        return Promise.reject(new Error('Unconfigured test Tasks page'));
+      }
+
+      return Promise.resolve({
+        specId,
+        groups: [
+          {
+            id: 'implementation',
+            name: 'Integration tasks',
+            summary: 'row',
+            collapsed: false,
+            tasks: [
+              {
+                id: 'TASK-01',
+                title: 'Initial task summary',
+                type: { id: 'implementation', title: 'Implementation' },
+                dependsOn: [],
+                status: { id: 'in-progress', label: 'In progress', lifecycle: 'in_progress' },
+                facts: {
+                  ...taskResourceFixture().facts,
+                  position: { state: 'active', step: 'implement', attempt: 1 },
+                  startable: false,
+                },
+              },
+            ],
+          },
+        ],
+        progress: { completed: 0, total: 1, cancelled: 0, ended: 0, onHold: 0 },
+        attention: [],
+      });
+    },
     getTask: (specId, taskId, signal) => {
       signal?.throwIfAborted();
       if (specId !== 'api-integration' || taskId !== 'TASK-01') {
@@ -85,6 +119,7 @@ export function createTaskIntegrationApi(): TaskApi {
         },
         purpose: 'Latest purpose loaded independently from the detail endpoint.',
         acceptanceCriteria: ['Latest acceptance criterion'],
+        resource: taskResourceFixture(),
       });
     },
   };

@@ -7,6 +7,8 @@ import type {
   SpecificationWorkspaceData,
   TaskGroup,
 } from '../../../src/features/specs/read-model/model';
+import type { TaskItem } from '../../../src/features/tasks/read-model';
+import type { TaskListEntry } from '@nevo/specflow-contracts/tasks';
 
 export type SpecificationScenario =
   | 'working'
@@ -414,9 +416,43 @@ export function createSpecificationWorkspaceFixture(
   };
 }
 
+/** The presented status id of a fixture Task without its own (the Runtime presents only these). */
+const PRESENTED_STATUS = {
+  pending: 'ready',
+  in_progress: 'in-progress',
+  completed: 'completed',
+  blocked: 'blocked',
+} as const;
+
+/** A fixture Task as the Runtime's Overview preview (and Tasks page) row; neutral facts only. */
+function previewRow(task: TaskItem): TaskListEntry {
+  const lifecycle = task.lifecycle ?? task.statusCode ?? 'pending';
+
+  return {
+    id: task.id,
+    title: task.title,
+    type: { id: 'task', title: task.typeTitle ?? 'Task' },
+    dependsOn: [...(task.dependsOn ?? [])],
+    status: { id: task.statusId ?? PRESENTED_STATUS[lifecycle], label: task.status, lifecycle },
+    facts: {
+      preparation: task.statusId === 'draft' ? 'draft' : 'ready',
+      escalated: false,
+      position:
+        lifecycle === 'completed'
+          ? { state: 'terminal', outcome: 'completed' }
+          : lifecycle === 'in_progress'
+            ? { state: 'active', step: 'implement', attempt: 1 }
+            : { state: 'not-started' },
+      startable: false,
+      startBlockers: [],
+      definitionChanged: false,
+    },
+  };
+}
+
 /**
  * The Overview summary as the Runtime sends it for these groups: Ukończone compact, the others
- * rows with up to two Tasks, each by id and title.
+ * rows with up to two Tasks, each as its Tasks page row.
  */
 export function fixtureTaskOverview(
   groups: readonly TaskGroup[],
@@ -431,7 +467,7 @@ export function fixtureTaskOverview(
         groupId: group.id,
         name: group.name,
         count: group.tasks.length,
-        tasks: group.tasks.slice(0, 2).map((task) => ({ id: task.id, title: task.title })),
+        tasks: group.tasks.slice(0, 2).map(previewRow),
         more: Math.max(0, group.tasks.length - 2),
       })),
     compact: groups

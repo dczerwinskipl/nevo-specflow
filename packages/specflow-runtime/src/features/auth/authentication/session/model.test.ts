@@ -1,7 +1,14 @@
+import { userInfo } from 'node:os';
+
 import { describe, expect, it } from 'vitest';
 
 import type { RuntimeAuthenticationConfig } from '../configuration/model';
-import { authenticatedSession, configuredLoginMethods, unauthenticatedSession } from './model';
+import {
+  authenticatedSession,
+  configuredLoginMethods,
+  localActor,
+  unauthenticatedSession,
+} from './model';
 
 const auth: RuntimeAuthenticationConfig = {
   mode: 'required',
@@ -52,7 +59,21 @@ describe('authentication session model', () => {
       authenticated: false,
       user: { id: 'demo-user', name: 'Demo User' },
       loginMethods: { password: { enabled: false }, oidc: [] },
+      localActorId: `local:${userInfo().username}`,
     });
+  });
+
+  it('names the local CLI actor only when authentication is not required', () => {
+    const local = { ...auth, mode: 'none' } as const;
+
+    expect(localActor(local, () => 'ann')).toEqual({ localActorId: 'local:ann' });
+    expect(localActor(auth, () => 'ann')).toEqual({});
+    expect(localActor(local, () => '')).toEqual({});
+    expect(
+      localActor(local, () => {
+        throw new Error('no passwd entry');
+      }),
+    ).toEqual({});
   });
 
   it('projects OIDC profile data from the authenticated session', () => {

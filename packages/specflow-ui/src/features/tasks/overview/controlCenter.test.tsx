@@ -72,8 +72,7 @@ async function renderAt(
       specificationApi: { getSpecificationWorkspace: workspace },
       taskApi: {
         getTask: () => new Promise(() => undefined),
-        getTaskList: (_specId, query) =>
-          Promise.resolve(controlCenterTaskList(scenario, query.blocking === 'specification')),
+        getTaskList: (_specId, query) => Promise.resolve(controlCenterTaskList(scenario, query)),
       },
       taskAuthoringApi: fakeTaskAuthoringApi({
         specificationActions,
@@ -165,9 +164,10 @@ describe('Specification control center', () => {
                   row.groupId === 'in-progress'
                     ? {
                         ...row,
-                        tasks: [
-                          { id: 'T-02', title: 'Token exchange endpoint and session cookie' },
-                        ],
+                        tasks: controlCenterTaskList('waiting')
+                          .groups.flatMap((group) => group.tasks)
+                          .filter((task) => task.id === 'T-02')
+                          .map(({ attention: _started, ...task }) => task),
                       }
                     : row,
                 ),
@@ -193,8 +193,61 @@ describe('Specification control center', () => {
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: 'Start Implementation' })).toBeNull(),
     );
-    expect(document.querySelector('[data-summary-group="in-progress"]')?.textContent).toContain(
-      'T-02 Token exchange endpoint and session cookie',
+    // The Overview's row shows the refreshed preview: no attention overlay any more.
+    const row = document.querySelector<HTMLElement>(
+      '[data-summary-group="in-progress"] [data-row-task="T-02"]',
+    );
+    expect(row?.textContent).toBe(
+      'Token exchange endpoint and session cookieT-02·BackendIn progress',
+    );
+    expect(row?.dataset.taskAttention).toBeUndefined();
+  });
+
+  it('sends one start for repeated clicks on a Requires attention action while it runs', async () => {
+    let finish = () => undefined as void;
+    const start = vi.fn(
+      () =>
+        new Promise<never>((resolve) => {
+          finish = () => resolve(undefined as never);
+        }) as never,
+    );
+    await renderAt(`/specs/${SPEC}`, 'waiting', undefined, start);
+    await screen.findByRole('region', { name: 'Now' });
+    const action = await screen.findByRole('button', { name: 'Start Implementation' });
+
+    fireEvent.click(action);
+    fireEvent.click(action);
+    await waitFor(() => expect(start).toHaveBeenCalledTimes(1));
+    // The clicked button is busy while its command runs.
+    await waitFor(() => expect(action.getAttribute('aria-busy')).toBe('true'));
+    expect((action as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(start).toHaveBeenCalledTimes(1);
+    // Settled and re-read: the action is free again.
+    await act(async () => {
+      finish();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    await waitFor(() => expect(action.getAttribute('aria-busy')).toBeNull());
+  });
+
+  it('honours the group filter in the URL and clears it', async () => {
+    const { router } = await renderAt(`/specs/${SPEC}/tasks?group=cancelled`, 'waiting');
+    const chip = await waitFor(() => {
+      const element = document.querySelector<HTMLElement>('[data-group-filter="cancelled"]');
+      expect(element?.textContent).toBe('Cancelled');
+
+      return element!;
+    });
+
+    expect(document.querySelectorAll('[data-row-task]')).toHaveLength(1);
+    fireEvent.click(within(chip).getByRole('button', { name: 'Clear filter: Cancelled' }));
+    await waitFor(() => expect(document.querySelector('[data-group-filter]')).toBeNull());
+    expect(router.state.location.search).not.toHaveProperty('group');
+    await waitFor(() =>
+      expect(document.querySelectorAll('[data-row-task]').length).toBeGreaterThan(1),
     );
   });
 

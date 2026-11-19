@@ -12,30 +12,13 @@ import {
 } from '@nevo/ui';
 import type { TaskAuthoring } from '@nevo/specflow-contracts/workflow';
 import { OperationalRow } from '../../../../shared/operational-list';
-import type { SemanticSupporting } from '../../../../shared/operational-list/OperationalRow.types';
 import { SectionAddButton, SectionCallToAction } from '../SectionAddButton';
 import { SectionEditError } from '../SectionEditError';
-import { SupportSection } from '../SupportSection';
+import { OPEN_UP_TO, SupportSection } from '../SupportSection';
+import { taskStatusSupporting } from '../../read-model';
 import { useTaskCommands } from '../useTaskAuthoring';
 import { AddDependencyDialog } from './AddDependencyDialog';
 import { namedCandidates, type DependencyTask } from './dependencyModel';
-
-/** A dependency's state as a status: words with an icon, never colour alone. */
-function dependencyStatus(task: DependencyTask): SemanticSupporting {
-  switch (task.statusId) {
-    case 'completed':
-      return { text: task.statusLabel, tone: 'success', icon: 'circle-check' };
-    case 'in-progress':
-      return { text: task.statusLabel, tone: 'info', icon: 'workflow' };
-    case 'draft':
-    case 'blocked':
-    case 'on-hold':
-    case 'broken':
-      return { text: task.statusLabel, tone: 'attention', icon: 'triangle-alert' };
-    default:
-      return { text: task.statusLabel, icon: 'clock' };
-  }
-}
 
 export interface TaskDependenciesSectionProps {
   readonly specId: string;
@@ -50,7 +33,6 @@ export interface TaskDependenciesSectionProps {
   readonly editable: boolean;
   /** The Task has started: its dependencies are fixed. */
   readonly started: boolean;
-  readonly collapsible: boolean;
   readonly onOpenTask: (taskId: string) => void;
   readonly onLoadLatest: () => void;
 }
@@ -65,7 +47,6 @@ export function TaskDependenciesSection({
   candidates,
   editable,
   started,
-  collapsible,
   onOpenTask,
   onLoadLatest,
 }: TaskDependenciesSectionProps) {
@@ -89,12 +70,33 @@ export function TaskDependenciesSection({
       id="task-dependencies-heading"
       title={t('taskAuthoring.section.dependsOn')}
       icon="network"
+      taskId={taskId}
       count={dependsOn.length > 0 ? dependsOn.length : undefined}
-      collapsible={collapsible}
+      items={dependsOn.length}
+      openUpTo={OPEN_UP_TO.entries}
+      // A dependency that no longer exists keeps the Task from starting: shown at once.
+      holdsBlocker={dependsOn.some((id) => !byId.has(id))}
       actions={
         editable && dependsOn.length > 0 ? (
           <SectionAddButton label={t('taskAuthoring.dependencies.add')} onPress={openPicker} />
         ) : undefined
+      }
+      dialogs={
+        <>
+          <AddDependencyDialog
+            taskId={taskId}
+            open={adding}
+            onOpenChange={setAdding}
+            candidates={namedCandidates(candidates, tasks)}
+            pending={edit.isPending}
+            error={
+              edit.isError ? (
+                <SectionEditError taskId={taskId} error={edit.error} onLoadLatest={onLoadLatest} />
+              ) : undefined
+            }
+            onAdd={(ids) => save([...dependsOn, ...ids], () => setAdding(false))}
+          />
+        </>
       }
     >
       <div className="grid gap-3">
@@ -129,7 +131,8 @@ export function TaskDependenciesSection({
                   }
                   supporting={
                     other
-                      ? dependencyStatus(other)
+                      ? // The dependency's state is its status, presented as on every surface.
+                        taskStatusSupporting(other.statusId, other.statusLabel)
                       : {
                           text: t('taskAuthoring.dependencies.missingTask', { id }),
                           tone: 'attention',
@@ -163,19 +166,6 @@ export function TaskDependenciesSection({
           </InformationList>
         ) : null}
       </div>
-      <AddDependencyDialog
-        taskId={taskId}
-        open={adding}
-        onOpenChange={setAdding}
-        candidates={namedCandidates(candidates, tasks)}
-        pending={edit.isPending}
-        error={
-          edit.isError ? (
-            <SectionEditError taskId={taskId} error={edit.error} onLoadLatest={onLoadLatest} />
-          ) : undefined
-        }
-        onAdd={(ids) => save([...dependsOn, ...ids], () => setAdding(false))}
-      />
     </SupportSection>
   );
 }

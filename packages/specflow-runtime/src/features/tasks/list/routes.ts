@@ -25,7 +25,8 @@ export interface TaskListRoutesOptions {
 
 /**
  * `GET /api/specs/:specId/tasks`: the Tasks page, with `spec.view` on the Specification. The query
- * is validated (`blocking=specification` or nothing); anything else is a 400 before the read.
+ * is validated (`blocking=specification`, `group=<groupId>` or nothing, never both); anything else
+ * is a 400 before the read.
  */
 export const taskListRoutes: FastifyPluginCallback<TaskListRoutesOptions> = (
   app,

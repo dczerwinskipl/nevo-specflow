@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { Typography } from '@nevo/ui';
 import type { CloseRefusalBlocker } from '@nevo/specflow-contracts/specs';
 import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
+import { SemanticSupportingLine } from '../../../../shared/operational-list';
+import { taskStatusSupporting } from '../../read-model/statusPresentation';
 import { InlineAction } from '../InlineAction';
 
 export const ITEMS_SHOWN = 5;
@@ -140,7 +142,12 @@ export function closeReasons(
 export interface BlockerTask {
   readonly id: string;
   readonly title: string;
+  /** The status label. */
   readonly state: string;
+  /** The presented status id, for the status mark (`getTaskStatePresentation`). */
+  readonly statusId?: string;
+  /** Why an On hold Task is held (the Tasks page row's supporting line). */
+  readonly holdReason?: string;
 }
 
 export interface BlockerGroupsProps {
@@ -156,8 +163,9 @@ export interface BlockerGroupsProps {
 }
 
 /**
- * What keeps a Specification from ending, grouped in a fixed order: each group with its count, one
- * explanation, at most five linked Tasks (then "and N more") and its resolving action.
+ * What keeps a Specification from ending, grouped in a fixed order: each group with one
+ * explanation, at most five Tasks (then "and N more"; the heading counts them) with a link and their
+ * status, and its resolving action.
  */
 export function BlockerGroups({
   blockers,
@@ -175,16 +183,13 @@ export function BlockerGroups({
       return [];
     }
 
-    const taskIds = taskIdsOf(blockers, group, tasks);
-
-    return [{ group, members, taskIds }];
+    return [{ group, taskIds: taskIdsOf(blockers, group, tasks) }];
   });
 
   return (
     <div className="grid gap-5">
-      {groups.map(({ group, members, taskIds }) => {
+      {groups.map(({ group, taskIds }) => {
         const title = t(`workflowExecution.exit.group.${group}`);
-        const count = taskIds.length > 0 ? taskIds.length : members.length;
         const shown = taskIds.slice(0, ITEMS_SHOWN);
         const more = taskIds.length - shown.length;
         const action =
@@ -198,7 +203,10 @@ export function BlockerGroups({
           <section key={group} className="grid gap-2" aria-label={title}>
             <div className="grid gap-0.5">
               <Typography as="h3" variant="label-sm">
-                {t('workflowExecution.exit.groupHeading', { title, count })}
+                {/* Only a group that lists its Tasks counts them. */}
+                {taskIds.length > 0
+                  ? t('workflowExecution.exit.groupHeading', { title, count: taskIds.length })
+                  : title}
               </Typography>
               <Typography as="p" variant="body-sm" className="text-content-secondary">
                 {group === 'workflow' && workflowAt?.stepTitle !== undefined && !workflowAt.waiting
@@ -214,18 +222,34 @@ export function BlockerGroups({
                   const task = tasks.get(id);
 
                   return (
-                    <li key={id} className="grid min-w-0 text-body-sm">
-                      <InlineAction
-                        className="min-w-0 font-normal text-content-primary [overflow-wrap:anywhere]"
-                        onClick={() => onOpenTask(id)}
-                      >
-                        <span className="font-mono text-content-muted">{id}</span>{' '}
-                        {task?.title ?? id}
-                      </InlineAction>
-                      {/* A pending write names what is being saved, not the status of the Task. */}
-                      <span className="text-content-muted">
-                        {group === 'writes' ? t('workflowExecution.exit.saving') : task?.state}
+                    <li key={id} className="grid min-w-0 gap-0.5 text-body-sm" data-task-id={id}>
+                      {/* As on a Task row: the title, then the id on its own secondary line. */}
+                      <span className="min-w-0 [overflow-wrap:anywhere]">
+                        <InlineAction className="font-normal" onClick={() => onOpenTask(id)}>
+                          {task?.title ?? id}
+                        </InlineAction>
                       </span>
+                      {task?.title ? (
+                        <span
+                          className="min-w-0 font-mono text-content-muted [overflow-wrap:anywhere]"
+                          data-task-identity=""
+                        >
+                          {id}
+                        </span>
+                      ) : null}
+                      {/* A pending write names what is being saved, not the status of the Task. */}
+                      {group === 'writes' ? (
+                        <span className="text-content-muted">
+                          {t('workflowExecution.exit.saving')}
+                        </span>
+                      ) : task ? (
+                        <SemanticSupportingLine
+                          line={taskStatusSupporting(task.statusId, task.state)}
+                        />
+                      ) : null}
+                      {group !== 'writes' && task?.statusId === 'on-hold' && task.holdReason ? (
+                        <span className="text-content-secondary">{task.holdReason}</span>
+                      ) : null}
                     </li>
                   );
                 })}

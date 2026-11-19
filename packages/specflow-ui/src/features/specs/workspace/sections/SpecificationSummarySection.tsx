@@ -6,6 +6,8 @@ export interface SpecificationSummarySectionProps {
   readonly intro?: string;
   readonly overviewDocumentId?: string;
   readonly specId?: string;
+  /** The overview holds only its initial content (a template): there is nothing to show yet. */
+  readonly overviewInitialOnly?: boolean;
 }
 
 /** The title and, whenever they exist, the description and the main document preview. */
@@ -14,11 +16,14 @@ export function SpecificationSummarySection({
   intro,
   overviewDocumentId,
   specId,
+  overviewInitialOnly = false,
 }: SpecificationSummarySectionProps) {
   const description = intro && intro.trim() !== title.trim() ? intro.trim() : undefined;
   // "Show more" continues a description the Runtime cut (it ends the cut text with `…`), or shows
   // the overview when there is no description; a whole one-paragraph description has nothing more.
-  const clamped = description === undefined || description.endsWith('…');
+  // Without a description an overview that is still its initial content (the template's headings)
+  // is no description either: no "Show description" for it.
+  const clamped = description === undefined ? !overviewInitialOnly : description.endsWith('…');
 
   return (
     <div>

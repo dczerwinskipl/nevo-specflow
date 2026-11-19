@@ -1,28 +1,21 @@
 import {
-  WorkflowError,
   abandonSpecification,
   finishStep,
   inspectActionsForRead,
-  openWorkflow,
-  resolveSpecification,
   returnToStep,
   startSpecificationExecution,
   startTaskExecution,
-  type SpecFlowEngine,
   type WorkflowDependencies,
 } from '@nevo/specflow-engine';
 
 import type { WorkflowPort } from './port';
 
 /**
- * The Engine behind the workflow routes. The definitions are loaded for each call, so an edit of a
- * workflow, a task type or an archetype is seen by the next request; `open` is how (the Runtime adds
- * the project-document lookup of its docs corpus).
+ * The Engine behind the workflow routes. The workflow operations are opened for each call: a
+ * project Runtime loads its definitions each time, so an edit of a workflow, a task type or an
+ * archetype is seen by the next request; the demo Runtime answers from its in-memory state.
  */
-export function createEngineWorkflowPort(
-  engine: SpecFlowEngine,
-  open: () => Promise<WorkflowDependencies> = () => openWorkflow(engine),
-): WorkflowPort {
+export function createEngineWorkflowPort(open: () => Promise<WorkflowDependencies>): WorkflowPort {
   return {
     async actions(subject) {
       return inspectActionsForRead(await open(), subject);
@@ -39,17 +32,11 @@ export function createEngineWorkflowPort(
         });
       }
 
-      const found = await resolveSpecification(engine, subject.specId);
-      if (found.status !== 'available') {
-        throw new WorkflowError(
-          'WORKFLOW_SUBJECT_NOT_FOUND',
-          `The Specification "${subject.specId}" is not available in a registered checkout (${found.status}).`,
-        );
-      }
-
+      // The archetype of the Specification's manifest; an unknown Specification is
+      // `WORKFLOW_SUBJECT_NOT_FOUND`.
       return startSpecificationExecution(workflow, {
         specId: subject.specId,
-        archetype: found.specification.archetype.id,
+        archetype: await workflow.references.archetype(subject.specId),
         actor,
       });
     },

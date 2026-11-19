@@ -45,7 +45,7 @@ function producesTasks(step: WorkflowStep): boolean {
  * The one step every transition of `step` leads to. None when a transition ends the run (the run
  * may stop there) or when two transitions lead to different steps.
  */
-function onlyTarget(step: WorkflowStep): string | undefined {
+export function onlyTarget(step: WorkflowStep): string | undefined {
   let only: string | undefined;
   for (const { target } of step.transitions) {
     if (target.kind !== 'step' || (only !== undefined && target.step !== only)) {

@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { collectionPrimaryLink } from '../../../../shared/operational-list';
 import type { CurrentSpecTarget } from '../model';
 
 /** Stretches the title link over the whole row so the row is one target (see `InformationList`). */
-export const specPrimaryLinkClassName =
-  'pointer-events-auto static cursor-pointer whitespace-normal [overflow-wrap:anywhere] outline-none after:absolute after:inset-0 after:rounded-control focus-visible:after:outline-2 focus-visible:after:outline-focus-ring hover:text-content-link';
+export const specPrimaryLinkClassName = collectionPrimaryLink;
 
 export type RenderSpecificationLink = (
   specId: string,

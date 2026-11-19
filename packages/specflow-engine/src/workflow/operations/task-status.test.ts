@@ -403,6 +403,16 @@ describe('escalation to the Specification', () => {
       state: 'ready',
       step: 'breakdown',
     });
+    // The breakdown decides the escalated Task: only its own item, none for the Task (no race
+    // between a Resume and the step's decision).
+    const onlyBreakdown = [
+      expect.objectContaining({
+        subject: specification,
+        step: 'breakdown',
+        reason: 'owner-action',
+      }),
+    ];
+    expect((await inspectExecution(dependencies, SPEC)).attention).toEqual(onlyBreakdown);
     expect(await statusOf(dependencies, 'api')).toMatchObject({
       status: 'on-hold',
       statusChange: {
@@ -622,6 +632,7 @@ describe('escalation to the Specification', () => {
         ],
       },
     });
+    // The active breakdown decides the escalated Task (`existingTasks`, `taskDecisions`): no item.
     expect((await inspectExecution(dependencies, SPEC)).attention).toEqual([]);
   });
 

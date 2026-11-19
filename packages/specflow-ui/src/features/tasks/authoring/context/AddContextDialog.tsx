@@ -40,6 +40,8 @@ export interface AddContextDialogProps {
   /** The current list: references already in it are shown as added. */
   readonly existing: readonly TaskContextEntry[];
   readonly specificationDocuments: readonly SpecificationDocumentOption[];
+  /** The list is the default: adding saves it as the task's own list, said before the confirm. */
+  readonly firstChange: boolean;
   readonly pending: boolean;
   readonly error?: ReactNode;
   /** The new entries, appended at the end of the list by the caller. */
@@ -70,6 +72,7 @@ function AddContextForm({
   specTitle,
   existing,
   specificationDocuments,
+  firstChange,
   pending,
   error,
   onAdd,
@@ -124,6 +127,10 @@ function AddContextForm({
       </DialogHeader>
       <DialogBody>
         <form id={formId} noValidate onSubmit={submit} className="grid gap-6">
+          {/* First, under the description: a long picker scrolls, the confirm does not. */}
+          {firstChange ? (
+            <InlineNote icon="info">{t('taskAuthoring.context.firstChangeAddNote')}</InlineNote>
+          ) : null}
           {error}
           {kind !== 'instructions' ? (
             <CheckboxField

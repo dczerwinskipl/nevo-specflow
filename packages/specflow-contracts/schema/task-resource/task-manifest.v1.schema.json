@@ -173,6 +173,10 @@
           "type": {
             "type": "string",
             "pattern": "^[a-z][a-z0-9-]{0,31}$"
+          },
+          "baselineRevision": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
           }
         },
         "additionalProperties": false

@@ -19,6 +19,8 @@ import { createGitTestProject, git, commitStaged } from '../support/git-project'
 import { closeJournalPath } from '../../src/specs/lifecycle/journal/store';
 
 const roots: string[] = [];
+/** A registered workspace id (the checkout a repository blocker names). */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 afterEach(async () => {
   // Linked test worktrees must be removed before their Git common directory.
   // Windows can temporarily hold file handles after Git subprocess exit.
@@ -402,27 +404,89 @@ describe('E2.T10 — read-only lifecycle admission and durable shared Git resour
   }, 120000);
 
   it('blocks wrong primary branch, uncommitted content and primary Worktree close', async () => {
-    const { engine: wrong } = await fixture('different');
+    const { engine: wrong, branch: wrongBranch } = await fixture('different');
     const wrongSpec = await specification(wrong, 'Wrong configured branch');
     await expect(
       previewCloseOperation(wrong, {
         kind: 'specification-close',
         specId: wrongSpec.specId,
       }),
-    ).rejects.toMatchObject({ code: 'CLOSE_PREFLIGHT' });
+    ).rejects.toMatchObject({
+      code: 'CLOSE_PREFLIGHT',
+      repository: [
+        { kind: 'integration-target-branch', expectedBranch: 'other-branch', branch: wrongBranch },
+      ],
+    });
     const { engine: current, root } = await fixture();
     const spec = await specification(current, 'Dirty worktree');
     await writeFile(join(root, 'do-not-touch.txt'), 'untouched\n');
+    // The Specification's own edited document is named apart from the other files of the checkout,
+    // and listed first.
+    const overview = join(root, 'specs/active', spec.slug, 'overview.md');
+    await writeFile(overview, (await readFile(overview, 'utf8')) + '\nEdited.\n');
     await expect(
       previewCloseOperation(current, {
         kind: 'specification-close',
         specId: spec.specId,
       }),
-    ).rejects.toMatchObject({ code: 'CLOSE_PREFLIGHT' });
+    ).rejects.toMatchObject({
+      code: 'CLOSE_PREFLIGHT',
+      repository: [
+        {
+          kind: 'uncommitted-changes',
+          checkout: 'specification',
+          workspaceId: expect.stringMatching(UUID) as string,
+          paths: [
+            { path: `specs/active/${spec.slug}/overview.md`, scope: 'specification' },
+            { path: 'do-not-touch.txt', scope: 'other' },
+          ],
+          count: 2,
+          specificationCount: 1,
+        },
+      ],
+    });
     expect(await readFile(join(root, 'do-not-touch.txt'), 'utf8')).toBe('untouched\n');
     await expect(
       previewCloseOperation(current, { kind: 'worktree-close', specId: spec.specId }),
     ).rejects.toMatchObject({ code: 'CLOSE_PREFLIGHT' });
+  }, 120000);
+
+  it('names every repository precondition at once: uncommitted files and no integration branch', async () => {
+    const { engine, root, branch } = await fixture('none');
+    const spec = await specification(engine, 'No integration branch');
+    // Candidates come from local facts only: a remote default never fetched; a Specification
+    // branch (git.worktrees.branchPattern) is not offered.
+    git(root, 'branch', 'release');
+    git(root, 'branch', 'feature/nevo-9-other');
+    git(root, 'update-ref', 'refs/remotes/origin/release', 'HEAD');
+    git(root, 'symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/release');
+    // A tag with a branch's name must not turn the branch name into `heads/develop`.
+    git(root, 'branch', 'develop');
+    git(root, 'tag', 'develop');
+    git(root, 'tag', 'release');
+    const config = await readFile(join(root, '.nevo/config.yaml'), 'utf8');
+    const missing = {
+      kind: 'integration-target-missing',
+      sourceCheckout: 'primary',
+      candidates: [
+        { branch: 'release', facts: ['remote-default'], remote: 'origin' },
+        { branch, facts: ['primary-checkout'] },
+      ],
+      otherBranches: ['develop'],
+      otherBranchCount: 1,
+    };
+    await writeFile(join(root, 'untracked.txt'), 'new\n');
+    await expect(
+      previewCloseOperation(engine, { kind: 'specification-close', specId: spec.specId }),
+    ).rejects.toMatchObject({
+      code: 'CLOSE_PREFLIGHT',
+      repository: [{ kind: 'uncommitted-changes', checkout: 'specification', count: 1 }, missing],
+    });
+    await rm(join(root, 'untracked.txt'));
+    await expect(
+      previewCloseOperation(engine, { kind: 'specification-close', specId: spec.specId }),
+    ).rejects.toMatchObject({ code: 'CLOSE_PREFLIGHT', repository: [missing] });
+    expect(await readFile(join(root, '.nevo/config.yaml'), 'utf8')).toBe(config);
   }, 120000);
 
   it('rejects an unfinished Git merge even when porcelain reports a clean checkout', async () => {
@@ -459,7 +523,10 @@ describe('E2.T10 — read-only lifecycle admission and durable shared Git resour
         operationId: randomUUID(),
         specId: spec.specId,
       }),
-    ).rejects.toMatchObject({ code: 'CLOSE_PREFLIGHT' });
+    ).rejects.toMatchObject({
+      code: 'CLOSE_PREFLIGHT',
+      repository: [{ kind: 'git-operation-in-progress', checkout: 'specification' }],
+    });
     expect(await listCloseJournals(engine.context)).toEqual([]);
   }, 90000);
 

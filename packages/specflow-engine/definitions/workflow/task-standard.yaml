@@ -12,7 +12,7 @@ steps:
     title: Implement
     executors: [agent, human]
     archetype: implementer
-    purpose: Implement the Task within its scope and run its verification.
+    purpose: The Task's change works and stays within its scope.
     transitions:
       - id: implemented
         label: Implemented
@@ -23,7 +23,7 @@ steps:
     title: Review
     executors: [agent, human]
     archetype: reviewer
-    purpose: Review the change independently against the Task and the repository rules.
+    purpose: The change is confirmed correct, in scope and within repository rules.
     transitions:
       - id: approved
         label: Approved

@@ -68,7 +68,12 @@ import {
 import { entryGatesOf, exitGatesFor, type GateStatus } from '../gates/evaluate';
 import { evaluateGates, type GateDocuments } from '../gates/read';
 import type { StartBlocker } from './start-blockers';
-import { outlineOf, type OutlinePosition, type WorkflowOutline } from './outline';
+import {
+  documentRelationsOf,
+  type DocumentRelation,
+  type RelationSteps,
+} from '../gates/document-relations';
+import { onlyTarget, outlineOf, type OutlinePosition, type WorkflowOutline } from './outline';
 import { forOneRead } from './task-references';
 
 export type { StartBlocker } from './start-blockers';
@@ -152,6 +157,11 @@ export type ActionPosition =
         readonly startedAt: string;
         readonly actor: WorkflowActor;
       };
+      /**
+       * What finishes the step, read for everyone whoever runs the attempt: each result with where
+       * it goes and the exit gates it needs, evaluated now. Who may finish is `actions.finish`.
+       */
+      readonly exits: readonly StepExit[];
     }
   | {
       readonly kind: 'waiting';
@@ -207,6 +217,9 @@ export type PresentedHandoff =
   | Extract<Handoff, { kind: 'return' }>;
 
 /** The workflow actions the owner may take now; an absent action is not allowed. */
+/** A result of the active step with the exit gates it needs (absent when it needs none). */
+export type StepExit = TransitionDescription & { readonly gates?: readonly GateStatus[] };
+
 export interface WorkflowActions {
   readonly start?: {
     readonly step: string;
@@ -321,6 +334,13 @@ export interface ActionProjection {
    */
   readonly outline?: WorkflowOutline;
   /**
+   * The documents the gates of the active and the next step name, one relation each
+   * (`documentRelationsOf`). On the Specification projection and on one Task's own projection
+   * (`inspectActions`) whenever the subject's workflow resolves and is unchanged; empty once the run
+   * ended. A read of several Tasks never computes it.
+   */
+  readonly documentRelations?: readonly DocumentRelation[];
+  /**
    * For a Task subject that is not broken, in the projection of that one Task (`inspectActions`):
    * its effective context and dependency candidates. A read of several Tasks (`readExecution`,
    * `inspectExecution`) never computes it.
@@ -328,8 +348,8 @@ export interface ActionProjection {
   readonly taskAuthoring?: TaskAuthoringFacts;
   /**
    * What a person has to do about the subject now, if anything: the item `deriveAttention` derives
-   * for it, or for a Task that has not started, its start blockers that need a person
-   * (`startBlockerAttention`).
+   * for it (a held Task's included, `heldTaskAttention`), or for a Task that has not started, its
+   * start blockers that need a person (`startBlockerAttention`).
    */
   readonly attention?: AttentionItem;
 }
@@ -525,6 +545,57 @@ function entryGateBlockers(next: StartableStep): StartBlocker[] {
   return unsatisfied.length > 0 ? [{ kind: 'gates-unsatisfied', gates: unsatisfied }] : [];
 }
 
+/**
+ * The steps whose gates relate to documents at `position` (`documentRelationsOf`): before a start
+ * the step a start would activate (it starts now); at a step, that step and the one every transition
+ * of it leads to (it starts later).
+ */
+export function relationStepsOf(
+  definition: WorkflowDefinition,
+  position: ActionPosition,
+): RelationSteps {
+  switch (position.kind) {
+    case 'not-started':
+    case 'ready':
+      return { next: { step: stepOf(definition, position.next.step.id), startsNow: true } };
+    case 'blocked':
+      return position.next
+        ? { next: { step: stepOf(definition, position.next.step.id), startsNow: true } }
+        : {};
+    case 'active':
+    case 'waiting': {
+      const step = stepOf(definition, position.step.id);
+      const target = onlyTarget(step);
+
+      return {
+        ...(position.kind === 'active' ? { active: step } : {}),
+        ...(target !== undefined
+          ? { next: { step: stepOf(definition, target), startsNow: false } }
+          : {}),
+      };
+    }
+
+    case 'terminal':
+      return {};
+  }
+}
+
+/** The projection with the relations of the documents its gates name. */
+async function withDocumentRelations<P extends Pick<ActionProjection, 'position'>>(
+  gates: GateReading,
+  definition: WorkflowDefinition,
+  projection: P,
+): Promise<P & Pick<ActionProjection, 'documentRelations'>> {
+  return {
+    ...projection,
+    documentRelations: await documentRelationsOf(
+      gates.documents,
+      gates.subject,
+      relationStepsOf(definition, projection.position),
+    ),
+  };
+}
+
 /** The entry step of a run that does not exist yet: an agent would start it in a fresh Session. */
 function firstStepOf(
   definition: WorkflowDefinition,
@@ -591,13 +662,13 @@ interface RunInput {
 }
 
 /**
- * The finish transitions of an active work step, each with the exit gates that apply to it. Every
- * gate is read once, whichever transitions it applies to.
+ * The results of an active work step, each with the exit gates that apply to it (a gate `when`
+ * names its results). Every gate is read once, whichever results it applies to.
  */
-async function finishTransitions(
+async function stepExits(
   input: RunInput,
   step: Extract<WorkflowStep, { kind: 'work' }>,
-): Promise<NonNullable<WorkflowActions['finish']>['transitions']> {
+): Promise<StepExit[]> {
   const statuses = new Map(
     (
       await evaluateGates(
@@ -608,6 +679,24 @@ async function finishTransitions(
     ).map((status) => [status.id, status] as const),
   );
 
+  return describeTransitions(input.definition, step).map((transition) => {
+    const gates = exitGatesFor(step, transition.result).flatMap(
+      (gate) => statuses.get(gate.id) ?? [],
+    );
+
+    return { ...transition, ...(gates.length > 0 ? { gates } : {}) };
+  });
+}
+
+/**
+ * The finish transitions of an active work step: its results (`stepExits`) with whether each can
+ * be taken now.
+ */
+async function finishTransitions(
+  input: RunInput,
+  step: Extract<WorkflowStep, { kind: 'work' }>,
+  exits: readonly StepExit[],
+): Promise<NonNullable<WorkflowActions['finish']>['transitions']> {
   // The open Tasks whose document change is pending (D03): a finish cannot close them, since that
   // writes their folder. Asked once, only when a transition waits for open Tasks.
   const anyOpen = describeTransitions(input.definition, step).some(
@@ -631,11 +720,9 @@ async function finishTransitions(
     }
   }
 
-  return describeTransitions(input.definition, step).map((transition, index) => {
+  return exits.map((transition, index) => {
     const declared = step.transitions[index];
-    const gates = exitGatesFor(step, transition.result).flatMap(
-      (gate) => statuses.get(gate.id) ?? [],
-    );
+    const gates = transition.gates ?? [];
     // The finish asks the same rule (`advance`) on the state after its own input, so a finish
     // whose own Task list, decisions or effects can close every open Task may still complete.
     const open = tasksOpenAtCompletion(
@@ -673,7 +760,6 @@ async function finishTransitions(
       ...(open.length > 0 ? { openTasks: open } : {}),
       ...(closable ? { resolvableByFinish: true as const, closableTasks: closable } : {}),
       ...(pendingOpen.length > 0 ? { documentChangePending: pendingOpen } : {}),
-      ...(gates.length > 0 ? { gates } : {}),
     };
   });
 }
@@ -772,12 +858,15 @@ async function runProjection(
     throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'The active work attempt has no actor.');
   }
 
+  const exits = await stepExits(input, step);
+
   return {
     ...common,
     position: {
       kind: 'active',
       step: describeStep(step),
       attempt: { number: attempt.attempt, startedAt: attempt.startedAt, actor: attempt.actor },
+      exits,
     },
     actions: {
       // A person never finishes an agent's attempt (the core refuses it).
@@ -786,7 +875,7 @@ async function runProjection(
             finish: {
               step: step.id,
               attempt: attempt.attempt,
-              transitions: await finishTransitions(input, step),
+              transitions: await finishTransitions(input, step, exits),
               ...(describeStep(step).produces === 'tasks'
                 ? { drafts: ownedDrafts(input.tasks, step.id) }
                 : {}),
@@ -896,7 +985,11 @@ async function specificationPosition(
 
     return {
       subject,
-      ...(await firstStart(resolved.workflow, catalogue, gates, [], false)),
+      ...(await withDocumentRelations(
+        gates,
+        resolved.workflow,
+        await firstStart(resolved.workflow, catalogue, gates, [], false),
+      )),
       specification,
       outline: outlineOf(resolved.workflow, { kind: 'not-started' }),
     };
@@ -909,20 +1002,24 @@ async function specificationPosition(
 
   return {
     subject,
-    ...(await runProjection({
-      definition,
-      run: record.run,
-      catalogue,
-      startBlockers: () => Promise.resolve([]),
-      returnable: true,
-      // A Specification finish writes Task folders only through its input (drafts, decisions,
-      // effects): the Tasks it would close are asked one by one (`taskDocumentChangePending`).
-      documentChangePending: false,
-      taskDocumentChangePending: (specId, taskId) =>
-        dependencies.references.pendingDocumentChange(specId, taskId),
-      tasks: executionTasks(catalogue, snapshot),
+    ...(await withDocumentRelations(
       gates,
-    })),
+      definition,
+      await runProjection({
+        definition,
+        run: record.run,
+        catalogue,
+        startBlockers: () => Promise.resolve([]),
+        returnable: true,
+        // A Specification finish writes Task folders only through its input (drafts, decisions,
+        // effects): the Tasks it would close are asked one by one (`taskDocumentChangePending`).
+        documentChangePending: false,
+        taskDocumentChangePending: (specId, taskId) =>
+          dependencies.references.pendingDocumentChange(specId, taskId),
+        tasks: executionTasks(catalogue, snapshot),
+        gates,
+      }),
+    )),
     specification,
     outline: outlineOf(definition, outlinePositionOf(record.run)),
   };
@@ -1066,6 +1163,8 @@ export async function taskProjection(
     }
 
     const blockers = [...readinessBlockers(), ...typeBlockers, ...(await contextBlockers())];
+    // A Task on hold has no start-blocker item: the item of its hold, if any, is derived
+    // (`heldTaskAttention`), as for a Task with a run.
     if (!workflow) {
       const attention = startBlockerAttention(subject, blockers, undefined, tasks.broken);
 
@@ -1074,11 +1173,12 @@ export async function taskProjection(
         position: { kind: 'blocked', blockers },
         actions: {},
         task: lifecycle,
-        ...(attention ? { attention } : {}),
+        ...(attention ? { attention } : ownAttention(derived, subject)),
       };
     }
 
-    const first = await firstStart(workflow, catalogue, gates, blockers, true);
+    const started = await firstStart(workflow, catalogue, gates, blockers, true);
+    const first = read.detail ? await withDocumentRelations(gates, workflow, started) : started;
     const attention =
       first.position.kind === 'blocked'
         ? startBlockerAttention(subject, first.position.blockers, first.position.next, tasks.broken)
@@ -1088,7 +1188,7 @@ export async function taskProjection(
       subject,
       ...first,
       task: lifecycle,
-      ...(attention ? { attention } : {}),
+      ...(attention ? { attention } : ownAttention(derived, subject)),
     };
   }
 
@@ -1102,20 +1202,22 @@ export async function taskProjection(
     };
   }
 
+  const projection = await runProjection({
+    definition,
+    run,
+    catalogue,
+    startBlockers: async () => [...readinessBlockers(), ...(await contextBlockers())],
+    returnable: task.status === 'ready',
+    documentChangePending: pending,
+    taskDocumentChangePending: (specId, taskId) =>
+      dependencies.references.pendingDocumentChange(specId, taskId),
+    tasks,
+    gates,
+  });
+
   return {
     subject,
-    ...(await runProjection({
-      definition,
-      run,
-      catalogue,
-      startBlockers: async () => [...readinessBlockers(), ...(await contextBlockers())],
-      returnable: task.status === 'ready',
-      documentChangePending: pending,
-      taskDocumentChangePending: (specId, taskId) =>
-        dependencies.references.pendingDocumentChange(specId, taskId),
-      tasks,
-      gates,
-    })),
+    ...(read.detail ? await withDocumentRelations(gates, definition, projection) : projection),
     task: lifecycle,
     ...ownAttention(derived, subject),
   };

@@ -272,6 +272,7 @@ export async function reserveCreateOperation(
         branch: plan.branch,
         baseCommit: plan.baseCommit,
         ...(explicit ? { integrationDestination: explicit.destination } : {}),
+        ...(plan.startedFrom !== undefined ? { startedFrom: plan.startedFrom } : {}),
       };
       gitPlan = {
         projectRoot: plan.projectRoot,

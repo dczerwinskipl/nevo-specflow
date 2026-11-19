@@ -256,6 +256,7 @@ DocumentTree = {
     protected: boolean                 // true only for overview
     editable: boolean                  // md, txt in the first release
     satisfiesRequirement: boolean      // registered and its type has a requirement with minCount > 0
+    contentState?: 'baseline' | 'authored'   // registered only: baseline while the file still has exactly the bytes its registry entry records as baselineRevision (initial content the Engine wrote, template or generated), else authored; the same value as the workspace documents section; absent for unclassified files and in demo mode
     actions: { save?: Action; rename: Action; move: Action; delete: Action; classify: Action }   // save: the text can be saved (editable, nothing refuses a write)
     commit?: { state: 'pending' | 'failed' | 'uncommitted'; operationId: string; recoveryRequired?: boolean; reason?: string; blockedBy?: string; attempts?: integer; nextAttemptAt?: string; queuedAt?: string }   // while an operation that has not settled covers the path (pending: queued, committing or still writing; failed: waits for a decision, recoveryRequired when only the operator can resolve it); 'uncommitted' = the path is in the uncommitted-changes ledger (reason auto-commit-off or abandoned), kept until a commit holds the path; reason/blockedBy/attempts/nextAttemptAt as in CommitInfo; a committed operation never appears
   }>
@@ -582,17 +583,22 @@ the Specification routes; the Engine's Task-scoped Documents own every rule (the
 Task resource refuses a write). Project mode only (not registered in demo mode); a Task the
 Specification does not list is `DOCUMENT_NOT_FOUND`.
 
-| Method | Path                                                     | Capability | Purpose                                                               |
-| ------ | -------------------------------------------------------- | ---------- | --------------------------------------------------------------------- |
-| GET    | `/api/specs/:specId/tasks/:taskId/document-tree`         | View       | `TaskDocumentTree` (`registryRevision`, `writable`, the documents)    |
-| GET    | `/api/specs/:specId/tasks/:taskId/documents/:documentId` | View       | `DocumentContent`                                                     |
-| PUT    | `/api/specs/:specId/tasks/:taskId/documents/:documentId` | Manage     | Save text                                                             |
-| POST   | `/api/specs/:specId/tasks/:taskId/documents`             | Manage     | Create documents (`DocumentOperationResult`, `revision` the registry) |
-| POST   | `/api/specs/:specId/tasks/:taskId/document-operations`   | Manage     | rename / move / delete                                                |
+| Method | Path                                                     | Capability | Purpose                                                                |
+| ------ | -------------------------------------------------------- | ---------- | ---------------------------------------------------------------------- |
+| GET    | `/api/specs/:specId/tasks/:taskId/document-tree`         | View       | `TaskDocumentTree` (`registryRevision`, `capabilities`, the documents) |
+| GET    | `/api/specs/:specId/tasks/:taskId/documents/:documentId` | View       | `DocumentContent`                                                      |
+| PUT    | `/api/specs/:specId/tasks/:taskId/documents/:documentId` | Manage     | Save text                                                              |
+| POST   | `/api/specs/:specId/tasks/:taskId/documents`             | Manage     | Create documents (`DocumentOperationResult`, `revision` the registry)  |
+| POST   | `/api/specs/:specId/tasks/:taskId/document-operations`   | Manage     | rename / move / delete                                                 |
 
 `TaskDocumentTree` lists each document with `id`, `path` (relative to the Task folder), `type`,
 `classification`, `required` and, when its file is readable, `file` (`kind`, `mediaType`, `size`,
-`revision` for a save, `editable`). Like the Specification tree it answers an `ETag` (over the whole
+`revision` for a save, `editable`) and, for a registered document with a readable file,
+`contentState` by the same rule as the Specification tree (`task.yaml` `documents[].baselineRevision`,
+kept by rename and move). A generated `task.md` (no first text given at creation, for a manual or a
+produced Task) is `baseline` until a person or an agent changes it; a Task metadata edit does not
+rewrite it. Other Task documents are created from given content (`authored`); archetype templates
+are not offered for Tasks. Like the Specification tree it answers an `ETag` (over the whole
 listing, so a file change changes it) and `304` to a matching `If-None-Match`. A write's status is
 read at the Specification's `GET /api/specs/:specId/document-operations/:operationId`. The Task's metadata (title, dependencies, context) is not a
 document: it changes through the [Task commands](task-reads.md#task-commands).
@@ -715,8 +721,22 @@ the demo endpoints.
     paths, the queue is full or a batch awaits recovery (`details.cause`). Autosave MUST back off by
     `retryAfterMs` and keep the draft.
 19. **Close refused with pending commits** (`DOCUMENT_COMMITS_PENDING`, `details.cause` `commit-pending`,
-    `commit-failed` or `commit-uncommitted`): the Close dialog explains that document commits are not finished and offers "Commit now"
-    (flush) or points to the failed operation.
+    `commit-failed` or `commit-uncommitted`; the Close preview answers it too, without flushing, exactly when the
+    Close would): for `commit-pending` the Close dialog shows "Saving document commits…" and reads the preview
+    again for a bounded time, then offers "Check again"; for `commit-uncommitted` it reads `details.uncommitted`
+    (`UncommittedHoldDetails`: the ledger `reasons` `auto-commit-off`/`abandoned`, the documents `policy`
+    `{ documents: manual|auto, source: project|local|default }` (absent when unreadable), the `owners`, each a
+    Specification (`specId`, `title` when readable, its `workflowState` count: its `.execution` and Tasks, and
+    `documents` count, `stepInProgress` when a step of its runs is in progress, whose finish commits the
+    workflow state with automatic commits off) or `definitions`, each with its total `count` and at most 8
+    checkout-relative `paths` (workflow state first), and the `unreadable` record count). The dialog names
+    the real cause and how to resolve it: saved documents to commit from that Specification's Documents or
+    with Git; the Task and step changes of another Specification to commit with Git (or, only when a step is in
+    progress there, by finishing it); an abandoned commit, definitions, unreadable records or mixed causes to
+    commit with Git. Under the sentence it lists each owner by name with its files ("and N more") and warns
+    that files discarded outside SpecFlow (git restore, git clean) are gone for good.
+    The archived Specification's own workflow state never holds its Close; for `commit-failed` it says to retry or resolve the failed commit in Documents. The dialog
+    itself offers no "Commit now" (see `product.specflow.ui.workflow-execution`, section Close).
 20. **Definitions problems.** `ArchetypeCatalogue.problems[]` (invalid definition files) is shown to people who can
     fix them as a quiet warning on the Create form ("N definitions are invalid"); the valid archetypes remain
     selectable. Messages are plain text without paths.

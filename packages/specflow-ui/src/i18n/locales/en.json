@@ -15,7 +15,6 @@
     "loading": "Loading…",
     "notImplemented": "Not implemented",
     "unknown": "Unknown",
-    "flow": "Flow",
     "pullRequestNumber": "PR #{{number}}",
     "options": {
       "show": "Show options",
@@ -133,21 +132,11 @@
     "markdownDiagramReset": "Fit diagram",
     "markdownDiagramFullScreen": "Open diagram full screen",
     "thisSpecification": "This specification",
-    "previewTaskAria": "Preview task: {{title}}",
+    "openTaskAria": "Open task: {{title}}",
     "openSessionAria": "Open session: {{title}}",
     "readDocAria": "Read document: {{title}}",
-    "taskPreviewAriaLabel": "Task preview",
-    "closeTaskPreview": "Close task preview",
-    "taskStateLabel": "State",
-    "fullTaskView": "Full task view",
-    "taskPreviewTitle": "Task preview",
     "taskNotFoundTitle": "Task not found",
     "taskNotFoundDescription": "The requested task \"{{taskId}}\" could not be found in this specification.",
-    "taskPreviewSessionExpired": "Your session has expired. Sign in again to view this task.",
-    "taskPreviewAccessDenied": "You do not have permission to view this task.",
-    "taskPreviewSourceUnavailable": "Task data is temporarily unavailable. Try again.",
-    "taskPreviewLoadFailed": "Could not load the task preview. Try again.",
-    "requiresAttention": "Requires your attention",
     "repositoryHeading": "Repository",
     "baseBranchLabel": "base {{base}}",
     "gitLocalChangesUnknown": "Local changes: no data",
@@ -169,10 +158,9 @@
     "prepareStartUnavailable": "An agent prepares the tasks in a session. Starting a session is not available here.",
     "tasksHeading": "Tasks",
     "tasksEmptyTitle": "No tasks yet",
+    "tasksNoneCreated": "No tasks were created",
     "tasksEmptyDescription": "Tasks appear here once the specification is prepared for work.",
-    "tasksAppearAt": "Tasks appear when the workflow reaches {{step}} (step {{position}} of {{total}}).",
-    "tasksAppearAfter": "Tasks appear when {{step}} (step {{position}} of {{total}}) finishes.",
-    "documentTemplateOnly": "Template only",
+    "tasksAppearAfter": "The \"{{step}}\" step ({{position}} of {{total}}) creates the tasks.",
     "documentsEmptyTitle": "No documents yet",
     "documentsHeading": "Documents",
     "allDocumentsLink": "All documents",
@@ -366,28 +354,10 @@
     "showAll": "Show all ({{count}})",
     "showDescription": "Show description",
     "sourceUnavailable": "This source is unavailable.",
-    "currentWork": "Current work",
-    "nextWork": "Next work — not started",
-    "terminal": "Workflow result",
-    "notStarted": "Not started",
-    "checkpoint": "Waiting at checkpoint",
-    "inProgress": "In progress",
-    "currentPosition": "Current position",
-    "nextPosition": "Next step",
-    "completedPosition": "Last completed step",
-    "evidence": "Evidence",
-    "waitingHuman": "Waiting for human action",
     "attempt": "Attempt {{count}}",
-    "workActions": "Work actions",
-    "flowDetails": "Flow details",
     "resources": "Related resources",
-    "recovery": "Recovery",
-    "dependencies": "Dependencies",
     "pageFailed": "Could not load this page. Your visible data has been kept.",
     "partialHistory": "History coverage is partial.",
-    "previousFeedback": "Feedback from {{step}}, attempt {{count}}",
-    "requirementChanged": "This requirement is fulfilled or no longer current.",
-    "feedbackRequired": "Feedback required",
     "executor": {
       "human": "Human",
       "agent": "Agent"
@@ -396,24 +366,10 @@
       "success": "Completed successfully",
       "failure": "Finished with failure"
     },
-    "relation": {
-      "input": "Input for this work",
-      "output": "Published result",
-      "current_execution": "Current execution",
-      "previous_execution": "Previous execution",
-      "context": "Related context"
-    },
-    "requirement": "Requirement",
     "resource": "Resource",
-    "stepDetails": "Step details",
-    "nextStepDetails": "Next step details",
-    "details": "Details",
     "hints": "Hints",
     "hintUnresolved": "Reference only. Content is unavailable: no resolved target or supported reader.",
     "contextChanged": "This context has changed. Close and reopen its details to inspect the new snapshot.",
-    "contextMismatch": "The requirement cannot be matched to the current work by step, attempt and revision. Its own information remains available.",
-    "workTransitions": "Declared work transitions",
-    "requirementActions": "Requirement decisions",
     "attemptDetails": "Attempt details",
     "hideAttemptDetails": "Hide attempt details",
     "provenance": "Provenance",
@@ -438,12 +394,10 @@
     "historyContextUnavailable": "Full historical context unavailable",
     "materialAvailable": "Available",
     "materialUnavailable": "Content unavailable",
-    "readerUnavailable": "No reader is available for this material.",
     "materialForbidden": "Access restricted",
     "restrictedMaterial": "Restricted material",
     "historyTitle": "History",
-    "historyInProgress": "In progress",
-    "transitionTo": "To: {{target}}"
+    "historyInProgress": "In progress"
   },
   "applicationNavigation": {
     "location": "Application location",
@@ -537,8 +491,7 @@
     "task": "Loading Task…",
     "document": "Loading document…",
     "history": "Loading Task history…",
-    "detail": "Loading resource…",
-    "dependency": "The Task context is unavailable."
+    "detail": "Loading resource…"
   },
   "create": {
     "newSession": "New session",
@@ -982,7 +935,9 @@
         "reserving": {
           "title": "Reserving the name",
           "running": "Checking that the name and branch are free",
-          "done": "Name and branch reserved"
+          "done": "Name and branch reserved",
+          "runningName": "Checking that the name is free",
+          "doneName": "Name reserved"
         },
         "preparing-workspace": {
           "title": "Preparing the workspace",
@@ -1049,7 +1004,8 @@
         "stillWorking": "Still working — this can take a minute.",
         "reading": "Reading the operation…",
         "completed": "Done. Opening the specification…",
-        "workingNew": "Preparing a new workspace and the specification."
+        "workingNew": "Preparing a new workspace and the specification.",
+        "completedUncommitted": "Done, but the files are not committed yet."
       },
       "leaveNote": "You can leave this page. Creation continues on the server, and you can return to check its status from the specification list.",
       "openSpecification": "Open specification",
@@ -1067,7 +1023,11 @@
       "backToSpecifications": "Back to specifications",
       "notCreated": "Nothing was created. Your entries are kept, so you can fix this and try again.",
       "location": "Creating specification",
-      "createdNotCommitted": "The specification files were created but could not be committed."
+      "createdNotCommitted": "The specification files were created but could not be committed.",
+      "uncommitted": {
+        "title": "The specification files are not committed",
+        "body": "Git is disabled in this project (git.enabled in .nevo/config.yaml), so Nevo wrote the files without committing them. Commit them with Git yourself: Close refuses while they are uncommitted."
+      }
     },
     "operations": {
       "kind": "Creating a specification"
@@ -1125,6 +1085,36 @@
       "discardAll": "Discard all",
       "notSaved": "not saved",
       "saveAllFailed": "Not all documents could be saved. The drafts are kept."
+    },
+    "state": {
+      "initialContent": "Initial content only",
+      "initialContentShort": "Initial content",
+      "withContent": "{{content}} · {{relation}}",
+      "allInitialContent": "{{count}} · initial content only",
+      "relation": {
+        "neededToFinishThisStep": "Needed to finish this step",
+        "neededToFinishStep": "Needed to finish {{step}}",
+        "neededToFinishShort": "Needed to finish",
+        "neededToStartStep": "Needed to start {{step}}",
+        "neededToStartShort": "Needed to start",
+        "usedThisStep": "Used in this step",
+        "usedStep": "Used in {{step}}",
+        "usedShort": "Used"
+      },
+      "afterContent": {
+        "neededToFinishThisStep": "needed to finish this step",
+        "neededToFinishStep": "needed to finish {{step}}",
+        "neededToFinishShort": "needed to finish",
+        "neededToStartStep": "needed to start {{step}}",
+        "neededToStartShort": "needed to start",
+        "usedThisStep": "used in this step",
+        "usedStep": "used in {{step}}",
+        "usedShort": "used"
+      },
+      "missingSections_one": "Needs the {{sections}} section",
+      "missingSections_other": "Needs the {{sections}} sections",
+      "missingSections_few": "Needs the {{sections}} sections",
+      "missingSections_many": "Needs the {{sections}} sections"
     },
     "tree": {
       "newFolder": "New folder",
@@ -1216,6 +1206,7 @@
       "removeRegistration": "Remove registration",
       "registrationRemoved": "Registration of {{name}} removed",
       "truncated": "Only the first entries are listed.",
+      "relationsUnavailable": "The workflow's requirements could not be loaded, so the documents a step needs are not marked.",
       "skipped_one": "{{count}} entry in the folder could not be read.",
       "skipped_few": "{{count}} entries in the folder could not be read.",
       "skipped_many": "{{count}} entries in the folder could not be read.",
@@ -2038,18 +2029,19 @@
     "status": {
       "draft": "Draft",
       "in-progress": "In progress",
-      "ready": "Ready",
+      "ready": "Ready to start",
       "waiting": "Waiting",
-      "blocked": "Blocked",
-      "completed": "Completed",
+      "blocked": "Cannot start",
+      "completed": "Done",
       "abandoned": "Abandoned",
       "on-hold": "On hold",
       "cancelled": "Cancelled",
-      "broken": "Broken"
+      "broken": "Cannot start · files broken"
     },
     "tasks": {
       "newTask": "New task",
-      "emptyDescription": "Create tasks with New task, also before the workflow starts.",
+      "emptyDescription": "You can also create them now with New task.",
+      "emptyDescriptionAlone": "You can create them now with New task.",
       "draftLine": "Draft · needs approval",
       "after": "after {{ids}}",
       "actionsFailed": "Whether tasks can be created could not be loaded."
@@ -2118,7 +2110,6 @@
       "taskContent": "Task content",
       "taskDocument": "Task document",
       "fileMissing": "File missing",
-      "open": "Open {{name}}",
       "actionsFor": "Actions for {{name}}",
       "rename": "Rename",
       "delete": "Delete document",
@@ -2133,7 +2124,8 @@
       "nameLabel": "New name",
       "renameConfirm": "Rename",
       "deleteTitle": "Delete {{name}}",
-      "deleteDescription": "The file and its registration are removed. Context entries that name it stop resolving."
+      "deleteDescription": "The file and its registration are removed. Context entries that name it stop resolving.",
+      "newOwnContext": "It is not added to the context, because this task has its own list. Add it from Context if a step should read it."
     },
     "context": {
       "count_one": "{{count}} entry",
@@ -2141,12 +2133,40 @@
       "count_many": "{{count}} entries",
       "count_other": "{{count}} entries",
       "explanation": "Inputs this task needs before it starts, in the order they are read. task.md always comes first.",
-      "defaultNote": "No list is set yet, so this is the default context. The first change writes it out.",
-      "blocking_one": "{{count}} required entry is missing.",
-      "blocking_few": "{{count}} required entries are missing.",
-      "blocking_many": "{{count}} required entries are missing.",
-      "blocking_other": "{{count}} required entries are missing.",
-      "blockingBody": "The next step cannot start until they are replaced or removed.",
+      "explanationStarted": "Inputs this task reads, in order. task.md always comes first.",
+      "sourceDefault": "default",
+      "sourceOwn": "own list",
+      "summaryOptionalMissing": "{{count}} optional missing",
+      "defaultLabel": "Default context",
+      "ownLabel": "Own context list",
+      "aboutDefault": "About the default context",
+      "aboutOwn": "About this context list",
+      "defaultBody": "It follows this task: task.md, its other documents and the specification overview, all required. New task documents join it by themselves.",
+      "defaultFirstChange": "Your first change saves it as this task's own list. After that, new task documents are not added by themselves.",
+      "ownBody": "This task's own list. New task documents are not added to it by themselves.",
+      "ownRestore": "Choose “Use default context” in the + menu to bring the default back.",
+      "firstChangeMenuNote": "A change here saves the context as this task's own list. After that, new task documents are not added by themselves.",
+      "firstChangeAddNote": "Adding this saves the context as this task's own list. After that, new task documents are not added by themselves.",
+      "useDefault": "Use default context",
+      "useDefaultTitle": "Use the default context?",
+      "useDefaultBody_one": "This task's list of {{count}} entry will be replaced by the default: task.md, its other documents and the specification overview, all required.",
+      "useDefaultBody_other": "This task's list of {{count}} entries will be replaced by the default: task.md, its other documents and the specification overview, all required.",
+      "useDefaultBody_few": "This task's list of {{count}} entries will be replaced by the default: task.md, its other documents and the specification overview, all required.",
+      "useDefaultBody_many": "This task's list of {{count}} entries will be replaced by the default: task.md, its other documents and the specification overview, all required.",
+      "useDefaultRemoved": "Entries you added will be removed: {{names}}.",
+      "useDefaultFollows": "After that, the context follows this task again: new task documents join it by themselves.",
+      "moreNames": "+{{count}}",
+      "awaitedLabel": "Awaited · needed to start",
+      "notFoundLabel": "Not found",
+      "notRegisteredLabel": "Not registered",
+      "blocking_one": "{{count}} required entry is missing: {{names}}.",
+      "blocking_few": "{{count}} required entries are missing: {{names}}.",
+      "blocking_many": "{{count}} required entries are missing: {{names}}.",
+      "blocking_other": "{{count}} required entries are missing: {{names}}.",
+      "blockingBody_one": "The next step cannot start until it is replaced or removed.",
+      "blockingBody_few": "The next step cannot start until they are replaced or removed.",
+      "blockingBody_many": "The next step cannot start until they are replaced or removed.",
+      "blockingBody_other": "The next step cannot start until they are replaced or removed.",
       "kind": {
         "task-document": "Task document",
         "specification-document": "Specification document",
@@ -2204,7 +2224,9 @@
       "awaitedEntry": "{{ref}} does not exist yet.",
       "ownArtifactTitle": "Not added: this is the task's own document",
       "ownArtifactBody": "Context lists what the task needs before it starts. {{ref}} is produced by this task, so it belongs to an exit gate of the step that produces it, for example “a findings document exists” before finishing.",
-      "notFoundOptional": "Not found: {{ref}} was moved or deleted. Optional, so the next step skips it."
+      "notFoundOptional": "Not found: {{ref}} was moved or deleted. Optional, so the next step skips it.",
+      "requiredShort": "required",
+      "optionalShort": "optional"
     },
     "dependencies": {
       "none": "No dependencies: the task can start as soon as it is approved.",
@@ -2252,11 +2274,24 @@
       "heading": "Now",
       "workflow": "{{title}} · rev {{version}}",
       "notStarted": "Not started",
+      "onHold": "On hold",
       "firstStep": "First step · {{title}}",
       "progress": "Step {{position}} of {{total}}",
       "progressNext": "Step {{position}} of {{total}} · next: {{next}}",
       "ready": "Ready to start",
-      "active": "Attempt {{attempt}} · in progress since {{since}} · started by {{actor}}",
+      "active": "In progress since {{since}} · started by {{actor}}",
+      "activeAttempt": "Attempt {{attempt}} · in progress since {{since}} · started by {{actor}}",
+      "starting": "Starting…",
+      "track": {
+        "current": "Step {{position}} of {{total}}: {{title}}",
+        "notStarted": "Not started, {{total}} steps. First step: {{title}}",
+        "completed": "All {{total}} steps · completed"
+      },
+      "newTask": "New task",
+      "addSectionsToFinish_one": "Add the {{sections}} section to {{name}} to finish.",
+      "addSectionsToFinish_few": "Add the {{sections}} sections to {{name}} to finish.",
+      "addSectionsToFinish_many": "Add the {{sections}} sections to {{name}} to finish.",
+      "addSectionsToFinish_other": "Add the {{sections}} sections to {{name}} to finish.",
       "waitingNote": "Continues by itself when every task is done or cancelled",
       "waitingFor_one": "Waiting for {{count}} of {{total}} task",
       "waitingFor_few": "Waiting for {{count}} of {{total}} tasks",
@@ -2274,7 +2309,13 @@
         "abandoned": "Abandoned"
       },
       "abandonedBy": "{{at}} by {{actor}}",
-      "toFinishWith": "To finish with {{result}}:",
+      "goal": "Goal",
+      "showMore": "Show more",
+      "showLess": "Show less",
+      "doneWhen": "Done when",
+      "doneWhenWith": "Done with {{result}} when",
+      "then": "Then: {{step}}",
+      "lastHandoff": "Last hand-off",
       "returned": "Returned to this step",
       "start": "Start {{step}}",
       "finish": "Finish step",
@@ -2283,11 +2324,13 @@
       "postActionFailed": "The step is finished. Its workflow state was not committed ({{code}}): it stays uncommitted, and Close includes it.",
       "postActionHeld": "The step is finished. {{edited}} changed outside SpecFlow after SpecFlow wrote it, so the files of its Task, and of Tasks added or removed since, stay uncommitted; the rest of the workflow state is committed. Commit those files with Git; otherwise Close includes them.",
       "lastPrefix": "Last: {{step}} · ",
+      "handoffFrom": "{{step}} · ",
       "alreadyFinished": "This step was already finished. What you can do now is shown below.",
       "startWorkflow": "Start workflow",
       "operations": "Workflow operations",
       "history": "Workflow history",
       "returnTo": "Return to {{step}}",
+      "restart": "Restart {{step}}",
       "finishAfterGate": "Finish step becomes available once this is met.",
       "finishAfterTasks": "Finish step becomes available once every task is done or cancelled.",
       "tasksOpen": "To finish with {{result}}, every task must be done or cancelled. Open: {{tasks}}.",
@@ -2323,14 +2366,18 @@
       "entryGates": "Needed before the step starts:"
     },
     "gate": {
-      "noDocument": "none registered yet",
       "fileMissing": "its file is missing",
-      "sectionsMissing": "missing sections: {{sections}}",
       "unreadable": "cannot be read",
+      "notYet": "not yet",
+      "notYetSection": "not yet · {{sections}} section missing",
+      "notYetSections": "not yet · {{sections}} sections missing",
+      "typeDocument": "A {{type}} document",
+      "hasSection": "{{subject}} has a {{sections}} section",
+      "hasSectionVowel": "{{subject}} has an {{sections}} section",
+      "hasSections": "{{subject}} has the {{sections}} sections",
       "metHidden": " (met)",
       "unmetHidden": " (not met)",
-      "createDocument": "Create {{type}} document",
-      "openDocument": "Open document"
+      "createDocument": "Create {{type}} document"
     },
     "finish": {
       "blocked": {
@@ -2417,6 +2464,7 @@
         "sessions": "An agent Session is working in this worktree. Wait for its Turn to finish or cancel it, then close."
       },
       "groupHeading": "{{title}} · {{count}}",
+      "groupCount": " · {{count}}",
       "more_one": "and {{count}} more",
       "more_few": "and {{count}} more",
       "more_many": "and {{count}} more",
@@ -2428,17 +2476,17 @@
     },
     "close": {
       "action": "Close specification",
+      "noRepository": "Close specification: needs a repository, so not in the demo",
       "title": "Close {{title}}",
       "blocked": "{{title}} cannot close yet: {{reasons}}.",
       "abandonPrompt": "Not going to finish this work?",
       "abandonInstead": "Abandon instead",
-      "ready": "Everything required is finished. Closing also runs the repository checks.",
-      "afterAbandon": "Abandoned: “{{reason}}” Closing records it as not delivered and runs the repository checks.",
+      "afterAbandon": "Abandoned: “{{reason}}”",
       "readyTitle": "Ready to close",
-      "readyBody": "The workflow is complete.",
+      "readyBody": "The workflow is complete and the repository checks passed.",
+      "readyGitOffBody": "The workflow is complete. Git is off, so nothing is merged.",
       "notDelivered": "Cancelled, not delivered",
       "notDeliveredExplanation": "Recorded as not delivered when the specification closes.",
-      "previewFailed": "Close cannot start now",
       "failed": "Not closed",
       "notCompleted": "Close needs attention",
       "status": {
@@ -2446,7 +2494,7 @@
         "in-progress": "Close is still running.",
         "recovery-required": "Close stopped part way and needs recovery."
       },
-      "submit": "Close specification",
+      "submit": "Close and archive",
       "reason": {
         "waiting_one": "its workflow is waiting for {{count}} unfinished task",
         "waiting_few": "its workflow is waiting for {{count}} unfinished tasks",
@@ -2472,6 +2520,120 @@
         "sessions_few": "{{count}} agent Sessions are working in its worktree",
         "sessions_many": "{{count}} agent Sessions are working in its worktree",
         "sessions_other": "{{count}} agent Sessions are working in its worktree"
+      },
+      "readyChecksBody": "The repository checks passed.",
+      "refusal": {
+        "preflight": "A repository check stops the Close. To see which one, run “nevo-specflow specs close <specification id> --preview” in the project folder.",
+        "sharedWorktree": "Other specifications share this worktree, so it cannot be integrated for this one alone. Close the whole workspace, or archive this specification without integration from the command line.",
+        "conflict": "The project changed while Close was being prepared. Check again to read it once more.",
+        "unavailable": "The specification files cannot be read now. Check that its checkout is present, then check again.",
+        "recovery": "An earlier Close of this specification stopped part way. Finish it from the command line before closing again.",
+        "gitConfig": "The git section of .nevo/config.yaml is invalid or incomplete. Correct it, then check again.",
+        "git": "Git cannot run in the project folder now. Check the repository, then check again.",
+        "documentsPending": "Saved documents in this checkout are still being committed. Wait a moment, then check again.",
+        "commitBlocked": "Git does not accept a commit on this branch now. Check the branch protection and the repository state, then check again.",
+        "engine": "Close is not available in this Runtime.",
+        "unknown": "Close did not start, and the reason cannot be shown here. Check again; if it fails again, run “nevo-specflow specs close <specification id> --preview” in the project folder.",
+        "documentsUncommitted": "Saved documents in this checkout are not committed: automatic commits were off when they were saved. Commit them from that specification's Documents or with Git, then check again.",
+        "workflowStateUncommitted": "Task and step changes of another specification in this checkout are not committed yet. Commit them with Git, then check again.",
+        "workflowStateUncommittedStep": "Task and step changes of another specification in this checkout are not committed yet. Commit them with Git, or finish the step in progress there (finishing it commits them), then check again.",
+        "uncommittedAbandoned": "Changes in this checkout whose commit was abandoned are not committed. Commit them with Git, then check again.",
+        "uncommittedGit": "Files SpecFlow wrote in this checkout are not committed. Commit them with Git, then check again.",
+        "documentsFailed": "A document commit failed. Retry or resolve it in Documents, then check again."
+      },
+      "repository": {
+        "checkout": {
+          "specification": "the checkout of the specification",
+          "integrationTarget": "the checkout it is integrated into"
+        },
+        "uncommitted": {
+          "titleSpecification": "Uncommitted files in this checkout",
+          "titleIntegrationTarget": "Uncommitted files where it merges",
+          "leadSpecification": "Closing commits only this specification and starts from a committed checkout. These files are not committed:",
+          "leadIntegrationTarget": "These files are not committed in the checkout {{title}} merges into. They may not belong to this specification:",
+          "ofSpecification": "(this specification)",
+          "commitSpecification": "Commit them in this checkout (or move the ones that do not belong here), then check again.",
+          "commitIntegrationTarget": "Commit them in that checkout (or move them to where they belong), then check again.",
+          "discardWarningLead": "Commit them first.",
+          "discardWarning": "If you discard them instead (for example with git restore or git clean), they are gone for good: Git keeps no copy of uncommitted work.",
+          "ownerThisSpecification": "{{title}} (this specification)",
+          "ownerUnknownSpecification": "Another specification ({{id}})",
+          "ownerDefinitions": "Installed definitions"
+        },
+        "targetMissing": {
+          "title": "No integration branch configured",
+          "explanationLinked": "Closing merges this specification into the project's integration branch, and the project names none. Choose the branch, add it to <code>.nevo/config.yaml</code> as <code>git.integrationTargetBranch</code>, then check again.",
+          "explanationPrimary": "Closing archives this specification on the project's integration branch in the main folder, and the project names none. Choose the branch, add it to <code>.nevo/config.yaml</code> as <code>git.integrationTargetBranch</code>, then check again.",
+          "choiceLabel": "Integration branch",
+          "fact": {
+            "remoteDefault": "Remote default ({{remote}})",
+            "startedFrom": "{{title}} started from it",
+            "primaryCheckout": "Checked out in the main folder"
+          },
+          "other": "Another local branch…",
+          "otherLabel": "Local branch",
+          "otherPlaceholder": "Choose a branch",
+          "otherLimited": "Showing {{shown}} of {{count}} local branches.",
+          "noBranch": "No local branch can receive it. Create the integration branch in the repository, then check again.",
+          "placeholder": "<choose a branch>",
+          "settingLabel": "Setting for .nevo/config.yaml",
+          "chooseFirst": "Choose a branch first"
+        },
+        "targetBranch": {
+          "title": "Integration checkout on another branch",
+          "explanation": "Close integrates the specification into {{expected}}, but the checkout of {{expected}} is on {{branch}}. Switch it back to {{expected}}, then check again."
+        },
+        "gitOperation": {
+          "title": "Unfinished Git operation",
+          "explanation": "A merge, rebase, cherry-pick or revert is still in progress in {{checkout}}. Finish or abort it, then check again."
+        },
+        "detached": {
+          "title": "Not on a branch",
+          "explanation": "HEAD is detached in {{checkout}}: it is not on a local branch. Check out its branch, then check again."
+        },
+        "copyPath": "Copy path",
+        "copySetting": "Copy setting",
+        "copied": "Copied",
+        "copyFailed": "Could not copy. Select the text and copy it instead."
+      },
+      "documentsCheckingTitle": "Saving document commits…",
+      "documentsCheckingBody": "Saved documents in this checkout are still being committed. The check runs again by itself, and Close can start once they are committed.",
+      "checkAgain": "Check again",
+      "checking": "Checking whether {{title}} can close…",
+      "checkingSlow": "Checking the repository. This can take a few seconds.",
+      "checkFailed": "Could not check whether {{title}} can close",
+      "blockedRepository_one": "{{title}} cannot close yet: {{count}} repository problem.",
+      "blockedRepository_few": "{{title}} cannot close yet: {{count}} repository problems.",
+      "blockedRepository_many": "{{title}} cannot close yet: {{count}} repository problems.",
+      "blockedRepository_other": "{{title}} cannot close yet: {{count}} repository problems.",
+      "facts": {
+        "result": "Result",
+        "notDelivered": "Recorded as not delivered",
+        "merges": "Merges",
+        "tasks": "Tasks",
+        "documents": "Documents"
+      },
+      "documentsFact_one": "{{count}} with initial content only: {{names}}",
+      "documentsFact_few": "{{count}} with initial content only: {{names}}",
+      "documentsFact_many": "{{count}} with initial content only: {{names}}",
+      "documentsFact_other": "{{count}} with initial content only: {{names}}",
+      "documentsMore": "+{{count}} more",
+      "merge": {
+        "nothing": "Nothing to merge",
+        "primary": "Archives on <code>{{branch}}</code> (main folder; nothing to merge)",
+        "archiveOnly": "Archives on <code>{{branch}}</code> without merging",
+        "gitOff": "Archives without Git (Git is off for this project)",
+        "gitOffLinked": "Archives without Git (Git is off for this project); the archive stays uncommitted in the specification's checkout"
+      },
+      "tasksFact": {
+        "none": "No tasks were created"
+      },
+      "archiveNote": "Closing archives the specification; it cannot be reopened.",
+      "submitting": "Closing…",
+      "heldBy": {
+        "other": "another specification has uncommitted changes in this checkout",
+        "own": "it has uncommitted changes in its checkout",
+        "checkout": "files SpecFlow wrote in this checkout are not committed"
       }
     },
     "abandon": {
@@ -2534,6 +2696,7 @@
         "cancel-task": "Cancel task",
         "restore-task": "Open task",
         "satisfy-gate": "Open task",
+        "resume-task": "Resume",
         "start-step": "Start step",
         "return-to-step": "Return to earlier step"
       },
@@ -2542,24 +2705,21 @@
       "stuckTitle_other": "Resolve {{count}} blocking tasks",
       "stuckReason": "Approve, resume or cancel them so the specification can finish",
       "startFailed": "The step could not be started. Open the task to see what you can do now.",
+      "resumeFailed": "The task could not be resumed. Open the task to see what you can do now.",
       "startNamed": "Start {{step}}",
       "stuckTitle_few": "Resolve {{count}} blocking tasks",
       "stuckTitle_many": "Resolve {{count}} blocking tasks"
     },
     "summary": {
       "allTasks": "All tasks",
-      "count_one": "{{count}} task",
-      "count_other": "{{count}} tasks",
-      "more_one": "{{count}} more",
-      "more_other": "{{count}} more",
-      "openGroup": "{{group}}: open on the Tasks page",
-      "count_few": "{{count}} tasks",
-      "count_many": "{{count}} tasks",
-      "more_few": "{{count}} more",
-      "more_many": "{{count}} more"
+      "moreIn_one": "{{count}} more in {{group}}",
+      "moreIn_other": "{{count}} more in {{group}}",
+      "moreIn_few": "{{count}} more in {{group}}",
+      "moreIn_many": "{{count}} more in {{group}}",
+      "moreActions": "Tasks: more actions"
     },
     "progress": {
-      "label": "Tasks {{progress}}",
+      "tasksDone": "{{completed}} of {{total}} tasks done",
       "done": "{{completed}} of {{total}} done",
       "cancelled_one": "{{count}} cancelled",
       "cancelled_other": "{{count}} cancelled",
@@ -2607,6 +2767,13 @@
       "attention": "Requires attention · {{reason}}",
       "attentionOnly": "Requires attention",
       "blocksSpecification": "the specification cannot continue until it moves",
+      "blocksNamedSpecification": "{{specification}} cannot continue until it moves",
+      "escalated": "escalated to the specification",
+      "escalatedFeedback": "escalated to the specification: {{feedback}}",
+      "holdsUp": "holds up {{ids}}",
+      "holdsUpMore": "holds up {{ids}} (+{{more}})",
+      "holdsFinish": "{{step}} cannot finish while this task is on hold",
+      "holdsFinishUnnamed": "the step cannot finish while this task is on hold",
       "waitingFor": "Waiting for {{ids}}"
     },
     "page": {
@@ -2618,8 +2785,14 @@
       "blocking_other": "Blocking specification · {{count}} tasks",
       "nothingBlocks": "Nothing blocks the specification now",
       "clearBlocking": "Clear filter: blocking specification",
+      "groupEmpty": "No tasks in this group now",
+      "groupUnnamed": "Filtered by group",
+      "clearGroup": "Clear filter: {{group}}",
+      "clearGroupUnnamed": "Clear group filter",
       "shown": "{{matched}} of {{total}} shown",
       "noMatch": "No task matches the filter.",
+      "taskColumn": "Task",
+      "statusColumn": "Status",
       "blocking_few": "Blocking specification · {{count}} tasks",
       "blocking_many": "Blocking specification · {{count}} tasks"
     }
@@ -2760,9 +2933,13 @@
         "title": "This workspace is unavailable right now",
         "description": "The folder {{folder}} cannot be read, for example while its branch is being switched or after the folder was moved. Choose another workspace or try again."
       },
+      "notServed": {
+        "title": "Project documentation is not available in the demo",
+        "description": "The demo runs on sample data without a project, so there is no documentation folder to read. Start SpecFlow in a project to read its documentation."
+      },
       "docsUnavailable": {
         "title": "The documentation cannot be read right now",
-        "description": "Its settings could not be read, or this Runtime serves no project documentation. Try again in a moment."
+        "description": "Its settings could not be read, or reading it failed. Try again in a moment."
       },
       "failed": {
         "title": "The documentation cannot be shown right now",

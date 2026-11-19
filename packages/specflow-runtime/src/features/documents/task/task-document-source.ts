@@ -57,13 +57,14 @@ export function createEngineTaskDocumentSource(
     return {
       taskId: listing.taskId,
       registryRevision: listing.registryRevision,
-      writable: listing.writable,
+      capabilities: { save: listing.writable, organize: listing.writable },
       documents: listing.documents.map((document) => ({
         id: document.id,
         path: document.path,
         ...(document.type !== undefined ? { type: document.type } : {}),
         classification: document.classification,
         required: document.required,
+        ...(document.contentState !== undefined ? { contentState: document.contentState } : {}),
         ...(document.file ? { file: { ...document.file } } : {}),
       })),
     };

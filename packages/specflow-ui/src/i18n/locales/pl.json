@@ -15,7 +15,6 @@
     "loading": "Ładowanie…",
     "notImplemented": "Niezaimplementowane",
     "unknown": "Nieznane",
-    "flow": "Flow",
     "pullRequestNumber": "PR #{{number}}",
     "options": {
       "show": "Pokaż opcje",
@@ -133,21 +132,11 @@
     "markdownDiagramReset": "Dopasuj diagram",
     "markdownDiagramFullScreen": "Otwórz diagram na pełnym ekranie",
     "thisSpecification": "Ta specyfikacja",
-    "previewTaskAria": "Podgląd zadania: {{title}}",
+    "openTaskAria": "Otwórz zadanie: {{title}}",
     "openSessionAria": "Otwórz sesję: {{title}}",
     "readDocAria": "Czytaj dokument: {{title}}",
-    "taskPreviewAriaLabel": "Podgląd zadania",
-    "closeTaskPreview": "Zamknij podgląd zadania",
-    "taskStateLabel": "Stan",
-    "fullTaskView": "Pełny widok zadania",
-    "taskPreviewTitle": "Podgląd zadania",
     "taskNotFoundTitle": "Nie znaleziono zadania",
     "taskNotFoundDescription": "Wskazane zadanie \"{{taskId}}\" nie istnieje w tej specyfikacji.",
-    "taskPreviewSessionExpired": "Sesja wygasła. Zaloguj się ponownie, aby zobaczyć zadanie.",
-    "taskPreviewAccessDenied": "Nie masz uprawnień do wyświetlenia tego zadania.",
-    "taskPreviewSourceUnavailable": "Dane zadania są tymczasowo niedostępne. Spróbuj ponownie.",
-    "taskPreviewLoadFailed": "Nie udało się pobrać podglądu zadania. Spróbuj ponownie.",
-    "requiresAttention": "Wymaga Twojej uwagi",
     "repositoryHeading": "Repozytorium",
     "baseBranchLabel": "baza {{base}}",
     "gitLocalChangesUnknown": "Zmiany lokalne: brak danych",
@@ -169,10 +158,9 @@
     "prepareStartUnavailable": "Zadania przygotowuje agent w sesji. Rozpoczęcie sesji nie jest tu dostępne.",
     "tasksHeading": "Zadania",
     "tasksEmptyTitle": "Nie ma jeszcze zadań",
+    "tasksNoneCreated": "Nie utworzono żadnych zadań",
     "tasksEmptyDescription": "Zadania pojawią się tutaj, gdy specyfikacja zostanie przygotowana do realizacji.",
-    "tasksAppearAt": "Zadania pojawią się, gdy workflow dojdzie do kroku {{step}} (krok {{position}} z {{total}}).",
-    "tasksAppearAfter": "Zadania pojawią się po zakończeniu kroku {{step}} (krok {{position}} z {{total}}).",
-    "documentTemplateOnly": "Tylko szablon",
+    "tasksAppearAfter": "Zadania tworzy krok {{step}} ({{position}} z {{total}}).",
     "documentsEmptyTitle": "Nie ma jeszcze dokumentów",
     "documentsHeading": "Dokumenty",
     "allDocumentsLink": "Wszystkie dokumenty",
@@ -366,28 +354,10 @@
     "showAll": "Pokaż wszystkie ({{count}})",
     "showDescription": "Pokaż opis",
     "sourceUnavailable": "To źródło jest niedostępne.",
-    "currentWork": "Bieżąca praca",
-    "nextWork": "Następna praca — jeszcze nie rozpoczęta",
-    "terminal": "Wynik procesu",
-    "notStarted": "Jeszcze nie rozpoczęte",
-    "checkpoint": "Oczekuje na checkpoint",
-    "inProgress": "W toku",
-    "currentPosition": "Bieżąca pozycja",
-    "nextPosition": "Następny krok",
-    "completedPosition": "Ostatni zakończony krok",
-    "evidence": "Dowód",
-    "waitingHuman": "Czeka na człowieka",
     "attempt": "Próba {{count}}",
-    "workActions": "Akcje bieżącej pracy",
-    "flowDetails": "Przebieg zadania",
     "resources": "Powiązane zasoby",
-    "recovery": "Odzyskiwanie",
-    "dependencies": "Zależności",
     "pageFailed": "Nie udało się pobrać strony. Widoczne dane zostały zachowane.",
     "partialHistory": "Historia jest częściowa.",
-    "previousFeedback": "Feedback z {{step}}, próba {{count}}",
-    "requirementChanged": "To wymaganie jest już spełnione lub nieaktualne.",
-    "feedbackRequired": "Wymagany feedback",
     "executor": {
       "human": "Człowiek",
       "agent": "Agent"
@@ -396,24 +366,10 @@
       "success": "Zakończone pomyślnie",
       "failure": "Zakończone niepowodzeniem"
     },
-    "relation": {
-      "input": "Materiał do bieżącej pracy",
-      "output": "Opublikowany wynik",
-      "current_execution": "Bieżące wykonanie",
-      "previous_execution": "Poprzednie wykonanie",
-      "context": "Powiązany kontekst"
-    },
-    "requirement": "Wymaganie",
     "resource": "Zasób",
-    "stepDetails": "Szczegóły kroku",
-    "nextStepDetails": "Szczegóły następnego kroku",
-    "details": "Szczegóły",
     "hints": "Wskazówki",
     "hintUnresolved": "Tylko referencja. Treść niedostępna: brak rozwiązanego celu lub wspieranego readera.",
     "contextChanged": "Kontekst uległ zmianie. Zamknij i ponownie otwórz szczegóły, aby sprawdzić nowy snapshot.",
-    "contextMismatch": "Nie można potwierdzić zgodności wymagania z pracą według kroku, próby i rewizji. Własne informacje wymagania pozostają dostępne.",
-    "workTransitions": "Deklarowane przejścia pracy",
-    "requirementActions": "Rozstrzygnięcia wymagania",
     "attemptDetails": "Szczegóły próby",
     "hideAttemptDetails": "Ukryj szczegóły próby",
     "provenance": "Pochodzenie",
@@ -438,12 +394,10 @@
     "historyContextUnavailable": "Pełny kontekst historyczny niedostępny",
     "materialAvailable": "Dostępne",
     "materialUnavailable": "Treść niedostępna",
-    "readerUnavailable": "Brak czytnika tego materiału.",
     "materialForbidden": "Dostęp ograniczony",
     "restrictedMaterial": "Materiał chroniony",
     "historyTitle": "Historia",
-    "historyInProgress": "W toku",
-    "transitionTo": "Do: {{target}}"
+    "historyInProgress": "W toku"
   },
   "applicationNavigation": {
     "location": "Lokalizacja w aplikacji",
@@ -537,8 +491,7 @@
     "task": "Ładowanie zadania…",
     "document": "Ładowanie dokumentu…",
     "history": "Ładowanie historii zadania…",
-    "detail": "Ładowanie zasobu…",
-    "dependency": "Kontekst zadania jest niedostępny."
+    "detail": "Ładowanie zasobu…"
   },
   "create": {
     "newSession": "Nowa sesja",
@@ -982,7 +935,9 @@
         "reserving": {
           "title": "Rezerwowanie nazwy",
           "running": "Sprawdzamy, czy nazwa i gałąź są wolne",
-          "done": "Nazwa i gałąź zarezerwowane"
+          "done": "Nazwa i gałąź zarezerwowane",
+          "runningName": "Sprawdzamy, czy nazwa jest wolna",
+          "doneName": "Nazwa zarezerwowana"
         },
         "preparing-workspace": {
           "title": "Przygotowanie środowiska pracy",
@@ -1049,7 +1004,8 @@
         "stillWorking": "Nadal pracujemy — to może potrwać minutę.",
         "reading": "Odczytywanie operacji…",
         "completed": "Gotowe. Otwieramy specyfikację…",
-        "workingNew": "Przygotowujemy nowe środowisko pracy i specyfikację."
+        "workingNew": "Przygotowujemy nowe środowisko pracy i specyfikację.",
+        "completedUncommitted": "Gotowe, ale pliki nie mają jeszcze commita."
       },
       "leaveNote": "Możesz opuścić tę stronę. Tworzenie trwa dalej na serwerze, a jego stan sprawdzisz, wracając z listy specyfikacji.",
       "openSpecification": "Otwórz specyfikację",
@@ -1067,7 +1023,11 @@
       "backToSpecifications": "Wróć do specyfikacji",
       "notCreated": "Nic nie zostało utworzone. Wpisane dane są zachowane, więc możesz to poprawić i spróbować ponownie.",
       "location": "Tworzenie specyfikacji",
-      "createdNotCommitted": "Pliki specyfikacji powstały, ale nie udało się zapisać ich w commicie."
+      "createdNotCommitted": "Pliki specyfikacji powstały, ale nie udało się zapisać ich w commicie.",
+      "uncommitted": {
+        "title": "Pliki specyfikacji nie mają commita",
+        "body": "Git jest w tym projekcie wyłączony (git.enabled w .nevo/config.yaml), więc Nevo zapisało pliki bez commita. Zrób commit w Git samodzielnie: zamknięcie odmówi, dopóki pliki są bez commita."
+      }
     },
     "operations": {
       "kind": "Tworzenie specyfikacji"
@@ -1125,6 +1085,36 @@
       "discardAll": "Odrzuć wszystkie",
       "notSaved": "niezapisany",
       "saveAllFailed": "Nie wszystkie dokumenty udało się zapisać. Szkice zostają."
+    },
+    "state": {
+      "initialContent": "Tylko treść początkowa",
+      "initialContentShort": "Treść początkowa",
+      "withContent": "{{content}} · {{relation}}",
+      "allInitialContent": "{{count}} · tylko treść początkowa",
+      "relation": {
+        "neededToFinishThisStep": "Potrzebny do ukończenia tego kroku",
+        "neededToFinishStep": "Potrzebny do ukończenia kroku {{step}}",
+        "neededToFinishShort": "Potrzebny do ukończenia",
+        "neededToStartStep": "Potrzebny do rozpoczęcia kroku {{step}}",
+        "neededToStartShort": "Potrzebny do rozpoczęcia",
+        "usedThisStep": "Używany w tym kroku",
+        "usedStep": "Używany w kroku {{step}}",
+        "usedShort": "Używany"
+      },
+      "afterContent": {
+        "neededToFinishThisStep": "potrzebny do ukończenia tego kroku",
+        "neededToFinishStep": "potrzebny do ukończenia kroku {{step}}",
+        "neededToFinishShort": "potrzebny do ukończenia",
+        "neededToStartStep": "potrzebny do rozpoczęcia kroku {{step}}",
+        "neededToStartShort": "potrzebny do rozpoczęcia",
+        "usedThisStep": "używany w tym kroku",
+        "usedStep": "używany w kroku {{step}}",
+        "usedShort": "używany"
+      },
+      "missingSections_one": "Brakuje sekcji {{sections}}",
+      "missingSections_few": "Brakuje sekcji {{sections}}",
+      "missingSections_many": "Brakuje sekcji {{sections}}",
+      "missingSections_other": "Brakuje sekcji {{sections}}"
     },
     "tree": {
       "newFolder": "Nowy folder",
@@ -1216,6 +1206,7 @@
       "removeRegistration": "Usuń rejestrację",
       "registrationRemoved": "Usunięto rejestrację {{name}}",
       "truncated": "Pokazano tylko pierwsze pozycje.",
+      "relationsUnavailable": "Nie udało się wczytać wymagań przepływu pracy, więc dokumenty potrzebne krokom nie są oznaczone.",
       "skipped_one": "Nie udało się odczytać {{count}} pozycji w folderze.",
       "skipped_few": "Nie udało się odczytać {{count}} pozycji w folderze.",
       "skipped_many": "Nie udało się odczytać {{count}} pozycji w folderze.",
@@ -2038,18 +2029,19 @@
     "status": {
       "draft": "Szkic",
       "in-progress": "W toku",
-      "ready": "Gotowe",
+      "ready": "Gotowe do rozpoczęcia",
       "waiting": "Czeka",
-      "blocked": "Zablokowane",
+      "blocked": "Nie można rozpocząć",
       "completed": "Ukończone",
       "abandoned": "Porzucone",
       "on-hold": "Wstrzymane",
       "cancelled": "Anulowane",
-      "broken": "Uszkodzone"
+      "broken": "Nie można rozpocząć · pliki uszkodzone"
     },
     "tasks": {
       "newTask": "Nowe zadanie",
-      "emptyDescription": "Utwórz zadania przyciskiem Nowe zadanie, także zanim workflow wystartuje.",
+      "emptyDescription": "Możesz też utworzyć je teraz przyciskiem Nowe zadanie.",
+      "emptyDescriptionAlone": "Możesz utworzyć je teraz przyciskiem Nowe zadanie.",
       "draftLine": "Szkic · wymaga zatwierdzenia",
       "after": "po {{ids}}",
       "actionsFailed": "Nie udało się wczytać, czy można tworzyć zadania."
@@ -2118,7 +2110,6 @@
       "taskContent": "Treść zadania",
       "taskDocument": "Dokument zadania",
       "fileMissing": "Brak pliku",
-      "open": "Otwórz {{name}}",
       "actionsFor": "Akcje dla {{name}}",
       "rename": "Zmień nazwę",
       "delete": "Usuń dokument",
@@ -2133,7 +2124,8 @@
       "nameLabel": "Nowa nazwa",
       "renameConfirm": "Zmień nazwę",
       "deleteTitle": "Usuń {{name}}",
-      "deleteDescription": "Plik i jego rejestracja zostaną usunięte. Wpisy kontekstu, które go wskazują, przestaną się rozwiązywać."
+      "deleteDescription": "Plik i jego rejestracja zostaną usunięte. Wpisy kontekstu, które go wskazują, przestaną się rozwiązywać.",
+      "newOwnContext": "Nie zostanie dodany do kontekstu, bo zadanie ma własną listę. Dodaj go w sekcji Kontekst, jeśli krok ma go czytać."
     },
     "context": {
       "count_one": "{{count}} wpis",
@@ -2141,12 +2133,40 @@
       "count_many": "{{count}} wpisów",
       "count_other": "{{count}} wpisu",
       "explanation": "Dane wejściowe potrzebne zadaniu przed startem, w kolejności czytania. task.md jest zawsze pierwszy.",
-      "defaultNote": "Lista nie jest jeszcze ustawiona, więc to jest kontekst domyślny. Pierwsza zmiana go zapisze.",
-      "blocking_one": "Brakuje {{count}} wymaganego wpisu.",
-      "blocking_few": "Brakuje {{count}} wymaganych wpisów.",
-      "blocking_many": "Brakuje {{count}} wymaganych wpisów.",
-      "blocking_other": "Brakuje {{count}} wymaganego wpisu.",
-      "blockingBody": "Następny krok nie wystartuje, dopóki nie zostaną zastąpione lub usunięte.",
+      "explanationStarted": "Dane wejściowe, które to zadanie czyta, w kolejności. task.md jest zawsze pierwszy.",
+      "sourceDefault": "domyślny",
+      "sourceOwn": "własna lista",
+      "summaryOptionalMissing": "brak opcjonalnych: {{count}}",
+      "defaultLabel": "Kontekst domyślny",
+      "ownLabel": "Własna lista kontekstu",
+      "aboutDefault": "O kontekście domyślnym",
+      "aboutOwn": "O tej liście kontekstu",
+      "defaultBody": "Wynika z zadania: task.md, pozostałe dokumenty zadania i przegląd specyfikacji, wszystkie wymagane. Nowe dokumenty zadania dołączają do niego automatycznie.",
+      "defaultFirstChange": "Pierwsza zmiana zapisze go jako własną listę zadania. Potem nowe dokumenty zadania nie będą już dodawane automatycznie.",
+      "ownBody": "Własna lista tego zadania. Nowe dokumenty zadania nie są do niej dodawane automatycznie.",
+      "ownRestore": "Kontekst domyślny przywrócisz poleceniem „Użyj kontekstu domyślnego” w menu +.",
+      "firstChangeMenuNote": "Zmiana zapisze kontekst jako własną listę zadania. Potem nowe dokumenty zadania nie będą już dodawane automatycznie.",
+      "firstChangeAddNote": "Dodanie zapisze kontekst jako własną listę zadania. Potem nowe dokumenty zadania nie będą już dodawane automatycznie.",
+      "useDefault": "Użyj kontekstu domyślnego",
+      "useDefaultTitle": "Użyć kontekstu domyślnego?",
+      "useDefaultBody_one": "Lista zadania z {{count}} wpisem zostanie zastąpiona domyślną: task.md, pozostałe dokumenty zadania i przegląd specyfikacji, wszystkie wymagane.",
+      "useDefaultBody_few": "Lista zadania z {{count}} wpisami zostanie zastąpiona domyślną: task.md, pozostałe dokumenty zadania i przegląd specyfikacji, wszystkie wymagane.",
+      "useDefaultBody_many": "Lista zadania z {{count}} wpisami zostanie zastąpiona domyślną: task.md, pozostałe dokumenty zadania i przegląd specyfikacji, wszystkie wymagane.",
+      "useDefaultBody_other": "Lista zadania z {{count}} wpisu zostanie zastąpiona domyślną: task.md, pozostałe dokumenty zadania i przegląd specyfikacji, wszystkie wymagane.",
+      "useDefaultRemoved": "Dodane przez ciebie wpisy zostaną usunięte: {{names}}.",
+      "useDefaultFollows": "Potem kontekst znów będzie dopasowywany do zadania: nowe dokumenty zadania będą do niego dołączać automatycznie.",
+      "moreNames": "+{{count}}",
+      "awaitedLabel": "Oczekiwany · potrzebny do startu",
+      "notFoundLabel": "Nie znaleziono",
+      "notRegisteredLabel": "Niezarejestrowany",
+      "blocking_one": "Brakuje {{count}} wymaganego wpisu: {{names}}.",
+      "blocking_few": "Brakuje {{count}} wymaganych wpisów: {{names}}.",
+      "blocking_many": "Brakuje {{count}} wymaganych wpisów: {{names}}.",
+      "blocking_other": "Brakuje {{count}} wymaganego wpisu: {{names}}.",
+      "blockingBody_one": "Następny krok nie wystartuje, dopóki nie zostanie zastąpiony lub usunięty.",
+      "blockingBody_few": "Następny krok nie wystartuje, dopóki nie zostaną zastąpione lub usunięte.",
+      "blockingBody_many": "Następny krok nie wystartuje, dopóki nie zostaną zastąpione lub usunięte.",
+      "blockingBody_other": "Następny krok nie wystartuje, dopóki nie zostanie zastąpiony lub usunięty.",
       "kind": {
         "task-document": "Dokument zadania",
         "specification-document": "Dokument specyfikacji",
@@ -2204,7 +2224,9 @@
       "awaitedEntry": "{{ref}} jeszcze nie istnieje.",
       "ownArtifactTitle": "Nie dodano: to własny dokument zadania",
       "ownArtifactBody": "Kontekst wymienia to, czego zadanie potrzebuje przed startem. {{ref}} powstaje w tym zadaniu, więc należy do warunku wyjścia kroku, który go tworzy, na przykład „istnieje dokument z wnioskami” przed zakończeniem.",
-      "notFoundOptional": "Nie znaleziono: {{ref}} przeniesiono lub usunięto. Opcjonalny, więc następny krok go pominie."
+      "notFoundOptional": "Nie znaleziono: {{ref}} przeniesiono lub usunięto. Opcjonalny, więc następny krok go pominie.",
+      "requiredShort": "wymagany",
+      "optionalShort": "opcjonalny"
     },
     "dependencies": {
       "none": "Brak zależności: zadanie może wystartować zaraz po zatwierdzeniu.",
@@ -2252,11 +2274,24 @@
       "heading": "Teraz",
       "workflow": "{{title}} · wersja {{version}}",
       "notStarted": "Nie rozpoczęto",
+      "onHold": "Wstrzymane",
       "firstStep": "Pierwszy krok · {{title}}",
       "progress": "Krok {{position}} z {{total}}",
       "progressNext": "Krok {{position}} z {{total}} · dalej: {{next}}",
       "ready": "Gotowe do rozpoczęcia",
-      "active": "Próba {{attempt}} · w toku od {{since}} · rozpoczęta przez {{actor}}",
+      "active": "W toku od {{since}} · rozpoczęta przez {{actor}}",
+      "activeAttempt": "Próba {{attempt}} · w toku od {{since}} · rozpoczęta przez {{actor}}",
+      "starting": "Rozpoczynanie…",
+      "track": {
+        "current": "Krok {{position}} z {{total}}: {{title}}",
+        "notStarted": "Nie rozpoczęto, kroków: {{total}}. Pierwszy krok: {{title}}",
+        "completed": "Wszystkie kroki ({{total}}) · ukończone"
+      },
+      "newTask": "Nowe zadanie",
+      "addSectionsToFinish_one": "Dodaj sekcję {{sections}} do {{name}}, aby zakończyć.",
+      "addSectionsToFinish_few": "Dodaj sekcje {{sections}} do {{name}}, aby zakończyć.",
+      "addSectionsToFinish_many": "Dodaj sekcje {{sections}} do {{name}}, aby zakończyć.",
+      "addSectionsToFinish_other": "Dodaj sekcje {{sections}} do {{name}}, aby zakończyć.",
       "waitingNote": "Przejdzie dalej samo, gdy każde zadanie zostanie ukończone lub anulowane",
       "waitingFor_one": "Czeka na {{count}} z {{total}} zadania",
       "waitingFor_few": "Czeka na {{count}} z {{total}} zadań",
@@ -2274,7 +2309,13 @@
         "abandoned": "Porzucono"
       },
       "abandonedBy": "{{at}}, porzucone przez {{actor}}",
-      "toFinishWith": "Aby zakończyć z wynikiem {{result}}:",
+      "goal": "Cel",
+      "showMore": "Pokaż więcej",
+      "showLess": "Pokaż mniej",
+      "doneWhen": "Gotowe, gdy",
+      "doneWhenWith": "Gotowe z wynikiem {{result}}, gdy",
+      "then": "Dalej: {{step}}",
+      "lastHandoff": "Ostatnie przekazanie",
       "returned": "Zawrócono do tego kroku",
       "start": "Rozpocznij: {{step}}",
       "finish": "Zakończ krok",
@@ -2283,11 +2324,13 @@
       "postActionFailed": "Krok jest zakończony. Stanu przepływu nie zatwierdzono ({{code}}): pozostaje niezatwierdzony, a Zamknięcie go obejmie.",
       "postActionHeld": "Krok jest zakończony. {{edited}} zmieniono poza SpecFlow po zapisaniu przez SpecFlow, więc pliki tego zadania oraz zadań dodanych lub usuniętych od tego czasu pozostają niezatwierdzone; reszta stanu przepływu jest zatwierdzona. Zatwierdź te pliki w Git; w przeciwnym razie obejmie je Zamknięcie.",
       "lastPrefix": "Ostatnio: {{step}} · ",
+      "handoffFrom": "{{step}} · ",
       "alreadyFinished": "Ten krok został już zakończony. Poniżej widać, co można zrobić teraz.",
       "startWorkflow": "Rozpocznij przepływ",
       "operations": "Operacje przepływu",
       "history": "Historia przepływu",
       "returnTo": "Wróć do: {{step}}",
+      "restart": "Zacznij od nowa: {{step}}",
       "finishAfterGate": "Zakończenie kroku będzie dostępne, gdy ten warunek zostanie spełniony.",
       "finishAfterTasks": "Zakończenie kroku będzie dostępne, gdy każde zadanie zostanie ukończone lub anulowane.",
       "tasksOpen": "Aby zakończyć z wynikiem {{result}}, każde zadanie musi być ukończone lub anulowane. Otwarte: {{tasks}}.",
@@ -2323,14 +2366,18 @@
       "entryGates": "Potrzebne przed rozpoczęciem kroku:"
     },
     "gate": {
-      "noDocument": "jeszcze nie zarejestrowano",
       "fileMissing": "brakuje jego pliku",
-      "sectionsMissing": "brakujące sekcje: {{sections}}",
       "unreadable": "nie można go odczytać",
+      "notYet": "jeszcze nie",
+      "notYetSection": "jeszcze nie · brakuje sekcji {{sections}}",
+      "notYetSections": "jeszcze nie · brakuje sekcji {{sections}}",
+      "typeDocument": "Dokument typu {{type}}",
+      "hasSection": "{{subject}} ma sekcję {{sections}}",
+      "hasSectionVowel": "{{subject}} ma sekcję {{sections}}",
+      "hasSections": "{{subject}} ma sekcje {{sections}}",
       "metHidden": " (spełnione)",
       "unmetHidden": " (niespełnione)",
-      "createDocument": "Utwórz dokument {{type}}",
-      "openDocument": "Otwórz dokument"
+      "createDocument": "Utwórz dokument {{type}}"
     },
     "finish": {
       "blocked": {
@@ -2417,6 +2464,7 @@
         "sessions": "W tym worktree pracuje sesja agenta. Poczekaj na zakończenie jej tury albo ją anuluj, a potem zamknij."
       },
       "groupHeading": "{{title}} · {{count}}",
+      "groupCount": " · {{count}}",
       "more_one": "i {{count}} więcej",
       "more_few": "i {{count}} więcej",
       "more_many": "i {{count}} więcej",
@@ -2428,17 +2476,17 @@
     },
     "close": {
       "action": "Zamknij specyfikację",
+      "noRepository": "Zamknięcie specyfikacji wymaga repozytorium, więc nie działa w demo",
       "title": "Zamknij {{title}}",
       "blocked": "Nie można jeszcze zamknąć {{title}}: {{reasons}}.",
       "abandonPrompt": "Nie zamierzasz kończyć tej pracy?",
       "abandonInstead": "Porzuć zamiast tego",
-      "ready": "Wszystko, co wymagane, jest ukończone. Zamknięcie uruchamia też kontrole repozytorium.",
-      "afterAbandon": "Porzucono: „{{reason}}” Zamknięcie zapisze ją jako niedostarczoną i uruchomi kontrole repozytorium.",
+      "afterAbandon": "Porzucono: „{{reason}}”",
       "readyTitle": "Gotowe do zamknięcia",
-      "readyBody": "Przepływ jest ukończony.",
+      "readyBody": "Przepływ jest ukończony, a kontrole repozytorium przeszły.",
+      "readyGitOffBody": "Przepływ jest ukończony. Git jest wyłączony, więc nic nie jest scalane.",
       "notDelivered": "Anulowane, niedostarczone",
       "notDeliveredExplanation": "Zapisywane jako niedostarczone przy zamknięciu specyfikacji.",
-      "previewFailed": "Nie można teraz rozpocząć zamknięcia",
       "failed": "Nie zamknięto",
       "notCompleted": "Zamknięcie wymaga uwagi",
       "status": {
@@ -2446,7 +2494,7 @@
         "in-progress": "Zamknięcie wciąż trwa.",
         "recovery-required": "Zamknięcie zatrzymało się w połowie i wymaga odzyskania."
       },
-      "submit": "Zamknij specyfikację",
+      "submit": "Zamknij i zarchiwizuj",
       "reason": {
         "waiting_one": "jej przepływ czeka na {{count}} nieukończone zadanie",
         "waiting_few": "jej przepływ czeka na {{count}} nieukończone zadania",
@@ -2472,6 +2520,120 @@
         "sessions_few": "w jej worktree pracują {{count}} sesje agenta",
         "sessions_many": "w jej worktree pracuje {{count}} sesji agenta",
         "sessions_other": "w jej worktree pracuje {{count}} sesji agenta"
+      },
+      "readyChecksBody": "Kontrole repozytorium przeszły.",
+      "refusal": {
+        "preflight": "Zamknięcie zatrzymuje kontrola repozytorium. Aby zobaczyć którą, uruchom „nevo-specflow specs close <id specyfikacji> --preview” w folderze projektu.",
+        "sharedWorktree": "Z tego worktree korzystają też inne specyfikacje, więc nie można go zintegrować tylko dla tej. Zamknij cały workspace albo zarchiwizuj tę specyfikację bez integracji z wiersza poleceń.",
+        "conflict": "Projekt zmienił się podczas przygotowania zamknięcia. Sprawdź ponownie, aby odczytać go jeszcze raz.",
+        "unavailable": "Nie można teraz odczytać plików specyfikacji. Sprawdź, czy jej katalog roboczy istnieje, i sprawdź ponownie.",
+        "recovery": "Wcześniejsze zamknięcie tej specyfikacji zatrzymało się w połowie. Dokończ je z wiersza poleceń, zanim zamkniesz ponownie.",
+        "gitConfig": "Sekcja git w .nevo/config.yaml jest nieprawidłowa lub niepełna. Popraw ją i sprawdź ponownie.",
+        "git": "Git nie może teraz działać w folderze projektu. Sprawdź repozytorium, a potem sprawdź ponownie.",
+        "documentsPending": "Zapisane dokumenty w tym katalogu roboczym wciąż są commitowane. Poczekaj chwilę i sprawdź ponownie.",
+        "commitBlocked": "Git nie przyjmie teraz commita na tej gałęzi. Sprawdź ochronę gałęzi i stan repozytorium, a potem sprawdź ponownie.",
+        "engine": "Zamykanie nie jest dostępne w tym Runtime.",
+        "unknown": "Zamknięcie się nie rozpoczęło, a powodu nie można tu pokazać. Sprawdź ponownie; jeśli znów się nie uda, uruchom „nevo-specflow specs close <id specyfikacji> --preview” w folderze projektu.",
+        "documentsUncommitted": "Zapisane dokumenty w tym katalogu roboczym nie mają commita: automatyczne commity były wyłączone, gdy je zapisano. Zrób commit w Dokumentach tej specyfikacji albo w Git i sprawdź ponownie.",
+        "workflowStateUncommitted": "Zmiany zadań i kroków innej specyfikacji w tym katalogu roboczym nie mają jeszcze commita. Zrób ich commit w Git i sprawdź ponownie.",
+        "workflowStateUncommittedStep": "Zmiany zadań i kroków innej specyfikacji w tym katalogu roboczym nie mają jeszcze commita. Zrób ich commit w Git albo zakończ trwający tam krok (zakończenie robi ich commit) i sprawdź ponownie.",
+        "uncommittedAbandoned": "Zmiany w tym katalogu roboczym, których commit porzucono, nie mają commita. Zrób ich commit w Git i sprawdź ponownie.",
+        "uncommittedGit": "Pliki zapisane przez SpecFlow w tym katalogu roboczym nie mają commita. Zrób ich commit w Git i sprawdź ponownie.",
+        "documentsFailed": "Commit dokumentu się nie powiódł. Ponów go lub rozwiąż w Dokumentach, a potem sprawdź ponownie."
+      },
+      "repository": {
+        "checkout": {
+          "specification": "katalog roboczy specyfikacji",
+          "integrationTarget": "katalog roboczy, do którego jest integrowana"
+        },
+        "uncommitted": {
+          "titleSpecification": "Pliki bez commita w tym katalogu roboczym",
+          "titleIntegrationTarget": "Pliki bez commita w miejscu scalenia",
+          "leadSpecification": "Zamknięcie commituje tylko tę specyfikację i zaczyna od katalogu roboczego z commitem. Te pliki nie mają commita:",
+          "leadIntegrationTarget": "Te pliki nie mają commita w katalogu roboczym, do którego scalana jest {{title}}. Mogą nie należeć do tej specyfikacji:",
+          "ofSpecification": "(ta specyfikacja)",
+          "commitSpecification": "Zrób ich commit w tym katalogu roboczym (albo przenieś te, które tu nie należą) i sprawdź ponownie.",
+          "commitIntegrationTarget": "Zrób ich commit w tym katalogu roboczym (albo przenieś je tam, gdzie należą) i sprawdź ponownie.",
+          "discardWarningLead": "Najpierw zrób ich commit.",
+          "discardWarning": "Jeśli zamiast tego je odrzucisz (na przykład przez git restore lub git clean), przepadną na zawsze: Git nie przechowuje kopii pracy bez commita.",
+          "ownerThisSpecification": "{{title}} (ta specyfikacja)",
+          "ownerUnknownSpecification": "Inna specyfikacja ({{id}})",
+          "ownerDefinitions": "Zainstalowane definicje"
+        },
+        "targetMissing": {
+          "title": "Nie skonfigurowano gałęzi integracji",
+          "explanationLinked": "Zamknięcie scala tę specyfikację z gałęzią integracji projektu, a projekt żadnej nie wskazuje. Wybierz gałąź, dodaj ją do <code>.nevo/config.yaml</code> jako <code>git.integrationTargetBranch</code> i sprawdź ponownie.",
+          "explanationPrimary": "Zamknięcie archiwizuje tę specyfikację na gałęzi integracji projektu w folderze głównym, a projekt żadnej nie wskazuje. Wybierz gałąź, dodaj ją do <code>.nevo/config.yaml</code> jako <code>git.integrationTargetBranch</code> i sprawdź ponownie.",
+          "choiceLabel": "Gałąź integracji",
+          "fact": {
+            "remoteDefault": "Domyślna gałąź zdalnego repozytorium ({{remote}})",
+            "startedFrom": "Od niej wyszła {{title}}",
+            "primaryCheckout": "Aktywna w folderze głównym"
+          },
+          "other": "Inna lokalna gałąź…",
+          "otherLabel": "Lokalna gałąź",
+          "otherPlaceholder": "Wybierz gałąź",
+          "otherLimited": "Pokazano {{shown}} z {{count}} lokalnych gałęzi.",
+          "noBranch": "Żadna lokalna gałąź nie może jej przyjąć. Utwórz gałąź integracji w repozytorium i sprawdź ponownie.",
+          "placeholder": "<wybierz gałąź>",
+          "settingLabel": "Ustawienie dla .nevo/config.yaml",
+          "chooseFirst": "Najpierw wybierz gałąź"
+        },
+        "targetBranch": {
+          "title": "Katalog roboczy integracji na innej gałęzi",
+          "explanation": "Zamknięcie integruje specyfikację z {{expected}}, ale katalog roboczy {{expected}} jest na {{branch}}. Przełącz go z powrotem na {{expected}} i sprawdź ponownie."
+        },
+        "gitOperation": {
+          "title": "Niedokończona operacja Git",
+          "explanation": "Wciąż trwa scalanie, rebase, cherry-pick albo revert ({{checkout}}). Dokończ je lub przerwij i sprawdź ponownie."
+        },
+        "detached": {
+          "title": "Poza gałęzią",
+          "explanation": "HEAD jest odłączony, poza lokalną gałęzią ({{checkout}}). Przełącz się na gałąź i sprawdź ponownie."
+        },
+        "copyPath": "Kopiuj ścieżkę",
+        "copySetting": "Kopiuj ustawienie",
+        "copied": "Skopiowano",
+        "copyFailed": "Nie udało się skopiować. Zaznacz tekst i skopiuj go ręcznie."
+      },
+      "documentsCheckingTitle": "Zapisywanie commitów dokumentów…",
+      "documentsCheckingBody": "Zapisane dokumenty w tym katalogu roboczym wciąż są commitowane. Sprawdzenie powtórzy się samo, a zamknięcie będzie można rozpocząć, gdy commity się zakończą.",
+      "checkAgain": "Sprawdź ponownie",
+      "checking": "Sprawdzanie, czy można zamknąć {{title}}…",
+      "checkingSlow": "Sprawdzanie repozytorium. Może to potrwać kilka sekund.",
+      "checkFailed": "Nie udało się sprawdzić, czy można zamknąć {{title}}",
+      "blockedRepository_one": "Nie można jeszcze zamknąć {{title}}: {{count}} problem z repozytorium.",
+      "blockedRepository_few": "Nie można jeszcze zamknąć {{title}}: {{count}} problemy z repozytorium.",
+      "blockedRepository_many": "Nie można jeszcze zamknąć {{title}}: {{count}} problemów z repozytorium.",
+      "blockedRepository_other": "Nie można jeszcze zamknąć {{title}}: {{count}} problemów z repozytorium.",
+      "facts": {
+        "result": "Wynik",
+        "notDelivered": "Zapisana jako niedostarczona",
+        "merges": "Scalanie",
+        "tasks": "Zadania",
+        "documents": "Dokumenty"
+      },
+      "documentsFact_one": "{{count}} tylko z treścią początkową: {{names}}",
+      "documentsFact_few": "{{count}} tylko z treścią początkową: {{names}}",
+      "documentsFact_many": "{{count}} tylko z treścią początkową: {{names}}",
+      "documentsFact_other": "{{count}} tylko z treścią początkową: {{names}}",
+      "documentsMore": "+{{count}} kolejne",
+      "merge": {
+        "nothing": "Nie ma czego scalać",
+        "primary": "Archiwizuje na <code>{{branch}}</code> (folder główny; nie ma czego scalać)",
+        "archiveOnly": "Archiwizuje na <code>{{branch}}</code> bez scalania",
+        "gitOff": "Archiwizuje bez Gita (Git jest wyłączony w tym projekcie)",
+        "gitOffLinked": "Archiwizuje bez Gita (Git jest wyłączony w tym projekcie); archiwum zostaje bez commita w katalogu roboczym specyfikacji"
+      },
+      "tasksFact": {
+        "none": "Nie utworzono żadnych zadań"
+      },
+      "archiveNote": "Zamknięcie archiwizuje specyfikację; nie można jej ponownie otworzyć.",
+      "submitting": "Zamykanie…",
+      "heldBy": {
+        "other": "inna specyfikacja ma zmiany bez commita w tym katalogu roboczym",
+        "own": "ma zmiany bez commita w swoim katalogu roboczym",
+        "checkout": "pliki zapisane przez SpecFlow w tym katalogu roboczym nie mają commita"
       }
     },
     "abandon": {
@@ -2534,6 +2696,7 @@
         "cancel-task": "Anuluj zadanie",
         "restore-task": "Otwórz zadanie",
         "satisfy-gate": "Otwórz zadanie",
+        "resume-task": "Wznów",
         "start-step": "Rozpocznij krok",
         "return-to-step": "Wróć do wcześniejszego kroku"
       },
@@ -2544,22 +2707,19 @@
       "stuckTitle_other": "Rozwiąż {{count}} blokujących zadań",
       "stuckReason": "Zatwierdź, wznów lub anuluj je, aby specyfikacja mogła się zakończyć",
       "startFailed": "Nie udało się rozpocząć kroku. Otwórz zadanie, aby zobaczyć, co można zrobić teraz.",
+      "resumeFailed": "Nie udało się wznowić zadania. Otwórz zadanie, aby zobaczyć, co można zrobić teraz.",
       "startNamed": "Rozpocznij: {{step}}"
     },
     "summary": {
       "allTasks": "Wszystkie zadania",
-      "count_one": "{{count}} zadanie",
-      "count_few": "{{count}} zadania",
-      "count_many": "{{count}} zadań",
-      "count_other": "{{count}} zadań",
-      "more_one": "jeszcze {{count}}",
-      "more_few": "jeszcze {{count}}",
-      "more_many": "jeszcze {{count}}",
-      "more_other": "jeszcze {{count}}",
-      "openGroup": "{{group}}: otwórz na stronie Zadania"
+      "moreIn_one": "jeszcze {{count}} w grupie {{group}}",
+      "moreIn_few": "jeszcze {{count}} w grupie {{group}}",
+      "moreIn_many": "jeszcze {{count}} w grupie {{group}}",
+      "moreIn_other": "jeszcze {{count}} w grupie {{group}}",
+      "moreActions": "Zadania: więcej akcji"
     },
     "progress": {
-      "label": "Zadania {{progress}}",
+      "tasksDone": "ukończone zadania: {{completed}} z {{total}}",
       "done": "ukończone {{completed}} z {{total}}",
       "cancelled_one": "{{count}} anulowane",
       "cancelled_few": "{{count}} anulowane",
@@ -2607,6 +2767,13 @@
       "attention": "Wymaga uwagi · {{reason}}",
       "attentionOnly": "Wymaga uwagi",
       "blocksSpecification": "specyfikacja nie może kontynuować, dopóki się nie ruszy",
+      "blocksNamedSpecification": "{{specification}} nie może kontynuować, dopóki się nie ruszy",
+      "escalated": "przekazane do decyzji w specyfikacji",
+      "escalatedFeedback": "przekazane do decyzji w specyfikacji: {{feedback}}",
+      "holdsUp": "wstrzymuje {{ids}}",
+      "holdsUpMore": "wstrzymuje {{ids}} (+{{more}})",
+      "holdsFinish": "{{step}} nie może się zakończyć, dopóki to zadanie jest wstrzymane",
+      "holdsFinishUnnamed": "krok nie może się zakończyć, dopóki to zadanie jest wstrzymane",
       "waitingFor": "Czeka na {{ids}}"
     },
     "page": {
@@ -2620,8 +2787,14 @@
       "blocking_other": "Blokujące specyfikację · {{count}} zadań",
       "nothingBlocks": "Nic teraz nie blokuje specyfikacji",
       "clearBlocking": "Wyczyść filtr: blokujące specyfikację",
+      "groupEmpty": "W tej grupie nie ma teraz zadań",
+      "groupUnnamed": "Filtr grupy",
+      "clearGroup": "Wyczyść filtr: {{group}}",
+      "clearGroupUnnamed": "Wyczyść filtr grupy",
       "shown": "Widoczne: {{matched}} z {{total}}",
-      "noMatch": "Żadne zadanie nie pasuje do filtra."
+      "noMatch": "Żadne zadanie nie pasuje do filtra.",
+      "taskColumn": "Zadanie",
+      "statusColumn": "Status"
     }
   },
   "documentReading": {
@@ -2760,9 +2933,13 @@
         "title": "Ten obszar roboczy jest teraz niedostępny",
         "description": "Nie można odczytać katalogu {{folder}}, na przykład w trakcie przełączania gałęzi albo po przeniesieniu katalogu. Wybierz inny obszar roboczy albo spróbuj ponownie."
       },
+      "notServed": {
+        "title": "Dokumentacja projektu nie jest dostępna w wersji demonstracyjnej",
+        "description": "Wersja demonstracyjna działa na przykładowych danych bez projektu, więc nie ma folderu dokumentacji do odczytania. Uruchom SpecFlow w projekcie, aby czytać jego dokumentację."
+      },
       "docsUnavailable": {
         "title": "Nie można teraz odczytać dokumentacji",
-        "description": "Nie udało się odczytać jej ustawień albo ten Runtime nie udostępnia dokumentacji projektu. Spróbuj ponownie za chwilę."
+        "description": "Nie udało się odczytać jej ustawień albo jej odczyt się nie powiódł. Spróbuj ponownie za chwilę."
       },
       "failed": {
         "title": "Nie można teraz wyświetlić dokumentacji",

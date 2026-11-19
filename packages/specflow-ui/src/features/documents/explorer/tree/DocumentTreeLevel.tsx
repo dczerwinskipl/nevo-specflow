@@ -1,4 +1,5 @@
 import type { ArchetypeCatalogue } from '@nevo/specflow-contracts/documents';
+import type { DocumentRelation } from '@nevo/specflow-contracts/workflow';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { treeHintClassName, treeNodeClassName, treeRowClassName } from '@nevo/ui';
@@ -8,6 +9,8 @@ import {
   documentRowGlyph,
   documentTrailingLabel,
 } from '../../catalogue/documentTypePolicy';
+import { documentStateLabel } from '../../workflow/documentState';
+import { useDocumentStateRow } from '../../workflow/useDocumentStateRow';
 import type { DocumentTreeIndex, TreeRows } from './documentTreePolicy';
 import type { InlineEntry } from '../inline-entry/inlineEntry';
 
@@ -19,6 +22,8 @@ export interface DocumentTreeLevelContext {
   index: DocumentTreeIndex<TreeRows>;
   /** Type titles for the trailing labels (ids while it is unavailable). */
   catalogue?: ArchetypeCatalogue;
+  /** How the Specification's workflow uses each document now, by document id. */
+  relations?: ReadonlyMap<string, DocumentRelation>;
   /** The open document. */
   active?: string;
   /** An operation is in flight or its outcome is unknown. */
@@ -58,6 +63,8 @@ export function DocumentTreeLevel({
   labelledBy?: string;
 }): ReactNode {
   const { t } = useTranslation();
+  // The step is named here: a narrow row keeps it, on its own line under the name.
+  const stateRow = useDocumentStateRow('wrap');
   const { index, entry } = context;
   const creatingIn = (path: string) =>
     Boolean(entry && !entry.rename && entry.parent.toLowerCase() === path.toLowerCase());
@@ -78,6 +85,14 @@ export function DocumentTreeLevel({
     const label = doc.dangling ? undefined : documentTrailingLabel(doc, context.catalogue);
     const type = label?.kind === 'type' ? label.text : undefined;
     const lead = !doc.dangling && doc.protected;
+    // The shared document state label; the step is named (the active step is not on this page).
+    const state = doc.dangling
+      ? undefined
+      : stateRow(
+          documentStateLabel(doc.contentState, context.relations?.get(doc.id), {
+            stepOnScreen: false,
+          }),
+        );
 
     return (
       <TreeDocumentRow
@@ -91,12 +106,13 @@ export function DocumentTreeLevel({
         lead={lead}
         // A dangling entry (the registry lists a file that is not on disk) keeps its place.
         state={
-          doc.dangling ? { text: t('documents.tree.fileMissing'), attention: true } : undefined
+          doc.dangling ? { text: t('documents.tree.fileMissing'), attention: true } : state?.state
         }
         // The type is in the tooltip ("Type: UX", as the row menu says it) and read with the name.
         details={[
           ...(type ? [t('documents.tree.typeOf', { type })] : []),
           ...(lead ? [t('documents.tree.mainNote')] : []),
+          ...(state?.details ?? []),
         ]}
         spokenDetail={type}
         current={context.active !== undefined && context.active === doc.id}

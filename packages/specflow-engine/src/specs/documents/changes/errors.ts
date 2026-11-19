@@ -149,6 +149,8 @@ export interface DocumentChangeErrorExtras {
   readonly blockedBy?: string;
   readonly retryAfterMs?: number;
   readonly conflicts?: DocumentErrorDetails['conflicts'];
+  /** `DOCUMENT_COMMITS_PENDING` (`commit-uncommitted`): what the ledger holds and why. */
+  readonly uncommitted?: DocumentErrorDetails['uncommitted'];
 }
 
 /** The document error for a cause. The message never carries an absolute path. */
@@ -164,6 +166,7 @@ export function documentChangeError(
     ...(extras.blockedBy !== undefined ? { blockedBy: extras.blockedBy } : {}),
     ...(extras.retryAfterMs !== undefined ? { retryAfterMs: extras.retryAfterMs } : {}),
     ...(extras.conflicts !== undefined ? { conflicts: extras.conflicts } : {}),
+    ...(extras.uncommitted !== undefined ? { uncommitted: extras.uncommitted } : {}),
   };
 
   return new DocumentError(

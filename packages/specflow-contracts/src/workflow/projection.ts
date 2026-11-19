@@ -143,13 +143,19 @@ export const GateScopeSchema = Type.Union([
 
 /**
  * A declared entry or exit gate of a step with its status now (a `document` gate: a registered
- * document of `documentType` with a file and the required section headings). `label` is display text.
+ * document of `documentType` with a file and the `requiredSections` headings). `label` is display
+ * text: the definition's own when `labelDeclared`, else derived by the Engine (not to be parsed: the
+ * structured facts are `documentType` and `requiredSections`).
  */
 export const GateStatusSchema = Type.Object({
   id: Type.String(),
   type: Type.Literal('document'),
   label: Type.String(),
+  /** The definition declared `label`; false: the Engine derived it from the facts below. */
+  labelDeclared: Type.Boolean(),
   documentType: Type.String(),
+  /** The section headings the document needs, in declared order (empty: any document with a file). */
+  requiredSections: array(Type.String()),
   scope: GateScopeSchema,
   status: Type.Union([Type.Literal('satisfied'), Type.Literal('unsatisfied')]),
   /** Satisfied: the document that satisfies it; `sections-missing`: the closest one. */
@@ -158,6 +164,52 @@ export const GateStatusSchema = Type.Object({
   missingSections: Type.Optional(array(Type.String())),
 });
 export type GateStatus = Static<typeof GateStatusSchema>;
+
+/** A result of the active step with the exit gates it needs (absent when it needs none). */
+export const StepExitSchema = Type.Intersect([
+  WorkflowTransitionSchema,
+  Type.Object({ gates: Type.Optional(array(GateStatusSchema)) }),
+]);
+export type StepExit = Static<typeof StepExitSchema>;
+
+export const DOCUMENT_RELATIONS = ['needed-to-finish', 'needed-to-start', 'used'] as const;
+export type DocumentRelationKind = (typeof DOCUMENT_RELATIONS)[number];
+
+/**
+ * How the workflow uses one document now, from the gates of the step the run is at (its exit gates)
+ * and of the step it certainly goes to next (that step's entry gates): `needed-to-finish` (an unmet
+ * exit gate of the active step that applies to every result; one conditioned by `when` on only some
+ * results relates nothing while unmet), `needed-to-start` (an unmet entry gate of the next step;
+ * `blocksNow` says whether it refuses a start now), `used` (a satisfied gate of either). A gate
+ * names the document that satisfies it or the closest one; one that found no file names every registered document of its type in its
+ * scope. One entry per document: the strongest relation (in that order), then the active step's
+ * gate before the next step's, in declared order.
+ */
+export const DocumentRelationSchema = Type.Object({
+  /** The Specification or the Task whose registry holds the document. */
+  scope: GateScopeSchema,
+  documentId: Type.String(),
+  relation: literals(DOCUMENT_RELATIONS),
+  /**
+   * The unmet gate refuses the action the run waits for now: the finish of the active step, or the
+   * start of the next step when no step is active (`not-started`, `ready`, `blocked`). False for
+   * `used`, and for the next step's entry gates while a step is active or waiting.
+   */
+  blocksNow: Type.Boolean(),
+  /** The gate's step; `active`: the step the run is at ("this step"). */
+  step: Type.Object({ id: StepIdSchema, title: Type.String(), active: Type.Boolean() }),
+  gate: Type.Object({
+    id: Type.String(),
+    /** Display text (see `GateStatus.label`). */
+    label: Type.String(),
+    labelDeclared: Type.Boolean(),
+    documentType: Type.String(),
+    requiredSections: array(Type.String()),
+    /** The required sections the document lacks (an unmet gate). */
+    missingSections: Type.Optional(array(Type.String())),
+  }),
+});
+export type DocumentRelation = Static<typeof DocumentRelationSchema>;
 
 export const StartableStepSchema = Type.Object({
   step: WorkflowStepSchema,
@@ -301,13 +353,16 @@ export type ClosableTask = Static<typeof ClosableTaskSchema>;
 
 /**
  * Why a subject needs a person: the continuation reasons, then `task-broken`,
- * `definition-changed` and the start blockers of an approved Task that has not started that a
- * person fixes. Never inferred from a status name.
+ * `definition-changed`, `on-hold-blocking` (a Task on hold that holds up progress now: `blocks`)
+ * and the start blockers of an approved Task that has not started that a person fixes.
+ * `task-escalated` is on the Specification (its wait step) or, when no Specification item names
+ * the escalated Task and no Specification work step decides it, on the Task itself. Never inferred from a status name.
  */
 export const ATTENTION_ITEM_REASONS = [
   ...ATTENTION_REASONS,
   'task-broken',
   'definition-changed',
+  'on-hold-blocking',
   'context-unresolved',
   'dependency-unsatisfiable',
   'type-not-allowed',
@@ -326,8 +381,24 @@ export const ATTENTION_ACTIONS = [
   'edit-dependencies',
   'open-project-settings',
   'cancel-task',
+  /** Resume the Task on hold the item is about (`on-hold → ready`). */
+  'resume-task',
   'satisfy-gate',
 ] as const;
+
+/**
+ * `on-hold-blocking`: what the held Task holds up now; at least one is set. `taskIds`: the open
+ * Tasks that wait on it directly (their `dependencyWait.waitingFor` names it), in id order.
+ * `finish`: the Specification's active step whose finish to `completed` it refuses (`tasks-open`),
+ * which Close needs. Mirrors the Engine's `HeldTaskBlocks`.
+ */
+export const HeldTaskBlocksSchema = Type.Union([
+  Type.Object({
+    taskIds: Type.Array(TaskIdSchema, { minItems: 1, maxItems: 1000 }),
+    finish: Type.Optional(StepIdSchema),
+  }),
+  Type.Object({ finish: StepIdSchema }),
+]);
 
 /**
  * A subject a person has to act on, derived on every read and never stored: the reason (a stable
@@ -344,10 +415,15 @@ export const WorkflowAttentionItemSchema = Type.Object({
   /** An alternative to `action` (for example `cancel-task`). */
   secondaryAction: Type.Optional(literals(ATTENTION_ACTIONS)),
   message: text(4000),
-  /** `task-escalated`, `tasks-stuck` (the Tasks to resolve), `dependency-unsatisfiable`. */
+  /**
+   * `task-escalated` on the Specification, `tasks-stuck` (the Tasks to resolve),
+   * `dependency-unsatisfiable`.
+   */
   taskIds: Type.Optional(array(TaskIdSchema)),
   /** `tasks-stuck`: why each Task of `taskIds` blocks. */
   blocking: Type.Optional(array(BlockingTaskSchema)),
+  /** `on-hold-blocking`: what the held Task holds up (`step` is then the finish step, if any). */
+  blocks: Type.Optional(HeldTaskBlocksSchema),
   archetype: Type.Optional(Type.String()),
   provider: Type.Optional(Type.String()),
   blocker: Type.Optional(literals(LAUNCH_BLOCKERS)),
@@ -372,6 +448,12 @@ export const WorkflowPositionSchema = Type.Union([
       startedAt: Type.String(),
       actor: WorkflowActorSchema,
     }),
+    /**
+     * What finishes the step, for everyone whoever runs the attempt: each result with where it
+     * goes and the exit gates it needs (a gate's `when` names its results), evaluated now. Who may
+     * finish, and whether a result can be taken now, is `actions.finish`.
+     */
+    exits: array(StepExitSchema),
   }),
   Type.Object({
     kind: Type.Literal('waiting'),
@@ -572,6 +654,8 @@ export const SpecificationExitSchema = Type.Object({
   close: Type.Union([
     Type.Object({ kind: Type.Literal('allowed') }),
     Type.Object({ kind: Type.Literal('blocked'), blockers: array(ExitBlockerSchema) }),
+    /** `no-repository`: the Runtime has no checkout to archive in (the demo); never closable there. */
+    Type.Object({ kind: Type.Literal('unavailable'), reason: Type.Literal('no-repository') }),
   ]),
   abandon: Type.Union([
     Type.Object({ kind: Type.Literal('allowed') }),
@@ -627,6 +711,11 @@ export const TaskAuthoringSchema = Type.Object({
         Type.Object({ entry: TaskContextEntrySchema, state: Type.Literal('awaited') }),
       ]),
     ),
+    /**
+     * The default context as the Engine reads it now (read-only): `entries` while `isDefault`,
+     * else the list `context: null` returns to. A client never derives it.
+     */
+    defaultEntries: array(TaskContextEntrySchema),
   }),
   /** The other Tasks in list order; empty once the dependencies cannot change. */
   dependencyCandidates: array(
@@ -688,6 +777,13 @@ export const WorkflowActionProjectionSchema = Type.Object(
     ),
     /** For a Specification subject whose workflow resolves. */
     outline: Type.Optional(WorkflowOutlineSchema),
+    /**
+     * The documents the gates of the active and the next step name, one entry each. On the
+     * Specification projection and on one Task's own projection whenever the workflow resolves and
+     * is unchanged (empty when no gate names a document, for example once the run ended); absent
+     * otherwise and from reads of several Tasks.
+     */
+    documentRelations: Type.Optional(array(DocumentRelationSchema)),
   },
   { $id: 'WorkflowActionProjection' },
 );

@@ -12,7 +12,9 @@ import {
 
 import type { SpecFlowEngine } from '../../application';
 import { GitCapabilityError } from '../../git/errors';
+import { isWorkspaceBranchName } from '../../project/workspace/registry/validation';
 import { createLocalGitClient, type LocalWorktreeFacts } from '../git/client';
+import { normalizeBaseRef, startedFromBranch } from '../git/refs';
 import { effectiveWorktreesRoot, loadGitWorktreePolicy } from './config';
 import {
   assertWorktreeTargetOutsideRepository,
@@ -166,7 +168,17 @@ export function createGitWorktreePort(engine: SpecFlowEngine): WorktreePort {
       const targetPath =
         request.targetPath ?? join(effectiveWorktreesRoot(engine.context, policy), request.slug);
       const baseRef = request.baseRefOverride ?? policy.baseRef;
-      const baseCommit = await git.resolveCommit(baseRef);
+      const attached =
+        normalizeBaseRef(baseRef) === 'HEAD' ? await git.attachedBranch() : undefined;
+      // The commit is read from the branch HEAD was attached to, so the recorded start branch and
+      // the base commit describe the same tip even if HEAD moves in between.
+      const baseCommit = await git.resolveCommit(
+        attached !== undefined ? 'refs/heads/' + attached : baseRef,
+      );
+      const named = startedFromBranch(baseRef, attached);
+      // Only a name the journal and the registry can record (Git accepts longer or Unicode-spaced
+      // names); otherwise the start branch is simply not recorded.
+      const startedFrom = isWorkspaceBranchName(named) ? named : undefined;
       const result: WorktreePlan = {
         projectId: engine.context.project.projectId,
         gitInstanceId: engine.context.project.gitInstanceId,
@@ -184,7 +196,7 @@ export function createGitWorktreePort(engine: SpecFlowEngine): WorktreePort {
         );
       }
 
-      return result;
+      return startedFrom === undefined ? result : { ...result, startedFrom };
     },
     validateReservedPlan,
     inspectEffect: inspect,

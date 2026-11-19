@@ -8,44 +8,25 @@ import { registerRuntimeErrorHandler } from '../../src/server/error-handler';
 import { taskReadEndpoint } from '../../src/features/tasks/endpoint';
 import { specificationWorkspaceEndpoint } from '../../src/features/specs/workspace/endpoint';
 import { PageLeases } from '../../src/features/tasks/reads/page-leases';
-import { createDemoTaskSources } from '../../src/features/tasks';
 import { createDemoSpecsRepositories } from '../../src/features/specs';
 import type { TasksFeatureDependencies } from '../../src/features/tasks';
 import type { TaskReadDependencies } from '../../src/features/tasks/detail/read-task-detail';
 import type { WorkspaceContributions } from '../../src/features/specs/workspace/repository';
-import { demoTaskResources, demoTaskHistory } from '../../src/features/tasks/demo/execution';
+import {
+  createFixtureTaskSources,
+  fixtureHistory,
+  fixtureResources,
+} from '../support/task-sources';
 import type { TaskHistoryPage } from '@nevo/specflow-contracts/tasks';
-import type { ReferenceVisibility } from '../../src/features/tasks/reads/facts';
 import type { SessionReferenceOwner } from '../../src/features/sessions';
 import { sessionReferences } from '../support/session-references';
 import { routeTestApp } from '../support/route-app';
 
 async function fixture() {
   const demo = createDemoSpecsRepositories(),
-    sources = createDemoTaskSources(demo.catalogue);
-  const definition = (await sources.definitions!.resolve('admission', 'TASK-03'))!;
-  const execution = (await sources.execution!.inspect(definition.identity, definition.version))!;
-  execution.requirements = [
-    {
-      id: 'gate',
-      definitionRevision: '1',
-      source: {
-        kind: 'human-gate',
-        gateId: 'gate',
-        phase: 'exit',
-        role: 'owner',
-        scope: 'task',
-        targetId: 'TASK-03',
-      },
-      key: null,
-      title: 'Inspect materials',
-      instruction: null,
-      state: 'pending',
-      actions: [],
-      evidence: [],
-    },
-  ];
-  execution.pendingCount = 1;
+    sources = createFixtureTaskSources();
+  const definition = (await sources.definitions.resolve('admission', 'task-03'))!;
+  const execution = (await sources.execution.inspect(definition.identity, definition.version))!;
   const subject = { kind: 'user' as const, id: 'alice' };
   const authorization = createAuthorization({
     resources: [SpecCapabilities, SessionCapabilities],
@@ -97,43 +78,9 @@ describe('Reference identity and projection integrity HTTP', () => {
       state: 'available' as const,
       target: { kind: 'session' as const, sessionId: 'protected-session' },
     };
-    f.execution.requirements![0]!.evidence = [{ title: 'Protected session content', link }];
     f.definition.dependencies = [{ taskId: 'secret-task', title: 'Protected dependency', link }];
-    f.execution.recovery = {
-      id: 'secret-recovery',
-      state: 'required',
-      summary: 'Protected recovery',
-      link,
-    };
-    const candidates = demoTaskResources('admission', 'TASK-03').slice(0, 4);
+    const candidates = fixtureResources('admission', 'task-03', 4);
     candidates[0] = { ...candidates[0]!, title: 'Protected resource', link };
-    const permitted = async (visible: ReferenceVisibility) => {
-      const result = [];
-      for (const item of candidates) {
-        if (await visible(item.link)) {
-          result.push(item);
-        }
-      }
-
-      return result;
-    };
-
-    f.deps.resources = {
-      open: async (identity, visible) => ({
-        identity,
-        handle: 'resources',
-        version: '1',
-        coverage: 'complete',
-        visibleTotal: (await permitted(visible)).length,
-      }),
-      read: async (identity, _handle, _next, _limit, visible) => ({
-        identity,
-        version: '1',
-        items: await permitted(visible),
-        next: null,
-        coverage: 'complete',
-      }),
-    };
     f.deps.history = {
       open: (identity) =>
         Promise.resolve({ identity, handle: 'history', version: '1', coverage: 'complete' }),
@@ -141,7 +88,7 @@ describe('Reference identity and projection integrity HTTP', () => {
         Promise.resolve({
           identity,
           version: '1',
-          items: [{ ...demoTaskHistory('admission', 'TASK-03')[0]!, resources: candidates }],
+          items: [{ ...fixtureHistory('admission', 'task-03')[0]!, resources: candidates }],
           next: null,
           coverage: 'complete',
         }),
@@ -158,21 +105,18 @@ describe('Reference identity and projection integrity HTTP', () => {
     ).toBe(false);
     const app = await appFor(f, owner);
     try {
-      const response = await app.inject('/api/specs/admission/tasks/TASK-03');
+      const response = await app.inject('/api/specs/admission/tasks/task-03');
       expect(response.statusCode).toBe(200);
       expect(response.body).not.toContain('protected-session');
       expect(response.body).not.toContain('Protected');
       expect(response.body).not.toContain('secret-');
-      const snapshot = response.json<SpecificationTaskResponse>().snapshot!,
-        resources = snapshot.sections.resources,
-        history = snapshot.sections.history;
-      expect(resources.state === 'available' && resources.data.visibleTotal).toBe(3);
+      const history = response.json<SpecificationTaskResponse>().snapshot!.sections.history;
       if (history.state !== 'available') {
         throw Error('Expected history');
       }
 
       const page = await app.inject(
-        '/api/specs/admission/tasks/TASK-03/history?token=' +
+        '/api/specs/admission/tasks/task-03/history?token=' +
           encodeURIComponent(history.data.token),
       );
       expect(page.statusCode).toBe(200);
@@ -256,13 +200,14 @@ describe('Reference identity and projection integrity HTTP', () => {
         target: { kind: 'document' as const, specId: 'admission', documentId: id, revision: 'v1' },
       },
     });
-    f.execution.requirements![0]!.evidence = [
+    f.definition.dependencies = [
       {
+        taskId: 'session-task',
         title: 'Session',
         link: { state: 'available', target: { kind: 'session', sessionId: 'allowed-session' } },
       },
-      report('report-A'),
-      report('report-B'),
+      { taskId: 'report-a', ...report('report-A') },
+      { taskId: 'report-b', ...report('report-B') },
     ];
     const app = await appFor(f, {
       resolve: (sessionId) =>
@@ -274,7 +219,7 @@ describe('Reference identity and projection integrity HTTP', () => {
     });
     try {
       const read = async () => {
-        const response = await app.inject('/api/specs/admission/tasks/TASK-03');
+        const response = await app.inject('/api/specs/admission/tasks/task-03');
         expect(response.statusCode).toBe(200);
 
         return response.json<SpecificationTaskResponse>().snapshot!;
@@ -291,18 +236,18 @@ describe('Reference identity and projection integrity HTTP', () => {
       }
 
       expect(stable.sections.history.data.token).not.toBe(before.sections.history.data.token);
-      if (before.sections.humanRequirements.state !== 'available') {
-        throw Error('Expected evidence');
+      if (before.sections.dependencies.state !== 'available') {
+        throw Error('Expected dependencies');
       }
 
-      expect(before.sections.humanRequirements.data.items[0]!.evidence[1]!.title).toBe('report-A');
+      expect(before.sections.dependencies.data.items[1]!.title).toBe('report-A');
       sameWorkspace = false;
       const after = await read();
-      if (after.sections.humanRequirements.state !== 'available') {
-        throw Error('Expected evidence');
+      if (after.sections.dependencies.state !== 'available') {
+        throw Error('Expected dependencies');
       }
 
-      expect(after.sections.humanRequirements.data.items[0]!.evidence[1]!.title).toBe('report-B');
+      expect(after.sections.dependencies.data.items[1]!.title).toBe('report-B');
       expect(after.revision).not.toBe(before.revision);
       sameWorkspace = true;
       expect((await read()).revision).toBe(before.revision);

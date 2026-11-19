@@ -57,17 +57,23 @@ describe('GET /api/specs/:specId/tasks', () => {
     expect(filtered.headers['cache-control']).toBe('no-store');
     expect(filtered.json()).toMatchObject({ filter: { blocking: 'specification' } });
     await app.inject({ url: '/api/specs/spec-1/tasks' });
-    expect(queries).toEqual([{ blocking: 'specification' }, {}]);
+    expect((await app.inject({ url: '/api/specs/spec-1/tasks?group=waiting' })).statusCode).toBe(
+      200,
+    );
+    expect(queries).toEqual([{ blocking: 'specification' }, {}, { group: 'waiting' }]);
 
-    // Only the one search value exists; an id list or another value is refused before the read.
+    // One filter at most, of the known shapes; an id list, another value or both filters at once
+    // are refused before the read.
     for (const url of [
       '/api/specs/spec-1/tasks?blocking=a,b',
       '/api/specs/spec-1/tasks?taskIds=a',
+      '/api/specs/spec-1/tasks?group=Not%20a%20group',
+      '/api/specs/spec-1/tasks?group=waiting&blocking=specification',
     ]) {
-      expect((await app.inject({ url })).statusCode).toBe(400);
+      expect((await app.inject({ url })).statusCode, url).toBe(400);
     }
 
-    expect(queries).toHaveLength(2);
+    expect(queries).toHaveLength(3);
   });
 
   it('answers 404 for an unknown specification and 503 when the Engine cannot read it', async () => {

@@ -7,7 +7,7 @@ import { formatList } from './formatList';
 export type MessageKey = ParseKeys;
 
 /** Interpolation value: plain text/number, or another message (a list is joined by the locale: "a, b and c"). */
-export type MessageValue = string | number | Message | readonly Message[];
+export type MessageValue = string | number | Message | readonly (Message | string)[];
 export type MessageValues = Readonly<Record<string, MessageValue>>;
 
 /**

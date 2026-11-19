@@ -26,6 +26,14 @@ related:
 Create pins one immutable operation intent, Spec identity, normalized inputs and target workspace.
 The Engine generates `slug`, `specId`, the new worktree's branch and its physical path.
 `baseRef` selects the starting Git commit, not the eventual merge destination.
+When that base is a local branch (an explicit `refs/heads/*` or short branch name, or `HEAD` attached to a
+branch in Project Home), Create also records it as the new workspace's `startedFrom` (Create journal target,
+then the workspace registration). It is a fact for Close to offer as an integration-branch candidate, never a
+merge destination. A commit, a tag or a detached `HEAD` records none, and workspaces created before it have none.
+With `HEAD`, the base commit is read from that branch, so the recorded branch and the base commit name the same
+tip. A name the journal and the registry cannot record (over 255 characters, or with whitespace) is not recorded.
+The registration also records the new worktree's own `branch`. Close uses it to leave the Specification's branch
+out of the integration-branch candidates even when the worktree is detached.
 A new worktree's optional `integrationTargetWorkspaceId` chooses a verified registered checkout;
 the source workspace pins the chosen destination's `workspaceId`, physical incarnation and branch.
 Without an explicit destination the later Close uses project `integrationTargetBranch` through
@@ -105,7 +113,7 @@ operation trailer makes replay idempotent. See
   (`manifest-written` to `registry-writing`) and no `committing-specification` step. A journal
   reserved before commits existed also keeps that graph.
 - Specifications created untracked earlier are not adopted automatically; Close archive and
-  integration are unchanged by this behaviour.
+  integration are unchanged by this behaviour. With Git disabled, Close archives without Git (below).
 
 ### Recovering a stuck Create (operator procedure and known gap)
 
@@ -165,6 +173,48 @@ It records exact IDs, locations, statuses and binding generations in its durable
 Callers cannot name an arbitrary subset or disguise a whole-branch merge as one Spec operation.
 Active Specs remain active after whole-workspace rebind; already archived Specs remain archived.
 
+### Close with Git off (owner decision 2026-11-17)
+
+In a project with Git off (`git.enabled: false`, or no `git:` block) a Specification Close is
+**archive-only**: the Specification moves to `specs/archive/<slug>` in its own checkout with the
+archived manifest, the same archive result as a normal Close, with no commit, no integration and no
+repository precondition (no clean tree, no integration branch, no branch check). One pure decision,
+`closeRepositoryMode` (lifecycle), derives the mode from the project Git policy, read once by the
+preview; the plan carries it and the Close use case branches on the reserved plan, not per check.
+Asking such a Close to integrate (`integrateToTargetBranch: true`) and any Worktree or Workspace
+Close (an integration by definition) are `CLOSE_INVALID` before the workflow gate. A policy that
+cannot be read decides no mode: the preview refuses with its error after the workflow gate and
+before any repository inspection.
+
+- **What still applies.** The Specification exit gate (D07, in the preview and again under the lock),
+  the document commit queue (inert with Git off), resource claims against Create and other Closes,
+  and the Runtime's Session Turn checks on a linked checkout.
+- **Plan and journal.** The plan is marked `gitOff` and pins the registered checkout identity
+  (no branch, no HEAD), the configuration revision that decided the mode, and claims only the
+  Specification and its checkout. Under the lock the reservation re-evaluates the mode for every
+  Close plan and refuses with `CLOSE_CONFLICT`, before publishing anything, when it or the pinned
+  revision changed. The journal goes `reserved` -> `archive-initiated` (the pinned file inventory of the move)
+  -> `completed` with outcome `archived-without-git`; the binding and the workspace stay as they
+  are. An operation keeps the mode it was reserved with.
+- **No Git process.** Like a Create into an existing workspace with Git off, the operation runs with
+  the Git-free verification of Project Home and checkouts (`runGitFreeMutation`). Linked worktrees
+  cannot be created with Git off; one created while Git was on archives in place too (owner decision
+  2026-11-17), and the archive stays uncommitted in that worktree: a later Worktree Close with Git on
+  meets `uncommitted-changes` until it is committed.
+- **Interruption and operator recovery.** A move that did not finish leaves the journal at
+  `archive-initiated` (`recovery-required`), holding its Specification and checkout claims (so
+  Creates in that checkout are refused); a retry of the Close never re-runs it. The operator:
+  1. runs `nevo-specflow specs close-recover <operation-id> --preview` (read-only): it proves the
+     state against the pinned inventory: `source-unmoved`, `moved-original-manifest` (renamed, the
+     manifest not yet rewritten) or `moved-archived-manifest`; anything else (both or neither
+     directory, other files) is `CLOSE_RECOVERY_REQUIRED` and must be repaired by hand to one of
+     those states;
+  2. makes sure the original Close stopped and nothing else writes the checkout, then runs
+     `specs close-recover <operation-id> --confirmed-stopped`: the proven move is finished
+     deterministically (the source is planned again and must equal the pin before it moves; the
+     archived manifest must hash to the pinned value), the Close completes as
+     `archived-without-git` and its claims are released.
+
 ### Specification exit gate and Abandon (D07)
 
 A Specification Close is refused with `CLOSE_BLOCKED` while its workflow is unfinished. The gate is a port
@@ -202,7 +252,13 @@ untracked or removed), the archive inventory admits them as untracked or removed
 and its proof expect the paths of the source directory at the pinned commit plus every archived file. Any other
 staged, modified or untracked path still refuses with `CLOSE_PREFLIGHT`, and the refusal names the paths
 (`CloseOperationError.paths`, at most ten in the message). Worktree and Workspace Close archive nothing and keep
-the strict check. So an Abandon followed by Close needs no manual commit.
+the strict check. So an Abandon followed by Close needs no manual commit. The `uncommitted-changes` blocker
+names each path with its `scope`: `specification` below `specs/active/<slug>/` (listed first, counted in
+`specificationCount`) or `other` (another Specification, project files), so a refusal never calls a file in the
+repository root a Specification file. The ledger hold (`DOCUMENT_COMMITS_PENDING`, `commit-uncommitted`) carries
+whose paths it holds and why (`details.uncommitted`): with automatic commits off (the default) another
+Specification's Task and step changes stay in the ledger until its next step finish, and hold a Close of a
+Specification sharing its checkout until they are committed.
 
 ## Safe integration, rebind and disposal
 

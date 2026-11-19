@@ -1,6 +1,9 @@
 import { Type, type Static } from 'typebox';
 
+import { SpecIdSchema } from '../identifiers';
 import { REVISION_CONFLICTS_MAX } from './operations';
+import { CommitPolicyModeSchema } from './tree';
+import { CommitPolicySourceSchema, UncommittedReasonSchema } from './uncommitted';
 import { ActionReasonSchema, IdSchema, closedUnion } from './vocabulary';
 
 /**
@@ -61,6 +64,77 @@ export const RevisionConflictSchema = Type.Object(
 );
 export type RevisionConflict = Static<typeof RevisionConflictSchema>;
 
+/** Most owners `UncommittedHoldDetails.owners` names. */
+export const UNCOMMITTED_HOLD_OWNERS_MAX = 64;
+/** Most paths one owner names (`count` is its total). */
+export const UNCOMMITTED_HOLD_PATHS_MAX = 8;
+
+/** Checkout-relative paths of one owner: its workflow state first, at most 8 of its `count`. */
+const OwnerPathsSchema = Type.Array(Type.String({ minLength: 1, maxLength: 4096 }), {
+  maxItems: UNCOMMITTED_HOLD_PATHS_MAX,
+});
+
+/**
+ * `DOCUMENT_COMMITS_PENDING` with `cause: commit-uncommitted` (a Close, an integration): what the
+ * uncommitted-changes ledger of the checkout holds, so a refusal names the real cause.
+ * - `reasons`: why the Engine left the paths uncommitted: `auto-commit-off` (automatic commits are
+ *   off, see `policy`) and/or `abandoned` (a failed commit was abandoned).
+ * - `policy`: the documents commit policy now (`manual`, from `source` `default` when no setting
+ *   names it: off is the default). Absent when the configuration cannot be read.
+ * - `owners`: whose paths, in the ledger's order, each with at most 8 `paths` (its workflow state
+ *   first) of its `count`. A Specification (`title` when readable) has `workflowState` (its
+ *   `.execution` and Tasks, written by workflow and Task operations; with automatic commits off the
+ *   finish of a step in progress, `stepInProgress`, commits them) and `documents` (its other files).
+ *   The Specification a Close archives is listed only for paths its archive commit does not take
+ *   along (its documents).
+ * - `unreadable`: ledger records that cannot be read (they hold the checkout too).
+ */
+export const UncommittedHoldDetailsSchema = Type.Object(
+  {
+    reasons: Type.Array(UncommittedReasonSchema, { maxItems: 2, uniqueItems: true }),
+    policy: Type.Optional(
+      Type.Object(
+        { documents: CommitPolicyModeSchema, source: CommitPolicySourceSchema },
+        { additionalProperties: false },
+      ),
+    ),
+    owners: Type.Array(
+      Type.Union([
+        Type.Object(
+          {
+            kind: Type.Literal('specification'),
+            specId: SpecIdSchema,
+            /** The Specification's title, when it can be read. */
+            title: Type.Optional(Type.String()),
+            workflowState: Type.Integer({ minimum: 0 }),
+            documents: Type.Integer({ minimum: 0 }),
+            /**
+             * A step of its run or of one of its Task runs is in progress, whose finish commits the
+             * workflow state (automatic commits off). Absent when unknown or without workflow state.
+             */
+            stepInProgress: Type.Optional(Type.Boolean()),
+            count: Type.Integer({ minimum: 1 }),
+            paths: OwnerPathsSchema,
+          },
+          { additionalProperties: false },
+        ),
+        Type.Object(
+          {
+            kind: Type.Literal('definitions'),
+            count: Type.Integer({ minimum: 1 }),
+            paths: OwnerPathsSchema,
+          },
+          { additionalProperties: false },
+        ),
+      ]),
+      { maxItems: UNCOMMITTED_HOLD_OWNERS_MAX },
+    ),
+    unreadable: Type.Integer({ minimum: 0 }),
+  },
+  { additionalProperties: false },
+);
+export type UncommittedHoldDetails = Static<typeof UncommittedHoldDetailsSchema>;
+
 /**
  * Additive and strict. `reason` is only the `ActionReason` vocabulary; `cause` is an open
  * kebab-case string (for example `path-too-long`, `commit-in-progress`, `no-space`).
@@ -87,6 +161,8 @@ export const DocumentErrorDetailsSchema = Type.Object(
     paths: Type.Optional(
       Type.Array(Type.String({ minLength: 1 }), { maxItems: ERROR_DETAIL_PATHS_MAX }),
     ),
+    /** `DOCUMENT_COMMITS_PENDING` (`cause: commit-uncommitted`): what the ledger holds and why. */
+    uncommitted: Type.Optional(UncommittedHoldDetailsSchema),
   },
   { additionalProperties: false },
 );

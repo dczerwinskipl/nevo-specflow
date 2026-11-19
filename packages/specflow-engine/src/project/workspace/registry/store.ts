@@ -254,7 +254,11 @@ function sameRegistration(
     isDeepStrictEqual(
       before.kind === 'linked' ? before.integrationDestination : undefined,
       after.kind === 'linked' ? after.integrationDestination : undefined,
-    )
+    ) &&
+    (before.kind === 'linked' ? before.startedFrom : undefined) ===
+      (after.kind === 'linked' ? after.startedFrom : undefined) &&
+    (before.kind === 'linked' ? before.branch : undefined) ===
+      (after.kind === 'linked' ? after.branch : undefined)
   );
 }
 

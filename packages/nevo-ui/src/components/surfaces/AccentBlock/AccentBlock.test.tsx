@@ -13,4 +13,35 @@ describe('AccentBlock semantics', () => {
     expect(html).not.toContain('role="alert"');
     expect(html).not.toContain('role="status"');
   });
+
+  it('keeps the card by default', () => {
+    const html = renderToStaticMarkup(<AccentBlock>Now</AccentBlock>);
+    expect(html).toContain('p-4');
+    expect(html).not.toContain('app-body-padding-inline');
+    expect(html).not.toContain('data-accent-bleed');
+  });
+
+  it('bleeds across the body padding from the body variable, never a copied length', () => {
+    const html = renderToStaticMarkup(<AccentBlock bleed>Now</AccentBlock>);
+    expect(html).toContain('data-accent-bleed="true"');
+    expect(html).toContain('mx-[calc(var(--app-body-padding-inline,0px)*-1)]');
+    expect(html).toContain('pr-[max(var(--app-body-padding-inline,0px),--spacing(3))]');
+    // The 3 px bar sits at the sheet edge; the text lines up with the page gutter, and keeps a
+    // 12 px floor where the body has no inline padding (or there is no body).
+    expect(html).toContain('pl-[calc(max(var(--app-body-padding-inline,0px),--spacing(3))_-_3px)]');
+    expect(html).not.toMatch(/16px|-mx-4\b/);
+    expect(html).not.toContain('@max-[40rem]');
+  });
+
+  it('bleeds only below a 40rem page content container with bleed="narrow"', () => {
+    const html = renderToStaticMarkup(<AccentBlock bleed="narrow">Now</AccentBlock>);
+    expect(html).toContain('data-accent-bleed="narrow"');
+    expect(html).toContain(
+      '@max-[40rem]/app-content:mx-[calc(var(--app-body-padding-inline,0px)*-1)]',
+    );
+    expect(html).toContain(
+      '@max-[40rem]/app-content:pl-[calc(max(var(--app-body-padding-inline,0px),--spacing(3))_-_3px)]',
+    );
+    expect(html).not.toMatch(/(^|\s)mx-\[/);
+  });
 });

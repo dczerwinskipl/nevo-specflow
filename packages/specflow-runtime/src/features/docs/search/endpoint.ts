@@ -78,7 +78,7 @@ export const docsSearchEndpoint: FastifyPluginCallback<WorkspaceDocsEndpointOpti
     },
     async (request, reply) => {
       if (operations === undefined) {
-        return replyWithDocsError(reply, 'DOCS_UNAVAILABLE');
+        return replyWithDocsError(reply, 'DOCS_NOT_SERVED');
       }
 
       const { q, limit, includeProposals, snippets } = request.query;

@@ -1,4 +1,4 @@
-import type { TaskOverview } from '@nevo/specflow-contracts/tasks';
+import type { TaskListEntry, TaskOverview } from '@nevo/specflow-contracts/tasks';
 
 import type { DashboardGrouping, GroupDefinition, GroupPredicate } from './default-grouping';
 import type { GroupingFacts } from './grouping-facts';
@@ -62,18 +62,16 @@ export function groupTasks<T>(
   });
 }
 
-/** How many Tasks a summary row names before "N more". */
+/** How many Tasks a summary row shows before "N more" (owner decision A-Q2: no other threshold). */
 const SUMMARY_TASKS = 2;
 
 /**
- * The Overview's compact summary of grouped Tasks (owner decisions 4A, 7A): a `row` group names its
- * count and its first two Tasks, each by id and title in every group (also a Task the Overview
- * names elsewhere, so the groups read alike), a `compact` group only its count.
+ * The Overview's compact summary of grouped Tasks (owner decisions 4A, 7A, A-Q2): a `row` group
+ * names its count and its first two Tasks as the same rows as the Tasks page (the groups arrive in
+ * importance order), then how many more; a `compact` group only its count. Pure.
  */
 export function overviewSummary(
-  groups: readonly (Presented & {
-    readonly tasks: readonly { readonly id: string; readonly title: string }[];
-  })[],
+  groups: readonly (Presented & { readonly tasks: readonly TaskListEntry[] })[],
 ): Pick<TaskOverview, 'rows' | 'compact'> {
   return {
     rows: groups
@@ -82,9 +80,7 @@ export function overviewSummary(
         groupId: group.id,
         name: group.name,
         count: group.tasks.length,
-        tasks: group.tasks
-          .slice(0, SUMMARY_TASKS)
-          .map((task) => ({ id: task.id, title: task.title })),
+        tasks: group.tasks.slice(0, SUMMARY_TASKS),
         more: Math.max(0, group.tasks.length - SUMMARY_TASKS),
       })),
     compact: groups

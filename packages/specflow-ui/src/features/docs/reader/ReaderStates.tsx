@@ -120,6 +120,16 @@ export function CorpusProblemView({
           <p className="wrap-anywhere">{t('docs.state.unavailable.description', { folder })}</p>
         </Alert>
       );
+    case 'not-served':
+      // Final: asking again cannot change it, so there is no Try again.
+      return (
+        <EmptyState
+          variant="inline"
+          icon="book-open"
+          title={t('docs.state.notServed.title')}
+          description={t('docs.state.notServed.description')}
+        />
+      );
     case 'docs-unavailable':
       return (
         <Alert tone="attention" title={t('docs.state.docsUnavailable.title')} actions={retry}>

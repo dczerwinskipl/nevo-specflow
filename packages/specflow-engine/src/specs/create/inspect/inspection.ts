@@ -33,6 +33,7 @@ export async function inspectPublicCreateOperation(
       workspaceRoot: record.target.workspaceRoot,
       relativeManifestPath: record.files[0]!.relativePath,
       documentIds: record.documentIds,
+      ...(record.commit ? {} : { uncommitted: true as const }),
     });
   }
 

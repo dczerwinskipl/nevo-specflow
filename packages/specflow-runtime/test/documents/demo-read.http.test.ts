@@ -101,15 +101,6 @@ describe('Demo Runtime serves the real document read contract', () => {
     ).toBe(400);
   });
 
-  it('keeps the Task documents readable for the Task pages', async () => {
-    const app = await demo();
-    const task = await app.inject(
-      '/api/specs/admission/documents/TASK-03?revision=demo-document-1',
-    );
-    expect(task.statusCode).toBe(200);
-    expect(task.json<DocumentContent>()).toMatchObject({ id: 'TASK-03', kind: 'text' });
-  });
-
   it('refuses demo writes on a protected branch and in the archive with the reason', async () => {
     const app = await demo();
     const write = (specId: string, documentId: string, expectedRevision: string, n: number) =>

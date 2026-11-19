@@ -26,6 +26,11 @@ export interface ContextView {
   readonly attention: readonly ContextRow[];
   /** Required references that do not resolve: the next step cannot start. */
   readonly blocking: readonly ContextRow[];
+  /**
+   * The Engine's default context read now (`taskAuthoring.context.defaultEntries`): what
+   * `context: null` returns an own list to. Unknown until the projection is read.
+   */
+  readonly defaultEntries?: readonly TaskContextEntry[];
 }
 
 /**
@@ -64,7 +69,15 @@ export function contextView(
         (row.problem?.kind === 'awaited' && row.entry.required),
     ),
     blocking: rows.filter((row) => row.problem?.kind === 'unresolved' && row.entry.required),
+    ...(authoring ? { defaultEntries: authoring.context.defaultEntries } : {}),
   };
+}
+
+/** The entries of an own list that the default does not hold: what "Use default context" removes. */
+export function removedByDefault(view: ContextView): TaskContextEntry[] {
+  const kept = new Set((view.defaultEntries ?? []).map(referenceKey));
+
+  return entriesOf(view).filter((entry) => !kept.has(referenceKey(entry)));
 }
 
 /** The entries of the view as the list an edit sends (the default written out). */

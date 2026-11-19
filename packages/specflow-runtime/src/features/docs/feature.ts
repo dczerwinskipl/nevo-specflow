@@ -43,7 +43,7 @@ export interface CreateDocsFeatureOptions {
   readonly projectId: DocsProjectId;
   /**
    * Resolves the registered workspaces whose documentation is read; absent (demo data): every docs
-   * route answers `503 DOCS_UNAVAILABLE`.
+   * route answers `503 DOCS_NOT_SERVED`.
    */
   readonly engine?: SpecFlowEngine;
 }
@@ -90,7 +90,7 @@ export function createDocsFeature(options: CreateDocsFeatureOptions): DocsFeatur
     },
     register(app) {
       const { engine, projectId } = options;
-      // Without an Engine there are no workspaces: every route answers `503 DOCS_UNAVAILABLE`.
+      // Without an Engine there are no workspaces: every route answers `503 DOCS_NOT_SERVED`.
       const workspaces =
         engine === undefined
           ? undefined

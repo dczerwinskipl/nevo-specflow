@@ -1,5 +1,6 @@
 import type { SpecFlowEngine } from '../../application';
 import { mapBounded } from '../../concurrency';
+import { contentStateOf, type DocumentContentState } from './content-state';
 import { deriveDocumentTitle } from './document-title';
 import { decodeText } from './file-analysis';
 import { loadSpecification, type LoadedSpecification } from './loaded-specification';
@@ -20,12 +21,8 @@ export interface RegisteredDocumentSummary {
   readonly type: string;
   readonly title: string;
   readonly revision: string;
-  /**
-   * The file still has exactly the content the Engine created it with from an archetype template:
-   * its revision equals the registry entry's `templateRevision`. False for a document the Engine did
-   * not create from a template.
-   */
-  readonly templateOnly: boolean;
+  /** What the file holds (`contentStateOf`). */
+  readonly contentState: DocumentContentState;
   /** The open commit that covers the file (pending, failed, uncommitted); absent when none does. */
   readonly commit?: DocumentCommitMarker;
 }
@@ -85,7 +82,7 @@ async function summariesOfLoaded(
         path: document.path,
         type: document.type,
         ...probe.value,
-        templateOnly: probe.value.revision === document.templateRevision,
+        contentState: contentStateOf(document, probe.value.revision),
       };
     },
   );

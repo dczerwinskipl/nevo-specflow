@@ -63,7 +63,7 @@ export function createDemoSpecs(state: DemoState, documents: Pick<DemoDocuments,
       throw new DemoTargetError(
         409,
         'DEMO_WORKSPACE_UNAVAILABLE',
-        'Wybrane środowisko pracy nie jest już dostępne.',
+        'The selected workspace is no longer available.',
       );
     }
 

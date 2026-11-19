@@ -99,6 +99,23 @@ describe('Requires attention: a workflow item maps its action to the existing fl
     );
   });
 
+  it('a held Task offers Resume (handed to the Overview flow) and Cancel task', () => {
+    const held = entryOf({
+      code: 'on-hold-blocking',
+      action: 'resume-task',
+      secondaryAction: 'cancel-task',
+    });
+    held.entry.action!.onClick();
+    held.entry.secondaryAction!.onClick();
+
+    expect(held.entry.action?.label).toEqual({ key: 'taskOverview.attention.action.resume-task' });
+    expect(held.requests).toEqual([
+      { kind: 'resume-task', taskId: 'TASK-03' },
+      { kind: 'cancel-task', taskId: 'TASK-03' },
+    ]);
+    expect(held.actions.openTask).not.toHaveBeenCalled();
+  });
+
   it("returns the Specification through its own Return dialog, a Task's on the Task page", () => {
     const specification = entryOf({
       kind: 'specification',

@@ -153,6 +153,23 @@ export function createDemoDocuments(
   return {
     directoryOf,
     directory,
+    /** The registered documents of a type with their text (the workflow's document gates). */
+    async documentsOfType(specId: string, type: string, find: Find) {
+      const documents = await directory(specId, find);
+      if (!documents) {
+        throw new DocumentError('DOCUMENT_NOT_FOUND', 'Unknown Specification.');
+      }
+
+      return documents.registry
+        .filter((entry) => entry.type === type)
+        .map((entry) => {
+          const file = documents.files.get(entry.path);
+
+          return file
+            ? { id: entry.id, present: true, text: decodeText(file.bytes) }
+            : { id: entry.id, present: false };
+        });
+    },
     /**
      * Validates a Create's documents and builds the directory it produces (Engine scaffold). Pure;
      * the specs module calls it to validate before committing and again to commit.

@@ -10,6 +10,7 @@ import {
   reserveCloseOperation,
   withProjectControlLock,
   type CloseJournal,
+  type GitClosePlan,
 } from '../src/testing';
 import { publishCloseCheckpoint } from '../src/specs/lifecycle/close/checkpoint';
 import { isCloseJournal } from '../src/specs/lifecycle/journal/codec';
@@ -123,7 +124,7 @@ describe('Q01 pure Close journal codec and durable store boundary', () => {
       ...journal,
       stage: 'archive-initiated',
       archive: {
-        sourceCommit: journal.plan.source.head,
+        sourceCommit: (journal.plan as GitClosePlan).source.head,
         sourcePath: 'specs/active/' + journal.plan.slug,
         destinationPath: 'specs/archive/' + journal.plan.slug,
         files: [

@@ -1,5 +1,6 @@
 import type {
   SpecificationWorkspaceResponse,
+  TaskListEntry,
   TaskListResponse,
   WorkspaceSession,
 } from '@nevo/specflow-contracts/specs/workspace';
@@ -12,7 +13,7 @@ import { createWorkspaceIntegrationApi } from '../../../../test-support/specs/wo
 import { documentContentFixture } from '../../../../test-support/documents/fixtures';
 import type { ArchetypeCatalogue } from '@nevo/specflow-contracts/documents';
 import type { DocumentApi } from '../../documents/api';
-import { SPEC } from '../execution/projections.stories-support';
+import { SPEC, withExits, type FixtureProjection } from '../execution/projections.stories-support';
 
 /*
  * The Specification Overview in its early states as the Runtime delivers them: no attention, at
@@ -24,12 +25,33 @@ import { SPEC } from '../execution/projections.stories-support';
 export type EarlyScenario =
   /** Just created: the workflow has not started, every document is still its template. */
   | 'not-started'
+  /** Just created, as a real project without Sessions may show it: no goal, Sessions off. */
+  | 'not-started-bare'
+  /** Gather requirements, the first step, just started. */
+  | 'requirements'
   /** Write the Specification by hand: no Session yet, Sessions are offered. */
   | 'write-spec'
   /** Write the Specification with an agent Session working on it. */
   | 'write-spec-session'
+  /** Write the Specification, a second attempt after a return from a later step. */
+  | 'write-spec-retry'
+  /** Write the Specification: behaviour.md still lacks its Acceptance section (an exit gate). */
+  | 'write-spec-gate'
+  /** Break the solution down, before any Task exists: New task beside Finish step. */
+  | 'breakdown'
   /** Break the solution down: the first two draft Tasks were just created. */
-  | 'tasks-created';
+  | 'tasks-created'
+  /** The wait step: the Tasks are worked on; the step track is compact. */
+  | 'waiting'
+  /** Write the Specification finished; Design the solution is ready to start. */
+  | 'ready'
+  /** The workflow completed; both Tasks are done. */
+  | 'completed'
+  /** The workflow was abandoned at Write the Specification. */
+  | 'abandoned';
+
+const notStarted = (scenario: EarlyScenario) =>
+  scenario === 'not-started' || scenario === 'not-started-bare';
 
 const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
 
@@ -43,23 +65,38 @@ const steps = [
   {
     id: 'requirements',
     title: 'Gather requirements',
-    purpose: 'Agree on the goal, scope, constraints and acceptance with the owner in conversation.',
+    purpose: 'A shared, owner-confirmed picture of the goal, scope and acceptance.',
   },
   {
     id: 'specification',
     title: 'Write the Specification',
-    purpose: 'Write the Specification documents from the agreed requirements.',
+    purpose: 'Documents that state what to build and how to tell it is done.',
   },
-  { id: 'solution', title: 'Design the solution', purpose: 'Design the solution.' },
+  {
+    id: 'solution',
+    title: 'Design the solution',
+    purpose: 'A chosen approach, with its trade-offs and decisions written down.',
+  },
   {
     id: 'breakdown',
     title: 'Break the solution down',
-    purpose:
-      'Draft the Tasks, each with its task type, dependencies and verification; the finish input lists every draft Task.',
+    purpose: 'Draft Tasks that together cover the solution, each one verifiable.',
   },
-  { id: 'breakdown-review', title: 'Review the breakdown', purpose: 'Review the breakdown.' },
-  { id: 'implementation', title: 'Waiting for Tasks', purpose: 'Wait for the Tasks.' },
-  { id: 'acceptance', title: 'Acceptance', purpose: 'Accept the result.' },
+  {
+    id: 'breakdown-review',
+    title: 'Review the breakdown',
+    purpose: 'No gaps or conflicts between the Specification, solution and Tasks.',
+  },
+  {
+    id: 'implementation',
+    title: 'Implement',
+    purpose: 'The Specification is built, Task by Task.',
+  },
+  {
+    id: 'acceptance',
+    title: 'Acceptance',
+    purpose: 'Confirmation that the delivered work does what the owner asked for.',
+  },
 ] as const;
 
 const outlineStep = (index: number) => ({
@@ -68,6 +105,9 @@ const outlineStep = (index: number) => ({
   position: index + 1,
 });
 const tasksStep = outlineStep(3);
+/** The Tasks the breakdown created exist from that scenario on. */
+const withTasks = (scenario: EarlyScenario): boolean =>
+  scenario === 'tasks-created' || scenario === 'waiting' || scenario === 'completed';
 
 const workflow = {
   workflowId: 'specification-standard',
@@ -77,18 +117,97 @@ const workflow = {
 };
 
 /** The active step of each started scenario (an index into `steps`). */
-const activeIndex: Record<Exclude<EarlyScenario, 'not-started'>, number> = {
+const activeIndex: Record<
+  Exclude<EarlyScenario, 'not-started' | 'not-started-bare' | 'completed' | 'abandoned'>,
+  number
+> = {
+  requirements: 0,
+  ready: 2,
   'write-spec': 1,
   'write-spec-session': 1,
+  'write-spec-retry': 1,
+  'write-spec-gate': 1,
+  breakdown: 3,
   'tasks-created': 3,
+  waiting: 5,
 };
+
+/** The exit gate of Write the Specification that behaviour.md does not meet yet. */
+const acceptanceGate = {
+  id: 'behaviour-acceptance',
+  type: 'document' as const,
+  label: 'A "behaviour" document with Acceptance',
+  labelDeclared: false,
+  documentType: 'behaviour',
+  requiredSections: ['Acceptance'],
+  scope: { kind: 'specification' as const, specId: SPEC },
+  status: 'unsatisfied' as const,
+  reason: 'sections-missing' as const,
+  missingSections: ['Acceptance'],
+  documentId: 'behaviour',
+};
+
+/**
+ * How the workflow uses the documents while behaviour.md misses its section: needed to finish this
+ * step (it refuses Finish now), ux.md needed to start the next step, the rest named by no gate.
+ */
+const gateRelations = [
+  {
+    scope: acceptanceGate.scope,
+    documentId: 'behaviour',
+    relation: 'needed-to-finish' as const,
+    blocksNow: true,
+    step: { id: steps[1].id, title: steps[1].title, active: true },
+    gate: {
+      id: acceptanceGate.id,
+      label: acceptanceGate.label,
+      labelDeclared: acceptanceGate.labelDeclared,
+      documentType: acceptanceGate.documentType,
+      requiredSections: acceptanceGate.requiredSections,
+      missingSections: ['Acceptance'],
+    },
+  },
+  {
+    scope: acceptanceGate.scope,
+    documentId: 'ux',
+    relation: 'needed-to-start' as const,
+    blocksNow: false,
+    step: { id: steps[2].id, title: steps[2].title, active: false },
+    gate: {
+      id: 'ux-present',
+      label: 'ux.md exists',
+      labelDeclared: true,
+      documentType: 'ux',
+      requiredSections: [],
+    },
+  },
+];
 
 /** The Specification's workflow projection of the scenario, with its outline. */
 export function earlyProjection(scenario: EarlyScenario): WorkflowActionProjection {
+  return withExits(earlyFixture(scenario));
+}
+
+function earlyFixture(scenario: EarlyScenario): FixtureProjection {
   const subject = { kind: 'specification' as const, specId: SPEC };
   const specification = {
     createTask: { kind: 'allowed' as const },
-    taskTypes: [],
+    taskTypes: [
+      {
+        id: 'backend',
+        title: 'Backend',
+        description: 'A change to the Runtime or its APIs.',
+        useWhen: 'The work changes server code.',
+        workflow: {
+          id: 'task-standard',
+          title: 'Standard Task',
+          steps: [
+            { id: 'implement', title: 'Implement' },
+            { id: 'review', title: 'Review' },
+          ],
+        },
+      },
+    ],
     exit: {
       close: { kind: 'blocked' as const, blockers: [] },
       abandon: { kind: 'allowed' as const },
@@ -98,9 +217,49 @@ export function earlyProjection(scenario: EarlyScenario): WorkflowActionProjecti
     ...steps[index]!,
     kind: 'work' as const,
     executors: ['agent' as const, 'human' as const],
+    ...(index === tasksStep.position - 1 ? { produces: 'tasks' as const } : {}),
   });
 
-  if (scenario === 'not-started') {
+  if (scenario === 'completed') {
+    return {
+      subject,
+      workflow,
+      position: { kind: 'terminal', outcome: 'completed' },
+      actions: {},
+      specification: {
+        ...specification,
+        createTask: { kind: 'unavailable', reason: 'specification-ended' },
+        exit: { close: { kind: 'allowed' }, abandon: { kind: 'unavailable', reason: 'ended' } },
+      },
+      outline: { stepCount: steps.length },
+    };
+  }
+
+  if (scenario === 'abandoned') {
+    return {
+      subject,
+      workflow,
+      position: {
+        kind: 'terminal',
+        outcome: 'abandoned',
+        abandonment: {
+          at: minutesAgo(12),
+          reason: 'The relevance cutoff moved to the search ranking rework.',
+          actor: owner,
+        },
+      },
+      actions: {},
+      specification: {
+        ...specification,
+        createTask: { kind: 'unavailable', reason: 'specification-ended' },
+        exit: { close: { kind: 'allowed' }, abandon: { kind: 'unavailable', reason: 'ended' } },
+      },
+      // Once the run ended the outline names no step: the track is not shown.
+      outline: { stepCount: steps.length },
+    };
+  }
+
+  if (notStarted(scenario)) {
     const outline: WorkflowOutline = { stepCount: steps.length, next: outlineStep(0), tasksStep };
 
     return {
@@ -137,14 +296,47 @@ export function earlyProjection(scenario: EarlyScenario): WorkflowActionProjecti
     ...(index <= tasksStep.position - 1 ? { tasksStep } : {}),
   };
 
+  if (scenario === 'ready') {
+    return {
+      subject,
+      workflow,
+      position: {
+        kind: 'ready',
+        next: { step: step(index), human: true, agent: { kind: 'available' } },
+      },
+      actions: { start: { step: steps[index]!.id, firstStart: false } },
+      specification,
+      outline,
+    };
+  }
+
+  if (scenario === 'waiting') {
+    return {
+      subject,
+      workflow,
+      position: {
+        kind: 'waiting',
+        step: { ...steps[index]!, kind: 'wait' },
+        blockingTasks: { count: 2, ids: drafts.map((draft) => draft.id) },
+        totalTasks: 2,
+      },
+      actions: {},
+      specification,
+      outline,
+    };
+  }
+
+  const attempt = scenario === 'write-spec-retry' ? 2 : 1;
+
   return {
     subject,
     workflow,
+    ...(scenario === 'write-spec-gate' ? { documentRelations: gateRelations } : {}),
     position: {
       kind: 'active',
       step: step(index),
       attempt: {
-        number: 1,
+        number: attempt,
         startedAt: minutesAgo(scenario === 'tasks-created' ? 8 : 31),
         actor: owner,
       },
@@ -152,13 +344,16 @@ export function earlyProjection(scenario: EarlyScenario): WorkflowActionProjecti
     actions: {
       finish: {
         step: steps[index]!.id,
-        attempt: 1,
+        attempt,
         transitions: [
           {
             id: 'done',
             target: { kind: 'step', step: steps[index + 1]!.id },
             targetTitle: steps[index + 1]!.title,
             feedback: 'optional',
+            ...(scenario === 'write-spec-gate'
+              ? { unavailable: 'gate-unsatisfied' as const, gates: [acceptanceGate] }
+              : {}),
           },
         ],
       },
@@ -175,13 +370,13 @@ const goal =
 
 /** The documents of the `feature` archetype; which ones are still only their template. */
 function documentsOf(scenario: EarlyScenario) {
-  const writing = scenario !== 'not-started';
+  const writing = !notStarted(scenario);
   const doc = (id: string, docTitle: string, written: boolean) => ({
     id,
     title: docTitle,
     filename: `${id}.md`,
     kind: id,
-    templateOnly: !(writing && written),
+    contentState: writing && written ? ('authored' as const) : ('baseline' as const),
   });
 
   return [
@@ -222,14 +417,54 @@ const drafts = [
   { id: 'fusion-cutoff', title: 'Drop vector-only hits below minSimilarity' },
 ] as const;
 const draftStatus = { id: 'draft', label: 'Draft', lifecycle: 'pending' } as const;
+const doneStatus = { id: 'completed', label: 'Done', lifecycle: 'completed' } as const;
+const inProgressStatus = {
+  id: 'in-progress',
+  label: 'In progress',
+  lifecycle: 'in_progress',
+} as const;
+
+/** A Task of the scenario as the Runtime's Tasks page and Overview preview row. */
+function earlyRow(
+  task: (typeof drafts)[number],
+  status: typeof draftStatus | typeof doneStatus | typeof inProgressStatus,
+): TaskListEntry {
+  return {
+    ...task,
+    type: { id: 'backend', title: 'Backend' },
+    dependsOn: [],
+    status,
+    facts: {
+      preparation: status === draftStatus ? 'draft' : 'ready',
+      escalated: false,
+      position:
+        status === doneStatus
+          ? { state: 'terminal', outcome: 'completed' }
+          : status === inProgressStatus
+            ? { state: 'active', step: 'implement', attempt: 1 }
+            : { state: 'not-started' },
+      startable: false,
+      startBlockers: [],
+      definitionChanged: false,
+    },
+  };
+}
 
 /** The workspace read of the scenario. */
 export async function earlyWorkspace(
   scenario: EarlyScenario,
 ): Promise<SpecificationWorkspaceResponse> {
   const base = await createWorkspaceIntegrationApi().getSpecificationWorkspace('api-integration');
-  const tasks = scenario === 'tasks-created' ? drafts : [];
+  const tasks = withTasks(scenario) ? drafts : [];
+  const done = scenario === 'completed';
+  const group =
+    scenario === 'waiting'
+      ? { id: 'in-progress', name: 'In progress', status: inProgressStatus }
+      : done
+        ? { id: 'done', name: 'Done', status: doneStatus }
+        : { id: 'needs-approval', name: 'Needs approval', status: draftStatus };
   const sessions = sessionsOf(scenario);
+  const bare = scenario === 'not-started-bare';
   const notImplemented = { state: 'unavailable', reason: 'not_implemented' } as const;
 
   return {
@@ -239,7 +474,8 @@ export async function earlyWorkspace(
       ...base.specification,
       id: SPEC,
       title,
-      summary: goal,
+      // A project without a written goal has an empty summary (audit finding 14).
+      summary: bare ? '' : goal,
       preparationState: tasks.length > 0 ? 'preparing' : 'empty',
       attention: [],
     },
@@ -253,7 +489,10 @@ export async function earlyWorkspace(
         state: 'available',
         data: { overviewDocumentId: 'overview', items: documentsOf(scenario) },
       },
-      sessions: { state: 'available', data: { items: sessions, attention: [] } },
+      // Sessions turned off: no readable registry, with `sessions_disabled` on the action.
+      sessions: bare
+        ? { state: 'unavailable', reason: 'source_unavailable' }
+        : { state: 'available', data: { items: sessions, attention: [] } },
       tasks: {
         state: 'available',
         data: {
@@ -261,20 +500,20 @@ export async function earlyWorkspace(
             tasks.length > 0
               ? [
                   {
-                    id: 'needs-approval',
-                    name: 'Needs approval',
+                    id: group.id,
+                    name: group.name,
                     summary: 'row',
                     collapsed: false,
                     tasks: tasks.map((task) => ({
                       ...task,
-                      status: draftStatus,
+                      status: group.status,
                       type: { id: 'backend', title: 'Backend' },
                       dependsOn: [],
                     })),
                   },
                 ]
               : [],
-          completed: 0,
+          completed: done ? tasks.length : 0,
           total: tasks.length,
           cancelled: 0,
           ended: 0,
@@ -285,10 +524,10 @@ export async function earlyWorkspace(
               tasks.length > 0
                 ? [
                     {
-                      groupId: 'needs-approval',
-                      name: 'Needs approval',
+                      groupId: group.id,
+                      name: group.name,
                       count: tasks.length,
-                      tasks: [...tasks],
+                      tasks: tasks.map((task) => earlyRow(task, group.status)),
                       more: 0,
                     },
                   ]
@@ -298,7 +537,9 @@ export async function earlyWorkspace(
         },
       },
     },
-    actions: { startSession: { available: true } },
+    actions: {
+      startSession: bare ? { available: false, reason: 'sessions_disabled' } : { available: true },
+    },
   };
 }
 
@@ -316,20 +557,7 @@ export function earlyTaskList(scenario: EarlyScenario): TaskListResponse {
               name: 'Needs approval',
               summary: 'row',
               collapsed: false,
-              tasks: tasks.map((task) => ({
-                ...task,
-                type: { id: 'backend', title: 'Backend' },
-                dependsOn: [],
-                status: draftStatus,
-                facts: {
-                  preparation: 'draft',
-                  escalated: false,
-                  position: { state: 'not-started' },
-                  startable: false,
-                  startBlockers: [],
-                  definitionChanged: false,
-                },
-              })),
+              tasks: tasks.map((task) => earlyRow(task, draftStatus)),
             },
           ]
         : [],

@@ -1,4 +1,10 @@
-import type { CloseJournal, CloseOutcome, ClosePlan, CloseKind } from '../lifecycle';
+import type {
+  CloseJournal,
+  CloseMergeFacts,
+  CloseOutcome,
+  ClosePlan,
+  CloseKind,
+} from '../lifecycle';
 
 export type PublicCloseStatus =
   'completed' | 'in-progress' | 'requires-resolution' | 'recovery-required';
@@ -20,13 +26,22 @@ export interface PublicCloseSourceWorkspace {
   readonly kind: 'primary' | 'linked';
 }
 
-export interface PublicClosePreview {
+/** The admitted plan of a Specification or Worktree Close (also for a retry of a reserved one). */
+export interface PublicClosePlan {
   readonly operationId: string;
   readonly specId: string;
   readonly kind: Exclude<CloseKind, 'workspace-close'>;
   readonly location: 'active' | 'archive';
   readonly integrationRequired: boolean;
   readonly sourceWorkspace: PublicCloseSourceWorkspace;
+}
+
+/** What the Close merges ({@link CloseMergeFacts}). */
+export type PublicCloseMerge = CloseMergeFacts;
+
+/** A fresh, read-only Close preview: the plan and its merge facts. */
+export interface PublicClosePreview extends PublicClosePlan {
+  readonly merge: PublicCloseMerge;
 }
 
 /** A linked registration always records its instance; the primary never does. */
@@ -79,7 +94,11 @@ export function projectCloseOperation(journal: CloseJournal): PublicCloseOperati
   };
 }
 
-export function projectClosePreview(plan: ClosePlan): PublicClosePreview {
+export function projectClosePreview(plan: ClosePlan, merge: CloseMergeFacts): PublicClosePreview {
+  return { ...projectClosePlan(plan), merge };
+}
+
+export function projectClosePlan(plan: ClosePlan): PublicClosePlan {
   if (plan.kind === 'workspace-close') {
     throw new Error('Workspace Close must use the workspace-specific preview.');
   }

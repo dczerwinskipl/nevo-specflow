@@ -9,3 +9,8 @@ export { createDemoDocuments, type DemoDocuments } from './demo/operations';
 export { createDemoDocumentReadSource } from './demo/read-source';
 export { registerDemoDocumentRoutes } from './demo/endpoints';
 export type { DemoSpecDocuments } from './demo/model';
+export {
+  createDemoTaskDocuments,
+  type DemoTaskDocuments,
+  type DemoTaskDocumentState,
+} from './demo/task-documents';

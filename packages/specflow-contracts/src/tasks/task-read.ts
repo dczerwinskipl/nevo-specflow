@@ -142,34 +142,6 @@ export const TaskResourceSchema = Type.Object({
   }),
   link: Link,
 });
-const HumanRequirement = Type.Object({
-  id: Id,
-  definitionRevision: Text,
-  source: Type.Union([
-    Type.Object({
-      kind: Type.Literal('human-step'),
-      stepId: Id,
-      relation: Type.Union([Type.Literal('current'), Type.Literal('next-ready')]),
-    }),
-    Type.Object({
-      kind: Type.Literal('human-gate'),
-      gateId: NullableText,
-      phase: Type.Union([Type.Literal('entry'), Type.Literal('exit')]),
-      role: Text,
-      scope: Type.Union([Type.Literal('task'), Type.Literal('step'), Type.Literal('change')]),
-      targetId: Id,
-    }),
-  ]),
-  key: Type.Union([AttemptKey, Type.Null()]),
-  title: Text,
-  instruction: NullableText,
-  state: Type.Union([Type.Literal('pending'), Type.Literal('passed'), Type.Literal('unavailable')]),
-  inspectionProblem: Type.Optional(Text),
-  actions: Type.Array(
-    Type.Object({ result: Type.Optional(Text), label: Text, feedbackRequired: Type.Boolean() }),
-  ),
-  evidence: Type.Array(Type.Object({ title: Text, link: Link })),
-});
 const PageRef = Type.Object({
   token: Text,
   initialLimit: Type.Integer({ minimum: 1, maximum: 50 }),
@@ -207,7 +179,6 @@ export const TaskHistoryEntrySchema = Type.Object({
     }),
   ),
 });
-export const TaskResourcePageSchema = page(TaskResourceSchema);
 export const TaskHistoryPageSchema = page(TaskHistoryEntrySchema);
 export const TaskPageQuerySchema = Type.Object(
   {
@@ -256,19 +227,6 @@ export const TaskSnapshotSchema = Type.Object({
         ]),
       }),
     ),
-    humanRequirements: section(
-      Type.Object({
-        items: Type.Array(HumanRequirement),
-        pendingCount: Type.Integer({ minimum: 0 }),
-      }),
-    ),
-    resources: section(
-      Type.Object({
-        recommended: Type.Array(TaskResourceSchema, { maxItems: 3 }),
-        visibleTotal: Type.Integer({ minimum: 0 }),
-        page: Type.Union([PageRef, Type.Null()]),
-      }),
-    ),
     document: section(
       Type.Union([
         Type.Object({ id: Id, revision: Text, hasMore: Type.Optional(Type.Boolean()) }),
@@ -280,16 +238,11 @@ export const TaskSnapshotSchema = Type.Object({
         items: Type.Array(Type.Object({ taskId: TaskIdSchema, title: Text, link: Link })),
       }),
     ),
-    recovery: section(
-      Type.Union([Type.Object({ id: Id, state: Text, summary: Text, link: Link }), Type.Null()]),
-    ),
     history: section(PageRef),
   }),
 });
 export type TaskSnapshot = Static<typeof TaskSnapshotSchema>;
 export type TaskResource = Static<typeof TaskResourceSchema>;
-export type TaskResourcePage = Static<typeof TaskResourcePageSchema>;
 export type TaskHistoryPage = Static<typeof TaskHistoryPageSchema>;
 export type TaskTarget = Static<typeof Target>;
 export type TaskLink = Static<typeof Link>;
-export type TaskHumanRequirement = Static<typeof HumanRequirement>;

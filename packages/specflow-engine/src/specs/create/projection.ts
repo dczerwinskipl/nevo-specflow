@@ -9,6 +9,8 @@ export interface PublicCreateOperation {
   readonly workspaceId: string;
   readonly relativeManifestPath: string;
   readonly documentIds: string[];
+  /** Present when the files were written without a commit (Git is disabled in the project). */
+  readonly uncommitted?: true;
 }
 
 /** Transport-independent result. Never serialize workstation paths or journal evidence. */
@@ -22,5 +24,6 @@ export function projectCreatedSpecification(created: CreatedSpecification): Publ
     workspaceId: created.workspaceId,
     relativeManifestPath: created.relativeManifestPath,
     documentIds: [...created.documentIds],
+    ...(created.uncommitted ? { uncommitted: true as const } : {}),
   };
 }

@@ -4,8 +4,12 @@
  * substituted values are never rescanned.
  */
 
-/** Fixed goal text used when the creation goal is empty. */
-export const GOAL_PROMPT_FALLBACK = 'Describe the intended outcome of this specification.';
+/**
+ * Fixed goal prompt used when the creation goal is empty. It is an HTML comment: the author sees it
+ * in the source, but no reader, rendered view or description derived from the document presents
+ * template guidance as the Specification's content.
+ */
+export const GOAL_PROMPT_FALLBACK = '<!-- Describe the intended outcome of this specification. -->';
 
 export const TEMPLATE_PLACEHOLDERS = [
   'specificationTitle',

@@ -19,6 +19,8 @@ export interface Fragment {
 }
 
 const FENCE = /^(?:`{3,}|~{3,})/u;
+/** A Mermaid diagram's fence: its lines are diagram source, not text, so no fragment. */
+const MERMAID_FENCE = /^(?:`{3,}|~{3,})\s*mermaid(?:\s|$)/iu;
 const HEADING = /^#{1,6}(?:\s|$)/u;
 const THEMATIC_BREAK = /^(?:[-*_][ \t]*){3,}$/u;
 const LINK_DEFINITION = /^\[[^\]]+\]:\s*\S/u;
@@ -37,6 +39,7 @@ export function fragments(section: string): Fragment[] {
   const out: Fragment[] = [];
   let block: string[] = [];
   let fenced = false;
+  let diagram = false;
   let table = false;
   const flush = () => {
     if (block.length > 0) {
@@ -50,7 +53,7 @@ export function fragments(section: string): Fragment[] {
     if (fenced) {
       if (FENCE.test(raw)) {
         fenced = false;
-      } else if (raw) {
+      } else if (raw && !diagram) {
         const text = raw.replace(/\s+/gu, ' ');
         out.push({ text, sentences: [{ start: 0, end: text.length, code: true }] });
       }
@@ -67,6 +70,7 @@ export function fragments(section: string): Fragment[] {
     if (FENCE.test(line)) {
       flush();
       fenced = true;
+      diagram = MERMAID_FENCE.test(line);
     } else if (
       !line ||
       HEADING.test(line) ||

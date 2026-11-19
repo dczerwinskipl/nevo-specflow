@@ -403,6 +403,13 @@ function ContextEntryRow({
               />
             </MenuTrigger>
             <MenuContent align="end" aria-describedby={firstChange ? noteId : undefined}>
+              {/* The consequence first: it is read before any choice below. */}
+              {firstChange ? (
+                <>
+                  <MenuNote id={noteId}>{t('taskAuthoring.context.firstChangeMenuNote')}</MenuNote>
+                  <MenuSeparator />
+                </>
+              ) : null}
               <MenuLabel>{t('taskAuthoring.context.whenStarts')}</MenuLabel>
               <MenuRadioGroup
                 value={row.entry.required ? 'required' : 'optional'}
@@ -440,12 +447,6 @@ function ContextEntryRow({
               >
                 {t('taskAuthoring.context.remove')}
               </MenuItem>
-              {firstChange ? (
-                <>
-                  <MenuSeparator />
-                  <MenuNote id={noteId}>{t('taskAuthoring.context.firstChangeMenuNote')}</MenuNote>
-                </>
-              ) : null}
             </MenuContent>
           </Menu>
         ) : reserveMenu ? (

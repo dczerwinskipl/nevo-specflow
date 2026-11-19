@@ -159,6 +159,14 @@ describe('TaskContextSection', () => {
     const menu = openRowMenu('overview.md');
     const note = within(menu).getByText(/^A change here saves the context/);
     expect(menu.getAttribute('aria-describedby')).toBe(note.id);
+    // The consequence comes first, before any choice, set apart by a separator.
+    const follows = (node: Node) =>
+      Boolean(note.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING);
+    const [separator] = within(menu).getAllByRole('separator');
+    expect(separator && follows(separator)).toBe(true);
+    expect(separator?.compareDocumentPosition(within(menu).getByText('Required'))).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
     // The last entry cannot move down, the first movable one not up: still one separator each.
     expect(within(menu).getAllByRole('separator')).toHaveLength(3);
     cleanup();

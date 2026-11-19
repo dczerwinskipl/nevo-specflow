@@ -203,14 +203,14 @@ cancelled), **Documents**, **Context** and **Depends on**. Task history is the S
   first start "Inputs this task needs before it starts, in the order they are read", once started
   "Inputs this task reads, in order"), then for the default that it follows the task (`task.md`,
   its other documents and the Specification overview, all required) and that new task documents
-  join it, and, when the context is editable, set apart: "Your first change saves it as this task's
-  own list. After that, new task documents are not added by themselves." For an own list: set for
-  this task, new task documents are not added by themselves, and, when it can go back, Choose “Use
-  default context” in the + menu. The open header shows the count only ("2 entries"); the collapsed
+  join it, and, when the context is editable (also after the start, until the task ends), set
+  apart: "Your first change saves it as this task's own list. After that, new task documents are
+  not added by themselves." For an own list: this task's own list, new task documents are not
+  added by themselves, and, when it can go back, Choose “Use default context” in the + menu. The open header shows the count only ("2 entries"); the collapsed
   summary keeps the source ("6 entries · own list · 1 optional missing"). The first change of an
   editable default has no confirm; it is said where it happens, before it happens: the row `⋯`
-  menu ends with a note after a separator ("A change here saves the context as this task's own
-  list…", announced with the menu through `aria-describedby`), and every Add dialog ends with an
+  menu opens with a note above a separator, read before any choice ("A change here saves the context
+  as this task's own list…", announced with the menu through `aria-describedby`), and every Add dialog ends with an
   info note above **Add to context** ("Adding this saves the context as this task's own list…").
   Both disappear once the list is the task's own. The row menu shows Move up / Move down, and
   their separator, only when the entry can move. With an own, editable list the **+** menu ends

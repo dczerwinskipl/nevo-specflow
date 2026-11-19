@@ -159,6 +159,11 @@ function authoring(scenario: Scenario): TaskAuthoring {
 }
 
 function resource(scenario: Scenario): TaskResourceFacts {
+  // Before the first start the task has no run; started, its first step is active.
+  const position = scenario.started
+    ? ({ state: 'active', step: 'implement', attempt: 1 } as const)
+    : ({ state: 'not-started' } as const);
+
   return {
     revision: 'rev-3',
     type: 'implementation',
@@ -171,12 +176,12 @@ function resource(scenario: Scenario): TaskResourceFacts {
     facts: {
       preparation: 'ready',
       escalated: false,
-      position: { state: 'active', step: 'implement', attempt: 1 },
+      position,
       startable: false,
       startBlockers: [],
       definitionChanged: false,
     },
-    position: { state: 'active', step: 'implement', attempt: 1 },
+    position,
     definitionChanged: false,
   };
 }
@@ -234,7 +239,7 @@ function SupportSections(scenario: Scenario) {
         editable={scenario.editable}
         openTarget={() => undefined}
         onLoadLatest={() => undefined}
-        started={scenario.started === true}
+        started={task.position.state !== 'not-started'}
       />
     </div>
   );
@@ -355,16 +360,22 @@ export const DefaultNotEditable: Story = {
   },
 };
 
-/** A started task: the explanation says what the task reads. */
+/**
+ * A started task (its first step active): the explanation says what the task reads. Its context
+ * stays editable until it ends, so + and the first-change sentence remain.
+ */
 export const StartedTask: Story = {
   args: { started: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const page = within(canvasElement.ownerDocument.body);
+    // A started task's context stays editable (until it ends): + and the row menus remain.
+    await expect(canvas.getByRole('button', { name: 'Add context' })).toBeVisible();
     await userEvent.click(await canvas.findByRole('button', { name: 'About the default context' }));
-    await expect(await page.findByRole('dialog')).toHaveTextContent(
-      'Inputs this task reads, in order.',
-    );
+    const popover = await page.findByRole('dialog');
+    await expect(popover).toHaveTextContent('Inputs this task reads, in order.');
+    await expect(popover).not.toHaveTextContent('before it starts');
+    await expect(popover).toHaveTextContent("Your first change saves it as this task's own list.");
   },
 };
 

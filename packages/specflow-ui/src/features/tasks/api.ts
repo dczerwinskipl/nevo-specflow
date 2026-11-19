@@ -1,7 +1,6 @@
 import type { HttpRequestClient } from '@nevo/http-client';
 import type {
   SpecificationTaskResponse,
-  TaskResourcePage,
   TaskHistoryPage,
   TaskListQuery,
   TaskListResponse,
@@ -19,13 +18,6 @@ export interface TaskApi {
     signal?: AbortSignal,
   ): Promise<TaskListResponse>;
   getTask(specId: string, taskId: string, signal?: AbortSignal): Promise<SpecificationTaskResponse>;
-  getResources?(
-    specId: string,
-    taskId: string,
-    token: string,
-    cursor?: string,
-    signal?: AbortSignal,
-  ): Promise<TaskResourcePage>;
   getHistory?(
     specId: string,
     taskId: string,
@@ -35,17 +27,23 @@ export interface TaskApi {
   ): Promise<TaskHistoryPage>;
 }
 
+/** The Tasks page read's one filter as its query string (`?blocking=…` or `?group=…`). */
+function taskListSearch(query: TaskListQuery): string {
+  const search = new URLSearchParams({
+    ...(query.blocking ? { blocking: query.blocking } : {}),
+    ...(query.group ? { group: query.group } : {}),
+  }).toString();
+
+  return search ? `?${search}` : '';
+}
+
 export function createRuntimeTaskApi(client: HttpRequestClient): TaskApi {
   return {
     getTaskList: (specId, query, signal) =>
       client.get<TaskListResponse>(
-        `/api/specs/${encodeURIComponent(specId)}/tasks${query.blocking ? `?blocking=${query.blocking}` : ''}`,
+        `/api/specs/${encodeURIComponent(specId)}/tasks${taskListSearch(query)}`,
         { signal },
       ),
-    getResources: (specId, taskId, token, cursor, signal) =>
-      client.get<TaskResourcePage>(taskPageUrl(specId, taskId, 'resources', token, cursor), {
-        signal,
-      }),
     getHistory: (specId, taskId, token, cursor, signal) =>
       client.get<TaskHistoryPage>(taskPageUrl(specId, taskId, 'history', token, cursor), {
         signal,

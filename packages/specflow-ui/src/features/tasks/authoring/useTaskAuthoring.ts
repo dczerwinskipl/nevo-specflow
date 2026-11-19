@@ -8,17 +8,6 @@ import { useAppServices } from '../../../app/useAppServices';
 import { taskKeys } from '../queries';
 import { invalidateAfterTaskChange, taskAuthoringKeys } from './queries';
 
-/** What the owner may do with the Specification now (`createTask`, the allowed task types). */
-export function useSpecificationActions(specId: string, enabled = true) {
-  const { taskAuthoringApi } = useAppServices();
-
-  return useQuery({
-    queryKey: taskAuthoringKeys.specificationActions(specId),
-    queryFn: ({ signal }) => taskAuthoringApi.specificationActions(specId, signal),
-    enabled,
-  });
-}
-
 /** What the owner may do with one Task now (lifecycle actions and the start blockers). */
 export function useTaskActions(specId: string, taskId: string) {
   const { taskAuthoringApi } = useAppServices();

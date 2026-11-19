@@ -30,6 +30,14 @@ const opening = 'pt-3 pb-4 @min-[40rem]/work:pb-5';
 const following = 'border-t border-border-default py-4 @min-[40rem]/work:py-5';
 /** A slot outlet's first section opens its column (its own wrapper carries the divider). */
 const opensColumn = '[&>*:first-child]:border-t-0 [&>*:first-child]:pt-3';
+/**
+ * Below a 40rem page the Now block is a flush band whose own edge separates the next section: that
+ * section drops its divider and keeps its top padding, and the band adds no space of its own below,
+ * so one 16 px gap separates them.
+ */
+const nowBand = '@max-[40rem]/app-content:pb-0';
+const afterNowBand = '@max-[40rem]/app-content:border-t-0';
+const outletAfterNowBand = '@max-[40rem]/app-content:[&>*:first-child]:border-t-0';
 
 const noSubscription = () => () => undefined;
 
@@ -104,13 +112,25 @@ export function WorkView({ specId, data }: WorkViewProps) {
         specId={id}
         intro={data.intro}
         overviewDocumentId={data.overviewDocumentId}
+        overviewInitialOnly={
+          data.documents.find((document) => document.id === data.overviewDocumentId)
+            ?.contentState === 'baseline'
+        }
       />
     </div>
   );
   // With a workflow (project Runtime) the Now block opens the work; without one it renders the
   // preparation block in its place.
   const now = nowBlock ? (
-    <div key="now" className={cn(opening, 'empty:hidden', twoColumns && 'col-start-1 min-w-0')}>
+    <div
+      key="now"
+      className={cn(
+        opening,
+        nowShown && nowBand,
+        'empty:hidden',
+        twoColumns && 'col-start-1 min-w-0',
+      )}
+    >
       <SpecificationNow
         documents={data.documents.map((document) => ({
           value: document.filename ?? document.id,
@@ -134,7 +154,11 @@ export function WorkView({ specId, data }: WorkViewProps) {
   const attention = attentionShown ? (
     <div
       key="attention"
-      className={cn(nowBlock ? following : opening, twoColumns && 'col-start-1 min-w-0')}
+      className={cn(
+        nowBlock ? following : opening,
+        nowShown && afterNowBand,
+        twoColumns && 'col-start-1 min-w-0',
+      )}
     >
       <SpecificationAttentionOutlet specId={id} data={data} />
     </div>
@@ -145,6 +169,7 @@ export function WorkView({ specId, data }: WorkViewProps) {
       className={cn(
         twoColumns && 'col-start-1 min-w-0',
         !nowBlock && !attentionShown && opensColumn,
+        nowShown && !attentionShown && outletAfterNowBand,
       )}
     >
       <SpecificationWorkSectionOutlet

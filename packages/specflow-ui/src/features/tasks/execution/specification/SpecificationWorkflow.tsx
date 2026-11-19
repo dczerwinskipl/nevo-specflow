@@ -6,7 +6,8 @@ import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow
 import { useApplicationCollection } from '../../../../app/navigation/ApplicationLocation';
 import { useRuntimeMode } from '../../../../app/useRuntimeMode';
 import { useSpecificationWorkspace } from '../../../specs/read-model';
-import { useSpecificationActions } from '../../authoring/useTaskAuthoring';
+import { NewTaskDialog } from '../../authoring/NewTaskDialog';
+import { useSpecificationActions } from '../../read-model';
 import { goToHeading } from '../InlineAction';
 import { AbandonSpecificationDialog } from './AbandonSpecificationDialog';
 import type { BlockerTask } from './BlockerGroups';
@@ -14,6 +15,7 @@ import { CloseSpecificationDialog } from './CloseSpecificationDialog';
 import { TaskAttentionHost } from '../../overview/TaskAttentionHost';
 
 type ExitDialog = 'close' | 'abandon';
+type WorkflowDialog = ExitDialog | 'new-task';
 
 interface SpecificationWorkflowValue {
   readonly specId: string;
@@ -21,6 +23,8 @@ interface SpecificationWorkflowValue {
   readonly openExit: (dialog: ExitDialog) => void;
   /** Opens the Tasks page (`/specs/:specId/tasks`). */
   readonly openTasks: () => void;
+  /** Opens New task; absent while the projection does not allow creating a Task. */
+  readonly openNewTask?: () => void;
 }
 
 const SpecificationWorkflowContext = createContext<SpecificationWorkflowValue | null>(null);
@@ -28,10 +32,10 @@ const SpecificationWorkflowContext = createContext<SpecificationWorkflowValue | 
 export const SPECIFICATION_NOW_HEADING = 'spec-workflow-heading';
 
 /**
- * The Specification's workflow for its Overview: the projection, and the Close and Abandon dialogs
- * that the header overflow and the Now block both open. Only a project Runtime serves workflow
- * routes, and only a current (not archived) Specification can still move; elsewhere it provides
- * nothing and the Overview stays as it was.
+ * The Specification's workflow for its Overview: the projection, the Close and Abandon dialogs
+ * that the header overflow and the Now block both open, and the New task dialog Now opens, in every Runtime (the demo runs the same
+ * Engine workflow in memory). Only a current (not archived) Specification can still move; an
+ * archived one gets nothing and its Overview stays as it was.
  */
 export function SpecificationWorkflowProvider({
   specId,
@@ -40,11 +44,12 @@ export function SpecificationWorkflowProvider({
   readonly specId: string;
   readonly children: ReactNode;
 }) {
-  const runtimeMode = useRuntimeMode();
   const collection = useApplicationCollection();
-  const enabled = runtimeMode === 'project' && collection === 'current';
+  // Either Runtime serves the workflow; only a harness without a connected Runtime has none.
+  const runtimeMode = useRuntimeMode();
+  const connected = runtimeMode === 'project' || runtimeMode === 'demo';
 
-  return enabled ? (
+  return connected && collection === 'current' ? (
     <ProjectSpecificationWorkflow specId={specId}>{children}</ProjectSpecificationWorkflow>
   ) : (
     children
@@ -63,7 +68,7 @@ function ProjectSpecificationWorkflow({
   const collection = useApplicationCollection();
   const projection = useSpecificationActions(specId).data;
   const workspace = useSpecificationWorkspace(specId).data;
-  const [dialog, setDialog] = useState<ExitDialog>();
+  const [dialog, setDialog] = useState<WorkflowDialog>();
   const all = (workspace?.taskGroups ?? []).flatMap((group) => group.tasks);
   const asBlocker = (task: (typeof all)[number]): BlockerTask => ({
     id: task.id,
@@ -71,6 +76,7 @@ function ProjectSpecificationWorkflow({
     state: task.statusId
       ? t(`taskAuthoring.status.${task.statusId}`, { defaultValue: task.status })
       : task.status,
+    ...(task.statusId ? { statusId: task.statusId } : {}),
   });
   const tasks = new Map(all.map((task) => [task.id, asBlocker(task)]));
   const openTask = (taskId: string) =>
@@ -83,10 +89,17 @@ function ProjectSpecificationWorkflow({
   const openTasks = () =>
     void navigate({ to: '/specs/$specId/tasks', params: { specId }, search: { collection } });
   const specTitle = workspace?.title ?? specId;
+  const canCreateTask = projection?.specification?.createTask.kind === 'allowed';
 
   return (
     <SpecificationWorkflowContext.Provider
-      value={{ specId, projection, openExit: setDialog, openTasks }}
+      value={{
+        specId,
+        projection,
+        openExit: setDialog,
+        openTasks,
+        ...(canCreateTask ? { openNewTask: () => setDialog('new-task') } : {}),
+      }}
     >
       {children}
       <TaskAttentionHost
@@ -95,6 +108,16 @@ function ProjectSpecificationWorkflow({
       />
       {projection ? (
         <>
+          {projection.specification ? (
+            <NewTaskDialog
+              specId={specId}
+              specTitle={specTitle}
+              open={dialog === 'new-task'}
+              onOpenChange={(open) => !open && close()}
+              taskTypes={projection.specification.taskTypes}
+              tasks={all.map((task) => ({ id: task.id, title: task.title }))}
+            />
+          ) : null}
           <CloseSpecificationDialog
             open={dialog === 'close'}
             onOpenChange={(open) => !open && close()}
@@ -102,7 +125,8 @@ function ProjectSpecificationWorkflow({
             specTitle={specTitle}
             projection={projection}
             tasks={tasks}
-            cancelledTasks={all.filter((task) => task.statusId === 'cancelled').map(asBlocker)}
+            {...(workspace?.taskProgress ? { progress: workspace.taskProgress } : {})}
+            documents={workspace?.documents ?? []}
             {...(projection.specification?.exit?.abandon.kind === 'allowed' ||
             projection.specification?.exit?.abandon.kind === 'blocked'
               ? { onAbandonInstead: () => setDialog('abandon') }
@@ -113,6 +137,13 @@ function ProjectSpecificationWorkflow({
               openTasks();
             }}
             onOpenTask={openTask}
+            onOpenSpecification={(id) =>
+              void navigate({
+                to: '/specs/$specId',
+                params: { specId: id },
+                search: { collection: 'current' },
+              })
+            }
             onClosed={() => void navigate({ to: '/', search: { collection: 'archive' } })}
           />
           <AbandonSpecificationDialog
@@ -173,12 +204,21 @@ export function useSpecificationExitActions(): WorkspaceHeaderAction[] {
     return [];
   }
 
+  // A Runtime without a repository (the demo) cannot close: the menu says so instead of a dialog
+  // that would fail.
   const actions: WorkspaceHeaderAction[] = [
-    {
-      id: 'close-specification',
-      label: t('workflowExecution.close.action'),
-      onPress: () => workflow.openExit('close'),
-    },
+    exit.close.kind === 'unavailable'
+      ? {
+          id: 'close-specification',
+          label: t('workflowExecution.close.noRepository'),
+          disabled: true,
+          onPress: () => undefined,
+        }
+      : {
+          id: 'close-specification',
+          label: t('workflowExecution.close.action'),
+          onPress: () => workflow.openExit('close'),
+        },
   ];
   if (exit.abandon.kind !== 'unavailable') {
     actions.push({

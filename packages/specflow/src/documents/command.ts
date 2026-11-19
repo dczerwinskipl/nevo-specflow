@@ -5,6 +5,7 @@ import { Command, InvalidArgumentError } from 'commander';
 import { ReportedFailure } from '../exit-code';
 import { engineDocumentsApi, type DocumentsEngineApi, type DocumentWriteRequest } from './api';
 import { readContentInput } from './content-input';
+import { drainDocumentQueueAtExit } from './drain';
 import {
   contentLines,
   statusLines,
@@ -28,9 +29,6 @@ export interface DocumentsCommandContext {
   /** How long the drain at exit may take (default 10 s, the shutdown deadline of the queue). */
   readonly exitFlushDeadlineMs?: number;
 }
-
-/** The shutdown flush deadline of the document queue. */
-export const EXIT_FLUSH_DEADLINE_MS = 10_000;
 
 /** The longest `flush` waits when no `--wait-ms` is given. */
 const DEFAULT_FLUSH_WAIT_MS = 30_000;
@@ -149,24 +147,13 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
       : ({ kind: 'folder', path: options.folder! } as const);
   };
 
-  async function drainAtExit(session: Session): Promise<void> {
-    try {
-      const outcome = await api.flushAll(
-        session.engine,
-        context.exitFlushDeadlineMs ?? EXIT_FLUSH_DEADLINE_MS,
-      );
-      if (outcome.remaining > 0) {
-        context.stderr(
-          `${outcome.remaining} document commit(s) are still queued; they stay journaled. ` +
-            'Run "nevo-specflow specs documents flush" to commit them.',
-        );
-      }
-    } catch (error) {
-      context.stderr(
-        `Could not drain the commit queue: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-  }
+  const drainAtExit = (session: Session): Promise<void> =>
+    drainDocumentQueueAtExit(
+      session.engine,
+      (engine, deadlineMs) => api.flushAll(engine, deadlineMs),
+      context.stderr,
+      context.exitFlushDeadlineMs,
+    );
 
   /** The Engine, the body, and the drain at exit for a command that queued commits. */
   async function run(

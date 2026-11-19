@@ -28,14 +28,73 @@ import {
   type InspectionBasis,
 } from './projection';
 
-/** The Engine of a project-mode Runtime and its workflow operations. */
+/** The Specification a Task read belongs to: its project, checkout and title. */
+export interface TaskSpecification {
+  readonly projectId: string;
+  readonly workspaceId: string;
+  readonly title: string;
+}
+
+/**
+ * The Engine behind the Task reads and commands: its workflow operations and the two lookups the
+ * reads add (the Specification, the `task.md` revision). A project Runtime opens them over its
+ * Project Home ({@link createProjectTaskEngine}); the demo Runtime over its in-memory state.
+ */
 export interface TaskEngine {
-  readonly engine: SpecFlowEngine;
   /**
    * The workflow operations with the definitions as they are now (`openWorkflow`): called once per
    * request, so a definition edit is seen by the next request.
    */
   readonly openWorkflow: () => Promise<WorkflowDependencies>;
+  /**
+   * The Specification, `null` when it does not exist. Throws when it exists but cannot be read now
+   * (the read answers 503).
+   */
+  readonly specification: (specId: string) => Promise<TaskSpecification | null>;
+  /**
+   * The `task.md` of a Task and its revision. It is the Documents owner's body version (a separate
+   * version by design, `architecture.runtime.task-read-composition`), not part of the execution read.
+   */
+  readonly mainDocument: (
+    specId: string,
+    taskId: string,
+  ) => Promise<Availability<{ id: string; revision: string } | null>>;
+}
+
+/** The Task Engine of a project Runtime: the Specifications and Task documents of its Project Home. */
+export function createProjectTaskEngine(
+  engine: SpecFlowEngine,
+  openWorkflow: () => Promise<WorkflowDependencies>,
+): TaskEngine {
+  return {
+    openWorkflow,
+    // `SPEC_NOT_FOUND` is the read's "does not exist" (`inspectSpecification`).
+    async specification(specId) {
+      const found = await resolveSpecificationForRead(engine, specId);
+      if (found.status !== 'available') {
+        throw new TaskSourceUnavailableError(found.status);
+      }
+
+      return {
+        projectId: engine.context.project.projectId,
+        workspaceId: found.workspaceId,
+        title: found.specification.title,
+      };
+    },
+    async mainDocument(specId, taskId) {
+      try {
+        const listing = await readTaskDocuments(engine, specId, taskId);
+        const main = listing.documents.find((document) => document.required);
+
+        return {
+          state: 'available',
+          data: main?.file ? { id: main.id, revision: main.file.revision } : null,
+        };
+      } catch {
+        return { state: 'unavailable', reason: 'source_unavailable' };
+      }
+    },
+  };
 }
 
 /**
@@ -73,18 +132,18 @@ export async function inspectSpecification(
   tasks: ReadExecutionOptions['tasks'],
 ): Promise<InspectionBasis | null> {
   try {
-    const found = await resolveSpecificationForRead(source.engine, specId);
-    if (found.status !== 'available') {
-      throw new TaskSourceUnavailableError(found.status);
+    const specification = await source.specification(specId);
+    if (!specification) {
+      return null;
     }
 
     const workflow = await source.openWorkflow();
     const reading = await readExecutionForRead(workflow, specId, { tasks });
 
     return {
-      projectId: source.engine.context.project.projectId,
-      workspaceId: found.workspaceId,
-      specificationTitle: found.specification.title,
+      projectId: specification.projectId,
+      workspaceId: specification.workspaceId,
+      specificationTitle: specification.title,
       catalogue: workflow.catalogue,
       inspection: reading.inspection,
       reading,
@@ -104,29 +163,7 @@ export async function inspectSpecification(
 }
 
 /**
- * The `task.md` of a Task and its revision. It is the Documents owner's body version (a separate
- * version by design, `architecture.runtime.task-read-composition`), not part of the execution read.
- */
-async function mainDocument(
-  engine: SpecFlowEngine,
-  specId: string,
-  taskId: string,
-): Promise<Availability<{ id: string; revision: string } | null>> {
-  try {
-    const listing = await readTaskDocuments(engine, specId, taskId);
-    const main = listing.documents.find((document) => document.required);
-
-    return {
-      state: 'available',
-      data: main?.file ? { id: main.id, revision: main.file.revision } : null,
-    };
-  } catch {
-    return { state: 'unavailable', reason: 'source_unavailable' };
-  }
-}
-
-/**
- * The project-mode Task read sources (`architecture.runtime.task-read-composition`). A detail or a
+ * The Engine's Task read sources (`architecture.runtime.task-read-composition`). A detail or a
  * page is ONE `reading`: definition, execution and history all from one Engine read, so no section
  * mixes two moments. A history page names the execution version its detail saw; a newer one is not
  * spliced in (409 expired). The separate ports read the same way, for consumers that need only one
@@ -149,11 +186,7 @@ export function createEngineTaskSources(source: TaskEngine): {
       const history = historyFactsOf(basis, entry);
 
       return {
-        definition: definitionFactsOf(
-          basis,
-          entry,
-          await mainDocument(source.engine, specId, taskId),
-        ),
+        definition: definitionFactsOf(basis, entry, await source.mainDocument(specId, taskId)),
         execution: executionFactsOf(basis, entry) ?? null,
         history: history
           ? {

@@ -34,12 +34,12 @@ describe('Back parent resolution', () => {
     expect(backByHistory({ parentIndex: 4, currentIndex: undefined })).toBe(false);
   });
 
-  it('leads a Task page to the Specification Tasks, keeping the collection, from any entry', () => {
-    expect(specificationParentTarget('tasks', 'spec-1', 'current')).toEqual({
-      to: '/specs/$specId',
+  it('leads a Task page to the Tasks page, keeping the collection, from any entry', () => {
+    // The navigation's Tasks destination, not the Overview's Tasks section; no filter is carried.
+    expect(specificationParentTarget('tasks', 'spec-1', 'archive')).toEqual({
+      to: '/specs/$specId/tasks',
       params: { specId: 'spec-1' },
-      search: { collection: 'current' },
-      hash: 'tasks-heading',
+      search: { collection: 'archive' },
     });
   });
 

@@ -82,10 +82,10 @@
 
 .mobile-workspace-scroll {
   scroll-padding-top: var(--workspace-overlay-inset-top);
-  /* A narrow desktop window has classic (space-taking) scrollbars: reserving the gutter on both
-     edges keeps the sheet centred instead of losing width on the right only. Touch devices use
-     overlay scrollbars, so the gutter is 0 there and nothing changes. */
-  scrollbar-gutter: stable both-edges;
+  /* No reserved scrollbar gutter: the stacked sheet is edge-to-edge, like a `scroll="content"`
+     workspace. `scrollbar-gutter: stable both-edges` reserved the scrollbar's width on both sides
+     wherever the scrollbar takes space, which showed as a strip beside the sheet on a real phone,
+     not only in a narrow desktop window. */
 }
 
 .mobile-floating-navigation {

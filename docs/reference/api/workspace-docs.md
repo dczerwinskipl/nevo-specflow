@@ -170,7 +170,7 @@ workspaces exist:
 | Status | Body                                     | When                                                             |
 | ------ | ---------------------------------------- | ---------------------------------------------------------------- |
 | `401`  | `{ "error": "authentication_required" }` | required authentication and no authenticated session             |
-| `503`  | `DOCS_UNAVAILABLE`                       | the Runtime has no project (no Engine)                           |
+| `503`  | `DOCS_NOT_SERVED`                        | the Runtime has no project (no Engine, demo data)                |
 | `403`  | `{ "error": "forbidden" }`               | the principal holds `docs.view` at no scope covering the project |
 
 ## Errors
@@ -181,7 +181,8 @@ workspaces exist:
 | `404`  | `DOCS_WORKSPACE_NOT_FOUND`   | the workspace is not registered                                                                                                            |
 | `409`  | `DOCS_WORKSPACE_UNAVAILABLE` | the workspace is registered but its checkout cannot be read now (missing, moved, being closed, or the Runtime is closing)                  |
 | `503`  | `DOCS_NOT_CONFIGURED`        | the checkout's `docs.root` is not a directory; the body adds `docsRoot`, the configured value                                              |
-| `503`  | `DOCS_UNAVAILABLE`           | the checkout's `docs` settings or `docs.yaml` are invalid or a link, reading the documentation failed, or the Runtime serves demo data     |
+| `503`  | `DOCS_UNAVAILABLE`           | the checkout's `docs` settings or `docs.yaml` are invalid or a link, or reading the documentation failed                                   |
+| `503`  | `DOCS_NOT_SERVED`            | the Runtime serves no project documentation (no Engine, demo data); final, asking again cannot change it                                   |
 
 The body is `WorkspaceDocsError`, `{ "error": "<for people>", "code": "<code>" }`, with `docsRoot`
 (relative to the checkout, for example `docs`) only for `DOCS_NOT_CONFIGURED`; `code` is the stable

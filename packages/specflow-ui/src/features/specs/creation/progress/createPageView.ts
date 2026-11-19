@@ -89,6 +89,8 @@ export interface CreateStatusInput {
   readonly reading: boolean;
   /** The Create makes a new workspace (the generic line then says so). */
   readonly newWorkspace: boolean;
+  /** The Create finished without committing its files (Git is disabled in the project). */
+  readonly uncommitted?: boolean;
 }
 
 /**
@@ -99,7 +101,11 @@ export function createPageStatus(input: CreateStatusInput): Message | undefined 
   const { view, failure } = input;
   switch (view) {
     case 'completed':
-      return message('create.page.status.completed');
+      return message(
+        input.uncommitted
+          ? 'create.page.status.completedUncommitted'
+          : 'create.page.status.completed',
+      );
     case 'refused':
       return failure && nothingCreatedKinds.has(failure.kind)
         ? message('create.page.notCreated')

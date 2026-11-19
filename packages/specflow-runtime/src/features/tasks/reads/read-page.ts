@@ -1,4 +1,4 @@
-import type { TaskHistoryPage, TaskResourcePage } from '@nevo/specflow-contracts/tasks';
+import type { TaskHistoryPage } from '@nevo/specflow-contracts/tasks';
 import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
 import { specScope } from '../../specs';
 import type { RequestAuthorization } from '../../auth';
@@ -7,14 +7,14 @@ import { sameTask, type HistoryFacts, type SourcePage, type TaskReading } from '
 import { taskVisibility } from './visibility';
 import type { ReadOutcome } from './outcome';
 
-export async function readTaskPage(
+/** A page of a Task's history, by the lease its detail issued. */
+export async function readTaskHistoryPage(
   deps: TaskReadDependencies,
-  kind: 'history' | 'resources',
   specId: string,
   taskId: string,
   query: { token: string; cursor?: string; limit?: string },
   authz: RequestAuthorization,
-): Promise<ReadOutcome<TaskHistoryPage | TaskResourcePage>> {
+): Promise<ReadOutcome<TaskHistoryPage>> {
   authz.require({
     resource: SpecCapabilities,
     capability: SpecCapabilities.capabilities.View,
@@ -37,29 +37,27 @@ export async function readTaskPage(
     return { kind: 'unavailable' };
   }
 
+  const limitOf = () => (query.limit === undefined ? undefined : Number(query.limit));
   const resolved = deps.leases.resolve(
     query.token,
-    kind,
+    'history',
     identity,
     authz.readContext(),
     query.cursor,
-    query.limit === undefined ? undefined : Number(query.limit),
+    limitOf(),
   );
-  // Without a page source of this kind no detail issued a lease for it, so every token is unknown.
-  const { resources, history } = deps;
+  // Without a history source no detail issued a lease, so every token is unknown.
+  const { history } = deps;
   const read = reading?.history;
-  if (!resolved || (kind === 'resources' ? !resources : !history && !read)) {
+  if (!resolved || (!history && !read)) {
     return { kind: 'expired' };
   }
 
   const visible = taskVisibility(identity, authz, deps.sessions);
   const { lease, continuation, limit } = resolved;
-  const page =
-    kind === 'resources'
-      ? await resources!.read(identity, lease.source.handle, continuation, limit, visible)
-      : read
-        ? pageOf(read, lease.source.handle, continuation, limit)
-        : await history!.read(identity, lease.source.handle, continuation, limit);
+  const page = read
+    ? pageOf(read, lease.source.handle, continuation, limit)
+    : await history!.read(identity, lease.source.handle, continuation, limit);
   if (
     !page ||
     !sameTask(page.identity, identity) ||
@@ -69,46 +67,32 @@ export async function readTaskPage(
     return { kind: 'expired' };
   }
 
-  await visible.prefetch(
-    kind === 'history'
-      ? (page.items as TaskHistoryPage['items']).flatMap((entry) =>
-          entry.resources.map((item) => item.link),
-        )
-      : (page.items as TaskResourcePage['items']).map((item) => item.link),
-  );
-  const items = [];
+  await visible.prefetch(page.items.flatMap((entry) => entry.resources.map((item) => item.link)));
+  const items: TaskHistoryPage['items'] = [];
   // One bounded source page per request. An underfilled visible page retains its continuation.
-  if (kind === 'history') {
-    for (const entry of page.items as TaskHistoryPage['items']) {
-      if (entry.key.specId !== specId || entry.key.taskId !== taskId) {
-        return { kind: 'unavailable' };
-      }
-
-      const resources = [];
-      for (const item of entry.resources) {
-        if (await visible(item.link)) {
-          resources.push(item);
-        }
-      }
-
-      items.push({ ...entry, resources });
+  for (const entry of page.items) {
+    if (entry.key.specId !== specId || entry.key.taskId !== taskId) {
+      return { kind: 'unavailable' };
     }
-  } else {
-    for (const item of page.items as TaskResourcePage['items']) {
+
+    const resources = [];
+    for (const item of entry.resources) {
       if (await visible(item.link)) {
-        items.push(item);
+        resources.push(item);
       }
     }
+
+    items.push({ ...entry, resources });
   }
 
   if (
     !deps.leases.resolve(
       query.token,
-      kind,
+      'history',
       identity,
       authz.readContext(),
       query.cursor,
-      query.limit === undefined ? undefined : Number(query.limit),
+      limitOf(),
     )
   ) {
     return { kind: 'expired' };
@@ -121,7 +105,7 @@ export async function readTaskPage(
       items,
       nextCursor: deps.leases.continue(query.token, page.next, limit),
       coverage: lease.source.coverage === 'partial' ? 'partial' : page.coverage,
-    } as TaskHistoryPage | TaskResourcePage,
+    },
   };
 }
 

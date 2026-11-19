@@ -26,7 +26,10 @@ import { createSpecFlowQueryClient } from '../queryClient';
 import { UiModulesProvider } from '../ui-modules/UiModulesProvider';
 import { builtInUiModuleRegistry } from '../ui-modules/builtInUiModules';
 import { StoryLocalization } from '../../i18n/StoryLocalization';
-import { createWorkspaceIntegrationApi } from '../../../test-support/specs/workspace/api';
+import {
+  createTaskIntegrationApi,
+  createWorkspaceIntegrationApi,
+} from '../../../test-support/specs/workspace/api';
 import { createFixtureSpecsOverviewApi } from '../../../test-support/specs/overview/api';
 import {
   fixtureApi as managedSessionFixtureApi,
@@ -302,6 +305,8 @@ function Connected({
           };
         },
       },
+      // The Tasks page reads the Runtime's Tasks page (`getTaskList`), in the demo Runtime too.
+      taskApi: createTaskIntegrationApi(),
       documentApi: {
         getDocument: (_spec, id) =>
           hidden.has(id) || !records[id]

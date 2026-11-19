@@ -84,6 +84,22 @@ describe('excerpt', () => {
     expect(excerpt(section, query).text).toBe(text);
   });
 
+  it('never takes text from a Mermaid diagram', () => {
+    const section = [
+      '## Sign-in',
+      '',
+      '```mermaid',
+      'sequenceDiagram',
+      '  U->>W: Open sign-in',
+      '```',
+      '',
+      'The user opens the sign-in page.',
+    ].join('\n');
+
+    expect(excerpt(section, 'open sign-in').text).toBe('The user opens the sign-in page.');
+    expect(excerpt('```mermaid\nU->>W: Open sign-in\n```', 'open').text).toBe('');
+  });
+
   it('starts at a sentence start within the lead, without an ellipsis', () => {
     const section = `## Locks\n\n${filler(3)} When the owner died, a stale lock is reclaimed. ${filler(9)}`;
     const { text } = excerpt(section, 'stale');

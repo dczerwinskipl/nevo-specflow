@@ -1,4 +1,4 @@
-import type { SpecFlowEngine, WorkflowDependencies } from '@nevo/specflow-engine';
+import type { WorkflowDependencies } from '@nevo/specflow-engine';
 
 import type { RuntimeFeature } from '../runtime-feature';
 import type { ProjectIdSource } from '../specs';
@@ -7,15 +7,14 @@ import type { WorkflowPort } from './port';
 import { workflowEndpoint } from './routes';
 
 export interface WorkflowFeatureDependencies {
-  /** Production composition: the Engine is the source of record. */
-  readonly engine?: SpecFlowEngine;
-  /** The workflow operations of the Engine, opened per request (default: `openWorkflow(engine)`). */
+  /**
+   * The Engine's workflow operations, opened per request: over the Project Home (`openWorkflow`) in
+   * a project Runtime, over the in-memory state in the demo Runtime.
+   */
   readonly openWorkflow?: () => Promise<WorkflowDependencies>;
   /** Explicit backend (tests). Wins over the Engine. */
   readonly port?: WorkflowPort;
   readonly projectId?: ProjectIdSource;
-  /** Register the routes (default). The demo Runtime turns them off: it has no Engine. */
-  readonly routes?: boolean;
 }
 
 /**
@@ -28,19 +27,14 @@ export function createWorkflowFeature(
   return {
     authorizationResources: [],
     register(app) {
-      if (dependencies.routes === false) {
-        return;
-      }
-
       const port =
         dependencies.port ??
-        (dependencies.engine
-          ? createEngineWorkflowPort(dependencies.engine, dependencies.openWorkflow)
+        (dependencies.openWorkflow
+          ? createEngineWorkflowPort(dependencies.openWorkflow)
           : undefined);
       app.register(workflowEndpoint, {
         port,
-        projectId: () =>
-          dependencies.projectId?.() ?? dependencies.engine?.context.project.projectId,
+        projectId: () => dependencies.projectId?.(),
       });
     },
   };

@@ -99,11 +99,21 @@ export const TaskStatusChangeSchema = closed({
 });
 export type TaskStatusChange = Static<typeof TaskStatusChangeSchema>;
 
+/** A lowercase sha256 hex digest (the revision of a file's bytes). */
+const sha256 = () => Type.String({ pattern: '^[0-9a-f]{64}$' });
+
 /** One registered document of the Task: path relative to the Task folder. */
 export const TaskDocumentEntrySchema = closed({
   id: Type.String({ pattern: DOCUMENT_ID_PATTERN }),
   path: text(DOCUMENT_PATH_MAX_LENGTH),
   type: Type.String({ pattern: CATALOGUE_ID_PATTERN }),
+  /**
+   * Engine-written, as `specification.yaml` records it: the revision (sha256 of the bytes) of the
+   * document's baseline, the initial content the Engine itself wrote (generated `task.md` from the
+   * title and summary). The content state is `baseline` while the file still has exactly this
+   * revision. Absent for a document created from given content.
+   */
+  baselineRevision: Type.Optional(sha256()),
 });
 export type TaskDocumentEntry = Static<typeof TaskDocumentEntrySchema>;
 

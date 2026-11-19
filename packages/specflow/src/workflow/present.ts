@@ -224,7 +224,9 @@ export function exitLines(exit: SpecificationExitActions): string[] {
   return [
     close.kind === 'allowed'
       ? 'Close: allowed (Git and workspace rules are checked by the close itself)'
-      : 'Close: blocked',
+      : close.kind === 'blocked'
+        ? 'Close: blocked'
+        : `Close: unavailable (${close.reason})`,
     ...(close.kind === 'blocked' ? blockerLines(close.blockers) : []),
     abandon.kind === 'allowed'
       ? 'Abandon: allowed ("specs abandon <spec-id> --reason <text> --yes")'
@@ -262,6 +264,10 @@ export function startLines(result: StartResult): string[] {
         ` -> ${transition.id}${transition.targetTitle !== undefined ? ` (to ${transition.targetTitle})` : ''}` +
         `${transition.feedback === 'required' ? ' (feedback required)' : ''}`,
     );
+  }
+
+  if (context.finish.tasks) {
+    lines.push(`Finish needs: --tasks-file <path>. ${context.finish.tasks.rule}`);
   }
 
   return lines;

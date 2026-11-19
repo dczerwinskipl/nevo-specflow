@@ -6,14 +6,16 @@ import type { InspectionBasis } from '../engine/projection';
 import { DEFAULT_DASHBOARD_GROUPING, type DashboardGrouping } from './default-grouping';
 import { groupTasks } from './group-tasks';
 import { BROKEN_GROUPING_FACTS, groupingFactsOf, type GroupingFacts } from './grouping-facts';
+import { awaitedTaskIds, byImportance } from './importance';
 import { BROKEN_STATUS, taskStatusOf } from './status-line';
 
 /**
  * One presentation of a Specification's Tasks from ONE Engine reading (`tasks: 'all'`): a row per
  * Task (a readable one with its neutral facts and status line, a broken one with what is readable
- * of it), the configured grouping, the attention projection and, when the Specification is stuck,
- * the Tasks that block it. The Overview section and the Tasks page are both made from it, so they
- * never disagree. Pure.
+ * of it, each with the attention item that names it), the configured grouping with each group in
+ * importance order (`importance.ts`), the attention projection and, when the Specification is
+ * stuck, the Tasks that block it. The Overview section and the Tasks page are both made from it,
+ * so they never disagree. Pure.
  */
 export interface TaskBoard {
   readonly rows: readonly TaskListEntry[];
@@ -36,10 +38,15 @@ export function taskBoardOf(
     (item) => item.subject.kind === 'specification' && item.reason === 'tasks-stuck',
   )?.blocking;
   const causes = new Map((stuck ?? []).map((task) => [task.taskId, task.cause] as const));
+  const naming = attentionByTask(attention);
   const blocks = (taskId: string) => {
     const cause = causes.get(taskId);
+    const item = naming.get(taskId);
 
-    return cause ? { blocksSpecification: { cause } } : {};
+    return {
+      ...(cause ? { blocksSpecification: { cause } } : {}),
+      ...(item ? { attention: structuredClone(toWire(item)) } : {}),
+    };
   };
 
   const readable = reading.inspection.tasks.flatMap((entry): TaskListEntry[] => {
@@ -59,6 +66,9 @@ export function taskBoardOf(
             status: taskStatusOf(facts),
             facts: toWire(facts),
             ...blocks(record.taskId),
+            ...(record.status === 'on-hold' && record.statusChange?.reason
+              ? { holdReason: record.statusChange.reason }
+              : {}),
           },
         ]
       : [];
@@ -72,15 +82,49 @@ export function taskBoardOf(
   }));
   const factsOf = (row: TaskListEntry): GroupingFacts =>
     isReadable(row) ? groupingFactsOf(row.facts) : BROKEN_GROUPING_FACTS;
-  const rows = [...readable, ...broken];
+  // The Engine's Task order (by id, as it orders its execution), broken Tasks in their place: the
+  // order importance ties keep.
+  const rows = [...readable, ...broken].sort((left, right) =>
+    left.id < right.id ? -1 : left.id > right.id ? 1 : 0,
+  );
+  const awaited = awaitedTaskIds(rows);
 
   return {
     rows,
-    groups: groupTasks(grouping, rows, factsOf),
+    groups: groupTasks(grouping, rows, factsOf).map((group) => ({
+      ...group,
+      tasks: byImportance(group.tasks, awaited),
+    })),
     attention,
     ...(stuck ? { stuck } : {}),
     progress: reading.progress,
   };
+}
+
+/**
+ * The attention item each Task's row carries (its Requires attention overlay): the Task's own item,
+ * else the Specification's `task-escalated` that names it. The Engine reports at most one item per
+ * Task; the Specification's `tasks-stuck` is the row's `blocksSpecification` instead.
+ */
+function attentionByTask(attention: readonly AttentionItem[]): Map<string, AttentionItem> {
+  const items = new Map<string, AttentionItem>();
+  for (const item of attention) {
+    if (item.subject.kind === 'specification' && item.reason === 'task-escalated') {
+      for (const taskId of item.taskIds ?? []) {
+        if (!items.has(taskId)) {
+          items.set(taskId, item);
+        }
+      }
+    }
+  }
+
+  for (const item of attention) {
+    if (item.subject.kind === 'task') {
+      items.set(item.subject.taskId, item);
+    }
+  }
+
+  return items;
 }
 
 /** The Tasks an attention item names: its own Task, and the Tasks a Specification item covers. */

@@ -1,6 +1,7 @@
 import { newRun } from '@nevo/workflow';
 import { beforeAll, describe, expect, it } from 'vitest';
 
+import { sha256Hex } from '../../hash';
 import type { ExecutionCatalogue } from '../definitions/catalogue';
 import { abandonSpecification } from './abandon';
 import { finishStep } from './finish';
@@ -96,6 +97,22 @@ describe('a Task without a Specification run', () => {
     });
     expect(edited.task).toMatchObject({ title: 'API v2', type: 'implementation' });
     expect(edited.task.summary).toBeUndefined();
+    // The generated task.md is its baseline; a metadata edit neither rewrites it nor its record.
+    const baseline = [
+      {
+        id: 'task',
+        path: 'task.md',
+        type: 'task',
+        baselineRevision: sha256Hex('# API\n\nThe API.\n'),
+      },
+    ];
+    expect(created.task.documents).toEqual(baseline);
+    expect(edited.task.documents).toEqual(baseline);
+    expect(dependencies.store.applied[1]?.documents).toBeUndefined();
+
+    // Given first text is authored: no baseline is recorded.
+    const given = await create(dependencies, 'docs', { document: 'Scope: the docs.' });
+    expect(given.task.documents).toEqual([{ id: 'task', path: 'task.md', type: 'task' }]);
     expect(await approve(dependencies, 'api')).toEqual({ subject: task('api'), status: 'ready' });
 
     const started = await start(dependencies, 'api');

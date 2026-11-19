@@ -76,4 +76,20 @@ describe('Specification summary expand target', () => {
     expect(screen.getByText('Source: GitHub issue #156.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
   });
+
+  it('offers Show description without a goal only when the overview holds more than its template', () => {
+    const summary = (overviewInitialOnly: boolean) => (
+      <SpecificationSummarySection
+        title="SSO sign-in"
+        specId="sso"
+        overviewDocumentId="overview"
+        overviewInitialOnly={overviewInitialOnly}
+      />
+    );
+    const view = render(summary(true));
+    expect(screen.queryByRole('button', { name: 'Show description' })).toBeNull();
+
+    view.rerender(summary(false));
+    expect(screen.getByRole('button', { name: 'Show description' })).toBeTruthy();
+  });
 });

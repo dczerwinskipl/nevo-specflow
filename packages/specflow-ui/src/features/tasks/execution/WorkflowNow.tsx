@@ -23,6 +23,7 @@ import { NowBlock } from './NowBlock';
 import { ReturnStepDialog } from './ReturnStepDialog';
 import { StartTaskDialog, type PinPreview } from './StartTaskDialog';
 import type { NowLinks } from './StartBlockerLines';
+import { nowActionPlan } from './presentation';
 import { useWorkflowCommands } from './useWorkflowCommands';
 import { WorkflowRefusalAlert } from './WorkflowRefusalAlert';
 
@@ -60,19 +61,25 @@ export interface WorkflowNowProps {
   readonly artifactOptions: readonly ArtifactOption[];
   /** What resolves an unmet gate here (Create findings document). */
   readonly gateAction?: (gate: GateStatus) => GateAction | undefined;
-  /** Names the document that meets a gate (`findings.md`). */
+  /** The file name of a gate's document (`findings.md`). */
   readonly gateDocument?: (gate: GateStatus) => string | undefined;
+  /** Under the position: the step's purpose (Specification) or Goal (Task). */
+  readonly summary?: ReactNode;
+  /** The subject is on hold (a Task): Now leads with it and its reason. */
+  readonly hold?: { readonly reason?: string };
+  /** Opens the subject's workflow history from the ⋯ menu. */
+  readonly onOpenHistory?: () => void;
   /**
-   * The Specification Overview's layout: only the main action is a button (an unmet gate's action
-   * when every result needs it); Return, an unavailable Finish step, Workflow history and the step
-   * id and revision are in the ⋯ menu. A Requires attention "return" opens the same Return dialog.
+   * The Specification Overview's own parts: Start workflow, New task beside Finish step at a step
+   * that produces Tasks, the wait step's Task progress, and a Requires attention "return" that
+   * opens the Return dialog. Its Now leaves the latest hand-off to the history.
    */
-  readonly overview?: {
+  readonly specification?: {
     readonly specId: string;
-    readonly onOpenHistory?: () => void;
+    /** Opens New task; offered beside Finish step at a step that produces Tasks. */
+    readonly onNewTask?: () => void;
     readonly waitingContent?: ReactNode;
     readonly titleNote?: ReactNode;
-    readonly summary?: ReactNode;
   };
 }
 
@@ -96,8 +103,11 @@ function previewOf(position: WorkflowActionProjection['position']): PinPreview |
 
 /**
  * The Now block with its workflow actions: Start (a Task's first start confirms its binding), Finish
- * step and Return to an earlier step, each from the projection. The finish draft lives here, so a
- * gate action can close the Finish dialog and the owner can come back to it unchanged.
+ * step and Return to an earlier step, each from the projection. Only the main action is a button
+ * (an unmet gate's fix when every result needs it, with Finish step beside it); Return, an
+ * unavailable Finish step, Workflow history and the step id and revision are in the ⋯ menu. The
+ * finish draft lives here, so a gate action can close the Finish dialog and the owner can come back
+ * to it unchanged.
  */
 export function WorkflowNow({
   subject,
@@ -110,7 +120,10 @@ export function WorkflowNow({
   artifactOptions,
   gateAction,
   gateDocument,
-  overview,
+  summary,
+  onOpenHistory,
+  hold,
+  specification,
 }: WorkflowNowProps) {
   const { t } = useTranslation();
   const commands = useWorkflowCommands(subject);
@@ -255,6 +268,7 @@ export function WorkflowNow({
     return action
       ? {
           label: action.label,
+          ...(action.hint !== undefined ? { hint: action.hint } : {}),
           onSelect: () => {
             // The draft stays; Finish step reopens it and the gates are read again.
             setDialog(undefined);
@@ -271,18 +285,17 @@ export function WorkflowNow({
   };
 
   const startLabel =
-    overview && position.kind === 'not-started'
+    specification && position.kind === 'not-started'
       ? t('workflowExecution.now.startWorkflow')
       : next
         ? t('workflowExecution.now.start', { step: next.step.title || next.step.id })
         : undefined;
-  // Overview: Finish step is the main action only while some result can be taken now. Otherwise it
+  // Finish step is the main action only while some result can be taken now. Otherwise it
   // waits in the menu, unavailable, with why; the main action is the action of an unmet gate, and
   // only of a gate whose result meeting it would make available (`gate-unsatisfied`; open Tasks
   // win over gates in the projection, so meeting the gate of a `tasks-open` result would not help).
   // A `tasks-open` result the dialog closes itself (its own drafts, unticked) can be taken there.
   const finishBlocked =
-    overview !== undefined &&
     finish !== undefined &&
     finish.transitions.length > 0 &&
     finish.transitions.every(
@@ -302,6 +315,50 @@ export function WorkflowNow({
           .map(finishGateAction)
           .find((action) => action !== undefined)
       : undefined;
+  const starting = commands.start.isPending;
+  const showStart = actions.start !== undefined && startLabel !== undefined;
+  const showFinish = finish !== undefined && !finishBlocked;
+  // The actions around the main one, from projection facts (never a step id).
+  const plan = nowActionPlan(
+    projection,
+    primaryAction
+      ? 'other'
+      : showStart
+        ? 'start'
+        : showFinish
+          ? 'finish'
+          : mainGateAction
+            ? 'gate'
+            : 'none',
+    (gate) => gateAction?.(gate) !== undefined,
+  );
+  const secondary = plan.secondary;
+  const onNewTask = specification?.onNewTask;
+  // New task beside an unmet gate's action and Finish step: one tap, quieter than a third button.
+  const quietNewTask =
+    plan.newTask === 'quiet' && onNewTask ? (
+      <Button variant="ghost" leadingIcon="plus" onClick={onNewTask}>
+        {t('workflowExecution.now.newTask')}
+      </Button>
+    ) : undefined;
+  const secondaryGateStatus = secondary?.kind === 'gate' ? secondary.gate : undefined;
+  const secondaryGate = secondaryGateStatus ? finishGateAction(secondaryGateStatus) : undefined;
+  const secondaryButton =
+    secondary?.kind === 'finish' ? (
+      // The main action is the fix; Finish step stays reachable and its dialog says what is missing.
+      <Button key="finish" variant="secondary" onClick={openFinish} disabled={busy}>
+        {t('workflowExecution.now.finish')}
+      </Button>
+    ) : secondary?.kind === 'new-task' && onNewTask ? (
+      <Button variant="secondary" leadingIcon="plus" onClick={onNewTask}>
+        {t('workflowExecution.now.newTask')}
+      </Button>
+    ) : secondaryGate ? (
+      <Button variant="secondary" onClick={secondaryGate.onSelect}>
+        {secondaryGate.label}
+      </Button>
+    ) : undefined;
+  const finishIsSecondary = secondary?.kind === 'finish';
 
   const workflowActions =
     (waitAttempt ? (
@@ -314,70 +371,72 @@ export function WorkflowNow({
       </Button>
     ) : undefined) ??
     primaryAction ??
-    (overview ? (
-      // Distinct keys: the button that opened Finish must never become Start. When a finish whose
-      // answer was lost closes its dialog, the dialog returns focus to its opener; a reused element
-      // would then be the next step's Start, and one Enter or Space would start a step nobody chose.
-      actions.start && startLabel ? (
-        <Button key="start" onClick={startNow} disabled={busy}>
-          {startLabel}
-        </Button>
-      ) : finish && !finishBlocked ? (
+    // Distinct keys: the button that opened Finish must never become Start. When a finish whose
+    // answer was lost closes its dialog, the dialog returns focus to its opener; a reused element
+    // would then be the next step's Start, and one Enter or Space would start a step nobody chose.
+    (showStart ? (
+      // The busy pattern: the pending label until the new position is read, never a stale one.
+      <Button key="start" onClick={startNow} disabled={busy} aria-busy={starting}>
+        {starting ? t('workflowExecution.now.starting') : startLabel}
+      </Button>
+    ) : showFinish ? (
+      <>
         <Button key="finish" onClick={openFinish} disabled={busy}>
           {t('workflowExecution.now.finish')}
         </Button>
-      ) : mainGateAction ? (
-        <>
-          <Button onClick={mainGateAction.onSelect}>{mainGateAction.label}</Button>
-          <Typography as="p" variant="body-sm" className="self-center text-content-secondary">
-            {t('workflowExecution.now.finishAfterGate')}
-          </Typography>
-        </>
-      ) : undefined
-    ) : actions.start || finish || actions.return ? (
-      <>
-        {actions.start && startLabel ? (
-          <Button onClick={startNow} disabled={busy}>
-            {startLabel}
-          </Button>
-        ) : null}
-        {finish ? (
-          <Button onClick={openFinish} disabled={busy}>
-            {t('workflowExecution.now.finish')}
-          </Button>
-        ) : null}
-        {actions.return ? (
-          <Button variant="secondary" disabled={busy} onClick={openReturn}>
-            {t('workflowExecution.now.return')}
-          </Button>
-        ) : null}
+        {secondaryButton}
       </>
+    ) : mainGateAction ? (
+      <>
+        <Button key="gate" onClick={mainGateAction.onSelect}>
+          {mainGateAction.label}
+        </Button>
+        {secondaryButton}
+        {quietNewTask}
+      </>
+    ) : plan.newTask === 'primary' && onNewTask ? (
+      // No main workflow action (Finish step is unavailable): New task is the only action.
+      <Button key="new-task" leadingIcon="plus" onClick={onNewTask}>
+        {t('workflowExecution.now.newTask')}
+      </Button>
     ) : undefined);
 
   const returnTargets = actions.return?.targets ?? [];
+  // A return to the step the run is at starts it again: say so, not "Return to" where it is.
+  const returnLabel = () => {
+    const only = returnTargets.length === 1 ? returnTargets[0] : undefined;
+    if (!only) {
+      return t('workflowExecution.now.return');
+    }
+
+    const current =
+      position.kind === 'active' || position.kind === 'waiting' ? position.step.id : undefined;
+
+    return only.step === current
+      ? t('workflowExecution.now.restart', { step: only.title })
+      : t('workflowExecution.now.returnTo', { step: only.title });
+  };
+
   const technicalStep =
     position.kind === 'active' || position.kind === 'waiting'
       ? position.step.id
       : position.kind === 'ready'
         ? position.next.step.id
         : undefined;
-  const menu = overview ? (
+  const menu = (
     <NowOperationsMenu
       operations={[
         ...(actions.return
           ? [
               {
                 id: 'return',
-                label:
-                  returnTargets.length === 1
-                    ? t('workflowExecution.now.returnTo', { step: returnTargets[0]!.title })
-                    : t('workflowExecution.now.return'),
+                label: returnLabel(),
                 onSelect: openReturn,
                 disabled: busy,
               },
             ]
           : []),
-        ...(finishBlocked
+        ...(finishBlocked && !finishIsSecondary
           ? [
               {
                 id: 'finish',
@@ -388,9 +447,11 @@ export function WorkflowNow({
             ]
           : []),
       ]}
-      {...(overview.onOpenHistory ? { onOpenHistory: overview.onOpenHistory } : {})}
+      {...(onOpenHistory ? { onOpenHistory } : {})}
       note={[
-        ...(gateBlocksFinish ? [t('workflowExecution.now.finishAfterGate')] : []),
+        ...(gateBlocksFinish && !finishIsSecondary
+          ? [t('workflowExecution.now.finishAfterGate')]
+          : []),
         ...(tasksBlockFinish ? [t('workflowExecution.now.finishAfterTasks')] : []),
         ...(projection.workflow
           ? [
@@ -408,12 +469,12 @@ export function WorkflowNow({
           : []),
       ]}
     />
-  ) : undefined;
+  );
 
   // The Overview's Return also opens from Requires attention (a "return to an earlier step" item).
   const canReturn = actions.return !== undefined;
   const resetReturn = commands.returnTo.reset;
-  const overviewSpecId = overview?.specId;
+  const overviewSpecId = specification?.specId;
   useEffect(() => {
     if (!overviewSpecId) {
       return undefined;
@@ -435,6 +496,11 @@ export function WorkflowNow({
     <>
       {attemptedWait && commands.reevaluateWait.isError ? (
         <WorkflowRefusalAlert error={commands.reevaluateWait.error} />
+      ) : null}
+      {mainGateAction ? (
+        <Typography as="p" variant="body-sm" className="text-content-secondary">
+          {mainGateAction.hint ?? t('workflowExecution.now.finishAfterGate')}
+        </Typography>
       ) : null}
       {finishMovedOn ? (
         <InlineNote tone="info" role="status">
@@ -467,8 +533,12 @@ export function WorkflowNow({
         headingId={headingId}
         status={status}
         links={links}
-        // The gate's action is not repeated in the list when it is the main action.
-        gateActionFor={gateAction && !mainGateAction ? finishGateAction : undefined}
+        // A gate's action is not repeated in the list when it is a button of the action row.
+        gateActionFor={
+          gateAction && !mainGateAction
+            ? (gate) => (gate === secondaryGateStatus ? undefined : finishGateAction(gate))
+            : undefined
+        }
         {...(gateDocument ? { gateDocument } : {})}
         note={note}
         actions={
@@ -488,14 +558,15 @@ export function WorkflowNow({
             workflowActions
           )
         }
+        starting={starting}
         menu={menu}
-        {...(overview
+        summary={summary}
+        {...(hold ? { hold } : {})}
+        {...(specification
           ? {
-              compactDetail: true,
               showHandoff: false,
-              waitingContent: overview.waitingContent,
-              titleNote: overview.titleNote,
-              summary: overview.summary,
+              waitingContent: specification.waitingContent,
+              titleNote: specification.titleNote,
             }
           : {})}
       />

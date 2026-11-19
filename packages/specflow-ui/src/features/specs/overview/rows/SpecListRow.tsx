@@ -1,4 +1,9 @@
 import { InformationList, Progress, Typography, cn } from '@nevo/ui';
+import {
+  CollectionRow,
+  collectionWide,
+  type CollectionTracks,
+} from '../../../../shared/operational-list';
 import { useTranslation } from 'react-i18next';
 import type { ReactNode } from 'react';
 import {
@@ -12,7 +17,6 @@ import type { CurrentSpecTarget } from '../model';
 import { SpecRowSummary } from './SpecRowSummary';
 import { SpecPrimaryLink, type RenderSpecificationLink } from './SpecPrimaryLink';
 import { SpecPullRequests } from './SpecPullRequests';
-import { specRowColumns } from './specRowColumns';
 import { formatSpecDate } from './specDate';
 
 export interface SpecListRowProps {
@@ -60,14 +64,7 @@ export function SpecListRow({
       data-spec-key={item.key}
     >
       <InformationList.Content>
-        <div
-          className={cn(
-            'grid min-w-0 gap-x-6 gap-y-2',
-            flat
-              ? specRowColumns[showProgress ? 'flatWithProgress' : 'flat'].row
-              : specRowColumns[item.collection].row,
-          )}
-        >
+        <CollectionRow tracks={specRowTracks(item, flat, showProgress)}>
           <SpecRowIdentity item={item} primary={primary} flat={flat} />
           {item.collection === 'archive' ? (
             <ArchivedSpecRowContent item={item} />
@@ -79,10 +76,27 @@ export function SpecListRow({
           ) : (
             <CurrentSpecRowContent item={item} />
           )}
-        </div>
+        </CollectionRow>
       </InformationList.Content>
     </InformationList.Item>
   );
+}
+
+/** The collection tracks of a row: the same choice the list makes for its column header. */
+export function specRowTracks(
+  item: Pick<SpecRowModel, 'collection'>,
+  flat: boolean,
+  showProgress: boolean,
+): CollectionTracks {
+  if (item.collection === 'archive') {
+    return 'specificationArchive';
+  }
+
+  return flat
+    ? showProgress
+      ? 'specificationFlatWithProgress'
+      : 'specificationFlat'
+    : 'specification';
 }
 
 function SpecRowIdentity({
@@ -152,15 +166,13 @@ function SpecUpdated({ item }: { item: CurrentSpecRowModel }) {
     <Typography
       as="div"
       variant="body-sm"
-      className="min-w-0 text-content-secondary @min-[48rem]/collection:col-start-2 @min-[48rem]/collection:row-start-1"
+      className={cn('min-w-0 text-content-secondary', collectionWide.column2)}
       data-spec-updated
     >
       {date ? (
         <time dateTime={updatedAt}>
-          <span className="@min-[48rem]/collection:sr-only">
-            {t('specifications.updated', { date })}
-          </span>
-          <span aria-hidden="true" className="hidden @min-[48rem]/collection:inline">
+          <span className={collectionWide.srOnly}>{t('specifications.updated', { date })}</span>
+          <span aria-hidden="true" className={collectionWide.inline}>
             {date}
           </span>
         </time>
@@ -184,7 +196,10 @@ function SpecProgress({ item }: { item: CurrentSpecRowModel }) {
       as="div"
       variant="body-sm"
       className={cn(
-        'flex min-w-0 items-center gap-2 text-content-secondary @min-[48rem]/collection:col-start-3 @min-[48rem]/collection:row-start-1 @min-[48rem]/collection:flex-col @min-[48rem]/collection:items-start',
+        'flex min-w-0 items-center gap-2 text-content-secondary',
+        collectionWide.column3,
+        collectionWide.flexColumn,
+        collectionWide.itemsStart,
       )}
       data-spec-progress
     >
@@ -223,7 +238,7 @@ function CurrentSpecRowContent({ item }: { item: CurrentSpecRowModel }) {
       <Typography
         as="div"
         variant="body-sm"
-        className="min-w-0 @min-[48rem]/collection:col-start-2 @min-[48rem]/collection:row-start-1"
+        className={cn('min-w-0', collectionWide.column2)}
         data-spec-summary
       >
         <SpecRowSummary item={item} />
@@ -246,10 +261,7 @@ function ArchivedSpecRowContent({ item }: { item: ArchiveSpecRowModel }) {
       <Typography
         as="div"
         variant="body-sm"
-        className={cn(
-          'min-w-0 text-content-secondary',
-          !item.pullRequests && 'hidden @min-[48rem]/collection:block',
-        )}
+        className={cn('min-w-0 text-content-secondary', !item.pullRequests && collectionWide.block)}
       >
         <SpecPullRequests item={item} />
       </Typography>

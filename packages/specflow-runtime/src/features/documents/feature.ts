@@ -34,7 +34,7 @@ export interface DocumentsFeatureDependencies {
   writeRoutes?: boolean;
   /** Explicit write source of the document write routes (tests). Wins over the Engine. */
   writeSource?: DocumentWriteSource;
-  /** Explicit source of the Task document routes (tests). Wins over the Engine. */
+  /** Explicit source of the Task document routes (the demo Tasks, tests). Wins over the Engine. */
   taskDocuments?: TaskDocumentSource;
   /** The Runtime's project when there is no Engine to read it from (demo); see `specScope`. */
   projectId?: ProjectIdSource;
@@ -60,6 +60,14 @@ export function createDocumentsFeature(
         dependencies.projectId?.() ?? dependencies.engine?.context.project.projectId;
       app.register(documentContentEndpoint, { source, projectId });
       app.register(rawDocumentEndpoint, { source, projectId });
+      // The documents of a Task: the Engine's, or the demo Tasks' (both serve the real routes).
+      const taskDocuments =
+        dependencies.taskDocuments ??
+        (dependencies.engine ? createEngineTaskDocumentSource(dependencies.engine) : undefined);
+      app.register(taskDocumentRoutes, {
+        ...(taskDocuments ? { source: taskDocuments } : {}),
+        projectId,
+      });
       if (dependencies.writeRoutes === false) {
         return;
       }
@@ -70,14 +78,6 @@ export function createDocumentsFeature(
         (dependencies.engine ? createEngineDocumentWriteSource(dependencies.engine) : undefined);
       app.register(documentWriteEndpoint, {
         source: writeSource,
-        projectId,
-      });
-      // The documents of a Task: project mode only, like the Specification writes.
-      const taskDocuments =
-        dependencies.taskDocuments ??
-        (dependencies.engine ? createEngineTaskDocumentSource(dependencies.engine) : undefined);
-      app.register(taskDocumentRoutes, {
-        ...(taskDocuments ? { source: taskDocuments } : {}),
         projectId,
       });
       registerDocumentOperationList(app, {

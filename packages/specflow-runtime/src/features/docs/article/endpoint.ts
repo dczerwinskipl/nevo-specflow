@@ -68,7 +68,7 @@ export const docsArticleEndpoint: FastifyPluginCallback<WorkspaceDocsEndpointOpt
     },
     async (request, reply) => {
       if (operations === undefined) {
-        return replyWithDocsError(reply, 'DOCS_UNAVAILABLE');
+        return replyWithDocsError(reply, 'DOCS_NOT_SERVED');
       }
 
       const { workspaceId, documentId } = request.params;

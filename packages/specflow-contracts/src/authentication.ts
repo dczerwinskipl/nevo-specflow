@@ -54,6 +54,13 @@ export const AuthLoginMethodsSchema = Type.Object(
 );
 export type AuthLoginMethods = Static<typeof AuthLoginMethodsSchema>;
 
+/**
+ * The actor id the offline CLI records for the OS user the Runtime runs as (`local:<os-user>`).
+ * Present only when authentication is not required: then the person at this machine is the viewer,
+ * so a recorded `local:<os-user>` action is theirs, whichever channel (UI or CLI) recorded it.
+ */
+const LocalActorIdSchema = Type.String({ minLength: 7, pattern: '^local:' });
+
 const AuthenticatedSessionSchema = Type.Object(
   {
     authenticationRequired: Type.Boolean(),
@@ -61,6 +68,7 @@ const AuthenticatedSessionSchema = Type.Object(
     user: AuthUserSchema,
     authenticatedWith: AuthSessionMethodSchema,
     loginMethods: AuthLoginMethodsSchema,
+    localActorId: Type.Optional(LocalActorIdSchema),
   },
   { additionalProperties: false },
 );
@@ -71,6 +79,7 @@ const UnauthenticatedSessionSchema = Type.Object(
     authenticated: Type.Literal(false),
     user: Type.Optional(AuthUserSchema),
     loginMethods: AuthLoginMethodsSchema,
+    localActorId: Type.Optional(LocalActorIdSchema),
   },
   { additionalProperties: false },
 );

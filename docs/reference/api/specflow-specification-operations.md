@@ -192,14 +192,102 @@ and without SSE clients just poll the inspection.
 
 Mutating Close requests include UUID `operationId`; Specification Close optionally sends
 `integrateToTargetBranch:false` for archive-only. Completed results use 200; unsettled use 202.
+
+**Git off.** In a project with Git off (`git.enabled: false`, or no `git:` block in
+`.nevo/config.yaml`) a Specification Close only archives: the Specification is moved to
+`specs/archive/<slug>` in its own checkout (primary or linked), the same archive result as a normal
+Close, with no commit, no integration and no repository precondition (no clean tree, no integration
+branch, no branch check), so it never answers `CLOSE_PREFLIGHT` with `repository`. The workflow
+gate (`CLOSE_BLOCKED`), running Session Turns, `DOCUMENT_COMMITS_PENDING` and resource conflicts
+still apply. Omitting `integrateToTargetBranch` (or `false` for a linked Specification) archives;
+`integrateToTargetBranch: true` is `400 CLOSE_INVALID` before the workflow gate, in the primary
+checkout too (one message: Git is off, a Close cannot integrate). The preview answers
+`integrationRequired: false` and `merge: {status: 'not-integrated', reason: 'git-off', checkout}`,
+the result `outcome: 'archived-without-git'`. The archive stays uncommitted in that checkout; a
+linked worktree created while Git was on keeps it, and a later Worktree Close with Git on meets
+`uncommitted-changes` until it is committed. The mode is decided once from the policy and carried by
+the plan; the reservation re-evaluates it under the lock, and a changed mode or configuration
+revision is `409 CLOSE_CONFLICT` before anything is reserved. An operation keeps the mode it was
+reserved with. A Git policy that cannot be read is never taken for a mode: the Close answers its
+error (`503 GIT_POLICY_INVALID`) after the workflow gate and before any repository inspection.
+Worktree and Workspace Close integrate with Git, so with Git off their preview and Close are
+`400 CLOSE_INVALID` ("Git is off for this project: closing a worktree integrates it with Git;
+archive the Specification instead, or turn Git on."). A Close with Git off that stopped after its
+archive intent is `recovery-required` and holds its claims until the operator recovers it
+([`specs close-recover`](../cli/specflow-specification-commands.md)).
 Spec-scoped Close requires the appropriate Spec capability and whole-branch integration also
 needs project-wide Git `Integrate`. Workspace Close requires project-wide Git
 `CloseWorkspace` **and** `Integrate` before revealing occupants/journals.
 Shared spec-scoped integration refuses with 409 `CLOSE_SHARED_WORKTREE`.
 Close and integration first flush the document commit queue of the affected checkouts and refuse with 409
 `DOCUMENT_COMMITS_PENDING` (`details.cause` `commit-pending`, `commit-failed` or `commit-uncommitted`) while document
-commits remain; the precedence and the preview behaviour are defined in
-[Specification documents](specification-documents.md).
+commits remain; the precedence is defined in [Specification documents](specification-documents.md)
+(item 19 of its UI notes). The three preview routes do not flush: when the plan refuses a dirty
+checkout while document commits still hold one of the checkouts the request names, they answer the
+same `409 DOCUMENT_COMMITS_PENDING` the Close would, so documents Nevo commits or waits for are never
+reported as files to commit by hand. Any other repository precondition is `422 CLOSE_PREFLIGHT`
+with `repository`: the blockers the owner fixes in the repository, all that are known at once
+(`uncommitted-changes` with at most 10 `paths`, each `{ path, scope }` with `scope`
+`specification` for a file below the Specification's own folder `specs/active/<slug>/` (listed
+first; only in the Specification's own checkout, every path of the checkout it integrates into is
+`other`) and `other` for any other file of the checkout, the `count`, the `specificationCount` of
+them that are the Specification's own and the `workspaceId` of the checkout that holds them (its
+path is read from `GET /api/workspaces`, gated by `workspace.view`; the refusal never carries a
+filesystem path). A Specification Close accepts its own uncommitted Tasks and `.execution`; any other
+uncommitted file refuses, because the Close pins the checkout's HEAD, index and tree, proves its
+archive commit and merge against them and never commits, stashes or discards files that are not the
+Specification's), `integration-target-missing`,
+`integration-target-branch`, `git-operation-in-progress`, `branch-detached`;
+`RepositoryBlocker` in `@nevo/specflow-contracts/specs`).
+
+The preview and the Close answer the same blockers. `integration-target-missing` means the
+project uses Git (`git.enabled: true`) and its `git:` block names no `git.integrationTargetBranch`.
+It lists the local branches that could receive the Close, as facts. The server never chooses one
+and never assumes a name such as `main`:
+
+- `sourceCheckout` is the Specification's checkout. With `linked`, the Close merges its branch into
+  the integration branch. With `primary`, it archives directly on the integration branch in the
+  main folder, and there is nothing to merge.
+- `candidates` (at most 50) are `{branch, facts}`. Each local branch appears once, with every fact
+  that applies, in this order:
+  - `remote-default`: the default branch of `remote`, read from the local
+    `refs/remotes/<remote>/HEAD`, which `git clone` or `git remote set-head` sets. `remote` is
+    present exactly with this fact. The server never fetches, so a missing remote or an unset
+    remote HEAD gives no fact.
+  - `started-from`: the Specification's linked workspace was created from this branch, as recorded
+    at Create. Other Specifications can share that workspace. A workspace created before the fact
+    was recorded gives none.
+  - `primary-checkout`: the branch checked out in the main folder.
+
+  Candidates are ordered by their first fact. A fact about a branch that does not exist locally
+  names no candidate. The Specification's own linked branch is never a candidate: the server takes
+  it from the Close evidence, or else from the branch Create recorded for the workspace (`branch`
+  on the registry entry), so a detached checkout still excludes it.
+
+- `otherBranches` lists the remaining local branches by name: at most 200 of `otherBranchCount`,
+  without the candidates, the Specification's own linked branch, and branches that
+  `git.worktrees.branchPattern` names (Specification branches).
+
+Branch and remote names are at most 255 characters, and a name the blocker cannot carry is not
+offered. Both lists can be empty, and they are empty when Git cannot be read. The refusal still
+names every other repository precondition. The preview only reads Git (no fetch, no ref, config
+or index write), and nothing is written to `.nevo/config.yaml`.
+
+A successful preview (`ClosePreview`) carries the merge facts in `merge`:
+
+- `{status: 'integrates', sourceBranch, targetBranch, commitsAhead}`: the Close merges
+  `sourceBranch` into `targetBranch`. `commitsAhead` counts the source commits that are not on the
+  target when the preview reads them. `0` means there is nothing to merge. A Specification Close
+  still adds its archive commit.
+- `{status: 'not-integrated', reason, sourceBranch}`: nothing is merged. `archive-only` means the
+  linked Specification is archived on its own branch, as `integrateToTargetBranch=false` asks.
+  `primary-checkout` means the Specification lives in the primary checkout and is archived directly
+  on `sourceBranch`, which is the integration branch.
+- `{status: 'not-integrated', reason: 'git-off', checkout}`: Git is off for the project. The
+  Specification is archived in place in `checkout` (`primary`, or `linked`: its worktree), nothing is
+  committed or merged, and no branch is read (a client says, for example, "Archives without Git (Git
+  is off for this project)"). The archive stays uncommitted in that checkout.
+
 A Close that the Specification workflow refuses (unfinished Tasks or runs, pending writes) answers 409
 `CLOSE_BLOCKED` with `blockers`: groups `{kind, subjectIds, message}` (`kind` is a stable value, `subjectIds` are
 Task ids or the Specification id for Specification-wide holds, `message` is display-only). Abandoning the

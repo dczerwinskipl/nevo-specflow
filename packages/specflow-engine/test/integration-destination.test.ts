@@ -22,6 +22,7 @@ import {
   inspectPendingDisposal,
   readWorkspaceSpecification,
   closeSpecification,
+  type GitClosePlan,
 } from '../src/testing';
 import { createGitTestProject, git, commitStaged } from './support/git-project';
 
@@ -118,6 +119,7 @@ describe('E2.I02 workspace-owned integration destination', () => {
       )?.instanceId,
       branch: 'feature/x',
     });
+    expect(record.startedFrom).toBe('feature/x');
     const options = await inspectCreateOptions(engine);
     expect(
       options.workspaces.find((item) => item.workspaceId === created.workspaceId),
@@ -412,7 +414,9 @@ describe('E2.I02 workspace-owned integration destination', () => {
     expect((await engine.readRegistry()).revision).toBe(finalRevision);
     expect(git(feature.workspaceRoot, 'rev-parse', 'HEAD')).toBe(sourceHead);
     expect(git(root, 'rev-parse', 'HEAD')).toBe(primaryHead);
-    expect(git(root, 'rev-parse', 'refs/heads/' + settled.plan.source.branch)).toBe(sourceHead);
+    expect(
+      git(root, 'rev-parse', 'refs/heads/' + (settled.plan as GitClosePlan).source.branch),
+    ).toBe(sourceHead);
     await expect(lstat(child.workspaceRoot)).rejects.toMatchObject({ code: 'ENOENT' });
   }, 180000);
 

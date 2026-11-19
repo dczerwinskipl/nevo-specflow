@@ -25,9 +25,10 @@ related:
 
 Exact schemas are in `packages/specflow-contracts/src/workflow/` (subpath
 `@nevo/specflow-contracts/workflow`); the routes are `packages/specflow-runtime/src/features/workflow/`.
-The Engine owns every rule; the routes authorize, derive the actor and map refusals. The routes belong to
-project mode (the demo Runtime has no Engine and serves none); without an Engine they answer 503
-`WORKFLOW_UNAVAILABLE`.
+The Engine owns every rule; the routes authorize, derive the actor and map refusals. A project
+Runtime serves them over its Project Home, the demo Runtime over in-memory state
+([ADR 0025](../../architecture/decisions/0025-demo-runs-the-engine-in-memory.md)); without an
+Engine they answer 503 `WORKFLOW_UNAVAILABLE`.
 
 ## Routes
 
@@ -78,6 +79,27 @@ Once the Specification run ended (completed or abandoned), `createTask` and a Ta
 actions are `unavailable` with reason `specification-ended`, as the commands refuse them with
 `WORKFLOW_SPECIFICATION_ENDED`.
 
+`documentRelations` (the Specification projection and one Task's own projection, whenever the
+workflow resolves and is unchanged; never in reads of several Tasks) says how the workflow uses
+each document now, from the exit gates of the step the run is at and the entry gates of the step it
+certainly goes to next (the outline's `next` rule: every transition leads there; before a start, the
+step a start would activate). One entry per document:
+`{scope, documentId, relation: needed-to-finish|needed-to-start|used, blocksNow, step: {id, title,
+active}, gate: {id, label, labelDeclared, documentType, requiredSections, missingSections?}}` (the
+gate facts as in `GateStatus`). `needed-to-finish` is an unmet exit gate of the
+active step (`active: true`) that applies to every result of the step; an exit gate conditioned by
+`when` on only some results relates nothing while unmet (and is `used` once satisfied).
+`needed-to-start` is an unmet entry gate of the next step, and `used` a satisfied gate of either.
+`blocksNow` is true when the unmet gate refuses the action the run waits for now: always for
+`needed-to-finish`, and for `needed-to-start` when no step is active (`not-started`, `ready`,
+`blocked`: the start of that step is refused); false for `used` and for the next step's entry gates
+while a step is active or waiting. A gate names the document that satisfies it, the closest one
+(`sections-missing`) or the unreadable one; one that found no file names every registered document
+of its type in its scope, and one that found none names nothing. A document named by several gates
+keeps the strongest relation (in that order), then the active step's gate. The evaluation is the one
+a start or finish checks; it is empty once the run ended. Clients format these facts (the UI's [document state label](../../product/specflow/ui/documents-archetypes-ui.md#document-state-label))
+and never derive them from `actions.finish` or `next.entryGates` themselves.
+
 A client renders only what the projection allows. `kind`, `reason` and every code are stable values; the
 only free text is a `message` (and the step `purpose` and `instructions`), which is for display and must
 not be parsed. A step the owner may do has `human: true`; `agent` states whether an agent could do it
@@ -86,11 +108,18 @@ dispatched.
 
 **Gates.** A step's declared gates
 ([workflow kernel](../../architecture/workflow/workflow-kernel.md#gates)) are reported as `GateStatus`
-`{id, type: document, label, documentType, scope, status: satisfied|unsatisfied, documentId?, reason?,
-missingSections?}`; `scope` is the Specification or Task the gate looked in (`{kind, specId, taskId?}`,
+`{id, type: document, label, labelDeclared, documentType, requiredSections, scope, status:
+satisfied|unsatisfied, documentId?, reason?, missingSections?}`. `label` is display text: the
+definition's own when `labelDeclared` is true, else one the Engine derives (`A "<type>" document with
+<sections>`) that clients MUST NOT parse; they word the gate from `documentType` and
+`requiredSections` (the required section headings in declared order, possibly empty). `scope` is the Specification or Task the gate looked in (`{kind, specId, taskId?}`,
 to link its documents) and `reason` is `no-document`, `file-missing`, `sections-missing` or `unreadable` (fails closed). Each
 `actions.finish.transitions[]` entry lists the exit gates that apply to it in `gates`, and is
-`unavailable: gate-unsatisfied` while one does not hold. A Specification transition to `terminal
+`unavailable: gate-unsatisfied` while one does not hold. The `active` position also carries
+`exits`: the step's results (`{id, result?, label?, target, targetTitle?, feedback}`), each with
+the exit gates that apply to it (a gate's `when` names its results) in `gates`, evaluated now. It
+is a read-only fact present whoever runs the attempt; `actions.finish`, which only the person who
+may finish gets (never on an agent's attempt), adds whether each result can be taken now. A Specification transition to `terminal
 completed` is `unavailable: tasks-open` while any Task is open, with `openTasks` `[{taskId, cause}]`
 in id order (`cause`: `draft`, `on-hold`, `broken`, `dependency-unsatisfiable`, `active`, `waiting`
 or `ready`); see [Workflow kernel, Completion](../../architecture/workflow/workflow-kernel.md#completion-requires-closed-tasks).
@@ -114,10 +143,12 @@ workflow is left out. A client offers exactly these when creating a Task.
 `taskAuthoring` (a Task that is not broken, only in that Task's own projection: the Task lists and
 reads of several Tasks never compute it) is what the owner edits, as the Engine reads it:
 `context` is the **effective** context, `{isDefault, entries: [{entry, state: resolved|unresolved|awaited,
-reason?}]}`. Without an explicit list it is the Engine's single default rule (`task.md`, the Task's
+reason?}], defaultEntries}`. Without an explicit list it is the Engine's single default rule (`task.md`, the Task's
 other documents, then the Specification overview when registered, each required); every start, entry
 check and blocker index uses the same list, and a client's first edit sends these entries as the
-explicit list. `dependencyCandidates` lists the other Tasks in list order, each with `unavailable`
+explicit list. `defaultEntries` is that default rule read now (read-only): the same entries while
+`isDefault`, else the list an edit with `context: null` returns to, so a client can name what the
+return removes without deriving the default itself. `dependencyCandidates` lists the other Tasks in list order, each with `unavailable`
 (`dependency`, `would-create-cycle`, `cancelled`, `broken`) when the edit would refuse it; it is empty
 once the dependencies cannot change.
 

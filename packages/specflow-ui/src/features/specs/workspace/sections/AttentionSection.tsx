@@ -8,6 +8,7 @@ import type {
   SpecificationAttentionAction,
   SpecificationAttentionEntry,
 } from '../../extensions/specificationAttentionItems';
+import { usePendingActions } from '../../../../shared/state/pendingActions';
 
 /** Items shown before **Show N more** (UX contract: at most five). */
 const SHOWN = 5;
@@ -56,23 +57,31 @@ export function AttentionSection({ items }: AttentionSectionProps) {
   const id = useId();
   const [expanded, setExpanded] = useState(false);
   const { matches: beside, setElement } = useContainerMinWidth(ACTION_BESIDE_MIN_WIDTH);
+  const running = usePendingActions();
 
   if (items.length === 0) {
     return null;
   }
 
   const text = (value: Parameters<typeof translateMessage>[1]) => translateMessage(t, value);
-  const button = (action: SpecificationAttentionAction, variant: 'secondary' | 'ghost') => (
-    <Button
-      variant={variant}
-      size="sm"
-      disabled={action.disabled}
-      title={action.disabledTitleKey ? t(action.disabledTitleKey) : undefined}
-      onClick={action.onClick}
-    >
-      {text(action.label)}
-    </Button>
-  );
+  const button = (action: SpecificationAttentionAction, variant: 'secondary' | 'ghost') => {
+    // Its command runs: busy and disabled until its owner clears it.
+    const busy = action.pendingKey !== undefined && running.has(action.pendingKey);
+
+    return (
+      <Button
+        variant={variant}
+        size="sm"
+        disabled={(action.disabled ?? false) || busy}
+        aria-busy={busy || undefined}
+        title={action.disabledTitleKey ? t(action.disabledTitleKey) : undefined}
+        onClick={action.onClick}
+      >
+        {text(action.label)}
+      </Button>
+    );
+  };
+
   const shown = expanded ? items : items.slice(0, SHOWN);
 
   return (

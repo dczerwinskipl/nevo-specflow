@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import type { TaskType, WorkflowDefinition } from '../definitions/model';
 import { newRun } from '@nevo/workflow';
 
+import { generatedTaskMainDocument, initialTaskDocument } from '../../tasks/resource/codec';
+
 import type { ExecutionTask, WorkflowActor } from '../state/model';
 import {
   LEFT_OUT_OF_BREAKDOWN,
@@ -82,6 +84,10 @@ describe('materializeTasks', () => {
       },
     ]);
     expect(result.changed[0]?.run).toBeUndefined();
+    // Its generated task.md (written with the manifest) is the document's baseline.
+    expect(result.changed[0]?.documents).toEqual([
+      generatedTaskMainDocument(initialTaskDocument({ title: 'API' })),
+    ]);
   });
 
   it('takes the list as every draft: revises listed drafts and cancels the others', () => {
@@ -98,6 +104,8 @@ describe('materializeTasks', () => {
     );
 
     expect(result.created).toEqual(['web']);
+    // A revised draft keeps its task.md record, whatever its new title.
+    expect(result.changed[0]?.documents).toEqual(api.documents);
     expect(result.changed).toMatchObject([
       {
         taskId: 'api',

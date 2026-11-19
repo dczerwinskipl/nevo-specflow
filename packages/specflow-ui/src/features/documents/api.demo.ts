@@ -5,7 +5,7 @@ import type {
   DocumentTree,
   SaveResult,
 } from '@nevo/specflow-contracts/documents';
-import { documentTreePath, type DocumentsApi } from './api';
+import { documentTreePath, isTaskDocumentScope, scopePath, type DocumentsApi } from './api';
 
 /**
  * Demo-runtime adapter of {@link DocumentsApi}. The tree is the real route (served from the demo
@@ -13,7 +13,10 @@ import { documentTreePath, type DocumentsApi } from './api';
  * `/api/demo/specs/...` with the contract's shapes.
  */
 export function createDemoDocumentsApi(http: HttpRequestClient): DocumentsApi {
-  const spec = (id: string) => `/api/demo/specs/${encodeURIComponent(id)}`;
+  // A Task's documents (`taskDocumentScope`) are served at the real Task document routes in the
+  // demo too; a Specification's writes are the emulation.
+  const spec = (id: string) =>
+    isTaskDocumentScope(id) ? scopePath(id) : `/api/demo/specs/${encodeURIComponent(id)}`;
 
   return {
     emulated: true,

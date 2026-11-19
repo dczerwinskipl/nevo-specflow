@@ -47,108 +47,6 @@ export const Working: Story = {
   },
 };
 
-/** The Task Preview opens from a Task's Requires attention item (the Overview lists no Tasks). */
-async function openTaskPreview(
-  canvas: Parameters<NonNullable<Story['play']>>[0]['canvas'],
-  userEvent: Parameters<NonNullable<Story['play']>>[0]['userEvent'],
-) {
-  await userEvent.click(await canvas.findByRole('button', { name: 'View task' }));
-}
-
-export const TaskPreviewFlow: Story = {
-  tags: ['integration'],
-  args: { path: '/specs/admission?collection=current' },
-  play: async ({ canvas, userEvent }) => {
-    await canvas.findByRole('heading', {
-      name: 'Deterministic admission and execution boundaries',
-      level: 1,
-    });
-
-    await openTaskPreview(canvas, userEvent);
-
-    await canvas.findByText('TASK-03 · admission', {}, { timeout: 5000 });
-
-    const closeBtn = await canvas.findByRole('button', { name: /Close secondary content/i });
-    await userEvent.click(closeBtn);
-
-    const historyElements = await canvas.findAllByText(/Activity history/i, {}, { timeout: 5000 });
-    if (historyElements.length === 0) {
-      throw new Error('Expected Activity history after closing');
-    }
-  },
-};
-
-export const NestedHistoryTaskPreviewFlow: Story = {
-  tags: ['integration'],
-  args: { path: '/specs/admission?collection=current' },
-  play: async ({ canvas, userEvent }) => {
-    await canvas.findByRole('heading', {
-      name: 'Deterministic admission and execution boundaries',
-      level: 1,
-    });
-
-    // Click task in activity history (TASK-04 event)
-    const historyTaskEvent = await canvas.findByRole('button', {
-      name: /Rozpoczęto wykonanie TASK-04/i,
-    });
-    await userEvent.click(historyTaskEvent);
-
-    // Confirm Task Preview opens in secondary
-    await canvas.findByRole('heading', { name: /Task preview/i }, { timeout: 5000 });
-    await canvas.findByText('TASK-04 · admission', {}, { timeout: 5000 });
-
-    // Press Back in secondary stack
-    const backBtn = await canvas.findByRole('button', { name: /Back/i });
-    await userEvent.click(backBtn);
-
-    // Confirm Activity History is restored
-    await canvas.findByRole('heading', { name: 'Activity history', level: 2 });
-  },
-};
-
-export const FullTaskPromotionFlow: Story = {
-  tags: ['integration'],
-  args: { path: '/specs/admission?collection=current' },
-  play: async ({ canvas, canvasElement, userEvent }) => {
-    await canvas.findByRole('heading', {
-      name: 'Deterministic admission and execution boundaries',
-      level: 1,
-    });
-
-    await openTaskPreview(canvas, userEvent);
-
-    const heading = await canvas.findByRole('heading', { name: /Task preview/i });
-    const trigger = heading
-      .closest('[data-workspace-header]')
-      ?.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]');
-    if (!trigger) {
-      throw new Error('Task preview must have an overflow menu');
-    }
-
-    await userEvent.click(trigger);
-    const fullTaskAction = await within(canvasElement.ownerDocument.body).findByRole('menuitem', {
-      name: /Full task view/i,
-    });
-    await userEvent.click(fullTaskAction);
-
-    await canvas.findByRole(
-      'heading',
-      { name: 'Obsługa odświeżania uprawnień w długotrwałej sesji użytkownika', level: 1 },
-      { timeout: 5000 },
-    );
-
-    const backBtn = await canvas.findByRole('link', {
-      name: 'Deterministic admission and execution boundaries',
-    });
-    await userEvent.click(backBtn);
-
-    await canvas.findByRole('heading', {
-      name: 'Deterministic admission and execution boundaries',
-      level: 1,
-    });
-  },
-};
-
 export const Current: Story = {
   tags: ['integration'],
   globals: { viewport: { value: 'mobile1', isRotated: false } },
@@ -375,95 +273,13 @@ export const RepositoryNavigation: Story = {
   },
 };
 
-export const LegacyFullTaskLink: Story = {
-  tags: ['integration'],
-  args: { path: '/specs/admission?collection=archive&view=task&task=TASK-03' },
-  play: async ({ canvas }) => {
-    await canvas.findByRole(
-      'heading',
-      { name: 'Obsługa odświeżania uprawnień w długotrwałej sesji użytkownika', level: 1 },
-      { timeout: 5000 },
-    );
-  },
-};
-
-export const FullTask: Story = {
-  tags: ['integration'],
-  args: { path: '/specs/admission/tasks/TASK-03?collection=current' },
-  play: async ({ canvas }) => {
-    await canvas.findByRole(
-      'heading',
-      { name: 'Obsługa odświeżania uprawnień w długotrwałej sesji użytkownika', level: 1 },
-      { timeout: 5000 },
-    );
-    await canvas.findByText('TASK-03 · admission', {}, { timeout: 5000 });
-    await canvas.findByText(
-      /Obsługa odświeżania uprawnień w długotrwałej sesji użytkownika/i,
-      {},
-      { timeout: 5000 },
-    );
-  },
-};
-
 export const NarrowLongIdentity: Story = {
   tags: ['contract'],
   args: { path: `/specs/${'long-identity-'.repeat(16)}` },
   globals: { viewport: { value: 'mobile1', isRotated: false } },
 };
 
-export const MobileTaskPreviewFlow: Story = {
-  tags: ['integration'],
-  args: { path: '/specs/admission?collection=current' },
-  globals: { viewport: { value: 'mobile1', isRotated: false } },
-  play: async ({ canvas, userEvent }) => {
-    await canvas.findByRole('heading', {
-      name: 'Deterministic admission and execution boundaries',
-      level: 1,
-    });
-
-    await openTaskPreview(canvas, userEvent);
-
-    // In mobile stacked layout, secondary transitions in and provides Back action
-    await canvas.findByRole('heading', { name: /Task preview/i }, { timeout: 5000 });
-
-    const backBtn = await canvas.findByRole('button', { name: /Back/i });
-    await userEvent.click(backBtn);
-
-    // After back, primary is restored
-    await canvas.findByRole('heading', {
-      name: 'Deterministic admission and execution boundaries',
-      level: 1,
-    });
-  },
-};
-
 export const Polish: Story = { tags: ['contract'], args: { locale: 'pl' } };
-
-/**
- * Deliberately bypasses cache seeding. Exercises typed API -> Query ->
- * independent routed Full Task, without requiring a Workspace Task list.
- */
-export const ApiDtoToTaskScreen: Story = {
-  tags: ['integration'],
-  args: { path: '/specs/api-integration/tasks/TASK-01', integrationDto: true },
-  play: async ({ canvas }) => {
-    await canvas.findByRole(
-      'heading',
-      { name: 'Fresh task detail from Runtime API', level: 1 },
-      { timeout: 10000 },
-    );
-    await canvas.findByRole(
-      'heading',
-      { name: 'Fresh task detail from Runtime API' },
-      { timeout: 10000 },
-    );
-    await canvas.findByText(
-      'Latest purpose loaded independently from the detail endpoint.',
-      {},
-      { timeout: 10000 },
-    );
-  },
-};
 
 /** The Runtime DTOs through the project documents port: tree, then the document's content. */
 export const ApiDtoToDocumentScreen: Story = {

@@ -30,6 +30,7 @@ export const docsErrorCodes: ErrorCodeTable = {
   DOCS_WORKSPACE_UNAVAILABLE: { kind: 'unavailable', outcome: 'not-applied', retryable: true },
   DOCS_NOT_CONFIGURED: { kind: 'unavailable', outcome: 'not-applied', retryable: false },
   DOCS_UNAVAILABLE: { kind: 'unavailable', outcome: 'not-applied', retryable: true },
+  DOCS_NOT_SERVED: { kind: 'unavailable', outcome: 'not-applied', retryable: false },
   DOCS_DOCUMENT_INACTIVE: { kind: 'not-found', outcome: 'not-applied' },
   DOCS_DOCUMENT_SKIPPED: { kind: 'not-found', outcome: 'not-applied' },
   DOCS_DOCUMENT_NOT_FOUND: { kind: 'not-found', outcome: 'not-applied' },

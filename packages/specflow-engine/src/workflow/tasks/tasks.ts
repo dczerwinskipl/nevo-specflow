@@ -15,7 +15,8 @@ import {
   TASK_TITLE_MAX,
   isValidTaskId,
 } from '../limits';
-import { TASK_MAIN_DOCUMENT, type TaskOrigin } from '../../tasks/resource/model';
+import { generatedTaskMainDocument, initialTaskDocument } from '../../tasks/resource/codec';
+import type { TaskOrigin } from '../../tasks/resource/model';
 import { dependencyCycle } from '../state/dependency-cycle';
 import {
   taskPosition,
@@ -264,16 +265,22 @@ export function materializeTasks(input: MaterializeTasksInput): MaterializedTask
     // A revised draft keeps its documents and context; only its definition is replaced.
     const revised = existing.get(proposal.id);
 
+    const described = {
+      title: proposal.title.trim(),
+      ...(proposal.summary?.trim() ? { summary: proposal.summary.trim() } : {}),
+    };
+
     return {
       specId: input.specId,
       taskId: proposal.id,
-      title: proposal.title.trim(),
-      ...(proposal.summary?.trim() ? { summary: proposal.summary.trim() } : {}),
+      ...described,
       type: type.id,
       dependsOn: [...new Set(proposal.dependsOn ?? [])],
       origin: input.origin,
       status: 'draft',
-      documents: revised?.documents ?? [{ ...TASK_MAIN_DOCUMENT }],
+      // A new draft's task.md is generated (`initialTaskDocument`, written with the manifest): its
+      // baseline. A revised draft keeps its task.md and its record as they are.
+      documents: revised?.documents ?? [generatedTaskMainDocument(initialTaskDocument(described))],
       ...(revised?.context !== undefined ? { context: revised.context } : {}),
     };
   });

@@ -20,6 +20,7 @@ import {
   dominik,
   specificationWorkflowProjection,
   taskWorkflowProjection,
+  withExits,
 } from './projections.stories-support';
 import { AbandonSpecificationDialog } from './specification/AbandonSpecificationDialog';
 import { CloseSpecificationDialog } from './specification/CloseSpecificationDialog';
@@ -28,6 +29,15 @@ import { WorkflowNow } from './WorkflowNow';
 afterEach(cleanup);
 
 const never = () => new Promise<never>(() => undefined);
+const planned = {
+  operationId: 'op-1',
+  merge: {
+    status: 'integrates' as const,
+    sourceBranch: 'nevo-1/sso',
+    targetBranch: 'release/2026.11',
+    commitsAhead: 2,
+  },
+};
 
 function fakeExecutionApi(overrides: Partial<WorkflowExecutionApi> = {}) {
   return {
@@ -107,7 +117,7 @@ it.each([
           headingId="now"
           links={{}}
           artifactOptions={[]}
-          overview={{ specId: SPEC }}
+          specification={{ specId: SPEC }}
           primaryAction={published ? <button type="button">Continue workflow</button> : undefined}
         />
       </>
@@ -177,6 +187,31 @@ function producingProjection(): WorkflowActionProjection {
   };
 }
 
+/** Another result of Acceptance that is available, so Finish step is the main action. */
+const backToBreakdown = {
+  id: 'rework',
+  label: 'Back to breakdown',
+  target: { kind: 'step' as const, step: 'breakdown' },
+  targetTitle: 'Breakdown',
+  feedback: 'optional' as const,
+};
+
+/** Acceptance while Tasks are open, with a result that does not complete the Specification. */
+function tasksOpenWithRework(): WorkflowActionProjection {
+  const base = specificationWorkflowProjection('tasks-open');
+
+  return {
+    ...base,
+    actions: {
+      ...base.actions,
+      finish: {
+        ...base.actions.finish!,
+        transitions: [...base.actions.finish!.transitions, backToBreakdown],
+      },
+    },
+  };
+}
+
 const finishButton = () =>
   within(screen.getByRole('dialog')).getByRole<HTMLButtonElement>('button', {
     name: 'Finish step',
@@ -233,7 +268,7 @@ describe('manual workflow execution', () => {
     fireEvent.click(screen.getByRole('radio', { name: /^Done/ }));
 
     expect(screen.getByRole('list', { name: 'Needed to finish with Done' }).textContent).toContain(
-      'A findings document · none registered yet',
+      'A findings document · not yet',
     );
     expect(finishButton().disabled).toBe(true);
     expect(
@@ -310,7 +345,6 @@ describe('manual workflow execution', () => {
         specTitle="Single sign-on"
         projection={specificationWorkflowProjection('close-blocked')}
         tasks={new Map([['t-02', { id: 't-02', title: 'Token exchange', state: 'In progress' }]])}
-        cancelledTasks={[]}
         onAbandonInstead={vi.fn()}
         onSeeWorkflow={vi.fn()}
         onSeeTasks={vi.fn()}
@@ -324,9 +358,11 @@ describe('manual workflow execution', () => {
       within(dialog)
         .getAllByRole('heading', { level: 3 })
         .map((heading) => heading.textContent),
-    ).toEqual(['Workflow · 1', 'Unfinished tasks · 1', 'Pending writes · 1']);
+    ).toEqual(['Workflow', 'Unfinished tasks · 1', 'Pending writes · 1']);
     expect(within(dialog).getByRole('button', { name: 'Abandon instead' })).toBeTruthy();
-    expect(within(dialog).queryByRole('button', { name: 'Close specification' })).toBeNull();
+    expect(within(dialog).queryByRole('button', { name: 'Close and archive' })).toBeNull();
+    // Workflow blockers are not re-checked from here: only Dismiss.
+    expect(within(dialog).queryByRole('button', { name: 'Check again' })).toBeNull();
     expect(within(dialog).getAllByRole('button', { name: 'Dismiss' })).toHaveLength(1);
   });
 
@@ -352,7 +388,6 @@ describe('manual workflow execution', () => {
         specTitle="Single sign-on"
         projection={specificationWorkflowProjection('close-blocked')}
         tasks={new Map([['t-02', { id: 't-02', title: 'Token exchange', state: 'In progress' }]])}
-        cancelledTasks={[]}
         onSeeWorkflow={vi.fn()}
         onSeeTasks={vi.fn()}
         onOpenTask={vi.fn()}
@@ -367,12 +402,7 @@ describe('manual workflow execution', () => {
         within(dialog)
           .getAllByRole('heading', { level: 3 })
           .map((heading) => heading.textContent),
-      ).toEqual([
-        'Running sessions · 1',
-        'Workflow · 1',
-        'Unfinished tasks · 1',
-        'Pending writes · 1',
-      ]),
+      ).toEqual(['Running sessions', 'Workflow', 'Unfinished tasks · 1', 'Pending writes · 1']),
     );
     expect(execution.closeOccupancy).toHaveBeenCalledWith(SPEC, expect.anything());
     expect(execution.closePreview).not.toHaveBeenCalled();
@@ -531,7 +561,6 @@ describe('manual workflow execution', () => {
         specTitle="Single sign-on"
         projection={specificationWorkflowProjection('abandoned')}
         tasks={new Map([['t-02', { id: 't-02', title: 'Token exchange', state: 'Draft' }]])}
-        cancelledTasks={[]}
         onSeeWorkflow={vi.fn()}
         onSeeTasks={vi.fn()}
         onOpenTask={vi.fn()}
@@ -539,13 +568,13 @@ describe('manual workflow execution', () => {
       />,
       {
         execution: fakeExecutionApi({
-          closePreview: vi.fn(() => Promise.resolve({ operationId: 'op-1' })),
+          closePreview: vi.fn(() => Promise.resolve(planned)),
           close,
         }),
       },
     );
     const submit = await screen.findByRole<HTMLButtonElement>('button', {
-      name: 'Close specification',
+      name: 'Close and archive',
     });
     await waitFor(() => expect(submit.disabled).toBe(false));
     fireEvent.click(submit);
@@ -568,7 +597,6 @@ describe('manual workflow execution', () => {
         specTitle="Single sign-on"
         projection={specificationWorkflowProjection('abandoned')}
         tasks={new Map()}
-        cancelledTasks={[]}
         onSeeWorkflow={vi.fn()}
         onSeeTasks={vi.fn()}
         onOpenTask={vi.fn()}
@@ -576,13 +604,13 @@ describe('manual workflow execution', () => {
       />,
       {
         execution: fakeExecutionApi({
-          closePreview: vi.fn(() => Promise.resolve({ operationId: 'op-1' })),
+          closePreview: vi.fn(() => Promise.resolve(planned)),
           close,
         }),
       },
     );
     const submit = await screen.findByRole<HTMLButtonElement>('button', {
-      name: 'Close specification',
+      name: 'Close and archive',
     });
     await waitFor(() => expect(submit.disabled).toBe(false));
     fireEvent.click(submit);
@@ -591,11 +619,249 @@ describe('manual workflow execution', () => {
       'Move or delete it, then close again.',
     );
   });
+
+  it('names the repository preconditions before the confirm, never next to "Ready to close"', async () => {
+    const refused = refusal('CLOSE_PREFLIGHT', 422);
+    (refused.cause as { data: Record<string, unknown> }).data.repository = [
+      {
+        kind: 'uncommitted-changes',
+        checkout: 'specification',
+        workspaceId: '7b1e2c3d-4f5a-4b6c-8d7e-9f0a1b2c3d4e',
+        paths: [{ path: 'specs/active/sso/overview.md', scope: 'specification' }],
+        count: 3,
+        specificationCount: 1,
+      },
+      {
+        kind: 'integration-target-missing',
+        sourceCheckout: 'linked',
+        candidates: [{ branch: 'develop', facts: ['primary-checkout'] }],
+        otherBranches: [],
+        otherBranchCount: 0,
+      },
+    ];
+    const close = vi.fn(never);
+    renderWith(
+      <CloseSpecificationDialog
+        open
+        onOpenChange={vi.fn()}
+        specId={SPEC}
+        specTitle="Single sign-on"
+        projection={specificationWorkflowProjection('abandoned')}
+        tasks={new Map()}
+        onSeeWorkflow={vi.fn()}
+        onSeeTasks={vi.fn()}
+        onOpenTask={vi.fn()}
+        onClosed={vi.fn()}
+      />,
+      {
+        execution: fakeExecutionApi({
+          closePreview: vi.fn(() => Promise.reject(refused)),
+          close,
+        }),
+      },
+    );
+
+    expect((await screen.findByText(/cannot close yet/)).textContent).toBe(
+      'Single sign-on cannot close yet: 2 repository problems.',
+    );
+    const dialog = screen.getByRole('dialog');
+    expect(
+      within(dialog)
+        .getAllByRole('heading', { level: 3 })
+        .map((heading) => heading.textContent),
+    ).toEqual(['Uncommitted files in this checkout · 3', 'No integration branch configured']);
+    expect(within(dialog).getByText('specs/active/sso/overview.md')).toBeTruthy();
+    expect(within(dialog).getByText('and 2 more')).toBeTruthy();
+    expect(within(dialog).queryByText('Ready to close')).toBeNull();
+    // Nothing to confirm while the repository holds the Close: Dismiss, or check again.
+    expect(within(dialog).queryByRole('button', { name: 'Close and archive' })).toBeNull();
+    expect(within(dialog).getByRole('button', { name: 'Check again' })).toBeTruthy();
+    expect(close).not.toHaveBeenCalled();
+  });
+
+  it('checks again by itself while saved documents are being committed, then names the real blockers', async () => {
+    const pending = refusal('DOCUMENT_COMMITS_PENDING', 409, { cause: 'commit-pending' });
+    const dirty = refusal('CLOSE_PREFLIGHT', 422);
+    (dirty.cause as { data: Record<string, unknown> }).data.repository = [
+      {
+        kind: 'uncommitted-changes',
+        checkout: 'specification',
+        workspaceId: '1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f',
+        paths: [{ path: 'notes.txt', scope: 'other' }],
+        count: 1,
+        specificationCount: 0,
+      },
+    ];
+    const closePreview = vi
+      .fn<WorkflowExecutionApi['closePreview']>()
+      .mockRejectedValueOnce(pending)
+      .mockRejectedValue(dirty);
+    renderWith(
+      <CloseSpecificationDialog
+        open
+        onOpenChange={vi.fn()}
+        specId={SPEC}
+        specTitle="Single sign-on"
+        projection={specificationWorkflowProjection('abandoned')}
+        tasks={new Map()}
+        onSeeWorkflow={vi.fn()}
+        onSeeTasks={vi.fn()}
+        onOpenTask={vi.fn()}
+        onClosed={vi.fn()}
+        documentCommitRecheck={{ intervalMs: 200, attempts: 20 }}
+      />,
+      { execution: fakeExecutionApi({ closePreview }) },
+    );
+    const dialog = screen.getByRole('dialog');
+
+    expect(await within(dialog).findByText('Saving document commits…')).toBeTruthy();
+    expect(within(dialog).queryByRole('alert')).toBeNull();
+
+    expect(await within(dialog).findByText('notes.txt')).toBeTruthy();
+    expect(closePreview).toHaveBeenCalledTimes(2);
+    expect(within(dialog).queryByText('Saving document commits…')).toBeNull();
+  });
+
+  it('stops checking after a bounded wait for document commits and offers to check again', async () => {
+    const pending = refusal('DOCUMENT_COMMITS_PENDING', 409, { cause: 'commit-pending' });
+    const closePreview = vi.fn<WorkflowExecutionApi['closePreview']>(() => Promise.reject(pending));
+    renderWith(
+      <CloseSpecificationDialog
+        open
+        onOpenChange={vi.fn()}
+        specId={SPEC}
+        specTitle="Single sign-on"
+        projection={specificationWorkflowProjection('abandoned')}
+        tasks={new Map()}
+        onSeeWorkflow={vi.fn()}
+        onSeeTasks={vi.fn()}
+        onOpenTask={vi.fn()}
+        onClosed={vi.fn()}
+        documentCommitRecheck={{ intervalMs: 20, attempts: 3 }}
+      />,
+      { execution: fakeExecutionApi({ closePreview }) },
+    );
+    const dialog = screen.getByRole('dialog');
+
+    expect((await within(dialog).findByRole('alert')).textContent).toContain(
+      'Saved documents in this checkout are still being committed. Wait a moment',
+    );
+    expect(closePreview).toHaveBeenCalledTimes(3);
+    expect(within(dialog).queryByText('Saving document commits…')).toBeNull();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Check again' }));
+    await waitFor(() => expect(closePreview).toHaveBeenCalledTimes(6));
+    expect(await within(dialog).findByRole('alert')).toBeTruthy();
+  });
+
+  it('names which specification and which files hold the Close, and how to commit them', async () => {
+    const held = refusal('DOCUMENT_COMMITS_PENDING', 409, {
+      cause: 'commit-uncommitted',
+      uncommitted: {
+        reasons: ['auto-commit-off'],
+        policy: { documents: 'manual', source: 'default' },
+        owners: [
+          {
+            kind: 'specification',
+            specId: '1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f',
+            title: 'Passkeys',
+            workflowState: 0,
+            documents: 10,
+            count: 10,
+            paths: Array.from({ length: 8 }, (_, i) => `specs/active/passkeys/notes-${i}.md`),
+          },
+        ],
+        unreadable: 0,
+      },
+    });
+    renderWith(
+      <CloseSpecificationDialog
+        open
+        onOpenChange={vi.fn()}
+        specId={SPEC}
+        specTitle="Single sign-on"
+        projection={specificationWorkflowProjection('abandoned')}
+        tasks={new Map()}
+        onSeeWorkflow={vi.fn()}
+        onSeeTasks={vi.fn()}
+        onOpenTask={vi.fn()}
+        onClosed={vi.fn()}
+      />,
+      { execution: fakeExecutionApi({ closePreview: vi.fn(() => Promise.reject(held)) }) },
+    );
+    const dialog = screen.getByRole('dialog');
+
+    // An explained blocking state, not a failed check.
+    expect(
+      await within(dialog).findByText(
+        'Single sign-on cannot close yet: another specification has uncommitted changes in this checkout.',
+      ),
+    ).toBeTruthy();
+    expect(within(dialog).queryByRole('alert')).toBeNull();
+    expect(within(dialog).queryByText(/Could not check/)).toBeNull();
+    expect(
+      within(dialog).getByText(
+        "Saved documents in this checkout are not committed: automatic commits were off when they were saved. Commit them from that specification's Documents or with Git, then check again.",
+      ),
+    ).toBeTruthy();
+    expect(within(dialog).getByRole('heading', { name: 'Passkeys · 10' })).toBeTruthy();
+    expect(within(dialog).getByText('specs/active/passkeys/notes-0.md')).toBeTruthy();
+    expect(within(dialog).getByText('and 2 more')).toBeTruthy();
+    expect(within(dialog).getByText('Commit them first.')).toBeTruthy();
+    // Not the repository blocker: these are files SpecFlow wrote, not a dirty checkout.
+    expect(within(dialog).queryByText('Uncommitted files', { exact: false })).toBeNull();
+    expect(within(dialog).queryByText('Ready to close')).toBeNull();
+    expect(within(dialog).queryByRole('button', { name: 'Close and archive' })).toBeNull();
+  });
+
+  it('says the repository is being checked, then shows one outcome for an abandoned Specification', async () => {
+    let answer: (value: typeof planned) => void = () => undefined;
+    const closePreview = vi.fn(
+      () =>
+        new Promise<typeof planned>((resolve) => {
+          answer = resolve;
+        }),
+    );
+    renderWith(
+      <CloseSpecificationDialog
+        open
+        onOpenChange={vi.fn()}
+        specId={SPEC}
+        specTitle="Single sign-on"
+        projection={specificationWorkflowProjection('abandoned')}
+        tasks={new Map()}
+        onSeeWorkflow={vi.fn()}
+        onSeeTasks={vi.fn()}
+        onOpenTask={vi.fn()}
+        onClosed={vi.fn()}
+      />,
+      { execution: fakeExecutionApi({ closePreview }) },
+    );
+    const dialog = screen.getByRole('dialog');
+
+    expect((await within(dialog).findByRole('status')).textContent).toContain(
+      'Checking whether Single sign-on can close…',
+    );
+    // Only Cancel while checking: nothing to confirm yet.
+    expect(within(dialog).queryByRole('button', { name: 'Close and archive' })).toBeNull();
+    expect(within(dialog).queryByText('Ready to close')).toBeNull();
+
+    act(() => answer(planned));
+
+    const submit = await within(dialog).findByRole<HTMLButtonElement>('button', {
+      name: 'Close and archive',
+    });
+    expect(submit.disabled).toBe(false);
+    // Abandoned: the reason and the facts, without a "ready" banner.
+    expect(within(dialog).queryByText('Ready to close')).toBeNull();
+    expect(within(dialog).getByText('Recorded as not delivered')).toBeTruthy();
+    expect(within(dialog).queryByText(/Checking whether/)).toBeNull();
+  });
   it('names the open Tasks that keep the Specification from completing, in Now and in Finish', () => {
     renderWith(
       <WorkflowNow
         subject={{ specId: SPEC }}
-        projection={specificationWorkflowProjection('tasks-open')}
+        projection={tasksOpenWithRework()}
         headingId="now"
         links={{ tasks: vi.fn() }}
         artifactOptions={[]}
@@ -625,7 +891,7 @@ describe('manual workflow execution', () => {
         headingId="now"
         links={{ tasks: vi.fn() }}
         artifactOptions={[]}
-        overview={{ specId: SPEC }}
+        specification={{ specId: SPEC }}
       />,
     );
 
@@ -640,7 +906,9 @@ describe('manual workflow execution', () => {
       id: 'note',
       type: 'document' as const,
       label: 'A note',
+      labelDeclared: true,
       documentType: 'note',
+      requiredSections: [],
       scope: { kind: 'specification' as const, specId: SPEC },
       status: 'unsatisfied' as const,
       reason: 'no-document' as const,
@@ -661,7 +929,7 @@ describe('manual workflow execution', () => {
           links={{ tasks: vi.fn() }}
           artifactOptions={[]}
           gateAction={() => ({ label: 'Create note', onSelect: vi.fn() })}
-          overview={{ specId: SPEC }}
+          specification={{ specId: SPEC }}
         />,
       );
 
@@ -685,14 +953,19 @@ describe('manual workflow execution', () => {
         },
       ]),
     );
-    expect(screen.queryByRole('button', { name: 'Finish step' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Create note' })).toBeTruthy();
+    // The fix is the main action; Finish step stays beside it as the one secondary action.
+    const actions = document.querySelector('[data-slot="workflow-actions"]')!;
+    expect(
+      within(actions as HTMLElement)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(['Create note', 'Finish step']);
   });
 
   it('lets a breakdown complete once its own open drafts are unticked (resolvableByFinish)', async () => {
     const finish = vi.fn(() => never());
     const base = specificationWorkflowProjection('tasks-open');
-    const projection: WorkflowActionProjection = {
+    const projection = withExits({
       ...base,
       position: {
         kind: 'active',
@@ -719,7 +992,7 @@ describe('manual workflow execution', () => {
           drafts: [{ id: 't-08', title: 'Audit log', type: 'backend' }],
         },
       },
-    };
+    });
     renderWith(
       <WorkflowNow
         subject={{ specId: SPEC }}
@@ -727,7 +1000,7 @@ describe('manual workflow execution', () => {
         headingId="now"
         links={{ tasks: vi.fn() }}
         artifactOptions={[]}
-        overview={{ specId: SPEC }}
+        specification={{ specId: SPEC }}
       />,
       { execution: fakeExecutionApi({ finish }) },
     );
@@ -783,6 +1056,7 @@ describe('manual workflow execution', () => {
                     { taskId: TASK, by: 'decision' },
                   ],
                 },
+                backToBreakdown,
               ],
             },
           },
@@ -902,7 +1176,7 @@ describe('manual workflow execution', () => {
           headingId="now"
           links={{}}
           artifactOptions={[]}
-          overview={{ specId: SPEC }}
+          specification={{ specId: SPEC }}
         />
       ) : null;
     }

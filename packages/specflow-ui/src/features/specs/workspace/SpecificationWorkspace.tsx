@@ -28,18 +28,13 @@ import {
 } from './WorkspaceContext';
 import {
   SpecificationSecondaryDataContext,
-  taskPreviewStack,
   documentPreviewStack,
   historyStack,
   type SpecificationSecondaryContextValue,
 } from './specificationSecondaryStack';
 import { useActivityHistoryPanel } from './useActivityHistoryPanel';
 import { EnsureSpecificationState } from '../SpecificationStateProvider';
-import {
-  SpecificationWorkflowProvider,
-  TaskViewStateProvider,
-  useSpecificationExitActions,
-} from '../../tasks';
+import { SpecificationWorkflowProvider, useSpecificationExitActions } from '../../tasks';
 
 function fullTaskHref(specId: string, taskId: string, collection: 'current' | 'archive'): string {
   const search = collection === 'archive' ? '?collection=archive' : '';
@@ -85,11 +80,9 @@ export function SpecificationWorkspace(props: SpecificationWorkspaceProps) {
     <EnsureSpecificationState>
       <AppWorkspaceProvider scopeKey={props.specId}>
         <WorkspaceRouteLeaveGuard />
-        <TaskViewStateProvider key={props.specId}>
-          <SpecificationWorkflowProvider key={props.specId} specId={props.specId}>
-            <SpecificationWorkspaceInner {...props} />
-          </SpecificationWorkflowProvider>
-        </TaskViewStateProvider>
+        <SpecificationWorkflowProvider key={props.specId} specId={props.specId}>
+          <SpecificationWorkspaceInner {...props} />
+        </SpecificationWorkflowProvider>
       </AppWorkspaceProvider>
     </EnsureSpecificationState>
   );
@@ -141,13 +134,6 @@ function SpecificationWorkspaceInner({
     });
   }, []);
 
-  const handlePreviewTask = useCallback(
-    (taskId: string) => {
-      recordOpen(secondaryNavigation.open(taskPreviewStack, { specId, taskId }), false);
-    },
-    [secondaryNavigation, specId, recordOpen],
-  );
-
   const handleOpenHistory = useCallback(() => {
     recordOpen(secondaryNavigation.open(historyStack, { specId }), false);
   }, [secondaryNavigation, specId, recordOpen]);
@@ -190,7 +176,6 @@ function SpecificationWorkspaceInner({
       },
       openSession: onOpenSession,
       openDoc: (docId) => handleOpenDoc(docId, 'work'),
-      previewTask: handlePreviewTask,
       retry: onRefresh ? () => void onRefresh() : undefined,
     }),
     [
@@ -202,13 +187,11 @@ function SpecificationWorkspaceInner({
       secondaryNavigation,
       onOpenSession,
       handleOpenDoc,
-      handlePreviewTask,
     ],
   );
 
   const runtime: WorkspaceRuntime = useMemo(
     () => ({
-      previewTask: handlePreviewTask,
       openTask: handleOpenFullTask,
       openTasks: (target) => {
         void secondaryNavigation.close();
@@ -232,7 +215,6 @@ function SpecificationWorkspaceInner({
       tasksHref: (target) => tasksHref(specId, collection, target),
     }),
     [
-      handlePreviewTask,
       handleOpenFullTask,
       onOpenSession,
       onOpenDocuments,
@@ -354,7 +336,7 @@ function SpecificationWorkspaceInner({
                   availability={data.sectionAvailability?.activity ?? 'available'}
                   unavailableReason={data.sectionUnavailableReason?.activity}
                   onRetry={onRefresh ? () => void onRefresh() : undefined}
-                  onOpenTask={handlePreviewTask}
+                  onOpenTask={(taskId) => handleOpenFullTask(taskId)}
                   onOpenSession={onOpenSession}
                   onOpenDoc={(docId) => handleOpenDoc(docId, 'work')}
                 />

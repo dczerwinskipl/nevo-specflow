@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { browserPage } from '../../test-support/browserPage';
-import { TaskWorkbenchFixture } from '../../features/tasks/pages/FullTaskWorkspace.stories';
+import { TaskAuthoringFixture } from '../../features/tasks/pages/ProjectTaskAuthoring.stories';
 import { RoutedApplication } from '../SpecFlowShell.stories';
 import scrollMeta from '../../../../nevo-ui/src/app/workspace/AppWorkspaceScroll.contract.stories';
 import { withLocale } from '../../i18n/StoryLocalization';
@@ -16,7 +16,7 @@ function Baseline({ screen = 'task' }: { screen?: 'task' | 'specification' | 'sc
     return <Scroll />;
   }
 
-  return <TaskWorkbenchFixture scenario="human-gates" />;
+  return <TaskAuthoringFixture screen="task" scenario="started" />;
 }
 
 const meta = {
@@ -37,7 +37,7 @@ async function capture(_name: string) {
 export const Task: Story = {
   play: async ({ canvas }) => {
     await canvas.findByRole('heading', {
-      name: 'Preserve session and navigation context',
+      name: 'Return users to where they were',
       level: 1,
     });
     await capture('task');

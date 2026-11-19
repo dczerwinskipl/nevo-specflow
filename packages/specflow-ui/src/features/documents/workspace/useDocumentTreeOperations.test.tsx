@@ -9,6 +9,7 @@ import { DocumentDraftProvider } from '../editor/DocumentDraftProvider';
 import { NotificationProvider } from '../../../shared/notifications/notifications';
 import { useDocumentOperations } from '../explorer/useDocumentOperations';
 import { useDocumentTreeOperations } from './useDocumentTreeOperations';
+import { specificationActionsKey } from '../../tasks/read-model';
 import { documentKeys, documentTreeKeys } from '../read-model/queries';
 import type { PendingSave } from '../editor/useDocumentSave';
 import { pendingSaveOf } from './useDocumentTreeOperations';
@@ -163,6 +164,14 @@ describe('tree operations and tabs', () => {
     expect(mocks.show).toHaveBeenCalledTimes(2);
     // Only the first imported file opens.
     expect(mocks.show).toHaveBeenLastCalledWith('d1');
+  });
+
+  it('refreshes the workflow projection after an operation (its gates read the documents)', async () => {
+    mocks.addDocuments.mockResolvedValue({ documents: [] });
+    const { view, cache } = setup();
+    cache.setQueryData(specificationActionsKey('s'), {});
+    await act(() => view.result.current.treeOps.add([], ['docs']));
+    expect(cache.getQueryState(specificationActionsKey('s'))?.isInvalidated).toBe(true);
   });
 
   it('opens nothing for a new folder', async () => {

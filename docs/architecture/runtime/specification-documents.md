@@ -77,7 +77,7 @@ documents: # REQUIRED registry
   - id: overview # stable id
     path: overview.md # relative to the Specification directory
     type: overview # document type id
-    templateRevision: <sha256> # optional, Engine-written: the content it created the file with from a template
+    baselineRevision: <sha256> # optional, Engine-written: the initial content it wrote (template or generated)
 folders: # OPTIONAL: explicit folders that may hold no file (see below)
   - research
 ```
@@ -93,11 +93,20 @@ Parser rules (strict, `SPEC_SOURCE_INVALID` otherwise; no alias, no default, no 
    catalogue (a retired type stays valid and is shown by id).
 4. `documents[].path` is a normalised portable relative path (see "Paths"); paths are unique ignoring case, and a
    registered file path is never an ancestor folder of another registered path.
-   `documents[].templateRevision`, when present, is a lowercase sha256 hex digest. The Engine writes it when it
-   creates the file from an archetype template (Create, or a create naming a `templateId`): the revision of exactly
-   the bytes it wrote. Rename and move keep it; nothing else writes it. A document is _template only_ (the
-   workspace read's `templateOnly`) exactly while its current revision equals it, so the check costs no read
-   beyond the revision the documents section computes anyway.
+   `documents[].baselineRevision`, when present, is a lowercase sha256 hex digest: the revision of exactly the
+   bytes of the document's **baseline**, the initial content the Engine itself wrote. Three sources are kept
+   apart: a _template_ is where initial content can come from (an archetype template, at Create or by a create
+   naming a `templateId`); a _generated baseline_ is content the Engine generates at creation (a Task's
+   `task.md` from its title and summary, `task.yaml` carrying the same field); _authored content_ is what a
+   person or an agent writes. Template and generated content are both a baseline: one field, one rule for
+   Specification and Task documents. The Engine records the field in the same change as every write of
+   baseline content, and a write of the Engine that regenerates such content records the new revision the
+   same way, so a system rewrite never makes a document authored (no such rewrite exists today: a Task
+   metadata edit does not touch `task.md`). Rename and move keep it; nothing else writes it. A created document
+   with given content (including a Task's `task.md` given at creation) records none. The read's
+   **content state** (`contentState`) of a registered document with a file is `baseline` exactly while its
+   current revision equals the record, else `authored`, so the check costs no read beyond the revision the
+   documents section computes anyway. Archetype templates are not offered for Task documents.
 5. The registry contains exactly one entry with `id: overview`, `path: overview.md`, `type: overview`. Its id
    and path are fixed, so rename and move of `overview` are refused with the `protected` reason like delete
    (confirmed by the owner).
@@ -162,14 +171,14 @@ unique per archetype and is what `optionalDocumentIds` names; it is unrelated to
 **Template rendering (exact).** Content may use these placeholders and nothing else is substituted (unknown
 `{{...}}` text is left as is). Substitution is one left-to-right pass; substituted values are never rescanned.
 
-| Placeholder                  | Value                                                                                                         |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `{{specificationTitle}}`     | The title with whitespace runs collapsed and trimmed (the value `createSpecificationScaffold` uses today)     |
-| `{{specificationTitleJson}}` | `JSON.stringify` of that title: a valid YAML double-quoted scalar for frontmatter                             |
-| `{{slug}}`                   | The Specification slug                                                                                        |
-| `{{goal}}`                   | The trimmed goal, or the empty string                                                                         |
-| `{{goalOrPrompt}}`           | The trimmed goal, or, when it is empty, the fixed text `Describe the intended outcome of this specification.` |
-| `{{created}}`                | The creation date `YYYY-MM-DD`                                                                                |
+| Placeholder                  | Value                                                                                                                    |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `{{specificationTitle}}`     | The title with whitespace runs collapsed and trimmed (the value `createSpecificationScaffold` uses today)                |
+| `{{specificationTitleJson}}` | `JSON.stringify` of that title: a valid YAML double-quoted scalar for frontmatter                                        |
+| `{{slug}}`                   | The Specification slug                                                                                                   |
+| `{{goal}}`                   | The trimmed goal, or the empty string                                                                                    |
+| `{{goalOrPrompt}}`           | The trimmed goal, or, when it is empty, the fixed prompt `<!-- Describe the intended outcome of this specification. -->` |
+| `{{created}}`                | The creation date `YYYY-MM-DD`                                                                                           |
 
 The shipped `overview` template (a seed file) is exactly the text the present `createSpecificationScaffold` produces for
 `overview.md`, with `{{slug}}` for the interpolated slug (`id: spec.{{slug}}`, `change: {{slug}}`),
@@ -177,6 +186,9 @@ The shipped `overview` template (a seed file) is exactly the text the present `c
 breaks and trailing newline. A golden test compares the rendered output with fixtures generated by the
 pre-change function (committed before the change) for: a plain title, a title with quotes and non-ASCII
 characters, extra whitespace, no goal, a goal with leading/trailing whitespace and a multi-line goal.
+The goal prompt is an HTML comment so template guidance is never presented as the Specification's
+content (its description, a rendered document); the no-goal fixtures were updated deliberately when it
+became one.
 
 ### Versioning rule
 
@@ -777,8 +789,9 @@ published change is ONE document operation of action `workflow` (contract
 - **Record** (same lock section, after the files are published): the plan lists the paths with their
   `pre`/`post` and `source: written` (the store wrote them) or `none` (removed), plus the `summary`
   the operation gave (`create task api`). Auto-commit on: the journal is published `queued` (its
-  `checkout-scoped` claim held) and the scheduler is woken; the queue commits it like any member
-  (settle period, batches, verification, `Nevo-Action: workflow`, subject
+  `checkout-scoped` claim held) and the scheduler is woken (a CLI command, which runs no scheduler,
+  drains the queue before it exits); the queue commits it like any member (the batch path list
+  admits the execution state: the Task index and the run records as well as Task folders) (settle period, batches, verification, `Nevo-Action: workflow`, subject
   `spec(workflow): <summary> in <slug>`, `spec(documents): change documents and workflow state in
 <slug>` in a mixed batch). Auto-commit off: the ledger entries (owner `specification`, reason
   `auto-commit-off`) then a settled `completed`/`uncommitted` journal. Git disabled: nothing.

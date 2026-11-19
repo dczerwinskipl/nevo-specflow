@@ -82,7 +82,7 @@ describe('checkout quiescence', () => {
     for (const ignored of [
       plan({ kind: 'specification-close', integrateToTargetBranch: false }),
       plan({ kind: 'specification-close' }),
-      plan({ source: { workspaceId: 'linked-1', root: '/repo/linked' } } as never),
+      plan({ source: { workspaceId: 'linked-1', root: '/repo/linked' } }),
       plan({ target: undefined }),
     ]) {
       expect(checkoutRemovedByClose(ignored)).toBeUndefined();

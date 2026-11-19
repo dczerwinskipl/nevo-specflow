@@ -10,6 +10,7 @@ import {
   Typography,
   cn,
   useInitialAppearance,
+  useWorkspaceCapabilities,
 } from '@nevo/ui';
 
 import { LoadingPresentation } from '../../../app/loading/LoadingPresentation';
@@ -20,7 +21,7 @@ import { SpecsOverviewCollection } from './SpecsOverviewCollection';
 import { SpecsOverviewEmpty } from './SpecsOverviewEmpty';
 import { SpecsOverviewHeader } from './SpecsOverviewHeader';
 import { SpecsOverviewNotice } from './SpecsOverviewNotice';
-import { specTitleTrackMaxWidth } from './rows/specRowColumns';
+import { collectionTitleTrackMaxWidth } from '../../../shared/operational-list';
 import { overviewCapabilities } from './presentation';
 import { filterSpecsOverview, isSearchable } from './search/search';
 import { useCollectionSearch } from './search/useCollectionSearch';
@@ -61,6 +62,7 @@ export function SpecsOverview({
 }: SpecsOverviewProps) {
   const { t } = useTranslation();
   const workspaceLabels = useWorkspaceLabels(t('specifications.title'));
+  const { supportsSplit } = useWorkspaceCapabilities();
   const search = useCollectionSearch(state.collection);
   const projection =
     state.projection?.collection === state.collection ? state.projection : undefined;
@@ -89,13 +91,18 @@ export function SpecsOverview({
         }
       >
         {/* The page fills the Focused frame (`fit="bounded"`): the rows span it and their bounded
-            tracks (`specRowColumns`) keep the values together; the search field and notices stay
+            tracks (`CollectionColumns`) keep the values together; the search field and notices stay
             as wide as the title track. */}
         <AppContent className="w-full">
           {/* A flex column down to the list, so an empty collection can centre in the free height. */}
           <AppWorkspaceBody scroll="area" contentClassName="flex min-h-full flex-col py-6">
             <AppContentContainer align="start" className="flex flex-1 flex-col gap-4" size="full">
-              <ViewPageTitle className="mb-2">{t('specifications.title')}</ViewPageTitle>
+              {/* Narrow: the header already names the screen (`ApplicationLocationIdentity`, the same
+                  `supportsSplit` decision), so the page heading stays for assistive technology and
+                  focus only instead of repeating "Specifications" right under it. */}
+              <ViewPageTitle className={supportsSplit ? 'mb-2' : 'sr-only'}>
+                {t('specifications.title')}
+              </ViewPageTitle>
               <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
                 <SegmentedControl
                   aria-label={t('specifications.collection')}
@@ -126,7 +133,7 @@ export function SpecsOverview({
                   placeholder={t('specifications.search')}
                   value={search.term}
                   onChange={(event) => search.setTerm(event.target.value)}
-                  className={cn('w-full', specTitleTrackMaxWidth)}
+                  className={cn('w-full', collectionTitleTrackMaxWidth)}
                 />
               ) : null}
               {state.error ? (

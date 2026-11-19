@@ -49,10 +49,12 @@ export interface ManifestDocument {
   readonly path: string;
   readonly type: string;
   /**
-   * The revision (sha256 of the bytes) of the content the Engine created the document with from an
-   * archetype template. While the file still has exactly this revision, it is template only.
+   * The revision (sha256 of the bytes) of the document's baseline: the initial content the Engine
+   * itself wrote, from an archetype template or generated (a Task's `task.md` from its title and
+   * summary). While the file still has exactly this revision its content state is `baseline`
+   * (`./documents/content-state.ts`); a write by a person or an agent makes it `authored`.
    */
-  readonly templateRevision?: string;
+  readonly baselineRevision?: string;
 }
 
 /**
@@ -135,8 +137,8 @@ export function specificationSlugFromTitle(title: string, specId: string): strin
 /** Keys of each strict manifest object. Unknown top-level keys are tolerated; these are not. */
 const ARCHETYPE_KEYS: readonly string[] = ['id', 'version', 'requirements'];
 const REQUIREMENT_KEYS: readonly string[] = ['documentType', 'minCount'];
-const DOCUMENT_KEYS: readonly string[] = ['id', 'path', 'type', 'templateRevision'];
-const TEMPLATE_REVISION = /^[0-9a-f]{64}$/u;
+const DOCUMENT_KEYS: readonly string[] = ['id', 'path', 'type', 'baselineRevision'];
+const BASELINE_REVISION = /^[0-9a-f]{64}$/u;
 
 /**
  * Parse manifest YAML text: enforces the manifest size limit, then {@link parseSpecificationManifest}.
@@ -334,18 +336,18 @@ function parseDocuments(value: unknown, slug: string): ManifestDocument[] {
     }
 
     if (
-      entry.templateRevision !== undefined &&
-      (typeof entry.templateRevision !== 'string' ||
-        !TEMPLATE_REVISION.test(entry.templateRevision))
+      entry.baselineRevision !== undefined &&
+      (typeof entry.baselineRevision !== 'string' ||
+        !BASELINE_REVISION.test(entry.baselineRevision))
     ) {
-      throw sourceInvalid(slug, `${field}.templateRevision`, 'must be a sha256 hex digest');
+      throw sourceInvalid(slug, `${field}.baselineRevision`, 'must be a sha256 hex digest');
     }
 
     return {
       id: entry.id,
       path: entry.path,
       type: entry.type,
-      ...(entry.templateRevision !== undefined ? { templateRevision: entry.templateRevision } : {}),
+      ...(entry.baselineRevision !== undefined ? { baselineRevision: entry.baselineRevision } : {}),
     };
   });
 

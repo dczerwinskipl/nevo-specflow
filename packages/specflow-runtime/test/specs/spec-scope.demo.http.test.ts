@@ -33,7 +33,7 @@ describe('Specification reads at {projectId, specId} (wired by the Runtime)', ()
   ])('a viewer at the $name scope', async ({ scope, readable }) => {
     const server = await open(scope);
     const workspace = await server.inject('/api/specs/admission/workspace');
-    const task = await server.inject('/api/specs/admission/tasks/TASK-03');
+    const task = await server.inject('/api/specs/admission/tasks/admission-contract');
     const tree = await server.inject('/api/specs/admission/document-tree');
     expect([workspace.statusCode, task.statusCode, tree.statusCode]).toEqual(
       readable ? [200, 200, 200] : [403, 403, 403],
@@ -52,7 +52,8 @@ describe('Specification reads at {projectId, specId} (wired by the Runtime)', ()
     }
 
     const page = await server.inject(
-      '/api/specs/admission/tasks/TASK-03/history?token=' + encodeURIComponent(history.data.token),
+      '/api/specs/admission/tasks/admission-contract/history?token=' +
+        encodeURIComponent(history.data.token),
     );
     expect(page.statusCode).toBe(200);
   });

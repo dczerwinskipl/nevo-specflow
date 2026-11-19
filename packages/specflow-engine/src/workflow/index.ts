@@ -52,6 +52,7 @@ export {
   type AttentionItemReason,
   type BlockingTask,
   type BlockingTaskCause,
+  type HeldTaskBlocks,
 } from './attention/model';
 export {
   ATTENTION_REASONS,

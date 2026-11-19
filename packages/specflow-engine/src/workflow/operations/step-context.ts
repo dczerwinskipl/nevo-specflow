@@ -82,6 +82,15 @@ export function describeTransitions(
 }
 
 /**
+ * What the finish of a step that produces Tasks hands in (`materializeTasks`), in the one wording
+ * every surface shows before the step is worked on: the step context, the CLI start.
+ */
+export const PRODUCED_TASKS_FINISH_RULE =
+  'The finish lists every draft Task of this step, not only the changed ones: a listed draft is ' +
+  'created or revised, an unlisted one is cancelled. List them all again in a later attempt, for ' +
+  'example after a review sends the step back.';
+
+/**
  * What the executor of an active attempt works with: the step contract, the results it may finish
  * with, what the previous step handed over and the bound agent archetype. Compiling it is read-only;
  * it never runs a gate or changes state.
@@ -93,6 +102,8 @@ export interface StepContext {
   readonly attempt: number;
   readonly finish: {
     readonly transitions: readonly TransitionDescription[];
+    /** For a step that produces Tasks: the finish needs the complete list of its draft Tasks. */
+    readonly tasks?: { readonly rule: string };
   };
   readonly handoff?: Handoff;
   readonly archetype?: {
@@ -170,7 +181,12 @@ export function compileStepContext(input: StepContextInput): StepContext {
     workflow: input.run.workflow,
     step: describeStep(step),
     attempt: input.attempt,
-    finish: { transitions: describeTransitions(input.definition, step) },
+    finish: {
+      transitions: describeTransitions(input.definition, step),
+      ...(step.kind === 'work' && step.annotations.produces === 'tasks'
+        ? { tasks: { rule: PRODUCED_TASKS_FINISH_RULE } }
+        : {}),
+    },
     ...(handoff ? { handoff } : {}),
     ...(archetype
       ? {

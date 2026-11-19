@@ -22,6 +22,9 @@ const TASK_SCOPE = '/tasks/';
 export const taskDocumentScope = (specId: string, taskId: string) =>
   `${specId}${TASK_SCOPE}${taskId}`;
 
+/** Whether a documents scope is a Task's (`taskDocumentScope`) rather than a Specification. */
+export const isTaskDocumentScope = (scope: string) => scope.includes(TASK_SCOPE);
+
 /** The route prefix of a documents scope: a Specification, or a Task of it. */
 export function scopePath(scope: string): string {
   const [specId = scope, taskId] = scope.split(TASK_SCOPE);

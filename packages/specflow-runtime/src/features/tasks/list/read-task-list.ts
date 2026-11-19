@@ -19,10 +19,12 @@ export interface TaskListSource {
 }
 
 /**
- * The Tasks page of one Engine reading (`tasks: 'all'`), in the configured grouping. With
- * `blocking: 'specification'` only the Tasks the Specification's current `tasks-stuck` names stay,
- * in their normal groups; they are resolved from this reading, never from ids a client sends, so a
- * stale link never shows stale Tasks (none when nothing blocks any more). Pure.
+ * The Tasks page of one Engine reading (`tasks: 'all'`), in the configured grouping and importance
+ * order. At most one filter (the query schema refuses both): with `blocking: 'specification'` only
+ * the Tasks the Specification's current `tasks-stuck` names stay, in their normal groups; they are
+ * resolved from this reading, never from ids a client sends, so a stale link never shows stale
+ * Tasks (none when nothing blocks any more). With `group` only that group stays (none when it has
+ * no Task now or the grouping has no such group). Pure.
  */
 export function taskListOf(
   basis: Pick<InspectionBasis, 'reading' | 'catalogue'>,
@@ -35,6 +37,16 @@ export function taskListOf(
     progress: { ...board.progress },
     attention: board.attention.map((item) => structuredClone(toWire(item))),
   };
+  const counts = (groups: TaskListResponse['groups']) => ({
+    matched: groups.reduce((sum, group) => sum + group.tasks.length, 0),
+    total: board.rows.length,
+  });
+  if (query.group !== undefined) {
+    const groups = board.groups.filter((group) => group.id === query.group);
+
+    return { ...common, groups, filter: { group: query.group, ...counts(groups) } };
+  }
+
   if (query.blocking !== 'specification') {
     return { ...common, groups: board.groups };
   }
@@ -45,15 +57,7 @@ export function taskListOf(
     return tasks.length > 0 ? [{ ...group, tasks }] : [];
   });
 
-  return {
-    ...common,
-    groups,
-    filter: {
-      blocking: 'specification',
-      matched: groups.reduce((sum, group) => sum + group.tasks.length, 0),
-      total: board.rows.length,
-    },
-  };
+  return { ...common, groups, filter: { blocking: 'specification', ...counts(groups) } };
 }
 
 /** Project mode: one Engine reading per request. */

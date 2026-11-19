@@ -18,6 +18,8 @@ import { createRuntimeApp } from '../../src/server/app';
 import { passwordConfig } from '../auth/support/config';
 
 const roots: string[] = [];
+/** A registered workspace id (the checkout a repository blocker names). */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 afterEach(async () => {
   for (const root of roots.splice(0).reverse()) {
     await rm(root, { recursive: true, force: true, maxRetries: 6, retryDelay: 250 });
@@ -172,6 +174,46 @@ describe('E2.T16 authorized HTTP lifecycle adapters', () => {
     }
   }, 120000);
 
+  it('names the repository preconditions of a refused preview and Close (422 CLOSE_PREFLIGHT)', async () => {
+    const { root, engine, spec } = await fixture(false);
+    const { app, headers } = await authedApp(engine, 'admin');
+    await writeFile(join(root, 'stray.txt'), 'not committed\n');
+    const expected = {
+      code: 'CLOSE_PREFLIGHT',
+      error: 'CLOSE_PREFLIGHT',
+      repository: [
+        {
+          kind: 'uncommitted-changes',
+          checkout: 'specification',
+          workspaceId: expect.stringMatching(UUID) as string,
+          paths: [{ path: 'stray.txt', scope: 'other' }],
+          count: 1,
+          specificationCount: 0,
+        },
+      ],
+    };
+    try {
+      const preview = await app.inject({
+        method: 'GET',
+        url: '/api/specs/' + spec.specId + '/close/preview',
+        headers,
+      });
+      expect(preview.statusCode, preview.body).toBe(422);
+      expect(preview.json()).toEqual(expected);
+
+      const close = await app.inject({
+        method: 'POST',
+        url: '/api/specs/' + spec.specId + '/close',
+        headers,
+        payload: { operationId: randomUUID() },
+      });
+      expect(close.statusCode, close.body).toBe(422);
+      expect(close.json()).toEqual(expected);
+    } finally {
+      await app.close();
+    }
+  }, 120000);
+
   it('rejects anonymous and viewer before any archive mutation', async () => {
     const { root, engine, spec } = await fixture(false);
     const { app, headers } = await authedApp(engine, 'viewer');
@@ -243,6 +285,23 @@ describe('E2.T16 authorized HTTP lifecycle adapters', () => {
 
     const admin = await authedApp(engine, 'admin');
     try {
+      const preview = await admin.app.inject({
+        method: 'GET',
+        url: url + '/preview',
+        headers: admin.headers,
+      });
+      expect(preview.statusCode, preview.body).toBe(200);
+      expect(preview.json()).toMatchObject({
+        integrationRequired: true,
+        merge: {
+          status: 'integrates',
+          sourceBranch: git(spec.workspaceRoot, 'symbolic-ref', '--short', 'HEAD'),
+          targetBranch: git(root, 'symbolic-ref', '--short', 'HEAD'),
+          commitsAhead: Number(
+            git(spec.workspaceRoot, 'rev-list', '--count', originalPrimary + '..HEAD'),
+          ),
+        },
+      });
       const result = await admin.app.inject({
         method: 'POST',
         url,

@@ -64,6 +64,13 @@ export const CreatedSpecSchema = Type.Object(
     relativeManifestPath: Type.String(),
     /** Ids of the registered documents of the new Specification, in manifest order. */
     documentIds: Type.Array(RegisteredDocumentIdSchema),
+    /**
+     * Present when Create wrote the files without committing them (Git is disabled in the project):
+     * they stay untracked until the owner commits them. While Git stays off a Close archives in
+     * place without Git; once Git is on, a Close refuses (`uncommitted-changes`) until they are
+     * committed.
+     */
+    uncommitted: Type.Optional(Type.Literal(true)),
   },
   { additionalProperties: false },
 );

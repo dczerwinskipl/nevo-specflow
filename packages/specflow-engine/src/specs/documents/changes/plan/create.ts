@@ -122,7 +122,7 @@ export function planCreate(
       id,
       path: entry.path,
       type: entry.type,
-      ...(entry.templateId !== undefined ? { templateRevision: post.sha256 } : {}),
+      ...(entry.templateId !== undefined ? { baselineRevision: post.sha256 } : {}),
     });
     draft.allocatedIds.push(id);
     draft.documents.push({ id, path: entry.path, type: entry.type, ...post });

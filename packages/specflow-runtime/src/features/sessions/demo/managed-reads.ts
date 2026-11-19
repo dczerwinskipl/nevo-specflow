@@ -19,6 +19,7 @@ import {
   type TelemetrySnapshot,
 } from '@nevo/specflow-contracts/sessions';
 import type { DemoState } from '../../../demo/state';
+import type { DemoCatalogue } from '../../demo-catalogue';
 import { SessionError } from '../errors';
 import type { SessionListSource } from '../http/list';
 import type { SessionAssociations } from '../reference-owner';
@@ -27,12 +28,14 @@ import { authorizeSessionIdentity } from '../http/authorization';
 import { authorizeProviderCatalogue } from '../http/catalogue-authorization';
 import type { SessionStreams } from '../http/stream';
 import { capabilityRefusal, sessionEventStream, sessionReadDocs } from '../http/route-docs';
+import { seededDemoConversation } from './seeded-conversation';
 
 /**
  * The read side of the managed Session screen in demo mode. A demo Session (seeded in the
  * catalogue or allocated here) is shown read-only: the snapshot grants `view` and nothing else
- * and carries the list row's readiness,
- * there is no Turn, no history, no Work and no telemetry, and the event stream only heartbeats.
+ * and carries the list row's readiness. A seeded Session shows the conversation that readiness
+ * stands for (its request, its running Turn or the question it waits on); there is no older
+ * history, no Work and no telemetry, and the event stream only heartbeats.
  * Every mutation stays refused with `SESSION_DISABLED` by the managed routes (no coordinator).
  */
 export interface DemoManagedSessionReads {
@@ -58,8 +61,10 @@ export function createDemoManagedSessionReads(options: {
   state: DemoState;
   list: SessionListSource;
   references: SessionAssociations;
+  /** The seeded Specifications, whose executions and signals give a Session its conversation. */
+  catalogue: DemoCatalogue;
 }): DemoManagedSessionReads {
-  const { state, list, references } = options;
+  const { state, list, references, catalogue } = options;
 
   return {
     projectId: state.catalogue.project.id,
@@ -72,6 +77,9 @@ export function createDemoManagedSessionReads(options: {
       if (!summary) {
         throw new SessionError('SESSION_NOT_FOUND', 'Session not found.');
       }
+
+      const record = identity.specId ? await catalogue.find(identity.specId) : undefined;
+      const conversation = record && seededDemoConversation(record, identity.sessionId);
 
       return {
         session: {
@@ -93,6 +101,7 @@ export function createDemoManagedSessionReads(options: {
         revision: 0,
         eventSeq: 0,
         entries: [],
+        ...conversation,
         history: { hasOlder: false },
       };
     },

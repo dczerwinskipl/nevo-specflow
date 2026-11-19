@@ -6,6 +6,7 @@ import {
   CatalogueIdSchema,
   ClassificationSchema,
   ContentKindSchema,
+  DocumentContentStateSchema,
   IdSchema,
   KEBAB_CASE_PATTERN,
   closedUnion,
@@ -70,6 +71,11 @@ export const DocumentTreeDocumentSchema = Type.Object(
     protected: Type.Boolean(),
     editable: Type.Boolean(),
     satisfiesRequirement: Type.Boolean(),
+    /**
+     * `DocumentContentState` of a registered document (the same value as the workspace `documents`
+     * section). Absent for unclassified files and where the source cannot tell (the demo Runtime).
+     */
+    contentState: Type.Optional(DocumentContentStateSchema),
     /**
      * While a queued, failed or recovery batch covers the path. `uncommitted` is a ledger entry
      * (`reason` `auto-commit-off` or `abandoned`), kept until a commit holds the path.

@@ -38,7 +38,7 @@ describe('template renderer', () => {
     expect(empty.goal).toBe('');
     expect(empty.goalOrPrompt).toBe(GOAL_PROMPT_FALLBACK);
     expect(templateValues({ title: 't', slug: 't', created: '2026-10-24' }).goalOrPrompt).toBe(
-      'Describe the intended outcome of this specification.',
+      '<!-- Describe the intended outcome of this specification. -->',
     );
   });
 

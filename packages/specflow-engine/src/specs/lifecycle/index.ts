@@ -7,15 +7,24 @@ export {
   reserveCloseOperation,
   inspectCloseOperation,
   previewWithDocumentFlush,
+  previewWithDocumentHold,
 } from './reservation';
 export {
   CloseOperationError,
   resourcesForClosePlan,
+  type CloseRepositoryBlocker,
+  type IntegrationBranchCandidate,
+  type IntegrationBranchFact,
+  type CloseCheckoutRole,
   type CloseJournal,
   type ClosePlan,
+  type GitClosePlan,
+  type GitOffClosePlan,
   type CloseOutcome,
   type CloseKind,
 } from './model';
+export { readCloseMergeFacts, type CloseMergeFacts } from './merge-facts';
+export { deriveIntegrationCandidates } from './integration-candidates';
 export type { SpecificationExitBlocker, SpecificationExitGuard } from './exit-guard';
 export { assertResourcesAvailable, resourcesForCreate } from './resources';
 export { listCloseJournals, closeJournalPath } from './journal/store';
@@ -59,3 +68,10 @@ export type {
 export { closePreviewCheckoutBlocker } from './close-preview-occupancy';
 export { closeWorktree, closeWorkspace, type CloseWorktreeResult } from './close/worktree';
 export { closeSpecification, type CloseSpecificationResult } from './close/specification';
+export {
+  finishCloseWithoutGit,
+  inspectCloseWithoutGit,
+  resumeCloseWithoutGit,
+  type CloseWithoutGitRecovery,
+} from './close/without-git';
+export { inspectArchiveMove, type ArchiveMoveState } from './archive-effects';

@@ -3,7 +3,11 @@ import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
 import { projectCreatedSpecification } from '../src/specs/create/projection';
-import { projectCloseOperation, projectClosePreview } from '../src/specs/operations/projection';
+import {
+  projectCloseOperation,
+  projectClosePlan,
+  projectClosePreview,
+} from '../src/specs/operations/projection';
 import type { CloseJournal, ClosePlan, CloseStage } from '../src/specs/lifecycle/model';
 
 const operationId = randomUUID();
@@ -80,6 +84,21 @@ describe('Q05 transport-neutral operation projections', () => {
     expect(JSON.stringify(result)).not.toContain('/private/');
   });
 
+  it('says when Create left its files uncommitted (Git disabled)', () => {
+    const result = projectCreatedSpecification({
+      operationId,
+      specId,
+      slug: 'example',
+      workspaceId: randomUUID(),
+      workspaceRoot: '/private/worktree',
+      relativeManifestPath: 'specs/active/example/specification.yaml',
+      documentIds: ['overview'],
+      uncommitted: true,
+    });
+
+    expect(result.uncommitted).toBe(true);
+  });
+
   it.each([
     ['completed', 'completed'],
     ['reserved', 'in-progress'],
@@ -112,7 +131,7 @@ describe('Q05 transport-neutral operation projections', () => {
       status: 'completed',
       outcome: 'integrated-and-removed',
     });
-    expect(projectClosePreview(completed.plan)).toEqual({
+    expect(projectClosePlan(completed.plan)).toEqual({
       operationId,
       specId,
       kind: 'specification-close',
@@ -120,5 +139,12 @@ describe('Q05 transport-neutral operation projections', () => {
       integrationRequired: true,
       sourceWorkspace: { workspaceId: completed.plan.source.workspaceId, kind: 'primary' },
     });
+    const merge = {
+      status: 'integrates',
+      sourceBranch: 'feature/a',
+      targetBranch: 'develop',
+      commitsAhead: 0,
+    } as const;
+    expect(projectClosePreview(completed.plan, merge)).toMatchObject({ operationId, merge });
   });
 });

@@ -12,12 +12,7 @@ import {
 import { Command, InvalidArgumentError } from 'commander';
 
 import { readContentInput } from '../documents/content-input';
-import {
-  openExecution,
-  reportingWorkflowRefusals,
-  type ExecutionOutput,
-  type ExecutionSession,
-} from '../execution-session';
+import { runExecution, type ExecutionOutput, type ExecutionSession } from '../execution-session';
 import { localOwner } from '../local-actor';
 import { actionLines } from '../workflow/present';
 import { collectContext, contextOf, type TaskContextEntry } from './context-input';
@@ -92,11 +87,9 @@ export function createTasksCommand(context: TasksCommandContext): Command {
 
   const run = (
     options: CommonOptions,
+    kind: 'read' | 'change',
     body: (session: ExecutionSession) => Promise<void>,
-  ): Promise<void> =>
-    reportingWorkflowRefusals(context, options.json, async () =>
-      body(await openExecution(context.cwd, options.projectRoot)),
-    );
+  ): Promise<void> => runExecution(context, options, kind, body);
 
   const emit = (options: CommonOptions, json: unknown, lines: readonly string[]): void => {
     if (options.json) {
@@ -114,7 +107,7 @@ export function createTasksCommand(context: TasksCommandContext): Command {
       .description('List the Tasks of a Specification with their status and position')
       .argument('<spec-id>', 'Specification UUID'),
   ).action(async (specId: string, options: CommonOptions) => {
-    await run(options, async ({ workflow }) => {
+    await run(options, 'read', async ({ workflow }) => {
       const reading = await readExecution(workflow, specId, { tasks: 'all' });
       // The inspection (with every attention item) and the neutral facts.
       emit(
@@ -132,7 +125,7 @@ export function createTasksCommand(context: TasksCommandContext): Command {
       .argument('<spec-id>', 'Specification UUID')
       .argument('<task-id>', 'Task id'),
   ).action(async (specId: string, taskId: string, options: CommonOptions) => {
-    await run(options, async ({ workflow }) => {
+    await run(options, 'read', async ({ workflow }) => {
       const inspection = await inspectExecution(workflow, specId);
       const task = inspection.tasks.find((candidate) => candidate.record.taskId === taskId);
       if (task === undefined) {
@@ -183,7 +176,7 @@ export function createTasksCommand(context: TasksCommandContext): Command {
         command.error('Give at most one of --content-file and --stdin.');
       }
 
-      await run(options, async ({ workflow }) => {
+      await run(options, 'change', async ({ workflow }) => {
         const entries = await contextOf(context.cwd, options);
         const document =
           options.contentFile !== undefined || options.stdin
@@ -255,7 +248,7 @@ export function createTasksCommand(context: TasksCommandContext): Command {
         command.error('Give at most one of --depends-on and --no-dependencies.');
       }
 
-      await run(options, async ({ workflow }) => {
+      await run(options, 'change', async ({ workflow }) => {
         const entries = await contextOf(context.cwd, options);
         const result = await editTask(
           workflow,
@@ -279,7 +272,7 @@ export function createTasksCommand(context: TasksCommandContext): Command {
       taskId: string,
       options: CommonOptions & { expectedRevision: string },
     ) => {
-      await run(options, async ({ workflow }) => {
+      await run(options, 'change', async ({ workflow }) => {
         const result = await removeTask(workflow, {
           specId,
           taskId,
@@ -312,7 +305,7 @@ export function createTasksCommand(context: TasksCommandContext): Command {
       decision: string,
       options: CommonOptions & { reason?: string },
     ) => {
-      await run(options, async ({ workflow }) => {
+      await run(options, 'change', async ({ workflow }) => {
         const result = await setTaskStatus(workflow, {
           specId,
           taskId,

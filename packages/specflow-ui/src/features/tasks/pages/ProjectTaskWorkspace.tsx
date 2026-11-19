@@ -43,7 +43,7 @@ export interface ProjectTaskWorkspaceProps {
 }
 
 function versionOf(task: FullTaskData | undefined): TaskDetailsVersion | undefined {
-  return task?.resource
+  return task
     ? { revision: task.resource.revision, title: task.title, summary: task.snapshot?.summary ?? '' }
     : undefined;
 }
@@ -53,7 +53,8 @@ function versionOf(task: FullTaskData | undefined): TaskDetailsVersion | undefin
  * Secondary base and Task documents as Secondary tabs (pushed pages on Narrow).
  */
 export function ProjectTaskWorkspace(props: ProjectTaskWorkspaceProps) {
-  const writable = useTaskDocumentTree(props.specId, props.task.id).data?.writable !== false;
+  const writable =
+    useTaskDocumentTree(props.specId, props.task.id).data?.capabilities.save !== false;
   const queryClient = useQueryClient();
 
   return (
@@ -94,7 +95,11 @@ function Workspace({
   const names: ContextNames = {
     taskDocuments: new Map(resource.documents.map((document) => [document.id, document.path])),
     specificationDocuments: new Map(
-      (workspace.data?.documents ?? []).map((document) => [document.id, document.title]),
+      // Entries are named by the file name, as the Overview Documents name them (overview.md).
+      (workspace.data?.documents ?? []).map((document) => [
+        document.id,
+        document.filename ?? document.title,
+      ]),
     ),
   };
   const view = viewOf(resource, projection.data?.taskAuthoring);
@@ -161,7 +166,7 @@ function Workspace({
                     </Button>
                   </Alert>
                 ) : null}
-                <FullTaskView task={task} specKey={specId}>
+                <FullTaskView>
                   <TaskAuthoringView
                     specId={specId}
                     task={task}
@@ -182,6 +187,7 @@ function Workspace({
                       ? { onRemoveTask: () => lifecycle.request('remove') }
                       : {})}
                     onOpenDocument={openDocument}
+                    onOpenHistory={onOpenHistory}
                     onReload={() => void reload()}
                   />
                 </FullTaskView>

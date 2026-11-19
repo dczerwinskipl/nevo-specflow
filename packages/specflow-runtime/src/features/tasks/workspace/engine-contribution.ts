@@ -61,6 +61,14 @@ export function workspaceAttentionOf(
     ...(item.secondaryAction ? { secondaryAction: item.secondaryAction } : {}),
     ...(item.taskIds ? { taskIds: [...item.taskIds] } : {}),
     ...(item.blocking ? { blocking: item.blocking.map((task) => ({ ...task })) } : {}),
+    ...(item.blocks
+      ? {
+          blocks:
+            'taskIds' in item.blocks
+              ? { ...item.blocks, taskIds: [...item.blocks.taskIds] }
+              : { finish: item.blocks.finish },
+        }
+      : {}),
   };
   if (item.subject.kind === 'task') {
     const { taskId } = item.subject;
@@ -88,7 +96,7 @@ export function workspaceAttentionOf(
 /**
  * The workspace `tasks` section (the Overview's Tasks) of one Engine reading (`tasks: 'all'`): the
  * configured grouping with a per-row attention mark, the progress with cancelled and on hold apart,
- * the attention projection, and the Overview summary (each Task it names by id and title) with
+ * the attention projection, and the Overview summary (its Tasks as the Tasks page rows) with
  * Now's explanation when the Specification is stuck. Pure.
  */
 export function workspaceTasksOf(
@@ -100,19 +108,15 @@ export function workspaceTasksOf(
     board.rows.flatMap((row) => (row.title !== undefined ? [[row.id, row.title] as const] : [])),
   );
   const named = namedTaskIds(board.attention);
-  // A broken Task without a readable title shows its id.
-  const titled = board.groups.map((group) => ({
-    ...group,
-    tasks: group.tasks.map((row) => ({ ...row, title: row.title ?? row.id })),
-  }));
-  const groups: WorkspaceTaskGroup[] = titled.map((group) => ({
+  const groups: WorkspaceTaskGroup[] = board.groups.map((group) => ({
     id: group.id,
     name: group.name,
     summary: group.summary,
     collapsed: group.collapsed,
     tasks: group.tasks.map((row) => ({
       id: row.id,
-      title: row.title,
+      // A broken Task without a readable title shows its id.
+      title: row.title ?? row.id,
       status: row.status,
       ...(isReadable(row) ? { type: row.type, dependsOn: row.dependsOn } : {}),
       ...(named.has(row.id) ? { attention: true } : {}),
@@ -131,7 +135,7 @@ export function workspaceTasksOf(
         groups,
         ...board.progress,
         attention: board.attention.map((item) => workspaceAttentionOf(item, titles)),
-        overview: { ...overviewSummary(titled), ...(stuck ? { stuck } : {}) },
+        overview: { ...overviewSummary(board.groups), ...(stuck ? { stuck } : {}) },
       },
     },
     preparationState: basis.reading.preparation,
@@ -143,8 +147,9 @@ const unavailable: WorkspaceTasksContribution = {
 };
 
 /**
- * Project mode's `tasks` contribution: one Engine reading of every Task. An execution the Engine
- * cannot read now (also a busy lock) degrades only this section (`source_unavailable`).
+ * The `tasks` contribution (a project Runtime's Engine, or the demo's in memory): one Engine
+ * reading of every Task. An execution the Engine cannot read now (also a busy lock) degrades only
+ * this section (`source_unavailable`).
  */
 export function createEngineWorkspaceTasks(
   source: TaskEngine,

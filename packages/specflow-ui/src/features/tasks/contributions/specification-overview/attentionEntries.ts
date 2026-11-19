@@ -7,7 +7,11 @@ import type { AttentionItem, SpecificationWorkspaceData } from '../../../specs/r
 import { message } from '../../../../i18n/message';
 import { goToHeading } from '../../execution/InlineAction';
 import { SPECIFICATION_NOW_HEADING } from '../../execution/specification/SpecificationWorkflow';
-import { requestTaskAttention, type TaskAttentionRequest } from '../../overview/attentionRequests';
+import {
+  requestTaskAttention,
+  taskCommandKey,
+  type TaskAttentionRequest,
+} from '../../overview/attentionRequests';
 
 type ActionCode = NonNullable<AttentionItem['action']>;
 type Context = Pick<SpecificationWorkSectionContext, 'specId' | 'actions'>;
@@ -57,14 +61,23 @@ function actionOf(
       return onTask((id) => actions.openTask(id, 'dependencies'));
     case 'confirm-definition':
     case 'cancel-task':
+    case 'resume-task':
     case 'start-step': {
       const kind = code === 'confirm-definition' ? 'first-start' : code;
 
       return taskId
-        ? { label, onClick: handOver({ kind, taskId }, () => openTask(taskId)) }
+        ? {
+            label,
+            onClick: handOver({ kind, taskId }, () => openTask(taskId)),
+            // A direct command shows busy while it runs (the Overview's Tasks flows mark it).
+            ...(kind === 'start-step' || kind === 'resume-task'
+              ? { pendingKey: taskCommandKey(specId, kind, taskId) }
+              : {}),
+          }
         : undefined;
     }
 
+    // Restoring files and satisfying a gate happen on the Task page.
     case 'restore-task':
     case 'satisfy-gate':
       return onTask(openTask);
@@ -109,13 +122,13 @@ export function taskAttentionEntry(
   const stuck = item.code === 'tasks-stuck' && (item.taskIds?.length ?? 0) > 0;
   const typeTitle =
     item.kind === 'task' && item.targetId ? typeTitleOf(context.data, item.targetId) : undefined;
-  // An item without a workflow action (the demo Runtime's) previews its Task.
+  // An item without a workflow action opens its Task.
   const primary = item.action
     ? actionOf(item.action, item, context)
     : item.targetId
       ? {
           label: message('specification.attentionViewTask'),
-          onClick: () => context.actions.previewTask(item.targetId!),
+          onClick: () => context.actions.openTask(item.targetId!),
         }
       : undefined;
   const alternative = item.secondaryAction
@@ -138,6 +151,9 @@ export function taskAttentionEntry(
           title: message('taskOverview.attention.stuckTitle', { count: item.taskIds!.length }),
           reason: message('taskOverview.attention.stuckReason'),
         }
+      : {}),
+    ...(item.code === 'wait-transition-missing'
+      ? { reason: message('workflowExecution.now.waitTransitionMissing') }
       : {}),
     ...(item.code === 'wait-ready-to-settle'
       ? { reason: message('workflowExecution.now.waitReadyToSettle') }

@@ -8,20 +8,34 @@ import {
   MAX_MANAGED_WORKSPACE_SPECIFICATIONS,
   inspectRegisteredWorkspace,
 } from '../../project/workspace/registry/registry';
+import type {
+  WorkspaceRegistration,
+  WorkspaceRegistry,
+} from '../../project/workspace/registry/types';
+import { runGitFreeMutation } from '../../project/request-verification-memo';
 import { readProjectGitPolicy } from '../../version-control/worktrees/config';
+import type { GitWorktreePolicy } from '../../version-control/worktrees/policy';
 import { resolveSpecification } from '../discovery';
 import { listWorkspaceSpecifications } from '../repository';
 import { isExecutionStatePathOf } from '../execution-paths';
 import { isValidSpecificationId } from '../model';
 import {
   CloseOperationError,
+  REPOSITORY_PATHS_NAMED,
   assertSpecificationExit,
   fingerprintCloseIntent,
   resourcesForClosePlan,
+  type CloseCheckoutRole,
   type ClosePlan,
+  type GitClosePlan,
+  type GitOffClosePlan,
+  type CloseRepositoryBlocker,
   type CloseWorkspaceEvidence,
+  type UncommittedPath,
 } from './model';
 import { sortedResources } from './resources';
+import { readIntegrationCandidates } from './integration-candidates';
+import { closeRepositoryMode, type CloseRepositoryMode } from './repository-mode';
 
 export type CloseRequest =
   | { readonly kind: 'worktree-close'; readonly operationId?: string; readonly specId: string }
@@ -36,6 +50,40 @@ export type CloseRequest =
       readonly specId: string;
       readonly integrateToTargetBranch?: boolean;
     };
+
+const TARGET_MISSING =
+  'Project Home requires explicit git.integrationTargetBranch configuration before this operation.';
+
+/**
+ * The `integration-target-missing` blocker with the local branches that could receive the Close,
+ * read without fetching or writing anything. `ownBranch` is the Specification's branch (the Close
+ * evidence, else the branch Create recorded for the workspace).
+ */
+async function targetMissingBlocker(
+  registry: WorkspaceRegistry,
+  source: WorkspaceRegistration,
+  policy: GitWorktreePolicy,
+  ownBranch: string | undefined,
+): Promise<CloseRepositoryBlocker> {
+  const primary = registry.workspaces.find(
+    (item) => item.workspaceId === registry.primaryWorkspaceId,
+  );
+  const branch = ownBranch ?? (source.kind === 'linked' ? source.branch : undefined);
+
+  return {
+    kind: 'integration-target-missing',
+    sourceCheckout: source.kind,
+    // Without a verified primary no branch is offered; the refusal still names it.
+    ...(primary?.kind === 'primary'
+      ? await readIntegrationCandidates({
+          primaryRoot: primary.root,
+          source,
+          ...(branch ? { ownBranch: branch } : {}),
+          branchPattern: policy.branchPattern,
+        })
+      : { candidates: [], otherBranches: [], otherBranchCount: 0 }),
+  };
+}
 
 function invalid(message: string): CloseOperationError {
   return new CloseOperationError('CLOSE_PREFLIGHT', message);
@@ -56,11 +104,17 @@ async function gitValue(root: string, args: readonly string[], reason: string): 
  * status (e.g. an empty-content merge --no-commit). Verify Git admin state
  * rather than trusting a clean index as evidence that no operation is active.
  */
-async function requireNoGitOperation(root: string): Promise<void> {
+async function requireNoGitOperation(root: string, role?: CloseCheckoutRole): Promise<void> {
+  const unfinished = (message: string) =>
+    new CloseOperationError(
+      'CLOSE_PREFLIGHT',
+      message,
+      role ? { repository: [{ kind: 'git-operation-in-progress', checkout: role }] } : {},
+    );
   for (const name of ['MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD', 'REBASE_HEAD']) {
     const result = await executeGit(root, ['rev-parse', '--verify', '--quiet', name]);
     if (result.exitCode === 0) {
-      throw invalid('Checkout has an unfinished Git operation: ' + name + '.');
+      throw unfinished('Checkout has an unfinished Git operation: ' + name + '.');
     }
 
     if (result.exitCode !== 1) {
@@ -77,7 +131,7 @@ async function requireNoGitOperation(root: string): Promise<void> {
     try {
       await lstat(resolve(root, path));
 
-      throw invalid('Checkout has unfinished Git sequencer state: ' + name + '.');
+      throw unfinished('Checkout has unfinished Git sequencer state: ' + name + '.');
     } catch (error) {
       if (!isMissing(error)) {
         throw error;
@@ -97,7 +151,7 @@ export interface UncleanPath {
 }
 
 /** How many unclean paths a refusal names. */
-const UNCLEAN_PATHS_NAMED = 10;
+const UNCLEAN_PATHS_NAMED = REPOSITORY_PATHS_NAMED;
 
 /**
  * Every path `git status` reports as staged, modified, removed or untracked (renames name both
@@ -136,35 +190,70 @@ export async function listUncleanPaths(root: string): Promise<readonly UncleanPa
   return paths;
 }
 
-/**
- * The paths a clean-tree check accepts: the execution state (`.execution/**`, `tasks/**`) of the
- * Specification a Specification Close archives, which its archive commit takes along (owner decision
- * 2026-11-12). Absent: nothing is accepted.
- */
-export interface CleanTreeAllowance {
-  /** The checkout-relative directory of the Specification (`specs/active/<slug>`). */
-  readonly executionStateOf: string;
+/** What a clean-tree check knows of the Specification it serves. Absent: every path is `other`. */
+export interface CleanTreeCheck {
+  /**
+   * The checkout-relative directory of the Specification (`specs/active/<slug>`): unclean paths below
+   * it (its documents, manifest, Tasks and `.execution`) are named `specification`, the rest `other`.
+   */
+  readonly specificationDirectory?: string;
+  /**
+   * Accept that Specification's execution state (`.execution/**`, `tasks/**`): a Specification Close
+   * takes it into its archive commit (owner decision 2026-11-12). Needs `specificationDirectory`.
+   */
+  readonly acceptExecutionState?: boolean;
+  /**
+   * The checkout's role in the Close preflight: a refusal the owner can fix in the repository then
+   * carries its {@link CloseRepositoryBlocker} for that checkout.
+   */
+  readonly role?: CloseCheckoutRole;
 }
 
-/** Read-only: git status may refresh index by default; disable optional locks. */
+/**
+ * The unclean paths of a refusal, the Specification's own first (each group in Git's order), with
+ * the scope that says whose they are.
+ */
+export function scopedPaths(
+  paths: readonly string[],
+  directory: string | undefined,
+): readonly UncommittedPath[] {
+  const own = (path: string) => directory !== undefined && path.startsWith(directory + '/');
+
+  return [
+    ...paths.filter(own).map((path) => ({ path, scope: 'specification' as const })),
+    ...paths.filter((path) => !own(path)).map((path) => ({ path, scope: 'other' as const })),
+  ];
+}
+
+/**
+ * Read-only: git status may refresh index by default; disable optional locks. Refuses a checkout
+ * with an unfinished Git operation, any staged, modified or untracked path (but the accepted
+ * execution state) or a HEAD that is not on a local branch.
+ */
 export async function inspectCleanGitWorkspace(
   workspace: {
     readonly workspaceId: string;
     readonly root: string;
     readonly instanceId?: string;
   },
-  allowance?: CleanTreeAllowance,
+  check: CleanTreeCheck = {},
 ): Promise<CloseWorkspaceEvidence> {
   const root = workspace.root;
-  await requireNoGitOperation(root);
+  const { specificationDirectory: directory, role } = check;
+  await requireNoGitOperation(root, role);
   const unclean = (await listUncleanPaths(root))
     .map((entry) => entry.path)
     .filter(
       (path) =>
-        allowance === undefined || !isExecutionStatePathOf(allowance.executionStateOf, path),
+        !check.acceptExecutionState ||
+        directory === undefined ||
+        !isExecutionStatePathOf(directory, path),
     );
   if (unclean.length > 0) {
-    const named = unclean.slice(0, UNCLEAN_PATHS_NAMED).join(', ');
+    // One order everywhere: the Specification's own paths first (message, `paths`, blocker).
+    const scoped = scopedPaths(unclean, directory);
+    const ordered = scoped.map((entry) => entry.path);
+    const named = ordered.slice(0, UNCLEAN_PATHS_NAMED).join(', ');
     const more =
       unclean.length > UNCLEAN_PATHS_NAMED
         ? ` and ${unclean.length - UNCLEAN_PATHS_NAMED} more`
@@ -173,17 +262,46 @@ export async function inspectCleanGitWorkspace(
     throw new CloseOperationError(
       'CLOSE_PREFLIGHT',
       `Checkout has staged, modified or untracked files: ${named}${more}.`,
-      { paths: unclean },
+      {
+        paths: ordered,
+        ...(role
+          ? {
+              repository: [
+                {
+                  kind: 'uncommitted-changes',
+                  checkout: role,
+                  workspaceId: workspace.workspaceId,
+                  paths: scoped.slice(0, UNCLEAN_PATHS_NAMED),
+                  count: unclean.length,
+                  specificationCount: scoped.filter((entry) => entry.scope === 'specification')
+                    .length,
+                },
+              ],
+            }
+          : {}),
+      },
     );
   }
 
-  const branchRef = await gitValue(
-    root,
-    ['symbolic-ref', '--quiet', 'HEAD'],
-    'Checkout must be on an attached local branch.',
-  );
+  const detached = (message: string) =>
+    new CloseOperationError(
+      'CLOSE_PREFLIGHT',
+      message,
+      role ? { repository: [{ kind: 'branch-detached', checkout: role }] } : {},
+    );
+  const symbolic = await executeGit(root, ['symbolic-ref', '--quiet', 'HEAD']);
+  const branchRef = symbolic.stdout.trim();
+  // Exit 1 is a detached HEAD; anything else is a repository Git cannot read (not the owner's branch).
+  if (symbolic.exitCode === 1) {
+    throw detached('Checkout must be on an attached local branch.');
+  }
+
+  if (symbolic.exitCode !== 0 || !branchRef) {
+    throw invalid('The branch of the checkout cannot be read.');
+  }
+
   if (!branchRef.startsWith('refs/heads/')) {
-    throw invalid('Checkout branch is not a local ref.');
+    throw detached('Checkout branch is not a local ref.');
   }
 
   const head = await gitValue(
@@ -202,6 +320,132 @@ export async function inspectCleanGitWorkspace(
     head,
     ...(workspace.instanceId ? { instanceId: workspace.instanceId } : {}),
   };
+}
+
+/** The Specification a Close names, its registry snapshot and its (closable) checkout. */
+async function resolveCloseSource(engine: SpecFlowEngine, specId: string) {
+  const canonical = await resolveSpecification(engine, specId);
+  if (canonical.status !== 'available') {
+    throw new CloseOperationError(
+      'CLOSE_UNAVAILABLE',
+      'Canonical Specification source is unavailable.',
+    );
+  }
+
+  const registry = await engine.readRegistry();
+  const sourceWorkspace = registry.workspaces.find(
+    (item) => item.workspaceId === canonical.workspaceId,
+  );
+  if (!sourceWorkspace) {
+    throw invalid('Canonical workspace registration disappeared.');
+  }
+
+  if (sourceWorkspace.kind === 'linked' && !sourceWorkspace.managed) {
+    throw invalid('Unmanaged linked worktree cannot be closed.');
+  }
+
+  return { canonical, registry, sourceWorkspace };
+}
+
+/** The integration selection of a Specification Close: a boolean, and only for a linked checkout. */
+function assertIntegrationSelection(
+  request: { readonly integrateToTargetBranch?: boolean },
+  linked: boolean,
+): void {
+  if (
+    request.integrateToTargetBranch !== undefined &&
+    typeof request.integrateToTargetBranch !== 'boolean'
+  ) {
+    throw new CloseOperationError('CLOSE_INVALID', 'Invalid integration selection.');
+  }
+
+  if (!linked && request.integrateToTargetBranch !== undefined) {
+    throw new CloseOperationError(
+      'CLOSE_INVALID',
+      'Integration selection is not applicable in primary.',
+    );
+  }
+}
+
+/**
+ * The project Git policy of a Close, read once: the repository mode decided from it
+ * ({@link closeRepositoryMode}) with the policy and its revision, or the error that keeps it from
+ * being read. An unreadable policy never defaults to a mode: the preflight refuses with its error
+ * after the workflow gate and before any repository inspection.
+ */
+type CloseRepository =
+  | {
+      readonly mode: CloseRepositoryMode;
+      readonly policy: GitWorktreePolicy;
+      readonly revision: string;
+    }
+  | { readonly mode: 'unreadable'; readonly error: unknown };
+
+async function decideCloseRepository(
+  engine: SpecFlowEngine,
+  request: Parameters<typeof closeRepositoryMode>[1],
+): Promise<CloseRepository> {
+  let configured: Awaited<ReturnType<typeof readProjectGitPolicy>>;
+  try {
+    configured = await readProjectGitPolicy(engine.context);
+  } catch (error) {
+    return { mode: 'unreadable', error };
+  }
+
+  return { mode: closeRepositoryMode(configured.policy, request), ...configured };
+}
+
+/**
+ * The preview of a Specification Close with Git off: the workflow gate and the checkout identity,
+ * no Git process and no repository precondition. The plan pins the configuration revision the mode
+ * was decided with; the reservation refuses when the policy changed in between.
+ */
+async function previewCloseWithoutGit(
+  engine: SpecFlowEngine,
+  request: {
+    readonly kind: 'specification-close';
+    readonly operationId?: string;
+    readonly specId: string;
+    readonly integrateToTargetBranch?: boolean;
+  },
+  configRevision: string,
+): Promise<GitOffClosePlan> {
+  const operationId = request.operationId ?? randomUUID();
+  const { canonical, registry, sourceWorkspace } = await resolveCloseSource(engine, request.specId);
+  const linked = sourceWorkspace.kind === 'linked';
+  if (canonical.specification.location !== 'active') {
+    throw invalid('Only an active Specification can be archived.');
+  }
+
+  await assertSpecificationExit(engine.specificationExit, request.specId);
+  assertIntegrationSelection(request, linked);
+  const binding = registry.specBindings.find((item) => item.specId === request.specId);
+  const plan: GitOffClosePlan = {
+    kind: 'specification-close',
+    gitOff: true,
+    operationId,
+    specId: request.specId,
+    fingerprint: fingerprintCloseIntent({
+      kind: 'specification-close',
+      operationId,
+      specId: request.specId,
+      integrateToTargetBranch: false,
+    }),
+    slug: canonical.specification.slug,
+    location: canonical.specification.location,
+    registryRevision: registry.revision,
+    ...(binding ? { bindingGeneration: binding.generation } : {}),
+    source: {
+      workspaceId: sourceWorkspace.workspaceId,
+      root: sourceWorkspace.root,
+      ...(sourceWorkspace.instanceId ? { instanceId: sourceWorkspace.instanceId } : {}),
+    },
+    ...(linked ? { integrateToTargetBranch: false as const } : {}),
+    configRevision,
+    resources: [],
+  };
+
+  return { ...plan, resources: resourcesForClosePlan(plan, engine.context.project.projectId) };
 }
 
 /**
@@ -229,26 +473,27 @@ export async function previewCloseOperation(
     throw new CloseOperationError('CLOSE_INVALID', 'Invalid Specification identity.');
   }
 
-  const canonical = await resolveSpecification(engine, request.specId);
-  if (canonical.status !== 'available') {
-    throw new CloseOperationError(
-      'CLOSE_UNAVAILABLE',
-      'Canonical Specification source is unavailable.',
-    );
+  // The one decision point of the repository mode: with Git off the Close archives in place.
+  const repository = await decideCloseRepository(engine, request);
+  if (repository.mode === 'git-off' && request.kind === 'specification-close') {
+    const configRevision = repository.revision;
+
+    return runGitFreeMutation(() => previewCloseWithoutGit(engine, request, configRevision));
   }
 
-  const registry = await engine.readRegistry();
-  const sourceWorkspace = registry.workspaces.find(
-    (item) => item.workspaceId === canonical.workspaceId,
-  );
-  if (!sourceWorkspace) {
-    throw invalid('Canonical workspace registration disappeared.');
-  }
+  return previewGitClose(engine, request, operationId, allowShared, repository);
+}
 
+/** The preflight of a Specification or Worktree Close with Git (see {@link previewCloseOperation}). */
+async function previewGitClose(
+  engine: SpecFlowEngine,
+  request: Exclude<CloseRequest, { readonly kind: 'workspace-close' }>,
+  operationId: string,
+  allowShared: boolean,
+  repository: CloseRepository,
+): Promise<GitClosePlan> {
+  const { canonical, registry, sourceWorkspace } = await resolveCloseSource(engine, request.specId);
   const linked = sourceWorkspace.kind === 'linked';
-  if (linked && !sourceWorkspace.managed) {
-    throw invalid('Unmanaged linked worktree cannot be closed.');
-  }
 
   // An archive-only Specification Close does not retire its checkout, so
   // sibling bindings and dependent integration destinations are not obstacles.
@@ -264,20 +509,12 @@ export async function previewCloseOperation(
 
     // D07: the workflow decides first, so a refusal lists its blockers before any Git check.
     await assertSpecificationExit(engine.specificationExit, request.specId);
+    assertIntegrationSelection(request, linked);
+  }
 
-    if (
-      request.integrateToTargetBranch !== undefined &&
-      typeof request.integrateToTargetBranch !== 'boolean'
-    ) {
-      throw new CloseOperationError('CLOSE_INVALID', 'Invalid integration selection.');
-    }
-
-    if (!linked && request.integrateToTargetBranch !== undefined) {
-      throw new CloseOperationError(
-        'CLOSE_INVALID',
-        'Integration selection is not applicable in primary.',
-      );
-    }
+  // After the workflow gate, before any repository inspection: an unreadable policy refuses.
+  if (repository.mode === 'unreadable') {
+    throw repository.error;
   }
 
   const integrate =
@@ -307,22 +544,49 @@ export async function previewCloseOperation(
     }
   }
 
-  // A Specification Close commits the Specification's uncommitted execution state with its archive.
-  const source = await inspectCleanGitWorkspace(
-    sourceWorkspace,
-    request.kind === 'specification-close'
-      ? { executionStateOf: 'specs/active/' + canonical.specification.slug }
-      : undefined,
-  );
   const needsTarget = integrate || !linked;
+  const pinned =
+    integrate && sourceWorkspace.kind === 'linked'
+      ? sourceWorkspace.integrationDestination
+      : undefined;
+  // The configured default destination is read before the checkout is inspected, so a refusal names
+  // every repository precondition the owner has to fix at once, not one per attempt.
+  const configured = needsTarget && !pinned ? repository : undefined;
+  const targetMissing = configured !== undefined && !configured.policy.integrationTargetBranch;
+  // A Specification Close commits the Specification's uncommitted execution state with its archive.
+  const specificationDirectory = 'specs/active/' + canonical.specification.slug;
+  let source: CloseWorkspaceEvidence;
+  try {
+    source = await inspectCleanGitWorkspace(sourceWorkspace, {
+      specificationDirectory,
+      acceptExecutionState: request.kind === 'specification-close',
+      role: 'specification',
+    });
+  } catch (error) {
+    // Only a refusal that names repository preconditions takes the missing branch along; any other
+    // stays as it is.
+    if (
+      targetMissing &&
+      error instanceof CloseOperationError &&
+      error.code === 'CLOSE_PREFLIGHT' &&
+      error.repository.length > 0
+    ) {
+      throw new CloseOperationError('CLOSE_PREFLIGHT', `${error.message} ${TARGET_MISSING}`, {
+        paths: error.paths,
+        repository: [
+          ...error.repository,
+          await targetMissingBlocker(registry, sourceWorkspace, configured.policy, undefined),
+        ],
+      });
+    }
+
+    throw error;
+  }
+
   let target: CloseWorkspaceEvidence | undefined;
   let targetBranch: string | undefined;
   let configRevision: string | undefined;
   if (needsTarget) {
-    const pinned =
-      integrate && sourceWorkspace.kind === 'linked'
-        ? sourceWorkspace.integrationDestination
-        : undefined;
     if (pinned) {
       if (pinned.workspaceId === source.workspaceId) {
         throw invalid('Integration source and destination are the same physical checkout.');
@@ -348,19 +612,37 @@ export async function previewCloseOperation(
         throw invalid('Pinned integration target checkout is unavailable.');
       }
 
-      target = await inspectCleanGitWorkspace(registration);
+      // Paths are scoped only in the Specification's own checkout; here every path is `other`.
+      target = await inspectCleanGitWorkspace(registration, { role: 'integration-target' });
       targetBranch = pinned.branch;
       if (target.branch !== targetBranch) {
-        throw invalid('Integration destination changed its attached local branch.');
+        throw new CloseOperationError(
+          'CLOSE_PREFLIGHT',
+          'Integration destination changed its attached local branch.',
+          {
+            repository: [
+              {
+                kind: 'integration-target-branch',
+                expectedBranch: pinned.branch,
+                branch: target.branch,
+              },
+            ],
+          },
+        );
       }
     } else {
       // Legacy/default target: retain the configured primary semantics.
-      const configured = await readProjectGitPolicy(engine.context);
+      if (!configured) {
+        throw invalid('The project Git policy was not read.');
+      }
+
       targetBranch = configured.policy.integrationTargetBranch;
       if (!targetBranch) {
-        throw invalid(
-          'Project Home requires explicit git.integrationTargetBranch configuration before this operation.',
-        );
+        throw new CloseOperationError('CLOSE_PREFLIGHT', TARGET_MISSING, {
+          repository: [
+            await targetMissingBlocker(registry, sourceWorkspace, configured.policy, source.branch),
+          ],
+        });
       }
 
       configRevision = configured.revision;
@@ -383,10 +665,20 @@ export async function previewCloseOperation(
       target =
         source.workspaceId === primary.workspaceId
           ? source
-          : await inspectCleanGitWorkspace(primary);
+          : await inspectCleanGitWorkspace(primary, { role: 'integration-target' });
       if (target.branch !== targetBranch) {
-        throw invalid(
+        throw new CloseOperationError(
+          'CLOSE_PREFLIGHT',
           'Primary worktree is checked out on a different branch from git.integrationTargetBranch.',
+          {
+            repository: [
+              {
+                kind: 'integration-target-branch',
+                expectedBranch: targetBranch,
+                branch: target.branch,
+              },
+            ],
+          },
         );
       }
     }
@@ -452,6 +744,12 @@ async function previewWorkspaceClose(
     throw new CloseOperationError('CLOSE_INVALID', 'Invalid workspace identity.');
   }
 
+  // Refused with Git off (closeRepositoryMode); there is no workflow gate to precede the policy.
+  const repository = await decideCloseRepository(engine, request);
+  if (repository.mode === 'unreadable') {
+    throw repository.error;
+  }
+
   const registry = await engine.readRegistry();
   const workspace = registry.workspaces.find((x) => x.workspaceId === request.workspaceId);
   if (workspace?.kind !== 'linked' || !workspace.managed || !workspace.instanceId) {
@@ -505,14 +803,12 @@ async function previewWorkspaceClose(
   // admission using a verified anchor. The anchor is internal only and never
   // selects or limits the set moved by workspace-level CAS.
   const operationId = request.operationId ?? randomUUID();
-  const base = await previewCloseOperation(
+  const base = await previewGitClose(
     engine,
-    {
-      kind: 'worktree-close',
-      operationId,
-      specId: occupants[0]!.specId,
-    },
+    { kind: 'worktree-close', operationId, specId: occupants[0]!.specId },
+    operationId,
     true,
+    repository,
   );
   if (
     base.registryRevision !== registry.revision ||
@@ -524,7 +820,7 @@ async function previewWorkspaceClose(
     );
   }
 
-  const plan: ClosePlan = {
+  const plan: GitClosePlan = {
     ...base,
     kind: 'workspace-close',
     workspaceId: request.workspaceId,

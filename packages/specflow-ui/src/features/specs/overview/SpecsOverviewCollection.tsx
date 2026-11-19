@@ -11,9 +11,9 @@ import {
   type OverviewCapabilities,
 } from './presentation';
 import { SpecSectionHeader } from './rows/SpecSectionHeader';
-import { SpecListRow } from './rows/SpecListRow';
+import { SpecListRow, specRowTracks } from './rows/SpecListRow';
 import type { RenderSpecificationLink } from './rows/SpecPrimaryLink';
-import { specRowColumns } from './rows/specRowColumns';
+import { CollectionColumns, collectionContainer } from '../../../shared/operational-list';
 
 export function SpecsOverviewCollection({
   projection,
@@ -46,7 +46,7 @@ export function SpecsOverviewCollection({
 
   if (projection.collection === 'archive') {
     return (
-      <div className="@container/collection min-w-0">
+      <div className={cn(collectionContainer, 'min-w-0')}>
         <Typography variant="body-sm" className="mb-3 text-content-secondary">
           {t('specifications.newestMilestoneFirst')}
         </Typography>
@@ -70,7 +70,7 @@ export function SpecsOverviewCollection({
   if (!provided.status) {
     // No work status: one flat list of specifications, not one group of "unavailable" with empty columns.
     return (
-      <div className="@container/collection grid min-w-0 gap-2" data-spec-layout="flat">
+      <div className={cn(collectionContainer, 'grid min-w-0 gap-2')} data-spec-layout="flat">
         <OverviewColumns flat progress={provided.progress} />
         <InformationList aria-label={t('specifications.title')}>
           {projection.items.map((item) => (
@@ -91,7 +91,7 @@ export function SpecsOverviewCollection({
 
   return (
     <div
-      className="@container/collection grid min-w-0 gap-5 @min-[40rem]/collection:gap-6"
+      className={cn(collectionContainer, 'grid min-w-0 gap-5 @min-[40rem]/collection:gap-6')}
       data-spec-layout="grouped"
     >
       <OverviewColumns />
@@ -161,35 +161,25 @@ function OverviewColumns({
   progress?: boolean;
 }) {
   const { t } = useTranslation();
+  const labels = [
+    t('specifications.specificationColumn'),
+    t(
+      archive
+        ? 'specifications.milestoneColumn'
+        : flat
+          ? 'specifications.updatedColumn'
+          : 'specifications.situationColumn',
+    ),
+  ];
+  if (progress) {
+    labels.push(t(archive ? 'specifications.pullRequestColumn' : 'specifications.progressColumn'));
+  }
 
   return (
-    <Typography
-      as="div"
-      variant="body-sm"
-      aria-hidden="true"
+    <CollectionColumns
       data-spec-columns
-      className={cn(
-        'hidden min-w-0 gap-x-6 px-2 text-content-secondary',
-        specRowColumns[
-          archive ? 'archive' : flat ? (progress ? 'flatWithProgress' : 'flat') : 'current'
-        ].header,
-      )}
-    >
-      <span>{t('specifications.specificationColumn')}</span>
-      <span>
-        {t(
-          archive
-            ? 'specifications.milestoneColumn'
-            : flat
-              ? 'specifications.updatedColumn'
-              : 'specifications.situationColumn',
-        )}
-      </span>
-      {progress ? (
-        <span>
-          {t(archive ? 'specifications.pullRequestColumn' : 'specifications.progressColumn')}
-        </span>
-      ) : null}
-    </Typography>
+      tracks={specRowTracks({ collection: archive ? 'archive' : 'current' }, flat, progress)}
+      labels={labels}
+    />
   );
 }

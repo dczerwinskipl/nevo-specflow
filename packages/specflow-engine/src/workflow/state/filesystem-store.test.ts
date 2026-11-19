@@ -157,6 +157,25 @@ describe('filesystem workflow store', () => {
       code: 'WORKFLOW_ATTEMPT_MISMATCH',
     });
 
+    const changedDefinition = {
+      ...restarted,
+      reloadCatalogue: () => Promise.resolve({ ...catalogue, workflow: () => undefined }),
+    };
+    await expect(reevaluateWait(changedDefinition, request)).rejects.toMatchObject({
+      code: 'WORKFLOW_DEFINITION_CHANGED',
+    });
+
+    const brokenManifest = join(resourceDirectory(), snapshot.manifests[0]!.value.id, 'task.yaml');
+    const closedManifest = await readFile(brokenManifest, 'utf8');
+    await writeFile(brokenManifest, 'invalid Task manifest');
+    try {
+      await expect(reevaluateWait(restarted, request)).rejects.toMatchObject({
+        code: 'WORKFLOW_TASK_BLOCKED',
+      });
+    } finally {
+      await writeFile(brokenManifest, closedManifest);
+    }
+
     const reopened = {
       ...restarted,
       store: {

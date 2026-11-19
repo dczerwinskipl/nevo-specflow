@@ -73,6 +73,14 @@ export const treeItemClassName = [
 ].join(' ');
 
 /**
+ * A row item that opens nothing (for example a context entry naming a code path): the same line,
+ * gap, padding and text as `treeItemClassName`, without hover, selection or a hit area. Use a
+ * non-interactive element (`div`), never a disabled button: it is not an unavailable action.
+ */
+export const treeStaticItemClassName =
+  'flex min-h-tree-row-height min-w-0 flex-1 items-start gap-tree-gap rounded-control border border-solid border-transparent px-control-padding-inline py-tree-line-inset text-left text-body-md bg-transparent text-content-secondary';
+
+/**
  * A tree row that links to a place (for example a heading in a document's contents): the same
  * compact row, indent and hit area as `treeItemClassName`, normal weight at every level. The current
  * place (`aria-current`, for example `location`) is a quiet tint with a 2 px accent bar at the inline
@@ -149,6 +157,14 @@ export const treeRequiredMarkerClassName =
  */
 export const treeStateLabelClassName =
   'flex h-icon-md shrink-0 items-center self-start whitespace-nowrap text-body-sm text-content-muted';
+
+/**
+ * Secondary form of the state label: a fact about the row relative to the work at hand (for example
+ * "needed to finish this step"), one step stronger than the quiet muted default (a standing fact such
+ * as "Required") and still not attention.
+ */
+export const treeSecondaryStateLabelClassName =
+  'flex h-icon-md shrink-0 items-center self-start whitespace-nowrap text-body-sm text-content-secondary';
 
 /**
  * Attention form of the state label (for example "File missing"); pair the row's icon with the same

@@ -261,6 +261,63 @@ required thing: status-danger colour, circle-alert icon); the icon is decorative
 carries the meaning. It has no live-region role: wrap it in one or use `Alert` when it must be announced.
 No Figma projection in v1.
 
+## Status glyphs
+
+A status shows a registry glyph, its tone and a label; the label carries the meaning and the glyph
+is decorative. The glyph is chosen by the presented status, never by where it appears, so one status
+looks the same in every list, header and dialog. Not started and Ready use the `StatusIndicator` dot,
+Waiting `clock`, In progress `loader` (it spins except under `prefers-reduced-motion`), **On hold
+`circle-pause` (neutral)**, Requires attention `triangle-alert`, Done `circle-check`, Cancelled
+`close`, Failed or broken `circle-alert` (danger); a disabled capability has no glyph and a muted
+label. There is no Blocked glyph yet: keep the existing presentation until a Blocked state is
+designed, and add its glyph to the registry then, not ahead of it.
+
+A checklist of conditions (a workflow step's "Done when") uses `circle-check` (success) for a met
+item and `circle` (muted, the label says "not yet") for an open one. An open item takes the attention
+tone only where it refuses the action the person is about to take (for example the chosen result in
+a Finish dialog).
+
+## Progress position mode
+
+`Progress variant="segmented"` counts completed parts out of `total`. With `position` instead of
+`completed` it shows **where a step sits** among `total` workflow steps: one segment per step, and
+it never claims progress (after a return to an earlier step the current segment moves back).
+
+- `position` is `{ state: 'current', step }` (steps before it `content-secondary` at 60 %, the
+  current one 40 px wide in `status-info`, the steps after it `surface-control`),
+  `{ state: 'not-started' }` (all `surface-control`, the first outlined in info),
+  `{ state: 'completed' }` (all `status-success`) or `{ state: 'abandoned', step }` (the steps up to
+  the abandoning one `content-muted`, the rest `surface-control`). `step` is 1-based; a step outside
+  `1…total` renders nothing rather than being clamped.
+- Geometry: 20 px segments with 2 px gaps, `h-progress-track` (6 px) or `size="compact"` (4 px, for a
+  track that is not the dominant progress on the screen, such as the step track on a wait step whose
+  Task progress bar keeps the default size). The track is as wide as its segments up to 16rem and the
+  container's width; past that the segments shrink, the current one staying the widest, and never
+  below 4 px.
+- No animation: a position change is a new fact, not a movement.
+- Figma: the design component names the mode by its API, `variant=segmented-position`
+  (`variant="segmented"` with `position`).
+- Accessibility: the track is `role="img"` with no progressbar values. Its required `aria-label`
+  names the position ("Step 4 of 7: Break the solution down"). A visible label beside it ("Step 4 of
+  7 · next: Review the breakdown", `body-sm` secondary) is `aria-hidden` so it is not read twice.
+
+## Accent block bleed
+
+`AccentBlock` is a card inside the page's padding by default. `bleed` makes it a **flush band**: it
+spans the `AppWorkspaceBody` padding to the sheet edges, and its inline padding is the page gutter,
+so its text lines up with the page title and section headings (the 3 px bar plus the rest of the
+gutter on the left, the gutter on the right); the tint, the bar and the vertical padding stay.
+`bleed` always bleeds; `bleed="narrow"` bleeds only while the enclosing `AppContentContainer` (the
+named `@container/app-content`) is narrower than 40rem and keeps the card above that, as a CSS
+container query, never a viewport check. Use it where a nested card inside an edge-to-edge sheet
+would be one frame too many (the Narrow Now band). The geometry comes from
+`--app-body-padding-inline`, which `AppWorkspaceBody` sets for every `padding` preset (`0px` for
+`none`); change a body's inline padding through that variable, never with a `px-*` class. The text
+inset never drops below 12 px (the smallest body gutter): with no body padding, or without an
+`AppWorkspaceBody` ancestor, the band does not bleed and its text keeps that inset rather than
+touching the edge. The consumer removes its own divider after the band (the band's
+edge separates it) and any second rule inside it.
+
 ## Shell footer
 
 Every bar pinned to the bottom of the shell (the navigation's account row, a page's sticky footer
@@ -330,21 +387,22 @@ wiring (`buttonRef`, `focus`). `flat` (a top level without folders) and `lead` (
 leads its level above the folders) are structural rules of the tree, not per-screen geometry: any
 tree that has that structure gets the same geometry. The screen root provides the `TooltipProvider`.
 
-| Export                                             | Apply to                                                                                                                                                                                                                                               |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `treeRootClassName`                                | the top-level list (no indent)                                                                                                                                                                                                                         |
-| `treeBranchClassName`                              | the container of an expanded folder's children (indents by `--spacing-tree-indent`, one glyph slot)                                                                                                                                                    |
-| `treeNodeClassName`                                | each node (row + optional nested branch or hint)                                                                                                                                                                                                       |
-| `treeRowClassName`                                 | the row line of a node (item + sibling trailing action); names the `tree-row` group and container                                                                                                                                                      |
-| `treeItemClassName`                                | the interactive folder row (`button`): one compact control height, hover, `aria-current` selection, global focus ring, disabled, block-axis hit area                                                                                                   |
-| `treeLeafItemClassName`                            | the interactive leaf item: no glyph slot, its icon aligns with the sibling folders' icons                                                                                                                                                              |
-| `treeGlyphSlotClassName`                           | the disclosure chevron slot of folders (leaves do not render it)                                                                                                                                                                                       |
-| `treeItemLabelClassName`                           | the name; wraps long names                                                                                                                                                                                                                             |
-| `treeItemLabelTruncateClassName`                   | the name on one line with an ellipsis (keep the full name reachable elsewhere, for example a tooltip shown only when clipped)                                                                                                                          |
-| `treeRowActionClassName`                           | the trailing action trigger of a row (`IconButton size="sm"`, sibling of the item): revealed on hover, focus-within, open menu and the selected row on fine pointers, always visible on touch; its slot is always laid out, so the label never reflows |
-| `treeRequiredLabelClassName`, `...MarkerClassName` | a quiet muted "Required" text inside the item before the row action; below `@3xs` row width the text is visually hidden and the workflow icon stands in. It never reorders rows and never selects one                                                  |
-| `treeStateLabelClassName`, `treeAttention...`      | a trailing state label that never hides (the name truncates instead); the attention forms tone the label and the leading glyph (`treeAttentionGlyphClassName`), never colour alone                                                                     |
-| `treeHintClassName`                                | a quiet inline hint under an opened empty folder (muted, aligned to the folder name column by `--spacing-tree-name-offset`, no icon, not focusable, not a tree item); the product removes it when the folder gets content                              |
+| Export                                             | Apply to                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `treeRootClassName`                                | the top-level list (no indent)                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `treeBranchClassName`                              | the container of an expanded folder's children (indents by `--spacing-tree-indent`, one glyph slot)                                                                                                                                                                                                                                                                                                                                                                                   |
+| `treeNodeClassName`                                | each node (row + optional nested branch or hint)                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `treeRowClassName`                                 | the row line of a node (item + sibling trailing action); names the `tree-row` group and container                                                                                                                                                                                                                                                                                                                                                                                     |
+| `treeItemClassName`                                | the interactive folder row (`button`): one compact control height, hover, `aria-current` selection, global focus ring, disabled, block-axis hit area                                                                                                                                                                                                                                                                                                                                  |
+| `treeLeafItemClassName`                            | the interactive leaf item: no glyph slot, its icon aligns with the sibling folders' icons                                                                                                                                                                                                                                                                                                                                                                                             |
+| `treeStaticItemClassName`                          | a row item that opens nothing (a `div`, not a disabled button): the item's line, gap and padding without hover, selection or hit area                                                                                                                                                                                                                                                                                                                                                 |
+| `treeGlyphSlotClassName`                           | the disclosure chevron slot of folders (leaves do not render it)                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `treeItemLabelClassName`                           | the name; wraps long names                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `treeItemLabelTruncateClassName`                   | the name on one line with an ellipsis (keep the full name reachable elsewhere, for example a tooltip shown only when clipped)                                                                                                                                                                                                                                                                                                                                                         |
+| `treeRowActionClassName`                           | the trailing action trigger of a row (`IconButton size="sm"`, sibling of the item): revealed on hover, focus-within, open menu and the selected row on fine pointers, always visible on touch; its slot is always laid out, so the label never reflows                                                                                                                                                                                                                                |
+| `treeRequiredLabelClassName`, `...MarkerClassName` | a quiet muted "Required" text inside the item before the row action; below `@3xs` row width the text is visually hidden and the workflow icon stands in. It never reorders rows and never selects one                                                                                                                                                                                                                                                                                 |
+| `treeStateLabelClassName`, `treeAttention...`      | a trailing state label that never hides (the name truncates instead): muted by default for a standing fact ("Required", "Always first"), `treeSecondaryStateLabelClassName` for a relation to the work at hand ("needed to finish this step"), the attention forms tone the label and the leading glyph (`treeAttentionGlyphClassName`), or, when only the label is in attention (a gate that refuses the action now), the label carries its own `triangle-alert`; never colour alone |
+| `treeHintClassName`                                | a quiet inline hint under an opened empty folder (muted, aligned to the folder name column by `--spacing-tree-name-offset`, no icon, not focusable, not a tree item); the product removes it when the folder gets content                                                                                                                                                                                                                                                             |
 
 Geometry tokens are derived, not hand-tuned: `--spacing-tree-row-height` is one compact control
 height (`--spacing-control-height-compact`); `--spacing-tree-gap` spaces glyph, icon and name;

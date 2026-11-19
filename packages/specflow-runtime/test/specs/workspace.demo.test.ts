@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { createDemoSpecsRepositories } from '../../src/features/specs/demo/repositories';
+import { createDemoEnvironment, createDemoRuntime } from '../../src/demo';
 import type { RequestAuthorization } from '../../src/features/auth';
 
 describe('Demo Workspace lifecycle', () => {
   it('never marks active tasks as completed and matches Overview progress', async () => {
-    const repositories = createDemoSpecsRepositories();
+    const repositories = createDemoRuntime(createDemoEnvironment());
+    await repositories.start();
     const overview = await repositories.overviewRepository.readCurrent();
     for (const item of overview.items) {
       if (!item.progress || !item.currentExecutions) {

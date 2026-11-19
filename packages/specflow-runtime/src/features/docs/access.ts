@@ -7,7 +7,7 @@ import { workspaceDocsError, type DocsProjectId } from './route-support';
  * Pre-handler of every docs route (ADR 0022 §2): `docs.view` at the Runtime's project scope
  * `{ projectId }`, never in any scope, so a grant bounded to a Specification or a Session admits no
  * documentation. It runs before the handler touches a workspace or the registry: `401` without
- * access, `503 DOCS_UNAVAILABLE` without a project, then `403`.
+ * access, `503 DOCS_NOT_SERVED` without a project, then `403`.
  */
 export function requireDocsView(projectId: DocsProjectId) {
   return async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
@@ -15,7 +15,7 @@ export function requireDocsView(projectId: DocsProjectId) {
     const id = projectId();
     if (id === undefined) {
       // A pre-handler that sends ends the request; the route handler does not run.
-      await reply.code(503).send(workspaceDocsError('DOCS_UNAVAILABLE'));
+      await reply.code(503).send(workspaceDocsError('DOCS_NOT_SERVED'));
 
       return;
     }

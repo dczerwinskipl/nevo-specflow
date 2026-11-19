@@ -10,6 +10,11 @@ export { BLOCKING_TASK_CAUSES, type BlockingTask, type BlockingTaskCause } from 
  *
  * - `task-broken`: the Task's files are inconsistent;
  * - `definition-changed`: the workflow its run is pinned to is missing or changed;
+ * - `on-hold-blocking`: a Task on hold (not by its own escalation) that holds up progress now: an open
+ *   Task waits on it directly, or the Specification's active step cannot finish to `completed`
+ *   while it is open (`blocks`). An escalated hold is `task-escalated` instead (on the Task when no
+ *   Specification item names it and no Specification work step decides it), and a hold the Specification's `tasks-stuck` names gets no Task
+ *   item. A hold that nothing waits on and that blocks no finish is not attention;
  * - and the start blockers of an approved Task that has not started that need a person
  *   (`context-unresolved`, `dependency-unsatisfiable`, `type-not-allowed`, `definition-missing`,
  *   `entry-gate-unsatisfied`). Waiting for dependencies that can still complete, an awaited process
@@ -21,6 +26,7 @@ export const ATTENTION_ITEM_REASONS = [
   'wait-ready-to-settle',
   'wait-transition-missing',
   'definition-changed',
+  'on-hold-blocking',
   'context-unresolved',
   'dependency-unsatisfiable',
   'type-not-allowed',
@@ -49,10 +55,21 @@ export const ATTENTION_ACTIONS = [
   /** The task types and workflows are project definitions: open the project settings. */
   'open-project-settings',
   'cancel-task',
+  /** Resume the Task on hold the item is about (`on-hold → ready`, `setTaskStatus`). */
+  'resume-task',
   /** Make an entry gate of the step hold (for example write the document it names). */
   'satisfy-gate',
 ] as const;
 export type AttentionAction = (typeof ATTENTION_ACTIONS)[number];
+
+/**
+ * `on-hold-blocking`: what the held Task holds up now, never nothing: `taskIds` (never empty), the
+ * open Tasks that wait on it directly (their `dependencyWait.waitingFor` names it), in id order;
+ * `finish`, the Specification's active step whose finish to `completed` it refuses
+ * (`unavailable: tasks-open`, ADR 0024 decision 12), which Close needs.
+ */
+export type HeldTaskBlocks =
+  { readonly taskIds: readonly string[]; readonly finish?: string } | { readonly finish: string };
 
 /** Who has to act. The Engine derives owner items only today; `agent` is reserved for agent steps. */
 export type AttentionActor = 'owner' | 'agent';
@@ -80,13 +97,16 @@ export interface AttentionItem {
   /** One English sentence for surfaces without their own copy (CLI, MCP); display only. */
   readonly message: string;
   /**
-   * `task-escalated`: every escalated Task; `tasks-stuck`: the Tasks to resolve (`blocking`);
+   * `task-escalated` on the Specification: every escalated Task (none on a Task's own item);
+   * `tasks-stuck`: the Tasks to resolve (`blocking`);
    * `dependency-unsatisfiable`: the dependencies that can no longer complete (`restore-task`: the
    * broken ones among them). In id order.
    */
   readonly taskIds?: readonly string[];
   /** `tasks-stuck`: each Task of `taskIds` with why it blocks (always set, possibly empty). */
   readonly blocking?: readonly BlockingTask[];
+  /** `on-hold-blocking`: what the held Task holds up (`step` is then the finish step, if any). */
+  readonly blocks?: HeldTaskBlocks;
   readonly archetype?: string;
   readonly provider?: string;
   readonly blocker?: LaunchBlocker;

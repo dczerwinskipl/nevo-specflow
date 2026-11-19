@@ -36,7 +36,7 @@ export const docsTreeEndpoint: FastifyPluginCallback<WorkspaceDocsEndpointOption
     },
     async (request, reply) => {
       if (operations === undefined) {
-        return replyWithDocsError(reply, 'DOCS_UNAVAILABLE');
+        return replyWithDocsError(reply, 'DOCS_NOT_SERVED');
       }
 
       const read = await operations.tree(request.params.workspaceId);

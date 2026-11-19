@@ -1,5 +1,6 @@
-import { Icon } from '@nevo/ui';
+import { Icon, cn } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
+import { collectionWide } from '../../../../shared/operational-list';
 import type { SpecRowModel } from '../presentation';
 import { formatSpecDate } from './specDate';
 
@@ -11,11 +12,11 @@ export function SpecRowSummary({ item }: { readonly item: SpecRowModel }) {
     const date = validDate ? formatSpecDate(history.timestamp!, i18n.resolvedLanguage) : undefined;
 
     return (
-      <span className="flex flex-wrap gap-x-1 @min-[48rem]/collection:flex-col">
-        <span className="@min-[48rem]/collection:order-2">
+      <span className={cn('flex flex-wrap gap-x-1', collectionWide.flexColumn)}>
+        <span className={collectionWide.order2}>
           {t(`specifications.milestone.${history.kind}`)}
         </span>
-        <span aria-hidden="true" className="@min-[48rem]/collection:hidden">
+        <span aria-hidden="true" className={collectionWide.hidden}>
           ·
         </span>
         {validDate ? (

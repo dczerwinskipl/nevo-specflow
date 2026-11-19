@@ -117,12 +117,10 @@ export function TasksPage({
   const listed = view.groups.reduce((count, group) => count + group.rows.length, 0);
   const visible = groups.reduce((count, group) => count + group.rows.length, 0);
   // "N of M shown": N the rows on screen (the filter, then the search), M all the Specification's
-  // Tasks; without either the progress counts the whole inventory instead.
+  // Tasks; without either the progress counts the whole inventory instead. The blocking chip keeps
+  // the Runtime's count of what blocks.
   const count = view.filter
-    ? t('taskOverview.page.shown', {
-        matched: needle ? visible : view.filter.matched,
-        total: view.filter.total,
-      })
+    ? t('taskOverview.page.shown', { matched: visible, total: view.filter.total })
     : needle && listed > 0
       ? t('taskOverview.page.shown', { matched: visible, total: listed })
       : view.progress && listed > 0
@@ -151,38 +149,44 @@ export function TasksPage({
         }
       : undefined;
   const collapsed = (groupId: string, configured: boolean) => toggled[groupId] ?? configured;
+  // Nothing to search before the Specification has a Task (running or ended alike).
+  const searchable = (view.filter?.total ?? listed) > 0;
 
   return (
     <div className="grid gap-4" data-tasks-page="">
       {/* As wide as the title track the filter matches against (the Specifications list's search). */}
-      <div className={cn('grid w-full gap-3', collectionTitleTrackMaxWidth)}>
-        <TextInput
-          aria-label={t('taskOverview.page.filterLabel')}
-          placeholder={t('taskOverview.page.filterPlaceholder')}
-          className="w-full"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-        {filterChip ? (
-          <div
-            role="status"
-            className="flex w-fit max-w-full items-center gap-2 rounded-control border border-border-default bg-surface-subtle py-1 pr-1 pl-3"
-            {...(blocking ? { 'data-blocking-filter': '' } : { 'data-group-filter': focusGroup })}
-          >
-            <Icon name="filter" size="sm" aria-hidden="true" />
-            <Typography as="span" variant="label-sm" className="min-w-0">
-              {filterChip.text}
-            </Typography>
-            <IconButton
-              icon="close"
-              size="xs"
-              variant="ghost"
-              aria-label={filterChip.clear}
-              onClick={onClearFilter}
+      {searchable || filterChip ? (
+        <div className={cn('grid w-full gap-3', collectionTitleTrackMaxWidth)}>
+          {searchable ? (
+            <TextInput
+              aria-label={t('taskOverview.page.filterLabel')}
+              placeholder={t('taskOverview.page.filterPlaceholder')}
+              className="w-full"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
             />
-          </div>
-        ) : null}
-      </div>
+          ) : null}
+          {filterChip ? (
+            <div
+              role="status"
+              className="flex w-fit max-w-full items-center gap-2 rounded-control border border-border-default bg-surface-subtle py-1 pr-1 pl-3"
+              {...(blocking ? { 'data-blocking-filter': '' } : { 'data-group-filter': focusGroup })}
+            >
+              <Icon name="filter" size="sm" aria-hidden="true" />
+              <Typography as="span" variant="label-sm" className="min-w-0">
+                {filterChip.text}
+              </Typography>
+              <IconButton
+                icon="close"
+                size="xs"
+                variant="ghost"
+                aria-label={filterChip.clear}
+                onClick={onClearFilter}
+              />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       {notice}
       <WorkspaceSection aria-labelledby="tasks-heading">
         <WorkspaceSection.Header

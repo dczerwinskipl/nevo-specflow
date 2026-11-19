@@ -223,12 +223,12 @@ The page's search is router-owned and validated; absence is the default:
 
 The filter by id or title narrows the rows on screen, and the section count follows it: "N of M
 shown", N the rows left after the URL filter and the text filter, M all the Specification's Tasks
-(the same M as the URL filter's count). Without a URL filter a text filter turns the progress into
+(the same M as the URL filter's count), so N always equals the rows listed. Without a URL filter a text filter turns the progress into
 that count ("2 of 7 shown"); with no row left it reads "0 of 7 shown" over "No task matches the
 filter.". The blocking chip keeps the Runtime's count of the Tasks it names.
 
 Without Tasks the page shows an empty state with the same logic as the Overview's Tasks, from the
-same projection:
+same projection, and no filter by id or title (there is nothing to filter):
 
 - While the workflow runs the title is "No tasks yet" and the description names the step that
   creates them (`The "Break the solution down" step (4 of 7) creates the tasks.`); without such a step

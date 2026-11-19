@@ -201,6 +201,21 @@ describe('Tasks page', () => {
     expect(onClearFilter).toHaveBeenCalledTimes(1);
   });
 
+  it('counts the rows on screen under a filter, the chip keeps the Runtime count', () => {
+    const view = taskListViewOf(controlCenterTaskList('stuck', { blocking: 'specification' }));
+    const { container } = renderPage({
+      blocking: true,
+      // The Runtime counts a blocking Task the list holds no row for (for example a broken one).
+      state: { status: 'ready', view: { ...view, filter: { ...view.filter!, matched: 3 } } },
+    });
+
+    expect(container.querySelectorAll('[data-row-task]')).toHaveLength(2);
+    expect(screen.getByText('2 of 7 shown')).not.toBeNull();
+    expect(container.querySelector('[data-blocking-filter]')?.textContent).toContain(
+      'Blocking specification · 3 tasks',
+    );
+  });
+
   it('counts the rows the search leaves, under a filter or without one', () => {
     const { container } = renderPage({
       blocking: true,
@@ -238,6 +253,8 @@ describe('Tasks page', () => {
     });
 
     expect(screen.getByText('No tasks yet')).not.toBeNull();
+    // Nothing to search yet.
+    expect(screen.queryByRole('textbox', { name: 'Filter tasks' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'New task' }));
     expect(onNewTask).toHaveBeenCalledTimes(1);
   });
@@ -269,6 +286,7 @@ describe('Tasks page', () => {
 
     expect(screen.getByText('No tasks were created')).not.toBeNull();
     expect(screen.queryByText(/yet|appear here once/)).toBeNull();
+    expect(screen.queryByRole('textbox', { name: 'Filter tasks' })).toBeNull();
   });
 
   it('says so when nothing blocks the Specification any more', () => {

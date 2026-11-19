@@ -1,44 +1,21 @@
-name: Runtime Linux reproduction (#172)
+name: Full Runtime Linux package verification
 on:
   push:
     branches: [chore/runtime-172-linux-replay]
 permissions:
   contents: read
 jobs:
-  compare:
+  runtime:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          fetch-depth: 0
       - uses: ./.github/actions/setup
-      - name: Build Runtime and record environment
+      - name: Build Runtime and print runner details
         run: |
           node --version
           nproc
           free -h
           pnpm exec turbo run build --filter=@nevo/specflow-runtime
-      - name: Compare full Runtime suite with the default Vitest timeout
-        shell: bash
-        run: |
-          set -euo pipefail
-          paths=(
-            packages/specflow-runtime/test/documents/write-routes.http.test.ts
-            packages/specflow-runtime/test/documents/write.http.test.ts
-            packages/specflow-runtime/test/operations/progress.http.test.ts
-            packages/specflow-runtime/test/sessions/provider-catalogue.http.test.ts
-          )
-          git restore --source=d5ee048404d6d0e7bdaca34fb00c938401b79049 -- "${paths[@]}"
-          set +e
-          pnpm --filter @nevo/specflow-runtime exec vitest run --reporter=dot
-          before=$?
-          set -e
-          git restore --source=HEAD -- "${paths[@]}"
-          set +e
-          pnpm --filter @nevo/specflow-runtime exec vitest run --reporter=dot
-          after=$?
-          set -e
-          echo "::notice::Default Vitest timeout comparison, before=$before after=$after"
-      - name: Run the supported full Runtime package command
+      - name: Run the full Runtime package command
         run: pnpm --filter @nevo/specflow-runtime test

@@ -166,7 +166,11 @@ interface Listening {
 async function listen(
   fx: Fixture,
   options: {
-    assignments?: { userId?: string; role: 'developer' | 'viewer'; scope: Record<string, string> }[];
+    assignments?: {
+      userId?: string;
+      role: 'developer' | 'viewer';
+      scope: Record<string, string>;
+    }[];
     now?: () => Date;
     scheduler?: boolean;
   } = {},
@@ -202,7 +206,10 @@ async function listen(
   function as(userId: string): Listening {
     const session = store.createSession({ userId, authenticatedWith: { kind: 'password' } });
 
-    return { app, headers: { cookie: authCookieNames(config.server.port).session + '=' + session } };
+    return {
+      app,
+      headers: { cookie: authCookieNames(config.server.port).session + '=' + session },
+    };
   }
 
   return { ...as('demo-user'), as };

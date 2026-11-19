@@ -100,6 +100,18 @@ describe('tasks and workflow against a real project', () => {
     ]);
     const { specId } = json<{ specId: string }>(created);
 
+    const noWait = await cli(root, [
+      'workflow',
+      'reevaluate-wait',
+      specId,
+      '--step',
+      'implementation',
+      '--attempt',
+      '1',
+    ]);
+    expect(noWait.exit).toBe(1);
+    expect(noWait.err.join('\n')).toContain('WORKFLOW_SPECIFICATION_NOT_STARTED');
+
     const task = await cli(root, [
       'tasks',
       'create',

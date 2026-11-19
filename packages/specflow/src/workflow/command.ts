@@ -232,7 +232,7 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
       parsePositiveInt,
     )
     .action(async (specId: string, options: CommonOptions & { step: string; attempt: number }) => {
-      await run(options, async ({ workflow: dependencies }) => {
+      await run(options, 'change', async ({ workflow: dependencies }) => {
         const result = await reevaluateWait(dependencies, {
           specId,
           step: options.step,

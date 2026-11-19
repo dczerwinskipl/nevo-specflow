@@ -170,7 +170,7 @@ describe('filesystem workflow store', () => {
     await writeFile(brokenManifest, 'invalid Task manifest');
     try {
       await expect(reevaluateWait(restarted, request)).rejects.toMatchObject({
-        code: 'WORKFLOW_TASK_BLOCKED',
+        code: 'WORKFLOW_STATE_CORRUPT',
       });
     } finally {
       await writeFile(brokenManifest, closedManifest);

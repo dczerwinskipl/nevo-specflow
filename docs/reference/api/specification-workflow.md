@@ -198,7 +198,8 @@ reason?}]` (as the CLI's `--task-decisions-file`): applied after `tasks` and bef
   `{step, attempt, status}`. The status is `settled` when the command completes the wait
   and `already-settled` when the named attempt already took the `tasks-finished` transition.
   A stale attempt with a different outcome yields `WORKFLOW_ATTEMPT_MISMATCH` (409).
-  Open, escalated or broken Tasks yield `WORKFLOW_TASK_BLOCKED` (409).
+  Open or escalated Tasks, and Tasks classified as broken, yield `WORKFLOW_TASK_BLOCKED` (409).
+  An unreadable Task record can fail earlier with `WORKFLOW_STATE_CORRUPT` (503).
 - `abandon` is final. A retry with the same reason returns the same result; it is not a bypass of Close:
   pending writes, broken Tasks and other operations refuse it.
 

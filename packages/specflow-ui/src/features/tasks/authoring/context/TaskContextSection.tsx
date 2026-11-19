@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Button,
@@ -8,10 +8,14 @@ import {
   MenuContent,
   MenuItem,
   MenuLabel,
+  MenuNote,
   MenuRadioGroup,
   MenuRadioItem,
   MenuSeparator,
   MenuTrigger,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   TooltipProvider,
   Typography,
   treeRowActionClassName,
@@ -63,9 +67,10 @@ export interface TaskContextSectionProps {
 }
 
 /**
- * Context: what the person or agent doing a step reads, in declared order. The section says
- * whether it shows the Engine's default or the task's own list, and what the first change does
- * before it happens. The entries that need attention come first; "Show all" shows every entry in
+ * Context: what the person or agent doing a step reads, in declared order. A short label says
+ * whether it shows the Engine's default or the task's own list, with the explanation on demand;
+ * what the first change of a default does is said where it happens (the row menu and the Add
+ * dialog), before it happens. The entries that need attention come first; "Show all" shows every entry in
  * its declared order. Each edit sends the whole list with the manifest revision it was read at
  * (the default written out); "Use default context" sends `context: null`.
  */
@@ -91,9 +96,13 @@ export function TaskContextSection(props: TaskContextSectionProps) {
     setAdding(kind);
   };
 
-  const count = `${t('taskAuthoring.context.count', { count: view.rows.length })} · ${
+  // Open, the body's label carries the source; collapsed, the summary keeps it.
+  const count = t('taskAuthoring.context.count', { count: view.rows.length });
+  const collapsed = `${count} · ${
     view.explicit ? t('taskAuthoring.context.sourceOwn') : t('taskAuthoring.context.sourceDefault')
   }`;
+  // The first change of an editable default saves it as the task's own list.
+  const firstChange = editable && !view.explicit;
   const optionalMissing = view.attention.filter(
     (row) => row.problem?.kind === 'unresolved' && !row.entry.required,
   ).length;
@@ -117,8 +126,8 @@ export function TaskContextSection(props: TaskContextSectionProps) {
       count={count}
       summary={
         optionalMissing > 0
-          ? `${count} · ${t('taskAuthoring.context.summaryOptionalMissing', { count: optionalMissing })}`
-          : count
+          ? `${collapsed} · ${t('taskAuthoring.context.summaryOptionalMissing', { count: optionalMissing })}`
+          : collapsed
       }
       items={view.rows.length}
       openUpTo={OPEN_UP_TO.entries}
@@ -147,6 +156,7 @@ export function TaskContextSection(props: TaskContextSectionProps) {
             specTitle={props.specTitle}
             existing={entries}
             specificationDocuments={props.specificationDocuments}
+            firstChange={firstChange}
             pending={edit.isPending}
             error={editError}
             onAdd={(added) => save([...entries, ...added], () => setAdding(undefined))}
@@ -164,12 +174,12 @@ export function TaskContextSection(props: TaskContextSectionProps) {
       }
     >
       <div className="grid gap-3">
-        <Typography as="p" variant="body-sm" className="text-content-secondary">
-          {props.started
-            ? t('taskAuthoring.context.explanationStarted')
-            : t('taskAuthoring.context.explanation')}
-        </Typography>
-        <SourceNote explicit={view.explicit} editable={editable} />
+        <SourceLabel
+          explicit={view.explicit}
+          firstChange={firstChange}
+          canRestore={canRestore}
+          started={props.started === true}
+        />
         {edit.isError && adding === undefined && !restoring ? editError : null}
         {view.blocking.length > 0 ? (
           <InlineNote tone="danger">
@@ -179,7 +189,7 @@ export function TaskContextSection(props: TaskContextSectionProps) {
                 names: view.blocking.map((row) => entryName(row.entry, names)).join(', '),
               })}
             </span>{' '}
-            {t('taskAuthoring.context.blockingBody')}
+            {t('taskAuthoring.context.blockingBody', { count: view.blocking.length })}
           </InlineNote>
         ) : null}
         {/* The rows' tooltips (kind, problem, note) delay like the Documents rows'. */}
@@ -193,6 +203,7 @@ export function TaskContextSection(props: TaskContextSectionProps) {
                 names={names}
                 editable={editable && !edit.isPending}
                 reserveMenu={editable}
+                firstChange={firstChange}
                 onOpen={props.openTarget(row.entry)}
                 onChange={(next) => save(next(entries))}
               />
@@ -214,23 +225,86 @@ export function TaskContextSection(props: TaskContextSectionProps) {
 }
 
 /**
- * Which list the section shows, and what the first change does before it happens (A2): the
- * Engine's default follows the task until a change saves it as the task's own list.
+ * Which list the section shows, as a short label; what it means opens on demand (a popover, so a
+ * tap opens it too): what context is, what the default follows and, for an editable default, what
+ * the first change does; for an own list, how the default comes back.
  */
-function SourceNote({ explicit, editable }: { explicit: boolean; editable: boolean }) {
+function SourceLabel({
+  explicit,
+  firstChange,
+  canRestore,
+  started,
+}: {
+  explicit: boolean;
+  firstChange: boolean;
+  canRestore: boolean;
+  started: boolean;
+}) {
   const { t } = useTranslation();
+  const titleId = useId();
+  const label = explicit
+    ? t('taskAuthoring.context.ownLabel')
+    : t('taskAuthoring.context.defaultLabel');
+  const paragraphs = [
+    started
+      ? t('taskAuthoring.context.explanationStarted')
+      : t('taskAuthoring.context.explanation'),
+    explicit ? t('taskAuthoring.context.ownBody') : t('taskAuthoring.context.defaultBody'),
+  ];
+  const consequence = firstChange
+    ? t('taskAuthoring.context.defaultFirstChange')
+    : explicit && canRestore
+      ? t('taskAuthoring.context.ownRestore')
+      : undefined;
 
   return (
-    <InlineNote icon="info">
-      <span className="font-medium text-content-primary">
-        {explicit ? t('taskAuthoring.context.ownTitle') : t('taskAuthoring.context.defaultTitle')}
-      </span>{' '}
-      {explicit
-        ? t('taskAuthoring.context.ownBody')
-        : editable
-          ? `${t('taskAuthoring.context.defaultBody')} ${t('taskAuthoring.context.defaultFirstChange')}`
-          : t('taskAuthoring.context.defaultBody')}
-    </InlineNote>
+    <div className="flex min-w-0 items-center gap-1">
+      <Typography as="p" variant="label-sm" className="text-content-secondary">
+        {label}
+      </Typography>
+      <Popover>
+        <PopoverTrigger asChild>
+          <IconButton
+            icon="info"
+            size="sm"
+            variant="ghost"
+            aria-label={
+              explicit
+                ? t('taskAuthoring.context.aboutOwn')
+                : t('taskAuthoring.context.aboutDefault')
+            }
+          />
+        </PopoverTrigger>
+        <PopoverContent align="start" aria-labelledby={titleId} className="w-80 p-3">
+          {/* The surface wraps its children in a scroll container: the gap goes on our own grid. */}
+          <div className="grid gap-2">
+            <Typography as="p" variant="label-md" id={titleId}>
+              {label}
+            </Typography>
+            {paragraphs.map((paragraph) => (
+              <Typography
+                key={paragraph}
+                as="p"
+                variant="body-sm"
+                className="text-content-secondary"
+              >
+                {paragraph}
+              </Typography>
+            ))}
+            {consequence ? (
+              // Set apart by space as well as weight: the sentence the person acts on.
+              <Typography
+                as="p"
+                variant="body-sm"
+                className="mt-1 font-medium text-content-primary"
+              >
+                {consequence}
+              </Typography>
+            ) : null}
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }
 
@@ -286,6 +360,7 @@ function ContextEntryRow({
   names,
   editable,
   reserveMenu,
+  firstChange,
   onOpen,
   onChange,
 }: {
@@ -295,6 +370,8 @@ function ContextEntryRow({
   editable: boolean;
   /** The section offers row menus: every row keeps the `⋯` slot, so trailing labels line up. */
   reserveMenu: boolean;
+  /** The list is the default: a change here saves it as the task's own list (said in the menu). */
+  firstChange: boolean;
   onOpen: (() => void) | undefined;
   onChange: (next: (entries: readonly TaskContextEntry[]) => TaskContextEntry[]) => void;
 }) {
@@ -302,6 +379,7 @@ function ContextEntryRow({
   const name = entryName(row.entry, names);
   const can = movable(view, row);
   const details = entryDetails(row, t);
+  const noteId = useId();
 
   return (
     <TreeDocumentRow
@@ -324,7 +402,7 @@ function ContextEntryRow({
                 aria-label={t('taskAuthoring.context.actionsFor', { name })}
               />
             </MenuTrigger>
-            <MenuContent align="end">
+            <MenuContent align="end" aria-describedby={firstChange ? noteId : undefined}>
               <MenuLabel>{t('taskAuthoring.context.whenStarts')}</MenuLabel>
               <MenuRadioGroup
                 value={row.entry.required ? 'required' : 'optional'}
@@ -340,23 +418,34 @@ function ContextEntryRow({
                 </MenuRadioItem>
               </MenuRadioGroup>
               <MenuSeparator />
-              {can.up ? (
-                <MenuItem onSelect={() => onChange((entries) => moved(entries, row.index, -1))}>
-                  {t('taskAuthoring.context.moveUp')}
-                </MenuItem>
+              {/* Moves and their separator only when the row can move: no doubled separator. */}
+              {can.up || can.down ? (
+                <>
+                  {can.up ? (
+                    <MenuItem onSelect={() => onChange((entries) => moved(entries, row.index, -1))}>
+                      {t('taskAuthoring.context.moveUp')}
+                    </MenuItem>
+                  ) : null}
+                  {can.down ? (
+                    <MenuItem onSelect={() => onChange((entries) => moved(entries, row.index, 1))}>
+                      {t('taskAuthoring.context.moveDown')}
+                    </MenuItem>
+                  ) : null}
+                  <MenuSeparator />
+                </>
               ) : null}
-              {can.down ? (
-                <MenuItem onSelect={() => onChange((entries) => moved(entries, row.index, 1))}>
-                  {t('taskAuthoring.context.moveDown')}
-                </MenuItem>
-              ) : null}
-              <MenuSeparator />
               <MenuItem
                 tone="danger"
                 onSelect={() => onChange((entries) => withoutEntry(entries, row.index))}
               >
                 {t('taskAuthoring.context.remove')}
               </MenuItem>
+              {firstChange ? (
+                <>
+                  <MenuSeparator />
+                  <MenuNote id={noteId}>{t('taskAuthoring.context.firstChangeMenuNote')}</MenuNote>
+                </>
+              ) : null}
             </MenuContent>
           </Menu>
         ) : reserveMenu ? (

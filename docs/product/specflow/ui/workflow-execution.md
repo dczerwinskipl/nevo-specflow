@@ -190,24 +190,34 @@ cancelled), **Documents**, **Context** and **Depends on**. Task history is the S
   and Delete in the row menu, none for `task.md`. While the context is the Task's own list, New
   document says that the new document is not added to it ("Add it from Context if a step should
   read it"); with the default context it says nothing (the document joins by itself).
-- **Context.** The effective list in declared order with a one-line explanation of what it is, by
-  state: before the first start "Inputs this task needs before it starts, in the order they are
-  read", once started "Inputs this task reads, in order". Kinds: Task document, Specification document, Project
+- **Context.** The effective list in declared order. Kinds: Task document, Specification document, Project
   document, Code path (with its current match count) and Instructions, each Required or Optional with an
   optional note. Each entry is the shared document row named by its file name (`overview.md`, not the
   document title), with its kind and note in the tooltip and a trailing label: **Always first**
   (`task.md`), **Required** or **Optional**, or the problem with its short reason, visible at every
   width (**Not found · required**, **Not found · optional**, **Not registered · required**,
   **Awaited · needed to start**). Trailing labels line up: while the context is
-  editable every row keeps the `⋯` slot. The header says which list it shows: "N entries · default" or "N entries · own list",
-  and a source line under the explanation says it before any change: **Default context.** it follows
-  the task (`task.md`, its other documents and the Specification overview, all required); new task
-  documents join it; the first change saves it as the task's own list, after which new documents are
-  not added by themselves (the last part only when the context is editable). **Own list.** set for
-  this task; new task documents are not added automatically. With an own, editable list the **+**
-  menu ends with **Use default context**: a confirm says the list of N entries is replaced by the
-  default and names the entries that go ("Entries you added are removed: ux.md, src/auth/**, +1"),
-  then sends `context: null` with the read revision. The default it compares with is the Engine's
+  editable every row keeps the `⋯` slot. Above the rows a short label says which list it is,
+  **Default context** or **Own context list**, with an info button (the size of the row buttons)
+  that opens the explanation in a popover, by click or tap: what context is, by state (before the
+  first start "Inputs this task needs before it starts, in the order they are read", once started
+  "Inputs this task reads, in order"), then for the default that it follows the task (`task.md`,
+  its other documents and the Specification overview, all required) and that new task documents
+  join it, and, when the context is editable, set apart: "Your first change saves it as this task's
+  own list. After that, new task documents are not added by themselves." For an own list: set for
+  this task, new task documents are not added by themselves, and, when it can go back, Choose “Use
+  default context” in the + menu. The open header shows the count only ("2 entries"); the collapsed
+  summary keeps the source ("6 entries · own list · 1 optional missing"). The first change of an
+  editable default has no confirm; it is said where it happens, before it happens: the row `⋯`
+  menu ends with a note after a separator ("A change here saves the context as this task's own
+  list…", announced with the menu through `aria-describedby`), and every Add dialog ends with an
+  info note above **Add to context** ("Adding this saves the context as this task's own list…").
+  Both disappear once the list is the task's own. The row menu shows Move up / Move down, and
+  their separator, only when the entry can move. With an own, editable list the **+** menu ends
+  with **Use default context**: a confirm says the list of N entries will be replaced by the
+  default (all required), names the entries that go ("Entries you added will be removed: ux.md,
+  src/auth/**, +1") and that the context then follows the task again (new task documents join it
+  by themselves), then sends `context: null` with the read revision. The default it compares with is the Engine's
   (`taskAuthoring.context.defaultEntries`); the UI never derives it. Entries that need attention come
   first, then **Show all N entries in order**. Missing required entries are also named in the
   danger note above the rows ("1 required entry is missing: ux.md."); a missing optional one is an

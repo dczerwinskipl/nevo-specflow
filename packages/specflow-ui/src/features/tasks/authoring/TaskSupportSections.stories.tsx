@@ -18,8 +18,9 @@ import { TaskDocumentsSection } from './documents/TaskDocumentsSection';
 
 /*
  * The Full Task's supporting sections on their own (Documents and Context): open when they hold
- * few items, collapsed with a summary above that, at every width; Context says whether it shows
- * the Engine's default or the task's own list, and "Use default context" names what it removes.
+ * few items, collapsed with a summary above that, at every width; Context labels whether it shows
+ * the Engine's default or the task's own list (the explanation on demand), says what the first
+ * change of a default does where it happens, and "Use default context" names what it removes.
  */
 
 const SPEC = 'sso';
@@ -119,6 +120,8 @@ interface Scenario {
   readonly states?: boolean;
   /** With `states`: the Task's workflow has no document gates (no relations). */
   readonly noGates?: boolean;
+  /** The task has started: Context says what it reads. */
+  readonly started?: boolean;
 }
 
 const ux: Entry = { kind: 'specification-document', id: 'ux', required: true };
@@ -231,6 +234,7 @@ function SupportSections(scenario: Scenario) {
         editable={scenario.editable}
         openTarget={() => undefined}
         onLoadLatest={() => undefined}
+        started={scenario.started === true}
       />
     </div>
   );
@@ -266,14 +270,54 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** One document and the two default entries: both sections open, the first change explained. */
+/** One document and the two default entries: both sections open, Context labelled "Default". */
 export const FewItemsDefault: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByRole('button', { name: /task\.md/ });
-    await expect(canvas.getByText('2 entries · default')).toBeVisible();
-    await expect(canvas.getByText(/Your first change saves it/)).toBeVisible();
+    await expect(canvas.getByText('2 entries')).toBeVisible();
+    await expect(canvas.getByText('Default context')).toBeVisible();
+    await expect(canvas.queryByText(/Your first change/)).toBeNull();
     await expect(canvas.getByText('overview.md')).toBeVisible();
+  },
+};
+
+/** The default's explanation, opened from the label: what it follows and what the first change does. */
+export const DefaultExplanation: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
+    await userEvent.click(await canvas.findByRole('button', { name: 'About the default context' }));
+    const popover = await page.findByRole('dialog');
+    await expect(popover).toHaveTextContent('New task documents join it by themselves.');
+    await expect(popover).toHaveTextContent("Your first change saves it as this task's own list.");
+  },
+};
+
+/** The row menu of a default entry says what a change there does, before it is chosen. */
+export const DefaultRowMenu: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Actions for overview.md' }));
+    const menu = await page.findByRole('menu');
+    const note = within(menu).getByText(/^A change here saves the context/);
+    // The menu fades in: wait for it, then the note is read without scrolling.
+    await waitFor(() => expect(note).toBeVisible());
+    await expect(menu).toHaveAttribute('aria-describedby', note.id);
+  },
+};
+
+/** The Add dialog over a default list says what adding does, above its confirm. */
+export const DefaultAddDialog: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Add context' }));
+    await userEvent.click(await page.findByRole('menuitem', { name: 'Code path' }));
+    await expect(await page.findByRole('dialog')).toHaveTextContent(
+      "Adding this saves the context as this task's own list.",
+    );
   },
 };
 
@@ -282,22 +326,45 @@ export const ManyItemsOwnList: Story = {
   args: { documents: 5, own: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
     await canvas.findByText('5 · task.md, plan.md, +3');
     await expect(canvas.getByText('6 entries · own list · 1 optional missing')).toBeVisible();
-    await expect(canvas.queryByText(/Own list\./)).toBeNull();
+    await expect(canvas.queryByText('Own context list')).toBeNull();
 
     await userEvent.click(canvas.getByRole('button', { name: /Context/ }));
-    await expect(await canvas.findByText(/New task documents are not added/)).toBeVisible();
+    await expect(await canvas.findByText('Own context list')).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: 'About this context list' }));
+    const popover = await page.findByRole('dialog');
+    await expect(popover).toHaveTextContent(
+      'New task documents are not added to it by themselves.',
+    );
+    await expect(popover).toHaveTextContent('Choose “Use default context” in the + menu');
   },
 };
 
-/** The default context, read-only: the source line without the first-change sentence. */
+/** The default context, read-only: the explanation without the first-change sentence. */
 export const DefaultNotEditable: Story = {
   args: { editable: false },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText(/It follows this task/)).toBeVisible();
-    await expect(canvas.queryByText(/Your first change/)).toBeNull();
+    const page = within(canvasElement.ownerDocument.body);
+    await userEvent.click(await canvas.findByRole('button', { name: 'About the default context' }));
+    const popover = await page.findByRole('dialog');
+    await expect(popover).toHaveTextContent('It follows this task');
+    await expect(popover).not.toHaveTextContent('Your first change');
+  },
+};
+
+/** A started task: the explanation says what the task reads. */
+export const StartedTask: Story = {
+  args: { started: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
+    await userEvent.click(await canvas.findByRole('button', { name: 'About the default context' }));
+    await expect(await page.findByRole('dialog')).toHaveTextContent(
+      'Inputs this task reads, in order.',
+    );
   },
 };
 
@@ -313,7 +380,7 @@ export const UseDefaultConfirm: Story = {
     const dialog = await page.findByRole('dialog');
     await expect(dialog).toHaveTextContent('Use the default context?');
     await expect(dialog).toHaveTextContent(
-      'Entries you added are removed: ux.md, packages/specflow-runtime/src/auth/**, old-flow.md, +1.',
+      'Entries you added will be removed: ux.md, packages/specflow-runtime/src/auth/**, old-flow.md, +1.',
     );
   },
 };

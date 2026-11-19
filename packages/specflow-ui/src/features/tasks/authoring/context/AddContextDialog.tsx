@@ -40,6 +40,8 @@ export interface AddContextDialogProps {
   /** The current list: references already in it are shown as added. */
   readonly existing: readonly TaskContextEntry[];
   readonly specificationDocuments: readonly SpecificationDocumentOption[];
+  /** The list is the default: adding saves it as the task's own list, said before the confirm. */
+  readonly firstChange: boolean;
   readonly pending: boolean;
   readonly error?: ReactNode;
   /** The new entries, appended at the end of the list by the caller. */
@@ -70,6 +72,7 @@ function AddContextForm({
   specTitle,
   existing,
   specificationDocuments,
+  firstChange,
   pending,
   error,
   onAdd,
@@ -234,6 +237,9 @@ function AddContextForm({
             <Field.Label>{t('taskAuthoring.context.noteLabel')}</Field.Label>
             <TextInput value={note} onChange={(event) => setNote(event.target.value)} />
           </Field>
+          {firstChange ? (
+            <InlineNote icon="info">{t('taskAuthoring.context.firstChangeAddNote')}</InlineNote>
+          ) : null}
         </form>
       </DialogBody>
       <DialogFooter>

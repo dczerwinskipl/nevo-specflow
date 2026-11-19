@@ -27,8 +27,8 @@ export interface UseDefaultContextDialogProps {
 }
 
 /**
- * The confirm of "Use default context": what replaces the own list and which of its entries go,
- * named before the action (the default list is the Engine's, read from the projection).
+ * The confirm of "Use default context": what replaces the own list, which of its entries go and
+ * that the context follows the task again, named before the action (the default list is the Engine's, read from the projection).
  */
 export function UseDefaultContextDialog({
   open,
@@ -56,7 +56,8 @@ export function UseDefaultContextDialog({
             {t('taskAuthoring.context.useDefaultBody', { count })}
             {removed.length > 0
               ? ` ${t('taskAuthoring.context.useDefaultRemoved', { names })}`
-              : null}
+              : null}{' '}
+            {t('taskAuthoring.context.useDefaultFollows')}
           </DialogDescription>
         </DialogHeader>
         {error ? <DialogBody>{error}</DialogBody> : null}

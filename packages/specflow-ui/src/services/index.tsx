@@ -15,6 +15,7 @@ import {
 } from '../features/sessions/associations/api';
 import { createDemoSessionsApi } from '../features/sessions/api.demo';
 import { createHttpClient, type HttpClient } from '@nevo/http-client';
+import { OWNER_REQUEST_HEADER } from '@nevo/specflow-contracts/authentication';
 
 import { createBrowserAuthApi, type AuthApi } from '../auth/api';
 import { createRuntimeInfoApi, type RuntimeInfoApi } from './runtimeInfoApi';
@@ -126,7 +127,9 @@ export function createSpecFlowAppServices(
       ? { http: optionsOrClient }
       : optionsOrClient;
 
-  const http = options.http ?? createHttpClient();
+  // Every Runtime request is marked as an owner request of this page (D21): a page of another
+  // origin cannot send the header without a CORS preflight that the Runtime never grants.
+  const http = options.http ?? createHttpClient({ headers: { [OWNER_REQUEST_HEADER]: '1' } });
   const authApi = options.authApi ?? createBrowserAuthApi(http);
   const authStore = options.authStore ?? createAuthStore(authApi);
   const authRecovery = options.authRecovery ?? createAuthRecoveryCoordinator(authStore);

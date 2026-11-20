@@ -105,16 +105,19 @@ export function createAuthFeature(options: CreateAuthFeatureOptions): AuthFeatur
       }
 
       if (options.ownerCredential === 'enforced') {
-        registerOwnerCredentialGuard(app, (cookies) => {
-          if (pairing) {
-            return pairing.deviceOf(cookies[deviceCookies.device])
-              ? 'present'
-              : 'owner-credential-required';
-          }
+        registerOwnerCredentialGuard(app, {
+          ...(options.publicOrigin ? { publicOrigin: options.publicOrigin } : {}),
+          check: (cookies) => {
+            if (pairing) {
+              return pairing.deviceOf(cookies[deviceCookies.device])
+                ? 'present'
+                : 'owner-credential-required';
+            }
 
-          return store.getSession(cookies[cookieNames.session])
-            ? 'present'
-            : 'authentication-required';
+            return store.getSession(cookies[cookieNames.session])
+              ? 'present'
+              : 'authentication-required';
+          },
         });
       }
 

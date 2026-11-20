@@ -218,9 +218,9 @@ export type PairedDeviceListResponse = Static<typeof PairedDeviceListResponseSch
  * - `not-required`: the demo Runtime (no route needs an owner credential);
  * - `session`: authentication is required and the session is the credential (`present`);
  * - `device`: trusted local mode; this browser's paired device, or the facts the pairing screen
- *   explains: whether any device is paired yet and where the initial pairing code is (`console`:
- *   the Runtime's console; `file`: an owner-only file at `initialCodeFile`, relative to the
- *   Project Home).
+ *   explains: whether any device is paired yet and where the initial pairing code went
+ *   (`console`: the Runtime's console; `file`: an owner-only file in the Runtime's local state,
+ *   whose path an unpaired page never sees).
  */
 export const OwnerCredentialStatusSchema = Type.Union([
   Type.Object({ kind: Type.Literal('not-required') }, { additionalProperties: false }),
@@ -242,7 +242,6 @@ export const OwnerCredentialStatusSchema = Type.Union([
         Type.Literal('console'),
         Type.Literal('file'),
       ]),
-      initialCodeFile: Type.Optional(Type.String({ maxLength: 256 })),
     },
     { additionalProperties: false },
   ),
@@ -264,11 +263,8 @@ export type PairingRequestCreated = Static<typeof PairingRequestCreatedSchema>;
 export const PairingRequestStatusSchema = Type.Object(
   {
     id: PairingIdSchema,
-    status: Type.Union([
-      Type.Literal('pending'),
-      Type.Literal('approved'),
-      Type.Literal('expired'),
-    ]),
+    /** An expired request is gone (`404`): the browser knows `expiresAt`. */
+    status: Type.Union([Type.Literal('pending'), Type.Literal('approved')]),
     expiresAt: TimestampSchema,
     origin: PairingOriginSchema,
   },
@@ -276,8 +272,32 @@ export const PairingRequestStatusSchema = Type.Object(
 );
 export type PairingRequestStatus = Static<typeof PairingRequestStatusSchema>;
 
-export const PairingApproveRequestSchema = Type.Object(
+/** Approval step one: look up the code another browser shows. */
+export const PairingLookupRequestSchema = Type.Object(
   { code: PairingCodeInputSchema },
+  { additionalProperties: false },
+);
+export type PairingLookupRequest = Static<typeof PairingLookupRequestSchema>;
+
+/**
+ * `200` of a lookup: where the request came from and when, so the owner approves only a request
+ * shown on a device they hold; `lookup` confirms it (single use, bound to this device).
+ */
+export const PairingLookupSchema = Type.Object(
+  {
+    lookup: PairingTokenSchema,
+    id: PairingIdSchema,
+    origin: PairingOriginSchema,
+    requestedAt: TimestampSchema,
+    expiresAt: TimestampSchema,
+  },
+  { additionalProperties: false },
+);
+export type PairingLookup = Static<typeof PairingLookupSchema>;
+
+/** Approval step two: confirm the lookup this device made. */
+export const PairingApproveRequestSchema = Type.Object(
+  { lookup: PairingTokenSchema },
   { additionalProperties: false },
 );
 export type PairingApproveRequest = Static<typeof PairingApproveRequestSchema>;
@@ -331,6 +351,8 @@ export const DevicePairingErrorCodeSchema = Type.Union([
   Type.Literal('pairing_not_approved'),
   /** No pending request has this code: never started, expired or already approved. */
   Type.Literal('pairing_code_invalid'),
+  /** No open lookup of this device has this value: unknown, used, expired or revoked. */
+  Type.Literal('pairing_lookup_invalid'),
   /** The QR token or initial code is not valid: unknown, expired or used. */
   Type.Literal('pairing_secret_invalid'),
   /** Too many pending requests, tokens or paired devices. */
@@ -346,14 +368,22 @@ export const DevicePairingErrorResponseSchema = Type.Object(
 );
 export type DevicePairingErrorResponse = Static<typeof DevicePairingErrorResponseSchema>;
 
+/** Header every owner request carries: a page of another origin cannot send it without CORS. */
+export const OWNER_REQUEST_HEADER = 'x-nevo-owner';
+
 /**
- * `403` of an owner route without an owner credential in trusted local mode, written by the
- * Runtime's owner-credential guard before the route (no route schema serializes it).
+ * `403` of the Runtime's owner-credential guard, written before the route:
+ * - `owner_credential_required`: trusted local mode, no paired device's credential;
+ * - `owner_request_refused`: not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of
+ *   another site or origin, or no `X-Nevo-Owner` header).
  */
-export const OwnerCredentialRequiredErrorResponseSchema = Type.Object(
-  { error: Type.Literal('owner_credential_required') },
-  { additionalProperties: false },
+export const OwnerCredentialErrorResponseSchema = Type.Object(
+  {
+    error: Type.Union([
+      Type.Literal('owner_credential_required'),
+      Type.Literal('owner_request_refused'),
+    ]),
+  },
+  { $id: 'OwnerCredentialErrorResponse', additionalProperties: false },
 );
-export type OwnerCredentialRequiredErrorResponse = Static<
-  typeof OwnerCredentialRequiredErrorResponseSchema
->;
+export type OwnerCredentialErrorResponse = Static<typeof OwnerCredentialErrorResponseSchema>;

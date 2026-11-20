@@ -7,6 +7,8 @@ import {
   PairedDeviceListResponseSchema,
   PairingApprovedSchema,
   PairingApproveRequestSchema,
+  PairingLookupRequestSchema,
+  PairingLookupSchema,
   PairingQrTokenSchema,
   PairingRedeemedSchema,
   PairingRedeemRequestSchema,
@@ -15,6 +17,7 @@ import {
   type DevicePairingErrorCode,
   type OwnerCredentialStatus,
   type PairingApproveRequest,
+  type PairingLookupRequest,
   type PairingRedeemRequest,
   type PairingOrigin,
 } from '@nevo/specflow-contracts/authentication';
@@ -83,6 +86,16 @@ export const devicePairingEndpoint: FastifyPluginCallback<DevicePairingEndpointO
 
   const deviceCredential = (request: FastifyRequest) => request.cookies[options.cookieNames.device];
   const binding = (request: FastifyRequest) => request.cookies[options.cookieNames.pairing];
+  /** The owner device of an owner route: the guard admitted the request only with one. */
+  const ownerDevice = (request: FastifyRequest) => {
+    const device = pairing?.deviceOf(deviceCredential(request));
+    if (!device) {
+      throw new Error('An owner route was reached without a paired device.');
+    }
+
+    return device;
+  };
+
   const refuse = (reply: FastifyReply, error: DevicePairingErrorCode) =>
     reply.code(errorStatus(error)).header('Cache-Control', 'no-store').send({ error });
 
@@ -119,7 +132,6 @@ export const devicePairingEndpoint: FastifyPluginCallback<DevicePairingEndpointO
             present: false,
             anyDevicePaired: status.anyDevicePaired,
             initialCode: status.initialCode,
-            ...(status.initialCodeFile ? { initialCodeFile: status.initialCodeFile } : {}),
           };
     },
   );
@@ -187,7 +199,7 @@ export const devicePairingEndpoint: FastifyPluginCallback<DevicePairingEndpointO
             ...pairingError,
             description:
               'No request of this browser has this id (`pairing_not_found`): never started here, ' +
-              'redeemed, or expired long ago.',
+              'redeemed, or expired.',
           },
           409: notUsed,
         },
@@ -210,21 +222,21 @@ export const devicePairingEndpoint: FastifyPluginCallback<DevicePairingEndpointO
   );
 
   routes.post(
-    '/api/auth/pairing/approve',
+    '/api/auth/pairing/lookup',
     {
       bodyLimit: PAIRING_BODY_LIMIT,
-      config: { openApiPublic: true, rateLimit },
+      config: { rateLimit },
       schema: {
         tags,
-        summary: 'Approve the pairing code another browser shows',
-        body: PairingApproveRequestSchema,
+        summary: 'Look up the pairing request of the code another browser shows',
+        body: PairingLookupRequestSchema,
         response: {
-          200: PairingApprovedSchema,
+          200: PairingLookupSchema,
           404: {
             ...pairingError,
             description:
-              'No pending request has this code (`pairing_code_invalid`): the owner did not start ' +
-              'it, it expired or it is already approved.',
+              'No pending request has this code (`pairing_code_invalid`): never started, expired ' +
+              'or already approved.',
           },
           409: notUsed,
           429: rateLimited,
@@ -236,7 +248,55 @@ export const devicePairingEndpoint: FastifyPluginCallback<DevicePairingEndpointO
         return refuse(reply, 'pairing_not_used');
       }
 
-      const approved = pairing.approve((request.body as PairingApproveRequest).code);
+      const found = pairing.lookup(
+        (request.body as PairingLookupRequest).code,
+        ownerDevice(request),
+      );
+      if (!found.ok) {
+        return refuse(reply, found.error);
+      }
+
+      return reply.header('Cache-Control', 'no-store').send({
+        lookup: found.value.lookup,
+        id: found.value.id,
+        origin: found.value.origin,
+        requestedAt: new Date(found.value.requestedAt).toISOString(),
+        expiresAt: new Date(found.value.expiresAt).toISOString(),
+      });
+    },
+  );
+
+  routes.post(
+    '/api/auth/pairing/approve',
+    {
+      bodyLimit: PAIRING_BODY_LIMIT,
+      config: { rateLimit },
+      schema: {
+        tags,
+        summary: 'Approve a looked-up pairing request',
+        body: PairingApproveRequestSchema,
+        response: {
+          200: PairingApprovedSchema,
+          404: {
+            ...pairingError,
+            description:
+              'This device made no open lookup with this value (`pairing_lookup_invalid`): ' +
+              'unknown, used, expired, or made by another device.',
+          },
+          409: notUsed,
+          429: rateLimited,
+        },
+      },
+    },
+    (request, reply) => {
+      if (!pairing) {
+        return refuse(reply, 'pairing_not_used');
+      }
+
+      const approved = pairing.approve(
+        (request.body as PairingApproveRequest).lookup,
+        ownerDevice(request),
+      );
       if (!approved.ok) {
         return refuse(reply, approved.error);
       }
@@ -253,7 +313,7 @@ export const devicePairingEndpoint: FastifyPluginCallback<DevicePairingEndpointO
     '/api/auth/pairing/qr',
     {
       bodyLimit: PAIRING_BODY_LIMIT,
-      config: { openApiPublic: true, rateLimit },
+      config: { rateLimit },
       schema: {
         tags,
         summary: 'Create a one-time pairing token for a QR code',
@@ -266,12 +326,12 @@ export const devicePairingEndpoint: FastifyPluginCallback<DevicePairingEndpointO
         },
       },
     },
-    (_request, reply) => {
+    (request, reply) => {
       if (!pairing) {
         return refuse(reply, 'pairing_not_used');
       }
 
-      const issued = pairing.issueQrToken();
+      const issued = pairing.issueQrToken(ownerDevice(request));
       if (!issued.ok) {
         return refuse(reply, issued.error);
       }
@@ -356,7 +416,7 @@ export const devicePairingEndpoint: FastifyPluginCallback<DevicePairingEndpointO
   routes.get(
     '/api/auth/devices',
     {
-      config: { openApiPublic: true },
+      config: { ownerCredentialRequired: true },
       schema: {
         tags,
         summary: 'List the paired devices',
@@ -380,7 +440,6 @@ export const devicePairingEndpoint: FastifyPluginCallback<DevicePairingEndpointO
     '/api/auth/devices/:id',
     {
       config: {
-        openApiPublic: true,
         openApiResponses: {
           204: { description: 'Revoked: the device credential no longer counts. No body.' },
         },
@@ -432,6 +491,7 @@ function errorStatus(error: DevicePairingErrorCode): 404 | 409 | 503 {
     case 'pairing_not_found':
     case 'pairing_code_invalid':
     case 'pairing_secret_invalid':
+    case 'pairing_lookup_invalid':
     case 'device_not_found':
       return 404;
     case 'pairing_not_used':

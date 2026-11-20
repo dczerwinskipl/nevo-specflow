@@ -26,6 +26,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { authCookieNames } from '../../src/features/auth/authentication/http/cookies';
 import { InMemoryAuthenticationStore } from '../../src/features/auth/authentication/store/in-memory-store';
 import { createRuntimeApp } from '../../src/server/app';
+import { withOwnerRequests } from '../support/owner-credential';
 import { passwordConfig } from '../auth/support/config';
 
 const roots: string[] = [];
@@ -103,6 +104,7 @@ async function listen(engine: SpecFlowEngine) {
     },
     { auth: { store }, specs: { engine } },
   );
+  withOwnerRequests(app);
   apps.push(app);
   const headers = { cookie: authCookieNames(passwordConfig().server.port).session + '=' + session };
 

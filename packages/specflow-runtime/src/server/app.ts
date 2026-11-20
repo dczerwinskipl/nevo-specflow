@@ -236,7 +236,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   const sessionsFeature = createSessionsFeature({
     ...(engine ? { engine } : {}),
     workspaceOccupancy,
-    ...(devicePairing ? { writeTurnsPaused: () => devicePairing.headlessPairingPending() } : {}),
+    ...(devicePairing ? { agentWorkPaused: devicePairing.headlessPairingPending } : {}),
     config: mode === 'project' ? config.sessions : undefined,
     storage:
       dependencies.sessions?.storage ??

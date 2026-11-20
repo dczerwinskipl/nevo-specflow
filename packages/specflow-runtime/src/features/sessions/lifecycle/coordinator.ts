@@ -75,11 +75,20 @@ export function createSessionCoordinator(
     beginTurn(workspaceId: string, sessionId: string): { end(): void } | undefined;
   },
   /**
-   * Whether a write Turn must be refused now: the headless Runtime's initial pairing code file
-   * exists (D21), so no agent writes while that code can be read.
+   * Whether Session starts and Turns must be refused now: the headless Runtime's initial pairing
+   * code file exists (D21), so no agent runs, even read-only, while that code can be read.
    */
-  writeTurnsPaused?: () => boolean,
+  agentWorkPaused?: () => boolean,
 ) {
+  const refuseWhilePairingPending = () => {
+    if (agentWorkPaused?.()) {
+      throw new SessionError(
+        'SESSION_PAIRING_PENDING',
+        'Agents wait until the first device is paired with the initial pairing code.',
+      );
+    }
+  };
+
   const driverList: readonly SessionDriver[] = Array.isArray(drivers)
     ? drivers
     : [drivers as SessionDriver];
@@ -512,6 +521,7 @@ export function createSessionCoordinator(
         return cached;
       }
 
+      refuseWhilePairingPending();
       if (!available) {
         throw new SessionError('PROVIDER_UNAVAILABLE', 'No Session provider is enabled.');
       }
@@ -564,17 +574,11 @@ export function createSessionCoordinator(
         ...(input.modelId ? { modelId: input.modelId } : {}),
         ...(input.effort ? { effort: input.effort } : {}),
       };
-      const writing = selection.mode === 'workspace-write';
-      // Before the provider validation: no write Turn while the initial pairing code can be read.
-      if (writing && writeTurnsPaused?.()) {
-        throw new SessionError(
-          'SESSION_PAIRING_PENDING',
-          'Write Turns wait until the first device is paired with the initial pairing code.',
-        );
-      }
-
+      // Before the provider validation: no Turn while the initial pairing code can be read.
+      refuseWhilePairingPending();
       const driver = driverFor(selection.providerId);
       await validate(driver, selection);
+      const writing = selection.mode === 'workspace-write';
 
       const placement =
         selection.providerId === 'mock'

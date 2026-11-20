@@ -26,9 +26,15 @@ import {
 } from './secrets';
 import type { DeviceStore, StoredDevice } from './store';
 
-/** A pairing code, its request binding and a QR token are valid about two minutes (D21). */
+/** A pairing code, its request binding, a lookup and a QR token are valid about two minutes (D21). */
 export const PAIRING_TTL_MS = 2 * 60 * 1000;
-export const PAIRING_LIMITS = { pendingRequests: 32, qrTokens: 16, devices: 100 } as const;
+export const PAIRING_LIMITS = {
+  pendingRequests: 32,
+  /** Unapproved requests of one source address: one caller cannot take every slot. */
+  pendingRequestsPerSource: 3,
+  qrTokens: 16,
+  devices: 100,
+} as const;
 
 interface PendingRequest {
   readonly id: string;
@@ -36,13 +42,17 @@ interface PendingRequest {
   /** Digest of the binding secret held by the requesting browser's cookie. */
   readonly bindingDigest: Buffer;
   readonly origin: PairingOrigin;
+  readonly requestedAt: number;
   readonly expiresAt: number;
-  approvedAt?: number;
+  /** The open lookup of an owner device: its digest and that device (step one of approval). */
+  lookup?: { readonly digest: Buffer; readonly deviceId: string };
+  approved?: { readonly at: number; readonly byDeviceId: string };
 }
 
 interface QrToken {
   readonly digest: Buffer;
   readonly expiresAt: number;
+  readonly issuedByDeviceId: string;
 }
 
 export interface InitialCodeOptions {
@@ -59,8 +69,6 @@ export interface DevicePairingOptions {
   readonly store: DeviceStore;
   /** `<stateRoot>/auth`: where the headless initial code file is written. */
   readonly stateDirectory?: string;
-  /** How the file is named to the UI (relative to the Project Home). */
-  readonly initialCodeFileLabel?: string;
   readonly now?: () => number;
   readonly platform?: NodeJS.Platform;
   readonly restrictToOwner?: RestrictToOwner;
@@ -76,8 +84,22 @@ export interface DeviceCredentialStatus {
   readonly device?: StoredDevice;
   readonly anyDevicePaired: boolean;
   readonly initialCode: 'none' | 'console' | 'file';
-  readonly initialCodeFile?: string;
 }
+
+export interface PairingLookup {
+  readonly lookup: string;
+  readonly id: string;
+  readonly origin: PairingOrigin;
+  readonly requestedAt: number;
+  readonly expiresAt: number;
+}
+
+/**
+ * The headless gate (D21): true while the initial pairing code file exists. While it is true the
+ * Runtime MUST refuse every Session start and Turn, every agent execution and every capability
+ * minting, so no agent can read the code.
+ */
+export type HeadlessPairingGate = () => boolean;
 
 export type DevicePairing = ReturnType<typeof createDevicePairing>;
 
@@ -85,23 +107,27 @@ const refuse = (error: DevicePairingErrorCode): PairingRefusal => ({ ok: false, 
 
 /**
  * Device pairing in trusted local mode (D21): pairing requests with an 8-character single-use code,
- * their approval from a paired device, one-time QR tokens, the initial pairing code, and the device
- * credential check of the owner-credential guard. Codes, bindings, tokens and credentials are held
- * as SHA-256 digests and compared in constant time; pending requests and tokens live in memory.
+ * their two-step approval from a paired device (look up the code, then confirm that lookup),
+ * one-time QR tokens, the initial pairing code, and the device credential check of the
+ * owner-credential guard. Codes, bindings, lookups, tokens and credentials are held as SHA-256
+ * digests and compared in constant time; pending requests and tokens live in memory.
  */
 export function createDevicePairing(options: DevicePairingOptions) {
   const now = options.now ?? Date.now;
   const requests = new Map<string, PendingRequest>();
   let qrTokens: QrToken[] = [];
   let initial: { readonly digest: Buffer; readonly source: 'console' | 'file' } | undefined;
+  /** An initial-code redeem is persisting its device: a second one with the code waits its turn. */
+  let initialRedeeming = false;
   const initialCodePath = options.stateDirectory
     ? join(options.stateDirectory, INITIAL_CODE_FILE)
     : undefined;
 
+  /** Unapproved requests go at their expiry; approved ones stay redeemable a TTL after approval. */
   const prune = () => {
     const at = now();
     for (const [id, request] of requests) {
-      if (at >= redeemableUntil(request)) {
+      if (at >= (request.approved ? request.approved.at + PAIRING_TTL_MS : request.expiresAt)) {
         requests.delete(id);
       }
     }
@@ -134,6 +160,7 @@ export function createDevicePairing(options: DevicePairingOptions) {
     }
   };
 
+  /** Persists the device first; only a stored device spends a secret or lifts the gate. */
   const pair = async (
     pairedWith: StoredDevice['pairedWith'],
     origin: PairingOrigin,
@@ -169,9 +196,6 @@ export function createDevicePairing(options: DevicePairingOptions) {
         ...(device ? { device } : {}),
         anyDevicePaired: options.store.list().length > 0,
         initialCode: initial?.source ?? 'none',
-        ...(initial?.source === 'file' && options.initialCodeFileLabel
-          ? { initialCodeFile: options.initialCodeFileLabel }
-          : {}),
       };
     },
 
@@ -183,18 +207,26 @@ export function createDevicePairing(options: DevicePairingOptions) {
       expiresAt: number;
     }> {
       prune();
-      if (requests.size >= PAIRING_LIMITS.pendingRequests) {
+      const fromSource = [...requests.values()].filter(
+        (request) => !request.approved && request.origin.address === origin.address,
+      ).length;
+      if (
+        requests.size >= PAIRING_LIMITS.pendingRequests ||
+        fromSource >= PAIRING_LIMITS.pendingRequestsPerSource
+      ) {
         return refuse('pairing_capacity');
       }
 
       const code = newPairingCode();
       const binding = newSecret();
+      const at = now();
       const request: PendingRequest = {
         id: randomUUID(),
         codeDigest: hashSecret(code),
         bindingDigest: hashSecret(binding),
         origin,
-        expiresAt: now() + PAIRING_TTL_MS,
+        requestedAt: at,
+        expiresAt: at + PAIRING_TTL_MS,
       };
       requests.set(request.id, request);
 
@@ -204,48 +236,76 @@ export function createDevicePairing(options: DevicePairingOptions) {
       };
     },
 
-    /** The status of a request, for the browser that started it only. */
+    /** The status of a request, for the browser that started it only (gone once expired). */
     requestStatus(id: string, binding: string | undefined) {
       const request = requestOf(id, binding);
       if (!request) {
         return undefined;
       }
 
-      const status: 'pending' | 'approved' | 'expired' =
-        request.approvedAt !== undefined
-          ? 'approved'
-          : now() < request.expiresAt
-            ? 'pending'
-            : 'expired';
-
-      return { id: request.id, status, expiresAt: request.expiresAt, origin: request.origin };
+      return {
+        id: request.id,
+        status: request.approved ? ('approved' as const) : ('pending' as const),
+        expiresAt: request.expiresAt,
+        origin: request.origin,
+      };
     },
 
     /**
-     * An owner approves the code a browser shows. A code of no pending request (never started,
-     * expired or already approved) is refused: the owner approves only a request they started.
+     * Approval step one: an owner device looks up the code a browser shows and sees where the
+     * request came from and how old it is. A code of no pending request (never started, expired or
+     * already approved) is refused. The lookup it returns is bound to this device.
      */
-    approve(
-      code: string,
-    ): PairingResult<{ id: string; origin: PairingOrigin; approvedAt: number }> {
+    lookup(code: string, owner: StoredDevice): PairingResult<PairingLookup> {
       prune();
-      const at = now();
       const request = findByDigest(
         requests.values(),
         (entry) => entry.codeDigest,
         normalizePairingCode(code),
       );
-      if (!request || request.approvedAt !== undefined || at >= request.expiresAt) {
+      if (!request || request.approved) {
         return refuse('pairing_code_invalid');
       }
 
-      request.approvedAt = at;
+      const lookup = newSecret();
+      request.lookup = { digest: hashSecret(lookup), deviceId: owner.id };
+
+      return {
+        ok: true,
+        value: {
+          lookup,
+          id: request.id,
+          origin: request.origin,
+          requestedAt: request.requestedAt,
+          expiresAt: request.expiresAt,
+        },
+      };
+    },
+
+    /** Approval step two: the same owner device confirms the lookup it made (single use). */
+    approve(
+      lookup: string,
+      owner: StoredDevice,
+    ): PairingResult<{ id: string; origin: PairingOrigin; approvedAt: number }> {
+      prune();
+      const request = findByDigest(
+        [...requests.values()].filter((entry) => entry.lookup !== undefined),
+        (entry) => entry.lookup!.digest,
+        lookup,
+      );
+      if (!request || request.approved || request.lookup?.deviceId !== owner.id) {
+        return refuse('pairing_lookup_invalid');
+      }
+
+      const at = now();
+      request.lookup = undefined;
+      request.approved = { at, byDeviceId: owner.id };
 
       return { ok: true, value: { id: request.id, origin: request.origin, approvedAt: at } };
     },
 
     /** A one-time token a paired device shows as a QR code for a phone. */
-    issueQrToken(): PairingResult<{ token: string; expiresAt: number }> {
+    issueQrToken(owner: StoredDevice): PairingResult<{ token: string; expiresAt: number }> {
       prune();
       if (qrTokens.length >= PAIRING_LIMITS.qrTokens) {
         return refuse('pairing_capacity');
@@ -253,7 +313,10 @@ export function createDevicePairing(options: DevicePairingOptions) {
 
       const token = newSecret();
       const expiresAt = now() + PAIRING_TTL_MS;
-      qrTokens = [...qrTokens, { digest: hashSecret(token), expiresAt }];
+      qrTokens = [
+        ...qrTokens,
+        { digest: hashSecret(token), expiresAt, issuedByDeviceId: owner.id },
+      ];
 
       return { ok: true, value: { token, expiresAt } };
     },
@@ -272,8 +335,8 @@ export function createDevicePairing(options: DevicePairingOptions) {
             return refuse('pairing_not_found');
           }
 
-          if (request.approvedAt === undefined) {
-            return refuse(now() < request.expiresAt ? 'pairing_not_approved' : 'pairing_not_found');
+          if (!request.approved) {
+            return refuse('pairing_not_approved');
           }
 
           requests.delete(request.id);
@@ -296,14 +359,19 @@ export function createDevicePairing(options: DevicePairingOptions) {
           const current = initial;
           if (
             !current ||
+            initialRedeeming ||
             !digestsEqual(current.digest, hashSecret(normalizePairingCode(input.code)))
           ) {
             return refuse('pairing_secret_invalid');
           }
 
-          initial = undefined;
-
-          return pair('initial-code', origin);
+          // The code is spent only once the device is stored; a failed write leaves it valid.
+          initialRedeeming = true;
+          try {
+            return await pair('initial-code', origin);
+          } finally {
+            initialRedeeming = false;
+          }
         }
       }
     },
@@ -312,8 +380,22 @@ export function createDevicePairing(options: DevicePairingOptions) {
       return options.store.list();
     },
 
+    /** Revokes a device and everything it issued: its open lookups, approvals and QR tokens. */
     async revoke(id: string): Promise<boolean> {
-      return options.store.remove(id);
+      if (!(await options.store.remove(id))) {
+        return false;
+      }
+
+      qrTokens = qrTokens.filter((token) => token.issuedByDeviceId !== id);
+      for (const [requestId, request] of requests) {
+        if (request.approved?.byDeviceId === id) {
+          requests.delete(requestId);
+        } else if (request.lookup?.deviceId === id) {
+          request.lookup = undefined;
+        }
+      }
+
+      return true;
     },
 
     /**
@@ -353,20 +435,11 @@ export function createDevicePairing(options: DevicePairingOptions) {
       initial = { digest: hashSecret(code), source: 'file' };
     },
 
-    /**
-     * The headless gate (D21): true while the initial pairing code file exists. Every agent
-     * execution, capability minting and write Turn MUST be refused while it is true.
-     */
-    headlessPairingPending(): boolean {
-      return initialCodePath !== undefined && initialCodeFileExists(initialCodePath);
-    },
+    /** See {@link HeadlessPairingGate}. */
+    headlessPairingPending: (() =>
+      initialCodePath !== undefined &&
+      initialCodeFileExists(initialCodePath)) satisfies HeadlessPairingGate,
   };
-}
-
-function redeemableUntil(request: PendingRequest): number {
-  return request.approvedAt !== undefined
-    ? request.approvedAt + PAIRING_TTL_MS
-    : request.expiresAt + PAIRING_TTL_MS;
 }
 
 export function pairedDeviceView(

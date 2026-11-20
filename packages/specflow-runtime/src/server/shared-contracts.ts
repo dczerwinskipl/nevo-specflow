@@ -4,6 +4,7 @@ import { Type, type Static, type TSchema, type TUnsafe } from 'typebox';
 import {
   AuthSessionResponseSchema,
   DevicePairingErrorResponseSchema,
+  OwnerCredentialErrorResponseSchema,
 } from '@nevo/specflow-contracts/authentication';
 import {
   AuthenticationRequiredErrorResponseSchema,
@@ -75,6 +76,7 @@ const SHARED_CONTRACTS: readonly TSchema[] = [
   DocumentOperationResultSchema,
   DocumentOperationStatusSchema,
   OperationListResponseSchema,
+  OwnerCredentialErrorResponseSchema,
   RateLimitedErrorResponseSchema,
   RequestErrorResponseSchema,
   SessionCommandResultSchema,

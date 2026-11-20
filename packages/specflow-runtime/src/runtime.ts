@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { join, relative, resolve, sep } from 'node:path';
+import { join, resolve } from 'node:path';
 
 import {
   DOCUMENT_SHUTDOWN_DEADLINE_MS,
@@ -10,12 +10,7 @@ import {
 import Fastify, { type FastifyInstance, type RawServerBase } from 'fastify';
 
 import { loadRuntimeConfig, type LoadRuntimeConfigOptions } from './config/index';
-import {
-  INITIAL_CODE_FILE,
-  createDevicePairing,
-  openFileDeviceStore,
-  type DevicePairing,
-} from './features/auth';
+import { createDevicePairing, openFileDeviceStore, type DevicePairing } from './features/auth';
 import type { RuntimeConfig } from './config/types';
 import {
   configureRuntimeApp,
@@ -125,9 +120,6 @@ async function openDevicePairing(
   const pairing = createDevicePairing({
     store: await openFileDeviceStore(stateDirectory),
     stateDirectory,
-    initialCodeFileLabel: relative(homeRoot, join(stateDirectory, INITIAL_CODE_FILE))
-      .split(sep)
-      .join('/'),
   });
   await pairing.issueInitialCode({
     force: options.pairing?.force === true,

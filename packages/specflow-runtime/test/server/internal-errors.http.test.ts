@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { authCookieNames } from '../../src/features/auth/authentication/http/cookies';
 import { InMemoryAuthenticationStore } from '../../src/features/auth/authentication/store/in-memory-store';
 import { createRuntimeApp } from '../../src/server/app';
+import { withOwnerRequests } from '../support/owner-credential';
 import { INTERNAL_ERROR_CODE, registerRuntimeErrorHandler } from '../../src/server/error-handler';
 import { passwordConfig } from '../auth/support/config';
 import { ARCHETYPE_REQUEST } from '../support/archetype';
@@ -80,6 +81,7 @@ describe('untyped Engine failures on the Create routes', () => {
       },
       { auth: { store }, specs: { engine } },
     );
+    withOwnerRequests(app);
     apps.push(app);
     await app.ready();
 

@@ -158,6 +158,7 @@ export const sessionRouteErrors = {
   create: sessionBodyErrors(
     ...SESSION_ROUTE_REFUSALS,
     'IDEMPOTENCY_CONFLICT',
+    'SESSION_PAIRING_PENDING',
     'MODEL_UNSUPPORTED',
     'CAPABILITY_UNSUPPORTED',
     'PROVIDER_UNAVAILABLE',
@@ -166,7 +167,7 @@ export const sessionRouteErrors = {
   /**
    * The start replay, the message, archive and Turn state (`TURN_CONFLICT` also while a Close holds
    * the Specification's workspace or its workspace changed during the start), the provider
-   * validation, recovery, and a write Turn while the headless initial pairing code is pending.
+   * validation, recovery, and any Turn while the headless initial pairing code is pending.
    */
   start: sessionBodyErrors(
     ...SESSION_ROUTE_REFUSALS,

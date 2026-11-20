@@ -1755,6 +1755,12 @@
               {
                 "type": "string",
                 "enum": [
+                  "pairing_lookup_invalid"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
                   "pairing_secret_invalid"
                 ]
               },
@@ -3421,6 +3427,31 @@
           },
           "generatedAt": {
             "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "OwnerCredentialErrorResponse": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "owner_credential_required"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "owner_request_refused"
+                ]
+              }
+            ]
           }
         },
         "additionalProperties": false
@@ -11084,10 +11115,6 @@
                               ]
                             }
                           ]
-                        },
-                        "initialCodeFile": {
-                          "type": "string",
-                          "maxLength": 256
                         }
                       },
                       "additionalProperties": false
@@ -11142,6 +11169,11 @@
         "summary": "List the paired devices",
         "tags": [
           "Authentication"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
         ],
         "responses": {
           "200": {
@@ -11234,6 +11266,26 @@
               }
             }
           },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticationRequiredErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                }
+              }
+            }
+          },
           "409": {
             "description": "Device pairing is not used: authentication is required (the session is the owner credential), or this is the demo Runtime (`pairing_not_used`).",
             "content": {
@@ -11303,6 +11355,11 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "204": {
             "description": "Revoked: the device credential no longer counts. No body."
@@ -11313,6 +11370,26 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticationRequiredErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
                 }
               }
             }
@@ -11842,7 +11919,7 @@
     "/api/auth/pairing/approve": {
       "post": {
         "operationId": "postAuthPairingApprove",
-        "summary": "Approve the pairing code another browser shows",
+        "summary": "Approve a looked-up pairing request",
         "tags": [
           "Authentication"
         ],
@@ -11853,13 +11930,14 @@
               "schema": {
                 "type": "object",
                 "required": [
-                  "code"
+                  "lookup"
                 ],
                 "properties": {
-                  "code": {
+                  "lookup": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 32
+                    "maxLength": 128,
+                    "pattern": "^[A-Za-z0-9_-]+$"
                   }
                 },
                 "additionalProperties": false
@@ -11867,6 +11945,11 @@
             }
           }
         },
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success.",
@@ -11924,8 +12007,184 @@
               }
             }
           },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticationRequiredErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
-            "description": "No pending request has this code (`pairing_code_invalid`): the owner did not start it, it expired or it is already approved.",
+            "description": "This device made no open lookup with this value (`pairing_lookup_invalid`): unknown, used, expired, or made by another device.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevicePairingErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Device pairing is not used: authentication is required (the session is the owner credential), or this is the demo Runtime (`pairing_not_used`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevicePairingErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many pairing attempts from this source (10 per minute).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/pairing/lookup": {
+      "post": {
+        "operationId": "postAuthPairingLookup",
+        "summary": "Look up the pairing request of the code another browser shows",
+        "tags": [
+          "Authentication"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 32
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "lookup",
+                    "id",
+                    "origin",
+                    "requestedAt",
+                    "expiresAt"
+                  ],
+                  "properties": {
+                    "lookup": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128,
+                      "pattern": "^[A-Za-z0-9_-]+$"
+                    },
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64,
+                      "pattern": "^[0-9a-f-]+$"
+                    },
+                    "origin": {
+                      "type": "object",
+                      "required": [
+                        "address"
+                      ],
+                      "properties": {
+                        "address": {
+                          "type": "string",
+                          "maxLength": 64
+                        },
+                        "userAgent": {
+                          "type": "string",
+                          "maxLength": 256
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "requestedAt": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`, or `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY` for a malformed or empty JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticationRequiredErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No pending request has this code (`pairing_code_invalid`): never started, expired or already approved.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11976,6 +12235,11 @@
             }
           }
         },
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "201": {
             "description": "Created.",
@@ -12011,6 +12275,26 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticationRequiredErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
                 }
               }
             }
@@ -12325,12 +12609,6 @@
                           "enum": [
                             "approved"
                           ]
-                        },
-                        {
-                          "type": "string",
-                          "enum": [
-                            "expired"
-                          ]
                         }
                       ]
                     },
@@ -12373,7 +12651,7 @@
             }
           },
           "404": {
-            "description": "No request of this browser has this id (`pairing_not_found`): never started here, redeemed, or expired long ago.",
+            "description": "No request of this browser has this id (`pairing_not_found`): never started here, redeemed, or expired.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13097,6 +13375,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthenticationRequiredErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
                 }
               }
             }
@@ -14519,17 +14807,24 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
           },
           "409": {
-            "description": "Conflicts with the current state of the resource: a `session_error` with `code` `IDEMPOTENCY_CONFLICT`.",
+            "description": "Conflicts with the current state of the resource: a `session_error` with `code` one of `IDEMPOTENCY_CONFLICT`, `SESSION_PAIRING_PENDING`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -15590,11 +15885,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -15749,11 +16051,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -17206,11 +17515,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -17392,11 +17708,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -20638,11 +20961,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -20859,11 +21189,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -21065,11 +21402,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -21294,11 +21638,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -22598,11 +22949,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -23466,11 +23824,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -25946,11 +26311,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -26450,11 +26822,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -26915,11 +27294,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -27119,11 +27505,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -27371,11 +27764,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -27730,11 +28130,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -27914,11 +28321,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -29826,11 +30240,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -30162,11 +30583,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -30733,11 +31161,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -31094,11 +31529,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -31364,11 +31806,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -31384,7 +31833,7 @@
             }
           },
           "409": {
-            "description": "Conflicts with the current state of the resource: a `session_error` with `code` `IDEMPOTENCY_CONFLICT`.",
+            "description": "Conflicts with the current state of the resource: a `session_error` with `code` one of `IDEMPOTENCY_CONFLICT`, `SESSION_PAIRING_PENDING`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -35234,11 +35683,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -39453,11 +39909,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -39620,11 +40083,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -39860,11 +40330,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -40406,11 +40883,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -40993,11 +41477,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -42292,11 +42783,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -43670,11 +44168,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -44326,11 +44831,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -44655,11 +45167,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -45337,11 +45856,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -46699,11 +47225,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -46899,11 +47432,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -47547,11 +48087,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -47868,11 +48415,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -53369,11 +53923,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -54070,11 +54631,18 @@
             }
           },
           "403": {
-            "description": "The principal lacks a required capability.",
+            "description": "The principal lacks a required capability. The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                    }
+                  ]
                 }
               }
             }

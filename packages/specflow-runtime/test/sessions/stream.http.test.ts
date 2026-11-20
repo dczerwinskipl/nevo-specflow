@@ -7,6 +7,7 @@ import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SessionSnapshot } from '@nevo/specflow-contracts/sessions';
 import { createRuntimeApp } from '../../src/server/app';
+import { withOwnerRequests } from '../support/owner-credential';
 import { InMemoryAuthenticationStore } from '../../src/features/auth/authentication/store/in-memory-store';
 import { passwordConfig } from '../auth/support/config';
 
@@ -80,6 +81,7 @@ async function setup() {
       { auth: { store }, sessions: { storage: { directory, projectId: 'project' } } },
     );
   app = await reopen();
+  withOwnerRequests(app);
   const cookie = 'nevo_session_4318=' + authId;
   const created = await app.inject({
     method: 'POST',
@@ -166,6 +168,7 @@ describe('live Session stream authorization and replay', { timeout: 20000 }, () 
     db.prepare('UPDATE events SET at=0 WHERE session=?').run(sessionId);
     db.close();
     app = await reopen();
+    withOwnerRequests(app);
     const response = await app.inject({
       url: '/api/sessions/' + sessionId + '/events?after=0',
       headers: { cookie },

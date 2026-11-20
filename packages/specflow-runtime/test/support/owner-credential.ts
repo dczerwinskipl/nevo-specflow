@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 
+import { OWNER_REQUEST_HEADER } from '@nevo/specflow-contracts/authentication';
 import type { FastifyInstance } from 'fastify';
 
 import type { RuntimeConfig } from '../../src/config/types';
@@ -44,25 +45,31 @@ export function testOwnerDevice(
   };
 }
 
-/** Every `inject` of the app carries the owner device cookie (a request's own cookies win). */
-export function withOwnerCookie<App extends FastifyInstance>(
+/**
+ * Every `inject` of the app is an owner request of the Runtime's own page: it carries the
+ * `X-Nevo-Owner` header and, when given, the owner device cookie (a request's own values win).
+ */
+export function withOwnerRequests<App extends FastifyInstance>(
   app: App,
-  cookieName: string,
-  credential: string,
+  cookie?: { readonly name: string; readonly credential: string },
 ): App {
   const inject = app.inject.bind(app) as (options: unknown) => unknown;
-  (app as { inject: unknown }).inject = (options: unknown) =>
-    inject(
-      typeof options === 'object' && options !== null
-        ? {
-            ...options,
-            cookies: {
-              [cookieName]: credential,
-              ...(options as { cookies?: Record<string, string> }).cookies,
-            },
-          }
-        : options,
-    );
+  (app as { inject: unknown }).inject = (options: unknown) => {
+    if (typeof options !== 'object' || options === null) {
+      return inject(options);
+    }
+
+    const own = options as {
+      cookies?: Record<string, string>;
+      headers?: Record<string, string>;
+    };
+
+    return inject({
+      ...options,
+      headers: { [OWNER_REQUEST_HEADER]: '1', ...own.headers },
+      ...(cookie ? { cookies: { [cookie.name]: cookie.credential, ...own.cookies } } : {}),
+    });
+  };
 
   return app;
 }
@@ -78,5 +85,5 @@ export async function createOwnerRuntimeApp(
     auth: { ...dependencies.auth, devicePairing: owner.devicePairing },
   });
 
-  return withOwnerCookie(app, owner.cookieName, owner.credential);
+  return withOwnerRequests(app, { name: owner.cookieName, credential: owner.credential });
 }

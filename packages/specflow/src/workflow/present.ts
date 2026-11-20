@@ -13,6 +13,7 @@ import type {
   StartBlocker,
   StartResult,
   StartableStep,
+  StepContext,
   WorkflowSubject,
 } from '@nevo/specflow-engine';
 
@@ -268,6 +269,46 @@ export function startLines(result: StartResult): string[] {
 
   if (context.finish.tasks) {
     lines.push(`Finish needs: --tasks-file <path>. ${context.finish.tasks.rule}`);
+  }
+
+  return lines;
+}
+
+/** `workflow context`: what the active attempt works from; references by digest, never content. */
+export function contextLines(context: StepContext): string[] {
+  const lines = [
+    `Context: ${subjectLabel(context.subject)}, step ${named(context.step)} (attempt ${context.attempt})`,
+  ];
+  const agent = context.agent;
+  if (!agent) {
+    return lines;
+  }
+
+  lines.push(`Documents (${String(agent.documents.length)}):`);
+  for (const document of agent.documents) {
+    lines.push(
+      `  ${document.id} [${document.type}] ${document.path}${document.templateOnly ? ' (template only)' : ''}`,
+    );
+  }
+
+  lines.push(`Document types you may register (documents add --type <id>):`);
+  for (const type of agent.documentTypes) {
+    lines.push(
+      `  ${type.id}: ${type.title}. Use when ${type.useWhen}${type.defaultFilename ? ` (default ${type.defaultFilename})` : ''}`,
+    );
+  }
+
+  if (agent.taskContext) {
+    lines.push(`Task context (digest ${agent.taskContext.digest}):`);
+    for (const entry of agent.taskContext.entries) {
+      lines.push(
+        entry.kind === 'instructions'
+          ? `  instructions${entry.required ? '' : ' (optional)'}: ${entry.text}`
+          : `  ${entry.kind} ${entry.ref}${entry.path !== undefined ? ` -> ${entry.path}` : ''}` +
+              `${entry.sha256 !== undefined ? ` sha256:${entry.sha256.slice(0, 12)} ${String(entry.bytes)} bytes` : ''}` +
+              `${entry.required ? '' : ' (optional)'}${entry.missing ? ' (missing)' : ''}`,
+      );
+    }
   }
 
   return lines;

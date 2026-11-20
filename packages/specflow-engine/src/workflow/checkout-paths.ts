@@ -1,4 +1,4 @@
-import { readdir, realpath } from 'node:fs/promises';
+import { lstat, readdir, realpath } from 'node:fs/promises';
 import { isAbsolute, join, posix, relative, sep } from 'node:path';
 
 import { isAbsent } from '../specs/document-rules/errno';
@@ -114,4 +114,112 @@ export async function checkoutPathExists(
   }
 
   return false;
+}
+
+/**
+ * The files a `path` context reference names in a checkout, as sorted checkout-relative paths: the
+ * file itself, the files below a folder, or the files a glob matches (a matched folder counts for the
+ * files below it). Same rules as {@link checkoutPathExists} (no symlink escapes, no `.git` or
+ * `node_modules`, a bounded walk). `undefined`: the reference does not resolve.
+ */
+export async function checkoutFilesOf(
+  root: string,
+  path: string,
+  limit = CONTEXT_PATH_ENTRIES_MAX,
+): Promise<string[] | undefined> {
+  if (!(await checkoutPathExists(root, path, limit))) {
+    return undefined;
+  }
+
+  const rootReal = await realpath(root);
+  let visited = 0;
+  const files = new Set<string>();
+  const tooMany = () =>
+    new WorkflowError(
+      'WORKFLOW_INPUT_INVALID',
+      `The path "${path}" names too many entries (more than ${String(limit)}); name a narrower path.`,
+    );
+  const addEntry = async (relativePath: string): Promise<void> => {
+    const absolute = join(root, ...relativePath.split('/'));
+    if (!(await resolvesInside(rootReal, absolute))) {
+      return;
+    }
+
+    if ((await lstat(absolute)).isFile()) {
+      files.add(relativePath);
+
+      return;
+    }
+
+    const pending = [relativePath];
+    while (pending.length > 0) {
+      const folder = pending.shift() ?? '';
+      for (const entry of await readdir(join(root, ...folder.split('/')), {
+        withFileTypes: true,
+      })) {
+        visited += 1;
+        if (visited > limit) {
+          throw tooMany();
+        }
+
+        const child = `${folder}/${entry.name}`;
+        if (entry.isFile()) {
+          files.add(child);
+        } else if (entry.isDirectory() && !SKIPPED_FOLDERS.has(entry.name)) {
+          pending.push(child);
+        }
+      }
+    }
+  };
+
+  if (!GLOB_CHARACTERS.test(path)) {
+    await addEntry(path);
+
+    return [...files].sort();
+  }
+
+  const segments = path.split('/');
+  const literal = segments.slice(
+    0,
+    segments.findIndex((segment) => GLOB_CHARACTERS.test(segment)),
+  );
+  const matches: string[] = [];
+  const pending = [literal.join('/')];
+  while (pending.length > 0) {
+    const folder = pending.shift() ?? '';
+    let entries;
+    try {
+      entries = await readdir(join(root, ...(folder === '' ? [] : folder.split('/'))), {
+        withFileTypes: true,
+      });
+    } catch (error) {
+      if (isAbsent(error)) {
+        continue;
+      }
+
+      throw error;
+    }
+
+    for (const entry of entries) {
+      visited += 1;
+      if (visited > limit) {
+        throw tooMany();
+      }
+
+      const relativePath = folder === '' ? entry.name : `${folder}/${entry.name}`;
+      if (posix.matchesGlob(relativePath, path)) {
+        matches.push(relativePath);
+      }
+
+      if (entry.isDirectory() && !entry.isSymbolicLink() && !SKIPPED_FOLDERS.has(entry.name)) {
+        pending.push(relativePath);
+      }
+    }
+  }
+
+  for (const match of matches) {
+    await addEntry(match);
+  }
+
+  return [...files].sort();
 }

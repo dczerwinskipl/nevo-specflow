@@ -1,4 +1,4 @@
-import { WORKFLOW_EFFECTS } from '@nevo/specflow-contracts/documents';
+import { WORKFLOW_EFFECTS, type WorkflowEffect } from '@nevo/specflow-contracts/documents';
 import { describe, expect, it } from 'vitest';
 
 import { effectAuthorityOf, requiresOwnerConfirmation } from './effect-authority';
@@ -21,6 +21,12 @@ describe('effect authority', () => {
     }
 
     expect(effectAuthorityOf('approve-draft-tasks')).toBe('owner');
+  });
+
+  it('fails closed: an effect without an agent classification needs the owner', () => {
+    const unknown = 'future-effect' as unknown as WorkflowEffect;
+
+    expect(requiresOwnerConfirmation(transition({ effects: [unknown] }))).toBe(true);
   });
 
   it.each([

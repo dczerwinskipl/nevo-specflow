@@ -28,7 +28,7 @@ function transitionIssues(
       issues.push(
         invalid(
           `${location}/confirmation`,
-          'Only a transition of a work step can require the owner confirmation.',
+          'Only a transition of a work step can require the owner confirmation. Remove `confirmation` or move it to a work-step transition.',
         ),
       );
     }
@@ -222,7 +222,7 @@ export function independentSessionIssues(
       return [
         invalid(
           `/steps/${String(stepIndex)}/transitions/${String(index)}/session`,
-          `The step "${target.id}" is done by the independent archetype "${archetype}", which always starts a fresh Session.`,
+          `The step "${target.id}" is done by the independent archetype "${archetype}", which always starts a fresh Session. Use "session: fresh".`,
         ),
       ];
     }),

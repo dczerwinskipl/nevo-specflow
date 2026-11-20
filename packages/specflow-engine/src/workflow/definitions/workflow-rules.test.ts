@@ -5,7 +5,8 @@ import {
 import { Value } from 'typebox/value';
 import { describe, expect, it } from 'vitest';
 
-import { parseWorkflowFile } from './kinds';
+import type { DefinitionIssue, ReferenceLookup } from '../../specs/definitions/kind-registry';
+import { parseWorkflowFile, workflowKind } from './kinds';
 import type {
   SpecFlowAnnotations,
   WorkflowDefinition,
@@ -91,6 +92,19 @@ describe('independent archetypes and owner confirmation', () => {
   it('accepts a reuse into other archetypes and a fresh Session into an independent one', () => {
     expect(independentSessionIssues(reusing(), () => false)).toEqual([]);
     expect(independentSessionIssues(base(), () => true)).toEqual([]);
+  });
+
+  it('the workflow kind refuses the reuse only for a valid independent archetype', () => {
+    const check = (lookup: ReferenceLookup) =>
+      workflowKind.check(reusing(), { lookup: () => lookup }) as DefinitionIssue[];
+    const independent = { state: 'valid', entity: { id: 'reviewer', independent: true } } as const;
+
+    expect(check(independent)).toEqual([
+      expect.objectContaining({ location: '/steps/0/transitions/0/session' }),
+    ]);
+    expect(check({ state: 'valid', entity: { id: 'reviewer' } })).toEqual([]);
+    expect(check({ state: 'missing' })).toEqual([]);
+    expect(check({ state: 'invalid' })).toEqual([]);
   });
 
   it('parses the confirmation marker and omits it when absent', () => {

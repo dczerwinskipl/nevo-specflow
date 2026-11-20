@@ -24,6 +24,6 @@ export function requiresOwnerConfirmation(transition: WorkflowTransition): boole
   const { confirmation, effects } = transition.annotations;
 
   return (
-    confirmation === 'owner' || effects.some((effect) => effectAuthorityOf(effect) === 'owner')
+    confirmation === 'owner' || effects.some((effect) => effectAuthorityOf(effect) !== 'agent')
   );
 }

@@ -8,6 +8,7 @@ import {
   createInvocationScope,
   launchOwnedProcess,
   projectProviderEnvironment,
+  withRuntimeEntries,
   type ProviderEnvironment,
 } from '../process';
 import { claudeLoss, createClaudeOperation } from './operation';
@@ -517,9 +518,9 @@ export function createClaudeDriver(
               executable: installation.executable,
               cwd: workspace,
               args: claudeArguments(invocation.selection, invocation.providerContext),
-              environment,
+              environment: withRuntimeEntries(environment, invocation.runtimeEnvironment?.values),
               signal: operationSignal,
-              secrets: installation.secrets,
+              secrets: [...installation.secrets, ...(invocation.runtimeEnvironment?.secrets ?? [])],
               ...(invocation.recordProcess ? { record: invocation.recordProcess } : {}),
             });
           },

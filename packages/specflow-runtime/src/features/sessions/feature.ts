@@ -21,6 +21,7 @@ import { createEngineSessionEffects, workspaceExecutionIdentity } from './effect
 import type { SessionCoordinator } from './lifecycle/coordinator';
 import { createSpecificationWorkspaceResolver } from './workspace/specification-workspace';
 import { withheldProviderDescriptor } from './providers/withheld';
+import type { InvocationCapabilities } from './lifecycle/invocation-capabilities';
 
 /**
  * The registered Sessions runtime, read at request time by the features composed over it (the
@@ -48,6 +49,8 @@ export function createSessionsFeature(
     };
     /** Session starts and Turns are refused while this answers true (Auth's headless pairing gate). */
     agentWorkPaused?: () => boolean;
+    /** The invocation capabilities of write Turns (the agent-execution feature, D11). */
+    invocationCapabilities?: InvocationCapabilities;
   } = {},
 ): RuntimeFeature & { readonly runtime: SessionsRuntime } {
   let registered: SessionCoordinator | undefined;
@@ -175,6 +178,7 @@ export function createSessionsFeature(
               : undefined,
             options.workspaceOccupancy,
             options.agentWorkPaused,
+            options.invocationCapabilities,
           )
         : undefined;
       if (coordinator) {

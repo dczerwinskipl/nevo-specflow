@@ -39,6 +39,7 @@ import {
   type DocumentsFeatureDependencies,
 } from '../features/documents';
 import { createWorkflowFeature, type WorkflowFeatureDependencies } from '../features/workflow';
+import { createAgentExecutionFeature } from '../features/agent-execution';
 import {
   createDocsFeature,
   openProjectDocumentLookup,
@@ -233,10 +234,20 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       ? (dependencies.auth?.devicePairing ??
         createDevicePairing({ store: createMemoryDeviceStore() }))
       : undefined;
+  // Project mode: a write Turn of a Specification's Session gets an invocation capability and
+  // writes through the local agent broker (D11); none is minted while pairing is pending (D21).
+  const agentExecution =
+    mode === 'project' && engine
+      ? createAgentExecutionFeature({
+          engine,
+          ...(devicePairing ? { writeTurnsPaused: devicePairing.headlessPairingPending } : {}),
+        })
+      : undefined;
   const sessionsFeature = createSessionsFeature({
     ...(engine ? { engine } : {}),
     workspaceOccupancy,
     ...(devicePairing ? { agentWorkPaused: devicePairing.headlessPairingPending } : {}),
+    ...(agentExecution ? { invocationCapabilities: agentExecution.capabilities } : {}),
     config: mode === 'project' ? config.sessions : undefined,
     storage:
       dependencies.sessions?.storage ??
@@ -388,6 +399,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       projectId,
     }),
     sessionsFeature,
+    ...(agentExecution ? [agentExecution] : []),
     createSessionAssociationsFeature({
       associations,
       targets: associationTargets,

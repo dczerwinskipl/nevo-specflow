@@ -18,6 +18,11 @@ export type {
 } from './reference-owner';
 export type { SessionCoordinator } from './lifecycle/coordinator';
 export type {
+  InvocationCapabilities,
+  InvocationCapabilityBinding,
+  InvocationGrant,
+} from './lifecycle/invocation-capabilities';
+export type {
   SessionIdentity,
   SessionListRow,
   SessionListScan,

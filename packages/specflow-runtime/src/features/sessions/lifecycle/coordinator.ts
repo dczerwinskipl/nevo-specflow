@@ -30,6 +30,7 @@ import { validateDriverFact } from '../providers/facts';
 import { nativeStopEvidence } from '../providers/process';
 import { executionBinding, type SessionEffects } from './effects';
 import { createManagedInvocation } from './managed-invocation';
+import type { InvocationCapabilities } from './invocation-capabilities';
 import { createSessionTelemetryService } from './telemetry';
 
 interface ActiveInvocation {
@@ -79,6 +80,8 @@ export function createSessionCoordinator(
    * code file exists (D21), so no agent runs, even read-only, while that code can be read.
    */
   agentWorkPaused?: () => boolean,
+  /** Gives a write Turn of a Specification's Session its invocation capability (D11). */
+  invocationCapabilities?: InvocationCapabilities,
 ) {
   const refuseWhilePairingPending = () => {
     if (agentWorkPaused?.()) {
@@ -713,6 +716,7 @@ export function createSessionCoordinator(
                 binding: binding!,
                 driver,
                 effects: effects!,
+                ...(invocationCapabilities ? { capabilities: invocationCapabilities } : {}),
                 signal: controller.signal,
                 stop: () => controller.abort('persistence-loss'),
                 persist: emit,

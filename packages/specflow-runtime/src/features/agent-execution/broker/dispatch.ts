@@ -1,0 +1,323 @@
+import {
+  AGENT_BROKER_PROTOCOL,
+  AgentBrokerRequestIdSchema,
+  AgentBrokerRequestSchema,
+  type AgentBrokerError,
+  type AgentBrokerRequest,
+  type AgentBrokerResponse,
+  type AgentBrokerResult,
+} from '@nevo/specflow-contracts/runtime';
+import type {
+  CreateDocumentsInput,
+  DocumentOperationInput,
+  DocumentOperationResult,
+  SaveInput,
+  SaveResult,
+} from '@nevo/specflow-contracts/documents';
+import { DocumentError, admitAgentOperation, type OwnedExecution } from '@nevo/specflow-engine';
+import { Type, type TSchema } from 'typebox';
+import { Value } from 'typebox/value';
+
+import type { CapabilityBinding, CapabilityRegistry } from '../capability/registry';
+import { brokerOperationId } from './operation-id';
+
+/** The Engine document use cases the broker calls: the same ones the UI's routes call. */
+export interface BrokerDocuments {
+  /** The workspace root the Specification lives in now, or `undefined` when it is not available. */
+  workspaceOf(specId: string): Promise<string | undefined>;
+  create(
+    specId: string,
+    input: CreateDocumentsInput,
+    owned: OwnedExecution,
+  ): Promise<DocumentOperationResult>;
+  save(
+    specId: string,
+    documentId: string,
+    input: SaveInput,
+    owned: OwnedExecution,
+  ): Promise<SaveResult>;
+  operate(
+    specId: string,
+    input: DocumentOperationInput,
+    owned: OwnedExecution,
+  ): Promise<DocumentOperationResult>;
+}
+
+/**
+ * Field names only the broker decides. A request naming one (at any depth) is refused, never
+ * silently ignored: the actor, the claim, the owner, the operation, invocation, Session and Turn
+ * ids, the workspace and the scope come from the capability alone (D11 point 3, invariant 2).
+ */
+const DECIDED_BY_BROKER = new Set([
+  'operationid',
+  'invocationid',
+  'sessionid',
+  'turnid',
+  'attempt',
+  'workspace',
+  'workspaceid',
+  'workspaceroot',
+  'scope',
+  'trust',
+  'principal',
+]);
+const DECIDED_PREFIXES = ['actor', 'claim', 'owner', 'ignoreclaim', 'ownedexecution', 'authorit'];
+
+function decidedField(value: unknown, depth = 0): string | undefined {
+  if (depth > 32 || value === null || typeof value !== 'object') {
+    return undefined;
+  }
+
+  for (const [key, entry] of Object.entries(value)) {
+    const normalized = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const exempt = depth === 0 && key === 'capability';
+    if (
+      !exempt &&
+      (DECIDED_BY_BROKER.has(normalized) ||
+        DECIDED_PREFIXES.some((prefix) => normalized.startsWith(prefix)))
+    ) {
+      return key;
+    }
+
+    const nested = decidedField(entry, depth + 1);
+    if (nested !== undefined) {
+      return nested;
+    }
+  }
+
+  return undefined;
+}
+
+/** What must hold before the capability is looked at; the operation is checked after it. */
+const EnvelopeSchema = Type.Object({
+  protocol: Type.Literal(AGENT_BROKER_PROTOCOL),
+  capability: Type.String({ minLength: 1, maxLength: 512 }),
+  requestId: AgentBrokerRequestIdSchema,
+  operation: Type.Object({ name: Type.String({ minLength: 1, maxLength: 64 }) }),
+});
+
+function firstError(schema: TSchema, value: unknown): string {
+  const first = Value.Errors(schema, value)[0];
+
+  return first ? ` (${first.instancePath || '/'}: ${first.message})` : '';
+}
+
+/** `code`: an {@link AgentBrokerErrorCode}, or the Engine's document error code it passes on. */
+const refusal = (
+  code: string,
+  message: string,
+  details?: Record<string, unknown>,
+): AgentBrokerResponse => {
+  const error: AgentBrokerError = {
+    code,
+    message,
+    ...(details !== undefined ? { details } : {}),
+  };
+
+  return { ok: false, error };
+};
+
+const CAPABILITY_REFUSALS = {
+  unknown:
+    'This command is not part of a running agent Turn of this Runtime (no valid agent capability). Ask the owner to make the change.',
+  'not-dispatched': 'The agent Turn has not started yet; retry once it runs.',
+  ended:
+    'The agent Turn this command belonged to has ended; its capability is no longer valid. Ask the owner to make the change.',
+} as const;
+
+/**
+ * The broker's decision for one request frame. Order: the frame parses; no field names what only
+ * the broker decides; the shape is this protocol's; the capability is a running Turn's; the
+ * operation is in its scope; the Specification still lives in the claimed workspace. Only then is
+ * an Engine use case called, as the Turn's owned execution, with an operation id derived from the
+ * invocation and the client's request id.
+ */
+export function createBrokerDispatcher(options: {
+  registry: CapabilityRegistry;
+  documents: BrokerDocuments;
+}) {
+  const { registry, documents } = options;
+
+  async function run(
+    request: AgentBrokerRequest,
+    binding: CapabilityBinding,
+  ): Promise<AgentBrokerResponse> {
+    const operation = request.operation;
+    if (operation.name === 'scope.describe') {
+      return {
+        ok: true,
+        value: {
+          operation: 'scope.describe',
+          scope: {
+            kind: binding.scope.kind,
+            specId: binding.scope.specId,
+            operations: ['scope.describe', ...binding.scope.operations],
+          },
+        },
+      };
+    }
+
+    const decision = admitAgentOperation(binding.scope, {
+      operation: operation.name,
+      specId: operation.specId,
+    });
+    if (!decision.admitted) {
+      return refusal('AGENT_SCOPE_REFUSED', decision.message, {
+        reason: decision.reason,
+        operation: operation.name,
+      });
+    }
+
+    if ((await documents.workspaceOf(operation.specId)) !== binding.workspace) {
+      return refusal(
+        'AGENT_SCOPE_REFUSED',
+        "The Specification no longer lives in this Turn's workspace; stop and tell the owner.",
+        { reason: 'workspace-changed', operation: operation.name },
+      );
+    }
+
+    const operationId = brokerOperationId(binding.invocationId, request.requestId);
+    // Recorded before the Engine runs, so a write that lands is always the author's own.
+    registry.recordAuthored(binding.author, operationId);
+    const owned: OwnedExecution = {
+      operationId: binding.invocationId,
+      authored: (id) => registry.isAuthored(binding.author, id),
+    };
+    let value: AgentBrokerResult;
+    switch (operation.name) {
+      case 'documents.create':
+        value = {
+          operation: operation.name,
+          result: await documents.create(
+            operation.specId,
+            {
+              operationId,
+              documents: operation.documents,
+              ...(operation.folders !== undefined ? { folders: operation.folders } : {}),
+              ...(operation.catalogueRevision !== undefined
+                ? { catalogueRevision: operation.catalogueRevision }
+                : {}),
+            },
+            owned,
+          ),
+        };
+        break;
+      case 'documents.save':
+        value = {
+          operation: operation.name,
+          result: await documents.save(
+            operation.specId,
+            operation.documentId,
+            {
+              operationId,
+              content: operation.content,
+              expectedRevision: operation.expectedRevision,
+            },
+            owned,
+          ),
+        };
+        break;
+      case 'documents.classify':
+        value = {
+          operation: operation.name,
+          result: await documents.operate(
+            operation.specId,
+            {
+              operationId,
+              action: 'classify',
+              kind: 'document',
+              documentId: operation.documentId,
+              type: operation.type,
+              expectedRevision: operation.expectedRevision,
+            },
+            owned,
+          ),
+        };
+        break;
+    }
+
+    return { ok: true, value };
+  }
+
+  return {
+    /** Never throws: every failure is a response the agent can read. */
+    async handle(frame: string): Promise<AgentBrokerResponse> {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(frame);
+      } catch {
+        return refusal('AGENT_REQUEST_INVALID', 'The request is not JSON.');
+      }
+
+      const decided = decidedField(parsed);
+      if (decided !== undefined) {
+        return refusal(
+          'AGENT_REQUEST_REFUSED',
+          `The request names "${decided}", which only the Runtime decides (the actor, claim, owner, operation and scope come from the agent capability). Send the command without it.`,
+          { field: decided },
+        );
+      }
+
+      const capability = (parsed as { capability?: unknown } | null)?.capability;
+      if (typeof capability !== 'string' || capability.length === 0) {
+        return refusal('AGENT_CAPABILITY_INVALID', CAPABILITY_REFUSALS.unknown, {
+          reason: 'unknown',
+        });
+      }
+
+      if (!Value.Check(EnvelopeSchema, parsed)) {
+        return refusal(
+          'AGENT_REQUEST_INVALID',
+          `The request is not a valid agent broker request${firstError(EnvelopeSchema, parsed)}.`,
+        );
+      }
+
+      const checked = registry.check(parsed.capability);
+      if (checked.status !== 'valid') {
+        return refusal('AGENT_CAPABILITY_INVALID', CAPABILITY_REFUSALS[checked.status], {
+          reason: checked.status,
+        });
+      }
+
+      // A write the protocol or the scope does not know is the scope's refusal, never a fallback.
+      const name = parsed.operation.name;
+      if (
+        name !== 'scope.describe' &&
+        !checked.binding.scope.operations.some((op) => op === name)
+      ) {
+        const decision = admitAgentOperation(checked.binding.scope, {
+          operation: name,
+          specId: checked.binding.scope.specId,
+        });
+
+        return refusal(
+          'AGENT_SCOPE_REFUSED',
+          decision.admitted ? 'The operation is not in scope.' : decision.message,
+          { reason: 'operation-not-in-scope', operation: name },
+        );
+      }
+
+      if (!Value.Check(AgentBrokerRequestSchema, parsed)) {
+        return refusal(
+          'AGENT_REQUEST_INVALID',
+          `The ${name} request is not valid${firstError(AgentBrokerRequestSchema, parsed)}.`,
+        );
+      }
+
+      try {
+        return await run(parsed, checked.binding);
+      } catch (error) {
+        if (error instanceof DocumentError) {
+          return refusal(error.code, error.message, error.details);
+        }
+
+        return refusal(
+          'AGENT_BROKER_UNAVAILABLE',
+          'The Runtime could not run the operation; tell the owner.',
+        );
+      }
+    },
+  };
+}
+
+export type BrokerDispatcher = ReturnType<typeof createBrokerDispatcher>;

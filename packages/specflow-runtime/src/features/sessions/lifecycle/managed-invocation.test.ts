@@ -256,3 +256,93 @@ it('refuses to cross the dispatch barrier before the process evidence and the cl
   expect(f.claim.dispatch).not.toHaveBeenCalled();
   expect(f.phase()).toBe('settled');
 });
+
+/** A Turn of a Session associated with Specification S1. */
+function inSpecification(f: ReturnType<typeof fixture>) {
+  f.options.invocation.executionContext = {
+    ...f.options.invocation.executionContext,
+    specId: 'S1',
+  } as Invocation['executionContext'];
+}
+
+it('gives a Specification Turn its capability: active once dispatched, revoked before the claim settles, redacted from stored facts', async () => {
+  const f = fixture();
+  inSpecification(f);
+  const secret = 'nvcap_' + 'x'.repeat(43);
+  const grant = {
+    environment: { NEVO_AGENT_CAPABILITY: secret, NEVO_AGENT_BROKER: '/broker' },
+    secrets: [secret],
+    activate: vi.fn(() => f.order.push('capability-active')),
+    // Idempotent, as the port requires: the first revocation counts.
+    revoke: vi.fn(() => {
+      if (!f.order.includes('capability-revoked')) {
+        f.order.push('capability-revoked');
+      }
+    }),
+    redact: (text: string) => text.split(secret).join('[redacted]'),
+  };
+  const mint = vi.fn(() => {
+    f.order.push('capability-minted');
+
+    return Promise.resolve(grant);
+  });
+  f.start.mockImplementation((invocation, emit) => ({
+    done: (async () => {
+      expect(invocation.runtimeEnvironment).toEqual({
+        values: grant.environment,
+        secrets: [secret],
+      });
+      await launched(invocation);
+      await emit({
+        kind: 'text',
+        key: 'tool-1',
+        channel: 'tool-output',
+        text: 'NEVO_AGENT_CAPABILITY=' + secret,
+      });
+      await emit(f.result);
+    })(),
+    settlement: Promise.resolve({
+      process: 'stopped' as const,
+      source: 'native-result' as const,
+      result: f.result,
+    }),
+    respond: () => Promise.resolve({ deliveredKeys: [] }),
+  }));
+  await createManagedInvocation({ ...f.options, capabilities: { mint } }).done;
+  expect(mint).toHaveBeenCalledWith(
+    expect.objectContaining({ specId: 'S1', workspace: '/verified/workspace' }),
+  );
+  expect(f.order).toEqual([
+    'engine-admit',
+    'capability-minted',
+    'process-identity',
+    'engine-dispatch',
+    'capability-active',
+    'dispatch-intent',
+    'capability-revoked',
+    'engine-settle',
+    'canonical-outcome',
+  ]);
+  expect(JSON.stringify(f.persist.mock.calls)).not.toContain(secret);
+  expect(f.persist).toHaveBeenCalledWith({
+    kind: 'text',
+    key: 'tool-1',
+    channel: 'tool-output',
+    text: 'NEVO_AGENT_CAPABILITY=[redacted]',
+  });
+});
+
+it('abandons the claim as never dispatched when no capability may be minted', async () => {
+  const f = fixture();
+  inSpecification(f);
+  const mint = vi.fn(() =>
+    Promise.reject(new SessionError('SESSION_PAIRING_PENDING', 'Pairing pending.')),
+  );
+  await createManagedInvocation({ ...f.options, capabilities: { mint } }).done;
+  expect(f.start).not.toHaveBeenCalled();
+  expect(f.claim.abandon).toHaveBeenCalled();
+  expect(f.finalize).toHaveBeenCalledWith(
+    expect.objectContaining({ outcome: 'failed' }),
+    'not-dispatched',
+  );
+});

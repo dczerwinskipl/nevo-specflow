@@ -53,6 +53,15 @@ export interface Invocation {
         admission: { operationId: string; scope: 'project'; workspace: string };
       };
   providerContext?: { nativeSessionId: string; resume: boolean; scope?: string };
+  /**
+   * Per-invocation `NEVO_*` entries of the provider process environment (a write Turn's broker
+   * endpoint and invocation capability, D11), and the values its diagnostics must redact. A writable
+   * driver merges `values` into the environment of the process it launches for this invocation.
+   */
+  runtimeEnvironment?: {
+    readonly values: Readonly<Record<string, string>>;
+    readonly secrets: readonly string[];
+  };
   beforeDispatch?: () => Promise<void>;
   /**
    * Durably records the native-stop evidence of the invocation's provider process; a driver passes

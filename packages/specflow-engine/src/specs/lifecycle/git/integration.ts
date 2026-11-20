@@ -14,11 +14,6 @@ import { CloseOperationError, type CloseWorkspaceEvidence } from '../model';
 export interface GitIntegrationInspection extends GitIntegrationEvidence {
   readonly operationId: string;
   readonly projectConfigChanged: boolean;
-  /**
-   * Every path the source branch changed since its merge base (the ownership proof below),
-   * reused by #157's whole-branch equivalence check.
-   */
-  readonly sourceBranchPaths: readonly string[];
 }
 
 function conflict(message: string): CloseOperationError {
@@ -151,17 +146,19 @@ export async function inspectCloseGitIntegration(
     throw conflict('Cannot prove Specification ownership of source branch changes.');
   }
 
-  const sourceBranchPaths = sourcePaths.stdout.split('\0').filter(Boolean);
   const ownedSlugs = (plan.occupants ?? [{ slug: plan.slug }]).map((x) => x.slug);
-  const foreignSpecPath = sourceBranchPaths.find(
-    (path) =>
-      path.startsWith('specs/') &&
-      !ownedSlugs.some(
-        (slug) =>
-          path.startsWith('specs/active/' + slug + '/') ||
-          path.startsWith('specs/archive/' + slug + '/'),
-      ),
-  );
+  const foreignSpecPath = sourcePaths.stdout
+    .split('\0')
+    .filter(Boolean)
+    .find(
+      (path) =>
+        path.startsWith('specs/') &&
+        !ownedSlugs.some(
+          (slug) =>
+            path.startsWith('specs/active/' + slug + '/') ||
+            path.startsWith('specs/archive/' + slug + '/'),
+        ),
+    );
   if (foreignSpecPath) {
     throw new CloseOperationError(
       'CLOSE_PREFLIGHT',
@@ -178,6 +175,5 @@ export async function inspectCloseGitIntegration(
     ...gitProof,
     operationId,
     projectConfigChanged: gitProof.changedPaths.includes('.nevo/config.yaml'),
-    sourceBranchPaths,
   };
 }

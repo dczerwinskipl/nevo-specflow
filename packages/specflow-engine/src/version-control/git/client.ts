@@ -21,6 +21,8 @@ export interface LocalGitClient {
   listLocalRefs(): Promise<readonly string[]>;
   validateBranch(branch: string): Promise<void>;
   resolveCommit(ref: string): Promise<string>;
+  /** Short name of the branch Project Home's HEAD is attached to; `undefined` when detached. */
+  attachedBranch(): Promise<string | undefined>;
   verifyBaseProjectConfig(commit: string): Promise<void>;
   addWorktree(plan: {
     readonly branch: string;
@@ -93,6 +95,14 @@ export function createLocalGitClient(home: string): LocalGitClient {
       }
 
       return commit;
+    },
+    async attachedBranch() {
+      const result = await read(['symbolic-ref', '--quiet', 'HEAD']);
+      const ref = result.stdout.trim();
+
+      return result.exitCode === 0 && ref.startsWith('refs/heads/')
+        ? ref.slice('refs/heads/'.length)
+        : undefined;
     },
     async verifyBaseProjectConfig(commit) {
       if (!OBJECT_ID.test(commit)) {

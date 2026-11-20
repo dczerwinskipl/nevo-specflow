@@ -1,13 +1,8 @@
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react';
 
+/** What the Task history keeps across nested inspection and Back: scroll and disclosures. */
 interface TaskViewState {
-  descriptionExpanded?: boolean;
-  descriptionScroll?: number;
-  requirementsExpanded?: boolean;
-  resourcesExpanded?: boolean;
-  scrollTop?: number;
   historyScroll?: number;
-  inspectionScroll?: Record<string, number>;
   historyExpanded?: Record<string, string>;
   inspectionDisclosures?: Record<string, boolean>;
   inspectionCopyStatus?: Record<string, 'copied' | 'failed'>;
@@ -34,28 +29,12 @@ export function useTaskViewState(taskId: string) {
     },
     [store, taskId],
   );
-  const saveScroll = useCallback(
-    (top: number) => {
-      store?.set(taskId, { ...store.get(taskId), scrollTop: top });
-    },
-    [store, taskId],
-  );
   const saveHistoryScroll = useCallback(
     (top: number) => {
       store?.set(taskId, { ...store.get(taskId), historyScroll: top });
     },
     [store, taskId],
   );
-  const saveInspectionScroll = useCallback(
-    (key: string, top: number) => {
-      const previous = store?.get(taskId);
-      store?.set(taskId, {
-        ...previous,
-        inspectionScroll: { ...previous?.inspectionScroll, [key]: top },
-      });
-    },
-    [store, taskId],
-  );
 
-  return { state, update, saveScroll, saveHistoryScroll, saveInspectionScroll };
+  return { state, update, saveHistoryScroll };
 }

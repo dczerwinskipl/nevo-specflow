@@ -153,7 +153,7 @@ class DocumentRegistry {
     this.specId = specId;
   }
 
-  register(path: string, type: string, templateRevision?: string): void {
+  register(path: string, type: string, baselineRevision?: string): void {
     let id: string;
     try {
       id = allocateDocumentId({
@@ -175,7 +175,7 @@ class DocumentRegistry {
     }
 
     this.usedIds.add(id);
-    this.documents.push({ id, path, type, ...(templateRevision ? { templateRevision } : {}) });
+    this.documents.push({ id, path, type, ...(baselineRevision ? { baselineRevision } : {}) });
   }
 }
 

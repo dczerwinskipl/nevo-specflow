@@ -218,7 +218,7 @@ function useApplicationLocationModel(specId: string | undefined, view: Applicati
       : view === 'session' || view === 'new-session'
         ? { label: t('specification.viewSessions'), to: '/specs/$specId/sessions' as const }
         : view === 'task'
-          ? { label: t('specification.viewTasks'), to: null }
+          ? { label: t('specification.viewTasks'), to: '/specs/$specId/tasks' as const }
           : undefined;
 
   return {

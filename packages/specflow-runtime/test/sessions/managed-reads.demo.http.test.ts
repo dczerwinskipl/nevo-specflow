@@ -90,10 +90,10 @@ describe('demo managed Session reads (read-only, no coordinator)', () => {
         capabilities: { view: true, manage: false, start: false, cancel: false },
       },
       eventSeq: 0,
-      entries: [],
+      // A seeded Session shows the request it was started with, not an empty conversation.
+      entries: [{ kind: 'request', ordinal: 0 }],
       history: { hasOlder: false },
     });
-    expect(body.activeTurn).toBeUndefined();
 
     const providers = await server.inject('/api/session-providers');
     expect(providers.statusCode, providers.body).toBe(200);
@@ -128,6 +128,26 @@ describe('demo managed Session reads (read-only, no coordinator)', () => {
     expect((await server.inject(base + '/content/' + unknown + '?revision=1')).statusCode).toBe(
       404,
     );
+  });
+
+  it('backs each seeded Session readiness with its conversation', async () => {
+    const server = await open();
+    const working = (await server.inject('/api/sessions/' + seeded)).json<SessionSnapshot>();
+    expect(working.session.readiness).toBe('busy');
+    expect(working.activeTurn).toMatchObject({ state: 'active' });
+    expect(working.entries[0]?.text.text).toContain('queue-validation');
+    expect(working.interaction).toBeUndefined();
+
+    const asking = (await server.inject('/api/sessions/' + otherSeeded)).json<SessionSnapshot>();
+    expect(Value.Check(SessionSnapshotSchema, asking)).toBe(true);
+    expect(asking.session.readiness).toBe('requiresAttention');
+    expect(asking.activeTurn).toMatchObject({ state: 'waitingForUser' });
+    expect(asking.interaction).toMatchObject({
+      kind: 'question',
+      turnId: asking.activeTurn?.turnId,
+      prompt: 'Choose how queued work should behave after a recovery.',
+    });
+    expect(asking.entries).toHaveLength(1);
   });
 
   it('authorizes like the managed reads, without telling an unknown Session from a refused one', async () => {

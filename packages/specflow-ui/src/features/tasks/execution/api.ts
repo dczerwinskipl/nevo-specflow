@@ -2,12 +2,14 @@ import type {
   AbandonSpecificationResult,
   FinishWorkflowRequest,
   FinishWorkflowResult,
+  ReevaluateWaitRequest,
+  ReevaluateWaitResult,
   ReturnWorkflowRequest,
   ReturnWorkflowResult,
   StartWorkflowRequest,
   StartWorkflowResult,
 } from '@nevo/specflow-contracts/workflow';
-import type { CloseOccupancy } from '@nevo/specflow-contracts/specs';
+import type { CloseOccupancy, ClosePreview } from '@nevo/specflow-contracts/specs';
 import type { ApiTransport, ErrorCodeTable } from '../../../api';
 
 /** The workflow subject a command acts on: the Specification, or one of its Tasks. */
@@ -16,10 +18,11 @@ export interface WorkflowSubjectRef {
   readonly taskId?: string;
 }
 
-/** `GET /api/specs/:specId/close/preview`: the planned Close (only the operation id is used). */
-export interface ClosePreviewResult {
-  readonly operationId: string;
-}
+/**
+ * `GET /api/specs/:specId/close/preview`: the planned Close: the operation id the confirm sends and
+ * what it merges (or why it merges nothing).
+ */
+export type ClosePreviewResult = Pick<ClosePreview, 'operationId' | 'merge'>;
 
 /** `POST /api/specs/:specId/close`: `completed`, or a Close that still needs attention. */
 export interface CloseSpecificationResult {
@@ -40,6 +43,7 @@ export interface WorkflowExecutionApi {
     subject: WorkflowSubjectRef,
     input: ReturnWorkflowRequest,
   ): Promise<ReturnWorkflowResult>;
+  reevaluateWait(specId: string, input: ReevaluateWaitRequest): Promise<ReevaluateWaitResult>;
   abandon(specId: string, reason: string): Promise<AbandonSpecificationResult>;
   closePreview(specId: string, signal?: AbortSignal): Promise<ClosePreviewResult>;
   /** What else holds the checkout a Close would remove (running agent Turns), without planning it. */
@@ -66,6 +70,10 @@ export function createRuntimeWorkflowExecutionApi(transport: ApiTransport): Work
       transport.post(`${workflowBase(subject)}/finish`, input, { operation: 'workflow.finish' }),
     returnTo: (subject, input) =>
       transport.post(`${workflowBase(subject)}/return`, input, { operation: 'workflow.return' }),
+    reevaluateWait: (specId, input) =>
+      transport.post(`${specBase(specId)}/workflow/reevaluate-wait`, input, {
+        operation: 'workflow.reevaluate-wait',
+      }),
     abandon: (specId, reason) =>
       transport.post(
         `${specBase(specId)}/workflow/abandon`,

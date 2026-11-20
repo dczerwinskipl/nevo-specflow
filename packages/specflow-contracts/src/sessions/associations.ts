@@ -50,6 +50,11 @@ export const ProviderCatalogueQuerySchema = Type.Object(
   {
     specId: Type.Optional(SpecIdSchema),
     sessionId: Type.Optional(SessionIdSchema),
+    /**
+     * `true`: an explicit recheck. Every enabled provider discovers its executable again from
+     * scratch and probes again, instead of reusing what it found earlier.
+     */
+    recheck: Type.Optional(Type.Literal('true')),
   },
   closed,
 );
@@ -105,9 +110,13 @@ export type SessionAssociationRef = Static<typeof SessionAssociationRefSchema>;
 export type CreateContextSession = Static<typeof CreateContextSessionSchema>;
 export type CreateContextSessionResult = Static<typeof CreateContextSessionResultSchema>;
 export type SessionAssociationRead = Static<typeof SessionAssociationReadSchema>;
-/** The start a client reads the provider catalogue for: one Specification, one Session or none. */
-export type ProviderCatalogueContext =
-  { readonly specId: string } | { readonly sessionId: string } | Record<string, never>;
+/**
+ * The start a client reads the provider catalogue for: one Specification, one Session or none;
+ * `recheck` asks every provider to discover and probe again (an explicit recheck).
+ */
+export type ProviderCatalogueContext = (
+  { readonly specId: string } | { readonly sessionId: string } | Record<string, never>
+) & { readonly recheck?: 'true' };
 export type AssociatedFact<T> =
   | { state: 'available'; value: T }
   | { state: 'missing'; id: string }

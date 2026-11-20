@@ -13,8 +13,8 @@ const GROUP_ID = /^[a-z0-9][a-z0-9-]{0,63}$/;
 /**
  * The Tasks page search (routing contract: router-owned, validated, absence is the default):
  * `blocking=specification` keeps only the Tasks blocking the Specification (never an id list; the
- * Runtime resolves them when read), `group` opens the page at one group, expanded. Any other value
- * is dropped.
+ * Runtime resolves them when read), `group` lists one group only (the Overview's "N more in
+ * <group>"). The two filters never combine: `blocking` wins. Any other value is dropped.
  */
 export function validateTasksSearch(search: Record<string, unknown>): {
   collection: 'current' | 'archive';
@@ -24,7 +24,9 @@ export function validateTasksSearch(search: Record<string, unknown>): {
   return {
     collection: parseSpecificationCollection(search),
     ...(search.blocking === 'specification' ? { blocking: 'specification' as const } : {}),
-    ...(typeof search.group === 'string' && GROUP_ID.test(search.group)
+    ...(search.blocking !== 'specification' &&
+    typeof search.group === 'string' &&
+    GROUP_ID.test(search.group)
       ? { group: search.group }
       : {}),
   };
@@ -75,10 +77,8 @@ function SpecificationTasksRouteScreen() {
               search: { collection },
             })
           }
-          // Clearing the filter replaces the entry Review tasks pushed.
-          onClearBlocking={() =>
-            void navigate({ search: { collection, ...(group ? { group } : {}) }, replace: true })
-          }
+          // Clearing the filter replaces the entry Review tasks or "N more" pushed.
+          onClearFilter={() => void navigate({ search: { collection }, replace: true })}
         />
       )}
     </SpecificationAggregatePage>

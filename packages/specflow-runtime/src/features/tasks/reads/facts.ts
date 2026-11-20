@@ -59,27 +59,6 @@ export interface ResourceFacts {
   origin: { kind: 'hint' | 'completion' | 'execution' | 'explicit_association'; sourceId: string };
   link: ReferenceFacts;
 }
-export interface RequirementFacts {
-  id: string;
-  definitionRevision: string;
-  source:
-    | { kind: 'human-step'; stepId: string; relation: 'current' | 'next-ready' }
-    | {
-        kind: 'human-gate';
-        gateId: string | null;
-        phase: 'entry' | 'exit';
-        role: string;
-        scope: 'task' | 'step' | 'change';
-        targetId: string;
-      };
-  key: AttemptIdentity | null;
-  title: string;
-  instruction: string | null;
-  state: 'pending' | 'passed' | 'unavailable';
-  inspectionProblem?: string;
-  actions: { result?: string; label: string; feedbackRequired: boolean }[];
-  evidence: { title: string; link: ReferenceFacts }[];
-}
 export interface ExecutionFacts {
   identity: TaskIdentity;
   definitionVersion: string;
@@ -112,10 +91,6 @@ export interface ExecutionFacts {
     blockers: { code: string; message: string; operation: 'start' | 'finish' }[];
     previousFeedback: { key: AttemptIdentity; result: string | null; text: string } | null;
   };
-  /** Absent: the source has no human-requirement projection (the section stays unavailable). */
-  requirements?: RequirementFacts[];
-  pendingCount: number;
-  recovery: { id: string; state: string; summary: string; link: ReferenceFacts } | null;
 }
 export interface TaskDefinitionFacts {
   identity: TaskIdentity;
@@ -138,8 +113,8 @@ export interface TaskDefinitionFacts {
   taskType: { id: string; label: string } | null;
   document: Availability<{ id: string; revision: string } | null>;
   dependencies: { taskId: string; title: string; link: ReferenceFacts }[];
-  /** The Task resource (project mode); the demo has none. */
-  resource?: TaskResourceFacts;
+  /** The Task resource, from the Engine. */
+  resource: TaskResourceFacts;
 }
 export interface HistoryFacts {
   id: string;
@@ -195,19 +170,6 @@ export interface HistorySource {
     continuation: string | null,
     limit: number,
   ): Promise<SourcePage<HistoryFacts> | null>;
-}
-export interface ResourceSource {
-  open(
-    identity: TaskIdentity,
-    visible: ReferenceVisibility,
-  ): Promise<(SourceRead & { visibleTotal: number }) | null>;
-  read(
-    identity: TaskIdentity,
-    handle: string,
-    continuation: string | null,
-    limit: number,
-    visible: ReferenceVisibility,
-  ): Promise<SourcePage<ResourceFacts> | null>;
 }
 export function sameTask(a: TaskIdentity, b: TaskIdentity) {
   return (

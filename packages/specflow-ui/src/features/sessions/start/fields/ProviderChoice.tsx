@@ -1,4 +1,4 @@
-import { cn, InlineNote, StatusIndicator, Typography } from '@nevo/ui';
+import { cn, StatusIndicator, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { useMessage } from '../../../../i18n/message';
 import { ChoiceTile, ChoiceTileGroup } from '../../../../shared/controls/ChoiceTile';
@@ -7,8 +7,9 @@ import type { StartCatalogue } from '../catalogue/startCatalogue';
 import { providerStatus } from './providerStatus';
 
 /**
- * Which agent runs the Session: one tile per catalogue provider. Chosen only when a Session starts —
- * the provider is fixed for the life of a Session, so the Composer never offers this choice.
+ * Which agent runs a Session created with a Specification (Create's agent section): one tile per
+ * catalogue provider. The provider is fixed for the life of a Session, so the Composer never offers
+ * this choice. The start screen has its own compact picker (`AgentPicker`).
  */
 export function ProviderChoice({
   catalogue,
@@ -43,9 +44,7 @@ export function ProviderChoice({
     );
   }
 
-  // Said once below the tiles, whichever providers it concerns; each tile keeps a short reason.
-  const worktreeNote = providers.some((p) => p.unavailableInWorktree);
-  const tiles = (
+  return (
     <ChoiceTileGroup
       aria-labelledby={labelledBy}
       columns={columns}
@@ -76,21 +75,10 @@ export function ProviderChoice({
                 <span>{text(status.availability)}</span>
               )
             }
-            note={status.note ? text(status.note) : undefined}
+            note={status.note ? <span className="block">{text(status.note)}</span> : undefined}
           />
         );
       })}
     </ChoiceTileGroup>
-  );
-
-  if (!worktreeNote) {
-    return tiles;
-  }
-
-  return (
-    <div className="grid gap-3">
-      {tiles}
-      <InlineNote>{t('sessionStart.provider.worktreeUnsupportedNote')}</InlineNote>
-    </div>
   );
 }

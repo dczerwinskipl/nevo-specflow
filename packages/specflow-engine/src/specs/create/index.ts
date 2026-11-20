@@ -31,6 +31,7 @@ export {
   type TestCreateOptions,
 } from './test-support';
 export { inspectPublicCreateOperation, type PublicCreateInspection } from './inspect/inspection';
+export { projectCreatedSpecification, type PublicCreateOperation } from './projection';
 export {
   listPublicCreateOperations,
   readPublicCreateOperationRow,

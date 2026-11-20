@@ -102,6 +102,8 @@ export function SessionStartScreen({
 
   const catalogue = readyCatalogue(source.catalogue);
   const agent = chosen ?? (catalogue ? initialAgentChoice(catalogue) : noAgent);
+  const noAgentAvailable =
+    catalogue !== undefined && !catalogue.providers.some((provider) => provider.available);
 
   const start = () => {
     // What is submitted is what the Session is opened with, however the form changes meanwhile.
@@ -178,6 +180,9 @@ export function SessionStartScreen({
     >
       <AppWorkspace scroll="workspace" fit="available" split="dynamic" labels={labels}>
         <AppWorkspace.Primary
+          // With no agent the form is only the agents and their message: on a phone the sheet
+          // steps back so the short content just ends instead of reading as an empty card.
+          stackedSurface={noAgentAvailable ? 'plain' : 'sheet'}
           header={
             <WorkspaceHeader
               title={t('sessionStart.heading')}

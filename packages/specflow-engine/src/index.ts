@@ -274,6 +274,11 @@ export {
 // Supported operation endpoints project the Engine's durable state to stable DTOs.
 export {
   CloseOperationError,
+  type CloseRepositoryBlocker,
+  type CloseCheckoutRole,
+  type CloseMergeFacts,
+  type IntegrationBranchCandidate,
+  type IntegrationBranchFact,
   closePreviewCheckoutBlocker,
   withCheckoutQuiescence,
   type CheckoutQuiescence,
@@ -290,15 +295,18 @@ export {
   previewPublicCloseOperation,
   planPublicCloseOperation,
   reconcileArchivedConflictScratchOperation,
+  inspectCloseWithoutGitOperation,
+  resumeCloseWithoutGitOperation,
   type PlanPublicCloseOptions,
   type PublicCloseInspection,
 } from './specs/operations/api';
 
 // Stable, transport-neutral operation summaries. Durable journals stay diagnostic.
+export { projectCreatedSpecification, type PublicCreateOperation } from './specs/create';
 export {
-  projectCreatedSpecification,
-  type PublicCreateOperation,
   type PublicCloseOperation,
+  type PublicCloseMerge,
+  type PublicClosePlan,
   type PublicClosePreview,
   type PublicCloseSourceWorkspace,
   type PublicCloseStatus,

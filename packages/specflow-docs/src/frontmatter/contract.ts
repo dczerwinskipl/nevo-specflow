@@ -31,6 +31,31 @@ export const KNOWN_STATUSES: readonly DocStatus[] = [
 ];
 
 /**
+ * The required fields of every type, types with the same fields together, for example
+ * `hub: id, type, title, status; engineering, product, …: id, type, title, status, read_when, summary`.
+ */
+export function requiredFieldsByType(): string {
+  const groups = new Map<string, DocType[]>();
+  for (const type of KNOWN_TYPES) {
+    const fields = REQUIRED_FIELDS[type].join(', ');
+    groups.set(fields, [...(groups.get(fields) ?? []), type]);
+  }
+
+  return [...groups].map(([fields, types]) => `${types.join(', ')}: ${fields}`).join(' / ');
+}
+
+/**
+ * The whole frontmatter format a document must have, so one report names everything a plain
+ * Markdown file needs instead of revealing it one error at a time.
+ */
+export function frontmatterFormat(): string {
+  return (
+    `type is one of: ${KNOWN_TYPES.join(', ')} | status is one of: ${KNOWN_STATUSES.join(', ')} | ` +
+    `required fields by type: ${requiredFieldsByType()} | read_when is a non-empty list of strings`
+  );
+}
+
+/**
  * Statuses of superseded or retired knowledge. `context` excludes them and `get` refuses them, so a
  * caller is never handed guidance a newer document replaced.
  */

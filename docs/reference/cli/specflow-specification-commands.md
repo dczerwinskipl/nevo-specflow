@@ -31,14 +31,14 @@ nevo-specflow specs list --json
 nevo-specflow specs resolve <spec-id> --json
 nevo-specflow specs close <spec-id> --preview
 nevo-specflow specs close <spec-id> --archive-only --yes
-nevo-specflow specs close <spec-id> --finish-after-external-merge --yes
 nevo-specflow specs worktree close <spec-id> --preview
 nevo-specflow specs worktree close <spec-id> --yes
-nevo-specflow specs worktree close <spec-id> --finish-after-external-merge --yes
 nevo-specflow specs workspace close <workspace-id> --preview
 nevo-specflow specs workspace close <workspace-id> --yes
 nevo-specflow specs workspace inspect <workspace-id> <operation-id>
 nevo-specflow specs close-inspect <operation-id>
+nevo-specflow specs close-recover <operation-id> --preview
+nevo-specflow specs close-recover <operation-id> --confirmed-stopped
 nevo-specflow specs close-reconcile-scratch <operation-id> --confirmed-git-stopped --yes
 nevo-specflow specs recover <operation-id> --confirmed-stopped [--confirmed-git-stopped]
 ```
@@ -69,16 +69,6 @@ Workspace Close takes `workspaceId`, not one of its Specs. Reuse the original
 `--operation-id` on retries. These commands work offline; the CLI does **not** call Runtime
 HTTP and its local OS-account trust is distinct from authenticated HTTP grants.
 
-`--finish-after-external-merge` on `specs close` and `specs worktree close` is person-initiated, never
-inferred from Git ancestry: it finishes a linked integration whose content was already merged
-externally (e.g. a GitHub squash merge) without re-integrating, proving the Specification's canonical
-subtree AND every other path the source branch changed are content-equivalent in the destination's
-current HEAD (the same whole-branch guarantee true Git ancestry gives an already-integrated Close
-for free) and reusing the already-integrated archive/rebind/disposal effects. A partial external
-merge, or any in-scope path that still differs or is missing, refuses with
-`CLOSE_EXTERNAL_MERGE_MISMATCH`, naming every differing path
-([Specification lifecycle](../../architecture/runtime/specification-lifecycle.md#safe-integration-rebind-and-disposal)).
-
 A Close that removes a linked worktree (Worktree and Workspace Close, `specs close` with integration)
 refuses with `CLOSE_BLOCKED` while a running Runtime owns the Project's Session store, because an agent
 Session Turn of that Runtime may work in the worktree and the CLI cannot see it. It also refuses when a
@@ -87,6 +77,32 @@ read. `specs close --preview` and `specs worktree close --preview` ask the same 
 same way, listing the `session-turn-running` blocker next to any workflow blockers, so the preview
 names everything Close would refuse on. Close from the SpecFlow UI instead, or stop the Runtime and rerun with the same `--operation-id`
 ([Specification lifecycle](../../architecture/runtime/specification-lifecycle.md#safe-integration-rebind-and-disposal)).
+
+`specs close --preview` prints the plan as JSON, with its merge facts (`merge`: the source branch
+merged into the target branch with the commits ahead, or why nothing is merged). When Git is off for
+the project (`git.enabled: false`, or no `git:` block in `.nevo/config.yaml`), `specs close` only
+archives the Specification in place, without a commit, integration or repository precondition:
+the preview's `merge` is `{status: 'not-integrated', reason: 'git-off', checkout}` and, without
+`--json`, stderr adds `Without Git (Git is off for this project): the Specification is archived in
+place; nothing is committed or merged.` (for a linked worktree also `The archive stays uncommitted
+in the linked worktree: commit it there before closing the worktree with Git on.`); the Close
+prints `Outcome: archived-without-git` followed by the first line. `specs worktree close` and
+`specs workspace close` refuse with `CLOSE_INVALID` while Git is off. A Close with Git off that
+stopped after its archive intent is finished with `specs close-recover` (`--preview` reports the
+proven state read-only; `--confirmed-stopped` finishes the move and completes the Close), see
+[Specification lifecycle](../../architecture/runtime/specification-lifecycle.md#close-with-git-off-owner-decision-2026-11-17).
+When a project that uses Git
+names no `git.integrationTargetBranch`, the preview (and `specs worktree close --preview`, `specs
+workspace close --preview`) refuses with `CLOSE_PREFLIGHT` and lists the local branches that could
+receive the Close on stderr. Each candidate is shown with the facts that make it one: the default
+branch of a remote, read from the local `refs/remotes/<remote>/HEAD` without fetching; the branch
+this worktree's branch started from; and the branch checked out in the main folder. The other local
+branches follow. Nothing is chosen for you and no branch name is assumed. The text depends on the
+Specification's checkout. For a linked worktree, closing merges its branch into the chosen branch.
+For the main folder, closing archives directly on the chosen branch, with nothing to merge. Set
+`git.integrationTargetBranch` in `.nevo/config.yaml`, then preview again. With `--json` the refusal
+is also printed on stdout as `{error: {code, message, repository}}`
+([Close](../api/specflow-specification-operations.md#close)).
 
 Usage errors of nested commands (for example a missing required option of `specs create`) now exit with code **2**
 like the top-level ones; they used to end the process with code 1. Operation failures still exit 1.
@@ -171,7 +187,9 @@ Every command accepts `--project-root <path>` and `--json`; every write command 
   files and registry are on disk, the commit is `pending`. `--wait` drains the queue of the Specification's
   checkout first (at most `--wait-ms`, default 30 s) and prints the settled commit. `flush` drains without
   writing; without a Specification it drains every checkout with work.
-- **Drain at exit.** A command that queued commits (a write, `retry`, `recover --resume`) calls
+- **Drain at exit.** A command that queued commits (a write, `retry`, `recover --resume`, and every changing
+  `tasks` and `workflow` command and `specs abandon` once the change succeeded, whose execution-state writes
+  the queue commits with automatic commits on; a refused change queued nothing and does not drain) calls
   `flushAllDocumentCommits` with the 10 s shutdown deadline before it exits, so a one-shot agent does not leave
   commits behind. What does not finish stays journaled for the next executor and a note goes to stderr; the exit
   code is not affected.
@@ -212,19 +230,20 @@ Specification and of its Tasks, offline, through the same Engine use cases as th
 `startSpecificationExecution`, `startTaskExecution`, `finishStep`, `returnToStep`). A Task needs no Specification
 run. Every command accepts `--project-root <path>` and `--json`.
 
-| Command                                                                                                                                                                                        | Engine function                                      |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `tasks list <spec-id>`                                                                                                                                                                         | `inspectExecution`                                   |
-| `tasks inspect <spec-id> <task-id>`                                                                                                                                                            | `inspectExecution`, `inspectActions`                 |
-| `tasks create <spec-id> --id <task-id> --title <t> --type <task-type> [--summary <s>] [--depends-on <id>]... [--context <kind:value>]... [--context-file <f>] [--content-file <f> \| --stdin]` | `createTask`                                         |
-| `tasks edit <spec-id> <task-id> --expected-revision <r> [--title <t>] [--summary <s> \| --clear-summary] [--depends-on <id>]... \| --no-dependencies] [context options \| --default-context]`  | `editTask`                                           |
-| `tasks remove <spec-id> <task-id> --expected-revision <r>`                                                                                                                                     | `removeTask`                                         |
-| `tasks status <spec-id> <task-id> approve\|hold\|resume\|cancel [--reason <text>]`                                                                                                             | `setTaskStatus`                                      |
-| `workflow actions <spec-id> [--task <task-id>]`                                                                                                                                                | `inspectActions` (read-only)                         |
-| `workflow start <spec-id> [--task <task-id> [--expected-workflow-revision <r>]]`                                                                                                               | `startSpecificationExecution` / `startTaskExecution` |
-| `workflow finish <spec-id> [--task <task-id>] --step <id> --attempt <n> [--result <r>] [--feedback <t>] [--artifact <ref>]... [--tasks-file <f>] [--task-decisions-file <f>]`                  | `finishStep`                                         |
-| `workflow return <spec-id> [--task <task-id>] --step <id> [--reason <text>]`                                                                                                                   | `returnToStep`                                       |
-| `specs abandon <spec-id> --reason <text> --yes`                                                                                                                                                | `abandonSpecification`                               |
+| Command                                                                                                                                                                                        | Engine function                                                                           |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `tasks list <spec-id>`                                                                                                                                                                         | `inspectExecution`                                                                        |
+| `tasks inspect <spec-id> <task-id>`                                                                                                                                                            | `inspectExecution`, `inspectActions`                                                      |
+| `tasks create <spec-id> --id <task-id> --title <t> --type <task-type> [--summary <s>] [--depends-on <id>]... [--context <kind:value>]... [--context-file <f>] [--content-file <f> \| --stdin]` | `createTask`                                                                              |
+| `tasks edit <spec-id> <task-id> --expected-revision <r> [--title <t>] [--summary <s> \| --clear-summary] [--depends-on <id>]... \| --no-dependencies] [context options \| --default-context]`  | `editTask`                                                                                |
+| `tasks remove <spec-id> <task-id> --expected-revision <r>`                                                                                                                                     | `removeTask`                                                                              |
+| `tasks status <spec-id> <task-id> approve\|hold\|resume\|cancel [--reason <text>]`                                                                                                             | `setTaskStatus`                                                                           |
+| `workflow actions <spec-id> [--task <task-id>]`                                                                                                                                                | `inspectActions` (read-only)                                                              |
+| `workflow start <spec-id> [--task <task-id> [--expected-workflow-revision <r>]]`                                                                                                               | `startSpecificationExecution` / `startTaskExecution`                                      |
+| `workflow finish <spec-id> [--task <task-id>] --step <id> --attempt <n> [--result <r>] [--feedback <t>] [--artifact <ref>]... [--tasks-file <f>] [--task-decisions-file <f>]`                  | `finishStep`                                                                              |
+| `workflow reevaluate-wait <spec-id> --step <id> --attempt <n>`                                                                                                                                 | Re-evaluate the wait attempt shown by `workflow actions` after Task records were restored |
+| `workflow return <spec-id> [--task <task-id>] --step <id> [--reason <text>]`                                                                                                                   | `returnToStep`                                                                            |
+| `specs abandon <spec-id> --reason <text> --yes`                                                                                                                                                | `abandonSpecification`                                                                    |
 
 - **Actor.** The CLI builds the actor itself: the owner `{class: human, actorId: local:<os-user>, trust: local}`,
   used for every write and for `workflow start|finish|return`. No option sets an actor, an executor class or a
@@ -250,6 +269,10 @@ run. Every command accepts `--project-root <path>` and `--json`.
 ... (required-own-artifact)`, with a hint to use an exit gate on the producing step and an entry gate on the
   consuming step); mark it optional or use gates.
 - **Step names.** Steps are printed as `Title (id)`; the id is what `--step` takes.
+- **Producing Tasks.** `workflow start` of a step that produces Tasks prints `Finish needs: --tasks-file <path>`
+  with the rule of that finish (the step context's `finish.tasks.rule`): the file lists every draft Task of the
+  step, not only the changed ones; an unlisted draft is cancelled. A later attempt, for example after a review
+  sends the step back, lists them all again.
 - **Gates.** `workflow actions` prints the gates of each finish transition and the entry gates of the next step
   as `[x]`/`[ ] gate <id>: <label>, <document type> in <Task|Specification> (<why>)`. A start or finish that a
   gate refuses (`WORKFLOW_GATE_UNSATISFIED`) prints the unsatisfied gates the same way; `--json` adds

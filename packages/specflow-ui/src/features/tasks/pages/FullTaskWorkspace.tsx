@@ -1,71 +1,38 @@
 import { translateNow } from '../../../i18n/message';
 import { createContext, useContext } from 'react';
 import {
-  Alert,
-  Button,
   AppContent,
-  AppContentContainer,
-  AppWorkspace,
   AppWorkspaceBody,
   AppWorkspaceProvider,
-  WorkspaceHeader,
   defineSecondaryStack,
   useSecondaryNavigation,
   useSecondaryStack,
-  useWorkspaceCapabilities,
   type SecondaryData,
   type AppWorkspaceBack,
   type SecondaryScreenProps,
 } from '@nevo/ui';
-import { useTranslation } from 'react-i18next';
-import { ApplicationLocationIdentity } from '../../../app/navigation/ApplicationLocation';
 import { WorkspaceRouteLeaveGuard } from '../../../app/navigation/WorkspaceRouteLeaveGuard';
-import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
 import type { FullTaskData } from '../read-model/model';
-import { TaskContent } from '../detail/TaskContent';
-import { inspectionAnchor, type TaskInspectionAnchor } from '../detail/taskInspectionModel';
 import {
   TaskHistoryResourceInspection,
   type TaskHistoryResourceParams,
 } from '../detail/history/TaskHistoryResourceInspection';
 import { TaskHistory } from '../detail/history/TaskHistory';
-import type { TaskEvidenceParams } from '../detail/taskInspectionModel';
-import {
-  TaskInspection,
-  TaskEvidenceInspection,
-  TaskEvidenceHeader,
-  TaskResourceInspection,
-  TaskContextHeader,
-  TaskFlowHeader,
-  TaskResourceHeader,
-  TaskHistoryHeader,
-} from '../detail/TaskInspection';
-import { useTaskResources } from '../detail/useTaskPages';
-import { mergeTaskResources } from '../detail/TaskDetails';
-import { FullTaskView } from './FullTaskView';
-import { ProjectTaskWorkspace, type ProjectTaskWorkspaceProps } from './ProjectTaskWorkspace';
+import { TaskHistoryHeader, TaskResourceHeader } from '../detail/history/TaskReferenceInspection';
+import { ProjectTaskWorkspace } from './ProjectTaskWorkspace';
 import { TaskViewStateProvider } from '../detail/TaskViewState';
 
 interface TaskContextData {
   task: FullTaskData;
   specId: string;
-  itemId?: string;
-  anchor?: TaskInspectionAnchor;
   historyResource?: TaskHistoryResourceParams;
 }
 interface RootParams {
   taskId: string;
-  itemId?: string;
-  anchor?: TaskInspectionAnchor;
   historyResource?: TaskHistoryResourceParams;
 }
 const Context = createContext<TaskContextData | null>(null);
 interface Pages {
-  work: Record<never, never>;
-  flow: Record<never, never>;
-  requirement: { id: string };
-  evidence: TaskEvidenceParams;
-  resource: { id: string };
   history: Record<never, never>;
   historyResource: TaskHistoryResourceParams;
 }
@@ -73,109 +40,8 @@ function useTaskContext(params: RootParams): SecondaryData<TaskContextData> {
   const data = useContext(Context);
 
   return data
-    ? {
-        status: 'ready',
-        data: {
-          ...data,
-          itemId: params.itemId,
-          anchor: params.anchor,
-          historyResource: params.historyResource,
-        },
-      }
+    ? { status: 'ready', data: { ...data, historyResource: params.historyResource } }
     : { status: 'loading' };
-}
-
-function WorkHeader({ data }: SecondaryScreenProps<TaskContextData, Record<never, never>>) {
-  return <TaskContextHeader task={data.task} />;
-}
-
-function RequirementHeader({
-  data,
-  params,
-}: SecondaryScreenProps<TaskContextData, { id: string }>) {
-  return <TaskContextHeader task={data.task} requirementId={params.id ?? data.itemId} />;
-}
-
-function WorkScreen({ data }: SecondaryScreenProps<TaskContextData, Record<never, never>>) {
-  return (
-    <AppContent className="w-content-standard max-w-full">
-      <AppWorkspaceBody padding="none" scroll="area">
-        <TaskInspection task={data.task} page="work" anchor={data.anchor} />
-      </AppWorkspaceBody>
-    </AppContent>
-  );
-}
-
-function FlowScreen({ data }: SecondaryScreenProps<TaskContextData, Record<never, never>>) {
-  return (
-    <AppContent className="w-content-standard max-w-full">
-      <AppWorkspaceBody padding="none" scroll="area">
-        <TaskInspection task={data.task} page="flow" />
-      </AppWorkspaceBody>
-    </AppContent>
-  );
-}
-
-function EvidenceScreen({
-  data,
-  params,
-}: SecondaryScreenProps<TaskContextData, TaskEvidenceParams>) {
-  return (
-    <AppContent className="w-content-standard max-w-full">
-      <AppWorkspaceBody padding="none" scroll="area">
-        <div className="p-4">
-          <TaskEvidenceInspection task={data.task} params={params} />
-        </div>
-      </AppWorkspaceBody>
-    </AppContent>
-  );
-}
-
-function RequirementScreen({
-  data,
-  params,
-}: SecondaryScreenProps<TaskContextData, Pages['requirement']>) {
-  const nav = useSecondaryStack<Pages>();
-
-  return (
-    <AppContent className="w-content-standard max-w-full">
-      <AppWorkspaceBody padding="none" scroll="area">
-        <TaskInspection
-          task={data.task}
-          page="requirement"
-          requirementId={params.id ?? data.itemId}
-          anchor={data.anchor}
-          onOpenEvidence={(evidence) => {
-            void nav.navTo('evidence', evidence);
-          }}
-        />
-      </AppWorkspaceBody>
-    </AppContent>
-  );
-}
-
-function ResourceScreen({
-  data,
-  params,
-}: SecondaryScreenProps<TaskContextData, Pages['resource']>) {
-  const pages = useTaskResources(data.specId, data.task.id, data.task.snapshot);
-  const resources = data.task.snapshot?.sections.resources;
-  const refs = mergeTaskResources(
-    resources?.state === 'available' ? resources.data.recommended : [],
-    pages.data?.pages.map((page) => page.items) ?? [],
-  );
-
-  return (
-    <AppContent className="w-content-standard max-w-full">
-      <AppWorkspaceBody padding="none" scroll="area">
-        <div className="p-4">
-          <TaskResourceInspection
-            resource={refs.find((ref) => ref.id === (params.id ?? data.itemId))}
-          />
-        </div>
-      </AppWorkspaceBody>
-    </AppContent>
-  );
 }
 
 function HistoryResourceScreen({
@@ -217,46 +83,12 @@ function HistoryScreen({ data }: SecondaryScreenProps<TaskContextData, Record<ne
   );
 }
 
-const stack = defineSecondaryStack<RootParams, TaskContextData, Pages>({
-  id: 'task-inspection',
-  initial: 'work',
+/** The Task history as a pushed page (Narrow), and a material of one of its entries. */
+const historyStack = defineSecondaryStack<RootParams, TaskContextData, Pages>({
+  id: 'task-history',
+  initial: 'history',
   useData: useTaskContext,
   screens: {
-    work: {
-      get title() {
-        return translateNow('taskDetails.stepDetails');
-      },
-      header: WorkHeader,
-      component: WorkScreen,
-    },
-    flow: {
-      get title() {
-        return translateNow('common.flow');
-      },
-      header: TaskFlowHeader,
-      component: FlowScreen,
-    },
-    requirement: {
-      get title() {
-        return translateNow('taskDetails.requirement');
-      },
-      header: RequirementHeader,
-      component: RequirementScreen,
-    },
-    evidence: {
-      get title() {
-        return translateNow('taskDetails.evidence');
-      },
-      header: TaskEvidenceHeader,
-      component: EvidenceScreen,
-    },
-    resource: {
-      get title() {
-        return translateNow('taskDetails.resource');
-      },
-      header: TaskResourceHeader,
-      component: ResourceScreen,
-    },
     historyResource: {
       get title() {
         return translateNow('taskDetails.resource');
@@ -273,38 +105,8 @@ const stack = defineSecondaryStack<RootParams, TaskContextData, Pages>({
     },
   },
 });
-const workStack = defineSecondaryStack<RootParams, TaskContextData, Pages>({
-  ...stack,
-  id: 'task-work',
-  initial: 'work',
-});
-const flowStack = defineSecondaryStack<RootParams, TaskContextData, Pages>({
-  ...stack,
-  id: 'task-flow',
-  initial: 'flow',
-});
-const requirementStack = defineSecondaryStack<RootParams, TaskContextData, Pages>({
-  ...stack,
-  id: 'task-requirement',
-  initial: 'requirement',
-});
-const resourcesStack = defineSecondaryStack<RootParams, TaskContextData, Pages>({
-  ...stack,
-  id: 'task-resource',
-  initial: 'resource',
-});
-const historyStack = defineSecondaryStack<RootParams, TaskContextData, Pages>({
-  ...stack,
-  id: 'task-history',
-  initial: 'history',
-});
 
-const historyResourceStack = defineSecondaryStack<RootParams, TaskContextData, Pages>({
-  ...stack,
-  id: 'task-history-resource',
-  initial: 'historyResource',
-});
-
+/** The Full Task: the Task resource its Specification lists, in any Runtime. */
 export function FullTaskWorkspace(props: {
   readonly task: FullTaskData;
   readonly specId: string;
@@ -312,150 +114,29 @@ export function FullTaskWorkspace(props: {
   readonly back: AppWorkspaceBack;
   readonly stale?: boolean;
   readonly onRetry?: () => void;
-  /** Reads the Task again; resolves with the latest Task (project mode: revision conflicts). */
-  readonly reload?: () => Promise<FullTaskData | undefined>;
+  /** Reads the Task again; resolves with the latest Task (revision conflicts). */
+  readonly reload: () => Promise<FullTaskData | undefined>;
 }) {
-  const { reload, ...rest } = props;
-
   return (
     <AppWorkspaceProvider scopeKey={`${props.specId}:${props.task.id}`}>
       <WorkspaceRouteLeaveGuard />
       <TaskViewStateProvider key={`${props.specId}:${props.task.id}`}>
         <Context.Provider value={{ task: props.task, specId: props.specId }}>
-          {/* A project Runtime's Task is a resource the owner authors (Task authoring, T10). */}
-          {props.task.resource && reload ? (
-            <ProjectTaskWorkspaceWithHistory
-              {...rest}
-              resource={props.task.resource}
-              reload={reload}
-            />
-          ) : (
-            <Workspace {...rest} />
-          )}
+          <FullTaskWithHistory {...props} />
         </Context.Provider>
       </TaskViewStateProvider>
     </AppWorkspaceProvider>
   );
 }
 
-function ProjectTaskWorkspaceWithHistory(props: Omit<ProjectTaskWorkspaceProps, 'onOpenHistory'>) {
+function FullTaskWithHistory(props: Parameters<typeof FullTaskWorkspace>[0]) {
   const navigation = useSecondaryNavigation();
 
   return (
     <ProjectTaskWorkspace
       {...props}
+      resource={props.task.resource}
       onOpenHistory={() => void navigation.open(historyStack, { taskId: props.task.id })}
     />
-  );
-}
-
-function Workspace({
-  task,
-  specId,
-  back,
-  stale,
-  onRetry,
-}: {
-  task: FullTaskData;
-  specId: string;
-  back: AppWorkspaceBack;
-  stale?: boolean;
-  onRetry?: () => void;
-}) {
-  const { t } = useTranslation();
-  const { supportsSplit } = useWorkspaceCapabilities();
-  const navigation = useSecondaryNavigation();
-  const workspaceLabels = useWorkspaceLabels(task.title || task.id);
-
-  return (
-    <AppWorkspace split="primary" labels={workspaceLabels}>
-      <AppWorkspace.Primary
-        back={back}
-        header={
-          <WorkspaceHeader
-            title={t('specification.viewTasks')}
-            as="span"
-            identityContent={
-              <ApplicationLocationIdentity
-                title={t('specification.viewTasks')}
-                view="task"
-                specId={specId}
-                detailLabel={task.id}
-              />
-            }
-            icon="list-checks"
-            labels={{ moreActions: t('common.moreActions') }}
-            actions={
-              !supportsSplit
-                ? [
-                    {
-                      id: 'history',
-                      label: t('specification.taskFullHistoryHeading'),
-                      icon: 'clock',
-                      onPress: () => {
-                        void navigation.open(historyStack, { taskId: task.id });
-                      },
-                    },
-                  ]
-                : []
-            }
-          />
-        }
-      >
-        <AppContent className="w-content-xwide max-w-full">
-          <AppWorkspaceBody scroll="area" contentClassName="py-6">
-            <AppContentContainer align="start" size="full">
-              {stale ? (
-                <Alert tone="attention" title={t('taskDetails.pageFailed')}>
-                  <Button variant="secondary" size="sm" onClick={onRetry}>
-                    {t('common.retry')}
-                  </Button>
-                </Alert>
-              ) : null}
-              <FullTaskView task={task} specKey={specId}>
-                <TaskContent
-                  task={task}
-                  specKey={specId}
-                  onInspect={(page, id) => {
-                    void navigation.open(
-                      page === 'work' ? workStack : page === 'flow' ? flowStack : requirementStack,
-                      { taskId: task.id, itemId: id, anchor: inspectionAnchor(task.snapshot) },
-                    );
-                  }}
-                  onOpenResource={(resource) => {
-                    void navigation.open(resourcesStack, { taskId: task.id, itemId: resource.id });
-                  }}
-                />
-              </FullTaskView>
-            </AppContentContainer>
-          </AppWorkspaceBody>
-        </AppContent>
-      </AppWorkspace.Primary>
-      <AppWorkspace.Secondary
-        header={
-          <WorkspaceHeader
-            headingLevel={2}
-            title={t('specification.taskFullHistoryHeading')}
-            icon="clock"
-          />
-        }
-      >
-        <AppContent className="w-content-standard max-w-full">
-          <AppWorkspaceBody padding="none" scroll="area">
-            <TaskHistory
-              specId={specId}
-              taskId={task.id}
-              snapshot={task.snapshot}
-              onOpenResource={(params) => {
-                void navigation.open(historyResourceStack, {
-                  taskId: task.id,
-                  historyResource: params,
-                });
-              }}
-            />
-          </AppWorkspaceBody>
-        </AppContent>
-      </AppWorkspace.Secondary>
-    </AppWorkspace>
   );
 }

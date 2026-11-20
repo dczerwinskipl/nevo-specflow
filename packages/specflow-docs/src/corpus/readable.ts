@@ -3,7 +3,7 @@
 // corpus. `check` stays strict and does not use this.
 
 import type { DocsTaxonomy } from '../config/docs-file';
-import type { DocRecord } from '../frontmatter/contract';
+import { frontmatterFormat, type DocRecord } from '../frontmatter/contract';
 import { validateDoc } from '../frontmatter/validate';
 import type { ScanResult } from './repository';
 
@@ -27,7 +27,10 @@ export interface ReadableDocs {
  */
 export function selectReadableDocs(scan: ScanResult, taxonomy: DocsTaxonomy): ReadableDocs {
   const skipped: SkippedDocument[] = [
-    ...scan.missingFrontmatter.map((path) => ({ path, error: 'missing frontmatter' })),
+    ...scan.missingFrontmatter.map((path) => ({
+      path,
+      error: `missing frontmatter (a '---' block at the top | ${frontmatterFormat()})`,
+    })),
     ...scan.invalidFrontmatter.map(({ file, error }) => ({ path: file, error })),
   ];
 

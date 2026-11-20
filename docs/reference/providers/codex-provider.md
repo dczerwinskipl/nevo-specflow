@@ -46,10 +46,13 @@ sessions:
   providers:
     codex:
       # enabled by default once allowed; `enabled: false` turns it off on this machine
-      # optional absolute native executable; default: first codex.exe on the projected PATH
+      # optional absolute native executable; default: discovered on PATH, then in the Codex
+      # desktop app (%LOCALAPPDATA%/OpenAI/Codex/bin/*/codex.exe) and the npm global package
       executable: C:/path/to/codex.exe
 ```
 
+How the executable is found, verified and reported is in
+[executable discovery](executable-discovery.md); a configured `executable` is never replaced.
 Windows x64 only; other platforms are unavailable through this adapter. Machine-managed
 configuration (`%PROGRAMDATA%/OpenAI/Codex/{requirements,config,managed_config}.toml`) must be
 absent.

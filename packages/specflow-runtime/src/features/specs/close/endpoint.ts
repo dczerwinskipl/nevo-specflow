@@ -15,10 +15,12 @@ import {
   planPublicWorkspaceCloseOperation,
   inspectPublicCloseOperation,
   planPublicCloseOperation,
+  previewPublicCloseOperation,
   reconcileArchivedConflictScratchOperation,
+  type CloseRepositoryBlocker,
   type PlanPublicCloseOptions,
   readRegistrySnapshot,
-  type PublicClosePreview,
+  type PublicClosePlan,
   type SpecFlowEngine,
 } from '@nevo/specflow-engine';
 import {
@@ -38,6 +40,7 @@ import {
   CloseWorkspaceResultSchema,
   ProjectGitCapabilities,
   SpecCapabilities,
+  type RepositoryBlocker,
 } from '@nevo/specflow-contracts/specs';
 import {
   AuthenticationRequiredErrorResponseSchema,
@@ -102,41 +105,29 @@ function projectWorkspaceCloseAllowed(request: FastifyRequest, engine: SpecFlowE
   });
 }
 
-interface CloseSelection {
-  readonly integrateToTargetBranch?: boolean;
-  readonly finishAfterExternalMerge?: boolean;
-  readonly planOptions?: PlanPublicCloseOptions;
-}
-
 async function authorizedPlan(
   request: FastifyRequest,
   engine: SpecFlowEngine,
   kind: CloseKind,
   specId: string,
   operationId: string,
-  selection: CloseSelection = {},
-): Promise<PublicClosePreview> {
-  const { integrateToTargetBranch, finishAfterExternalMerge, planOptions = {} } = selection;
+  integrateToTargetBranch?: boolean,
+  options: PlanPublicCloseOptions = {},
+): Promise<PublicClosePlan> {
   // Spec-scoped authentication precedes every operation-id/immutable-journal read.
   // Integration authority follows the Engine's immutable retry plan, not a
   // caller-supplied selector that could turn off whole-branch checks.
   const plan = await planPublicCloseOperation(
     engine,
     kind === 'worktree-close'
-      ? {
-          kind,
-          operationId,
-          specId,
-          ...(finishAfterExternalMerge === undefined ? {} : { finishAfterExternalMerge }),
-        }
+      ? { kind, operationId, specId }
       : {
           kind,
           operationId,
           specId,
           ...(integrateToTargetBranch === undefined ? {} : { integrateToTargetBranch }),
-          ...(finishAfterExternalMerge === undefined ? {} : { finishAfterExternalMerge }),
         },
-    planOptions,
+    options,
   );
   if (plan.integrationRequired) {
     projectIntegrationAllowed(request, engine);
@@ -196,6 +187,35 @@ function blockersOf(error: unknown): { blockers?: ExitBlocker[] } {
     : {};
 }
 
+/** A mutable contract copy of one Engine repository blocker. */
+function repositoryBlocker(blocker: CloseRepositoryBlocker): RepositoryBlocker {
+  switch (blocker.kind) {
+    case 'uncommitted-changes':
+      return { ...blocker, paths: blocker.paths.map((entry) => ({ ...entry })) };
+    case 'integration-target-missing':
+      return {
+        kind: blocker.kind,
+        sourceCheckout: blocker.sourceCheckout,
+        candidates: blocker.candidates.map((candidate) =>
+          candidate.remote !== undefined
+            ? { branch: candidate.branch, facts: [...candidate.facts], remote: candidate.remote }
+            : { branch: candidate.branch, facts: [...candidate.facts] },
+        ),
+        otherBranches: [...blocker.otherBranches],
+        otherBranchCount: blocker.otherBranchCount,
+      };
+    default:
+      return { ...blocker };
+  }
+}
+
+/** `CLOSE_PREFLIGHT`: the repository preconditions the owner fixes before the Close can start. */
+function repositoryOf(error: unknown): { repository?: RepositoryBlocker[] } {
+  return error instanceof CloseOperationError && error.repository.length > 0
+    ? { repository: error.repository.map(repositoryBlocker) }
+    : {};
+}
+
 const SHARED_WORKTREE_REMEDY =
   'Archive just this Specification with integrateToTargetBranch=false, or use an explicit workspace-level Close.';
 const LOCAL_CONFIG_REMEDY =
@@ -242,7 +262,6 @@ function statusForCloseError(code: SafeCode): 400 | 404 | 409 | 422 | 503 {
     case 'COMMIT_BLOCKED':
       return 409;
     case 'CLOSE_PREFLIGHT':
-    case 'CLOSE_EXTERNAL_MERGE_MISMATCH':
     case 'GIT_DISABLED':
     case 'BRANCH_PROTECTED':
     case 'BASE_REF_NOT_FOUND':
@@ -349,35 +368,26 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
 
         try {
           const { specId } = request.params;
-          const body = request.body as {
-            operationId: string;
-            integrateToTargetBranch?: boolean;
-            finishAfterExternalMerge?: boolean;
-          };
-          const plan = await authorizedPlan(request, engine, kind, specId, body.operationId, {
-            integrateToTargetBranch: body.integrateToTargetBranch,
-            finishAfterExternalMerge: body.finishAfterExternalMerge,
+          const body = request.body as { operationId: string; integrateToTargetBranch?: boolean };
+          const plan = await authorizedPlan(
+            request,
+            engine,
+            kind,
+            specId,
+            body.operationId,
+            body.integrateToTargetBranch,
             // The admission commits the queued document changes first; the authorization plan must too.
-            planOptions: { flushDocumentCommits: true },
-          });
+            { flushDocumentCommits: true },
+          );
           const result = await whileReleased(options.releaseWorkspace, plan.sourceWorkspace, () =>
             kind === 'worktree-close'
-              ? closeWorktreeOperation(engine, {
-                  specId,
-                  operationId: body.operationId,
-                  ...(body.finishAfterExternalMerge === undefined
-                    ? {}
-                    : { finishAfterExternalMerge: body.finishAfterExternalMerge }),
-                })
+              ? closeWorktreeOperation(engine, { specId, operationId: body.operationId })
               : closeSpecificationOperation(engine, {
                   specId,
                   operationId: body.operationId,
                   ...(body.integrateToTargetBranch === undefined
                     ? {}
                     : { integrateToTargetBranch: body.integrateToTargetBranch }),
-                  ...(body.finishAfterExternalMerge === undefined
-                    ? {}
-                    : { finishAfterExternalMerge: body.finishAfterExternalMerge }),
                 }),
           );
 
@@ -402,6 +412,7 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
             code,
             error: code,
             ...blockersOf(error),
+            ...repositoryOf(error),
             ...closeRefusalDetails(error),
           });
         }
@@ -431,18 +442,36 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
         try {
           const engine = options.engine;
           const { specId } = request.params;
-          const operationId = randomUUID();
-          const plan = await authorizedPlan(request, engine, kind, specId, operationId, {
-            integrateToTargetBranch: request.query.integrateToTargetBranch,
-            finishAfterExternalMerge: request.query.finishAfterExternalMerge,
-          });
-          await assertNoRunningTurns(options.runningSessions, plan.sourceWorkspace);
+          const integrateToTargetBranch = request.query.integrateToTargetBranch;
+          // A fresh operation id: the read-only preview with its merge facts, never a journal.
+          const preview = await previewPublicCloseOperation(
+            engine,
+            kind === 'worktree-close'
+              ? { kind, operationId: randomUUID(), specId }
+              : {
+                  kind,
+                  operationId: randomUUID(),
+                  specId,
+                  ...(integrateToTargetBranch === undefined ? {} : { integrateToTargetBranch }),
+                },
+          );
+          if (preview.integrationRequired) {
+            projectIntegrationAllowed(request, engine);
+          }
 
-          return reply.code(200).send(plan);
+          await assertNoRunningTurns(options.runningSessions, preview.sourceWorkspace);
+
+          return reply.code(200).send(preview);
         } catch (error) {
           const busy = busyRefusal(error);
           if (busy) {
             return reply.code(409).send(busy);
+          }
+
+          // Documents the Close would commit first, or wait for: answered as the Close would.
+          const refusal = documentRefusal(error);
+          if (refusal) {
+            return reply.code(refusal.status).send(refusal.body);
           }
 
           const code = safeCode(error);
@@ -454,6 +483,7 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
             code,
             error: code,
             ...blockersOf(error),
+            ...repositoryOf(error),
             ...closeRefusalDetails(error),
           });
         }
@@ -536,6 +566,12 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
         const busy = busyRefusal(error);
         if (busy) {
           return reply.code(409).send(busy);
+        }
+
+        // Documents the Close would commit first, or wait for: answered as the Close would.
+        const refusal = documentRefusal(error);
+        if (refusal) {
+          return reply.code(refusal.status).send(refusal.body);
         }
 
         const code = safeCode(error);

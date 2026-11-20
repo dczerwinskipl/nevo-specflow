@@ -34,14 +34,16 @@ export const WorkspaceDocsSkippedSchema = Type.Array(WorkspaceDocsSkippedDocumen
  *   (missing, moved, being closed, or the Runtime is closing);
  * - `DOCS_NOT_CONFIGURED` (`503`): the checkout's `docs.root` is not a directory;
  * - `DOCS_UNAVAILABLE` (`503`): the checkout's documentation settings or `docs.yaml` are invalid or
- *   a link, reading it failed, or the Runtime serves no project documentation (demo data, no
- *   Engine).
+ *   a link, or reading it failed;
+ * - `DOCS_NOT_SERVED` (`503`): the Runtime serves no project documentation at all (demo data, no
+ *   Engine); asking again cannot change that.
  */
 export const WorkspaceDocsErrorCodeSchema = Type.Union([
   Type.Literal('DOCS_WORKSPACE_NOT_FOUND'),
   Type.Literal('DOCS_WORKSPACE_UNAVAILABLE'),
   Type.Literal('DOCS_NOT_CONFIGURED'),
   Type.Literal('DOCS_UNAVAILABLE'),
+  Type.Literal('DOCS_NOT_SERVED'),
 ]);
 export type WorkspaceDocsErrorCode = Static<typeof WorkspaceDocsErrorCodeSchema>;
 

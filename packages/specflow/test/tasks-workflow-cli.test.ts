@@ -100,6 +100,18 @@ describe('tasks and workflow against a real project', () => {
     ]);
     const { specId } = json<{ specId: string }>(created);
 
+    const noWait = await cli(root, [
+      'workflow',
+      'reevaluate-wait',
+      specId,
+      '--step',
+      'implementation',
+      '--attempt',
+      '1',
+    ]);
+    expect(noWait.exit).toBe(1);
+    expect(noWait.err.join('\n')).toContain('WORKFLOW_SPECIFICATION_NOT_STARTED');
+
     const task = await cli(root, [
       'tasks',
       'create',
@@ -214,5 +226,62 @@ describe('tasks and workflow against a real project', () => {
     // The Task's text is read and saved through the documents command with the Task scope.
     const read = await cli(root, ['specs', 'documents', 'read', specId, 'task', '--task', 'build']);
     expect(read.out.join('\n')).toContain('Implement it.');
+  });
+});
+
+describe('workflow-state commits of a CLI command', () => {
+  it('with automatic commits on, a Task create and a step start leave nothing uncommitted', async () => {
+    const root = await project();
+    await writeFile(
+      join(root, '.nevo/config.yaml'),
+      'runtime: {}\ngit:\n  enabled: true\n  commits:\n    auto:\n      documents: true\n',
+    );
+    git(root, 'add', '.nevo/config.yaml');
+    git(
+      root,
+      '-c',
+      'user.name=SpecFlow Test',
+      '-c',
+      'user.email=specflow@example.invalid',
+      'commit',
+      '-qm',
+      'auto-commit documents',
+    );
+    const { specId } = json<{ specId: string }>(
+      await cli(root, ['specs', 'create', '--archetype', 'minimal', '--title', 'Auto', '--json']),
+    );
+    const status = () =>
+      execFileSync('git', ['status', '--porcelain', '--untracked-files=all'], {
+        cwd: root,
+        encoding: 'utf8',
+      });
+    expect(status()).toBe('');
+
+    const task = await cli(root, [
+      'tasks',
+      'create',
+      specId,
+      '--id',
+      'build',
+      '--title',
+      'Build it',
+      '--type',
+      'implementation',
+    ]);
+    expect(task.exit).toBe(0);
+    // The command commits what it wrote before it exits, as the Runtime's queue does, so the queue
+    // can batch the Task index and run records at all.
+    expect(task.err).toEqual([]);
+    expect(status()).toBe('');
+
+    const started = await cli(root, ['workflow', 'start', specId]);
+    expect(started.exit).toBe(0);
+    expect(started.err).toEqual([]);
+    expect(status()).toBe('');
+    expect(
+      execFileSync('git', ['log', '--format=%s', '-2'], { cwd: root, encoding: 'utf8' }),
+    ).toMatch(
+      /^spec\(workflow\): start step .* in auto\nspec\(workflow\): create task build in auto/u,
+    );
   });
 });

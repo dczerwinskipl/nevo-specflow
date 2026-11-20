@@ -43,6 +43,11 @@ export interface CreatedSpecification {
   readonly relativeManifestPath: string;
   /** Ids of the registered documents of the new Specification, in registry order. */
   readonly documentIds: readonly string[];
+  /**
+   * Present when Create wrote the files without committing them (Git is disabled in the project):
+   * they stay untracked or modified until the owner commits them.
+   */
+  readonly uncommitted?: true;
 }
 
 export interface CreateSpecificationOptions {
@@ -502,6 +507,7 @@ function resultOf(record: CreateJournal): CreatedSpecification {
     workspaceRoot: record.target.workspaceRoot,
     relativeManifestPath: record.files[0]!.relativePath,
     documentIds: record.documentIds,
+    ...(record.commit ? {} : { uncommitted: true as const }),
   };
 }
 

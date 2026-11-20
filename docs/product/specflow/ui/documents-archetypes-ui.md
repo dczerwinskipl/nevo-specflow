@@ -159,10 +159,61 @@ with the full text; the field keeps focus and the typed name.
 
 | Entry                     | Glyph                                                        | Name                                | Trailing label (muted unless noted) | Row press                      | Row menu                                               |
 | ------------------------- | ------------------------------------------------------------ | ----------------------------------- | ----------------------------------- | ------------------------------ | ------------------------------------------------------ |
-| Registered                | the type's icon, else format: `file`, `image`, `file-binary` | file name (type in the tooltip)     | none                                | open tab                       | **Type: UX** label, Rename, Move, Delete               |
+| Registered                | the type's icon, else format: `file`, `image`, `file-binary` | file name (type in the tooltip)     | the document state label (below)    | open tab                       | **Type: UX** label, Rename, Move, Delete               |
 | `overview.md` (protected) | `file`                                                       | file name, slightly stronger, first | none                                | open tab                       | only the note with the type and the `protected` reason |
 | Unclassified              | as above                                                     | file name                           | none                                | open tab                       | **Assign type**, separator, Rename, Move, Delete       |
 | Dangling                  | `triangle-alert` (attention)                                 | file name, muted                    | `File missing` (attention tone)     | open a missing tab (3.6 / 5.5) | **Remove registration** (danger)                       |
+
+**Data for the document state.** The read carries both facts the shared document state label is
+composed from; the tree never derives them. The content state is the tree document's `contentState` (`baseline` / `authored`)
+(registered documents; the same value as the Overview's workspace read; absent in demo mode, so no
+label). The relation to the workflow is the Specification's workflow projection `documentRelations`
+(`reference.api.specification-workflow`), matched to a row by `documentId` within its `scope`. The
+label is described below ([Document state label](#document-state-label)).
+
+#### Document state label
+
+One label vocabulary on every surface that lists documents (this tree, the Overview Documents, Task
+documents), from one pure function (`documentStateLabel`, `features/documents/workflow`) rendered by
+the shared tree row. It composes two separate facts; neither implies the other, and the label names
+both only when both apply.
+
+- **Content state.** `baseline`: the file is still the initial content the Engine wrote (from an
+  archetype template or generated, for example a new `task.md`) → **Initial content only**. It
+  describes the current content relative to that baseline, not whether an edit happened.
+  `authored` → nothing. Unknown (no `contentState`) → nothing.
+- **Relation.** How the workflow's gates use the document now: **Needed to finish <step>**,
+  **Needed to start <step>**, **Used in <step>**. Where the active step is on screen (Overview, Task
+  detail) its gates read "this step"; this tree names the step. "Needed to start" is the next step's
+  gate and always names that step. A row shows the relations of its own registry only (`scope`): a
+  Task step's gate on a Specification document is not shown on the Specification's rows.
+- **Together.** "Initial content only · needed to finish Write the specification": the content state
+  first, then the relation.
+
+| Content state | Relation                                                       | Label (this tree)                                         | Tone                             |
+| ------------- | -------------------------------------------------------------- | --------------------------------------------------------- | -------------------------------- |
+| baseline      | none                                                           | Initial content only                                      | muted (a standing fact)          |
+| authored      | none                                                           | none                                                      | —                                |
+| any           | needed to finish / needed to start, blocking now (`blocksNow`) | [Initial content only · n]eeded to finish / start <step>  | attention, with its warning icon |
+| any           | needed to start, not blocking now; used                        | [Initial content only · n]eeded to start / used in <step> | secondary (the work at hand)     |
+
+The attention tone is only for a relation whose gate refuses the action the run waits for now
+(`blocksNow`); the content state never adds attention. The tooltip adds the full label, the gate and
+the sections it still lacks ("Needs the Acceptance section"). In a narrow row (under `28rem`) the
+Overview and Task detail shorten the label: the relation drops its step ("Needed to finish",
+"Initial content · needed to finish"; "Used in this step" stays as it is), since Now beside it names
+the step. This tree keeps the step: only a label that does not fit beside the name takes its own
+line under it, right-aligned, and wraps there over more lines when it needs them (never cut); the
+name is not cut for it.
+
+While the workflow projection loads, the rows show their content state only (no layout change when
+the relations arrive). When it cannot be read, the rows keep their content state and a quiet note
+after the list says that the workflow's requirements could not be loaded, so no row silently reads as
+"not needed". (The Overview shows no label until the projection has answered, then the final ones:
+its header never flips between "N · initial content only" and per-row labels.) A save or a tree
+operation refreshes the projection, so a gate the change satisfies stops saying "needed". Once the run ended no gate relates a document, so a closed Specification shows only
+**Initial content only**. Rows are never reordered by their label. The archetype's expected types
+(3.4) are a separate, type-level fact and never say "needed".
 
 Every item of a row menu has its icon (New document, New folder, Upload files, Assign type, Rename, Move,
 Delete, Remove registration). Other disabled items keep today's pattern: the menu note carries at most two

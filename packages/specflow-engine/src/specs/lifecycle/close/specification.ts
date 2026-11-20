@@ -13,6 +13,7 @@ import { reserveCloseOperation } from '../reservation';
 import { pruneUncommitted } from '../../uncommitted';
 import { advanceCloseIntegration } from './integration';
 import { requireQuietCheckoutBeforeClose } from '../checkout-quiescence';
+import { finishCloseWithoutGit } from './without-git';
 
 export type CloseSpecificationResult =
   | { readonly status: 'completed'; readonly journal: CloseJournal }
@@ -100,13 +101,17 @@ export async function closeSpecification(
     readonly operationId: string;
     readonly specId: string;
     readonly integrateToTargetBranch?: boolean;
-    readonly finishAfterExternalMerge?: boolean;
   },
 ): Promise<CloseSpecificationResult> {
   const admission = await reserveCloseOperation(engine, {
     kind: 'specification-close',
     ...request,
   });
+  // The reservation decided the repository mode once (or replays the mode it pinned).
+  if (admission.journal.plan.gitOff) {
+    return { status: 'completed', journal: await finishCloseWithoutGit(engine, admission.journal) };
+  }
+
   let journal = admission.journal;
   await requireQuietCheckoutBeforeClose(engine, journal);
   if (journal.stage === 'reserved') {

@@ -2,10 +2,18 @@ import type {
   AbandonSpecificationResult,
   ActionProjection,
   FinishStepResult,
+  StartResult,
 } from '@nevo/specflow-engine';
 import { describe, expect, it } from 'vitest';
 
-import { abandonLines, actionLines, exitLines, finishLines, positionLine } from './present';
+import {
+  abandonLines,
+  actionLines,
+  exitLines,
+  finishLines,
+  positionLine,
+  startLines,
+} from './present';
 
 const subject = { kind: 'task', specId: 'spec', taskId: 'build' } as const;
 
@@ -168,6 +176,27 @@ describe('actionLines', () => {
       '  open task screen: waiting',
       '  hint: finish or cancel these Tasks first, or finish with --task-decisions-file cancelling them (the finish then completes)',
     ]);
+  });
+});
+
+describe('startLines', () => {
+  it('says before the work that a step producing Tasks finishes with all its drafts', () => {
+    const result = {
+      kind: 'started',
+      subject: { kind: 'specification', specId: 'spec' },
+      context: {
+        step: { id: 'breakdown', title: 'Break the solution down', purpose: 'Draft Tasks.' },
+        attempt: 2,
+        finish: {
+          transitions: [{ id: 'proposed', feedback: 'optional', targetTitle: 'Review' }],
+          tasks: { rule: 'List every draft Task.' },
+        },
+      },
+    } as unknown as StartResult;
+
+    expect(startLines(result).at(-1)).toBe(
+      'Finish needs: --tasks-file <path>. List every draft Task.',
+    );
   });
 });
 

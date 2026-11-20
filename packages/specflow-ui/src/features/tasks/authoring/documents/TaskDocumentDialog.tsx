@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   Field,
+  InlineNote,
   Select,
   SelectContent,
   SelectItem,
@@ -34,12 +35,15 @@ export function TaskDocumentDialog({
   specId,
   taskId,
   request,
+  ownContext,
   onClose,
 }: {
   readonly specId: string;
   readonly taskId: string;
   /** Undefined: closed. */
   readonly request: TaskDocumentDialogRequest | undefined;
+  /** The Task's context is its own list: a new document is not added to it, and New says so. */
+  readonly ownContext: boolean;
   readonly onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -48,7 +52,13 @@ export function TaskDocumentDialog({
     <Dialog open={request !== undefined} onOpenChange={(open) => !open && onClose()}>
       <DialogContent closeLabel={t('common.close')}>
         {request ? (
-          <DocumentForm specId={specId} taskId={taskId} request={request} onClose={onClose} />
+          <DocumentForm
+            specId={specId}
+            taskId={taskId}
+            request={request}
+            ownContext={ownContext}
+            onClose={onClose}
+          />
         ) : null}
       </DialogContent>
     </Dialog>
@@ -59,11 +69,13 @@ function DocumentForm({
   specId,
   taskId,
   request,
+  ownContext,
   onClose,
 }: {
   specId: string;
   taskId: string;
   request: TaskDocumentDialogRequest;
+  ownContext: boolean;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -162,6 +174,10 @@ function DocumentForm({
                 </SelectContent>
               </Select>
             </Field>
+          ) : null}
+          {/* With the default context the new document joins it by itself: nothing to say. */}
+          {request.mode === 'new' && ownContext ? (
+            <InlineNote icon="info">{t('taskAuthoring.documents.newOwnContext')}</InlineNote>
           ) : null}
         </form>
       </DialogBody>

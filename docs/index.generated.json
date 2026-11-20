@@ -2197,6 +2197,25 @@
       ]
     },
     {
+      "id": "adr.0025-demo-runs-the-engine-in-memory",
+      "type": "adr",
+      "title": "The demo Runtime runs the Engine's workflow in memory",
+      "status": "current",
+      "file": "docs/architecture/decisions/0025-demo-runs-the-engine-in-memory.md",
+      "read_when": [],
+      "summary": "The `--demo` Runtime runs the real Engine workflow operations over an in-memory execution store seeded through Engine commands, and serves the project routes over it, so the UI shows the same Overview Now, Tasks page and Full Task in both modes. In-memory implementations sit behind the Engine's existing ports; no demo branch enters Engine logic or the UI. The snapshot-based demo Task screen and its sections are removed.",
+      "related": [
+        "adr.0019-workflow-kernel-and-automatic-continuation",
+        "adr.0023-neutral-workflow-coordinator-and-manual-execution",
+        "adr.0024-tasks-are-resources",
+        "architecture.workflow.workflow-kernel",
+        "architecture.runtime.task-read-composition",
+        "engineering.shared.code-organization",
+        "reference.api.task-reads",
+        "reference.api.specification-workflow"
+      ]
+    },
+    {
       "id": "design-system.implementation.library-packaging",
       "type": "engineering",
       "title": "UI library packaging boundary",
@@ -4995,7 +5014,7 @@
         "changing the Overview Tasks summary or the Tasks page (/specs/:specId/tasks)",
         "changing what the Overview shows on a project Runtime (Now, Requires attention, Activity events, description)"
       ],
-      "summary": "Specification Overview as the control center of one Specification: summary, Now, Requires attention, the Tasks summary of the configured grouping, Sessions and Documents; the measured two-column arrangement from 1408 px of content width with 16 px hysteresis, focus restore across a crossing, Activity history as an on-demand Secondary, the preparation block, and the Tasks page (/specs/:specId/tasks) with its validated blocking filter.",
+      "summary": "Specification Overview as the control center of one Specification: summary, Now, Requires attention, the Tasks summary of the configured grouping, Sessions and Documents; the measured two-column arrangement from 1408 px of content width with 16 px hysteresis, focus restore across a crossing, Activity history as an on-demand Secondary, the preparation block, and the Tasks page (/specs/:specId/tasks) with its validated blocking and group filters.",
       "related": [
         "product.specflow.ui.shell-geometry",
         "product.specflow.ui.interaction-model",
@@ -5121,6 +5140,46 @@
         "now-block",
         "close",
         "abandon"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.workflow-workbench-decisions",
+      "type": "product",
+      "title": "Workflow and Task workbench decisions (November 2026)",
+      "status": "current",
+      "file": "docs/product/specflow/ui/workflow-workbench-decisions.md",
+      "read_when": [
+        "changing how a Task status, Requires attention or a document state is presented",
+        "changing the Overview Now, the Overview Tasks section, the Tasks page or the Full Task sections",
+        "changing the Close dialog, Close with Git off or the demo Runtime's workflow",
+        "looking for why one of these behaves the way it does"
+      ],
+      "summary": "Owner and coordinator decisions of the November 2026 UX round on the workflow and Task workbench: one status presentation model, Requires attention as \"the user must act\", the Now block, Task rows on the Overview and the Tasks page, Full Task sections, one document content state model, the Close dialog, Close with Git off as archive only, and the demo running the Engine. Each entry names the document that owns the rule.",
+      "related": [
+        "product.specflow.ui.specification-overview",
+        "product.specflow.ui.workflow-execution",
+        "product.specflow.ui.documents-archetypes",
+        "product.specflow.ui.shell-geometry",
+        "architecture.workflow.workflow-kernel",
+        "architecture.runtime.specification-documents",
+        "architecture.runtime.specflow-lifecycle",
+        "adr.0023-neutral-workflow-coordinator-and-manual-execution",
+        "adr.0025-demo-runs-the-engine-in-memory"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "workflow"
+      ],
+      "tags": [
+        "decisions",
+        "status",
+        "attention",
+        "now-block",
+        "tasks",
+        "documents",
+        "close",
+        "demo"
       ]
     },
     {
@@ -5889,6 +5948,39 @@
         "compatibility",
         "discovery",
         "admission"
+      ]
+    },
+    {
+      "id": "reference.providers.executable-discovery",
+      "type": "reference",
+      "title": "Provider executable discovery and unavailability reasons",
+      "status": "current",
+      "file": "docs/reference/providers/executable-discovery.md",
+      "read_when": [
+        "a provider CLI is installed but the catalogue says it is not found or not working",
+        "adding or changing a provider's install locations or version check",
+        "changing what the provider catalogue says about an unavailable provider"
+      ],
+      "summary": "How the Runtime finds and verifies each provider's CLI (configured path, PATH, vendor install locations), which locations are trusted and why, how a candidate is chosen and cached, and the catalogue's unavailability reason codes with what the user can do about each.",
+      "related": [
+        "reference.providers.compatibility",
+        "reference.providers.claude",
+        "reference.providers.codex",
+        "reference.providers.antigravity",
+        "reference.api.sessions"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "security",
+        "configuration"
+      ],
+      "tags": [
+        "providers",
+        "discovery",
+        "executable",
+        "sessions"
       ]
     }
   ]

@@ -1,4 +1,5 @@
 import type { ArchetypeCatalogue, DocumentTree as Tree } from '@nevo/specflow-contracts/documents';
+import type { DocumentRelation } from '@nevo/specflow-contracts/workflow';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { InlineNote, Spinner, Typography, cn, treeSectionHeaderClassName } from '@nevo/ui';
@@ -30,6 +31,8 @@ import type { TreeFocus } from './useTreeFocus';
 export function ExplorerTree({
   tree,
   catalogue,
+  relations,
+  relationsUnavailable = false,
   rows,
   filtered,
   filter,
@@ -52,6 +55,10 @@ export function ExplorerTree({
 }: {
   tree: Tree;
   catalogue?: ArchetypeCatalogue;
+  /** How the Specification's workflow uses each document now, by document id. */
+  relations?: ReadonlyMap<string, DocumentRelation>;
+  /** The workflow projection could not be read: a quiet note says the relations are missing. */
+  relationsUnavailable?: boolean;
   /** The unfiltered rows. */
   rows: TreeRows;
   /** The rows the filter leaves, with its counts. */
@@ -143,6 +150,7 @@ export function ExplorerTree({
           context={{
             index,
             catalogue,
+            relations,
             active,
             locked: busy || unknown,
             expandAll: filtering,
@@ -192,6 +200,12 @@ export function ExplorerTree({
       {/* Quiet notes: a known limit that needs no action, after the list where it is cut. */}
       {tree.truncated && (
         <InlineNote className={treePaneTextClassName}>{t('documents.tree.truncated')}</InlineNote>
+      )}
+      {relationsUnavailable && (tree.documents.length > 0 || tree.dangling.length > 0) && (
+        // Never a silent "no relation": the rows cannot say which documents a step needs.
+        <InlineNote className={treePaneTextClassName}>
+          {t('documents.tree.relationsUnavailable')}
+        </InlineNote>
       )}
     </>
   );

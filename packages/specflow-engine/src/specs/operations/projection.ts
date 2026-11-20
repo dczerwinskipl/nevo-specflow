@@ -1,16 +1,10 @@
-import type { CreatedSpecification } from '../create';
-import type { CloseJournal, CloseOutcome, ClosePlan, CloseKind } from '../lifecycle';
-
-export interface PublicCreateOperation {
-  readonly operationId: string;
-  readonly specId: string;
-  readonly kind: 'specification-create';
-  readonly status: 'completed';
-  readonly slug: string;
-  readonly workspaceId: string;
-  readonly relativeManifestPath: string;
-  readonly documentIds: string[];
-}
+import type {
+  CloseJournal,
+  CloseMergeFacts,
+  CloseOutcome,
+  ClosePlan,
+  CloseKind,
+} from '../lifecycle';
 
 export type PublicCloseStatus =
   'completed' | 'in-progress' | 'requires-resolution' | 'recovery-required';
@@ -32,7 +26,8 @@ export interface PublicCloseSourceWorkspace {
   readonly kind: 'primary' | 'linked';
 }
 
-export interface PublicClosePreview {
+/** The admitted plan of a Specification or Worktree Close (also for a retry of a reserved one). */
+export interface PublicClosePlan {
   readonly operationId: string;
   readonly specId: string;
   readonly kind: Exclude<CloseKind, 'workspace-close'>;
@@ -41,25 +36,19 @@ export interface PublicClosePreview {
   readonly sourceWorkspace: PublicCloseSourceWorkspace;
 }
 
+/** What the Close merges ({@link CloseMergeFacts}). */
+export type PublicCloseMerge = CloseMergeFacts;
+
+/** A fresh, read-only Close preview: the plan and its merge facts. */
+export interface PublicClosePreview extends PublicClosePlan {
+  readonly merge: PublicCloseMerge;
+}
+
 /** A linked registration always records its instance; the primary never does. */
 function sourceWorkspace(plan: ClosePlan): PublicCloseSourceWorkspace {
   return {
     workspaceId: plan.source.workspaceId,
     kind: plan.source.instanceId === undefined ? 'primary' : 'linked',
-  };
-}
-
-/** Transport-independent result. Never serialize workstation paths or journal evidence. */
-export function projectCreatedSpecification(created: CreatedSpecification): PublicCreateOperation {
-  return {
-    operationId: created.operationId,
-    specId: created.specId,
-    kind: 'specification-create',
-    status: 'completed',
-    slug: created.slug,
-    workspaceId: created.workspaceId,
-    relativeManifestPath: created.relativeManifestPath,
-    documentIds: [...created.documentIds],
   };
 }
 
@@ -105,7 +94,11 @@ export function projectCloseOperation(journal: CloseJournal): PublicCloseOperati
   };
 }
 
-export function projectClosePreview(plan: ClosePlan): PublicClosePreview {
+export function projectClosePreview(plan: ClosePlan, merge: CloseMergeFacts): PublicClosePreview {
+  return { ...projectClosePlan(plan), merge };
+}
+
+export function projectClosePlan(plan: ClosePlan): PublicClosePlan {
   if (plan.kind === 'workspace-close') {
     throw new Error('Workspace Close must use the workspace-specific preview.');
   }

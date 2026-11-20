@@ -21,12 +21,15 @@ describe('Create progress copy', () => {
   it('says each step in user language: done and running describe, pending is only its muted title', () => {
     expect(
       words(
-        createProgressSteps([
-          { id: 'reserving', status: 'done' },
-          { id: 'preparing-workspace', status: 'running' },
-          { id: 'writing-specification', status: 'pending' },
-          { id: 'registering', status: 'pending' },
-        ]),
+        createProgressSteps(
+          [
+            { id: 'reserving', status: 'done' },
+            { id: 'preparing-workspace', status: 'running' },
+            { id: 'writing-specification', status: 'pending' },
+            { id: 'registering', status: 'pending' },
+          ],
+          true,
+        ),
       ),
     ).toEqual([
       ['Reserving the name', 'Name and branch reserved', 'done'],
@@ -34,6 +37,23 @@ describe('Create progress copy', () => {
       ['Creating the specification', undefined, 'pending'],
       ['Finishing setup', undefined, 'pending'],
     ]);
+  });
+
+  it('names a branch only when Create makes a new workspace', () => {
+    const reserving = (newWorkspace?: boolean) =>
+      words(
+        createProgressSteps(
+          [
+            { id: 'reserving', status: 'done' },
+            { id: 'writing-specification', status: 'running' },
+          ],
+          newWorkspace,
+        ),
+      )[0];
+
+    expect(reserving(true)).toEqual(['Reserving the name', 'Name and branch reserved', 'done']);
+    expect(reserving(false)).toEqual(['Reserving the name', 'Name reserved', 'done']);
+    expect(reserving(undefined)?.[1]).toBe('Name reserved');
   });
 
   it('omits skipped steps (an existing workspace has no workspace step)', () => {

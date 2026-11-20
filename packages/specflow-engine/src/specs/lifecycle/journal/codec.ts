@@ -26,6 +26,10 @@ export function isCloseJournal(
     return false;
   }
 
+  if (plan.gitOff !== undefined || value.archiveMove !== undefined) {
+    return isGitOffCloseJournal(context, value, plan, operationId);
+  }
+
   const retainedConflict = value.stage === 'archived-linked-awaiting-integration';
   if (value.scratchRetired !== undefined && (!retainedConflict || value.scratchRetired !== true)) {
     return false;
@@ -143,7 +147,6 @@ export function isCloseJournal(
     }
 
     if (
-      plan.finishAfterExternalMerge !== true &&
       (value.stage === 'integration-publish-initiated' ||
         value.stage === 'integration-verified' ||
         afterRebind) &&
@@ -192,8 +195,6 @@ export function isCloseJournal(
     (plan.targetBranch !== undefined && typeof plan.targetBranch !== 'string') ||
     (plan.integrateToTargetBranch !== undefined &&
       typeof plan.integrateToTargetBranch !== 'boolean') ||
-    (plan.finishAfterExternalMerge !== undefined &&
-      typeof plan.finishAfterExternalMerge !== 'boolean') ||
     (plan.configRevision !== undefined &&
       (typeof plan.configRevision !== 'string' || !SHA.test(plan.configRevision))) ||
     !Array.isArray(plan.resources)
@@ -227,18 +228,12 @@ export function isCloseJournal(
     plan.kind === 'workspace-close'
       ? { kind: 'workspace-close' as const, operationId, workspaceId: String(plan.workspaceId) }
       : plan.kind === 'worktree-close'
-        ? {
-            kind: 'worktree-close' as const,
-            operationId,
-            specId: plan.specId,
-            finishAfterExternalMerge: plan.finishAfterExternalMerge === true,
-          }
+        ? { kind: 'worktree-close' as const, operationId, specId: plan.specId }
         : {
             kind: 'specification-close' as const,
             operationId,
             specId: plan.specId,
             integrateToTargetBranch: plan.integrateToTargetBranch ?? false,
-            finishAfterExternalMerge: plan.finishAfterExternalMerge === true,
           };
   if (plan.fingerprint !== fingerprintCloseIntent(intent)) {
     return false;
@@ -269,10 +264,6 @@ function isCoherentCloseScope(plan: Record<string, unknown>): boolean {
     if (!linked || plan.integrateToTargetBranch !== undefined) {
       return false;
     }
-
-    if (plan.kind === 'workspace-close' && plan.finishAfterExternalMerge !== undefined) {
-      return false;
-    }
   } else if (plan.kind === 'specification-close') {
     if ((typeof plan.integrateToTargetBranch === 'boolean') !== linked) {
       return false;
@@ -287,11 +278,6 @@ function isCoherentCloseScope(plan: Record<string, unknown>): boolean {
     plan.kind === 'worktree-close' ||
     plan.kind === 'workspace-close' ||
     plan.integrateToTargetBranch === true;
-  // Never inferred from Git ancestry: only an explicit, linked integration may carry it.
-  if (plan.finishAfterExternalMerge === true && !(linked && integrate)) {
-    return false;
-  }
-
   const needsTarget = integrate || !linked;
   if (!needsTarget) {
     return (
@@ -316,6 +302,95 @@ function isCoherentCloseScope(plan: Record<string, unknown>): boolean {
   );
 }
 
+/**
+ * A Specification Close with Git off (`GitOffClosePlan`): `reserved`, then `archive-initiated`
+ * with the pinned archive move, then `completed` as `archived-without-git`. It never carries Git
+ * evidence, a target, integration or scratch state, and claims only its Specification and checkout.
+ */
+function isGitOffCloseJournal(
+  context: ResolvedProjectHome,
+  value: Record<string, unknown>,
+  plan: Record<string, unknown>,
+  operationId: string,
+): boolean {
+  const source = plan.source;
+  if (
+    value.version !== 1 ||
+    value.projectId !== context.project.projectId ||
+    value.gitInstanceId !== context.project.gitInstanceId ||
+    plan.gitOff !== true ||
+    plan.kind !== 'specification-close' ||
+    plan.operationId !== operationId ||
+    !CLOSE_UUID.test(operationId) ||
+    typeof plan.specId !== 'string' ||
+    !CLOSE_UUID.test(plan.specId) ||
+    typeof plan.fingerprint !== 'string' ||
+    plan.fingerprint !==
+      fingerprintCloseIntent({
+        kind: 'specification-close',
+        operationId,
+        specId: plan.specId,
+        integrateToTargetBranch: false,
+      }) ||
+    typeof plan.slug !== 'string' ||
+    !isCanonicalSlug(plan.slug) ||
+    plan.location !== 'active' ||
+    typeof plan.registryRevision !== 'number' ||
+    !Number.isSafeInteger(plan.registryRevision) ||
+    (plan.bindingGeneration !== undefined &&
+      (typeof plan.bindingGeneration !== 'number' ||
+        !Number.isSafeInteger(plan.bindingGeneration))) ||
+    !isRecord(source) ||
+    Object.keys(source).some(
+      (key) => key !== 'workspaceId' && key !== 'root' && key !== 'instanceId',
+    ) ||
+    typeof source.workspaceId !== 'string' ||
+    !CLOSE_UUID.test(source.workspaceId) ||
+    typeof source.root !== 'string' ||
+    (source.instanceId !== undefined &&
+      (typeof source.instanceId !== 'string' || !CLOSE_UUID.test(source.instanceId))) ||
+    // Archive only: `false` for a linked checkout, absent in the primary.
+    plan.integrateToTargetBranch !== (source.instanceId !== undefined ? false : undefined) ||
+    typeof plan.configRevision !== 'string' ||
+    !SHA.test(plan.configRevision) ||
+    plan.target !== undefined ||
+    plan.targetBranch !== undefined ||
+    plan.workspaceId !== undefined ||
+    plan.occupants !== undefined ||
+    value.archive !== undefined ||
+    value.integration !== undefined ||
+    value.scratch !== undefined ||
+    value.scratchRetired !== undefined ||
+    value.reboundRevision !== undefined ||
+    !Array.isArray(plan.resources)
+  ) {
+    return false;
+  }
+
+  if (value.stage === 'reserved') {
+    if (value.archiveMove !== undefined || value.outcome !== undefined) {
+      return false;
+    }
+  } else if (value.stage === 'archive-initiated' || value.stage === 'completed') {
+    if (
+      !isArchiveMove(value.archiveMove, plan.slug, MOVE_KEYS) ||
+      value.outcome !== (value.stage === 'completed' ? 'archived-without-git' : undefined)
+    ) {
+      return false;
+    }
+  } else {
+    return false;
+  }
+
+  const verifiedPlan = plan as unknown as CloseJournal['plan'];
+  const resources: readonly unknown[] = plan.resources;
+
+  return (
+    resources.join('\0') ===
+    resourcesForClosePlan(verifiedPlan, context.project.projectId).join('\0')
+  );
+}
+
 function isArchiveEvidence(value: unknown, plan: Record<string, unknown>, stage: string): boolean {
   if (
     plan.kind !== 'specification-close' ||
@@ -325,8 +400,43 @@ function isArchiveEvidence(value: unknown, plan: Record<string, unknown>, stage:
     typeof value.sourceCommit !== 'string' ||
     value.sourceCommit !== plan.source.head ||
     typeof plan.slug !== 'string' ||
-    value.sourcePath !== 'specs/active/' + plan.slug ||
-    value.destinationPath !== 'specs/archive/' + plan.slug ||
+    !isArchiveMove(value, plan.slug, ARCHIVE_EVIDENCE_KEYS)
+  ) {
+    return false;
+  }
+
+  const id = /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/iu;
+  if (stage === 'archive-committed') {
+    return (
+      typeof value.committedHead === 'string' &&
+      id.test(value.committedHead) &&
+      typeof value.committedTree === 'string' &&
+      id.test(value.committedTree)
+    );
+  }
+
+  return value.committedHead === undefined && value.committedTree === undefined;
+}
+
+/** The pinned move of `specs/active/<slug>` to `specs/archive/<slug>`: its ordered file inventory. */
+const MOVE_KEYS = ['sourcePath', 'destinationPath', 'files', 'archivedManifestSha256'];
+const ARCHIVE_EVIDENCE_KEYS = [...MOVE_KEYS, 'sourceCommit', 'committedHead', 'committedTree'];
+
+/** Only `keys`, so a journal cannot carry evidence its plan does not have. */
+function hasOnlyKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  return Object.keys(value).every((key) => keys.includes(key));
+}
+
+function isArchiveMove(
+  value: unknown,
+  slug: string,
+  keys: readonly string[],
+): value is Record<string, unknown> {
+  if (
+    !isRecord(value) ||
+    !hasOnlyKeys(value, keys) ||
+    value.sourcePath !== 'specs/active/' + slug ||
+    value.destinationPath !== 'specs/archive/' + slug ||
     typeof value.archivedManifestSha256 !== 'string' ||
     !SHA.test(value.archivedManifestSha256) ||
     typeof value.sourcePath !== 'string' ||
@@ -344,6 +454,7 @@ function isArchiveEvidence(value: unknown, plan: Record<string, unknown>, stage:
   const valid = files.every((file, index) => {
     if (
       !isRecord(file) ||
+      !hasOnlyKeys(file, ['relativePath', 'sha256']) ||
       typeof file.relativePath !== 'string' ||
       !file.relativePath.startsWith(sourcePath + '/') ||
       file.relativePath.includes('\\') ||
@@ -367,21 +478,7 @@ function isArchiveEvidence(value: unknown, plan: Record<string, unknown>, stage:
     return false;
   }
 
-  if (!files.some((file) => isRecord(file) && file.relativePath === manifestPath)) {
-    return false;
-  }
-
-  const id = /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/iu;
-  if (stage === 'archive-committed') {
-    return (
-      typeof value.committedHead === 'string' &&
-      id.test(value.committedHead) &&
-      typeof value.committedTree === 'string' &&
-      id.test(value.committedTree)
-    );
-  }
-
-  return value.committedHead === undefined && value.committedTree === undefined;
+  return files.some((file) => isRecord(file) && file.relativePath === manifestPath);
 }
 
 function isIntegrationPreparation(
@@ -448,19 +545,15 @@ function isIntegrationPreparation(
     stage === 'disposal-initiated' ||
     stage === 'completed'
   ) {
-    // Never re-merged, regardless of the ancestry-derived `relationship`: the published
-    // commit is always the destination's own pinned target.
-    if (plan.finishAfterExternalMerge === true) {
-      if (published !== value.targetCommit) {
-        return false;
-      }
-    } else if (
+    if (
       value.relationship !== 'divergent' &&
       published !==
         (value.relationship === 'fast-forward' ? value.sourceCommit : value.targetCommit)
     ) {
       return false;
-    } else if (
+    }
+
+    if (
       value.relationship === 'divergent' &&
       (typeof published !== 'string' || !sha.test(published))
     ) {

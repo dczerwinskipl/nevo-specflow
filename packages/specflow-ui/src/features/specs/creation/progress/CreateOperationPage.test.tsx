@@ -497,6 +497,36 @@ describe('CreateOperationPage', () => {
     expect(Date.now() - started).toBeLessThan(openAfterCreatedMs + 1000);
   });
 
+  it('created but not committed (Git disabled): says so, stays on the page, opens on the button', async () => {
+    store({ target: { kind: 'existing', workspaceId: created.workspaceId } });
+    const uncommitted: CreatedSpec = { ...created, uncommitted: true };
+    const { onOpen } = renderPage({
+      post: vi.fn().mockResolvedValue(uncommitted),
+      get: vi.fn().mockRejectedValue(httpError(404, 'CREATE_NOT_FOUND')),
+    });
+    expect(await heading('Specification created')).toBeTruthy();
+    const notice = (await screen.findByText('The specification files are not committed')).closest(
+      '[role="status"]',
+    );
+    expect(notice?.textContent).toContain('Close refuses while they are uncommitted');
+    expect(
+      screen.getByText('Done, but the files are not committed yet.', {
+        selector: 'p:not(.sr-only)',
+      }),
+    ).toBeTruthy();
+    const steps = within(
+      screen.getByRole('group', { name: 'Specification creation progress' }),
+    ).getAllByRole('listitem');
+    // No branch is reserved and nothing is saved in Git.
+    expect(steps.map((item) => item.textContent)).not.toContainEqual(
+      expect.stringMatching(/branch|in Git/),
+    );
+    await new Promise((resolve) => setTimeout(resolve, openAfterCreatedMs + 300));
+    expect(onOpen).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Open specification' }));
+    expect(onOpen).toHaveBeenCalledWith(uncommitted);
+  });
+
   it('success: the button opens the specification at once', async () => {
     store();
     const { onOpen } = renderPage({

@@ -6,6 +6,7 @@ import {
   BROKEN_REASONS,
   WorkflowAttentionItemSchema,
 } from '../workflow/projection';
+import { TASK_STATUS_REASON_MAX_LENGTH } from '../documents/task-resource-files';
 import { TaskFactsSchema } from './task-resource';
 
 const literals = <const T extends readonly string[]>(values: T) =>
@@ -53,10 +54,28 @@ export const TaskProgressSchema = Type.Object({
   onHold: Type.Integer({ minimum: 0 }),
 });
 
-/** `?blocking=specification`: only the Tasks the Specification's current `tasks-stuck` covers. */
+/**
+ * At most one filter: `?blocking=specification` keeps only the Tasks the Specification's current
+ * `tasks-stuck` covers; `?group=<groupId>` only the Tasks of that dashboard group (the Overview's
+ * "N more in <group>"). The two do not combine (refused at the boundary).
+ */
 export const TaskListQuerySchema = Type.Object(
-  { blocking: Type.Optional(Type.Literal('specification')) },
-  { additionalProperties: false },
+  {
+    blocking: Type.Optional(
+      Type.Literal('specification', {
+        description:
+          "Only the Tasks the Specification's current tasks-stuck names. Cannot be combined with `group` (400).",
+      }),
+    ),
+    group: Type.Optional(
+      Type.String({
+        ...GroupIdSchema,
+        description:
+          'Only the Tasks of this dashboard group (a group id). Cannot be combined with `blocking` (400).',
+      }),
+    ),
+  },
+  { additionalProperties: false, not: { required: ['blocking', 'group'] } },
 );
 export type TaskListQuery = Static<typeof TaskListQuerySchema>;
 
@@ -64,6 +83,15 @@ export type TaskListQuery = Static<typeof TaskListQuerySchema>;
 const BlocksSpecification = Type.Optional(
   Type.Object({ cause: BlockingTaskSchema.properties.cause }),
 );
+
+/**
+ * THE attention item a client shows for the row (its Requires attention overlay): the Task's own
+ * Engine item, else the Specification's `task-escalated` that names it. At most one; the
+ * Specification's `tasks-stuck` is `blocksSpecification` instead. Absent when nothing names it.
+ * Use this for display, not `facts.attention`: that is the Engine's own-item fact only (it never
+ * holds a Specification item, and a broken row has no facts).
+ */
+const RowAttention = Type.Optional(WorkflowAttentionItemSchema);
 
 /** A readable Task: its neutral facts and the status line derived from them. */
 export const TaskListRowSchema = Type.Object({
@@ -74,6 +102,14 @@ export const TaskListRowSchema = Type.Object({
   status: TaskStatusLineSchema,
   facts: TaskFactsSchema,
   blocksSpecification: BlocksSpecification,
+  /**
+   * The reason recorded when it was put on hold (a person's decision or its escalation's feedback),
+   * verbatim. Present only while the Task is on hold and a reason was given.
+   */
+  holdReason: Type.Optional(
+    Type.String({ minLength: 1, maxLength: TASK_STATUS_REASON_MAX_LENGTH }),
+  ),
+  attention: RowAttention,
 });
 export type TaskListRow = Static<typeof TaskListRowSchema>;
 
@@ -88,6 +124,7 @@ export const BrokenTaskListRowSchema = Type.Object({
   status: TaskStatusLineSchema,
   broken: Type.Object({ reason: literals(BROKEN_REASONS) }),
   blocksSpecification: BlocksSpecification,
+  attention: RowAttention,
 });
 export type BrokenTaskListRow = Static<typeof BrokenTaskListRowSchema>;
 
@@ -106,26 +143,41 @@ export const TaskListGroupSchema = Type.Object({
 
 export const TaskListResponseSchema = Type.Object({
   specId: SpecIdSchema,
-  /** Non-empty groups in configured order; with a filter, only the matching Tasks. */
+  /**
+   * Non-empty groups in configured order, the Tasks of each in importance order (Requires
+   * attention, then held or unable to start with a Task waiting on it, then in progress, then the
+   * Engine's Task order); with a filter, only the matching Tasks.
+   */
   groups: Type.Array(TaskListGroupSchema),
   progress: TaskProgressSchema,
   /** The attention projection (broken Tasks, the Specification, then Tasks in id order). */
   attention: Type.Array(WorkflowAttentionItemSchema),
-  /** Present with `?blocking=specification`: how many Tasks match out of all listed (broken too). */
+  /**
+   * Present with a filter (`?blocking=specification` or `?group=<groupId>`, as requested): how
+   * many Tasks match out of all listed (broken too).
+   */
   filter: Type.Optional(
-    Type.Object({
-      blocking: Type.Literal('specification'),
-      matched: Type.Integer({ minimum: 0 }),
-      total: Type.Integer({ minimum: 0 }),
-    }),
+    Type.Union([
+      Type.Object({
+        blocking: Type.Literal('specification'),
+        matched: Type.Integer({ minimum: 0 }),
+        total: Type.Integer({ minimum: 0 }),
+      }),
+      Type.Object({
+        group: GroupIdSchema,
+        matched: Type.Integer({ minimum: 0 }),
+        total: Type.Integer({ minimum: 0 }),
+      }),
+    ]),
   ),
 });
 export type TaskListResponse = Static<typeof TaskListResponseSchema>;
 
 /**
- * The Overview's compact Tasks summary. A `row` group names its count and up to two Tasks, each by
- * id and title in every group (also a Task the Overview names elsewhere, so the groups read alike);
- * `compact` groups share one line of counts.
+ * The Overview's compact Tasks summary. A `row` group names its count and its first two Tasks in
+ * the Tasks page's importance order, each the same row as on the Tasks page (`TaskListEntry`, the
+ * same Runtime projection, so the two never disagree), then `more`; `compact` groups share one
+ * line of counts.
  */
 export const TaskOverviewSchema = Type.Object({
   rows: Type.Array(
@@ -133,14 +185,8 @@ export const TaskOverviewSchema = Type.Object({
       groupId: GroupIdSchema,
       name: Type.String(),
       count: Type.Integer({ minimum: 1 }),
-      tasks: Type.Array(
-        Type.Object({
-          id: TaskIdSchema,
-          title: Type.String(),
-        }),
-        { maxItems: 2 },
-      ),
-      /** Tasks of the group beyond `tasks`. */
+      tasks: Type.Array(TaskListEntrySchema, { maxItems: 2 }),
+      /** Tasks of the group beyond `tasks` (the Tasks page `?group=<groupId>` lists them all). */
       more: Type.Integer({ minimum: 0 }),
     }),
   ),

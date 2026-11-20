@@ -1,7 +1,7 @@
 /**
  * Requests from a Requires attention action to the Tasks flow that carries it out on the Overview
- * (a first-start confirmation, a cancel confirmation, a direct start, the Specification's Return
- * dialog). An attention entry is plain data built outside React, so its click hands the request to
+ * (a first-start confirmation, a cancel confirmation, a direct start or resume, the Specification's
+ * Return dialog). An attention entry is plain data built outside React, so its click hands the request to
  * whichever owner listens for that Specification; the listener acts in the click's own call stack
  * (an event handler), never in an effect reacting to state.
  */
@@ -9,9 +9,19 @@ export type TaskAttentionRequest =
   | { readonly kind: 'start-step'; readonly taskId: string }
   | { readonly kind: 'first-start'; readonly taskId: string }
   | { readonly kind: 'cancel-task'; readonly taskId: string }
+  | { readonly kind: 'resume-task'; readonly taskId: string }
   | { readonly kind: 'return-to-step' };
 
 type Listener = (request: TaskAttentionRequest) => boolean;
+
+/** A direct command of Requires attention (Start step, Resume), as one running action's key. */
+export function taskCommandKey(
+  specId: string,
+  kind: 'start-step' | 'resume-task',
+  taskId: string,
+): string {
+  return JSON.stringify(['tasks', specId, kind, taskId]);
+}
 
 const listeners = new Map<string, Set<Listener>>();
 

@@ -375,11 +375,20 @@ describe.each(ROUTES)('$method $url ($name)', (route) => {
       return;
     }
 
-    const filler = 'a'.repeat(route.limit + 1);
-    const unauthenticated = await listen({ authenticated: false });
-    expect((await send(unauthenticated, route, { body: { filler } })).statusCode).toBe(401);
+    const body = JSON.stringify({ filler: 'a'.repeat(route.limit + 1) });
     const viewer = await listen({ assignments: [{ role: 'viewer', scope: {} }] });
-    expect((await send(viewer, route, { body: { filler } })).statusCode).toBe(403);
+    const request = {
+      method: route.method,
+      url: route.url,
+      payload: body,
+    };
+    const headers = { 'content-type': 'application/json' };
+    expect((await viewer.app.inject({ ...request, headers })).statusCode).toBe(401);
+    expect(
+      (await viewer.app.inject({ ...request, headers: { ...headers, ...viewer.headers } }))
+        .statusCode,
+    ).toBe(403);
+    expect(viewer.calls.names).toEqual([]);
   });
 
   it('answers a body above its own limit with DOCUMENT_TOO_LARGE (413) and nothing above it', async () => {

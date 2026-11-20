@@ -17,7 +17,7 @@ summary: >
   attention, the Tasks summary of the configured grouping, Sessions and Documents; the measured
   two-column arrangement from 1408 px of content width with 16 px hysteresis, focus restore across
   a crossing, Activity history as an on-demand Secondary, the preparation block, and the Tasks page
-  (/specs/:specId/tasks) with its validated blocking filter.
+  (/specs/:specId/tasks) with its validated blocking and group filters.
 related:
   - product.specflow.ui.shell-geometry
   - product.specflow.ui.interaction-model
@@ -56,23 +56,50 @@ Three concerns stay apart and the UI computes none of them: workflow state (the 
 and neutral Task facts), attention (the attention projection) and grouping (the Runtime's
 dashboard configuration). The Overview renders what the reads deliver.
 
-- **Now** — the Specification workflow's position: the step title and one plain line (attempt,
-  since, by whom; or what the step does), then the step's purpose and where the run is among the
-  workflow's declared steps, "Step 2 of 7 · next: Design the solution" (the projection's `outline`;
-  "Step 7 of 7" at the last step). The number is the step's position in the workflow definition,
-  not progress (a workflow may loop or branch), and "next" appears only when the step leads to one
-  step only. Before the first start the plain line reads "First step · Gather
-  requirements" and no step line follows. For a `wait` step the Task progress appears here only,
-  once: a segmented bar, "Tasks 1 of 6 done · 1 cancelled · 1 ended · 1 on hold" (zero parts
-  omitted) and a line that cancelled (and ended) Tasks are not counted. When the wait cannot
+- **Now** — the Specification workflow's position, in this order: the step title; the **step
+  track** (the design system's `Progress` position mode) followed by its label "Step 2 of 7 · next:
+  Design the solution" (the projection's `outline`; "Step 7 of 7" at the last step); one quiet line
+  "In progress since 11:18 · started by you" ("Attempt 2 · …" only from a second attempt on, never
+  "Attempt 1"); then the step's purpose. The track and the number show the step's position in the
+  workflow definition, not progress (a workflow may loop or branch, and after a return the current
+  segment moves back), and "next" appears only when the step leads to one step only. The track is
+  one image named "Step 2 of 7: Write the specification"; its visible label is not read twice.
+  Before the first start the track outlines the first segment and its label reads "First step ·
+  Gather requirements"; a completed workflow fills every segment ("All 7 steps · completed"); an
+  abandoned one has no track (the outline no longer says where it stopped). On a `wait` step the
+  track is compact and the Task progress bar stays the dominant one. Below a 40rem page the label
+  goes under the track. For a `wait` step the Task progress appears here only,
+  once: a continuous bar filled in the success tone (never a second segmented track under the step
+  track) with its label to the right, "1 of 6 tasks done · 1 cancelled · 1 ended · 1 on hold" (zero
+  parts omitted; below a 40rem page it goes under the bar); the label's tooltip says that cancelled
+  (and ended) Tasks are not counted. When the wait cannot
   continue, one note names the blocking Tasks as links ("It cannot continue now: T-04 is a draft,
-  T-05 is on hold and no other task is open."). Now offers the workflow's **main** action only:
-  Start workflow, Finish step, or Close specification once it ended; none while the workflow waits
-  by itself. When every result of the active step needs an unmet exit gate, the gate's action (for
-  example **Open specification.md**) is the main action and Finish step waits, unavailable, in the
-  menu. The **⋯** menu holds Return to an earlier step, Workflow history (Activity history) and
-  one note with the step id and workflow revision. A terminal position shows a summary of the Tasks
-  ("All 6 tasks done · 1 cancelled"); an abandoned one its reason under the title.
+  T-05 is on hold and no other task is open."). Now offers the workflow's **main** action: Start
+  workflow, Finish step, or Close specification once it ended; none while the workflow waits by
+  itself. While a start is being recorded the Start button reads "Starting…" (busy) and the quiet
+  line says the same until the new position is read, never a stale "Ready to start". Under the
+  step's purpose, **Done when** lists the active step's exit gates as a neutral checklist (an unmet
+  gate is an open circle with "not yet"; the list is shared with the Task Now, see
+  [Now block](workflow-execution.md#now-block); a step without document gates has no Done when
+  at all). When every
+  result of the active step needs an unmet exit gate that names a document, opening it (**Open
+  behaviour.md**) is the main action, a line above the actions says what is missing ("Add the
+  Acceptance section to behaviour.md to finish.") and **Finish step** stays beside it as the
+  secondary action (its dialog shows what is still unmet). Beside the main action there is **at most
+  one contextual secondary action**, chosen from projection facts, never from step ids: **New task**
+  at an active step that produces Tasks while a Task may be created (`specification.createTask`;
+  it opens the New task dialog), else **Open <document>** for an unmet exit gate that is not the
+  main action, else nothing. New task is never dropped at such a step: when Finish step is not
+  available (and no gate action replaces it) New task is Now's only action, primary-styled; beside
+  an unmet gate's action and Finish step it stays as a quiet (ghost) button, one tap away. Now never
+  offers "View N tasks", on any step, wait steps included: the Tasks section follows it. The
+  **⋯** menu holds Return to an earlier step, Workflow history (Activity history) and one note with
+  the step id and workflow revision; neither appears anywhere else in Now. A terminal position
+  shows a summary of the Tasks ("All 6 tasks done · 1 cancelled"); an abandoned one its reason
+  under the title. **Narrow containment:** below a 40rem page content container Now is a flush band
+  across the body padding (`AccentBlock bleed="narrow"`, a container query, never a viewport
+  check), not a card inside the sheet: its text lines up with the page gutter, the section after it
+  drops its divider, and the tint and the 3 px bar stay. From 40rem (834 included) it is the card.
 - **Preparation block** — in Now's place when the Specification has no workflow, no Tasks and no
   Session. Heading **Prepare specification for execution**. When `actions.startSession` is
   available (or its reason is `no_provider`) it offers **Start session**, which opens
@@ -84,23 +111,45 @@ dashboard configuration). The Overview renders what the reads deliver.
   first text line) and the one action its code maps to an existing flow: Review tasks (the Tasks
   page filtered to the blocking Tasks), Edit context and Edit dependencies (the Task's section),
   Start step, Review new revision (the first-start confirmation), Cancel task (its confirmation),
-  Open task (restore a broken Task, meet an entry gate), Return to an earlier step (the
-  Specification's Return dialog), Answer (the Session). Actions without a UI of their own yet
-  (project settings, archetype configuration) are shown unavailable. The actor shows only when it
-  is not the viewer. The Specification-level `tasks-stuck` item states the intervention ("Resolve 2
-  blocking tasks · Approve, resume or cancel them so the specification can finish"); Now carries
-  the diagnosis. On a narrow row the actions follow the title and reason.
-- **Tasks** — a preview of the configured grouping. Without Tasks: "No tasks yet" and, when the
-  run is certain to get to a step that produces Tasks (`outline.tasksStep`, never a step id: no
-  branch on the way), "Tasks appear when the workflow reaches Break the solution down (step 4 of
-  7)." while the run is not yet at that step, "Tasks appear when Break the solution down (step 4 of 7) finishes." while it is at it, and no line otherwise. Each group the configuration marks as a summary row gets one row: its name, then
-  "1 task · T-04 Return users to where they were" (count, up to two Tasks, "N more", at most two
-  lines), opening the Tasks page at that group. Every Task appears by id and title, also one
-  Requires attention or Now already names, so every group reads alike (owner decision, dogfood
-  round 1, 2026-11-16: "In progress" showed a bare id beside "Needs approval" with titles). Compact groups (Done, Cancelled,
-  Ended) share one line of links that open the Tasks page with that group expanded (owner decision at the
-  final Overview approval, 2026-11-14). **All tasks**
-  in the header opens the page. No checkboxes and no bulk actions.
+  Open task (restore a broken Task, meet an entry gate), Resume (a held Task), Return to
+  an earlier step (the Specification's Return dialog), Answer (the Session). Actions without a UI
+  of their own yet (project settings, archetype configuration) are shown unavailable. The actor
+  shows only when it is not the viewer. The Specification-level `tasks-stuck` item states the
+  intervention ("Resolve 2 blocking tasks · Approve, resume or cancel them so the specification can
+  finish"); Now carries the diagnosis. On a narrow row the actions follow the title and reason.
+  A Task on hold appears here only when the Engine reports it (never from the status): escalated
+  with no Specification step deciding it (`task-escalated` on the Task), or `on-hold-blocking`
+  when open Tasks wait on it or the current step cannot finish while it is on hold (`blocks`).
+  Its primary action **Resume** (`resume-task`) sets it ready right there (`on-hold → ready`,
+  without a confirmation, like the Task page's Resume; a refusal is a notification; a repeated
+  click while it runs sends nothing more, and the same holds for Start step), its alternative
+  Cancel task. A hold that nothing waits on is not listed; its row shows
+  "On hold" with the reason as its supporting line ([workflow kernel, Held Tasks](../../../architecture/workflow/workflow-kernel.md#continuation-and-attention)).
+- **Tasks** — the Runtime's preview of the configured grouping, rendered as delivered, always as
+  Task rows (no mode switch by Task count). Each group the configuration marks `row` shows its first
+  Tasks (at most two, `TaskOverview.rows[].tasks`, chosen by the Runtime in importance order:
+  Requires attention first, then held or unable to start with a Task waiting on it, then in
+  progress, then Task order) as the Tasks page's own **Task row** ([below](#tasks-page)), on the same
+  tracks without a column header. The rows switch with the Tasks page's one 48rem container query
+  (no second width switch): at a tablet's 834 px the section is wider than 48rem and keeps the
+  columns; on a phone the rows stack. There are no group headers: each row's status names its
+  group, and groups are divided like the rows inside them. A held Task that requires attention
+  shows the overlay and its hold reason, one line each. Under a group's last row a quiet link
+  "2 more in Waiting" (the count beyond the preview and the
+  group's name as the Runtime delivers it) opens the Tasks page filtered to that group
+  (`?group=<groupId>`); a group that fits shows no link. The section therefore never exceeds
+  row groups × 2 rows. Compact groups (Done, Cancelled, Ended) share one line of the same quiet
+  links, "Done 2 · Cancelled 1", that open the Tasks page filtered to that group (owner decision at the final
+  Overview approval, 2026-11-14). A held Task carries its Requires attention overlay on its row
+  only when the Engine reports it; the Requires attention item with Resume and Cancel task is the
+  section above (its Resume and Start step show busy while their command runs). **All tasks** in the header opens the page; the header's overflow menu holds
+  **New task** when the projection allows creating a Task. Without Tasks the section keeps its
+  place with one line, `The "Break the solution down" step (4 of 7) creates the tasks.` when
+  the run is certain to get to a step that produces Tasks (`outline.tasksStep`, never a step id: no
+  branch on the way; the same line before the run reaches that step and while it is at it), else
+  "No tasks yet", with a quiet **New task** beside it when allowed; once the workflow ended
+  (completed or abandoned) it reads "No tasks were created", never "yet". No checkboxes and no bulk
+  actions.
 - **Sessions** — the recommended Session first, then the Specification's other Sessions, at most
   three; the same row as in the [Specification Sessions list](specification-sessions.md#rows). A
   Session waiting for the person is in Requires attention instead, never twice. **All sessions** is
@@ -111,8 +160,15 @@ dashboard configuration). The Overview renders what the reads deliver.
   Sessions read the section is left out.
 - **Documents** — the Documents page's own row (type glyph and file name, the type in the tooltip
   and read with the name) in a flat list, every row the same height, at most eight before **Show
-  all**; a document whose file is still exactly what the Engine created from its archetype
-  template says **Template only** (the workspace read's `templateOnly`). The overflow menu opens all documents. A document opened from
+  all**. Each row carries the shared document state label
+  ([document state](documents-archetypes-ui.md#document-state-label)): **Initial content only**
+  while the file is still the initial content the Engine wrote (the workspace read's
+  `contentState: baseline`), and how the workflow uses the document now, from the Specification
+  projection's `documentRelations`, with "this step" for the active step that Now shows (**Needed to
+  finish this step**, in the attention tone only while it refuses Finish now). Both facts are named
+  together only when both apply (**Initial content only · needed to finish this step**). When every
+  listed document would carry the same content-only label, the header says it once ("4 · initial
+  content only") and the rows carry none. The overflow menu opens all documents. A document opened from
   the Overview takes half of the workspace (50/50), and the Overview reads in one column beside it.
 
 ## Tasks page
@@ -121,36 +177,118 @@ dashboard configuration). The Overview renders what the reads deliver.
 item (a Full Task under it keeps Tasks active). It renders the Runtime's grouping as delivered, in
 configured order, with the groups the configuration collapses (Cancelled, Ended) collapsed; the
 section count is the progress text and the header offers **New task** when the Specification
-projection allows it. A row is the Task row (title, id, Task Type) with one supporting line: a
-flagged Task's "Requires attention · <reason>" (danger for a broken Task, a row of Cannot start
-with what is readable of it), a Task the `tasks-stuck` item names "Requires attention · the
-specification cannot continue until it moves", otherwise its neutral status line ("Draft · needs
-approval · after T-02", "Waiting for T-02"). A filter by id or title is local state. No checkboxes
-and no bulk actions (plan 06 F12 is deferred).
+projection allows it. No checkboxes and no bulk actions (plan 06 F12 is deferred).
 
-Its search is router-owned and validated; absence is the default:
+It follows the [Specifications list](specs-overview.md) collection pattern: the `task` preset of
+`CollectionColumns` (`minmax(0,40rem) minmax(15rem,22rem)`, `gap-x-6`), with a **Task | Status**
+column header from 48rem of list width, group headers (dot, name, count) across both tracks, and
+bounded tracks at any width while the row's hover and focus span the whole row. The filter by id
+or title (local state) and the filter chip (blocking or group) are as wide as the title track. Below 48rem the
+header is hidden and every row stacks: title, "id · Type", status, supporting line.
+
+A row is the **Task row** (`TaskRow`, reused by the Overview Tasks section):
+
+- **Task cell:** the title (`h3`, the link to the Full Task stretched over the row), then the id in
+  mono and the Task Type ("`oidc-callback` · Implementation"). The title track is wide enough that
+  an id does not break at Wide.
+- **Status cell:** the status mark and label ([below](#task-status-presentation); "Waiting for
+  T-02", "Draft · needs approval"), then at most two lines of support (pretty wrapping):
+  - the **Requires attention overlay** when the Engine reports one for the Task, in the attention
+    tone with `triangle-alert`. It is added under the status, never in its place. A Task on hold
+    keeps its reason under the overlay (one line each, the full text in their tooltip), except an
+    escalated one, whose overlay already quotes it. The row's item is the read's own `attention` field (the Task's own item, or
+    the Specification's `task-escalated` naming it, resolved by the Runtime), or the `tasks-stuck`
+    its `blocksSpecification` reflects; the row renders it and never derives attention. A broken
+    Task gets no overlay line: its status already says it ("Cannot start · files broken"). The
+    reason is worded from the item: a held Task that keeps the step from finishing "<step> cannot
+    finish while this task is on hold" (it names the finish; its dependents only when it holds up
+    no finish), one that holds up others "holds up T-02, T-03 (+N)", an escalated one "escalated
+    to the specification: <feedback>", a Task the `tasks-stuck` names "<specification> cannot
+    continue until it moves"; other reasons keep the Engine's message;
+  - without an overlay, the hold reason of a Task on hold, verbatim (`holdReason` of the read; the label
+    already says "On hold"), or the dependencies of a Task that has not run ("after T-02").
+
+The page's search is router-owned and validated; absence is the default:
 
 - `blocking=specification` (the only value) keeps the Tasks the current `tasks-stuck` names, in
   their groups, resolved by the Runtime when read, never from ids in the URL. A filter bar shows
   "Blocking specification · 2 tasks" (or "Nothing blocks the specification now") with a clear
   button, and the count reads "2 of 7 shown". Review tasks pushes the entry; clearing replaces it.
-- `group=<id>` opens the page at that group, expanded, and moves focus to its header.
+- `group=<id>` (the Overview's "N more in <group>" and its compact links) lists only that group's
+  Tasks, resolved by the Runtime when read (`GET /api/specs/:specId/tasks?group=<id>`), as rows
+  without a group header (also a group the configuration collapses); focus stays where the page
+  puts it. A filter chip names the group ("Waiting") with a clear button, and the section count
+  reads "4 of 12 shown" (the one count); with none left, "No tasks in this group now". The link pushes the entry; clearing replaces it.
+- The two never combine: with both in the URL, `blocking` is kept and `group` dropped.
 
-Without Tasks the page names the step that produces them with the Overview's line ("Tasks appear
-when the workflow reaches …"); without such a step it keeps its own description.
+The filter by id or title narrows the rows on screen, and the section count follows it: "N of M
+shown", N the rows left after the URL filter and the text filter, M all the Specification's Tasks
+(the same M as the URL filter's count), so N always equals the rows listed. Without a URL filter a text filter turns the progress into
+that count ("2 of 7 shown"); with no row left it reads "0 of 7 shown" over "No task matches the
+filter.". The blocking chip keeps the Runtime's count of the Tasks it names. While a term is
+typed every group with a match is shown expanded, also one collapsed by the configuration or by
+the person, so every counted row is on screen; as on the [Specifications list](specs-overview.md)
+its chevron stays, `aria-disabled="true"`, named "{group} section expanded while search is
+active", and does nothing. Clearing the search restores the collapse the page had before it.
 
-The demo Runtime has no Tasks page read; the page renders the workspace read's grouping instead.
+Without Tasks the page shows an empty state with the same logic as the Overview's Tasks, from the
+same projection, and no filter by id or title (there is nothing to filter):
 
-## Project mode: what the sections show today
+- While the workflow runs the title is "No tasks yet" and the description names the step that
+  creates them (`The "Break the solution down" step (4 of 7) creates the tasks.`); without such a step
+  it says "Tasks appear here once the specification is prepared for work."
+- Once the workflow ended (completed or abandoned) the title is "No tasks were created", with no
+  step line and no "yet".
+- When the projection allows creating a Task (`specification.createTask`, independent of the
+  stage) the description adds "You can also create them now with New task." after the step line,
+  or reads "You can create them now with New task." alone.
 
-On a project Runtime (not `--demo`) the Overview shows what the Engine and the Session store hold
+The demo Runtime serves the same Tasks page read: it runs the Engine's workflow over in-memory
+state ([ADR 0025](../../../architecture/decisions/0025-demo-runs-the-engine-in-memory.md)).
+
+### Task status presentation
+
+Every Task surface (Tasks page rows, Overview Task rows, Close blocker items, the Full Task status
+line, Depends on rows) presents a status by its presented id, one mark and tone each:
+
+| Status (label, presented id)           | Mark                                                    | Tone               |
+| -------------------------------------- | ------------------------------------------------------- | ------------------ |
+| Draft                                  | `edit`                                                  | neutral            |
+| Ready to start (`ready`)               | info `StatusIndicator` dot                              | neutral            |
+| Waiting                                | `clock`                                                 | neutral            |
+| In progress                            | spinning `loader` (static under reduced motion)         | info               |
+| On hold                                | `circle-pause`                                          | neutral            |
+| Cannot start (`blocked`)               | none, its slot kept (until a Blocked state is designed) | neutral            |
+| Done (`completed`)                     | `circle-check`                                          | success            |
+| Cancelled, Abandoned                   | `close`, muted label                                    | neutral            |
+| Cannot start · files broken (`broken`) | `circle-alert`                                          | danger (label too) |
+
+One name per state: a status label matches the default grouping's group name ("Ready to start",
+"Cannot start", "Done"; coordinator decision 2026-11-17).
+
+One owner each in `features/tasks/read-model`: `getTaskStatePresentation` / `taskStatusSupporting`
+(the status) and `taskAttentionOverlay` with its predicate `taskRequiresAttention` (the attention
+wording, and whether a row has one at all). Requires attention is an overlay added under the
+status, never a status, and only when the Engine reports it. The Runtime presents only the ids of
+this table; an unknown id is a contract drift that development builds assert. The general rule
+(mark + label, tone meanings, attention as an overlay) is the design system's
+[Status and attention on a row](../../../design-system/principles/information-row-hierarchy.md#status-and-attention-on-a-row).
+
+## What the sections show today
+
+The Overview shows what the Engine and the Session store hold. The demo Runtime renders the same
+screens from the same reads: its Engine runs in memory over seeded state (Now, Requires attention,
+Tasks and Full Task are a project's; Start, Finish and Task commands change that state until the
+Runtime stops), and its documents, Sessions and history are the demo data
 ([Specification Workspace API, Data source](../../../reference/api/specification-workspace.md#data-source)):
 
 - **Description** — the first paragraph of the overview document's **Goal** section (else its
   first paragraph) as plain text (at most 320 graphemes),
   rendered as delivered, never parsed as Markdown again; empty when there is no readable overview.
   **Show more** (expanding the overview document) appears only when the description was cut (it
-  ends with `…`) or there is none; a whole description has no Show more.
+  ends with `…`) or there is none; a whole description has no Show more. Without a description,
+  **Show description** is offered only when the overview holds more than its initial content (a
+  template's empty headings are no description).
 - **Now, Requires attention and Tasks** — the Engine's workflow projection and one execution read
   presented in the Runtime's dashboard grouping; an execution the Engine cannot read makes the
   Tasks summary say the Tasks are unavailable.

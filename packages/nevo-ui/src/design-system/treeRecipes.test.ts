@@ -18,6 +18,8 @@ import {
   treeAttentionGlyphClassName,
   treeAttentionStateLabelClassName,
   treeStateLabelClassName,
+  treeSecondaryStateLabelClassName,
+  treeStaticItemClassName,
 } from './treeRecipes';
 
 describe('compact tree geometry', () => {
@@ -137,6 +139,14 @@ describe('tree row actions and labels', () => {
     expect(treeRowClassName).toContain('items-center');
   });
 
+  it('gives a static item the row geometry without interaction', () => {
+    for (const part of ['min-h-tree-row-height', 'gap-tree-gap', 'px-control-padding-inline']) {
+      expect(treeStaticItemClassName).toContain(part);
+    }
+
+    expect(treeStaticItemClassName).not.toMatch(/hover:|disabled:|cursor/);
+  });
+
   it('truncates labels', () => {
     expect(treeItemLabelTruncateClassName).toContain('truncate');
     expect(treeItemLabelTruncateClassName).toContain('min-w-0');
@@ -144,13 +154,18 @@ describe('tree row actions and labels', () => {
   });
 
   it('never hides a state label', () => {
-    for (const label of [treeStateLabelClassName, treeAttentionStateLabelClassName]) {
+    for (const label of [
+      treeStateLabelClassName,
+      treeSecondaryStateLabelClassName,
+      treeAttentionStateLabelClassName,
+    ]) {
       expect(label).toContain('shrink-0');
       expect(label).toContain('whitespace-nowrap');
       expect(label).not.toMatch(/sr-only|hidden|rounded|bg-/);
     }
 
     expect(treeStateLabelClassName).toContain('text-content-muted');
+    expect(treeSecondaryStateLabelClassName).toContain('text-content-secondary');
     expect(treeAttentionStateLabelClassName).toContain('text-status-attention');
     // Important: the selected row recolours its first icon; the warning glyph keeps its tone.
     expect(treeAttentionGlyphClassName).toContain('text-status-attention!');

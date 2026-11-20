@@ -31,6 +31,8 @@ export type ReaderFixtureScenario =
   | 'all-skipped'
   | 'forbidden'
   | 'docs-unavailable'
+  /** The Runtime serves no project documentation (demo data). */
+  | 'not-served'
   | 'index-building'
   /** Word matches only: search by meaning cannot be reached. */
   | 'endpoint-unreachable'
@@ -319,6 +321,8 @@ export function createFixtureDocsApi(
         return docsError('DOCS_NOT_CONFIGURED', 503, { docsRoot: 'docs' });
       case 'docs-unavailable':
         return docsError('DOCS_UNAVAILABLE', 503);
+      case 'not-served':
+        return docsError('DOCS_NOT_SERVED', 503);
       default:
         return undefined;
     }

@@ -145,3 +145,26 @@ export function classifyProviderInstallation(
     reason: 'Local protocol and execution checks are required.',
   };
 }
+
+/**
+ * What executable discovery checks a candidate against: the known-incompatible builds the
+ * catalogue records for the provider (only then is a candidate hashed).
+ */
+export function executableCompatibility(
+  providerId: string,
+  trustedRecords: readonly ImmutableRecord[] = [bundledClaudeBuild],
+): { knownIncompatible?: (build: { sha256: string }) => boolean } {
+  const incompatible = trustedRecords.filter(
+    (record) =>
+      record.providerId === providerId &&
+      validCompatibilityRecord(record) &&
+      (record.revoked || record.classification === 'unsupported'),
+  );
+
+  return incompatible.length
+    ? {
+        knownIncompatible: (build: { sha256: string }) =>
+          incompatible.some((record) => record.sha256 === build.sha256),
+      }
+    : {};
+}

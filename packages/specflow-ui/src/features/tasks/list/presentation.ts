@@ -1,8 +1,4 @@
-import type { TaskListGroupView, TaskListRowView } from './taskListModel';
-
-/** The row needs a person: an attention item, the Specification's `tasks-stuck`, or broken files. */
-export const needsPerson = (row: TaskListRowView): boolean =>
-  row.attention !== undefined || row.blocksSpecification === true || row.broken === true;
+import type { TaskListGroupView } from './taskListModel';
 
 /**
  * The group header's dot follows the rows' lifecycle only: a group is presentation, never

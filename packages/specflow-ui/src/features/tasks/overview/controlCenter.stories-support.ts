@@ -1,6 +1,7 @@
 import type {
   SpecificationWorkspaceResponse,
   TaskListEntry,
+  TaskListQuery,
   TaskListResponse,
   WorkspaceAttention,
   WorkspaceSession,
@@ -12,7 +13,12 @@ import type {
   WorkflowAttentionItem,
 } from '@nevo/specflow-contracts/workflow';
 import { createWorkspaceIntegrationApi } from '../../../../test-support/specs/workspace/api';
-import { SPEC, dominik } from '../execution/projections.stories-support';
+import {
+  SPEC,
+  dominik,
+  withExits,
+  type FixtureProjection,
+} from '../execution/projections.stories-support';
 
 /*
  * The Specification control center (Overview and Tasks page) as the Runtime delivers it, in the
@@ -43,6 +49,8 @@ interface FixtureTask {
   readonly dependsOn?: readonly string[];
   readonly waitingFor?: readonly string[];
   readonly broken?: boolean;
+  /** The recorded reason of a Task on hold. */
+  readonly holdReason?: string;
 }
 
 const status = {
@@ -109,6 +117,7 @@ const T05 = t({
   type: 'Backend',
   group: 'on-hold',
   status: status.onHold,
+  holdReason: 'Waiting for the retention policy from the security team.',
 });
 const T06 = t({
   id: 'T-06',
@@ -308,6 +317,47 @@ function facts(task: FixtureTask, attention?: WorkflowAttentionItem): TaskFacts 
   };
 }
 
+/** A Task of the scenario as the Runtime's Tasks page and Overview preview row. */
+function taskEntry(task: FixtureTask, attention: readonly WorkflowAttentionItem[]): TaskListEntry {
+  const own = attention.find(
+    (candidate) => candidate.subject.kind === 'task' && candidate.subject.taskId === task.id,
+  );
+  const cause = attention
+    .find((entry) => entry.reason === 'tasks-stuck')
+    ?.blocking?.find((candidate) => candidate.taskId === task.id)?.cause;
+  // The row's item, as the Runtime names it: the Task's own, else the escalation naming it.
+  const naming =
+    own ??
+    attention.find(
+      (candidate) =>
+        candidate.reason === 'task-escalated' && (candidate.taskIds ?? []).includes(task.id),
+    );
+  const blocks = {
+    ...(cause ? { blocksSpecification: { cause } } : {}),
+    ...(naming ? { attention: naming } : {}),
+  };
+  if (task.broken) {
+    return {
+      id: task.id,
+      title: task.title,
+      status: task.status,
+      broken: { reason: 'missing-manifest' },
+      ...blocks,
+    };
+  }
+
+  return {
+    id: task.id,
+    title: task.title,
+    type: { id: task.type.toLowerCase(), title: task.type },
+    dependsOn: [...(task.dependsOn ?? [])],
+    status: task.status,
+    facts: facts(task, own),
+    ...blocks,
+    ...(task.holdReason ? { holdReason: task.holdReason } : {}),
+  };
+}
+
 const sessions = {
   implement: {
     id: 'session-impl',
@@ -450,9 +500,7 @@ export async function controlCenterWorkspace(
                 groupId: group.id,
                 name: group.name,
                 count: group.members.length,
-                tasks: group.members
-                  .slice(0, 2)
-                  .map((task) => ({ id: task.id, title: task.title })),
+                tasks: group.members.slice(0, 2).map((task) => taskEntry(task, attention)),
                 more: Math.max(0, group.members.length - 2),
               })),
             compact: groups
@@ -478,43 +526,26 @@ export async function controlCenterWorkspace(
   };
 }
 
-/** The Tasks page read of the scenario; `blocking` keeps the Tasks the `tasks-stuck` names. */
+/**
+ * The Tasks page read of the scenario with at most one filter, as the Runtime answers it:
+ * `blocking` keeps the Tasks the `tasks-stuck` names, `group` the Tasks of one group.
+ */
 export function controlCenterTaskList(
   scenario: ControlCenterScenario,
-  blocking = false,
+  query: TaskListQuery = {},
 ): TaskListResponse {
   const tasks = tasksOf(scenario);
   const attention = attentionOf(scenario);
   const stuck = attention.find((entry) => entry.reason === 'tasks-stuck');
   const blockingIds = new Set(stuck?.taskIds ?? []);
-  const entry = (task: FixtureTask): TaskListEntry => {
-    const own = attention.find(
-      (candidate) => candidate.subject.kind === 'task' && candidate.subject.taskId === task.id,
-    );
-    const cause = stuck?.blocking?.find((candidate) => candidate.taskId === task.id)?.cause;
-    const blocks = cause ? { blocksSpecification: { cause } } : {};
-    if (task.broken) {
-      return {
-        id: task.id,
-        title: task.title,
-        status: task.status,
-        broken: { reason: 'missing-manifest' },
-        ...blocks,
-      };
-    }
+  const entry = (task: FixtureTask) => taskEntry(task, attention);
 
-    return {
-      id: task.id,
-      title: task.title,
-      type: { id: task.type.toLowerCase(), title: task.type },
-      dependsOn: [...(task.dependsOn ?? [])],
-      status: task.status,
-      facts: facts(task, own),
-      ...blocks,
-    };
-  };
-
-  const listed = blocking ? tasks.filter((task) => blockingIds.has(task.id)) : tasks;
+  const listed = query.blocking
+    ? tasks.filter((task) => blockingIds.has(task.id))
+    : query.group
+      ? tasks.filter((task) => task.group === query.group)
+      : tasks;
+  const counts = { matched: listed.length, total: tasks.length };
 
   return {
     specId: SPEC,
@@ -527,15 +558,11 @@ export function controlCenterTaskList(
     })),
     progress: progressOf(tasks),
     attention: [...attention],
-    ...(blocking
-      ? {
-          filter: {
-            blocking: 'specification' as const,
-            matched: listed.length,
-            total: tasks.length,
-          },
-        }
-      : {}),
+    ...(query.blocking
+      ? { filter: { blocking: 'specification' as const, ...counts } }
+      : query.group
+        ? { filter: { group: query.group, ...counts } }
+        : {}),
   };
 }
 
@@ -577,6 +604,10 @@ const workStep = (id: string, title: string) => ({
 
 /** The Specification's workflow projection of the scenario. */
 export function controlCenterProjection(scenario: ControlCenterScenario): WorkflowActionProjection {
+  return withExits(controlCenterFixture(scenario));
+}
+
+function controlCenterFixture(scenario: ControlCenterScenario): FixtureProjection {
   const subject = { kind: 'specification' as const, specId: SPEC };
   switch (scenario) {
     case 'empty':
@@ -626,7 +657,9 @@ export function controlCenterProjection(scenario: ControlCenterScenario): Workfl
                     id: 'acceptance',
                     type: 'document',
                     label: 'An Acceptance section in specification.md',
+                    labelDeclared: true,
                     documentType: 'overview',
+                    requiredSections: ['Acceptance'],
                     scope: { kind: 'specification', specId: SPEC },
                     status: 'unsatisfied',
                     documentId: 'specification',

@@ -131,6 +131,9 @@ describe('workspace documentation port', () => {
     expect(await fail(503, { error: 'x', code: 'DOCS_UNAVAILABLE' })).toEqual({
       kind: 'docs-unavailable',
     });
+    expect(await fail(503, { error: 'x', code: 'DOCS_NOT_SERVED' })).toEqual({
+      kind: 'not-served',
+    });
     expect(await fail(403, { error: 'forbidden' })).toEqual({ kind: 'forbidden' });
   });
 });

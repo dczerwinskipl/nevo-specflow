@@ -15,9 +15,18 @@ import { inspectClaudeInstallation } from './installation';
 import {
   classifyProviderInstallation,
   compatibilityForExecution,
+  executableCompatibility,
 } from '../compatibility/catalogue';
 import { admitProvider } from '../compatibility/admission';
-import { probeClaude, ClaudeProbeError } from './probe';
+import { probeClaude } from './probe';
+import { ProviderUnavailableError, installationUnavailable } from '../unavailable';
+import {
+  createExecutableLocator,
+  executableFields,
+  withExecutableFields,
+  type ExecutableResolution,
+} from '../executable';
+import { claudeExecutable } from './executable';
 import { claudeArguments, claudeModels, verifyClaudeInit, claudeVersion } from './discovery';
 import { claudeMode, claudeModes } from './modes';
 import { createProviderAuthentication } from '../authentication';
@@ -63,9 +72,28 @@ export function createClaudeDriver(
   let checkedAt = 0;
   let scope = '';
   let discovery: Promise<ProviderDescriptor> | undefined;
+  const locator = createExecutableLocator(claudeExecutable, {
+    ...(options.executable !== undefined ? { configured: options.executable } : {}),
+    environment,
+    workspace: options.workspace,
+    ...executableCompatibility('claude'),
+  });
+  /** The executable the last inspection ran; kept on the descriptor when a later check fails. */
+  let resolution: ExecutableResolution | undefined;
   const inspect =
     dependencies.inspect ??
-    ((signal: AbortSignal) => inspectClaudeInstallation({ ...options, environment, signal }));
+    (async (signal: AbortSignal) => {
+      resolution = undefined;
+      const found = await locator.resolve(signal);
+      resolution = found;
+
+      return inspectClaudeInstallation({
+        ...options,
+        executable: found.path,
+        environment,
+        signal,
+      }).catch(installationUnavailable);
+    });
   const probe = dependencies.probe ?? probeClaude;
   let checkedFingerprint = '';
   const authentication = createProviderAuthentication();
@@ -80,7 +108,7 @@ export function createClaudeDriver(
     }
 
     const reasonCode =
-      error instanceof ClaudeProbeError
+      error instanceof ProviderUnavailableError
         ? error.reasonCode
         : error instanceof SessionError && error.code === 'PROVIDER_AUTH_REQUIRED'
           ? 'AUTHENTICATION_REQUIRED'
@@ -98,15 +126,13 @@ export function createClaudeDriver(
     scope = '';
     modeModels.clear();
     descriptor = {
-      ...descriptor,
+      ...withExecutableFields(descriptor, executableFields(claudeExecutable, resolution, error)),
       models: [],
       readiness:
         reasonCode === 'AUTHENTICATION_REQUIRED' ? 'authenticationRequired' : 'unavailable',
       reasonCode,
       reason:
-        error instanceof ClaudeProbeError || error instanceof SessionError
-          ? error.message
-          : 'Claude availability must be rechecked.',
+        error instanceof SessionError ? error.message : 'Claude availability must be rechecked.',
     };
     delete descriptor.compatibility;
     if (
@@ -135,7 +161,15 @@ export function createClaudeDriver(
     throw error;
   }
 
-  async function refresh(signal: AbortSignal): Promise<ProviderDescriptor> {
+  async function refresh(
+    signal: AbortSignal,
+    refreshOptions: { recheck?: boolean } = {},
+  ): Promise<ProviderDescriptor> {
+    if (refreshOptions.recheck && !discovery) {
+      locator.forget();
+      checkedAt = 0;
+    }
+
     discovery ??= (async () => {
       const boundedSignal = AbortSignal.any([
         signal,
@@ -155,7 +189,7 @@ export function createClaudeDriver(
           const identity = { ...installation, providerId: 'claude' };
           const known = classifyProviderInstallation(identity);
           if (known.classification === 'unsupported') {
-            throw new ClaudeProbeError('KNOWN_INCOMPATIBILITY', known.reason);
+            throw new ProviderUnavailableError('KNOWN_INCOMPATIBILITY', known.reason);
           }
 
           const result = await probe({
@@ -211,7 +245,7 @@ export function createClaudeDriver(
                         managedEffectsAvailable: options.managedWrites,
                       });
                       if (!admitted.allowed) {
-                        throw new ClaudeProbeError(
+                        throw new ProviderUnavailableError(
                           'KNOWN_INCOMPATIBILITY',
                           'Native mode admission failed.',
                         );
@@ -262,11 +296,11 @@ export function createClaudeDriver(
             executionMode: 'read-only',
           });
           if (!admission.allowed) {
-            throw new ClaudeProbeError('KNOWN_INCOMPATIBILITY', admission.reason!);
+            throw new ProviderUnavailableError('KNOWN_INCOMPATIBILITY', admission.reason!);
           }
 
           descriptor = {
-            ...descriptor,
+            ...withExecutableFields(descriptor, executableFields(claudeExecutable, resolution)),
             models: result.models,
             readiness: 'ready',
             compatibility: {
@@ -293,7 +327,7 @@ export function createClaudeDriver(
           return structuredClone(descriptor);
         }
 
-        throw new ClaudeProbeError(
+        throw new ProviderUnavailableError(
           'PROBE_FAILED',
           'Claude installation changed repeatedly during its compatibility probe.',
         );
@@ -528,7 +562,7 @@ export function createClaudeDriver(
                 verifyClaudeInit(frame, workspace, expectedVersion, invocation.selection);
               } catch (error) {
                 invalidate(
-                  new ClaudeProbeError(
+                  new ProviderUnavailableError(
                     'RESTRICTION_UNSUPPORTED',
                     'Claude invocation does not satisfy the restricted protocol profile.',
                   ),

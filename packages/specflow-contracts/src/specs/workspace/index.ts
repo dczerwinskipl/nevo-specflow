@@ -1,8 +1,13 @@
 import { Type, type Static } from 'typebox';
 import { TaskGroupSummarySchema, TaskOverviewSchema, WorkspaceTaskSchema } from '../../tasks';
-import { ATTENTION_ACTIONS, BlockingTaskSchema } from '../../workflow/projection';
+import {
+  ATTENTION_ACTIONS,
+  BlockingTaskSchema,
+  HeldTaskBlocksSchema,
+} from '../../workflow/projection';
 import { SessionIdSchema } from '../../sessions/model';
 import { SpecIdSchema, TaskIdSchema, WorkspaceIdSchema } from '../../identifiers';
+import { DocumentContentStateSchema } from '../../documents/vocabulary';
 export * from '../../tasks';
 export * from '../../documents';
 
@@ -46,11 +51,8 @@ export const WorkspaceDocumentSchema = Type.Object({
    */
   kind: Type.String(),
   summary: Type.Optional(Type.String()),
-  /**
-   * The file is still only the archetype template it was created from (any goal text aside);
-   * absent when the source cannot tell (the demo Runtime).
-   */
-  templateOnly: Type.Optional(Type.Boolean()),
+  /** `DocumentContentState`; absent when the source cannot tell (the demo Runtime). */
+  contentState: Type.Optional(DocumentContentStateSchema),
 });
 export const WorkspaceSessionSchema = Type.Object(
   {
@@ -98,7 +100,8 @@ export const WorkspaceAttentionSchema = Type.Object({
   /**
    * Workflow items (the Tasks owner, from the Engine's attention projection): the stable reason
    * code (`reason` is then its display text), who has to act, the one action and the Tasks it names
-   * (`tasks-stuck`: the Tasks to resolve, with why each blocks). Absent on other items.
+   * (`tasks-stuck`: the Tasks to resolve, with why each blocks; `on-hold-blocking`: what the held
+   * Task holds up, `blocks`). Absent on other items.
    */
   code: Type.Optional(Type.String({ minLength: 1, maxLength: 64 })),
   /** The title of the step the item is about (its action names it: "Start Implementation"). */
@@ -116,6 +119,7 @@ export const WorkspaceAttentionSchema = Type.Object({
   ),
   taskIds: Type.Optional(Type.Array(TaskIdSchema)),
   blocking: Type.Optional(Type.Array(BlockingTaskSchema)),
+  blocks: Type.Optional(HeldTaskBlocksSchema),
 });
 const ActivitySchema = Type.Object({
   id: IdSchema,
@@ -156,7 +160,7 @@ const TaskCollectionSchema = Type.Object({
   groups: Type.Array(WorkspaceTaskGroupSchema),
   completed: Type.Integer({ minimum: 0 }),
   total: Type.Integer({ minimum: 0 }),
-  /** Cancelled, ended and on hold Tasks, named apart from the progress; absent in the demo. */
+  /** Cancelled, ended and on hold Tasks, named apart from the progress. */
   cancelled: Type.Optional(Type.Integer({ minimum: 0 })),
   /** Ended without completing by their own workflow (abandoned, not cancelled). */
   ended: Type.Optional(Type.Integer({ minimum: 0 })),

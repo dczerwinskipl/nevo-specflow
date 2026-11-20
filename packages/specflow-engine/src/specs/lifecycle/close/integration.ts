@@ -2,7 +2,6 @@ import type { SpecFlowEngine } from '../../../application';
 import { prepareCloseGitIntegration } from '../git/preparation';
 import {
   proveAlreadyIntegratedClose,
-  proveExternallyMergedClose,
   publishCloseGitFastForward,
   publishDivergentCloseCandidate,
   requireVerifiedCloseIntegration,
@@ -33,25 +32,21 @@ export async function advanceCloseIntegration(
   }
 
   if (journal.stage === 'integration-preparation-initiated') {
-    if (journal.plan.finishAfterExternalMerge) {
-      journal = await proveExternallyMergedClose(engine, operationId);
-    } else {
-      switch (journal.integration?.relationship) {
-        case 'already-integrated':
-          journal = await proveAlreadyIntegratedClose(engine, operationId);
-          break;
-        case 'fast-forward':
-          journal = await publishCloseGitFastForward(engine, operationId);
-          break;
-        case 'divergent':
-          journal = await prepareDivergentCloseCandidate(engine, operationId);
-          break;
-        default:
-          throw new CloseOperationError(
-            'CLOSE_RECOVERY_REQUIRED',
-            'Integration relationship is missing or unverified.',
-          );
-      }
+    switch (journal.integration?.relationship) {
+      case 'already-integrated':
+        journal = await proveAlreadyIntegratedClose(engine, operationId);
+        break;
+      case 'fast-forward':
+        journal = await publishCloseGitFastForward(engine, operationId);
+        break;
+      case 'divergent':
+        journal = await prepareDivergentCloseCandidate(engine, operationId);
+        break;
+      default:
+        throw new CloseOperationError(
+          'CLOSE_RECOVERY_REQUIRED',
+          'Integration relationship is missing or unverified.',
+        );
     }
   }
 

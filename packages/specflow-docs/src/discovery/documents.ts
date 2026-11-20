@@ -85,10 +85,14 @@ export function getDocuments(corpus: DocsCorpus, ids: readonly string[]): Skippi
   const problems: string[] = [];
   const unreadable = ids.filter((id) => skippedById.has(id));
   if (unreadable.length) {
-    const reasons = unreadable.flatMap((id) =>
-      skippedById.get(id)!.map(({ path, error }) => `'${id}' skipped in ${path}: ${error}`),
+    // One line per skipped file: its error joins the file's own problems with "; ".
+    problems.push(
+      ...unreadable.flatMap((id) =>
+        skippedById
+          .get(id)!
+          .map(({ path, error }) => `skipped document id '${id}' in ${path}: ${error}`),
+      ),
     );
-    problems.push(`skipped document id(s): ${reasons.join('; ')}`);
   }
 
   const missing = ids.filter((id) => !byId.has(id) && !skippedById.has(id));
@@ -106,7 +110,8 @@ export function getDocuments(corpus: DocsCorpus, ids: readonly string[]): Skippi
   }
 
   if (problems.length) {
-    throw new DocsUsageError(`get: ${problems.join('; ')}`);
+    // One problem per line, so the "; " inside a skipped file's error stays that file's.
+    throw new DocsUsageError(`get: ${problems.join('\n')}`);
   }
 
   return { documents: ids.map((id) => contextEntry(byId.get(id)!)), skipped };

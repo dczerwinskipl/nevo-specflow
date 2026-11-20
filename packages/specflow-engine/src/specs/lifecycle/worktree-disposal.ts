@@ -103,11 +103,8 @@ async function assertPublication(engine: SpecFlowEngine, record: CloseJournal): 
     throw recovery('Close integration has no durable published target proof.');
   }
 
-  // An externally-merged finish never re-merges: the published tree is the destination's own,
-  // regardless of its ancestry-derived `relationship` (which may still read `divergent`).
-  const tree = record.plan.finishAfterExternalMerge
-    ? integration.targetTree
-    : integration.relationship === 'fast-forward'
+  const tree =
+    integration.relationship === 'fast-forward'
       ? integration.sourceTree
       : integration.relationship === 'divergent'
         ? record.scratch?.candidateTree
@@ -122,7 +119,7 @@ async function assertPublication(engine: SpecFlowEngine, record: CloseJournal): 
     expectedCommit: integration.publishedCommit,
     expectedTree: tree,
   });
-  if (integration.relationship === 'divergent' && !record.plan.finishAfterExternalMerge) {
+  if (integration.relationship === 'divergent') {
     const candidate = record.scratch?.candidateCommit;
     const candidateTree = record.scratch?.candidateTree;
     if (candidate !== integration.publishedCommit || !candidateTree) {
@@ -362,7 +359,7 @@ export async function disposeReboundWorktree(
   afterGitRemoval?: () => Promise<void>,
 ): Promise<CloseJournal> {
   const current = await readCloseJournal(engine.context, operationId);
-  if (current?.stage !== 'binding-rebound' || !current.reboundRevision) {
+  if (current?.stage !== 'binding-rebound' || !current.reboundRevision || current.plan.gitOff) {
     throw conflict('Managed disposal requires a recorded destination binding.');
   }
 
@@ -521,7 +518,7 @@ export async function inspectPendingDisposal(
   operationId: string,
 ): Promise<'original-checkout-present' | 'source-removed' | 'identity-mismatch'> {
   const record = await readCloseJournal(engine.context, operationId);
-  if (record?.stage !== 'disposal-initiated') {
+  if (record?.stage !== 'disposal-initiated' || record.plan.gitOff) {
     throw conflict('Disposal inspection requires an interrupted durable removal intent.');
   }
 

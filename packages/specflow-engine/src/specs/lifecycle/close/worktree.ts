@@ -22,11 +22,7 @@ export type CloseWorktreeResult =
  */
 export async function closeWorktree(
   engine: SpecFlowEngine,
-  request: {
-    readonly operationId: string;
-    readonly specId: string;
-    readonly finishAfterExternalMerge?: boolean;
-  },
+  request: { readonly operationId: string; readonly specId: string },
 ): Promise<CloseWorktreeResult> {
   const admitted = await reserveCloseOperation(engine, { ...request, kind: 'worktree-close' });
   await requireQuietCheckoutBeforeClose(engine, admitted.journal);

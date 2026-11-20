@@ -26,6 +26,7 @@ import {
   resourcesForClosePlan,
   type CloseJournal,
   type ClosePlan,
+  type GitClosePlan,
 } from '../src/specs/lifecycle/model';
 import { createGitTestProject, git } from './support/git-project';
 
@@ -173,25 +174,19 @@ describe('Q00 Close journal current-format acceptance baseline', () => {
     function plan(
       kind: ClosePlan['kind'],
       mode: 'primary' | 'linked-integrate' | 'linked-archive',
-    ): ClosePlan {
+    ): GitClosePlan {
       const source = mode === 'primary' ? primary : linked;
       const needsTarget = mode !== 'linked-archive';
       const request =
         kind === 'worktree-close'
-          ? {
-              kind: 'worktree-close' as const,
-              operationId,
-              specId,
-              finishAfterExternalMerge: false,
-            }
+          ? { kind: 'worktree-close' as const, operationId, specId }
           : {
               kind: 'specification-close' as const,
               operationId,
               specId,
               integrateToTargetBranch: mode === 'linked-integrate',
-              finishAfterExternalMerge: false,
             };
-      const proposed: ClosePlan = {
+      const proposed: GitClosePlan = {
         kind,
         operationId,
         specId,
@@ -235,7 +230,7 @@ describe('Q00 Close journal current-format acceptance baseline', () => {
       };
     }
 
-    function archive(selectedPlan: ClosePlan, committed: boolean) {
+    function archive(selectedPlan: GitClosePlan, committed: boolean) {
       return {
         sourceCommit: selectedPlan.source.head,
         sourcePath: 'specs/active/q00',

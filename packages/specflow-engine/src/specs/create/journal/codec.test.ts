@@ -13,7 +13,11 @@ import type { CreateJournal } from './model';
 const catalogue = await seedCatalogueForTesting();
 
 const projectId = randomUUID();
-const context = { project: { projectId } } as unknown as ResolvedProjectHome;
+const gitInstanceId = randomUUID();
+const homeRoot = '/home';
+const context = {
+  project: { projectId, homeRoot, gitInstanceId },
+} as unknown as ResolvedProjectHome;
 
 function build(
   options: {
@@ -276,5 +280,48 @@ describe('Create journal version 2 codec', () => {
         expect.objectContaining({ code: 'CREATE_JOURNAL_CORRUPT' }),
       );
     }
+  });
+
+  describe('the started-from branch of a new worktree', () => {
+    function worktreeJournal(startedFrom?: unknown): CreateJournal {
+      const base = build();
+      const requestIntent = normalizeCreateClientIntent({
+        title: 'Checkout flow',
+        archetype: { id: 'feature', version: 1 },
+        target: { kind: 'new-worktree' },
+        optionalDocumentIds: ['behaviour', 'ux'],
+      });
+
+      return {
+        ...base,
+        requestIntent,
+        inputFingerprint: fingerprintCreateClientIntent(requestIntent),
+        gitPlan: { projectRoot: homeRoot, gitInstanceId },
+        target: {
+          kind: 'new-worktree',
+          workspaceId: randomUUID(),
+          workspaceRoot: '/worktrees/' + base.slug,
+          instanceId: randomUUID(),
+          branch: 'spec/checkout-flow',
+          baseCommit: 'a'.repeat(40),
+          ...(startedFrom !== undefined ? { startedFrom: startedFrom as string } : {}),
+        },
+      };
+    }
+
+    it('round-trips the branch, and a journal without one stays valid', () => {
+      for (const journal of [worktreeJournal('release/2026.11'), worktreeJournal()]) {
+        expect(parse(journal, journal.operationId)).toEqual(journal);
+      }
+    });
+
+    it('rejects a value that is not a short branch name', () => {
+      for (const startedFrom of ['', 'refs/heads/../x', 'two words', 7]) {
+        const journal = worktreeJournal(startedFrom);
+        expect(() => parse(journal, journal.operationId)).toThrowError(
+          expect.objectContaining({ code: 'CREATE_JOURNAL_CORRUPT' }),
+        );
+      }
+    });
   });
 });

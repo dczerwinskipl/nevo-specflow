@@ -186,6 +186,38 @@ describe('projectDocumentTree', () => {
     expect(byId.behaviour!.satisfiesRequirement).toBe(false);
   });
 
+  it('reports the content state of registered documents by their recorded baselineRevision', () => {
+    const base = input();
+    const tree = projectDocumentTree(
+      input({
+        manifest: {
+          ...base.manifest,
+          documents: [
+            {
+              id: 'overview',
+              path: 'overview.md',
+              type: 'overview',
+              baselineRevision: 'r-overview.md',
+            },
+            { id: 'behaviour', path: 'behaviour.md', type: 'behaviour', baselineRevision: 'r-old' },
+            { id: 'notes', path: 'notes.md', type: 'notes' },
+          ],
+        },
+        files: [file('overview.md'), file('behaviour.md'), file('notes.md'), file('loose.md')],
+      }),
+    );
+    expect(Value.Check(DocumentTreeSchema, tree)).toBe(true);
+    expect(
+      Object.fromEntries(tree.documents.map((document) => [document.path, document.contentState])),
+    ).toEqual({
+      'overview.md': 'baseline',
+      'behaviour.md': 'authored',
+      'notes.md': 'authored',
+      // Unclassified: no registry entry, no content state.
+      'loose.md': undefined,
+    });
+  });
+
   it('marks everything archived in the archive location, and nothing editable', () => {
     const tree = projectDocumentTree(input({ location: 'archive' }));
     const archived = { available: false, reason: 'archived' };

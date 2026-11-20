@@ -62,7 +62,7 @@ describe('demo Session association (catalogue port)', () => {
         tasks: [
           {
             state: 'available',
-            value: { taskId: 'TASK-02', title: expect.stringContaining('TASK-02') as unknown },
+            value: { taskId: 'queue-validation', title: 'Queue validation after restart' },
           },
         ],
       },
@@ -161,7 +161,7 @@ describe('demo Session list (catalogue source)', () => {
       [
         '00000000-0000-4000-8000-000000000024',
         'busy',
-        { kind: 'specification', specId: 'admission', taskIds: ['TASK-02'] },
+        { kind: 'specification', specId: 'admission', taskIds: ['queue-validation'] },
       ],
       [
         '00000000-0000-4000-8000-000000000023',
@@ -227,7 +227,7 @@ describe('demo Session list (catalogue source)', () => {
     expect((await list(server, '?specId=admission&archived=only')).items).toEqual([]);
     expect((await list(server, '?standalone=true')).items).toEqual([]);
     const foreign = await server.inject(
-      `/api/sessions?specId=admission&taskId=TASK-02&cursor=${encodeURIComponent(first.nextCursor!)}`,
+      `/api/sessions?specId=admission&taskId=queue-validation&cursor=${encodeURIComponent(first.nextCursor!)}`,
     );
     expect(foreign.json<{ code: string }>().code).toBe('SESSION_CURSOR_INVALID');
   });

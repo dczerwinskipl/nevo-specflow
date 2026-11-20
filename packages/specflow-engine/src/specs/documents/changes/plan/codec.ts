@@ -136,8 +136,8 @@ function canonicalPlan(plan: DocumentChangePlan): Record<string, unknown> {
               id: entry.id,
               path: entry.path,
               type: entry.type,
-              ...(entry.templateRevision !== undefined
-                ? { templateRevision: entry.templateRevision }
+              ...(entry.baselineRevision !== undefined
+                ? { baselineRevision: entry.baselineRevision }
                 : {}),
             })),
             folders: [...plan.registry.folders],
@@ -566,9 +566,9 @@ function validateRegistry(value: unknown): PlannedRegistry {
       !isRecord(entry) ||
       !exactKeys(
         entry,
-        entry.templateRevision === undefined
+        entry.baselineRevision === undefined
           ? ['id', 'path', 'type']
-          : ['id', 'path', 'type', 'templateRevision'],
+          : ['id', 'path', 'type', 'baselineRevision'],
       ) ||
       typeof entry.id !== 'string' ||
       !DOCUMENT_ID.test(entry.id) ||
@@ -576,8 +576,8 @@ function validateRegistry(value: unknown): PlannedRegistry {
       !validateDocumentPath(entry.path).ok ||
       typeof entry.type !== 'string' ||
       !CATALOGUE_ID.test(entry.type) ||
-      (entry.templateRevision !== undefined &&
-        (typeof entry.templateRevision !== 'string' || !SHA256.test(entry.templateRevision)))
+      (entry.baselineRevision !== undefined &&
+        (typeof entry.baselineRevision !== 'string' || !SHA256.test(entry.baselineRevision)))
     ) {
       throw invalid();
     }
@@ -586,7 +586,7 @@ function validateRegistry(value: unknown): PlannedRegistry {
       id: entry.id,
       path: entry.path,
       type: entry.type,
-      ...(entry.templateRevision !== undefined ? { templateRevision: entry.templateRevision } : {}),
+      ...(entry.baselineRevision !== undefined ? { baselineRevision: entry.baselineRevision } : {}),
     };
   });
 

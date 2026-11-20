@@ -51,6 +51,24 @@ const projection: ActionProjection = {
   subject: subjectSpec,
   position: { kind: 'terminal', outcome: 'completed' },
   actions: {},
+  // Served as the Engine read it (the response schema keeps every field).
+  documentRelations: [
+    {
+      scope: { kind: 'specification', specId: SPEC },
+      documentId: 'behaviour',
+      relation: 'needed-to-finish',
+      blocksNow: true,
+      step: { id: 'specify', title: 'Write the specification', active: true },
+      gate: {
+        id: 'exit-1',
+        label: 'A behaviour document',
+        labelDeclared: true,
+        documentType: 'behaviour',
+        requiredSections: ['Acceptance'],
+        missingSections: ['Acceptance'],
+      },
+    },
+  ],
 };
 const finished: FinishStepResult = {
   subject: subjectSpec,
@@ -88,6 +106,11 @@ function fakePort(overrides: Partial<WorkflowPort> = {}): { port: WorkflowPort; 
       subject: subjectSpec,
       position: { state: 'ready', step: 'draft' },
       continuation: { kind: 'none', reason: 'terminal' },
+    }),
+    reevaluateWait: record('reevaluateWait', {
+      step: 'implementation',
+      attempt: 1,
+      status: 'already-settled',
     }),
     abandon: record('abandon', {
       specId: SPEC,
@@ -308,6 +331,35 @@ describe('workflow action routes', () => {
     await app.close();
   });
 
+  it('authorizes a Specification wait retry and validates its attempt', async () => {
+    const { port, calls } = fakePort();
+    const app = appWith(port);
+    const viewerApp = appWith(port, viewer);
+    const url = `/api/specs/${SPEC}/workflow/reevaluate-wait`;
+    const payload = { step: 'implementation', attempt: 1 };
+
+    try {
+      const denied = await viewerApp.inject({ method: 'POST', url, payload });
+      expect(denied.statusCode).toBe(403);
+      const invalid = await app.inject({
+        method: 'POST',
+        url,
+        payload: { ...payload, attempt: 0 },
+      });
+      expect(invalid.statusCode).toBe(400);
+      expect(calls.names).toEqual([]);
+
+      const replay = await app.inject({ method: 'POST', url, payload });
+      expect(replay.statusCode).toBe(200);
+      expect(replay.json()).toEqual({ ...payload, status: 'already-settled' });
+      expect(calls.names).toEqual(['reevaluateWait']);
+      expect(calls.last).toMatchObject({ specId: SPEC, ...payload, actor: { class: 'human' } });
+    } finally {
+      await app.close();
+      await viewerApp.close();
+    }
+  });
+
   it('returns with the reason as the feedback', async () => {
     const { port, calls } = fakePort();
     const app = appWith(port);
@@ -374,7 +426,9 @@ describe('workflow action routes', () => {
       id: 'findings',
       type: 'document' as const,
       label: 'Findings',
+      labelDeclared: true,
       documentType: 'research',
+      requiredSections: [],
       scope: { kind: 'task' as const, specId: SPEC, taskId: 'build' },
       status: 'unsatisfied' as const,
       reason: 'no-document' as const,

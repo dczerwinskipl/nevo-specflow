@@ -240,102 +240,6 @@ export async function verifyPublishedGitCheckout(input: {
   }
 }
 
-/** A relative, repo-rooted path with no traversal, empty or null segment. */
-function isSafeRepoPath(path: string): boolean {
-  if (!path || path.includes('\0') || path.startsWith('/')) {
-    return false;
-  }
-
-  return path.split('/').every((segment) => segment !== '' && segment !== '.' && segment !== '..');
-}
-
-/**
- * Exact content-addressed equivalence of ANY tracked path (file or directory) between two
- * commits, by Git object id — not ancestry. Generalizes {@link verifyGitTreePathEquivalent} to an
- * arbitrary path, for callers that already independently scope which paths matter. The path must
- * exist at both commits; use {@link verifyGitPathEquivalentOrBothAbsent} where a path legitimately
- * absent at one commit (e.g. deleted or renamed away) is not itself a mismatch.
- */
-export async function verifyGitPathContentEquivalent(
-  root: string,
-  sourceCommit: string,
-  destinationCommit: string,
-  path: string,
-): Promise<void> {
-  if (!OBJECT_ID.test(sourceCommit) || !OBJECT_ID.test(destinationCommit)) {
-    throw conflict('Invalid source or destination commit identity.');
-  }
-
-  if (!isSafeRepoPath(path)) {
-    throw conflict('Invalid Git path.');
-  }
-
-  const [source, destination] = await Promise.all([
-    requiredGitValue(
-      root,
-      ['rev-parse', '--verify', sourceCommit + ':' + path],
-      'Missing source path.',
-    ),
-    requiredGitValue(
-      root,
-      ['rev-parse', '--verify', destinationCommit + ':' + path],
-      'Missing destination path.',
-    ),
-  ]);
-  if (source !== destination) {
-    throw conflict('Path differs in target.');
-  }
-}
-
-/** The object id of `commit:path`, or `undefined` when the path does not exist there. */
-async function resolveGitPathObject(
-  root: string,
-  commit: string,
-  path: string,
-): Promise<string | undefined> {
-  const result = await executeGit(root, ['rev-parse', '--verify', commit + ':' + path]);
-  if (result.exitCode !== 0) {
-    return undefined;
-  }
-
-  const value = result.stdout.trim();
-  if (!OBJECT_ID.test(value)) {
-    throw conflict('Unexpected Git object id for ' + path + '.');
-  }
-
-  return value;
-}
-
-/**
- * Like {@link verifyGitPathContentEquivalent}, but a path absent at BOTH commits — a deletion or
- * rename the source branch made, correctly mirrored by the destination's own absence — is
- * equivalent too. Only a path present at one commit and missing at the other, or present at both
- * with different content, is a mismatch. For an arbitrary whole-branch path list, not the
- * canonical Specification subtree (which must keep existing at both sides).
- */
-export async function verifyGitPathEquivalentOrBothAbsent(
-  root: string,
-  sourceCommit: string,
-  destinationCommit: string,
-  path: string,
-): Promise<void> {
-  if (!OBJECT_ID.test(sourceCommit) || !OBJECT_ID.test(destinationCommit)) {
-    throw conflict('Invalid source or destination commit identity.');
-  }
-
-  if (!isSafeRepoPath(path)) {
-    throw conflict('Invalid Git path.');
-  }
-
-  const [source, destination] = await Promise.all([
-    resolveGitPathObject(root, sourceCommit, path),
-    resolveGitPathObject(root, destinationCommit, path),
-  ]);
-  if (source !== destination) {
-    throw conflict('Path differs in target.');
-  }
-}
-
 /**
  * A later target commit may be a descendant of source while rewriting this
  * Specification. Exact tree-path proof prevents accepting stale/changed
@@ -347,9 +251,27 @@ export async function verifyGitTreePathEquivalent(
   destinationCommit: string,
   path: string,
 ): Promise<void> {
+  if (!OBJECT_ID.test(sourceCommit) || !OBJECT_ID.test(destinationCommit)) {
+    throw conflict('Invalid source or destination commit identity.');
+  }
+
   if (!/^specs\/(?:active|archive)\/[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(path)) {
     throw conflict('Invalid canonical Specification subtree path.');
   }
 
-  await verifyGitPathContentEquivalent(root, sourceCommit, destinationCommit, path);
+  const [source, destination] = await Promise.all([
+    requiredGitValue(
+      root,
+      ['rev-parse', '--verify', sourceCommit + ':' + path],
+      'Missing source Spec subtree.',
+    ),
+    requiredGitValue(
+      root,
+      ['rev-parse', '--verify', destinationCommit + ':' + path],
+      'Missing destination Spec subtree.',
+    ),
+  ]);
+  if (source !== destination) {
+    throw conflict('Canonical Specification subtree differs in target.');
+  }
 }

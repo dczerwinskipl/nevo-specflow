@@ -7,6 +7,7 @@ import { writeRetention } from '../writeRetention';
 import { newId } from '../../../shared/ids/newId';
 import { documentKeys, documentTreeKeys } from '../read-model/queries';
 import { specificationKeys } from '../../specs/read-model';
+import { specificationActionsKey } from '../../tasks/read-model';
 import {
   documentDraftKey,
   isDraftDirty,
@@ -199,10 +200,17 @@ export function useDocumentSave({
         });
       }
 
-      await cache.invalidateQueries({
-        queryKey: specificationKeys.detail(variables.specId),
-        exact: true,
-      });
+      await Promise.all([
+        cache.invalidateQueries({
+          queryKey: specificationKeys.detail(variables.specId),
+          exact: true,
+        }),
+        // The gates read the saved text: the document relations ("Needed to finish…") change.
+        cache.invalidateQueries({
+          queryKey: specificationActionsKey(variables.specId),
+          exact: true,
+        }),
+      ]);
       onSaved?.(variables.documentId);
     },
     // The tree changes with a save (revision, completeness) and with a refusal (read-only, missing).

@@ -14,6 +14,7 @@ import { createDocumentDraftStore, type DocumentDraft } from './documentDraftSto
 import { DocumentDraftProvider } from './DocumentDraftProvider';
 import type { DocumentsApi } from '../api';
 import { documentKeys } from '../read-model/queries';
+import { specificationActionsKey } from '../../tasks/read-model';
 import { useDocumentSave } from './useDocumentSave';
 import { DocumentEditorProvider, useDocumentSaveOwner } from './DocumentEditorProvider';
 
@@ -87,6 +88,16 @@ describe('useDocumentSave for any document', () => {
     });
     expect(store.get(SPEC, 'b')).toMatchObject({ baseline: 'B1', revision: 'b2' });
     expect(store.get(SPEC, 'a')).toMatchObject({ baseline: 'a0' });
+  });
+
+  it('refreshes the workflow projection after a save (its gates read the saved text)', async () => {
+    const { view, queryClient } = setup();
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+    await act(async () => void (await view.result.current.save('b')));
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: specificationActionsKey(SPEC),
+      exact: true,
+    });
   });
 
   it('defaults to the shown document', async () => {

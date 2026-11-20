@@ -52,6 +52,7 @@ export {
   type AttentionItemReason,
   type BlockingTask,
   type BlockingTaskCause,
+  type HeldTaskBlocks,
 } from './attention/model';
 export {
   ATTENTION_REASONS,
@@ -133,6 +134,11 @@ export {
   type TaskProgress,
 } from './operations/execution-read';
 export type { ExecutionHolds, WorkflowDependencies } from './operations/loaded-execution';
+export {
+  reevaluateWait,
+  type ReevaluateWaitInput,
+  type ReevaluateWaitResult,
+} from './operations/reevaluate-wait';
 export { returnToStep, type ReturnToStepInput, type ReturnToStepResult } from './operations/return';
 export {
   startSpecificationExecution,

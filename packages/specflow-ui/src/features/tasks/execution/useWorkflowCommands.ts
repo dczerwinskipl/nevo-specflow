@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type {
   FinishWorkflowRequest,
+  ReevaluateWaitRequest,
   ReturnWorkflowRequest,
   StartWorkflowRequest,
 } from '@nevo/specflow-contracts/workflow';
@@ -34,5 +35,11 @@ export function useWorkflowCommands(subject: WorkflowSubjectRef) {
     onSettled: refresh,
   });
 
-  return { start, finish, returnTo };
+  const reevaluateWait = useMutation({
+    mutationFn: ({ specId: targetSpecId, ...input }: ReevaluateWaitRequest & { specId: string }) =>
+      workflowExecutionApi.reevaluateWait(targetSpecId, input),
+    onSettled: refresh,
+  });
+
+  return { start, finish, returnTo, reevaluateWait };
 }

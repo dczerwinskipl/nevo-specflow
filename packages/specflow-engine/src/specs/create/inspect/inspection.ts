@@ -1,9 +1,6 @@
 import type { SpecFlowEngine } from '../../../application';
 import { readCreateJournal } from '../journal';
-import {
-  projectCreatedSpecification,
-  type PublicCreateOperation,
-} from '../../operations/projection';
+import { projectCreatedSpecification, type PublicCreateOperation } from '../projection';
 
 export type PublicCreateInspection =
   | PublicCreateOperation
@@ -36,6 +33,7 @@ export async function inspectPublicCreateOperation(
       workspaceRoot: record.target.workspaceRoot,
       relativeManifestPath: record.files[0]!.relativePath,
       documentIds: record.documentIds,
+      ...(record.commit ? {} : { uncommitted: true as const }),
     });
   }
 

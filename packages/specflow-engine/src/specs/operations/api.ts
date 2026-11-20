@@ -1,18 +1,20 @@
 import type { SpecFlowEngine } from '../../application';
-import { closeSpecification } from '../lifecycle';
+import { closeSpecification, inspectCloseWithoutGit, resumeCloseWithoutGit } from '../lifecycle';
 import { closeWorktree, closeWorkspace } from '../lifecycle';
-import { previewCloseOperation, previewWithDocumentFlush, type CloseRequest } from '../lifecycle';
+import { previewWithDocumentFlush, previewWithDocumentHold, type CloseRequest } from '../lifecycle';
 import { inspectCloseOperation } from '../lifecycle';
 import { reconcileArchivedConflictScratch } from '../lifecycle';
-import { CloseOperationError } from '../lifecycle';
+import { CloseOperationError, readCloseMergeFacts } from '../lifecycle';
 import {
   projectCloseOperation,
+  projectClosePlan,
   projectClosePreview,
   projectWorkspaceClosePreview,
   projectWorkspaceCloseOperation,
   type PublicWorkspaceClosePreview,
   type PublicWorkspaceCloseOperation,
   type PublicCloseOperation,
+  type PublicClosePlan,
   type PublicClosePreview,
 } from './projection';
 
@@ -45,7 +47,10 @@ export async function previewPublicCloseOperation(
   engine: SpecFlowEngine,
   request: CloseRequest,
 ): Promise<PublicClosePreview> {
-  return projectClosePreview(await previewCloseOperation(engine, request));
+  // A dirty tree held by document commits is answered as the Close would: DOCUMENT_COMMITS_PENDING.
+  const plan = await previewWithDocumentHold(engine, request);
+
+  return projectClosePreview(plan, await readCloseMergeFacts(plan));
 }
 
 /** Resolve immutable retry authorization from the journal, never mutable query options. */
@@ -63,11 +68,13 @@ export async function planPublicCloseOperation(
   engine: SpecFlowEngine,
   request: CloseRequest,
   options: PlanPublicCloseOptions = {},
-): Promise<PublicClosePreview> {
-  const preview = async (): Promise<PublicClosePreview> =>
-    options.flushDocumentCommits === true
-      ? projectClosePreview(await previewWithDocumentFlush(engine, request, {}))
-      : previewPublicCloseOperation(engine, request);
+): Promise<PublicClosePlan> {
+  const preview = async (): Promise<PublicClosePlan> =>
+    projectClosePlan(
+      options.flushDocumentCommits === true
+        ? await previewWithDocumentFlush(engine, request, {})
+        : await previewWithDocumentHold(engine, request),
+    );
   if (!request.operationId) {
     return preview();
   }
@@ -83,7 +90,7 @@ export async function planPublicCloseOperation(
       throw new CloseOperationError('CLOSE_CONFLICT', 'Operation identity does not match intent.');
     }
 
-    return projectClosePreview(existing.plan);
+    return projectClosePlan(existing.plan);
   }
 
   return preview();
@@ -91,11 +98,7 @@ export async function planPublicCloseOperation(
 
 export async function closeWorktreeOperation(
   engine: SpecFlowEngine,
-  request: {
-    readonly operationId: string;
-    readonly specId: string;
-    readonly finishAfterExternalMerge?: boolean;
-  },
+  request: { readonly operationId: string; readonly specId: string },
 ): Promise<PublicCloseOperation> {
   const result = await closeWorktree(engine, request);
   if ('journal' in result) {
@@ -116,10 +119,26 @@ export async function closeSpecificationOperation(
     readonly operationId: string;
     readonly specId: string;
     readonly integrateToTargetBranch?: boolean;
-    readonly finishAfterExternalMerge?: boolean;
   },
 ): Promise<PublicCloseOperation> {
   return projectCloseOperation((await closeSpecification(engine, request)).journal);
+}
+
+/** Read-only: where an interrupted Close with Git off stopped (`specs close-recover --preview`). */
+export async function inspectCloseWithoutGitOperation(
+  engine: SpecFlowEngine,
+  operationId: string,
+): ReturnType<typeof inspectCloseWithoutGit> {
+  return inspectCloseWithoutGit(engine, operationId);
+}
+
+/** The operator's recovery of a Close with Git off stuck after its archive intent. */
+export async function resumeCloseWithoutGitOperation(
+  engine: SpecFlowEngine,
+  operationId: string,
+  confirmedStopped: true,
+): Promise<PublicCloseOperation> {
+  return projectCloseOperation(await resumeCloseWithoutGit(engine, operationId, confirmedStopped));
 }
 
 export async function reconcileArchivedConflictScratchOperation(
@@ -159,7 +178,7 @@ export async function planPublicWorkspaceCloseOperation(
   return projectWorkspaceClosePreview(
     options.flushDocumentCommits === true
       ? await previewWithDocumentFlush(engine, intent, {})
-      : await previewCloseOperation(engine, intent),
+      : await previewWithDocumentHold(engine, intent),
   );
 }
 

@@ -47,10 +47,10 @@ ESLint enforces the restriction (`tools/eslint/boundaries.mjs`).
 ```
 
 Inside the Engine, the Specification slices keep their imports acyclic: `specs/documents` exposes its pure
-primitives through `index.ts` (the filesystem readers through `reading.ts`), and the `lint` script of
-the Engine runs `tools/eslint/check-import-cycles.mjs`, which fails on any import cycle through
-`specs/documents`, `specs/archetypes`, `specs/create`, `model.ts` or `scaffold.ts` other than the one
-known `specs/create` cycle it lists. The lifecycle cycle that predates the gate is reported, not gated.
+primitives through `index.ts` (the filesystem readers through `reading.ts`). The Engine's `lint`
+script runs `tools/eslint/check-import-cycles.mjs`. It fails on any cycle through a gated path,
+including `specs/create/` and `specs/lifecycle/`, and includes type imports in the graph.
+Resource coordination reads Close claims through `specs/lifecycle/claim-source.ts`.
 
 Runtime remains responsible for long-lived provider processes, streams and managed Sessions.
 Engine-local operation records are **not** provider Session/Turn execution records. Runtime admits

@@ -5,7 +5,9 @@ import {
   Progress,
   normalizeProgressValue,
   fitsProgressSegments,
+  progressPositionSegments,
   validProgressCounts,
+  validProgressPosition,
 } from './Progress';
 import { designSpec } from './Progress.figma';
 
@@ -89,5 +91,100 @@ describe('Progress', () => {
     expect(html).toContain('data-design-key="fill"');
     expect(html).toContain('data-design-layer="fill"');
     expect(html).not.toContain('data-design-slot=');
+  });
+
+  describe('position mode', () => {
+    it('places one current segment between the steps before and after it', () => {
+      expect(progressPositionSegments({ state: 'current', step: 3 }, 7)).toEqual([
+        'before',
+        'before',
+        'current',
+        'after',
+        'after',
+        'after',
+        'after',
+      ]);
+    });
+
+    it('outlines the first step before the start, fills all on completion, ends at the abandon step', () => {
+      expect(progressPositionSegments({ state: 'not-started' }, 3)).toEqual([
+        'next',
+        'after',
+        'after',
+      ]);
+      expect(progressPositionSegments({ state: 'completed' }, 2)).toEqual([
+        'completed',
+        'completed',
+      ]);
+      expect(progressPositionSegments({ state: 'abandoned', step: 2 }, 4)).toEqual([
+        'ended',
+        'ended',
+        'after',
+        'after',
+      ]);
+    });
+
+    it('rejects a step outside the workflow instead of clamping it', () => {
+      for (const [step, total] of [
+        [0, 7],
+        [8, 7],
+        [1.5, 7],
+        [1, 0],
+      ] as const) {
+        expect(validProgressPosition({ state: 'current', step }, total)).toBe(false);
+      }
+
+      expect(validProgressPosition({ state: 'abandoned', step: 8 }, 7)).toBe(false);
+      expect(validProgressPosition({ state: 'completed' }, 7)).toBe(true);
+      expect(
+        renderToStaticMarkup(
+          <Progress
+            aria-label="Step 9 of 7"
+            variant="segmented"
+            total={7}
+            position={{ state: 'current', step: 9 }}
+          />,
+        ),
+      ).toBe('');
+    });
+
+    it('is an image named by its label, with no progress values and no animation', () => {
+      const html = renderToStaticMarkup(
+        <Progress
+          aria-label="Step 3 of 7: Break the solution down"
+          variant="segmented"
+          total={7}
+          position={{ state: 'current', step: 3 }}
+        />,
+      );
+      expect(html).toContain('role="img"');
+      expect(html).toContain('aria-label="Step 3 of 7: Break the solution down"');
+      expect(html).not.toContain('aria-valuenow');
+      expect(html).not.toContain('progressbar');
+      expect(html).not.toContain('transition');
+      expect(html).toContain('data-progress-representation="position"');
+      expect(html.match(/data-progress-segment="before"/g)).toHaveLength(2);
+      expect(html.match(/data-progress-segment="current"/g)).toHaveLength(1);
+      expect(html.match(/data-progress-segment="after"/g)).toHaveLength(4);
+      // 20 px segments, a 40 px current one, shrinking to fit 16rem and never below 4 px.
+      expect(html).toContain('max-w-[min(100%,16rem)]');
+      expect(html).toMatch(/w-10 bg-status-info/);
+      expect(html).toContain('min-w-1');
+      expect(html).toContain('h-progress-track');
+    });
+
+    it('uses the compact height on request', () => {
+      const html = renderToStaticMarkup(
+        <Progress
+          aria-label="Step 1 of 2"
+          variant="segmented"
+          size="compact"
+          total={2}
+          position={{ state: 'current', step: 1 }}
+        />,
+      );
+      expect(html).toContain('h-1');
+      expect(html).not.toContain('h-progress-track');
+    });
   });
 });

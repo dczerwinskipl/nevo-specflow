@@ -7,7 +7,6 @@ import {
   selectableModes,
   type AgentChoice,
 } from './agentChoice';
-import { sessionNameMissing, type SessionNameChoice } from './sessionName';
 
 export interface NewSessionReadiness {
   /** The first reason the Session cannot start yet (shown next to Start), else undefined. */
@@ -17,14 +16,13 @@ export interface NewSessionReadiness {
 
 /**
  * Whether a new Session can start and, if not, the one reason shown next to the start button. In
- * the order the form is read: configuration, agent, model, mode, effort, custom name. The first
+ * the order the form is read: configuration, agent, model, mode, effort. The name is optional. The first
  * message is written in the Session itself, so it is no prerequisite. A provider that offers no
  * model choice needs no model.
  */
 export function newSessionReadiness(input: {
   catalogue: StartCatalogue;
   agent: AgentChoice;
-  name: SessionNameChoice;
   configurationUnavailable: boolean;
 }): NewSessionReadiness {
   const { catalogue, agent } = input;
@@ -41,9 +39,7 @@ export function newSessionReadiness(input: {
             ? message('create.prerequisite.mode')
             : agent.effort !== providerDefaultEffort && !model?.efforts.includes(agent.effort)
               ? message('create.prerequisite.model')
-              : sessionNameMissing(input.name)
-                ? message('sessionStart.prerequisite.name')
-                : undefined;
+              : undefined;
 
   return { prerequisite, canStart: !prerequisite };
 }

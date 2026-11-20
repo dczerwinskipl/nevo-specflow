@@ -30,6 +30,8 @@ import type { WorkflowPostActions } from './post-actions';
 export interface WorkflowDependencies {
   readonly store: WorkflowStore;
   readonly catalogue: ExecutionCatalogue;
+  /** Reload the definitions under the project lock before re-evaluating a wait. */
+  readonly reloadCatalogue?: () => Promise<ExecutionCatalogue>;
   /** Lookups outside the execution store: the archetype's live policy, context references. */
   readonly references: TaskReferences;
   /** What holds the Specification outside its execution records (`readSpecificationExitState`). */

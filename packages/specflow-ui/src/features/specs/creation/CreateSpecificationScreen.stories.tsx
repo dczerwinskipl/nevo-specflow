@@ -554,7 +554,7 @@ export const ZeroProviders: Story = {
   render: () => <Fixture catalogue={withProviders([])} />,
   play: async ({ canvas, userEvent }) => {
     await openAgentForm(canvas, userEvent);
-    await expect(canvas.getByText('Brak dostępnych wykonawców.')).toBeVisible();
+    await expect(canvas.getByText('Brak dostępnych agentów.')).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Utwórz i otwórz sesję' })).toHaveAttribute(
       'aria-disabled',
       'true',
@@ -1564,7 +1564,7 @@ export const RefetchInvalidatingAChangedRowFlagsItsField: Story = {
 const formColumn = (canvas: Canvas) =>
   canvas
     .getByRole('heading', { name: 'Nowa specyfikacja' })
-    .closest<HTMLElement>('[class~="@container"]')!;
+    .closest<HTMLElement>('[class~="@container/app-content"]')!;
 const sideBySide = (canvas: Canvas, rightStart = 'Miejsce pracy') => {
   const name = canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' }).getBoundingClientRect();
   const place = canvas.getByText(rightStart).getBoundingClientRect();

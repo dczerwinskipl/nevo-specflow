@@ -830,9 +830,9 @@ describe('the commit queue as a person sees it', () => {
 });
 
 describe('the document-operations list route', () => {
-  it('answers ETag and 304, and requires a view capability', async () => {
+  it('answers ETag and 304 to a viewer', async () => {
     const fx = await project();
-    const l = await listen(fx);
+    const l = await listen(fx, { assignments: [{ role: 'viewer', scope: {} }] });
     const first = await call(l, 'GET', '/api/specs/document-operations');
     expect(first.statusCode).toBe(200);
     expect(first.headers['cache-control']).toBe('no-store');
@@ -841,29 +841,24 @@ describe('the document-operations list route', () => {
       'if-none-match': String(first.headers.etag),
     });
     expect(again.statusCode).toBe(304);
+  });
 
-    const anonymous = await createRuntimeApp(
-      { ...passwordConfig(), authorization: { assignments: [] } },
-      { specs: { engine: fx.engine } },
-    );
-    apps.push(anonymous);
-    expect((await anonymous.inject('/api/specs/document-operations')).statusCode).toBe(401);
+  it('requires authentication and a view capability', async () => {
+    const fx = await project();
+    const nobody = await listen(fx, { assignments: [] });
+    expect((await nobody.app.inject('/api/specs/document-operations')).statusCode).toBe(401);
     expect(
-      (await anonymous.inject({ method: 'HEAD', url: '/api/specs/document-operations' }))
+      (await nobody.app.inject({ method: 'HEAD', url: '/api/specs/document-operations' }))
         .statusCode,
     ).toBe(401);
-
-    const nobody = await listen(fx, { assignments: [] });
     expect((await call(nobody, 'GET', '/api/specs/document-operations')).statusCode).toBe(403);
-    const viewer = await listen(fx, { assignments: [{ role: 'viewer', scope: {} }] });
-    expect((await call(viewer, 'GET', '/api/specs/document-operations')).statusCode).toBe(200);
   });
 
   it('shows a row only to a caller who may view its Specification', async () => {
     const fx = await project();
     const writer = await listen(fx);
-    git(fx.root, 'checkout', '-q', '-b', 'scratch');
     const response = await save(writer, fx, 'notes-1', 'x\n', sha256(notes(1)));
+    expect(response.statusCode, response.body).toBe(200);
     const operationId = response.json<{ operationId: string }>().operationId;
     git(fx.root, 'checkout', '-q', '--detach');
     await flush(writer, fx);

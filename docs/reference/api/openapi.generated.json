@@ -1008,6 +1008,14 @@
             },
             "maxItems": 8
           },
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 4096
+            },
+            "maxItems": 10
+          },
           "localConfig": {
             "anyOf": [
               {
@@ -52016,6 +52024,9 @@
                 "properties": {
                   "operationId": {
                     "$ref": "#/components/schemas/OperationId"
+                  },
+                  "finishAfterExternalMerge": {
+                    "type": "boolean"
                   }
                 },
                 "additionalProperties": false
@@ -52712,6 +52723,9 @@
                 "properties": {
                   "operationId": {
                     "$ref": "#/components/schemas/OperationId"
+                  },
+                  "finishAfterExternalMerge": {
+                    "type": "boolean"
                   }
                 },
                 "additionalProperties": false

@@ -127,12 +127,13 @@ async function authorizedPlan(
           specId,
           ...(finishAfterExternalMerge === undefined ? {} : { finishAfterExternalMerge }),
         }
-      : {
+      : // Specification Close never accepts finishAfterExternalMerge (owner decision 2026-11-20);
+        // the schema already rejects a body that sends it, so it is never forwarded here.
+        {
           kind,
           operationId,
           specId,
           ...(integrateToTargetBranch === undefined ? {} : { integrateToTargetBranch }),
-          ...(finishAfterExternalMerge === undefined ? {} : { finishAfterExternalMerge }),
         },
     options,
   );
@@ -259,6 +260,8 @@ function closeRefusalDetails(error: unknown): {
 function statusForCloseError(code: SafeCode): 400 | 404 | 409 | 422 | 503 {
   switch (code) {
     case 'CLOSE_INVALID':
+      return 400;
+    case 'CLOSE_EXTERNAL_MERGE_UNSUPPORTED':
       return 400;
     case 'SPEC_VALIDATION_ERROR':
       return 400;
@@ -406,15 +409,14 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
                     ? {}
                     : { finishAfterExternalMerge: body.finishAfterExternalMerge }),
                 })
-              : closeSpecificationOperation(engine, {
+              : // Specification Close never accepts finishAfterExternalMerge (owner decision
+                // 2026-11-20); the schema already rejects a body that sends it.
+                closeSpecificationOperation(engine, {
                   specId,
                   operationId: body.operationId,
                   ...(body.integrateToTargetBranch === undefined
                     ? {}
                     : { integrateToTargetBranch: body.integrateToTargetBranch }),
-                  ...(body.finishAfterExternalMerge === undefined
-                    ? {}
-                    : { finishAfterExternalMerge: body.finishAfterExternalMerge }),
                 }),
           );
 

@@ -36,11 +36,18 @@ export const CloseWorktreeRequestSchema = Type.Object(
   { operationId: OperationIdSchema, finishAfterExternalMerge: FinishAfterExternalMergeSchema },
   { additionalProperties: false },
 );
+/**
+ * Specification Close never accepts `finishAfterExternalMerge` (owner decision 2026-11-20): its
+ * contract requires the canonical Specification to end up archived at the destination, which this
+ * mode never proves (it skips merge/integration entirely). A body that still sends it is rejected
+ * here, at the schema boundary (`additionalProperties: false`), before it reaches the Engine, which
+ * also refuses it explicitly (`CLOSE_EXTERNAL_MERGE_UNSUPPORTED`) for any caller that bypasses this
+ * schema. Only `CloseWorktreeRequestSchema` accepts the field.
+ */
 export const CloseSpecificationRequestSchema = Type.Object(
   {
     operationId: OperationIdSchema,
     integrateToTargetBranch: Type.Optional(Type.Boolean()),
-    finishAfterExternalMerge: FinishAfterExternalMergeSchema,
   },
   { additionalProperties: false },
 );

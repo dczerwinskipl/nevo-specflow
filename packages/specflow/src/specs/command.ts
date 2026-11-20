@@ -327,10 +327,6 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
     .option('--operation-id <uuid>', 'Stable operation UUID; reuse it for idempotent retry')
     .option('--project-root <path>', 'Require this verified Project Home root')
     .option('--archive-only', 'Archive linked Specification without merging or removing worktree')
-    .option(
-      '--finish-after-external-merge',
-      'Finish after the branch was already merged externally (e.g. a GitHub squash merge): proves content equivalence instead of merging again',
-    )
     .option('--preview', 'Inspect the Close plan without writing')
     .option('--yes', 'Confirm archival mutation')
     .option('--json', 'Output machine-readable result')
@@ -342,7 +338,6 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
         operationId,
         specId,
         ...(options.archiveOnly ? { integrateToTargetBranch: false } : {}),
-        ...(options.finishAfterExternalMerge ? { finishAfterExternalMerge: true } : {}),
       };
       if (options.preview) {
         await previewRefusals(context, options.json, async () => {

@@ -244,11 +244,12 @@ export function isCloseJournal(
             finishAfterExternalMerge: plan.finishAfterExternalMerge === true,
           }
         : {
+            // Specification Close never carries finishAfterExternalMerge (owner decision
+            // 2026-11-20): `isCoherentCloseScope` below already rejects any plan that has it.
             kind: 'specification-close' as const,
             operationId,
             specId: plan.specId,
             integrateToTargetBranch: plan.integrateToTargetBranch ?? false,
-            finishAfterExternalMerge: plan.finishAfterExternalMerge === true,
           };
   if (plan.fingerprint !== fingerprintCloseIntent(intent)) {
     return false;
@@ -294,9 +295,10 @@ function isCoherentCloseScope(plan: Record<string, unknown>): boolean {
       return false;
     }
 
-    // Contradictory without integration: finish-after-external-merge reuses the integrated
-    // disposal path, so it is never combined with an explicit archive-only selection.
-    if (plan.finishAfterExternalMerge === true && plan.integrateToTargetBranch !== true) {
+    // Specification Close never supports finishAfterExternalMerge (owner decision 2026-11-20): its
+    // contract requires the canonical Specification to end up archived at the destination, which
+    // this mode never proves (it skips merge/integration entirely). Only Worktree Close may use it.
+    if (plan.finishAfterExternalMerge !== undefined) {
       return false;
     }
   }
@@ -358,10 +360,10 @@ function isGitOffCloseJournal(
         operationId,
         specId: plan.specId,
         integrateToTargetBranch: false,
-        finishAfterExternalMerge: false,
       }) ||
-    // Git-off Close never integrates: the combination with an external-merge finish is excluded by
-    // the type system (GitOffClosePlan has no such field), not by a runtime refusal here.
+    // Specification Close never carries finishAfterExternalMerge at all (owner decision
+    // 2026-11-20), Git-off included: excluded by the type system (neither `CloseIntent`'s
+    // specification-close member nor `GitOffClosePlan` has the field).
     plan.finishAfterExternalMerge !== undefined ||
     typeof plan.slug !== 'string' ||
     !isCanonicalSlug(plan.slug) ||

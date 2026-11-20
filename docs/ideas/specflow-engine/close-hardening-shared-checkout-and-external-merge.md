@@ -858,3 +858,66 @@ dedicated SIGKILL/crash-recovery test exists yet specifically for the `finishAft
 verification path (unlike `close-sigkill.test.ts`'s coverage of other paths) — low risk since that path
 performs no Git mutation of its own and reuses already crash-tested checkpoint/disposal machinery, but
 worth a follow-up test given this is explicitly a hardening/recovery feature.
+
+## Scoping fix: `finishAfterExternalMerge` restricted to Worktree Close (2026-11-20)
+
+An external GitHub code review of PR #188 at commit `5f7b4543d` found a real semantic defect:
+`finishAfterExternalMerge: true` was reachable, type-wise and at the HTTP/CLI boundary, for both
+`worktree-close` and `specification-close`. For `specification-close`, the implementation (by
+design, since no merge/integration ever runs in this mode) asserted the Specification present at its
+**pre-archive** location on the destination, never that it showed `'archive'` there — because the
+local archive-rename commit made on the source branch never reaches a destination an external merge
+necessarily predates. The operation still reported `status: 'completed'` with
+`outcome: 'integrated-and-removed'`. That is a false success: Specification Close's whole contract is
+that after success the Specification's canonical state is `archived`; using this mode left it
+`active` on the destination branch forever, with no indication anything was wrong.
+
+**Owner's decision (verbatim, Polish original kept for the exact reasoning):**
+
+> Wybrałbym opcję 1, ale z jednym istotnym zastrzeżeniem: ograniczyłbym `finishAfterExternalMerge` do
+> `Worktree Close`, nie do `Workspace Close`, dopóki ten drugi wariant nie ma osobnego potwierdzenia
+> poprawności. [...] Moja propozycja na teraz: Ograniczyć flagę do `Worktree Close`. Zachować pełny
+> content proof i bezpieczne usuwanie worktree. `Specification Close` po external merge powinien
+> jawnie odmawiać takiej kombinacji. Osobno zaprojektować archiwizację specyfikacji na docelowej
+> gałęzi, najlepiej zgodną z polityką PR. [...] Nie oznacza to, że archiwizacja jest rozwiązana. To
+> świadome rozdzielenie dwóch operacji, zamiast pozornego zamykania specyfikacji.
+
+In short: Specification Close's contract requires the canonical Specification to end up `archived`;
+Worktree Close's narrower contract (retire a worktree binding whose content already merged) makes no
+such claim, so only Worktree Close may use this mode. Archiving a Specification directly on the
+target branch is explicitly **deferred, not solved** — a deliberate split into two separate problems,
+not a placeholder left to fill in later.
+
+**What changed (same commit as this section, on top of `5f7b4543d`):**
+
+- `CloseIntent`'s `specification-close` member (`model.ts`) narrows `finishAfterExternalMerge` to
+  `never`; only `worktree-close` can carry it. `fingerprintCloseIntent` and `normalizeCloseIntent`
+  no longer canonicalize or accept it for Specification Close.
+- A new shared guard, `assertNoExternalMergeForSpecificationClose`, throws the new
+  `CLOSE_EXTERNAL_MERGE_UNSUPPORTED` code unconditionally — before any Git inspection or mutation —
+  and is called from every admission entry point that can reach Specification Close:
+  `previewCloseOperation` (preflight, covering preview and fresh admission for both Git-on and
+  Git-off), `reserveCloseOperation` (covering an `operationId` replay, which bypasses the preview),
+  and `closeSpecification` itself (defense-in-depth at the business-operation layer, independent of
+  the type system).
+- `CloseSpecificationRequestSchema` (contracts) drops the field entirely; `CloseWorktreeRequestSchema`
+  keeps it. A specification-close HTTP body that sends it is now rejected `400` by the schema before
+  reaching the Engine. The `specs close` CLI command no longer registers
+  `--finish-after-external-merge` (only `specs worktree close` does).
+- `journal/codec.ts`'s `isCoherentCloseScope` now rejects any specification-close plan where the
+  field is present at all (not only when combined with `integrateToTargetBranch !== true`, the old,
+  now-impossible-to-reach check), mirroring the existing `workspace-close` check.
+- `closeSpecification`'s now-dead `assertPresentAt` branch (the never-archives case that mirrored
+  `closeWorktree`'s own) was removed; a completed, integrated Specification Close always expects the
+  canonical `'archive'` location at the destination.
+- Unrelated, bundled into the same commit (owner's explicit request): `closeJournalPath` gained an
+  explicit `operationId.length === 36` check alongside its existing anchored-regex check, as
+  defense-in-depth against a CodeQL path-injection alert already verified as a false positive and
+  dismissed by the owner on GitHub.
+
+**Tests:** `close-external-merge.test.ts`'s one `closeSpecification` + `finishAfterExternalMerge`
+case (which asserted the now-fixed buggy "completed while still active" behavior) was converted into
+a refusal assertion — same fixture, now expects `CLOSE_EXTERNAL_MERGE_UNSUPPORTED` with no Git
+mutation. Its `closeWorktree` scenarios are unchanged and still pass. A new, narrower regression test
+was added to `close-specification-lifecycle.test.ts` asserting the refusal happens before any
+mutation (no archive move, no commit, no journal reserved) on a plain primary-checkout Specification.

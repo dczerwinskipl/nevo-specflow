@@ -14,6 +14,7 @@ import { runGitFreeMutation } from '../../project/request-verification-memo';
 import { readProjectGitPolicy } from '../../version-control/worktrees/config';
 import {
   CloseOperationError,
+  assertNoExternalMergeForSpecificationClose,
   assertSpecificationExit,
   type CloseJournal,
   type ClosePlan,
@@ -60,6 +61,10 @@ export async function reserveCloseOperation(
   request: CloseRequest & { readonly operationId: string },
   options: ReserveCloseOptions = {},
 ): Promise<{ readonly journal: CloseJournal; readonly existing: boolean }> {
+  // Refused unconditionally, before even reading an existing journal (owner decision 2026-11-20):
+  // a replay of an operationId with this combination gets the same explicit refusal as a fresh one.
+  assertNoExternalMergeForSpecificationClose(request);
+
   // An existing reservation must remain observable even after Git/archive
   // mutations make the original first-admission preview impossible.
   const existing = await readCloseJournal(engine.context, request.operationId);
@@ -213,12 +218,9 @@ function assertMatchingRequest(
     const linked = journal.plan.source.instanceId !== undefined;
     const requested = linked ? (request.integrateToTargetBranch ?? true) : false;
     const reserved = linked ? journal.plan.integrateToTargetBranch : false;
-    if (
-      (!linked && request.integrateToTargetBranch !== undefined) ||
-      requested !== reserved ||
-      (request.finishAfterExternalMerge ?? false) !==
-        (journal.plan.finishAfterExternalMerge === true)
-    ) {
+    // finishAfterExternalMerge no longer legitimately varies for this kind (owner decision
+    // 2026-11-20): the unconditional refusal above means it can never be true here, for either side.
+    if ((!linked && request.integrateToTargetBranch !== undefined) || requested !== reserved) {
       throw new CloseOperationError(
         'CLOSE_CONFLICT',
         'OperationId changed immutable integration selection.',

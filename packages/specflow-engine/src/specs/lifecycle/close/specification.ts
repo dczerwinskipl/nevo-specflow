@@ -8,7 +8,11 @@ import { archiveSpecificationWithCommit, inspectArchivePhysicalRecovery } from '
 import { prepareCloseGitIntegration } from '../git/preparation';
 import { settleArchivedLinkedConflict } from '../git/scratch';
 import { readCloseJournal } from '../journal/store';
-import { CloseOperationError, type CloseJournal } from '../model';
+import {
+  CloseOperationError,
+  assertNoExternalMergeForSpecificationClose,
+  type CloseJournal,
+} from '../model';
 import { reserveCloseOperation } from '../reservation';
 import { pruneUncommitted } from '../../uncommitted';
 import { advanceCloseIntegration } from './integration';
@@ -38,23 +42,6 @@ async function assertArchivedAt(root: string, specId: string): Promise<void> {
   const specification = await readWorkspaceSpecification(root, specId);
   if (specification.location !== 'archive' || specification.status !== 'archived') {
     throw recovery('Canonical archived Specification is not physically present.');
-  }
-}
-
-/**
- * Finish-after-external-merge postcondition (#157, Fix 2): the destination necessarily predates
- * this Specification's local archive rename (the external merge happened before any Nevo-authored
- * commit), so it is present at its pre-archive location — never `assertArchivedAt`'s `'archive'` —
- * mirroring `closeWorktree`'s own never-archives case.
- */
-async function assertPresentAt(
-  root: string,
-  specId: string,
-  location: 'active' | 'archive',
-): Promise<void> {
-  const specification = await readWorkspaceSpecification(root, specId);
-  if (specification.location !== location) {
-    throw recovery('Canonical Specification is not present at its expected destination location.');
   }
 }
 
@@ -122,6 +109,11 @@ export async function closeSpecification(
     readonly finishAfterExternalMerge?: boolean;
   },
 ): Promise<CloseSpecificationResult> {
+  // Refused before any mutation, and before admission even starts (owner decision 2026-11-20): do
+  // not rely on the type system alone, since a caller outside the typed HTTP/CLI boundary can still
+  // pass the field.
+  assertNoExternalMergeForSpecificationClose({ kind: 'specification-close', ...request });
+
   const admission = await reserveCloseOperation(engine, {
     kind: 'specification-close',
     ...request,
@@ -202,11 +194,10 @@ export async function closeSpecification(
       throw recovery('Integrated binding or linked workspace retirement is not proven.');
     }
 
-    if (journal.plan.finishAfterExternalMerge === true) {
-      await assertPresentAt(target.root, request.specId, journal.plan.location);
-    } else {
-      await assertArchivedAt(target.root, request.specId);
-    }
+    // Specification Close never carries finishAfterExternalMerge (owner decision 2026-11-20): the
+    // destination always received the real merge/fast-forward/divergent-candidate publication, so
+    // it is always expected to show the canonical archive, never the pre-archive location.
+    await assertArchivedAt(target.root, request.specId);
   } else {
     if (
       (await inspectArchivePhysicalRecovery(engine, request.operationId)) !==

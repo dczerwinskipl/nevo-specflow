@@ -22,6 +22,7 @@ import { isValidSpecificationId } from '../model';
 import {
   CloseOperationError,
   REPOSITORY_PATHS_NAMED,
+  assertNoExternalMergeForSpecificationClose,
   assertSpecificationExit,
   fingerprintCloseIntent,
   resourcesForClosePlan,
@@ -536,9 +537,9 @@ async function previewCloseWithoutGit(
       operationId,
       specId: request.specId,
       integrateToTargetBranch: false,
-      // Git-off Close never integrates: the combination with an external-merge finish is excluded
-      // by the type system (GitOffClosePlan has no such field), not by a runtime refusal.
-      finishAfterExternalMerge: false,
+      // Specification Close never carries finishAfterExternalMerge at all (owner decision
+      // 2026-11-20; enforced above by `assertNoExternalMergeForSpecificationClose`), so a Git-off
+      // Close's intent, like every other Specification Close intent, never includes it.
     }),
     slug: canonical.specification.slug,
     location: canonical.specification.location,
@@ -577,6 +578,11 @@ export async function previewCloseOperation(
   if (request.kind !== 'worktree-close' && request.kind !== 'specification-close') {
     throw new CloseOperationError('CLOSE_INVALID', 'Unknown lifecycle operation kind.');
   }
+
+  // Before any Git/registry read: Specification Close never supports this mode (owner decision
+  // 2026-11-20), so a request that carries it is refused unconditionally, regardless of repository
+  // mode (Git on or off) or checkout role (primary or linked).
+  assertNoExternalMergeForSpecificationClose(request);
 
   if (!isValidSpecificationId(request.specId)) {
     throw new CloseOperationError('CLOSE_INVALID', 'Invalid Specification identity.');
@@ -807,7 +813,11 @@ async function previewGitClose(
   }
 
   const binding = registry.specBindings.find((item) => item.specId === request.specId);
-  const finishAfterExternalMerge = request.finishAfterExternalMerge === true;
+  // Specification Close never carries finishAfterExternalMerge (owner decision 2026-11-20; refused
+  // unconditionally by `assertNoExternalMergeForSpecificationClose` before this function ever runs):
+  // only Worktree Close varies on it.
+  const finishAfterExternalMerge =
+    request.kind === 'worktree-close' && request.finishAfterExternalMerge === true;
   const normalized =
     request.kind === 'worktree-close'
       ? {
@@ -821,7 +831,6 @@ async function previewGitClose(
           operationId,
           specId: request.specId,
           integrateToTargetBranch: linked ? (request.integrateToTargetBranch ?? true) : false,
-          finishAfterExternalMerge,
         };
 
   const resources = sortedResources([

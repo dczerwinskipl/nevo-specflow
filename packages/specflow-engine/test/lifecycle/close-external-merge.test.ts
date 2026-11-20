@@ -264,10 +264,13 @@ describe('#157 finish Close after an external (PR) merge', () => {
   }, 120000);
 
   it(
-    // Fix 2: closeSpecification always archives locally (specs/active -> specs/archive on the
-    // source branch) BEFORE integrating. The external merge necessarily predates that purely local
-    // rename, so the destination only ever has `specs/active/<slug>` — never `specs/archive/<slug>`.
-    "Fix 2: a Specification Close archives locally, then finishes against the destination's pre-archive (specs/active) identity",
+    // Owner decision 2026-11-20: Specification Close never supports finishAfterExternalMerge.
+    // This scenario used to assert the opposite — that it "finished" by only ever proving the
+    // destination's pre-archive (specs/active) identity, never `'archive'` — which was a false
+    // success: the canonical Specification stayed `active` at the destination forever while the
+    // operation reported `completed`/`integrated-and-removed`. It now asserts the explicit refusal,
+    // even though the destination genuinely has the externally-merged content.
+    'refuses finishAfterExternalMerge for Specification Close, with no mutation, even when the destination already has the content',
     async () => {
       const { root, engine, spec } = await fixture();
       const squashSourcePath = join(spec.workspaceRoot, 'specs', 'active', spec.slug);
@@ -276,29 +279,26 @@ describe('#157 finish Close after an external (PR) merge', () => {
       await cp(squashSourcePath, squashDestinationPath, { recursive: true });
       git(root, 'add', '-A', '--', 'specs/active/' + spec.slug);
       commitStaged(root, 'simulate external squash merge of ' + spec.slug);
-      const squashedHead = git(root, 'rev-parse', 'HEAD');
+      const beforePrimaryHead = git(root, 'rev-parse', 'HEAD');
+      const beforeSourceHead = git(spec.workspaceRoot, 'rev-parse', 'HEAD');
 
-      const result = await closeSpecification(engine, {
-        operationId: randomUUID(),
-        specId: spec.specId,
-        finishAfterExternalMerge: true,
-      });
-      expect(result).toMatchObject({
-        status: 'completed',
-        journal: { outcome: 'integrated-and-removed' },
-      });
+      const operationId = randomUUID();
+      await expect(
+        closeSpecification(engine, {
+          operationId,
+          specId: spec.specId,
+          finishAfterExternalMerge: true,
+        }),
+      ).rejects.toMatchObject({ code: 'CLOSE_EXTERNAL_MERGE_UNSUPPORTED' });
 
-      // No new merge commit on the destination: it is exactly the externally-merged commit, still
-      // at its pre-archive location (never `assertArchivedAt`'s `'archive'` for this mode).
-      expect(git(root, 'rev-parse', 'HEAD')).toBe(squashedHead);
-      expect((await readWorkspaceSpecification(root, spec.specId)).location).toBe('active');
-      expect(git(root, 'worktree', 'list', '--porcelain').match(/worktree /gu)).toHaveLength(1);
-      await expect(lstat(spec.workspaceRoot)).rejects.toMatchObject({ code: 'ENOENT' });
-
-      const registry = await engine.readRegistry();
-      expect(registry.specBindings.find((x) => x.specId === spec.specId)?.workspaceId).toBe(
-        registry.primaryWorkspaceId,
+      expect(git(root, 'rev-parse', 'HEAD')).toBe(beforePrimaryHead);
+      expect(git(spec.workspaceRoot, 'rev-parse', 'HEAD')).toBe(beforeSourceHead);
+      expect(git(root, 'status', '--porcelain')).toBe('');
+      expect((await readWorkspaceSpecification(spec.workspaceRoot, spec.specId)).location).toBe(
+        'active',
       );
+      expect(git(root, 'worktree', 'list', '--porcelain').match(/worktree /gu)).toHaveLength(2);
+      expect(await inspectCloseOperation(engine, operationId)).toBeUndefined();
     },
     150000,
   );

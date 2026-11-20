@@ -869,4 +869,26 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
     expect(git(root, 'rev-parse', 'HEAD')).toBe(sha);
     expect((await inspectCloseOperation(engine, operationId))?.archive?.committedHead).toBe(sha);
   }, 120000);
+
+  it('refuses finishAfterExternalMerge before any mutation (owner decision 2026-11-20): only Worktree Close may finish this way', async () => {
+    const { root, engine, spec } = await fixture(false);
+    const beforeHead = git(root, 'rev-parse', 'HEAD');
+    const operationId = randomUUID();
+
+    await expect(
+      closeSpecification(engine, {
+        operationId,
+        specId: spec.specId,
+        finishAfterExternalMerge: true,
+      }),
+    ).rejects.toMatchObject({ code: 'CLOSE_EXTERNAL_MERGE_UNSUPPORTED' });
+
+    // No mutation at all: Specification Close's contract requires ending up archived at the
+    // destination, which this mode never proves, so it refuses before touching Git, the
+    // Specification or the journal.
+    expect(git(root, 'rev-parse', 'HEAD')).toBe(beforeHead);
+    expect(git(root, 'status', '--porcelain')).toBe('');
+    expect((await readWorkspaceSpecification(root, spec.specId)).location).toBe('active');
+    expect(await inspectCloseOperation(engine, operationId)).toBeUndefined();
+  }, 60000);
 });

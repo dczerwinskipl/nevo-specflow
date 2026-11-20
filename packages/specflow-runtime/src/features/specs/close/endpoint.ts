@@ -27,7 +27,8 @@ import {
   CloseErrorSchema,
   CloseOccupancySchema,
   CloseOperationParamsSchema,
-  ClosePreviewQuerySchema,
+  CloseWorktreePreviewQuerySchema,
+  CloseSpecificationPreviewQuerySchema,
   ClosePreviewSchema,
   CloseResultSchema,
   CloseSpecParamsSchema,
@@ -458,7 +459,9 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
             ? 'Preview closing the linked worktree of a Specification'
             : 'Preview closing a Specification',
           params: CloseSpecParamsSchema,
-          querystring: ClosePreviewQuerySchema,
+          querystring: worktree
+            ? CloseWorktreePreviewQuerySchema
+            : CloseSpecificationPreviewQuerySchema,
           response: { 200: contractRef(ClosePreviewSchema), ...errors },
         },
       },
@@ -471,13 +474,19 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
         try {
           const engine = options.engine;
           const { specId } = request.params;
-          const integrateToTargetBranch = request.query.integrateToTargetBranch;
-          const finishAfterExternalMerge = request.query.finishAfterExternalMerge === 'true';
+          // The schema is chosen per `kind` above, so its static type cannot be inferred here.
+          const query = request.query as {
+            integrateToTargetBranch?: boolean;
+            finishAfterExternalMerge?: 'true';
+          };
+          const integrateToTargetBranch = query.integrateToTargetBranch;
+          const finishAfterExternalMerge = query.finishAfterExternalMerge === 'true';
           // A fresh operation id: the read-only preview with its merge facts, never a journal.
           // finishAfterExternalMerge changes the previewed merge shape (no merge at all, instead of
           // an ordinary integration), so it is forwarded for Worktree Close. The Specification Close
-          // preview ignores it: that kind never accepts the field (owner decision 2026-11-20; its
-          // request body already rejects it at the schema boundary).
+          // preview query schema has no such field at all (owner decision 2026-11-20, same as its
+          // request body): a preview request that sends it is rejected 400 at the schema boundary,
+          // never silently ignored.
           const preview = await previewPublicCloseOperation(
             engine,
             kind === 'worktree-close'

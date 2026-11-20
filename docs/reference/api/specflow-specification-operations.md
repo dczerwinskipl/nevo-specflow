@@ -197,8 +197,9 @@ so does `GET /api/specs/:specId/worktree/close/preview` — as the query string 
 (a literal string, not JSON `true`: query strings are always text), since it changes the previewed
 merge shape (`not-integrated`/`already-merged-externally` instead of an ordinary `integrates`).
 Specification Close does not accept the field at all, on its request body or its preview query: its
-request schema has no such field (owner decision 2026-11-20, below), so a body that sends it is
-rejected with 400 before it reaches the Engine, and its preview route ignores the query parameter.
+request and preview-query schemas have no such field (owner decision 2026-11-20, below), so a body
+or preview query that sends it is rejected with 400 at the schema boundary, before it reaches the
+Engine.
 
 **Git off.** In a project with Git off (`git.enabled: false`, or no `git:` block in
 `.nevo/config.yaml`) a Specification Close only archives: the Specification is moved to
@@ -291,10 +292,12 @@ A successful preview (`ClosePreview`) carries the merge facts in `merge`:
   `primary-checkout` means the Specification lives in the primary checkout and is archived directly
   on `sourceBranch`, which is the integration branch.
 - `{status: 'not-integrated', reason: 'already-merged-externally', sourceBranch, targetBranch}`: a
-  Worktree Close requested (or previewed) with `finishAfterExternalMerge: true` (#157, below).
-  `sourceBranch` was already merged into `targetBranch` outside this Close — a GitHub squash merge,
-  for example — so the Close proves whole-branch content equivalence instead of merging again and
-  creates no merge commit.
+  Worktree Close requested (or previewed) with `finishAfterExternalMerge: true` (#157, below) —
+  this reports the **selected mode**, not a confirmed result: it asserts `sourceBranch` was already
+  merged into `targetBranch` outside this Close (a GitHub squash merge, for example), but the
+  preview proves nothing by itself. Only the actual Close operation proves whole-branch content
+  equivalence before it proceeds, refusing `CLOSE_EXTERNAL_MERGE_MISMATCH` if the assertion is
+  false; on success it creates no merge commit.
 - `{status: 'not-integrated', reason: 'git-off', checkout}`: Git is off for the project. The
   Specification is archived in place in `checkout` (`primary`, or `linked`: its worktree), nothing is
   committed or merged, and no branch is read (a client says, for example, "Archives without Git (Git

@@ -9,10 +9,13 @@ import { CloseOperationError, type ClosePlan } from './model';
  * - `not-integrated`: nothing is merged, for `reason` `archive-only` (the linked Specification is
  *   archived on its own branch, as asked) or `primary-checkout` (the Specification lives in the
  *   primary checkout and is archived directly on `sourceBranch`, the integration branch),
- *   `already-merged-externally` (a Worktree Close requested with `finishAfterExternalMerge: true`:
- *   `sourceBranch` was already merged into `targetBranch` outside this Close, e.g. a GitHub squash
- *   merge; the Close proves whole-branch content equivalence instead of merging again and creates
- *   no merge commit), or `git-off` (Git is off for the project: the Specification is archived in
+ *   `already-merged-externally` (the person has selected `finishAfterExternalMerge: true` for this
+ *   Worktree Close, asserting `sourceBranch` was already merged into `targetBranch` outside this
+ *   Close, e.g. a GitHub squash merge — this reports the *selected mode*, not yet a confirmed
+ *   result: the preview itself proves nothing; only the actual Close operation proves whole-branch
+ *   content equivalence before it proceeds, and refuses `CLOSE_EXTERNAL_MERGE_MISMATCH` if the
+ *   assertion turns out false. On success it creates no merge commit), or `git-off` (Git is off for
+ *   the project: the Specification is archived in
  *   place in `checkout`, nothing is committed and no branch is read; the archive stays uncommitted
  *   there, so a linked worktree created while Git was on later meets `uncommitted-changes` in a
  *   Worktree Close with Git on until it is committed).

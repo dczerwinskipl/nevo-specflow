@@ -438,7 +438,7 @@ describe('E2.T16 authorized HTTP lifecycle adapters', () => {
     }
   }, 180000);
 
-  it('previews finishAfterExternalMerge as already-merged-externally; the Specification Close preview ignores the query', async () => {
+  it('previews finishAfterExternalMerge as already-merged-externally; the Specification Close preview rejects the query', async () => {
     const { root, engine, spec } = await fixture(true);
     const worktreeUrl = '/api/specs/' + spec.specId + '/worktree/close/preview';
     const specificationUrl = '/api/specs/' + spec.specId + '/close/preview';
@@ -487,15 +487,24 @@ describe('E2.T16 authorized HTTP lifecycle adapters', () => {
       expect(withoutFlag.statusCode, withoutFlag.body).toBe(200);
       expect(withoutFlag.json()).toMatchObject({ merge: { status: 'integrates' } });
 
-      // Specification Close never accepts this mode (owner decision 2026-11-20): its preview
-      // route ignores the query parameter entirely instead of previewing it.
+      // Specification Close never accepts this mode (owner decision 2026-11-20): its preview query
+      // schema has no such field at all, so the request is rejected 400 at the schema boundary,
+      // never silently ignored.
       const specPreview = await admin.app.inject({
         method: 'GET',
         url: specificationUrl + '?finishAfterExternalMerge=true',
         headers: admin.headers,
       });
-      expect(specPreview.statusCode, specPreview.body).toBe(200);
-      expect(specPreview.json()).toMatchObject({ merge: { status: 'integrates' } });
+      expect(specPreview.statusCode, specPreview.body).toBe(400);
+
+      // Omitting the field, the ordinary Specification Close preview is unaffected.
+      const specPreviewWithoutFlag = await admin.app.inject({
+        method: 'GET',
+        url: specificationUrl,
+        headers: admin.headers,
+      });
+      expect(specPreviewWithoutFlag.statusCode, specPreviewWithoutFlag.body).toBe(200);
+      expect(specPreviewWithoutFlag.json()).toMatchObject({ merge: { status: 'integrates' } });
     } finally {
       await admin.app.close();
     }

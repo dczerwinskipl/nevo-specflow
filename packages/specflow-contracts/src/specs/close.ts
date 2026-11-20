@@ -53,20 +53,26 @@ export const CloseSpecificationRequestSchema = Type.Object(
 );
 export type CloseSpecificationRequest = Static<typeof CloseSpecificationRequestSchema>;
 /**
- * `integrateToTargetBranch` previews a Specification Close's archive-only choice.
- * `finishAfterExternalMerge` previews a Worktree Close's external-merge finish (changes the
- * previewed `merge` shape to `not-integrated`/`already-merged-externally`); the Specification
- * Close preview route ignores it, consistent with its request body never accepting the field
- * (owner decision 2026-11-20). A query string is always text, so this is the literal `'true'`
- * (never `boolean`, unlike {@link FinishAfterExternalMergeSchema}'s JSON body field): the
+ * `finishAfterExternalMerge` previews a Worktree Close's external-merge finish: it reports which
+ * mode was *selected* (changes the previewed `merge` shape to `not-integrated`/
+ * `already-merged-externally`), not a confirmed outcome of the content-equivalence proof, which
+ * only the actual Close operation performs. A query string is always text, so this is the literal
+ * `'true'` (never `boolean`, unlike {@link FinishAfterExternalMergeSchema}'s JSON body field): the
  * project's Ajv instance never coerces querystring types (`coerceTypes: false`), the convention
  * already used for `recheck` on the provider catalogue query.
  */
-export const ClosePreviewQuerySchema = Type.Object(
-  {
-    integrateToTargetBranch: Type.Optional(Type.Boolean()),
-    finishAfterExternalMerge: Type.Optional(Type.Literal('true')),
-  },
+export const CloseWorktreePreviewQuerySchema = Type.Object(
+  { finishAfterExternalMerge: Type.Optional(Type.Literal('true')) },
+  { additionalProperties: false },
+);
+/**
+ * `integrateToTargetBranch` previews a Specification Close's archive-only choice.
+ * Specification Close never accepts `finishAfterExternalMerge` (owner decision 2026-11-20, same as
+ * {@link CloseSpecificationRequestSchema}): this schema has no such field, so a preview request
+ * that sends it is rejected here, at the schema boundary, rather than silently ignored.
+ */
+export const CloseSpecificationPreviewQuerySchema = Type.Object(
+  { integrateToTargetBranch: Type.Optional(Type.Boolean()) },
   { additionalProperties: false },
 );
 // Trusted operator acknowledgement only: `true` asserts the operator has

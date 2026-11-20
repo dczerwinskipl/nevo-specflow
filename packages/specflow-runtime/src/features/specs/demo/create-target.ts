@@ -110,6 +110,17 @@ export function resolveTarget(
     throw new DemoTargetError(422, 'BASE_REF_NOT_FOUND', 'BASE_REF_NOT_FOUND');
   }
 
+  const config =
+    target.baseRef === undefined
+      ? options.defaultBaseConfig
+      : options.baseRefs.find((base) => base.ref === target.baseRef)?.projectConfig;
+  if (config?.status === 'unusable') {
+    const code =
+      config.reason === 'ref-not-found' ? 'BASE_REF_NOT_FOUND' : 'GIT_BASE_CONFIG_MISSING';
+
+    throw new DemoTargetError(422, code, code);
+  }
+
   if (target.integrationTargetWorkspaceId !== undefined) {
     const workspace = options.workspaces.find(
       (w) => w.workspaceId === target.integrationTargetWorkspaceId,

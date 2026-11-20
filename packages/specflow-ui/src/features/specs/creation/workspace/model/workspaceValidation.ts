@@ -7,6 +7,7 @@ import {
 import type { CreateOptionsView } from './createOptionsView';
 import { message, type Message } from '../../../../../i18n/message';
 import type { WorkspaceChoice } from './workspaceChoice';
+import { baseConfigMessage, selectedBaseConfig } from './baseConfig';
 import {
   branchPreview,
   readableBranchName,
@@ -48,6 +49,11 @@ export function revalidate(choice: WorkspaceChoice, options: CreateOptionsView):
     !options.baseRefs.some((b) => b.ref === choice.base.ref)
   ) {
     errors.base = staleMessages.base;
+  }
+
+  errors.base ??= baseConfigMessage(selectedBaseConfig(choice, options));
+  if (errors.base === undefined) {
+    delete errors.base;
   }
 
   if (

@@ -34,7 +34,7 @@ import { BranchRef } from './BranchRef';
 import { ExistingSummary, MainSummary, NewSummary } from './WorkspaceTileSummaries';
 import { activeTile, primaryWorkspace, tileAvailability } from './model/workspaceTiles';
 import { availableCountLabel } from './model/workspaceCopy';
-import { branchNameOverride } from './model/workspaceOverrides';
+import { baseOverride, branchNameOverride } from './model/workspaceOverrides';
 import {
   requiredMessages,
   revalidate,
@@ -228,6 +228,13 @@ export function WorkspacePlaceSection({
     focusProblem: (field) => {
       if (field === 'slug' || field === 'branch') {
         update((current) => ({ ...current, ...branchNameOverride(current, true) }));
+      }
+
+      if (field === 'base' && options) {
+        update((current) => ({
+          ...current,
+          ...(current.base.on ? {} : baseOverride(options, current, true)),
+        }));
       }
 
       requestFocus({ problem: field });

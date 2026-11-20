@@ -1,4 +1,5 @@
 import { designatedBaseRef, localBranchRef } from '@nevo/specflow-contracts/specs';
+import { preferredBaseRef } from './baseConfig';
 import type { CreateOptionsView, CreateWorkspace } from './createOptionsView';
 import { message, type Message } from '../../../../../i18n/message';
 import type { Tile, WorkspaceChoice } from './workspaceChoice';
@@ -168,10 +169,11 @@ export function inheritedTarget(options: CreateOptionsView, workspace: Workspace
  */
 export function defaultBaseValue(options: CreateOptionsView): string {
   const primaryBranch = primaryWorkspace(options)?.branch;
+  const preferred = preferredBaseRef(options);
   const ref =
-    options.defaultBaseRef === 'HEAD'
+    preferred === 'HEAD'
       ? primaryBranch && localBranchRef(primaryBranch)
-      : designatedBaseRef(options.defaultBaseRef);
+      : designatedBaseRef(preferred);
 
   return ref && options.baseRefs.some((item) => item.ref === ref) ? ref : '';
 }

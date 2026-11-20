@@ -17,7 +17,7 @@ const options = (refs: string[], defaultBaseRef = 'main') => ({
   defaultBaseRef,
   branchPattern: 'feature/{slug}',
   worktreesRoot: { path: '/work/repo-worktrees', exists: true },
-  baseRefs: refs.map((ref) => ({ ref })),
+  baseRefs: refs.map((ref) => ({ ref, projectConfig: { status: 'usable' } })),
 });
 
 describe('create-options base refs', () => {
@@ -33,6 +33,38 @@ describe('create-options base refs', () => {
   it('keeps the configured default as written', () => {
     for (const value of ['HEAD', 'main', 'refs/heads/main', 'refs/tags/v1.0']) {
       expect(Value.Check(CreateOptionsSchema, options([], value)), value).toBe(true);
+    }
+  });
+
+  it('requires a precise committed configuration verdict per base and permits an unresolved default', () => {
+    const value = options(['refs/heads/main']);
+    for (const reason of ['missing', 'not-regular-file', 'invalid-yaml', 'runtime-missing']) {
+      expect(
+        Value.Check(CreateOptionsSchema, {
+          ...value,
+          baseRefs: [{ ref: 'refs/heads/main', projectConfig: { status: 'unusable', reason } }],
+        }),
+        reason,
+      ).toBe(true);
+    }
+
+    expect(
+      Value.Check(CreateOptionsSchema, {
+        ...value,
+        defaultBaseConfig: { status: 'unusable', reason: 'ref-not-found' },
+      }),
+    ).toBe(true);
+    for (const projectConfig of [
+      undefined,
+      { status: 'unusable' },
+      { status: 'unusable', reason: 'ref-not-found' },
+    ]) {
+      expect(
+        Value.Check(CreateOptionsSchema, {
+          ...value,
+          baseRefs: [{ ref: 'refs/heads/main', projectConfig }],
+        }),
+      ).toBe(false);
     }
   });
 

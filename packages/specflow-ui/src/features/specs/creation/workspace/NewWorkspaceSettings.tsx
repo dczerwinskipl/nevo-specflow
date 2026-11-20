@@ -35,6 +35,8 @@ import {
   targetOverride,
   targetUnchangeable,
 } from './model/workspaceOverrides';
+import { BaseConfigDetails } from './BaseConfigDetails';
+import { preferredBaseRef, selectedBaseConfig } from './model/baseConfig';
 import { primaryWorkspace, targetStatus } from './model/workspaceTiles';
 import {
   generatedBranchProblem,
@@ -110,7 +112,8 @@ function mergeDefault(
 function BaseDefault({ options }: { options: CreateOptionsView }) {
   const { t } = useTranslation();
   const primary = primaryWorkspace(options);
-  if (options.defaultBaseRef === 'HEAD') {
+  const base = preferredBaseRef(options);
+  if (base === 'HEAD') {
     return primary?.branch ? (
       <BranchRef name={primary.branch} />
     ) : (
@@ -118,7 +121,7 @@ function BaseDefault({ options }: { options: CreateOptionsView }) {
     );
   }
 
-  return <BranchRef name={refDisplayName(options.defaultBaseRef)} />;
+  return <BranchRef name={refDisplayName(base)} />;
 }
 
 /** What the pending parts of the preview mean, once each. */
@@ -216,6 +219,7 @@ export function NewWorkspaceSettings({
     slug: useRef<HTMLInputElement | null>(null),
   };
   const refs = controls ?? ownRefs;
+  const baseErrorId = useId();
   const set = (patch: Partial<WorkspaceChoice> | null) => {
     if (patch) {
       update((current) => ({ ...current, ...patch }));
@@ -267,7 +271,20 @@ export function NewWorkspaceSettings({
               />
             ) : (
               <>
-                <BaseDefault options={options} />
+                <span
+                  ref={(element) => {
+                    refs.base.current = element;
+                  }}
+                  tabIndex={-1}
+                  aria-invalid={errors.base ? true : undefined}
+                  aria-describedby={errors.base ? baseErrorId : undefined}
+                >
+                  <BaseDefault options={options} />
+                </span>
+                {errors.base ? (
+                  <span id={baseErrorId}>{rowNote(text(errors.base), 'attention')}</span>
+                ) : null}
+                <BaseConfigDetails config={selectedBaseConfig(choice, options)} />
                 {baseUnchangeable(options, choice) &&
                   rowNote(t('create.workspace.settings.baseNone'))}
               </>

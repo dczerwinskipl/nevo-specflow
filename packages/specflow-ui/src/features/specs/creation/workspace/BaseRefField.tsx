@@ -9,6 +9,8 @@ import { BranchRef } from './BranchRef';
 import { MergeSuggestionNotice } from './MergeSuggestionNotice';
 import type { SettingsFocusRequest, SettingsUpdate } from './settingsTypes';
 import type { WorkspaceChoice } from './model/workspaceChoice';
+import { selectedBaseConfig } from './model/baseConfig';
+import { BaseConfigDetails } from './BaseConfigDetails';
 
 /**
  * The branch picker of a changed "Start from" row (the row owns the label, the change and the
@@ -65,12 +67,18 @@ export function BaseRefField({
             value: item.ref,
             // The value is the full ref the request sends; people see the branch name.
             textValue: refDisplayName(item.ref),
+            unavailable: item.projectConfig.status === 'unusable',
+            description:
+              item.projectConfig.status === 'unusable'
+                ? t(`create.workspace.baseConfigReason.${item.projectConfig.reason}`)
+                : undefined,
             meta: baseRefMeta(item.ref, item.checkedOutWorkspaceId),
             label: (wraps) => <BranchRef name={refDisplayName(item.ref)} truncate={!wraps} />,
           }))}
         />
         {error && <Field.Error>{text(error)}</Field.Error>}
       </Field>
+      <BaseConfigDetails config={selectedBaseConfig(choice, options)} />
       <MergeSuggestionNotice
         options={options}
         choice={choice}

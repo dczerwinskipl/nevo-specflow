@@ -171,6 +171,8 @@ export const Default: Story = {
       control: 'select',
       options: [
         'default',
+        'base-config-unusable',
+        'base-config-fallback',
         'git-disabled',
         'git-unavailable',
         'membership-mismatch',
@@ -1441,5 +1443,52 @@ export const InvalidGitConfigurationDisablesOnlyTheNewWorkspace: Story = {
     ).toBeVisible();
     await expect(main).toBeChecked();
     await expect(existing).not.toHaveAttribute('aria-disabled', 'true');
+  },
+};
+
+/** No committed configuration is suitable: the source row explains the required action. */
+export const BaseConfigurationUnusable: Story = {
+  tags: ['contract'],
+  args: { variant: 'base-config-unusable' },
+  play: async ({ canvas, userEvent }) => {
+    const base = row(canvas, 'Zacznij od');
+    await expect(
+      within(base).getByText('Nie można zacząć od tej gałęzi. Wybierz inną gałąź.'),
+    ).toBeInTheDocument();
+    await expect(within(document.body).queryByRole('dialog')).not.toBeInTheDocument();
+    await userEvent.click(within(base).getByRole('button', { name: 'Dlaczego?' }));
+    const panel = await within(document.body).findByRole('dialog', {
+      name: 'Dlaczego nie można tu zacząć?',
+    });
+    await expect(within(panel).getByText(/Nowe środowisko powstaje z wersji/)).toBeVisible();
+    await expect(within(panel).getByText(/brakuje sekcji runtime/)).toBeVisible();
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(within(base).getByRole('button', { name: 'Dlaczego?' })).toHaveFocus(),
+    );
+    await expect(canvas.getByLabelText('Żądanie')).toHaveAttribute(
+      'data-problems',
+      expect.stringContaining('Nie można zacząć od tej gałęzi'),
+    );
+    await rowAction(canvas, userEvent, 'Zacznij od');
+    await userEvent.click(within(row(canvas, 'Zacznij od')).getByRole('combobox'));
+    const options = within(document.body).getAllByRole('option');
+    for (const option of options) {
+      await expect(option).toHaveAttribute('aria-disabled', 'true');
+    }
+
+    await closeList(userEvent);
+  },
+};
+
+export const BaseConfigurationFallback: Story = {
+  tags: ['contract'],
+  args: { variant: 'base-config-fallback' },
+  play: async ({ canvas }) => {
+    await expect(within(row(canvas, 'Zacznij od')).getByText('develop')).toBeInTheDocument();
+    await expect(canvas.getByLabelText('Żądanie')).toHaveTextContent(
+      '"baseRef":"refs/heads/develop"',
+    );
+    await expect(canvas.getByLabelText('Żądanie')).toHaveAttribute('data-problems', '');
   },
 };

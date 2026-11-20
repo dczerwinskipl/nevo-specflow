@@ -917,6 +917,27 @@
       "protectedSuggestion": {
         "text": "Chronione gałęzie nie dotyczą nowego środowiska pracy.",
         "action": "Użyj nowego środowiska pracy"
+      },
+      "baseConfig": {
+        "missing": "Nie można zacząć od tej gałęzi. Wybierz inną gałąź.",
+        "not-regular-file": "Nie można zacząć od tej gałęzi. Wybierz inną gałąź.",
+        "invalid-yaml": "Nie można zacząć od tej gałęzi. Wybierz inną gałąź.",
+        "runtime-missing": "Nie można zacząć od tej gałęzi. Wybierz inną gałąź.",
+        "ref-not-found": "Skonfigurowany punkt początkowy już nie istnieje. Wybierz inną gałąź."
+      },
+      "baseConfigReason": {
+        "missing": "Ta gałąź nie ma zapisanych ustawień SpecFlow (.nevo/config.yaml).",
+        "not-regular-file": "Zapisane ustawienia SpecFlow (.nevo/config.yaml) nie są zwykłym plikiem.",
+        "invalid-yaml": "Zapisane ustawienia SpecFlow (.nevo/config.yaml) zawierają niepoprawny YAML.",
+        "runtime-missing": "W zapisanych ustawieniach SpecFlow (.nevo/config.yaml) brakuje sekcji runtime.",
+        "ref-not-found": "Skonfigurowany punkt początkowy już nie istnieje."
+      },
+      "baseConfigDetails": {
+        "why": "Dlaczego?",
+        "explanation": "Nowe środowisko powstaje z wersji zapisanej w Git na wybranej gałęzi. Ta wersja potrzebuje działających ustawień SpecFlow. Zmiany wprowadzone tylko w bieżącym katalogu nie są kopiowane do nowego środowiska.",
+        "action": "Wybierz inną gałąź początkową. Jeśli chcesz użyć właśnie tej gałęzi, popraw .nevo/config.yaml i najpierw zapisz zmianę w jej historii Git (commit).",
+        "title": "Dlaczego nie można tu zacząć?",
+        "description": "Ten punkt początkowy nie ma działających ustawień SpecFlow."
       }
     },
     "project": {

@@ -567,6 +567,7 @@ describe('E2.I01 — authorized read-only Create options', () => {
         expect(result.defaultBaseRef).toBe('HEAD');
         // Git disabled: answered from registry and filesystem only; no Git facts (refs, branches).
         expect(result.baseRefs).toEqual([]);
+        expect(response.json<Record<string, unknown>>()).not.toHaveProperty('defaultBaseConfig');
         // Options expose the worktreesRoot display path by contract, but no Git facts: no commits policy, no branches or refs.
         expect(response.json<Record<string, unknown>>()).not.toHaveProperty('commits');
         expect(response.body).not.toContain('refs/heads/');
@@ -621,7 +622,15 @@ describe('E2.I01 — authorized read-only Create options', () => {
         ).json<{
           commits: { protectedBranches: string[] };
           workspaces: { selectable: boolean; reason?: string; branch?: string }[];
+          baseRefs: { ref: string; projectConfig: { status: string } }[];
+          defaultBaseConfig: { status: string };
         }>();
+        expect(options.defaultBaseConfig).toEqual({ status: 'usable' });
+        expect(options.baseRefs).toContainEqual({
+          ref: 'refs/heads/develop',
+          checkedOutWorkspaceId: engine.workspace.workspaceId,
+          projectConfig: { status: 'usable' },
+        });
         expect(options.commits).toEqual({ protectedBranches: ['develop'] });
         expect(options.workspaces[0]).toMatchObject({
           selectable: false,

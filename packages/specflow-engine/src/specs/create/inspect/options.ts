@@ -5,7 +5,7 @@ import type { SpecFlowEngine } from '../../../application';
 import { GitCapabilityError } from '../../../git/errors';
 import { WorkspaceRegistryError } from '../../../project/workspace/registry/registry';
 import { inspectRegistryWorkspaces } from '../../workspaces/inspection';
-import { createLocalGitClient } from '../../../version-control/git/client';
+import { createLocalGitClient, type BaseProjectConfig } from '../../../version-control/git/client';
 import { validateBaseRef } from '../../../version-control/git/refs';
 import { engineCommitRefusal } from '../../../version-control/commits/branch-patterns';
 import {
@@ -21,6 +21,8 @@ import {
 import { runReadRequest } from '../../../project/request-verification-memo';
 
 export type CreateWorkspaceState = 'available' | 'unavailable' | 'detached' | 'dirty';
+type DefaultBaseConfig =
+  BaseProjectConfig | { readonly status: 'unusable'; readonly reason: 'ref-not-found' };
 export type CreateOptionsReason =
   | 'git-disabled'
   | 'git-unavailable'
@@ -55,6 +57,7 @@ export interface CreateWorkspaceOption {
 
 export interface CreateBaseRefOption {
   readonly ref: string;
+  readonly projectConfig: BaseProjectConfig;
   readonly checkedOutWorkspaceId?: string;
 }
 
@@ -68,6 +71,7 @@ export interface PublicCreateOptions {
     readonly branchProtected?: true;
   };
   readonly defaultBaseRef: string;
+  readonly defaultBaseConfig?: DefaultBaseConfig;
   readonly branchPattern: string;
   /** Effective folder (local `git.worktreesRoot` or the default) that receives new worktrees. */
   readonly worktreesRoot: { readonly path: string; readonly exists: boolean };
@@ -213,14 +217,6 @@ async function inspectCreateOptionsInRequest(
       ? { ...common, state: 'dirty', selectable: true, branch, reason: 'dirty' }
       : { ...common, state: 'available', selectable: true, branch };
   });
-  // A concurrent rebind/registration invalidates the whole snapshot.
-  if ((await engine.readRegistry()).revision !== registry.revision) {
-    throw new WorkspaceRegistryError(
-      'REGISTRY_CONFLICT',
-      'Workspace registry changed during create-options inspection.',
-    );
-  }
-
   const checkedOut = new Map(
     workspaces
       .filter((item) => (item.state === 'available' || item.state === 'dirty') && item.branch)
@@ -249,6 +245,70 @@ async function inspectCreateOptionsInRequest(
   // the read degrades (new worktrees unavailable) instead of failing as a whole.
   const worktreesRoot = await describeWorktreesRoot(engine, policy, options);
 
+  // Inspect committed bytes, never the checkout's possibly uncommitted configuration. Refs that
+  // share a commit share one inspection; sequential ref reads bound the number of Git processes.
+  const configurations = new Map<string, Promise<BaseProjectConfig>>();
+  const inspectConfig = async (ref: string): Promise<DefaultBaseConfig> => {
+    let commit: string;
+    try {
+      commit = await git.resolveCommit(ref);
+    } catch (error) {
+      if (error instanceof GitCapabilityError && error.code === 'BASE_REF_NOT_FOUND') {
+        return { status: 'unusable', reason: 'ref-not-found' };
+      }
+
+      throw error;
+    }
+
+    let inspected = configurations.get(commit);
+    if (!inspected) {
+      inspected = git.inspectBaseProjectConfig(commit);
+      configurations.set(commit, inspected);
+    }
+
+    return inspected;
+  };
+
+  const baseRefs: CreateBaseRefOption[] = [];
+  for (const ref of branches) {
+    if (!ref.startsWith('refs/heads/')) {
+      continue;
+    }
+
+    try {
+      validateBaseRef(ref);
+    } catch (error) {
+      if (error instanceof GitCapabilityError && error.code === 'GIT_POLICY_INVALID') {
+        continue;
+      }
+
+      throw error;
+    }
+
+    const projectConfig = await inspectConfig(ref);
+    // A branch deleted since for-each-ref is no longer an offered option.
+    if (projectConfig.status === 'unusable' && projectConfig.reason === 'ref-not-found') {
+      continue;
+    }
+
+    baseRefs.push({
+      ref,
+      projectConfig,
+      ...(checkedOut.get(ref) !== undefined ? { checkedOutWorkspaceId: checkedOut.get(ref) } : {}),
+    });
+  }
+
+  const defaultBaseConfig =
+    gitEnabled && gitReachable ? await inspectConfig(policy.baseRef) : undefined;
+
+  // A concurrent rebind/registration invalidates the whole snapshot.
+  if ((await engine.readRegistry()).revision !== registry.revision) {
+    throw new WorkspaceRegistryError(
+      'REGISTRY_CONFLICT',
+      'Workspace registry changed during create-options inspection.',
+    );
+  }
+
   return {
     primaryWorkspaceId: registry.primaryWorkspaceId,
     workspaces: integrationChoices,
@@ -264,6 +324,7 @@ async function inspectCreateOptionsInRequest(
               }
             : { status: 'unavailable', reason: 'git-unavailable' },
     defaultBaseRef: policy.baseRef,
+    ...(defaultBaseConfig ? { defaultBaseConfig } : {}),
     branchPattern: policy.branchPattern,
     worktreesRoot: worktreesRoot.value,
     ...(policy.integrationTargetBranch !== undefined
@@ -279,31 +340,7 @@ async function inspectCreateOptionsInRequest(
           },
         }
       : {}),
-    baseRefs: branches
-      .filter((ref) => {
-        if (!ref.startsWith('refs/heads/')) {
-          return false;
-        }
-
-        try {
-          validateBaseRef(ref);
-
-          return true;
-        } catch (error) {
-          if (error instanceof GitCapabilityError && error.code === 'GIT_POLICY_INVALID') {
-            return false;
-          }
-
-          throw error;
-        }
-      })
-      .map((ref) => ({
-        // Canonical form is accepted by Create even for names like feature/x.
-        ref,
-        ...(checkedOut.get(ref) !== undefined
-          ? { checkedOutWorkspaceId: checkedOut.get(ref) }
-          : {}),
-      })),
+    baseRefs,
   };
 }
 

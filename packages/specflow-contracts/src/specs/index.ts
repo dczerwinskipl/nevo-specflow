@@ -4,10 +4,14 @@ export * from './close';
 export {
   CreateCommitsSchema,
   CreateOptionsSchema,
+  BaseProjectConfigSchema,
+  DefaultBaseConfigSchema,
   designatedBaseRef,
   localBranchRef,
   refDisplayName,
   type CreateOptions,
+  type BaseProjectConfig,
+  type DefaultBaseConfig,
 } from './create-options';
 
 export {

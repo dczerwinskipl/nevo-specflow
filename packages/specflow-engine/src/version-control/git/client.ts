@@ -7,6 +7,13 @@ import { executeGitMutation } from '../../git/mutation';
 import { executeGit } from '../../git/process';
 import { normalizeBaseRef, validateBranchName } from './refs';
 
+export type BaseProjectConfig =
+  | { readonly status: 'usable' }
+  | {
+      readonly status: 'unusable';
+      readonly reason: 'missing' | 'not-regular-file' | 'invalid-yaml' | 'runtime-missing';
+    };
+
 export interface LocalWorktreeFacts {
   readonly root: string;
   readonly head: string;
@@ -24,6 +31,7 @@ export interface LocalGitClient {
   /** Short name of the branch Project Home's HEAD is attached to; `undefined` when detached. */
   attachedBranch(): Promise<string | undefined>;
   verifyBaseProjectConfig(commit: string): Promise<void>;
+  inspectBaseProjectConfig(commit: string): Promise<BaseProjectConfig>;
   addWorktree(plan: {
     readonly branch: string;
     readonly targetPath: string;
@@ -104,43 +112,58 @@ export function createLocalGitClient(home: string): LocalGitClient {
         ? ref.slice('refs/heads/'.length)
         : undefined;
     },
-    async verifyBaseProjectConfig(commit) {
+    async inspectBaseProjectConfig(commit) {
       if (!OBJECT_ID.test(commit)) {
         throw new GitCapabilityError('BASE_REF_NOT_FOUND', 'Invalid base commit object ID.');
       }
 
       const tree = await read(['ls-tree', '-z', commit, '--', '.nevo/config.yaml']);
+      if (tree.exitCode !== 0) {
+        throw new GitCapabilityError(
+          'GIT_OPERATION_FAILED',
+          'Unable to inspect base configuration.',
+        );
+      }
+
+      if (!tree.stdout) {
+        return { status: 'unusable', reason: 'missing' };
+      }
+
       if (
-        tree.exitCode !== 0 ||
         !/^(?:100644|100755) blob [a-f0-9]{40}(?:[a-f0-9]{24})?\t\.nevo\/config\.yaml\0$/u.test(
           tree.stdout,
         )
       ) {
-        throw new GitCapabilityError(
-          'GIT_BASE_CONFIG_MISSING',
-          'Base commit must contain a regular project configuration file.',
-        );
+        return { status: 'unusable', reason: 'not-regular-file' };
       }
 
       const config = await read(['show', commit + ':.nevo/config.yaml']);
+      if (config.exitCode !== 0) {
+        throw new GitCapabilityError('GIT_OPERATION_FAILED', 'Unable to read base configuration.');
+      }
+
       let parsed: unknown;
       try {
-        if (config.exitCode !== 0) {
-          throw new Error('Missing config.');
-        }
-
         parsed = parseYaml(config.stdout) as unknown;
       } catch {
-        throw new GitCapabilityError(
-          'GIT_BASE_CONFIG_MISSING',
-          'Invalid base project configuration.',
-        );
+        return { status: 'unusable', reason: 'invalid-yaml' };
       }
 
       if (!isRecord(parsed) || !isRecord(parsed.runtime)) {
+        return { status: 'unusable', reason: 'runtime-missing' };
+      }
+
+      return { status: 'usable' };
+    },
+    async verifyBaseProjectConfig(commit) {
+      const result = await this.inspectBaseProjectConfig(commit);
+      if (result.status === 'unusable') {
         throw new GitCapabilityError(
           'GIT_BASE_CONFIG_MISSING',
-          'Invalid base project configuration.',
+          result.reason === 'missing' || result.reason === 'not-regular-file'
+            ? 'Base commit must contain a regular project configuration file.'
+            : 'Invalid base project configuration.',
+          result.reason,
         );
       }
     },

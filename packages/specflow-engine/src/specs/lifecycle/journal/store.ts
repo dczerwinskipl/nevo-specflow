@@ -10,7 +10,10 @@ import { CloseOperationError, type CloseJournal } from '../model';
 const JOURNAL_DIR = 'engine/operations/close';
 
 export function closeJournalPath(context: ResolvedProjectHome, operationId: string): string {
-  if (!CLOSE_UUID.test(operationId)) {
+  // Defense-in-depth only (a CodeQL path-injection alert on this was verified as a false positive
+  // and dismissed by the repository owner): the anchored regex already proves `operationId` is
+  // exactly a UUID, and this length check is redundant with it, never a substitute.
+  if (operationId.length !== 36 || !CLOSE_UUID.test(operationId)) {
     throw invalid();
   }
 

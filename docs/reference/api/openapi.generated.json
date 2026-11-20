@@ -1008,6 +1008,14 @@
             },
             "maxItems": 8
           },
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 4096
+            },
+            "maxItems": 10
+          },
           "localConfig": {
             "anyOf": [
               {
@@ -1147,6 +1155,36 @@
                     ]
                   },
                   "sourceBranch": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "required": [
+                  "status",
+                  "reason",
+                  "sourceBranch",
+                  "targetBranch"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "not-integrated"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "already-merged-externally"
+                    ]
+                  },
+                  "sourceBranch": {
+                    "type": "string"
+                  },
+                  "targetBranch": {
                     "type": "string"
                   }
                 },
@@ -52016,6 +52054,9 @@
                 "properties": {
                   "operationId": {
                     "$ref": "#/components/schemas/OperationId"
+                  },
+                  "finishAfterExternalMerge": {
+                    "type": "boolean"
                   }
                 },
                 "additionalProperties": false
@@ -52330,10 +52371,13 @@
         "parameters": [
           {
             "schema": {
-              "type": "boolean"
+              "type": "string",
+              "enum": [
+                "true"
+              ]
             },
             "in": "query",
-            "name": "integrateToTargetBranch",
+            "name": "finishAfterExternalMerge",
             "required": false
           },
           {
@@ -52712,6 +52756,9 @@
                 "properties": {
                   "operationId": {
                     "$ref": "#/components/schemas/OperationId"
+                  },
+                  "finishAfterExternalMerge": {
+                    "type": "boolean"
                   }
                 },
                 "additionalProperties": false

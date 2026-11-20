@@ -1286,6 +1286,40 @@
       ]
     },
     {
+      "id": "ideas.specflow-engine.close-hardening",
+      "type": "architecture",
+      "title": "Close hardening — shared-checkout state isolation and external-merge finish",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/close-hardening-shared-checkout-and-external-merge.md",
+      "read_when": [
+        "implementing or reviewing GitHub",
+        "implementing or reviewing GitHub",
+        "touching lifecycle/preflight.ts, lifecycle/reservation.ts, uncommitted/hold.ts, lifecycle/model.ts, lifecycle/repository-mode.ts, lifecycle/archive-effects.ts or lifecycle/git/*",
+        "re-decomposing this package's tasks after PR"
+      ],
+      "summary": "Specification for two related Close hardening fixes bundled as one package: scoping the ledger/clean-tree preflight to the Specification being closed instead of the whole shared checkout (#181), and a new explicit Close mode that finishes a linked worktree after its content was already merged externally — e.g. a GitHub squash merge — without re-integrating (#157). Both are fixes to existing Close validation/flow, not new product surfaces.",
+      "related": [
+        "architecture.runtime.specflow-lifecycle",
+        "adr.0018-engine-commit-policy-and-manual-commit",
+        "adr.0013-engine-owned-commits-and-protected-branches",
+        "reference.configuration.specflow-git-worktrees",
+        "engineering.shared.specflow-git-recovery",
+        "architecture.principles.enforceable-invariants"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "cli",
+        "security"
+      ],
+      "tags": [
+        "close",
+        "worktree",
+        "ledger",
+        "git-integration"
+      ]
+    },
+    {
       "id": "ideas.specflow-engine.decisions",
       "type": "architecture",
       "title": "Open Engine workflow decisions",

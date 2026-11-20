@@ -192,6 +192,14 @@ and without SSE clients just poll the inspection.
 
 Mutating Close requests include UUID `operationId`; Specification Close optionally sends
 `integrateToTargetBranch:false` for archive-only. Completed results use 200; unsettled use 202.
+Worktree Close requests also accept an optional `finishAfterExternalMerge: true` (#157, below), and
+so does `GET /api/specs/:specId/worktree/close/preview` — as the query string `?finishAfterExternalMerge=true`
+(a literal string, not JSON `true`: query strings are always text), since it changes the previewed
+merge shape (`not-integrated`/`already-merged-externally` instead of an ordinary `integrates`).
+Specification Close does not accept the field at all, on its request body or its preview query: its
+request and preview-query schemas have no such field (owner decision 2026-11-20, below), so a body
+or preview query that sends it is rejected with 400 at the schema boundary, before it reaches the
+Engine.
 
 **Git off.** In a project with Git off (`git.enabled: false`, or no `git:` block in
 `.nevo/config.yaml`) a Specification Close only archives: the Specification is moved to
@@ -283,6 +291,13 @@ A successful preview (`ClosePreview`) carries the merge facts in `merge`:
   linked Specification is archived on its own branch, as `integrateToTargetBranch=false` asks.
   `primary-checkout` means the Specification lives in the primary checkout and is archived directly
   on `sourceBranch`, which is the integration branch.
+- `{status: 'not-integrated', reason: 'already-merged-externally', sourceBranch, targetBranch}`: a
+  Worktree Close requested (or previewed) with `finishAfterExternalMerge: true` (#157, below) —
+  this reports the **selected mode**, not a confirmed result: it asserts `sourceBranch` was already
+  merged into `targetBranch` outside this Close (a GitHub squash merge, for example), but the
+  preview proves nothing by itself. Only the actual Close operation proves whole-branch content
+  equivalence before it proceeds, refusing `CLOSE_EXTERNAL_MERGE_MISMATCH` if the assertion is
+  false; on success it creates no merge commit.
 - `{status: 'not-integrated', reason: 'git-off', checkout}`: Git is off for the project. The
   Specification is archived in place in `checkout` (`primary`, or `linked`: its worktree), nothing is
   committed or merged, and no branch is read (a client says, for example, "Archives without Git (Git
@@ -320,5 +335,27 @@ refuse with 409 `CLOSE_LOCAL_CONFIG_MODIFIED` before anything is removed (the Cl
 unreadable) and must be moved or deleted manually.
 Retrying the same Close operation afterwards completes the disposal.
 Error status and exact DTO variants are defined in the schema and Runtime endpoint.
+
+**Finish after an external (PR) merge (#157).** `finishAfterExternalMerge: true` on a Worktree Close
+is person-initiated and never inferred from the merge facts: it proves by content, not ancestry, that
+the destination already has everything the source branch changed (the Specification's own canonical
+subtree(s) and every path the source branch's merge-base diff names), then finishes through the same
+archive + CAS-rebind + worktree-disposal effects an already-integrated Close uses — no new merge
+commit. A retry of the same `operationId` that flips this field is `409 CLOSE_CONFLICT`, exactly like
+`integrateToTargetBranch`; it is `400 CLOSE_INVALID` in the primary checkout. On a mismatch, Close
+answers `409 CLOSE_EXTERNAL_MERGE_MISMATCH` with `paths` (at most 10 of the total): every path that
+is missing or not yet content-equivalent in the destination, not just the first.
+
+**Restricted to Worktree Close (owner decision 2026-11-20).** Specification Close's request schema
+has no `finishAfterExternalMerge` field at all, so an HTTP body that sends it on
+`POST /api/specs/:specId/close` is rejected `400` by the schema before reaching the Engine. The
+Engine refuses the same combination explicitly and unconditionally — `400
+CLOSE_EXTERNAL_MERGE_UNSUPPORTED`, before any Git inspection or mutation — for any caller that
+bypasses the schema (a non-HTTP Engine consumer, or a replayed `operationId`). Specification Close's
+contract is that after success the Specification's canonical state is `archived`; this mode skips
+merge/integration entirely, so the destination never receives the archive, and the combination would
+report a false `completed`/`integrated-and-removed` success while the Specification stayed `active`
+on the destination branch. Worktree Close's narrower contract (retire a worktree binding whose
+content already merged) makes no such claim, so only it supports this mode.
 
 No operation silently completes tasks, invents Session state or retries uncertain Git effects.

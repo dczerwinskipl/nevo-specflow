@@ -8,7 +8,11 @@ import { archiveSpecificationWithCommit, inspectArchivePhysicalRecovery } from '
 import { prepareCloseGitIntegration } from '../git/preparation';
 import { settleArchivedLinkedConflict } from '../git/scratch';
 import { readCloseJournal } from '../journal/store';
-import { CloseOperationError, type CloseJournal } from '../model';
+import {
+  CloseOperationError,
+  assertNoExternalMergeForSpecificationClose,
+  type CloseJournal,
+} from '../model';
 import { reserveCloseOperation } from '../reservation';
 import { pruneUncommitted } from '../../uncommitted';
 import { advanceCloseIntegration } from './integration';
@@ -101,8 +105,15 @@ export async function closeSpecification(
     readonly operationId: string;
     readonly specId: string;
     readonly integrateToTargetBranch?: boolean;
+    /** Person-initiated: finish after the content was already merged externally (#157). */
+    readonly finishAfterExternalMerge?: boolean;
   },
 ): Promise<CloseSpecificationResult> {
+  // Refused before any mutation, and before admission even starts (owner decision 2026-11-20): do
+  // not rely on the type system alone, since a caller outside the typed HTTP/CLI boundary can still
+  // pass the field.
+  assertNoExternalMergeForSpecificationClose({ kind: 'specification-close', ...request });
+
   const admission = await reserveCloseOperation(engine, {
     kind: 'specification-close',
     ...request,
@@ -183,6 +194,9 @@ export async function closeSpecification(
       throw recovery('Integrated binding or linked workspace retirement is not proven.');
     }
 
+    // Specification Close never carries finishAfterExternalMerge (owner decision 2026-11-20): the
+    // destination always received the real merge/fast-forward/divergent-candidate publication, so
+    // it is always expected to show the canonical archive, never the pre-archive location.
     await assertArchivedAt(target.root, request.specId);
   } else {
     if (

@@ -33,6 +33,7 @@ nevo-specflow specs close <spec-id> --preview
 nevo-specflow specs close <spec-id> --archive-only --yes
 nevo-specflow specs worktree close <spec-id> --preview
 nevo-specflow specs worktree close <spec-id> --yes
+nevo-specflow specs worktree close <spec-id> --finish-after-external-merge --yes
 nevo-specflow specs workspace close <workspace-id> --preview
 nevo-specflow specs workspace close <workspace-id> --yes
 nevo-specflow specs workspace inspect <workspace-id> <operation-id>
@@ -68,6 +69,18 @@ Use `--preview` before any destructive Close; mutation requires `--yes`.
 Workspace Close takes `workspaceId`, not one of its Specs. Reuse the original
 `--operation-id` on retries. These commands work offline; the CLI does **not** call Runtime
 HTTP and its local OS-account trust is distinct from authenticated HTTP grants.
+
+`--finish-after-external-merge` on `specs worktree close` (#157) finishes after the branch was
+already merged externally (a GitHub squash merge, for example): person-initiated, never inferred, it
+proves by content that the destination already has everything the source branch changed, then
+finishes without merging again. A mismatch refuses with `CLOSE_EXTERNAL_MERGE_MISMATCH`, naming every
+differing or missing path; a retry of the same `--operation-id` that flips the flag is
+`CLOSE_CONFLICT`. `specs close` (Specification Close) does not offer this flag at all (owner decision
+2026-11-20): Specification Close's contract requires the Specification to end up canonically archived
+at the destination, which this mode never proves (it skips merge/integration entirely), so it refuses
+the combination explicitly with `CLOSE_EXTERNAL_MERGE_UNSUPPORTED` rather than reporting a false
+success. Close the worktree with `specs worktree close --finish-after-external-merge` instead, and
+close the Specification normally once its archive is integrated into the target branch.
 
 A Close that removes a linked worktree (Worktree and Workspace Close, `specs close` with integration)
 refuses with `CLOSE_BLOCKED` while a running Runtime owns the Project's Session store, because an agent

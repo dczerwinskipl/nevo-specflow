@@ -14,7 +14,11 @@ import {
   readWorkspaceRegistry,
 } from '../../project/workspace/registry/registry';
 import { renameWindowsSafe } from '../../project/fs/windows-safe-fs';
-import { inspectCleanGitWorkspace, listUncleanPaths } from './preflight';
+import {
+  inspectCleanGitWorkspace,
+  listUncleanPaths,
+  siblingSpecificationDirectories,
+} from './preflight';
 import { isExecutionStatePathOf } from '../execution-paths';
 import { disabledIntegrationHooksDirectory } from './git/scratch';
 import { readCloseJournal } from './journal/store';
@@ -100,6 +104,30 @@ async function gitRaw(root: string, args: readonly string[]): Promise<string> {
   }
 
   return result.stdout;
+}
+
+/**
+ * Every path `git status` reports (staged, modified, untracked) checkout-wide must be empty,
+ * except another active Specification's own execution state (#181's sibling exemption — the same
+ * predicate the admission-time clean-tree check already applies, never a blanket "anything outside
+ * this Specification's own paths"). Fix 1: before this exemption, ANY staged or dirty file anywhere
+ * in the checkout refused here, including a sibling's own pre-existing staged file that the A2
+ * admission widening had already correctly tolerated, AFTER this Specification's own directory had
+ * already been physically moved and committed. A genuinely alien/unexplained file — one that is not
+ * a known sibling's own execution state — still refuses exactly as before.
+ */
+async function assertNoUnexpectedDirtyPaths(
+  root: string,
+  siblings: readonly { readonly directory: string }[],
+): Promise<void> {
+  const unclean = (await listUncleanPaths(root))
+    .map((entry) => entry.path)
+    .filter((path) => !siblings.some((sibling) => isExecutionStatePathOf(sibling.directory, path)));
+  if (unclean.length > 0) {
+    throw failure(
+      "Archive checkout contains staged, modified or untracked files outside a known sibling Specification's own execution state.",
+    );
+  }
 }
 
 async function absent(path: string): Promise<boolean> {
@@ -414,10 +442,19 @@ export async function archiveSpecificationWithCommit(
 
   const oldPath = 'specs/active/' + record.plan.slug;
   const newPath = 'specs/archive/' + record.plan.slug;
-  // The Specification's uncommitted execution state goes into the archive commit; nothing else may be dirty.
+  // The Specification's uncommitted execution state goes into the archive commit; a sibling
+  // Specification's own pending execution state does not block it either (#181); nothing else may
+  // be dirty.
+  const siblings = await siblingSpecificationDirectories(
+    actual.root,
+    source.workspaceId,
+    registry,
+    record.plan.specId,
+  );
   const facts = await inspectCleanGitWorkspace(actual.workspace, {
     specificationDirectory: oldPath,
     acceptExecutionState: true,
+    siblingDirectories: siblings.map((entry) => entry.directory),
   });
   if (
     facts.head !== source.head ||
@@ -486,8 +523,19 @@ export async function archiveSpecificationWithCommit(
     // Test-only OS crash boundary after real Git index mutation and before
     // verifying exact scoped stage contents. Claims remain retained on failure.
     await afterScopedStaging?.();
+    // Scoped to this Specification's own pathspecs, exactly like the staging and commit calls above
+    // (Fix 1): a sibling Specification's own pre-existing staged file must not appear here.
     const staged = (
-      await gitRaw(source.root, ['diff', '--cached', '--name-only', '--no-renames', '-z'])
+      await gitRaw(source.root, [
+        'diff',
+        '--cached',
+        '--name-only',
+        '--no-renames',
+        '-z',
+        '--',
+        oldLiteral,
+        newLiteral,
+      ])
     )
       .split('\0')
       .filter(Boolean)
@@ -556,22 +604,17 @@ export async function reconcileArchiveCommit(
   }
 
   const tree = await git(root, ['rev-parse', '--verify', 'HEAD^{tree}']);
-  if ((await git(root, ['write-tree'])) !== tree) {
-    throw failure('Archive index does not match committed tree.');
-  }
-
-  if (
-    (await gitRaw(root, [
-      '-c',
-      'core.optionalLocks=false',
-      'status',
-      '--porcelain=v1',
-      '-z',
-      '--untracked-files=all',
-    ])) !== ''
-  ) {
-    throw failure('Archive checkout contains staged, modified or untracked files.');
-  }
+  // #181 sibling exemption, not a blanket scope to this Specification's own paths (Fix 1): a
+  // sibling's own pre-existing dirty or staged file must not refuse this Close after its directory
+  // already moved, but a genuinely alien file elsewhere still must.
+  const registry = await readWorkspaceRegistry(engine.context);
+  const siblings = await siblingSpecificationDirectories(
+    root,
+    record.plan.source.workspaceId,
+    registry,
+    record.plan.specId,
+  );
+  await assertNoUnexpectedDirtyPaths(root, siblings);
 
   await assertArchivedFiles(root, archive);
   const diffs = (
@@ -606,6 +649,7 @@ async function proveArchiveCommitPhysical(
   root: string,
   archive: CloseArchiveEvidence,
   sha: string,
+  siblings: readonly { readonly directory: string }[],
 ): Promise<string> {
   const parent = await git(root, ['rev-list', '--parents', '-n', '1', sha]);
   if (parent !== sha + ' ' + archive.sourceCommit) {
@@ -613,22 +657,9 @@ async function proveArchiveCommitPhysical(
   }
 
   const tree = await git(root, ['rev-parse', '--verify', sha + '^{tree}']);
-  if ((await git(root, ['write-tree'])) !== tree) {
-    throw failure('Archive index does not match committed tree.');
-  }
-
-  if (
-    (await gitRaw(root, [
-      '-c',
-      'core.optionalLocks=false',
-      'status',
-      '--porcelain=v1',
-      '-z',
-      '--untracked-files=all',
-    ])) !== ''
-  ) {
-    throw failure('Archive checkout contains staged, modified or untracked files.');
-  }
+  // #181 sibling exemption, not a blanket scope to this Specification's own paths: see
+  // `assertNoUnexpectedDirtyPaths`.
+  await assertNoUnexpectedDirtyPaths(root, siblings);
 
   const diffs = (
     await gitRaw(root, [
@@ -727,6 +758,13 @@ export async function inspectArchivePhysicalRecovery(
   }
 
   await assertArchivedFiles(root, archive);
+  const registry = await readWorkspaceRegistry(engine.context);
+  const siblings = await siblingSpecificationDirectories(
+    root,
+    record.plan.source.workspaceId,
+    registry,
+    record.plan.specId,
+  );
   if (record.stage === 'archive-commit-initiated') {
     if (currentHead === archive.sourceCommit) {
       return 'commit-effect-uncertain';
@@ -734,7 +772,7 @@ export async function inspectArchivePhysicalRecovery(
 
     // Git may have committed before the process died: prove effects without
     // promoting journal state or launching a second mutation.
-    await proveArchiveCommitPhysical(root, archive, currentHead);
+    await proveArchiveCommitPhysical(root, archive, currentHead, siblings);
 
     return 'commit-effect-uncertain';
   }
@@ -743,7 +781,7 @@ export async function inspectArchivePhysicalRecovery(
     throw failure('Journaled archive commit differs from the physical checkout.');
   }
 
-  const tree = await proveArchiveCommitPhysical(root, archive, currentHead);
+  const tree = await proveArchiveCommitPhysical(root, archive, currentHead, siblings);
   if (tree !== archive.committedTree) {
     throw failure('Archived commit tree differs from durable journal proof.');
   }

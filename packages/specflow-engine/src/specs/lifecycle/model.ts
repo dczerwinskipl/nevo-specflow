@@ -16,12 +16,22 @@ export type CloseIntent =
       readonly kind: 'worktree-close';
       readonly operationId: string;
       readonly specId: string;
+      /** Person-initiated: finish after the content was already merged externally (#157). */
+      readonly finishAfterExternalMerge?: boolean;
     }
   | {
       readonly kind: 'specification-close';
       readonly operationId: string;
       readonly specId: string;
       readonly integrateToTargetBranch: boolean;
+      /**
+       * Specification Close never supports finishing after an external merge (owner decision
+       * 2026-11-20): its contract requires the canonical Specification to end up archived at the
+       * destination, which this mode never proves (it skips merge/integration entirely). Only
+       * Worktree Close's narrower contract — retire a worktree whose content already merged,
+       * without claiming anything about the Specification's canonical state — may use it.
+       */
+      readonly finishAfterExternalMerge?: never;
     };
 
 export type CloseStage =
@@ -93,6 +103,8 @@ export interface GitClosePlan extends ClosePlanIdentity {
   readonly target?: CloseWorkspaceEvidence;
   readonly targetBranch?: string;
   readonly integrateToTargetBranch?: boolean;
+  /** Person-initiated: finish after the content was already merged externally (#157). */
+  readonly finishAfterExternalMerge?: boolean;
   readonly configRevision?: string;
 }
 
@@ -111,6 +123,7 @@ export interface GitOffClosePlan extends ClosePlanIdentity {
   readonly target?: never;
   readonly targetBranch?: never;
   readonly integrateToTargetBranch?: false;
+  readonly finishAfterExternalMerge?: never;
   readonly configRevision: string;
 }
 
@@ -180,11 +193,21 @@ export interface CloseJournal {
   readonly scratchRetired?: true;
 }
 
-/** Intent fingerprint is independent of git defaults and mutable filesystem state. */
+/**
+ * Intent fingerprint is independent of git defaults and mutable filesystem state. Worktree Close is
+ * the only kind that varies on `finishAfterExternalMerge` (owner decision 2026-11-20); an absent
+ * value is canonicalized to `false` before hashing, so omitting it and requesting it explicitly
+ * `false` are always the same intent (and the same fingerprint). Specification Close never carries
+ * the field at all, so it is never part of its fingerprint.
+ */
 export function fingerprintCloseIntent(input: CloseIntent): string {
   validateOperationId(input.operationId);
+  const canonical =
+    input.kind === 'worktree-close'
+      ? { ...input, finishAfterExternalMerge: input.finishAfterExternalMerge === true }
+      : input;
 
-  return createHash('sha256').update(JSON.stringify(input), 'utf8').digest('hex');
+  return createHash('sha256').update(JSON.stringify(canonical), 'utf8').digest('hex');
 }
 
 export function normalizeCloseIntent(input: CloseIntent): CloseIntent {
@@ -205,8 +228,17 @@ export function normalizeCloseIntent(input: CloseIntent): CloseIntent {
     throw new CloseOperationError('CLOSE_INVALID', 'Invalid Specification identity.');
   }
 
-  if (input.kind === 'worktree-close') {
-    return { kind: 'worktree-close', operationId: input.operationId, specId: input.specId };
+  if (
+    input.kind === 'worktree-close' &&
+    (input.finishAfterExternalMerge === undefined ||
+      typeof input.finishAfterExternalMerge === 'boolean')
+  ) {
+    return {
+      kind: 'worktree-close',
+      operationId: input.operationId,
+      specId: input.specId,
+      finishAfterExternalMerge: input.finishAfterExternalMerge === true,
+    };
   }
 
   if (input.kind === 'specification-close' && typeof input.integrateToTargetBranch === 'boolean') {
@@ -258,6 +290,15 @@ export type CloseOperationErrorCode =
   /** The workflow of the Specification is not finished (D07); `blockers` lists what holds it. */
   | 'CLOSE_BLOCKED'
   | 'CLOSE_SHARED_WORKTREE'
+  /** Finish after external merge (#157): the destination does not yet have the proven content. */
+  | 'CLOSE_EXTERNAL_MERGE_MISMATCH'
+  /**
+   * `finishAfterExternalMerge: true` requested for Specification Close (owner decision 2026-11-20):
+   * refused unconditionally, before any Git inspection or mutation. Only Worktree Close supports this
+   * mode; Specification Close's contract requires the canonical Specification to end up archived at
+   * the destination, which this mode never proves (it skips merge/integration entirely).
+   */
+  | 'CLOSE_EXTERNAL_MERGE_UNSUPPORTED'
   | 'CLOSE_RECOVERY_REQUIRED'
   /**
    * Resumable stop before disposal: the worktree's `.nevo/local/config.yaml` is not the unchanged
@@ -380,7 +421,10 @@ export class CloseOperationError extends Error {
   readonly code: CloseOperationErrorCode;
   /** `CLOSE_BLOCKED`: the grouped blockers of the Specification exit gate; empty otherwise. */
   readonly blockers: readonly SpecificationExitBlocker[];
-  /** `CLOSE_PREFLIGHT` of a dirty checkout: the paths that are not clean; empty otherwise. */
+  /**
+   * `CLOSE_PREFLIGHT` of a dirty checkout, or `CLOSE_EXTERNAL_MERGE_MISMATCH`: the paths that are
+   * not clean, or not yet content-equivalent in the destination; empty otherwise.
+   */
   readonly paths: readonly string[];
   /** Present only for `CLOSE_LOCAL_CONFIG_MODIFIED`. */
   readonly localConfig?: CloseLocalConfigRefusal;
@@ -406,6 +450,32 @@ export class CloseOperationError extends Error {
     if (details.localConfig) {
       this.localConfig = details.localConfig;
     }
+  }
+}
+
+/**
+ * Refuse `finishAfterExternalMerge: true` for Specification Close with
+ * `CLOSE_EXTERNAL_MERGE_UNSUPPORTED` (owner decision 2026-11-20), before any Git inspection or
+ * mutation: do not rely on the type system alone, since an HTTP body or another untyped caller can
+ * still carry the field. Specification Close's contract requires the canonical Specification to end
+ * up archived at the destination; this mode skips merge/integration entirely, so the destination
+ * would never receive it. Only Worktree Close, whose contract makes no claim about the
+ * Specification's canonical state, may finish this way. Every admission point (preview, reservation
+ * replay, the business operation) calls this so the refusal is identical regardless of entry point.
+ */
+export function assertNoExternalMergeForSpecificationClose(request: {
+  readonly kind: string;
+  readonly finishAfterExternalMerge?: boolean;
+}): void {
+  if (request.kind === 'specification-close' && request.finishAfterExternalMerge === true) {
+    throw new CloseOperationError(
+      'CLOSE_EXTERNAL_MERGE_UNSUPPORTED',
+      'finishAfterExternalMerge is supported only for Worktree Close. Specification Close always ' +
+        'ends with the Specification canonically archived at the destination, but this mode never ' +
+        'merges or integrates, so the archive would never reach the destination branch. Use ' +
+        '"specs worktree close" to retire the checkout now, then close the Specification normally ' +
+        'once its archive is integrated into the target branch.',
+    );
   }
 }
 

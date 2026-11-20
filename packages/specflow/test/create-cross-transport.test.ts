@@ -21,6 +21,7 @@ import { startRuntime } from '@nevo/specflow-runtime';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { createProgram } from '../src/program';
+import { pairOwnerDevice } from './support/owner-device';
 
 const roots: string[] = [];
 
@@ -246,9 +247,14 @@ describe('E2.T05 — real HTTP and offline CLI share one Engine authority', () =
     const operationId = randomUUID();
     let created: Created;
     try {
+      const owner = await pairOwnerDevice(
+        'http://127.0.0.1:' + port,
+        engine.context.project.stateRoot,
+        port,
+      );
       const response = await fetch('http://127.0.0.1:' + port + '/api/specs', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', ...owner },
         body: JSON.stringify({
           ...archetypeRequest(),
           title: 'Cross transport canonical Spec',
@@ -368,9 +374,14 @@ describe('E2.T05 — real HTTP and offline CLI share one Engine authority', () =
     const operationId = randomUUID();
     const title = 'Cross transport selector boundary';
     try {
+      const owner = await pairOwnerDevice(
+        'http://127.0.0.1:' + port,
+        engine.context.project.stateRoot,
+        port,
+      );
       const response = await fetch('http://127.0.0.1:' + port + '/api/specs', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', ...owner },
         body: JSON.stringify({ ...archetypeRequest(), title, operationId }),
       });
       expect(response.status).toBe(201);
@@ -456,6 +467,11 @@ describe('E2.T07 — live canonical refresh', () => {
       readonly items: readonly { readonly id: string; readonly title: string }[];
     }
     try {
+      const owner = await pairOwnerDevice(
+        'http://127.0.0.1:' + port,
+        engine.context.project.stateRoot,
+        port,
+      );
       const currentResponse = await fetch(current);
       const archiveResponse = await fetch(archive);
       expect(currentResponse.status).toBe(200);
@@ -480,7 +496,7 @@ describe('E2.T07 — live canonical refresh', () => {
         'http://127.0.0.1:' + port + '/api/specs/' + created.specId + '/close',
         {
           method: 'POST',
-          headers: { 'content-type': 'application/json' },
+          headers: { 'content-type': 'application/json', ...owner },
           body: JSON.stringify({ operationId: closeOperationId }),
         },
       );

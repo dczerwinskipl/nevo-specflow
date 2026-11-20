@@ -37,6 +37,8 @@ import {
 import crossSpawn from 'cross-spawn';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { pairOwnerDevice } from './support/owner-device';
+
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
 const pinnedPnpm = (
@@ -656,9 +658,16 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
       expect(overview.collection).toBe('current');
       expect(overview.items).toEqual([]);
       expect(response.status).toBe(200);
+      // A headless Runtime saves its initial pairing code in an owner-only file: the owner reads it
+      // on this machine and pairs this client as the first device (D21).
+      const owner = await pairOwnerDevice(
+        `http://127.0.0.1:${port}`,
+        join(prefix, '.nevo', 'local', 'state'),
+        port,
+      );
       const createdSession = await fetch(`http://127.0.0.1:${port}/api/sessions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...owner },
         body: JSON.stringify({
           requestId: crypto.randomUUID(),
           providerId: 'mock',
@@ -669,7 +678,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
       const { sessionId } = (await createdSession.json()) as { sessionId: string };
       const startTurn = await fetch(`http://127.0.0.1:${port}/api/sessions/${sessionId}/turns`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...owner },
         body: JSON.stringify({
           requestId: crypto.randomUUID(),
           message: 'Installed SQLite worker',

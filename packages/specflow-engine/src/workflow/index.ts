@@ -155,6 +155,19 @@ export {
   type StartSpecificationInput,
   type StartTaskInput,
 } from './operations/start';
+export {
+  engineAgentContextSource,
+  gatherAgentContext,
+  readStepContext,
+  type AgentContextSource,
+  type AgentStepContext,
+  type ContextArchetype,
+  type ContextDocument,
+  type ContextDocumentType,
+  type ContextEntry,
+  type ContextInstructions,
+  type ContextReference,
+} from './agent/context';
 export type {
   StepContext,
   StepDescription,

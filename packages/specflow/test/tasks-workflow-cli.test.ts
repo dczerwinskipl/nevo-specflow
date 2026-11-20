@@ -191,6 +191,17 @@ describe('tasks and workflow against a real project', () => {
     expect(started.exit).toBe(0);
     expect(json<{ kind: string }>(started).kind).toBe('started');
 
+    // The context of the active attempt: documents and the Task context as references (read-only).
+    const context = json<{
+      agent: {
+        documents: { id: string; path: string }[];
+        taskContext: { entries: { ref: string; sha256?: string }[] };
+      };
+    }>(await cli(root, ['workflow', 'context', specId, '--task', 'build', '--json']));
+    expect(context.agent.documents.map((document) => document.id)).toContain('overview');
+    expect(context.agent.taskContext.entries[0]).toMatchObject({ ref: 'overview' });
+    expect(context.agent.taskContext.entries[0]?.sha256).toMatch(/^[0-9a-f]{64}$/u);
+
     const finished = await cli(root, [
       'workflow',
       'finish',

@@ -8,6 +8,7 @@ import {
   type TransitionTarget,
   type WorkflowPin,
 } from '@nevo/workflow';
+import type { AgentStepContext } from './agent-step-context';
 import { isTaskTypeAllowed, taskReadiness, type TaskReadiness } from '../tasks/tasks';
 import {
   taskPosition,
@@ -143,9 +144,16 @@ export interface StepContext {
    * `existingTasks`. Nothing can be decided on them until their record is restored from Git.
    */
   readonly broken?: readonly string[];
+  /**
+   * For an agent attempt: the documents, the document types and the resolved Task context as
+   * references with digests (D13).
+   */
+  readonly agent?: AgentStepContext;
 }
 
 export interface StepContextInput {
+  /** The agent data, read by `gatherAgentContext`; compiling does no I/O. */
+  readonly agent?: AgentStepContext;
   readonly subject: WorkflowSubject;
   readonly run: WorkflowRun;
   /** The definition the run is pinned to (the titles of the steps the transitions lead to). */
@@ -235,5 +243,6 @@ export function compileStepContext(input: StepContextInput): StepContext {
           broken: input.broken,
         }
       : {}),
+    ...(input.agent ? { agent: input.agent } : {}),
   };
 }

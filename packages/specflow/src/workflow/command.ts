@@ -1,6 +1,8 @@
 import {
+  engineAgentContextSource,
   finishStep,
   inspectActions,
+  readStepContext,
   reevaluateWait,
   resolveSpecification,
   returnToStep,
@@ -17,7 +19,7 @@ import { Command } from 'commander';
 import { runExecution, type ExecutionOutput, type ExecutionSession } from '../execution-session';
 import { localOwner } from '../local-actor';
 import { parsePositiveInt, readStructuredFile } from '../structured-input';
-import { actionLines, finishLines, returnLines, startLines } from './present';
+import { actionLines, contextLines, finishLines, returnLines, startLines } from './present';
 
 export interface WorkflowCommandContext extends ExecutionOutput {
   readonly cwd: string;
@@ -86,6 +88,23 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
     await run(options, 'read', async ({ workflow: dependencies }) => {
       const projection = await inspectActions(dependencies, subjectOf(specId, options));
       emit(options, projection, actionLines(projection));
+    });
+  });
+
+  common(
+    workflow
+      .command('context')
+      .description(
+        'Show what the active attempt works from: documents, document types and the Task context as references with digests (read-only)',
+      ),
+  ).action(async (specId: string, options: CommonOptions) => {
+    await run(options, 'read', async ({ engine, workflow: dependencies }) => {
+      const result = await readStepContext(
+        dependencies,
+        engineAgentContextSource(engine),
+        subjectOf(specId, options),
+      );
+      emit(options, result, contextLines(result));
     });
   });
 

@@ -70,7 +70,7 @@ export function BaseRefField({
             unavailable: item.projectConfig.status === 'unusable',
             description:
               item.projectConfig.status === 'unusable'
-                ? t(`create.workspace.baseConfigReason.${item.projectConfig.reason}`)
+                ? t(`create.workspace.baseConfigPickerReason.${item.projectConfig.reason}`)
                 : undefined,
             meta: baseRefMeta(item.ref, item.checkedOutWorkspaceId),
             label: (wraps) => <BranchRef name={refDisplayName(item.ref)} truncate={!wraps} />,

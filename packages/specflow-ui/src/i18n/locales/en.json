@@ -938,6 +938,12 @@
         "action": "Choose another starting branch. To use this branch, fix .nevo/config.yaml and save the change in its Git history (commit) first.",
         "title": "Why can’t I start here?",
         "description": "This starting point has no working SpecFlow settings."
+      },
+      "baseConfigPickerReason": {
+        "missing": "Missing SpecFlow settings",
+        "not-regular-file": "Settings are not a file",
+        "invalid-yaml": "Invalid YAML",
+        "runtime-missing": "Missing runtime section"
       }
     },
     "project": {

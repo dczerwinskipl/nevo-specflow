@@ -938,6 +938,12 @@
         "action": "Wybierz inną gałąź początkową. Jeśli chcesz użyć właśnie tej gałęzi, popraw .nevo/config.yaml i najpierw zapisz zmianę w jej historii Git (commit).",
         "title": "Dlaczego nie można tu zacząć?",
         "description": "Ten punkt początkowy nie ma działających ustawień SpecFlow."
+      },
+      "baseConfigPickerReason": {
+        "missing": "Brak ustawień SpecFlow",
+        "not-regular-file": "Ustawienia nie są plikiem",
+        "invalid-yaml": "Niepoprawny YAML",
+        "runtime-missing": "Brak sekcji runtime"
       }
     },
     "project": {

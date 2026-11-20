@@ -261,6 +261,86 @@ it(
       const bytes = await readFile(join(root, 'store', name)).catch(() => undefined);
       expect(bytes?.includes(capability)).not.toBe(true);
     }
+
+    await closeBroker();
+
+    // A Runtime restart: a new broker and capability registry, nothing kept in memory. The next
+    // Turn of the same Session still authors its earlier uncommitted write; another Session does not.
+    const restarted = createAgentExecutionFeature({ engine });
+    closeBroker = () => restarted.close();
+    let script: (env: { endpoint: string; capability: string }) => Promise<void> = () =>
+      Promise.resolve();
+    const reopened = await openSessionStore({
+      directory: join(root, 'store'),
+      projectId: engine.context.project.projectId,
+    });
+    coordinator = createSessionCoordinator(
+      reopened,
+      createWritableTestDriver((invocation) =>
+        script(agentBrokerEnvironment(invocation.runtimeEnvironment?.values ?? {})!),
+      ),
+      engine.context.project.projectId,
+      true,
+      {
+        kind: 'read-only',
+        workspace: checkout,
+        temporaryRoot: join(root, 'temporary'),
+        workspaceIdentity: workspaceExecutionIdentity(engine),
+      },
+      createEngineSessionEffects(engine),
+      createSpecificationWorkspaceResolver(engine),
+      undefined,
+      undefined,
+      restarted.capabilities,
+    );
+    const turn = async (session: string, run: typeof script) => {
+      script = run;
+      await coordinator!.start(actor, session, { requestId: randomUUID(), message: 'Edit' });
+      await vi.waitFor(
+        async () => {
+          expect((await coordinator!.snapshot(session, actor)).activeTurn).toBeUndefined();
+        },
+        { timeout: 60_000 },
+      );
+    };
+
+    const savePlan = (content: string, revision: string): AgentBrokerOperation => ({
+      name: 'documents.save',
+      specId,
+      documentId: (seen.created as { value: { result: { documents: { id: string }[] } } }).value
+        .result.documents[0]!.id,
+      content,
+      expectedRevision: sha256(revision),
+    });
+    await turn(sessionId, async (broker) => {
+      seen.ownAfterRestart = await sendAgentBrokerRequest({
+        ...broker,
+        requestId: 'save-plan',
+        operation: savePlan('# Plan 2\n', '# Plan\n'),
+      });
+    });
+    expect(seen.ownAfterRestart).toMatchObject({ ok: true });
+    const { sessionId: otherSession } = await coordinator.create(
+      actor,
+      {
+        requestId: randomUUID(),
+        providerId: 'controlled',
+        mode: 'workspace-write',
+        providerModeId: 'acceptEdits',
+      },
+      { specId, taskIds: [], origin: 'user' },
+    );
+    await turn(otherSession, async (broker) => {
+      seen.otherSession = await sendAgentBrokerRequest({
+        ...broker,
+        requestId: 'save-plan',
+        operation: savePlan('# Plan 3\n', '# Plan 2\n'),
+      });
+    });
+    expect(seen.otherSession).toMatchObject({
+      ok: false,
+      error: { code: 'DOCUMENT_COMMITS_PENDING', details: { cause: 'foreign-uncommitted' } },
+    });
   },
   process.platform === 'win32' ? 180_000 : 60_000,
 );

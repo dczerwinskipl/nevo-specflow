@@ -1,6 +1,9 @@
-import { CAPABILITY_PATTERN } from './registry';
+import {
+  AGENT_CAPABILITY_REDACTED,
+  redactAgentCapabilityShapes,
+} from '@nevo/specflow-contracts/runtime';
 
-export const REDACTED_CAPABILITY = '[redacted agent capability]';
+export const REDACTED_CAPABILITY = AGENT_CAPABILITY_REDACTED;
 
 /**
  * `text` without any invocation capability: the values named (in their plain, JSON-escaped and
@@ -19,5 +22,5 @@ export function redactCapabilities(text: string, values: readonly string[] = [])
     }
   }
 
-  return redacted.replace(CAPABILITY_PATTERN, REDACTED_CAPABILITY);
+  return redactAgentCapabilityShapes(redacted);
 }

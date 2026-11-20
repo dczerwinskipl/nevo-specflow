@@ -6,10 +6,14 @@ import type { BrokerDispatcher } from './dispatch';
 import { openBrokerEndpoint, type BrokerEndpoint } from './endpoint';
 import { FrameError, readFrame } from './framing';
 
-/** Connections served at once; more wait in the listen backlog. */
+/** Connections served at once; one more is answered with a refusal line and closed. */
 const MAX_CONNECTIONS = 16;
-/** A connection that sends no complete request in this time is closed (a stuck client). */
-const IDLE_MS = 30_000;
+/**
+ * Absolute deadline for the request frame, counted from the connection (not an idle timer, so a
+ * client trickling bytes cannot hold a slot). Cleared once the frame is read: a long Engine call
+ * keeps its connection until it answers.
+ */
+const FRAME_DEADLINE_MS = 5_000;
 
 function write(socket: Socket, response: AgentBrokerResponse) {
   socket.end(JSON.stringify(response) + '\n');
@@ -29,15 +33,30 @@ export function createBrokerServer(options: {
   let closed = false;
 
   function serve(socket: Socket) {
+    socket.on('error', () => socket.destroy());
+    if (sockets.size >= MAX_CONNECTIONS) {
+      write(socket, {
+        ok: false,
+        error: {
+          code: 'AGENT_BROKER_UNAVAILABLE',
+          message: 'The broker is serving too many requests at once; retry shortly.',
+          details: { reason: 'busy' },
+        },
+      });
+
+      return;
+    }
+
     sockets.add(socket);
     socket.once('close', () => sockets.delete(socket));
-    socket.on('error', () => socket.destroy());
-    socket.setTimeout(IDLE_MS, () => socket.destroy());
+    const deadline = setTimeout(() => socket.destroy(), FRAME_DEADLINE_MS);
+    deadline.unref();
     void (async () => {
       let frame: string;
       try {
         frame = await readFrame(socket, AGENT_BROKER_LIMITS.requestBytes);
       } catch (error) {
+        clearTimeout(deadline);
         if (error instanceof FrameError && error.reason !== 'closed') {
           write(socket, {
             ok: false,
@@ -56,6 +75,7 @@ export function createBrokerServer(options: {
         return;
       }
 
+      clearTimeout(deadline);
       const response = await options.dispatcher.handle(frame);
       if (!socket.destroyed) {
         write(socket, response);
@@ -66,7 +86,6 @@ export function createBrokerServer(options: {
   async function listen() {
     const endpoint = await (options.openEndpoint ?? openBrokerEndpoint)();
     const server = createServer({ allowHalfOpen: false, pauseOnConnect: false }, serve);
-    server.maxConnections = MAX_CONNECTIONS;
     try {
       await new Promise<void>((resolve, reject) => {
         server.once('error', reject);

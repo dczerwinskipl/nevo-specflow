@@ -15,10 +15,10 @@ import type {
   SaveResult,
 } from '@nevo/specflow-contracts/documents';
 import { DocumentError, admitAgentOperation, type OwnedExecution } from '@nevo/specflow-engine';
-import { Type, type TSchema } from 'typebox';
+import { Type, type Static, type TSchema } from 'typebox';
 import { Value } from 'typebox/value';
 
-import type { CapabilityBinding, CapabilityRegistry } from '../capability/registry';
+import type { CapabilityLease, CapabilityRegistry } from '../capability/registry';
 import { brokerOperationId } from './operation-id';
 
 /** The Engine document use cases the broker calls: the same ones the UI's routes call. */
@@ -140,8 +140,9 @@ export function createBrokerDispatcher(options: {
 
   async function run(
     request: AgentBrokerRequest,
-    binding: CapabilityBinding,
+    lease: CapabilityLease,
   ): Promise<AgentBrokerResponse> {
+    const binding = lease.binding;
     const operation = request.operation;
     if (operation.name === 'scope.describe') {
       return {
@@ -176,13 +177,14 @@ export function createBrokerDispatcher(options: {
       );
     }
 
+    // The Turn may have ended while the broker waited: checked again right before the Engine runs.
+    // From here the call is counted, so the claim does not settle until it finished.
+    if (!lease.active()) {
+      return refusal('AGENT_CAPABILITY_INVALID', CAPABILITY_REFUSALS.ended, { reason: 'ended' });
+    }
+
     const operationId = brokerOperationId(binding.invocationId, request.requestId);
-    // Recorded before the Engine runs, so a write that lands is always the author's own.
-    registry.recordAuthored(binding.author, operationId);
-    const owned: OwnedExecution = {
-      operationId: binding.invocationId,
-      authored: (id) => registry.isAuthored(binding.author, id),
-    };
+    const owned: OwnedExecution = { operationId: binding.invocationId, actor: binding.actor };
     let value: AgentBrokerResult;
     switch (operation.name) {
       case 'documents.create':
@@ -272,52 +274,58 @@ export function createBrokerDispatcher(options: {
         );
       }
 
-      const checked = registry.check(parsed.capability);
-      if (checked.status !== 'valid') {
-        return refusal('AGENT_CAPABILITY_INVALID', CAPABILITY_REFUSALS[checked.status], {
-          reason: checked.status,
+      const admitted = registry.enter(parsed.capability);
+      if (admitted.status !== 'valid') {
+        return refusal('AGENT_CAPABILITY_INVALID', CAPABILITY_REFUSALS[admitted.status], {
+          reason: admitted.status,
         });
-      }
-
-      // A write the protocol or the scope does not know is the scope's refusal, never a fallback.
-      const name = parsed.operation.name;
-      if (
-        name !== 'scope.describe' &&
-        !checked.binding.scope.operations.some((op) => op === name)
-      ) {
-        const decision = admitAgentOperation(checked.binding.scope, {
-          operation: name,
-          specId: checked.binding.scope.specId,
-        });
-
-        return refusal(
-          'AGENT_SCOPE_REFUSED',
-          decision.admitted ? 'The operation is not in scope.' : decision.message,
-          { reason: 'operation-not-in-scope', operation: name },
-        );
-      }
-
-      if (!Value.Check(AgentBrokerRequestSchema, parsed)) {
-        return refusal(
-          'AGENT_REQUEST_INVALID',
-          `The ${name} request is not valid${firstError(AgentBrokerRequestSchema, parsed)}.`,
-        );
       }
 
       try {
-        return await run(parsed, checked.binding);
-      } catch (error) {
-        if (error instanceof DocumentError) {
-          return refusal(error.code, error.message, error.details);
-        }
-
-        return refusal(
-          'AGENT_BROKER_UNAVAILABLE',
-          'The Runtime could not run the operation; tell the owner.',
-        );
+        return await admittedRequest(parsed, admitted.lease);
+      } finally {
+        admitted.lease.release();
       }
     },
   };
+
+  async function admittedRequest(
+    parsed: Static<typeof EnvelopeSchema>,
+    lease: CapabilityLease,
+  ): Promise<AgentBrokerResponse> {
+    const scope = lease.binding.scope;
+    // A write the protocol or the scope does not know is the scope's refusal, never a fallback.
+    const name = parsed.operation.name;
+    if (name !== 'scope.describe' && !scope.operations.some((op) => op === name)) {
+      const decision = admitAgentOperation(scope, { operation: name, specId: scope.specId });
+
+      return refusal(
+        'AGENT_SCOPE_REFUSED',
+        decision.admitted ? 'The operation is not in scope.' : decision.message,
+        { reason: 'operation-not-in-scope', operation: name },
+      );
+    }
+
+    if (!Value.Check(AgentBrokerRequestSchema, parsed)) {
+      return refusal(
+        'AGENT_REQUEST_INVALID',
+        `The ${name} request is not valid${firstError(AgentBrokerRequestSchema, parsed)}.`,
+      );
+    }
+
+    try {
+      return await run(parsed, lease);
+    } catch (error) {
+      if (error instanceof DocumentError) {
+        return refusal(error.code, error.message, error.details);
+      }
+
+      return refusal(
+        'AGENT_BROKER_UNAVAILABLE',
+        'The Runtime could not run the operation; tell the owner.',
+      );
+    }
+  }
 }
 
 export type BrokerDispatcher = ReturnType<typeof createBrokerDispatcher>;

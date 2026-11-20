@@ -12,7 +12,7 @@ describe('capability redaction', () => {
     specId: 'S1',
     workspace: '/w',
     scope: { kind: 'ad-hoc', specId: 'S1', operations: ['documents.save'] },
-    author: 'session:s-1',
+    actor: { class: 'agent', details: { provider: 'claude', sessionId: 's-1' } },
   }).value;
 
   it('mints 256 random bits behind a recognisable prefix', () => {

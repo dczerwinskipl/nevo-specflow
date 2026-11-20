@@ -41,7 +41,7 @@ function fixture() {
       specId,
       workspace: specId === 'S1' ? '/work/one' : '/work/two',
       scope: deriveAgentScope({ kind: 'ad-hoc', specId }),
-      author: 'session:' + sessionId,
+      actor: { class: 'agent', details: { provider: 'claude', model: 'm1', sessionId } },
     };
     const handle = registry.mint(binding);
     handle.activate();
@@ -71,7 +71,14 @@ describe('agent broker dispatch', () => {
     const [specId, documentId, input, owned] = f.save.mock.calls[0]!;
     expect([specId, documentId]).toEqual(['S1', 'notes']);
     expect(input.operationId).toBe(brokerOperationId('inv-a', 'request-0001'));
-    expect(owned.operationId).toBe('inv-a');
+    // The actor comes from the binding: the Turn's provider, model and Session.
+    expect(owned).toEqual({
+      operationId: 'inv-a',
+      actor: {
+        class: 'agent',
+        details: { provider: 'claude', model: 'm1', sessionId: 'session-inv-a' },
+      },
+    });
   });
 
   it('answers the Turn’s scope', async () => {
@@ -123,13 +130,13 @@ describe('agent broker dispatch', () => {
       specId: 'S1',
       workspace: '/work/one',
       scope: deriveAgentScope({ kind: 'ad-hoc', specId: 'S1' }),
-      author: 'session:s',
+      actor: { class: 'agent', details: { provider: 'claude', sessionId: 's' } },
     });
     expect(await f.dispatcher.handle(f.request(pending.value, f.saveOf()))).toMatchObject({
       error: { code: 'AGENT_CAPABILITY_INVALID', details: { reason: 'not-dispatched' } },
     });
     pending.activate();
-    pending.revoke();
+    await pending.revoke();
     pending.activate();
     expect(await f.dispatcher.handle(f.request(pending.value, f.saveOf()))).toMatchObject({
       error: { code: 'AGENT_CAPABILITY_INVALID', details: { reason: 'ended' } },
@@ -183,23 +190,60 @@ describe('agent broker dispatch', () => {
     await f.dispatcher.handle(f.request(a.value, f.saveOf()));
     await f.dispatcher.handle(f.request(b.value, f.saveOf()));
     const [first, second] = f.save.mock.calls.map((call) => call[2].operationId);
+    expect(first).toBe(brokerOperationId('inv-a', 'request-0001'));
+    expect(second).toBe(brokerOperationId('inv-b', 'request-0001'));
     expect(first).not.toBe(second);
-    // B's Session does not author A's operation: the Engine treats A's ledger entry as foreign.
-    const ownedB = f.save.mock.calls[1]![3];
-    expect(ownedB.authored?.(first!)).toBe(false);
-    expect(ownedB.authored?.(second!)).toBe(true);
+    expect(f.save.mock.calls[1]![3].operationId).toBe('inv-b');
   });
 
-  it('counts an earlier Turn of the same Session as the same author', async () => {
+  it('refuses a write whose Turn ended while the broker waited, before the Engine runs', async () => {
     const f = fixture();
-    const first = f.turn('inv-a', 'S1', 'session-1');
-    await f.dispatcher.handle(f.request(first.value, f.saveOf()));
-    first.revoke();
-    const next = f.turn('inv-c', 'S1', 'session-1');
-    await f.dispatcher.handle(f.request(next.value, f.saveOf()));
-    expect(f.save.mock.calls[1]![3].authored?.(brokerOperationId('inv-a', 'request-0001'))).toBe(
-      true,
+    const a = f.turn('inv-a', 'S1');
+    let release!: (root: string) => void;
+    f.workspaceOf.mockImplementationOnce(
+      () => new Promise<string>((resolve) => (release = resolve)),
     );
+    const pending = f.dispatcher.handle(f.request(a.value, f.saveOf()));
+    await vi.waitFor(() => expect(f.workspaceOf).toHaveBeenCalled());
+    let revoked = false;
+    const revocation = a.revoke().then(() => (revoked = true));
+    await Promise.resolve();
+    // The call is still counted: the claim must not settle yet.
+    expect(revoked).toBe(false);
+    release('/work/one');
+    expect(await pending).toMatchObject({
+      ok: false,
+      error: { code: 'AGENT_CAPABILITY_INVALID', details: { reason: 'ended' } },
+    });
+    await revocation;
+    expect(f.save).not.toHaveBeenCalled();
+  });
+
+  it('lets a write already in the Engine finish before the revocation resolves', async () => {
+    const f = fixture();
+    const a = f.turn('inv-a', 'S1');
+    const order: string[] = [];
+    let finish!: () => void;
+    f.save.mockImplementationOnce(
+      (_specId, documentId, input) =>
+        new Promise((resolve) => {
+          finish = () => {
+            order.push('engine-done');
+            resolve({
+              operationId: input.operationId,
+              document: { id: documentId, path: 'notes.md', revision: 'r2' },
+              commit,
+            });
+          };
+        }),
+    );
+    const pending = f.dispatcher.handle(f.request(a.value, f.saveOf()));
+    await vi.waitFor(() => expect(f.save).toHaveBeenCalled());
+    const revocation = a.revoke().then(() => order.push('revoked'));
+    finish();
+    expect(await pending).toMatchObject({ ok: true });
+    await revocation;
+    expect(order).toEqual(['engine-done', 'revoked']);
   });
 
   it("passes the Engine's foreign-author refusal to the agent with its remedy", async () => {
@@ -273,6 +317,7 @@ describe('agent capability minting', () => {
         turnId: 't',
         specId: 'S1',
         workspace: '/work/one',
+        provider: 'claude',
       }),
     ).rejects.toMatchObject({ code: 'SESSION_PAIRING_PENDING' });
     expect(openEndpoint).not.toHaveBeenCalled();

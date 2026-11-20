@@ -77,7 +77,7 @@ export function createManagedInvocation(options: {
     dispatched = false;
 
   async function unknown(message: string) {
-    grant?.revoke();
+    await grant?.revoke();
     options.stop();
     // An admitted claim keeps its not-dispatched proof for recovery; only a possibly dispatched
     // one becomes unknown.
@@ -165,6 +165,10 @@ export function createManagedInvocation(options: {
           turnId: options.invocation.turnId,
           specId: context.specId,
           workspace: claim.workspace,
+          provider: options.invocation.selection.providerId,
+          ...(options.invocation.selection.modelId !== undefined
+            ? { model: options.invocation.selection.modelId }
+            : {}),
         });
       }
 
@@ -196,8 +200,9 @@ export function createManagedInvocation(options: {
       await native.done.catch(() => {
         outputUncertain = true;
       });
-      // The Turn is ending: its capability admits nothing more, before any settlement.
-      grant?.revoke();
+      // The Turn is ending: its capability admits nothing more, and the broker calls still running
+      // finish before any settlement.
+      await grant?.revoke();
       const settled = await native.settlement?.catch(() => undefined);
       const evidence = settled?.result ? { ...settled, result: redact(settled.result) } : settled;
       if (!dispatchAttempted) {
@@ -296,7 +301,7 @@ export function createManagedInvocation(options: {
 
       await unknown('Agent lifecycle or Engine settlement could not be persisted.');
     } finally {
-      grant?.revoke();
+      await grant?.revoke();
     }
   })();
 

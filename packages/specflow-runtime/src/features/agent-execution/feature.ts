@@ -45,9 +45,20 @@ export function createAgentExecutionFeature(options: {
 
       const endpoint = await server.endpoint();
       const handle = registry.mint({
-        ...binding,
+        invocationId: binding.invocationId,
+        sessionId: binding.sessionId,
+        turnId: binding.turnId,
+        specId: binding.specId,
+        workspace: binding.workspace,
         scope: deriveAgentScope({ kind: 'ad-hoc', specId: binding.specId }),
-        author: `session:${binding.sessionId}`,
+        actor: {
+          class: 'agent',
+          details: {
+            provider: binding.provider,
+            ...(binding.model !== undefined ? { model: binding.model } : {}),
+            sessionId: binding.sessionId,
+          },
+        },
       });
 
       return {

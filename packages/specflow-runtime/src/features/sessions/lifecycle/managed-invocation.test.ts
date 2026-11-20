@@ -274,7 +274,9 @@ it('gives a Specification Turn its capability: active once dispatched, revoked b
     secrets: [secret],
     activate: vi.fn(() => f.order.push('capability-active')),
     // Idempotent, as the port requires: the first revocation counts.
-    revoke: vi.fn(() => {
+    revoke: vi.fn(async () => {
+      // The broker's calls drain first: settlement waits for the revocation to resolve.
+      await Promise.resolve();
       if (!f.order.includes('capability-revoked')) {
         f.order.push('capability-revoked');
       }

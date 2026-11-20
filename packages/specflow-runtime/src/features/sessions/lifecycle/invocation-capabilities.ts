@@ -11,6 +11,9 @@ export interface InvocationCapabilityBinding {
   /** The Specification the Session is associated with (its home Specification). */
   readonly specId: string;
   readonly workspace: string;
+  /** The Turn's provider and model: the agent its writes are made as. */
+  readonly provider: string;
+  readonly model?: string;
 }
 
 /**
@@ -23,8 +26,12 @@ export interface InvocationGrant {
   /** Values a process owner must redact from what it captures (diagnostics). */
   readonly secrets: readonly string[];
   activate(): void;
-  /** Idempotent; once revoked, `activate` changes nothing. */
-  revoke(): void;
+  /**
+   * Admits nothing more at once and resolves once the broker calls already running have finished
+   * (bounded), so none lands after the claim settles. Idempotent; afterwards `activate` changes
+   * nothing.
+   */
+  revoke(): Promise<void>;
   /** The text with every capability value replaced; for transcripts and stored tool output. */
   redact(text: string): string;
 }

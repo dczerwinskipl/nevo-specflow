@@ -1,16 +1,14 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
-import type { AgentWriteScope } from '@nevo/specflow-engine';
+import { AGENT_CAPABILITY_PREFIX } from '@nevo/specflow-contracts/runtime';
+import type { AgentWriteActor, AgentWriteScope } from '@nevo/specflow-engine';
 
-/** A capability value: a fixed prefix (so redaction recognises one it never minted) and 256 random bits. */
-export const CAPABILITY_PREFIX = 'nvcap_';
 const CAPABILITY_BYTES = 32;
-export const CAPABILITY_PATTERN = /nvcap_[A-Za-z0-9_-]{43}/g;
 
 /** Ended capabilities kept to word their refusal ("the Turn ended") before they are forgotten. */
 const ENDED_KEPT = 256;
-/** Operations remembered per author; the oldest are forgotten (and count as another author's). */
-const AUTHORED_KEPT = 4096;
+/** How long `revoke` waits for the broker calls already running before it gives up waiting. */
+const DRAIN_MS = 30_000;
 
 /** What a capability is bound to: the trusted facts of the Turn, never anything the agent sent. */
 export interface CapabilityBinding {
@@ -23,11 +21,8 @@ export interface CapabilityBinding {
   /** The workspace root the Engine claimed for the invocation. */
   readonly workspace: string;
   readonly scope: AgentWriteScope;
-  /**
-   * Whose operations count as the same author for the foreign-ledger rule: the Session for an
-   * ad-hoc Turn (its Turns are one conversation), the attempt once attempts exist.
-   */
-  readonly author: string;
+  /** The agent every write of the Turn is made as (`AgentActor`), from the Turn's selection. */
+  readonly actor: AgentWriteActor;
 }
 
 export type CapabilityState = 'minted' | 'active' | 'ended';
@@ -36,16 +31,36 @@ interface Entry {
   readonly value: Buffer;
   readonly binding: CapabilityBinding;
   state: CapabilityState;
+  /** Broker calls running under the capability. */
+  inFlight: number;
+  drained: (() => void)[];
 }
 
 export type CapabilityCheck =
   | { readonly status: 'valid'; readonly binding: CapabilityBinding }
   | { readonly status: 'unknown' | 'not-dispatched' | 'ended' };
 
+/** One broker call admitted under a running Turn's capability. */
+export interface CapabilityLease {
+  readonly binding: CapabilityBinding;
+  /** Whether the Turn still runs (checked again right before the Engine is called). */
+  active(): boolean;
+  /** Idempotent. */
+  release(): void;
+}
+
+export type CapabilityAdmission =
+  | { readonly status: 'valid'; readonly lease: CapabilityLease }
+  | { readonly status: 'unknown' | 'not-dispatched' | 'ended' };
+
 export interface CapabilityHandle {
   readonly value: string;
   activate(): void;
-  revoke(): void;
+  /**
+   * Admits nothing more at once, then waits (bounded) for the broker calls already running, so a
+   * write either completes before the claim settles or is refused. Idempotent.
+   */
+  revoke(): Promise<void>;
 }
 
 /**
@@ -53,13 +68,19 @@ export interface CapabilityHandle {
  * constant time. A capability admits requests only between `activate` (its claim is dispatched)
  * and `revoke` (the Turn ends); one invocation holds at most one.
  */
-export function createCapabilityRegistry(options: { random?: (size: number) => Buffer } = {}) {
+export function createCapabilityRegistry(
+  options: {
+    random?: (size: number) => Buffer;
+    /** Bound of the drain wait (tests). */
+    drainMs?: number;
+  } = {},
+) {
   const random = options.random ?? randomBytes;
+  const drainMs = options.drainMs ?? DRAIN_MS;
   /** Keyed by the sha256 of the value: the lookup never compares secret bytes. */
   const entries = new Map<string, Entry>();
   const invocations = new Set<string>();
   const ended: string[] = [];
-  const authored = new Map<string, Set<string>>();
   const digest = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
 
   function forgetEnded(key: string) {
@@ -67,11 +88,37 @@ export function createCapabilityRegistry(options: { random?: (size: number) => B
     while (ended.length > ENDED_KEPT) {
       const old = ended.shift()!;
       const entry = entries.get(old);
-      if (entry) {
+      if (entry?.inFlight === 0) {
         invocations.delete(entry.binding.invocationId);
         entries.delete(old);
       }
     }
+  }
+
+  function lookup(presented: string): Entry | undefined {
+    const bytes = Buffer.from(presented);
+    const entry = entries.get(digest(bytes));
+
+    return entry?.value.length === bytes.length && timingSafeEqual(entry.value, bytes)
+      ? entry
+      : undefined;
+  }
+
+  function drain(entry: Entry): Promise<void> {
+    if (entry.inFlight === 0) {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve) => {
+      const timer = setTimeout(done, drainMs);
+      timer.unref?.();
+      function done() {
+        clearTimeout(timer);
+        resolve();
+      }
+
+      entry.drained.push(done);
+    });
   }
 
   return {
@@ -80,10 +127,10 @@ export function createCapabilityRegistry(options: { random?: (size: number) => B
         throw new Error('The invocation already holds a capability.');
       }
 
-      const value = CAPABILITY_PREFIX + random(CAPABILITY_BYTES).toString('base64url');
+      const value = AGENT_CAPABILITY_PREFIX + random(CAPABILITY_BYTES).toString('base64url');
       const bytes = Buffer.from(value);
       const key = digest(bytes);
-      const entry: Entry = { value: bytes, binding, state: 'minted' };
+      const entry: Entry = { value: bytes, binding, state: 'minted', inFlight: 0, drained: [] };
       entries.set(key, entry);
       invocations.add(binding.invocationId);
 
@@ -99,15 +146,16 @@ export function createCapabilityRegistry(options: { random?: (size: number) => B
             entry.state = 'ended';
             forgetEnded(key);
           }
+
+          return drain(entry);
         },
       };
     },
 
     /** The binding of a presented value while its Turn runs, or why it admits nothing. */
     check(presented: string): CapabilityCheck {
-      const bytes = Buffer.from(presented);
-      const entry = entries.get(digest(bytes));
-      if (entry?.value.length !== bytes.length || !timingSafeEqual(entry.value, bytes)) {
+      const entry = lookup(presented);
+      if (!entry) {
         return { status: 'unknown' };
       }
 
@@ -120,23 +168,40 @@ export function createCapabilityRegistry(options: { random?: (size: number) => B
         : { status: 'valid', binding: entry.binding };
     },
 
-    /** Records an Engine operation the broker runs for `author` (before it runs). */
-    recordAuthored(author: string, operationId: string) {
-      let set = authored.get(author);
-      if (!set) {
-        set = new Set();
-        authored.set(author, set);
+    /** Admits one broker call: counted until released, so `revoke` waits for it. */
+    enter(presented: string): CapabilityAdmission {
+      const entry = lookup(presented);
+      if (!entry) {
+        return { status: 'unknown' };
       }
 
-      set.delete(operationId);
-      set.add(operationId);
-      while (set.size > AUTHORED_KEPT) {
-        set.delete(set.values().next().value!);
+      if (entry.state !== 'active') {
+        return { status: entry.state === 'minted' ? 'not-dispatched' : 'ended' };
       }
-    },
 
-    isAuthored(author: string, operationId: string): boolean {
-      return authored.get(author)?.has(operationId) === true;
+      entry.inFlight += 1;
+      let released = false;
+
+      return {
+        status: 'valid',
+        lease: {
+          binding: entry.binding,
+          active: () => entry.state === 'active',
+          release() {
+            if (released) {
+              return;
+            }
+
+            released = true;
+            entry.inFlight -= 1;
+            if (entry.inFlight === 0) {
+              for (const done of entry.drained.splice(0)) {
+                done();
+              }
+            }
+          },
+        },
+      };
     },
   };
 }

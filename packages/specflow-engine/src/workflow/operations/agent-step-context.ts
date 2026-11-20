@@ -42,7 +42,9 @@ export interface ContextArchetype {
 
 /**
  * One resolved reference of the Task's context. `path` is workspace-relative (a file); `sha256` and
- * `bytes` describe that file. A project document, a folder and a glob are named by `ref` alone.
+ * `bytes` describe that file, or, for a folder or glob, the sorted list of its files (`files`). A
+ * project document is pinned by its id alone: the Engine does not read the project documentation, so
+ * a change of its content does not change the digest.
  */
 export interface ContextReference {
   readonly kind: Exclude<TaskContextKind, 'instructions'>;
@@ -51,6 +53,8 @@ export interface ContextReference {
   readonly path?: string;
   readonly sha256?: string;
   readonly bytes?: number;
+  /** A folder or a glob: how many files `sha256` covers. */
+  readonly files?: number;
   readonly required: boolean;
   /** An optional reference that does not resolve now (a required one refuses the context). */
   readonly missing?: true;
@@ -72,16 +76,31 @@ export interface AgentStepContext {
   /** For a Task: the resolved context in its declared order (absent for a Specification step). */
   readonly taskContext?: {
     readonly entries: readonly ContextEntry[];
-    /** sha256 of the canonical resolved list; what an attempt records. */
+    /**
+     * sha256 of the canonical JSON (sorted keys) of `entries`: the order, each reference's kind, ref,
+     * file digest, size, `required` and `missing`, and the inline instruction texts. It changes when a
+     * referenced file (or a file of a referenced folder or glob) changes; what an attempt records.
+     */
     readonly digest: string;
   };
 }
 
-/** What a file reference resolved to; `sha256` is absent over the byte budget. */
+/**
+ * What a reference resolved to. A file: `path`, its `bytes` and `sha256`. A folder or a glob: no
+ * `path`; `files` is the number of files it names, `bytes` their total size and `sha256` the digest of
+ * the sorted list of `{path, sha256}`, so a changed, added or removed file changes it. `sha256` is
+ * absent only when a budget was exceeded (the context is refused then).
+ */
 export interface ContextFileFact {
-  readonly path: string;
+  readonly path?: string;
   readonly bytes: number;
   readonly sha256?: string;
+  readonly files?: number;
+}
+
+/** The aggregate bytes the files of one context may still be hashed with; spent by the source. */
+export interface HashBudget {
+  remaining: number;
 }
 
 /** One context entry as it was looked up: `found` is absent when it does not resolve. */

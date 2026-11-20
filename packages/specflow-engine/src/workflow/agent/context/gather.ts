@@ -1,3 +1,5 @@
+import { WorkflowError } from '../../errors';
+import { AGENT_CONTEXT_ENTRIES_MAX, AGENT_CONTEXT_HASHED_BYTES_MAX } from '../../limits';
 import type { ExecutionTask, WorkflowSubject } from '../../state/model';
 import type { GateScopeRef } from '../../gates/evaluate';
 import { effectiveContextOf } from '../../operations/task-policy';
@@ -11,6 +13,7 @@ import type {
   ContextDocumentType,
   ContextEntryFact,
   ContextFileFact,
+  HashBudget,
 } from '../../operations/agent-step-context';
 
 /**
@@ -27,9 +30,20 @@ export interface AgentContextSource {
     readonly archetype?: ContextArchetype;
   }>;
   /** The file of a registered document; absent when the registered document has no file. */
-  documentFile(scope: GateScopeRef, documentId: string): Promise<ContextFileFact | undefined>;
-  /** A plain file of the checkout (not a folder, not a glob); absent otherwise. */
-  checkoutFile(specId: string, path: string): Promise<ContextFileFact | undefined>;
+  documentFile(
+    scope: GateScopeRef,
+    documentId: string,
+    budget: HashBudget,
+  ): Promise<ContextFileFact | undefined>;
+  /**
+   * What a `path` reference names in the checkout: a file (`path`, digest), or a folder or glob (the
+   * digest of its sorted file list); absent when it does not resolve. Hashing spends `budget`.
+   */
+  checkoutFile(
+    specId: string,
+    path: string,
+    budget: HashBudget,
+  ): Promise<ContextFileFact | undefined>;
 }
 
 /**
@@ -47,13 +61,18 @@ export async function gatherAgentContext(
     source.documents(subject),
     source.catalogue(subject.specId),
   ]);
+  const list = task ? (await effectiveContextOf(dependencies, task.specId, task)).entries : [];
+  if (list.length > AGENT_CONTEXT_ENTRIES_MAX) {
+    throw new WorkflowError(
+      'WORKFLOW_INPUT_INVALID',
+      `The agent context is over its budget: ${String(list.length)} context entries (at most ${String(AGENT_CONTEXT_ENTRIES_MAX)} entries).`,
+    );
+  }
+
   const entries = task
-    ? await resolveEntries(
-        dependencies,
-        source,
-        task,
-        (await effectiveContextOf(dependencies, task.specId, task)).entries,
-      )
+    ? await resolveEntries(dependencies, source, task, list, {
+        remaining: AGENT_CONTEXT_HASHED_BYTES_MAX,
+      })
     : undefined;
 
   return compileAgentContext({
@@ -68,6 +87,7 @@ async function resolveEntries(
   source: AgentContextSource,
   task: ExecutionTask,
   entries: readonly TaskContextEntry[],
+  budget: HashBudget,
 ): Promise<ContextEntryFact[]> {
   const { references } = dependencies;
   const { specId, taskId } = task;
@@ -80,7 +100,7 @@ async function resolveEntries(
       case 'task-document': {
         const registered = task.documents.some((document) => document.id === entry.id);
         const file = registered
-          ? await source.documentFile({ kind: 'task', specId, taskId }, entry.id)
+          ? await source.documentFile({ kind: 'task', specId, taskId }, entry.id, budget)
           : undefined;
         facts.push(registered ? found(entry, file) : { entry });
         break;
@@ -89,7 +109,7 @@ async function resolveEntries(
       case 'specification-document': {
         const registered = await references.specificationDocument(specId, entry.id);
         const file = registered
-          ? await source.documentFile({ kind: 'specification', specId }, entry.id)
+          ? await source.documentFile({ kind: 'specification', specId }, entry.id, budget)
           : undefined;
         facts.push(registered ? found(entry, file) : { entry });
         break;
@@ -103,8 +123,8 @@ async function resolveEntries(
         );
         break;
       case 'path': {
-        // A file is pinned by its digest; a folder or a glob only by its name.
-        const file = await source.checkoutFile(specId, entry.path);
+        // A file is pinned by its digest, a folder or a glob by the digest of its file list.
+        const file = await source.checkoutFile(specId, entry.path, budget);
         facts.push(
           file || (await references.path(specId, entry.path)) ? found(entry, file) : { entry },
         );

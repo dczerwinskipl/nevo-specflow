@@ -1,4 +1,5 @@
 import { sha256Hex } from '../../../hash';
+import { canonicalJson } from '../../../specs/definitions/resolved-catalogue';
 import type { TaskContextEntry } from '../../../tasks/resource/model';
 import type { TaskContextIssue } from '../../../tasks/resource/validate';
 import { WorkflowError } from '../../errors';
@@ -6,6 +7,8 @@ import {
   AGENT_CONTEXT_CATALOGUE_BYTES_MAX,
   AGENT_CONTEXT_DOCUMENT_TYPES_MAX,
   AGENT_CONTEXT_DOCUMENTS_MAX,
+  AGENT_CONTEXT_ENTRIES_MAX,
+  AGENT_CONTEXT_HASHED_BYTES_MAX,
   AGENT_CONTEXT_INSTRUCTIONS_BYTES_MAX,
   AGENT_CONTEXT_REFERENCE_BYTES_MAX,
 } from '../../limits';
@@ -48,14 +51,26 @@ export function compileAgentContext(facts: AgentContextFacts): AgentStepContext 
   }
 
   const catalogueBytes =
-    facts.documentTypes.reduce((sum, type) => sum + bytesOf(type.instructions), 0) +
+    facts.documentTypes.reduce(
+      (sum, type) =>
+        sum +
+        bytesOf(type.title) +
+        bytesOf(type.useWhen) +
+        bytesOf(type.instructions) +
+        bytesOf(type.defaultFilename ?? ''),
+      0,
+    ) +
     (facts.archetype?.templates ?? []).reduce(
-      (sum, template) => sum + bytesOf(template.instructions ?? ''),
+      (sum, template) =>
+        sum +
+        bytesOf(template.title ?? '') +
+        bytesOf(template.filename) +
+        bytesOf(template.instructions ?? ''),
       0,
     );
   if (catalogueBytes > AGENT_CONTEXT_CATALOGUE_BYTES_MAX) {
     overBudget(
-      'the instructions of the document types and templates',
+      'the texts of the document types and templates',
       `${String(AGENT_CONTEXT_CATALOGUE_BYTES_MAX)} bytes`,
     );
   }
@@ -87,6 +102,13 @@ function compileTaskContext(
     'The agent context cannot be built until they exist, or are replaced or removed.',
   );
 
+  if (facts.length > AGENT_CONTEXT_ENTRIES_MAX) {
+    overBudget(
+      `${String(facts.length)} context entries`,
+      `${String(AGENT_CONTEXT_ENTRIES_MAX)} entries`,
+    );
+  }
+
   let instructionBytes = 0;
   const entries = facts.map((fact): ContextEntry => {
     const entry: TaskContextEntry = fact.entry;
@@ -98,17 +120,22 @@ function compileTaskContext(
 
     const ref = entry.kind === 'path' ? entry.path : entry.id;
     const file = fact.found?.file;
-    if (file && file.bytes > AGENT_CONTEXT_REFERENCE_BYTES_MAX) {
+    if (
+      file &&
+      (file.sha256 === undefined || (!file.files && file.bytes > AGENT_CONTEXT_REFERENCE_BYTES_MAX))
+    ) {
       overBudget(
-        `the file of the context reference "${ref}" is ${String(file.bytes)} bytes`,
-        `${String(AGENT_CONTEXT_REFERENCE_BYTES_MAX)} bytes`,
+        `the context reference "${ref}" (${String(file.bytes)} bytes) cannot be hashed`,
+        `${String(AGENT_CONTEXT_REFERENCE_BYTES_MAX)} bytes per file and ${String(AGENT_CONTEXT_HASHED_BYTES_MAX)} bytes in total`,
       );
     }
 
     return {
       kind: entry.kind,
       ref,
-      ...(file ? { path: file.path, bytes: file.bytes } : {}),
+      ...(file?.path !== undefined ? { path: file.path } : {}),
+      ...(file ? { bytes: file.bytes } : {}),
+      ...(file?.files !== undefined ? { files: file.files } : {}),
       ...(file?.sha256 !== undefined ? { sha256: file.sha256 } : {}),
       required: entry.required,
       ...(fact.found === undefined ? { missing: true as const } : {}),
@@ -121,5 +148,5 @@ function compileTaskContext(
     );
   }
 
-  return { entries, digest: sha256Hex(JSON.stringify(entries)) };
+  return { entries, digest: sha256Hex(canonicalJson(entries)) };
 }

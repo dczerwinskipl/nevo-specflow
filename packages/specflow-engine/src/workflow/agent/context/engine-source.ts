@@ -1,17 +1,19 @@
-import { lstat, readFile, realpath } from 'node:fs/promises';
-import { isAbsolute, join, posix, relative, sep } from 'node:path';
+import { posix } from 'node:path';
 
 import type { SpecFlowEngine } from '../../../application';
 import { getProjectCatalogue } from '../../../definitions/process-catalogue';
 import { sha256Hex } from '../../../hash';
+import { canonicalJson } from '../../../specs/definitions/resolved-catalogue';
 import { resolveSpecification } from '../../../specs/discovery';
 import { deriveDocumentTitle } from '../../../specs/documents/document-title';
 import { readRegisteredDocumentSummaries } from '../../../specs/documents/summaries';
 import { readTaskDocuments } from '../../../specs/documents/task-document-reader';
 import { WorkflowError } from '../../errors';
-import { AGENT_CONTEXT_REFERENCE_BYTES_MAX } from '../../limits';
+import { checkoutFilesOf } from '../../checkout-paths';
+import { AGENT_CONTEXT_DOCUMENTS_MAX, AGENT_CONTEXT_FOLDER_FILES_MAX } from '../../limits';
+import type { ContextDocument } from '../../operations/agent-step-context';
+import { fileFact, isCheckoutRelative } from './file-fact';
 import type { AgentContextSource } from './gather';
-import type { ContextDocument, ContextFileFact } from '../../operations/agent-step-context';
 
 const GLOB_CHARACTERS = /[*?[\]{}]/u;
 
@@ -37,11 +39,18 @@ export function engineAgentContextSource(engine: SpecFlowEngine): AgentContextSo
       workspaceRoot: found.workspaceRoot,
       folder: posix.join('specs', found.specification.location, found.specification.slug),
       archetype: found.specification.archetype.id,
+      documentCount: found.specification.documents.length,
     };
   }
 
   async function specificationDocuments(specId: string): Promise<readonly ContextDocument[]> {
-    const { folder } = await specificationFolder(specId);
+    const { folder, documentCount } = await specificationFolder(specId);
+    if (documentCount > AGENT_CONTEXT_DOCUMENTS_MAX) {
+      throw new WorkflowError(
+        'WORKFLOW_INPUT_INVALID',
+        `The agent context is over its budget: ${String(documentCount)} registered documents (at most ${String(AGENT_CONTEXT_DOCUMENTS_MAX)} documents).`,
+      );
+    }
 
     return (await readRegisteredDocumentSummaries(engine, specId)).map(
       (summary): ContextDocument => ({
@@ -123,7 +132,7 @@ export function engineAgentContextSource(engine: SpecFlowEngine): AgentContextSo
           : {}),
       };
     },
-    async documentFile(scope, documentId) {
+    async documentFile(scope, documentId, budget) {
       const { workspaceRoot } = await specificationFolder(scope.specId);
       const document = (
         scope.kind === 'task'
@@ -131,48 +140,50 @@ export function engineAgentContextSource(engine: SpecFlowEngine): AgentContextSo
           : await specificationDocuments(scope.specId)
       ).find((candidate) => candidate.id === documentId);
 
-      return document ? fileFact(workspaceRoot, document.path) : undefined;
+      return document ? fileFact(workspaceRoot, document.path, budget) : undefined;
     },
-    async checkoutFile(specId, path) {
-      if (GLOB_CHARACTERS.test(path)) {
+    async checkoutFile(specId, path, budget) {
+      if (!isCheckoutRelative(path)) {
         return undefined;
       }
 
-      return fileFact((await specificationFolder(specId)).workspaceRoot, path);
+      const { workspaceRoot } = await specificationFolder(specId);
+      const single = GLOB_CHARACTERS.test(path)
+        ? undefined
+        : await fileFact(workspaceRoot, path, budget);
+      if (single) {
+        return single;
+      }
+
+      const files = await checkoutFilesOf(workspaceRoot, path);
+      if (!files) {
+        return undefined;
+      }
+
+      if (files.length > AGENT_CONTEXT_FOLDER_FILES_MAX) {
+        throw new WorkflowError(
+          'WORKFLOW_INPUT_INVALID',
+          `The agent context is over its budget: "${path}" names ${String(files.length)} files (at most ${String(AGENT_CONTEXT_FOLDER_FILES_MAX)} files).`,
+        );
+      }
+
+      const hashed: { path: string; sha256: string }[] = [];
+      let bytes = 0;
+      for (const file of files) {
+        const fact = await fileFact(workspaceRoot, file, budget);
+        if (!fact) {
+          continue;
+        }
+
+        if (fact.sha256 === undefined) {
+          return { bytes: fact.bytes, files: files.length };
+        }
+
+        hashed.push({ path: file, sha256: fact.sha256 });
+        bytes += fact.bytes;
+      }
+
+      return { bytes, files: hashed.length, sha256: sha256Hex(canonicalJson(hashed)) };
     },
   };
-}
-
-/**
- * A regular file inside the checkout as a reference sees it: its size and, within the byte budget,
- * the digest of its bytes. A folder, a missing file and a path that resolves outside the checkout
- * are not files here.
- */
-async function fileFact(root: string, path: string): Promise<ContextFileFact | undefined> {
-  const absolute = join(root, ...path.split('/'));
-  try {
-    const status = await lstat(absolute);
-    if (!status.isFile()) {
-      return undefined;
-    }
-
-    const inside = relative(await realpath(root), await realpath(absolute));
-    if (inside === '..' || inside.startsWith(`..${sep}`) || isAbsolute(inside)) {
-      return undefined;
-    }
-
-    return status.size > AGENT_CONTEXT_REFERENCE_BYTES_MAX
-      ? { path, bytes: status.size }
-      : { path, bytes: status.size, sha256: sha256Hex(await readFile(absolute)) };
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      'code' in error &&
-      ['ENOENT', 'ENOTDIR'].includes(String(error.code))
-    ) {
-      return undefined;
-    }
-
-    throw error;
-  }
 }

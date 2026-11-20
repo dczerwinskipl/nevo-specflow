@@ -77,3 +77,9 @@ export const AGENT_CONTEXT_INSTRUCTIONS_BYTES_MAX = 32 * 1024;
 export const AGENT_CONTEXT_CATALOGUE_BYTES_MAX = 256 * 1024;
 /** A referenced file is hashed only up to this size; a larger one refuses the context. */
 export const AGENT_CONTEXT_REFERENCE_BYTES_MAX = 8 * 1024 * 1024;
+/** The entries of one Task context. */
+export const AGENT_CONTEXT_ENTRIES_MAX = 100;
+/** Every file of one context hashed together (references, folders and globs included). */
+export const AGENT_CONTEXT_HASHED_BYTES_MAX = 32 * 1024 * 1024;
+/** The files one folder or glob reference may name. */
+export const AGENT_CONTEXT_FOLDER_FILES_MAX = 200;

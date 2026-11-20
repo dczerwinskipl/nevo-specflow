@@ -12,7 +12,7 @@ import type {
   WorkflowStep,
   WorkflowTransition,
 } from './model';
-import { checkWorkflow } from './workflow-rules';
+import { checkWorkflow, independentSessionIssues } from './workflow-rules';
 
 const workflowFile = (): WorkflowDefinitionFile => ({
   kind: 'workflow',
@@ -74,6 +74,52 @@ const [implement, review] = base().steps as [
   Extract<WorkflowStep, { kind: 'work' }>,
   Extract<WorkflowStep, { kind: 'work' }>,
 ];
+
+describe('independent archetypes and owner confirmation', () => {
+  const reusing = (): WorkflowDefinition =>
+    withSteps([
+      { ...implement, transitions: [annotated(implement.transitions[0]!, { session: 'reuse' })] },
+      review,
+    ]);
+
+  it('refuses a reused Session into a step of an independent archetype', () => {
+    expect(independentSessionIssues(reusing(), (id) => id === 'reviewer')).toEqual([
+      expect.objectContaining({ location: '/steps/0/transitions/0/session' }),
+    ]);
+  });
+
+  it('accepts a reuse into other archetypes and a fresh Session into an independent one', () => {
+    expect(independentSessionIssues(reusing(), () => false)).toEqual([]);
+    expect(independentSessionIssues(base(), () => true)).toEqual([]);
+  });
+
+  it('parses the confirmation marker and omits it when absent', () => {
+    const file = workflowFile();
+    file.steps[0]!.transitions = [{ id: 'done', to: { step: 'review' }, confirmation: 'owner' }];
+    const parsed = parseWorkflowFile(file);
+
+    expect(parsed.steps[0]!.transitions[0]!.annotations.confirmation).toBe('owner');
+    expect(checkWorkflow(parsed)).toEqual([]);
+    expect(review.transitions[0]!.annotations).not.toHaveProperty('confirmation');
+  });
+
+  it('refuses the confirmation marker on a wait step transition', () => {
+    const wait: WorkflowStep = {
+      kind: 'wait',
+      id: 'wait',
+      title: 'Wait',
+      purpose: 'Wait.',
+      annotations: {},
+      transitions: [
+        annotated(review.transitions[0]!, { confirmation: 'owner' }, { on: 'tasks-finished' }),
+      ],
+    };
+
+    expect(checkWorkflow(specificationWith([implement, wait]))).toContainEqual(
+      expect.objectContaining({ location: '/steps/1/transitions/0/confirmation' }),
+    );
+  });
+});
 
 describe('checkWorkflow', () => {
   it('accepts a coherent workflow', () => {

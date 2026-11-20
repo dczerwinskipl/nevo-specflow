@@ -23,7 +23,16 @@ function transitionIssues(
   const subject = workflow.annotations.subject;
   step.transitions.forEach((transition, index) => {
     const location = `${at}/transitions/${index}`;
-    const { effects, escalate, session } = transition.annotations;
+    const { effects, escalate, session, confirmation } = transition.annotations;
+    if (confirmation !== undefined && step.kind !== 'work') {
+      issues.push(
+        invalid(
+          `${location}/confirmation`,
+          'Only a transition of a work step can require the owner confirmation.',
+        ),
+      );
+    }
+
     if (effects.length > 0 && subject !== 'specification') {
       issues.push(
         invalid(`${location}/effects`, 'Only a Specification workflow has Task effects.'),
@@ -188,6 +197,36 @@ function gateIssues(step: WorkStep, at: string): DefinitionIssue[] {
   });
 
   return issues;
+}
+
+/**
+ * An independent archetype always works in a fresh Session: a transition may not continue the
+ * Session into a step of one. `isIndependent` answers for an archetype id.
+ */
+export function independentSessionIssues(
+  workflow: WorkflowDefinition,
+  isIndependent: (archetypeId: string) => boolean,
+): DefinitionIssue[] {
+  return workflow.steps.flatMap((step, stepIndex) =>
+    step.transitions.flatMap((transition, index) => {
+      if (transition.annotations.session !== 'reuse' || transition.target.kind !== 'step') {
+        return [];
+      }
+
+      const target = findStep(workflow, transition.target.step);
+      const archetype = target?.kind === 'work' ? target.annotations.archetype : undefined;
+      if (target === undefined || archetype === undefined || !isIndependent(archetype)) {
+        return [];
+      }
+
+      return [
+        invalid(
+          `/steps/${String(stepIndex)}/transitions/${String(index)}/session`,
+          `The step "${target.id}" is done by the independent archetype "${archetype}", which always starts a fresh Session.`,
+        ),
+      ];
+    }),
+  );
 }
 
 export function checkWorkflow(workflow: WorkflowDefinition): DefinitionIssue[] {

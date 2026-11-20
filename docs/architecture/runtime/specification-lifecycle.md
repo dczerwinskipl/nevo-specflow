@@ -309,6 +309,14 @@ differing or missing path (not just the first); the defense-in-depth re-check im
 rebind re-runs the same whole-branch content proof, not only a subtree tree-hash comparison, so a
 resumed/recovered Close is re-verified exactly like a fresh one.
 
+The Worktree Close preview (`readCloseMergeFacts`) reflects this mode truthfully instead of
+describing a merge that will not happen: with `finishAfterExternalMerge: true` it answers
+`merge: {status: 'not-integrated', reason: 'already-merged-externally', sourceBranch,
+targetBranch}` — never `'integrates'` with a `commitsAhead` count — because no merge commit is
+ever created in this mode. `GET /api/specs/:specId/worktree/close/preview` forwards the same flag
+(as `?finishAfterExternalMerge=true`); the Specification Close preview route ignores it, consistent
+with that kind never accepting the field.
+
 **Restricted to Worktree Close (owner decision 2026-11-20).** `finishAfterExternalMerge` is not
 offered on Specification Close at all: the field does not exist on its request type, its HTTP body
 schema and `specs close` CLI command, so a caller cannot even express the combination through those

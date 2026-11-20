@@ -13,6 +13,7 @@ import {
   readWorkspaceSpecification,
   reserveCloseOperation,
 } from '../../src/testing';
+import { previewPublicCloseOperation } from '../../src/specs/operations/api';
 import { createGitTestProject, git, commitStaged } from '../support/git-project';
 
 const cleanup: string[] = [];
@@ -99,6 +100,42 @@ describe('#157 finish Close after an external (PR) merge', () => {
     );
     expect(registry.workspaces.some((x) => x.kind === 'linked')).toBe(false);
   }, 150000);
+
+  it('previews already-merged-externally instead of describing a merge that will not happen', async () => {
+    const { root, engine, spec } = await fixture();
+    const squashSourcePath = join(spec.workspaceRoot, 'specs', 'active', spec.slug);
+    const squashDestinationPath = join(root, 'specs', 'active', spec.slug);
+    await mkdir(join(root, 'specs', 'active'), { recursive: true });
+    await cp(squashSourcePath, squashDestinationPath, { recursive: true });
+    git(root, 'add', '-A', '--', 'specs/active/' + spec.slug);
+    commitStaged(root, 'simulate external squash merge of ' + spec.slug);
+
+    const sourceBranch = git(spec.workspaceRoot, 'symbolic-ref', '--short', 'HEAD');
+    const targetBranch = git(root, 'symbolic-ref', '--short', 'HEAD');
+
+    // With the flag: no merge will happen, so the preview must not describe one.
+    const withFlag = await previewPublicCloseOperation(engine, {
+      kind: 'worktree-close',
+      operationId: randomUUID(),
+      specId: spec.specId,
+      finishAfterExternalMerge: true,
+    });
+    expect(withFlag.merge).toEqual({
+      status: 'not-integrated',
+      reason: 'already-merged-externally',
+      sourceBranch,
+      targetBranch,
+    });
+
+    // Without the flag, the ordinary preview is unaffected: it still describes the real merge
+    // an actual Close of this same plan would perform.
+    const withoutFlag = await previewPublicCloseOperation(engine, {
+      kind: 'worktree-close',
+      operationId: randomUUID(),
+      specId: spec.specId,
+    });
+    expect(withoutFlag.merge).toMatchObject({ status: 'integrates', sourceBranch, targetBranch });
+  }, 120000);
 
   it('refuses a diverged destination subtree, naming the differing path, with no mutation', async () => {
     const { root, engine, spec } = await fixture();

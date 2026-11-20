@@ -472,13 +472,21 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
           const engine = options.engine;
           const { specId } = request.params;
           const integrateToTargetBranch = request.query.integrateToTargetBranch;
+          const finishAfterExternalMerge = request.query.finishAfterExternalMerge === 'true';
           // A fresh operation id: the read-only preview with its merge facts, never a journal.
-          // finishAfterExternalMerge is not offered on the preview query: it pins no new Git fact a
-          // preview could usefully reflect (the preview's `merge` shape is unaffected by it).
+          // finishAfterExternalMerge changes the previewed merge shape (no merge at all, instead of
+          // an ordinary integration), so it is forwarded for Worktree Close. The Specification Close
+          // preview ignores it: that kind never accepts the field (owner decision 2026-11-20; its
+          // request body already rejects it at the schema boundary).
           const preview = await previewPublicCloseOperation(
             engine,
             kind === 'worktree-close'
-              ? { kind, operationId: randomUUID(), specId }
+              ? {
+                  kind,
+                  operationId: randomUUID(),
+                  specId,
+                  ...(finishAfterExternalMerge ? { finishAfterExternalMerge } : {}),
+                }
               : {
                   kind,
                   operationId: randomUUID(),

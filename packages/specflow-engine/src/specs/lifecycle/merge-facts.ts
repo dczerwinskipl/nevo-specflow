@@ -8,11 +8,14 @@ import { CloseOperationError, type ClosePlan } from './model';
  *   commit on top);
  * - `not-integrated`: nothing is merged, for `reason` `archive-only` (the linked Specification is
  *   archived on its own branch, as asked) or `primary-checkout` (the Specification lives in the
- *   primary checkout and is archived directly on `sourceBranch`, the integration branch), or
- *   `git-off` (Git is off for the project: the Specification is archived in place in `checkout`,
- *   nothing is committed and no branch is read; the archive stays uncommitted there, so a linked
- *   worktree created while Git was on later meets `uncommitted-changes` in a Worktree Close with Git
- *   on until it is committed).
+ *   primary checkout and is archived directly on `sourceBranch`, the integration branch),
+ *   `already-merged-externally` (a Worktree Close requested with `finishAfterExternalMerge: true`:
+ *   `sourceBranch` was already merged into `targetBranch` outside this Close, e.g. a GitHub squash
+ *   merge; the Close proves whole-branch content equivalence instead of merging again and creates
+ *   no merge commit), or `git-off` (Git is off for the project: the Specification is archived in
+ *   place in `checkout`, nothing is committed and no branch is read; the archive stays uncommitted
+ *   there, so a linked worktree created while Git was on later meets `uncommitted-changes` in a
+ *   Worktree Close with Git on until it is committed).
  */
 export type CloseMergeFacts =
   | {
@@ -25,6 +28,12 @@ export type CloseMergeFacts =
       readonly status: 'not-integrated';
       readonly reason: 'archive-only' | 'primary-checkout';
       readonly sourceBranch: string;
+    }
+  | {
+      readonly status: 'not-integrated';
+      readonly reason: 'already-merged-externally';
+      readonly sourceBranch: string;
+      readonly targetBranch: string;
     }
   | {
       readonly status: 'not-integrated';
@@ -54,6 +63,15 @@ export async function readCloseMergeFacts(plan: ClosePlan): Promise<CloseMergeFa
 
   if (!plan.target || !plan.targetBranch) {
     throw new CloseOperationError('CLOSE_PREFLIGHT', 'The integration target is not planned.');
+  }
+
+  if (plan.kind === 'worktree-close' && plan.finishAfterExternalMerge === true) {
+    return {
+      status: 'not-integrated',
+      reason: 'already-merged-externally',
+      sourceBranch,
+      targetBranch: plan.targetBranch,
+    };
   }
 
   const counted = await executeGit(plan.source.root, [

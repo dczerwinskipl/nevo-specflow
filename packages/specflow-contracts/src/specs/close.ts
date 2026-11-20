@@ -52,8 +52,21 @@ export const CloseSpecificationRequestSchema = Type.Object(
   { additionalProperties: false },
 );
 export type CloseSpecificationRequest = Static<typeof CloseSpecificationRequestSchema>;
+/**
+ * `integrateToTargetBranch` previews a Specification Close's archive-only choice.
+ * `finishAfterExternalMerge` previews a Worktree Close's external-merge finish (changes the
+ * previewed `merge` shape to `not-integrated`/`already-merged-externally`); the Specification
+ * Close preview route ignores it, consistent with its request body never accepting the field
+ * (owner decision 2026-11-20). A query string is always text, so this is the literal `'true'`
+ * (never `boolean`, unlike {@link FinishAfterExternalMergeSchema}'s JSON body field): the
+ * project's Ajv instance never coerces querystring types (`coerceTypes: false`), the convention
+ * already used for `recheck` on the provider catalogue query.
+ */
 export const ClosePreviewQuerySchema = Type.Object(
-  { integrateToTargetBranch: Type.Optional(Type.Boolean()) },
+  {
+    integrateToTargetBranch: Type.Optional(Type.Boolean()),
+    finishAfterExternalMerge: Type.Optional(Type.Literal('true')),
+  },
   { additionalProperties: false },
 );
 // Trusted operator acknowledgement only: `true` asserts the operator has
@@ -68,12 +81,15 @@ export const CloseScratchReconciliationRequestSchema = Type.Object(
  * `targetBranch`, and `commitsAhead` counts the source commits not on the target (0: nothing to
  * merge; a Specification Close adds its archive commit on top). `not-integrated`: nothing is
  * merged because the linked Specification is archived on its own branch as asked (`archive-only`)
- * or lives in the primary checkout and is archived directly on its branch (`primary-checkout`), or
- * because Git is off for the project (`git-off`: `git.enabled: false` or no `git:` block): the
- * Specification is archived in place in `checkout` (the primary checkout or its linked worktree),
- * nothing is committed and no branch is read. The archive stays uncommitted there: a linked
- * worktree created while Git was on meets `uncommitted-changes` in a later Worktree Close with Git
- * on until the archive is committed.
+ * or lives in the primary checkout and is archived directly on its branch (`primary-checkout`),
+ * because a Worktree Close was requested with `finishAfterExternalMerge: true`
+ * (`already-merged-externally`: `sourceBranch` was already merged into `targetBranch` outside this
+ * Close, e.g. a GitHub squash merge; the Close proves whole-branch content equivalence instead of
+ * merging again and creates no merge commit), or because Git is off for the project (`git-off`:
+ * `git.enabled: false` or no `git:` block): the Specification is archived in place in `checkout`
+ * (the primary checkout or its linked worktree), nothing is committed and no branch is read. The
+ * archive stays uncommitted there: a linked worktree created while Git was on meets
+ * `uncommitted-changes` in a later Worktree Close with Git on until the archive is committed.
  */
 export const CloseMergeSchema = Type.Union([
   Type.Object(
@@ -90,6 +106,15 @@ export const CloseMergeSchema = Type.Union([
       status: Type.Literal('not-integrated'),
       reason: Type.Union([Type.Literal('archive-only'), Type.Literal('primary-checkout')]),
       sourceBranch: Type.String(),
+    },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      status: Type.Literal('not-integrated'),
+      reason: Type.Literal('already-merged-externally'),
+      sourceBranch: Type.String(),
+      targetBranch: Type.String(),
     },
     { additionalProperties: false },
   ),

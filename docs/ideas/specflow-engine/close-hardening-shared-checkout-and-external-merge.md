@@ -921,3 +921,26 @@ a refusal assertion — same fixture, now expects `CLOSE_EXTERNAL_MERGE_UNSUPPOR
 mutation. Its `closeWorktree` scenarios are unchanged and still pass. A new, narrower regression test
 was added to `close-specification-lifecycle.test.ts` asserting the refusal happens before any
 mutation (no archive move, no commit, no journal reserved) on a plain primary-checkout Specification.
+
+## Follow-up fix: the preview described a merge that would not happen (2026-11-20)
+
+A second external review on top of `e16e7a70b` (the scoping fix above) found that
+`readCloseMergeFacts` (`merge-facts.ts`) never looked at `plan.finishAfterExternalMerge` at all: a
+Worktree Close preview with the flag set still answered `{status: 'integrates', sourceBranch,
+targetBranch, commitsAhead}` — describing an ordinary merge — even though the real Close, with that
+same flag, skips the merge/fast-forward step entirely and only proves whole-branch content
+equivalence. The root cause was a comment at the HTTP preview route claiming the flag "pins no new
+Git fact a preview could usefully reflect"; that reasoning was wrong, since the merge shape plainly
+differs between the two modes.
+
+Fixed by adding a fourth `CloseMergeFacts` variant, `{status: 'not-integrated', reason:
+'already-merged-externally', sourceBranch, targetBranch}`, and checking
+`plan.finishAfterExternalMerge === true` in `readCloseMergeFacts` before computing `commitsAhead`.
+This single fix covers every caller of `previewPublicCloseOperation` (the engine API used by both
+CLI and HTTP) at once. The HTTP preview route and its query contract (`ClosePreviewQuerySchema`) now
+also accept and forward `finishAfterExternalMerge` for the Worktree Close preview only (as the query
+string literal `'true'`, not JSON `true`: the project's Ajv validates querystrings with
+`coerceTypes: false`, so a `boolean`-typed query field can never actually validate over real HTTP —
+confirmed empirically before choosing the fix, matching the existing `recheck` query convention on
+the provider catalogue). The Specification Close preview route continues to ignore the parameter,
+consistent with that kind never accepting the field at all.

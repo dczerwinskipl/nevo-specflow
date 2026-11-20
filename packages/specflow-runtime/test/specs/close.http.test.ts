@@ -438,6 +438,69 @@ describe('E2.T16 authorized HTTP lifecycle adapters', () => {
     }
   }, 180000);
 
+  it('previews finishAfterExternalMerge as already-merged-externally; the Specification Close preview ignores the query', async () => {
+    const { root, engine, spec } = await fixture(true);
+    const worktreeUrl = '/api/specs/' + spec.specId + '/worktree/close/preview';
+    const specificationUrl = '/api/specs/' + spec.specId + '/close/preview';
+    const admin = await authedApp(engine, 'admin');
+    try {
+      // "Externally" squash-merge the Spec's folder into the destination, as a GitHub PR would.
+      const sourcePath = join(spec.workspaceRoot, 'specs', 'active', spec.slug);
+      const destinationPath = join(root, 'specs', 'active', spec.slug);
+      await mkdir(join(root, 'specs', 'active'), { recursive: true });
+      await cp(sourcePath, destinationPath, { recursive: true });
+      git(root, 'add', '-A', '--', 'specs/active/' + spec.slug);
+      git(
+        root,
+        '-c',
+        'user.name=Test',
+        '-c',
+        'user.email=test@example.invalid',
+        'commit',
+        '-qm',
+        'simulate external squash merge',
+      );
+      const sourceBranch = git(spec.workspaceRoot, 'symbolic-ref', '--short', 'HEAD');
+      const targetBranch = git(root, 'symbolic-ref', '--short', 'HEAD');
+
+      const withFlag = await admin.app.inject({
+        method: 'GET',
+        url: worktreeUrl + '?finishAfterExternalMerge=true',
+        headers: admin.headers,
+      });
+      expect(withFlag.statusCode, withFlag.body).toBe(200);
+      expect(withFlag.json()).toMatchObject({
+        merge: {
+          status: 'not-integrated',
+          reason: 'already-merged-externally',
+          sourceBranch,
+          targetBranch,
+        },
+      });
+
+      // Without the flag, the ordinary Worktree Close preview is unaffected.
+      const withoutFlag = await admin.app.inject({
+        method: 'GET',
+        url: worktreeUrl,
+        headers: admin.headers,
+      });
+      expect(withoutFlag.statusCode, withoutFlag.body).toBe(200);
+      expect(withoutFlag.json()).toMatchObject({ merge: { status: 'integrates' } });
+
+      // Specification Close never accepts this mode (owner decision 2026-11-20): its preview
+      // route ignores the query parameter entirely instead of previewing it.
+      const specPreview = await admin.app.inject({
+        method: 'GET',
+        url: specificationUrl + '?finishAfterExternalMerge=true',
+        headers: admin.headers,
+      });
+      expect(specPreview.statusCode, specPreview.body).toBe(200);
+      expect(specPreview.json()).toMatchObject({ merge: { status: 'integrates' } });
+    } finally {
+      await admin.app.close();
+    }
+  }, 180000);
+
   it('refuses Worktree Close with 409 CLOSE_LOCAL_CONFIG_MODIFIED, then resumes once the file is gone', async () => {
     const { engine, spec } = await fixture(true);
     const url = '/api/specs/' + spec.specId + '/worktree/close';

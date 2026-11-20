@@ -1165,6 +1165,36 @@
                 "required": [
                   "status",
                   "reason",
+                  "sourceBranch",
+                  "targetBranch"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "not-integrated"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "already-merged-externally"
+                    ]
+                  },
+                  "sourceBranch": {
+                    "type": "string"
+                  },
+                  "targetBranch": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "required": [
+                  "status",
+                  "reason",
                   "checkout"
                 ],
                 "properties": {
@@ -25275,6 +25305,17 @@
             },
             "in": "query",
             "name": "integrateToTargetBranch",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true"
+              ]
+            },
+            "in": "query",
+            "name": "finishAfterExternalMerge",
             "required": false
           },
           {
@@ -52345,6 +52386,17 @@
             },
             "in": "query",
             "name": "integrateToTargetBranch",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true"
+              ]
+            },
+            "in": "query",
+            "name": "finishAfterExternalMerge",
             "required": false
           },
           {

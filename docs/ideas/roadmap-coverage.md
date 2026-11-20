@@ -179,7 +179,7 @@ specflow-engine/execution-plans/05-managed-execution-integration/tasks/T09-archi
 specflow-engine/execution-plans/06-workflow-kernel/README.md | Mapped above. 19 follow-ups, individually classified above
 specflow-engine/execution-plans/README.md | Hub. Historical plan index
 specflow-engine/execution-scopes-and-recovery.md | Mapped. I101/P102/L140: claims and recovery
-specflow-engine/legacy-nevo-migration.md | Mapped. P105 gates; P104 batches; T101 integration; T102 commit
+specflow-engine/legacy-nevo-migration.md | Mapped. P102/I101, L131, P103/P104/P105, T101/T102 and I103: legacy modules plus NEvo-specific full-feature cutover acceptance (not a separate product capability)
 specflow-engine/local-actor-and-human-gates.md | Mapped. P106/I102/L140: human trust and local authorization
 specflow-engine/locking-and-admission.md | Mapped. P102/I101/L140: admission and liveness
 specflow-engine/managed-session-integration.md | Mapped. C005/P102/P104/L109: Sessions and delegation

@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react';
-import { Bot, ChevronDown, GitCommitHorizontal } from 'lucide-react';
+import { useId, useState, type ReactNode } from 'react';
+import { Bot, ChevronDown, CircleStop, GitCommitHorizontal } from 'lucide-react';
 import {
   Alert,
   Button,
@@ -12,6 +12,7 @@ import {
   DialogTitle,
   Field,
   IconButton,
+  InformationList,
   InlineNote,
   Menu,
   MenuContent,
@@ -24,9 +25,14 @@ import {
 import { NowBlock } from '../../features/tasks/execution/NowBlock';
 import { NowOperationsMenu } from '../../features/tasks/execution/NowOperationsMenu';
 import { WorkflowExecutionFixture } from '../../features/tasks/execution/ProjectWorkflowExecution.stories-support';
+import { specificationWorkflowProjection } from '../../features/tasks/execution/projections.stories-support';
 import { ModelEffortPicker } from '../../features/sessions/managed/ModelEffortPicker';
 import { SessionProviderIcon } from '../../features/sessions/shared/SessionProviderIcon';
+import { AgentPicker } from '../../features/sessions/start/fields/AgentPicker';
+import { codexClaudeCatalogue } from '../../features/sessions/start/catalogue/startCatalogue.stories-support';
 import { StoryLocalization } from '../../i18n/StoryLocalization';
+import { OperationalRow } from '../../shared/operational-list';
+import { AGENT_FILES, CloseUncommittedDialog } from './CloseMock.stories-support';
 import {
   BRANCH,
   SESSION_TITLE,
@@ -37,8 +43,8 @@ import {
   takenOverImplementation,
 } from './fixtures.stories-support';
 import {
+  Branch,
   CheckoutPath,
-  DiscardWarning,
   Goal,
   Group,
   LineIcon,
@@ -47,6 +53,7 @@ import {
   QuoteBlock,
   Replace,
   TextLink,
+  findDeepest,
   findHistoryList,
   findNow,
 } from './MockParts.stories-support';
@@ -54,8 +61,13 @@ import {
 /*
  * PRESENTATION MOCK ONLY (design validation for docs/product/specflow/ui/workflow-execution.md,
  * "Ask agent"). The real routed Full Task page or Specification Overview, with only the Now block
- * (or the Task history list) replaced by the mock's, and the mock's dialogs open over it. Static
- * data, no commands; no interaction tests.
+ * (or another region the state changes) replaced by the mock's, and the mock's dialogs open over
+ * it. Static data, no commands; no interaction tests.
+ *
+ * One story, one sequence of times (local time of the fixtures): Review asked for changes at
+ * 12:40 PM; the agent started Implementation attempt 2 at 12:52 PM and either finished at 1:18 PM
+ * (finished stories) or stopped without a result at 1:10 PM, after which the owner took over at
+ * 1:15 PM (attempt 3).
  */
 
 export type AskAgentState =
@@ -67,8 +79,12 @@ export type AskAgentState =
   | 'dialog-dirty'
   | 'dialog-no-agent'
   | 'dialog-pairing-code'
+  | 'dialog-session-unavailable'
   | 'running'
   | 'stopping'
+  | 'return-requested'
+  | 'outcome-unknown'
+  | 'outcome-unknown-other'
   | 'finished-committed'
   | 'finished-commit-failed'
   | 'ended-without-finish'
@@ -92,13 +108,10 @@ const claudeProvider = {
 };
 
 /** The Now block's ⋯ menu as it is today (Return, Workflow history, the step id note). */
-function OperationsMenu({ extra = [] }: { readonly extra?: readonly string[] }) {
+function OperationsMenu() {
   return (
     <NowOperationsMenu
-      operations={[
-        ...extra.map((label) => ({ id: label, label, onSelect: noop })),
-        { id: 'return', label: 'Return to an earlier step', onSelect: noop },
-      ]}
+      operations={[{ id: 'return', label: 'Return to an earlier step', onSelect: noop }]}
       onOpenHistory={noop}
       note={['Step implement · Build and review rev 4']}
     />
@@ -118,6 +131,18 @@ function SessionLink({ title = SESSION_TITLE }: { readonly title?: string }) {
 }
 
 const goal = <Goal text="Write the code and its tests so the behaviour in task.md works." />;
+const reviewGoal = <Goal text="Check the change against task.md and record what was verified." />;
+
+function StartActions({ askDisabled = false }: { readonly askDisabled?: boolean }) {
+  return (
+    <>
+      <Button disabled={askDisabled}>Start step</Button>
+      <Button variant="secondary" leadingIcon={Bot} disabled={askDisabled}>
+        Ask agent
+      </Button>
+    </>
+  );
+}
 
 /* ------------------------------------------------------------------ Now blocks of each state */
 
@@ -130,14 +155,7 @@ function EntryTwoButtons() {
       links={links}
       menu={<OperationsMenu />}
       summary={goal}
-      actions={
-        <>
-          <Button>Start step</Button>
-          <Button variant="secondary" leadingIcon={Bot}>
-            Ask agent
-          </Button>
-        </>
-      }
+      actions={<StartActions />}
     />
   );
 }
@@ -176,40 +194,99 @@ function EntrySplit() {
   );
 }
 
-function Running({ stopping = false }: { readonly stopping?: boolean }) {
+type Waiting = 'running' | 'stopping' | 'return-requested' | 'outcome-unknown';
+
+/** The agent's attempt while its process runs, is asked to stop, or may still run. */
+function AgentAttempt({ kind }: { readonly kind: Waiting }) {
+  const line = {
+    running: 'Attempt 2 · agent working since Nov 13, 12:52 PM · ',
+    stopping: 'Attempt 2 · stopping the agent · ',
+    'return-requested': 'Attempt 2 · return requested · waiting for the agent to stop · ',
+    'outcome-unknown': 'Attempt 2 · the agent’s outcome is unknown · ',
+  }[kind];
+
+  const note = {
+    running: undefined,
+    stopping: (
+      <InlineNote tone="info" icon="loader">
+        Asked the agent to stop. Implementation stays locked until SpecFlow sees its process has
+        ended; then you can continue, take over or return.
+      </InlineNote>
+    ),
+    'return-requested': (
+      <InlineNote tone="info" icon="loader">
+        You asked to return to Design. SpecFlow is stopping the agent first: the step goes back to
+        Design only once its process has ended, so nothing it still writes is lost or mixed into the
+        next attempt.
+      </InlineNote>
+    ),
+    'outcome-unknown': (
+      <InlineNote tone="danger" role="alert">
+        <span className="font-medium text-content-primary">
+          SpecFlow cannot tell whether the agent is still working.
+        </span>{' '}
+        Its process may still be running, so nothing can be saved anywhere in this project until
+        that is known: steps, documents and tasks of every specification wait. Check outcome asks
+        the machine running SpecFlow again. If it still cannot tell, end the agent’s process there,
+        then check again.
+      </InlineNote>
+    ),
+  }[kind];
+
+  const actions = {
+    running: (
+      <Button variant="secondary" leadingIcon={CircleStop}>
+        Stop agent
+      </Button>
+    ),
+    stopping: (
+      <Button variant="secondary" disabled aria-busy>
+        Stopping…
+      </Button>
+    ),
+    'return-requested': (
+      <Button variant="secondary" disabled aria-busy>
+        Returning…
+      </Button>
+    ),
+    'outcome-unknown': <Button leadingIcon="refresh">Check outcome</Button>,
+  }[kind];
+
   return (
     <NowBlock
       projection={agentImplementation()}
       headingId="now-mock"
       links={links}
-      menu={<OperationsMenu />}
+      menu={kind === 'running' ? <OperationsMenu /> : undefined}
       positionLine={
         <>
-          {stopping
-            ? 'Attempt 2 · stopping the agent · '
-            : 'Attempt 2 · agent working since 12:52 · '}
+          {line}
           <SessionLink />
         </>
       }
       summary={goal}
+      note={note}
+      actions={actions}
+    />
+  );
+}
+
+/** Another subject while an agent's outcome is unknown: every change waits, and says why. */
+function OtherSubjectBlocked() {
+  return (
+    <NowBlock
+      projection={specificationWorkflowProjection('waiting')}
+      headingId="now-mock"
+      links={links}
+      showHandoff={false}
       note={
-        stopping ? (
-          <InlineNote tone="info" icon="loader">
-            Asked the agent to stop. Implementation stays locked until SpecFlow sees its process has
-            ended; then you can continue, take over or return.
-          </InlineNote>
-        ) : undefined
-      }
-      actions={
-        stopping ? (
-          <Button variant="secondary" disabled aria-busy>
-            Stopping…
-          </Button>
-        ) : (
-          <Button variant="secondary" leadingIcon="circle-pause">
-            Stop agent
-          </Button>
-        )
+        <InlineNote tone="attention" role="alert">
+          <span className="font-medium text-content-primary">
+            Nothing can be saved in this project right now.
+          </span>{' '}
+          SpecFlow cannot tell whether the agent working on t-04 is still running. Open t-04 to
+          check its outcome. <TextLink>Open t-04</TextLink>
+        </InlineNote>
       }
     />
   );
@@ -222,22 +299,14 @@ function FinishedCommitted() {
       headingId="now-mock"
       links={links}
       menu={<OperationsMenu />}
-      summary={<Goal text="Check the change against task.md and record what was verified." />}
+      summary={reviewGoal}
       note={
         <InlineNote tone="info" icon={GitCommitHorizontal}>
           The agent finished Implementation. Committed <span className={MONO}>3f2a9c1</span> on{' '}
-          <span className={MONO}>{BRANCH}</span>: 2 documents and 3 files.{' '}
-          <TextLink>Show commit</TextLink>
+          <Branch name={BRANCH} />: 2 documents and 3 files. <TextLink>Show commit</TextLink>
         </InlineNote>
       }
-      actions={
-        <>
-          <Button>Start step</Button>
-          <Button variant="secondary" leadingIcon={Bot}>
-            Ask agent
-          </Button>
-        </>
-      }
+      actions={<StartActions />}
     />
   );
 }
@@ -249,37 +318,25 @@ function FinishedCommitFailed() {
       headingId="now-mock"
       links={links}
       menu={<OperationsMenu />}
-      summary={<Goal text="Check the change against task.md and record what was verified." />}
+      summary={reviewGoal}
       note={
         <InlineNote tone="attention" role="alert">
           <span className="font-medium text-content-primary">
-            Implementation is finished. The commit failed (
-            <span className={MONO}>COMMIT_HOOK_FAILED</span>).
+            Implementation is finished, but its commit failed: a Git hook in this repository refused
+            it (<span className={MONO}>COMMIT_HOOK_FAILED</span>).
           </span>{' '}
-          These 5 files stay uncommitted on <span className={MONO}>{BRANCH}</span>, and Close lists
-          them until they are committed.
-          <PathList
-            paths={[
-              'specs/active/single-sign-on/tasks/t-04/task.md',
-              'specs/active/single-sign-on/tasks/t-04/screens.md',
-              'src/auth/refresh.ts',
-              'src/auth/state.ts',
-              'src/auth/refresh.test.ts',
-            ]}
-          />
-          <span className="mt-1 block">
-            <TextLink>Retry commit</TextLink>
-          </span>
+          These 5 files stay uncommitted on <Branch name={BRANCH} />, and Close lists them until
+          they are committed. Until then Ask agent cannot start Review: an agent starts only from a
+          committed checkout.
+          <PathList paths={AGENT_FILES} />
+          <div className="mt-2">
+            <Button size="sm" variant="secondary" leadingIcon={GitCommitHorizontal}>
+              Retry commit
+            </Button>
+          </div>
         </InlineNote>
       }
-      actions={
-        <>
-          <Button>Start step</Button>
-          <Button variant="secondary" leadingIcon={Bot}>
-            Ask agent
-          </Button>
-        </>
-      }
+      actions={<StartActions />}
     />
   );
 }
@@ -295,11 +352,10 @@ function PartialWork() {
 }
 
 function Unresolved({ kind }: { readonly kind: 'ended' | 'refused' | 'continue-refused' }) {
-  const line = {
-    ended: 'Attempt 2 · the agent stopped without finishing · ',
-    refused: 'Attempt 2 · the agent’s result was not accepted · ',
-    'continue-refused': 'Attempt 2 · the agent stopped without finishing · ',
-  }[kind];
+  const line =
+    kind === 'refused'
+      ? 'Attempt 2 · the agent’s result was not accepted · '
+      : 'Attempt 2 · the agent stopped without a result at 1:10 PM · ';
 
   const note =
     kind === 'refused' ? (
@@ -324,18 +380,19 @@ function Unresolved({ kind }: { readonly kind: 'ended' | 'refused' | 'continue-r
     ) : kind === 'continue-refused' ? (
       <InlineNote tone="attention" role="alert">
         <span className="font-medium text-content-primary">
-          The agent cannot continue: 2 files changed since its last turn.
+          The agent cannot continue: 2 files changed since it stopped.
         </span>
         <PathList paths={['src/auth/refresh.ts', 'docs/notes.md']} />
         <span className="mt-1 block">
-          SpecFlow never counts someone else’s edits as the agent’s work. Commit or undo these
-          changes, then continue. Or take over and finish the step yourself.
+          SpecFlow never counts someone else’s edits as the agent’s work. Undo these changes, or
+          commit them yourself (they become your commit, not the agent’s), then continue. Or take
+          over and finish the step yourself.
         </span>
       </InlineNote>
     ) : (
       <InlineNote tone="attention">
         <span className="font-medium text-content-primary">
-          The agent’s turn ended without a result.
+          The agent stopped without proposing a result.
         </span>{' '}
         Continue lets it go on in the same session. Take over to finish the step yourself.
       </InlineNote>
@@ -380,7 +437,7 @@ function ConfirmPending() {
       menu={<OperationsMenu />}
       positionLine={
         <>
-          Waiting for your confirmation · the agent finished at 14:05 ·{' '}
+          Waiting for your confirmation · the agent finished Nov 12, 3:05 PM ·{' '}
           <SessionLink title="Break down single sign-on" />
         </>
       }
@@ -408,7 +465,7 @@ function ConfirmPending() {
             behaviour.md yet; I wrote them into its task.md.
           </QuoteBlock>
           <InlineNote tone="info">
-            Confirming approves 5 draft tasks (t-01 to t-05) and moves to Waiting for tasks.{' '}
+            Confirming approves the 5 draft tasks (t-01 to t-05) and moves to Waiting for tasks.{' '}
             <TextLink>See Tasks</TextLink>
           </InlineNote>
         </div>
@@ -430,10 +487,32 @@ function TakenOver() {
       headingId="now-mock"
       links={links}
       menu={<OperationsMenu />}
-      positionLine="Attempt 3 · in progress since 12:31 · started by you · taken over from the agent"
+      positionLine="Attempt 3 · in progress since Nov 13, 1:15 PM · started by you · taken over from the agent"
       summary={goal}
       actions={<Button>Finish step</Button>}
     />
+  );
+}
+
+/* ----------------------------------------------- the Overview's other sections, kept coherent */
+
+/** The Overview's Sessions section with the agent's Session (the Sessions list row). */
+function SessionsWithAgent({ unknown = false }: { readonly unknown?: boolean }) {
+  return (
+    <InformationList>
+      <OperationalRow
+        leading={<SessionProviderIcon providerId="claude" />}
+        primary={unknown ? SESSION_TITLE : 'Break down single sign-on'}
+        onPrimaryClick={noop}
+        factsLayout="inline"
+        compactFacts={
+          unknown ? ['Nov 13', 'Claude Sonnet 5', '1 task'] : ['Nov 12', 'Claude Sonnet 5']
+        }
+        {...(unknown
+          ? { supporting: { text: 'Session state unknown', textClassName: 'text-content-muted' } }
+          : {})}
+      />
+    </InformationList>
   );
 }
 
@@ -454,7 +533,7 @@ function MockDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent closeLabel="Close">
+      <DialogContent closeLabel="Close" onOpenAutoFocus={(event) => event.preventDefault()}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {description ? <DialogDescription>{description}</DialogDescription> : null}
@@ -468,36 +547,61 @@ function MockDialog({
   );
 }
 
-type SessionMode = 'fresh' | 'continue' | 'independent';
+type SessionMode = 'fresh' | 'continue' | 'independent' | 'not-chosen' | 'gone';
 
 function SessionChoice({ mode }: { readonly mode: SessionMode }) {
   const [model, setModel] = useState({ modelId: 'sonnet-5', effort: 'high' });
+  const [provider, setProvider] = useState('claude');
+  const labelId = useId();
+
+  if (mode === 'continue' || mode === 'gone') {
+    return (
+      <div className="grid gap-2">
+        <Typography as="p" variant="label-sm">
+          Session
+        </Typography>
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-body-md">
+          <SessionProviderIcon providerId="claude" />
+          <span>Continues</span>
+          {mode === 'gone' ? (
+            <span className="text-content-muted line-through">{SESSION_TITLE}</span>
+          ) : (
+            <TextLink>{SESSION_TITLE}</TextLink>
+          )}
+        </p>
+        <Typography as="p" variant="body-sm" className="text-content-secondary">
+          {mode === 'gone'
+            ? 'This session no longer exists.'
+            : 'Claude Sonnet 5 · high. The workflow continues the session that did Implementation before, so the agent keeps what it learned there. Its agent and model stay as they are.'}
+        </Typography>
+      </div>
+    );
+  }
 
   return (
-    <div className="grid gap-2">
-      <Typography as="p" variant="label-sm">
-        Session
+    <div className="grid gap-3">
+      <Typography as="p" variant="label-sm" id={labelId}>
+        New session
       </Typography>
-      {mode === 'continue' ? (
+      {mode === 'not-chosen' ? (
         <div className="grid gap-1">
-          <p className="flex items-center gap-2 text-body-md">
-            <SessionProviderIcon providerId="claude" />
-            <span>
-              Continues <TextLink>{SESSION_TITLE}</TextLink>
-            </span>
+          <p className="flex items-center gap-2 text-body-md text-content-muted">
+            <span className="inline-flex size-4 rounded-full border border-dashed border-border-strong" />
+            Agent and model not chosen
           </p>
-          <Typography as="p" variant="body-sm" className="text-content-secondary">
-            Claude Sonnet 5 · high. The workflow continues the session that did Implementation
-            before, so the agent keeps what it learned. Its model stays as it is.
-          </Typography>
         </div>
       ) : (
-        <div className="grid gap-1">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <p className="flex items-center gap-2 text-body-md">
-              <SessionProviderIcon providerId="claude" />
-              New session with Claude
-            </p>
+        <>
+          <AgentPicker
+            catalogue={codexClaudeCatalogue}
+            providerId={provider}
+            labelledBy={labelId}
+            onSelect={setProvider}
+          />
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <Typography as="span" variant="body-sm" className="text-content-secondary">
+              Model
+            </Typography>
             <ModelEffortPicker
               provider={claudeProvider}
               value={model}
@@ -506,10 +610,10 @@ function SessionChoice({ mode }: { readonly mode: SessionMode }) {
           </div>
           <Typography as="p" variant="body-sm" className="text-content-secondary">
             {mode === 'independent'
-              ? 'Review is done independently: it always starts in a new session, never in the one that wrote the change.'
-              : 'Implementer agents use Claude. You can choose another model for this session.'}
+              ? 'Review is done independently: it always starts in a new session, never in the one that wrote the change. Preselected from the Reviewer agent settings.'
+              : 'Preselected from the Implementer agent settings. Your choice applies to this attempt only.'}
           </Typography>
-        </div>
+        </>
       )}
     </div>
   );
@@ -518,66 +622,79 @@ function SessionChoice({ mode }: { readonly mode: SessionMode }) {
 function CommitDisclosure() {
   return (
     <InlineNote tone="info" icon={GitCommitHorizontal}>
-      When the agent finishes, SpecFlow commits its work on <span className={MONO}>{BRANCH}</span>{' '}
-      as one commit; changes of others are never included.
+      When the agent finishes, SpecFlow commits its work on <Branch name={BRANCH} /> as one commit;
+      changes of others are never included.
     </InlineNote>
   );
 }
 
-type Blocker = 'dirty' | 'no-agent' | 'pairing-code';
+type Blocker = 'dirty' | 'no-agent' | 'pairing-code' | 'session-unavailable';
 
 function AskAgentBlocker({ kind }: { readonly kind: Blocker }) {
-  if (kind === 'dirty') {
-    return (
-      <Alert tone="attention" title="Commit or undo these changes first">
-        <div className="grid gap-2">
-          <p>
-            The agent starts from a committed checkout, so that everything that changes afterwards
-            is its own work. These files have uncommitted changes:
-          </p>
-          <PathList
-            paths={['src/auth/refresh.ts', 'scratch-notes.txt', 'package.json']}
-            note={(path) => (path === 'src/auth/refresh.ts' ? '(changed by you)' : undefined)}
-          />
-          <CheckoutPath path="D:\repos\acme-portal\.nevo\worktrees\nevo-1" />
-          <p>Commit them, or undo the ones you do not need, then check again.</p>
-        </div>
-      </Alert>
-    );
+  switch (kind) {
+    case 'dirty':
+      return (
+        <Alert tone="attention" title="Commit or undo these changes first">
+          <div className="grid gap-2">
+            <p>
+              These files changed outside SpecFlow and are not committed. The agent starts from a
+              committed checkout, so that everything that changes afterwards is its own work.
+              (Documents and tasks SpecFlow saved itself do not block it.)
+            </p>
+            <PathList paths={['src/auth/refresh.ts', 'scratch-notes.txt', 'package.json']} />
+            <CheckoutPath path="D:\repos\acme-portal\.nevo\worktrees\nevo-1" />
+            <p>Commit them, or undo the ones you do not need, then check again.</p>
+          </div>
+        </Alert>
+      );
+    case 'no-agent':
+      return (
+        <Alert tone="attention" title="No agent is chosen for Implementation">
+          <div className="grid gap-2">
+            <p>
+              Implementation is done by the Implementer agent, and the project names no agent and
+              model for it yet, so SpecFlow cannot tell which one to start.
+            </p>
+            <p>
+              Choose them for Implementer in the project’s agent settings, then check again.{' '}
+              <TextLink>Open agent settings</TextLink>
+            </p>
+          </div>
+        </Alert>
+      );
+    case 'pairing-code':
+      return (
+        <Alert tone="attention" title="Agents cannot start while a pairing code is waiting">
+          <div className="grid gap-2">
+            <p>
+              SpecFlow was started with <span className={MONO}>--pair</span> and wrote a one-time
+              pairing code on its machine. No agent starts while that code can be read, so an agent
+              can never use it to pair itself.
+            </p>
+            <p>
+              Pair a device with the code, or cancel the waiting code.{' '}
+              <TextLink>Cancel the pairing code</TextLink>
+            </p>
+          </div>
+        </Alert>
+      );
+    case 'session-unavailable':
+      return (
+        <Alert tone="attention" title="The session to continue is gone">
+          <div className="grid gap-2">
+            <p>
+              The workflow continues the session that did Implementation before, and that session no
+              longer exists. SpecFlow does not start a new one in its place, because this step is
+              meant to build on what that session knows.
+            </p>
+            <p>
+              Do the step yourself with Start step, or have the workflow changed so this step may
+              start a new session.
+            </p>
+          </div>
+        </Alert>
+      );
   }
-
-  if (kind === 'no-agent') {
-    return (
-      <Alert tone="attention" title="No agent is chosen for Implementation">
-        <div className="grid gap-2">
-          <p>
-            Implementation is done by the Implementer agent role, and the project names no provider
-            and model for it yet, so SpecFlow cannot tell which agent to start.
-          </p>
-          <p>
-            Choose them for Implementer in the project’s agent settings, then check again.{' '}
-            <TextLink>Open agent settings</TextLink>
-          </p>
-        </div>
-      </Alert>
-    );
-  }
-
-  return (
-    <Alert tone="attention" title="Agents are paused while a pairing code is waiting">
-      <div className="grid gap-2">
-        <p>
-          The Runtime was started with <span className={MONO}>--pair</span> and wrote a one-time
-          pairing code to a file on its machine. No agent runs while that code can be read, so an
-          agent can never use it to pair itself.
-        </p>
-        <p>
-          Pair a device with the code (on that device: Pair this device, Enter a code), or restart
-          the Runtime without <span className={MONO}>--pair</span>.
-        </p>
-      </div>
-    </Alert>
-  );
 }
 
 function AskAgentDialog({
@@ -592,15 +709,22 @@ function AskAgentDialog({
   return (
     <MockDialog
       title={`Ask agent: ${step}`}
-      description={`The agent does this step of t-04 on its own: it reads the step, task.md and the task’s context, writes the documents and code the step needs, and proposes a result. Decisions that need you stay with you.`}
+      description="The agent does this step of t-04 on its own: it reads the step, task.md and the task’s context, writes the documents and code the step needs, and proposes a result. Decisions that need you stay with you."
       footer={
-        <>
-          <Button variant="secondary">Cancel</Button>
-          {blocker ? <Button variant="secondary">Check again</Button> : null}
-          <Button leadingIcon={Bot} disabled={blocker !== undefined}>
-            Ask agent
-          </Button>
-        </>
+        blocker ? (
+          <>
+            <Button variant="secondary">Cancel</Button>
+            <Button variant="secondary" leadingIcon={Bot} disabled>
+              Ask agent
+            </Button>
+            <Button leadingIcon="refresh">Check again</Button>
+          </>
+        ) : (
+          <>
+            <Button variant="secondary">Cancel</Button>
+            <Button leadingIcon={Bot}>Ask agent</Button>
+          </>
+        )
       }
     >
       {blocker ? <AskAgentBlocker kind={blocker} /> : null}
@@ -614,7 +738,7 @@ function RejectDialog() {
   return (
     <MockDialog
       title="Reject the agent’s result"
-      description="Breakdown stays open and the agent’s proposal Tasks approved is not applied. The draft tasks and documents it wrote stay as they are."
+      description="Breakdown goes back to ready to start, with your feedback as its hand-off. The agent’s proposal Tasks approved is not applied; the draft tasks and documents it wrote stay as they are."
       footer={
         <>
           <Button variant="secondary">Cancel</Button>
@@ -626,7 +750,7 @@ function RejectDialog() {
         <Field.Label>What should change (required)</Field.Label>
         <TextArea rows={4} aria-required />
         <Field.Description>
-          This becomes the step’s hand-off: the next attempt, yours or an agent’s, reads it first.
+          The next attempt reads it first, whether you start it yourself or ask an agent.
         </Field.Description>
       </Field>
     </MockDialog>
@@ -647,89 +771,14 @@ function TakeOverDialog() {
     >
       <Group
         heading="The agent’s work stays"
-        explanation="Nothing is undone. These stay as the agent left them, uncommitted until you finish or commit them:"
+        explanation="Nothing is undone. These files stay as the agent left them, uncommitted until you commit them; finishing the step does not commit them, and Close lists them until they are committed."
       >
-        <PathList
-          paths={[
-            'specs/active/single-sign-on/tasks/t-04/task.md',
-            'specs/active/single-sign-on/tasks/t-04/screens.md',
-            'src/auth/refresh.ts',
-            'src/auth/state.ts',
-            'src/auth/refresh.test.ts',
-          ]}
-        />
+        <PathList paths={AGENT_FILES} />
       </Group>
       <Typography as="p" variant="body-sm" className="text-content-secondary">
         The session <TextLink>{SESSION_TITLE}</TextLink> stays open to read; it no longer works on
         this step.
       </Typography>
-    </MockDialog>
-  );
-}
-
-/** D16: the Close preview's one Uncommitted changes group, by kind, each with its remedy. */
-function CloseUncommittedDialog() {
-  return (
-    <MockDialog
-      title="Close Single sign-on"
-      description="Single sign-on cannot close yet: 7 files are not committed."
-      footer={
-        <>
-          <Button variant="secondary">Dismiss</Button>
-          <Button>Check again</Button>
-        </>
-      }
-    >
-      <Group
-        heading="Uncommitted changes · 7"
-        explanation="Closing starts from a committed checkout, and SpecFlow never discards work. Each kind is committed its own way:"
-      >
-        <div className="grid gap-5 pt-1">
-          <Group
-            level={4}
-            heading="Agent work whose commit failed · 3"
-            explanation={
-              <>
-                Implementation of t-04 finished, but its commit failed (
-                <span className={MONO}>COMMIT_HOOK_FAILED</span>).
-              </>
-            }
-          >
-            <PathList
-              paths={['src/auth/refresh.ts', 'src/auth/state.ts', 'src/auth/refresh.test.ts']}
-            />
-            <div>
-              <Button size="sm" variant="secondary" leadingIcon={GitCommitHorizontal}>
-                Retry commit
-              </Button>
-            </div>
-          </Group>
-          <Group
-            level={4}
-            heading="Saved in SpecFlow, not committed yet · 2"
-            explanation="Documents and task changes SpecFlow saved; commit them from Documents."
-          >
-            <PathList
-              paths={[
-                'specs/active/single-sign-on/overview.md',
-                'specs/active/single-sign-on/tasks/t-05/task.md',
-              ]}
-            />
-            <div>
-              <TextLink>Open Documents</TextLink>
-            </div>
-          </Group>
-          <Group
-            level={4}
-            heading="Changed outside SpecFlow · 2"
-            explanation="SpecFlow did not write these. Commit them with Git in this checkout, or move them elsewhere."
-          >
-            <PathList paths={['scratch-notes.txt', 'package.json']} />
-            <CheckoutPath path="D:\repos\acme-portal\.nevo\worktrees\nevo-1" />
-            <DiscardWarning />
-          </Group>
-        </div>
-      </Group>
     </MockDialog>
   );
 }
@@ -774,7 +823,7 @@ function HistoryList() {
         <Typography as="p" variant="body-sm" className="text-status-info">
           In progress
         </Typography>,
-        'Nov 13, 12:31 PM · you · Attempt 3',
+        'Nov 13, 1:15 PM · you · Attempt 3',
         'info',
       )}
       {item(
@@ -785,7 +834,7 @@ function HistoryList() {
             Taken over by you
           </Typography>
           <Typography as="p" variant="body-sm" className="text-content-secondary">
-            Agent work kept:
+            The agent stopped without a result at 1:10 PM. Its work, kept and not committed:
           </Typography>
           <ul className="grid gap-0.5 text-body-sm">
             <li>
@@ -799,10 +848,10 @@ function HistoryList() {
             </li>
           </ul>
           <Typography as="p" variant="body-sm" className="text-content-secondary">
-            2 turns in <SessionLink /> · stopped by you at 12:24
+            Session <SessionLink />
           </Typography>
         </>,
-        'Nov 13, 12:31 PM · Claude · Sonnet 5 · Attempt 2',
+        'Nov 13, 12:52 PM – 1:15 PM · Claude · Sonnet 5 · Attempt 2',
       )}
       {item(
         'Review',
@@ -831,17 +880,17 @@ function HistoryList() {
 
 /* --------------------------------------------------------------------------- screen */
 
-/** The real screen behind each state: the Full Task page, or the Overview for its states. */
+/** The real screen behind each state: the Full Task page, or the Overview. */
 function screenOf(state: AskAgentState) {
-  if (state === 'confirm-pending' || state === 'confirm-reject') {
-    return 'waiting' as const;
-  }
-
   if (state === 'close-uncommitted') {
     return 'close-integrates' as const;
   }
 
-  return 'rework' as const;
+  return state === 'confirm-pending' ||
+    state === 'confirm-reject' ||
+    state === 'outcome-unknown-other'
+    ? ('waiting' as const)
+    : ('rework' as const);
 }
 
 function nowOf(state: AskAgentState): ReactNode {
@@ -852,6 +901,7 @@ function nowOf(state: AskAgentState): ReactNode {
     case 'dialog-dirty':
     case 'dialog-no-agent':
     case 'dialog-pairing-code':
+    case 'dialog-session-unavailable':
       return <EntryTwoButtons />;
     case 'entry-b-split':
       return <EntrySplit />;
@@ -859,9 +909,12 @@ function nowOf(state: AskAgentState): ReactNode {
     case 'finished-committed':
       return <FinishedCommitted />;
     case 'running':
-      return <Running />;
     case 'stopping':
-      return <Running stopping />;
+    case 'return-requested':
+    case 'outcome-unknown':
+      return <AgentAttempt kind={state} />;
+    case 'outcome-unknown-other':
+      return <OtherSubjectBlocked />;
     case 'finished-commit-failed':
       return <FinishedCommitFailed />;
     case 'ended-without-finish':
@@ -892,9 +945,11 @@ function dialogOf(state: AskAgentState): ReactNode {
     case 'dialog-dirty':
       return <AskAgentDialog blocker="dirty" />;
     case 'dialog-no-agent':
-      return <AskAgentDialog blocker="no-agent" />;
+      return <AskAgentDialog blocker="no-agent" mode="not-chosen" />;
     case 'dialog-pairing-code':
       return <AskAgentDialog blocker="pairing-code" />;
+    case 'dialog-session-unavailable':
+      return <AskAgentDialog blocker="session-unavailable" mode="gone" />;
     case 'confirm-reject':
       return <RejectDialog />;
     case 'take-over':
@@ -906,14 +961,33 @@ function dialogOf(state: AskAgentState): ReactNode {
   }
 }
 
+const findNoSessions = findDeepest('This specification has no sessions yet.');
+const findTaskCounts = findDeepest('Needs approval', 'Done');
+
 export function AskAgentMock({ state }: { readonly state: AskAgentState }) {
   const now = nowOf(state);
   const dialog = dialogOf(state);
+  const confirmation = state === 'confirm-pending' || state === 'confirm-reject';
 
   return (
     <>
       <WorkflowExecutionFixture scenario={screenOf(state)} />
       {now ? <Replace find={findNow}>{now}</Replace> : null}
+      {confirmation ? (
+        <>
+          <Replace find={findNoSessions}>
+            <SessionsWithAgent />
+          </Replace>
+          <Replace find={findTaskCounts}>
+            <p className="px-3 py-3 text-body-sm text-content-primary">Needs approval 5</p>
+          </Replace>
+        </>
+      ) : null}
+      {state === 'outcome-unknown-other' ? (
+        <Replace find={findNoSessions}>
+          <SessionsWithAgent unknown />
+        </Replace>
+      ) : null}
       {state === 'taken-over-history' ? (
         <Replace find={findHistoryList}>
           <HistoryList />

@@ -19,9 +19,12 @@ import { StoryLocalization } from '../../i18n/StoryLocalization';
 export function Replace({
   find,
   children,
+  mirrorClass = false,
 }: {
   readonly find: () => HTMLElement | null | undefined;
   readonly children: ReactNode;
+  /** The replacement takes the original's classes (a text line that keeps its typography). */
+  readonly mirrorClass?: boolean;
 }) {
   const [host, setHost] = useState<HTMLElement | null>(null);
   useEffect(() => {
@@ -37,6 +40,10 @@ export function Replace({
         created?.remove();
         created = document.createElement('div');
         created.setAttribute('data-mock-replacement', '');
+        if (mirrorClass) {
+          created.className = target.className;
+        }
+
         target.parentElement?.insertBefore(created, target);
         setHost(created);
       }
@@ -49,7 +56,7 @@ export function Replace({
       window.clearInterval(timer);
       created?.remove();
     };
-  }, [find]);
+  }, [find, mirrorClass]);
 
   return host ? createPortal(<StoryLocalization>{children}</StoryLocalization>, host) : null;
 }
@@ -68,7 +75,39 @@ export const findHistoryList = () =>
       (element.textContent ?? '').includes('Attempt details'),
   );
 
+/** The deepest element (outside the mock's own) whose text contains every one of `parts`. */
+export function findDeepest(...parts: readonly string[]) {
+  return () => {
+    const matches = Array.from(
+      document.querySelectorAll<HTMLElement>('main *, [role=main] *, body *'),
+    ).filter(
+      (element) =>
+        !element.closest('[data-mock-replacement]') &&
+        parts.every((part) => (element.textContent ?? '').includes(part)),
+    );
+
+    let found = matches.find(
+      (element) =>
+        !Array.from(element.children).some((child) => matches.includes(child as HTMLElement)),
+    );
+    // Widen to the outermost wrapper that holds only this text (an empty state's own box).
+    while (
+      found?.parentElement &&
+      (found.parentElement.textContent ?? '').trim() === (found.textContent ?? '').trim()
+    ) {
+      found = found.parentElement;
+    }
+
+    return found;
+  };
+}
+
 export const MONO = 'font-mono text-content-primary [overflow-wrap:anywhere]';
+
+/** A branch name: monospace and never broken inside (it is short enough to move to its own line). */
+export function Branch({ name }: { readonly name: string }) {
+  return <span className="font-mono whitespace-nowrap text-content-primary">{name}</span>;
+}
 
 /** A heading, its one explanation and its content (the Close dialog's blocker group). */
 export function Group({

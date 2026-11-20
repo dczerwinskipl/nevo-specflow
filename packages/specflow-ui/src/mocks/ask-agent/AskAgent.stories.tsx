@@ -28,12 +28,17 @@ export const DialogIndependentReview: Story = { args: { state: 'dialog-independe
 export const DialogUncommittedChanges: Story = { args: { state: 'dialog-dirty' } };
 export const DialogNoAgentChosen: Story = { args: { state: 'dialog-no-agent' } };
 export const DialogPairingCodeWaiting: Story = { args: { state: 'dialog-pairing-code' } };
+export const DialogSessionUnavailable: Story = { args: { state: 'dialog-session-unavailable' } };
 
 /* 4. Running attempt */
 export const Running: Story = { args: { state: 'running' } };
 export const Stopping: Story = { args: { state: 'stopping' } };
+export const ReturnRequested: Story = { args: { state: 'return-requested' } };
+export const OutcomeUnknown: Story = { args: { state: 'outcome-unknown' } };
+/** Another subject (the Overview) while an agent's outcome is unknown: every change waits. */
+export const OutcomeUnknownOtherSubject: Story = { args: { state: 'outcome-unknown-other' } };
 
-/* 5. After the Turn */
+/* 5. After the agent stops */
 export const FinishedCommitted: Story = { args: { state: 'finished-committed' } };
 export const FinishedCommitFailed: Story = { args: { state: 'finished-commit-failed' } };
 export const EndedWithoutFinish: Story = { args: { state: 'ended-without-finish' } };

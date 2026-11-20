@@ -44,40 +44,53 @@ A standalone screen in the Login screen's shell (same brand header, language men
 - **Approve it from a paired device**: three numbered steps (account menu, Pair a device, enter the
   code and check the device name, approve); "On a phone, you can instead choose Show QR code there
   and scan it with this phone's camera."
-- **First device? Use the Runtime's code**: the Runtime prints a one-time code in the window or
-  terminal that started it; a **Code from the Runtime** field and **Pair this device**.
-- **Headless Runtime, no device paired**: the screen leads with **Pair the first device**: no device
-  is paired yet; the Runtime runs without a console, so it wrote a one-time code to a file only its
-  user can read (the path, monospace); read it on that machine, for example over SSH, and enter it
-  here; "Until a device is paired, no agent runs."
+- **First device? Use SpecFlow's own code**: SpecFlow shows a one-time code in the window or
+  terminal that started it; a **Code from SpecFlow** field and **Pair this device**. A wrong, used
+  or replaced code is a field error that says which of those it can be and to check the code on the
+  machine running SpecFlow. Too many tries disable the field and New code with "You can try again in
+  <minutes>".
+- **Headless SpecFlow, no device paired**: the screen leads with **Pair the first device**: no device
+  is paired yet; this SpecFlow runs without a window to show a code in, so it saved a one-time code
+  on the machine running it, readable only by the account that runs it; read it there, for example
+  over SSH, and enter it here; "Until a device is paired, no agent starts." The page never shows the
+  file's path (pending owner decision).
+- **Paired**: after approval, or on a phone after scanning a QR code, the requesting browser shows
+  "This device is paired" ("This phone is paired"), who approved it (or that it was the QR code of
+  <device>), a success alert "<device> · paired just now" with how to revoke it, and **Continue to
+  SpecFlow**.
 
 ## On a paired device (account menu)
 
 The account menu adds **Pair a device** and **Paired devices**. Both open dialogs over the current
-screen; no settings page exists, and the list is short.
+screen (owner decision 2026-11-20; no settings page exists, and the list is short).
 
 - **Pair a device**: "A paired device can approve, finish and close work. Pair only a device you are
   holding or can see." A segmented control: **Enter its code** (the field; once it matches a
   request, the request with its device and address and how long ago it was asked, the attention
-  note "If you did not start this on a device of your own, do not approve it.", and **Pair <device>**)
-  or **Show QR code** (a one-time QR code, "Scan it with the phone's camera. It works once, for 1:52
-  more.", **Done**).
+  note "If you did not start this on a device of your own, do not approve it.", and **Pair <device>**;
+  an expired code is a field error, "On the other device, choose New code and enter the new one
+  here", and Pair is disabled) or **Show QR code** (a one-time QR code, "Scan it with the phone's
+  camera. It works once, for 1:52 more.", **Done**).
 - **Paired devices**: rows on the shared operational row (device glyph, "<browser> on <OS>", inline
   facts "This device" or "used <age>", "paired <date>", "from <address>") with **Revoke** each;
-  footer **Close** and **Pair a device**. Revoke confirms: "Revoke <device>? It can no longer
-  approve, finish or close anything until it is paired again. Work it already did stays." Revoking
-  this device returns it to Pair this device.
+  footer **Close** and **Pair a device**. Revoke confirms:
+  - another device: "Revoke <device>? It can no longer approve, finish or close anything until it is
+    paired again. Work it already did stays.";
+  - this device: "Revoke this device?", this browser then shows Pair this device until a paired
+    device approves it again; the button reads **Revoke this device**;
+  - the last paired device: "Revoke the last paired device?": no device will be paired, pairing
+    again needs the machine running SpecFlow (restart it with `--pair` and use its code), and no agent
+    starts until a device is paired.
 
-## Agents paused by a waiting code
+## Agents cannot start while a code is waiting
 
 While the initial code file exists, every agent start is refused. A paired device (possible after a
 restart with `--pair`) learns it in the Ask agent dialog before starting, as described in
-[Manual workflow execution, Ask agent](workflow-execution.md#ask-agent-dialog).
+[Manual workflow execution, Ask agent](workflow-execution.md#ask-agent-dialog), with **Cancel the
+pairing code** (pending owner decision: a paired device may cancel a waiting code).
 
 ## Open questions
 
-- Whether a paired device may delete a waiting initial code (an owner action), or only pairing with
-  it or a restart without `--pair` lifts the pause.
-- Whether the unpaired screen may show the code file's path (it tells an unpaired visitor where the
-  Runtime keeps state).
+- Owner decision pending: a paired device may cancel a waiting initial code; an unpaired page never
+  shows the file path, only "read the code on the machine running SpecFlow" (recommended).
 - The device name source (user agent) and whether the owner can rename a device.

@@ -133,7 +133,7 @@ export function takenOverImplementation(): WorkflowActionProjection {
     ...agent,
     position: {
       ...(agent.position as Extract<WorkflowActionProjection['position'], { kind: 'active' }>),
-      attempt: { number: 3, startedAt: '2026-11-13T12:31:00Z', actor: dominik },
+      attempt: { number: 3, startedAt: '2026-11-13T12:15:00Z', actor: dominik },
     },
     actions: {
       ...agent.actions,
@@ -205,7 +205,7 @@ export function breakdownAwaitingConfirmation(): WorkflowActionProjection {
       },
       attempt: {
         number: 1,
-        startedAt: '2026-11-13T13:20:00Z',
+        startedAt: '2026-11-12T13:20:00Z',
         actor: { ...claude, details: { ...claude.details, archetype: 'planner' } },
       },
       exits: [],

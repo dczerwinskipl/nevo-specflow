@@ -109,14 +109,14 @@ Avoid inventing new `workflow_prepare` or `workflow_actions` stateful services:
 Runtime-rendered brief. The transport can adapt these **same Engine operations**
 without defining new transitions or an independent context model:
 
-| Operation      | Agent need                                                | Engine/Runtime responsibility                                        |
-| -------------- | --------------------------------------------------------- | -------------------------------------------------------------------- |
-| Discover       | Identify Project Home, Specification, Task and workspace  | Prove binding; no guessed cwd                                        |
-| Inspect        | Learn the only legal next action                          | Project Workflow projection                                          |
+| Operation      | Agent need                                                | Engine/Runtime responsibility                                          |
+| -------------- | --------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Discover       | Identify Project Home, Specification, Task and workspace  | Prove binding; no guessed cwd                                          |
+| Inspect        | Learn the only legal next action                          | Project Workflow projection                                            |
 | Prepare/start  | Obtain one permitted attempt and its context              | Runtime authorizes managed start; Engine checks gates, actor and claim |
-| Read/write     | Obtain and change registered documents and Task resources | Revision, authorization, claim and recovery rules                    |
-| Finish         | Propose declared result, feedback and artifacts           | Validate/fence, prove native stop where required, publish transition |
-| Inspect result | Distinguish success, refusal, unknown and recovery        | Idempotent authoritative status                                      |
+| Read/write     | Obtain and change registered documents and Task resources | Revision, authorization, claim and recovery rules                      |
+| Finish         | Propose declared result, feedback and artifacts           | Validate/fence, prove native stop where required, publish transition   |
+| Inspect result | Distinguish success, refusal, unknown and recovery        | Idempotent authoritative status                                        |
 
 A preparation response should carry stable subject, step, attempt, effective definition
 revision, archetype/profile, Task Type if any, bounded context references with digests,

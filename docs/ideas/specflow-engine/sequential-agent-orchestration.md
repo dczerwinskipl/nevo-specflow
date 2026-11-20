@@ -108,6 +108,16 @@ review `fail` -> implement rework -> review `pass` loop, a human approval
 pause, restart during an unknown dispatch and final owner acceptance.
 No provider process is started twice on the same uncertain invocation.
 
+**Real .NET project cutover proof:** the stronger
+[NEvo full-feature retirement DoD](legacy-nevo-migration.md#project-cutover-definition-of-done)
+requires an entirely new Specification-to-merged-PR feature in the actual
+`dczerwinskipl/nevo` repository **after** its legacy Node/JS/TS tools have been
+removed. E6 single-step acceptance, P103/P104 automated execution, P105
+verification, L131 agent Create, T101/T102 GitHub delivery and NEvo-specific
+instructions/docs must all work together. This is a separate project migration
+gate; do **not** silently promote it to SpecFlow 1.0 or count a successful
+single step as full Specification delivery.
+
 ## Explicit non-goals
 
 No new Workflow DSL, no parallel per-Task worktrees, no auto-created PR,

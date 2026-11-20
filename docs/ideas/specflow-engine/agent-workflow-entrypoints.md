@@ -43,38 +43,52 @@ The underlying pieces already exist:
   Task context authoring, managed Sessions, and project-owned archetypes;
 - E6's separate [single-step delegation contract](reusable-workflow-manual-execution/agent-assisted-execution.md).
 
-**Not implemented:** a portable SpecFlow execution skill, one authoritative agent entry point,
-full resolution of step/Task inputs into the delegated Turn, and a managed agent completion
-transport. Offline CLI commands do not make their caller a Runtime-bound agent, and CLI
-`finish` currently records a local owner action. This proposal does **not** create another
-Workflow engine or bypass E6's claim/actor rules.
+**Not implemented:** a portable agent entry protocol for both launch modes, an installed
+project-mode "Create with an agent" journey, and the managed agent step execution path.
+E6 already owns the planned `workflow context` command and step brief (slice 5),
+claim-bound CLI routing through a Runtime broker (slice 3), and single-step Finish
+(slice 6). **This idea adds the discoverability, bootstrap and cross-mode user journey, not
+a competing context renderer, agent identity system or Finish implementation.**
+
+Today's offline CLI attributes operations to the local OS owner. It must **not** be described
+as an authenticated agent executor or evidence of human approval. External agent actor
+provenance and long-lived claims remain L140. This proposal does not create another Workflow
+engine or bypass E6's actor/claim rules.
 
 ## Two user journeys, one execution contract
 
 ### A. "Write the specification for this change"
 
 1. Discover the verified project and selected/created Specification, using the existing
-   create rules and archetypes. Do not infer a workspace from a folder name.
+   Create rules and archetypes. Do not infer a workspace from a folder name.
 2. If no Specification exists, create it through a supported Engine path. A managed UI
    "Create with an agent" in real project mode remains the separate L131 product gap;
    demo-only behavior is not proof of that feature.
-3. Inspect the Specification Workflow. Start or resume **only** the permitted current step,
-   as the actual executor. Requirements gathering may ask the owner questions; an agent
-   cannot manufacture owner approval.
+3. Inspect the Specification Workflow. In managed mode **Runtime starts/resumes** the
+   permitted current step with the trusted agent identity *before dispatch*. An external
+   CLI process follows its separate, explicitly documented local trust contract.
+   Requirements gathering may ask the owner questions; an agent cannot manufacture owner
+   approval.
 4. Retrieve the bound `StepContext` and registered documents; edit them using the
    supported Engine Document operations. When the step produces Tasks, create real Task
    resources of allowed types with substantive descriptions, dependencies and context.
 5. Submit the declared result/feedback/artifact references for this exact attempt. Engine
    verifies and publishes its transition. Do not start the next step automatically.
 
-"Write the specification" does not promise that every future requirement, architectural
-approval, Task review and owner acceptance can be completed without a person.
+**Scope of the phrase "write the Specification":** Create/select the Specification and
+execute its **current eligible authoring step**. It does not silently progress through
+multiple Workflow steps. If the user expects one command to drive the entire preparation
+Workflow through requirements, design, breakdown and review, that is an explicit
+multi-step delegation/automation product outcome (P103 and possibly L131), not an E6
+single-step promise. Human decisions remain human decisions.
 
 ### B. "Execute the current step of TASK-03"
 
 1. Resolve `specId` and `taskId` to one verified checkout; inspect readiness, definition
    revision and current step. Never infer the step from a chat prompt or past Session link.
-2. Start/resume the exact attempt with its trusted executor binding.
+2. In managed mode, ask Runtime to start/resume the exact attempt with its trusted
+   executor binding before the agent Turn begins; an agent tool cannot self-authorize
+   a new attempt.
 3. Receive **step purpose, instructions, archetype, Task Type, Task description and context,
    dependencies, gate requirements, allowed results and preceding handoff/feedback**.
 4. Read registered references with digests/revisions rather than blindly injecting all
@@ -88,16 +102,18 @@ approval, Task review and owner acceptance can be completed without a person.
 A Specification step and a Task step follow this **same** protocol. Their domain inputs
 differ, not their execution mechanism.
 
-## Proposed interaction contract
+## Existing operations and proposed entry contract
 
-`workflow_actions` / `workflow_prepare` are logical operations, **not existing tool names**.
-The transport may expose them differently, but both use the same Engine services:
+Avoid inventing new `workflow_prepare` or `workflow_actions` stateful services:
+`workflow actions` already exists; E6 proposes `workflow context` and a
+Runtime-rendered brief. The transport can adapt these **same Engine operations**
+without defining new transitions or an independent context model:
 
 | Operation      | Agent need                                                | Engine/Runtime responsibility                                        |
 | -------------- | --------------------------------------------------------- | -------------------------------------------------------------------- |
 | Discover       | Identify Project Home, Specification, Task and workspace  | Prove binding; no guessed cwd                                        |
 | Inspect        | Learn the only legal next action                          | Project Workflow projection                                          |
-| Prepare/start  | Obtain one permitted attempt and its context              | Pin/check definition, gates, actor and claim                         |
+| Prepare/start  | Obtain one permitted attempt and its context              | Runtime authorizes managed start; Engine checks gates, actor and claim |
 | Read/write     | Obtain and change registered documents and Task resources | Revision, authorization, claim and recovery rules                    |
 | Finish         | Propose declared result, feedback and artifacts           | Validate/fence, prove native stop where required, publish transition |
 | Inspect result | Distinguish success, refusal, unknown and recovery        | Idempotent authoritative status                                      |
@@ -108,31 +124,48 @@ required gate facts, possible finish results and prior attempt handoff. It must 
 versioned, bounded and independent of provider phrasing. Context resolution is
 **E6 D13**; do not introduce a second context assembler in a skill.
 
-### CLI versus MCP
+### CLI, broker and optional MCP
 
-- **External/offline agent:** use the product CLI plus a portable skill. Preserve the
-  offline-without-Runtime path and explicit local trust limitation from
-  [offline external agents](offline-cli-and-external-agents.md). A durable external
-  execution identity/claim is still an open part of that path.
-- **Runtime-managed agent:** prefer an invocation-scoped MCP/tool adapter or local broker
-  over E6's exact authenticated operations. The agent does not gain owner permissions
-  by running the ordinary offline CLI in the same worktree. E6 owns claim-bound writes,
-  agent Finish, identity, positive-stop evidence and replay.
-- **UI/HTTP:** an owner launches the delegated attempt through Runtime. API endpoints
-  are adapters; no business rule or transition is defined by the UI or skill.
-- Tool names and transport details may differ. They return one common result model and
-  invoke one source of truth.
+- **External/offline agent:** a portable skill can use existing CLI reads, documents
+  and Task commands under the **local OS account's authority**. That is not an agent
+  identity, does not prove a human approval and is not a claim-aware E6 attempt.
+  An independently attributed external agent execution requires L140's actor,
+  durable claim and recovery design, with Runtime allowed to remain off.
+- **Runtime-managed agent:** E6 has already selected **CLI routing through a private
+  invocation-bound Runtime broker**, with a per-invocation capability and checked
+  same-claim operations. Use that path for the first implementation. It does not
+  impersonate the owner; E6 owns agent Finish, identity, stop proof and replay.
+- **MCP:** optional future adapter over the *same broker operations* if a native
+  provider can safely support it. Do not make E6 dependent on native MCP/extensions,
+  introduce a global arbitrary-write server or quietly enable unsupported tools.
+- **UI/HTTP:** owner launches the delegated attempt through Runtime, not an
+  agent-supplied owner credential. API endpoints remain adapters.
 
-Neither MCP nor CLI creates a separate Task lifecycle. Avoid a global unscoped MCP server
-with arbitrary file mutation or impersonation of the owner.
+The first supported tool path is therefore **CLI + Runtime broker** for managed
+execution, CLI with explicit local trust for external agents. MCP is not a second
+implementation and is not a prerequisite for this scope.
 
-## Portable skill and archetypes
+## Product bootstrap, portable skill and archetypes
 
-Provide **one small, versioned product skill** (candidate name `nevo-specflow`) discoverable
-from normal agent entry instructions. It teaches: detect the project; inspect before
-acting; use the authorized tool adapter; retrieve context; never directly modify
-Engine execution state; submit Finish; stop. Generate provider-specific wrappers
-when necessary without duplicating the protocol.
+Provide **one small, versioned product skill** (candidate name `nevo-specflow`)
+that teaches: detect the project; inspect before acting; use an authorized adapter;
+retrieve the context; never directly modify Engine execution state; submit Finish;
+stop. The skill is an **offline/external entry point**, not the only way for a
+managed Turn to learn the protocol.
+
+The managed Claude and Codex adapters currently **disable configured native
+skills/MCP** and enforce fixed tool inventories. They cannot be assumed to discover
+an installed project skill. For managed Turns, Runtime must **inject a bounded,
+versioned, product-owned protocol brief** alongside the Engine's StepContext,
+with the exact CLI/broker commands and permissions available *to this invocation*.
+E6 slice 5 already plans the brief; validate discovery and supported tools in
+each native adapter before advertising "Ask agent". Do not silently turn on native
+extensions or treat instructions as a security boundary.
+
+For external agents, provide a provider-neutral source and generated or linked
+provider-specific wrappers when the provider supports them. Document the
+manual invocation/fallback when auto-discovery is unsupported. Never make a
+provider's private skill filename authoritative over the Engine definition.
 
 Keep these responsibilities separate:
 
@@ -152,10 +185,15 @@ auto-switch to `implementer` just because the content mentions implementation.
 
 Acceptance scenarios:
 
-1. External CLI agent with Runtime stopped creates a Specification and registers draft
-   Tasks without hand-editing Engine manifests; start/finish behavior matches local trust.
-2. Managed Claude or Codex agent receives one pinned Specification step and finishes it
-   through E6 with a genuine agent actor. No owner's local CLI identity is substituted.
+1. External CLI agent with Runtime stopped can discover the project, create a
+   Specification and register draft Tasks with existing owner-attributed CLI operations,
+   while the UI/README **clearly labels the OS-user trust limit**. Agent-attributed
+   start/finish and an external execution claim are separate L140 acceptance work;
+   neither is assumed working or authorized by this skill alone.
+2. Managed Claude or Codex agent receives a protocol brief *without loading native
+   skills or MCP*, one pinned Specification step and a working broker-backed CLI
+   adapter. It finishes through E6 with a genuine agent actor. No owner's local
+   CLI identity is substituted.
 3. A managed Task implementation receives its Task context and a failed Review's
    feedback, finishes attempt 2, and **does not** launch Review automatically.
 4. Task creation, dependencies and document registration are visible immediately in
@@ -165,7 +203,9 @@ Acceptance scenarios:
 6. A normal ad-hoc Specification Session does not implicitly become a Workflow
    attempt; its historical Task association conveys no execution authority.
 7. At least one installed real-project journey works without copying this repo's
-   personal agent rules or manually injecting context into a prompt.
+   personal agent rules or manually injecting context into a prompt. When a provider
+   cannot accept the required invocation-bound tools, Ask agent explicitly refuses,
+   rather than silently downgrading to ad-hoc chat.
 
 Not part of this idea: generic automatic step continuation, automatic Task selection,
 multi-Task batches, scheduler, parallel Task worktrees, GitHub PR automation or a

@@ -49,7 +49,7 @@ Open proposals (drafts, not current rules; current documentation and code win):
 | [Ownership and state](ownership-and-state.md)                                                         | Human approval provenance; external claim reconciliation on boot                                     |
 | [Local actor and human gates](local-actor-and-human-gates.md)                                         | Local trust model for human approvals                                                                |
 | [Agent-assisted execution (E6)](reusable-workflow-manual-execution/agent-assisted-execution.md)       | Owner-delegated single agent steps, claim-owned writes, context resolution for agents                |
-| [Agent workflow entry points](agent-workflow-entrypoints.md)                                          | Portable skill, write Specification / execute one step using CLI or managed MCP                      |
+| [Agent workflow entry points](agent-workflow-entrypoints.md)                                          | Portable skill; CLI / invocation-bound Runtime broker; optional future MCP adapter                   |
 | [Sequential agent orchestration](sequential-agent-orchestration.md)                                   | Later automatic continuation, review/rework and Task batches after E6                                |
 | [Typed transition inputs (E5)](reusable-workflow-manual-execution/typed-transition-inputs.md)         | Definition-driven finish forms; needs bounded run history (F19)                                      |
 | [Legacy Nevo migration](legacy-nevo-migration.md)                                                     | Legacy modules not yet ported                                                                        |

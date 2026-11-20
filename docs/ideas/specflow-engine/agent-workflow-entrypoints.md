@@ -11,9 +11,9 @@ read_when:
   - deciding how a portable skill uses CLI or MCP without duplicating Engine rules
   - connecting agent profiles, StepContext and Task context to a delegated attempt
 summary: >
-  Proposed universal SpecFlow skill and explicit agent entry points for writing a Specification
-  or executing one current Specification or Task step. CLI and MCP adapt the same Engine operations;
-  managed authorization and agent finish remain owned by E6, with automation deferred.
+  Proposed universal SpecFlow skill and distinct entry points for agent-assisted Specification
+  creation, one eligible Specification or Task step, and later full preparation. External CLI and
+  the managed Runtime broker use the same Engine operations; MCP is a future adapter.
 related:
   - ideas.specflow-engine
   - ideas.specflow-engine.offline-agents
@@ -29,9 +29,10 @@ related:
 
 ## Problem and boundary
 
-A user should be able to tell a coding agent **"write a Specification"** or **"execute the current
-step"** without manually assembling the prompt, copying Task documents, guessing a transition or
-running a separate owner Finish in the UI. The agent knows *how to interact with SpecFlow*;
+A user should be able to ask a coding agent to **create a Specification**, **execute the
+current step**, or later **prepare a complete Specification**, without manually assembling a prompt,
+copying Task documents or guessing a transition. These are three different product outcomes,
+not interchangeable names for one operation. The agent knows *how to interact with SpecFlow*;
 the Engine tells it *what to do now*. Agent archetypes tell it *how to perform that kind of work*.
 
 The underlying pieces already exist:
@@ -55,9 +56,20 @@ as an authenticated agent executor or evidence of human approval. External agent
 provenance and long-lived claims remain L140. This proposal does not create another Workflow
 engine or bypass E6's actor/claim rules.
 
-## Two user journeys, one execution contract
+## Three user intents, one execution contract
 
-### A. "Write the specification for this change"
+| User intent                         | Contract                                                                                                                                                                                                                                           | Delivery boundary                                                                  |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| **Execute current step**            | Execute exactly one eligible Specification or Task step and submit its outcome.                                                                                                                                                                    | E6 / P102; explicit owner delegation, no unattended continuation                   |
+| **Create Specification with agent** | Create the Specification, bind a managed Session and launch its first eligible authoring step. Creation or the first completed step does **not** mean the Specification is fully prepared.                                                         | Project-mode Create + agent start: L131, using E6 for step execution               |
+| **Prepare complete Specification**  | Progress through required authoring, design, breakdown and review steps, pausing for questions, unavailable capabilities and owner decisions. End only at the Workflow's declared prepared/approved position, never after an arbitrary first step. | P103 automatic continuation + L131 entry, respecting human gates; **not** E6 alone |
+
+A full preparation request must not be silently downgraded to "execute one authoring step" and
+reported as successful preparation. If only the first-step path is supported, expose that
+limitation explicitly before starting it. A completed step is not proof that all mandatory
+Specification documents and Tasks have been prepared or approved.
+
+### A. "Create Specification with agent / author the first step"
 
 1. Discover the verified project and selected/created Specification, using the existing
    Create rules and archetypes. Do not infer a workspace from a folder name.
@@ -75,14 +87,13 @@ engine or bypass E6's actor/claim rules.
 5. Submit the declared result/feedback/artifact references for this exact attempt. Engine
    verifies and publishes its transition. Do not start the next step automatically.
 
-**Scope of the phrase "write the Specification":** Create/select the Specification and
-execute its **current eligible authoring step**. It does not silently progress through
-multiple Workflow steps. If the user expects one command to drive the entire preparation
-Workflow through requirements, design, breakdown and review, that is an explicit
-multi-step delegation/automation product outcome (P103 and possibly L131), not an E6
-single-step promise. Human decisions remain human decisions.
+**Current limitation:** this journey starts the *first* eligible authoring step.
+It is not the same as "Prepare complete Specification". Finishing the first step must
+not set a product-level "Specification prepared" success indicator. P103 continuation
+can later reuse exactly the same one-step execution contract, with human decisions
+remaining outside agent authority.
 
-### B. "Execute the current step of TASK-03"
+### B. "Execute the current step of TASK-03" (Specification steps use the same protocol)
 
 1. Resolve `specId` and `taskId` to one verified checkout; inspect readiness, definition
    revision and current step. Never infer the step from a chat prompt or past Session link.
@@ -206,6 +217,12 @@ Acceptance scenarios:
    personal agent rules or manually injecting context into a prompt. When a provider
    cannot accept the required invocation-bound tools, Ask agent explicitly refuses,
    rather than silently downgrading to ad-hoc chat.
+8. In project mode, **Create Specification with agent** creates and binds a Specification
+   and first agent attempt, but does not claim that the entire preparation Workflow is done
+   (L131 and E6 are both required).
+9. **Prepare complete Specification** is accepted only once P103 can drive consecutive
+   eligible steps and stop at every owner-only decision. Tests must distinguish a complete
+   prepared/approved Workflow result from a successful first authoring step.
 
 Not part of this idea: generic automatic step continuation, automatic Task selection,
 multi-Task batches, scheduler, parallel Task worktrees, GitHub PR automation or a

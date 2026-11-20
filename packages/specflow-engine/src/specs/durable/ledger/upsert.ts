@@ -22,6 +22,8 @@ export interface LedgerUpsert {
   readonly reason: LedgerReason;
   readonly recordedAt: string;
   readonly paths: readonly LedgerPathChange[];
+  /** The execution claim of the agent Turn that made the operation, when one did (D11). */
+  readonly executionId?: string;
   /** Pinned by the first entry of an empty record; ignored when the record already has entries. */
   readonly branch: string | null;
   readonly head: string | null;
@@ -72,15 +74,24 @@ export function applyLedgerUpsert(
     }
 
     changed = true;
+    const operationIds = [...(known?.operationIds ?? []), upsert.operationId].slice(
+      -LEDGER_MAX_OPERATION_IDS,
+    );
+    // Kept only for the operations the entry still lists.
+    const executions = [
+      ...(known?.executions ?? []),
+      ...(upsert.executionId !== undefined
+        ? [{ operationId: upsert.operationId, executionId: upsert.executionId }]
+        : []),
+    ].filter((execution) => operationIds.includes(execution.operationId));
     entries.set(change.path, {
       path: change.path,
       postSha256: change.postSha256,
-      operationIds: [...(known?.operationIds ?? []), upsert.operationId].slice(
-        -LEDGER_MAX_OPERATION_IDS,
-      ),
+      operationIds,
       operationCount: (known?.operationCount ?? 0) + 1,
       recordedAt: upsert.recordedAt,
       reason: upsert.reason,
+      ...(executions.length > 0 ? { executions } : {}),
     });
   }
 

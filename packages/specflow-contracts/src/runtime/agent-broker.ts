@@ -27,6 +27,19 @@ export const AGENT_BROKER_ENVIRONMENT = {
   capability: 'NEVO_AGENT_CAPABILITY',
 } as const;
 
+/**
+ * A capability value: this prefix and 256 random bits (43 base64url characters). The prefix lets
+ * every Runtime sink redact a capability it did not mint itself.
+ */
+export const AGENT_CAPABILITY_PREFIX = 'nvcap_';
+const CAPABILITY_SHAPE = /nvcap_[A-Za-z0-9_-]{43}/g;
+export const AGENT_CAPABILITY_REDACTED = '[redacted agent capability]';
+
+/** `text` with anything shaped like an agent capability replaced. */
+export function redactAgentCapabilityShapes(text: string): string {
+  return text.replace(CAPABILITY_SHAPE, AGENT_CAPABILITY_REDACTED);
+}
+
 /** Frame bounds. A request above `requestBytes` is refused unread (`AGENT_REQUEST_INVALID`). */
 export const AGENT_BROKER_LIMITS = {
   /** Above the 1 MiB content cap of a document, with room for JSON escaping. */

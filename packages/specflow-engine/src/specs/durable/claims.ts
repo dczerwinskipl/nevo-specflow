@@ -21,16 +21,20 @@ export type ClaimHolder =
       readonly phase: 'admitted' | 'dispatched' | 'unknown';
     };
 
+/**
+ * `OWNED_CLAIM_NOT_HELD`: the write names an owned execution that has no unsettled claim (none was
+ * admitted, or it settled): the Turn has ended or never ran, so the write is refused, never
+ * admitted as an unclaimed one.
+ */
+export type SharedResourceErrorCode =
+  'RESOURCE_CONFLICT' | 'RESOURCE_JOURNAL_CORRUPT' | 'OWNED_CLAIM_NOT_HELD';
+
 export class SharedResourceError extends Error {
-  readonly code: 'RESOURCE_CONFLICT' | 'RESOURCE_JOURNAL_CORRUPT';
+  readonly code: SharedResourceErrorCode;
   /** The claim that conflicts (`RESOURCE_CONFLICT`); absent for a corrupt journal. */
   readonly holder: ClaimHolder | undefined;
 
-  constructor(
-    code: 'RESOURCE_CONFLICT' | 'RESOURCE_JOURNAL_CORRUPT',
-    message: string,
-    holder?: ClaimHolder,
-  ) {
+  constructor(code: SharedResourceErrorCode, message: string, holder?: ClaimHolder) {
     super(message);
     this.name = 'SharedResourceError';
     this.code = code;
@@ -115,11 +119,22 @@ export interface OwnedExecutionClaim {
 export interface OwnedExecution {
   readonly operationId: string;
   /**
-   * The operations of the same author as this write (the broker's own operations of the Turn's
-   * Session or attempt). A document write refuses a path whose uncommitted ledger entry holds any
-   * other operation ("commit it first"); absent, every recorded operation is another author's.
+   * The agent the write is made for, built by the trusted host from the Turn's binding (never from
+   * a request). A document write records it, with `operationId`, on its journal; the ledger entries
+   * it leaves name `operationId` as their execution.
    */
-  readonly authored?: (operationId: string) => boolean;
+  readonly actor?: AgentWriteActor;
+}
+
+/** An agent as a durable write records it: the shape of the workflow's `AgentActor`. */
+export interface AgentWriteActor {
+  readonly class: 'agent';
+  readonly details: {
+    readonly archetype?: string;
+    readonly provider: string;
+    readonly model?: string;
+    readonly sessionId?: string;
+  };
 }
 
 /** The `turn` form of a host's {@link OwnedExecution}, as the claim check takes it. */

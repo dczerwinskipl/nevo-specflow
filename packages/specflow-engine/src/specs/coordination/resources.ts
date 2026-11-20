@@ -135,6 +135,20 @@ export function foreignExecutionClaim(
   return undefined;
 }
 
+/** Whether the claim an owned execution names has an unsettled journal. Pure. */
+export function ownedClaimUnsettled(
+  journals: Iterable<WorkspaceExecutionJournal>,
+  owned: OwnedExecutionClaim,
+): boolean {
+  for (const execution of journals) {
+    if (execution.intent.operationId === owned.operationId && execution.phase !== 'settled') {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 /**
  * Refuses (`RESOURCE_CONFLICT`, naming the Session) while an execution claim other than the caller's
  * own is unsettled; the project-wide half of {@link assertSharedResourcesAvailable}, independent of
@@ -147,6 +161,16 @@ export async function assertNoForeignExecutionClaim(
   const journals: WorkspaceExecutionJournal[] = [];
   for await (const execution of listExecutionJournals(context, true)) {
     journals.push(execution);
+  }
+
+  // An owned write whose claim is gone is refused, never admitted as an unclaimed one. A claim that
+  // is unsettled but in a phase its form does not admit is reported below as the holder.
+  const owned = self?.ownedExecution;
+  if (owned !== undefined && !ownedClaimUnsettled(journals, owned)) {
+    throw new SharedResourceError(
+      'OWNED_CLAIM_NOT_HELD',
+      'The agent Turn this write belongs to is not running (its claim has ended or never started); the write is refused.',
+    );
   }
 
   const holder = foreignExecutionClaim(journals, self);

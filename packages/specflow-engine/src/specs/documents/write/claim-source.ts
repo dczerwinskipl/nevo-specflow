@@ -36,9 +36,14 @@ export const documentChangeClaims: ClaimSource<DocumentChangeJournal> = {
  * holds the project-wide write claim (named by the claim source's message, with its Session).
  */
 export function claimConflictOf(error: SharedResourceError): {
-  readonly cause: 'busy-agent-turn' | 'busy-agent-turn-unknown' | 'busy-create-or-close';
+  readonly cause:
+    'busy-agent-turn' | 'busy-agent-turn-unknown' | 'busy-create-or-close' | 'busy-claim-not-held';
   readonly message: string;
 } {
+  if (error.code === 'OWNED_CLAIM_NOT_HELD') {
+    return { cause: 'busy-claim-not-held', message: error.message };
+  }
+
   if (error.holder?.kind === 'external') {
     // `unknown`: the Turn has ended; only resolving its Session releases the claim.
     return {

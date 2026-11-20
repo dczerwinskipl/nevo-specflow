@@ -28,13 +28,60 @@ const KEYS = [
   'updatedAt',
   'entries',
 ];
-const ENTRY_KEYS = ['path', 'postSha256', 'operationIds', 'operationCount', 'recordedAt', 'reason'];
+const ENTRY_KEYS = [
+  'path',
+  'postSha256',
+  'operationIds',
+  'operationCount',
+  'recordedAt',
+  'reason',
+  'executions',
+];
+const ENTRY_OPTIONAL_KEYS = ['executions'];
 const PATH_MAX = 1024;
 
-function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+function hasExactKeys(
+  value: Record<string, unknown>,
+  keys: readonly string[],
+  optional: readonly string[] = [],
+): boolean {
   const names = Object.keys(value);
 
-  return names.length === keys.length && keys.every((key) => names.includes(key));
+  return (
+    names.every((name) => keys.includes(name)) &&
+    keys.every((key) => optional.includes(key) || names.includes(key))
+  );
+}
+
+/** Each execution names one of the entry's operations, at most once. */
+function isValidExecutions(value: unknown, ids: readonly unknown[]): boolean {
+  if (value === undefined) {
+    return true;
+  }
+
+  if (!Array.isArray(value) || value.length === 0 || value.length > ids.length) {
+    return false;
+  }
+
+  const seen = new Set<string>();
+
+  return value.every((execution) => {
+    if (
+      !isRecord(execution) ||
+      !hasExactKeys(execution, ['operationId', 'executionId']) ||
+      typeof execution.operationId !== 'string' ||
+      !ids.includes(execution.operationId) ||
+      seen.has(execution.operationId) ||
+      typeof execution.executionId !== 'string' ||
+      !UUID.test(execution.executionId)
+    ) {
+      return false;
+    }
+
+    seen.add(execution.operationId);
+
+    return true;
+  });
 }
 
 function isInstant(value: unknown): value is string {
@@ -55,7 +102,7 @@ export function isLedgerPath(value: unknown): value is string {
 }
 
 function isValidEntry(value: unknown): value is LedgerEntry {
-  if (!isRecord(value) || !hasExactKeys(value, ENTRY_KEYS)) {
+  if (!isRecord(value) || !hasExactKeys(value, ENTRY_KEYS, ENTRY_OPTIONAL_KEYS)) {
     return false;
   }
 
@@ -73,7 +120,8 @@ function isValidEntry(value: unknown): value is LedgerEntry {
     Number.isSafeInteger(value.operationCount) &&
     value.operationCount >= ids.length &&
     isInstant(value.recordedAt) &&
-    (LEDGER_REASONS as readonly unknown[]).includes(value.reason)
+    (LEDGER_REASONS as readonly unknown[]).includes(value.reason) &&
+    isValidExecutions(value.executions, ids)
   );
 }
 

@@ -270,6 +270,14 @@ export async function reserveOnce(
           : { commitMode: 'manual' as const }
         : {}),
       executor: await rt.executor(),
+      ...(owned !== undefined
+        ? {
+            agent: {
+              executionId: owned.operationId,
+              ...(owned.actor !== undefined ? { actor: owned.actor } : {}),
+            },
+          }
+        : {}),
       attempts: 0,
     };
     await publishJournal(rt.context, DOCUMENT_CHANGE_JOURNAL_KIND, journal);
@@ -338,6 +346,7 @@ function busy(
     | 'busy-create-or-close'
     | 'busy-agent-turn'
     | 'busy-agent-turn-unknown'
+    | 'busy-claim-not-held'
     | 'busy-task-resource-change',
   message: string,
   waitable: boolean,

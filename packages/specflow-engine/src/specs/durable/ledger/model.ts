@@ -46,6 +46,17 @@ export interface LedgerEntry {
   readonly operationCount: number;
   readonly recordedAt: string;
   readonly reason: LedgerReason;
+  /**
+   * The operations of `operationIds` an agent Turn made, with that Turn's execution claim (its
+   * Runtime invocation): who authored them, read back from the claim's durable intent. Absent when
+   * none did.
+   */
+  readonly executions?: readonly LedgerExecution[];
+}
+
+export interface LedgerExecution {
+  readonly operationId: string;
+  readonly executionId: string;
 }
 
 /** One durable record per (checkout, owner): `engine/operations/ledger/<workspaceId>/<ownerKey>.json`. */

@@ -2,14 +2,18 @@ import type { ResolvedProjectHome } from '../../project/home/home';
 import { listCreateJournals, type CreateJournal } from '../create/journal';
 // Journal-only dependency: importing execution operations here would create an admission cycle.
 import { listExecutionJournals } from '../../execution/journal';
+import type { WorkspaceExecutionJournal } from '../../execution/model';
 import {
   SharedResourceError,
   assertClaimsAvailable,
   claimCheckOf,
   overlaps,
+  ownsExecutionClaim,
   sortedResources,
+  type ClaimHolder,
   type ClaimSelf,
   type ClaimSource,
+  type OwnedExecutionClaim,
   type MutationResource,
 } from '../durable';
 import { documentChangeClaims } from '../documents/write/claim-source';
@@ -99,6 +103,63 @@ export function agentTurnClaimMessage(
 }
 
 /**
+ * Who asks, as the execution claims see it: a {@link ClaimSelf}, or a writer with no journal of its
+ * own (a workflow kernel operation) that may only name the execution it acts for.
+ */
+export type ExecutionClaimSelf =
+  ClaimSelf | { readonly kind?: undefined; readonly ownedExecution?: OwnedExecutionClaim };
+
+/**
+ * The unsettled execution claim that refuses `self`, if any: every unsettled claim of the project
+ * except the caller's own execution (`external` admission of the same operation) and the claim
+ * `self.ownedExecution` names in a phase its form admits (`ownsExecutionClaim`). Pure: the order of
+ * `journals` decides which conflict is reported.
+ */
+export function foreignExecutionClaim(
+  journals: Iterable<WorkspaceExecutionJournal>,
+  self: ExecutionClaimSelf | undefined,
+): Extract<ClaimHolder, { kind: 'external' }> | undefined {
+  for (const execution of journals) {
+    const { operationId, ownerId } = execution.intent;
+    if (
+      execution.phase === 'settled' ||
+      (self?.kind === 'external' && self.operationId === operationId) ||
+      ownsExecutionClaim(self, operationId, execution.phase)
+    ) {
+      continue;
+    }
+
+    return { kind: 'external', operationId, ownerId, phase: execution.phase };
+  }
+
+  return undefined;
+}
+
+/**
+ * Refuses (`RESOURCE_CONFLICT`, naming the Session) while an execution claim other than the caller's
+ * own is unsettled; the project-wide half of {@link assertSharedResourcesAvailable}, independent of
+ * the requested resources and of Git. Caller holds the project control lock.
+ */
+export async function assertNoForeignExecutionClaim(
+  context: ResolvedProjectHome,
+  self: ExecutionClaimSelf | undefined,
+): Promise<void> {
+  const journals: WorkspaceExecutionJournal[] = [];
+  for await (const execution of listExecutionJournals(context, true)) {
+    journals.push(execution);
+  }
+
+  const holder = foreignExecutionClaim(journals, self);
+  if (holder !== undefined) {
+    throw new SharedResourceError(
+      'RESOURCE_CONFLICT',
+      agentTurnClaimMessage(holder.ownerId, holder.phase),
+      holder,
+    );
+  }
+}
+
+/**
  * Cross-slice durable admission, invoked only while holding the short Project
  * Home control lock. Journals themselves are the claim records; there is no
  * secondary reservation store and no PID/TTL-based recovery. Creates are checked
@@ -109,25 +170,7 @@ export async function assertSharedResourcesAvailable(
   requested: readonly MutationResource[],
   self?: ClaimSelf,
 ): Promise<void> {
-  for await (const execution of listExecutionJournals(context, true)) {
-    if (
-      execution.phase === 'settled' ||
-      (self?.kind === 'external' && self.operationId === execution.intent.operationId)
-    ) {
-      continue;
-    }
-
-    throw new SharedResourceError(
-      'RESOURCE_CONFLICT',
-      agentTurnClaimMessage(execution.intent.ownerId, execution.phase),
-      {
-        kind: 'external',
-        operationId: execution.intent.operationId,
-        ownerId: execution.intent.ownerId,
-        phase: execution.phase,
-      },
-    );
-  }
+  await assertNoForeignExecutionClaim(context, self);
 
   await assertClaimsAvailable(
     context,

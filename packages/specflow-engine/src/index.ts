@@ -133,6 +133,7 @@ export {
 } from './specs/documents/api';
 export { normalizeDocumentOperationInput } from './specs/documents/changes/plan/request';
 export type { DocumentChangeResult, DocumentWriteOptions } from './specs/documents/write';
+export type { OwnedExecution } from './specs/durable';
 export {
   DOCUMENT_SHUTDOWN_DEADLINE_MS,
   createDocumentQueueScheduler,

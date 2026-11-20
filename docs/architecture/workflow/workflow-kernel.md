@@ -866,8 +866,10 @@ proceed.
   conflict found in the middle of publishing also leaves the journal pending, and deleting it then may
   keep a partly applied change; only a concurrent external writer can cause that (F05). This
   narrows, but does not close, the window against a concurrent external writer such as Git between the
-  check and the write; full protection needs writer admission (plan 06, F05) through
-  [workspace execution claims](../runtime/workspace-execution-claims.md).
+  check and the write. Engine writers are kept out by the writer admission: no change is applied
+  while an agent execution claim other than the caller's own is unsettled (F05,
+  [workspace execution claims](../runtime/workspace-execution-claims.md#the-project-wide-resource));
+  a writer outside the Engine (a hand edit, Git) is not.
 - **Stage files.** An atomic write that crashed leaves a `.<record>.<uuid>.tmp` file. Reads skip
   dot-files, and the next change removes only the stage files of known record names
   (`specification.yaml` in `.execution/`, valid Task file names in `.execution/tasks/`); every other

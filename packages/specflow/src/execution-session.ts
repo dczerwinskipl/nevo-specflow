@@ -1,5 +1,6 @@
 import {
   GateUnsatisfiedError,
+  SpecificationBusyError,
   TaskContextInvalidError,
   TaskContextUnresolvedError,
   TasksOpenError,
@@ -11,6 +12,7 @@ import {
   type InvalidContextEntry,
   type OpenTask,
   type SpecFlowEngine,
+  type SpecificationBusy,
   type UnresolvedContextEntry,
   type WorkflowDependencies,
 } from '@nevo/specflow-engine';
@@ -91,6 +93,8 @@ interface CodedError {
   readonly invalidContext?: readonly InvalidContextEntry[];
   /** `WORKFLOW_TASKS_OPEN`: the open Tasks a completion waits for, with why each is open. */
   readonly openTasks?: readonly OpenTask[];
+  /** `WORKFLOW_SPECIFICATION_BUSY`: what holds the Specification (an agent Turn names its Session). */
+  readonly busy?: SpecificationBusy;
 }
 
 /**
@@ -124,6 +128,7 @@ function workflowRefusal(error: unknown): CodedError | undefined {
         : {}),
       ...(error instanceof TaskContextInvalidError ? { invalidContext: error.invalidContext } : {}),
       ...(error instanceof TasksOpenError ? { openTasks: error.openTasks } : {}),
+      ...(error instanceof SpecificationBusyError ? { busy: error.busy } : {}),
     };
   }
 
@@ -219,6 +224,7 @@ export async function reportingWorkflowRefusals<T>(
             ...(refusal.awaited && refusal.awaited.length > 0 ? { awaited: refusal.awaited } : {}),
             ...(refusal.invalidContext ? { invalidContext: refusal.invalidContext } : {}),
             ...(refusal.openTasks ? { openTasks: refusal.openTasks } : {}),
+            ...(refusal.busy ?? {}),
             ...(effectiveHint ? { hint: effectiveHint } : {}),
           },
         }),

@@ -1,11 +1,19 @@
 // Linux integration (real Git, real Engine): `tasks` and `workflow` over a real project, with no
 // Runtime and no Specification run. Run through tools/dev/linux-test.sh.
 import { execFileSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { bootstrapProjectHome, installDefinitionsForTesting } from '@nevo/specflow-engine/testing';
+import {
+  admitWorkspaceExecution,
+  bootstrapProjectHome,
+  installDefinitionsForTesting,
+  markWorkspaceExecutionDispatched,
+  openSpecFlowEngine,
+  settleWorkspaceExecution,
+} from '@nevo/specflow-engine/testing';
 import { CommanderError } from 'commander';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -226,6 +234,48 @@ describe('tasks and workflow against a real project', () => {
     // The Task's text is read and saved through the documents command with the Task scope.
     const read = await cli(root, ['specs', 'documents', 'read', specId, 'task', '--task', 'build']);
     expect(read.out.join('\n')).toContain('Implement it.');
+  });
+
+  // F05: the offline owner CLI (`local:<os-user>`) is a writer like any other while an agent Turn
+  // holds the project; the refusal names the Session, and reads keep working.
+  it('refuses the local owner while an agent Turn holds the project, naming its Session', async () => {
+    const root = await project();
+    const { specId } = json<{ specId: string }>(
+      await cli(root, ['specs', 'create', '--archetype', 'minimal', '--title', 'Held', '--json']),
+    );
+    const engine = await openSpecFlowEngine({ cwd: root });
+    const intent = { operationId: randomUUID(), ownerId: randomUUID(), binding: 'a'.repeat(64) };
+    await admitWorkspaceExecution(engine, intent);
+    await markWorkspaceExecutionDispatched(engine, intent);
+
+    const refused = await cli(root, [
+      'tasks',
+      'create',
+      specId,
+      '--id',
+      'held',
+      '--title',
+      'Held',
+      '--type',
+      'implementation',
+      '--json',
+    ]);
+    expect(refused.exit).toBe(1);
+    expect(refused.err.join('\n')).toContain(
+      `WORKFLOW_SPECIFICATION_BUSY: An agent Session Turn (Session ${intent.ownerId})`,
+    );
+    expect(json<{ error: unknown }>(refused).error).toMatchObject({
+      code: 'WORKFLOW_SPECIFICATION_BUSY',
+      cause: 'agent-turn',
+      sessionId: intent.ownerId,
+    });
+    expect((await cli(root, ['tasks', 'list', specId])).exit).toBe(0);
+
+    await settleWorkspaceExecution(engine, intent, {
+      invocationId: intent.operationId,
+      process: 'stopped',
+      outcome: 'completed',
+    });
   });
 });
 

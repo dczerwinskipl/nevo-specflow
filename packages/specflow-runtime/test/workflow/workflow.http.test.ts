@@ -12,11 +12,14 @@ import {
   type WorkflowActionProjection,
 } from '@nevo/specflow-contracts/workflow';
 import {
+  admitWorkspaceExecution,
   bootstrapProjectHome,
   createSpecificationForTesting,
   createTask,
+  markWorkspaceExecutionDispatched,
   openWorkflow,
   setTaskStatus,
+  settleWorkspaceExecution,
   type SpecFlowEngine,
 } from '@nevo/specflow-engine/testing';
 import type { FastifyInstance } from 'fastify';
@@ -172,5 +175,32 @@ describe('workflow action routes through the real Engine', () => {
       code: 'CLOSE_BLOCKED',
       blockers: [{ kind: 'unfinished-tasks', subjectIds: ['docs'] }],
     });
+  }, 180_000);
+
+  it('answers 409 naming the Session while an agent Turn holds the project (F05)', async () => {
+    const { engine, specId } = await project();
+    const http = await listen(engine);
+    const task = `/api/specs/${specId}/tasks/docs/workflow`;
+    const expectedWorkflowRevision = (
+      await http.get(`${task}/actions`)
+    ).json<WorkflowActionProjection>().actions.start?.expectedWorkflowRevision;
+    const intent = { operationId: randomUUID(), ownerId: randomUUID(), binding: 'a'.repeat(64) };
+    await admitWorkspaceExecution(engine, intent);
+    await markWorkspaceExecutionDispatched(engine, intent);
+
+    const refused = await http.post(`${task}/start`, { expectedWorkflowRevision });
+    expect(refused.statusCode).toBe(409);
+    expect(refused.json()).toMatchObject({
+      code: 'WORKFLOW_SPECIFICATION_BUSY',
+      details: { cause: 'agent-turn', sessionId: intent.ownerId },
+    });
+    expect((await http.get(`${task}/actions`)).statusCode).toBe(200);
+
+    await settleWorkspaceExecution(engine, intent, {
+      invocationId: intent.operationId,
+      process: 'stopped',
+      outcome: 'completed',
+    });
+    expect((await http.post(`${task}/start`, { expectedWorkflowRevision })).statusCode).toBe(200);
   }, 180_000);
 });

@@ -8,6 +8,7 @@ import {
 
 import type { DefinitionSource } from '../../specs/definitions/source';
 import type { DefinitionWriter } from '../../specs/definitions/writer';
+import type { WorkflowWriteAdmission } from '../write-admission';
 import { DEFINITION_FILE_MAX_BYTES } from '../../specs/definitions/limits';
 import { WorkflowError } from '../errors';
 import { AGENT_ARCHETYPE_KIND } from './model';
@@ -76,6 +77,8 @@ export interface RememberModelDependencies {
   readonly writer: DefinitionWriter;
   /** Runs the read-edit-write as one unit (the project control lock in production). */
   readonly serialize: <T>(operation: () => Promise<T>) => Promise<T>;
+  /** The writer-claim admission, inside `serialize`: no edit while an agent Turn holds the project. */
+  readonly admission: WorkflowWriteAdmission;
 }
 
 async function readArchetype(
@@ -112,6 +115,7 @@ export function rememberArchetypeModel(
   const path = `${AGENT_ARCHETYPE_KIND}/${archetypeId}.yaml`;
 
   return dependencies.serialize(async () => {
+    await dependencies.admission.admitWrite();
     const bytes = await readArchetype(dependencies, path, archetypeId);
     const next = setArchetypeProviderModel(bytes.toString('utf8'), choice);
 

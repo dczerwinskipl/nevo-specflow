@@ -1,18 +1,21 @@
 import { createHash } from 'node:crypto';
 
 import {
+  SPECIFICATION_BUSY_CAUSES,
   WORKFLOW_ERROR_CODES,
   type WorkflowError as WorkflowErrorContract,
   type WorkflowErrorCode,
 } from '@nevo/specflow-contracts/workflow';
 import { TRUSTED_LOCAL_SUBJECT } from '../auth/authorization/request-authorization';
 import {
+  DocumentError,
   DraftConflictError,
   GateUnsatisfiedError,
   GitCapabilityError,
   ProjectControlLockError,
   ProjectHomeError,
   SpecificationError,
+  SpecificationBusyError,
   SpecificationExitBlockedError,
   TaskContextInvalidError,
   TaskContextUnresolvedError,
@@ -143,6 +146,20 @@ export function workflowFailure(error: unknown): WorkflowFailure | undefined {
   // 409: the Specification completes once its open Tasks are done or cancelled.
   if (error instanceof TasksOpenError) {
     return failure(error.code, error.message, { openTasks: toWire(error.openTasks) });
+  }
+
+  // 409: another writer holds the Specification (an agent Turn's claim names its Session).
+  if (error instanceof SpecificationBusyError) {
+    return failure(error.code, error.message, { ...error.busy });
+  }
+
+  // The commit admission of the workflow state refuses in the documents' vocabulary: a busy
+  // checkout (a batch being committed, a full queue, a Create or Close, an agent Turn) is the same
+  // busy refusal, with its cause, as the workflow's own.
+  if (error instanceof DocumentError && error.code === 'SPEC_BUSY') {
+    const cause = SPECIFICATION_BUSY_CAUSES.find((known) => known === error.details?.cause);
+
+    return failure('WORKFLOW_SPECIFICATION_BUSY', error.message, cause ? { cause } : undefined);
   }
 
   if (!(error instanceof Error) || error.name !== 'WorkflowError') {

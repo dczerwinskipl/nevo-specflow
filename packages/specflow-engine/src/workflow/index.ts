@@ -64,7 +64,15 @@ export {
   type FinishingSession,
   type LaunchBlocker,
 } from './continuation/resolve';
-export { WORKFLOW_ERROR_CODES, WorkflowError, type WorkflowErrorCode } from './errors';
+export {
+  SPECIFICATION_BUSY_CAUSES,
+  WORKFLOW_ERROR_CODES,
+  SpecificationBusyError,
+  WorkflowError,
+  type SpecificationBusy,
+  type SpecificationBusyCause,
+  type WorkflowErrorCode,
+} from './errors';
 export {
   AGENT_UNAVAILABLE_REASONS,
   inspectActions,

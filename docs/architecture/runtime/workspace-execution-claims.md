@@ -122,14 +122,15 @@ execution claim as a conflict for every requested resource. So, in both directio
 
 The `SharedResourceError` names the claim it met (`holder`: its kind and operation id, and for an
 execution its `ownerId`, the Session). Callers word the refusal from it, never from the resource
-alone: a document change, a workflow-state change (a Task created or edited) and a manual commit
-refused by an execution claim are `SPEC_BUSY` with `details.cause: agent-turn` and a message that
-names the Session; Create and Close keep their own codes with the same message. A claim in phase
+alone: a document change and a manual commit refused by an execution claim are `SPEC_BUSY` with
+`details.cause: agent-turn` and a message that names the Session; a workflow write is
+`WORKFLOW_SPECIFICATION_BUSY` with the same `details.cause` and the Session as `details.sessionId`
+(below); Create and Close keep their own codes with the same message. A claim in phase
 `unknown` belongs to a Turn that has already ended without a verified outcome: its refusal is
 `agent-turn-unknown` and says to resolve the Session (Check outcome, or its recovery) instead of
 waiting for the Turn. This includes the
-Engine commands the agent runs inside its own Turn (`tasks create`, `tasks edit`): they are refused
-until the Turn ends.
+Engine commands the agent runs inside its own Turn (`tasks create`, `tasks edit`): without an owned
+execution (below) they are refused until the Turn ends.
 
 A mode without workspace write (a read-only Turn) takes no claim. Close still MUST NOT remove the
 checkout such a Turn works in; it asks the host's checkout quiescence instead (the owning Runtime's
@@ -142,9 +143,23 @@ therefore runs per project at a time. Per-Task or per-worktree
 claims are future work and need real containment of the agent first (plan 06 F08,
 [execution scopes](../../ideas/specflow-engine/execution-scopes-and-recovery.md)).
 
-The workflow kernel's own operations (start, finish, return) do not consult claims yet; its store
-narrows but does not close the window against a concurrent external writer (plan 06 F05, see
-[Workflow kernel](../workflow/workflow-kernel.md)).
+**Workflow writes (F05).** Every change of the workflow execution store (start, finish, return,
+wait re-evaluation, abandon, Task create, edit, removal and status, and the roll-forward of a
+pending change) and every archetype edit is admitted against the execution claims under the
+project control lock before anything is written, with Git on or off (`workflow/state/claim-guard.ts`,
+wired in `workflow/composition.ts`). The Runtime routes, the offline owner CLI (`local:<os-user>`)
+and every other host are refused alike, with `WORKFLOW_SPECIFICATION_BUSY` (HTTP 409); reads stay
+available. With Git on, the commit admission of the workflow state checks the claims as well.
+
+**Owned execution (D11).** A trusted host names, in-process and never from a request, the execution
+claim a write belongs to (`ownedExecution: {operationId}` of `openWorkflow` and of the document
+write options). That claim is then the caller's own, in one of two forms (`OwnedExecutionClaim` in
+`specs/durable/claims.ts`); every other unsettled claim still refuses the write.
+
+| Form       | Admitted phases of the named claim      | Who uses it                                                         |
+| ---------- | --------------------------------------- | ------------------------------------------------------------------- |
+| `turn`     | `dispatched` only                       | the writes of a running Turn (the broker); hosts get only this form |
+| `finalize` | any unsettled phase, `unknown` included | the Engine's own finalize section of an agent attempt, nothing else |
 
 ## Publication and archive
 

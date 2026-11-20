@@ -1,11 +1,14 @@
 import { createAuthorization } from '@nevo/authorization';
 import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
-import { WORKFLOW_ERROR_CODES } from '@nevo/specflow-contracts/workflow';
+import { SPECIFICATION_BUSY_CAUSES, WORKFLOW_ERROR_CODES } from '@nevo/specflow-contracts/workflow';
 import {
+  DocumentError,
   ProjectControlLockError,
+  SpecificationBusyError,
   GateUnsatisfiedError,
   SpecificationExitBlockedError,
   TasksOpenError,
+  SPECIFICATION_BUSY_CAUSES as ENGINE_BUSY_CAUSES,
   WORKFLOW_ERROR_CODES as ENGINE_ERROR_CODES,
   WorkflowError,
   type ActionProjection,
@@ -448,6 +451,45 @@ describe('workflow action routes', () => {
     });
   });
 
+  // Before: a document `SPEC_BUSY` from the commit admission was no workflow refusal, so it
+  // answered 500 INTERNAL_ERROR. Both forms of a busy Specification answer 409 naming the holder.
+  it.each([
+    [
+      'the kernel claim admission',
+      new SpecificationBusyError('An agent Session Turn (Session s-1) holds the claim.', {
+        cause: 'agent-turn',
+        sessionId: 's-1',
+      }),
+      { cause: 'agent-turn', sessionId: 's-1' },
+    ],
+    [
+      'the commit admission of the workflow state',
+      new DocumentError('SPEC_BUSY', 'A batch is being committed.', {
+        reason: 'busy',
+        cause: 'commit-in-progress',
+      }),
+      { cause: 'commit-in-progress' },
+    ],
+  ])('answers a busy Specification from %s with 409', async (_from, error, details) => {
+    const { port } = fakePort({ start: () => Promise.reject(error) });
+    const app = appWith(port);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/specs/${SPEC}/tasks/build/workflow/start`,
+      payload: { expectedWorkflowRevision: 'r'.repeat(64) },
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({
+      error: 'WORKFLOW_SPECIFICATION_BUSY',
+      code: 'WORKFLOW_SPECIFICATION_BUSY',
+      message: error.message,
+      details,
+    });
+    await app.close();
+  });
+
   it('maps a refusal of the Engine to its status; a defect is not a refusal', async () => {
     const { port } = fakePort({
       actions: () =>
@@ -524,5 +566,9 @@ describe('workflow refusals', () => {
         'CONTROL_LOCK_INVALID_HOME',
       ].sort(),
     );
+  });
+
+  it('knows exactly the busy causes of the Engine', () => {
+    expect([...SPECIFICATION_BUSY_CAUSES]).toEqual([...ENGINE_BUSY_CAUSES]);
   });
 });

@@ -288,10 +288,34 @@ const codes = Type.Unsafe<WorkflowErrorCode>(
 );
 
 /**
+ * What holds a Specification whose workflow cannot change now (`WORKFLOW_SPECIFICATION_BUSY`):
+ * `agent-turn` an agent Session Turn holds the project-wide write claim (retry once it ends, or stop
+ * it); `agent-turn-unknown` that Turn ended without a verified outcome (resolve the Session: Check
+ * outcome, or its recovery); `close` a Close of the Specification is unsettled. The other values are
+ * the busy causes of the commit admission of the workflow state, as in the documents' `SPEC_BUSY`.
+ */
+export const SPECIFICATION_BUSY_CAUSES = [
+  'agent-turn',
+  'agent-turn-unknown',
+  'close',
+  'create-or-close',
+  'commit-in-progress',
+  'queue-full',
+  'held-limit',
+  'recovery-required',
+  'manifest-changed',
+  'source-changed',
+  'write-in-progress',
+  'task-resource-change',
+] as const;
+export type SpecificationBusyCause = (typeof SPECIFICATION_BUSY_CAUSES)[number];
+
+/**
  * A refused workflow command. `code` is the stable value clients branch on (`error` repeats it);
  * `message` is display-only text and may change. `details.blockers` lists what holds a Specification
  * (`WORKFLOW_EXIT_BLOCKED`), `details.openTasks` the Tasks a completion waits for
- * (`WORKFLOW_TASKS_OPEN`).
+ * (`WORKFLOW_TASKS_OPEN`), `details.cause` (and `sessionId`) what holds a busy Specification
+ * (`WORKFLOW_SPECIFICATION_BUSY`).
  */
 export const WorkflowErrorSchema = Type.Object(
   {
@@ -359,6 +383,14 @@ export const WorkflowErrorSchema = Type.Object(
          * Tasks are open; every open Task and why it is open, in id order.
          */
         openTasks: Type.Optional(Type.Array(OpenTaskSchema)),
+        /** `WORKFLOW_SPECIFICATION_BUSY`: what holds the Specification ({@link SPECIFICATION_BUSY_CAUSES}). */
+        cause: Type.Optional(
+          Type.Unsafe<SpecificationBusyCause>(
+            Type.Union(SPECIFICATION_BUSY_CAUSES.map((cause) => Type.Literal(cause))),
+          ),
+        ),
+        /** `WORKFLOW_SPECIFICATION_BUSY` of `agent-turn` / `agent-turn-unknown`: the Session holding the claim. */
+        sessionId: Type.Optional(Type.String({ minLength: 1, maxLength: 256 })),
       }),
     ),
   },

@@ -10727,6 +10727,87 @@
                     }
                   }
                 }
+              },
+              "cause": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "agent-turn"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "agent-turn-unknown"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "close"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "create-or-close"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "commit-in-progress"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "queue-full"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "held-limit"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "recovery-required"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "manifest-changed"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "source-changed"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "write-in-progress"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "task-resource-change"
+                    ]
+                  }
+                ]
+              },
+              "sessionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
               }
             }
           }

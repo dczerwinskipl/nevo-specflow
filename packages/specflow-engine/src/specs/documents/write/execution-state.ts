@@ -17,6 +17,7 @@ import {
   recordLedgerEntries,
   validateJournalOperationId,
   writePayload,
+  type OwnedExecutionClaim,
 } from '../../durable';
 import { isExecutionStatePath } from '../../execution-paths';
 import { resourcesForDocumentChange } from '../changes/claims';
@@ -97,6 +98,11 @@ export interface ExecutionStateCommitDependencies {
 }
 
 export interface ExecutionStateCommitOptions {
+  /**
+   * The execution claim the change is made under, named in-process by the Engine (the opened
+   * workflow's owned execution): that claim admits it in the phases its form allows.
+   */
+  readonly ownedExecution?: OwnedExecutionClaim;
   readonly commits?: CommitPort;
   readonly git?: GitPreflightOptions;
   readonly now?: () => Date;
@@ -151,6 +157,7 @@ export async function admitExecutionStateCommit(
     await deps.assertClaims(context, resourcesForDocumentChange({ workspaceId }), {
       kind: 'document-change',
       operationId,
+      ...(options.ownedExecution !== undefined ? { ownedExecution: options.ownedExecution } : {}),
     });
   } catch (error) {
     if (error instanceof SharedResourceError) {

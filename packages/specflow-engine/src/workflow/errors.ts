@@ -35,7 +35,10 @@ export const WORKFLOW_ERROR_CODES = [
   'WORKFLOW_TASK_BUSY',
   /** The Specification's workflow ended already: completed, or abandoned (for another reason). */
   'WORKFLOW_SPECIFICATION_ENDED',
-  /** A Close of the Specification is unsettled: its workflow cannot change until it settles. */
+  /**
+   * Another writer holds the Specification: an agent Session Turn's project-wide write claim, or an
+   * unsettled Close of it. Thrown as {@link SpecificationBusyError}, which names the holder.
+   */
   'WORKFLOW_SPECIFICATION_BUSY',
   /** Unfinished work or pending writes hold the Specification; the error lists them (`blockers`). */
   'WORKFLOW_EXIT_BLOCKED',
@@ -47,3 +50,56 @@ export const WORKFLOW_ERROR_CODES = [
 export type WorkflowErrorCode = (typeof WORKFLOW_ERROR_CODES)[number];
 
 export class WorkflowError extends CoreWorkflowError<WorkflowErrorCode> {}
+
+/**
+ * Why a Specification is busy (`WORKFLOW_SPECIFICATION_BUSY`): an agent Turn's claim (`agent-turn`,
+ * or `agent-turn-unknown` once that Turn ended without a verified outcome), an unsettled Close
+ * (`close`), or a busy cause of the workflow state's commit admission (the documents' `SPEC_BUSY`
+ * causes). `other`: a busy refusal whose cause this list does not know, kept as a refusal rather than
+ * dropped. The Runtime's contract test keeps the contracts' list equal to this one.
+ */
+export const SPECIFICATION_BUSY_CAUSES = [
+  'agent-turn',
+  'agent-turn-unknown',
+  'close',
+  'create-or-close',
+  'commit-in-progress',
+  'queue-full',
+  'held-limit',
+  'recovery-required',
+  'manifest-changed',
+  'source-changed',
+  'write-in-progress',
+  'task-resource-change',
+  'other',
+] as const;
+export type SpecificationBusyCause = (typeof SPECIFICATION_BUSY_CAUSES)[number];
+
+/**
+ * What holds a busy Specification, the `details` of `WORKFLOW_SPECIFICATION_BUSY`: the cause and,
+ * for an agent Turn's claim, its Session.
+ */
+export interface SpecificationBusy {
+  readonly cause: SpecificationBusyCause;
+  readonly sessionId?: string;
+}
+
+/**
+ * `WORKFLOW_SPECIFICATION_BUSY`: the workflow of the Specification cannot change now, and why. The
+ * message names the holder and the remedy. `claim` is the execution claim met (in-process only, for
+ * a host that reacts to its own agent's claim; it is never sent).
+ */
+export class SpecificationBusyError extends WorkflowError {
+  readonly busy: SpecificationBusy;
+  readonly claim: { readonly operationId: string; readonly sessionId: string } | undefined;
+
+  constructor(
+    message: string,
+    busy: SpecificationBusy,
+    claim?: { readonly operationId: string; readonly sessionId: string },
+  ) {
+    super('WORKFLOW_SPECIFICATION_BUSY', message);
+    this.busy = busy;
+    this.claim = claim;
+  }
+}

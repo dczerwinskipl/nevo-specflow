@@ -25,6 +25,8 @@ import {
 } from '../specs/definitions/install';
 import { createDefaultDefinitionRegistry } from './shipped-registry';
 import { openSeedSource } from './seed';
+import { withProjectControlLock } from '../project/control-lock';
+import { executionClaimAdmission } from '../workflow/write-admission';
 import {
   DEFINITIONS_RELATIVE_PATH,
   createFilesystemDefinitionSource,
@@ -249,7 +251,13 @@ export async function installProjectDefinitions(
 
   const paths = committablePaths(outcome.plan);
   await assertDefinitionsCommittable(engine, paths);
-  const written = await applyInstall(input, outcome.plan);
+  // The definitions are project files like any other: no install while an agent Turn holds the
+  // project (F05). The commit runs after the lock section, as every Engine commit does.
+  const written = await withProjectControlLock(engine.context, async () => {
+    await executionClaimAdmission(engine, undefined).admitWrite();
+
+    return applyInstall(input, outcome.plan);
+  });
   const commit = await commitInstalledDefinitions(engine, paths);
 
   return { outcome, written, ...(commit ? { commit } : {}) };

@@ -24,7 +24,9 @@ import {
 } from './close/blockers';
 import { inspectActions, type SpecificationExitPort } from './operations/actions';
 import { assertSharedResourcesAvailable } from '../specs/coordination/resources';
-import { SharedResourceError } from '../specs/durable';
+import { SharedResourceError, ownedTurnOf, type OwnedExecution } from '../specs/durable';
+import { guardExecutionClaims } from './state/claim-guard';
+import { executionClaimAdmission } from './write-admission';
 import type { RememberModelDependencies } from './definitions/remember-model';
 import type { TaskReferences } from './operations/task-references';
 import {
@@ -94,6 +96,13 @@ export interface OpenWorkflowOptions {
    * Without it no project document resolves, so such a reference is refused.
    */
   readonly projectDocument?: (checkout: SpecificationCheckout, id: string) => Promise<boolean>;
+  /**
+   * The agent execution whose running Turn makes these workflow writes (the Runtime broker, D11):
+   * its `dispatched` claim admits them; every other unsettled writer still refuses them. Named
+   * in-process by the trusted host, never taken from a request. Without it, every unsettled agent
+   * claim of the project refuses a write.
+   */
+  readonly ownedExecution?: OwnedExecution;
 }
 
 /**
@@ -200,22 +209,29 @@ export async function openWorkflow(
       ),
     );
 
+  const owned = ownedTurnOf(options.ownedExecution).ownedExecution;
   const dependencies: Omit<WorkflowDependencies, 'specificationExit'> = {
     catalogue: await reloadCatalogue(),
     reloadCatalogue,
-    store: guardCloseReservations(
-      guardTaskDocumentChanges(
-        createFilesystemWorkflowStore({
-          stateRoot: engine.context.project.stateRoot,
-          specificationDirectory: (specId) => specificationDirectory(engine, specId),
-          commits: {
-            admit: (specId, paths, operationId) =>
-              admitExecutionStateChange(engine, specId, paths, operationId),
-          },
-        }),
-        pendingTaskDocuments(engine),
+    // The claim admission first: an agent Turn's claim is the holder a refusal names.
+    store: guardExecutionClaims(
+      guardCloseReservations(
+        guardTaskDocumentChanges(
+          createFilesystemWorkflowStore({
+            stateRoot: engine.context.project.stateRoot,
+            specificationDirectory: (specId) => specificationDirectory(engine, specId),
+            commits: {
+              admit: (specId, paths, operationId) =>
+                admitExecutionStateChange(engine, specId, paths, operationId, {
+                  ...(owned !== undefined ? { ownedExecution: owned } : {}),
+                }),
+            },
+          }),
+          pendingTaskDocuments(engine),
+        ),
+        (specId) => closeInProgress(engine, specId),
       ),
-      (specId) => closeInProgress(engine, specId),
+      executionClaimAdmission(engine, owned),
     ),
     references: engineReferences(engine, options),
     holds: engineHolds(engine),
@@ -336,12 +352,16 @@ export function specificationExitPort(
   };
 }
 
-/** Archetype edits ("remember this choice"), serialized by the same project control lock. */
+/**
+ * Archetype edits ("remember this choice"), serialized by the same project control lock and refused
+ * like every workflow write while an agent execution claim is unsettled.
+ */
 export function openArchetypeEditing(engine: SpecFlowEngine): RememberModelDependencies {
   return {
     source: createFilesystemDefinitionSource(definitionsRoot(engine)),
     writer: createFilesystemDefinitionWriter(engine.context.project.homeRoot),
     serialize: (operation) => withProjectControlLock(engine.context, operation),
+    admission: executionClaimAdmission(engine, undefined),
   };
 }
 

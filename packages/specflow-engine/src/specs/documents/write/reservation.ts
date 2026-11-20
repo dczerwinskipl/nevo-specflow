@@ -8,6 +8,7 @@ import {
   LEDGER_MAX_PATHS,
   LedgerCorruptError,
   SharedResourceError,
+  ownedTurnOf,
   publishJournal,
   readLedgerRecord,
   readPayload,
@@ -127,7 +128,7 @@ export async function reserveOnce(
       await rt.deps.assertClaims(
         rt.context,
         resourcesForDocumentChange({ workspaceId: loaded.workspaceId }),
-        { kind: 'document-change', operationId },
+        { kind: 'document-change', operationId, ...ownedTurnOf(rt.options.ownedExecution) },
       );
     } catch (error) {
       if (error instanceof SharedResourceError) {

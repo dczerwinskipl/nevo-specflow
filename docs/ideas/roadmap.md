@@ -149,7 +149,7 @@ Exploratory scope; not simply a project switcher. [Multi-project design](multi-p
 
 The [roadmap coverage register](roadmap-coverage.md) records source-by-source dispositions and **49 untriaged L-series outcomes**. It does not set release scope or duplicate implementation status.
 
-**Known inventory: 93 stable capability IDs**: 22 proposed for 1.0, 5 candidates for 1.1, 10 other later 1.x, 7 exploratory 2.0 and 49 unscheduled. The 37 numbered Workflow/provider follow-ups are mapped individually; the other 83 Ideas source files (excluding these two roadmap documents) have an explicit source disposition. This measures **inventory coverage of the current repository**, not completeness of every possible product direction. Many outcomes are still untriaged by release horizon, and this count is not a work estimate or release percentage.
+**Known inventory: 93 stable capability IDs**: 22 proposed for 1.0, 5 candidates for 1.1, 10 other later 1.x, 7 exploratory 2.0 and 49 unscheduled. The 37 numbered Workflow/provider follow-ups are mapped individually; the other 88 Ideas source files (excluding these two roadmap documents) have an explicit source disposition. This measures **inventory coverage of the current repository**, not completeness of every possible product direction. Many outcomes are still untriaged by release horizon, and this count is not a work estimate or release percentage.
 
 ## Owner decisions and the next gate
 

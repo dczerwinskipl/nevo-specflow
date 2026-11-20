@@ -155,8 +155,9 @@ async function inspectCreateOptionsInRequest(
   const { policy, policyInvalid } = await readPolicyOrDegrade(engine, options);
   // Git facts are fetched ONLY when Git is enabled. A Git-disabled project answers
   // from the registry and filesystem checks alone and spawns no Git process.
-  // Otherwise: one `worktree list`, one `for-each-ref`, then bounded-parallel
-  // `status` for the workspaces that need it.
+  // Otherwise: one `worktree list`, one `for-each-ref`, bounded-parallel `status` for attached
+  // workspaces, one `rev-parse` per base ref and configured default, then `ls-tree` and (for regular
+  // files) `show` once per unique commit in this request. Identity verification itself stays Git-free.
   const gitEnabled = policy.enabled;
   const git = createLocalGitClient(engine.context.project.homeRoot);
   const [branchesResult, inspectedResult] = await Promise.allSettled([

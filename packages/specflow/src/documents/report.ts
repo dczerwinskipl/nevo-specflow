@@ -1,6 +1,12 @@
 import { DocumentError } from '@nevo/specflow-engine';
 
 import { ReportedFailure } from '../exit-code';
+import {
+  uncommittedChangesLines,
+  uncommittedChangesReport,
+  type UncommittedChangesReport,
+  type UncommittedHold,
+} from '../specs/uncommitted-groups';
 
 export interface DocumentsOutput {
   readonly stdout: (line: string) => void;
@@ -13,6 +19,8 @@ export interface FailureReport {
   readonly message: string;
   readonly details?: unknown;
   readonly hint?: string;
+  /** `DOCUMENT_COMMITS_PENDING` of uncommitted files: the grouped report with a remedy per kind. */
+  readonly uncommitted?: UncommittedChangesReport;
 }
 
 const RECOVER_HINT =
@@ -134,14 +142,17 @@ export function hintFor(error: DocumentError): string | undefined {
   }
 }
 
-export function reportOf(error: DocumentError): FailureReport {
+export function reportOf(error: DocumentError, specId?: string): FailureReport {
   const hint = hintFor(error);
+  const hold = error.details?.uncommitted as UncommittedHold | undefined;
+  const uncommitted = hold === undefined ? undefined : uncommittedChangesReport({ hold }, specId);
 
   return {
     code: error.code,
     message: error.message,
     ...(error.details !== undefined ? { details: error.details } : {}),
     ...(hint !== undefined ? { hint } : {}),
+    ...(uncommitted !== undefined ? { uncommitted } : {}),
   };
 }
 
@@ -155,6 +166,7 @@ export async function reportingRefusals<T>(
   output: DocumentsOutput,
   json: boolean | undefined,
   body: () => Promise<T>,
+  specId?: string,
 ): Promise<T> {
   try {
     return await body();
@@ -163,9 +175,13 @@ export async function reportingRefusals<T>(
       throw error;
     }
 
-    const report = reportOf(error);
+    const report = reportOf(error, specId);
     const cause = error.details?.cause;
     output.stderr(`${report.code}: ${report.message}${cause !== undefined ? ` (${cause})` : ''}`);
+    for (const line of report.uncommitted ? uncommittedChangesLines(report.uncommitted) : []) {
+      output.stderr(line);
+    }
+
     if (report.hint !== undefined) {
       output.stderr(`Hint: ${report.hint}`);
     }

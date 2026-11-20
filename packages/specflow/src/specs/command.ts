@@ -32,7 +32,7 @@ import { reportingRefusals } from '../documents/report';
 import {
   ARCHIVED_WITHOUT_GIT,
   previewCloseForCli,
-  reportingMissingIntegrationTarget,
+  reportingRepositoryBlockers,
   withoutGitLines,
 } from './close-preview';
 import { runExecution } from '../execution-session';
@@ -72,12 +72,36 @@ function previewRefusals(
   context: SpecsCommandContext,
   json: boolean | undefined,
   body: () => Promise<void>,
+  specId?: string,
 ): Promise<void> {
   const refusalOutput = { stdout: context.stdout, stderr: stderrOf(context) };
 
-  return reportingRefusals(refusalOutput, json, () =>
-    reportingMissingIntegrationTarget(refusalOutput, json, body),
+  return reportingRefusals(
+    refusalOutput,
+    json,
+    () => reportingRepositoryBlockers(refusalOutput, json, body, specId),
+    specId,
   );
+}
+
+/** A Close refused by document commits or repository blockers is printed as the preview prints it. */
+async function refusedAsReported<T>(
+  context: SpecsCommandContext,
+  json: boolean | undefined,
+  specId: string,
+  body: () => Promise<T>,
+): Promise<T> {
+  let result: T | undefined;
+  await previewRefusals(
+    context,
+    json,
+    async () => {
+      result = await body();
+    },
+    specId,
+  );
+
+  return result as T;
 }
 
 function stderrOf(context: SpecsCommandContext): (line: string) => void {
@@ -228,16 +252,20 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
       const operationId = options.operationId ?? randomUUID();
       const finishAfterExternalMerge = options.finishAfterExternalMerge ? true : undefined;
       if (options.preview) {
-        await previewRefusals(context, options.json, async () =>
-          output(
-            context,
-            await previewCloseForCli(engine, {
-              kind: 'worktree-close',
-              operationId,
-              specId,
-              ...(finishAfterExternalMerge === undefined ? {} : { finishAfterExternalMerge }),
-            }),
-          ),
+        await previewRefusals(
+          context,
+          options.json,
+          async () =>
+            output(
+              context,
+              await previewCloseForCli(engine, {
+                kind: 'worktree-close',
+                operationId,
+                specId,
+                ...(finishAfterExternalMerge === undefined ? {} : { finishAfterExternalMerge }),
+              }),
+            ),
+          specId,
         );
 
         return;
@@ -247,11 +275,13 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
         throw new Error('Closing a Git worktree requires --yes. Use --preview first.');
       }
 
-      const result = await closeWorktreeOperation(engine, {
-        operationId,
-        specId,
-        ...(finishAfterExternalMerge === undefined ? {} : { finishAfterExternalMerge }),
-      });
+      const result = await refusedAsReported(context, options.json, specId, () =>
+        closeWorktreeOperation(engine, {
+          operationId,
+          specId,
+          ...(finishAfterExternalMerge === undefined ? {} : { finishAfterExternalMerge }),
+        }),
+      );
       if (options.json) {
         output(context, result);
       } else {
@@ -340,18 +370,23 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
         ...(options.archiveOnly ? { integrateToTargetBranch: false } : {}),
       };
       if (options.preview) {
-        await previewRefusals(context, options.json, async () => {
-          const plan = await previewCloseForCli(engine, request);
-          output(context, plan);
-          // stdout stays the JSON plan; the human note goes to stderr.
-          if (
-            !options.json &&
-            plan.merge.status === 'not-integrated' &&
-            plan.merge.reason === 'git-off'
-          ) {
-            withoutGitLines(plan.merge.checkout).forEach(stderrOf(context));
-          }
-        });
+        await previewRefusals(
+          context,
+          options.json,
+          async () => {
+            const plan = await previewCloseForCli(engine, request);
+            output(context, plan);
+            // stdout stays the JSON plan; the human note goes to stderr.
+            if (
+              !options.json &&
+              plan.merge.status === 'not-integrated' &&
+              plan.merge.reason === 'git-off'
+            ) {
+              withoutGitLines(plan.merge.checkout).forEach(stderrOf(context));
+            }
+          },
+          specId,
+        );
 
         return;
       }
@@ -360,7 +395,9 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
         throw new Error('Archiving a Specification requires --yes. Use --preview first.');
       }
 
-      const result = await closeSpecificationOperation(engine, request);
+      const result = await refusedAsReported(context, options.json, specId, () =>
+        closeSpecificationOperation(engine, request),
+      );
       if (options.json) {
         output(context, result);
       } else {

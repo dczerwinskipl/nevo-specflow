@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { CloseOperationError, type SpecFlowEngine } from '@nevo/specflow-engine';
+import { CloseOperationError, DocumentError, type SpecFlowEngine } from '@nevo/specflow-engine';
+import { reportOf } from '../documents/report';
 import { ReportedFailure } from '../exit-code';
 import {
   ARCHIVED_WITHOUT_GIT,
   integrationTargetMissingLines,
   previewCloseForCli,
-  reportingMissingIntegrationTarget,
+  reportingRepositoryBlockers,
   withoutGitLines,
 } from './close-preview';
 
@@ -75,7 +76,7 @@ describe('CLI Close preview without an integration branch', () => {
     const stdout: string[] = [];
     const stderr: string[] = [];
     await expect(
-      reportingMissingIntegrationTarget(
+      reportingRepositoryBlockers(
         { stdout: (line) => stdout.push(line), stderr: (line) => stderr.push(line) },
         false,
         () =>
@@ -139,11 +140,102 @@ describe('CLI Close preview without an integration branch', () => {
   it('leaves any other refusal to the caller', async () => {
     const other = new CloseOperationError('CLOSE_PREFLIGHT', 'Dirty.');
     await expect(
-      reportingMissingIntegrationTarget(
-        { stdout: () => undefined, stderr: () => undefined },
-        false,
-        () => Promise.reject(other),
+      reportingRepositoryBlockers({ stdout: () => undefined, stderr: () => undefined }, false, () =>
+        Promise.reject(other),
       ),
     ).rejects.toBe(other);
+  });
+});
+
+describe('CLI Close preview with uncommitted changes', () => {
+  const self = '00000000-0000-4000-8000-0000000000aa';
+  const other = '00000000-0000-4000-8000-0000000000bb';
+  const blocker = {
+    kind: 'uncommitted-changes',
+    checkout: 'specification',
+    workspaceId: 'ws-1',
+    paths: [
+      { path: 'specs/active/a/doc.md', scope: 'specification' },
+      { path: 'NOTES.md', scope: 'other' },
+    ],
+    count: 2,
+    specificationCount: 1,
+  } as const;
+  const run = async (error: Error, json: boolean) => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    await expect(
+      reportingRepositoryBlockers(
+        { stdout: (line) => stdout.push(line), stderr: (line) => stderr.push(line) },
+        json,
+        () => Promise.reject(error),
+        self,
+      ),
+    ).rejects.toBeInstanceOf(ReportedFailure);
+
+    return { stdout, stderr };
+  };
+
+  it('prints one group with a remedy per kind and no discard, in text and --json', async () => {
+    const { stdout, stderr } = await run(
+      new CloseOperationError('CLOSE_PREFLIGHT', 'Dirty.', { repository: [blocker] }),
+      true,
+    );
+    expect(stderr).toEqual([
+      'CLOSE_PREFLIGHT: Dirty.',
+      'Uncommitted changes: 2. Closing starts from a committed checkout, and SpecFlow never discards work.',
+      'Saved in SpecFlow, not committed yet: 1',
+      '  ' + self + ' (this specification): 1',
+      '    specs/active/a/doc.md',
+      '  Remedy: Commit them with "nevo-specflow commit --spec ' +
+        self +
+        '" (see them with "nevo-specflow commit status"), or with Git.',
+      'Changed outside SpecFlow: 1 (the specification checkout, workspace ws-1)',
+      '  NOTES.md',
+      '  Remedy: Commit them with Git in the specification checkout (workspace ws-1) or move them out of it. SpecFlow does not discard them: Git keeps no copy of uncommitted work.',
+    ]);
+    const { error } = JSON.parse(stdout[0] ?? '{}') as {
+      error: { repository: unknown; uncommitted: { groups: { kind: string }[] } };
+    };
+    expect(error.repository).toEqual([blocker]);
+    expect(error.uncommitted.groups.map((group) => group.kind)).toEqual([
+      'saved-not-committed',
+      'changed-outside',
+    ]);
+  });
+
+  it('names another specification with its remedy when a hold lists it', () => {
+    const hold = {
+      reasons: ['auto-commit-off'],
+      owners: [
+        {
+          kind: 'specification',
+          specId: other,
+          title: 'Other',
+          workflowState: 1,
+          documents: 0,
+          stepInProgress: true,
+          count: 1,
+          paths: ['specs/active/o/.execution/run.json'],
+        },
+      ],
+      unreadable: 0,
+    };
+    const report = reportOf(
+      new DocumentError('DOCUMENT_COMMITS_PENDING', 'Held.', {
+        reason: 'busy',
+        cause: 'commit-uncommitted',
+        uncommitted: hold,
+      } as never),
+      self,
+    );
+    expect(report.uncommitted?.groups).toMatchObject([
+      {
+        kind: 'saved-not-committed',
+        count: 1,
+        owners: [{ specId: other, title: 'Other', stepInProgress: true, more: 0 }],
+        remedy: expect.stringContaining('finish its step in progress there') as string,
+      },
+    ]);
   });
 });

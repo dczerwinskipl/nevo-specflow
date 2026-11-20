@@ -61,6 +61,7 @@ export const DOCUMENT_CHANGE_CAUSES = [
   'close-commit-failed',
   'close-commit-uncommitted',
   'uncommitted-limit',
+  'foreign-uncommitted',
 ] as const;
 
 export type DocumentChangeCause = (typeof DOCUMENT_CHANGE_CAUSES)[number];
@@ -138,6 +139,7 @@ export const DOCUMENT_CHANGE_ERROR_MAP = {
   'close-commit-failed': { code: 'DOCUMENT_COMMITS_PENDING', detail: 'commit-failed' },
   'close-commit-uncommitted': { code: 'DOCUMENT_COMMITS_PENDING', detail: 'commit-uncommitted' },
   'uncommitted-limit': { code: 'DOCUMENT_UNCOMMITTED_LIMIT' },
+  'foreign-uncommitted': { code: 'DOCUMENT_COMMITS_PENDING', detail: 'foreign-uncommitted' },
 } as const satisfies Record<DocumentChangeCause, DocumentChangeErrorMapping>;
 
 /** The message of `case-only-rename`, the same from the planner and from the file-system check. */
@@ -151,6 +153,8 @@ export interface DocumentChangeErrorExtras {
   readonly conflicts?: DocumentErrorDetails['conflicts'];
   /** `DOCUMENT_COMMITS_PENDING` (`commit-uncommitted`): what the ledger holds and why. */
   readonly uncommitted?: DocumentErrorDetails['uncommitted'];
+  /** Checkout-relative paths the refusal is about (at most `ERROR_DETAIL_PATHS_MAX`). */
+  readonly paths?: DocumentErrorDetails['paths'];
 }
 
 /** The document error for a cause. The message never carries an absolute path. */
@@ -167,6 +171,7 @@ export function documentChangeError(
     ...(extras.retryAfterMs !== undefined ? { retryAfterMs: extras.retryAfterMs } : {}),
     ...(extras.conflicts !== undefined ? { conflicts: extras.conflicts } : {}),
     ...(extras.uncommitted !== undefined ? { uncommitted: extras.uncommitted } : {}),
+    ...(extras.paths !== undefined ? { paths: extras.paths } : {}),
   };
 
   return new DocumentError(

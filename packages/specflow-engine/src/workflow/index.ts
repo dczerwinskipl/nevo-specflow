@@ -168,6 +168,17 @@ export {
   type ContextInstructions,
   type ContextReference,
 } from './agent/context';
+export {
+  AGENT_WRITE_OPERATIONS,
+  admitAgentOperation,
+  deriveAgentScope,
+  type AgentOperationTarget,
+  type AgentScopeBinding,
+  type AgentScopeDecision,
+  type AgentScopeRefusalReason,
+  type AgentWriteOperation,
+  type AgentWriteScope,
+} from './agent/scope';
 export type {
   StepContext,
   StepDescription,

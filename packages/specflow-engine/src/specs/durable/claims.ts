@@ -114,6 +114,12 @@ export interface OwnedExecutionClaim {
  */
 export interface OwnedExecution {
   readonly operationId: string;
+  /**
+   * The operations of the same author as this write (the broker's own operations of the Turn's
+   * Session or attempt). A document write refuses a path whose uncommitted ledger entry holds any
+   * other operation ("commit it first"); absent, every recorded operation is another author's.
+   */
+  readonly authored?: (operationId: string) => boolean;
 }
 
 /** The `turn` form of a host's {@link OwnedExecution}, as the claim check takes it. */

@@ -5,9 +5,9 @@
 // every test starts Git processes and the Engine's queue.
 import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 
 import {
   BatchSaveResultSchema,
@@ -40,7 +40,7 @@ import {
 import { GitCapabilityError, resolveCreateArchetype } from '@nevo/specflow-engine';
 import type { FastifyInstance } from 'fastify';
 import { Value } from 'typebox/value';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it } from 'vitest';
 
 import { authCookieNames } from '../../src/features/auth/authentication/http/cookies';
 import { InMemoryAuthenticationStore } from '../../src/features/auth/authentication/store/in-memory-store';
@@ -49,17 +49,26 @@ import { createRuntimeApp } from '../../src/server/app';
 import { passwordConfig } from '../auth/support/config';
 
 const roots: string[] = [];
+const templateRoots: string[] = [];
 const apps: FastifyInstance[] = [];
 const stops: (() => Promise<unknown>)[] = [];
 afterEach(async () => {
   await Promise.all(stops.splice(0).map((stop) => stop()));
   await Promise.all(apps.splice(0).map((app) => app.close()));
+  await removeRoots(roots);
+});
+
+afterAll(async () => {
+  await removeRoots(templateRoots);
+});
+
+async function removeRoots(directories: string[]): Promise<void> {
   await Promise.all(
-    roots
+    directories
       .splice(0)
       .map((root) => rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })),
   );
-});
+}
 
 function git(cwd: string, ...args: string[]): string {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
@@ -76,10 +85,34 @@ interface Fixture {
   readonly dir: string;
 }
 
-/** A committed project on a work branch with one hand-built Specification of editable notes. */
+type ProjectTemplate = Omit<Fixture, 'engine'>;
+
+const templates = new Map<string, Promise<ProjectTemplate>>();
+
+/** Each test gets an independent checkout, index and Engine from a committed seed. */
 async function project(config = GIT_ON): Promise<Fixture> {
+  let template = templates.get(config);
+  if (!template) {
+    template = createProjectTemplate(config);
+    templates.set(config, template);
+  }
+
+  const seed = await template;
   const root = await realpath(await mkdtemp(join(tmpdir(), 'specflow-http-write-')));
   roots.push(root);
+  await cp(seed.root, root, { recursive: true });
+
+  return {
+    root,
+    specId: seed.specId,
+    dir: join(root, relative(seed.root, seed.dir)),
+    engine: await bootstrapProjectHome(root),
+  };
+}
+
+async function createProjectTemplate(config: string): Promise<ProjectTemplate> {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'specflow-http-write-template-')));
+  templateRoots.push(root);
   git(root, 'init', '-q');
   git(root, 'config', '--local', 'core.autocrlf', 'false');
   await mkdir(join(root, '.nevo'));
@@ -117,7 +150,7 @@ async function project(config = GIT_ON): Promise<Fixture> {
     'specification',
   );
 
-  return { root, engine: await bootstrapProjectHome(root), ...spec };
+  return { root, ...spec };
 }
 
 const notes = (index: number): string => `notes ${index}\n`;
@@ -166,25 +199,29 @@ interface Listening {
 async function listen(
   fx: Fixture,
   options: {
-    assignments?: { role: 'developer' | 'viewer'; scope: Record<string, string> }[];
+    assignments?: {
+      userId?: string;
+      role: 'developer' | 'viewer';
+      scope: Record<string, string>;
+    }[];
     now?: () => Date;
     scheduler?: boolean;
   } = {},
-): Promise<Listening> {
+) {
   const store = new InMemoryAuthenticationStore();
-  const session = store.createSession({
-    userId: 'demo-user',
-    authenticatedWith: { kind: 'password' },
-  });
+  const config = passwordConfig();
+  const assignments = (options.assignments ?? [{ role: 'developer', scope: {} }]).map(
+    ({ userId = 'demo-user', ...grant }) => ({ userId, ...grant }),
+  );
+  const users = {
+    ...config.authentication.users,
+    ...Object.fromEntries(assignments.map(({ userId }) => [userId, { name: userId }])),
+  };
   const app = await createRuntimeApp(
     {
-      ...passwordConfig(),
-      authorization: {
-        assignments: (options.assignments ?? [{ role: 'developer', scope: {} }]).map((item) => ({
-          userId: 'demo-user',
-          ...item,
-        })),
-      },
+      ...config,
+      authentication: { ...config.authentication, users },
+      authorization: { assignments },
     },
     {
       auth: { store },
@@ -199,10 +236,16 @@ async function listen(
     stops.push(() => scheduler.stop());
   }
 
-  return {
-    app,
-    headers: { cookie: authCookieNames(passwordConfig().server.port).session + '=' + session },
-  };
+  function as(userId: string): Listening {
+    const session = store.createSession({ userId, authenticatedWith: { kind: 'password' } });
+
+    return {
+      app,
+      headers: { cookie: authCookieNames(config.server.port).session + '=' + session },
+    };
+  }
+
+  return { ...as('demo-user'), as };
 }
 
 const base = (fx: Fixture) => `/api/specs/${fx.specId}`;
@@ -856,22 +899,24 @@ describe('the document-operations list route', () => {
 
   it('shows a row only to a caller who may view its Specification', async () => {
     const fx = await project();
-    const writer = await listen(fx);
+    const writer = await listen(fx, {
+      assignments: [
+        { role: 'developer', scope: {} },
+        { userId: 'owner', role: 'viewer', scope: { specId: fx.specId } },
+        { userId: 'stranger', role: 'viewer', scope: { specId: randomUUID() } },
+      ],
+    });
     const response = await save(writer, fx, 'notes-1', 'x\n', sha256(notes(1)));
     expect(response.statusCode, response.body).toBe(200);
     const operationId = response.json<{ operationId: string }>().operationId;
     git(fx.root, 'checkout', '-q', '--detach');
     await flush(writer, fx);
-    const own = await listen(fx, {
-      assignments: [{ role: 'viewer', scope: { specId: fx.specId } }],
-    });
+    const own = writer.as('owner');
     expect(
       (await call(own, 'GET', '/api/specs/document-operations')).json<OperationListResponse>()
         .items,
     ).toMatchObject([{ operationId }]);
-    const stranger = await listen(fx, {
-      assignments: [{ role: 'viewer', scope: { specId: randomUUID() } }],
-    });
+    const stranger = writer.as('stranger');
     const none = (
       await call(stranger, 'GET', '/api/specs/document-operations')
     ).json<OperationListResponse>();
@@ -1235,18 +1280,20 @@ describe('manual commit (ADR 0018)', () => {
   it('answers 401 without a session and 403 to a viewer and to a manager of another Specification', async () => {
     const fx = await project();
     await autoOff(fx);
-    const developer = await listen(fx);
+    const developer = await listen(fx, {
+      assignments: [
+        { role: 'developer', scope: {} },
+        { userId: 'viewer', role: 'viewer', scope: {} },
+        { userId: 'other', role: 'developer', scope: { specId: randomUUID() } },
+      ],
+    });
     await twoUncommitted(fx, developer);
     const body = { operationId: randomUUID() };
     const before = commitCount(fx);
 
-    const viewer = await listen(fx, { assignments: [{ role: 'viewer', scope: {} }] });
-    expect((await commitCall(viewer, fx, body)).statusCode).toBe(403);
-    const other = await listen(fx, {
-      assignments: [{ role: 'developer', scope: { specId: randomUUID() } }],
-    });
-    expect((await commitCall(other, fx, body)).statusCode).toBe(403);
-    const anonymous = await viewer.app.inject({
+    expect((await commitCall(developer.as('viewer'), fx, body)).statusCode).toBe(403);
+    expect((await commitCall(developer.as('other'), fx, body)).statusCode).toBe(403);
+    const anonymous = await developer.app.inject({
       method: 'POST',
       url: commitUrl(fx),
       headers: { 'content-type': 'application/json' },

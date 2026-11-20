@@ -317,18 +317,32 @@ describe('Temporary Specification creation HTTP boundary', () => {
     expect((await read(app, specId, 'overview')).revision).toBe(revision);
     expect((await save(app, specId, 'overview', body2)).statusCode).toBe(200);
   });
-  it('isolates Runtime instances, enforces mode/auth and validates supported catalogue selections', async () => {
+  it('isolates temporary Specifications between Runtime instances', async () => {
     const app = await runtime();
     const cat = await catalogue(app);
     const { specId } = (await create(app, creation(cat))).json<DemoCreatedSpec>();
     const other = await runtime();
     expect((await other.inject(`/api/specs/${specId}/workspace`)).statusCode).toBe(404);
+  });
+
+  it('does not register demo creation routes in project mode', async () => {
     const project = await runtime(createDemoEnvironment(), 'project');
     expect((await project.inject('/api/demo/specification-creation')).statusCode).toBe(404);
-    expect((await create(project, creation(cat))).statusCode).toBe(404);
+    expect(
+      (await project.inject({ method: 'POST', url: '/api/demo/specifications' })).statusCode,
+    ).toBe(404);
+  });
+
+  it('requires authentication for the demo creation catalogue', async () => {
     const secured = await createRuntimeApp(passwordConfig(), { dataMode: 'demo' });
     apps.push(secured);
     expect((await secured.inject('/api/demo/specification-creation')).statusCode).toBe(401);
+  });
+
+  it('validates demo creation input and supported Session catalogue selections', async () => {
+    const app = await runtime();
+    const cat = await catalogue(app);
+    const { specId } = (await create(app, creation(cat))).json<DemoCreatedSpec>();
     expect(
       (
         await create(

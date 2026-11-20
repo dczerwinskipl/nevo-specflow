@@ -35,9 +35,12 @@ an ordinary .NET, React or Node.js application.
 
 A user should be able to initialize SpecFlow in a real repository and ask an agent
 to write a Specification or perform a Task without first designing an entire
-definition catalogue. A good default is **useful out of the box, explicit about
-assumptions, and easy to edit**. It is not a collection of hard-coded framework rules
-inside the Engine.
+definition catalogue. **The common shipped seeds must remain sufficient on their own
+for generic projects**. Optional stack packs improve instruction quality and
+verification for recognised applications; they must never be required for Create,
+Task authoring or manual Workflow. A good default is useful out of the box,
+explicit about assumptions, and easy to edit, not a collection of hard-coded
+framework rules inside the Engine.
 
 ## Composition proposal
 
@@ -103,6 +106,11 @@ select both applicable technology contexts and preserve **one** Specification,
 Task graph and set of workflow decisions. Integration Tasks may need multiple
 verification recipes, but must not acquire two independent execution histories.
 
+A React frontend normally has a `package.json`, but that is **not** evidence of a
+Node.js backend. Distinguish the Node.js service/worker pack from the frontend's
+toolchain. A plain React app should not be assigned Node service rules about
+process shutdown, API authentication or queue consumers.
+
 ## Installation and ownership
 
 [ADR 0017](../architecture/decisions/0017-definitions-as-project-data.md) stays
@@ -120,9 +128,12 @@ the owner's choice.
 
 Pack identity/version/provenance and ID collision handling need design before
 adding an actual `pack` definition kind or a new `definitions packs` command.
-Avoid committing generated machine-local settings or credentials. Generated agent
-skills must be derived from one canonical profile source, not separately maintained
-in each provider directory.
+The existing YAML definition kinds and their validation should be reused first.
+Technology-specific **agent profile definitions**, if needed, belong in the
+project's `.nevo/agents/definitions/`, not in `.nevo/definitions/`; provider-specific
+skills are generated projections of those profiles. Avoid committing generated
+machine-local settings or credentials. A stack pack must not install a native skill
+as a backdoor around the managed provider's fixed tool and extension policy.
 
 ## Verification and guardrails
 
@@ -142,7 +153,8 @@ Every pack should have:
 3. Evidence that Task context routes to the correct sources and that
    repo-specific rules override suggestions without violating the workflow model.
 4. Negative tests for missing toolchains, conflicting package managers,
-   multi-root repositories, unknown test commands and stale definition revisions.
+   multi-root repositories, React-only repositories mistakenly detected as Node
+   services, unknown test commands and stale definition revisions.
 5. Measured prompt/context size and review of instruction quality on at least
    two different representative repositories per ecosystem (not only SpecFlow).
 6. No assumption that an agent's reported "tests passed" is a verified Engine gate.

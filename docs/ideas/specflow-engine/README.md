@@ -52,7 +52,7 @@ Open proposals (drafts, not current rules; current documentation and code win):
 | [Agent workflow entry points](agent-workflow-entrypoints.md)                                          | Portable skill; CLI / invocation-bound Runtime broker; optional future MCP adapter                   |
 | [Sequential agent orchestration](sequential-agent-orchestration.md)                                   | Later automatic continuation, review/rework and Task batches after E6                                |
 | [Typed transition inputs (E5)](reusable-workflow-manual-execution/typed-transition-inputs.md)         | Definition-driven finish forms; needs bounded run history (F19)                                      |
-| [Legacy Nevo migration](legacy-nevo-migration.md)                                                     | Legacy modules not yet ported                                                                        |
+| [Legacy Nevo migration](legacy-nevo-migration.md)                                                     | Unported modules and full NEvo .NET feature cutover DoD before deleting legacy JS/TS tooling         |
 | [Decisions](decisions-and-promotion.md)                                                               | Open decision register                                                                               |
 | [Acceptance criteria](acceptance-criteria.md) and [test plan](test-plan.md)                           | Open gates FB01–FB09, SI04–SI08 and their test rows                                                  |
 | [Multi-instance execution](multi-instance-execution.md) and [its plan](multi-instance-plan/README.md) | Deferred same-step multi-instance runs                                                               |

@@ -24,7 +24,12 @@ import {
 } from './close/blockers';
 import { inspectActions, type SpecificationExitPort } from './operations/actions';
 import { assertSharedResourcesAvailable } from '../specs/coordination/resources';
-import { SharedResourceError, ownedTurnOf, type OwnedExecution } from '../specs/durable';
+import {
+  SharedResourceError,
+  ownedTurnOf,
+  type OwnedExecution,
+  type OwnedExecutionClaim,
+} from '../specs/durable';
 import { guardExecutionClaims } from './state/claim-guard';
 import { executionClaimAdmission } from './write-admission';
 import type { RememberModelDependencies } from './definitions/remember-model';
@@ -42,6 +47,7 @@ import { ofSubject } from './operations/loaded-execution';
 import type { PostActionResult, WorkflowPostActions } from './operations/post-actions';
 import { hasPendingExecutionChange } from './state/pending-task-change';
 import { createFilesystemWorkflowStore } from './state/filesystem-store';
+import type { WorkflowStore } from './state/store';
 import {
   guardTaskDocumentChanges,
   type PendingTaskDocumentChange,
@@ -194,6 +200,38 @@ function engineHolds(engine: SpecFlowEngine): ExecutionHolds {
 }
 
 /**
+ * The execution store of an opened Engine, every change admitted against the writer claims with
+ * `owned` as the caller's own claim (none: every unsettled agent claim refuses). The host forms come
+ * from {@link OpenWorkflowOptions.ownedExecution} (`turn`); the agent attempt's finalize section uses
+ * the `finalize` form, inside that section only (`workflow/agent`).
+ */
+export function engineExecutionStore(
+  engine: SpecFlowEngine,
+  owned: OwnedExecutionClaim | undefined,
+): WorkflowStore {
+  // The claim admission first: an agent Turn's claim is the holder a refusal names.
+  return guardExecutionClaims(
+    guardCloseReservations(
+      guardTaskDocumentChanges(
+        createFilesystemWorkflowStore({
+          stateRoot: engine.context.project.stateRoot,
+          specificationDirectory: (specId) => specificationDirectory(engine, specId),
+          commits: {
+            admit: (specId, paths, operationId) =>
+              admitExecutionStateChange(engine, specId, paths, operationId, {
+                ...(owned !== undefined ? { ownedExecution: owned } : {}),
+              }),
+          },
+        }),
+        pendingTaskDocuments(engine),
+      ),
+      (specId) => closeInProgress(engine, specId),
+    ),
+    executionClaimAdmission(engine, owned),
+  );
+}
+
+/**
  * Load the execution catalogue now. The returned dependencies hold that snapshot of the definitions:
  * after a definition edit (including `rememberArchetypeModel`) call `openWorkflow` again to see it.
  */
@@ -213,26 +251,7 @@ export async function openWorkflow(
   const dependencies: Omit<WorkflowDependencies, 'specificationExit'> = {
     catalogue: await reloadCatalogue(),
     reloadCatalogue,
-    // The claim admission first: an agent Turn's claim is the holder a refusal names.
-    store: guardExecutionClaims(
-      guardCloseReservations(
-        guardTaskDocumentChanges(
-          createFilesystemWorkflowStore({
-            stateRoot: engine.context.project.stateRoot,
-            specificationDirectory: (specId) => specificationDirectory(engine, specId),
-            commits: {
-              admit: (specId, paths, operationId) =>
-                admitExecutionStateChange(engine, specId, paths, operationId, {
-                  ...(owned !== undefined ? { ownedExecution: owned } : {}),
-                }),
-            },
-          }),
-          pendingTaskDocuments(engine),
-        ),
-        (specId) => closeInProgress(engine, specId),
-      ),
-      executionClaimAdmission(engine, owned),
-    ),
+    store: engineExecutionStore(engine, owned),
     references: engineReferences(engine, options),
     holds: engineHolds(engine),
     now: () => new Date(),

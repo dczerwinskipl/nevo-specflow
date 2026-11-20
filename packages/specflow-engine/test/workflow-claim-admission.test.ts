@@ -16,13 +16,20 @@ import {
   bootstrapProjectHome,
   createSpecificationForTesting,
   createTask,
+  finalizeAgentAttempt,
   installProjectDefinitions,
   markWorkspaceExecutionDispatched,
   markWorkspaceExecutionUnknown,
+  openAgentAttempts,
   openArchetypeEditing,
   openWorkflow,
+  proposeAgentFinish,
+  readAgentAttempt,
   rememberArchetypeModel,
   settleWorkspaceExecution,
+  settleWorkspaceExecutionInSection,
+  startAgentAttempt,
+  type AgentActor,
   type WorkspaceExecutionIntent,
 } from '../src/testing';
 import { createGitTestProject } from './support/git-project';
@@ -123,4 +130,85 @@ it('admits only the owning Turn while an agent claim is unsettled, with Git off'
   ).resolves.toMatchObject({
     outcome: { status: 'planned' },
   });
+}, 240_000);
+
+it('finalizes an agent attempt whose Turn claim is unknown in one section, then admits others', async () => {
+  const root = await createGitTestProject('specflow-agent-finalize-', 'runtime: {}\n');
+  roots.push(root);
+  const engine = await bootstrapProjectHome(root);
+  await installProjectDefinitions(engine);
+  const spec = await createSpecificationForTesting(engine, {
+    operationId: randomUUID(),
+    title: 'Agent finalize',
+    created: '2026-11-20',
+    archetype: { id: 'feature', version: 1 },
+    target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
+  });
+  const writer: AgentActor = {
+    class: 'agent',
+    details: { archetype: 'spec-writer', provider: 'claude', sessionId: 'session-a' },
+  };
+  const subject = { kind: 'specification', specId: spec.specId } as const;
+  const intent: WorkspaceExecutionIntent = {
+    operationId: randomUUID(),
+    ownerId: 'session-a',
+    binding: 'a'.repeat(64),
+  };
+  const receipt = {
+    invocationId: intent.operationId,
+    process: 'stopped' as const,
+    outcome: 'completed' as const,
+  };
+  const agent = await openAgentAttempts(engine);
+  const { binding } = await startAgentAttempt(agent, {
+    subject,
+    archetype: 'feature',
+    actor: writer,
+    expected: { step: 'requirements' },
+    workspaceId: engine.workspace.workspaceId,
+    turn: { invocationId: intent.operationId, turnId: 'turn-1' },
+  });
+  await admitWorkspaceExecution(engine, intent);
+  await markWorkspaceExecutionDispatched(engine, intent);
+  const turn = {
+    attemptId: binding.attemptId,
+    invocationId: intent.operationId,
+    actor: writer,
+    subject,
+    step: 'requirements',
+    attempt: 1,
+  };
+  await proposeAgentFinish(agent, { turn, input: {} });
+  // The Turn ended without a verified outcome: only the finalize form admits the attempt's write.
+  await markWorkspaceExecutionUnknown(engine, intent);
+  const foreign = await openWorkflow(engine);
+  const later = { specId: spec.specId, taskId: 'later', title: 'Later', type: 'implementation' };
+  await expect(createTask(foreign, { ...later, actor: owner })).rejects.toMatchObject({
+    code: 'WORKFLOW_SPECIFICATION_BUSY',
+  });
+  // The lock-held settlement never takes the lock, so it refuses outside a section.
+  await expect(settleWorkspaceExecutionInSection(engine, intent, receipt)).rejects.toThrow(
+    'inside a project control-lock section',
+  );
+
+  expect(
+    await finalizeAgentAttempt(agent, { attemptId: binding.attemptId, intent, receipt }),
+  ).toMatchObject({
+    kind: 'finished',
+    transition: 'agreed',
+    postActions: [{ action: 'commit-execution-state', status: 'skipped' }],
+  });
+  const attempt = await readAgentAttempt(agent, binding.attemptId);
+  expect(attempt).toMatchObject({
+    proposal: { state: 'finalized' },
+    postActions: [{ state: 'done' }],
+  });
+  // Git is off: there is no dirty set to record.
+  expect(attempt?.dirtySet).toBeUndefined();
+  await expect(createTask(foreign, { ...later, actor: owner })).resolves.toMatchObject({
+    task: { taskId: 'later' },
+  });
+  expect(
+    await finalizeAgentAttempt(agent, { attemptId: binding.attemptId, intent, receipt }),
+  ).toEqual({ kind: 'finished', transition: 'agreed', postActions: [] });
 }, 240_000);

@@ -46,6 +46,11 @@ export const WORKFLOW_ERROR_CODES = [
   'WORKFLOW_GATE_UNSATISFIED',
   /** A Specification cannot complete while Tasks are open; the error lists them (`openTasks`). */
   'WORKFLOW_TASKS_OPEN',
+  /**
+   * An agent's finish proposal takes a decision only the owner takes: a transition with an
+   * owner-authority effect or `confirmation: owner`, or status decisions on Tasks.
+   */
+  'WORKFLOW_OWNER_DECISION_REQUIRED',
 ] as const;
 export type WorkflowErrorCode = (typeof WORKFLOW_ERROR_CODES)[number];
 

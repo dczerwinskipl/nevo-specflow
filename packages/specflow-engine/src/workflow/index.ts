@@ -149,8 +149,25 @@ export {
 } from './operations/reevaluate-wait';
 export { returnToStep, type ReturnToStepInput, type ReturnToStepResult } from './operations/return';
 export {
+  openAgentAttempts,
+  proposeAgentFinish,
+  readAgentAttempt,
+  startAgentAttempt,
+  type AgentAttemptDependencies,
+  type AgentAttemptJournal,
+  type AgentFinishProposal,
+  type AgentProposalState,
+  type AgentTurnBinding,
+  type AgentTurnIdentity,
+  type ProposeAgentFinishInput,
+  type ProposeAgentFinishResult,
+  type StartAgentAttemptInput,
+  type StartAgentAttemptResult,
+} from './agent';
+export {
   startSpecificationExecution,
   startTaskExecution,
+  type ExpectedPosition,
   type StartResult,
   type StartSpecificationInput,
   type StartTaskInput,
@@ -206,6 +223,7 @@ export type { FinishInput } from './input-schema';
 export { TASK_STATUSES } from './state/model';
 export type {
   AgentActor,
+  AgentAttemptBinding,
   AttemptRecord,
   ExecutionTask,
   OwnerActor,

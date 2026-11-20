@@ -10178,6 +10178,12 @@
               {
                 "type": "string",
                 "enum": [
+                  "WORKFLOW_OWNER_DECISION_REQUIRED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
                   "WORKFLOW_UNAVAILABLE"
                 ]
               },
@@ -10369,6 +10375,12 @@
                 "type": "string",
                 "enum": [
                   "WORKFLOW_TASKS_OPEN"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_OWNER_DECISION_REQUIRED"
                 ]
               },
               {

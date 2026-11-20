@@ -329,6 +329,15 @@ describe('replay', () => {
       },
     ],
     [
+      'a wait attempt with host data',
+      {
+        ...run(...inWait),
+        attempts: run(...inWait).attempts.map((record) =>
+          record.step === 'collect' ? { ...record, hostData: { id: 'x' } } : record,
+        ),
+      },
+    ],
+    [
       'a transition into a wait step that was not entered',
       {
         ...run(...inWait),
@@ -487,6 +496,30 @@ describe('a repeated finish (F16)', () => {
     expect(() => decide(DEFINITION, run(...before), command)).toThrow(
       expect.objectContaining({ code: 'WORKFLOW_ATTEMPT_MISMATCH' }),
     );
+  });
+});
+
+describe('host data of an attempt', () => {
+  it('is recorded by the start that activates the attempt and kept by a resume and a finish', () => {
+    const started = decide(DEFINITION, newRun(DEFINITION), {
+      kind: 'start',
+      at: AT,
+      actor: agent,
+      hostData: { binding: 'b1' },
+    }).nextRun;
+    expect(started.attempts[0]?.hostData).toEqual({ binding: 'b1' });
+
+    const resumed = decide(DEFINITION, started, {
+      kind: 'start',
+      at: AT,
+      actor: agent,
+      hostData: { binding: 'b2' },
+    });
+    expect(resumed.nextRun).toBe(started);
+
+    const finished = decide(DEFINITION, started, finish('draft', 1, agent)).nextRun;
+    expect(finished.attempts[0]?.hostData).toEqual({ binding: 'b1' });
+    expect(isPositionJustified(finished, DEFINITION)).toBe(true);
   });
 });
 

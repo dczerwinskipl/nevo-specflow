@@ -59,6 +59,12 @@ export interface AttemptRecord<TActor extends ActorRecord = ActorRecord> {
   readonly startedAt: string;
   /** Who works on a work-step attempt; a wait-step attempt has none. */
   readonly actor?: TActor;
+  /**
+   * Data the host records with a work-step attempt when the attempt starts (for example the binding
+   * of the execution that works on it). The core keeps it with the attempt and never interprets it;
+   * a wait-step attempt has none.
+   */
+  readonly hostData?: unknown;
   /** Absent while the attempt is active. */
   readonly endedAt?: string;
   /** Who finished a work-step attempt (of the class of `actor`). */

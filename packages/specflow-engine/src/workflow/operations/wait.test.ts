@@ -7,7 +7,6 @@ import { inspectExecution } from './inspect';
 import {
   SPEC,
   TWO_TASKS,
-  agent,
   claude,
   memoryDependencies,
   owner,
@@ -54,12 +53,7 @@ describe('Tasks of a Specification', () => {
       message: expect.stringContaining('draft') as unknown,
     });
 
-    const reviewed = await work(
-      dependencies,
-      specification,
-      { result: 'pass' },
-      agent('codex', 'session-r', 'x'),
-    );
+    const reviewed = await work(dependencies, specification, { result: 'pass' }, owner);
 
     expect(reviewed.continuation).toEqual({ kind: 'none', reason: 'waiting-for-tasks' });
     expect(await positionOf(dependencies, specification)).toEqual({
@@ -113,7 +107,7 @@ describe('Tasks of a Specification', () => {
       actor: claude,
     });
     expect(revised.createdTasks).toEqual([]);
-    await work(dependencies, specification, { result: 'pass' });
+    await work(dependencies, specification, { result: 'pass' }, owner);
 
     const tasks = (await inspectExecution(dependencies, SPEC)).tasks.map((entry) => entry.record);
     expect(tasks).toMatchObject([
@@ -250,7 +244,7 @@ describe('waiting for Tasks', () => {
       input: { tasks: [] },
       actor: claude,
     });
-    const result = await work(dependencies, specification, { result: 'pass' });
+    const result = await work(dependencies, specification, { result: 'pass' }, owner);
 
     expect(result.continuation).toEqual({
       kind: 'attention',

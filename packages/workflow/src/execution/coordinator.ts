@@ -38,7 +38,13 @@ import { assertPinned } from '../definitions/revision';
  */
 
 export type WorkflowCommand<TActor extends ActorRecord = ActorRecord> =
-  | { readonly kind: 'start'; readonly at: string; readonly actor: TActor }
+  | {
+      readonly kind: 'start';
+      readonly at: string;
+      readonly actor: TActor;
+      /** Recorded with the attempt the start activates; a resume keeps the active attempt's own. */
+      readonly hostData?: unknown;
+    }
   | {
       readonly kind: 'finish';
       readonly at: string;
@@ -232,6 +238,7 @@ function activate<TActor extends ActorRecord>(
   step: string,
   at: string,
   actor: TActor | undefined,
+  hostData?: unknown,
 ): WorkflowRun<TActor> {
   const attempt = nextAttemptNumber(run, step);
 
@@ -246,6 +253,7 @@ function activate<TActor extends ActorRecord>(
         sequence: nextSequence(run),
         startedAt: at,
         ...(actor ? { actor } : {}),
+        ...(hostData !== undefined ? { hostData } : {}),
       },
     ],
   };
@@ -343,7 +351,7 @@ function decideStart<A extends HostAnnotations, TActor extends ActorRecord>(
     };
   }
 
-  const nextRun = activate(run, step.id, command.at, command.actor);
+  const nextRun = activate(run, step.id, command.at, command.actor, command.hostData);
 
   return {
     nextRun,

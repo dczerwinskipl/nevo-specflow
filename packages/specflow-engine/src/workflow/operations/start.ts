@@ -7,6 +7,7 @@ import { entryGatesOf } from '../gates/evaluate';
 import { assertGatesSatisfied } from '../gates/read';
 import { resolveTaskType, taskReadiness, unsatisfiableDependencies } from '../tasks/tasks';
 import type {
+  AgentAttemptBinding,
   ExecutionTask,
   SpecificationExecutionRecord,
   TaskRunRecord,
@@ -41,6 +42,46 @@ export interface StartOptions {
    * must be one the step allows; the Session of an agent attempt is the only one that resumes it.
    */
   readonly actor: WorkflowActor;
+  /**
+   * The position the caller showed and asks to start (Ask agent): checked before anything is written,
+   * so a stale request never starts or resumes another attempt (`WORKFLOW_ATTEMPT_MISMATCH`).
+   */
+  readonly expected?: ExpectedPosition;
+  /** Recorded with the attempt the start activates; a resume keeps the active attempt's own. */
+  readonly attemptData?: AgentAttemptBinding;
+}
+
+/**
+ * The step a start works on and, for a resume, its active attempt. Without `attempt` the start must
+ * activate a new attempt of `step`; with it, `step#attempt` must be the active attempt.
+ */
+export interface ExpectedPosition {
+  readonly step: string;
+  readonly attempt?: number;
+}
+
+function assertExpectedPosition(loaded: LoadedSubject, expected: ExpectedPosition): void {
+  const position = loaded.run.position;
+  const current =
+    position.state === 'not-started'
+      ? { step: loaded.definition.entryStep }
+      : position.state === 'ready'
+        ? { step: position.step }
+        : position.state === 'active'
+          ? { step: position.step, attempt: position.attempt }
+          : undefined;
+  if (current?.step !== expected.step || current.attempt !== expected.attempt) {
+    const shown = `${expected.step}${expected.attempt !== undefined ? `#${String(expected.attempt)}` : ''}`;
+
+    throw new WorkflowError(
+      'WORKFLOW_ATTEMPT_MISMATCH',
+      current === undefined
+        ? `The run has ended; ${shown} cannot start.`
+        : position.state === 'active' && expected.attempt === undefined
+          ? `The step "${current.step}" has an active attempt already; continue it instead of starting ${shown}.`
+          : `The run moved since it was shown: it is at ${current.step}${current.attempt !== undefined ? `#${String(current.attempt)}` : ''}, not ${shown}.`,
+    );
+  }
 }
 
 /**
@@ -59,6 +100,10 @@ async function startSubject(
   readinessChecked = false,
 ): Promise<StartResult> {
   const loaded = loadSubject(dependencies.catalogue, snapshot, subject);
+  if (options.expected) {
+    assertExpectedPosition(loaded, options.expected);
+  }
+
   if (loaded.run.position.state === 'terminal') {
     return { kind: 'terminal', subject };
   }
@@ -70,6 +115,7 @@ async function startSubject(
     kind: 'start',
     at: isoNow(dependencies),
     actor: options.actor,
+    ...(options.attemptData !== undefined ? { hostData: options.attemptData } : {}),
   });
   const intent = decision.intent;
   const step = findStep(loaded.definition, intent.kind === 'execute' ? intent.step : '');
@@ -189,21 +235,30 @@ export function startSpecificationExecution(
   dependencies: WorkflowDependencies,
   input: StartSpecificationInput,
 ): Promise<StartResult> {
-  return dependencies.serialize(async () => {
-    const snapshot = await dependencies.store.read(input.specId);
-    const subject: WorkflowSubject = { kind: 'specification', specId: input.specId };
-    if (snapshot.specification) {
-      return startSubject(dependencies, snapshot, subject, input);
-    }
+  return dependencies.serialize(() => startSpecificationInSection(dependencies, input));
+}
 
-    const record = newSpecificationRecord(dependencies, input);
-    const seeded: ExecutionSnapshot = {
-      ...snapshot,
-      specification: { value: record, revision: '' },
-    };
+/**
+ * {@link startSpecificationExecution} for a caller that holds the `serialize` section already and
+ * writes more in it (the start of an agent attempt records its journal there).
+ */
+export async function startSpecificationInSection(
+  dependencies: WorkflowDependencies,
+  input: StartSpecificationInput,
+): Promise<StartResult> {
+  const snapshot = await dependencies.store.read(input.specId);
+  const subject: WorkflowSubject = { kind: 'specification', specId: input.specId };
+  if (snapshot.specification) {
+    return startSubject(dependencies, snapshot, subject, input);
+  }
 
-    return startSubject(dependencies, seeded, subject, input, true);
-  });
+  const record = newSpecificationRecord(dependencies, input);
+  const seeded: ExecutionSnapshot = {
+    ...snapshot,
+    specification: { value: record, revision: '' },
+  };
+
+  return startSubject(dependencies, seeded, subject, input, true);
 }
 
 function newSpecificationRecord(
@@ -246,41 +301,47 @@ export function startTaskExecution(
   dependencies: WorkflowDependencies,
   input: StartTaskInput,
 ): Promise<StartResult> {
-  return dependencies.serialize(async () => {
-    const snapshot = await dependencies.store.read(input.specId);
-    const subject: WorkflowSubject = {
-      kind: 'task',
-      specId: input.specId,
-      taskId: input.taskId,
-    };
-    const { task, run } = loadTask(dependencies.catalogue, snapshot, input.taskId);
-    if (run) {
-      assertExpectedRevision(input, run.value.run.workflow.revision);
+  return dependencies.serialize(() => startTaskInSection(dependencies, input));
+}
 
-      return startSubject(dependencies, snapshot, subject, input);
-    }
+/** {@link startTaskExecution} for a caller that holds the `serialize` section already. */
+export async function startTaskInSection(
+  dependencies: WorkflowDependencies,
+  input: StartTaskInput,
+): Promise<StartResult> {
+  const snapshot = await dependencies.store.read(input.specId);
+  const subject: WorkflowSubject = {
+    kind: 'task',
+    specId: input.specId,
+    taskId: input.taskId,
+  };
+  const { task, run } = loadTask(dependencies.catalogue, snapshot, input.taskId);
+  if (run) {
+    assertExpectedRevision(input, run.value.run.workflow.revision);
 
-    // Readiness first, so a draft is refused as blocked; `startSubject` does not check it again.
-    assertTaskReady(dependencies, snapshot, task);
-    const { workflow } = resolveTaskType({
-      type: task.type,
-      allowed: await effectiveTaskTypesOf(dependencies, snapshot),
-      taskType: (id) => dependencies.catalogue.taskType(id),
-      workflow: (id) => dependencies.catalogue.workflow(id),
-    });
-    const record: TaskRunRecord = {
-      specId: input.specId,
-      taskId: input.taskId,
-      run: newRun<WorkflowActor>(workflow),
-    };
-    assertExpectedRevision(input, record.run.workflow.revision);
-    const seeded: ExecutionSnapshot = {
-      ...snapshot,
-      runs: [...snapshot.runs, { value: record, revision: '' }],
-    };
+    return startSubject(dependencies, snapshot, subject, input);
+  }
 
-    return startSubject(dependencies, seeded, subject, input, true, true);
+  // Readiness first, so a draft is refused as blocked; `startSubject` does not check it again.
+  assertTaskReady(dependencies, snapshot, task);
+  const { workflow } = resolveTaskType({
+    type: task.type,
+    allowed: await effectiveTaskTypesOf(dependencies, snapshot),
+    taskType: (id) => dependencies.catalogue.taskType(id),
+    workflow: (id) => dependencies.catalogue.workflow(id),
   });
+  const record: TaskRunRecord = {
+    specId: input.specId,
+    taskId: input.taskId,
+    run: newRun<WorkflowActor>(workflow),
+  };
+  assertExpectedRevision(input, record.run.workflow.revision);
+  const seeded: ExecutionSnapshot = {
+    ...snapshot,
+    runs: [...snapshot.runs, { value: record, revision: '' }],
+  };
+
+  return startSubject(dependencies, seeded, subject, input, true, true);
 }
 
 function assertExpectedRevision(input: StartTaskInput, revision: string): void {

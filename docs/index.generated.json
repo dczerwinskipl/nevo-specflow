@@ -4865,6 +4865,39 @@
       ]
     },
     {
+      "id": "product.specflow.ui.device-pairing",
+      "type": "product",
+      "title": "Device pairing and paired devices",
+      "status": "draft",
+      "file": "docs/product/specflow/ui/device-pairing.md",
+      "read_when": [
+        "changing the screen a browser without an owner credential sees",
+        "changing how a paired device approves a pairing code, shows a QR code or lists its devices",
+        "changing how the UI explains that agents are paused while an initial pairing code exists"
+      ],
+      "summary": "The UX contract of D21 device pairing (Ask agent contract): the Pair this device screen with the browser's own short code, where the request came from and the Runtime's initial code; approving a code or showing a QR code from a paired device; the headless initial code file; the paired-device list with Revoke. From the mock of 2026-11-20, not implemented.",
+      "related": [
+        "ideas.specflow-engine.reusable-workflow.agent-execution",
+        "product.specflow.ui.workflow-execution",
+        "product.specflow.ui.authentication-recovery",
+        "product.specflow.ui.interaction-model"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "runtime",
+        "security"
+      ],
+      "tags": [
+        "pairing",
+        "owner-credential",
+        "devices",
+        "qr-code",
+        "headless",
+        "ask-agent"
+      ]
+    },
+    {
       "id": "product.specflow.ui.documentation-reader",
       "type": "product",
       "title": "Documentation reader (UI)",
@@ -5165,7 +5198,8 @@
         "changing Task authoring on the Full Task page (documents, context, dependencies, details)",
         "changing the first-start confirmation, Finish or Return dialogs, or exit gates in the UI",
         "changing Close specification or Abandon specification",
-        "adding Ask agent to a workflow step (E6) without redesigning the step panel"
+        "changing Ask agent (its Now block states, dialog, Stop, Continue, Take over, owner confirmation)",
+        "changing what Close lists as uncommitted changes"
       ],
       "summary": "How a person runs a Specification and its Tasks entirely in the UI, without any Session: the projection-driven Now block with one main action, the Finish, Return and first-start dialogs, exit gates, Task authoring on the Full Task page (documents in the Secondary, context, dependencies, details), the lifecycle actions, and Close and Abandon with grouped blockers.",
       "related": [

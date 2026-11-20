@@ -16,10 +16,10 @@ export const optionLabelClassName =
  */
 export const optionLabelWrappingClassName = 'min-w-0 whitespace-normal break-words text-current';
 
-export const optionDescriptionClassName = 'min-w-0 text-content-secondary';
+export const optionDescriptionClassName = 'min-w-0 wrap-anywhere text-content-secondary';
 
 export const optionMetaClassName =
-  'inline-flex shrink-0 items-center whitespace-nowrap text-content-secondary';
+  'inline-flex min-w-0 max-w-[50%] shrink-0 items-center whitespace-normal text-right wrap-anywhere text-content-secondary';
 
 /** Root class contract for an option; plain options keep the shared floating item recipe untouched. */
 export function optionItemClassName({

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useRef, useState } from 'react';
+import { assertSeparatedOptionText } from '../shared/optionTextGeometry.stories-support';
 import { Field } from '../Field';
 import { Combobox, ComboboxItem } from './Combobox';
 
@@ -293,5 +294,57 @@ export const TabDoesNotCommitPartialText: Story = {
     await userEvent.tab();
     assert(selectedValue(canvas) === '', 'Tab leaves the value untouched.');
     assert((input as HTMLInputElement).value === '', 'Partial text is discarded.');
+  },
+};
+
+export const NarrowDescriptionAndMetadata: Story = {
+  render: () => (
+    <div className="w-72">
+      <Combobox aria-label="Starting branch" placeholder="Choose a branch">
+        <ComboboxItem value="available">main</ComboboxItem>
+        <ComboboxItem
+          value="invalid"
+          unavailable
+          description="Niepoprawny YAML"
+          meta="ma środowisko pracy · zmiany"
+        >
+          feature/setup
+        </ComboboxItem>
+        <ComboboxItem
+          value="long"
+          unavailable
+          description="NiepoprawnaKonfiguracjaProjektuSpecFlow"
+          meta="ma środowisko pracy · zmiany"
+        >
+          feature/long
+        </ComboboxItem>
+      </Combobox>
+    </div>
+  ),
+  play: async ({ canvas, userEvent }) => {
+    const { page } = await import('vitest/browser');
+    const previous = { width: window.innerWidth, height: window.innerHeight };
+    try {
+      await page.viewport(320, 640);
+      await until(() => window.innerWidth === 320);
+      const input = canvas.getByRole('combobox', { name: 'Starting branch' });
+      assert(input.getBoundingClientRect().width <= 288, 'The source control must stay narrow.');
+      input.focus();
+      await userEvent.keyboard('{ArrowDown}');
+      const list = await until(listbox);
+      await document.fonts.ready;
+      const options = list.querySelectorAll<HTMLElement>('[data-unavailable]');
+      assert(options.length === 2, 'Both unavailable reasons must be listed.');
+      for (const option of options) {
+        assertSeparatedOptionText(option, 'combobox');
+      }
+    } finally {
+      if (listbox()) {
+        await userEvent.keyboard('{Escape}');
+        await until(() => !listbox());
+      }
+
+      await page.viewport(previous.width, previous.height);
+    }
   },
 };

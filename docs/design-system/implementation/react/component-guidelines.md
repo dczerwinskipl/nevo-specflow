@@ -241,6 +241,9 @@ as="span" variant="code-md"`; `textValue` carries the plain name.
 - The listbox width equals the trigger width, so long descriptions wrap; do not widen the content
   locally. Persistent text outside the control remains the place for an overview of unavailable
   options.
+- Descriptions break long words within their column. Trailing metadata uses at most half the
+  available row width and wraps, so neither text can paint over the other in narrow pickers.
+  Select and Combobox share this layout rule.
 
 ## Description list
 

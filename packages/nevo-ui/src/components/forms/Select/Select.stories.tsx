@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { assertSeparatedOptionText } from '../shared/optionTextGeometry.stories-support';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { DesignCaptureProvider } from '@nevo/figma-capture/metadata';
 import { Badge } from '../../feedback/Badge';
@@ -568,5 +569,66 @@ export const KeyboardNavigation: Story = {
       trigger.getBoundingClientRect().height === initialHeight,
       'The trigger stays a single line.',
     );
+  },
+};
+
+export const NarrowDescriptionAndMetadata: Story = {
+  tags: ['contract', '!autodocs'],
+  render: () => (
+    <Field className="w-64">
+      <Field.Label>Starting branch</Field.Label>
+      <Select>
+        <SelectTrigger>
+          <SelectValue placeholder="Choose a branch" />
+        </SelectTrigger>
+        <SelectContent aria-label="Starting branches">
+          <SelectItem value="available">main</SelectItem>
+          <SelectItem
+            value="invalid"
+            unavailable
+            description="Niepoprawny YAML"
+            meta="ma środowisko pracy · zmiany"
+          >
+            feature/setup
+          </SelectItem>
+          <SelectItem
+            value="long"
+            unavailable
+            description="NiepoprawnaKonfiguracjaProjektuSpecFlow"
+            meta="ma środowisko pracy · zmiany"
+          >
+            feature/long
+          </SelectItem>
+        </SelectContent>
+      </Select>
+    </Field>
+  ),
+  play: async ({ canvas, userEvent }) => {
+    const { page } = await import('vitest/browser');
+    const previous = { width: window.innerWidth, height: window.innerHeight };
+    try {
+      await page.viewport(320, 640);
+      await waitFor(() => window.innerWidth === 320, 'The viewport must reach 320 px.');
+      // Radix closes its content on resize; let that browser event finish before opening it.
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const trigger = canvas.getByRole('combobox', { name: 'Starting branch' });
+      assert(trigger.getBoundingClientRect().width <= 256, 'The source control must stay narrow.');
+      trigger.focus();
+      await userEvent.keyboard('{Enter}');
+      const list = await waitFor(openListbox, 'The source options must open.');
+      await document.fonts.ready;
+      const options = list.querySelectorAll<HTMLElement>('[data-unavailable]');
+      assert(options.length === 2, 'Both unavailable reasons must be listed.');
+      for (const option of options) {
+        assertSeparatedOptionText(option, 'select');
+      }
+    } finally {
+      if (openListbox()) {
+        await userEvent.keyboard('{Escape}');
+        await waitFor(() => !openListbox(), 'The source options must close.');
+      }
+
+      await page.viewport(previous.width, previous.height);
+    }
   },
 };

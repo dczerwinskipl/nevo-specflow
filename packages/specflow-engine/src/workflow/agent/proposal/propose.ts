@@ -49,8 +49,9 @@ function mismatch(message: string): never {
  * `WORKFLOW_OWNER_DECISION_REQUIRED`); a refusal throws its reasons to the agent and records nothing.
  * The proposal is not a transition: nothing in the execution store changes until it is finalized.
  *
- * Deduplicated by the finish digest: the same proposal again returns the recorded one; a different
- * one replaces it while it is not finalized. Only the attempt's current Turn submits, while its
+ * Deduplicated by the finish digest: the same proposal again returns the recorded one (pending or
+ * finalized); a different one, or the same one after its finalize refused it, is validated again and
+ * replaces it while it is not finalized. Only the attempt's current Turn submits, while its
  * execution claim is dispatched (the `turn` admission): a call of a stopped or replaced invocation is
  * refused.
  */
@@ -67,8 +68,11 @@ export function proposeAgentFinish(
     assertCurrentTurn(journal, turn);
     const requestDigest = finishDigest({ step: turn.step, attempt: turn.attempt, input });
     const recorded = journal.proposal;
+    // A refused proposal is judged again when it is submitted again: what refused it may have changed.
     if (
-      recorded?.requestDigest === requestDigest &&
+      recorded !== undefined &&
+      recorded.state !== 'refused' &&
+      recorded.requestDigest === requestDigest &&
       isDeepStrictEqual(recorded.actor, turn.actor)
     ) {
       return { kind: 'replayed', proposal: recorded };
@@ -128,6 +132,10 @@ function assertCurrentTurn(
 
   if (journal.turns.at(-1)?.invocationId !== turn.invocationId) {
     mismatch('This Turn of the attempt was stopped or replaced; it cannot submit a proposal.');
+  }
+
+  if (!isDeepStrictEqual(journal.actor, turn.actor)) {
+    mismatch('The attempt is worked on by another agent; this Turn cannot submit its proposal.');
   }
 }
 

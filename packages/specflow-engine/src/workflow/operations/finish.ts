@@ -1,5 +1,5 @@
 import type { ContinuationDecision } from '../continuation/resolve';
-import { decide, findStep, type RunPosition } from '@nevo/workflow';
+import { activeAttempt, decide, findStep, type RunPosition } from '@nevo/workflow';
 import { WorkflowError } from '../errors';
 import { exitGatesFor } from '../gates/evaluate';
 import { assertGatesSatisfied } from '../gates/read';
@@ -15,7 +15,7 @@ import {
   type TaskDecision,
   type TaskProposal,
 } from '../tasks/tasks';
-import type { WorkflowActor, WorkflowSubject } from '../state/model';
+import { agentAttemptBindingOf, type WorkflowActor, type WorkflowSubject } from '../state/model';
 import type { ExecutionChange, ExecutionSnapshot } from '../state/store';
 import { assertAgentAuthority, assertSameSession, finishDigest } from './actors';
 import {
@@ -172,10 +172,32 @@ export type FinishPlan =
 
 export interface FinishPlanOptions {
   /**
-   * The finish is an agent's proposal (Ask agent): a decision only the owner takes refuses it with
-   * `WORKFLOW_OWNER_DECISION_REQUIRED` before the rest of its input is judged.
+   * The finish is an agent's proposal of an Ask agent attempt, or its finalize: the only path that
+   * finishes such an attempt for its agent. (An agent's decision only the owner takes refuses any
+   * agent finish with `WORKFLOW_OWNER_DECISION_REQUIRED`.)
    */
   readonly agentProposal?: boolean;
+}
+
+/**
+ * An attempt started by Ask agent advances only through its proposal and finalize (the agent's own
+ * Turn never finishes it directly); an owner finishes it only by taking it over.
+ */
+function assertNotBoundAttempt(
+  run: LoadedSubject['run'],
+  request: FinishStepInput,
+  options: FinishPlanOptions,
+): void {
+  if (
+    request.actor.class === 'agent' &&
+    !options.agentProposal &&
+    agentAttemptBindingOf(activeAttempt(run)) !== undefined
+  ) {
+    throw new WorkflowError(
+      'WORKFLOW_EXECUTOR_NOT_ALLOWED',
+      `The attempt ${request.step}#${String(request.attempt)} is an Ask agent attempt: its agent submits a finish proposal, which is applied when its Turn ends.`,
+    );
+  }
 }
 
 /**
@@ -204,6 +226,7 @@ export async function planFinish(
     position.attempt === request.attempt
   ) {
     assertSameSession(loaded.run, request.actor);
+    assertNotBoundAttempt(loaded.run, request, options);
   }
 
   const context: AdvanceContext = {
@@ -237,10 +260,6 @@ export async function planFinish(
   }
 
   const transition = taken.transition;
-  if (options.agentProposal) {
-    assertAgentAuthority(transition, request.input.taskDecisions);
-  }
-
   const produces = step.annotations.produces === 'tasks';
   if (produces !== (request.input.tasks !== undefined)) {
     throw new WorkflowError(
@@ -256,6 +275,12 @@ export async function planFinish(
       'WORKFLOW_INPUT_INVALID',
       'Only a Specification step decides the status of Tasks.',
     );
+  }
+
+  // No agent takes a decision only the owner takes (D17), whichever path its finish comes by; judged
+  // before anything is planned, so the agent learns it before the drafts, Tasks and gates.
+  if (request.actor.class === 'agent') {
+    assertAgentAuthority(transition, request.input.taskDecisions);
   }
 
   context.set.setRun(subject, decision.nextRun);

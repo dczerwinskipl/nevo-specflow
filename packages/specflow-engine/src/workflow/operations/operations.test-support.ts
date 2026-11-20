@@ -205,7 +205,8 @@ export const TWO_TASKS = [
 
 /**
  * Runs the Specification up to the wait step: the breakdown drafts {@link TWO_TASKS} and the
- * review's pass approves them. Returns the finish of the review.
+ * review's pass (the owner's: an approval is an owner decision) approves them. Returns the finish
+ * of the review.
  */
 export async function specificationWithTasks(dependencies: WorkflowDependencies) {
   await runToBreakdown(dependencies);
@@ -217,7 +218,7 @@ export async function specificationWithTasks(dependencies: WorkflowDependencies)
     actor: claude,
   });
 
-  return work(dependencies, specification, { result: 'pass' }, agent('codex', 'session-r', 'x'));
+  return work(dependencies, specification, { result: 'pass' }, owner);
 }
 
 /** Runs the Specification until `breakdown` is active (worked by {@link claude}). */

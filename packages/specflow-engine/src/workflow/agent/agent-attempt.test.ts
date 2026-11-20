@@ -7,12 +7,16 @@ import { finishStep } from '../operations/finish';
 import {
   SPEC,
   TWO_TASKS,
+  agent,
+  claude,
   memoryDependencies,
   positionOf,
   runToBreakdown,
   seedExecutionCatalogue,
   specification,
+  startSpecification,
 } from '../operations/operations.test-support';
+import type { WorkflowDependencies } from '../operations/loaded-execution';
 import type { AgentActor } from '../state/model';
 import type { AgentAttemptDependencies } from './dependencies';
 import { memoryAgentAttemptJournal } from './journal/memory.test-support';
@@ -33,6 +37,8 @@ const writer: AgentActor = {
   class: 'agent',
   details: { archetype: 'spec-writer', provider: 'claude', sessionId: 'session-a' },
 };
+
+const ACTIVE_REQUIREMENTS = { state: 'active', step: 'requirements', attempt: 1 } as const;
 
 /** The agent attempt operations over in-memory state; `claim` decides the Turn's admission. */
 function agentDependencies() {
@@ -62,6 +68,18 @@ function agentDependencies() {
   };
 
   return { dependencies, workflow, journal, admitted, state };
+}
+
+/** Runs the Specification until its breakdown proposed {@link TWO_TASKS}: the review is next. */
+async function specificationWithDrafts(workflow: WorkflowDependencies) {
+  await runToBreakdown(workflow);
+  await finishStep(workflow, {
+    subject: specification,
+    step: 'breakdown',
+    attempt: 1,
+    input: { tasks: TWO_TASKS },
+    actor: claude,
+  });
 }
 
 const startInput = (overrides: Partial<StartAgentAttemptInput> = {}): StartAgentAttemptInput => ({
@@ -282,14 +300,74 @@ describe('agent finish proposal', () => {
     ],
     ['another attempt', { attempt: 2 }, {}, 'WORKFLOW_ATTEMPT_MISMATCH'],
     ['a Turn that was replaced', { invocationId: INVOCATION_2 }, {}, 'WORKFLOW_ATTEMPT_MISMATCH'],
+    [
+      'another actor than the one of the attempt',
+      { actor: { ...writer, details: { ...writer.details, model: 'other-model' } } },
+      {},
+      'WORKFLOW_ATTEMPT_MISMATCH',
+    ],
   ])('refuses %s and records nothing', async (_name, turn, input, code) => {
-    const { dependencies } = agentDependencies();
+    const { dependencies, workflow } = agentDependencies();
     await startAgentAttempt(dependencies, startInput());
 
     await expect(
       proposeAgentFinish(dependencies, { turn: turnOf(turn), input }),
     ).rejects.toMatchObject({ code });
     expect((await readAgentAttempt(dependencies, ATTEMPT_ID))?.proposal).toBeUndefined();
+    expect(await positionOf(workflow, specification)).toEqual(ACTIVE_REQUIREMENTS);
+  });
+
+  it('keeps the pending proposal when a replacement is refused', async () => {
+    const { dependencies, workflow } = agentDependencies();
+    await startAgentAttempt(dependencies, startInput());
+    const { proposal } = await proposeAgentFinish(dependencies, { turn: turnOf(), input: {} });
+
+    await expect(
+      proposeAgentFinish(dependencies, { turn: turnOf(), input: { result: 'pass' } }),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_INPUT_INVALID' });
+    expect((await readAgentAttempt(dependencies, ATTEMPT_ID))?.proposal).toEqual(proposal);
+    expect(await positionOf(workflow, specification)).toEqual(ACTIVE_REQUIREMENTS);
+  });
+
+  it('judges the same input again after its finalize refused it', async () => {
+    const { dependencies, journal } = agentDependencies();
+    await startAgentAttempt(dependencies, startInput());
+    const { proposal } = await proposeAgentFinish(dependencies, { turn: turnOf(), input: {} });
+    journal.journals.set(ATTEMPT_ID, {
+      ...journal.journals.get(ATTEMPT_ID)!,
+      proposal: {
+        ...proposal,
+        state: 'refused',
+        refusal: { code: 'WORKFLOW_GATE_UNSATISFIED', message: 'A gate changed.' },
+      },
+    });
+
+    const again = await proposeAgentFinish(dependencies, { turn: turnOf(), input: {} });
+    expect(again.kind).toBe('replaced');
+    expect(again.proposal).toMatchObject({
+      state: 'pending',
+      requestDigest: proposal.requestDigest,
+    });
+    expect(again.proposal.refusal).toBeUndefined();
+  });
+
+  it('refuses a plain agent finish of an Ask agent attempt, but not the proposal', async () => {
+    const { dependencies, workflow } = agentDependencies();
+    await startAgentAttempt(dependencies, startInput());
+
+    await expect(
+      finishStep(workflow, {
+        subject: specification,
+        step: 'requirements',
+        attempt: 1,
+        input: {},
+        actor: writer,
+      }),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_EXECUTOR_NOT_ALLOWED' });
+    expect(await positionOf(workflow, specification)).toEqual(ACTIVE_REQUIREMENTS);
+    expect((await proposeAgentFinish(dependencies, { turn: turnOf(), input: {} })).kind).toBe(
+      'recorded',
+    );
   });
 
   it('is refused while the Turn claim is not dispatched (a late callback)', async () => {
@@ -303,16 +381,28 @@ describe('agent finish proposal', () => {
     expect(admitted.at(-1)).toEqual({ operationId: INVOCATION_1, form: 'turn' });
   });
 
+  it('refuses an owner-authority transition in any agent finish, not only a proposal', async () => {
+    const { workflow } = agentDependencies();
+    await specificationWithDrafts(workflow);
+    const reviewer = agent('codex', 'session-r', 'x');
+    await startSpecification(workflow, reviewer);
+    const before = await positionOf(workflow, specification);
+
+    await expect(
+      finishStep(workflow, {
+        subject: specification,
+        step: 'breakdown-review',
+        attempt: 1,
+        input: { result: 'pass' },
+        actor: reviewer,
+      }),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_OWNER_DECISION_REQUIRED' });
+    expect(await positionOf(workflow, specification)).toEqual(before);
+  });
+
   it('refuses a transition with an owner-authority effect', async () => {
     const { dependencies, workflow } = agentDependencies();
-    await runToBreakdown(workflow);
-    await finishStep(workflow, {
-      subject: specification,
-      step: 'breakdown',
-      attempt: 1,
-      input: { tasks: TWO_TASKS },
-      actor: { class: 'agent', details: { provider: 'claude', sessionId: 'session-a' } },
-    });
+    await specificationWithDrafts(workflow);
     const reviewer: AgentActor = {
       class: 'agent',
       details: { archetype: 'reviewer', provider: 'codex', sessionId: 'session-r' },

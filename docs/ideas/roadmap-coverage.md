@@ -22,6 +22,8 @@ related:
 
 > This is **traceability**, not a second release roadmap and not a list of merged PRs. [Product scope, status and next action](roadmap.md) are maintained in one place. Multiple source follow-ups may map to the **same user outcome**; a mapping does not mean that its implementation was verified.
 
+> **Branch snapshot, not a permanent counter.** The 88/88 reconciliation below applies to the source set on PR #189. PR #169 adds `reusable-workflow-manual-execution/ask-agent-delivery-plan.md` and edits this Ideas hub and generated indices. Whichever PR merges second must reconcile the *merged* source tree, classify the new plan against P102/I101 rather than inventing another product capability, regenerate both indices and resolve shared-file conflicts deliberately. Do not keep 88/88 merely because it passed on this branch.
+
 ## Numbered Workflow follow-ups
 
 Source: [Workflow Plan 06](specflow-engine/execution-plans/06-workflow-kernel/README.md). All **19 numbered follow-ups** (F01–F09 and F11–F20) are individually classified. F10 is not defined in that plan.

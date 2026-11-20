@@ -2977,7 +2977,7 @@
         "deciding how a portable skill uses CLI or MCP without duplicating Engine rules",
         "connecting agent profiles, StepContext and Task context to a delegated attempt"
       ],
-      "summary": "Proposed universal SpecFlow skill and explicit agent entry points for writing a Specification or executing one current Specification or Task step. CLI and MCP adapt the same Engine operations; managed authorization and agent finish remain owned by E6, with automation deferred.",
+      "summary": "Proposed universal SpecFlow skill and distinct entry points for agent-assisted Specification creation, one eligible Specification or Task step, and later full preparation. External CLI and the managed Runtime broker use the same Engine operations; MCP is a future adapter.",
       "related": [
         "ideas.specflow-engine",
         "ideas.specflow-engine.offline-agents",

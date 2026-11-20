@@ -7,40 +7,23 @@
  * The "agent work whose commit failed" kind joins when the attempt commit exists.
  */
 
+import type { CloseRepositoryBlocker, DocumentError } from '@nevo/specflow-engine';
+
 /** Paths named per owner or checkout before "and N more". */
 const SHOWN_PATHS = 5;
 
 const EXPLANATION = 'Closing starts from a committed checkout, and SpecFlow never discards work.';
 
-/** The part of `DOCUMENT_COMMITS_PENDING`'s `details.uncommitted` the report reads. */
-export interface UncommittedHold {
-  readonly owners: readonly (
-    | {
-        readonly kind: 'specification';
-        readonly specId: string;
-        readonly title?: string;
-        readonly stepInProgress?: boolean;
-        readonly count: number;
-        readonly paths: readonly string[];
-      }
-    | { readonly kind: 'definitions'; readonly count: number; readonly paths: readonly string[] }
-  )[];
-}
+/** `DOCUMENT_COMMITS_PENDING`'s `details.uncommitted`: the files SpecFlow wrote and left uncommitted. */
+export type UncommittedHold = NonNullable<NonNullable<DocumentError['details']>['uncommitted']>;
 
-/** The part of an `uncommitted-changes` repository blocker the report reads. */
-export interface UncommittedBlocker {
-  readonly kind: 'uncommitted-changes';
-  readonly checkout: string;
-  readonly workspaceId: string;
-  readonly paths: readonly { readonly path: string; readonly scope: 'specification' | 'other' }[];
-  readonly count: number;
-  readonly specificationCount: number;
-}
+/** An `uncommitted-changes` repository blocker of a refused Close. */
+export type UncommittedBlocker = Extract<CloseRepositoryBlocker, { kind: 'uncommitted-changes' }>;
 
 export interface UncommittedOwnerReport {
   readonly owner: 'specification' | 'definitions';
-  /** The Specification the Close is for. */
-  readonly self?: true;
+  /** Whose files: the Specification the Close is for, or another one; absent when not known. */
+  readonly relation?: 'this' | 'other';
   readonly specId?: string;
   readonly title?: string;
   readonly count: number;
@@ -78,15 +61,17 @@ function owner(
   entry: UncommittedHold['owners'][number],
   selfSpecId: string | undefined,
 ): UncommittedOwnerReport {
-  const shown = entry.paths.slice(0, SHOWN_PATHS);
-  const common = { count: entry.count, paths: shown, more: entry.count - shown.length };
+  // Every path the Engine named; `more` is how many of `count` it did not name.
+  const common = { count: entry.count, paths: entry.paths, more: entry.count - entry.paths.length };
   if (entry.kind === 'definitions') {
     return { owner: 'definitions', ...common };
   }
 
   return {
     owner: 'specification',
-    ...(entry.specId === selfSpecId ? { self: true as const } : {}),
+    ...(selfSpecId === undefined
+      ? {}
+      : { relation: entry.specId === selfSpecId ? ('this' as const) : ('other' as const) }),
     specId: entry.specId,
     ...(entry.title === undefined ? {} : { title: entry.title }),
     ...(entry.stepInProgress === undefined ? {} : { stepInProgress: entry.stepInProgress }),
@@ -94,22 +79,32 @@ function owner(
   };
 }
 
-/** The remedy of the files SpecFlow wrote, by whose they are. */
+/** The remedy of the files SpecFlow wrote: one sentence per kind of owner that is listed. */
 function savedRemedy(owners: readonly UncommittedOwnerReport[]): string {
-  const other = owners.find((entry) => entry.self !== true && entry.owner === 'specification');
-  if (other === undefined) {
-    return (
-      'Commit them with "' +
-      commitCommand(owners.find((entry) => entry.self)?.specId) +
-      '" (see them with "nevo-specflow commit status"), or with Git.'
+  const own = owners.find((entry) => entry.relation === 'this');
+  const other = owners.find((entry) => entry.relation === 'other');
+  const sentences: string[] = [];
+  if (own) {
+    sentences.push(
+      'Commit this specification\'s files with "' +
+        commitCommand(own.specId) +
+        '" (see them with "nevo-specflow commit status"), or with Git.',
     );
   }
 
-  return (
-    'Commit them from that specification\'s Documents ("' +
-    commitCommand(other.specId) +
-    '") or with Git, or finish its step in progress there (finishing commits them).'
-  );
+  if (other) {
+    sentences.push(
+      'Commit another specification\'s files from its Documents ("' +
+        commitCommand(other.specId) +
+        '") or with Git, or finish its step in progress there (finishing commits them).',
+    );
+  }
+
+  return sentences.length > 0
+    ? sentences.join(' ')
+    : 'Commit them with "' +
+        commitCommand(undefined) +
+        '" (see them with "nevo-specflow commit status"), or with Git, or finish the step in progress (finishing commits them).';
 }
 
 /**
@@ -136,11 +131,10 @@ export function uncommittedChangesReport(
     if (blocker.specificationCount > 0) {
       const shown = blocker.paths
         .filter((entry) => entry.scope === 'specification')
-        .slice(0, SHOWN_PATHS)
         .map((entry) => entry.path);
       saved.push({
         owner: 'specification',
-        ...(selfSpecId === undefined ? {} : { self: true as const, specId: selfSpecId }),
+        ...(selfSpecId === undefined ? {} : { relation: 'this' as const, specId: selfSpecId }),
         count: blocker.specificationCount,
         paths: shown,
         more: blocker.specificationCount - shown.length,
@@ -162,7 +156,6 @@ export function uncommittedChangesReport(
     if (count > 0) {
       const shown = blocker.paths
         .filter((entry) => entry.scope === 'other')
-        .slice(0, SHOWN_PATHS)
         .map((entry) => entry.path);
       groups.push({
         kind: 'changed-outside',
@@ -197,22 +190,25 @@ function ownerName(entry: UncommittedOwnerReport): string {
     return 'Definitions';
   }
 
-  const name =
-    entry.title === undefined ? (entry.specId ?? 'Specification') : '"' + entry.title + '"';
+  const name = entry.title ?? entry.specId ?? 'Specification';
+  if (entry.relation === undefined) {
+    return name;
+  }
 
-  return entry.self === true ? name + ' (this specification)' : name + ' (another specification)';
+  return name + (entry.relation === 'this' ? ' (this specification)' : ' (another specification)');
 }
 
 /** The human lines of the report, one group after the other, each ending with its remedy. */
 export function uncommittedChangesLines(report: UncommittedChangesReport): string[] {
   const lines = [`Uncommitted changes: ${report.count}. ${report.explanation}`];
   const paths = (list: readonly string[], more: number, indent: string) => {
-    for (const path of list) {
+    for (const path of list.slice(0, SHOWN_PATHS)) {
       lines.push(indent + path);
     }
 
-    if (more > 0) {
-      lines.push(indent + `and ${more} more`);
+    const hidden = more + Math.max(0, list.length - SHOWN_PATHS);
+    if (hidden > 0) {
+      lines.push(indent + `and ${hidden} more`);
     }
   };
 

@@ -8,7 +8,7 @@ import {
 } from '@nevo/specflow-engine';
 
 import { ReportedFailure } from '../exit-code';
-import { uncommittedChangesLines, uncommittedChangesReport } from './uncommitted-groups';
+import { uncommittedChangesLines, uncommittedChangesReport } from '../documents/uncommitted-groups';
 
 type PreviewRequest = Parameters<typeof previewPublicCloseOperation>[1];
 

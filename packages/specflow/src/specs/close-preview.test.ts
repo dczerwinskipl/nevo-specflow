@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CloseOperationError, DocumentError, type SpecFlowEngine } from '@nevo/specflow-engine';
 import { reportOf } from '../documents/report';
+import { uncommittedChangesLines } from '../documents/uncommitted-groups';
 import { ReportedFailure } from '../exit-code';
 import {
   ARCHIVED_WITHOUT_GIT,
@@ -187,7 +188,7 @@ describe('CLI Close preview with uncommitted changes', () => {
       'Saved in SpecFlow, not committed yet: 1',
       '  ' + self + ' (this specification): 1',
       '    specs/active/a/doc.md',
-      '  Remedy: Commit them with "nevo-specflow commit --spec ' +
+      '  Remedy: Commit this specification\'s files with "nevo-specflow commit --spec ' +
         self +
         '" (see them with "nevo-specflow commit status"), or with Git.',
       'Changed outside SpecFlow: 1 (the specification checkout, workspace ws-1)',
@@ -202,6 +203,46 @@ describe('CLI Close preview with uncommitted changes', () => {
       'saved-not-committed',
       'changed-outside',
     ]);
+  });
+
+  it('keeps every path in --json, shows five in text, and labels owners only when known', () => {
+    const paths = Array.from({ length: 7 }, (_, index) => 'specs/active/o/d' + index + '.md');
+    const hold = {
+      reasons: ['auto-commit-off'],
+      owners: [
+        {
+          kind: 'specification',
+          specId: other,
+          title: 'Other',
+          workflowState: 0,
+          documents: 9,
+          count: 9,
+          paths,
+        },
+      ],
+      unreadable: 0,
+    };
+    const refusal = (known: boolean) =>
+      reportOf(
+        new DocumentError('DOCUMENT_COMMITS_PENDING', 'Held.', {
+          reason: 'busy',
+          cause: 'commit-uncommitted',
+          uncommitted: hold,
+        } as never),
+        known ? self : undefined,
+      ).uncommitted;
+    const known = refusal(true);
+    expect(known?.groups[0]?.owners?.[0]).toMatchObject({ relation: 'other', paths, more: 2 });
+    expect(uncommittedChangesLines(known as never).slice(2)).toEqual([
+      '  Other (another specification): 9',
+      ...paths.slice(0, 5).map((path) => '    ' + path),
+      '    and 4 more',
+      expect.stringContaining("Commit another specification's files") as string,
+    ]);
+    const unknown = refusal(false);
+    expect(unknown?.groups[0]?.owners?.[0]?.relation).toBeUndefined();
+    expect(uncommittedChangesLines(unknown as never)[2]).toBe('  Other: 9');
+    expect(unknown?.groups[0]?.remedy).not.toContain('another specification');
   });
 
   it('names another specification with its remedy when a hold lists it', () => {

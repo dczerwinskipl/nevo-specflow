@@ -5,8 +5,7 @@ import {
   uncommittedChangesLines,
   uncommittedChangesReport,
   type UncommittedChangesReport,
-  type UncommittedHold,
-} from '../specs/uncommitted-groups';
+} from './uncommitted-groups';
 
 export interface DocumentsOutput {
   readonly stdout: (line: string) => void;
@@ -144,7 +143,7 @@ export function hintFor(error: DocumentError): string | undefined {
 
 export function reportOf(error: DocumentError, specId?: string): FailureReport {
   const hint = hintFor(error);
-  const hold = error.details?.uncommitted as UncommittedHold | undefined;
+  const hold = error.details?.uncommitted;
   const uncommitted = hold === undefined ? undefined : uncommittedChangesReport({ hold }, specId);
 
   return {
@@ -166,7 +165,7 @@ export async function reportingRefusals<T>(
   output: DocumentsOutput,
   json: boolean | undefined,
   body: () => Promise<T>,
-  specId?: string,
+  specId?: string | (() => string | undefined),
 ): Promise<T> {
   try {
     return await body();
@@ -175,7 +174,7 @@ export async function reportingRefusals<T>(
       throw error;
     }
 
-    const report = reportOf(error, specId);
+    const report = reportOf(error, typeof specId === 'function' ? specId() : specId);
     const cause = error.details?.cause;
     output.stderr(`${report.code}: ${report.message}${cause !== undefined ? ` (${cause})` : ''}`);
     for (const line of report.uncommitted ? uncommittedChangesLines(report.uncommitted) : []) {

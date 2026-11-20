@@ -93,14 +93,14 @@ differ, not their execution mechanism.
 `workflow_actions` / `workflow_prepare` are logical operations, **not existing tool names**.
 The transport may expose them differently, but both use the same Engine services:
 
-| Operation | Agent need | Engine/Runtime responsibility |
-| --- | --- | --- |
-| Discover | Identify Project Home, Specification, Task and workspace | Prove binding; no guessed cwd |
-| Inspect | Learn the only legal next action | Project Workflow projection |
-| Prepare/start | Obtain one permitted attempt and its context | Pin/check definition, gates, actor and claim |
-| Read/write | Obtain and change registered documents and Task resources | Revision, authorization, claim and recovery rules |
-| Finish | Propose declared result, feedback and artifacts | Validate/fence, prove native stop where required, publish transition |
-| Inspect result | Distinguish success, refusal, unknown and recovery | Idempotent authoritative status |
+| Operation      | Agent need                                                | Engine/Runtime responsibility                                        |
+| -------------- | --------------------------------------------------------- | -------------------------------------------------------------------- |
+| Discover       | Identify Project Home, Specification, Task and workspace  | Prove binding; no guessed cwd                                        |
+| Inspect        | Learn the only legal next action                          | Project Workflow projection                                          |
+| Prepare/start  | Obtain one permitted attempt and its context              | Pin/check definition, gates, actor and claim                         |
+| Read/write     | Obtain and change registered documents and Task resources | Revision, authorization, claim and recovery rules                    |
+| Finish         | Propose declared result, feedback and artifacts           | Validate/fence, prove native stop where required, publish transition |
+| Inspect result | Distinguish success, refusal, unknown and recovery        | Idempotent authoritative status                                      |
 
 A preparation response should carry stable subject, step, attempt, effective definition
 revision, archetype/profile, Task Type if any, bounded context references with digests,

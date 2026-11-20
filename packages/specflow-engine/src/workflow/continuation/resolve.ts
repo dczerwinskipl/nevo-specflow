@@ -85,7 +85,8 @@ export function resolveAgentLaunch(
     return { kind: 'unresolved', reason: 'archetype-missing', archetype: archetypeId };
   }
 
-  if (session === 'reuse') {
+  // An independent archetype never continues a Session, whatever the transition says (D18).
+  if (session === 'reuse' && archetype.independent !== true) {
     if (!finishing?.sessionId) {
       return { kind: 'unresolved', reason: 'session-unavailable', archetype: archetype.id };
     }

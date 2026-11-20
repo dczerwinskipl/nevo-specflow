@@ -78,6 +78,12 @@ export const WorkflowTransitionFileSchema = Type.Object(
     feedback: Type.Optional(Type.Union([Type.Literal('required'), Type.Literal('optional')])),
     effects: effects(),
     /**
+     * `owner`: an agent's proposal for this transition is not applied by the agent; the owner
+     * confirms it. A person's own finish needs no confirmation. Work-step transitions only (checked
+     * by the Engine).
+     */
+    confirmation: Type.Optional(Type.Literal('owner')),
+    /**
      * Task workflows only: finishing with this transition escalates to the Specification. The Task
      * goes `on-hold` with the feedback as its reason, and the Specification gets the attention item
      * `task-escalated`. Requires `feedback: required` and a step target (checked by the Engine).
@@ -229,12 +235,28 @@ export type WorkflowDefinitionFile = Static<typeof WorkflowDefinitionFileSchema>
 /** A provider id (`claude`, `codex`, `antigravity`, ...): open, the Runtime decides which are available. */
 const providerId = () => catalogueId();
 
+export const AgentArchetypePermissionsFileSchema = Type.Object(
+  {
+    allow: Type.Array(Type.String({ minLength: 1, maxLength: 200 }), {
+      maxItems: 64,
+      uniqueItems: true,
+    }),
+  },
+  { additionalProperties: false },
+);
+export type AgentArchetypePermissionsFile = Static<typeof AgentArchetypePermissionsFileSchema>;
+
 export const AgentArchetypeProviderFileSchema = Type.Object(
   {
     provider: providerId(),
     /** Absent: the provider is known for this archetype but no model is chosen yet. */
     model: Type.Optional(Type.String({ minLength: 1, maxLength: 200 })),
     effort: Type.Optional(Type.String({ minLength: 1, maxLength: 64 })),
+    /**
+     * Tools the Runtime lets an agent Turn of this archetype use on this provider without a
+     * permission prompt: provider-specific read-only tool and command rules, opaque to the Engine.
+     */
+    permissions: Type.Optional(AgentArchetypePermissionsFileSchema),
   },
   { additionalProperties: false },
 );
@@ -249,6 +271,12 @@ export const AgentArchetypeDefinitionFileSchema = Type.Object(
     /** The agent profile whose instructions the agent works with (for example `nevo-agents:reviewer`). */
     profile: Type.Optional(Type.String({ minLength: 1, maxLength: 200 })),
     instructions: Type.Optional(instructionsText()),
+    /**
+     * An independent archetype (a review facet) always works in a fresh Session, never one continued
+     * from the previous step. A workflow transition with `session: reuse` into a step of such an
+     * archetype is refused. Default `false`.
+     */
+    independent: Type.Optional(Type.Boolean()),
     /** The provider a fresh Session of this archetype starts with. */
     preferredProvider: Type.Optional(providerId()),
     providers: Type.Array(AgentArchetypeProviderFileSchema, { maxItems: 16 }),

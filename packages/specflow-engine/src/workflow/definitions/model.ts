@@ -67,6 +67,11 @@ export interface SpecFlowAnnotations extends core.HostAnnotations {
     readonly effects: readonly WorkflowEffect[];
     /** Task workflows only: the finish puts the Task on hold and escalates to the Specification. */
     readonly escalate: boolean;
+    /**
+     * `owner`: an agent's proposal for this transition waits for the owner's confirmation. Absent
+     * when the file declares none, so a workflow without it keeps its revision.
+     */
+    readonly confirmation?: 'owner';
   };
   readonly return: { readonly effects: readonly WorkflowEffect[] };
 }
@@ -82,6 +87,8 @@ export interface AgentArchetypeProvider {
   readonly provider: string;
   readonly model?: string;
   readonly effort?: string;
+  /** Opaque provider tool rules allowed without a prompt; the Runtime interprets them. */
+  readonly permissions?: { readonly allow: readonly string[] };
 }
 
 export interface AgentArchetype {
@@ -91,6 +98,8 @@ export interface AgentArchetype {
   readonly profile?: string;
   readonly instructions?: string;
   readonly preferredProvider?: string;
+  /** Always works in a fresh Session (a review facet); never `session: reuse` into its steps. */
+  readonly independent?: boolean;
   readonly providers: readonly AgentArchetypeProvider[];
 }
 

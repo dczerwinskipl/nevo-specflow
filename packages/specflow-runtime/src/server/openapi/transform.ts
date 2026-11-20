@@ -1,5 +1,7 @@
 import type { FastifySchema } from 'fastify';
 
+import { requiresOwnerCredential } from '../../features/auth';
+
 import { referenceSharedIdentifiers } from '../shared-contracts';
 import type { OpenApiDocumentedParameters, OpenApiDocumentedResponse } from './config';
 import { isDocumentedRoute, openApiOperationId } from './operations';
@@ -8,6 +10,7 @@ import {
   hasRequestSchema,
   sharedResponses,
   withDocumentedResponses,
+  withOwnerCredentialRefusal,
   withRequestErrorNote,
   withSharedResponses,
 } from './responses';
@@ -23,6 +26,8 @@ interface TransformedRoute {
     readonly openApiResponses?: Readonly<Record<number, OpenApiDocumentedResponse>>;
     readonly openApiParameters?: OpenApiDocumentedParameters;
     readonly rateLimit?: unknown;
+    readonly ownerCredentialExempt?: string;
+    readonly ownerCredentialRequired?: true;
   };
 }
 
@@ -63,15 +68,23 @@ export function createRouteTransform(options: OpenApiOptions) {
     return {
       schema: {
         ...withDocumentedParameters(
-          withDocumentedResponses(
-            withSharedResponses(
-              withRequestErrorNote(
-                referenceSharedIdentifiers(schema) as FastifySchema | undefined,
-                validated,
+          withOwnerCredentialRefusal(
+            withDocumentedResponses(
+              withSharedResponses(
+                withRequestErrorNote(
+                  referenceSharedIdentifiers(schema) as FastifySchema | undefined,
+                  validated,
+                ),
+                shared,
               ),
-              shared,
+              documented,
             ),
-            documented,
+            // The owner-credential guard's `403` (D21).
+            requiresOwnerCredential({
+              method: route.method as string,
+              url: route.url,
+              ...(route.config ? { config: route.config } : {}),
+            }),
           ),
           route.config?.openApiParameters,
         ),

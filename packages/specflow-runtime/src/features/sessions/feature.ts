@@ -46,6 +46,8 @@ export function createSessionsFeature(
     workspaceOccupancy?: {
       beginTurn(workspaceId: string, sessionId: string): { end(): void } | undefined;
     };
+    /** Session starts and Turns are refused while this answers true (Auth's headless pairing gate). */
+    agentWorkPaused?: () => boolean;
   } = {},
 ): RuntimeFeature & { readonly runtime: SessionsRuntime } {
   let registered: SessionCoordinator | undefined;
@@ -172,6 +174,7 @@ export function createSessionsFeature(
               ? createSpecificationWorkspaceResolver(options.engine)
               : undefined,
             options.workspaceOccupancy,
+            options.agentWorkPaused,
           )
         : undefined;
       if (coordinator) {

@@ -1,7 +1,11 @@
 import type { FastifyInstance, RawServerBase } from 'fastify';
 import { Type, type Static, type TSchema, type TUnsafe } from 'typebox';
 
-import { AuthSessionResponseSchema } from '@nevo/specflow-contracts/authentication';
+import {
+  AuthSessionResponseSchema,
+  DevicePairingErrorResponseSchema,
+  OwnerCredentialErrorResponseSchema,
+} from '@nevo/specflow-contracts/authentication';
 import {
   AuthenticationRequiredErrorResponseSchema,
   AuthorizationForbiddenErrorResponseSchema,
@@ -67,10 +71,12 @@ const SHARED_CONTRACTS: readonly TSchema[] = [
   CloseResultSchema,
   CloseWorkspaceResultSchema,
   CreateSpecErrorSchema,
+  DevicePairingErrorResponseSchema,
   DocumentErrorSchema,
   DocumentOperationResultSchema,
   DocumentOperationStatusSchema,
   OperationListResponseSchema,
+  OwnerCredentialErrorResponseSchema,
   RateLimitedErrorResponseSchema,
   RequestErrorResponseSchema,
   SessionCommandResultSchema,

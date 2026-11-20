@@ -26,7 +26,8 @@ Adding a new Task, Document, Specs or other route does not require an explicit l
 The default also covers Runtime metadata, Auth session/discovery reads and web application routes.
 
 Auth owns stricter route policies for password login and OIDC start: **10 attempts per 60 seconds**
-at each configured endpoint. Those route overrides use independent counters, so exhausting the
+at each configured endpoint, and the device pairing routes (request, approve, QR token, redeem;
+D21) **10 per 60 seconds** each. Those route overrides use independent counters, so exhausting the
 default resource budget does not consume or replace the login budget. Existing account-level
 password throttling remains a separate protection.
 

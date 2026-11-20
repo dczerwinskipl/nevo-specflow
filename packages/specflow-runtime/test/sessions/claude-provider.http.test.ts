@@ -11,7 +11,7 @@ import {
   type ProviderDescriptor,
 } from '@nevo/specflow-contracts/sessions';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createRuntimeApp } from '../../src/server/app';
+import { createOwnerRuntimeApp } from '../support/owner-credential';
 import { passwordConfig } from '../auth/support/config';
 
 const fixture = vi.hoisted(() => ({ entry: '', privateRoot: '', version: '2.1.296', hash: '' }));
@@ -226,7 +226,7 @@ let root = '';
 let engine: SpecFlowEngine | undefined;
 async function open() {
   const config = passwordConfig();
-  app = await createRuntimeApp(
+  app = await createOwnerRuntimeApp(
     {
       ...config,
       authentication: { ...config.authentication, mode: 'none' },

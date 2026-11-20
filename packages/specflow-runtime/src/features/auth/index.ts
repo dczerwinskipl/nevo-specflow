@@ -6,6 +6,22 @@ export {
 } from './feature';
 
 export { authCookieNames } from './authentication/http/cookies';
+export {
+  createDevicePairing,
+  type DevicePairing,
+  type DevicePairingOptions,
+  type HeadlessPairingGate,
+  type InitialCodeOptions,
+} from './device-pairing/pairing';
+export {
+  createMemoryDeviceStore,
+  openFileDeviceStore,
+  type DeviceStore,
+  type StoredDevice,
+} from './device-pairing/store';
+export { INITIAL_CODE_FILE } from './device-pairing/initial-code';
+export { deviceCookieNames } from './owner-credential/cookie';
+export { requiresOwnerCredential } from './owner-credential/guard';
 export { requireCapability, requireCapabilityInAnyScope } from './authorization/guards';
 export type {
   AuthorizationAnyScopeCapabilityCheck,

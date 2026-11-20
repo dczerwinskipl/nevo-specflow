@@ -13,7 +13,7 @@ import {
 import type { RuntimeConfig } from '../../src/config/types';
 import { authCookieNames } from '../../src/features/auth/authentication/http/cookies';
 import { InMemoryAuthenticationStore } from '../../src/features/auth/authentication/store/in-memory-store';
-import { createRuntimeApp } from '../../src/server/app';
+import { createOwnerRuntimeApp } from '../support/owner-credential';
 import {
   parseSessionsFeatureConfig,
   type SessionsFeatureConfig,
@@ -76,7 +76,7 @@ afterEach(async () => {
 
 async function start(config: RuntimeConfig, store?: InMemoryAuthenticationStore) {
   await app?.close();
-  app = await createRuntimeApp(config, {
+  app = await createOwnerRuntimeApp(config, {
     ...(store ? { auth: { store } } : {}),
     sessions: { storage: { directory, projectId: 'project' }, targets: associationTargets() },
   });

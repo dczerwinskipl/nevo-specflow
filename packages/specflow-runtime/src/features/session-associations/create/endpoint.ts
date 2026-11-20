@@ -74,6 +74,7 @@ export function registerCreateContextSessionRoute(
           'IDEMPOTENCY_CONFLICT',
           'MODEL_UNSUPPORTED',
           'CAPABILITY_UNSUPPORTED',
+          'SESSION_PAIRING_PENDING',
         ),
       },
       schema: {

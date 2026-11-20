@@ -25,7 +25,7 @@ import type { SpecificationWorkspaceResponse } from '@nevo/specflow-contracts/sp
 import { Value } from 'typebox/value';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { createRuntimeApp } from '../../src/server/app';
+import { createOwnerRuntimeApp } from '../support/owner-credential';
 import { noAuthConfig } from '../auth/support/config';
 
 const roots: string[] = [];
@@ -103,7 +103,7 @@ describe('Task commands and reads against the real Engine', () => {
         title: 'Task HTTP',
         target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
       });
-      const app = await createRuntimeApp(
+      const app = await createOwnerRuntimeApp(
         {
           ...noAuthConfig(),
           authorization: { assignments: [{ userId: 'demo-user', role: 'developer', scope: {} }] },
@@ -226,7 +226,7 @@ describe('Task commands and reads against the real Engine', () => {
         title: 'Abandoned work',
         target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
       });
-      const app = await createRuntimeApp(
+      const app = await createOwnerRuntimeApp(
         {
           ...noAuthConfig(),
           authorization: { assignments: [{ userId: 'demo-user', role: 'admin', scope: {} }] },
@@ -278,7 +278,7 @@ describe('Task commands and reads against the real Engine', () => {
         title: 'Linked work',
         target: { kind: 'existing', workspaceId: linked.id },
       });
-      const app = await createRuntimeApp(
+      const app = await createOwnerRuntimeApp(
         {
           ...noAuthConfig(),
           authorization: { assignments: [{ userId: 'demo-user', role: 'developer', scope: {} }] },

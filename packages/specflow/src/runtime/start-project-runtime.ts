@@ -19,7 +19,12 @@ export interface StartProjectRuntimeDependencies {
 export async function startProjectRuntime(
   cwd: string,
   dependencies: StartProjectRuntimeDependencies = {},
-  options: { readonly demo?: boolean } = {},
+  options: {
+    readonly demo?: boolean;
+    /** `start --pair` and the interactive console of the initial pairing code (D21). */
+    readonly pair?: boolean;
+    readonly console?: (line: string) => void;
+  } = {},
 ): Promise<RuntimeHandle> {
   if (options.demo) {
     const layout = await (dependencies.resolveLayout ?? resolveProjectLayout)(cwd);
@@ -45,5 +50,9 @@ export async function startProjectRuntime(
     projectConfigPath: project.projectConfigPath,
     localConfigPath: project.localConfigPath,
     dependencies: { webApp, specs: { engine } },
+    pairing: {
+      force: options.pair === true,
+      ...(options.console ? { console: options.console } : {}),
+    },
   });
 }

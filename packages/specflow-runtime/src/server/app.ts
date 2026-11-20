@@ -9,7 +9,13 @@ import Fastify, {
   type RawServerBase,
 } from 'fastify';
 
-import { authCookieNames, createAuthFeature, type AuthFeatureDependencies } from '../features/auth';
+import {
+  authCookieNames,
+  createAuthFeature,
+  createDevicePairing,
+  createMemoryDeviceStore,
+  type AuthFeatureDependencies,
+} from '../features/auth';
 import type { RuntimeConfig } from '../config/types';
 import {
   checkoutSessions,
@@ -219,9 +225,18 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   // Which checkouts agent Session Turns work in: Close never removes one of them (and holds a
   // checkout against new Turns while it removes it).
   const workspaceOccupancy = createWorkspaceOccupancy();
+  // Trusted local mode of a project Runtime pairs devices (D21). Without the store the Runtime start
+  // opens over the local state, an empty in-memory one: owner routes stay refused until a device
+  // is paired, never open.
+  const devicePairing =
+    mode === 'project' && config.authentication.mode === 'none'
+      ? (dependencies.auth?.devicePairing ??
+        createDevicePairing({ store: createMemoryDeviceStore() }))
+      : undefined;
   const sessionsFeature = createSessionsFeature({
     ...(engine ? { engine } : {}),
     workspaceOccupancy,
+    ...(devicePairing ? { agentWorkPaused: devicePairing.headlessPairingPending } : {}),
     config: mode === 'project' ? config.sessions : undefined,
     storage:
       dependencies.sessions?.storage ??
@@ -398,7 +413,12 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     ...(config.server.publicOrigin ? { publicOrigin: config.server.publicOrigin } : {}),
     serverPort: config.server.port,
     secureCookies: config.server.tls.enabled,
-    ...(dependencies.auth ? { dependencies: dependencies.auth } : {}),
+    // The demo Runtime has no agent execution: no owner credential (decision 6).
+    ownerCredential: demo ? 'not-required' : 'enforced',
+    dependencies: {
+      ...dependencies.auth,
+      ...(devicePairing ? { devicePairing } : {}),
+    },
   });
 
   await authFeature.register(app);

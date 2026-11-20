@@ -45,13 +45,13 @@ Keep **one common workflow vocabulary** (requirements, specification, solution,
 breakdown, review, Task implementation/review, owner acceptance). Compose it with
 project-selected definitions and instructions:
 
-| Layer | Purpose | Initial direction |
-| --- | --- | --- |
-| Shared core | Standard Specification/Task workflows and generic roles | Reuse existing shipped YAML |
-| Work kind | Discovery, backend, frontend, integration, tests, migration, documentation, spike | Curated Task Types where their process genuinely differs |
-| Technology pack | Target-specific context, conventions, commands and examples | .NET, React, Node.js |
-| Repository policy | Actual project architecture, build/test aliases, permitted paths and ADRs | Project-owned configuration and docs |
-| Execution policy | Agent capabilities, provider/model availability and approvals | Existing archetypes and E6, not pack authority |
+| Layer             | Purpose                                                                           | Initial direction                                        |
+| ----------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Shared core       | Standard Specification/Task workflows and generic roles                           | Reuse existing shipped YAML                              |
+| Work kind         | Discovery, backend, frontend, integration, tests, migration, documentation, spike | Curated Task Types where their process genuinely differs |
+| Technology pack   | Target-specific context, conventions, commands and examples                       | .NET, React, Node.js                                     |
+| Repository policy | Actual project architecture, build/test aliases, permitted paths and ADRs         | Project-owned configuration and docs                     |
+| Execution policy  | Agent capabilities, provider/model availability and approvals                     | Existing archetypes and E6, not pack authority           |
 
 Do **not** create separate near-identical Workflow definitions for every language and
 framework. Add a distinct workflow only when the steps, required evidence or review

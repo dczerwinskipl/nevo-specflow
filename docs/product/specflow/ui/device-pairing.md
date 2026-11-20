@@ -53,7 +53,7 @@ A standalone screen in the Login screen's shell (same brand header, language men
   is paired yet; this SpecFlow runs without a window to show a code in, so it saved a one-time code
   on the machine running it, readable only by the account that runs it; read it there, for example
   over SSH, and enter it here; "Until a device is paired, no agent starts." The page never shows the
-  file's path (pending owner decision).
+  file's path (owner decision 2026-11-20).
 - **Paired**: after approval, or on a phone after scanning a QR code, the requesting browser shows
   "This device is paired" ("This phone is paired"), who approved it (or that it was the QR code of
   <device>), a success alert "<device> · paired just now" with how to revoke it, and **Continue to
@@ -87,10 +87,8 @@ screen (owner decision 2026-11-20; no settings page exists, and the list is shor
 While the initial code file exists, every agent start is refused. A paired device (possible after a
 restart with `--pair`) learns it in the Ask agent dialog before starting, as described in
 [Manual workflow execution, Ask agent](workflow-execution.md#ask-agent-dialog), with **Cancel the
-pairing code** (pending owner decision: a paired device may cancel a waiting code).
+pairing code** (owner decision 2026-11-20: a paired device may cancel a waiting code).
 
 ## Open questions
 
-- Owner decision pending: a paired device may cancel a waiting initial code; an unpaired page never
-  shows the file path, only "read the code on the machine running SpecFlow" (recommended).
 - The device name source (user agent) and whether the owner can rename a device.

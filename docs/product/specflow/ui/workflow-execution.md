@@ -387,6 +387,12 @@ outcome and on which subject. The exact read model belongs to slices 6 to 9.
   myself and Ask agent), which hides the agent behind a second click and needs a component the
   design system does not have.
 
+**Action placement rule (owner decision 2026-11-20).** In every Ask agent dialog and Now block
+state, an action that resolves a blocker lives inside that blocker's alert or note (Check again,
+Retry commit, Cancel the pairing code). A dialog footer holds only Cancel and the one primary
+action, disabled while blocked; a Now action row holds the main action and at most one secondary.
+Never three buttons in one row.
+
 ### Ask agent dialog
 
 Title "Ask agent: <step title>". The description says what happens: the agent does this step of
@@ -394,8 +400,9 @@ Title "Ask agent: <step title>". The description says what happens: the agent do
 proposes a result); decisions that need a person stay with the person. Then, in order:
 
 1. **What blocks the start**, only when something does: one attention `Alert` per precondition with
-   what, why and what to do. The footer then reads **Cancel**, **Ask agent** (secondary, disabled)
-   and **Check again** (primary, last; on top when stacked):
+   what, why and what to do, and the action that resolves it at the bottom of that alert (a
+   secondary **Check again**, plus **Cancel the pairing code** for a waiting code). The footer stays
+   **Cancel** and **Ask agent** (primary, disabled while anything blocks):
    - **Uncommitted changes** (clean baseline): "Commit or undo these changes first": these files
      changed outside SpecFlow and are not committed; the agent starts from a committed checkout so
      that everything that changes afterwards is its own work; documents and tasks SpecFlow saved
@@ -406,7 +413,7 @@ proposes a result); decisions that need a person stay with the person. Then, in 
      settings**. The Session section then shows "Agent and model not chosen", never a preselected
      picker.
    - **Pairing code waiting** (D21): "Agents cannot start while a pairing code is waiting", why, and
-     what to do: pair a device with it, or **Cancel the pairing code** (pending owner decision).
+     what to do: pair a device with it, or **Cancel the pairing code** (owner decision 2026-11-20).
    - **The session to continue is gone** (`session-unavailable`): the workflow continues the session
      that did the step before and it no longer exists; SpecFlow does not start a new one in its
      place (D10); do the step with Start step, or have the workflow changed. The Session section
@@ -474,7 +481,7 @@ proposes a result); decisions that need a person stay with the person. Then, in 
   note "The agent cannot continue: N files changed since it stopped." with the paths and "SpecFlow
   never counts someone else's edits as the agent's work. Undo these changes, or commit them yourself
   (they become your commit, not the agent's), then continue. Or take over and finish the step
-  yourself." **Continue** is disabled; **Take over** stays. (Pending owner decision: Continue then
+  yourself." **Continue** is disabled; **Take over** stays. (Owner decision 2026-11-20: Continue then
   re-checks against the recorded set minus paths that are now committed; there is no "keep as the
   agent's" action.)
 
@@ -486,7 +493,7 @@ proposes a result); decisions that need a person stay with the person. Then, in 
   (t-01 to t-05) and moves to <next>", **See Tasks**). Actions **Confirm** (main), **Reject**. The
   rest of the Overview agrees: Tasks counts the same drafts, Sessions lists the agent's Session.
 - **Reject** opens "Reject the agent's result": the step goes back to ready to start with the
-  owner's feedback as its hand-off (pending owner decision); the proposal is not applied; the drafts
+  owner's feedback as its hand-off (owner decision 2026-11-20); the proposal is not applied; the drafts
   and documents it wrote stay. A required **What should change** field ("The next attempt reads it
   first, whether you start it yourself or ask an agent"). **Cancel**, **Reject** (disabled until the
   field has text).
@@ -496,7 +503,7 @@ proposes a result); decisions that need a person stay with the person. Then, in 
 - **Take over**, allowed once the agent's process is proven ended, confirms: "The agent's attempt
   ends as taken over, and your own attempt N starts", **The agent's work stays** with its paths:
   nothing is undone; the files stay uncommitted until you commit them, finishing the step does not
-  commit them, and Close lists them until they are committed (pending owner decision: nobody commits
+  commit them, and Close lists them until they are committed (owner decision 2026-11-20: nobody commits
   them automatically). The Session stays readable but no longer works on the step.
 - Then Now is a person's attempt: "Attempt 3 · in progress since <time> · started by you · taken over
   from the agent", with Finish step.

@@ -644,6 +644,11 @@ function AskAgentBlocker({ kind }: { readonly kind: Blocker }) {
             <PathList paths={['src/auth/refresh.ts', 'scratch-notes.txt', 'package.json']} />
             <CheckoutPath path="D:\repos\acme-portal\.nevo\worktrees\nevo-1" />
             <p>Commit them, or undo the ones you do not need, then check again.</p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button size="sm" variant="secondary" leadingIcon="refresh">
+                Check again
+              </Button>
+            </div>
           </div>
         </Alert>
       );
@@ -659,6 +664,11 @@ function AskAgentBlocker({ kind }: { readonly kind: Blocker }) {
               Choose them for Implementer in the project’s agent settings, then check again.{' '}
               <TextLink>Open agent settings</TextLink>
             </p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button size="sm" variant="secondary" leadingIcon="refresh">
+                Check again
+              </Button>
+            </div>
           </div>
         </Alert>
       );
@@ -671,10 +681,15 @@ function AskAgentBlocker({ kind }: { readonly kind: Blocker }) {
               pairing code on its machine. No agent starts while that code can be read, so an agent
               can never use it to pair itself.
             </p>
-            <p>
-              Pair a device with the code, or cancel the waiting code.{' '}
-              <TextLink>Cancel the pairing code</TextLink>
-            </p>
+            <p>Pair a device with the code, or cancel the waiting code here.</p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button size="sm" variant="secondary">
+                Cancel the pairing code
+              </Button>
+              <Button size="sm" variant="secondary" leadingIcon="refresh">
+                Check again
+              </Button>
+            </div>
           </div>
         </Alert>
       );
@@ -691,6 +706,11 @@ function AskAgentBlocker({ kind }: { readonly kind: Blocker }) {
               Do the step yourself with Start step, or have the workflow changed so this step may
               start a new session.
             </p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button size="sm" variant="secondary" leadingIcon="refresh">
+                Check again
+              </Button>
+            </div>
           </div>
         </Alert>
       );
@@ -714,10 +734,9 @@ function AskAgentDialog({
         blocker ? (
           <>
             <Button variant="secondary">Cancel</Button>
-            <Button variant="secondary" leadingIcon={Bot} disabled>
+            <Button leadingIcon={Bot} disabled>
               Ask agent
             </Button>
-            <Button leadingIcon="refresh">Check again</Button>
           </>
         ) : (
           <>

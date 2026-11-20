@@ -127,26 +127,33 @@ export function createCommitCommand(context: CommitCommandContext): Command {
     .option('--operation-id <uuid>', 'Stable operation UUID; reuse it to retry safely', parseUuid)
     .action(async (options: CommitOptions, command: Command) => {
       const scope = scopeOf(command, options);
-      await reportingRefusals(output, options.json, async () => {
-        const engine = await api.openEngine(context.cwd, options.projectRoot);
-        const target = await targetOf(scope, options, engine);
-        const result = await api.commit(engine, {
-          operationId: options.operationId ?? randomUUID(),
-          ...target,
-          ...(options.message.length > 0 ? { message: options.message.join('\n\n') } : {}),
-          ...(options.path.length > 0 ? { paths: options.path } : {}),
-          ...(options.ledgerRevision !== undefined
-            ? { ledgerRevision: options.ledgerRevision }
-            : {}),
-        });
-        if (options.json) {
-          context.stdout(JSON.stringify(commitResultJson(result, target.scope, target.specId)));
-        } else {
-          for (const line of commitResultLines(result)) {
-            context.stdout(line);
+      let specId: string | undefined;
+      await reportingRefusals(
+        output,
+        options.json,
+        async () => {
+          const engine = await api.openEngine(context.cwd, options.projectRoot);
+          const target = await targetOf(scope, options, engine);
+          specId = target.specId;
+          const result = await api.commit(engine, {
+            operationId: options.operationId ?? randomUUID(),
+            ...target,
+            ...(options.message.length > 0 ? { message: options.message.join('\n\n') } : {}),
+            ...(options.path.length > 0 ? { paths: options.path } : {}),
+            ...(options.ledgerRevision !== undefined
+              ? { ledgerRevision: options.ledgerRevision }
+              : {}),
+          });
+          if (options.json) {
+            context.stdout(JSON.stringify(commitResultJson(result, target.scope, target.specId)));
+          } else {
+            for (const line of commitResultLines(result)) {
+              context.stdout(line);
+            }
           }
-        }
-      });
+        },
+        () => specId,
+      );
     });
 
   scoping(

@@ -275,6 +275,12 @@ export const WORKFLOW_ERROR_CODES = [
   'WORKFLOW_GATE_UNSATISFIED',
   'WORKFLOW_TASKS_OPEN',
   'WORKFLOW_UNAVAILABLE',
+  /**
+   * The Runtime's own: the commit policy of the workflow state refused the change before anything
+   * was written (a protected branch, Git unavailable, too many uncommitted paths, a journal to
+   * recover); `details.commit` names the refusal in the documents' vocabulary.
+   */
+  'WORKFLOW_COMMIT_REFUSED',
   /** The project control lock (as in Close): only `CONTROL_LOCK_BUSY` is worth a retry. */
   'CONTROL_LOCK_BUSY',
   'CONTROL_LOCK_CORRUPT',
@@ -292,7 +298,8 @@ const codes = Type.Unsafe<WorkflowErrorCode>(
  * `agent-turn` an agent Session Turn holds the project-wide write claim (retry once it ends, or stop
  * it); `agent-turn-unknown` that Turn ended without a verified outcome (resolve the Session: Check
  * outcome, or its recovery); `close` a Close of the Specification is unsettled. The other values are
- * the busy causes of the commit admission of the workflow state, as in the documents' `SPEC_BUSY`.
+ * the busy causes of the commit admission of the workflow state, as in the documents' `SPEC_BUSY`;
+ * `other` a busy refusal whose cause is not one of these (still a refusal: retry later).
  */
 export const SPECIFICATION_BUSY_CAUSES = [
   'agent-turn',
@@ -307,8 +314,23 @@ export const SPECIFICATION_BUSY_CAUSES = [
   'source-changed',
   'write-in-progress',
   'task-resource-change',
+  'other',
 ] as const;
 export type SpecificationBusyCause = (typeof SPECIFICATION_BUSY_CAUSES)[number];
+
+/**
+ * The document refusals of the workflow state's commit admission that a workflow command answers as
+ * `WORKFLOW_COMMIT_REFUSED` (the same codes, reasons and causes as a document write's refusal).
+ */
+export const WORKFLOW_COMMIT_REFUSAL_CODES = [
+  'BRANCH_PROTECTED',
+  'COMMIT_BLOCKED',
+  'GIT_POLICY_INVALID',
+  'DOCUMENT_UNCOMMITTED_LIMIT',
+  'DOCUMENT_OPERATION_INVALID',
+  'DOCUMENT_RECOVERY_REQUIRED',
+] as const;
+export type WorkflowCommitRefusalCode = (typeof WORKFLOW_COMMIT_REFUSAL_CODES)[number];
 
 /**
  * A refused workflow command. `code` is the stable value clients branch on (`error` repeats it);
@@ -391,6 +413,20 @@ export const WorkflowErrorSchema = Type.Object(
         ),
         /** `WORKFLOW_SPECIFICATION_BUSY` of `agent-turn` / `agent-turn-unknown`: the Session holding the claim. */
         sessionId: Type.Optional(Type.String({ minLength: 1, maxLength: 256 })),
+        /** `WORKFLOW_COMMIT_REFUSED`: the document refusal, with its `reason`, `cause` and `blockedBy`. */
+        commit: Type.Optional(
+          Type.Object(
+            {
+              code: Type.Unsafe<WorkflowCommitRefusalCode>(
+                Type.Union(WORKFLOW_COMMIT_REFUSAL_CODES.map((code) => Type.Literal(code))),
+              ),
+              reason: Type.Optional(Type.String({ maxLength: 64 })),
+              cause: Type.Optional(Type.String({ maxLength: 64 })),
+              blockedBy: Type.Optional(Type.String({ maxLength: 64 })),
+            },
+            { additionalProperties: false },
+          ),
+        ),
       }),
     ),
   },

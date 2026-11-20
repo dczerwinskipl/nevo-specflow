@@ -10092,6 +10092,12 @@
               {
                 "type": "string",
                 "enum": [
+                  "WORKFLOW_COMMIT_REFUSED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
                   "CONTROL_LOCK_BUSY"
                 ]
               },
@@ -10277,6 +10283,12 @@
                 "type": "string",
                 "enum": [
                   "WORKFLOW_UNAVAILABLE"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_COMMIT_REFUSED"
                 ]
               },
               {
@@ -10801,6 +10813,12 @@
                     "enum": [
                       "task-resource-change"
                     ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "other"
+                    ]
                   }
                 ]
               },
@@ -10808,6 +10826,67 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 256
+              },
+              "commit": {
+                "type": "object",
+                "required": [
+                  "code"
+                ],
+                "properties": {
+                  "code": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "BRANCH_PROTECTED"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "COMMIT_BLOCKED"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "GIT_POLICY_INVALID"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "DOCUMENT_UNCOMMITTED_LIMIT"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "DOCUMENT_OPERATION_INVALID"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "DOCUMENT_RECOVERY_REQUIRED"
+                        ]
+                      }
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "cause": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "blockedBy": {
+                    "type": "string",
+                    "maxLength": 64
+                  }
+                },
+                "additionalProperties": false
               }
             }
           }

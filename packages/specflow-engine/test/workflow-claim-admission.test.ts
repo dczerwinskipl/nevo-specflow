@@ -1,5 +1,6 @@
 // The production wiring of the writer-claim admission (F05, D11) with Git off, where no commit
-// admission consults the claims: kernel writes, archetype edits and document writes refuse while an
+// admission consults the claims: kernel writes, archetype edits, the definitions install and
+// document writes refuse while an
 // agent Turn holds the project, naming its Session; that Turn's own writes pass while it is
 // `dispatched`. The per-writer table is `src/workflow/state/claim-guard.test.ts`.
 import { randomUUID } from 'node:crypto';
@@ -90,6 +91,9 @@ it('admits only the owning Turn while an agent claim is unsettled, with Git off'
     }),
   ).rejects.toMatchObject(busy('agent-turn'));
   await expect(
+    installProjectDefinitions(engine, { targets: ['agent-archetype/reviewer'], force: true }),
+  ).rejects.toMatchObject(busy('agent-turn'));
+  await expect(
     applyDocumentChange(engine, spec.specId, randomUUID(), await save('# Foreign\n')),
   ).rejects.toMatchObject({ code: 'SPEC_BUSY', details: { cause: 'agent-turn' } });
 
@@ -113,5 +117,10 @@ it('admits only the owning Turn while an agent claim is unsettled, with Git off'
   });
   await expect(createTask(foreign, task('after'))).resolves.toMatchObject({
     task: { taskId: 'after' },
+  });
+  await expect(
+    installProjectDefinitions(engine, { targets: ['agent-archetype/reviewer'], force: true }),
+  ).resolves.toMatchObject({
+    outcome: { status: 'planned' },
   });
 }, 240_000);

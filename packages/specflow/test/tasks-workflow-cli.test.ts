@@ -276,6 +276,18 @@ describe('tasks and workflow against a real project', () => {
       process: 'stopped',
       outcome: 'completed',
     });
+    const after = await cli(root, [
+      'tasks',
+      'create',
+      specId,
+      '--id',
+      'held',
+      '--title',
+      'Held',
+      '--type',
+      'implementation',
+    ]);
+    expect(after.exit, after.err.join('\n')).toBe(0);
   });
 });
 

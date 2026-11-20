@@ -451,26 +451,61 @@ describe('workflow action routes', () => {
     });
   });
 
-  // Before: a document `SPEC_BUSY` from the commit admission was no workflow refusal, so it
-  // answered 500 INTERNAL_ERROR. Both forms of a busy Specification answer 409 naming the holder.
+  // Before: a document refusal of the workflow state's commit admission was no workflow refusal, so
+  // it answered 500 INTERNAL_ERROR. Each is now a stable refusal with what it met.
   it.each([
     [
-      'the kernel claim admission',
       new SpecificationBusyError('An agent Session Turn (Session s-1) holds the claim.', {
         cause: 'agent-turn',
         sessionId: 's-1',
       }),
+      409,
+      'WORKFLOW_SPECIFICATION_BUSY',
       { cause: 'agent-turn', sessionId: 's-1' },
     ],
     [
-      'the commit admission of the workflow state',
       new DocumentError('SPEC_BUSY', 'A batch is being committed.', {
         reason: 'busy',
         cause: 'commit-in-progress',
       }),
+      409,
+      'WORKFLOW_SPECIFICATION_BUSY',
       { cause: 'commit-in-progress' },
     ],
-  ])('answers a busy Specification from %s with 409', async (_from, error, details) => {
+    // Fails closed: a busy cause the contract does not know is still busy.
+    [
+      new DocumentError('SPEC_BUSY', 'Busy.', { reason: 'busy', cause: 'something-new' }),
+      409,
+      'WORKFLOW_SPECIFICATION_BUSY',
+      { cause: 'other' },
+    ],
+    [
+      new DocumentError('BRANCH_PROTECTED', 'The branch is protected.', {
+        reason: 'branch-protected',
+      }),
+      409,
+      'WORKFLOW_COMMIT_REFUSED',
+      { commit: { code: 'BRANCH_PROTECTED', reason: 'branch-protected' } },
+    ],
+    [
+      new DocumentError('COMMIT_BLOCKED', 'Git is not available.', {
+        reason: 'commit-blocked',
+        blockedBy: 'git-unavailable',
+      }),
+      409,
+      'WORKFLOW_COMMIT_REFUSED',
+      {
+        commit: { code: 'COMMIT_BLOCKED', reason: 'commit-blocked', blockedBy: 'git-unavailable' },
+      },
+    ],
+    [
+      new DocumentError('DOCUMENT_UNCOMMITTED_LIMIT', 'Too many uncommitted paths.'),
+      409,
+      'WORKFLOW_COMMIT_REFUSED',
+      { commit: { code: 'DOCUMENT_UNCOMMITTED_LIMIT' } },
+    ],
+    [new DocumentError('SPEC_SOURCE_UNAVAILABLE', 'Gone.'), 503, 'WORKFLOW_UNAVAILABLE', undefined],
+  ] as const)('answers %s with %i %s', async (error, status, code, details) => {
     const { port } = fakePort({ start: () => Promise.reject(error) });
     const app = appWith(port);
 
@@ -480,12 +515,15 @@ describe('workflow action routes', () => {
       payload: { expectedWorkflowRevision: 'r'.repeat(64) },
     });
 
-    expect(response.statusCode).toBe(409);
+    expect(response.statusCode).toBe(status);
     expect(response.json()).toEqual({
-      error: 'WORKFLOW_SPECIFICATION_BUSY',
-      code: 'WORKFLOW_SPECIFICATION_BUSY',
-      message: error.message,
-      details,
+      error: code,
+      code,
+      message:
+        code === 'WORKFLOW_UNAVAILABLE'
+          ? 'The Specification source is unavailable.'
+          : error.message,
+      ...(details ? { details } : {}),
     });
     await app.close();
   });
@@ -560,6 +598,7 @@ describe('workflow refusals', () => {
       [
         ...ENGINE_ERROR_CODES,
         'WORKFLOW_UNAVAILABLE',
+        'WORKFLOW_COMMIT_REFUSED',
         'CONTROL_LOCK_BUSY',
         'CONTROL_LOCK_CORRUPT',
         'CONTROL_LOCK_OWNERSHIP_LOST',

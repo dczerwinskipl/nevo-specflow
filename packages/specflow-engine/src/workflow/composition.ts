@@ -13,7 +13,7 @@ import {
 import { createFilesystemDefinitionWriter } from '../specs/definitions/filesystem-writer';
 import { resolveExecutionCatalogue } from './definitions/catalogue';
 import { WorkflowError as CoreWorkflowError } from '@nevo/workflow';
-import { SpecificationBusyError, WorkflowError } from './errors';
+import { WorkflowError } from './errors';
 import type { ExecutionHolds, WorkflowDependencies } from './operations/loaded-execution';
 import { exitStateOf, readSpecificationExitState } from './operations/specification-exit';
 import {
@@ -23,18 +23,10 @@ import {
   type SpecificationLifecycleActions,
 } from './close/blockers';
 import { inspectActions, type SpecificationExitPort } from './operations/actions';
-import {
-  assertNoForeignExecutionClaim,
-  assertSharedResourcesAvailable,
-} from '../specs/coordination/resources';
-import {
-  SharedResourceError,
-  ownedTurnOf,
-  type OwnedExecution,
-  type OwnedExecutionClaim,
-} from '../specs/durable';
+import { assertSharedResourcesAvailable } from '../specs/coordination/resources';
+import { SharedResourceError, ownedTurnOf, type OwnedExecution } from '../specs/durable';
 import { guardExecutionClaims } from './state/claim-guard';
-import type { WorkflowWriteAdmission } from './write-admission';
+import { executionClaimAdmission } from './write-admission';
 import type { RememberModelDependencies } from './definitions/remember-model';
 import type { TaskReferences } from './operations/task-references';
 import {
@@ -193,45 +185,6 @@ function engineHolds(engine: SpecFlowEngine): ExecutionHolds {
       } catch (error) {
         if (error instanceof SharedResourceError && error.code === 'RESOURCE_CONFLICT') {
           return true;
-        }
-
-        throw error;
-      }
-    },
-  };
-}
-
-/**
- * The writer-claim admission of an opened Engine: no workflow write while an agent execution claim
- * other than `owned` is unsettled, Git on or off (F05). The claim refusal names the Session.
- */
-function executionClaimAdmission(
-  engine: SpecFlowEngine,
-  owned: OwnedExecutionClaim | undefined,
-): WorkflowWriteAdmission {
-  return {
-    async admitWrite() {
-      try {
-        await assertNoForeignExecutionClaim(
-          engine.context,
-          owned !== undefined ? { ownedExecution: owned } : undefined,
-        );
-      } catch (error) {
-        if (
-          error instanceof SharedResourceError &&
-          error.code === 'RESOURCE_CONFLICT' &&
-          error.holder?.kind === 'external'
-        ) {
-          const { operationId, ownerId, phase } = error.holder;
-
-          throw new SpecificationBusyError(
-            error.message,
-            {
-              cause: phase === 'unknown' ? 'agent-turn-unknown' : 'agent-turn',
-              sessionId: ownerId,
-            },
-            { operationId, sessionId: ownerId },
-          );
         }
 
         throw error;

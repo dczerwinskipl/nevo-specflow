@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 import {
   SPECIFICATION_BUSY_CAUSES,
+  WORKFLOW_COMMIT_REFUSAL_CODES,
   WORKFLOW_ERROR_CODES,
   type WorkflowError as WorkflowErrorContract,
   type WorkflowErrorCode,
@@ -155,11 +156,9 @@ export function workflowFailure(error: unknown): WorkflowFailure | undefined {
 
   // The commit admission of the workflow state refuses in the documents' vocabulary: a busy
   // checkout (a batch being committed, a full queue, a Create or Close, an agent Turn) is the same
-  // busy refusal, with its cause, as the workflow's own.
-  if (error instanceof DocumentError && error.code === 'SPEC_BUSY') {
-    const cause = SPECIFICATION_BUSY_CAUSES.find((known) => known === error.details?.cause);
-
-    return failure('WORKFLOW_SPECIFICATION_BUSY', error.message, cause ? { cause } : undefined);
+  // busy refusal, with its cause, as the workflow's own; a refused commit policy is a 409 as well.
+  if (error instanceof DocumentError) {
+    return documentRefusal(error);
   }
 
   if (!(error instanceof Error) || error.name !== 'WorkflowError') {
@@ -169,6 +168,39 @@ export function workflowFailure(error: unknown): WorkflowFailure | undefined {
   const { code } = error as Error & { code?: unknown };
 
   return isWorkflowErrorCode(code) ? failure(code, error.message) : undefined;
+}
+
+/**
+ * A document refusal of the workflow state's commit admission as a workflow refusal: busy, the
+ * source gone, or the commit policy refusing (`WORKFLOW_COMMIT_REFUSED` with the document code);
+ * nothing was written in any of them. Any other document error is a defect here.
+ */
+function documentRefusal(error: DocumentError): WorkflowFailure | undefined {
+  const details = error.details;
+  if (error.code === 'SPEC_BUSY') {
+    const cause =
+      SPECIFICATION_BUSY_CAUSES.find((known) => known === details?.cause) ?? ('other' as const);
+
+    return failure('WORKFLOW_SPECIFICATION_BUSY', error.message, { cause });
+  }
+
+  if (error.code === 'SPEC_SOURCE_UNAVAILABLE') {
+    return failure('WORKFLOW_UNAVAILABLE', 'The Specification source is unavailable.');
+  }
+
+  const code = WORKFLOW_COMMIT_REFUSAL_CODES.find((known) => known === error.code);
+  if (code === undefined) {
+    return undefined;
+  }
+
+  return failure('WORKFLOW_COMMIT_REFUSED', error.message, {
+    commit: {
+      code,
+      ...(details?.reason !== undefined ? { reason: details.reason } : {}),
+      ...(details?.cause !== undefined ? { cause: details.cause } : {}),
+      ...(details?.blockedBy !== undefined ? { blockedBy: details.blockedBy } : {}),
+    },
+  });
 }
 
 /** The workflow refusal of each Specification lookup failure. */

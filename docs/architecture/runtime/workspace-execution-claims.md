@@ -145,21 +145,32 @@ claims are future work and need real containment of the agent first (plan 06 F08
 
 **Workflow writes (F05).** Every change of the workflow execution store (start, finish, return,
 wait re-evaluation, abandon, Task create, edit, removal and status, and the roll-forward of a
-pending change) and every archetype edit is admitted against the execution claims under the
-project control lock before anything is written, with Git on or off (`workflow/state/claim-guard.ts`,
-wired in `workflow/composition.ts`). The Runtime routes, the offline owner CLI (`local:<os-user>`)
-and every other host are refused alike, with `WORKFLOW_SPECIFICATION_BUSY` (HTTP 409); reads stay
-available. With Git on, the commit admission of the workflow state checks the claims as well.
+pending change), every archetype edit and the definitions install (`definitions install`) is
+admitted against the execution claims under the project control lock before anything is written,
+with Git on or off (`workflow/write-admission.ts`; the store applies it in
+`workflow/state/claim-guard.ts`, wired in `workflow/composition.ts`). The Runtime routes, the
+offline owner CLI (`local:<os-user>`) and every other host are refused alike, with
+`WORKFLOW_SPECIFICATION_BUSY` (HTTP 409); reads stay available. The store checks at `apply`, after
+the operation planned its change: a request that is invalid anyway is refused with its validation
+error first, and only a valid one meets the busy refusal. Nothing is written in either case. With
+Git on, the commit admission of the workflow state checks the claims as well; its other refusals
+(a protected branch, Git unavailable, too many uncommitted paths) answer `WORKFLOW_COMMIT_REFUSED`
+(HTTP 409) with the document code in `details.commit`.
 
 **Owned execution (D11).** A trusted host names, in-process and never from a request, the execution
 claim a write belongs to (`ownedExecution: {operationId}` of `openWorkflow` and of the document
 write options). That claim is then the caller's own, in one of two forms (`OwnedExecutionClaim` in
 `specs/durable/claims.ts`); every other unsettled claim still refuses the write.
 
-| Form       | Admitted phases of the named claim      | Who uses it                                                         |
-| ---------- | --------------------------------------- | ------------------------------------------------------------------- |
-| `turn`     | `dispatched` only                       | the writes of a running Turn (the broker); hosts get only this form |
-| `finalize` | any unsettled phase, `unknown` included | the Engine's own finalize section of an agent attempt, nothing else |
+`ownedExecution` is not an authenticator: the operation id is in the claim journal, which any
+process of the same OS user can read. A host MUST take it only from an identity it verified
+itself; the Runtime broker (T3) takes it only from a verified invocation capability, never from
+what a client sends.
+
+| Form            | Admitted phases of the named claim      | Who uses it                                                         |
+| --------------- | --------------------------------------- | ------------------------------------------------------------------- |
+| `turn`          | `dispatched` only                       | the writes of a running Turn (the broker); hosts get only this form |
+| `finalize` (T8) | any unsettled phase, `unknown` included | the Engine's own finalize section of an agent attempt, nothing else |
 
 ## Publication and archive
 

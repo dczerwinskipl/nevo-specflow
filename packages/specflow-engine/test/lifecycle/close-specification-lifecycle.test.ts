@@ -26,6 +26,7 @@ import {
   readWorkspaceSpecification,
   reserveCloseOperation,
 } from '../../src/testing';
+import { siblingSpecificationDirectories } from '../../src/specs/lifecycle/preflight';
 import { createGitTestProject, git, commitStaged } from '../support/git-project';
 
 const cleanup: string[] = [];
@@ -315,6 +316,122 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
     expect(await inspectCloseOperation(engine, refusedOp)).toBeUndefined();
     expect(git(a.workspaceRoot, 'rev-parse', 'HEAD')).toBe(archivedHead);
     expect((await engine.readRegistry()).specBindings).toEqual(before.specBindings);
+  }, 120000);
+
+  it("#181: a sibling's own pending ledger entry and pre-existing staged file never block Close of another Specification sharing the checkout", async () => {
+    // Auto-commit is off (the default): A's workflow write sits in the ledger until a step finishes.
+    const { root, engine, spec: a } = await fixture(false, 'feature');
+    const registry = await engine.readRegistry();
+    const b = await createSpecificationForTesting(engine, {
+      operationId: randomUUID(),
+      title: 'Closed while A has pending work',
+      created: '2026-11-20',
+      archetype: { id: 'minimal', version: 1 },
+      target: { kind: 'existing', workspaceId: registry.primaryWorkspaceId },
+    });
+    git(root, 'add', '--', b.relativeManifestPath, 'specs/active/' + b.slug + '/overview.md');
+    commitStaged(root, 'commit sibling specification B');
+
+    const owner = { class: 'human', details: { actorId: 'local:owner', trust: 'local' } } as const;
+    // A started step: ledger-held, uncommitted execution state under A's own directory.
+    await createTask(await openWorkflow(engine), {
+      specId: a.specId,
+      taskId: 'docs',
+      title: 'Document it',
+      type: 'implementation',
+      actor: owner,
+    });
+    // Fix 1's scenario: one of A's own execution-state files is STAGED (not just working-tree-dirty
+    // / untracked, as `createTask` alone leaves it) — the sibling isolation only ever exempts a
+    // sibling's own execution state, never its arbitrary documents, which must still refuse.
+    git(root, 'add', '--', 'specs/active/' + a.slug + '/tasks/docs/task.yaml');
+
+    const dirty = () =>
+      git(root, 'status', '--porcelain', '--untracked-files=all')
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => line.slice(3))
+        .sort();
+    const beforeDirty = dirty();
+    expect(beforeDirty.length).toBeGreaterThan(0);
+
+    const result = await closeSpecification(engine, {
+      operationId: randomUUID(),
+      specId: b.specId,
+    });
+    expect(result).toMatchObject({
+      status: 'completed',
+      journal: { outcome: 'archived-in-primary' },
+    });
+
+    // A's ledger entry, its staged file, and every other one of its paths are untouched.
+    expect(dirty()).toEqual(
+      beforeDirty.filter((path) => !path.startsWith('specs/active/' + b.slug)),
+    );
+    expect((await readWorkspaceSpecification(root, a.specId)).location).toBe('active');
+    expect((await readWorkspaceSpecification(root, b.specId)).location).toBe('archive');
+
+    // A's own entries are never checked against another (now-closed) known directory: a later
+    // Close of A itself is still refused by D07 for A's own still-draft Task (`CLOSE_BLOCKED`), not
+    // by some unrelated Git/ledger error a broken ownership check (own entries matched to the wrong
+    // directory) would otherwise produce.
+    await expect(
+      closeSpecification(engine, { operationId: randomUUID(), specId: a.specId }),
+    ).rejects.toMatchObject({ code: 'CLOSE_BLOCKED', blockers: [{ kind: 'draft-tasks' }] });
+  }, 180000);
+
+  it('#181: an unexplained dirty path belonging to no registered Specification still refuses, naming it', async () => {
+    const { root, engine, spec: a } = await fixture(false);
+    const registry = await engine.readRegistry();
+    const b = await createSpecificationForTesting(engine, {
+      operationId: randomUUID(),
+      title: 'Closed beside an unexplained dirty path',
+      created: '2026-11-20',
+      archetype: { id: 'minimal', version: 1 },
+      target: { kind: 'existing', workspaceId: registry.primaryWorkspaceId },
+    });
+    git(root, 'add', '--', b.relativeManifestPath, 'specs/active/' + b.slug + '/overview.md');
+    commitStaged(root, 'commit sibling specification B');
+    void a;
+
+    await writeFile(join(root, 'scratch-notes.txt'), 'not any Specification\n');
+    await expect(
+      closeSpecification(engine, { operationId: randomUUID(), specId: b.specId }),
+    ).rejects.toMatchObject({ code: 'CLOSE_PREFLIGHT', paths: ['scratch-notes.txt'] });
+    await rm(join(root, 'scratch-notes.txt'));
+  }, 120000);
+
+  it('#181 Fix 4: a physically-discovered Specification without a specBindings entry is excluded from the sibling set', async () => {
+    const { root, engine, spec: a } = await fixture(false);
+    const registry = await engine.readRegistry();
+    const b = await createSpecificationForTesting(engine, {
+      operationId: randomUUID(),
+      title: 'Physically present, about to lose its binding',
+      created: '2026-11-20',
+      archetype: { id: 'minimal', version: 1 },
+      target: { kind: 'existing', workspaceId: registry.primaryWorkspaceId },
+    });
+    git(root, 'add', '--', b.relativeManifestPath, 'specs/active/' + b.slug + '/overview.md');
+    commitStaged(root, 'commit sibling specification B');
+
+    const live = await engine.readRegistry();
+    // B is physically discoverable (a valid manifest on disk) but its own registry binding is
+    // simulated absent: a physically-discovered but unregistered/orphan directory (Fix 4).
+    const withoutBinding = {
+      ...live,
+      specBindings: live.specBindings.filter((entry) => entry.specId !== b.specId),
+    };
+    expect(
+      await siblingSpecificationDirectories(root, live.primaryWorkspaceId, live, a.specId),
+    ).toEqual([{ specId: b.specId, directory: 'specs/active/' + b.slug }]);
+    expect(
+      await siblingSpecificationDirectories(
+        root,
+        live.primaryWorkspaceId,
+        withoutBinding,
+        a.specId,
+      ),
+    ).toEqual([]);
   }, 120000);
 
   it('I03: verifies registered incarnation before reading workspace manifests', async () => {
@@ -752,4 +869,26 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
     expect(git(root, 'rev-parse', 'HEAD')).toBe(sha);
     expect((await inspectCloseOperation(engine, operationId))?.archive?.committedHead).toBe(sha);
   }, 120000);
+
+  it('refuses finishAfterExternalMerge before any mutation (owner decision 2026-11-20): only Worktree Close may finish this way', async () => {
+    const { root, engine, spec } = await fixture(false);
+    const beforeHead = git(root, 'rev-parse', 'HEAD');
+    const operationId = randomUUID();
+
+    await expect(
+      closeSpecification(engine, {
+        operationId,
+        specId: spec.specId,
+        finishAfterExternalMerge: true,
+      }),
+    ).rejects.toMatchObject({ code: 'CLOSE_EXTERNAL_MERGE_UNSUPPORTED' });
+
+    // No mutation at all: Specification Close's contract requires ending up archived at the
+    // destination, which this mode never proves, so it refuses before touching Git, the
+    // Specification or the journal.
+    expect(git(root, 'rev-parse', 'HEAD')).toBe(beforeHead);
+    expect(git(root, 'status', '--porcelain')).toBe('');
+    expect((await readWorkspaceSpecification(root, spec.specId)).location).toBe('active');
+    expect(await inspectCloseOperation(engine, operationId)).toBeUndefined();
+  }, 60000);
 });

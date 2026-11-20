@@ -37,8 +37,8 @@ contracts are filled in with the implementation.
 - **Do not expose the internal model as navigation.** Users navigate product concepts,
   not database entities or provider payloads.
 - **A route is not automatically global navigation.** Full Session and Full Task can have stable
-  product routes without earning persistent sidebar items. Task Preview and contextual inspectors
-  remain local Secondary state; Full Task is the explicit main routed destination.
+  product routes without earning persistent sidebar items. Contextual inspectors remain local
+  Secondary state; Full Task is the routed destination of every Task link.
 - **Preserve the current work context when possible.** Use Secondary or floating interaction for
   contextual exploration; use a main workspace route when the user explicitly promotes that context
   into their primary task.
@@ -80,9 +80,9 @@ Repository are feature-owned canonical Primary pages under that Specification, n
 by `?view` (legacy `?view` URLs redirect). They do not become global product areas.
 
 TanStack Router owns routable Primary surfaces. Nevo UI Secondary Stack owns contextual
-Task/Document previews, independent from URL search state. Promoting a preview to Full is an
-explicit Primary route navigation: short Task Preview in Secondary, explicit Full Task at
-`/specs/:specId/tasks/:taskId`. A Full Task deep link reads the Task by ID through the authenticated
+Document previews, independent from URL search state; promoting one to Full is an explicit
+Primary route navigation. A Task opens at `/specs/:specId/tasks/:taskId` (there is no Task
+preview, owner decision 2026-11-16). A Full Task deep link reads the Task by ID through the authenticated
 Runtime detail API, not through the Workspace Task collection. Specification overview shows its
 Activity history in the Secondary, open by default only when the history has entries
 ([Specification overview](specification-overview.md#activity-history)).
@@ -92,7 +92,7 @@ Project
 ├── Specifications                        default entry; Current / Archive are collection views
 │   └── Specification overview            /specs/:specId
 │       ├── Documents, Sessions, Changes, Repository   Primary pages under the Specification
-│       ├── Task Preview                  contextual Secondary
+│       ├── Tasks                         /specs/:specId/tasks (optional ?blocking or ?group filter)
 │       └── Full Task                     /specs/:specId/tasks/:taskId
 └── Session                               /sessions/:sessionId, top-level route
     └── Secondary local inspector         Context (default on split entry) and user-selected detail
@@ -136,21 +136,21 @@ Compact/Narrow always open the Session directly, with no miniature floating repl
 
 ## Reachability
 
-| Surface                   | Normal entry                                                                                          | Representation                                            |
-| ------------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| Specifications            | default entry `/`; **Browse all specifications** in the switcher                                      | Primary                                                   |
-| Specification overview    | a Specifications row, the switcher, or its stable route                                               | Primary                                                   |
-| Task Preview              | a Task row in the Specification                                                                       | Secondary on split layouts; pushed local detail on Narrow |
-| Full Task                 | explicit promotion from Preview, or its stable route                                                  | routed Primary                                            |
-| New Session               | the Specification's Sessions list, its empty state, Continue session, the preparation block           | routed Primary (`/specs/:specId/sessions/new`)            |
-| Session (Full Session)    | a Session row or Continue session, Create with an agent (demo mode only), a stable route              | routed Primary + Secondary                                |
-| Session Context           | default on split-capable Session entry; the **Context** action on Narrow                              | Secondary or pushed local detail                          |
-| Session inspection detail | an explicit click on a Work block, a Related Task or another Context row (the Task tab is a stand-in) | a tab or the active tab's local stack; never a third pane |
+| Surface                   | Normal entry                                                                                                                                                             | Representation                                            |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
+| Specifications            | default entry `/`; **Browse all specifications** in the switcher                                                                                                         | Primary                                                   |
+| Specification overview    | a Specifications row, the switcher, or its stable route                                                                                                                  | Primary                                                   |
+| Tasks page                | the navigator's Tasks, the Overview's **All tasks**; filtered: "N more in <group>" and the compact group links (`?group=`), **Review tasks** (`?blocking=specification`) | routed Primary                                            |
+| Full Task                 | a Task row, attention or activity item of the Specification, or its stable route                                                                                         | routed Primary                                            |
+| New Session               | the Specification's Sessions list, its empty state, Continue session, the preparation block                                                                              | routed Primary (`/specs/:specId/sessions/new`)            |
+| Session (Full Session)    | a Session row or Continue session, Create with an agent (demo mode only), a stable route                                                                                 | routed Primary + Secondary                                |
+| Session Context           | default on split-capable Session entry; the **Context** action on Narrow                                                                                                 | Secondary or pushed local detail                          |
+| Session inspection detail | an explicit click on a Work block, a Related Task or another Context row (the Task tab is a stand-in)                                                                    | a tab or the active tab's local stack; never a third pane |
 
 The table defines reachability. A product row keeps a stable neutral destination: a Specifications
 row always enters its Specification and never deep-links to whichever Task or issue currently has
-the highest priority; status prose inside the row is not a link. Opening a Task Preview is
-inspection only and performs no workflow action.
+the highest priority; status prose inside the row is not a link. Opening a Task performs no
+workflow action.
 
 ## Starting a Session and the navigator
 
@@ -214,7 +214,7 @@ are equal areas of a Specification, reached from the navigation. On Narrow they 
 trigger in the header and have no Back in their body; the Specifications list stays reachable from
 the navigation (the Specification switcher and its list). A peer area never replaces the navigation
 trigger. A subordinate screen (a document opened from Documents, a documentation article, Activity
-history, a Task preview or Task page, and so on) is a stacked screen: on Narrow its header shows a
+history, a Task page, and so on) is a stacked screen: on Narrow its header shows a
 Back instead, icon only, named for the parent ("Back to <parent>", "Wróć do: <parent>"; never a bare
 "Back", also at depth 1), with a 44 px touch target. Wide and Compact layouts carry the way back in
 the location trail (breadcrumbs, the split Secondary's detail header row).
@@ -230,14 +230,16 @@ screen opened from a deep link, a reload or another tab (`app/navigation/backPar
 | A document of Documents               | the Documents list (the tree under it), a deep link included      |
 | A document promoted from the Overview | the Overview it came from (that visit's router state; see below)  |
 | A documentation article               | the previous article, then the documentation (the reader's rules) |
-| Activity history, a Task preview      | the Overview (the owning Primary)                                 |
-| A Task page                           | the Specification's Tasks (the Overview's Tasks section)          |
+| Activity history                      | the Overview (the owning Primary)                                 |
+| A Task page                           | the Tasks page (the navigation's Tasks), a deep link included     |
 | A refused new Session (Sessions off)  | the Overview (not the turned-off Sessions area)                   |
 | A deeper Secondary screen             | its parent in the same stack                                      |
 
 Back keeps the context the existing contracts provide: the selected Specification and its
 collection, and the documentation's workspace, search and reading positions (the reader's own
-rules). A Back to a routed parent moves in one of two ways:
+rules). A Task page's Back, and its Tasks crumb on Wide and Compact, open the Tasks page
+unfiltered: a `group` or `blocking` filter of the Tasks page the Task was opened from is not carried
+to the Task page. A Back to a routed parent moves in one of two ways:
 
 - when the previous history entry is the parent's own visit (a document opened from the Overview
   records that entry's index), Back steps back in history, also after a reload of the document
@@ -261,7 +263,6 @@ Product Back inside Secondary follows the local inspection stack:
 
 - a dependent detail Back returns to its parent in the same tab or stack (for example ToolAction to
   Work history, a Task to the Tasks list it was opened from);
-- Task Preview Back/Close returns to the owning Primary;
 - a tab is closed explicitly; Context stays pinned and is never closed as a tab;
 - closing the whole Secondary returns to the owning Primary and does not reset it.
 

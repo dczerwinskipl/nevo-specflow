@@ -190,6 +190,7 @@ export const Default: Story = {
         'skipped-many',
         'forbidden',
         'docs-unavailable',
+        'not-served',
         'index-building',
         'endpoint-unreachable',
         'index-unavailable',
@@ -287,6 +288,17 @@ export const AllDocumentsSkipped: Story = {
   },
 };
 export const DocsUnavailable: Story = { args: { scenario: 'docs-unavailable' } };
+/** Demo data: the reason, and no Try again (asking again cannot change it). */
+export const NotServed: Story = {
+  args: { scenario: 'not-served' },
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement);
+    await expect(
+      await body.findByText('Project documentation is not available in the demo'),
+    ).toBeTruthy();
+    await expect(body.queryByRole('button', { name: 'Retry' })).toBeNull();
+  },
+};
 export const Forbidden: Story = { args: { scenario: 'forbidden' } };
 export const UnknownDocument: Story = {
   args: { path: `${main}/product.specflow.ui.single-sign-on` },

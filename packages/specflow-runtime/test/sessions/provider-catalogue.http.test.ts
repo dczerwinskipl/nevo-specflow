@@ -10,7 +10,14 @@ import {
   type CreateContextSessionResult,
   type ProviderDescriptor,
 } from '@nevo/specflow-contracts/sessions';
+import type { RuntimeConfig } from '../../src/config/types';
+import { authCookieNames } from '../../src/features/auth/authentication/http/cookies';
+import { InMemoryAuthenticationStore } from '../../src/features/auth/authentication/store/in-memory-store';
 import { createRuntimeApp } from '../../src/server/app';
+import {
+  parseSessionsFeatureConfig,
+  type SessionsFeatureConfig,
+} from '../../src/features/sessions';
 import { passwordConfig } from '../auth/support/config';
 import { associationTargets } from '../support/association-targets';
 
@@ -67,29 +74,34 @@ afterEach(async () => {
   await rm(directory, { recursive: true, force: true });
 });
 
-/** Opens the Runtime over the same Session store, as the local user with one assignment. */
-async function open(role?: Role, scope: Record<string, string> = {}) {
+async function start(config: RuntimeConfig, store?: InMemoryAuthenticationStore) {
   await app?.close();
-  const config = passwordConfig();
-  app = await createRuntimeApp(
-    {
-      ...config,
-      authentication: { ...config.authentication, mode: 'none', localUserId: 'demo-user' },
-      authorization: {
-        assignments: role ? [{ userId: 'demo-user', role, scope }] : [],
-      },
-      sessions: { enabled: true, providers: { mock: { enabled: true } } },
-    },
-    {
-      sessions: { storage: { directory, projectId: 'project' }, targets: associationTargets() },
-    },
-  );
+  app = await createRuntimeApp(config, {
+    ...(store ? { auth: { store } } : {}),
+    sessions: { storage: { directory, projectId: 'project' }, targets: associationTargets() },
+  });
 
   return app;
 }
 
-const catalogue = (server: FastifyInstance, query = '') =>
-  server.inject('/api/session-providers' + query);
+/** Opens the Runtime over the same Session store, as the local user with one assignment. */
+function open(
+  role?: Role,
+  scope: Record<string, string> = {},
+  sessions: SessionsFeatureConfig = { enabled: true, providers: { mock: { enabled: true } } },
+) {
+  const config = passwordConfig();
+
+  return start({
+    ...config,
+    authentication: { ...config.authentication, mode: 'none', localUserId: 'demo-user' },
+    authorization: { assignments: role ? [{ userId: 'demo-user', role, scope }] : [] },
+    sessions,
+  });
+}
+
+const catalogue = (server: FastifyInstance, query = '', headers: Record<string, string> = {}) =>
+  server.inject({ url: '/api/session-providers' + query, headers });
 
 async function createIn(server: FastifyInstance, specId: string, providerId = 'mock') {
   return server.inject({
@@ -132,21 +144,50 @@ describe('GET /api/session-providers by start context', () => {
     expect((await catalogue(server, '?specId=S')).statusCode).toBe(403);
   });
 
-  it('serves a Session manager the catalogue of that Session only', async () => {
+  it('serves Session- and Specification-scoped managers only the catalogues they manage', async () => {
     const { inS, inT } = await seed();
-    const manager = await open('developer', { sessionId: inS });
-    expect((await catalogue(manager, `?sessionId=${inS}`)).statusCode).toBe(200);
-    expect((await catalogue(manager, `?sessionId=${inT}`)).statusCode).toBe(403);
-    // Manage somewhere: an unknown Session is not found, as on every Session route.
-    expect((await catalogue(manager, `?sessionId=${unknown}`)).statusCode).toBe(404);
-    // Manage does not imply create.
-    expect((await catalogue(manager)).statusCode).toBe(403);
-    expect((await catalogue(manager, '?specId=S')).statusCode).toBe(403);
+    const config = passwordConfig();
+    const store = new InMemoryAuthenticationStore();
+    const server = await start(
+      {
+        ...config,
+        authentication: {
+          ...config.authentication,
+          users: {
+            ...config.authentication.users,
+            'session-manager': { name: 'Session manager' },
+            'spec-manager': { name: 'Specification manager' },
+          },
+        },
+        authorization: {
+          assignments: [
+            { userId: 'session-manager', role: 'developer', scope: { sessionId: inS } },
+            { userId: 'spec-manager', role: 'developer', scope: { specId: 'S' } },
+          ],
+        },
+        sessions: { enabled: true, providers: { mock: { enabled: true } } },
+      },
+      store,
+    );
 
-    // A Specification grant manages that Specification's Sessions, not another's.
-    const specManager = await open('developer', { specId: 'S' });
-    expect((await catalogue(specManager, `?sessionId=${inS}`)).statusCode).toBe(200);
-    expect((await catalogue(specManager, `?sessionId=${inT}`)).statusCode).toBe(403);
+    function headersFor(userId: string) {
+      const session = store.createSession({ userId, authenticatedWith: { kind: 'password' } });
+
+      return { cookie: authCookieNames(config.server.port).session + '=' + session };
+    }
+
+    const manager = headersFor('session-manager');
+    expect((await catalogue(server, `?sessionId=${inS}`, manager)).statusCode).toBe(200);
+    expect((await catalogue(server, `?sessionId=${inT}`, manager)).statusCode).toBe(403);
+    // Manage somewhere: an unknown Session is not found, as on every Session route.
+    expect((await catalogue(server, `?sessionId=${unknown}`, manager)).statusCode).toBe(404);
+    // Manage does not imply create.
+    expect((await catalogue(server, '', manager)).statusCode).toBe(403);
+    expect((await catalogue(server, '?specId=S', manager)).statusCode).toBe(403);
+
+    const specManager = headersFor('spec-manager');
+    expect((await catalogue(server, `?sessionId=${inS}`, specManager)).statusCode).toBe(200);
+    expect((await catalogue(server, `?sessionId=${inT}`, specManager)).statusCode).toBe(403);
   });
 
   it('refuses a caller without Manage anywhere alike for a known and an unknown Session', async () => {
@@ -168,28 +209,37 @@ describe('GET /api/session-providers by start context', () => {
     expect((await catalogue(server, '?sessionId=not-a-session')).statusCode).toBe(400);
   });
 
-  it('authorizes a writer mode by execute-write, never through a Specification grant', async () => {
-    const { inS } = await seed();
-    const writer = async (server: FastifyInstance, query: string) => {
-      const read = await catalogue(server, query);
-      expect(read.statusCode, read.body).toBe(200);
-      const modes = read
-        .json<{ items: ProviderDescriptor[] }>()
-        .items.find((item) => item.providerId === 'mock')?.providerModes;
-      // A read-only mode is always authorized.
-      expect(modes?.find((mode) => mode.modeId === 'plan')?.authorized).toBe(true);
+  async function expectWriterMode(server: FastifyInstance, query: string, authorized: boolean) {
+    const read = await catalogue(server, query);
+    expect(read.statusCode, read.body).toBe(200);
+    const modes = read
+      .json<{ items: ProviderDescriptor[] }>()
+      .items.find((item) => item.providerId === 'mock')?.providerModes;
+    expect(modes?.find((mode) => mode.modeId === 'plan')?.authorized).toBe(true);
+    expect(modes?.find((mode) => mode.modeId === 'agent')?.authorized).toBe(authorized);
+  }
 
-      return modes?.find((mode) => mode.modeId === 'agent')?.authorized;
-    };
+  it('authorizes a writer mode with a project grant', async () => {
+    const project = await open('developer', { projectId: 'project' });
+    await expectWriterMode(project, '', true);
+  });
 
-    expect(await writer(await open('developer', { projectId: 'project' }), '')).toBe(true);
-    expect(await writer(await open('developer', { sessionId: inS }), `?sessionId=${inS}`)).toBe(
-      true,
-    );
-    // As a Turn start refuses execute-write to a Specification-scoped grant.
+  it('authorizes a writer mode with a Session grant', async () => {
+    const project = await open('developer', { projectId: 'project' });
+    const created = await createIn(project, 'S');
+    expect(created.statusCode, created.body).toBe(201);
+    const { sessionId } = created.json<CreateContextSessionResult>();
+    const manager = await open('developer', { sessionId });
+    await expectWriterMode(manager, `?sessionId=${sessionId}`, true);
+  });
+
+  it('refuses a writer mode with a Specification grant in both contexts', async () => {
     const inSpec = await open('developer', { specId: 'S' });
-    expect(await writer(inSpec, '?specId=S')).toBe(false);
-    expect(await writer(inSpec, `?sessionId=${inS}`)).toBe(false);
+    const created = await createIn(inSpec, 'S');
+    expect(created.statusCode, created.body).toBe(201);
+    const { sessionId } = created.json<CreateContextSessionResult>();
+    await expectWriterMode(inSpec, '?specId=S', false);
+    await expectWriterMode(inSpec, `?sessionId=${sessionId}`, false);
   });
 
   it('lets developer@S read the catalogue and start a Session in S, and refuses T', async () => {
@@ -210,5 +260,69 @@ describe('GET /api/session-providers by start context', () => {
 
     expect((await catalogue(server, '?specId=T')).statusCode).toBe(403);
     expect((await createIn(server, 'T', provider!.providerId)).statusCode).toBe(403);
+  });
+});
+
+describe('GET /api/session-providers under project policy and workstation enablement', () => {
+  const items = async (server: FastifyInstance, query = '') => {
+    const response = await catalogue(server, query);
+    expect(response.statusCode, response.body).toBe(200);
+    expect(Value.Check(ProviderCatalogueSchema, response.json())).toBe(true);
+
+    return response.json<{ items: ProviderDescriptor[] }>().items;
+  };
+
+  it('lists each withheld provider as unavailable with its reason, and refuses to start it', async () => {
+    const server = await open(
+      'developer',
+      { projectId: 'project' },
+      parseSessionsFeatureConfig({
+        project: {
+          enabled: true,
+          providers: { mock: { allowed: true }, codex: { allowed: true } },
+        },
+        // A provider the project does not allow stays not allowed, whatever the workstation says.
+        local: { providers: { codex: { enabled: false }, claude: { enabled: false } } },
+      }),
+    );
+    const listed = await items(server);
+    expect(listed.map((item) => [item.providerId, item.readiness, item.reasonCode])).toEqual([
+      ['mock', 'ready', undefined],
+      ['claude', 'unavailable', 'NOT_ALLOWED_BY_PROJECT'],
+      ['codex', 'unavailable', 'NOT_ENABLED_ON_WORKSTATION'],
+      ['antigravity', 'unavailable', 'NOT_ALLOWED_BY_PROJECT'],
+    ]);
+    expect(listed[1]!.reason).toContain('sessions.providers.claude.allowed: true');
+    expect(listed[2]!.reason).toContain('.nevo/local/config.yaml');
+    for (const providerId of ['claude', 'codex', 'antigravity']) {
+      const created = await createIn(server, 'S', providerId);
+      expect(created.statusCode).toBe(503);
+      expect(created.json()).toMatchObject({ code: 'PROVIDER_UNAVAILABLE' });
+    }
+
+    // Read for a Specification the withheld entries keep their configuration reason.
+    expect((await items(server, '?specId=S')).slice(1).map((item) => item.reasonCode)).toEqual([
+      'NOT_ALLOWED_BY_PROJECT',
+      'NOT_ENABLED_ON_WORKSTATION',
+      'NOT_ALLOWED_BY_PROJECT',
+    ]);
+  });
+
+  it('serves no catalogue and starts nothing while the project disables Sessions, whatever is local', async () => {
+    const server = await open(
+      'developer',
+      { projectId: 'project' },
+      parseSessionsFeatureConfig({
+        project: {
+          enabled: false,
+          providers: { mock: { allowed: true }, claude: { allowed: true } },
+        },
+        local: { providers: { mock: { enabled: true }, claude: { enabled: true } } },
+      }),
+    );
+    for (const response of [await catalogue(server), await createIn(server, 'S')]) {
+      expect(response.statusCode, response.body).toBe(503);
+      expect(response.json()).toMatchObject({ code: 'SESSION_DISABLED' });
+    }
   });
 });

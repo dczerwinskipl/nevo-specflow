@@ -13,7 +13,7 @@ steps:
     executors: [agent, human]
     archetype: spec-writer
     interaction: interactive
-    purpose: Agree on the goal, scope, constraints and acceptance with the owner in conversation.
+    purpose: A shared, owner-confirmed picture of the goal, scope and acceptance.
     transitions:
       - id: agreed
         label: Requirements agreed
@@ -25,7 +25,7 @@ steps:
     title: Write the Specification
     executors: [agent, human]
     archetype: spec-writer
-    purpose: Write the Specification documents from the agreed requirements.
+    purpose: Documents that state what to build and how to tell it is done.
     transitions:
       - id: written
         label: Specification written
@@ -36,7 +36,7 @@ steps:
     title: Design the solution
     executors: [agent, human]
     archetype: solution-designer
-    purpose: Design the solution and record its decisions.
+    purpose: A chosen approach, with its trade-offs and decisions written down.
     transitions:
       - id: designed
         label: Solution designed
@@ -47,7 +47,7 @@ steps:
     title: Break the solution down
     executors: [agent, human]
     archetype: task-planner
-    purpose: Draft the Tasks, each with its task type, dependencies and verification; the finish input lists every draft Task.
+    purpose: Draft Tasks that together cover the solution, each one verifiable.
     produces: tasks
     transitions:
       - id: proposed
@@ -59,7 +59,7 @@ steps:
     title: Review the breakdown
     executors: [agent, human]
     archetype: reviewer
-    purpose: Check that the Specification, the solution and the draft Tasks are complete and consistent.
+    purpose: No gaps or conflicts between the Specification, solution and Tasks.
     transitions:
       - id: approved
         label: Breakdown approved
@@ -75,7 +75,7 @@ steps:
   - id: implementation
     kind: wait-for-tasks
     title: Waiting for Tasks
-    purpose: Wait until every Task is finished. A Task that escalates sends the Specification back to the breakdown.
+    purpose: The Specification is built, Task by Task.
     transitions:
       - id: tasks-finished
         label: All Tasks finished
@@ -91,7 +91,7 @@ steps:
     kind: work
     title: Acceptance
     executors: [human]
-    purpose: The owner accepts the implemented Specification.
+    purpose: Confirmation that the delivered work does what the owner asked for.
     transitions:
       - id: accepted
         label: Specification accepted

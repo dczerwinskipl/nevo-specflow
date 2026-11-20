@@ -177,12 +177,14 @@ describe('GET /api/sessions/:sessionId/association', () => {
     const server = await open('viewer', { specId: 'T' });
     expect((await read(server, ofS!)).statusCode).toBe(403);
     expect((await read(server, standalone!)).statusCode).toBe(403);
-    const unauthorized = await open(undefined);
-    expect((await read(unauthorized, ofS!)).statusCode).toBe(403);
+  });
+
+  it('denies Session association reads to a user with no grants', async () => {
+    const [sessionId] = await seed({ specId: 'S' });
+    expect((await read(await open(undefined), sessionId!)).statusCode).toBe(403);
   });
 
   it('answers SESSION_NOT_FOUND for an unknown Session', async () => {
-    await seed();
     const response = await read(await open('viewer', { projectId: 'project' }), randomUUID());
     expect(response.statusCode).toBe(404);
     expect(response.json<{ code: string }>().code).toBe('SESSION_NOT_FOUND');

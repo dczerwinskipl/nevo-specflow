@@ -52,6 +52,8 @@ export interface TaskDocumentWrite {
 }
 
 export interface ExecutionChange {
+  /** Recheck a read-only precondition on the snapshot used to plan publication. */
+  readonly verifySnapshot?: (snapshot: ExecutionSnapshot) => void;
   readonly specification?: RecordWrite<SpecificationExecutionRecord>;
   readonly index?: RecordWrite<TaskIndex>;
   /** `next: null` removes the manifest; the Task folder goes with it once it is empty. */

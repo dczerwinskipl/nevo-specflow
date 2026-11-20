@@ -38,6 +38,7 @@ import {
   work,
 } from '../operations/operations.test-support';
 import { startSpecificationExecution, startTaskExecution } from '../operations/start';
+import { reevaluateWait } from '../operations/reevaluate-wait';
 import { returnToStep } from '../operations/return';
 import { setTaskStatus } from '../operations/task-status';
 import { createTask } from '../operations/task-resource';
@@ -123,6 +124,105 @@ async function seedSpecification(step = 'requirements') {
 }
 
 describe('filesystem workflow store', () => {
+  it('recovers a wait after external Task closures and completes an interrupted publication on retry', async () => {
+    const catalogue = await seedExecutionCatalogue();
+    const dependencies = { ...memoryDependencies(catalogue), store: store() };
+    await specificationWithTasks(dependencies);
+    const request = { specId: SPEC, step: 'implementation', attempt: 1, actor: owner };
+    const waiting = await readFile(specificationPath(), 'utf8');
+
+    await expect(reevaluateWait(dependencies, request)).rejects.toMatchObject({
+      code: 'WORKFLOW_TASK_BLOCKED',
+    });
+    const snapshot = await dependencies.store.read(SPEC);
+    for (const { value } of snapshot.manifests) {
+      await writeFile(
+        join(resourceDirectory(), value.id, 'task.yaml'),
+        serializeTaskManifest({ ...value, status: 'cancelled' }),
+      );
+    }
+
+    const restarted = { ...memoryDependencies(catalogue), store: store() };
+    await expect(inspectExecution(restarted, SPEC)).resolves.toMatchObject({
+      attention: [
+        {
+          reason: 'wait-ready-to-settle',
+          action: 'reevaluate-wait',
+          waitAttempt: { step: 'implementation', attempt: 1 },
+        },
+      ],
+    });
+    expect(await readFile(specificationPath(), 'utf8')).toBe(waiting);
+    await expect(reevaluateWait(restarted, { ...request, attempt: 2 })).rejects.toMatchObject({
+      code: 'WORKFLOW_ATTEMPT_MISMATCH',
+    });
+
+    const changedDefinition = {
+      ...restarted,
+      reloadCatalogue: () => Promise.resolve({ ...catalogue, workflow: () => undefined }),
+    };
+    await expect(reevaluateWait(changedDefinition, request)).rejects.toMatchObject({
+      code: 'WORKFLOW_DEFINITION_CHANGED',
+    });
+
+    const brokenManifest = join(resourceDirectory(), snapshot.manifests[0]!.value.id, 'task.yaml');
+    const closedManifest = await readFile(brokenManifest, 'utf8');
+    await writeFile(brokenManifest, 'invalid Task manifest');
+    try {
+      await expect(reevaluateWait(restarted, request)).rejects.toMatchObject({
+        code: 'WORKFLOW_STATE_CORRUPT',
+      });
+    } finally {
+      await writeFile(brokenManifest, closedManifest);
+    }
+
+    const reopened = {
+      ...restarted,
+      store: {
+        ...restarted.store,
+        apply: async (specId: string, change: Parameters<typeof restarted.store.apply>[1]) => {
+          const task = snapshot.manifests[0]!.value;
+          const path = join(resourceDirectory(), task.id, 'task.yaml');
+          await writeFile(path, serializeTaskManifest(task));
+          try {
+            await restarted.store.apply(specId, change);
+          } finally {
+            await writeFile(path, serializeTaskManifest({ ...task, status: 'cancelled' }));
+          }
+        },
+      },
+    };
+    await expect(reevaluateWait(reopened, request)).rejects.toMatchObject({
+      code: 'WORKFLOW_TASK_BLOCKED',
+    });
+    expect(await exists(journalPath())).toBe(false);
+    expect(await readFile(specificationPath(), 'utf8')).toBe(waiting);
+
+    const interrupted = {
+      ...restarted,
+      store: storeWithPublishHook(() => Promise.reject(new Error('publication interrupted'))),
+    };
+    await expect(reevaluateWait(interrupted, request)).rejects.toThrow('publication interrupted');
+    expect(await exists(journalPath())).toBe(true);
+    await expect(reevaluateWait(restarted, request)).resolves.toEqual({
+      step: 'implementation',
+      attempt: 1,
+      status: 'already-settled',
+    });
+    expect(await exists(journalPath())).toBe(false);
+    const completed = await readFile(specificationPath(), 'utf8');
+    const { run } = parseSpecificationRecord(completed);
+    expect(run.position).toMatchObject({ state: 'ready', step: 'acceptance' });
+    const attempt = run.attempts.find(
+      (entry) => entry.step === 'implementation' && entry.attempt === 1,
+    );
+    expect(attempt?.outcome?.kind).toBe('transition');
+    await expect(reevaluateWait(restarted, request)).resolves.toMatchObject({
+      status: 'already-settled',
+    });
+    expect(await readFile(specificationPath(), 'utf8')).toBe(completed);
+  });
+
   it('runs the operations end to end and keeps the canonical state next to the Specification', async () => {
     const dependencies = { ...memoryDependencies(await seedExecutionCatalogue()), store: store() };
     const executor = agent('antigravity', 's');
@@ -944,7 +1044,7 @@ describe('filesystem workflow store: the Task set is the one the index lists', (
     ).rejects.toMatchObject({ code: 'WORKFLOW_DEPENDENCY_UNSATISFIED' });
   });
 
-  it('tells the owner when the wait cannot complete although every Task is closed', async () => {
+  it('offers wait recovery when every indexed Task is closed', async () => {
     // The same Tasks, both completed, in another store: the source of a restored Task file.
     const finished = memoryDependencies(await seedExecutionCatalogue());
     await specificationWithTasks(finished);
@@ -973,7 +1073,7 @@ describe('filesystem workflow store: the Task set is the one the index lists', (
       step: 'implementation',
     });
     expect(inspection.attention).toMatchObject([
-      { subject: { kind: 'specification' }, reason: 'tasks-stuck' },
+      { subject: { kind: 'specification' }, reason: 'wait-ready-to-settle' },
     ]);
   });
 

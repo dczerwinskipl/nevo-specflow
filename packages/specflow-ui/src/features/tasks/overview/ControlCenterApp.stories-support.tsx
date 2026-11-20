@@ -3,6 +3,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider, createMemoryHistory } from '@tanstack/react-router';
 import type {
   SpecificationWorkspaceResponse,
+  TaskListQuery,
   TaskListResponse,
 } from '@nevo/specflow-contracts/specs/workspace';
 import type { ArchetypeCatalogue } from '@nevo/specflow-contracts/documents';
@@ -30,13 +31,13 @@ import {
  * navigator, Overview and Tasks page routes); only the Runtime ports are fakes.
  */
 
-export type ControlCenterPage = 'overview' | 'tasks' | 'tasks-blocking';
+export type ControlCenterPage = 'overview' | 'tasks' | 'tasks-blocking' | 'tasks-waiting';
 
 /** What the faked Runtime answers: the workspace read, the projection and the Tasks page read. */
 export interface ControlCenterSource {
   readonly workspace: () => Promise<SpecificationWorkspaceResponse>;
   readonly projection: () => WorkflowActionProjection;
-  readonly taskList: (blocking: boolean) => TaskListResponse;
+  readonly taskList: (query: TaskListQuery) => TaskListResponse;
   readonly documents?: DocumentApi;
   /** The document type catalogue (type titles and icons of the rows). */
   readonly catalogue?: ArchetypeCatalogue;
@@ -48,7 +49,7 @@ function scenarioSource(scenario: ControlCenterScenario): ControlCenterSource {
   return {
     workspace: () => controlCenterWorkspace(scenario),
     projection: () => controlCenterProjection(scenario),
-    taskList: (blocking) => controlCenterTaskList(scenario, blocking),
+    taskList: (query) => controlCenterTaskList(scenario, query),
   };
 }
 
@@ -67,8 +68,7 @@ function services(source: ControlCenterSource) {
     specificationApi: { getSpecificationWorkspace: source.workspace },
     taskApi: {
       getTask: never,
-      getTaskList: (_specId, query) =>
-        Promise.resolve(source.taskList(query.blocking === 'specification')),
+      getTaskList: (_specId, query) => Promise.resolve(source.taskList(query)),
     },
     taskAuthoringApi: {
       ...authoringApi('started'),
@@ -78,6 +78,7 @@ function services(source: ControlCenterSource) {
       start: never,
       finish: never,
       returnTo: never,
+      reevaluateWait: never,
       abandon: never,
       closePreview: never,
       closeOccupancy: never,
@@ -99,6 +100,7 @@ const paths: Record<ControlCenterPage, string> = {
   overview: `/specs/${SPEC}`,
   tasks: `/specs/${SPEC}/tasks`,
   'tasks-blocking': `/specs/${SPEC}/tasks?blocking=specification`,
+  'tasks-waiting': `/specs/${SPEC}/tasks?group=waiting`,
 };
 
 /** The routed application on the Overview or the Tasks page of one scenario. */

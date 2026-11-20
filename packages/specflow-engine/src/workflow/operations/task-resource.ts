@@ -5,7 +5,12 @@ import {
 import { Value } from 'typebox/value';
 
 import { foldPathKey } from '../../specs/document-rules/document-paths';
-import { contextKey, initialTaskDocument, taskManifestProblems } from '../../tasks/resource/codec';
+import {
+  contextKey,
+  generatedTaskMainDocument,
+  initialTaskDocument,
+  taskManifestProblems,
+} from '../../tasks/resource/codec';
 import {
   TASK_MAIN_DOCUMENT,
   type TaskContextEntry,
@@ -233,14 +238,19 @@ export function createTask(
       taskType: (id) => dependencies.catalogue.taskType(id),
       workflow: (id) => dependencies.catalogue.workflow(id),
     });
+    const described = describedAs(input.title, input.summary);
+    // Given text is authored; the generated first text is the document's baseline.
+    const text = input.document ?? initialTaskDocument(described);
     const manifest: TaskManifest = {
       id: input.taskId,
-      ...describedAs(input.title, input.summary),
+      ...described,
       type: type.id,
       status: 'draft',
       dependsOn: [...(input.dependsOn ?? [])],
       origin: { kind: 'manual', actorId: input.actor.details.actorId },
-      documents: [{ ...TASK_MAIN_DOCUMENT }],
+      documents: [
+        input.document === undefined ? generatedTaskMainDocument(text) : { ...TASK_MAIN_DOCUMENT },
+      ],
       ...(input.context !== undefined ? { context: input.context } : {}),
     };
     assertManifest(manifest);
@@ -263,7 +273,7 @@ export function createTask(
         {
           taskId: manifest.id,
           path: TASK_MAIN_DOCUMENT.path,
-          text: input.document ?? initialTaskDocument(manifest),
+          text,
         },
       ],
     });

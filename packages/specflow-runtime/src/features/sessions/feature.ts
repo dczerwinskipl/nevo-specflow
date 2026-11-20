@@ -20,6 +20,7 @@ import type { SpecFlowEngine } from '@nevo/specflow-engine';
 import { createEngineSessionEffects, workspaceExecutionIdentity } from './effects/engine';
 import type { SessionCoordinator } from './lifecycle/coordinator';
 import { createSpecificationWorkspaceResolver } from './workspace/specification-workspace';
+import { withheldProviderDescriptor } from './providers/withheld';
 
 /**
  * The registered Sessions runtime, read at request time by the features composed over it (the
@@ -190,6 +191,9 @@ export function createSessionsFeature(
       registerSessionRoutes(app, {
         coordinator,
         projectId: options.storage?.projectId,
+        ...(enabled && options.config?.withheld
+          ? { withheldProviders: options.config.withheld.map(withheldProviderDescriptor) }
+          : {}),
         ...(options.demoList ? { demoList: options.demoList } : {}),
         ...(options.demoReads ? { demoReads: options.demoReads } : {}),
       });

@@ -1,10 +1,12 @@
 import type { ContentKind } from '@nevo/specflow-contracts/documents';
 
 import type { SpecFlowEngine } from '../../application';
+import type { ManifestDocument } from '../model';
 import { mapBounded } from '../../concurrency';
 import { sha256Hex } from '../../hash';
 import { deriveUnclassifiedDocumentId } from '../document-rules/document-ids';
 import { isEditable } from './content-kinds';
+import { contentStateOf, type DocumentContentState } from './content-state';
 import { isReservedContainerPath, isRequiredDocument } from './changes/plan/container';
 import { listSpecificationFiles } from './directory-scan';
 import { loadDocumentContainer } from './loaded-specification';
@@ -23,6 +25,8 @@ export interface TaskDocumentListing {
   readonly classification: 'registered' | 'unclassified';
   /** The required `task` document: it cannot be deleted or renamed. */
   readonly required: boolean;
+  /** What the file holds (`contentStateOf`); registered documents with a (readable) file only. */
+  readonly contentState?: DocumentContentState;
   /** Absent for a registered document without a (readable) file. */
   readonly file?: {
     readonly kind: ContentKind;
@@ -91,10 +95,22 @@ export async function readTaskDocuments(
         };
   };
 
-  const listing = (entry: Omit<TaskDocumentListing, 'file'>): TaskDocumentListing => {
+  const listing = (
+    entry: Omit<TaskDocumentListing, 'file' | 'contentState'>,
+    registered?: Pick<ManifestDocument, 'baselineRevision'>,
+  ): TaskDocumentListing => {
     const file = fileOf(entry.path);
+    if (file === undefined) {
+      return entry;
+    }
 
-    return file === undefined ? entry : { ...entry, file };
+    return {
+      ...entry,
+      ...(registered !== undefined
+        ? { contentState: contentStateOf(registered, file.revision) }
+        : {}),
+      file,
+    };
   };
 
   return {
@@ -104,13 +120,16 @@ export async function readTaskDocuments(
     writable,
     documents: [
       ...registered.map((document) =>
-        listing({
-          id: document.id,
-          path: document.path,
-          type: document.type,
-          classification: 'registered',
-          required: isRequiredDocument(loaded.container, document),
-        }),
+        listing(
+          {
+            id: document.id,
+            path: document.path,
+            type: document.type,
+            classification: 'registered',
+            required: isRequiredDocument(loaded.container, document),
+          },
+          document,
+        ),
       ),
       // A file that vanished since the listing is not reported.
       ...unclassified

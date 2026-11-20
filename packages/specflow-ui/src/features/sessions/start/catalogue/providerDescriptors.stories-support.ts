@@ -44,6 +44,12 @@ export const codexDescriptor = providerDescriptor({
   modes: ['read-only', 'workspace-write'],
   defaultModeId: 'agent',
   providerModes: [nativeMode('ask', 'Ask', { mode: 'read-only' }), nativeMode('agent', 'Agent')],
+  executable: {
+    path: 'C:\\Users\\dev\\AppData\\Local\\OpenAI\\Codex\\bin\\5449c1f0f26f1f98\\codex.exe',
+    source: 'discovered',
+    location: 'codex-desktop-app',
+    version: '0.167.0',
+  },
 });
 
 /**
@@ -82,9 +88,101 @@ export const managedProviders: ProviderDescriptor[] = [
   antigravityDescriptor,
 ];
 
-/** Every provider needs signing in again, or is unavailable with its reason. */
+const profile = 'C:\\Users\\dev';
+const npmPrefix = profile + '\\AppData\\Roaming\\npm';
+
+/**
+ * Codex enabled but not found: discovery looked on PATH, in the Codex desktop app and in the npm
+ * global package, as the Runtime reports it (the app is not installed).
+ */
+export function codexNotFound(): ProviderDescriptor {
+  const npm = '\\node_modules\\@openai';
+  const binary = '\\vendor\\x86_64-pc-windows-msvc\\bin\\codex.exe';
+
+  return {
+    ...codexDescriptor,
+    executable: undefined,
+    readiness: 'unavailable',
+    reasonCode: 'EXECUTABLE_NOT_FOUND',
+    reason: 'No Codex CLI was found on PATH or in its install locations.',
+    checkedLocations: [
+      { source: 'path', path: 'codex.exe, codex.cmd, codex.bat' },
+      {
+        source: 'discovered',
+        path: profile + '\\AppData\\Local\\OpenAI\\Codex\\bin\\*\\codex.exe',
+        location: 'codex-desktop-app',
+      },
+      {
+        source: 'discovered',
+        path: npmPrefix + npm + '\\codex\\node_modules\\@openai\\codex-win32-x64' + binary,
+        location: 'npm-global-package',
+      },
+      {
+        source: 'discovered',
+        path: npmPrefix + npm + '\\codex-win32-x64' + binary,
+        location: 'npm-global-package',
+      },
+      {
+        source: 'discovered',
+        path: npmPrefix + npm + '\\codex' + binary,
+        location: 'npm-global-package',
+      },
+    ],
+  };
+}
+
+/** Codex installed through npm, but the package's native executable is missing. */
+export function codexLauncherWithoutExecutable(): ProviderDescriptor {
+  return {
+    ...codexNotFound(),
+    reason: `${npmPrefix}\\codex.cmd is the npm launcher of @openai/codex, but the package's native executable is missing.`,
+    unresolvedLauncher: { path: npmPrefix + '\\codex.cmd', package: '@openai/codex' },
+  };
+}
+
+/** Antigravity turned off on this workstation: only a restart sees the configuration change. */
+export const antigravityTurnedOff: ProviderDescriptor = {
+  ...antigravityDescriptor,
+  readiness: 'unavailable',
+  reasonCode: 'NOT_ENABLED_ON_WORKSTATION',
+  reason: 'Antigravity is turned off on this workstation.',
+};
+
+/** Codex's availability check did not finish: undetermined, not unavailable. */
+export function codexCheckInterrupted(): ProviderDescriptor {
+  return {
+    ...codexNotFound(),
+    checkedLocations: undefined,
+    reasonCode: 'PROCESS_SETTLEMENT_UNVERIFIED',
+    reason: 'The availability check process did not exit.',
+  };
+}
+
+/** Every provider confirmed unavailable: sign-in, CLI not found, turned off. */
 export const unavailableProviders: ProviderDescriptor[] = [
-  { ...claudeDescriptor, readiness: 'authenticationRequired' },
-  { ...codexDescriptor, readiness: 'unavailable', reason: 'Nie zainstalowano CLI.' },
-  { ...antigravityDescriptor, readiness: 'unavailable', reason: 'Nie zalogowano do CLI.' },
+  { ...claudeDescriptor, readiness: 'authenticationRequired', signInCommand: 'claude auth login' },
+  codexNotFound(),
+  antigravityTurnedOff,
+];
+
+/** No provider available, and one check gave no result: availability is not determined. */
+export const undeterminedProviders: ProviderDescriptor[] = [
+  {
+    ...claudeDescriptor,
+    readiness: 'unavailable',
+    reasonCode: 'KNOWN_INCOMPATIBILITY',
+    reason: 'Claude Code 3.4.0 is recorded as incompatible.',
+    executable: {
+      path: 'C:\\Users\\dev\\.local\\bin\\claude.exe',
+      source: 'path',
+      version: '3.4.0',
+    },
+  },
+  codexCheckInterrupted(),
+  {
+    ...antigravityDescriptor,
+    readiness: 'unavailable',
+    reasonCode: 'INSTALLATION_UNAVAILABLE',
+    reason: 'Antigravity uses a machine-managed policy.',
+  },
 ];

@@ -521,6 +521,7 @@ function createStore(
   async function apply(specId: string, change: ExecutionChange): Promise<void> {
     assertChangeIdentity(change);
     const current = await load(specId);
+    change.verifySnapshot?.(current.snapshot);
     const { folders, texts } = current;
     await removeStaleStageFiles(folders, change);
     if (current.journal) {

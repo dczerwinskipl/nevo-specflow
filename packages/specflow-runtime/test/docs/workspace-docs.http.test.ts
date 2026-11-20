@@ -405,7 +405,7 @@ describe('workspace documentation over HTTP', () => {
       for (const userId of ['stranger', 'reader']) {
         const unavailable = await get(noEngine, url, userId);
         expect(unavailable.statusCode, userId).toBe(503);
-        expect(unavailable.json()).toMatchObject({ code: 'DOCS_UNAVAILABLE' });
+        expect(unavailable.json()).toMatchObject({ code: 'DOCS_NOT_SERVED' });
         expect(Value.Check(WorkspaceDocsErrorSchema, unavailable.json())).toBe(true);
       }
     } finally {

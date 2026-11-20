@@ -8,6 +8,7 @@ import { isApiError } from '../../../api';
  * - `workspace-unavailable`: registered, but its checkout cannot be read now;
  * - `not-configured`: its `docs.root` is not a directory; `docsRoot` is the configured value;
  * - `docs-unavailable`: its documentation settings are invalid or reading failed;
+ * - `not-served`: the Runtime serves no project documentation at all (demo data): final, no retry;
  * - `forbidden`: the caller lacks `docs.view`;
  * - `other`: anything else (network, timeout, protocol): the generic API error copy applies.
  */
@@ -16,6 +17,7 @@ export type DocsFailure =
   | { readonly kind: 'workspace-unavailable' }
   | { readonly kind: 'not-configured'; readonly docsRoot?: string }
   | { readonly kind: 'docs-unavailable' }
+  | { readonly kind: 'not-served' }
   | { readonly kind: 'forbidden' }
   | { readonly kind: 'other' };
 
@@ -45,6 +47,8 @@ export function docsFailure(error: unknown): DocsFailure {
 
     case 'DOCS_UNAVAILABLE':
       return { kind: 'docs-unavailable' };
+    case 'DOCS_NOT_SERVED':
+      return { kind: 'not-served' };
     default:
       return error.kind === 'forbidden' ? { kind: 'forbidden' } : { kind: 'other' };
   }

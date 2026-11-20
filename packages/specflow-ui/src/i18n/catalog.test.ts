@@ -90,8 +90,16 @@ describe('message catalogues', () => {
       'sessions.context.sessionDetails.contextWindowScopeModelOnly',
       // "{{provider}}, model {{model}}": the same template in both languages (accepted copy).
       'sessions.list.agent',
+      // "{{provider}}: {{status}}": the start screen's line about one unavailable agent.
+      'sessionStart.diagnostics.oneUnavailable',
       // "{{title}} · {{count}}": a group heading template, the same in both languages.
       'workflowExecution.exit.groupHeading',
+      // " · {{count}}": the count after a linked group title, the same in both languages.
+      'workflowExecution.exit.groupCount',
+      // "{{step}} · ": a hand-off prefix template, the same in both languages.
+      'workflowExecution.now.handoffFrom',
+      // "{{content}} · {{relation}}": the document state label template (A6).
+      'documents.state.withContent',
     ]);
     const identical = plKeys.filter(
       (key) =>

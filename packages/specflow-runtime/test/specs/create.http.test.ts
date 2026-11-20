@@ -199,6 +199,8 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
           workspaceId: engine.workspace.workspaceId,
           relativeManifestPath: created.relativeManifestPath,
           documentIds: ['overview'],
+          // git.enabled is false in this fixture: the files are written, not committed.
+          uncommitted: true,
         });
         expect(await readFile(join(root, created.relativeManifestPath), 'utf8')).toContain(
           created.specId,

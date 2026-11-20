@@ -6,3 +6,6 @@ export { DocumentContent } from './content/DocumentContent';
 export { DocumentDescription, descriptionScrollOwner } from './description/DocumentDescription';
 export { restoreScrollPosition } from './description/restoreScrollPosition';
 export { TaskDocumentEditorHost, taskDocumentStack } from './task/TaskDocumentEditor';
+export { documentRelations, documentStateLabel } from './workflow/documentState';
+export { gateLabel, gateLine } from './workflow/gateLabel';
+export { useDocumentStateRow } from './workflow/useDocumentStateRow';

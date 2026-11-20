@@ -156,6 +156,9 @@ export function renderTaskRegistry(
         id: document.id,
         path: document.path,
         type: document.type,
+        ...(document.baselineRevision !== undefined
+          ? { baselineRevision: document.baselineRevision }
+          : {}),
       })),
     });
   } catch (error) {

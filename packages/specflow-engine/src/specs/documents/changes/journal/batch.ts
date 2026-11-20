@@ -3,6 +3,7 @@ import { validateDocumentPath } from '../../../document-rules';
 import { TASK_MANIFEST_FILE } from '../../../../tasks/resource/model';
 import { isTaskContainerId } from '../plan/container';
 import { isExplicitSpecificationSlug } from '../../../model';
+import { isExecutionStatePath } from '../../../execution-paths';
 import { documentChangeError } from '../errors';
 import {
   DOCUMENT_BATCH_MAX_OPERATIONS,
@@ -350,7 +351,10 @@ function isBatchPath(path: string): boolean {
     );
   }
 
-  return rest === 'specification.yaml' || validateDocumentPath(rest).ok;
+  // The rest of the execution state a `workflow` operation writes: the Task index and the run records.
+  return (
+    rest === 'specification.yaml' || isExecutionStatePath(rest) || validateDocumentPath(rest).ok
+  );
 }
 
 function stateOf(value: unknown, fail: () => Error): FileState {

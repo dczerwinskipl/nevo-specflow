@@ -345,8 +345,6 @@ export function executionFactsOf(
             }
           : null,
     },
-    pendingCount: 0,
-    recovery: null,
   };
 }
 

@@ -192,13 +192,17 @@ export async function openWorkflow(
   engine: SpecFlowEngine,
   options: OpenWorkflowOptions = {},
 ): Promise<WorkflowDependencies> {
-  const loaded = await loadDefinitions(
-    createFilesystemDefinitionSource(definitionsRoot(engine)),
-    createDefaultDefinitionRegistry(),
-  );
+  const reloadCatalogue = async () =>
+    resolveExecutionCatalogue(
+      await loadDefinitions(
+        createFilesystemDefinitionSource(definitionsRoot(engine)),
+        createDefaultDefinitionRegistry(),
+      ),
+    );
 
   const dependencies: Omit<WorkflowDependencies, 'specificationExit'> = {
-    catalogue: resolveExecutionCatalogue(loaded),
+    catalogue: await reloadCatalogue(),
+    reloadCatalogue,
     store: guardCloseReservations(
       guardTaskDocumentChanges(
         createFilesystemWorkflowStore({
@@ -306,7 +310,7 @@ function enginePostActions(engine: SpecFlowEngine): WorkflowPostActions {
  * Close and Abandon availability of the action projection (D07), from the snapshot it read. Records
  * that cannot be interpreted are one blocker for both, as in the Close guard.
  */
-function specificationExitPort(
+export function specificationExitPort(
   dependencies: Omit<WorkflowDependencies, 'specificationExit'>,
 ): SpecificationExitPort {
   return {
@@ -359,5 +363,25 @@ export async function specificationCloseBlockers(
     }
 
     throw error;
+  }
+}
+
+/**
+ * Whether a step of the Specification run or of a Task run is in progress (position `active`): its
+ * finish commits the execution state when automatic commits are off. Lock-free read for a refusal's
+ * facts; `undefined` when the records cannot be read.
+ */
+export async function specificationStepInProgress(
+  engine: SpecFlowEngine,
+  specId: string,
+): Promise<boolean | undefined> {
+  try {
+    const snapshot = await (await openWorkflow(engine)).store.read(specId);
+
+    return [snapshot.specification?.value.run, ...snapshot.runs.map((record) => record.value.run)]
+      .filter((run) => run !== undefined)
+      .some((run) => run.position.state === 'active');
+  } catch {
+    return undefined;
   }
 }

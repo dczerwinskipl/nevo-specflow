@@ -1,6 +1,6 @@
 import { createServer } from 'node:net';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { tmpdir, userInfo } from 'node:os';
 import { join } from 'node:path';
 
 import type { DocumentQueueScheduler, SpecFlowEngine } from '@nevo/specflow-engine';
@@ -79,6 +79,7 @@ describe('startRuntime', () => {
         authenticationRequired: false,
         authenticated: false,
         loginMethods: { password: { enabled: false }, oidc: [] },
+        localActorId: `local:${userInfo().username}`,
       });
     } finally {
       await runtime.close();

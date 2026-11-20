@@ -2,47 +2,24 @@ import { describe, expect, it } from 'vitest';
 import { createAuthorization } from '@nevo/authorization';
 import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
 import { SessionCapabilities } from '@nevo/specflow-contracts/sessions';
-import type { SpecificationTaskResponse, TaskResourcePage } from '@nevo/specflow-contracts/tasks';
+import type { SpecificationTaskResponse, TaskHistoryPage } from '@nevo/specflow-contracts/tasks';
 import { createRequestAuthorization } from '../../src/features/auth/authorization/request-authorization';
 import { registerRuntimeErrorHandler } from '../../src/server/error-handler';
 import { taskReadEndpoint } from '../../src/features/tasks/endpoint';
 import { PageLeases } from '../../src/features/tasks/reads/page-leases';
-import { createDemoTaskSources } from '../../src/features/tasks';
-import { createDemoSpecsRepositories } from '../../src/features/specs';
 import { sessionReferences } from '../support/session-references';
 import { routeTestApp } from '../support/route-app';
+import { createFixtureTaskSources } from '../support/task-sources';
 
 describe('Task read authorization through the real HTTP adapter', () => {
   it('redacts Session metadata and invalidates existing tokens after subject/policy change', async () => {
-    const sources = createDemoTaskSources(createDemoSpecsRepositories().catalogue);
-    const definition = (await sources.definitions!.resolve('admission', 'TASK-03'))!;
-    const execution = (await sources.execution!.inspect(definition.identity, definition.version))!;
-    execution.requirements = [
+    const sources = createFixtureTaskSources();
+    const definition = (await sources.definitions.resolve('admission', 'task-03'))!;
+    definition.dependencies = [
       {
-        id: 'gate',
-        definitionRevision: '1',
-        source: {
-          kind: 'human-gate',
-          gateId: 'gate',
-          phase: 'exit',
-          role: 'owner',
-          scope: 'task',
-          targetId: 'TASK-03',
-        },
-        key: null,
-        title: 'Inspect evidence',
-        instruction: null,
-        state: 'pending',
-        actions: [],
-        evidence: [
-          {
-            title: 'Protected session description',
-            link: {
-              state: 'available',
-              target: { kind: 'session', sessionId: 'protected-session' },
-            },
-          },
-        ],
+        taskId: 'dependency-0',
+        title: 'Protected session description',
+        link: { state: 'available', target: { kind: 'session', sessionId: 'protected-session' } },
       },
     ];
     const subject = { kind: 'user' as const, id: 'alice' };
@@ -76,7 +53,7 @@ describe('Task read authorization through the real HTTP adapter', () => {
     app.register(taskReadEndpoint, {
       dependencies: {
         ...sources,
-        execution: { inspect: () => Promise.resolve(execution) },
+        definitions: { resolve: () => Promise.resolve(definition) },
         sessions: sessionReferences((sessionId) =>
           Promise.resolve({ ...definition.identity, specId: 'session-owner', sessionId }),
         ),
@@ -84,17 +61,17 @@ describe('Task read authorization through the real HTTP adapter', () => {
       },
     });
     try {
-      const url = '/api/specs/admission/tasks/TASK-03';
+      const url = '/api/specs/admission/tasks/task-03';
       const detail = await app.inject(url);
       expect(detail.statusCode).toBe(200);
       expect(detail.body).toContain('Protected session description');
-      const section = detail.json<SpecificationTaskResponse>().snapshot!.sections.resources;
+      const section = detail.json<SpecificationTaskResponse>().snapshot!.sections.history;
       if (section.state !== 'available') {
-        throw Error('Expected resources');
+        throw Error('Expected history');
       }
 
-      const pageUrl = url + '/resources?token=' + encodeURIComponent(section.data.page!.token);
-      expect((await app.inject(pageUrl)).json<TaskResourcePage>().items.length).toBeGreaterThan(0);
+      const pageUrl = url + '/history?token=' + encodeURIComponent(section.data.token);
+      expect((await app.inject(pageUrl)).json<TaskHistoryPage>().items.length).toBeGreaterThan(0);
       authorization = policy(false);
       expect((await app.inject(pageUrl)).statusCode).toBe(409);
       const denied = await app.inject(url);

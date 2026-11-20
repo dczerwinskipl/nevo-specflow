@@ -32,13 +32,22 @@ credential broker or global MCP installation.
 ## Enablement
 
 ```yaml
-# .nevo/config.yaml (committed; no local override)
+# .nevo/config.yaml (committed): the project allows Antigravity
 sessions:
   enabled: true
   providers:
     antigravity:
-      enabled: true
-      # optional absolute native executable; default %LOCALAPPDATA%/agy/bin/agy.exe
+      allowed: true
+```
+
+```yaml
+# .nevo/local/config.yaml (this workstation; optional)
+sessions:
+  providers:
+    antigravity:
+      # enabled by default once allowed; `enabled: false` turns it off on this machine
+      # optional absolute native executable; default: discovered on PATH, then
+      # %LOCALAPPDATA%/agy/bin/agy.exe
       executable: C:/Users/example/AppData/Local/agy/bin/agy.exe
 ```
 

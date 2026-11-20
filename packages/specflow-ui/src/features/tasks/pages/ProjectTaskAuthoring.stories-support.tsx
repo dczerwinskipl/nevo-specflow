@@ -8,6 +8,7 @@ import { documentContentFixture } from '../../../../test-support/documents/fixtu
 import { createWorkspaceIntegrationApi } from '../../../../test-support/specs/workspace/api';
 import { createTaskDetailFixture } from '../detail/taskDetail.test-support';
 import type { TaskAuthoringApi } from '../authoring/api';
+import { withExits } from '../execution/projections.stories-support';
 import type { DocumentApi } from '../../documents/api';
 
 /*
@@ -110,6 +111,11 @@ function authoring(scenario: AuthoringScenario): TaskAuthoring {
             ? { entry, state: 'unresolved' as const, reason: 'not-found' as const }
             : { entry, state: 'resolved' as const },
       ),
+      defaultEntries: [
+        { kind: 'task-document', id: 'task', required: true },
+        { kind: 'task-document', id: 'screens', required: true },
+        { kind: 'specification-document', id: 'overview', required: true },
+      ],
     },
     dependencyCandidates:
       scenario === 'started'
@@ -127,7 +133,7 @@ function authoring(scenario: AuthoringScenario): TaskAuthoring {
 export function taskProjection(scenario: AuthoringScenario): WorkflowActionProjection {
   const started = scenario === 'started';
 
-  return {
+  return withExits({
     subject: { kind: 'task', specId: SPEC, taskId: TASK },
     position: started
       ? {
@@ -162,7 +168,7 @@ export function taskProjection(scenario: AuthoringScenario): WorkflowActionProje
       editDependencies: started ? { kind: 'unavailable', reason: 'started' } : allowed,
     },
     taskAuthoring: authoring(scenario),
-  };
+  });
 }
 
 export function taskResponse(scenario: AuthoringScenario): SpecificationTaskResponse {
@@ -193,7 +199,7 @@ export function taskResponse(scenario: AuthoringScenario): SpecificationTaskResp
 const documentTree: TaskDocumentTree = {
   taskId: TASK,
   registryRevision: 'reg-1',
-  writable: true,
+  capabilities: { save: true, organize: true },
   documents: [
     {
       id: 'task',

@@ -56,7 +56,8 @@ function record(value: unknown): Record<string, unknown> {
  */
 export async function inspectClaudeInstallation(
   options: {
-    executable?: string;
+    /** The one executable discovery resolved and verified (`claudeExecutable`). */
+    executable: string;
     workspace: string;
     environment: ProviderEnvironment;
     signal: AbortSignal;
@@ -108,7 +109,7 @@ export async function inspectClaudeInstallation(
     unavailable();
   }
 
-  const executable = options.executable ?? join(home, '.local', 'bin', 'claude.exe');
+  const executable = options.executable;
   if (!isAbsolute(executable)) {
     unavailable();
   }

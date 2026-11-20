@@ -106,12 +106,17 @@ function entitiesOf<T>(result: LoadResult, kind: string): T[] {
   return [...(result.definitions.get(kind)?.values() ?? [])].map((loaded) => loaded.entity as T);
 }
 
-/** The catalogue of a loaded definitions tree (no I/O). */
-export function resolveExecutionCatalogue(result: LoadResult): ExecutionCatalogue {
-  return createExecutionCatalogue({
+/** The execution entities of a loaded definitions tree (no I/O). */
+export function executionEntitiesOf(result: LoadResult): ExecutionEntities {
+  return {
     workflows: entitiesOf<WorkflowDefinition>(result, WORKFLOW_KIND),
     archetypes: entitiesOf<AgentArchetype>(result, AGENT_ARCHETYPE_KIND),
     taskTypes: entitiesOf<TaskType>(result, TASK_TYPE_KIND),
     specificationArchetypes: entitiesOf<ArchetypeDefinition>(result, SPECIFICATION_ARCHETYPE_KIND),
-  });
+  };
+}
+
+/** The catalogue of a loaded definitions tree (no I/O). */
+export function resolveExecutionCatalogue(result: LoadResult): ExecutionCatalogue {
+  return createExecutionCatalogue(executionEntitiesOf(result));
 }

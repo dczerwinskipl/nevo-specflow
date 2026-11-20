@@ -21,7 +21,10 @@ import type {
 import type { SessionAssociationsApi } from '../../associations/api';
 import { associationContext } from '../../associations/associationContext';
 import { sessionAssociationKeys } from '../../associations/queries';
-import type { SessionAssociationRead } from '@nevo/specflow-contracts/sessions';
+import type {
+  ProviderCatalogueContext,
+  SessionAssociationRead,
+} from '@nevo/specflow-contracts/sessions';
 import {
   forgetStartedSessions,
   rememberStartedSession,
@@ -204,9 +207,16 @@ export function StartedSessionPreview(props: {
   );
 }
 
+/** The provider catalogue reads of the current story, with what each asked for. */
+export const catalogueReads: ProviderCatalogueContext[] = [];
+
 function managedApi(providers: ProviderDescriptor[]): ManagedSessionsApi {
   return {
-    providers: () => Promise.resolve({ items: providers }),
+    providers: (context: ProviderCatalogueContext) => {
+      catalogueReads.push(context);
+
+      return Promise.resolve({ items: providers });
+    },
   } as unknown as ManagedSessionsApi;
 }
 
@@ -243,6 +253,7 @@ export function ManagedStartPreview({
   const [opened, setOpened] = useState<string>();
   useState(() => {
     creates.length = 0;
+    catalogueReads.length = 0;
     turns.length = 0;
     forgetStartedSessions();
   });

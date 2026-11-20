@@ -23,7 +23,7 @@ import { DocumentError } from '@nevo/specflow-engine';
 import type { FastifyInstance } from 'fastify';
 import type { TSchema } from 'typebox';
 import { Value } from 'typebox/value';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import type { DocumentWriteSource } from '../../src/features/documents/write/write-source';
 import { statusForDocumentError } from '../../src/features/documents/content/error-status';
@@ -118,7 +118,7 @@ function fakeSource(calls: Calls): DocumentWriteSource {
 
 type Role = 'developer' | 'viewer';
 
-async function listen(
+async function createFixture(
   options: {
     assignments?: { role: Role; scope: Record<string, string> }[];
     authenticated?: boolean;
@@ -154,9 +154,15 @@ async function listen(
       },
     },
   );
-  apps.push(app);
 
   return { app, headers, calls };
+}
+
+async function listen(options?: Parameters<typeof createFixture>[0]) {
+  const fixture = await createFixture(options);
+  apps.push(fixture.app);
+
+  return fixture;
 }
 
 interface RouteCase {
@@ -375,11 +381,20 @@ describe.each(ROUTES)('$method $url ($name)', (route) => {
       return;
     }
 
-    const filler = 'a'.repeat(route.limit + 1);
-    const unauthenticated = await listen({ authenticated: false });
-    expect((await send(unauthenticated, route, { body: { filler } })).statusCode).toBe(401);
+    const body = JSON.stringify({ filler: 'a'.repeat(route.limit + 1) });
     const viewer = await listen({ assignments: [{ role: 'viewer', scope: {} }] });
-    expect((await send(viewer, route, { body: { filler } })).statusCode).toBe(403);
+    const request = {
+      method: route.method,
+      url: route.url,
+      payload: body,
+    };
+    const headers = { 'content-type': 'application/json' };
+    expect((await viewer.app.inject({ ...request, headers })).statusCode).toBe(401);
+    expect(
+      (await viewer.app.inject({ ...request, headers: { ...headers, ...viewer.headers } }))
+        .statusCode,
+    ).toBe(403);
+    expect(viewer.calls.names).toEqual([]);
   });
 
   it('answers a body above its own limit with DOCUMENT_TOO_LARGE (413) and nothing above it', async () => {
@@ -400,18 +415,35 @@ describe.each(ROUTES)('$method $url ($name)', (route) => {
 });
 
 describe('errors of the write routes', () => {
+  const calls: Calls = { names: [] };
+  let fixture: Awaited<ReturnType<typeof createFixture>>;
+  beforeAll(async () => {
+    fixture = await createFixture({ calls });
+    await fixture.app.ready();
+  });
+  beforeEach(() => {
+    calls.names.length = 0;
+    delete calls.fail;
+  });
+  afterAll(async () => {
+    await fixture?.app.close();
+  });
+
+  function sendFailure(route: RouteCase, error: Error) {
+    calls.fail = () => error;
+
+    return send(fixture, route);
+  }
+
   const details: DocumentErrorDetails = { reason: 'busy', cause: 'queue-full', retryAfterMs: 1500 };
 
   it.each(DOCUMENT_ERROR_CODES.map((code) => [code] as const))(
     'maps %s to its status with the {error, code, details} body and no path',
     async (code: DocumentErrorCode) => {
-      const calls: Calls = {
-        names: [],
-        fail: () => new DocumentError(code, 'C:\\secret\\path /home/secret leaked', details),
-      };
-      const fx = await listen({ calls });
-      const route = ROUTES[0]!;
-      const response = await send(fx, route);
+      const response = await sendFailure(
+        ROUTES[0]!,
+        new DocumentError(code, 'C:\\secret\\path /home/secret leaked', details),
+      );
       expect(response.statusCode).toBe(statusForDocumentError(code));
       expect(response.json()).toEqual({ error: code, code, details });
       expect(Value.Check(DocumentErrorSchema, response.json())).toBe(true);
@@ -423,44 +455,30 @@ describe('errors of the write routes', () => {
   it.each(ROUTES.map((route) => [route.name, route] as const))(
     'answers a failure of the %s route with the same body',
     async (_name, route) => {
-      const fx = await listen({
-        calls: { names: [], fail: () => new DocumentError('DOCUMENT_NOT_FOUND', 'x') },
-      });
-      const response = await send(fx, route);
+      const response = await sendFailure(route, new DocumentError('DOCUMENT_NOT_FOUND', 'x'));
       expect(response.statusCode).toBe(404);
       expect(response.json()).toEqual({ error: 'DOCUMENT_NOT_FOUND', code: 'DOCUMENT_NOT_FOUND' });
     },
   );
 
   it('tells a busy refusal when to retry in whole seconds (at least one)', async () => {
-    const busy = (retryAfterMs: number) => ({
-      names: [],
-      fail: () =>
-        new DocumentError('SPEC_BUSY', 'x', { reason: 'busy', cause: 'queue-full', retryAfterMs }),
-    });
-    const slow = await send(await listen({ calls: busy(1500) }), ROUTES[0]!);
+    const busy = (retryAfterMs: number) =>
+      new DocumentError('SPEC_BUSY', 'x', { reason: 'busy', cause: 'queue-full', retryAfterMs });
+    const slow = await sendFailure(ROUTES[0]!, busy(1500));
     expect(slow.statusCode).toBe(409);
     expect(slow.headers['retry-after']).toBe('2');
-    const quick = await send(await listen({ calls: busy(0) }), ROUTES[0]!);
+    const quick = await sendFailure(ROUTES[0]!, busy(0));
     expect(quick.headers['retry-after']).toBe('1');
-    const other = await send(
-      await listen({
-        calls: { names: [], fail: () => new DocumentError('DOCUMENT_PROTECTED', 'x') },
-      }),
-      ROUTES[0]!,
-    );
+    const other = await sendFailure(ROUTES[0]!, new DocumentError('DOCUMENT_PROTECTED', 'x'));
     expect(other.headers['retry-after']).toBeUndefined();
   });
 
   it('carries the current revisions of a refused batch save', async () => {
     const conflicts = [{ documentId: 'notes', revision: 'current' }];
-    const fx = await listen({
-      calls: {
-        names: [],
-        fail: () => new DocumentError('DOCUMENT_REVISION_CONFLICT', 'x', { conflicts }),
-      },
-    });
-    const response = await send(fx, ROUTES[1]!);
+    const response = await sendFailure(
+      ROUTES[1]!,
+      new DocumentError('DOCUMENT_REVISION_CONFLICT', 'x', { conflicts }),
+    );
     expect(response.statusCode).toBe(409);
     expect(response.json()).toEqual({
       error: 'DOCUMENT_REVISION_CONFLICT',
@@ -470,10 +488,7 @@ describe('errors of the write routes', () => {
   });
 
   it('answers a defect with the generic 500 and no detail', async () => {
-    const fx = await listen({
-      calls: { names: [], fail: () => new Error('EACCES /etc/secret') },
-    });
-    const response = await send(fx, ROUTES[0]!);
+    const response = await sendFailure(ROUTES[0]!, new Error('EACCES /etc/secret'));
     expect(response.statusCode).toBe(500);
     expect(response.body).not.toContain('secret');
   });

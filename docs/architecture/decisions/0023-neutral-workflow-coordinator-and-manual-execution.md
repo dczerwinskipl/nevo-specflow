@@ -68,8 +68,11 @@ Behaviour: [Workflow kernel](../workflow/workflow-kernel.md). HTTP:
    `session-unavailable`; nothing falls back to a fresh Session.
 9. **Attention is a projection with an actor and actions.** It also covers broken Tasks, changed
    definitions and the start blockers a person fixes; waiting, being ready, a draft or on hold are not
-   attention, and a stuck Specification gets one `tasks-stuck` item. The rules are in
-   [Workflow kernel](../workflow/workflow-kernel.md#continuation-and-attention).
+   attention, and a stuck Specification gets one `tasks-stuck` item. (Amended on 2026-11-16 by the
+   owner: being on hold alone is still not attention, but a Task on hold that the user must resume or
+   cancel is: escalated with no Specification step deciding it, waited on directly by an open Task,
+   or keeping the active step from finishing to `completed`; see "Held Tasks" in the kernel.) The
+   rules are in [Workflow kernel](../workflow/workflow-kernel.md#continuation-and-attention).
 10. **Three concerns stay apart.** The Engine owns workflow state and exposes neutral Task facts; the
     attention projection owns attention; grouping is declarative presentation data of the Runtime. The
     CLI and MCP read facts without groups, and the UI renders what it receives.

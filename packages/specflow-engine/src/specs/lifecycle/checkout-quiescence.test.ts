@@ -6,8 +6,8 @@ import {
   requireQuietCheckout,
   requireQuietCheckoutBeforeClose,
   withCheckoutQuiescence,
-  type CheckoutQuiescence,
 } from './checkout-quiescence';
+import type { CheckoutQuiescence } from './checkout-quiescence-port';
 import type { CloseJournal } from './model';
 
 const engine = {} as SpecFlowEngine;
@@ -82,7 +82,7 @@ describe('checkout quiescence', () => {
     for (const ignored of [
       plan({ kind: 'specification-close', integrateToTargetBranch: false }),
       plan({ kind: 'specification-close' }),
-      plan({ source: { workspaceId: 'linked-1', root: '/repo/linked' } } as never),
+      plan({ source: { workspaceId: 'linked-1', root: '/repo/linked' } }),
       plan({ target: undefined }),
     ]) {
       expect(checkoutRemovedByClose(ignored)).toBeUndefined();

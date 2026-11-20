@@ -274,6 +274,7 @@ describe('Task positions', () => {
         next: expect.objectContaining({ human: true, agent: { kind: 'available' } }) as unknown,
       },
       actions: {},
+      documentRelations: [],
       task: {
         revision: created.revision,
         approve: ALLOWED,
@@ -295,6 +296,10 @@ describe('Task positions', () => {
               entry: { kind: 'specification-document', id: 'overview', required: true },
               state: 'resolved',
             },
+          ],
+          defaultEntries: [
+            { kind: 'task-document', id: 'task', required: true },
+            { kind: 'specification-document', id: 'overview', required: true },
           ],
         },
         dependencyCandidates: [],
@@ -489,6 +494,24 @@ describe('Task positions', () => {
     expect(projection).toMatchObject({ position: { kind: 'blocked', blockers: [{ kind }] } });
     expect(projection.position).not.toHaveProperty('preview');
     expect(projection).not.toHaveProperty('workflow');
+  });
+
+  it('reports the default context beside an explicit list (what `context: null` returns to)', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    const own = [
+      { kind: 'task-document', id: 'task', required: true },
+      { kind: 'path', path: 'packages/specflow-engine/src', required: false },
+    ] as const;
+    await create(dependencies, 'api', { context: [...own] });
+
+    expect((await project(dependencies, task('api'))).taskAuthoring?.context).toMatchObject({
+      isDefault: false,
+      entries: own.map((entry) => ({ entry })),
+      defaultEntries: [
+        { kind: 'task-document', id: 'task', required: true },
+        { kind: 'specification-document', id: 'overview', required: true },
+      ],
+    });
   });
 
   it('refuses a start while a required context entry does not resolve', async () => {
@@ -696,7 +719,7 @@ const withoutWait = () => seedCatalogueWith(skipWait);
 const withoutWaitGated = () =>
   seedCatalogueWith((text) =>
     skipWait(text).replace(
-      /( {4}purpose: The owner accepts the implemented Specification\.)(\r?\n)/u,
+      /( {4}purpose: Confirmation that the delivered work does what the owner asked for\.)(\r?\n)/u,
       '$1$2    exitGates:$2      - type: document$2        documentType: note$2        scope: specification$2',
     ),
   );
@@ -1007,5 +1030,95 @@ describe('a Specification does not complete while its Tasks are open', () => {
       kind: 'terminal',
       outcome: 'abandoned',
     });
+  });
+});
+
+// Owner decision 2026-11-16 (A-Q1): a hold is attention only when the user must act on it now.
+describe('the results of the active step', () => {
+  it('are read for an agent attempt the viewer cannot finish, each with the gates it needs', async () => {
+    // The breakdown needs a `note` of the Specification to finish.
+    const gated = await seedCatalogueWith((text) =>
+      text.replace(
+        /( {4}produces: tasks)(\r?\n)/u,
+        '$1$2    exitGates:$2      - type: document$2        documentType: note$2        scope: specification$2',
+      ),
+    );
+    const dependencies = memoryDependencies(gated);
+    // The agent runs the breakdown: a person never finishes its attempt.
+    await runToBreakdown(dependencies);
+
+    const projection = await project(dependencies, specification);
+    expect(projection.actions.finish).toBeUndefined();
+    const position = projection.position;
+    if (position.kind !== 'active') {
+      throw new Error('Expected an active step.');
+    }
+
+    expect(position.step.id).toBe('breakdown');
+    expect(position.exits.find((exit) => exit.id === 'proposed')).toMatchObject({
+      target: { kind: 'step', step: 'breakdown-review' },
+      gates: [expect.objectContaining({ documentType: 'note', status: 'unsatisfied' })],
+    });
+  });
+
+  it('match what the finish offers, without whether a result can be taken now', async () => {
+    const dependencies = await acceptingWithOpenTasks(withoutWaitGated());
+    const projection = await project(dependencies, specification);
+    const position = projection.position;
+    if (position.kind !== 'active') {
+      throw new Error('Expected an active step.');
+    }
+
+    expect(position.exits.map((exit) => exit.id)).toEqual(
+      projection.actions.finish?.transitions.map((transition) => transition.id),
+    );
+    expect(position.exits.find((exit) => exit.id === 'accepted')).not.toHaveProperty('unavailable');
+  });
+});
+
+describe('the attention of a Task on hold', () => {
+  const attentionOf = async (dependencies: Dependencies, taskId: string) =>
+    (await project(dependencies, task(taskId))).attention;
+
+  it('names what the hold holds up: the waiting Tasks and the step that cannot finish', async () => {
+    const dependencies = await acceptingWithOpenTasks();
+    await decide(dependencies, 'api', 'on-hold');
+
+    // `screen` waits on it, and acceptance cannot complete while it is open.
+    expect(await attentionOf(dependencies, 'api')).toEqual(
+      expect.objectContaining({
+        subject: task('api'),
+        reason: 'on-hold-blocking',
+        step: 'acceptance',
+        stepTitle: 'Acceptance',
+        action: 'resume-task',
+        secondaryAction: 'cancel-task',
+        blocks: { taskIds: ['screen'], finish: 'acceptance' },
+      }),
+    );
+    // The Task waiting on it is not attention itself (its dependency can still complete).
+    expect(await attentionOf(dependencies, 'screen')).toBeUndefined();
+
+    await decide(dependencies, 'api', 'ready');
+    expect(await attentionOf(dependencies, 'api')).toBeUndefined();
+  });
+
+  it('on a wait step that can still progress: only the Tasks that wait on it', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    await specificationWithTasks(dependencies);
+    await create(dependencies, 'notes');
+    await decide(dependencies, 'notes', 'ready');
+    await decide(dependencies, 'api', 'on-hold');
+
+    expect(await attentionOf(dependencies, 'api')).toMatchObject({
+      reason: 'on-hold-blocking',
+      blocks: { taskIds: ['screen'] },
+    });
+    expect((await project(dependencies, specification)).attention).toBeUndefined();
+
+    // A hold nothing waits on, while other work can move: nothing.
+    await decide(dependencies, 'api', 'ready');
+    await decide(dependencies, 'notes', 'on-hold');
+    expect(await attentionOf(dependencies, 'notes')).toBeUndefined();
   });
 });

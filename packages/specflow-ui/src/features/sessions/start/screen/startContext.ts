@@ -42,10 +42,14 @@ function executorOf(
   };
 }
 
+/** Before Start only the areas the agent will read and work in mean something. */
+const beforeStartAreas = ['instructions', 'environment'] as const;
+
 /**
  * Context of the Session being started: the pinned Specification when there is one (else no
  * association), and the executor mirroring the choice as it is made. Sections that exist only after
- * the first Turn are absent, so Start changes nothing in Context but the executor's state.
+ * the first Turn are absent, and of the planned areas only Instructions and Environment are
+ * listed: Files / changes, Handovers and Artifacts are produced by a running Session.
  */
 export function startContextValue(input: {
   catalogue: StartCatalogueState;
@@ -58,6 +62,7 @@ export function startContextValue(input: {
     scope: input.specification ? { kind: 'specification' } : { kind: 'standalone' },
     ...(input.specification ? { specification: input.specification } : {}),
     executor: executorOf(input.catalogue, input.choice, input.notChosen),
+    plannedAreas: beforeStartAreas,
   };
 }
 

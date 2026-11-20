@@ -1,6 +1,7 @@
 import {
   finishStep,
   inspectActions,
+  reevaluateWait,
   resolveSpecification,
   returnToStep,
   startSpecificationExecution,
@@ -13,12 +14,7 @@ import {
 } from '@nevo/specflow-engine';
 import { Command } from 'commander';
 
-import {
-  openExecution,
-  reportingWorkflowRefusals,
-  type ExecutionOutput,
-  type ExecutionSession,
-} from '../execution-session';
+import { runExecution, type ExecutionOutput, type ExecutionSession } from '../execution-session';
 import { localOwner } from '../local-actor';
 import { parsePositiveInt, readStructuredFile } from '../structured-input';
 import { actionLines, finishLines, returnLines, startLines } from './present';
@@ -68,11 +64,9 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
 
   const run = (
     options: CommonOptions,
+    kind: 'read' | 'change',
     body: (session: ExecutionSession) => Promise<void>,
-  ): Promise<void> =>
-    reportingWorkflowRefusals(context, options.json, async () =>
-      body(await openExecution(context.cwd, options.projectRoot)),
-    );
+  ): Promise<void> => runExecution(context, options, kind, body);
 
   const emit = (options: CommonOptions, json: unknown, lines: readonly string[]): void => {
     if (options.json) {
@@ -89,7 +83,7 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
       .command('actions')
       .description('Show where the run stands and the actions the owner may take now (read-only)'),
   ).action(async (specId: string, options: CommonOptions) => {
-    await run(options, async ({ workflow: dependencies }) => {
+    await run(options, 'read', async ({ workflow: dependencies }) => {
       const projection = await inspectActions(dependencies, subjectOf(specId, options));
       emit(options, projection, actionLines(projection));
     });
@@ -115,7 +109,7 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
         command.error('--expected-workflow-revision applies to a Task start (--task).');
       }
 
-      await run(options, async ({ engine, workflow: dependencies }) => {
+      await run(options, 'change', async ({ engine, workflow: dependencies }) => {
         const actor = owner();
         const result =
           options.task !== undefined
@@ -171,7 +165,7 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
         taskDecisionsFile?: string;
       },
     ) => {
-      await run(options, async ({ workflow: dependencies }) => {
+      await run(options, 'change', async ({ workflow: dependencies }) => {
         const input: FinishStepInput['input'] = {
           ...(options.result !== undefined ? { result: options.result } : {}),
           ...(options.feedback !== undefined ? { feedback: options.feedback } : {}),
@@ -214,7 +208,7 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
       .requiredOption('--step <step-id>', 'The declared return target (see "workflow actions")')
       .option('--reason <text>', 'Why; handed to the step as feedback, required by some returns'),
   ).action(async (specId: string, options: CommonOptions & { step: string; reason?: string }) => {
-    await run(options, async ({ workflow: dependencies }) => {
+    await run(options, 'change', async ({ workflow: dependencies }) => {
       const result = await returnToStep(dependencies, {
         subject: subjectOf(specId, options),
         step: options.step,
@@ -224,6 +218,32 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
       emit(options, result, returnLines(result));
     });
   });
+
+  workflow
+    .command('reevaluate-wait')
+    .description('End a Specification wait when all its Tasks are closed')
+    .argument('<spec-id>', 'Specification UUID')
+    .option('--project-root <path>', 'Require this verified Project Home root')
+    .option('--json', 'Print the result as JSON')
+    .requiredOption('--step <step-id>', 'The wait step shown in workflow actions')
+    .requiredOption(
+      '--attempt <number>',
+      'The wait attempt shown in workflow actions',
+      parsePositiveInt,
+    )
+    .action(async (specId: string, options: CommonOptions & { step: string; attempt: number }) => {
+      await run(options, 'change', async ({ workflow: dependencies }) => {
+        const result = await reevaluateWait(dependencies, {
+          specId,
+          step: options.step,
+          attempt: options.attempt,
+          actor: owner(),
+        });
+        emit(options, result, [
+          `Wait "${result.step}" attempt ${result.attempt}: ${result.status}`,
+        ]);
+      });
+    });
 
   return workflow;
 }

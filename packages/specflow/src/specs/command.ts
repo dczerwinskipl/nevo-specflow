@@ -11,6 +11,8 @@ import {
   planPublicWorkspaceCloseOperation,
   inspectPublicWorkspaceCloseOperation,
   reconcileArchivedConflictScratchOperation,
+  inspectCloseWithoutGitOperation,
+  resumeCloseWithoutGitOperation,
   discoverSpecifications,
   resolveCreateArchetype,
   openSpecFlowEngine,
@@ -26,8 +28,14 @@ import { Command, InvalidArgumentError } from 'commander';
 
 import { createDocumentsCommand, type DocumentsCommandContext } from '../documents/command';
 import { engineAt } from '../engine-at';
-import { previewCloseForCli } from './close-preview';
-import { openExecution, reportingWorkflowRefusals } from '../execution-session';
+import { reportingRefusals } from '../documents/report';
+import {
+  ARCHIVED_WITHOUT_GIT,
+  previewCloseForCli,
+  reportingMissingIntegrationTarget,
+  withoutGitLines,
+} from './close-preview';
+import { runExecution } from '../execution-session';
 import { localOwner } from '../local-actor';
 import { abandonLines } from '../workflow/present';
 
@@ -53,6 +61,27 @@ function summary(item: DiscoveredSpecification): Record<string, unknown> {
     binding: item.binding,
     specification: item.specification,
   };
+}
+
+/**
+ * A Close preview refused by document commits (`DOCUMENT_COMMITS_PENDING`, answered as the Close
+ * would) is printed as a documents refusal with its cause and hint, not as an internal error; one
+ * refused for a missing integration branch lists the candidate branches.
+ */
+function previewRefusals(
+  context: SpecsCommandContext,
+  json: boolean | undefined,
+  body: () => Promise<void>,
+): Promise<void> {
+  const refusalOutput = { stdout: context.stdout, stderr: stderrOf(context) };
+
+  return reportingRefusals(refusalOutput, json, () =>
+    reportingMissingIntegrationTarget(refusalOutput, json, body),
+  );
+}
+
+function stderrOf(context: SpecsCommandContext): (line: string) => void {
+  return context.stderr ?? ((line: string) => process.stderr.write(line + '\n'));
 }
 
 function output(context: SpecsCommandContext, value: unknown): void {
@@ -129,6 +158,11 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
           context.stdout('Manifest: ' + result.relativeManifestPath);
           context.stdout('Operation ID: ' + result.operationId);
           context.stdout('Documents: ' + result.documentIds.join(', '));
+          if (result.uncommitted) {
+            context.stdout(
+              'Not committed: Git is disabled in this project. Commit the new files before closing the Specification.',
+            );
+          }
         }
       },
     );
@@ -182,20 +216,28 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
     .argument('<spec-id>', 'Canonical Specification UUID')
     .option('--operation-id <uuid>', 'Stable operation UUID; reuse it for idempotent retry')
     .option('--project-root <path>', 'Require this verified Project Home root')
+    .option(
+      '--finish-after-external-merge',
+      'Finish after the branch was already merged externally (e.g. a GitHub squash merge): proves content equivalence instead of merging again',
+    )
     .option('--preview', 'Inspect the Close plan without writing')
     .option('--yes', 'Confirm whole-branch integration and worktree removal')
     .option('--json', 'Output machine-readable result')
     .action(async (specId: string, options: CliCloseOptions) => {
       const engine = await engineForClose(context.cwd, options.projectRoot);
       const operationId = options.operationId ?? randomUUID();
+      const finishAfterExternalMerge = options.finishAfterExternalMerge ? true : undefined;
       if (options.preview) {
-        output(
-          context,
-          await previewCloseForCli(engine, {
-            kind: 'worktree-close',
-            operationId,
-            specId,
-          }),
+        await previewRefusals(context, options.json, async () =>
+          output(
+            context,
+            await previewCloseForCli(engine, {
+              kind: 'worktree-close',
+              operationId,
+              specId,
+              ...(finishAfterExternalMerge === undefined ? {} : { finishAfterExternalMerge }),
+            }),
+          ),
         );
 
         return;
@@ -205,7 +247,11 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
         throw new Error('Closing a Git worktree requires --yes. Use --preview first.');
       }
 
-      const result = await closeWorktreeOperation(engine, { operationId, specId });
+      const result = await closeWorktreeOperation(engine, {
+        operationId,
+        specId,
+        ...(finishAfterExternalMerge === undefined ? {} : { finishAfterExternalMerge }),
+      });
       if (options.json) {
         output(context, result);
       } else {
@@ -234,7 +280,9 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
       const operationId = options.operationId ?? randomUUID();
       const request = { workspaceId, operationId };
       if (options.preview) {
-        output(context, await planPublicWorkspaceCloseOperation(engine, request));
+        await previewRefusals(context, options.json, async () =>
+          output(context, await planPublicWorkspaceCloseOperation(engine, request)),
+        );
 
         return;
       }
@@ -292,7 +340,18 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
         ...(options.archiveOnly ? { integrateToTargetBranch: false } : {}),
       };
       if (options.preview) {
-        output(context, await previewCloseForCli(engine, request));
+        await previewRefusals(context, options.json, async () => {
+          const plan = await previewCloseForCli(engine, request);
+          output(context, plan);
+          // stdout stays the JSON plan; the human note goes to stderr.
+          if (
+            !options.json &&
+            plan.merge.status === 'not-integrated' &&
+            plan.merge.reason === 'git-off'
+          ) {
+            withoutGitLines(plan.merge.checkout).forEach(stderrOf(context));
+          }
+        });
 
         return;
       }
@@ -308,6 +367,9 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
         context.stdout('Specification Close: ' + result.status);
         context.stdout('Operation ID: ' + operationId);
         context.stdout('Outcome: ' + (result.outcome ?? result.status));
+        if (result.outcome === 'archived-without-git') {
+          context.stdout(ARCHIVED_WITHOUT_GIT);
+        }
       }
     });
 
@@ -334,8 +396,8 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
           stdout: context.stdout,
           stderr: context.stderr ?? ((line: string) => process.stderr.write(line + '\n')),
         };
-        await reportingWorkflowRefusals(refusalOutput, options.json, async () => {
-          const { workflow } = await openExecution(context.cwd, options.projectRoot);
+        const executionContext = { ...refusalOutput, cwd: context.cwd };
+        await runExecution(executionContext, options, 'change', async ({ workflow }) => {
           const result = await abandonSpecification(workflow, {
             specId,
             reason: options.reason,
@@ -379,6 +441,41 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
           scratchRetired: result.scratchRetired === true,
           next: 'Start a NEW worktree-close for the still-archived linked Specification',
         });
+      },
+    );
+
+  specs
+    .command('close-recover')
+    .description(
+      'Finish a Close with Git off that stopped after its archive intent (recovery-required); see specification-lifecycle docs',
+    )
+    .argument('<operation-id>', 'Stable Close operation UUID')
+    .option('--preview', 'Only report where the archive move stopped, without writing')
+    .option(
+      '--confirmed-stopped',
+      'Confirm the original Close stopped and nothing else writes the checkout',
+    )
+    .option('--project-root <path>', 'Require this verified Project Home root')
+    .action(
+      async (
+        operationId: string,
+        options: { preview?: boolean; confirmedStopped?: boolean; projectRoot?: string },
+      ) => {
+        const engine = await engineForClose(context.cwd, options.projectRoot);
+        if (options.preview) {
+          output(context, {
+            operationId,
+            ...(await inspectCloseWithoutGitOperation(engine, operationId)),
+          });
+
+          return;
+        }
+
+        if (!options.confirmedStopped) {
+          throw new Error('Recovering a Close requires --confirmed-stopped. Use --preview first.');
+        }
+
+        output(context, await resumeCloseWithoutGitOperation(engine, operationId, true));
       },
     );
 
@@ -471,6 +568,7 @@ interface CliCloseOptions {
   readonly preview?: boolean;
   readonly yes?: boolean;
   readonly json?: boolean;
+  readonly finishAfterExternalMerge?: boolean;
 }
 
 interface CliCreateOptions {

@@ -41,4 +41,21 @@ describe('selectReadableDocs', () => {
     expect(skipped[2]!.error).toBe("duplicate id 'twin' (also in twin-b.md)");
     expect(skippedById.get('twin')).toHaveLength(2);
   });
+
+  it('names the whole required format for a file without frontmatter', () => {
+    const { skipped } = selectReadableDocs(
+      { docs: [], missingFrontmatter: ['plain.md'], invalidFrontmatter: [] },
+      {},
+    );
+
+    expect(skipped[0]!.error).toBe(
+      "missing frontmatter (a '---' block at the top | type is one of: hub, engineering, product, " +
+        'architecture, reference, instruction, adr | status is one of: current, draft, deprecated, ' +
+        'superseded | required fields by type: hub: id, type, title, status / engineering, product, ' +
+        'architecture, reference, instruction: id, type, title, status, read_when, summary / adr: id, ' +
+        'type, title, status, date | read_when is a non-empty list of strings)',
+    );
+    // Problems of one document are joined with "; ", so none contains it: they stay splittable.
+    expect(skipped[0]!.error).not.toContain('; ');
+  });
 });

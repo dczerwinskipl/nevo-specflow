@@ -90,7 +90,8 @@ of which product surface displays it. Tasks, Documents, Git and Sessions may con
 Specification Work, Project Settings or other surfaces. The host owns placement, navigation,
 responsive layouts and extension-point behavior; it does not become the owner of those features.
 
-- `features/tasks/` owns Full Task, Task Preview presentation, and Task-group/row controls.
+- `features/tasks/` owns Full Task, the Tasks page, the workflow Now blocks and Task-group/row
+  controls.
   `features/specs/` owns Specification routing, Workspace composition and Secondary stack
   navigation. The existing aggregate Workspace projection remains an explicit migration seam.
   `features/documents/` owns the Documents explorer and editor, and `features/sessions/` the Session
@@ -103,9 +104,9 @@ responsive layouts and extension-point behavior; it does not become the owner of
 - Configuration of Git branch/push policy, Task lane/status settings, runtime module discovery,
   and dynamic third-party code loading are **out of scope**.
 
-Task presentation is colocated under `features/tasks/pages`, Task Preview presentation under
-`features/tasks/inspectors`, and the Work contribution under
-`features/tasks/contributions/specification-work`. The aggregate Workspace data and actions
+Task presentation is colocated under `features/tasks/pages` (the Task history under
+`features/tasks/detail/history`), and the Overview contribution under
+`features/tasks/contributions/specification-overview`. The aggregate Workspace data and actions
 are a transitional host-owned adapter, not a standard public contract for other features.
 
 ### Typed UI extension registry
@@ -330,7 +331,8 @@ from the UI and archive/delete commands for Specifications are not.
 Specification-local main views now use canonical child routes (Documents, Sessions, Git, Full Task). URL search carries validated collection and source/return context; legacy `?view=...` links only redirect to those routes.
 Full Task has a canonical resource path rather than `?view=task&task=...`; legacy links redirect.
 Full Task uses its own detail query and presentation model, and Workspace list membership is never
-a prerequisite for direct navigation. Local Task Preview remains a Secondary inspection surface.
+a prerequisite for direct navigation. A Task opened from the Overview (attention, activity) opens
+the Full Task; there is no Task preview in the Secondary.
 Local Secondary navigation and selection remain in local workspace state.
 
 The login and Runtime-recovery screens are product-owned compositions on Nevo UI's
@@ -370,8 +372,9 @@ Locale resolution, persistence, stable-key rules, and CLI/UI ownership are defin
 
 Product navigation starts with the Specification switcher (`SpecificationSwitcher`, with **Browse
 all specifications** leading to the list). Within a selected Specification it shows that
-Specification's views in this order: Overview, Sessions, Tasks (an anchor to the Overview's Tasks
-section), Documents, then Changes and Repository when Git is available (`productNavigationModel.ts`).
+Specification's views in this order: Overview, Sessions, Tasks (the Tasks page, also the parent
+of a Full Task's Back), Documents, then Changes and Repository when Git is available
+(`productNavigationModel.ts`).
 Full Task is not a sidebar list page.
 Project Settings earns a global entry when its real surface exists. UI Playground remains available
 by direct URL for development, never as a persistent product entry.
@@ -405,7 +408,15 @@ Login methods are represented according to their actual semantics:
 
 - password is a single enabled/disabled capability;
 - OIDC is a list of named configured instances;
-- an authenticated session records password, or OIDC plus the concrete provider id.
+- an authenticated session records password, or OIDC plus the concrete provider id;
+- without required authentication the response also carries `localActorId`, the owner actor id the
+  offline CLI records for the OS user the Runtime runs as (`local:<os-user>`; left out when the OS
+  account has no user name).
+
+Recorded people read as "you" for the viewer whichever channel recorded them: `user:<session user
+id>`, the trusted local identity (`runtime:trusted-local`) and that `localActorId`. Anyone else is shown
+by the recorded id without its `user:`/`local:` prefix. With required authentication a CLI action
+(`local:<os-user>`) has no link to an authenticated user and is shown by its OS user name.
 
 The browser UI never reads Runtime YAML to discover login methods.
 
@@ -457,9 +468,10 @@ Demo is enabled by the operator at Runtime startup (`nevo-specflow start
 --demo`), not via browser configuration. Feature sections distinguish an
 authoritatively empty collection from an unavailable/forbidden source.
 
-The present Runtime increment has a demonstration source and integration tests but does not
-claim a completed project-side Specification read adapter. Multi-project and
-multi-worktree ownership remain separate future capabilities.
+The demo Runtime runs the Engine's workflow over in-memory state
+([ADR 0025](../../../architecture/decisions/0025-demo-runs-the-engine-in-memory.md)), so the UI
+renders the same Overview Now, Tasks page and Full Task in both modes and has no demo branch for
+them. Multi-project ownership remains a separate future capability.
 
 Workspace header Refresh invalidates **only the exact Workspace snapshot** query. Full Task,
 Document and Git Changes queries own independent freshness, error and Retry lifecycles; they
@@ -534,25 +546,14 @@ recovery. It remains an exceptional, explicitly documented low-level escape hatc
 
 ## Task workbench composition
 
-Full Task and Secondary Task Preview compose the same Task details core. The Tasks
-feature owns the connected detail/page queries and product sections; Nevo UI owns
-`AccentBlock`, InformationList geometry and the measured split capability. The
-snapshot is generic deterministic flow data, with no required review/report/Session.
-Visible status and flow identity stay next to the title and inline document disclosure;
-technical state and flow description belong to inspection. Human work and pending
-independent gates share one attention surface and initial three-item disclosure.
-
-Preview/full show two/three resource recommendations. Disclosure keeps the third
-recommendation before the lazy pages and deduplicates stable resource IDs. Canonical
-attempt history is the default desktop Secondary, with a menu entry when the measured
-workspace cannot split. Stack catalogues retain IDs, while current data comes from
-context/Query. Task disclosure state and scroll survive nested inspection and Back;
-DocumentDescription restores its opener and scroll after either collapse control.
-
-The transport increment is additive and backed by explicit Runtime demo data. Project
-mode has no fixture fallback. Unknown resource owners and absent snapshot/page/document
-readers remain explicitly unavailable. Workflow mutations, confirmation forms, flow
-editing and project workflow projection are outside this increment.
+The Full Task is the Task resource of its Specification: Task authoring, Now (the workflow
+action projection), documents, context and dependencies in the Primary, and the attempt history
+behind the header's history toggle ([Workflow execution](workflow-execution.md)). A Task read
+without its resource is the unavailable state, never a partial page. The earlier snapshot-based
+Task screen (human requirements and evidence, related resources, recovery, Task preview) is
+removed (owner decision 2026-11-16); those come back as new features if needed. The Tasks feature
+owns the detail/history queries; Nevo UI owns InformationList geometry and the measured split
+capability. Task disclosure state and history scroll survive nested inspection and Back.
 
 Operational lists reserve a leading rail only for a real affordance or a selectable
 collection's shared axis. Text-only rows use InformationList's default control-height

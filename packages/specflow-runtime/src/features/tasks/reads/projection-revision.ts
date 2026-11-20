@@ -17,25 +17,13 @@ export function projectionRevision(
     policies.set(context.policy, policy);
   }
 
-  const { resources, history } = snapshot.sections;
+  const { history } = snapshot.sections;
   // Fresh lease tokens describe temporary transport handles, not a changed inspected object.
   const view = {
     ...snapshot,
     revision: undefined,
     sections: {
       ...snapshot.sections,
-      resources:
-        resources.state === 'available'
-          ? {
-              ...resources,
-              data: {
-                ...resources.data,
-                page: resources.data.page
-                  ? { initialLimit: resources.data.page.initialLimit }
-                  : null,
-              },
-            }
-          : resources,
       history:
         history.state === 'available'
           ? { ...history, data: { initialLimit: history.data.initialLimit } }

@@ -28,6 +28,7 @@ function mapAttention(items: readonly WorkspaceAttention[]): AttentionItem[] {
     ...(item.secondaryAction ? { secondaryAction: item.secondaryAction } : {}),
     ...(item.taskIds ? { taskIds: item.taskIds } : {}),
     ...(item.blocking ? { blocking: item.blocking } : {}),
+    ...(item.blocks ? { blocks: item.blocks } : {}),
   }));
 }
 
@@ -152,7 +153,7 @@ export function mapWorkspaceResponse(
             kind: doc.kind,
             ...(doc.filename ? { filename: doc.filename } : {}),
             summary: doc.summary,
-            ...(doc.templateOnly ? { templateOnly: true } : {}),
+            ...(doc.contentState ? { contentState: doc.contentState } : {}),
           }))
         : [],
     documentFolders:

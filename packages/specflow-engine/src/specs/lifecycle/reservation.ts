@@ -10,16 +10,23 @@ import {
   type FlushOptions,
 } from '../documents/queue/flush';
 import { readWorkspaceRegistry } from '../../project/workspace/registry/registry';
+import { runGitFreeMutation } from '../../project/request-verification-memo';
 import { readProjectGitPolicy } from '../../version-control/worktrees/config';
 import {
   CloseOperationError,
+  assertNoExternalMergeForSpecificationClose,
   assertSpecificationExit,
   type CloseJournal,
   type ClosePlan,
 } from './model';
 import { readCloseJournal, publishCloseJournal } from './journal/store';
 import { assertResourcesAvailable } from './resources';
-import { previewCloseOperation, type CloseRequest } from './preflight';
+import {
+  previewCloseOperation,
+  siblingSpecificationDirectories,
+  type CloseRequest,
+} from './preflight';
+import { repositoryModeOf } from './repository-mode';
 import { resolveSpecification } from '../discovery';
 import type { UncommittedAllowance } from '../uncommitted';
 
@@ -54,6 +61,10 @@ export async function reserveCloseOperation(
   request: CloseRequest & { readonly operationId: string },
   options: ReserveCloseOptions = {},
 ): Promise<{ readonly journal: CloseJournal; readonly existing: boolean }> {
+  // Refused unconditionally, before even reading an existing journal (owner decision 2026-11-20):
+  // a replay of an operationId with this combination gets the same explicit refusal as a fresh one.
+  assertNoExternalMergeForSpecificationClose(request);
+
   // An existing reservation must remain observable even after Git/archive
   // mutations make the original first-admission preview impossible.
   const existing = await readCloseJournal(engine.context, request.operationId);
@@ -67,10 +78,24 @@ export async function reserveCloseOperation(
   // snapshot is verified against registry/config CAS inside the lock, and
   // future effects must re-verify pinned HEAD/index/physical source.
   const plan: ClosePlan = await previewWithDocumentFlush(engine, request, options);
+
+  // With Git off the admission keeps the Git-free verification its preview ran with.
+  return plan.gitOff
+    ? runGitFreeMutation(() => admitClosePlan(engine, request, plan, options))
+    : admitClosePlan(engine, request, plan, options);
+}
+
+/** The flush and the locked admission of a previewed plan (see {@link reserveCloseOperation}). */
+async function admitClosePlan(
+  engine: SpecFlowEngine,
+  request: CloseRequest & { readonly operationId: string },
+  plan: ClosePlan,
+  options: ReserveCloseOptions,
+): Promise<{ readonly journal: CloseJournal; readonly existing: boolean }> {
   // Document commits of every checkout the Close owns are flushed before the lock is taken (Git runs
   // here, never inside the lock); what is still pending, failed or abandoned refuses the Close.
   // The preview and the preflight stay pure: this is the only effect, and only at admission.
-  const allowance = allowanceOfPlan(plan);
+  const allowance = await allowanceOfPlan(engine, plan);
   await flushCheckoutsForClose(
     engine,
     [plan.source, ...(plan.target !== undefined ? [plan.target] : [])],
@@ -92,17 +117,23 @@ export async function reserveCloseOperation(
       throw new CloseOperationError('CLOSE_CONFLICT', 'Registry revision changed after preview.');
     }
 
-    if (plan.configRevision !== undefined) {
-      const config = await readProjectGitPolicy(engine.context);
-      if (
-        config.revision !== plan.configRevision ||
-        config.policy.integrationTargetBranch !== plan.targetBranch
-      ) {
-        throw new CloseOperationError(
-          'CLOSE_CONFLICT',
-          'Project integration policy changed after preview.',
-        );
-      }
+    // The repository mode the plan was decided with must still hold, for every plan (an
+    // unreadable policy refuses with its error). With Git off the pinned revision is the policy that
+    // turned Git off; with Git the configured default destination must be unchanged.
+    const config = await readProjectGitPolicy(engine.context);
+    if ((repositoryModeOf(config.policy) === 'git-off') !== (plan.gitOff === true)) {
+      throw new CloseOperationError('CLOSE_CONFLICT', 'Project Git policy changed after preview.');
+    }
+
+    if (
+      plan.configRevision !== undefined &&
+      (config.revision !== plan.configRevision ||
+        (!plan.gitOff && config.policy.integrationTargetBranch !== plan.targetBranch))
+    ) {
+      throw new CloseOperationError(
+        'CLOSE_CONFLICT',
+        'Project integration policy changed after preview.',
+      );
     }
 
     // D07, judged again under the lock every workflow mutation takes: no Task or run changed
@@ -159,6 +190,27 @@ function assertMatchingRequest(
     );
   }
 
+  if (journal.plan.gitOff) {
+    if (
+      request.kind === 'specification-close' &&
+      // With Git off a Close only archives: omitting the option or `false` replays it, `true` never.
+      (request.integrateToTargetBranch === true ||
+        (journal.plan.source.instanceId === undefined &&
+          request.integrateToTargetBranch !== undefined) ||
+        // finishAfterExternalMerge is excluded for a Git-off Close by the type system
+        // (GitOffClosePlan never carries it); requesting it true is a changed immutable selection.
+        request.finishAfterExternalMerge === true)
+    ) {
+      throw new CloseOperationError(
+        'CLOSE_CONFLICT',
+        'OperationId changed immutable integration selection.',
+      );
+    }
+
+    return;
+  }
+
+  // `journal.plan` is a `GitClosePlan` here (the `gitOff` discriminant narrowed it above).
   if (request.kind === 'specification-close') {
     // The original linked/primary scope is pinned by the journal, not the
     // current registry. Omitting the option is an intentional default, not a
@@ -166,12 +218,48 @@ function assertMatchingRequest(
     const linked = journal.plan.source.instanceId !== undefined;
     const requested = linked ? (request.integrateToTargetBranch ?? true) : false;
     const reserved = linked ? journal.plan.integrateToTargetBranch : false;
+    // finishAfterExternalMerge no longer legitimately varies for this kind (owner decision
+    // 2026-11-20): the unconditional refusal above means it can never be true here, for either side.
     if ((!linked && request.integrateToTargetBranch !== undefined) || requested !== reserved) {
       throw new CloseOperationError(
         'CLOSE_CONFLICT',
         'OperationId changed immutable integration selection.',
       );
     }
+  } else if (
+    request.kind === 'worktree-close' &&
+    (request.finishAfterExternalMerge ?? false) !== (journal.plan.finishAfterExternalMerge === true)
+  ) {
+    throw new CloseOperationError(
+      'CLOSE_CONFLICT',
+      'OperationId changed immutable integration selection.',
+    );
+  }
+}
+
+/**
+ * The preview a Close dialog reads before the Close: the pure preview, without a flush. When it
+ * refuses a dirty tree while document commits still hold one of the checkouts the request names, it
+ * answers DOCUMENT_COMMITS_PENDING as the Close itself would after its flush, so documents Nevo
+ * commits (or waits for) are never reported as files to commit by hand. No Git write and no queue
+ * pass; the hold read may prune ledger entries that are already committed.
+ */
+export async function previewWithDocumentHold(
+  engine: SpecFlowEngine,
+  request: CloseRequest,
+): Promise<ClosePlan> {
+  try {
+    return await previewCloseOperation(engine, request);
+  } catch (error) {
+    if (error instanceof CloseOperationError && error.code === 'CLOSE_PREFLIGHT') {
+      await assertNoDocumentCommitsHold(
+        engine,
+        await workspacesNamedBy(engine, request),
+        await allowanceOfRequest(engine, request),
+      );
+    }
+
+    throw error;
   }
 }
 
@@ -212,14 +300,34 @@ export async function previewWithDocumentFlush(
 }
 
 /**
- * What a Specification Close does not wait for in the ledger: the Specification's uncommitted
- * execution state (`.execution/**`, `tasks/**`), which its archive commit takes along (owner decision
- * 2026-11-12). Other Close kinds archive nothing and wait for every entry.
+ * What a Specification Close does not wait for in the ledger: the Specification's own uncommitted
+ * execution state (`.execution/**`, `tasks/**`, which its archive commit takes along, owner decision
+ * 2026-11-12), plus, for an archive-only/exclusive Close sharing its checkout, each other active
+ * Specification's own execution state of ITS own directory (#181, cross-checked against the
+ * registry's `specBindings`). Other Close kinds archive nothing and wait for every entry.
  */
-function allowanceOfPlan(plan: ClosePlan): UncommittedAllowance | undefined {
-  return plan.kind === 'specification-close'
-    ? { specId: plan.specId, directory: 'specs/active/' + plan.slug }
-    : undefined;
+async function allowanceOfPlan(
+  engine: SpecFlowEngine,
+  plan: ClosePlan,
+): Promise<UncommittedAllowance | undefined> {
+  if (plan.kind !== 'specification-close') {
+    return undefined;
+  }
+
+  const own = { specId: plan.specId, directory: 'specs/active/' + plan.slug };
+  if (plan.gitOff) {
+    return { directories: [own] };
+  }
+
+  const registry = await engine.readRegistry();
+  const siblings = await siblingSpecificationDirectories(
+    plan.source.root,
+    plan.source.workspaceId,
+    registry,
+    plan.specId,
+  );
+
+  return { directories: [own, ...siblings] };
 }
 
 /** {@link allowanceOfPlan} before the plan exists (the preview refused). */
@@ -232,10 +340,29 @@ async function allowanceOfRequest(
   }
 
   const found = await resolveSpecification(engine, request.specId).catch(() => undefined);
+  if (found?.status !== 'available' || found.specification.location !== 'active') {
+    return undefined;
+  }
 
-  return found?.status === 'available' && found.specification.location === 'active'
-    ? { specId: request.specId, directory: 'specs/active/' + found.specification.slug }
-    : undefined;
+  const own = { specId: request.specId, directory: 'specs/active/' + found.specification.slug };
+  const registry = await engine.readRegistry();
+  const binding = registry.specBindings.find((item) => item.specId === request.specId);
+  const workspace =
+    binding !== undefined
+      ? registry.workspaces.find((item) => item.workspaceId === binding.workspaceId)
+      : undefined;
+  if (binding === undefined || workspace === undefined) {
+    return { directories: [own] };
+  }
+
+  const siblings = await siblingSpecificationDirectories(
+    workspace.root,
+    binding.workspaceId,
+    registry,
+    request.specId,
+  );
+
+  return { directories: [own, ...siblings] };
 }
 
 /** The checkouts a Close request can touch before its plan exists: the source and the primary. */

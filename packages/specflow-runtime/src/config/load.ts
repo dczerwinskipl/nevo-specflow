@@ -36,9 +36,6 @@ export async function loadRuntimeConfig(
 
   const projectDocument = await readRequiredConfig(projectPath);
   const projectSource = runtimeSection(projectDocument, projectPath, true);
-  const sessions = parseSessionsFeatureConfig(
-    isRecord(projectDocument) ? projectDocument.sessions : undefined,
-  );
   const specs = parseSpecsFeatureConfig(
     isRecord(projectDocument) ? projectDocument.specs : undefined,
   );
@@ -53,12 +50,6 @@ export async function loadRuntimeConfig(
     localExists = await fileExists(localPath);
     if (localExists) {
       localDocument = await readRequiredConfig(localPath);
-      if (isRecord(localDocument) && localDocument.sessions !== undefined) {
-        throw new RuntimeConfigError(
-          'Session configuration is project-owned and cannot be set locally.',
-        );
-      }
-
       if (isRecord(localDocument) && localDocument.specs !== undefined) {
         throw new RuntimeConfigError(
           'Specs Overview configuration is project-owned and cannot be set locally.',
@@ -73,6 +64,10 @@ export async function loadRuntimeConfig(
     }
   }
 
+  const sessions = parseSessionsFeatureConfig({
+    project: isRecord(projectDocument) ? projectDocument.sessions : undefined,
+    local: isRecord(localDocument) ? localDocument.sessions : undefined,
+  });
   const docs = parseDocsFeatureConfig({
     project: projectDocument,
     local: localDocument,

@@ -19,7 +19,9 @@ describe('Runtime endpoint policy HTTP', () => {
       () => ({ ok: true }),
     );
     try {
-      expect((await app.inject('/api/specs/admission/tasks/TASK-03')).statusCode).toBe(200);
+      expect((await app.inject('/api/specs/admission/tasks/admission-contract')).statusCode).toBe(
+        200,
+      );
       expect((await app.inject('/api/future-feature')).statusCode).toBe(200);
       const denied = await app.inject('/api/specs/admission/documents/overview');
       expect(denied.statusCode).toBe(429);

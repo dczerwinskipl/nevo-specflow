@@ -1,5 +1,6 @@
 import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 import { message } from '../../../../i18n/message';
+import { assessUnavailable } from './providerDiagnosis';
 import type { StartCatalogue, StartMode, StartProvider } from './startCatalogue';
 
 const safetyModeTitles = {
@@ -54,31 +55,21 @@ function startProvider(provider: ProviderDescriptor): StartProvider {
       ? (modes.find((mode) => !mode.available && mode.reason)?.reason ??
         message('sessionStart.provider.noMode'))
       : undefined;
-  // Read for a Specification in its own worktree: the tile says it briefly; the provider choice
-  // explains what, why and what to do once for every such provider.
-  const worktreeUnsupported = provider.reasonCode === 'SPECIFICATION_WORKTREE_UNSUPPORTED';
-  const reason = worktreeUnsupported
-    ? message('sessionStart.provider.worktreeUnsupported')
-    : (noMode ??
-      given ??
-      (provider.readiness === 'authenticationRequired'
-        ? message('managedSession.authenticationRequired')
-        : provider.providerId === 'mock'
-          ? message('managedSession.mockNote')
-          : undefined));
-  const hint =
-    provider.readiness === 'authenticationRequired' && !worktreeUnsupported
-      ? message('managedSession.authenticationHelp')
-      : undefined;
+  const assessment = startable ? undefined : assessUnavailable(provider, given, noMode);
+  // A caveat of an available provider (the mock provider's note when the Runtime gives none).
+  const caveat = startable
+    ? (given ?? (provider.providerId === 'mock' ? message('managedSession.mockNote') : undefined))
+    : undefined;
 
   return {
     id: provider.providerId,
     title: provider.title,
     icon: provider.providerId,
     available: startable,
-    ...(reason ? { reason } : {}),
-    ...(hint ? { hint } : {}),
-    ...(worktreeUnsupported ? { unavailableInWorktree: true } : {}),
+    status: assessment?.status ?? message('create.provider.available'),
+    ...(caveat ? { reason: caveat } : {}),
+    ...(assessment?.undetermined ? { undetermined: true } : {}),
+    ...(assessment?.diagnosis ? { diagnosis: assessment.diagnosis } : {}),
     // A provider that does not accept a model (or an effort) override has nothing to choose: the
     // Session starts at its default.
     models: modelOverride

@@ -7,7 +7,7 @@ import { formatList } from './formatList';
 export type MessageKey = ParseKeys;
 
 /** Interpolation value: plain text/number, or another message (a list is joined by the locale: "a, b and c"). */
-export type MessageValue = string | number | Message | readonly Message[];
+export type MessageValue = string | number | Message | readonly (Message | string)[];
 export type MessageValues = Readonly<Record<string, MessageValue>>;
 
 /**
@@ -39,6 +39,21 @@ export function translateMessage(
     return value;
   }
 
+  return (t as (key: string, options?: Record<string, string | number>) => string)(
+    value.key,
+    messageValues(t, value, locale),
+  );
+}
+
+/**
+ * A message's interpolation values as plain text: nested messages translated, lists joined by the
+ * locale. For renderers that interpolate themselves (rich text through `Trans`).
+ */
+export function messageValues(
+  t: TFunction,
+  value: Message,
+  locale: string | undefined = (t as { lng?: string }).lng,
+): Record<string, string | number> {
   const resolved: Record<string, string | number> = {};
   for (const [name, entry] of Object.entries(value.values ?? {})) {
     resolved[name] =
@@ -52,10 +67,7 @@ export function translateMessage(
             );
   }
 
-  return (t as (key: string, options?: Record<string, string | number>) => string)(
-    value.key,
-    resolved,
-  );
+  return resolved;
 }
 
 /** Hook form of {@link translateMessage}: `const text = useMessage(); text(policy.reason)`. */

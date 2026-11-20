@@ -12,16 +12,22 @@ import { placeholderRootTabs, type PlaceholderRootTab } from './SessionContextPl
  * in their own sections.
  */
 export function ContextPlannedAreasSection({
+  only,
   onOpen,
 }: {
+  /** The ids of the areas to list; all of them when absent. */
+  only?: readonly string[];
   onOpen: (tab: PlaceholderRootTab) => void;
 }) {
   const { t } = useTranslation();
+  const tabs = only
+    ? placeholderRootTabs.filter((tab) => only.includes(tab.id))
+    : placeholderRootTabs;
 
   return (
     <ContextSection title={t('sessions.context.placeholders.sectionTitle')}>
       <InformationList>
-        {placeholderRootTabs.map((tab) => (
+        {tabs.map((tab) => (
           <ContextNavigationRow
             key={tab.id}
             icon={tab.icon}

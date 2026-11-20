@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { DocumentDraftProvider } from '../features/documents/editor/DocumentDraftProvider';
 import { SessionStateProvider } from '../features/sessions/SessionStateProvider';
 import { SpecificationStateProvider } from '../features/specs/SpecificationStateProvider';
+import { SupportSectionStateProvider } from '../features/tasks/authoring/supportSectionState';
 import { NotificationProvider } from '../shared/notifications/notifications';
 
 /**
@@ -13,7 +14,9 @@ export function VisitStateProvider({ children }: { children: ReactNode }) {
     <NotificationProvider>
       <DocumentDraftProvider>
         <SessionStateProvider>
-          <SpecificationStateProvider>{children}</SpecificationStateProvider>
+          <SpecificationStateProvider>
+            <SupportSectionStateProvider>{children}</SupportSectionStateProvider>
+          </SpecificationStateProvider>
         </SessionStateProvider>
       </DocumentDraftProvider>
     </NotificationProvider>

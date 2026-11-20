@@ -1,3 +1,4 @@
+import { renderTemplate, templateValues } from '@nevo/specflow-engine';
 import { describe, expect, it } from 'vitest';
 
 import { OVERVIEW_SUMMARY_MAX_GRAPHEMES, summarizeOverview } from './overview-summary';
@@ -23,6 +24,44 @@ describe('summarizeOverview', () => {
         ].join('\n'),
       ),
     ).toBe('Drop weak hits.');
+  });
+
+  it('has no description for an overview created without a goal', () => {
+    // The shipped overview template's shape: the goal prompt never becomes the description.
+    const template = [
+      '---',
+      'id: spec.{{slug}}',
+      'title: {{specificationTitleJson}}',
+      '---',
+      '',
+      '# {{specificationTitle}}',
+      '',
+      '## Context',
+      '',
+      '## Goal',
+      '',
+      '<!-- Initial goal captured when this specification was created. -->',
+      '',
+      '{{goalOrPrompt}}',
+      '',
+      '## Non-goals',
+      '',
+    ].join('\n');
+    const render = (goal?: string) =>
+      renderTemplate(
+        template,
+        templateValues({
+          title: 'SSO',
+          slug: 'sso',
+          created: '2026-11-16',
+          ...(goal ? { goal } : {}),
+        }),
+      );
+
+    expect(summarizeOverview(render())).toBe('');
+    expect(summarizeOverview(render('Sign in with the company account.'))).toBe(
+      'Sign in with the company account.',
+    );
   });
 
   it('falls back to the first paragraph when the Goal section holds no prose', () => {

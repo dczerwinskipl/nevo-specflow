@@ -402,7 +402,8 @@ repository folder) and a `path`; the UI shows the name instead of a generic "Cur
 
 A freshly created Specification opens on an Overview that shows everything that exists: the
 overview's Goal (else its first paragraph) as the description, the registered documents, each
-marked **Template only** while it is still its template, the empty Tasks and Sessions sections
+marked **Initial content only** while it is still the initial content the Engine wrote (said once
+in the Documents header when every document is), the empty Tasks and Sessions sections
 (inline empty states under their headers) and, with a workflow, Now with **Start workflow**
 (without one, the preparation block). The block's
 **Start session** opens New Session when the caller may start one; with Sessions turned off or not
@@ -431,8 +432,8 @@ agent on a project Runtime is an open item in the
   working** returns to the choice and keeps the name, archetype, workspace choice and the last agent
   setup. Leaving the method choice returns to the Specifications list.
 - **Form.** Name, archetype and the workspace place as in project mode; with an agent also the
-  **first Session**: provider tiles and the labelled Model, Effort and Work mode fields shared with
-  the Session start form ([Full Session](ui/full-session.md)). The agent applies to the first
+  **first Session**: provider tiles and the labelled Model, Effort and Work mode fields (the Session
+  start form groups the same fields, [Full Session](ui/full-session.md)). The agent applies to the first
   Session only; a Specification can later have many Sessions with other agents. Provider facts
   (availability, limits) come only from a confirmed source; unknown stays unknown. No prompt is sent
   from the form: the first message is written in the opened Session.

@@ -212,6 +212,21 @@ describe('batch paths', () => {
       expect(() => decodeBatchPaths(text)).toThrow(DocumentError);
     }
   });
+
+  it('holds the execution state a workflow operation writes (Task index, run records)', () => {
+    const paths = mergeBatchPaths([
+      plan([
+        ['.execution/specification.yaml', state('0'), state('1')],
+        ['.execution/tasks/build.yaml', null, state('r')],
+        ['tasks/index.yaml', null, state('i')],
+        ['tasks/build/task.yaml', null, state('t')],
+      ]),
+    ]);
+    expect(decodeBatchPaths(encodeBatchPaths(paths).text)).toEqual(paths);
+    expect(() =>
+      decodeBatchPaths(encodeBatchPaths(paths).text.replace('.execution/tasks', '.execution/..')),
+    ).toThrow(DocumentError);
+  });
 });
 
 describe('queue lease', () => {

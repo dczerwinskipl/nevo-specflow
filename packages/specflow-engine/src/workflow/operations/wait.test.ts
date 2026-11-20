@@ -127,11 +127,12 @@ describe('Tasks of a Specification', () => {
     ]);
   });
 
-  it('gives the planner the allowed task types', async () => {
+  it('gives the planner the allowed task types and the complete-list rule of its finish', async () => {
     const dependencies = memoryDependencies(catalogue);
     const context = await runToBreakdown(dependencies);
 
     expect(context.step).toMatchObject({ id: 'breakdown', produces: 'tasks' });
+    expect(context.finish.tasks?.rule).toContain('every draft Task');
     expect(context.taskTypes?.map((type) => type.id)).toEqual([
       'implementation',
       'ui-implementation',

@@ -23,7 +23,11 @@ export async function commitBinding(engine: SpecFlowEngine, record: CreateJourna
       existingWorkspace.root !== expected.root ||
       existingWorkspace.instanceId !== expected.instanceId ||
       existingWorkspace.kind !== 'linked' ||
-      !isDeepStrictEqual(existingWorkspace.integrationDestination, expected.integrationDestination)
+      !isDeepStrictEqual(
+        existingWorkspace.integrationDestination,
+        expected.integrationDestination,
+      ) ||
+      existingWorkspace.startedFrom !== expected.startedFrom
     ) {
       throw recovery('Workspace registry identity differs from durable intent.');
     }
@@ -47,7 +51,9 @@ export async function commitBinding(engine: SpecFlowEngine, record: CreateJourna
         !isDeepStrictEqual(
           workspace.kind === 'linked' ? workspace.integrationDestination : undefined,
           record.target.integrationDestination,
-        )
+        ) ||
+        (workspace.kind === 'linked' ? workspace.startedFrom : undefined) !==
+          record.target.startedFrom
       ) {
         throw recovery('Concurrent workspace registration disagrees with creation intent.');
       }

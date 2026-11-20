@@ -1,5 +1,6 @@
 import type { IconName } from '@nevo/ui';
 import type { TaskOverview, WorkspaceAttention } from '@nevo/specflow-contracts/specs/workspace';
+import type { DocumentContentState } from '@nevo/specflow-contracts/documents';
 import { type TaskGroup } from '../../tasks/read-model';
 
 export {
@@ -24,8 +25,8 @@ export interface DocumentItem {
   readonly title: string;
   readonly kind: string;
   readonly summary?: string;
-  /** Still only its archetype template (the Runtime's `templateOnly`). */
-  readonly templateOnly?: boolean;
+  /** What the file holds relative to its initial content; absent when the source cannot tell. */
+  readonly contentState?: DocumentContentState;
   readonly content?: string;
   readonly sections?: readonly DocumentSection[];
 }
@@ -72,7 +73,8 @@ export interface AttentionItem {
   /**
    * Workflow and Session items (the attention projection): the stable reason code (`reason` is
    * then the server's display text), who has to act, the one action and its alternative, and the
-   * Tasks it names (`tasks-stuck`: with why each blocks). Absent on other items.
+   * Tasks it names (`tasks-stuck`: with why each blocks; `on-hold-blocking`: what the held Task
+   * holds up, `blocks`). Absent on other items.
    */
   readonly code?: string;
   /** The step the item is about (its action names it). */
@@ -82,6 +84,7 @@ export interface AttentionItem {
   readonly secondaryAction?: WorkspaceAttention['secondaryAction'];
   readonly taskIds?: readonly string[];
   readonly blocking?: WorkspaceAttention['blocking'];
+  readonly blocks?: WorkspaceAttention['blocks'];
 }
 
 /**

@@ -41,7 +41,14 @@ const crossModule: ArchetypeDefinition = {
     { ...seedTemplate('architecture', 'decisions'), include: 'optional', preselected: true },
     { ...seedTemplate('architecture', 'architecture'), include: 'optional', preselected: false },
   ],
+  execution: { workflow: 'specification-standard' },
 };
+
+/** The Specification archetypes of the demo with their execution bindings (the demo workflow). */
+export const demoSpecificationArchetypes: readonly ArchetypeDefinition[] = [
+  ...seedArchetypes,
+  crossModule,
+];
 
 /**
  * The demo archetype catalogue: what a project gets from `definitions install` (the three seed
@@ -50,7 +57,7 @@ const crossModule: ArchetypeDefinition = {
  */
 export const demoArchetypes: ResolvedCatalogue = resolveCatalogue({
   documentTypes: seedDocumentTypes,
-  archetypes: [...seedArchetypes, crossModule],
+  archetypes: demoSpecificationArchetypes,
 });
 
 /**
@@ -76,7 +83,7 @@ export const creationCatalogue: DemoCatalogue = {
       version: 'Demo adapter v1',
       access: 'Demo fixture',
       connection: 'unknown',
-      profile: 'Profil demonstracyjny',
+      profile: 'Demo profile',
       quota: { state: 'unknown' },
       available: true,
       modes: [
@@ -102,7 +109,7 @@ export const creationCatalogue: DemoCatalogue = {
       version: 'Demo adapter v1',
       access: 'Demo fixture',
       connection: 'unknown',
-      profile: 'Profil demonstracyjny',
+      profile: 'Demo profile',
       quota: { state: 'unknown' },
       available: true,
       modes: [
@@ -128,10 +135,10 @@ export const creationCatalogue: DemoCatalogue = {
       version: 'Demo adapter',
       access: 'Unknown',
       connection: 'unknown',
-      profile: 'Profil demonstracyjny',
+      profile: 'Demo profile',
       quota: { state: 'unknown' },
       available: false,
-      reason: 'Niedostępny w tym środowisku demonstracyjnym.',
+      reason: 'Not available in this demo environment.',
       modes: [],
       models: [],
     },

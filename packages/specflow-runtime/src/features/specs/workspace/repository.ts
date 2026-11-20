@@ -49,6 +49,7 @@ export interface WorkspaceAttentionRecord {
   readonly secondaryAction?: WorkspaceAttention['secondaryAction'];
   readonly taskIds?: string[];
   readonly blocking?: WorkspaceAttention['blocking'];
+  readonly blocks?: WorkspaceAttention['blocks'];
 }
 export interface WorkspaceActivityRecord {
   readonly id: string;

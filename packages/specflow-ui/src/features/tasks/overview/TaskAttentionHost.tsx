@@ -11,7 +11,8 @@ import { invalidateAfterTaskChange } from '../authoring/queries';
 import { useTaskActions, useTaskCommands } from '../authoring/useTaskAuthoring';
 import { StartTaskDialog } from '../execution/StartTaskDialog';
 import { useWorkflowCommands } from '../execution/useWorkflowCommands';
-import { subscribeTaskAttention } from './attentionRequests';
+import { isActionPending, setActionPending } from '../../../shared/state/pendingActions';
+import { subscribeTaskAttention, taskCommandKey } from './attentionRequests';
 
 interface Dialog {
   readonly kind: 'first-start' | 'cancel-task';
@@ -26,8 +27,9 @@ function previewOf(position: WorkflowActionProjection['position']) {
 
 /**
  * The Tasks flows that Requires attention opens on the Overview: the first-start confirmation (a
- * changed workflow revision), the Cancel confirmation and a direct start of a Task's next step.
- * Each is the flow the Task page offers; the item only names which one.
+ * changed workflow revision), the Cancel confirmation, a direct start of a Task's next step and a
+ * direct Resume of a Task on hold (`on-hold → ready`, like the Task page's Resume, which also acts
+ * without a confirmation). Each is the flow the Task page offers; the item only names which one.
  */
 export function TaskAttentionHost({
   specId,
@@ -38,26 +40,52 @@ export function TaskAttentionHost({
   readonly typeTitle: (taskId: string) => string | undefined;
 }) {
   const { t } = useTranslation();
-  const { workflowExecutionApi } = useAppServices();
+  const { workflowExecutionApi, taskAuthoringApi } = useAppServices();
   const queryClient = useQueryClient();
   const notify = useNotify();
   const [dialog, setDialog] = useState<Dialog>();
+  // The direct commands running, by action (`taskCommandKey`): Requires attention shows that
+  // button busy, and a repeated click while the command runs (or its result is still being re-read)
+  // is taken and ignored, so no second command is sent. Only this host writes these keys: marked
+  // when a command is sent, cleared once it settled and the reads refreshed.
+  const settle = async (kind: 'start-step' | 'resume-task', taskId: string) => {
+    try {
+      await invalidateAfterTaskChange(queryClient, specId);
+    } finally {
+      setActionPending(taskCommandKey(specId, kind, taskId), false);
+    }
+  };
+
   // A start acts on the Task it was requested for (its id is the mutation's variable).
   const start = useMutation({
     mutationFn: (taskId: string) => workflowExecutionApi.start({ specId, taskId }, {}),
     onError: () => notify(t('taskOverview.attention.startFailed')),
-    onSettled: () => invalidateAfterTaskChange(queryClient, specId),
+    onSettled: (_result, _error, taskId) => settle('start-step', taskId),
   });
   const startStep = start.mutate;
+  // A resume acts on the Task it was requested for; the Engine refuses it if it is no longer held.
+  const resume = useMutation({
+    mutationFn: (taskId: string) => taskAuthoringApi.setStatus(specId, taskId, { status: 'ready' }),
+    onError: () => notify(t('taskOverview.attention.resumeFailed')),
+    onSettled: (_result, _error, taskId) => settle('resume-task', taskId),
+  });
+  const resumeTask = resume.mutate;
 
   useEffect(
     () =>
       subscribeTaskAttention(specId, (request) => {
         switch (request.kind) {
           case 'start-step':
-            startStep(request.taskId);
+          case 'resume-task': {
+            const key = taskCommandKey(specId, request.kind, request.taskId);
+            if (!isActionPending(key)) {
+              setActionPending(key, true);
+              (request.kind === 'start-step' ? startStep : resumeTask)(request.taskId);
+            }
 
             return true;
+          }
+
           case 'first-start':
           case 'cancel-task':
             setDialog({ kind: request.kind, taskId: request.taskId });
@@ -67,7 +95,7 @@ export function TaskAttentionHost({
             return false;
         }
       }),
-    [specId, startStep],
+    [specId, startStep, resumeTask],
   );
 
   const close = () => setDialog(undefined);

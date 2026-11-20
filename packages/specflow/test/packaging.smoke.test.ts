@@ -22,7 +22,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { createServer } from 'node:net';
-import { tmpdir } from 'node:os';
+import { tmpdir, userInfo } from 'node:os';
 import { basename, delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -563,7 +563,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
         '  enabled: true',
         '  providers:',
         '    mock:',
-        '      enabled: true',
+        '      allowed: true',
         '',
       ].join('\n'),
       'utf8',
@@ -690,6 +690,9 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
       await expect(response.json()).resolves.toEqual({
         authenticationRequired: false,
         authenticated: false,
+        // Without required authentication the session names the OS user the Runtime runs as (this
+        // process's user: it spawned the Runtime), the actor id the offline CLI records.
+        localActorId: `local:${userInfo().username}`,
         loginMethods: { password: { enabled: false }, oidc: [] },
       });
 

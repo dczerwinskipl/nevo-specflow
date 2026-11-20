@@ -4,7 +4,7 @@ import { createDefaultDefinitionRegistry } from '../../definitions/shipped-regis
 import { loadDefinitions } from '../../specs/definitions/loader';
 import { MemoryDefinitionSource } from '../../specs/definitions/test-support';
 import { resolveExecutionCatalogue, type ExecutionCatalogue } from '../definitions/catalogue';
-import { inspectActions } from './actions';
+import { inspectActions, relationStepsOf, type ActionPosition } from './actions';
 import { finishStep } from './finish';
 import {
   memoryDependencies,
@@ -27,9 +27,9 @@ async function gatedCatalogue(): Promise<ExecutionCatalogue> {
   const workflow = files['workflow/task-standard.yaml'] ?? '';
   files['workflow/task-standard.yaml'] = workflow
     .replace(
-      '    purpose: Implement the Task within its scope and run its verification.\n',
+      "    purpose: The Task's change works and stays within its scope.\n",
       [
-        '    purpose: Implement the Task within its scope and run its verification.',
+        "    purpose: The Task's change works and stays within its scope.",
         '    exitGates:',
         '      - id: findings',
         '        type: document',
@@ -39,9 +39,9 @@ async function gatedCatalogue(): Promise<ExecutionCatalogue> {
       ].join('\n'),
     )
     .replace(
-      '    purpose: Review the change independently against the Task and the repository rules.\n',
+      '    purpose: The change is confirmed correct, in scope and within repository rules.\n',
       [
-        '    purpose: Review the change independently against the Task and the repository rules.',
+        '    purpose: The change is confirmed correct, in scope and within repository rules.',
         '    entryGates:',
         '      - type: document',
         '        documentType: note',
@@ -68,9 +68,9 @@ describe('a gate document type', () => {
   it('must be defined, and installing the workflow installs it', async () => {
     const files = await seedDefinitionFiles();
     files['workflow/task-standard.yaml'] = (files['workflow/task-standard.yaml'] ?? '').replace(
-      '    purpose: Implement the Task within its scope and run its verification.\n',
+      "    purpose: The Task's change works and stays within its scope.\n",
       [
-        '    purpose: Implement the Task within its scope and run its verification.',
+        "    purpose: The Task's change works and stays within its scope.",
         '    exitGates: [{ type: document, documentType: findings }]',
         '',
       ].join('\n'),
@@ -135,7 +135,9 @@ describe('exit gates', () => {
             id: 'findings',
             type: 'document',
             label: 'A "research" document with Findings',
+            labelDeclared: false,
             documentType: 'research',
+            requiredSections: ['Findings'],
             scope: { kind: 'task', specId: SPEC, taskId: 'api' },
             status: 'unsatisfied',
             reason: 'no-document',
@@ -225,6 +227,150 @@ describe('entry gates', () => {
       next: { entryGates: [{ status: 'satisfied', documentId: 'decision' }] },
     });
     await expect(start()).resolves.toMatchObject({ kind: 'started' });
+  });
+});
+
+describe('document relations', () => {
+  it('name the documents the active and the next step gate, the strongest relation each', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    await implementing(dependencies);
+    const relations = async () =>
+      (await inspectActions(dependencies, task('api'))).documentRelations;
+    const implement = { id: 'implement', title: 'Implement', active: true };
+    const review = { id: 'review', title: 'Review', active: false };
+
+    // No document of either type: a gate that found none names nothing.
+    expect(await relations()).toEqual([]);
+
+    // A registered research document without a file, and a satisfying note of the Specification.
+    dependencies.references.gateDocuments.push(research(undefined), {
+      type: 'note',
+      id: 'decision',
+      present: true,
+    });
+    expect(await relations()).toEqual([
+      {
+        scope: { kind: 'task', specId: SPEC, taskId: 'api' },
+        documentId: 'findings',
+        relation: 'needed-to-finish',
+        blocksNow: true,
+        step: implement,
+        gate: {
+          id: 'findings',
+          label: 'A "research" document with Findings',
+          labelDeclared: false,
+          documentType: 'research',
+          requiredSections: ['Findings'],
+        },
+      },
+      {
+        scope: { kind: 'specification', specId: SPEC },
+        documentId: 'decision',
+        relation: 'used',
+        blocksNow: false,
+        step: review,
+        gate: {
+          id: 'entry-1',
+          label: 'A "note" document',
+          labelDeclared: false,
+          documentType: 'note',
+          requiredSections: [],
+        },
+      },
+    ]);
+
+    dependencies.references.gateDocuments.splice(0, 1, research('# Notes\n'));
+    expect((await relations())?.[0]).toMatchObject({
+      relation: 'needed-to-finish',
+      gate: { missingSections: ['Findings'] },
+    });
+
+    // While implement is active, the review's unmet entry gate does not block anything now.
+    dependencies.references.gateDocuments.splice(1, 1, {
+      type: 'note',
+      id: 'decision',
+      present: false,
+    });
+    expect((await relations())?.[1]).toMatchObject({
+      documentId: 'decision',
+      relation: 'needed-to-start',
+      blocksNow: false,
+      step: review,
+    });
+
+    // After the finish the review is the step a start would activate (blocked): now it blocks.
+    dependencies.references.gateDocuments.splice(0, 1, research('## Findings\n'));
+    expect((await relations())?.[0]).toMatchObject({ documentId: 'findings', relation: 'used' });
+    await finishImplement(dependencies);
+    expect((await inspectActions(dependencies, task('api'))).position.kind).toBe('blocked');
+    expect(await relations()).toEqual([
+      expect.objectContaining({
+        documentId: 'decision',
+        relation: 'needed-to-start',
+        blocksNow: true,
+        step: review,
+      }),
+    ]);
+
+    // Ready: the satisfied entry gate is used and blocks nothing.
+    dependencies.references.gateDocuments.splice(1, 1, {
+      type: 'note',
+      id: 'decision',
+      present: true,
+    });
+    expect((await inspectActions(dependencies, task('api'))).position.kind).toBe('ready');
+    expect(await relations()).toEqual([
+      expect.objectContaining({ documentId: 'decision', relation: 'used', blocksNow: false }),
+    ]);
+  });
+
+  it('read the next step of a waiting run as starting later', () => {
+    const definition = catalogue.workflow('task-standard')!;
+    const waiting = { kind: 'waiting', step: { id: 'implement' } } as unknown as ActionPosition;
+    const steps = relationStepsOf(definition, waiting);
+    expect(steps.active).toBeUndefined();
+    expect(steps.next).toMatchObject({ step: { id: 'review' }, startsNow: false });
+  });
+
+  it('do not name a document for an unmet exit gate that applies to some results only', async () => {
+    const files = await seedDefinitionFiles();
+    files['workflow/task-standard.yaml'] = (files['workflow/task-standard.yaml'] ?? '').replace(
+      '    purpose: The change is confirmed correct, in scope and within repository rules.\n',
+      [
+        '    purpose: The change is confirmed correct, in scope and within repository rules.',
+        '    exitGates:',
+        '      - id: verdict',
+        '        type: document',
+        '        documentType: research',
+        '        requiredSections: [Verdict]',
+        '        when: [pass]',
+        '',
+      ].join('\n'),
+    );
+    const loaded = await loadDefinitions(
+      new MemoryDefinitionSource(files),
+      createDefaultDefinitionRegistry(),
+    );
+    expect([...(loaded.invalid.get('workflow') ?? [])]).toEqual([]);
+    const dependencies = memoryDependencies(resolveExecutionCatalogue(loaded));
+    await implementing(dependencies);
+    await finishImplement(dependencies);
+    await startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', actor: owner });
+    const relations = async () =>
+      (await inspectActions(dependencies, task('api'))).documentRelations;
+
+    dependencies.references.gateDocuments.push(research('# Notes\n'));
+    expect(await relations()).toEqual([]);
+
+    dependencies.references.gateDocuments.splice(0, 1, research('## Verdict\n'));
+    expect(await relations()).toEqual([
+      expect.objectContaining({
+        documentId: 'findings',
+        relation: 'used',
+        blocksNow: false,
+        step: { id: 'review', title: 'Review', active: true },
+      }),
+    ]);
   });
 });
 

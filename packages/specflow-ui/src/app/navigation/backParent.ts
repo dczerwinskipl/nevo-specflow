@@ -37,8 +37,8 @@ export function specificationParentTarget(
     case 'overview':
       return { to: '/specs/$specId' as const, params, search };
     case 'tasks':
-      // Tasks is the Overview's Work section (the navigation's Tasks destination).
-      return { to: '/specs/$specId' as const, params, search, hash: 'tasks-heading' };
+      // The Tasks page: the navigation's Tasks destination.
+      return { to: '/specs/$specId/tasks' as const, params, search };
     case 'documents':
       return { to: '/specs/$specId/documents' as const, params, search };
     case 'sessions':

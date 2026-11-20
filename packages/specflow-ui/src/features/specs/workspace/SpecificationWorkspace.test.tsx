@@ -133,7 +133,9 @@ describe('SpecificationWorkspace', () => {
     });
 
     expect(markup).toContain('Przygotowanie do review');
-    expect(markup).toContain('7 zadań');
+    // Each row group's first Tasks as Task rows (the Tasks page row), no column header.
+    expect(markup).toContain('data-row-task=');
+    expect(markup).not.toContain('data-collection-columns');
     expect(markup).toContain('Wszystkie zadania');
     // No checkboxes and no Execute on the Overview.
     expect(markup).not.toContain('role="checkbox"');
@@ -261,8 +263,9 @@ describe('SpecificationWorkspace', () => {
       },
     });
 
-    // No Tasks: no Tasks summary (the Tasks page holds the empty state).
-    expect(markup).not.toContain('Wszystkie zadania');
+    // No Tasks: the Tasks section keeps its place with its empty line and All tasks.
+    expect(markup).toContain('Nie ma jeszcze zadań');
+    expect(markup).not.toContain('data-row-task');
     expect(markup).toContain('Sesje są wyłączone na tym serwerze.');
     expect(markup).not.toContain('Rozpocznij sesję');
     expect(markup).not.toContain('Niedostępne na tym serwerze');

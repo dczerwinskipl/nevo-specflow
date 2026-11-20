@@ -15,17 +15,20 @@ import {
   planPublicWorkspaceCloseOperation,
   inspectPublicCloseOperation,
   planPublicCloseOperation,
+  previewPublicCloseOperation,
   reconcileArchivedConflictScratchOperation,
+  type CloseRepositoryBlocker,
   type PlanPublicCloseOptions,
   readRegistrySnapshot,
-  type PublicClosePreview,
+  type PublicClosePlan,
   type SpecFlowEngine,
 } from '@nevo/specflow-engine';
 import {
   CloseErrorSchema,
   CloseOccupancySchema,
   CloseOperationParamsSchema,
-  ClosePreviewQuerySchema,
+  CloseWorktreePreviewQuerySchema,
+  CloseSpecificationPreviewQuerySchema,
   ClosePreviewSchema,
   CloseResultSchema,
   CloseSpecParamsSchema,
@@ -38,6 +41,7 @@ import {
   CloseWorkspaceResultSchema,
   ProjectGitCapabilities,
   SpecCapabilities,
+  type RepositoryBlocker,
 } from '@nevo/specflow-contracts/specs';
 import {
   AuthenticationRequiredErrorResponseSchema,
@@ -109,16 +113,24 @@ async function authorizedPlan(
   specId: string,
   operationId: string,
   integrateToTargetBranch?: boolean,
+  finishAfterExternalMerge?: boolean,
   options: PlanPublicCloseOptions = {},
-): Promise<PublicClosePreview> {
+): Promise<PublicClosePlan> {
   // Spec-scoped authentication precedes every operation-id/immutable-journal read.
   // Integration authority follows the Engine's immutable retry plan, not a
   // caller-supplied selector that could turn off whole-branch checks.
   const plan = await planPublicCloseOperation(
     engine,
     kind === 'worktree-close'
-      ? { kind, operationId, specId }
-      : {
+      ? {
+          kind,
+          operationId,
+          specId,
+          ...(finishAfterExternalMerge === undefined ? {} : { finishAfterExternalMerge }),
+        }
+      : // Specification Close never accepts finishAfterExternalMerge (owner decision 2026-11-20);
+        // the schema already rejects a body that sends it, so it is never forwarded here.
+        {
           kind,
           operationId,
           specId,
@@ -184,6 +196,35 @@ function blockersOf(error: unknown): { blockers?: ExitBlocker[] } {
     : {};
 }
 
+/** A mutable contract copy of one Engine repository blocker. */
+function repositoryBlocker(blocker: CloseRepositoryBlocker): RepositoryBlocker {
+  switch (blocker.kind) {
+    case 'uncommitted-changes':
+      return { ...blocker, paths: blocker.paths.map((entry) => ({ ...entry })) };
+    case 'integration-target-missing':
+      return {
+        kind: blocker.kind,
+        sourceCheckout: blocker.sourceCheckout,
+        candidates: blocker.candidates.map((candidate) =>
+          candidate.remote !== undefined
+            ? { branch: candidate.branch, facts: [...candidate.facts], remote: candidate.remote }
+            : { branch: candidate.branch, facts: [...candidate.facts] },
+        ),
+        otherBranches: [...blocker.otherBranches],
+        otherBranchCount: blocker.otherBranchCount,
+      };
+    default:
+      return { ...blocker };
+  }
+}
+
+/** `CLOSE_PREFLIGHT`: the repository preconditions the owner fixes before the Close can start. */
+function repositoryOf(error: unknown): { repository?: RepositoryBlocker[] } {
+  return error instanceof CloseOperationError && error.repository.length > 0
+    ? { repository: error.repository.map(repositoryBlocker) }
+    : {};
+}
+
 const SHARED_WORKTREE_REMEDY =
   'Archive just this Specification with integrateToTargetBranch=false, or use an explicit workspace-level Close.';
 const LOCAL_CONFIG_REMEDY =
@@ -193,6 +234,7 @@ const LOCAL_CONFIG_REMEDY =
 function closeRefusalDetails(error: unknown): {
   remedy?: string;
   localConfig?: CloseOperationError['localConfig'];
+  paths?: string[];
 } {
   if (!(error instanceof CloseOperationError)) {
     return {};
@@ -209,6 +251,10 @@ function closeRefusalDetails(error: unknown): {
     };
   }
 
+  if (error.code === 'CLOSE_EXTERNAL_MERGE_MISMATCH' && error.paths.length > 0) {
+    return { paths: [...error.paths] };
+  }
+
   return {};
 }
 
@@ -216,11 +262,14 @@ function statusForCloseError(code: SafeCode): 400 | 404 | 409 | 422 | 503 {
   switch (code) {
     case 'CLOSE_INVALID':
       return 400;
+    case 'CLOSE_EXTERNAL_MERGE_UNSUPPORTED':
+      return 400;
     case 'SPEC_VALIDATION_ERROR':
       return 400;
     case 'CLOSE_CONFLICT':
     case 'CLOSE_BLOCKED':
     case 'CLOSE_SHARED_WORKTREE':
+    case 'CLOSE_EXTERNAL_MERGE_MISMATCH':
     case 'CLOSE_LOCAL_CONFIG_MODIFIED':
     case 'REGISTRY_CONFLICT':
     case 'SPEC_CONFLICT':
@@ -336,7 +385,11 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
 
         try {
           const { specId } = request.params;
-          const body = request.body as { operationId: string; integrateToTargetBranch?: boolean };
+          const body = request.body as {
+            operationId: string;
+            integrateToTargetBranch?: boolean;
+            finishAfterExternalMerge?: boolean;
+          };
           const plan = await authorizedPlan(
             request,
             engine,
@@ -344,13 +397,22 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
             specId,
             body.operationId,
             body.integrateToTargetBranch,
+            body.finishAfterExternalMerge,
             // The admission commits the queued document changes first; the authorization plan must too.
             { flushDocumentCommits: true },
           );
           const result = await whileReleased(options.releaseWorkspace, plan.sourceWorkspace, () =>
             kind === 'worktree-close'
-              ? closeWorktreeOperation(engine, { specId, operationId: body.operationId })
-              : closeSpecificationOperation(engine, {
+              ? closeWorktreeOperation(engine, {
+                  specId,
+                  operationId: body.operationId,
+                  ...(body.finishAfterExternalMerge === undefined
+                    ? {}
+                    : { finishAfterExternalMerge: body.finishAfterExternalMerge }),
+                })
+              : // Specification Close never accepts finishAfterExternalMerge (owner decision
+                // 2026-11-20); the schema already rejects a body that sends it.
+                closeSpecificationOperation(engine, {
                   specId,
                   operationId: body.operationId,
                   ...(body.integrateToTargetBranch === undefined
@@ -380,6 +442,7 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
             code,
             error: code,
             ...blockersOf(error),
+            ...repositoryOf(error),
             ...closeRefusalDetails(error),
           });
         }
@@ -396,7 +459,9 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
             ? 'Preview closing the linked worktree of a Specification'
             : 'Preview closing a Specification',
           params: CloseSpecParamsSchema,
-          querystring: ClosePreviewQuerySchema,
+          querystring: worktree
+            ? CloseWorktreePreviewQuerySchema
+            : CloseSpecificationPreviewQuerySchema,
           response: { 200: contractRef(ClosePreviewSchema), ...errors },
         },
       },
@@ -409,22 +474,52 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
         try {
           const engine = options.engine;
           const { specId } = request.params;
-          const operationId = randomUUID();
-          const plan = await authorizedPlan(
-            request,
+          // The schema is chosen per `kind` above, so its static type cannot be inferred here.
+          const query = request.query as {
+            integrateToTargetBranch?: boolean;
+            finishAfterExternalMerge?: 'true';
+          };
+          const integrateToTargetBranch = query.integrateToTargetBranch;
+          const finishAfterExternalMerge = query.finishAfterExternalMerge === 'true';
+          // A fresh operation id: the read-only preview with its merge facts, never a journal.
+          // finishAfterExternalMerge changes the previewed merge shape (no merge at all, instead of
+          // an ordinary integration), so it is forwarded for Worktree Close. The Specification Close
+          // preview query schema has no such field at all (owner decision 2026-11-20, same as its
+          // request body): a preview request that sends it is rejected 400 at the schema boundary,
+          // never silently ignored.
+          const preview = await previewPublicCloseOperation(
             engine,
-            kind,
-            specId,
-            operationId,
-            request.query.integrateToTargetBranch,
+            kind === 'worktree-close'
+              ? {
+                  kind,
+                  operationId: randomUUID(),
+                  specId,
+                  ...(finishAfterExternalMerge ? { finishAfterExternalMerge } : {}),
+                }
+              : {
+                  kind,
+                  operationId: randomUUID(),
+                  specId,
+                  ...(integrateToTargetBranch === undefined ? {} : { integrateToTargetBranch }),
+                },
           );
-          await assertNoRunningTurns(options.runningSessions, plan.sourceWorkspace);
+          if (preview.integrationRequired) {
+            projectIntegrationAllowed(request, engine);
+          }
 
-          return reply.code(200).send(plan);
+          await assertNoRunningTurns(options.runningSessions, preview.sourceWorkspace);
+
+          return reply.code(200).send(preview);
         } catch (error) {
           const busy = busyRefusal(error);
           if (busy) {
             return reply.code(409).send(busy);
+          }
+
+          // Documents the Close would commit first, or wait for: answered as the Close would.
+          const refusal = documentRefusal(error);
+          if (refusal) {
+            return reply.code(refusal.status).send(refusal.body);
           }
 
           const code = safeCode(error);
@@ -436,6 +531,7 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
             code,
             error: code,
             ...blockersOf(error),
+            ...repositoryOf(error),
             ...closeRefusalDetails(error),
           });
         }
@@ -518,6 +614,12 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
         const busy = busyRefusal(error);
         if (busy) {
           return reply.code(409).send(busy);
+        }
+
+        // Documents the Close would commit first, or wait for: answered as the Close would.
+        const refusal = documentRefusal(error);
+        if (refusal) {
+          return reply.code(refusal.status).send(refusal.body);
         }
 
         const code = safeCode(error);

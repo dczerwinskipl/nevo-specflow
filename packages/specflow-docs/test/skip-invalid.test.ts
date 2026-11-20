@@ -62,7 +62,7 @@ describe('reads skip invalid documents', () => {
     expect(getDocuments(corpus, ['dangling']).documents[0]!.id).toBe('dangling');
     expect(() => getDocuments(corpus, ['twin', 'nope'])).toThrow(DocsUsageError);
     expect(() => getDocuments(corpus, ['twin', 'nope'])).toThrow(
-      /skipped document id\(s\): 'twin' skipped in docs\/twin-a\.md: .*; unknown document id\(s\): nope/,
+      /skipped document id 'twin' in docs\/twin-a\.md: .*\nskipped document id 'twin' in docs\/twin-b\.md: .*\nunknown document id\(s\): nope/,
     );
   });
 

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, within } from 'storybook/test';
 import { WorkflowExecutionFixture } from './ProjectWorkflowExecution.stories-support';
 
 const meta = {
@@ -12,6 +13,9 @@ const meta = {
       control: 'select',
       options: [
         'first-start',
+        'on-hold',
+        'implement-gate',
+        'review-agent',
         'start-drift',
         'review',
         'rework',
@@ -28,8 +32,42 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Rework after a review asked for changes: the hand-off, Finish step and Return. */
+/**
+ * Implement with its one exit gate unmet: Goal, "Done when" (the gate, then Review), and opening
+ * task.md as the main action with Finish step beside it. Return and the step id are in ⋯.
+ */
+export const TaskImplementGate: Story = {
+  tags: ['capture'],
+  args: { scenario: 'implement-gate' },
+};
+/**
+ * Review run by an agent: no Finish step for the viewer, yet "Done when" lists the gate that only
+ * Approved needs (with its missing section) and no next step, since the results part ways.
+ * Starting Review again is in ⋯ as "Restart Review".
+ */
+export const TaskReviewByAgent: Story = {
+  tags: ['capture'],
+  args: { scenario: 'review-agent' },
+};
+/** Not started and on hold with a reason: neutral status, the first step's Goal and Resume. */
+export const TaskOnHold: Story = { tags: ['capture'], args: { scenario: 'on-hold' } };
+/** Rework after a review asked for changes: the hand-off, Finish step, and Return in ⋯. */
 export const TaskRework: Story = { tags: ['capture'] };
+/**
+ * A step without document gates (the shipped workflows): no "Done when" at all, only where the work
+ * goes; no document carries a relation ("needed to …").
+ */
+export const TaskWithoutGates: Story = {
+  args: { scenario: 'rework' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const now = await canvas.findByRole('region', { name: 'Now' }, { timeout: 10000 });
+    await expect(await within(now).findByText('Then: Review')).toBeVisible();
+    await expect(now.querySelector('[data-now-done-when]')).toBeNull();
+    await expect(within(now).queryByText(/Done (with .+ )?when/)).toBeNull();
+    await expect(canvas.queryByText(/needed to (finish|start)/i)).toBeNull();
+  },
+};
 export const TaskFirstStart: Story = { tags: ['capture'], args: { scenario: 'first-start' } };
 /** The workflow changes while the first-start dialog is open (confirm to see the refusal). */
 export const TaskStartDrift: Story = { args: { scenario: 'start-drift' } };

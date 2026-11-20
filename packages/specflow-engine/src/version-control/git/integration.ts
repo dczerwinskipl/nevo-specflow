@@ -240,6 +240,51 @@ export async function verifyPublishedGitCheckout(input: {
   }
 }
 
+/** The object id Git has for `path` at `commit`, or `undefined` when the path does not exist there. */
+async function gitPathObjectOrAbsent(
+  root: string,
+  commit: string,
+  path: string,
+): Promise<string | undefined> {
+  const result = await executeGit(root, ['rev-parse', '--verify', commit + ':' + path]);
+  if (result.exitCode !== 0) {
+    return undefined;
+  }
+
+  const value = result.stdout.trim();
+
+  return OBJECT_ID.test(value) ? value : undefined;
+}
+
+/**
+ * Content equivalence of one arbitrary path between two commits, regardless of what the path names
+ * (a Specification's canonical subtree, or an ordinary application-code path from a whole-branch
+ * diff) — the unrestricted-path sibling {@link verifyGitTreePathEquivalent} needs for #157's
+ * finish-after-external-merge content proof, which has no ancestry to lean on and so must prove by
+ * content that the destination already has every path the source branch changed, not just the
+ * Specification's own folder. A path absent at BOTH commits (deleted on the source branch, and the
+ * destination mirrors the same deletion) is equivalent, not a mismatch; present at only one, or
+ * present at both with different content, is.
+ */
+export async function verifyGitPathContentEquivalent(
+  root: string,
+  sourceCommit: string,
+  destinationCommit: string,
+  path: string,
+): Promise<void> {
+  if (!OBJECT_ID.test(sourceCommit) || !OBJECT_ID.test(destinationCommit)) {
+    throw conflict('Invalid source or destination commit identity.');
+  }
+
+  const [source, destination] = await Promise.all([
+    gitPathObjectOrAbsent(root, sourceCommit, path),
+    gitPathObjectOrAbsent(root, destinationCommit, path),
+  ]);
+  if (source !== destination) {
+    throw conflict('Path differs between source and destination: ' + path);
+  }
+}
+
 /**
  * A later target commit may be a descendant of source while rewriting this
  * Specification. Exact tree-path proof prevents accepting stale/changed

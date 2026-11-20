@@ -2,9 +2,9 @@
 export const sessionNameMaxLength = 256;
 
 /**
- * How the new Session gets its name. `agent` is the default: the agent names it from the first
- * message. `custom` keeps the typed `value` even while the user switches back to `agent`, so
- * switching is never destructive; only the active mode's value is used.
+ * How the new Session gets its name. `agent`: the agent names it from the first message. `custom`:
+ * the Session is created with the typed `value`. The start form has one optional name field, so
+ * the mode follows what is typed (`sessionNameFrom`): a blank field lets the agent name it.
  */
 export interface SessionNameChoice {
   mode: 'agent' | 'custom';
@@ -13,12 +13,12 @@ export interface SessionNameChoice {
 
 export const initialSessionName: SessionNameChoice = { mode: 'agent', value: '' };
 
+/** The choice the optional name field stands for: its own name once anything is typed. */
+export function sessionNameFrom(value: string): SessionNameChoice {
+  return { mode: value.trim() ? 'custom' : 'agent', value };
+}
+
 /** The name the Session is created with: undefined means "the agent names it". */
 export function chosenSessionName(choice: SessionNameChoice): string | undefined {
   return choice.mode === 'custom' ? choice.value.trim() || undefined : undefined;
-}
-
-/** A chosen custom name must not be blank (the agent default is one click away instead). */
-export function sessionNameMissing(choice: SessionNameChoice): boolean {
-  return choice.mode === 'custom' && !choice.value.trim();
 }

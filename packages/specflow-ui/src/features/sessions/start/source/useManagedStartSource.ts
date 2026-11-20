@@ -1,4 +1,4 @@
-import { createElement, useCallback, useMemo, useReducer } from 'react';
+import { createElement, useCallback, useMemo, useReducer, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   CreateSession,
@@ -124,16 +124,30 @@ export function useManagedStartSource(
   // `retained` keeps its pending request outside React: a send settling re-reads it.
   const [, reread] = useReducer((count: number) => count + 1, 0);
   // Read for this Specification: whoever may start a Session in it may choose its agent.
+  // "Check again" asks the Runtime to discover every provider again; other reads use its cache.
+  const recheckNext = useRef(false);
   const providers = useQuery({
     queryKey: ['managed-session-providers', owner, { specId }],
-    queryFn: ({ signal }) => api.providers({ specId }, signal),
+    queryFn: ({ signal }) => {
+      const recheck = recheckNext.current;
+      recheckNext.current = false;
+
+      return api.providers({ specId, ...(recheck ? { recheck: 'true' as const } : {}) }, signal);
+    },
   });
   const items = providers.data?.items;
   const catalogue = useMemo(
     () => (items ? startCatalogueFromProviders(items) : undefined),
     [items],
   );
-  const refresh = useCallback(() => void providers.refetch(), [providers]);
+  // Only a read the user asked for ("Check again") is shown as running; a background refetch is not.
+  const [rechecks, setRechecks] = useState(0);
+  const { refetch } = providers;
+  const refresh = useCallback(() => {
+    recheckNext.current = true;
+    setRechecks((count) => count + 1);
+    void refetch().finally(() => setRechecks((count) => count - 1));
+  }, [refetch]);
   const discard = useCallback(() => {
     retained.discard();
     reread();
@@ -185,6 +199,7 @@ export function useManagedStartSource(
           catalogue,
           configurationUnavailable: providers.isError,
           refresh,
+          refreshing: rechecks > 0,
         }
       : providers.isPending
         ? { status: 'loading' }

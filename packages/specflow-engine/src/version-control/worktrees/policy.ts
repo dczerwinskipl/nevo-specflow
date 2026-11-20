@@ -40,6 +40,7 @@ export interface EffectiveAutoCommit {
 
 /** Project Home is the only authority for operational Git policy. */
 export interface GitWorktreePolicy {
+  /** `git.enabled`; `false` also when the project configuration has no `git:` block at all. */
   readonly enabled: boolean;
   readonly branchPattern: string;
   readonly baseRef: string;
@@ -401,6 +402,31 @@ export function expandBranchPattern(
     .replaceAll('{slug}', slug)
     .replaceAll('{shortId}', shortId)
     .replaceAll('{key}', key);
+}
+
+const PLACEHOLDER_SOURCES: Readonly<Record<string, string>> = {
+  slug: '[a-z0-9][a-z0-9-]*',
+  shortId: '[a-fA-F0-9]{8}',
+  key: '[a-z][a-z0-9]*-[1-9][0-9]*',
+};
+
+/**
+ * True when `branch` is a name the (valid) branch pattern can expand to: each placeholder stands for
+ * the tokens {@link resolveWorktreeBranch} accepts, everything else is literal.
+ */
+export function matchesWorktreeBranchPattern(pattern: string, branch: string): boolean {
+  const source = pattern
+    .split(/(\{(?:slug|shortId|key)\})/u)
+    .map((part) => {
+      const placeholder = /^\{(slug|shortId|key)\}$/u.exec(part)?.[1];
+
+      return placeholder
+        ? PLACEHOLDER_SOURCES[placeholder]
+        : part.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+    })
+    .join('');
+
+  return new RegExp('^' + source + '$', 'u').test(branch);
 }
 
 export function resolveWorktreeBranch(

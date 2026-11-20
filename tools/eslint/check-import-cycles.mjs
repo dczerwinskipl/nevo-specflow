@@ -2,11 +2,8 @@
 //
 // Builds the module graph of `packages/specflow-engine/src` (relative imports, type imports
 // included, test files excluded), finds the strongly connected components and fails when a cycle
-// touches a gated slice: `specs/document-rules`, `specs/documents`, `specs/archetypes`, `specs/definitions`, `specs/durable`, `specs/uncommitted`, `specs/manual-commit`, `specs/model.ts`,
-// `specs/scaffold.ts`, `specs/create` or `version-control/commits`. A cycle that touches none of them (the lifecycle one that predates the gate) is
-// reported as informational only. One known `specs/create` cycle is accepted by its exact member
-// list; it must not grow, and any new cycle through a gated slice fails. The subfolders of `workflow/`
-// are gated at folder level too: they must form an acyclic graph (see the end of this file).
+// touches a path listed in GATED. Other file-level cycles are reported as informational.
+// The subfolders of `workflow/` must also form an acyclic graph (see the end of this file).
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -247,14 +244,10 @@ const GATED = [
   'specs/uncommitted/',
   'specs/manual-commit/',
   'specs/create/',
+  'specs/lifecycle/',
   'specs/model.ts',
   'specs/scaffold.ts',
   'version-control/commits/',
-];
-
-/** Cycles that exist today and touch a gated slice; the exact member list, relative to `src`. */
-const ACCEPTED = [
-  ['specs/create/index.ts', 'specs/create/inspect/inspection.ts', 'specs/operations/projection.ts'],
 ];
 
 function sourceFiles(directory) {
@@ -390,16 +383,11 @@ for (const file of files) {
 for (const component of components) {
   const members = component.map(relative).sort();
   const gated = members.some((member) => GATED.some((prefix) => member.startsWith(prefix)));
-  const accepted = ACCEPTED.some(
-    (known) => known.length === members.length && known.every((member, i) => member === members[i]),
-  );
-  if (gated && !accepted) {
+  if (gated) {
     failed = true;
     console.error('Import cycle through a gated Specification slice:\n  ' + members.join('\n  '));
   } else {
-    console.log(
-      (accepted ? 'Accepted' : 'Ungated') + ' import cycle (' + members.length + ' modules).',
-    );
+    console.log('Ungated import cycle (' + members.length + ' modules).');
   }
 }
 
@@ -464,4 +452,4 @@ if (failed) {
   process.exit(1);
 }
 
-console.log('Engine import cycles: none new in ' + GATED.join(', ') + '.');
+console.log('Engine import cycles: none in ' + GATED.join(', ') + '.');

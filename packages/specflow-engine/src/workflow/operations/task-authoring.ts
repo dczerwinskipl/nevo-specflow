@@ -6,7 +6,7 @@ import type { ExecutionSnapshot } from '../state/store';
 import { taskDecisionRefusal } from '../tasks/tasks';
 import type { LoadedTask, WorkflowDependencies } from './loaded-execution';
 import { dependencyRule, dependencyView } from './task-dependencies';
-import { effectiveContextOf, isAwaited, unresolvedContext } from './task-policy';
+import { defaultContextOf, effectiveContextOf, isAwaited, unresolvedContext } from './task-policy';
 
 /**
  * The authoring part of the action projection: what the owner may do to a Task as a resource
@@ -103,6 +103,11 @@ export interface TaskAuthoringFacts {
     /** No explicit list: the default context; an edit writes these entries out. */
     readonly isDefault: boolean;
     readonly entries: readonly TaskContextEntryState[];
+    /**
+     * The default context as the Engine would read it now: `entries` while `isDefault`, else the
+     * list `context: null` returns to (read-only; a client never derives it).
+     */
+    readonly defaultEntries: readonly TaskContextEntry[];
   };
   /** The other Tasks in list order; empty when the dependencies cannot change (started). */
   readonly dependencyCandidates: readonly DependencyCandidate[];
@@ -241,6 +246,9 @@ async function contextStates(
 
   return {
     isDefault: effective.isDefault,
+    defaultEntries: effective.isDefault
+      ? effective.entries
+      : await defaultContextOf(dependencies, specId, task),
     entries: effective.entries.map((entry, index): TaskContextEntryState => {
       const issue = issues.get(index);
       if (!issue) {

@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Button } from '@nevo/ui';
-import { useRuntimeMode } from '../../../app/useRuntimeMode';
 import type { SpecificationWorkspaceData } from '../../specs/read-model';
 import { NewTaskDialog } from '../authoring/NewTaskDialog';
-import { useSpecificationActions } from '../authoring/useTaskAuthoring';
-import { tasksStepLine } from '../overview/tasksStepLine';
+import { useSpecificationActions } from '../read-model';
+import { emptyTasks } from '../overview/tasksStepLine';
 import { TasksPage } from './TasksPage';
 import { useTaskListState } from './useTaskListState';
 
@@ -17,13 +16,13 @@ export interface TasksScreenProps {
   readonly group?: string;
   readonly fullTaskHref: (taskId: string) => string;
   readonly onOpenTask: (taskId: string) => void;
-  readonly onClearBlocking: () => void;
+  readonly onClearFilter: () => void;
 }
 
 /**
  * The Tasks page of a Specification with its data and New task: the Specification projection
- * decides whether a Task may be created (`specification.createTask`) and with which types (project
- * Runtime, current Specification).
+ * decides whether a Task may be created (`specification.createTask`) and with which types (a
+ * current Specification).
  */
 export function TasksScreen({
   specId,
@@ -33,19 +32,19 @@ export function TasksScreen({
   group,
   fullTaskHref,
   onOpenTask,
-  onClearBlocking,
+  onClearFilter,
 }: TasksScreenProps) {
   const { t } = useTranslation();
-  const project = useRuntimeMode() === 'project';
+  // One filter at a time (the route keeps them apart): blocking, else a group.
   const state = useTaskListState(
     specId,
-    blocking,
-    project ? { kind: 'project' } : { kind: 'workspace', data },
+    blocking ? { blocking: 'specification' } : group ? { group } : {},
   );
-  const actions = useSpecificationActions(specId, project && collection === 'current');
+  const actions = useSpecificationActions(specId, collection === 'current');
   const [open, setOpen] = useState(false);
   const specification = actions.data?.specification;
-  const emptyLine = tasksStepLine(t, actions.data?.outline);
+  // The same empty line as the Overview's Tasks.
+  const empty = emptyTasks(t, actions.data);
 
   return (
     <>
@@ -55,8 +54,9 @@ export function TasksScreen({
         {...(group ? { group } : {})}
         fullTaskHref={fullTaskHref}
         onOpenTask={onOpenTask}
-        onClearBlocking={onClearBlocking}
-        {...(emptyLine ? { emptyLine } : {})}
+        onClearFilter={onClearFilter}
+        specificationTitle={data.title}
+        empty={empty}
         {...(specification?.createTask.kind === 'allowed'
           ? { onNewTask: () => setOpen(true) }
           : {})}

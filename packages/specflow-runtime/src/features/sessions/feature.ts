@@ -46,6 +46,8 @@ export function createSessionsFeature(
     workspaceOccupancy?: {
       beginTurn(workspaceId: string, sessionId: string): { end(): void } | undefined;
     };
+    /** Write Turns are refused while this answers true (the headless pairing gate of Auth). */
+    writeTurnsPaused?: () => boolean;
   } = {},
 ): RuntimeFeature & { readonly runtime: SessionsRuntime } {
   let registered: SessionCoordinator | undefined;
@@ -172,6 +174,7 @@ export function createSessionsFeature(
               ? createSpecificationWorkspaceResolver(options.engine)
               : undefined,
             options.workspaceOccupancy,
+            options.writeTurnsPaused,
           )
         : undefined;
       if (coordinator) {

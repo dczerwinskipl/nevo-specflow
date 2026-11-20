@@ -22,12 +22,22 @@ import type { RuntimeAuthorizationConfig } from './authorization/configuration/m
 import { createRuntimeAuthorization } from './authorization/create-authorization';
 import { registerAuthorizationRequestContext } from './authorization/request-context';
 import type { SpecFlowRoleId } from './authorization/roles';
+import { devicePairingEndpoint } from './device-pairing/endpoint';
+import type { DevicePairing } from './device-pairing/pairing';
+import { deviceCookieNames, deviceCookieOptions } from './owner-credential/cookie';
+import { registerOwnerCredentialGuard } from './owner-credential/guard';
 
 export interface AuthFeatureDependencies {
   readonly store?: AuthenticationStore;
   readonly oidcClients?: Readonly<Record<string, OidcClient>>;
   readonly passwordAccountThrottle?: PasswordAccountThrottle;
   readonly inMemoryStorePolicy?: AuthenticationStorePolicyOverrides;
+  /**
+   * Device pairing of trusted local mode (D21): the Runtime start opens it over the local state;
+   * the composition root otherwise gives an empty in-memory one, so owner routes are refused until
+   * a device is paired.
+   */
+  readonly devicePairing?: DevicePairing;
 }
 
 export interface CreateAuthFeatureOptions {
@@ -38,6 +48,12 @@ export interface CreateAuthFeatureOptions {
   readonly publicOrigin?: string;
   readonly serverPort: number;
   readonly secureCookies: boolean;
+  /**
+   * Whether owner routes need an owner credential (D21): `enforced` in project mode (the session
+   * under required authentication, a paired device in trusted local mode), `not-required` for the
+   * demo Runtime, which has no agent execution.
+   */
+  readonly ownerCredential: 'enforced' | 'not-required';
   readonly dependencies?: AuthFeatureDependencies;
 }
 
@@ -74,6 +90,33 @@ export function createAuthFeature(options: CreateAuthFeatureOptions): AuthFeatur
         store,
         cookieNames,
       });
+
+      const deviceCookies = deviceCookieNames(options.serverPort);
+      const pairing =
+        options.ownerCredential === 'enforced' && options.authentication.mode === 'none'
+          ? dependencies?.devicePairing
+          : undefined;
+      if (
+        options.ownerCredential === 'enforced' &&
+        options.authentication.mode === 'none' &&
+        !pairing
+      ) {
+        throw new Error('Trusted local mode needs device pairing for its owner routes.');
+      }
+
+      if (options.ownerCredential === 'enforced') {
+        registerOwnerCredentialGuard(app, (cookies) => {
+          if (pairing) {
+            return pairing.deviceOf(cookies[deviceCookies.device])
+              ? 'present'
+              : 'owner-credential-required';
+          }
+
+          return store.getSession(cookies[cookieNames.session])
+            ? 'present'
+            : 'authentication-required';
+        });
+      }
 
       app.register(sessionEndpoint, {
         authentication: options.authentication,
@@ -113,6 +156,19 @@ export function createAuthFeature(options: CreateAuthFeatureOptions): AuthFeatur
           cookieOptions,
         });
       }
+
+      app.register(devicePairingEndpoint, {
+        credential:
+          options.ownerCredential === 'not-required'
+            ? 'not-required'
+            : pairing
+              ? 'device'
+              : 'session',
+        ...(pairing ? { pairing } : {}),
+        hasSession: (request) => store.getSession(request.cookies[cookieNames.session]) !== null,
+        cookieNames: deviceCookies,
+        cookieOptions: deviceCookieOptions(options.secureCookies),
+      });
     },
   };
 }

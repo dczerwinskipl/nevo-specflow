@@ -96,7 +96,7 @@ It works with the Fastify shared-schema mechanism, without a second copy of any 
 
 Current shared contracts: `AuthSessionResponse`, `AuthenticationRequiredErrorResponse`,
 `AuthorizationForbiddenErrorResponse`, `CloseError`, `ClosePreview`, `CloseResult`,
-`CloseWorkspaceResult`, `CreateSpecError`, `DocumentError`, `DocumentOperationResult`,
+`CloseWorkspaceResult`, `CreateSpecError`, `DevicePairingErrorResponse`, `DocumentError`, `DocumentOperationResult`,
 `DocumentOperationStatus`, `OperationListResponse`, `RateLimitedErrorResponse`,
 `RequestErrorResponse`, `SessionCommandResult`, `SessionError`, `SpecificationReadError`,
 `TaskChangeResult` (Task create and edit), `TaskReadError`, `TaskSnapshotExpired`,

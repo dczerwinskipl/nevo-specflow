@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SessionSnapshot } from '@nevo/specflow-contracts/sessions';
-import { createRuntimeApp } from '../../src/server/app';
+import { createOwnerRuntimeApp } from '../support/owner-credential';
 import { openSessionStore } from '../../src/features/sessions/persistence/store';
 import type { AssociationWrite } from '../../src/features/sessions/persistence/protocol';
 import { sessionScope } from '../../src/features/sessions/scope';
@@ -81,7 +81,7 @@ function grantScope(grant: Grant, seeded: Seeded): Record<string, string> | unde
 async function open(role: Role, grant: Grant, seeded: Seeded) {
   const config = passwordConfig();
   const scope = grantScope(grant, seeded);
-  app = await createRuntimeApp(
+  app = await createOwnerRuntimeApp(
     {
       ...config,
       authentication: { ...config.authentication, mode: 'none', localUserId: 'demo-user' },

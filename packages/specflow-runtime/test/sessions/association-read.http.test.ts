@@ -10,7 +10,7 @@ import {
   type CreateContextSessionResult,
   type SessionAssociationRead,
 } from '@nevo/specflow-contracts/sessions';
-import { createRuntimeApp } from '../../src/server/app';
+import { createOwnerRuntimeApp } from '../support/owner-credential';
 import { passwordConfig } from '../auth/support/config';
 import { associationTargets } from '../support/association-targets';
 
@@ -37,7 +37,7 @@ async function open(
   await app?.close();
   directory ||= await mkdtemp(join(tmpdir(), 'nevo-association-read-'));
   const config = passwordConfig();
-  app = await createRuntimeApp(
+  app = await createOwnerRuntimeApp(
     {
       ...config,
       authentication: { ...config.authentication, mode: 'none', localUserId: 'demo-user' },

@@ -13,7 +13,7 @@ import { CreateOptionsSchema } from '@nevo/specflow-contracts/specs';
 import { Value } from 'typebox/value';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { createRuntimeApp } from '../../src/server/app';
+import { createOwnerRuntimeApp } from '../support/owner-credential';
 import { noAuthConfig, passwordConfig } from '../auth/support/config';
 import { ARCHETYPE_REQUEST } from '../support/archetype';
 
@@ -62,7 +62,7 @@ describe('an invalid Git policy section degrades reads and keeps mutations fail-
     );
 
     const config = passwordConfig();
-    const app = await createRuntimeApp(
+    const app = await createOwnerRuntimeApp(
       { ...config, authentication: { ...config.authentication, mode: 'none' as const } },
       { specs: { engine } },
     );
@@ -121,7 +121,7 @@ describe('an invalid Git policy section degrades reads and keeps mutations fail-
   }, 240000);
 
   it('mirrors it in the demo Runtime: options without Git and a closed Create', async () => {
-    const app = await createRuntimeApp(
+    const app = await createOwnerRuntimeApp(
       {
         ...noAuthConfig(),
         authentication: { ...noAuthConfig().authentication, localUserId: undefined },

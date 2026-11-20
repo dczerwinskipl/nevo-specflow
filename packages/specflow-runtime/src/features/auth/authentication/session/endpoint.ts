@@ -52,6 +52,7 @@ export const sessionEndpoint: FastifyPluginCallback<SessionEndpointOptions> = (
     {
       config: {
         openApiPublic: true,
+        ownerCredentialExempt: 'Logout ends only the session the request presents.',
         openApiResponses: {
           204: {
             description: 'Logged out. The session, if any, ends. No body.',

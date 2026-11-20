@@ -47,6 +47,7 @@ export class SessionError extends Error {
         'SESSION_CURSOR_EXPIRED',
         'CONTENT_REVISION_UNAVAILABLE',
         'SESSION_RECOVERY_REQUIRED',
+        'SESSION_PAIRING_PENDING',
       ].includes(this.code)
     ) {
       return 409;

@@ -26,7 +26,7 @@ import { TaskListResponseSchema, type TaskListResponse } from '@nevo/specflow-co
 import { Value } from 'typebox/value';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { createRuntimeApp } from '../../src/server/app';
+import { createOwnerRuntimeApp } from '../support/owner-credential';
 import { noAuthConfig } from '../auth/support/config';
 
 const roots: string[] = [];
@@ -82,7 +82,7 @@ describe('the Overview Tasks section and the Tasks page against the real Engine'
         title: 'Overview',
         target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
       });
-      const app = await createRuntimeApp(
+      const app = await createOwnerRuntimeApp(
         {
           ...noAuthConfig(),
           authorization: { assignments: [{ userId: 'demo-user', role: 'developer', scope: {} }] },
@@ -234,7 +234,7 @@ describe('the Overview Tasks section and the Tasks page against the real Engine'
         });
       }
 
-      const app = await createRuntimeApp(
+      const app = await createOwnerRuntimeApp(
         {
           ...noAuthConfig(),
           authorization: { assignments: [{ userId: 'demo-user', role: 'developer', scope: {} }] },

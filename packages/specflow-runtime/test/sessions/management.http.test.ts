@@ -9,7 +9,7 @@ import {
   type SessionCommandResult,
   type SessionSnapshot,
 } from '@nevo/specflow-contracts/sessions';
-import { createRuntimeApp } from '../../src/server/app';
+import { createOwnerRuntimeApp } from '../support/owner-credential';
 import { openSessionStore } from '../../src/features/sessions/persistence/store';
 import type { StartAdmission } from '../../src/features/sessions/persistence/protocol';
 import { passwordConfig } from '../auth/support/config';
@@ -26,7 +26,7 @@ afterEach(async () => {
 async function open(role: 'developer' | 'viewer' = 'developer') {
   directory ||= await mkdtemp(join(tmpdir(), 'nevo-session-management-http-'));
   const config = passwordConfig();
-  app = await createRuntimeApp(
+  app = await createOwnerRuntimeApp(
     {
       ...config,
       authentication: { ...config.authentication, mode: 'none', localUserId: 'demo-user' },

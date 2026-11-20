@@ -20,7 +20,7 @@ import type { SpecificationWorkspaceResponse } from '@nevo/specflow-contracts/sp
 
 import { InMemoryAuthenticationStore } from '../../src/features/auth/authentication/store/in-memory-store';
 import { authCookieNames } from '../../src/features/auth/authentication/http/cookies';
-import { createRuntimeApp } from '../../src/server/app';
+import { createOwnerRuntimeApp } from '../support/owner-credential';
 import { passwordConfig } from '../auth/support/config';
 import { ARCHETYPE_REQUEST } from '../support/archetype';
 
@@ -77,7 +77,7 @@ async function fixture(gitEnabled = false) {
 
 describe('Engine-backed specification workspace read', () => {
   it('stays unavailable (not an invented workspace) when no Engine or repository was configured', async () => {
-    const app = await createRuntimeApp(trustedLocalConfig());
+    const app = await createOwnerRuntimeApp(trustedLocalConfig());
     try {
       const response = await app.inject(`/api/specs/${randomUUID()}/workspace`);
       expect(response.statusCode).toBe(503);
@@ -106,7 +106,7 @@ describe('Engine-backed specification workspace read', () => {
       const manifestCreated = /^created: ['"]?(\d{4}-\d{2}-\d{2})/mu.exec(
         await readFile(manifestPath, 'utf8'),
       )?.[1];
-      const app = await createRuntimeApp(trustedLocalConfig(), { specs: { engine } });
+      const app = await createOwnerRuntimeApp(trustedLocalConfig(), { specs: { engine } });
       try {
         const response = await app.inject(`/api/specs/${created.specId}/workspace`);
         expect(response.statusCode, response.body).toBe(200);
@@ -245,7 +245,7 @@ describe('Engine-backed specification workspace read', () => {
     'a specification created over HTTP in a new worktree can be inspected and opened (the Create to workspace path)',
     async () => {
       const { engine } = await fixture(true);
-      const app = await createRuntimeApp(trustedLocalConfig(), { specs: { engine } });
+      const app = await createOwnerRuntimeApp(trustedLocalConfig(), { specs: { engine } });
       try {
         const operationId = randomUUID();
         const options = await app.inject('/api/specs/create-options');
@@ -317,7 +317,7 @@ describe('Engine-backed specification workspace read', () => {
         userId: 'demo-user',
         authenticatedWith: { kind: 'password' },
       });
-      const app = await createRuntimeApp(
+      const app = await createOwnerRuntimeApp(
         {
           ...config,
           authorization: {
@@ -365,7 +365,7 @@ describe('Engine-backed specification workspace read', () => {
           registration.workspaceId,
         ),
       );
-      const app = await createRuntimeApp(trustedLocalConfig(), { specs: { engine } });
+      const app = await createOwnerRuntimeApp(trustedLocalConfig(), { specs: { engine } });
       try {
         const response = await app.inject(`/api/specs/${boundSpecId}/workspace`);
         expect(response.statusCode, response.body).toBe(503);

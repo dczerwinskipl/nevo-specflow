@@ -10,7 +10,7 @@ import {
   type TelemetryReading,
 } from '@nevo/specflow-contracts/sessions';
 import type { SessionDriver } from '../../src/features/sessions/providers/driver';
-import { createRuntimeApp } from '../../src/server/app';
+import { createOwnerRuntimeApp } from '../support/owner-credential';
 import { createMockDriver } from '../../src/features/sessions/providers/mock';
 import { passwordConfig } from '../auth/support/config';
 
@@ -92,7 +92,7 @@ async function setup(role?: 'developer' | 'admin' | 'viewer', existingDirectory?
     contextScope: () => 'controlled-account',
   };
   const config = passwordConfig();
-  app = await createRuntimeApp(
+  app = await createOwnerRuntimeApp(
     {
       ...config,
       authentication: {

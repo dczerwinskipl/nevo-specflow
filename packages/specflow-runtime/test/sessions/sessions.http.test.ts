@@ -6,7 +6,7 @@ import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { sessionValidators } from '@nevo/specflow-contracts/sessions';
 import type { SessionSnapshot, WorkPage } from '@nevo/specflow-contracts/sessions';
-import { createRuntimeApp } from '../../src/server/app';
+import { createOwnerRuntimeApp } from '../support/owner-credential';
 import { passwordConfig } from '../auth/support/config';
 
 let app: FastifyInstance | undefined,
@@ -21,7 +21,7 @@ afterEach(async () => {
 async function setup(scope?: Record<string, string>) {
   directory = await mkdtemp(join(tmpdir(), 'nevo-session-http-'));
   const config = passwordConfig();
-  app = await createRuntimeApp(
+  app = await createOwnerRuntimeApp(
     {
       ...config,
       authentication: {
@@ -123,7 +123,7 @@ describe('managed Session HTTP', () => {
   });
   it('registers a truthful disabled capability without opening storage', async () => {
     const config = passwordConfig();
-    app = await createRuntimeApp({
+    app = await createOwnerRuntimeApp({
       ...config,
       authentication: { ...config.authentication, mode: 'none' },
     });

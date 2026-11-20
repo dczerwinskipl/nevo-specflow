@@ -23,7 +23,7 @@ import {
   type SpecificationWorkspaceResponse,
 } from '@nevo/specflow-contracts/specs/workspace';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createRuntimeApp } from '../../src/server/app';
+import { createOwnerRuntimeApp } from '../support/owner-credential';
 import { passwordConfig } from '../auth/support/config';
 
 // Real Git and an Engine bootstrap: slow on Windows.
@@ -92,7 +92,7 @@ afterAll(async () => {
 async function as(role: Role, scope: Record<string, string>): Promise<FastifyInstance> {
   await app?.close();
   const config = passwordConfig();
-  app = await createRuntimeApp(
+  app = await createOwnerRuntimeApp(
     {
       ...config,
       authentication: { ...config.authentication, mode: 'none', localUserId: 'scenario-user' },

@@ -17,7 +17,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { InMemoryAuthenticationStore } from '../../src/features/auth/authentication/store/in-memory-store';
 import { authCookieNames } from '../../src/features/auth/authentication/http/cookies';
-import { createRuntimeApp } from '../../src/server/app';
+import { createOwnerRuntimeApp } from '../support/owner-credential';
 import { passwordConfig } from '../auth/support/config';
 import { ARCHETYPE_REQUEST } from '../support/archetype';
 
@@ -99,7 +99,7 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
     const { engine } = await fixture();
     const auth = authenticatedStore();
     const config = passwordConfig();
-    const app = await createRuntimeApp(
+    const app = await createOwnerRuntimeApp(
       {
         ...config,
         authorization: { assignments: [{ userId: 'demo-user', role: 'viewer', scope: {} }] },
@@ -132,7 +132,7 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
   it('does not accept a spec-scoped developer grant as project-level creation rights', async () => {
     const { engine } = await fixture();
     const auth = authenticatedStore();
-    const app = await createRuntimeApp(
+    const app = await createOwnerRuntimeApp(
       {
         ...passwordConfig(),
         authorization: {
@@ -165,7 +165,7 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
     async () => {
       const { root, engine } = await fixture();
       const auth = authenticatedStore();
-      const app = await createRuntimeApp(
+      const app = await createOwnerRuntimeApp(
         {
           ...passwordConfig(),
           authorization: { assignments: [{ userId: 'demo-user', role: 'developer', scope: {} }] },
@@ -236,7 +236,7 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
     });
     roots.push(dirname(feature.workspaceRoot));
     const auth = authenticatedStore();
-    const app = await createRuntimeApp(
+    const app = await createOwnerRuntimeApp(
       {
         ...passwordConfig(),
         authorization: { assignments: [{ userId: 'demo-user', role: 'developer', scope: {} }] },
@@ -283,7 +283,7 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
     'creates with an explicit slug, replays idempotently and answers 409 for a taken or changed slug',
     async () => {
       const { root, engine } = await fixture();
-      const app = await createRuntimeApp(
+      const app = await createOwnerRuntimeApp(
         {
           ...passwordConfig(),
           authentication: { ...passwordConfig().authentication, mode: 'none' },
@@ -346,7 +346,7 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
 
   it('rejects unexpected request keys and invalid title without persistence', async () => {
     const { engine } = await fixture();
-    const app = await createRuntimeApp(
+    const app = await createOwnerRuntimeApp(
       { ...passwordConfig(), authentication: { ...passwordConfig().authentication, mode: 'none' } },
       { specs: { engine } },
     );
@@ -367,7 +367,7 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
     'answers a path beyond the Windows bound as DOCUMENT_PATH_INVALID with details.cause path-too-long',
     async () => {
       const { engine } = await fixture();
-      const app = await createRuntimeApp(
+      const app = await createOwnerRuntimeApp(
         {
           ...passwordConfig(),
           authentication: { ...passwordConfig().authentication, mode: 'none' },
@@ -420,7 +420,7 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
           new ProjectControlLockError('CONTROL_LOCK_BUSY', 'Another writer owns the lock.'),
         ),
     };
-    const app = await createRuntimeApp(
+    const app = await createOwnerRuntimeApp(
       {
         ...passwordConfig(),
         authentication: { ...passwordConfig().authentication, mode: 'none' },
@@ -444,7 +444,7 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
   });
 
   it('keeps unconfigured/demo Runtime create unavailable instead of mutating the project', async () => {
-    const app = await createRuntimeApp({
+    const app = await createOwnerRuntimeApp({
       ...passwordConfig(),
       authentication: { ...passwordConfig().authentication, mode: 'none' },
     });
@@ -466,7 +466,7 @@ describe('E2.I01 — authorized read-only Create options', () => {
   it('denies anonymous, viewer and spec-scoped grants before enumerating refs', async () => {
     const { engine } = await fixture();
     const auth = authenticatedStore();
-    const app = await createRuntimeApp(
+    const app = await createOwnerRuntimeApp(
       {
         ...passwordConfig(),
         authorization: {
@@ -493,7 +493,7 @@ describe('E2.I01 — authorized read-only Create options', () => {
   it('refuses a spec-scoped developer grant without revealing create choices', async () => {
     const { root, engine } = await fixture();
     const auth = authenticatedStore();
-    const app = await createRuntimeApp(
+    const app = await createOwnerRuntimeApp(
       {
         ...passwordConfig(),
         authorization: {
@@ -525,7 +525,7 @@ describe('E2.I01 — authorized read-only Create options', () => {
     async () => {
       const { engine } = await fixture();
       const auth = authenticatedStore();
-      const app = await createRuntimeApp(
+      const app = await createOwnerRuntimeApp(
         {
           ...passwordConfig(),
           authorization: {
@@ -586,7 +586,7 @@ describe('E2.I01 — authorized read-only Create options', () => {
         assignments: [{ userId: 'demo-user', role: 'developer' as const, scope: {} }],
       };
       const off = await fixture();
-      const offApp = await createRuntimeApp(
+      const offApp = await createOwnerRuntimeApp(
         { ...passwordConfig(), authorization },
         { auth: { store: auth.store }, specs: { engine: off.engine } },
       );
@@ -607,7 +607,7 @@ describe('E2.I01 — authorized read-only Create options', () => {
         true,
         '  commits:\n    protectedBranches: [develop]\n',
       );
-      const app = await createRuntimeApp(
+      const app = await createOwnerRuntimeApp(
         { ...passwordConfig(), authorization },
         { auth: { store: auth.store }, specs: { engine } },
       );
@@ -657,7 +657,7 @@ describe('E2.I01 — authorized read-only Create options', () => {
   );
 
   it('returns typed 503 when the Engine is not composed', async () => {
-    const app = await createRuntimeApp({
+    const app = await createOwnerRuntimeApp({
       ...passwordConfig(),
       authentication: { ...passwordConfig().authentication, mode: 'none' },
     });
@@ -677,7 +677,7 @@ describe('E2.I04 — authorized read-only Create operation inspection', () => {
     const auth = authenticatedStore();
     const operationId = randomUUID();
     const config = passwordConfig();
-    const app = await createRuntimeApp(
+    const app = await createOwnerRuntimeApp(
       {
         ...config,
         authorization: { assignments: [{ userId: 'demo-user', role: 'viewer', scope: {} }] },
@@ -695,7 +695,7 @@ describe('E2.I04 — authorized read-only Create operation inspection', () => {
       await app.close();
     }
 
-    const scoped = await createRuntimeApp(
+    const scoped = await createOwnerRuntimeApp(
       {
         ...config,
         authorization: {
@@ -720,7 +720,7 @@ describe('E2.I04 — authorized read-only Create operation inspection', () => {
     async () => {
       const { root, engine } = await fixture();
       const auth = authenticatedStore();
-      const app = await createRuntimeApp(
+      const app = await createOwnerRuntimeApp(
         {
           ...passwordConfig(),
           authorization: { assignments: [{ userId: 'demo-user', role: 'developer', scope: {} }] },
@@ -784,7 +784,7 @@ describe('E2.I04 — authorized read-only Create operation inspection', () => {
     'reports durable in-progress/recovery-required without implying writer liveness',
     async () => {
       const { engine } = await fixture();
-      const app = await createRuntimeApp(
+      const app = await createOwnerRuntimeApp(
         {
           ...passwordConfig(),
           authentication: { ...passwordConfig().authentication, mode: 'none' },
@@ -835,7 +835,7 @@ describe('E2.I04 — authorized read-only Create operation inspection', () => {
     'enforces Engine-aligned 200-character title and normalized Engine unavailable errors',
     async () => {
       const { engine } = await fixture();
-      const app = await createRuntimeApp(
+      const app = await createOwnerRuntimeApp(
         {
           ...passwordConfig(),
           authentication: { ...passwordConfig().authentication, mode: 'none' },
@@ -859,7 +859,7 @@ describe('E2.I04 — authorized read-only Create operation inspection', () => {
         await app.close();
       }
 
-      const unavailable = await createRuntimeApp({
+      const unavailable = await createOwnerRuntimeApp({
         ...passwordConfig(),
         authentication: { ...passwordConfig().authentication, mode: 'none' },
       });

@@ -2827,6 +2827,45 @@
       ]
     },
     {
+      "id": "ideas.definition-starter-packs",
+      "type": "engineering",
+      "title": "Repository-owned starter definition packs for .NET, React and Node.js",
+      "status": "draft",
+      "file": "docs/ideas/definition-starter-packs.md",
+      "read_when": [
+        "preparing usable default definitions for a real application rather than the SpecFlow repo",
+        "designing technology-specific Task Types, agent guidance and validation gates",
+        "deciding how installed definitions and optional starter packs compose"
+      ],
+      "summary": "Proposal for tested, opt-in definition packs for .NET, React and Node.js projects, built on a common specification and task workflow with technology-aware guidance, document templates and safe verification recipes. Definitions stay project-owned.",
+      "related": [
+        "ideas.readme",
+        "ideas.specflow-engine.agent-workflow-entrypoints",
+        "ideas.specflow-engine.reusable-workflow.agent-execution",
+        "adr.0017-definitions-as-project-data",
+        "adr.0023-neutral-workflow-coordinator-and-manual-execution",
+        "ideas.roadmap"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "configuration",
+        "ai",
+        "docs",
+        "testing",
+        "cli"
+      ],
+      "tags": [
+        "definitions",
+        "starter-packs",
+        "dotnet",
+        "react",
+        "nodejs",
+        "task-types",
+        "verification"
+      ]
+    },
+    {
       "id": "ideas.roadmap-coverage",
       "type": "engineering",
       "title": "Roadmap source coverage and unscheduled capabilities",
@@ -2928,22 +2967,68 @@
       ]
     },
     {
+      "id": "ideas.specflow-engine.agent-workflow-entrypoints",
+      "type": "engineering",
+      "title": "Agent workflow entry points and portable SpecFlow skill",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/agent-workflow-entrypoints.md",
+      "read_when": [
+        "designing an agent-facing write-specification or execute-current-step command",
+        "deciding how a portable skill uses CLI or MCP without duplicating Engine rules",
+        "connecting agent profiles, StepContext and Task context to a delegated attempt"
+      ],
+      "summary": "Proposed universal SpecFlow skill and distinct entry points for agent-assisted Specification creation, one eligible Specification or Task step, and later full preparation. External CLI and the managed Runtime broker use the same Engine operations; MCP is a future adapter.",
+      "related": [
+        "ideas.specflow-engine",
+        "ideas.specflow-engine.offline-agents",
+        "ideas.specflow-engine.managed-session-integration",
+        "ideas.specflow-engine.reusable-workflow.agent-execution",
+        "ideas.specflow-engine.sequential-agent-orchestration",
+        "ideas.definition-starter-packs",
+        "adr.0023-neutral-workflow-coordinator-and-manual-execution",
+        "adr.0024-tasks-are-resources"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "workflow",
+        "cli",
+        "runtime",
+        "docs",
+        "security"
+      ],
+      "tags": [
+        "agent-skill",
+        "cli",
+        "mcp",
+        "entrypoint",
+        "specification",
+        "task",
+        "execution"
+      ]
+    },
+    {
       "id": "ideas.specflow-engine.legacy-migration",
       "type": "engineering",
-      "title": "Legacy Nevo migration — modules not yet ported",
+      "title": "Legacy NEvo AI migration and full-feature cutover acceptance",
       "status": "draft",
       "file": "docs/ideas/specflow-engine/legacy-nevo-migration.md",
       "read_when": [
         "porting gates, finalize, human verification, filesystem watching or batches from the old nevo repository",
-        "reviewing whether a legacy module may be copied or needs redesign"
+        "reviewing whether a legacy module may be copied or needs redesign",
+        "planning when the old NEvo repository can remove its Node/TypeScript AI tooling",
+        "validating an end-to-end .NET feature through SpecFlow before retiring legacy AI"
       ],
-      "summary": "The legacy Nevo modules that have no SpecFlow owner implementation yet (gates and verify, commit-and-push and finalize, approve and verify-human, watcher and SSE invalidation, batches), with what to preserve, what to change and the checks a migration needs.",
+      "summary": "The legacy NEvo modules needing replacement or redesign, plus a project-specific cutover contract: a real .NET feature from agent-written Specification through Task implementation, independent review, verified GitHub merge and safe Close, without the old JS/TS tooling.",
       "related": [
         "ideas.specflow-engine",
         "ideas.specflow-engine.ownership",
         "ideas.specflow-engine.acceptance",
         "ideas.specflow-engine.plan-06",
-        "ideas.specflow-runtime.ai-adapters"
+        "ideas.specflow-runtime.ai-adapters",
+        "ideas.specflow-engine.agent-workflow-entrypoints",
+        "ideas.specflow-engine.sequential-agent-orchestration",
+        "ideas.definition-starter-packs"
       ],
       "scope": "specflow",
       "areas": [
@@ -3694,6 +3779,43 @@
         "typed-inputs",
         "forms",
         "run-history"
+      ]
+    },
+    {
+      "id": "ideas.specflow-engine.sequential-agent-orchestration",
+      "type": "engineering",
+      "title": "Explicit sequential agent automation after single-step delegation",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/sequential-agent-orchestration.md",
+      "read_when": [
+        "planning \"execute the whole Specification\" after E6 is working",
+        "connecting automatic continuation and Task batches without another workflow engine",
+        "designing retry, model availability, quotas and owner-stop boundaries"
+      ],
+      "summary": "Candidate orchestration layer after E6: optional automatic continuation between permitted steps and dependency-ordered Tasks, with fresh independent review, durable dispatch intents, budget controls and explicit human decision boundaries.",
+      "related": [
+        "ideas.specflow-engine",
+        "ideas.specflow-engine.agent-workflow-entrypoints",
+        "ideas.specflow-engine.reusable-workflow.agent-execution",
+        "ideas.specflow-engine.managed-session-integration",
+        "ideas.specflow-engine.plan-06",
+        "ideas.roadmap"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime",
+        "ai",
+        "security",
+        "testing"
+      ],
+      "tags": [
+        "automation",
+        "continuation",
+        "batch",
+        "review",
+        "handoff",
+        "scheduler"
       ]
     },
     {

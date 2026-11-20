@@ -134,7 +134,7 @@ Each ID represents a distinct possible outcome. **Untriaged means no release dec
 
 ## Source-by-source Ideas audit
 
-All **83 Ideas source Markdown files** present in this updated audit, excluding `roadmap.md` and this coverage register, have been classified below (paths relative to [the Ideas tree](https://github.com/dczerwinskipl/nevo-specflow/tree/main/docs/ideas)): **64 primary documents/hubs and 19 phase-task files**. This register maps _distinct product outcomes_, not one ID per file or subsection. Hubs, decision rationales, fixtures and old task plans reuse the owning outcome. A proposed contract is not proof that an implementation works.
+All **88 Ideas source Markdown files** present in this updated audit, excluding `roadmap.md` and this coverage register, have been classified below (paths relative to [the Ideas tree](https://github.com/dczerwinskipl/nevo-specflow/tree/main/docs/ideas)): **69 primary documents/hubs and 19 phase-task files**. This register maps _distinct product outcomes_, not one ID per file or subsection. Hubs, decision rationales, fixtures and old task plans reuse the owning outcome. A proposed contract is not proof that an implementation works.
 
 ### Product, authorization, developer workspace and docs (9 sources)
 
@@ -150,11 +150,12 @@ semantic-docs/search-quality.md | Mapped. T111/L120: scaling, excerpts, answer q
 semantic-docs/surfaces-and-setup.md | Mapped. D100 shipped reader; L121 help; L143 corpora; L144 setup
 ```
 
-### Engine and execution plans (42 sources)
+### Engine and execution plans (47 sources)
 
 ```text
 specflow-engine/README.md | Hub. Engine proposal index only
 specflow-engine/agent-workflow-entrypoints.md | Mapped. P102 agent step entry; L131 project-mode Create; L140 offline external agent trust; T100 existing CLI
+specflow-engine/close-hardening-shared-checkout-and-external-merge.md | Mapped. C001/I101 lifecycle recovery; L138 protected-target Close; L139 post-external-merge resolution; #181/#157 fixes
 specflow-engine/acceptance-criteria.md | Acceptance. C004 baseline; P101/P102/P106/I101 unproven scenarios
 specflow-engine/decisions-and-promotion.md | Decision. I102/P106/L140: trust and external claims
 specflow-engine/durable-operations-and-recovery.md | Mapped. T102 commits; L138 protected Close; L139 conflicts; I101 recovery
@@ -190,6 +191,10 @@ specflow-engine/multi-instance-plan/tasks/T05-aggregation-and-waivers.md | Phase
 specflow-engine/multi-instance-plan/tasks/T06-end-to-end-proof.md | Phase task. L108: design, admission, outcomes, aggregation and proof
 specflow-engine/offline-cli-and-external-agents.md | Mapped. T100 CLI; L140 external actor/claim authority
 specflow-engine/ownership-and-state.md | Mapped. P106/I101/L140: approval provenance and unknown claims
+specflow-engine/reusable-workflow-manual-execution/README.md | Superseded hub. E1-E4 promoted to ADR 0023/0024 and product workflow UX; P110 E5 and P102 E6 still open
+specflow-engine/reusable-workflow-manual-execution/agent-assisted-execution.md | Mapped. P102/D101/I101 E6 managed agent execution and recovery
+specflow-engine/reusable-workflow-manual-execution/typed-transition-inputs.md | Mapped. P110 typed forms; L125 bounded Run history prerequisite
+specflow-engine/reusable-workflow-manual-execution/ux-contract.md | Superseded. P101 manual workflow UX promoted to product documentation
 specflow-engine/sequential-agent-orchestration.md | Mapped. P103 continuation; P104 Task batches; P105 gates as dependency; no new feature ID
 specflow-engine/task-resource-and-context.md | Mapped. P100/D101/P107/P106: Task, context and binding
 specflow-engine/test-plan.md | Acceptance. P101/P102/P106/I101/I102 verification; no new feature
@@ -241,10 +246,10 @@ specflow-ui/storybook-rework.md | Mapped. L118 Storybook coverage and governance
 
 ## Coverage result and limits
 
-**Repository source reconciliation: 83/83 Ideas source files classified; 37/37 numbered follow-ups mapped.** The audit found **18 additional independently schedulable outcomes (L131–L148)**, plus a distinct proposed 1.0 repository Workflow definition/binding requirement (P107). Hubs, execution-plan subtasks, historical proposals and test fixtures are mapped to existing IDs rather than counted as new features. Repeated mappings are intentional overlap, **not duplicate feature IDs**. No proposal was called rejected or fully superseded without an explicit decision.
+**Repository source reconciliation: 88/88 Ideas source files classified; 37/37 numbered follow-ups mapped.** The audit found **18 additional independently schedulable outcomes (L131–L148)**, plus a distinct proposed 1.0 repository Workflow definition/binding requirement (P107). Hubs, execution-plan subtasks, historical proposals and test fixtures are mapped to existing IDs rather than counted as new features. Repeated mappings are intentional overlap, **not duplicate feature IDs**. No proposal was called rejected or fully superseded without an explicit decision.
 
 **Inventory: 93 unique IDs**, comprising 22 proposed 1.0 entries, 5 suggested 1.1, 10 later 1.x, 7 exploratory 2.0 and 49 untriaged L-series entries. These are counts of tracked outcomes and release gates, not equally sized work items or a completion percentage. **All L131–L148 are Untriaged**, not assigned to a release by this audit.
 
 **Still unresolved:** confirm 1.0 acceptance boundaries, owner-approval trust and native OS/provider certification; verify the merged E0–E4 implementation against real user journeys and implement/verify E6. In particular, project-mode Create-with-agent (L131) is **not** equivalent to delegation of one Task step (P102); optional Session artifacts (L134) must not be confused with required Task evidence for 1.0 acceptance. The current repository's Ideas inventory is classified, but this does not certify all conceivable product scope, future external requirements, or passing code.
 
-**Evidence policy:** [#137](https://github.com/dczerwinskipl/nevo-specflow/pull/137) records merged manual Workflow implementation. Integrated acceptance requires user-journey evidence; a proposal document provides planning evidence. Current API, ADRs, architecture and actual implementation take precedence over Ideas. Any later document that adds an independently deliverable outcome must extend this map instead of inheriting a blanket "covered" status. The three new Ideas in PR #189 reuse existing execution IDs; only L148 adds a distinct candidate outcome.
+**Evidence policy:** [#137](https://github.com/dczerwinskipl/nevo-specflow/pull/137) records merged manual Workflow implementation. Integrated acceptance requires user-journey evidence; a proposal document provides planning evidence. Current API, ADRs, architecture and actual implementation take precedence over Ideas. Any later document that adds an independently deliverable outcome must extend this map instead of inheriting a blanket "covered" status. The three new Ideas in PR #189 reuse existing execution IDs; only L148 adds a distinct candidate outcome. Five additional documents that landed after the original 80-source audit are now also classified: E6, E5, the superseded manual-execution hub and UX contract, and Close hardening.

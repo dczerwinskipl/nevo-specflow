@@ -274,6 +274,7 @@ export const WORKFLOW_ERROR_CODES = [
   'WORKFLOW_EXIT_BLOCKED',
   'WORKFLOW_GATE_UNSATISFIED',
   'WORKFLOW_TASKS_OPEN',
+  'WORKFLOW_OWNER_DECISION_REQUIRED',
   'WORKFLOW_UNAVAILABLE',
   /**
    * The Runtime's own: the commit policy of the workflow state refused the change before anything

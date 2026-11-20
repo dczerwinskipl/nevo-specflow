@@ -69,6 +69,17 @@ export const ActorSchema = Type.Union([
   }),
 ]);
 
+const uuid = () =>
+  Type.String({ pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' });
+
+/** The host data of an agent attempt started for Ask agent (`AgentAttemptBinding`). */
+const AgentAttemptBindingSchema = closed({
+  kind: Type.Literal('agent-attempt'),
+  attemptId: uuid(),
+  workspaceId: uuid(),
+  contextDigest: optional(Type.String({ pattern: '^[0-9a-f]{64}$' })),
+});
+
 const OutcomeSchema = Type.Union([
   closed({
     kind: Type.Literal('transition'),
@@ -95,6 +106,7 @@ const RunSchema = closed({
       sequence: sequence(),
       startedAt: timestamp(),
       actor: optional(ActorSchema),
+      hostData: optional(AgentAttemptBindingSchema),
       endedAt: optional(timestamp()),
       finishedBy: optional(ActorSchema),
       requestDigest: optional(Type.String({ pattern: '^[0-9a-f]{64}$' })),

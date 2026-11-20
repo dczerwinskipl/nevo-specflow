@@ -33,6 +33,7 @@ function attemptFollows(
     // The coordinator enters and completes a wait step: nobody works on it.
     return (
       record.actor === undefined &&
+      record.hostData === undefined &&
       record.finishedBy === undefined &&
       record.requestDigest === undefined
     );

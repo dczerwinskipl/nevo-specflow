@@ -16,7 +16,8 @@ import {
   type TaskProposal,
 } from '../tasks/tasks';
 import type { WorkflowActor, WorkflowSubject } from '../state/model';
-import { assertSameSession, finishDigest } from './actors';
+import type { ExecutionChange, ExecutionSnapshot } from '../state/store';
+import { assertAgentAuthority, assertSameSession, finishDigest } from './actors';
 import {
   advance,
   applyEffects,
@@ -140,137 +141,187 @@ function recordFinish(
   request: FinishStepInput,
 ): Promise<RecordedFinish> {
   return dependencies.serialize(async (): Promise<RecordedFinish> => {
-    assertFinishInputShape(request.input);
-    const { subject } = request;
-    const snapshot = await dependencies.store.read(subject.specId);
-    const loaded = loadSubject(dependencies.catalogue, snapshot, subject);
-    assertFinishInput(request.input);
-    assertActorShape(request.actor);
-    // Only the active attempt has a Session to match; a finish of an ended attempt is a retry (or
-    // a stale request) that the coordinator decides by its digest and actor.
-    const position = loaded.run.position;
-    if (
-      position.state === 'active' &&
-      position.step === request.step &&
-      position.attempt === request.attempt
-    ) {
-      assertSameSession(loaded.run, request.actor);
-    }
-
-    const context: AdvanceContext = {
-      set: new ExecutionWorkingSet(snapshot, dependencies.catalogue),
-      catalogue: dependencies.catalogue,
-      at: isoNow(dependencies),
-    };
-    const decision = decide(loaded.definition, loaded.run, {
-      kind: 'finish',
-      at: context.at,
-      step: request.step,
-      attempt: request.attempt,
-      actor: request.actor,
-      ...(request.input.result !== undefined ? { result: request.input.result } : {}),
-      ...(request.input.feedback !== undefined ? { feedback: request.input.feedback } : {}),
-      ...(request.input.artifacts !== undefined ? { artifacts: request.input.artifacts } : {}),
-      requestDigest: finishDigest(request),
-    });
-    if (decision.replayed) {
-      // The read showed the finish through a pending journal when its publication crashed: an
-      // empty change publishes that journal, so the retry leaves the files complete.
-      await dependencies.store.apply(subject.specId, {});
-
-      return {
-        result: replayedFinish(context, loaded, decision),
-        stepTitle: findStep(loaded.definition, request.step)?.title ?? request.step,
-      };
-    }
-
-    const [taken] = decision.declaredEffects;
-    const step = findStep(loaded.definition, request.step);
-    if (taken?.source !== 'transition' || step?.kind !== 'work') {
-      throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'A finish took no transition.');
-    }
-
-    const transition = taken.transition;
-    const produces = step.annotations.produces === 'tasks';
-    if (produces !== (request.input.tasks !== undefined)) {
-      throw new WorkflowError(
-        'WORKFLOW_INPUT_INVALID',
-        produces
-          ? `The step "${step.id}" finishes with the list of Tasks it produced.`
-          : `The step "${step.id}" does not produce Tasks.`,
-      );
-    }
-
-    if (subject.kind === 'task' && request.input.taskDecisions !== undefined) {
-      throw new WorkflowError(
-        'WORKFLOW_INPUT_INVALID',
-        'Only a Specification step decides the status of Tasks.',
-      );
-    }
-
-    context.set.setRun(subject, decision.nextRun);
-    const createdTasks = produces ? draftTasks(context, request) : [];
-    for (const task of applyTaskDecisions(
-      context.set.tasks(),
-      request.input.taskDecisions ?? [],
-      context.at,
-    )) {
-      context.set.setTask(task);
-    }
-
-    applyEffects(context, decision.declaredEffects);
-    if (subject.kind === 'task' && transition.annotations.escalate) {
-      const feedback = request.input.feedback?.trim();
-      context.set.setTask({
-        ...context.set.task(subject.taskId),
-        status: 'on-hold',
-        statusChange: {
-          source: 'escalation',
-          at: context.at,
-          ...(feedback ? { reason: feedback } : {}),
-        },
-      });
-    }
-
-    // Open Tasks refuse a completion first (no gate would help), judged on the planned Tasks: the
-    // finish's own drafts, decisions and effects count. `advance` asks the same rule again.
-    assertNoOpenTasksAtCompletion(context, subject, transition.target);
-
-    // The authoritative check of the exit gates, after every input rule, on nothing written yet (the
-    // change above is only planned). A repeated finish (above) never evaluates them again.
-    await assertGatesSatisfied(
-      dependencies.references,
-      subject,
-      'exit',
-      step,
-      exitGatesFor(step, transition.result),
+    const plan = await planFinish(
+      dependencies,
+      await dependencies.store.read(request.subject.specId),
+      request,
+    );
+    // A replay publishes an empty change: the read showed the finish through a pending journal when
+    // its publication crashed, and the empty change publishes that journal, so the files are complete.
+    await dependencies.store.apply(
+      request.subject.specId,
+      plan.kind === 'replayed' ? {} : plan.change,
     );
 
-    const held =
-      subject.kind === 'task' &&
-      transition.target.kind !== 'terminal' &&
-      context.set.task(subject.taskId).status !== 'ready';
-    const continuation: ContinuationDecision = held
-      ? { kind: 'none', reason: 'on-hold' }
-      : advance(context, subject, loaded.definition, decision.intent);
-    const specification = subject.kind === 'task' ? settleWait(context) : undefined;
-    await dependencies.store.apply(subject.specId, {
+    return { result: plan.result, stepTitle: plan.stepTitle };
+  });
+}
+
+/**
+ * A finish planned on a snapshot, nothing written: `planned` with the one change that records it,
+ * or `replayed` when the request repeats the subject's last finish (nothing to change).
+ */
+export type FinishPlan =
+  | ({ readonly kind: 'replayed' } & RecordedFinish)
+  | ({
+      readonly kind: 'planned';
+      readonly change: ExecutionChange;
+      /** The transition the finish takes. */
+      readonly transition: string;
+    } & RecordedFinish);
+
+export interface FinishPlanOptions {
+  /**
+   * The finish is an agent's proposal (Ask agent): a decision only the owner takes refuses it with
+   * `WORKFLOW_OWNER_DECISION_REQUIRED` before the rest of its input is judged.
+   */
+  readonly agentProposal?: boolean;
+}
+
+/**
+ * Every rule of a finish, judged on `snapshot` without writing anything: the input, the actor, the
+ * coordinator's decision, the produced drafts and Task decisions, the effects, open Tasks and the
+ * exit gates. The caller holds the `serialize` section the snapshot was read in; an owner's finish
+ * applies the change at once, an agent's proposal records it and is applied when it is finalized.
+ */
+export async function planFinish(
+  dependencies: WorkflowDependencies,
+  snapshot: ExecutionSnapshot,
+  request: FinishStepInput,
+  options: FinishPlanOptions = {},
+): Promise<FinishPlan> {
+  assertFinishInputShape(request.input);
+  const { subject } = request;
+  const loaded = loadSubject(dependencies.catalogue, snapshot, subject);
+  assertFinishInput(request.input);
+  assertActorShape(request.actor);
+  // Only the active attempt has a Session to match; a finish of an ended attempt is a retry (or
+  // a stale request) that the coordinator decides by its digest and actor.
+  const position = loaded.run.position;
+  if (
+    position.state === 'active' &&
+    position.step === request.step &&
+    position.attempt === request.attempt
+  ) {
+    assertSameSession(loaded.run, request.actor);
+  }
+
+  const context: AdvanceContext = {
+    set: new ExecutionWorkingSet(snapshot, dependencies.catalogue),
+    catalogue: dependencies.catalogue,
+    at: isoNow(dependencies),
+  };
+  const decision = decide(loaded.definition, loaded.run, {
+    kind: 'finish',
+    at: context.at,
+    step: request.step,
+    attempt: request.attempt,
+    actor: request.actor,
+    ...(request.input.result !== undefined ? { result: request.input.result } : {}),
+    ...(request.input.feedback !== undefined ? { feedback: request.input.feedback } : {}),
+    ...(request.input.artifacts !== undefined ? { artifacts: request.input.artifacts } : {}),
+    requestDigest: finishDigest(request),
+  });
+  if (decision.replayed) {
+    return {
+      kind: 'replayed',
+      result: replayedFinish(context, loaded, decision),
+      stepTitle: findStep(loaded.definition, request.step)?.title ?? request.step,
+    };
+  }
+
+  const [taken] = decision.declaredEffects;
+  const step = findStep(loaded.definition, request.step);
+  if (taken?.source !== 'transition' || step?.kind !== 'work') {
+    throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'A finish took no transition.');
+  }
+
+  const transition = taken.transition;
+  if (options.agentProposal) {
+    assertAgentAuthority(transition, request.input.taskDecisions);
+  }
+
+  const produces = step.annotations.produces === 'tasks';
+  if (produces !== (request.input.tasks !== undefined)) {
+    throw new WorkflowError(
+      'WORKFLOW_INPUT_INVALID',
+      produces
+        ? `The step "${step.id}" finishes with the list of Tasks it produced.`
+        : `The step "${step.id}" does not produce Tasks.`,
+    );
+  }
+
+  if (subject.kind === 'task' && request.input.taskDecisions !== undefined) {
+    throw new WorkflowError(
+      'WORKFLOW_INPUT_INVALID',
+      'Only a Specification step decides the status of Tasks.',
+    );
+  }
+
+  context.set.setRun(subject, decision.nextRun);
+  const createdTasks = produces ? draftTasks(context, request) : [];
+  for (const task of applyTaskDecisions(
+    context.set.tasks(),
+    request.input.taskDecisions ?? [],
+    context.at,
+  )) {
+    context.set.setTask(task);
+  }
+
+  applyEffects(context, decision.declaredEffects);
+  if (subject.kind === 'task' && transition.annotations.escalate) {
+    const feedback = request.input.feedback?.trim();
+    context.set.setTask({
+      ...context.set.task(subject.taskId),
+      status: 'on-hold',
+      statusChange: {
+        source: 'escalation',
+        at: context.at,
+        ...(feedback ? { reason: feedback } : {}),
+      },
+    });
+  }
+
+  // Open Tasks refuse a completion first (no gate would help), judged on the planned Tasks: the
+  // finish's own drafts, decisions and effects count. `advance` asks the same rule again.
+  assertNoOpenTasksAtCompletion(context, subject, transition.target);
+
+  // The authoritative check of the exit gates, after every input rule, on nothing written yet (the
+  // change above is only planned). A repeated finish (above) never evaluates them again.
+  await assertGatesSatisfied(
+    dependencies.references,
+    subject,
+    'exit',
+    step,
+    exitGatesFor(step, transition.result),
+  );
+
+  const held =
+    subject.kind === 'task' &&
+    transition.target.kind !== 'terminal' &&
+    context.set.task(subject.taskId).status !== 'ready';
+  const continuation: ContinuationDecision = held
+    ? { kind: 'none', reason: 'on-hold' }
+    : advance(context, subject, loaded.definition, decision.intent);
+  const specification = subject.kind === 'task' ? settleWait(context) : undefined;
+
+  return {
+    kind: 'planned',
+    change: {
       ...context.set.change(),
       summary: `finish step ${request.step}${ofSubject(subject)} (attempt ${request.attempt})`,
-    });
-
-    return {
-      result: {
-        subject,
-        transition: transition.id,
-        position: context.set.run(subject).position,
-        continuation,
-        createdTasks,
-        ...(specification && specification.kind !== 'none' ? { specification } : {}),
-      },
-      stepTitle: step.title,
-    };
-  });
+    },
+    transition: transition.id,
+    result: {
+      subject,
+      transition: transition.id,
+      position: context.set.run(subject).position,
+      continuation,
+      createdTasks,
+      ...(specification && specification.kind !== 'none' ? { specification } : {}),
+    },
+    stepTitle: step.title,
+  };
 }
 
 /**

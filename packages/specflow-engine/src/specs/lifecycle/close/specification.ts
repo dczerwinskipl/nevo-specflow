@@ -41,6 +41,23 @@ async function assertArchivedAt(root: string, specId: string): Promise<void> {
   }
 }
 
+/**
+ * Finish-after-external-merge postcondition (#157, Fix 2): the destination necessarily predates
+ * this Specification's local archive rename (the external merge happened before any Nevo-authored
+ * commit), so it is present at its pre-archive location — never `assertArchivedAt`'s `'archive'` —
+ * mirroring `closeWorktree`'s own never-archives case.
+ */
+async function assertPresentAt(
+  root: string,
+  specId: string,
+  location: 'active' | 'archive',
+): Promise<void> {
+  const specification = await readWorkspaceSpecification(root, specId);
+  if (specification.location !== location) {
+    throw recovery('Canonical Specification is not present at its expected destination location.');
+  }
+}
+
 async function settleArchiveWithoutIntegration(
   engine: SpecFlowEngine,
   journal: CloseJournal,
@@ -101,6 +118,8 @@ export async function closeSpecification(
     readonly operationId: string;
     readonly specId: string;
     readonly integrateToTargetBranch?: boolean;
+    /** Person-initiated: finish after the content was already merged externally (#157). */
+    readonly finishAfterExternalMerge?: boolean;
   },
 ): Promise<CloseSpecificationResult> {
   const admission = await reserveCloseOperation(engine, {
@@ -183,7 +202,11 @@ export async function closeSpecification(
       throw recovery('Integrated binding or linked workspace retirement is not proven.');
     }
 
-    await assertArchivedAt(target.root, request.specId);
+    if (journal.plan.finishAfterExternalMerge === true) {
+      await assertPresentAt(target.root, request.specId, journal.plan.location);
+    } else {
+      await assertArchivedAt(target.root, request.specId);
+    }
   } else {
     if (
       (await inspectArchivePhysicalRecovery(engine, request.operationId)) !==

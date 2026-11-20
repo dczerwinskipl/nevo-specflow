@@ -98,7 +98,11 @@ export async function planPublicCloseOperation(
 
 export async function closeWorktreeOperation(
   engine: SpecFlowEngine,
-  request: { readonly operationId: string; readonly specId: string },
+  request: {
+    readonly operationId: string;
+    readonly specId: string;
+    readonly finishAfterExternalMerge?: boolean;
+  },
 ): Promise<PublicCloseOperation> {
   const result = await closeWorktree(engine, request);
   if ('journal' in result) {
@@ -119,6 +123,7 @@ export async function closeSpecificationOperation(
     readonly operationId: string;
     readonly specId: string;
     readonly integrateToTargetBranch?: boolean;
+    readonly finishAfterExternalMerge?: boolean;
   },
 ): Promise<PublicCloseOperation> {
   return projectCloseOperation((await closeSpecification(engine, request)).journal);

@@ -16,12 +16,16 @@ export type CloseIntent =
       readonly kind: 'worktree-close';
       readonly operationId: string;
       readonly specId: string;
+      /** Person-initiated: finish after the content was already merged externally (#157). */
+      readonly finishAfterExternalMerge?: boolean;
     }
   | {
       readonly kind: 'specification-close';
       readonly operationId: string;
       readonly specId: string;
       readonly integrateToTargetBranch: boolean;
+      /** Person-initiated: finish after the content was already merged externally (#157). */
+      readonly finishAfterExternalMerge?: boolean;
     };
 
 export type CloseStage =
@@ -93,6 +97,8 @@ export interface GitClosePlan extends ClosePlanIdentity {
   readonly target?: CloseWorkspaceEvidence;
   readonly targetBranch?: string;
   readonly integrateToTargetBranch?: boolean;
+  /** Person-initiated: finish after the content was already merged externally (#157). */
+  readonly finishAfterExternalMerge?: boolean;
   readonly configRevision?: string;
 }
 
@@ -111,6 +117,7 @@ export interface GitOffClosePlan extends ClosePlanIdentity {
   readonly target?: never;
   readonly targetBranch?: never;
   readonly integrateToTargetBranch?: false;
+  readonly finishAfterExternalMerge?: never;
   readonly configRevision: string;
 }
 
@@ -180,11 +187,19 @@ export interface CloseJournal {
   readonly scratchRetired?: true;
 }
 
-/** Intent fingerprint is independent of git defaults and mutable filesystem state. */
+/**
+ * Intent fingerprint is independent of git defaults and mutable filesystem state. An absent
+ * `finishAfterExternalMerge` is canonicalized to `false` before hashing, so omitting it and
+ * requesting it explicitly `false` are always the same intent (and the same fingerprint).
+ */
 export function fingerprintCloseIntent(input: CloseIntent): string {
   validateOperationId(input.operationId);
+  const canonical =
+    input.kind === 'workspace-close'
+      ? input
+      : { ...input, finishAfterExternalMerge: input.finishAfterExternalMerge === true };
 
-  return createHash('sha256').update(JSON.stringify(input), 'utf8').digest('hex');
+  return createHash('sha256').update(JSON.stringify(canonical), 'utf8').digest('hex');
 }
 
 export function normalizeCloseIntent(input: CloseIntent): CloseIntent {
@@ -205,16 +220,31 @@ export function normalizeCloseIntent(input: CloseIntent): CloseIntent {
     throw new CloseOperationError('CLOSE_INVALID', 'Invalid Specification identity.');
   }
 
-  if (input.kind === 'worktree-close') {
-    return { kind: 'worktree-close', operationId: input.operationId, specId: input.specId };
+  if (
+    input.kind === 'worktree-close' &&
+    (input.finishAfterExternalMerge === undefined ||
+      typeof input.finishAfterExternalMerge === 'boolean')
+  ) {
+    return {
+      kind: 'worktree-close',
+      operationId: input.operationId,
+      specId: input.specId,
+      finishAfterExternalMerge: input.finishAfterExternalMerge === true,
+    };
   }
 
-  if (input.kind === 'specification-close' && typeof input.integrateToTargetBranch === 'boolean') {
+  if (
+    input.kind === 'specification-close' &&
+    typeof input.integrateToTargetBranch === 'boolean' &&
+    (input.finishAfterExternalMerge === undefined ||
+      typeof input.finishAfterExternalMerge === 'boolean')
+  ) {
     return {
       kind: 'specification-close',
       operationId: input.operationId,
       specId: input.specId,
       integrateToTargetBranch: input.integrateToTargetBranch,
+      finishAfterExternalMerge: input.finishAfterExternalMerge === true,
     };
   }
 
@@ -258,6 +288,8 @@ export type CloseOperationErrorCode =
   /** The workflow of the Specification is not finished (D07); `blockers` lists what holds it. */
   | 'CLOSE_BLOCKED'
   | 'CLOSE_SHARED_WORKTREE'
+  /** Finish after external merge (#157): the destination does not yet have the proven content. */
+  | 'CLOSE_EXTERNAL_MERGE_MISMATCH'
   | 'CLOSE_RECOVERY_REQUIRED'
   /**
    * Resumable stop before disposal: the worktree's `.nevo/local/config.yaml` is not the unchanged
@@ -380,7 +412,10 @@ export class CloseOperationError extends Error {
   readonly code: CloseOperationErrorCode;
   /** `CLOSE_BLOCKED`: the grouped blockers of the Specification exit gate; empty otherwise. */
   readonly blockers: readonly SpecificationExitBlocker[];
-  /** `CLOSE_PREFLIGHT` of a dirty checkout: the paths that are not clean; empty otherwise. */
+  /**
+   * `CLOSE_PREFLIGHT` of a dirty checkout, or `CLOSE_EXTERNAL_MERGE_MISMATCH`: the paths that are
+   * not clean, or not yet content-equivalent in the destination; empty otherwise.
+   */
   readonly paths: readonly string[];
   /** Present only for `CLOSE_LOCAL_CONFIG_MODIFIED`. */
   readonly localConfig?: CloseLocalConfigRefusal;

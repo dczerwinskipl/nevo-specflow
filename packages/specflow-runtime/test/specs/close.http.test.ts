@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
@@ -363,6 +363,80 @@ describe('E2.T16 authorized HTTP lifecycle adapters', () => {
       await admin.app.close();
     }
   }, 120000);
+
+  it('#157 accepts finishAfterExternalMerge over HTTP: 200 when content-equivalent, 409 CLOSE_EXTERNAL_MERGE_MISMATCH naming the path otherwise', async () => {
+    const { root, engine, spec } = await fixture(true);
+    const url = '/api/specs/' + spec.specId + '/worktree/close';
+    const admin = await authedApp(engine, 'admin');
+    try {
+      // "Externally" squash-merge the Spec's folder into the destination, as a GitHub PR would.
+      const sourcePath = join(spec.workspaceRoot, 'specs', 'active', spec.slug);
+      const destinationPath = join(root, 'specs', 'active', spec.slug);
+      await mkdir(join(root, 'specs', 'active'), { recursive: true });
+      await cp(sourcePath, destinationPath, { recursive: true });
+      git(root, 'add', '-A', '--', 'specs/active/' + spec.slug);
+      git(
+        root,
+        '-c',
+        'user.name=Test',
+        '-c',
+        'user.email=test@example.invalid',
+        'commit',
+        '-qm',
+        'simulate external squash merge',
+      );
+      const squashedHead = git(root, 'rev-parse', 'HEAD');
+
+      const operationId = randomUUID();
+      const result = await admin.app.inject({
+        method: 'POST',
+        url,
+        headers: admin.headers,
+        payload: { operationId, finishAfterExternalMerge: true },
+      });
+      expect(result.statusCode, result.body).toBe(200);
+      expect(result.json()).toMatchObject({ status: 'completed' });
+      // No new merge commit: the destination's HEAD is exactly the externally-merged commit.
+      expect(git(root, 'rev-parse', 'HEAD')).toBe(squashedHead);
+    } finally {
+      await admin.app.close();
+    }
+  }, 180000);
+
+  it('#157 maps CLOSE_EXTERNAL_MERGE_MISMATCH to 409 with the differing path, no mutation', async () => {
+    const { root, engine, spec } = await fixture(true);
+    const url = '/api/specs/' + spec.specId + '/worktree/close';
+    const admin = await authedApp(engine, 'admin');
+    try {
+      // The destination never received the merge at all: a genuine content mismatch.
+      const beforePrimary = git(root, 'rev-parse', 'HEAD');
+      const beforeSource = git(spec.workspaceRoot, 'rev-parse', 'HEAD');
+
+      const operationId = randomUUID();
+      const result = await admin.app.inject({
+        method: 'POST',
+        url,
+        headers: admin.headers,
+        payload: { operationId, finishAfterExternalMerge: true },
+      });
+      expect(result.statusCode, result.body).toBe(409);
+      expect(result.json()).toMatchObject({
+        code: 'CLOSE_EXTERNAL_MERGE_MISMATCH',
+        error: 'CLOSE_EXTERNAL_MERGE_MISMATCH',
+        // The canonical subtree (whole-folder) check and the branch-diff's individual files both
+        // name the mismatch: the proof runs both checks (B1's resolution item 2).
+        paths: [
+          'specs/active/' + spec.slug,
+          'specs/active/' + spec.slug + '/overview.md',
+          'specs/active/' + spec.slug + '/specification.yaml',
+        ],
+      });
+      expect(git(root, 'rev-parse', 'HEAD')).toBe(beforePrimary);
+      expect(git(spec.workspaceRoot, 'rev-parse', 'HEAD')).toBe(beforeSource);
+    } finally {
+      await admin.app.close();
+    }
+  }, 180000);
 
   it('refuses Worktree Close with 409 CLOSE_LOCAL_CONFIG_MODIFIED, then resumes once the file is gone', async () => {
     const { engine, spec } = await fixture(true);

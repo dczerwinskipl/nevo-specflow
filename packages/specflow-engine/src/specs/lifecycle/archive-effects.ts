@@ -14,7 +14,11 @@ import {
   readWorkspaceRegistry,
 } from '../../project/workspace/registry/registry';
 import { renameWindowsSafe } from '../../project/fs/windows-safe-fs';
-import { inspectCleanGitWorkspace, listUncleanPaths } from './preflight';
+import {
+  inspectCleanGitWorkspace,
+  listUncleanPaths,
+  siblingSpecificationDirectories,
+} from './preflight';
 import { isExecutionStatePathOf } from '../execution-paths';
 import { disabledIntegrationHooksDirectory } from './git/scratch';
 import { readCloseJournal } from './journal/store';
@@ -100,6 +104,45 @@ async function gitRaw(root: string, args: readonly string[]): Promise<string> {
   }
 
   return result.stdout;
+}
+
+/**
+ * Every path `git status` reports (staged, modified, untracked) and everything still staged
+ * relative to the current HEAD, scoped to `pathspecs` — exactly like the staging (`git add`) and
+ * commit (`git commit --only`) calls these post-commit sanity checks verify are already scoped
+ * (Fix 1): unscoped, a sibling Specification's own pre-existing dirty or staged file (now correctly
+ * tolerated at admission by the A2 sibling-isolation widening) would make these checks refuse AFTER
+ * this Specification's own directory has already been physically moved and committed.
+ */
+async function assertScopedlyClean(root: string, pathspecs: readonly string[]): Promise<void> {
+  const status = await gitRaw(root, [
+    '-c',
+    'core.optionalLocks=false',
+    'status',
+    '--porcelain=v1',
+    '-z',
+    '--untracked-files=all',
+    '--',
+    ...pathspecs,
+  ]);
+  if (status !== '') {
+    throw failure(
+      "Archive checkout contains staged, modified or untracked files within the Specification's own paths.",
+    );
+  }
+
+  const staged = await gitRaw(root, [
+    'diff',
+    '--cached',
+    '--name-only',
+    '--no-renames',
+    '-z',
+    '--',
+    ...pathspecs,
+  ]);
+  if (staged !== '') {
+    throw failure("Archive commit left staged changes within the Specification's own paths.");
+  }
 }
 
 async function absent(path: string): Promise<boolean> {
@@ -414,10 +457,19 @@ export async function archiveSpecificationWithCommit(
 
   const oldPath = 'specs/active/' + record.plan.slug;
   const newPath = 'specs/archive/' + record.plan.slug;
-  // The Specification's uncommitted execution state goes into the archive commit; nothing else may be dirty.
+  // The Specification's uncommitted execution state goes into the archive commit; a sibling
+  // Specification's own pending execution state does not block it either (#181); nothing else may
+  // be dirty.
+  const siblings = await siblingSpecificationDirectories(
+    actual.root,
+    source.workspaceId,
+    registry,
+    record.plan.specId,
+  );
   const facts = await inspectCleanGitWorkspace(actual.workspace, {
     specificationDirectory: oldPath,
     acceptExecutionState: true,
+    siblingDirectories: siblings.map((entry) => entry.directory),
   });
   if (
     facts.head !== source.head ||
@@ -486,8 +538,19 @@ export async function archiveSpecificationWithCommit(
     // Test-only OS crash boundary after real Git index mutation and before
     // verifying exact scoped stage contents. Claims remain retained on failure.
     await afterScopedStaging?.();
+    // Scoped to this Specification's own pathspecs, exactly like the staging and commit calls above
+    // (Fix 1): a sibling Specification's own pre-existing staged file must not appear here.
     const staged = (
-      await gitRaw(source.root, ['diff', '--cached', '--name-only', '--no-renames', '-z'])
+      await gitRaw(source.root, [
+        'diff',
+        '--cached',
+        '--name-only',
+        '--no-renames',
+        '-z',
+        '--',
+        oldLiteral,
+        newLiteral,
+      ])
     )
       .split('\0')
       .filter(Boolean)
@@ -556,22 +619,12 @@ export async function reconcileArchiveCommit(
   }
 
   const tree = await git(root, ['rev-parse', '--verify', 'HEAD^{tree}']);
-  if ((await git(root, ['write-tree'])) !== tree) {
-    throw failure('Archive index does not match committed tree.');
-  }
-
-  if (
-    (await gitRaw(root, [
-      '-c',
-      'core.optionalLocks=false',
-      'status',
-      '--porcelain=v1',
-      '-z',
-      '--untracked-files=all',
-    ])) !== ''
-  ) {
-    throw failure('Archive checkout contains staged, modified or untracked files.');
-  }
+  // Scoped to this Specification's own pathspecs (Fix 1): a sibling's own pre-existing dirty or
+  // staged file must not refuse a Close of this Specification after its directory already moved.
+  await assertScopedlyClean(root, [
+    ':(literal)' + archive.sourcePath,
+    ':(literal)' + archive.destinationPath,
+  ]);
 
   await assertArchivedFiles(root, archive);
   const diffs = (
@@ -613,22 +666,11 @@ async function proveArchiveCommitPhysical(
   }
 
   const tree = await git(root, ['rev-parse', '--verify', sha + '^{tree}']);
-  if ((await git(root, ['write-tree'])) !== tree) {
-    throw failure('Archive index does not match committed tree.');
-  }
-
-  if (
-    (await gitRaw(root, [
-      '-c',
-      'core.optionalLocks=false',
-      'status',
-      '--porcelain=v1',
-      '-z',
-      '--untracked-files=all',
-    ])) !== ''
-  ) {
-    throw failure('Archive checkout contains staged, modified or untracked files.');
-  }
+  // Scoped to this Specification's own pathspecs (Fix 1): see `assertScopedlyClean`.
+  await assertScopedlyClean(root, [
+    ':(literal)' + archive.sourcePath,
+    ':(literal)' + archive.destinationPath,
+  ]);
 
   const diffs = (
     await gitRaw(root, [

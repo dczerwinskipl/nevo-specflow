@@ -25,12 +25,23 @@ export const CloseWorkspaceOperationParamsSchema = Type.Object(
   { workspaceId: WorkspaceIdSchema, operationId: OperationIdSchema },
   { additionalProperties: false },
 );
+/**
+ * Person-initiated: finish Close after the content was already merged externally (e.g. a GitHub
+ * squash merge), never inferred automatically. Reuses the already-integrated disposal path after
+ * proving the destination already has every path the source branch changed, by content rather than
+ * ancestry; a mismatch refuses `CLOSE_EXTERNAL_MERGE_MISMATCH` naming every differing path.
+ */
+export const FinishAfterExternalMergeSchema = Type.Optional(Type.Boolean());
 export const CloseWorktreeRequestSchema = Type.Object(
-  { operationId: OperationIdSchema },
+  { operationId: OperationIdSchema, finishAfterExternalMerge: FinishAfterExternalMergeSchema },
   { additionalProperties: false },
 );
 export const CloseSpecificationRequestSchema = Type.Object(
-  { operationId: OperationIdSchema, integrateToTargetBranch: Type.Optional(Type.Boolean()) },
+  {
+    operationId: OperationIdSchema,
+    integrateToTargetBranch: Type.Optional(Type.Boolean()),
+    finishAfterExternalMerge: FinishAfterExternalMergeSchema,
+  },
   { additionalProperties: false },
 );
 export type CloseSpecificationRequest = Static<typeof CloseSpecificationRequestSchema>;
@@ -294,6 +305,11 @@ export const CloseErrorSchema = Type.Object(
      * the Close can start, all that are known at once. Absent for a preflight refusal without one.
      */
     repository: Type.Optional(Type.Array(RepositoryBlockerSchema, { maxItems: 8 })),
+    /**
+     * `CLOSE_EXTERNAL_MERGE_MISMATCH` (409): the paths that are missing or not yet
+     * content-equivalent in the destination, naming every one known at once (at most 10 of the total).
+     */
+    paths: Type.Optional(Type.Array(Type.String({ maxLength: 4096 }), { maxItems: 10 })),
     /**
      * Present for `CLOSE_LOCAL_CONFIG_MODIFIED`: the worktree's `.nevo/local/config.yaml` was
      * edited (`changed`), was not copied by Create (`unrecorded`), or cannot be read

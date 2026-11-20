@@ -38,7 +38,13 @@ import { readIntegrationCandidates } from './integration-candidates';
 import { closeRepositoryMode, type CloseRepositoryMode } from './repository-mode';
 
 export type CloseRequest =
-  | { readonly kind: 'worktree-close'; readonly operationId?: string; readonly specId: string }
+  | {
+      readonly kind: 'worktree-close';
+      readonly operationId?: string;
+      readonly specId: string;
+      /** Person-initiated: finish after the content was already merged externally (#157). */
+      readonly finishAfterExternalMerge?: boolean;
+    }
   | {
       readonly kind: 'workspace-close';
       readonly operationId?: string;
@@ -49,6 +55,8 @@ export type CloseRequest =
       readonly operationId?: string;
       readonly specId: string;
       readonly integrateToTargetBranch?: boolean;
+      /** Person-initiated: finish after the content was already merged externally (#157). */
+      readonly finishAfterExternalMerge?: boolean;
     };
 
 const TARGET_MISSING =
@@ -203,10 +211,57 @@ export interface CleanTreeCheck {
    */
   readonly acceptExecutionState?: boolean;
   /**
+   * Other active Specifications' own directories sharing this checkout (#181): a dirty path is also
+   * accepted as known when it is execution-state of ONE of these, pre-filtered out of the unclean
+   * list before `specificationDirectory`'s `specification`/`other` labelling ever sees it — a
+   * sibling's exempted path never reaches a reported blocker's `paths`/`count`.
+   */
+  readonly siblingDirectories?: readonly string[];
+  /**
    * The checkout's role in the Close preflight: a refusal the owner can fix in the repository then
    * carries its {@link CloseRepositoryBlocker} for that checkout.
    */
   readonly role?: CloseCheckoutRole;
+}
+
+/** One other active Specification's own directory, exempted from a sibling Close's clean-tree check. */
+export interface SiblingSpecificationDirectory {
+  readonly specId: string;
+  readonly directory: string;
+}
+
+/**
+ * The checkout's other active Specifications' own directories (#181 A2): physically discovered
+ * (`listWorkspaceSpecifications`), cross-checked against the registry's `specBindings` for
+ * `workspaceId` (Fix 4) — a physically-discovered but unregistered/orphan directory is never
+ * exempted; its dirty paths still refuse. Used to widen both the clean-tree check and the ledger
+ * hold allowance so neither later refuses what the other already accepted.
+ */
+export async function siblingSpecificationDirectories(
+  root: string,
+  workspaceId: string,
+  registry: WorkspaceRegistry,
+  excludeSpecId: string,
+): Promise<readonly SiblingSpecificationDirectory[]> {
+  const bound = new Set(
+    registry.specBindings
+      .filter((binding) => binding.workspaceId === workspaceId && binding.specId !== excludeSpecId)
+      .map((binding) => binding.specId),
+  );
+  if (bound.size === 0) {
+    return [];
+  }
+
+  const physical = await listWorkspaceSpecifications(root);
+
+  return physical
+    .filter(
+      (specification) => specification.location === 'active' && bound.has(specification.specId),
+    )
+    .map((specification) => ({
+      specId: specification.specId,
+      directory: 'specs/active/' + specification.slug,
+    }));
 }
 
 /**
@@ -223,6 +278,23 @@ export function scopedPaths(
     ...paths.filter(own).map((path) => ({ path, scope: 'specification' as const })),
     ...paths.filter((path) => !own(path)).map((path) => ({ path, scope: 'other' as const })),
   ];
+}
+
+/**
+ * Whether a dirty path is already known-safe, accepted underneath `CleanTreeCheck`'s
+ * `specification`/`other` reporting (#181 A1): the closing Specification's own execution state
+ * (`acceptExecutionState`), or execution-state of one of `siblingDirectories` — another active
+ * Specification's own directory, never a foreign/client-supplied one. Pre-filters the unclean list
+ * before `scopedPaths`'s labelling ever sees it, so a sibling's exempted path never reaches a
+ * reported blocker's `paths`/`count`.
+ */
+export function isAcceptedDirtyPath(path: string, check: CleanTreeCheck): boolean {
+  const { specificationDirectory: directory, acceptExecutionState, siblingDirectories } = check;
+  if (acceptExecutionState && directory !== undefined && isExecutionStatePathOf(directory, path)) {
+    return true;
+  }
+
+  return siblingDirectories?.some((sibling) => isExecutionStatePathOf(sibling, path)) ?? false;
 }
 
 /**
@@ -243,12 +315,7 @@ export async function inspectCleanGitWorkspace(
   await requireNoGitOperation(root, role);
   const unclean = (await listUncleanPaths(root))
     .map((entry) => entry.path)
-    .filter(
-      (path) =>
-        !check.acceptExecutionState ||
-        directory === undefined ||
-        !isExecutionStatePathOf(directory, path),
-    );
+    .filter((path) => !isAcceptedDirtyPath(path, check));
   if (unclean.length > 0) {
     // One order everywhere: the Specification's own paths first (message, `paths`, blocker).
     const scoped = scopedPaths(unclean, directory);
@@ -349,7 +416,10 @@ async function resolveCloseSource(engine: SpecFlowEngine, specId: string) {
 
 /** The integration selection of a Specification Close: a boolean, and only for a linked checkout. */
 function assertIntegrationSelection(
-  request: { readonly integrateToTargetBranch?: boolean },
+  request: {
+    readonly integrateToTargetBranch?: boolean;
+    readonly finishAfterExternalMerge?: boolean;
+  },
   linked: boolean,
 ): void {
   if (
@@ -363,6 +433,42 @@ function assertIntegrationSelection(
     throw new CloseOperationError(
       'CLOSE_INVALID',
       'Integration selection is not applicable in primary.',
+    );
+  }
+
+  assertFinishAfterExternalMerge(request, linked);
+}
+
+/**
+ * Person-initiated finish-after-external-merge selection (#157): a boolean, only for a linked
+ * checkout, and never alongside an explicit archive-only selection (it reuses the integrated
+ * disposal path, so it is contradictory without integration).
+ */
+function assertFinishAfterExternalMerge(
+  request: {
+    readonly integrateToTargetBranch?: boolean;
+    readonly finishAfterExternalMerge?: boolean;
+  },
+  linked: boolean,
+): void {
+  if (
+    request.finishAfterExternalMerge !== undefined &&
+    typeof request.finishAfterExternalMerge !== 'boolean'
+  ) {
+    throw new CloseOperationError('CLOSE_INVALID', 'Invalid external-merge finish selection.');
+  }
+
+  if (!linked && request.finishAfterExternalMerge === true) {
+    throw new CloseOperationError(
+      'CLOSE_INVALID',
+      'External-merge finish is not applicable in primary.',
+    );
+  }
+
+  if (request.finishAfterExternalMerge === true && request.integrateToTargetBranch === false) {
+    throw new CloseOperationError(
+      'CLOSE_INVALID',
+      'External-merge finish is not applicable to an archive-only Close.',
     );
   }
 }
@@ -430,6 +536,9 @@ async function previewCloseWithoutGit(
       operationId,
       specId: request.specId,
       integrateToTargetBranch: false,
+      // Git-off Close never integrates: the combination with an external-merge finish is excluded
+      // by the type system (GitOffClosePlan has no such field), not by a runtime refusal.
+      finishAfterExternalMerge: false,
     }),
     slug: canonical.specification.slug,
     location: canonical.specification.location,
@@ -502,6 +611,10 @@ async function previewGitClose(
     throw invalid('Close Worktree requires a managed linked checkout.');
   }
 
+  if (request.kind === 'worktree-close') {
+    assertFinishAfterExternalMerge(request, linked);
+  }
+
   if (request.kind === 'specification-close') {
     if (canonical.specification.location !== 'active') {
       throw invalid('Only an active Specification can be archived.');
@@ -555,11 +668,20 @@ async function previewGitClose(
   const targetMissing = configured !== undefined && !configured.policy.integrationTargetBranch;
   // A Specification Close commits the Specification's uncommitted execution state with its archive.
   const specificationDirectory = 'specs/active/' + canonical.specification.slug;
+  // #181: another active Specification's own pending execution state in this shared checkout does
+  // not block an archive-only/exclusive Close of this one (sibling-isolation, A2).
+  const siblings = await siblingSpecificationDirectories(
+    sourceWorkspace.root,
+    sourceWorkspace.workspaceId,
+    registry,
+    request.specId,
+  );
   let source: CloseWorkspaceEvidence;
   try {
     source = await inspectCleanGitWorkspace(sourceWorkspace, {
       specificationDirectory,
       acceptExecutionState: request.kind === 'specification-close',
+      siblingDirectories: siblings.map((entry) => entry.directory),
       role: 'specification',
     });
   } catch (error) {
@@ -685,14 +807,21 @@ async function previewGitClose(
   }
 
   const binding = registry.specBindings.find((item) => item.specId === request.specId);
+  const finishAfterExternalMerge = request.finishAfterExternalMerge === true;
   const normalized =
     request.kind === 'worktree-close'
-      ? { kind: 'worktree-close' as const, operationId, specId: request.specId }
+      ? {
+          kind: 'worktree-close' as const,
+          operationId,
+          specId: request.specId,
+          finishAfterExternalMerge,
+        }
       : {
           kind: 'specification-close' as const,
           operationId,
           specId: request.specId,
           integrateToTargetBranch: linked ? (request.integrateToTargetBranch ?? true) : false,
+          finishAfterExternalMerge,
         };
 
   const resources = sortedResources([
@@ -722,6 +851,7 @@ async function previewGitClose(
     ...(request.kind === 'specification-close' && linked
       ? { integrateToTargetBranch: integrate }
       : {}),
+    ...(finishAfterExternalMerge ? { finishAfterExternalMerge: true as const } : {}),
     ...(configRevision ? { configRevision } : {}),
     resources,
   };

@@ -192,6 +192,8 @@ and without SSE clients just poll the inspection.
 
 Mutating Close requests include UUID `operationId`; Specification Close optionally sends
 `integrateToTargetBranch:false` for archive-only. Completed results use 200; unsettled use 202.
+Both Worktree Close and Specification Close requests (and their preview query strings) also accept
+an optional `finishAfterExternalMerge: true` (#157, below).
 
 **Git off.** In a project with Git off (`git.enabled: false`, or no `git:` block in
 `.nevo/config.yaml`) a Specification Close only archives: the Specification is moved to
@@ -320,5 +322,17 @@ refuse with 409 `CLOSE_LOCAL_CONFIG_MODIFIED` before anything is removed (the Cl
 unreadable) and must be moved or deleted manually.
 Retrying the same Close operation afterwards completes the disposal.
 Error status and exact DTO variants are defined in the schema and Runtime endpoint.
+
+**Finish after an external (PR) merge (#157).** `finishAfterExternalMerge: true` on a Worktree Close
+or a (linked) Specification Close is person-initiated and never inferred from the merge facts: it
+proves by content, not ancestry, that the destination already has everything the source branch
+changed (the Specification's own canonical subtree(s) and every path the source branch's merge-base
+diff names), then finishes through the same archive + CAS-rebind + worktree-disposal effects an
+already-integrated Close uses — no new merge commit. A retry of the same `operationId` that flips
+this field is `409 CLOSE_CONFLICT`, exactly like `integrateToTargetBranch`; it is `400 CLOSE_INVALID`
+in the primary checkout or combined with an explicit `integrateToTargetBranch: false` (contradictory:
+this mode reuses the integrated disposal path). On a mismatch, Close answers `409
+CLOSE_EXTERNAL_MERGE_MISMATCH` with `paths` (at most 10 of the total): every path that is missing or
+not yet content-equivalent in the destination, not just the first.
 
 No operation silently completes tasks, invents Session state or retries uncertain Git effects.

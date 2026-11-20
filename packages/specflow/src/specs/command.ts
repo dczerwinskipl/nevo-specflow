@@ -216,12 +216,17 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
     .argument('<spec-id>', 'Canonical Specification UUID')
     .option('--operation-id <uuid>', 'Stable operation UUID; reuse it for idempotent retry')
     .option('--project-root <path>', 'Require this verified Project Home root')
+    .option(
+      '--finish-after-external-merge',
+      'Finish after the branch was already merged externally (e.g. a GitHub squash merge): proves content equivalence instead of merging again',
+    )
     .option('--preview', 'Inspect the Close plan without writing')
     .option('--yes', 'Confirm whole-branch integration and worktree removal')
     .option('--json', 'Output machine-readable result')
     .action(async (specId: string, options: CliCloseOptions) => {
       const engine = await engineForClose(context.cwd, options.projectRoot);
       const operationId = options.operationId ?? randomUUID();
+      const finishAfterExternalMerge = options.finishAfterExternalMerge ? true : undefined;
       if (options.preview) {
         await previewRefusals(context, options.json, async () =>
           output(
@@ -230,6 +235,7 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
               kind: 'worktree-close',
               operationId,
               specId,
+              ...(finishAfterExternalMerge === undefined ? {} : { finishAfterExternalMerge }),
             }),
           ),
         );
@@ -241,7 +247,11 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
         throw new Error('Closing a Git worktree requires --yes. Use --preview first.');
       }
 
-      const result = await closeWorktreeOperation(engine, { operationId, specId });
+      const result = await closeWorktreeOperation(engine, {
+        operationId,
+        specId,
+        ...(finishAfterExternalMerge === undefined ? {} : { finishAfterExternalMerge }),
+      });
       if (options.json) {
         output(context, result);
       } else {
@@ -317,6 +327,10 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
     .option('--operation-id <uuid>', 'Stable operation UUID; reuse it for idempotent retry')
     .option('--project-root <path>', 'Require this verified Project Home root')
     .option('--archive-only', 'Archive linked Specification without merging or removing worktree')
+    .option(
+      '--finish-after-external-merge',
+      'Finish after the branch was already merged externally (e.g. a GitHub squash merge): proves content equivalence instead of merging again',
+    )
     .option('--preview', 'Inspect the Close plan without writing')
     .option('--yes', 'Confirm archival mutation')
     .option('--json', 'Output machine-readable result')
@@ -328,6 +342,7 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
         operationId,
         specId,
         ...(options.archiveOnly ? { integrateToTargetBranch: false } : {}),
+        ...(options.finishAfterExternalMerge ? { finishAfterExternalMerge: true } : {}),
       };
       if (options.preview) {
         await previewRefusals(context, options.json, async () => {
@@ -558,6 +573,7 @@ interface CliCloseOptions {
   readonly preview?: boolean;
   readonly yes?: boolean;
   readonly json?: boolean;
+  readonly finishAfterExternalMerge?: boolean;
 }
 
 interface CliCreateOptions {

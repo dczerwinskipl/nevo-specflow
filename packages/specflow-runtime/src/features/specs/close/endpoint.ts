@@ -112,6 +112,7 @@ async function authorizedPlan(
   specId: string,
   operationId: string,
   integrateToTargetBranch?: boolean,
+  finishAfterExternalMerge?: boolean,
   options: PlanPublicCloseOptions = {},
 ): Promise<PublicClosePlan> {
   // Spec-scoped authentication precedes every operation-id/immutable-journal read.
@@ -120,12 +121,18 @@ async function authorizedPlan(
   const plan = await planPublicCloseOperation(
     engine,
     kind === 'worktree-close'
-      ? { kind, operationId, specId }
+      ? {
+          kind,
+          operationId,
+          specId,
+          ...(finishAfterExternalMerge === undefined ? {} : { finishAfterExternalMerge }),
+        }
       : {
           kind,
           operationId,
           specId,
           ...(integrateToTargetBranch === undefined ? {} : { integrateToTargetBranch }),
+          ...(finishAfterExternalMerge === undefined ? {} : { finishAfterExternalMerge }),
         },
     options,
   );
@@ -225,6 +232,7 @@ const LOCAL_CONFIG_REMEDY =
 function closeRefusalDetails(error: unknown): {
   remedy?: string;
   localConfig?: CloseOperationError['localConfig'];
+  paths?: string[];
 } {
   if (!(error instanceof CloseOperationError)) {
     return {};
@@ -241,6 +249,10 @@ function closeRefusalDetails(error: unknown): {
     };
   }
 
+  if (error.code === 'CLOSE_EXTERNAL_MERGE_MISMATCH' && error.paths.length > 0) {
+    return { paths: [...error.paths] };
+  }
+
   return {};
 }
 
@@ -253,6 +265,7 @@ function statusForCloseError(code: SafeCode): 400 | 404 | 409 | 422 | 503 {
     case 'CLOSE_CONFLICT':
     case 'CLOSE_BLOCKED':
     case 'CLOSE_SHARED_WORKTREE':
+    case 'CLOSE_EXTERNAL_MERGE_MISMATCH':
     case 'CLOSE_LOCAL_CONFIG_MODIFIED':
     case 'REGISTRY_CONFLICT':
     case 'SPEC_CONFLICT':
@@ -368,7 +381,11 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
 
         try {
           const { specId } = request.params;
-          const body = request.body as { operationId: string; integrateToTargetBranch?: boolean };
+          const body = request.body as {
+            operationId: string;
+            integrateToTargetBranch?: boolean;
+            finishAfterExternalMerge?: boolean;
+          };
           const plan = await authorizedPlan(
             request,
             engine,
@@ -376,18 +393,28 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
             specId,
             body.operationId,
             body.integrateToTargetBranch,
+            body.finishAfterExternalMerge,
             // The admission commits the queued document changes first; the authorization plan must too.
             { flushDocumentCommits: true },
           );
           const result = await whileReleased(options.releaseWorkspace, plan.sourceWorkspace, () =>
             kind === 'worktree-close'
-              ? closeWorktreeOperation(engine, { specId, operationId: body.operationId })
+              ? closeWorktreeOperation(engine, {
+                  specId,
+                  operationId: body.operationId,
+                  ...(body.finishAfterExternalMerge === undefined
+                    ? {}
+                    : { finishAfterExternalMerge: body.finishAfterExternalMerge }),
+                })
               : closeSpecificationOperation(engine, {
                   specId,
                   operationId: body.operationId,
                   ...(body.integrateToTargetBranch === undefined
                     ? {}
                     : { integrateToTargetBranch: body.integrateToTargetBranch }),
+                  ...(body.finishAfterExternalMerge === undefined
+                    ? {}
+                    : { finishAfterExternalMerge: body.finishAfterExternalMerge }),
                 }),
           );
 
@@ -444,6 +471,8 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
           const { specId } = request.params;
           const integrateToTargetBranch = request.query.integrateToTargetBranch;
           // A fresh operation id: the read-only preview with its merge facts, never a journal.
+          // finishAfterExternalMerge is not offered on the preview query: it pins no new Git fact a
+          // preview could usefully reflect (the preview's `merge` shape is unaffected by it).
           const preview = await previewPublicCloseOperation(
             engine,
             kind === 'worktree-close'

@@ -20,7 +20,11 @@ import {
 } from './model';
 import { readCloseJournal, publishCloseJournal } from './journal/store';
 import { assertResourcesAvailable } from './resources';
-import { previewCloseOperation, type CloseRequest } from './preflight';
+import {
+  previewCloseOperation,
+  siblingSpecificationDirectories,
+  type CloseRequest,
+} from './preflight';
 import { repositoryModeOf } from './repository-mode';
 import { resolveSpecification } from '../discovery';
 import type { UncommittedAllowance } from '../uncommitted';
@@ -86,7 +90,7 @@ async function admitClosePlan(
   // Document commits of every checkout the Close owns are flushed before the lock is taken (Git runs
   // here, never inside the lock); what is still pending, failed or abandoned refuses the Close.
   // The preview and the preflight stay pure: this is the only effect, and only at admission.
-  const allowance = allowanceOfPlan(plan);
+  const allowance = await allowanceOfPlan(engine, plan);
   await flushCheckoutsForClose(
     engine,
     [plan.source, ...(plan.target !== undefined ? [plan.target] : [])],
@@ -181,31 +185,53 @@ function assertMatchingRequest(
     );
   }
 
-  if (request.kind === 'specification-close' && journal.plan.gitOff) {
-    // With Git off a Close only archives: omitting the option or `false` replays it, `true` never.
+  if (journal.plan.gitOff) {
     if (
-      request.integrateToTargetBranch === true ||
-      (journal.plan.source.instanceId === undefined &&
-        request.integrateToTargetBranch !== undefined)
+      request.kind === 'specification-close' &&
+      // With Git off a Close only archives: omitting the option or `false` replays it, `true` never.
+      (request.integrateToTargetBranch === true ||
+        (journal.plan.source.instanceId === undefined &&
+          request.integrateToTargetBranch !== undefined) ||
+        // finishAfterExternalMerge is excluded for a Git-off Close by the type system
+        // (GitOffClosePlan never carries it); requesting it true is a changed immutable selection.
+        request.finishAfterExternalMerge === true)
     ) {
       throw new CloseOperationError(
         'CLOSE_CONFLICT',
         'OperationId changed immutable integration selection.',
       );
     }
-  } else if (request.kind === 'specification-close') {
+
+    return;
+  }
+
+  // `journal.plan` is a `GitClosePlan` here (the `gitOff` discriminant narrowed it above).
+  if (request.kind === 'specification-close') {
     // The original linked/primary scope is pinned by the journal, not the
     // current registry. Omitting the option is an intentional default, not a
     // wildcard that may replay an archive-only operation.
     const linked = journal.plan.source.instanceId !== undefined;
     const requested = linked ? (request.integrateToTargetBranch ?? true) : false;
     const reserved = linked ? journal.plan.integrateToTargetBranch : false;
-    if ((!linked && request.integrateToTargetBranch !== undefined) || requested !== reserved) {
+    if (
+      (!linked && request.integrateToTargetBranch !== undefined) ||
+      requested !== reserved ||
+      (request.finishAfterExternalMerge ?? false) !==
+        (journal.plan.finishAfterExternalMerge === true)
+    ) {
       throw new CloseOperationError(
         'CLOSE_CONFLICT',
         'OperationId changed immutable integration selection.',
       );
     }
+  } else if (
+    request.kind === 'worktree-close' &&
+    (request.finishAfterExternalMerge ?? false) !== (journal.plan.finishAfterExternalMerge === true)
+  ) {
+    throw new CloseOperationError(
+      'CLOSE_CONFLICT',
+      'OperationId changed immutable integration selection.',
+    );
   }
 }
 
@@ -272,14 +298,34 @@ export async function previewWithDocumentFlush(
 }
 
 /**
- * What a Specification Close does not wait for in the ledger: the Specification's uncommitted
- * execution state (`.execution/**`, `tasks/**`), which its archive commit takes along (owner decision
- * 2026-11-12). Other Close kinds archive nothing and wait for every entry.
+ * What a Specification Close does not wait for in the ledger: the Specification's own uncommitted
+ * execution state (`.execution/**`, `tasks/**`, which its archive commit takes along, owner decision
+ * 2026-11-12), plus, for an archive-only/exclusive Close sharing its checkout, each other active
+ * Specification's own execution state of ITS own directory (#181, cross-checked against the
+ * registry's `specBindings`). Other Close kinds archive nothing and wait for every entry.
  */
-function allowanceOfPlan(plan: ClosePlan): UncommittedAllowance | undefined {
-  return plan.kind === 'specification-close'
-    ? { specId: plan.specId, directory: 'specs/active/' + plan.slug }
-    : undefined;
+async function allowanceOfPlan(
+  engine: SpecFlowEngine,
+  plan: ClosePlan,
+): Promise<UncommittedAllowance | undefined> {
+  if (plan.kind !== 'specification-close') {
+    return undefined;
+  }
+
+  const own = { specId: plan.specId, directory: 'specs/active/' + plan.slug };
+  if (plan.gitOff) {
+    return { directories: [own] };
+  }
+
+  const registry = await engine.readRegistry();
+  const siblings = await siblingSpecificationDirectories(
+    plan.source.root,
+    plan.source.workspaceId,
+    registry,
+    plan.specId,
+  );
+
+  return { directories: [own, ...siblings] };
 }
 
 /** {@link allowanceOfPlan} before the plan exists (the preview refused). */
@@ -292,10 +338,29 @@ async function allowanceOfRequest(
   }
 
   const found = await resolveSpecification(engine, request.specId).catch(() => undefined);
+  if (found?.status !== 'available' || found.specification.location !== 'active') {
+    return undefined;
+  }
 
-  return found?.status === 'available' && found.specification.location === 'active'
-    ? { specId: request.specId, directory: 'specs/active/' + found.specification.slug }
-    : undefined;
+  const own = { specId: request.specId, directory: 'specs/active/' + found.specification.slug };
+  const registry = await engine.readRegistry();
+  const binding = registry.specBindings.find((item) => item.specId === request.specId);
+  const workspace =
+    binding !== undefined
+      ? registry.workspaces.find((item) => item.workspaceId === binding.workspaceId)
+      : undefined;
+  if (binding === undefined || workspace === undefined) {
+    return { directories: [own] };
+  }
+
+  const siblings = await siblingSpecificationDirectories(
+    workspace.root,
+    binding.workspaceId,
+    registry,
+    request.specId,
+  );
+
+  return { directories: [own, ...siblings] };
 }
 
 /** The checkouts a Close request can touch before its plan exists: the source and the primary. */

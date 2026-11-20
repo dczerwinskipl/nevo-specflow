@@ -150,10 +150,17 @@ export function isCloseJournal(
       (value.stage === 'integration-publish-initiated' ||
         value.stage === 'integration-verified' ||
         afterRebind) &&
-      isRecord(value.integration) &&
-      (value.integration.relationship === 'divergent') !== isRecord(value.scratch)
+      isRecord(value.integration)
     ) {
-      return false;
+      if (plan.finishAfterExternalMerge === true) {
+        // No scratch is ever created for an externally-merged finish (#157): `relationship` stays
+        // at its true, ancestry-derived value (typically `divergent`) without a scratch to match.
+        if (value.scratch !== undefined) {
+          return false;
+        }
+      } else if ((value.integration.relationship === 'divergent') !== isRecord(value.scratch)) {
+        return false;
+      }
     }
 
     if (
@@ -195,6 +202,8 @@ export function isCloseJournal(
     (plan.targetBranch !== undefined && typeof plan.targetBranch !== 'string') ||
     (plan.integrateToTargetBranch !== undefined &&
       typeof plan.integrateToTargetBranch !== 'boolean') ||
+    (plan.finishAfterExternalMerge !== undefined &&
+      typeof plan.finishAfterExternalMerge !== 'boolean') ||
     (plan.configRevision !== undefined &&
       (typeof plan.configRevision !== 'string' || !SHA.test(plan.configRevision))) ||
     !Array.isArray(plan.resources)
@@ -228,12 +237,18 @@ export function isCloseJournal(
     plan.kind === 'workspace-close'
       ? { kind: 'workspace-close' as const, operationId, workspaceId: String(plan.workspaceId) }
       : plan.kind === 'worktree-close'
-        ? { kind: 'worktree-close' as const, operationId, specId: plan.specId }
+        ? {
+            kind: 'worktree-close' as const,
+            operationId,
+            specId: plan.specId,
+            finishAfterExternalMerge: plan.finishAfterExternalMerge === true,
+          }
         : {
             kind: 'specification-close' as const,
             operationId,
             specId: plan.specId,
             integrateToTargetBranch: plan.integrateToTargetBranch ?? false,
+            finishAfterExternalMerge: plan.finishAfterExternalMerge === true,
           };
   if (plan.fingerprint !== fingerprintCloseIntent(intent)) {
     return false;
@@ -264,12 +279,24 @@ function isCoherentCloseScope(plan: Record<string, unknown>): boolean {
     if (!linked || plan.integrateToTargetBranch !== undefined) {
       return false;
     }
+
+    // A workspace-level Close never supports finishAfterExternalMerge; its own CloseIntent variant
+    // has no such field at all.
+    if (plan.kind === 'workspace-close' && plan.finishAfterExternalMerge !== undefined) {
+      return false;
+    }
   } else if (plan.kind === 'specification-close') {
     if ((typeof plan.integrateToTargetBranch === 'boolean') !== linked) {
       return false;
     }
 
     if (plan.location !== 'active') {
+      return false;
+    }
+
+    // Contradictory without integration: finish-after-external-merge reuses the integrated
+    // disposal path, so it is never combined with an explicit archive-only selection.
+    if (plan.finishAfterExternalMerge === true && plan.integrateToTargetBranch !== true) {
       return false;
     }
   }
@@ -331,7 +358,11 @@ function isGitOffCloseJournal(
         operationId,
         specId: plan.specId,
         integrateToTargetBranch: false,
+        finishAfterExternalMerge: false,
       }) ||
+    // Git-off Close never integrates: the combination with an external-merge finish is excluded by
+    // the type system (GitOffClosePlan has no such field), not by a runtime refusal here.
+    plan.finishAfterExternalMerge !== undefined ||
     typeof plan.slug !== 'string' ||
     !isCanonicalSlug(plan.slug) ||
     plan.location !== 'active' ||
@@ -545,15 +576,19 @@ function isIntegrationPreparation(
     stage === 'disposal-initiated' ||
     stage === 'completed'
   ) {
-    if (
+    if (plan.finishAfterExternalMerge === true) {
+      // No merge/fast-forward ever runs for this mode: the published commit is always the
+      // destination's own (unchanged) HEAD, regardless of `relationship`'s true ancestry value.
+      if (published !== value.targetCommit) {
+        return false;
+      }
+    } else if (
       value.relationship !== 'divergent' &&
       published !==
         (value.relationship === 'fast-forward' ? value.sourceCommit : value.targetCommit)
     ) {
       return false;
-    }
-
-    if (
+    } else if (
       value.relationship === 'divergent' &&
       (typeof published !== 'string' || !sha.test(published))
     ) {

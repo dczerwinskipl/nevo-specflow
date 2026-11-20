@@ -1,5 +1,6 @@
 import type { SpecFlowEngine } from '../../../application';
 import { GitCapabilityError } from '../../../git/errors';
+import { executeGit } from '../../../git/process';
 import { publishCloseCheckpoint } from '../close/checkpoint';
 import {
   inspectRegisteredWorkspace,
@@ -8,6 +9,7 @@ import {
 import {
   inspectGitIntegrationEvidence,
   publishGitFastForward,
+  verifyGitPathContentEquivalent,
   verifyGitTreePathEquivalent,
   verifyPublishedGitCheckout,
 } from '../../../version-control/git/integration';
@@ -16,7 +18,7 @@ import { readWorkspaceSpecification, listWorkspaceSpecifications } from '../../r
 import { inspectCloseGitIntegration } from './integration';
 import { disabledIntegrationHooksDirectory, requireRecordedDivergentCandidate } from './scratch';
 import { readCloseJournal } from '../journal/store';
-import { CloseOperationError, type CloseJournal } from '../model';
+import { CloseOperationError, REPOSITORY_PATHS_NAMED, type CloseJournal } from '../model';
 import { inspectCleanGitWorkspace } from '../preflight';
 
 function conflict(message: string): CloseOperationError {
@@ -338,6 +340,120 @@ export async function proveAlreadyIntegratedClose(
 }
 
 /**
+ * The whole-branch content-equivalence proof `finishAfterExternalMerge` needs (#157): every path the
+ * Specification's own canonical subtree(s) AND the source branch's merge-base diff name (the same
+ * list `inspectCloseGitIntegration`'s "foreign spec ownership" check already computes) must be
+ * byte-identical between `sourceHead` and `target.head`. Re-run on every call, including recovery
+ * (Fix 3): never trust a previously persisted diff or subtree list.
+ *
+ * `sourceHead` MUST be the Specification's PRE-archive identity (`plan.source.head`), never
+ * `journal.archive.committedHead` (Fix 2): `closeSpecification` always archives locally before
+ * integrating, so an external merge necessarily predates that purely local rename — the destination
+ * never has `specs/archive/<slug>`, only `specs/active/<slug>`, exactly what was actually merged.
+ */
+async function verifyExternallyMergedContent(
+  target: { readonly root: string; readonly head: string },
+  sourceHead: string,
+  occupants: readonly { readonly slug: string }[],
+): Promise<void> {
+  const proof = await inspectGitIntegrationEvidence({
+    root: target.root,
+    sourceCommit: sourceHead,
+    targetCommit: target.head,
+  });
+  const diff = await executeGit(target.root, [
+    'diff',
+    '--no-ext-diff',
+    '--no-renames',
+    '--name-only',
+    '-z',
+    proof.mergeBaseCommit,
+    sourceHead,
+  ]);
+  if (diff.exitCode !== 0) {
+    throw conflict('Cannot inspect the source branch diff for the external-merge proof.');
+  }
+
+  const branchPaths = diff.stdout.split('\0').filter(Boolean);
+  const subtreePaths = occupants.map((occupant) => 'specs/active/' + occupant.slug);
+  const paths = [...new Set([...subtreePaths, ...branchPaths])].sort();
+  const mismatched: string[] = [];
+  for (const path of paths) {
+    try {
+      await verifyGitPathContentEquivalent(target.root, sourceHead, target.head, path);
+    } catch {
+      mismatched.push(path);
+    }
+  }
+
+  if (mismatched.length > 0) {
+    const named = mismatched.slice(0, REPOSITORY_PATHS_NAMED).join(', ');
+    const more =
+      mismatched.length > REPOSITORY_PATHS_NAMED
+        ? ' and ' + (mismatched.length - REPOSITORY_PATHS_NAMED) + ' more'
+        : '';
+
+    throw new CloseOperationError(
+      'CLOSE_EXTERNAL_MERGE_MISMATCH',
+      'The destination is missing or differs for: ' + named + more + '.',
+      { paths: mismatched },
+    );
+  }
+}
+
+/**
+ * Finish Close after an external (PR) merge (#157): a person-initiated mode, never inferred from
+ * `relationship === 'divergent'`, that proves by content — not ancestry — that the destination
+ * already has everything the source branch changed, then reuses the already-integrated disposal
+ * path (same `publishedCommit = targetCommit`, no new merge, `relationship` stays at its true,
+ * unchanged ancestry value).
+ */
+export async function proveExternallyMergedClose(
+  engine: SpecFlowEngine,
+  operationId: string,
+): Promise<CloseJournal> {
+  const record = await readCloseJournal(engine.context, operationId);
+  if (
+    record?.stage !== 'integration-preparation-initiated' ||
+    record.plan.gitOff ||
+    record.plan.finishAfterExternalMerge !== true ||
+    !record.integration ||
+    !record.plan.target
+  ) {
+    throw conflict('A prepared, externally-merged Close is required.');
+  }
+
+  // Defense-in-depth: re-verify registry/config/branch/HEAD pinning exactly like every other
+  // publication path. Its returned `sourceCommit` is the (possibly post-archive) one this mode must
+  // NOT use for its own content proof (Fix 2); only the re-verification side effect is reused.
+  const reverified = await inspectCloseGitIntegration(engine, operationId);
+  if (reverified.targetCommit !== record.integration.targetCommit) {
+    throw conflict('Destination HEAD changed after integration preparation.');
+  }
+
+  const target = record.plan.target;
+  try {
+    await verifyExternallyMergedContent(
+      { root: target.root, head: target.head },
+      record.plan.source.head,
+      record.plan.occupants ?? [{ slug: record.plan.slug }],
+    );
+  } catch (error) {
+    if (error instanceof GitCapabilityError) {
+      throw conflict(error.message);
+    }
+
+    throw error;
+  }
+
+  return persistStage(engine, record, {
+    ...record,
+    stage: 'integration-verified',
+    integration: { ...record.integration, publishedCommit: target.head },
+  });
+}
+
+/**
  * Mandatory fail-closed precondition for future rebind / disposal effects.
  * A structurally valid integration-verified journal is NOT an attestation
  * of physical Git state: independently recheck both real checkout identities,
@@ -409,6 +525,26 @@ export async function requireVerifiedCloseIntegration(
     const expectedCommit = integration.publishedCommit;
     if (!expectedCommit) {
       throw conflict('Published commit evidence is missing.');
+    }
+
+    if (record.plan.finishAfterExternalMerge === true) {
+      // No scratch is ever created for this mode, and `relationship` stays at its true,
+      // ancestry-derived value (typically `divergent`) throughout — never select the
+      // scratch-candidate-tree branch below for it. Fix 3: re-run the SAME whole-branch content
+      // proof `proveExternallyMergedClose` already performed once, not only a tree-hash comparison.
+      await verifyPublishedGitCheckout({
+        root: targetPlan.root,
+        expectedBranch: targetPlan.branch,
+        expectedCommit,
+        expectedTree: integration.targetTree,
+      });
+      await verifyExternallyMergedContent(
+        { root: targetPlan.root, head: expectedCommit },
+        record.plan.source.head,
+        record.plan.occupants ?? [{ slug: record.plan.slug }],
+      );
+
+      return record;
     }
 
     const expectedTree =

@@ -162,11 +162,12 @@ Specification created before the documents layer is repaired by hand:
 
 ## Explicit Close intents
 
-| Operation                                                | Effect                                                                                                                                                                      |
-| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Specification Close with `integrateToTargetBranch:false` | Archive only the selected Spec with one Engine-owned scoped commit; preserve shared siblings, bindings and workspace                                                        |
-| Spec-scoped integrated Close / legacy Worktree Close     | Integrate and retire an **exclusive** managed source; reject shared sources with `CLOSE_SHARED_WORKTREE`                                                                    |
-| Workspace Close                                          | Separate `workspace-close(workspaceId,operationId)`; preview every bound Spec, integrate the **entire source branch** and CAS-rebind all occupants in one registry revision |
+| Operation                                                         | Effect                                                                                                                                                                                                                                      |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Specification Close with `integrateToTargetBranch:false`          | Archive only the selected Spec with one Engine-owned scoped commit; preserve shared siblings, bindings and workspace                                                                                                                        |
+| Spec-scoped integrated Close / legacy Worktree Close              | Integrate and retire an **exclusive** managed source; reject shared sources with `CLOSE_SHARED_WORKTREE`                                                                                                                                    |
+| Workspace Close                                                   | Separate `workspace-close(workspaceId,operationId)`; preview every bound Spec, integrate the **entire source branch** and CAS-rebind all occupants in one registry revision                                                                 |
+| Worktree/Specification Close with `finishAfterExternalMerge:true` | Person-initiated, never inferred: proves by content (not ancestry) that the destination already has everything the source branch changed, then finishes through the already-integrated disposal path with no new merge commit (#157, below) |
 
 Workspace Close derives the full occupant set from verified registry and canonical manifests.
 It records exact IDs, locations, statuses and binding generations in its durable journal.
@@ -257,8 +258,23 @@ names each path with its `scope`: `specification` below `specs/active/<slug>/` (
 `specificationCount`) or `other` (another Specification, project files), so a refusal never calls a file in the
 repository root a Specification file. The ledger hold (`DOCUMENT_COMMITS_PENDING`, `commit-uncommitted`) carries
 whose paths it holds and why (`details.uncommitted`): with automatic commits off (the default) another
-Specification's Task and step changes stay in the ledger until its next step finish, and hold a Close of a
-Specification sharing its checkout until they are committed.
+Specification's Task and step changes stay in the ledger until its next step finish.
+
+**Shared-checkout state isolation (#181, owner decision 2026-11-19).** Two active Specifications
+sharing one checkout — the ordinary primary/current-folder case, or a shared linked worktree closed
+archive-only — are isolated from each other's pending state: an archive-only or exclusive Close of
+Specification B is **not** refused by Specification A's own uncommitted execution state or
+pre-existing staged files, because the ledger already attributes every entry to one Specification
+unambiguously and B's archive commit stays path-limited to its own directory regardless. The clean-tree
+check and the ledger hold widen their exemption to accept **either** B's own execution state (as
+above) **or** another active Specification's own execution state of **its own** directory, derived
+from the checkout's physically-discovered Specification directories cross-checked against the
+registry's `specBindings` for that checkout — a physically-discovered but unregistered/orphan
+directory is never exempted, and a sibling's exempted path never reaches Close B's
+`uncommitted-changes` blocker (its dialog never learns A exists). Any other path — an unregistered
+owner, a path that is not execution-state-shaped, or a genuinely foreign edit — still refuses with
+`CLOSE_PREFLIGHT` exactly as before. Workspace Close is untouched (it already derives the complete
+occupant set itself and is refused up front by `CLOSE_SHARED_WORKTREE` when shared with integration).
 
 ## Safe integration, rebind and disposal
 
@@ -267,6 +283,34 @@ pinned HEAD/index/tree and physical publication proof. An already-integrated bra
 or controlled divergent candidate may be supported; merge conflicts are reported and fenced.
 No silent checkout, forced merge, rebasing, deletion of refs or synthetic confirmation of
 external agent quiescence is allowed.
+
+**Finish after an external (PR) merge (#157).** A project that merges through pull requests (a
+GitHub squash merge, for example) breaks the Git ancestry Close otherwise relies on: the destination
+already has the content, but `isAncestor(sourceCommit, targetCommit)` reports `false`, so Close sees
+`relationship: 'divergent'` and has no supported way to say "the destination already has this;
+finish without merging again." `finishAfterExternalMerge` is a person-initiated Close mode
+(`specs worktree close`/`specs close`, never inferred automatically from `relationship ===
+'divergent'`, so a real merge the person actually wants is never silently skipped) that proves the
+equivalent fact by content instead: every path the source branch's own merge-base diff names, and
+the Specification's own canonical subtree(s), must be byte-identical between the Specification's
+**pre-archive** source HEAD and the destination's current HEAD — not just the subtree, so a partial
+external merge (the Spec's folder landed, an ordinary code change from the same branch did not) also
+refuses. The pre-archive HEAD matters because `closeSpecification` always archives locally
+(`specs/active` → `specs/archive` on the source branch) before integrating, and an external merge
+necessarily predates that purely local rename: the destination never has `specs/archive/<slug>`,
+only `specs/active/<slug>`, exactly what was actually merged; the Close postcondition for this mode
+asserts the Specification is **present** at that pre-archive location on the destination, not that it
+shows `'archive'` there. On success, Close skips the merge/fast-forward step entirely and reuses the
+same archive + CAS-rebind + worktree-disposal effects the already-integrated path uses — no scratch,
+no new merge commit, and `relationship` stays at its true, unchanged ancestry value throughout. On
+failure, Close refuses with the distinct `CLOSE_EXTERNAL_MERGE_MISMATCH` error code, naming every
+differing or missing path (not just the first); the defense-in-depth re-check immediately before CAS
+rebind re-runs the same whole-branch content proof, not only a subtree tree-hash comparison, so a
+resumed/recovered Close is re-verified exactly like a fresh one.
+
+> Follow-up: the original spec recommended this mode also honour `git.commits.protectedBranches`
+> through the existing branch-pattern matcher; that recommendation is **not yet implemented** — this
+> package only adds the content proof and the disposal reuse above.
 
 Only after publication proof does one CAS transfer every pinned binding. A second registry
 revision retires the workspace registration only after a separate non-force physical removal.

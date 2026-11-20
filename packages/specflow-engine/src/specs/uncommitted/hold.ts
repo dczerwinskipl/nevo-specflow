@@ -50,12 +50,14 @@ export interface UncommittedHold {
 
 /**
  * Ledger entries a Specification Close does not wait for: the execution state (`.execution/**`,
- * `tasks/**`) of the Specification it archives, which its archive commit takes along.
+ * `tasks/**`) of the Specification it archives (its archive commit takes it along), plus, for an
+ * archive-only/exclusive Close sharing its checkout with other active Specifications, each
+ * sibling's own execution state of ITS own directory (#181) — never a client-supplied directory for
+ * a foreign owner, and never any entry that is not that owner's own.
  */
 export interface UncommittedAllowance {
-  readonly specId: string;
-  /** The checkout-relative directory of the Specification (`specs/active/<slug>`). */
-  readonly directory: string;
+  /** The closing Specification's own entry first, then its siblings', each `{ specId, directory }`. */
+  readonly directories: readonly { readonly specId: string; readonly directory: string }[];
 }
 
 const SPECIFICATION_PATH = /^specs\/active\/[^/]+\/(.+)$/u;
@@ -81,12 +83,13 @@ export async function readUncommittedHold(
 ): Promise<UncommittedHold | undefined> {
   const { records, unreadable } = await listLedgerRecords(engine.context, { workspaceId });
   const held = records.flatMap((record) => {
+    const ownerId = record.owner.kind === 'specification' ? record.owner.id : undefined;
+    const own =
+      ownerId !== undefined
+        ? allowance?.directories.find((entry) => entry.specId === ownerId)
+        : undefined;
     const entries = record.entries.filter(
-      (entry) =>
-        allowance === undefined ||
-        record.owner.kind !== 'specification' ||
-        record.owner.id !== allowance.specId ||
-        !isExecutionStatePathOf(allowance.directory, entry.path),
+      (entry) => own === undefined || !isExecutionStatePathOf(own.directory, entry.path),
     );
 
     return entries.length === 0 ? [] : [{ owner: record.owner, entries }];

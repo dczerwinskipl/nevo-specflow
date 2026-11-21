@@ -1,6 +1,8 @@
+import { findStep } from '@nevo/workflow';
+
 import { WorkflowError } from '../../errors';
 import { loadSubject } from '../../operations/loaded-execution';
-import type { PostActionResult } from '../../operations/post-actions';
+import { NO_POST_ACTIONS, type PostActionResult } from '../../operations/post-actions';
 import { agentAttemptBindingOf, type OwnerActor, type WorkflowSubject } from '../../state/model';
 import type { AgentAttemptDependencies } from '../dependencies';
 import {
@@ -228,9 +230,12 @@ export interface RetryAgentAttemptCommitResult {
 /**
  * The owner's **Retry commit** of a finished agent attempt `step#attempt` of `subject` (D15): runs
  * its failed attempt commit again, once (`retryAgentPostActions`: a retry while another runs waits
- * for it and then finds nothing left to run). Refused `WORKFLOW_ATTEMPT_MISMATCH` when the attempt is
- * not a finished agent attempt, and `WORKFLOW_POSITION_INVALID` when its commit did not fail (it
- * committed, or it has not run yet: recovery runs it).
+ * for it and then finds nothing left to run). For an attempt whose result the owner confirmed (D17)
+ * and whose attempt commit did not fail, it runs the owner's post actions of that confirmation again
+ * instead (the commit an interruption after the Confirm left undone; nothing to commit otherwise).
+ * Refused `WORKFLOW_ATTEMPT_MISMATCH` when the attempt is not a finished agent attempt, and
+ * `WORKFLOW_POSITION_INVALID` when its commit did not fail (it committed, or it has not run yet:
+ * recovery runs it).
  */
 export async function retryAgentAttemptCommit(
   dependencies: AgentAttemptDependencies,
@@ -255,6 +260,21 @@ export async function retryAgentAttemptCommit(
   }
 
   if (!(journal.postActions ?? []).some((action) => action.state === 'failed')) {
+    if (record?.confirmation?.state === 'confirmed') {
+      const definition = loadSubject(workflow.catalogue, snapshot, input.subject).definition;
+
+      return {
+        postActions: await (workflow.postActions ?? NO_POST_ACTIONS).afterStepFinished({
+          subject: input.subject,
+          step: input.step,
+          stepTitle: findStep(definition, input.step)?.title ?? input.step,
+          attempt: input.attempt,
+          actor: input.actor,
+          replayed: true,
+        }),
+      };
+    }
+
     throw new WorkflowError(
       'WORKFLOW_POSITION_INVALID',
       `The commit of ${input.step}#${String(input.attempt)} did not fail; there is nothing to retry.`,

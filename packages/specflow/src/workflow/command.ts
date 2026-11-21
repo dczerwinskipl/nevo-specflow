@@ -1,10 +1,14 @@
+import { randomUUID } from 'node:crypto';
+
 import {
+  confirmAgentResult,
   engineAgentContextSource,
   finishStep,
   inspectActions,
   readStepContext,
   openAgentAttempts,
   reevaluateWait,
+  rejectAgentResult,
   resolveSpecification,
   retryAgentAttemptCommit,
   returnToStep,
@@ -25,8 +29,10 @@ import { localOwner } from '../local-actor';
 import { parsePositiveInt, readStructuredFile } from '../structured-input';
 import {
   actionLines,
+  confirmLines,
   contextLines,
   finishLines,
+  rejectLines,
   retryCommitLines,
   returnLines,
   startLines,
@@ -309,7 +315,7 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
     workflow
       .command('retry-commit')
       .description(
-        "Retry the failed commit of a finished agent attempt: one commit of the attempt's own files",
+        "Retry the failed commit of a finished agent attempt (one commit of the attempt's own files), or the commit of a confirmation an interruption left undone",
       )
       .requiredOption('--step <step-id>', 'The step the agent finished (see "workflow actions")')
       .requiredOption('--attempt <number>', 'The attempt whose commit failed', parsePositiveInt),
@@ -325,6 +331,82 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
       emit(options, result, retryCommitLines(subject, options.step, options.attempt, result));
     });
   });
+
+  common(
+    workflow
+      .command('confirm')
+      .description(
+        "Confirm an agent's result that waits for you: its transition and effects apply as yours, then the owner's commit",
+      )
+      .requiredOption('--step <step-id>', 'The step the agent finished (see "workflow actions")')
+      .requiredOption('--attempt <number>', 'The attempt whose result waits', parsePositiveInt)
+      .requiredOption(
+        '--confirms-digest <sha256>',
+        'The digest "workflow actions" shows with the result: Confirm applies exactly what you read',
+      )
+      .option('--request-id <uuid>', 'Repeat an earlier confirm (idempotency key); new by default'),
+  ).action(
+    async (
+      specId: string,
+      options: CommonOptions & {
+        step: string;
+        attempt: number;
+        confirmsDigest: string;
+        requestId?: string;
+      },
+    ) => {
+      const requestId = options.requestId ?? randomUUID();
+      // Before the Engine is opened, so an interrupted confirm can be repeated with the same id.
+      context.stderr(`Request id: ${requestId} (repeat with --request-id ${requestId})`);
+      await run(options, 'change', async ({ engine }) => {
+        const result = await confirmAgentResult(await openAgentAttempts(engine), {
+          subject: subjectOf(specId, options),
+          step: options.step,
+          attempt: options.attempt,
+          confirmsDigest: options.confirmsDigest,
+          requestId,
+          actor: owner(),
+        });
+        emit(options, result, confirmLines(result));
+      });
+    },
+  );
+
+  common(
+    workflow
+      .command('reject')
+      .description(
+        "Reject an agent's result that waits for you: the step is ready again with your feedback",
+      )
+      .requiredOption('--step <step-id>', 'The step the agent finished (see "workflow actions")')
+      .requiredOption('--attempt <number>', 'The attempt whose result waits', parsePositiveInt)
+      .requiredOption('--feedback <text>', 'What should change; the next attempt reads it first')
+      .option('--request-id <uuid>', 'Repeat an earlier reject (idempotency key); new by default'),
+  ).action(
+    async (
+      specId: string,
+      options: CommonOptions & {
+        step: string;
+        attempt: number;
+        feedback: string;
+        requestId?: string;
+      },
+    ) => {
+      const requestId = options.requestId ?? randomUUID();
+      context.stderr(`Request id: ${requestId} (repeat with --request-id ${requestId})`);
+      await run(options, 'change', async ({ engine }) => {
+        const result = await rejectAgentResult(await openAgentAttempts(engine), {
+          subject: subjectOf(specId, options),
+          step: options.step,
+          attempt: options.attempt,
+          feedback: options.feedback,
+          requestId,
+          actor: owner(),
+        });
+        emit(options, result, rejectLines(result));
+      });
+    },
+  );
 
   workflow
     .command('reevaluate-wait')

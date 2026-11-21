@@ -39,6 +39,18 @@ export interface TaskReferences extends GateDocuments {
   pendingDocumentChange(specId: string, taskId: string): Promise<boolean>;
   /** {@link pendingDocumentChange} of every Task of the Specification at once (one read). */
   pendingDocumentChanges(specId: string): Promise<ReadonlySet<string>>;
+  /**
+   * The content revision (sha256 of the bytes) of every document file of the Task (`task.md` and
+   * the others, registered or not), by path; `null` for a registered document without a file. What
+   * the owner's Confirm of an agent's result pins of a draft besides its manifest (D17).
+   */
+  taskDocumentRevisions(specId: string, taskId: string): Promise<readonly TaskDocumentRevision[]>;
+}
+
+export interface TaskDocumentRevision {
+  /** Relative to the Task folder. */
+  readonly path: string;
+  readonly revision: string | null;
 }
 
 /** The dependencies of ONE read, with {@link readScopedReferences}. */
@@ -88,6 +100,10 @@ export function readScopedReferences(references: TaskReferences): TaskReferences
     pendingDocumentChanges: pending,
     documentsOfType: (scope, type) =>
       once(key('documents', scope, type), () => references.documentsOfType(scope, type)),
+    taskDocumentRevisions: (specId, taskId) =>
+      once(key('task-documents', specId, taskId), () =>
+        references.taskDocumentRevisions(specId, taskId),
+      ),
   };
 }
 

@@ -52,6 +52,11 @@ export const WORKFLOW_ERROR_CODES = [
    */
   'WORKFLOW_OWNER_DECISION_REQUIRED',
   /**
+   * The owner's Confirm of an agent's result names a `confirmsDigest` that is not what Confirm would
+   * apply now (a draft added, removed or edited since the owner was shown it).
+   */
+  'WORKFLOW_CONFIRMATION_CHANGED',
+  /**
    * Ask agent attribution (B3, B6), thrown as `AttributionRefusalError` naming the paths: the
    * checkout has changes the Engine cannot attribute at an agent attempt's start
    * (`WORKFLOW_DIRTY_BASELINE`), files changed since the attempt's last Turn ended at Continue

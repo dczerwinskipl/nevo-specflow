@@ -11,7 +11,7 @@ export interface GroupingFacts {
   /** Absent for a broken Task. */
   readonly preparation?: TaskFacts['preparation'];
   /** Absent for a broken Task. */
-  readonly position?: TaskFacts['position']['state'];
+  readonly position?: Exclude<TaskFacts['position']['state'], 'awaiting-confirmation'>;
   /** For a terminal position. */
   readonly outcome?: 'completed' | 'abandoned';
   readonly startable: boolean;
@@ -43,7 +43,8 @@ export function groupingFactsOf(facts: TaskFacts): GroupingFacts {
   return {
     broken: false,
     preparation: facts.preparation,
-    position: position.state,
+    // A result waiting for the owner's confirmation is still work in progress.
+    position: position.state === 'awaiting-confirmation' ? 'active' : position.state,
     ...(position.state === 'terminal' ? { outcome: position.outcome } : {}),
     startable: facts.startable,
     startBlocked,

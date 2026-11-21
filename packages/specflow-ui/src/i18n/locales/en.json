@@ -2774,7 +2774,9 @@
         "resume-task": "Resume",
         "start-step": "Start step",
         "reevaluate-wait": "Go to current step",
-        "return-to-step": "Return to earlier step"
+        "return-to-step": "Return to earlier step",
+        "confirm-result": "Review result",
+        "reject-result": "Reject result"
       },
       "specification": "Specification",
       "stuckTitle_one": "Resolve {{count}} blocking task",

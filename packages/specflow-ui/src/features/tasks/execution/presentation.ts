@@ -155,7 +155,9 @@ export function openTasksText(t: TFunction, tasks: readonly OpenTask[]): string 
 
 /** The step the position is about: the current step, else the one that starts next. */
 function positionStep(position: WorkflowActionProjection['position']) {
-  return position.kind === 'active' || position.kind === 'waiting'
+  return position.kind === 'active' ||
+    position.kind === 'waiting' ||
+    position.kind === 'awaiting-confirmation'
     ? position.step
     : position.kind === 'terminal'
       ? undefined

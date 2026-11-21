@@ -1,5 +1,6 @@
 import {
   activeAttempt,
+  awaitingAttempt,
   findStep,
   handoffOf,
   newRun,
@@ -21,6 +22,7 @@ import type { TaskProposal } from '../tasks/tasks';
 import type { TaskResourceIssue } from '../../tasks/resource/validate';
 import {
   type ExecutionTask,
+  type PendingOwnerDecisions,
   type WorkflowActor,
   type WorkflowRun,
   type WorkflowSubject,
@@ -39,6 +41,7 @@ import {
   type OpenTask,
 } from '../tasks/tasks';
 import { continuationOf, waitDecision } from './advance';
+import { confirmsDigestOf, resultConfirmsOf } from './confirms';
 import { deriveAttention, startBlockerAttention } from './attention';
 import type { AttentionItem } from '../attention/model';
 import type { BlockingTask } from '../tasks/tasks';
@@ -75,7 +78,7 @@ import {
   type RelationSteps,
 } from '../gates/document-relations';
 import { onlyTarget, outlineOf, type OutlinePosition, type WorkflowOutline } from './outline';
-import { forOneRead } from './task-references';
+import { forOneRead, type TaskReferences } from './task-references';
 
 export type { StartBlocker } from './start-blockers';
 export type {
@@ -249,6 +252,37 @@ export type ActionPosition =
         readonly blocking?: readonly BlockingTask[];
       };
     }
+  /**
+   * An agent's result waits for the owner's Confirm or Reject (D17): the attempt ended (who did it,
+   * when), the agent's proposal, and what Confirm applies besides taking the transition.
+   */
+  | {
+      readonly kind: 'awaiting-confirmation';
+      readonly step: StepDescription;
+      readonly attempt: {
+        readonly number: number;
+        readonly startedAt: string;
+        readonly endedAt?: string;
+        readonly actor: WorkflowActor;
+      };
+      readonly proposal: {
+        /** The result the agent chose: where it goes and the exit gates it needs, evaluated now. */
+        readonly transition: StepExit;
+        readonly feedback?: string;
+        readonly artifacts: readonly string[];
+      };
+      readonly confirms: {
+        /** `approve-draft-tasks`: the drafts it approves, as they are now, in id order. */
+        readonly approvesDrafts?: readonly string[];
+        /** The agent's Task status decisions, applied on Confirm. */
+        readonly taskDecisions?: PendingOwnerDecisions['taskDecisions'];
+      };
+      /**
+       * The digest of `confirms` with the content revisions of each draft's manifest and documents: Confirm names it, and is
+       * refused (`WORKFLOW_CONFIRMATION_CHANGED`) when what it would apply changed since.
+       */
+      readonly confirmsDigest: string;
+    }
   /** The subject has not started or is ready, but its next step cannot start. */
   | {
       readonly kind: 'blocked';
@@ -337,6 +371,12 @@ export interface WorkflowActions {
      */
     readonly drafts?: readonly TaskProposal[];
   };
+  /**
+   * An agent's result waits for the owner (`awaiting-confirmation`): Confirm applies it, Reject
+   * returns to its step with the owner's feedback. Both name the attempt.
+   */
+  readonly confirm?: { readonly step: string; readonly attempt: number };
+  readonly reject?: { readonly step: string; readonly attempt: number };
   /** Declared returns to steps the run reached. */
   readonly return?: {
     readonly targets: readonly {
@@ -649,13 +689,15 @@ export function relationStepsOf(
       return position.next
         ? { next: { step: stepOf(definition, position.next.step.id), startsNow: true } }
         : {};
+    // The confirmation of a held result judges the step's exit gates again.
     case 'active':
+    case 'awaiting-confirmation':
     case 'waiting': {
       const step = stepOf(definition, position.step.id);
       const target = onlyTarget(step);
 
       return {
-        ...(position.kind === 'active' ? { active: step } : {}),
+        ...(position.kind !== 'waiting' ? { active: step } : {}),
         ...(target !== undefined
           ? { next: { step: stepOf(definition, target), startsNow: false } }
           : {}),
@@ -746,6 +788,10 @@ interface RunInput {
   /** Whether a change of one of a Task's documents is pending (D03). */
   readonly taskDocumentChangePending: (specId: string, taskId: string) => Promise<boolean>;
   readonly tasks: ExecutionTasks;
+  /** The snapshot read: the content revisions of what a Confirm applies (`confirmsDigest`). */
+  readonly snapshot: ExecutionSnapshot;
+  /** The document files of a draft a Confirm approves (`confirmsDigest`). */
+  readonly references: Pick<TaskReferences, 'taskDocumentRevisions'>;
   readonly gates: GateReading;
 }
 
@@ -910,6 +956,10 @@ async function runProjection(
     };
   }
 
+  if (position.state === 'awaiting-confirmation') {
+    return { ...common, ...(await awaitingProjection(input)) };
+  }
+
   const step = stepOf(definition, position.step);
   if (step.kind === 'wait') {
     const { tasks, broken } = input.tasks;
@@ -972,6 +1022,71 @@ async function runProjection(
         : {}),
       ...returnAction,
     },
+  };
+}
+
+/**
+ * A run waiting for the owner's confirmation of an agent's result (D17): the attempt that ended, the
+ * agent's proposal (its result with where it goes and the exit gates it needs now, its feedback and
+ * artifacts) and what Confirm applies besides moving on: the drafts `approve-draft-tasks` approves
+ * (the Specification's drafts as they are now) and the agent's Task decisions. The owner's actions
+ * are Confirm and Reject; nothing else moves the run (no start, finish or return).
+ */
+async function awaitingProjection(
+  input: RunInput,
+): Promise<Pick<ActionProjection, 'position' | 'actions'>> {
+  const { definition, run } = input;
+  const record = awaitingAttempt(run);
+  const outcome = record?.outcome;
+  const step = record ? stepOf(definition, record.step) : undefined;
+  if (!record?.actor || outcome?.kind !== 'transition' || step?.kind !== 'work') {
+    throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'The awaited attempt has no pending result.');
+  }
+
+  const transition = (await stepExits(input, step)).find(
+    (candidate) => candidate.id === outcome.transition,
+  );
+  const declared = step.transitions.find((candidate) => candidate.id === outcome.transition);
+  if (!transition || !declared) {
+    throw new WorkflowError(
+      'WORKFLOW_STATE_CORRUPT',
+      `The run refers to an unknown transition "${outcome.transition}" of the step "${step.id}".`,
+    );
+  }
+
+  const confirms = await resultConfirmsOf(
+    declared.annotations.effects,
+    input.tasks.tasks,
+    input.snapshot,
+    record,
+    input.references,
+  );
+  const ref = { step: record.step, attempt: record.attempt };
+
+  return {
+    position: {
+      kind: 'awaiting-confirmation',
+      step: describeStep(step),
+      attempt: {
+        number: record.attempt,
+        startedAt: record.startedAt,
+        ...(record.endedAt !== undefined ? { endedAt: record.endedAt } : {}),
+        actor: record.actor,
+      },
+      proposal: {
+        transition,
+        ...(outcome.feedback !== undefined ? { feedback: outcome.feedback } : {}),
+        artifacts: outcome.artifacts,
+      },
+      confirms: {
+        ...(confirms.approvesDrafts !== undefined
+          ? { approvesDrafts: confirms.approvesDrafts.map((draft) => draft.taskId) }
+          : {}),
+        ...(confirms.taskDecisions.length > 0 ? { taskDecisions: confirms.taskDecisions } : {}),
+      },
+      confirmsDigest: confirmsDigestOf(confirms),
+    },
+    actions: { confirm: ref, reject: ref },
   };
 }
 
@@ -1105,6 +1220,8 @@ async function specificationPosition(
         taskDocumentChangePending: (specId, taskId) =>
           dependencies.references.pendingDocumentChange(specId, taskId),
         tasks: executionTasks(catalogue, snapshot),
+        snapshot,
+        references: dependencies.references,
         gates,
       }),
     )),
@@ -1300,6 +1417,8 @@ export async function taskProjection(
     taskDocumentChangePending: (specId, taskId) =>
       dependencies.references.pendingDocumentChange(specId, taskId),
     tasks,
+    snapshot,
+    references: dependencies.references,
     gates,
   });
 

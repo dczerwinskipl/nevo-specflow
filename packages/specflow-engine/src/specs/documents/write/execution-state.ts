@@ -281,7 +281,11 @@ interface RecordTarget {
   readonly workspaceRoot: string;
   readonly commits: CommitPort;
   readonly now: () => Date;
-  /** The agent Turn the change is made for: its ledger entries name it (`executions`). */
+  /**
+   * The agent execution the change is made under (its owned claim) or attributed to: recorded on
+   * the operation and on the ledger entries it leaves (`executions`), so the attempt's own Task
+   * drafts and execution state are never another author's work and the attempt commit takes them.
+   */
   readonly executionId?: string;
 }
 
@@ -385,9 +389,9 @@ async function recordWrites(
       },
       {
         operationId: target.operationId,
+        ...(target.executionId !== undefined ? { executionId: target.executionId } : {}),
         reason: UNCOMMITTED_AUTO_COMMIT_OFF,
         recordedAt: now,
-        ...(target.executionId !== undefined ? { executionId: target.executionId } : {}),
         ...(await ledgerPin(target)),
         paths: plan.paths.map((path) => ({
           path: path.path,

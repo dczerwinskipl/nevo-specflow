@@ -31,6 +31,7 @@ import { workflowFailure } from './refusal';
 const SPEC = 'spec-1';
 const alice = { kind: 'user' as const, id: 'alice' };
 const viewer = { kind: 'user' as const, id: 'viewer' };
+const REQUEST_ID = '5d4fae96-ae87-4a99-9b7c-5fbec16dc005';
 
 const policy = createAuthorization({
   resources: [SpecCapabilities],
@@ -136,6 +137,18 @@ function fakePort(overrides: Partial<WorkflowPort> = {}): { port: WorkflowPort; 
           commit: { sha: 'a'.repeat(40), paths: ['src/app.ts'] },
         },
       ],
+    }),
+    confirm: record('confirm', {
+      subject: subjectSpec,
+      transition: 'approved',
+      position: { state: 'active', step: 'implementation', attempt: 1 },
+      continuation: { kind: 'none', reason: 'waiting-for-tasks' },
+      postActions: [{ action: 'commit-execution-state', status: 'completed' }],
+    }),
+    reject: record('reject', {
+      subject: subjectSpec,
+      position: { state: 'ready', step: 'review' },
+      continuation: { kind: 'attention', step: 'review', reason: 'owner-action' },
     }),
     ...overrides,
   };
@@ -433,6 +446,80 @@ describe('workflow action routes', () => {
     });
     expect(answer.statusCode).toBe(409);
     expect(answer.json()).toMatchObject({ code: 'WORKFLOW_POSITION_INVALID' });
+    await refused.close();
+  });
+
+  it('confirms an agent’s result as the owner, with its request id and what it was shown', async () => {
+    const { port, calls } = fakePort();
+    const app = appWith(port);
+    const url = `/api/specs/${SPEC}/workflow/confirmation/confirm`;
+    const payload = {
+      requestId: REQUEST_ID,
+      step: 'review',
+      attempt: 1,
+      confirmsDigest: 'd'.repeat(64),
+    };
+
+    const response = await app.inject({ method: 'POST', url, payload });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      transition: 'approved',
+      postActions: [{ action: 'commit-execution-state', status: 'completed' }],
+    });
+    expect(calls.last).toMatchObject({
+      subject: subjectSpec,
+      ...payload,
+      actor: { class: 'human', details: { trust: 'authenticated' } },
+    });
+    // No request id, no digest of what was shown, or an actor in the body, is refused before the Engine.
+    for (const body of [
+      { step: 'review', attempt: 1, confirmsDigest: 'd'.repeat(64) },
+      { requestId: REQUEST_ID, step: 'review', attempt: 1 },
+      { ...payload, actor: { class: 'agent' } },
+    ]) {
+      expect((await app.inject({ method: 'POST', url, payload: body })).statusCode).toBe(400);
+    }
+
+    await app.close();
+    const viewerApp = appWith(port, viewer);
+    expect((await viewerApp.inject({ method: 'POST', url, payload })).statusCode).toBe(403);
+    await viewerApp.close();
+  });
+
+  it('rejects an agent’s result with the owner’s feedback; empty feedback is refused', async () => {
+    const { port, calls } = fakePort();
+    const app = appWith(port);
+    const url = `/api/specs/${SPEC}/tasks/t1/workflow/confirmation/reject`;
+    const payload = {
+      requestId: REQUEST_ID,
+      step: 'implement',
+      attempt: 2,
+      feedback: 'Add tests.',
+    };
+
+    const response = await app.inject({ method: 'POST', url, payload });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ position: { state: 'ready', step: 'review' } });
+    expect(calls.last).toMatchObject({
+      subject: { kind: 'task', specId: SPEC, taskId: 't1' },
+      feedback: 'Add tests.',
+      requestId: REQUEST_ID,
+      actor: { class: 'human' },
+    });
+    expect(
+      (await app.inject({ method: 'POST', url, payload: { ...payload, feedback: '' } })).statusCode,
+    ).toBe(400);
+    await app.close();
+
+    const refused = appWith(
+      fakePort({
+        reject: () =>
+          Promise.reject(new WorkflowError('WORKFLOW_ATTEMPT_MISMATCH', 'Decided already.')),
+      }).port,
+    );
+    const answer = await refused.inject({ method: 'POST', url, payload });
+    expect(answer.statusCode).toBe(409);
+    expect(answer.json()).toMatchObject({ code: 'WORKFLOW_ATTEMPT_MISMATCH' });
     await refused.close();
   });
 

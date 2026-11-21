@@ -7,6 +7,15 @@ export {
   type AttributionDetails,
 } from './boundary';
 export {
+  confirmAgentResult,
+  rejectAgentResult,
+  type AgentResultDecisionInput,
+  type ConfirmAgentResultInput,
+  type ConfirmAgentResultResult,
+  type RejectAgentResultInput,
+  type RejectAgentResultResult,
+} from './confirmation/confirmation';
+export {
   openAgentAttempts,
   type AgentAttemptDependencies,
   type AgentFinalizeDependencies,

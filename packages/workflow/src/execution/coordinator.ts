@@ -14,11 +14,13 @@ import { WorkflowError } from '../errors';
 import { assertPositionJustified, lastArrival, positionAfter } from './replay';
 import {
   activeAttempt,
+  awaitingAttempt,
   historyOf,
   isReturnRecord,
   nextAttemptNumber,
   nextSequence,
   type ActorRecord,
+  type AttemptConfirmation,
   type AttemptRecord,
   type WorkflowRun,
 } from './run';
@@ -32,7 +34,11 @@ import { assertPinned } from '../definitions/revision';
  *
  * - `start` activates the next work step (or resumes the active attempt);
  * - `finish` completes the active work attempt with a transition and never starts the next step,
- *   except that a transition into a wait step enters it (a wait step has no work);
+ *   except that a transition into a wait step enters it (a wait step has no work); a finish the host
+ *   holds for a confirmation (`confirmation`) ends the attempt and leaves the run waiting at that
+ *   transition (`awaiting-confirmation`) instead;
+ * - `confirm` takes the held transition, as the finish would have; `reject` does not take it and
+ *   returns the run to the attempt's step, ready to start, with the rejection's feedback;
  * - `event` completes the active wait step with the transition its trigger names;
  * - `return` moves the run back to a declared step it has already reached.
  */
@@ -59,6 +65,36 @@ export type WorkflowCommand<TActor extends ActorRecord = ActorRecord> =
        * The host's digest of this finish request. When the command names the run's last finished
        * work attempt with the same digest and actor, it is a retry: the recorded result is returned
        * and nothing changes; anything else naming that attempt is `WORKFLOW_ATTEMPT_MISMATCH`.
+       */
+      readonly requestDigest?: string;
+      /**
+       * The host holds this finish for a confirmation: the attempt ends with the transition, which
+       * is not taken until a `confirm`. `hostData` is kept with the pending confirmation.
+       */
+      readonly confirmation?: { readonly hostData?: unknown };
+    }
+  | {
+      /** Take the transition the attempt `step#attempt` ended with and the run waits at. */
+      readonly kind: 'confirm';
+      readonly at: string;
+      readonly step: string;
+      readonly attempt: number;
+      readonly actor: TActor;
+      /** See `reject`. */
+      readonly requestDigest?: string;
+    }
+  | {
+      /** Do not take it: the run returns to `step`, ready to start, with `feedback` (required). */
+      readonly kind: 'reject';
+      readonly at: string;
+      readonly step: string;
+      readonly attempt: number;
+      readonly actor: TActor;
+      readonly feedback: string;
+      /**
+       * The host's digest of this request. A confirm or reject naming an attempt whose confirmation
+       * was decided by the same kind of request with the same digest and actor is a retry: nothing
+       * changes (`replayed`); anything else naming it is `WORKFLOW_ATTEMPT_MISMATCH`.
        */
       readonly requestDigest?: string;
     }
@@ -99,6 +135,13 @@ export type WorkflowIntent =
       readonly attempt: number;
       readonly triggers: readonly string[];
     }
+  /** The attempt ended with `transition`, which waits for a confirm or reject. */
+  | {
+      readonly kind: 'await-confirmation';
+      readonly step: string;
+      readonly attempt: number;
+      readonly transition: string;
+    }
   | { readonly kind: 'terminal'; readonly outcome: TerminalOutcome };
 
 /** A transition taken or a return made by the decision, with its host annotations. */
@@ -115,9 +158,15 @@ export interface WorkflowDecision<A extends HostAnnotations, TActor extends Acto
   readonly intent: WorkflowIntent;
   /** In the order they happened; the host applies their annotations. Empty when nothing moved. */
   readonly declaredEffects: readonly DeclaredEffect<A>[];
-  /** For a finish: the attempt it finished (also on a retry). */
+  /**
+   * For a finish: the attempt it finished (also on a retry); for a confirm or reject: the attempt
+   * whose confirmation it decided.
+   */
   readonly finished?: AttemptRecord<TActor>;
-  /** A finish that repeated the last finish: `nextRun` is the given run, unchanged. */
+  /**
+   * A finish that repeated the last finish, or a confirm or reject that repeated the recorded
+   * decision: `nextRun` is the given run, unchanged.
+   */
   readonly replayed?: true;
 }
 
@@ -196,6 +245,20 @@ export function intentOf<A extends HostAnnotations>(
         : { kind: 'execute', step: step.id, attempt: position.attempt, resumed: true };
     }
 
+    case 'awaiting-confirmation': {
+      const outcome = awaitingAttempt(run)?.outcome;
+      if (outcome?.kind !== 'transition') {
+        throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'The awaited attempt has no transition.');
+      }
+
+      return {
+        kind: 'await-confirmation',
+        step: position.step,
+        attempt: position.attempt,
+        transition: outcome.transition,
+      };
+    }
+
     case 'ready': {
       const arrival = lastArrival(run, definition);
 
@@ -266,6 +329,8 @@ interface Completion<TActor extends ActorRecord> {
   readonly artifacts?: readonly string[];
   readonly finishedBy?: TActor;
   readonly requestDigest?: string;
+  /** Hold the transition for a confirmation instead of taking it. */
+  readonly confirmation?: { readonly hostData?: unknown };
 }
 
 /**
@@ -302,6 +367,40 @@ function complete<A extends HostAnnotations, TActor extends ActorRecord>(
       artifacts: [...(completion.artifacts ?? [])],
     },
   };
+  const hold = completion.confirmation;
+  if (hold) {
+    const held: AttemptRecord<TActor> = {
+      ...finished,
+      confirmation: {
+        state: 'pending',
+        ...(hold.hostData !== undefined ? { hostData: hold.hostData } : {}),
+      },
+    };
+    const nextRun: WorkflowRun<TActor> = {
+      ...run,
+      position: { state: 'awaiting-confirmation', step: step.id, attempt: current.attempt },
+      attempts: run.attempts.map((record) => (record === current ? held : record)),
+    };
+
+    return { nextRun, intent: intentOf(definition, nextRun), declaredEffects: [], finished: held };
+  }
+
+  return moveAlong(definition, run, step, transition, current, finished, completion.at);
+}
+
+/**
+ * Replace the attempt record `current` with `finished` and move the run where `transition` leads;
+ * a transition into a wait step enters it in the same decision.
+ */
+function moveAlong<A extends HostAnnotations, TActor extends ActorRecord>(
+  definition: WorkflowDefinition<A>,
+  run: WorkflowRun<TActor>,
+  step: WorkflowStep<A>,
+  transition: WorkflowTransition<A>,
+  current: AttemptRecord<TActor>,
+  finished: AttemptRecord<TActor>,
+  at: string,
+): WorkflowDecision<A, TActor> {
   const moved: WorkflowRun<TActor> = {
     ...run,
     position: positionAfter(transition),
@@ -309,8 +408,7 @@ function complete<A extends HostAnnotations, TActor extends ActorRecord>(
   };
   const next =
     transition.target.kind === 'step' ? stepOf(definition, transition.target.step) : undefined;
-  const nextRun =
-    next?.kind === 'wait' ? activate(moved, next.id, completion.at, undefined) : moved;
+  const nextRun = next?.kind === 'wait' ? activate(moved, next.id, at, undefined) : moved;
 
   return {
     nextRun,
@@ -334,6 +432,13 @@ function decideStart<A extends HostAnnotations, TActor extends ActorRecord>(
     definition,
     position.state === 'not-started' ? definition.entryStep : position.step,
   );
+  if (position.state === 'awaiting-confirmation') {
+    throw new WorkflowError(
+      'WORKFLOW_POSITION_INVALID',
+      `The result of ${position.step}#${String(position.attempt)} waits for a confirmation; confirm or reject it first.`,
+    );
+  }
+
   // A wait step is entered by the transition that leads to it and completed by an event.
   if (step.kind === 'wait') {
     throw new WorkflowError(
@@ -472,7 +577,132 @@ function decideFinish<A extends HostAnnotations, TActor extends ActorRecord>(
     ...(command.feedback !== undefined ? { feedback: command.feedback } : {}),
     ...(command.artifacts !== undefined ? { artifacts: command.artifacts } : {}),
     ...(command.requestDigest !== undefined ? { requestDigest: command.requestDigest } : {}),
+    ...(command.confirmation ? { confirmation: command.confirmation } : {}),
   });
+}
+
+type ConfirmationCommand<TActor extends ActorRecord> = Extract<
+  WorkflowCommand<TActor>,
+  { kind: 'confirm' | 'reject' }
+>;
+
+/**
+ * The attempt a confirm or reject names, with its pending confirmation and transition; or, for a
+ * retry of the decision recorded on it (same kind, digest and actor), the replayed decision.
+ */
+function confirmationTarget<A extends HostAnnotations, TActor extends ActorRecord>(
+  definition: WorkflowDefinition<A>,
+  run: WorkflowRun<TActor>,
+  command: ConfirmationCommand<TActor>,
+):
+  | { readonly replayed: WorkflowDecision<A, TActor> }
+  | { readonly record: AttemptRecord<TActor>; readonly transition: string } {
+  const named = `${command.step}#${String(command.attempt)}`;
+  const record = run.attempts.find(
+    (candidate) => candidate.step === command.step && candidate.attempt === command.attempt,
+  );
+  const decided = record?.confirmation;
+  if (record && decided && decided.state !== 'pending') {
+    const retry =
+      decided.state === (command.kind === 'confirm' ? 'confirmed' : 'rejected') &&
+      command.requestDigest !== undefined &&
+      decided.requestDigest === command.requestDigest &&
+      isDeepStrictEqual(decided.actor, command.actor);
+    if (!retry) {
+      throw new WorkflowError(
+        'WORKFLOW_ATTEMPT_MISMATCH',
+        `The result of ${named} was ${decided.state} already; this request is not a retry of that decision.`,
+      );
+    }
+
+    return {
+      replayed: {
+        nextRun: run,
+        intent: intentOf(definition, run),
+        declaredEffects: [],
+        finished: record,
+        replayed: true,
+      },
+    };
+  }
+
+  const position = run.position;
+  if (position.state !== 'awaiting-confirmation') {
+    throw new WorkflowError('WORKFLOW_POSITION_INVALID', 'No result waits for a confirmation.');
+  }
+
+  const awaited = awaitingAttempt(run);
+  if (!awaited || awaited !== record) {
+    throw new WorkflowError(
+      'WORKFLOW_ATTEMPT_MISMATCH',
+      `The result waiting for a confirmation is ${position.step}#${String(position.attempt)}, not ${named}.`,
+    );
+  }
+
+  if (awaited.outcome?.kind !== 'transition' || awaited.confirmation?.state !== 'pending') {
+    throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'The awaited attempt has no pending result.');
+  }
+
+  return { record: awaited, transition: awaited.outcome.transition };
+}
+
+function decideConfirmation<A extends HostAnnotations, TActor extends ActorRecord>(
+  definition: WorkflowDefinition<A>,
+  run: WorkflowRun<TActor>,
+  command: ConfirmationCommand<TActor>,
+): WorkflowDecision<A, TActor> {
+  const feedback = command.kind === 'reject' ? command.feedback.trim() : '';
+  if (command.kind === 'reject' && !feedback) {
+    invalidInput('Rejecting a result needs feedback: what should change.');
+  }
+
+  const target = confirmationTarget(definition, run, command);
+  if ('replayed' in target) {
+    return target.replayed;
+  }
+
+  const { record } = target;
+  const pending = record.confirmation as Extract<AttemptConfirmation, { state: 'pending' }>;
+  const decided = {
+    ...(pending.hostData !== undefined ? { hostData: pending.hostData } : {}),
+    at: command.at,
+    actor: command.actor,
+    ...(command.requestDigest !== undefined ? { requestDigest: command.requestDigest } : {}),
+  };
+  const step = stepOf(definition, record.step);
+  if (command.kind === 'reject') {
+    const rejected: AttemptRecord<TActor> = {
+      ...record,
+      confirmation: { state: 'rejected', ...decided, feedback },
+    };
+    const nextRun: WorkflowRun<TActor> = {
+      ...run,
+      position: { state: 'ready', step: step.id },
+      attempts: run.attempts.map((candidate) => (candidate === record ? rejected : candidate)),
+    };
+
+    return {
+      nextRun,
+      intent: { kind: 'ready', step: step.id, continuation: 'owner-action' },
+      declaredEffects: [],
+      finished: rejected,
+    };
+  }
+
+  const transition = step.transitions.find((candidate) => candidate.id === target.transition);
+  if (!transition) {
+    throw new WorkflowError(
+      'WORKFLOW_STATE_CORRUPT',
+      `The run refers to an unknown transition "${target.transition}" of the step "${step.id}".`,
+    );
+  }
+
+  const confirmed: AttemptRecord<TActor> = {
+    ...record,
+    confirmation: { state: 'confirmed', ...decided },
+  };
+
+  return moveAlong(definition, run, step, transition, record, confirmed, command.at);
 }
 
 function decideEvent<A extends HostAnnotations, TActor extends ActorRecord>(
@@ -505,6 +735,13 @@ function decideReturn<A extends HostAnnotations, TActor extends ActorRecord>(
 ): WorkflowDecision<A, TActor> {
   if (run.position.state === 'terminal') {
     throw new WorkflowError('WORKFLOW_RETURN_NOT_ALLOWED', 'A finished run cannot return.');
+  }
+
+  if (run.position.state === 'awaiting-confirmation') {
+    throw new WorkflowError(
+      'WORKFLOW_POSITION_INVALID',
+      'A result waits for a confirmation; confirm or reject it (a rejection returns to its step).',
+    );
   }
 
   const entry = definition.returns.find((candidate) => candidate.step === command.step);
@@ -586,6 +823,9 @@ export function decide<A extends HostAnnotations, TActor extends ActorRecord>(
       return decideFinish(definition, run, command);
     case 'event':
       return decideEvent(definition, run, command);
+    case 'confirm':
+    case 'reject':
+      return decideConfirmation(definition, run, command);
     case 'return':
       return decideReturn(definition, run, command);
   }

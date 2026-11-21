@@ -9,10 +9,12 @@ import { describe, expect, it } from 'vitest';
 import {
   abandonLines,
   actionLines,
+  confirmLines,
   contextLines,
   exitLines,
   finishLines,
   positionLine,
+  rejectLines,
   startLines,
 } from './present';
 
@@ -391,5 +393,84 @@ describe('contextLines', () => {
       '  path src/a.ts -> src/a.ts sha256:aaaaaaaaaaaa 3 bytes',
       '  instructions (optional): Be brief.',
     ]);
+  });
+});
+
+describe('an agent result that waits for the owner (D17)', () => {
+  const spec = { kind: 'specification', specId: 'spec' } as const;
+
+  it('shows the proposal, what Confirm applies and both owner actions', () => {
+    const projection = {
+      subject: spec,
+      position: {
+        kind: 'awaiting-confirmation',
+        step: { id: 'breakdown-review', title: 'Review the breakdown' },
+        attempt: { number: 1, startedAt: 'then', endedAt: 'now', actor: { class: 'agent' } },
+        proposal: {
+          transition: {
+            id: 'approved',
+            result: 'pass',
+            label: 'Approve',
+            targetTitle: 'Implementation',
+            feedback: 'optional',
+          },
+          feedback: 'Both Tasks are ready.',
+          artifacts: [],
+        },
+        confirms: { approvesDrafts: ['api', 'screen'] },
+        confirmsDigest: 'd'.repeat(64),
+      },
+      actions: {
+        confirm: { step: 'breakdown-review', attempt: 1 },
+        reject: { step: 'breakdown-review', attempt: 1 },
+      },
+    } as unknown as ActionProjection;
+
+    expect(actionLines(projection)).toEqual([
+      'Specification',
+      'State: waiting for your confirmation of Review the breakdown (breakdown-review) (attempt 1)',
+      'The agent proposes: Approve, to Implementation',
+      'Feedback: Both Tasks are ready.',
+      'Confirming approves 2 draft Tasks: api, screen',
+      `Action: confirm "breakdown-review" attempt 1 --confirms-digest ${'d'.repeat(64)}`,
+      'Action: reject "breakdown-review" attempt 1 --feedback <text>',
+    ]);
+  });
+
+  it('reports a Confirm with the owner’s commit and a Reject of committed work', () => {
+    expect(
+      confirmLines({
+        subject: spec,
+        transition: 'approved',
+        position: { state: 'active', step: 'implementation', attempt: 1 },
+        continuation: { kind: 'none', reason: 'waiting-for-tasks' },
+        postActions: [
+          {
+            action: 'commit-execution-state',
+            status: 'completed',
+            commit: { sha: 'abc123', paths: ['a', 'b'] },
+          },
+        ],
+      }),
+    ).toEqual([
+      'Confirmed: Specification via "approved"',
+      'Position: active on "implementation" (attempt 1)',
+      'Next: nothing follows (waiting-for-tasks)',
+    ]);
+    expect(
+      rejectLines({
+        subject: spec,
+        position: { state: 'ready', step: 'breakdown-review' },
+        continuation: { kind: 'attention', step: 'breakdown-review', reason: 'owner-action' },
+        replayed: true,
+      }),
+    ).toEqual([
+      "Already rejected: Specification; the agent's work was committed with its attempt",
+      'Position: ready to start "breakdown-review"',
+      'Next: needs the owner: "breakdown-review" (owner-action)',
+    ]);
+    expect(
+      positionLine({ state: 'awaiting-confirmation', step: 'breakdown-review', attempt: 1 }),
+    ).toBe('waiting for the owner to confirm the result of "breakdown-review" (attempt 1)');
   });
 });

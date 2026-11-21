@@ -53,6 +53,8 @@ export function fakeReferences(): TaskReferences & {
   readonly projectDocuments: Set<string>;
   readonly paths: Set<string>;
   readonly pendingDocuments: Set<string>;
+  /** The document files of each Task by id (`taskDocumentRevisions`); none by default. */
+  readonly taskDocuments: Map<string, { path: string; revision: string | null }[]>;
   /** The typed documents gates read, in registry order; `gateReads` counts the reads. */
   readonly gateDocuments: FakeGateDocument[];
   gateReads: number;
@@ -63,6 +65,7 @@ export function fakeReferences(): TaskReferences & {
     projectDocuments: new Set(['architecture.workflow.workflow-kernel']),
     paths: new Set(['packages/specflow-engine/src', 'packages/**/*.ts']),
     pendingDocuments: new Set<string>(),
+    taskDocuments: new Map<string, { path: string; revision: string | null }[]>(),
     gateDocuments: [] as FakeGateDocument[],
     gateReads: 0,
     documentsOfType: (scope: GateScopeRef, type: string) => {
@@ -87,6 +90,8 @@ export function fakeReferences(): TaskReferences & {
     pendingDocumentChange: (_specId: string, taskId: string) =>
       Promise.resolve(references.pendingDocuments.has(taskId)),
     pendingDocumentChanges: () => Promise.resolve(new Set(references.pendingDocuments)),
+    taskDocumentRevisions: (_specId: string, taskId: string) =>
+      Promise.resolve([...(references.taskDocuments.get(taskId) ?? [])]),
   };
 
   return references;

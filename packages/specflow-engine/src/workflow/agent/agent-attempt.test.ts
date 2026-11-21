@@ -282,10 +282,11 @@ describe('agent finish proposal', () => {
   it.each<[string, Partial<AgentTurnIdentity>, Record<string, unknown>, string]>([
     ['an illegal result', {}, { result: 'pass' }, 'WORKFLOW_INPUT_INVALID'],
     [
-      'Task decisions',
+      // Task decisions are judged with the owner's rules, then held for the owner (D17).
+      'a Task decision the owner could not take either',
       {},
       { taskDecisions: [{ taskId: 'api', status: 'ready' }] },
-      'WORKFLOW_OWNER_DECISION_REQUIRED',
+      'WORKFLOW_INPUT_INVALID',
     ],
     ['another attempt', { attempt: 2 }, {}, 'WORKFLOW_ATTEMPT_MISMATCH'],
     ['a Turn that was replaced', { invocationId: INVOCATION_2 }, {}, 'WORKFLOW_ATTEMPT_MISMATCH'],
@@ -389,7 +390,7 @@ describe('agent finish proposal', () => {
     expect(await positionOf(workflow, specification)).toEqual(before);
   });
 
-  it('refuses a transition with an owner-authority effect', async () => {
+  it('records a transition with an owner-authority effect for the owner, not applying it', async () => {
     const { dependencies, workflow } = agentDependencies();
     await specificationWithDrafts(workflow);
     const reviewer: AgentActor = {
@@ -402,10 +403,12 @@ describe('agent finish proposal', () => {
     );
     const turn = turnOf({ actor: reviewer, step: 'breakdown-review' });
 
-    await expect(
-      proposeAgentFinish(dependencies, { turn, input: { result: 'pass' } }),
-    ).rejects.toMatchObject({ code: 'WORKFLOW_OWNER_DECISION_REQUIRED' });
-    // A result the agent may take is recorded.
+    // Recorded as any proposal; its finalize holds it for the owner (`confirmation.test.ts`).
+    expect(
+      (await proposeAgentFinish(dependencies, { turn, input: { result: 'pass' } })).proposal
+        .transition,
+    ).toBe('approved');
+    expect(await positionOf(workflow, specification)).toMatchObject({ state: 'active' });
     expect(
       (
         await proposeAgentFinish(dependencies, {

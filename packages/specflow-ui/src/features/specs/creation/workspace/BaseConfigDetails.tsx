@@ -13,10 +13,17 @@ import type { DefaultBaseConfig } from '@nevo/specflow-contracts/specs';
 import { useTranslation } from 'react-i18next';
 
 /** The explanation stays available beside the short source error, without filling the form. */
-export function BaseConfigDetails({ config }: { config: DefaultBaseConfig | undefined }) {
+export function BaseConfigDetails({
+  config,
+  hasUnavailableBases = false,
+}: {
+  config: DefaultBaseConfig | undefined;
+  hasUnavailableBases?: boolean;
+}) {
   const { t } = useTranslation();
   const isSplit = useWorkspaceLayout().mode === 'split';
-  if (config?.status !== 'unusable') {
+  const problem = config?.status === 'unusable' ? config : undefined;
+  if (!problem && !hasUnavailableBases) {
     return null;
   }
 
@@ -24,24 +31,36 @@ export function BaseConfigDetails({ config }: { config: DefaultBaseConfig | unde
     <Drawer>
       <DrawerTrigger asChild>
         <Button variant="ghost" size="sm" className="-ml-control-padding-compact">
-          {t('create.workspace.baseConfigDetails.why')}
+          {t(
+            problem
+              ? 'create.workspace.baseConfigDetails.why'
+              : 'create.workspace.baseConfigDetails.unavailableBranches',
+          )}
         </Button>
       </DrawerTrigger>
       <DrawerContent side={isSplit ? 'right' : 'bottom'} closeLabel={t('common.close')}>
         <DrawerHeader>
-          <DrawerTitle>{t('create.workspace.baseConfigDetails.title')}</DrawerTitle>
+          <DrawerTitle>
+            {t(
+              problem
+                ? 'create.workspace.baseConfigDetails.title'
+                : 'create.workspace.baseConfigDetails.unavailableBranches',
+            )}
+          </DrawerTitle>
           <DrawerDescription>
             {t(
-              config.reason === 'ref-not-found'
-                ? 'create.workspace.baseConfigReason.ref-not-found'
-                : 'create.workspace.baseConfigDetails.description',
+              !problem
+                ? 'create.workspace.baseConfigDetails.unavailableDescription'
+                : problem.reason === 'ref-not-found'
+                  ? 'create.workspace.baseConfigReason.ref-not-found'
+                  : 'create.workspace.baseConfigDetails.description',
             )}
           </DrawerDescription>
         </DrawerHeader>
         <DrawerBody>
           <div className="grid gap-3 text-body-sm text-content-secondary">
             <p>{t('create.workspace.baseConfigDetails.explanation')}</p>
-            <p>{t(`create.workspace.baseConfigReason.${config.reason}`)}</p>
+            {problem && <p>{t(`create.workspace.baseConfigReason.${problem.reason}`)}</p>}
             <p>{t('create.workspace.baseConfigDetails.action')}</p>
           </div>
         </DrawerBody>

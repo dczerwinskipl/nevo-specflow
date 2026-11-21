@@ -1,5 +1,5 @@
 import type { MutableRefObject } from 'react';
-import { Field } from '@nevo/ui';
+import { Badge, Field } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { refDisplayName } from '@nevo/specflow-contracts/specs';
 import type { CreateOptionsView } from './model/createOptionsView';
@@ -69,16 +69,26 @@ export function BaseRefField({
             textValue: refDisplayName(item.ref),
             unavailable: item.projectConfig.status === 'unusable',
             description:
-              item.projectConfig.status === 'unusable'
-                ? t(`create.workspace.baseConfigPickerReason.${item.projectConfig.reason}`)
-                : undefined,
+              item.projectConfig.status === 'unusable' ? (
+                <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                  <Badge tone="danger">{t('create.workspace.baseConfigUnavailable')}</Badge>
+                  <span>
+                    {t(`create.workspace.baseConfigPickerReason.${item.projectConfig.reason}`)}
+                  </span>
+                </span>
+              ) : undefined,
             meta: baseRefMeta(item.ref, item.checkedOutWorkspaceId),
             label: (wraps) => <BranchRef name={refDisplayName(item.ref)} truncate={!wraps} />,
           }))}
         />
         {error && <Field.Error>{text(error)}</Field.Error>}
       </Field>
-      <BaseConfigDetails config={selectedBaseConfig(choice, options)} />
+      <BaseConfigDetails
+        config={selectedBaseConfig(choice, options)}
+        hasUnavailableBases={options.baseRefs.some(
+          (item) => item.projectConfig.status === 'unusable',
+        )}
+      />
       <MergeSuggestionNotice
         options={options}
         choice={choice}

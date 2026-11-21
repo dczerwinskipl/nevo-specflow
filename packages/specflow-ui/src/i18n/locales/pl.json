@@ -935,16 +935,19 @@
       "baseConfigDetails": {
         "why": "Dlaczego?",
         "explanation": "Nowe środowisko powstaje z wersji zapisanej w Git na wybranej gałęzi. Ta wersja potrzebuje działających ustawień SpecFlow. Zmiany wprowadzone tylko w bieżącym katalogu nie są kopiowane do nowego środowiska.",
-        "action": "Wybierz inną gałąź początkową. Jeśli chcesz użyć właśnie tej gałęzi, popraw .nevo/config.yaml i najpierw zapisz zmianę w jej historii Git (commit).",
+        "action": "Wybierz inną gałąź początkową. Aby użyć gałęzi oznaczonej jako niedostępna, popraw .nevo/config.yaml i zapisz zmianę w jej historii Git (commit).",
         "title": "Dlaczego nie można tu zacząć?",
-        "description": "Ten punkt początkowy nie ma działających ustawień SpecFlow."
+        "description": "Ten punkt początkowy nie ma działających ustawień SpecFlow.",
+        "unavailableBranches": "Niedostępne gałęzie",
+        "unavailableDescription": "Tych gałęzi nie można wybrać. Możesz użyć dostępnej gałęzi albo najpierw naprawić ustawienia niedostępnej."
       },
       "baseConfigPickerReason": {
-        "missing": "Brak ustawień SpecFlow. Dodaj je i zapisz w commicie.",
-        "not-regular-file": "Ustawienia nie są plikiem. Zastąp je plikiem i zapisz w commicie.",
-        "invalid-yaml": "Niepoprawny YAML. Popraw ustawienia i zapisz je w commicie.",
-        "runtime-missing": "Brak sekcji runtime. Uzupełnij ustawienia i zapisz je w commicie."
-      }
+        "missing": "Brak ustawień SpecFlow",
+        "not-regular-file": "Ustawienia nie są plikiem",
+        "invalid-yaml": "Niepoprawny YAML",
+        "runtime-missing": "Brak sekcji runtime"
+      },
+      "baseConfigUnavailable": "Niedostępna"
     },
     "project": {
       "goalLabel": "Cel (opcjonalnie)",

@@ -935,16 +935,19 @@
       "baseConfigDetails": {
         "why": "Why?",
         "explanation": "A new workspace starts from the version saved in Git on the selected branch. That version needs working SpecFlow settings. Changes made only in your current folder are not copied to the new workspace.",
-        "action": "Choose another starting branch. To use this branch, fix .nevo/config.yaml and save the change in its Git history (commit) first.",
+        "action": "Choose another starting branch. To use a branch marked unavailable, fix .nevo/config.yaml and save the change in its Git history (commit).",
         "title": "Why can’t I start here?",
-        "description": "This starting point has no working SpecFlow settings."
+        "description": "This starting point has no working SpecFlow settings.",
+        "unavailableBranches": "Unavailable branches",
+        "unavailableDescription": "These branches cannot be selected. Use an available branch or repair the unavailable branch’s settings first."
       },
       "baseConfigPickerReason": {
-        "missing": "Missing SpecFlow settings. Add them and save them in a commit.",
-        "not-regular-file": "Settings are not a file. Replace them with a file and save it in a commit.",
-        "invalid-yaml": "Invalid YAML. Fix the settings and save them in a commit.",
-        "runtime-missing": "Missing runtime section. Complete the settings and save them in a commit."
-      }
+        "missing": "Missing SpecFlow settings",
+        "not-regular-file": "Settings are not a file",
+        "invalid-yaml": "Invalid YAML",
+        "runtime-missing": "Missing runtime section"
+      },
+      "baseConfigUnavailable": "Unavailable"
     },
     "project": {
       "goalLabel": "Goal (optional)",

@@ -1475,6 +1475,8 @@ export const BaseConfigurationUnusable: Story = {
     const options = within(document.body).getAllByRole('option');
     for (const option of options) {
       await expect(option).toHaveAttribute('aria-disabled', 'true');
+      await waitFor(() => expect(within(option).getByText('Niedostępna')).toBeVisible());
+      await expect(option).not.toHaveTextContent(/Wybierz inną|commit|\.nevo\/config/);
     }
 
     await closeList(userEvent);
@@ -1484,11 +1486,41 @@ export const BaseConfigurationUnusable: Story = {
 export const BaseConfigurationFallback: Story = {
   tags: ['contract'],
   args: { variant: 'base-config-fallback' },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, userEvent }) => {
     await expect(within(row(canvas, 'Zacznij od')).getByText('develop')).toBeInTheDocument();
     await expect(canvas.getByLabelText('Żądanie')).toHaveTextContent(
       '"baseRef":"refs/heads/develop"',
     );
     await expect(canvas.getByLabelText('Żądanie')).toHaveAttribute('data-problems', '');
+    const originalRequest = request(canvas);
+    await rowAction(canvas, userEvent, 'Zacznij od');
+    const picker = within(row(canvas, 'Zacznij od')).getByRole('combobox');
+    await userEvent.click(picker);
+    const unavailable = await within(document.body).findByRole('option', {
+      name: /feature\/unconfigured/,
+    });
+    await expect(unavailable).toHaveAttribute('aria-disabled', 'true');
+    await waitFor(() => expect(within(unavailable).getByText('Niedostępna')).toBeVisible());
+    await waitFor(() =>
+      expect(within(unavailable).getByText('Brak ustawień SpecFlow')).toBeVisible(),
+    );
+    await expect(unavailable).not.toHaveTextContent(/Wybierz inną|commit|\.nevo\/config/);
+    await userEvent.click(unavailable);
+    await expect(within(document.body).getByRole('listbox')).toBeVisible();
+    await expect(picker).toHaveTextContent('develop');
+    await expect(request(canvas)).toBe(originalRequest);
+    await closeList(userEvent);
+    const details = within(row(canvas, 'Zacznij od')).getByRole('button', {
+      name: 'Niedostępne gałęzie',
+    });
+    await expect(details).toBeVisible();
+    await userEvent.click(details);
+    const panel = await within(document.body).findByRole('dialog', { name: 'Niedostępne gałęzie' });
+    await waitFor(() => expect(within(panel).getByText(/\.nevo\/config\.yaml/)).toBeVisible());
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(within(document.body).queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    await waitFor(() => expect(details).toHaveFocus());
   },
 };

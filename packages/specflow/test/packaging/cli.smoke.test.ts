@@ -1,14 +1,11 @@
 // Thin subprocess smoke of the built executable — wiring contracts only.
 
 import { execFile } from 'node:child_process';
-import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
-import { beforeAll, describe, expect, it } from 'vitest';
-
-import { run } from '../../packaging/exec';
+import { describe, expect, it } from 'vitest';
 
 const execFileAsync = promisify(execFile);
 const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -25,16 +22,6 @@ async function cli(args: string[]): Promise<{ code: number; stdout: string; stde
     return { code: e.code ?? 1, stdout: e.stdout ?? '', stderr: e.stderr ?? '' };
   }
 }
-
-beforeAll(() => {
-  // The fresh-state test in this same package deletes and rebuilds dist; rebuild
-  // here too if we happen to run while it is gone, so file order does not matter.
-  if (!existsSync(bin)) {
-    run('pnpm', ['--filter', '@nevo/specflow', 'typecheck'], {
-      cwd: join(pkgRoot, '..', '..'),
-    });
-  }
-});
 
 describe('@nevo/specflow packaging CLI', () => {
   it('--help lists bundle, pack and dogfood', async () => {

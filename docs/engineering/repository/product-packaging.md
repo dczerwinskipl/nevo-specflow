@@ -99,6 +99,12 @@ The packed manifest has no `dependencies`, `devDependencies`, scripts, or `works
 `packages/specflow/test/packaging/` covers bundling, notices, version resolution, fresh-state packing,
 dogfood behavior, build CLI wiring, and the shared package-builder contract.
 
+Fresh-state and default installed-artifact tests copy the current non-ignored repository source
+into a temporary workspace and install its pinned dependencies independently. They build and pack
+there, without deleting or rebuilding the invoking checkout's generated outputs or artifacts.
+This isolation is required because other package test tasks may import those outputs concurrently.
+The snapshot includes local source edits; a prebuilt artifact supplied by CI skips this extra build.
+
 `packages/specflow/test/packaging.smoke.test.ts` proves the actual distribution boundary. By
 default it builds the package itself; release CI can point it at a prebuilt candidate so several
 runners verify the exact same bytes.

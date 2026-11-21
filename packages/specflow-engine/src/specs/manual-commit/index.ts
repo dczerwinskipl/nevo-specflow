@@ -58,5 +58,7 @@ export {
   editedSince,
   revisionOfScope,
   scopeEntriesOf,
+  type DeclaredCommitPath,
   type ScopeEntry,
 } from './selection';
+export type { StoredMessage } from './payload';

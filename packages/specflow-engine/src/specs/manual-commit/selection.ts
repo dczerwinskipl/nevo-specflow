@@ -159,6 +159,32 @@ export function editedSince(
     .sort();
 }
 
+/**
+ * A path outside the ledger a commit takes too, only while its working content is `sha256` (`null`:
+ * the path is removed); `oversize` was never hashed and is never committed. The changed files an
+ * agent attempt declared (D15).
+ */
+export interface DeclaredCommitPath {
+  readonly path: string;
+  readonly sha256: string | null;
+  readonly oversize?: true;
+}
+
+/** The declared paths whose working content is not the recorded one (or was never hashed). */
+export function declaredEdited(
+  declared: readonly DeclaredCommitPath[],
+  working: ReadonlyMap<string, WorkingContent>,
+): string[] {
+  return declared
+    .filter((entry) => {
+      const content = working.get(entry.path);
+
+      return entry.oversize === true || content === undefined || content !== entry.sha256;
+    })
+    .map((entry) => entry.path)
+    .sort();
+}
+
 /** The canonical hash of a request (the operation id is not part of it): the idempotency key of the body. */
 export function fingerprintOfRequest(input: {
   readonly scope: string;
@@ -167,6 +193,7 @@ export function fingerprintOfRequest(input: {
   readonly paths: readonly string[] | undefined;
   readonly ledgerRevision: string | undefined;
   readonly unlinkedPaths?: readonly string[] | undefined;
+  readonly declared?: readonly DeclaredCommitPath[] | undefined;
 }): string {
   return sha256Hex(
     JSON.stringify({
@@ -178,6 +205,13 @@ export function fingerprintOfRequest(input: {
       // Absent and empty are one request: the key of every other request stays what it was.
       ...(input.unlinkedPaths !== undefined && input.unlinkedPaths.length > 0
         ? { unlinkedPaths: [...new Set(input.unlinkedPaths)].sort() }
+        : {}),
+      ...(input.declared !== undefined && input.declared.length > 0
+        ? {
+            declared: [...input.declared]
+              .sort((left, right) => (left.path < right.path ? -1 : 1))
+              .map((entry) => [entry.path, entry.sha256, entry.oversize === true]),
+          }
         : {}),
     }),
   );

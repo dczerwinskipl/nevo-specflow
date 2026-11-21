@@ -66,6 +66,7 @@ function recordingPort(calls: string[]): WorkflowPort {
     return: refuse('return'),
     reevaluateWait: refuse('reevaluateWait'),
     abandon: refuse('abandon'),
+    retryAttemptCommit: refuse('retryAttemptCommit'),
   };
 }
 

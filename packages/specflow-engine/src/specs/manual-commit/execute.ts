@@ -582,12 +582,16 @@ async function attempt(
       kind: 'manual-commit',
       subject: message.subject,
       ...(message.body.length > 0 ? { body: message.body } : {}),
-      trailers: manualCommitTrailers({
-        scope: journal.scope,
-        owners: journal.owners,
-        effective: split.effective,
-        ownerOfPath,
-      }),
+      // The Engine's own message (an attempt commit) adds its trailers and names its own action.
+      trailers: {
+        ...manualCommitTrailers({
+          scope: journal.scope,
+          owners: journal.owners,
+          effective: split.effective,
+          ownerOfPath,
+        }),
+        ...message.trailers,
+      },
       ...(rt.options.commitDeadlineMs !== undefined
         ? { deadlineMs: rt.options.commitDeadlineMs }
         : {}),

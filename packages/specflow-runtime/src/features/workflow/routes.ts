@@ -13,6 +13,8 @@ import {
   ReevaluateWaitResultSchema,
   ReturnWorkflowRequestSchema,
   ReturnWorkflowResultSchema,
+  RetryAttemptCommitRequestSchema,
+  RetryAttemptCommitResultSchema,
   StartWorkflowRequestSchema,
   StartWorkflowResultSchema,
   WorkflowActionProjectionSchema,
@@ -83,6 +85,7 @@ function unavailablePort(port: WorkflowPort | undefined): WorkflowPort {
     return: refuse,
     reevaluateWait: refuse,
     abandon: refuse,
+    retryAttemptCommit: refuse,
   };
 }
 
@@ -256,6 +259,31 @@ export const workflowEndpoint: FastifyPluginCallback<WorkflowRoutesOptions> = (
         });
 
         return reply.code(200).send(toWire(returned));
+      }),
+    );
+
+    typed.post(
+      `${base}/attempt-commit/retry`,
+      {
+        onRequest: manage,
+        bodyLimit: BODY_LIMIT_BYTES,
+        schema: {
+          tags,
+          summary: `Retry the failed commit of a finished agent attempt of a ${label}`,
+          params,
+          body: RetryAttemptCommitRequestSchema,
+          response: { 200: RetryAttemptCommitResultSchema, ...errors },
+        },
+      },
+      refusing(async (request, reply) => {
+        const retried = await port.retryAttemptCommit({
+          subject: subjectOf(request),
+          step: request.body.step,
+          attempt: request.body.attempt,
+          actor: actorOf(request),
+        });
+
+        return reply.code(200).send(toWire(retried));
       }),
     );
   }

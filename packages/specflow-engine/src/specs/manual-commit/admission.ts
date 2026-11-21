@@ -12,8 +12,13 @@
  *     `branch-changed`);
  *  7. the commit port's preflight accepts the paths on this branch (else `BRANCH_PROTECTED` or
  *     `COMMIT_BLOCKED`; nothing is reserved);
- *  8. no selected path was edited since its post-image (else `MANUAL_COMMIT_CONFLICT`,
- *     `details.paths`; nothing is committed under the Engine's message).
+ *  8. no selected path was edited since its post-image, and no declared path since its recorded
+ *     hash (else `MANUAL_COMMIT_CONFLICT`, `details.paths`; nothing is committed under the Engine's
+ *     message).
+ *
+ * `declared` (internal only, the attempt commit of D15) are paths outside the ledger the commit
+ * takes too while their content is the recorded one: they count for step 3, never for step 5, and
+ * one that is also a ledger path of the scope is refused (`MANUAL_COMMIT_SUBSET_INVALID`).
  *
  * Everything above is read without the control lock; the reservation (`reserve`) re-reads the ledger
  * inside it and starts over when it moved. Nothing is reserved when a check refuses.
@@ -46,13 +51,21 @@ import {
   MANUAL_COMMIT_STAGE_FACTS,
   type ManualCommitJournal,
 } from './model';
-import { encodeMessage, encodeSnapshot, type SnapshotEntry, type StoredMessage } from './payload';
+import {
+  DECLARED_SNAPSHOT_OWNER,
+  encodeMessage,
+  encodeSnapshot,
+  type SnapshotEntry,
+  type StoredMessage,
+} from './payload';
 import type { ManualCommitPorts, ManualCommitRuntime, ManualCommitTarget } from './runtime';
 import {
+  declaredEdited,
   editedSince,
   revisionOfScope,
   scopeEntriesOf,
   selectEntries,
+  type DeclaredCommitPath,
   type ScopeEntry,
 } from './selection';
 import { readWorkingContents } from './working';
@@ -67,6 +80,8 @@ export interface AdmittedManualCommit {
   readonly fingerprint: string;
   /** The entries the commit will hold, sorted by path. */
   readonly selected: readonly ScopeEntry[];
+  /** The paths outside the ledger it holds too, with their recorded content. */
+  readonly declared: readonly DeclaredCommitPath[];
   readonly branch: string;
 }
 
@@ -76,6 +91,8 @@ export interface ManualCommitRequestFields {
   readonly ledgerRevision?: string;
   /** Paths of `paths` that join no operations in its closure check (see `closureOf`); internal only. */
   readonly unlinkedPaths?: readonly string[];
+  /** Paths outside the ledger the commit takes too (see the module comment); internal only. */
+  readonly declared?: readonly DeclaredCommitPath[];
 }
 
 /** The records of the owners of the target, read without a lock; a corrupt one refuses (fail closed). */
@@ -143,7 +160,8 @@ export async function admitManualCommit(
   // 3. The ledger.
   const records = await readTargetRecords(rt, target);
   const entries = scopeEntriesOf(records);
-  if (entries.length === 0) {
+  const declared = request.declared ?? [];
+  if (entries.length === 0 && declared.length === 0) {
     throw manualCommitError('unavailable-empty', 'There is nothing uncommitted to commit.');
   }
 
@@ -168,6 +186,19 @@ export async function admitManualCommit(
   }
 
   const selected = check.selected;
+  const ledgerPaths = new Set(entries.map((entry) => entry.path));
+  const overlapping = declared.filter((entry) => ledgerPaths.has(entry.path)).map((e) => e.path);
+  if (
+    overlapping.length > 0 ||
+    new Set(declared.map((entry) => entry.path)).size !== declared.length
+  ) {
+    throw manualCommitError('subset-invalid', 'A declared path is also an uncommitted change.', {
+      cause: 'declared-path-in-ledger',
+      paths: overlapping.sort(),
+    });
+  }
+
+  const paths = [...selected.map((entry) => entry.path), ...declared.map((entry) => entry.path)];
 
   // 6. The branch.
   let branch: string;
@@ -196,7 +227,7 @@ export async function admitManualCommit(
     await rt.commits.preflight({
       root,
       expectedBranch: branch,
-      paths: selected.map((entry) => entry.path),
+      paths,
       operationId: randomUUID(),
       kind: 'manual-commit',
       subject: 'preflight',
@@ -210,11 +241,8 @@ export async function admitManualCommit(
   }
 
   // 8. Nobody edited the paths since the Engine left them.
-  const working = await readWorkingContents(
-    root,
-    selected.map((entry) => entry.path),
-  );
-  const edited = editedSince(selected, working);
+  const working = await readWorkingContents(root, paths);
+  const edited = [...editedSince(selected, working), ...declaredEdited(declared, working)].sort();
   if (edited.length > 0) {
     throw manualCommitError(
       'conflict',
@@ -223,7 +251,7 @@ export async function admitManualCommit(
     );
   }
 
-  return { target, message, fingerprint, selected, branch };
+  return { target, message, fingerprint, selected, declared, branch };
 }
 
 export type ReservationOutcome =
@@ -239,13 +267,25 @@ const sameEntry = (left: ScopeEntry, right: ScopeEntry): boolean =>
   left.postSha256 === right.postSha256 &&
   left.operationCount === right.operationCount;
 
-export function snapshotEntriesOf(selected: readonly ScopeEntry[]): SnapshotEntry[] {
-  return selected.map((entry) => ({
-    owner: entry.owner,
-    path: entry.path,
-    postSha256: entry.postSha256,
-    operationCount: entry.operationCount,
-  }));
+export function snapshotEntriesOf(
+  selected: readonly ScopeEntry[],
+  declared: readonly DeclaredCommitPath[] = [],
+): SnapshotEntry[] {
+  return [
+    ...selected.map((entry) => ({
+      owner: entry.owner,
+      path: entry.path,
+      postSha256: entry.postSha256,
+      operationCount: entry.operationCount,
+    })),
+    // Admission refused an oversize declared path: each one left has its recorded content.
+    ...declared.map((entry) => ({
+      owner: DECLARED_SNAPSHOT_OWNER,
+      path: entry.path,
+      postSha256: entry.sha256,
+      operationCount: 0,
+    })),
+  ];
 }
 
 /**
@@ -260,8 +300,8 @@ export async function reserveManualCommit(
   operationId: string,
   ports: ManualCommitPorts,
 ): Promise<ReservationOutcome> {
-  const { target, selected, message } = admitted;
-  const snapshot = encodeSnapshot(snapshotEntriesOf(selected));
+  const { target, selected, declared, message } = admitted;
+  const snapshot = encodeSnapshot(snapshotEntriesOf(selected, declared));
   const encodedMessage = encodeMessage(message);
 
   return withManualCommitLock(rt.context, async () => {
@@ -335,10 +375,10 @@ export async function reserveManualCommit(
           });
     }
 
-    await ports.assertQuiet(
-      target,
-      selected.map((entry) => entry.path),
-    );
+    await ports.assertQuiet(target, [
+      ...selected.map((entry) => entry.path),
+      ...declared.map((entry) => entry.path),
+    ]);
 
     await writePayload(rt.context, MANUAL_COMMIT_JOURNAL_KIND, operationId, [
       { sha256: snapshot.sha256, content: snapshot.text },
@@ -353,7 +393,11 @@ export async function reserveManualCommit(
       workspaceRoot: target.checkout.root,
       scope: target.scope,
       ...(target.specId !== undefined ? { specId: target.specId } : {}),
-      owners: [...new Set(selected.map((entry) => entry.owner))].sort(),
+      // Whose ledger entries it holds; a commit of declared paths alone names the target's owners.
+      owners: (selected.length > 0
+        ? [...new Set(selected.map((entry) => entry.owner))]
+        : target.owners.map(ledgerOwnerKey)
+      ).sort(),
       inputFingerprint: admitted.fingerprint,
       stage: 'reserved',
       branch: admitted.branch,

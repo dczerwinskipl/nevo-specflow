@@ -28,8 +28,12 @@ export interface StepFinishedEvent {
   readonly replayed: boolean;
 }
 
-/** The post actions the Engine knows; `push` is reserved for E6. */
-export type PostActionName = 'commit-execution-state';
+/**
+ * The post actions the Engine knows: `commit-execution-state` after a person's finish, and
+ * `attempt-commit` after an agent attempt's (D15: its one commit, which holds its execution state
+ * too, so the two never compete for one path).
+ */
+export type PostActionName = 'commit-execution-state' | 'attempt-commit';
 
 export type PostActionResult =
   | {
@@ -46,7 +50,7 @@ export type PostActionResult =
   | {
       readonly action: PostActionName;
       readonly status: 'skipped';
-      /** Why the action does not apply (`git-disabled`, `auto-commit-on`). */
+      /** Why the action does not apply (`git-disabled`, `auto-commit-on`, `nothing-to-commit`). */
       readonly reason: string;
     }
   | {

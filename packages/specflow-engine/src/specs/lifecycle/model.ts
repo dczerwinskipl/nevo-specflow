@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { validateOperationId } from '../create/journal';
 import { isValidSpecificationId } from '../model';
 import type { SpecificationExitBlocker, SpecificationExitGuard } from './exit-guard';
+import type { UncommittedAttempt } from '../uncommitted/attempts';
 
 export type CloseKind = 'worktree-close' | 'specification-close' | 'workspace-close';
 
@@ -336,6 +337,11 @@ export type CloseRepositoryBlocker =
       readonly paths: readonly UncommittedPath[];
       readonly count: number;
       readonly specificationCount: number;
+      /**
+       * Agent attempts whose commit failed, with their dirty paths (retry the attempt commit); those
+       * paths are not in `paths` or the counts.
+       */
+      readonly attempts?: readonly UncommittedAttempt[];
     }
   | ({
       readonly kind: 'integration-target-missing';

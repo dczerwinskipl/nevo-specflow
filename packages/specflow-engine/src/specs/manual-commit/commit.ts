@@ -20,6 +20,7 @@ import {
 import { findManualCommitJournal } from './journal-store';
 import { resolveMessage } from './message';
 import type { ManualCommitJournal } from './model';
+import type { StoredMessage } from './payload';
 import type { ManualCommitPorts, ManualCommitRuntime, ManualCommitTarget } from './runtime';
 import { fingerprintOfRequest } from './selection';
 
@@ -29,6 +30,11 @@ const MAX_ADMISSIONS = 5;
 export interface ManualCommitRequest extends ManualCommitRequestFields {
   /** The person's message (see `parseUserCommitMessage`); the default message of the scope when absent. */
   readonly message?: string;
+  /**
+   * The Engine's own message instead of a person's (the attempt commit, D15): taken as it is, with
+   * its extra trailers; never parsed as a person's text. Internal only.
+   */
+  readonly composed?: StoredMessage;
 }
 
 /**
@@ -75,7 +81,10 @@ export async function commitUncommitted(
     throw manualCommitError('operation-invalid', 'A UUID operationId is required.');
   }
 
-  const resolved = resolveMessage(request.message, { scope: target.scope, slug: target.slug });
+  const resolved =
+    request.composed !== undefined
+      ? ({ ok: true, message: request.composed } as const)
+      : resolveMessage(request.message, { scope: target.scope, slug: target.slug });
   if (!resolved.ok) {
     throw manualCommitError('message-invalid', 'The commit message is not valid.', {
       cause: resolved.problem,
@@ -86,10 +95,15 @@ export async function commitUncommitted(
   const fingerprint = fingerprintOfRequest({
     scope: target.scope,
     specId: target.specId,
-    message: message.subject + '\n\n' + message.body,
+    message:
+      message.subject +
+      '\n\n' +
+      message.body +
+      (message.trailers !== undefined ? '\n\n' + JSON.stringify(message.trailers) : ''),
     paths: request.paths,
     ledgerRevision: request.ledgerRevision,
     unlinkedPaths: request.unlinkedPaths,
+    declared: request.declared,
   });
 
   const known = await findManualCommitJournal(rt.context, request.operationId);

@@ -4,7 +4,8 @@
  * shows the same groups and remedies (`docs/product/specflow/ui/workflow-execution.md`, "Close:
  * one Uncommitted changes group"); the CLI prints them as text and under `uncommitted` in `--json`.
  * There is no discard remedy: SpecFlow never discards work. A kind without paths is omitted.
- * The "agent work whose commit failed" kind joins when the attempt commit exists.
+ * Agent work whose commit failed comes first, one group per attempt: the Engine lists its paths
+ * there and leaves them out of the other kinds; its remedy is to retry the attempt commit.
  */
 
 import type { CloseRepositoryBlocker, DocumentError } from '@nevo/specflow-engine';
@@ -32,12 +33,17 @@ export interface UncommittedOwnerReport {
   readonly stepInProgress?: boolean;
 }
 
+/** One agent attempt whose commit failed (`attempts` of the hold or the blocker). */
+export type UncommittedAttemptEntry = NonNullable<UncommittedBlocker['attempts']>[number];
+
 export interface UncommittedGroupReport {
-  readonly kind: 'saved-not-committed' | 'changed-outside';
+  readonly kind: 'agent-commit-failed' | 'saved-not-committed' | 'changed-outside';
   readonly count: number;
   readonly remedy: string;
   /** `saved-not-committed`: one entry per owner. */
   readonly owners?: readonly UncommittedOwnerReport[];
+  /** `agent-commit-failed`: the attempt, why its commit failed, and its paths. */
+  readonly attempt?: Omit<UncommittedAttemptEntry, 'paths' | 'count'>;
   /** `changed-outside`: the checkout and its paths. */
   readonly checkout?: string;
   readonly workspaceId?: string;
@@ -53,6 +59,11 @@ export interface UncommittedChangesReport {
 
 const checkoutName = (checkout: string) =>
   checkout === 'integration-target' ? 'the integration checkout' : 'the specification checkout';
+
+const retryCommand = (attempt: Omit<UncommittedAttemptEntry, 'paths' | 'count'>) =>
+  `nevo-specflow workflow retry-commit ${attempt.specId}` +
+  (attempt.taskId !== undefined ? ` --task ${attempt.taskId}` : '') +
+  ` --step ${attempt.step} --attempt ${String(attempt.attempt)}`;
 
 const commitCommand = (specId: string | undefined) =>
   'nevo-specflow commit --spec ' + (specId ?? '<slug|id>');
@@ -127,6 +138,32 @@ export function uncommittedChangesReport(
   const blockers = (input.blockers ?? []).filter(
     (blocker): blocker is UncommittedBlocker => blocker.kind === 'uncommitted-changes',
   );
+  // An attempt named by both the hold and a blocker is one group, with the larger listing.
+  const attempts = new Map<string, UncommittedAttemptEntry>();
+  for (const entry of [
+    ...(input.hold?.attempts ?? []),
+    ...blockers.flatMap((blocker) => blocker.attempts ?? []),
+  ]) {
+    const known = attempts.get(entry.attemptId);
+    if (known === undefined || entry.count > known.count) {
+      attempts.set(entry.attemptId, entry);
+    }
+  }
+
+  for (const { paths, count, ...attempt } of attempts.values()) {
+    groups.push({
+      kind: 'agent-commit-failed',
+      count,
+      remedy:
+        'Retry the attempt commit with "' +
+        retryCommand(attempt) +
+        '" once the cause is fixed; it commits exactly these files and nothing of anyone else.',
+      attempt,
+      paths,
+      more: count - paths.length,
+    });
+  }
+
   for (const blocker of blockers) {
     if (blocker.specificationCount > 0) {
       const shown = blocker.paths
@@ -213,7 +250,15 @@ export function uncommittedChangesLines(report: UncommittedChangesReport): strin
   };
 
   for (const group of report.groups) {
-    if (group.kind === 'saved-not-committed') {
+    if (group.kind === 'agent-commit-failed') {
+      const attempt = group.attempt!;
+      lines.push(
+        `Agent work whose commit failed: ${group.count} (` +
+          (attempt.taskId !== undefined ? `Task ${attempt.taskId}, ` : '') +
+          `"${attempt.stepTitle}" attempt ${String(attempt.attempt)}, ${attempt.code})`,
+      );
+      paths(group.paths ?? [], group.more ?? 0, '  ');
+    } else if (group.kind === 'saved-not-committed') {
       lines.push(`Saved in SpecFlow, not committed yet: ${group.count}`);
       for (const entry of group.owners ?? []) {
         lines.push(

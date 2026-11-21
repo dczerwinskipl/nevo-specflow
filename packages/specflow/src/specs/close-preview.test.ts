@@ -205,6 +205,36 @@ describe('CLI Close preview with uncommitted changes', () => {
     ]);
   });
 
+  it('lists the work of an agent attempt whose commit failed first, with the retry command', async () => {
+    const attempt = {
+      attemptId: '2a1d7b63-7b54-4d66-8e4f-2c8b6e3a9d02',
+      specId: self,
+      taskId: 'api',
+      step: 'implement',
+      attempt: 2,
+      stepTitle: 'Implement',
+      code: 'MANUAL_COMMIT_CONFLICT',
+      count: 2,
+      paths: ['src/app.ts', 'specs/active/a/tasks/api/notes.md'],
+    };
+    const { stderr } = await run(
+      new CloseOperationError('CLOSE_PREFLIGHT', 'Dirty.', {
+        repository: [{ ...blocker, attempts: [attempt] }],
+      }),
+      false,
+    );
+    expect(stderr.slice(1, 6)).toEqual([
+      'Uncommitted changes: 4. Closing starts from a committed checkout, and SpecFlow never discards work.',
+      'Agent work whose commit failed: 2 (Task api, "Implement" attempt 2, MANUAL_COMMIT_CONFLICT)',
+      '  src/app.ts',
+      '  specs/active/a/tasks/api/notes.md',
+      '  Remedy: Retry the attempt commit with "nevo-specflow workflow retry-commit ' +
+        self +
+        ' --task api --step implement --attempt 2" once the cause is fixed; it commits exactly these files and nothing of anyone else.',
+    ]);
+    expect(stderr[6]).toBe('Saved in SpecFlow, not committed yet: 1');
+  });
+
   it('keeps every path in --json, shows five in text, and labels owners only when known', () => {
     const paths = Array.from({ length: 7 }, (_, index) => 'specs/active/o/d' + index + '.md');
     const hold = {

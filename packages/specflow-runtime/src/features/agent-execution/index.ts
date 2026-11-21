@@ -1,4 +1,4 @@
-export { createAgentExecutionFeature, createUnavailableAskAgentFeature } from './feature';
+export { createAgentExecutionFeature, createUnavailableAgentStepExecutionFeature } from './feature';
 // The product CLI's side of the broker protocol (T4 routes write commands through it).
 export {
   AgentBrokerClientError,

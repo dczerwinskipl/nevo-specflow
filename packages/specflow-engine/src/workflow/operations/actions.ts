@@ -152,7 +152,16 @@ export type AgentUnavailableReason =
  * for a fresh Session. Never dispatched by the Engine itself.
  */
 export type AgentOption =
-  | { readonly kind: 'available'; readonly launch: AgentLaunch; readonly independent?: true }
+  | {
+      readonly kind: 'available';
+      readonly launch: AgentLaunch;
+      readonly independent?: true;
+      /**
+       * The Runtime did not read the checkout for this answer (`unchecked`: the projection never runs
+       * Git); its explicit check and the start judge the baseline.
+       */
+      readonly baseline?: 'unchecked';
+    }
   | {
       readonly kind: 'unavailable';
       readonly reason: AgentUnavailableReason;

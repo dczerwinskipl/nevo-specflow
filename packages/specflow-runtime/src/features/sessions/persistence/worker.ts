@@ -792,6 +792,10 @@ export async function runSessionWorker(): Promise<void> {
       return associations.read(c.sessionId);
     }
 
+    if (c.op === 'has-turn') {
+      return !!get('SELECT id FROM turns WHERE id=? AND session=?', c.turnId, c.sessionId);
+    }
+
     if (c.op === 'associate-tasks') {
       return transaction(() => {
         session(c.sessionId);
@@ -815,7 +819,15 @@ export async function runSessionWorker(): Promise<void> {
           return cached;
         }
 
-        const id = randomUUID(),
+        if (
+          c.sessionId !== undefined &&
+          (!UUID_PATTERN.test(c.sessionId) ||
+            get('SELECT id FROM sessions WHERE id=?', c.sessionId))
+        ) {
+          fail('SESSION_INPUT_INVALID', 'A preassigned Session id must be a new UUID.');
+        }
+
+        const id = c.sessionId ?? randomUUID(),
           date = now();
         const createdSeq =
           Number(get('SELECT value FROM meta WHERE key=?', CREATED_SEQ_KEY)?.value ?? 0) + 1;

@@ -31,7 +31,10 @@ import type {
 } from '../capability/registry';
 import { brokerOperationId } from './operation-id';
 
-/** The Engine document use cases the broker calls: the same ones the UI's routes call. */
+/**
+ * The Engine document use cases the broker calls: the same ones the UI's routes call. `taskId`
+ * names a Task's documents (the Task-document use case), absent the Specification's own.
+ */
 export interface BrokerDocuments {
   /** The workspace root the Specification lives in now, or `undefined` when it is not available. */
   workspaceOf(specId: string): Promise<string | undefined>;
@@ -39,17 +42,20 @@ export interface BrokerDocuments {
     specId: string,
     input: CreateDocumentsInput,
     owned: OwnedExecution,
+    taskId?: string,
   ): Promise<DocumentOperationResult>;
   save(
     specId: string,
     documentId: string,
     input: SaveInput,
     owned: OwnedExecution,
+    taskId?: string,
   ): Promise<SaveResult>;
   operate(
     specId: string,
     input: DocumentOperationInput,
     owned: OwnedExecution,
+    taskId?: string,
   ): Promise<DocumentOperationResult>;
 }
 
@@ -211,7 +217,9 @@ export function createBrokerDispatcher(options: {
     const decision = admitAgentOperation(binding.scope, {
       operation: operation.name,
       specId: operation.specId,
-      ...(operation.name === 'workflow.finish' && operation.taskId !== undefined
+      ...('taskId' in operation &&
+      operation.taskId !== undefined &&
+      !operation.name.startsWith('tasks.')
         ? { taskId: operation.taskId }
         : {}),
     });
@@ -270,6 +278,7 @@ export function createBrokerDispatcher(options: {
                 : {}),
             },
             owned,
+            operation.taskId,
           ),
         };
         break;
@@ -285,6 +294,7 @@ export function createBrokerDispatcher(options: {
               expectedRevision: operation.expectedRevision,
             },
             owned,
+            operation.taskId,
           ),
         };
         break;
@@ -302,6 +312,7 @@ export function createBrokerDispatcher(options: {
               expectedRevision: operation.expectedRevision,
             },
             owned,
+            operation.taskId,
           ),
         };
         break;

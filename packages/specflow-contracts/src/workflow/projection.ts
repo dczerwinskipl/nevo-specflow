@@ -163,6 +163,11 @@ export const AgentOptionSchema = Type.Union([
     launch: AgentLaunchSchema,
     /** The step's agent role is independent (a review): always a fresh Session (D18). */
     independent: Type.Optional(Type.Literal(true)),
+    /**
+     * `unchecked`: the projection does not read the checkout (it runs no Git), so a dirty baseline is
+     * not known here; `GET .../workflow/agent-execution/check` answers it, and the start judges it.
+     */
+    baseline: Type.Optional(Type.Literal('unchecked')),
   }),
   Type.Object({
     kind: Type.Literal('unavailable'),

@@ -8,6 +8,7 @@ export {
   createEngineDocumentWriteSource,
   type EngineDocumentWriteOptions,
 } from './write/engine-write-source';
+export { createEngineTaskDocumentSource } from './task/task-document-source';
 export { statusForDocumentError } from './content/error-status';
 
 export { createDemoDocuments, type DemoDocuments } from './demo/operations';

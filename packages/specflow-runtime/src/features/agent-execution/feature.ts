@@ -23,8 +23,8 @@ import {
 } from '../sessions';
 import type { ProjectIdSource } from '../specs';
 import { workflowFailure } from '../workflow';
-import { askAgentEndpoint } from './ask-agent/endpoint';
-import { createAskAgent } from './ask-agent/operation';
+import { agentStepExecutionEndpoint } from './step-execution/endpoint';
+import { createAgentStepExecution } from './step-execution/operation';
 import {
   createBrokerDispatcher,
   type BrokerDocuments,
@@ -33,16 +33,17 @@ import {
 import { createEngineBrokerDocuments } from './broker/documents';
 import type { BrokerEndpoint } from './broker/endpoint';
 import { createBrokerServer } from './broker/server';
+import { createAgentStepEngine } from './step-execution/engine-port';
 import { createEngineBrokerWorkflow } from './broker/workflow';
 import { createCapabilityRegistry } from './capability/registry';
 import { redactCapabilities } from './capability/redaction';
 
 /** The Ask agent routes of a Runtime without agent execution (no Engine, the demo): 503. */
-export function createUnavailableAskAgentFeature(): RuntimeFeature {
+export function createUnavailableAgentStepExecutionFeature(): RuntimeFeature {
   return {
     authorizationResources: [],
     register(app) {
-      app.register(askAgentEndpoint, {});
+      app.register(agentStepExecutionEndpoint, {});
     },
   };
 }
@@ -72,9 +73,9 @@ export function createAgentExecutionFeature(
 ): RuntimeFeature & {
   readonly capabilities: InvocationCapabilities;
   readonly settleAgentAttempt: AgentAttemptSettlement;
-  readonly agentAvailability: ReturnType<typeof createAskAgent>['decorate'];
+  readonly agentAvailability: ReturnType<typeof createAgentStepExecution>['decorate'];
   /** Ask agent, Continue and Stop (the owner routes call it). */
-  readonly askAgent: ReturnType<typeof createAskAgent>;
+  readonly agentStepExecution: ReturnType<typeof createAgentStepExecution>;
   close(): Promise<void>;
 } {
   const { engine } = options;
@@ -102,11 +103,13 @@ export function createAgentExecutionFeature(
     dispatcher,
     ...(options.openEndpoint ? { openEndpoint: options.openEndpoint } : {}),
   });
-  const askAgent = createAskAgent({
-    engine,
-    openWorkflow: () => openWorkflow(engine, workflowOptions()),
-    openAttempts,
-    coordinator: () => options.coordinator?.(),
+  const agentStepExecution = createAgentStepExecution({
+    engine: createAgentStepEngine({
+      engine,
+      openWorkflow: () => openWorkflow(engine, workflowOptions()),
+      openAttempts,
+    }),
+    sessions: () => options.coordinator?.(),
   });
 
   /**
@@ -202,13 +205,13 @@ export function createAgentExecutionFeature(
     authorizationResources: [],
     capabilities,
     settleAgentAttempt,
-    agentAvailability: (subject, projection) => askAgent.decorate(subject, projection),
-    askAgent,
+    agentAvailability: (subject, projection) => agentStepExecution.decorate(subject, projection),
+    agentStepExecution,
     close: () => server.close(),
     async register(app) {
       app.addHook('onClose', () => server.close());
-      app.register(askAgentEndpoint, {
-        askAgent,
+      app.register(agentStepExecutionEndpoint, {
+        agentStepExecution,
         ...(options.projectId ? { projectId: options.projectId } : {}),
       });
       // The post actions of attempts a crash left pending after their finalize (the Session

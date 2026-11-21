@@ -242,6 +242,11 @@ export interface AgentAttemptView {
     readonly requestedAt: string;
     readonly state: 'requested' | 'refused';
     readonly refusal?: { readonly code: string; readonly message: string };
+    /**
+     * While `requested`: the Turn is stopping (`sent`), or it still runs or cannot be told
+     * (`failed`: the owner can Stop again).
+     */
+    readonly stop?: 'sent' | 'failed';
   };
   /**
    * Whether Take over (F17) is possible now: only once the agent's process is proven ended

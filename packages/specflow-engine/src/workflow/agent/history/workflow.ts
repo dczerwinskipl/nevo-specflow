@@ -42,7 +42,12 @@ export interface WorkflowHistory {
   readonly subject: WorkflowSubject;
   /** Newest first; empty before the subject's run started. */
   readonly items: readonly WorkflowHistoryItem[];
+  /** Older records were left out ({@link WORKFLOW_HISTORY_LIMIT}). */
+  readonly truncated?: true;
 }
+
+/** The newest records a history read returns; the agent detail is read for those only. */
+export const WORKFLOW_HISTORY_LIMIT = 200;
 
 /**
  * The Workflow history of a subject: every attempt and return of its run, newest first, an agent
@@ -64,41 +69,41 @@ export async function readWorkflowHistory(
   }
 
   const { run, definition } = loadSubject(workflow.catalogue, snapshot, subject);
+  const records = historyOf(run).reverse();
+  const shown = records.slice(0, WORKFLOW_HISTORY_LIMIT);
   const details = agent
     ? await readAgentAttemptHistory(agent, {
         subject,
-        attempts: run.attempts,
+        attempts: shown.flatMap((record) => (isReturnRecord(record) ? [] : [record])),
         manifests: snapshot.manifests.map((entry) => entry.value),
       })
     : new Map<string, AgentAttemptHistory>();
-  const items = historyOf(run)
-    .reverse()
-    .map((record): WorkflowHistoryItem => {
-      if (isReturnRecord(record)) {
-        return {
-          kind: 'return',
-          sequence: record.sequence,
-          at: record.at,
-          to: record.to,
-          ...(record.feedback !== undefined ? { feedback: record.feedback } : {}),
-        };
-      }
-
-      const detail = details.get(`${record.step}#${String(record.attempt)}`);
-
+  const items = shown.map((record): WorkflowHistoryItem => {
+    if (isReturnRecord(record)) {
       return {
-        kind: 'attempt',
+        kind: 'return',
         sequence: record.sequence,
-        step: record.step,
-        stepTitle: findStep(definition, record.step)?.title ?? record.step,
-        attempt: record.attempt,
-        startedAt: record.startedAt,
-        ...(record.endedAt !== undefined ? { endedAt: record.endedAt } : {}),
-        ...(record.actor !== undefined ? { actor: record.actor } : {}),
-        ...(record.outcome !== undefined ? { outcome: record.outcome } : {}),
-        ...(detail ? { agent: detail } : {}),
+        at: record.at,
+        to: record.to,
+        ...(record.feedback !== undefined ? { feedback: record.feedback } : {}),
       };
-    });
+    }
 
-  return { subject, items };
+    const detail = details.get(`${record.step}#${String(record.attempt)}`);
+
+    return {
+      kind: 'attempt',
+      sequence: record.sequence,
+      step: record.step,
+      stepTitle: findStep(definition, record.step)?.title ?? record.step,
+      attempt: record.attempt,
+      startedAt: record.startedAt,
+      ...(record.endedAt !== undefined ? { endedAt: record.endedAt } : {}),
+      ...(record.actor !== undefined ? { actor: record.actor } : {}),
+      ...(record.outcome !== undefined ? { outcome: record.outcome } : {}),
+      ...(detail ? { agent: detail } : {}),
+    };
+  });
+
+  return { subject, items, ...(records.length > shown.length ? { truncated: true as const } : {}) };
 }

@@ -10,7 +10,7 @@ import type {
 } from '../../execution/model';
 import type { WorkspaceExecutionTarget } from '../../execution/operations';
 import { readWorkspaceRegistry } from '../../project/workspace/registry/registry';
-import { listLedgerRecords, type OwnedExecutionClaim } from '../../specs/durable';
+import { readLedgerRecord, type OwnedExecutionClaim } from '../../specs/durable';
 import type { LedgerEntry } from '../../specs/durable/ledger/model';
 import { listUncleanPaths } from '../../specs/lifecycle/preflight';
 import { readProjectGitPolicy } from '../../version-control/worktrees/config';
@@ -136,11 +136,12 @@ export async function openAgentAttempts(
     newId: randomUUID,
     boundary: { facts: (workspaceId) => engineAttributionFacts(engine, workspaceId) },
     async ledger(workspaceId, specId) {
-      const { records } = await listLedgerRecords(engine.context, { workspaceId });
+      const record = await readLedgerRecord(engine.context, workspaceId, {
+        kind: 'specification',
+        id: specId,
+      });
 
-      return records
-        .filter((record) => record.owner.kind === 'specification' && record.owner.id === specId)
-        .flatMap((record) => record.entries);
+      return record?.entries ?? [];
     },
     finalize: {
       store: (owned) => engineExecutionStore(engine, owned),

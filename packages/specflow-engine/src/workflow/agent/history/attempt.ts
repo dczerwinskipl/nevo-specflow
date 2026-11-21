@@ -8,6 +8,7 @@ import {
   selectAttemptLedgerEntries,
 } from '../finalize/attempt-commit/selection';
 import type { AgentAttemptWork } from '../../operations/actions';
+import { loadSubject, type WorkflowDependencies } from '../../operations/loaded-execution';
 import type { AgentAttemptJournal } from '../journal/model';
 
 export type { AgentAttemptWork };
@@ -235,6 +236,30 @@ function eventsOf(record: AttemptRecord, journal: AgentAttemptJournal): AgentAtt
 
   // Stable by time where every event has one; the order above already follows the attempt.
   return events;
+}
+
+/**
+ * What an agent attempt left, for the projection: its run record from one snapshot read, its journal,
+ * and only its Specification's ledger record. Git-free and lock-free.
+ */
+export async function readAgentAttemptWork(
+  workflow: Pick<WorkflowDependencies, 'catalogue' | 'store'>,
+  sources: Pick<AgentHistorySources, 'ledger'>,
+  journal: AgentAttemptJournal,
+): Promise<AgentAttemptWork> {
+  const { subject } = journal;
+  const snapshot = await workflow.store.read(subject.specId);
+  const record = loadSubject(workflow.catalogue, snapshot, subject).run.attempts.find(
+    (attempt) => agentAttemptBindingOf(attempt)?.attemptId === journal.operationId,
+  );
+  if (!record) {
+    return { documents: [], mixed: [], tasks: [], declared: [], commit: { state: 'none' } };
+  }
+
+  return workOf(record, journal, await sources.ledger(journal.workspaceId, subject.specId), {
+    subject,
+    manifests: snapshot.manifests.map((entry) => entry.value),
+  });
 }
 
 function workOf(

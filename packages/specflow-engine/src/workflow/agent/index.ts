@@ -61,17 +61,20 @@ export {
 export {
   AGENT_ATTEMPT_EVENT_KINDS,
   readAgentAttemptHistory,
+  readAgentAttemptWork,
   type AgentAttemptEvent,
   type AgentAttemptHistory,
   type AgentAttemptWork,
   type AgentHistorySources,
 } from './history/attempt';
 export {
+  WORKFLOW_HISTORY_LIMIT,
   readWorkflowHistory,
   type WorkflowHistory,
   type WorkflowHistoryItem,
 } from './history/workflow';
 export { returnDuringAgentAttempt, type OwnerReturnResult } from './owner/return';
+export { assertAgentTurnAdmissible, settleAbandonedAgentTurn } from './owner/settle';
 export {
   takeOverAgentAttempt,
   type TakeOverAgentAttemptInput,

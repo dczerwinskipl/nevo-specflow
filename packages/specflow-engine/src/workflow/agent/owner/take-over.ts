@@ -10,6 +10,7 @@ import { agentAttemptBindingOf, type OwnerActor, type WorkflowSubject } from '..
 import type { AgentAttemptDependencies } from '../dependencies';
 import { isAttemptJournalSettled, type AgentAttemptJournal } from '../journal/model';
 import { currentTurnClaim, isUnsettled } from './claim';
+import { settleOwnerOutcome } from './settle';
 
 export interface TakeOverAgentAttemptInput {
   readonly subject: WorkflowSubject;
@@ -54,8 +55,19 @@ export function takeOverAgentAttempt(
   return workflow.serialize(async () => {
     assertOwner(input.actor, 'takes over an agent attempt');
     const { subject } = input;
-    const snapshot = await workflow.store.read(subject.specId);
-    const loaded = loadSubject(workflow.catalogue, snapshot, subject);
+    let snapshot = await workflow.store.read(subject.specId);
+    let loaded = loadSubject(workflow.catalogue, snapshot, subject);
+    const record = loaded.run.attempts.find(
+      (attempt) => attempt.step === input.step && attempt.attempt === input.attempt,
+    );
+    const recorded = agentAttemptBindingOf(record);
+    const earlier = recorded ? await dependencies.journal.read(recorded.attemptId) : undefined;
+    if (earlier && (await settleOwnerOutcome(dependencies, earlier, snapshot)) !== earlier) {
+      // A Take over the journal missed is recorded, or a waiting return applied: judged again.
+      snapshot = await workflow.store.read(subject.specId);
+      loaded = loadSubject(workflow.catalogue, snapshot, subject);
+    }
+
     const active = activeAttempt(loaded.run);
     if (active?.step !== input.step || active.attempt !== input.attempt) {
       mismatch(

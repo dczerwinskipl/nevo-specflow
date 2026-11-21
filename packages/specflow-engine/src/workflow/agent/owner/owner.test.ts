@@ -17,6 +17,7 @@ import { memoryAgentDependencies } from '../memory.test-support';
 import { proposeAgentFinish, type AgentTurnIdentity } from '../proposal/propose';
 import { startAgentAttempt } from '../start';
 import { returnDuringAgentAttempt } from './return';
+import { assertAgentTurnAdmissible, settleAbandonedAgentTurn } from './settle';
 import { takeOverAgentAttempt } from './take-over';
 
 let catalogue: ExecutionCatalogue;
@@ -46,10 +47,16 @@ const finalizeInput = {
 };
 const ACTIVE = { state: 'active', step: 'requirements', attempt: 1 } as const;
 
-/** An agent attempt of `requirements` whose Turn runs (its claim dispatched). */
-async function runningAgent() {
+/**
+ * An agent attempt of `requirements` whose Turn runs (its claim `phase`; `none`: the Turn is bound,
+ * its Session has not admitted its claim yet).
+ */
+async function runningAgent(phase: 'dispatched' | 'admitted' | 'none' = 'dispatched') {
   const fixture = memoryAgentDependencies(catalogue, ATTEMPT_ID);
-  fixture.claims.set(INVOCATION, { phase: 'dispatched' });
+  if (phase !== 'none') {
+    fixture.claims.set(INVOCATION, { phase });
+  }
+
   await startAgentAttempt(fixture.dependencies, {
     subject: specification,
     archetype: 'feature',
@@ -234,5 +241,68 @@ describe('Take over (F17, D19)', () => {
       },
     ]);
     expect(history.items[0]).not.toHaveProperty('agent');
+  });
+});
+
+describe('an owner action before the Turn ran (D19)', () => {
+  const takeOver = (fixture: Awaited<ReturnType<typeof runningAgent>>) =>
+    takeOverAgentAttempt(fixture.dependencies, {
+      subject: specification,
+      step: 'requirements',
+      attempt: 1,
+      actor: owner,
+    });
+
+  it('refuses the admission of a Turn bound before a Take over or a Return landed', async () => {
+    const taken = await runningAgent('none');
+    await expect(
+      assertAgentTurnAdmissible(taken.dependencies, ATTEMPT_ID, INVOCATION),
+    ).resolves.toBeUndefined();
+    await takeOver(taken);
+    await expect(
+      assertAgentTurnAdmissible(taken.dependencies, ATTEMPT_ID, INVOCATION),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_MISMATCH' });
+
+    const returned = await runningAgent('none');
+    expect(await returnDuringAgentAttempt(returned.dependencies, returnInput)).toMatchObject({
+      kind: 'returned',
+    });
+    await expect(
+      assertAgentTurnAdmissible(returned.dependencies, ATTEMPT_ID, INVOCATION),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_MISMATCH' });
+    // Another Turn than the attempt's last one is never admitted either.
+    const other = await runningAgent('none');
+    await expect(
+      assertAgentTurnAdmissible(other.dependencies, ATTEMPT_ID, ATTEMPT_ID),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_MISMATCH' });
+  });
+
+  it('applies a return recorded while the claim was admitted once the claim was abandoned', async () => {
+    const fixture = await runningAgent('admitted');
+    expect(await returnDuringAgentAttempt(fixture.dependencies, returnInput)).toMatchObject({
+      kind: 'return-requested',
+    });
+    // The Session abandons the admission as never dispatched: no finalize runs.
+    fixture.claims.set(INVOCATION, { phase: 'settled' });
+
+    await settleAbandonedAgentTurn(fixture.dependencies, ATTEMPT_ID);
+
+    const run = (await fixture.workflow.store.read(SPEC)).specification?.value.run;
+    expect(run?.attempts[0]?.outcome).toMatchObject({ kind: 'returned', to: 'requirements' });
+    expect(fixture.journal.settled.get(ATTEMPT_ID)?.returnRequest).toMatchObject({
+      state: 'applied',
+    });
+  });
+
+  it('records a Take over the journal missed (a crash after the run change) at the next one', async () => {
+    const fixture = await runningAgent();
+    await turnStops(fixture);
+    await takeOver(fixture);
+    const { takeOver: _recorded, ...missed } = fixture.journal.settled.get(ATTEMPT_ID)!;
+    fixture.journal.settled.delete(ATTEMPT_ID);
+    fixture.journal.journals.set(ATTEMPT_ID, missed);
+
+    await expect(takeOver(fixture)).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_MISMATCH' });
+    expect(fixture.journal.settled.get(ATTEMPT_ID)?.takeOver).toMatchObject({ attempt: 2 });
   });
 });

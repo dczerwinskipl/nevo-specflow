@@ -108,7 +108,8 @@ export const RETURN_REQUESTED_REFUSAL: AgentRefusal = {
  * no longer valid, or its publication was refused); anything else (a fault, corrupt state) is not a
  * refusal and leaves the claim held for recovery.
  */
-function refusalOf(error: unknown): AgentRefusal | undefined {
+/** The refusal an owner's or agent's step change is recorded with; `undefined`: a defect. */
+export function agentRefusalOf(error: unknown): AgentRefusal | undefined {
   const refused =
     (error instanceof CoreWorkflowError && !NOT_REFUSALS.has(error.code as string)) ||
     (error instanceof DocumentError && !NOT_REFUSALS.has(error.code)) ||
@@ -396,7 +397,7 @@ async function publishStep(
       outcome: { kind: 'finished', transition: plan.result.transition, finish: plan.result },
     };
   } catch (error) {
-    const refusal = refusalOf(error);
+    const refusal = agentRefusalOf(error);
     if (!refusal) {
       throw error;
     }
@@ -488,7 +489,7 @@ async function publishReturn(
 
     return { journal: applied, outcome: { kind: 'returned', position: plan.result.position } };
   } catch (error) {
-    const refusal = refusalOf(error);
+    const refusal = agentRefusalOf(error);
     if (!refusal) {
       throw error;
     }

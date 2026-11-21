@@ -15,6 +15,7 @@ import {
   type AgentReturnRequest,
 } from '../journal/model';
 import { admitUnderOwnTurn, currentTurnClaim, isUnsettled } from './claim';
+import { settleOwnerOutcome } from './settle';
 
 /**
  * What the owner's Return did:
@@ -38,6 +39,11 @@ export type OwnerReturnResult =
       readonly sessionId: string;
       readonly turnId: string;
       readonly requestedAt: string;
+      /**
+       * Whether the Runtime's stop of the Turn was sent (`sent`) or could not be (`failed`: Stop
+       * again); absent where nothing stops it (the offline CLI).
+       */
+      readonly stop?: 'sent' | 'failed';
     };
 
 /**
@@ -59,11 +65,25 @@ export function returnDuringAgentAttempt(
 
   return workflow.serialize(async () => {
     assertOwner(request.actor, 'returns a run to an earlier step');
-    const snapshot = await workflow.store.read(request.subject.specId);
+    let snapshot = await workflow.store.read(request.subject.specId);
+    const activeJournal = async () => {
+      const active = activeAttempt(loadSubject(workflow.catalogue, snapshot, request.subject).run);
+      const binding = agentAttemptBindingOf(active);
+
+      return binding ? dependencies.journal.read(binding.attemptId) : undefined;
+    };
+
+    let journal = await activeJournal();
+    if (journal) {
+      // An earlier request whose Turn was abandoned before dispatch applies first.
+      const settled = await settleOwnerOutcome(dependencies, journal, snapshot);
+      if (settled !== journal) {
+        snapshot = await workflow.store.read(request.subject.specId);
+        journal = await activeJournal();
+      }
+    }
+
     const plan = planReturn(workflow, snapshot, request);
-    const active = activeAttempt(loadSubject(workflow.catalogue, snapshot, request.subject).run);
-    const binding = agentAttemptBindingOf(active);
-    const journal = binding ? await dependencies.journal.read(binding.attemptId) : undefined;
     const claim = journal ? await currentTurnClaim(dependencies, journal) : undefined;
     const at = isoNow(workflow);
     const returnRequest = (state: AgentReturnRequest['state']): AgentReturnRequest => ({

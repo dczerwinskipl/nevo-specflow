@@ -5,10 +5,10 @@ import {
 } from '@nevo/specflow-contracts/authorization';
 import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
 import {
-  AskAgentRequestSchema,
-  AskAgentResultSchema,
-  StopAgentRequestSchema,
-  StopAgentResultSchema,
+  AgentStepExecutionRequestSchema,
+  AgentStepExecutionResultSchema,
+  StopAgentStepExecutionRequestSchema,
+  StopAgentStepExecutionResultSchema,
   WorkflowErrorSchema,
   WorkflowSpecParamsSchema,
   WorkflowTaskParamsSchema,
@@ -26,11 +26,11 @@ import {
   sendWorkflowFailure,
   workflowFailure,
 } from '../../workflow';
-import type { AskAgent } from './operation';
+import type { AgentStepExecution } from './operation';
 
-export interface AskAgentRoutesOptions {
+export interface AgentStepExecutionRoutesOptions {
   /** Absent: every route answers 503 `WORKFLOW_UNAVAILABLE` (no Engine, the demo). */
-  readonly askAgent?: AskAgent;
+  readonly agentStepExecution?: AgentStepExecution;
   readonly projectId?: ProjectIdSource;
 }
 
@@ -84,11 +84,11 @@ function refusing<Request, Result>(
 
 /**
  * The Ask agent owner routes of a Specification and of a Task: start an agent attempt of the step
- * the owner was shown or continue the active one (`ask-agent`), and stop its running agent
- * (`agent/stop`). They drive a run, so they need `Manage`; the caller is the owner, the agent's
+ * the owner was shown or continue the active one (`agent-execution`), and stop its running agent
+ * (`agent-execution/stop`). They drive a run, so they need `Manage`; the caller is the owner, the agent's
  * actor comes only from the Session the Runtime binds.
  */
-export const askAgentEndpoint: FastifyPluginCallback<AskAgentRoutesOptions> = (
+export const agentStepExecutionEndpoint: FastifyPluginCallback<AgentStepExecutionRoutesOptions> = (
   app,
   options,
   done,
@@ -101,12 +101,12 @@ export const askAgentEndpoint: FastifyPluginCallback<AskAgentRoutesOptions> = (
       specScope(options.projectId?.(), (request.params as { specId: string }).specId),
   });
   const principal = (request: FastifyRequest) => request.authz.readContext().subject;
-  const askAgent = (): AskAgent => {
-    if (!options.askAgent) {
+  const execution = (): AgentStepExecution => {
+    if (!options.agentStepExecution) {
       throw new WorkflowUnavailableError();
     }
 
-    return options.askAgent;
+    return options.agentStepExecution;
   };
 
   const subjects = [
@@ -136,7 +136,7 @@ export const askAgentEndpoint: FastifyPluginCallback<AskAgentRoutesOptions> = (
     const tags = ['Workflow'];
 
     typed.post(
-      `${base}/ask-agent`,
+      `${base}/agent-execution`,
       {
         onRequest: manage,
         bodyLimit: BODY_LIMIT_BYTES,
@@ -144,13 +144,13 @@ export const askAgentEndpoint: FastifyPluginCallback<AskAgentRoutesOptions> = (
           tags,
           summary: `Ask an agent to do the next step of a ${label}, or continue its attempt`,
           params,
-          body: AskAgentRequestSchema,
-          response: { 200: AskAgentResultSchema, ...errors },
+          body: AgentStepExecutionRequestSchema,
+          response: { 200: AgentStepExecutionResultSchema, ...errors },
         },
       },
       refusing(async (request, reply) => {
         const { requestId, expected, provider, model, effort, message } = request.body;
-        const result = await askAgent().askAgent({
+        const result = await execution().startAgentStepExecution({
           subject: subjectOf(request),
           principal: principal(request),
           requestId,
@@ -169,7 +169,7 @@ export const askAgentEndpoint: FastifyPluginCallback<AskAgentRoutesOptions> = (
     );
 
     typed.post(
-      `${base}/agent/stop`,
+      `${base}/agent-execution/stop`,
       {
         onRequest: manage,
         bodyLimit: BODY_LIMIT_BYTES,
@@ -177,12 +177,12 @@ export const askAgentEndpoint: FastifyPluginCallback<AskAgentRoutesOptions> = (
           tags,
           summary: `Stop the agent working on a ${label}'s step`,
           params,
-          body: StopAgentRequestSchema,
-          response: { 200: StopAgentResultSchema, ...errors },
+          body: StopAgentStepExecutionRequestSchema,
+          response: { 200: StopAgentStepExecutionResultSchema, ...errors },
         },
       },
       refusing(async (request, reply) => {
-        const result = await askAgent().stopAgent({
+        const result = await execution().stopAgentStepExecution({
           subject: subjectOf(request),
           principal: principal(request),
           requestId: request.body.requestId,

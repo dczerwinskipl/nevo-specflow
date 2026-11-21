@@ -529,7 +529,7 @@ const RequestIdSchema = Type.String({
  * then is refused. `message` is the owner's note to the agent, after the brief. The actor is the
  * authenticated caller; the agent's actor comes from the Session, never from the body.
  */
-export const AskAgentRequestSchema = Type.Object(
+export const AgentStepExecutionRequestSchema = Type.Object(
   {
     /** The idempotency key of this request: a repeat returns the same attempt and Turn. */
     requestId: RequestIdSchema,
@@ -544,10 +544,10 @@ export const AskAgentRequestSchema = Type.Object(
   },
   { additionalProperties: false },
 );
-export type AskAgentRequest = Static<typeof AskAgentRequestSchema>;
+export type AgentStepExecutionRequest = Static<typeof AgentStepExecutionRequestSchema>;
 
 /** The agent attempt that runs, and the Turn just dispatched in its Session. */
-export const AskAgentResultSchema = Type.Object(
+export const AgentStepExecutionResultSchema = Type.Object(
   {
     kind: Type.Union([Type.Literal('started'), Type.Literal('continued')]),
     subject: WorkflowSubjectSchema,
@@ -561,14 +561,14 @@ export const AskAgentResultSchema = Type.Object(
   },
   { additionalProperties: false },
 );
-export type AskAgentResult = Static<typeof AskAgentResultSchema>;
+export type AgentStepExecutionResult = Static<typeof AgentStepExecutionResultSchema>;
 
 /**
  * Stop the agent of the active agent attempt (D19): its running Turn is cancelled; the step stays
  * locked until SpecFlow sees the agent's process has ended, then the attempt waits for Continue,
  * Take over or Return.
  */
-export const StopAgentRequestSchema = Type.Object(
+export const StopAgentStepExecutionRequestSchema = Type.Object(
   {
     requestId: RequestIdSchema,
     /** The attempt the owner was shown; another one refuses (`WORKFLOW_ATTEMPT_MISMATCH`). */
@@ -576,10 +576,10 @@ export const StopAgentRequestSchema = Type.Object(
   },
   { additionalProperties: false },
 );
-export type StopAgentRequest = Static<typeof StopAgentRequestSchema>;
+export type StopAgentStepExecutionRequest = Static<typeof StopAgentStepExecutionRequestSchema>;
 
-export const StopAgentResultSchema = Type.Object(
+export const StopAgentStepExecutionResultSchema = Type.Object(
   { attemptId: Type.String(), sessionId: Type.String(), turnId: Type.String() },
   { additionalProperties: false },
 );
-export type StopAgentResult = Static<typeof StopAgentResultSchema>;
+export type StopAgentStepExecutionResult = Static<typeof StopAgentStepExecutionResultSchema>;

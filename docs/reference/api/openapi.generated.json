@@ -42757,202 +42757,9 @@
         }
       }
     },
-    "/api/specs/{specId}/tasks/{taskId}/workflow/agent/stop": {
+    "/api/specs/{specId}/tasks/{taskId}/workflow/agent-execution": {
       "post": {
-        "operationId": "postSpecsBySpecIdTasksByTaskIdWorkflowAgentStop",
-        "summary": "Stop the agent working on a Task's step",
-        "tags": [
-          "Workflow"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "requestId",
-                  "attemptId"
-                ],
-                "properties": {
-                  "requestId": {
-                    "type": "string",
-                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-                  },
-                  "attemptId": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 64
-                  }
-                },
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "schema": {
-              "$ref": "#/components/schemas/SpecId"
-            },
-            "in": "path",
-            "name": "specId",
-            "required": true
-          },
-          {
-            "schema": {
-              "$ref": "#/components/schemas/TaskId"
-            },
-            "in": "path",
-            "name": "taskId",
-            "required": true
-          }
-        ],
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "attemptId",
-                    "sessionId",
-                    "turnId"
-                  ],
-                  "properties": {
-                    "attemptId": {
-                      "type": "string"
-                    },
-                    "sessionId": {
-                      "type": "string"
-                    },
-                    "turnId": {
-                      "type": "string"
-                    }
-                  },
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`, or `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY` for a malformed or empty JSON body.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RequestErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthenticationRequiredErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The principal lacks a required capability.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WorkflowError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflicts with the current state of the resource.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WorkflowError"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "The request is well-formed but cannot be processed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WorkflowError"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Too many requests: the source exceeded the Runtime default rate limit.",
-            "headers": {
-              "Retry-After": {
-                "schema": {
-                  "type": "string"
-                },
-                "description": "Seconds until the budget renews."
-              },
-              "x-ratelimit-limit": {
-                "schema": {
-                  "type": "string"
-                },
-                "description": "The budget of the time window."
-              },
-              "x-ratelimit-remaining": {
-                "schema": {
-                  "type": "string"
-                },
-                "description": "`0` on a refusal."
-              },
-              "x-ratelimit-reset": {
-                "schema": {
-                  "type": "string"
-                },
-                "description": "Seconds until the window resets."
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RateLimitedErrorResponse"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Temporarily unavailable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WorkflowError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/specs/{specId}/tasks/{taskId}/workflow/ask-agent": {
-      "post": {
-        "operationId": "postSpecsBySpecIdTasksByTaskIdWorkflowAskAgent",
+        "operationId": "postSpecsBySpecIdTasksByTaskIdWorkflowAgentExecution",
         "summary": "Ask an agent to do the next step of a Task, or continue its attempt",
         "tags": [
           "Workflow"
@@ -43150,6 +42957,199 @@
                           ]
                         }
                       ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`, or `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY` for a malformed or empty JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticationRequiredErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The principal lacks a required capability.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state of the resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request is well-formed but cannot be processed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: the source exceeded the Runtime default rate limit.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the budget renews."
+              },
+              "x-ratelimit-limit": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The budget of the time window."
+              },
+              "x-ratelimit-remaining": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "`0` on a refusal."
+              },
+              "x-ratelimit-reset": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the window resets."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/specs/{specId}/tasks/{taskId}/workflow/agent-execution/stop": {
+      "post": {
+        "operationId": "postSpecsBySpecIdTasksByTaskIdWorkflowAgentExecutionStop",
+        "summary": "Stop the agent working on a Task's step",
+        "tags": [
+          "Workflow"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "requestId",
+                  "attemptId"
+                ],
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                  },
+                  "attemptId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/SpecId"
+            },
+            "in": "path",
+            "name": "specId",
+            "required": true
+          },
+          {
+            "schema": {
+              "$ref": "#/components/schemas/TaskId"
+            },
+            "in": "path",
+            "name": "taskId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "attemptId",
+                    "sessionId",
+                    "turnId"
+                  ],
+                  "properties": {
+                    "attemptId": {
+                      "type": "string"
+                    },
+                    "sessionId": {
+                      "type": "string"
+                    },
+                    "turnId": {
+                      "type": "string"
                     }
                   },
                   "additionalProperties": false
@@ -46303,194 +46303,9 @@
         }
       }
     },
-    "/api/specs/{specId}/workflow/agent/stop": {
+    "/api/specs/{specId}/workflow/agent-execution": {
       "post": {
-        "operationId": "postSpecsBySpecIdWorkflowAgentStop",
-        "summary": "Stop the agent working on a Specification's step",
-        "tags": [
-          "Workflow"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "requestId",
-                  "attemptId"
-                ],
-                "properties": {
-                  "requestId": {
-                    "type": "string",
-                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-                  },
-                  "attemptId": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 64
-                  }
-                },
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "schema": {
-              "$ref": "#/components/schemas/SpecId"
-            },
-            "in": "path",
-            "name": "specId",
-            "required": true
-          }
-        ],
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "attemptId",
-                    "sessionId",
-                    "turnId"
-                  ],
-                  "properties": {
-                    "attemptId": {
-                      "type": "string"
-                    },
-                    "sessionId": {
-                      "type": "string"
-                    },
-                    "turnId": {
-                      "type": "string"
-                    }
-                  },
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`, or `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY` for a malformed or empty JSON body.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RequestErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthenticationRequiredErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The principal lacks a required capability.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WorkflowError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflicts with the current state of the resource.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WorkflowError"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "The request is well-formed but cannot be processed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WorkflowError"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Too many requests: the source exceeded the Runtime default rate limit.",
-            "headers": {
-              "Retry-After": {
-                "schema": {
-                  "type": "string"
-                },
-                "description": "Seconds until the budget renews."
-              },
-              "x-ratelimit-limit": {
-                "schema": {
-                  "type": "string"
-                },
-                "description": "The budget of the time window."
-              },
-              "x-ratelimit-remaining": {
-                "schema": {
-                  "type": "string"
-                },
-                "description": "`0` on a refusal."
-              },
-              "x-ratelimit-reset": {
-                "schema": {
-                  "type": "string"
-                },
-                "description": "Seconds until the window resets."
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RateLimitedErrorResponse"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Temporarily unavailable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WorkflowError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/specs/{specId}/workflow/ask-agent": {
-      "post": {
-        "operationId": "postSpecsBySpecIdWorkflowAskAgent",
+        "operationId": "postSpecsBySpecIdWorkflowAgentExecution",
         "summary": "Ask an agent to do the next step of a Specification, or continue its attempt",
         "tags": [
           "Workflow"
@@ -46680,6 +46495,191 @@
                           ]
                         }
                       ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`, or `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY` for a malformed or empty JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticationRequiredErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The principal lacks a required capability.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state of the resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request is well-formed but cannot be processed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: the source exceeded the Runtime default rate limit.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the budget renews."
+              },
+              "x-ratelimit-limit": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The budget of the time window."
+              },
+              "x-ratelimit-remaining": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "`0` on a refusal."
+              },
+              "x-ratelimit-reset": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the window resets."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/specs/{specId}/workflow/agent-execution/stop": {
+      "post": {
+        "operationId": "postSpecsBySpecIdWorkflowAgentExecutionStop",
+        "summary": "Stop the agent working on a Specification's step",
+        "tags": [
+          "Workflow"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "requestId",
+                  "attemptId"
+                ],
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                  },
+                  "attemptId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/SpecId"
+            },
+            "in": "path",
+            "name": "specId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "attemptId",
+                    "sessionId",
+                    "turnId"
+                  ],
+                  "properties": {
+                    "attemptId": {
+                      "type": "string"
+                    },
+                    "sessionId": {
+                      "type": "string"
+                    },
+                    "turnId": {
+                      "type": "string"
                     }
                   },
                   "additionalProperties": false

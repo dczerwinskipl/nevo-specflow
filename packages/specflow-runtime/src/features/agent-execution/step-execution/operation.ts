@@ -1,6 +1,9 @@
 import { createHash } from 'node:crypto';
 
-import type { AskAgentResult, StopAgentResult } from '@nevo/specflow-contracts/workflow';
+import type {
+  AgentStepExecutionResult,
+  StopAgentStepExecutionResult,
+} from '@nevo/specflow-contracts/workflow';
 import {
   AttributionRefusalError,
   WorkflowError,
@@ -32,7 +35,7 @@ import { AgentUnavailableError } from '../../workflow';
 import { renderAgentBrief, untrusted } from '../brief/render';
 import { chosenLaunch, withRuntimeReasons, type AgentRuntimeFacts } from './availability';
 
-export interface AskAgentDependencies {
+export interface AgentStepExecutionDependencies {
   readonly engine: SpecFlowEngine;
   /** The workflow operations, opened per call (definitions and project documents as they are now). */
   readonly openWorkflow: () => Promise<WorkflowDependencies>;
@@ -41,7 +44,7 @@ export interface AskAgentDependencies {
   readonly coordinator: () => SessionCoordinator | undefined;
 }
 
-export interface AskAgentRequest {
+export interface AgentStepExecutionRequest {
   readonly subject: WorkflowSubject;
   /** The caller's principal, as the Session routes name it. */
   readonly principal: string;
@@ -53,7 +56,7 @@ export interface AskAgentRequest {
   readonly message?: string;
 }
 
-const RUNTIME_ACTOR = 'runtime-ask-agent';
+const RUNTIME_ACTOR = 'runtime-agent-execution';
 
 /** A UUID derived from the request, so a repeated request reuses its Session create and Turn. */
 function derivedId(requestId: string, purpose: string): string {
@@ -83,7 +86,7 @@ function nextOf(projection: ActionProjection) {
  * brief, its claim bound to the attempt, so its writes go through the broker in the attempt's scope
  * and its settlement finalizes the attempt.
  */
-export function createAskAgent(dependencies: AskAgentDependencies) {
+export function createAgentStepExecution(dependencies: AgentStepExecutionDependencies) {
   const { engine } = dependencies;
   const source = engineAgentContextSource(engine);
 
@@ -327,7 +330,9 @@ export function createAskAgent(dependencies: AskAgentDependencies) {
     return projection;
   }
 
-  async function askAgent(request: AskAgentRequest): Promise<AskAgentResult> {
+  async function startAgentStepExecution(
+    request: AgentStepExecutionRequest,
+  ): Promise<AgentStepExecutionResult> {
     const coordinator = dependencies.coordinator();
     const { subject, expected } = request;
     const workflow = await dependencies.openWorkflow();
@@ -516,12 +521,12 @@ export function createAskAgent(dependencies: AskAgentDependencies) {
    * Stop (D19): cancels the agent attempt's running Turn. The claim stays held until the agent's
    * process is proven stopped; then the Turn's settlement finalizes the attempt as a Turn that ended.
    */
-  async function stopAgent(request: {
+  async function stopAgentStepExecution(request: {
     readonly subject: WorkflowSubject;
     readonly principal: string;
     readonly requestId: string;
     readonly attemptId: string;
-  }): Promise<StopAgentResult> {
+  }): Promise<StopAgentStepExecutionResult> {
     const coordinator = dependencies.coordinator();
     const active = await activeAgentAttempt(await dependencies.openWorkflow(), request.subject);
     if (active?.attemptId !== request.attemptId) {
@@ -543,7 +548,7 @@ export function createAskAgent(dependencies: AskAgentDependencies) {
     return { attemptId: active.attemptId, sessionId, turnId: turn.turnId };
   }
 
-  return { decorate, askAgent, stopAgent };
+  return { decorate, startAgentStepExecution, stopAgentStepExecution };
 }
 
-export type AskAgent = ReturnType<typeof createAskAgent>;
+export type AgentStepExecution = ReturnType<typeof createAgentStepExecution>;

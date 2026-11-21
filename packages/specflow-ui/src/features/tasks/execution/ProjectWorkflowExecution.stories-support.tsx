@@ -455,6 +455,25 @@ const heldTaskList = {
   ],
 };
 
+/** Implementation after the owner took it over: the owner's attempt 3 (the agent's was 2). */
+function ownerAttempt3(base: WorkflowActionProjection): WorkflowActionProjection {
+  if (base.position.kind !== 'active') {
+    return base;
+  }
+
+  return {
+    ...base,
+    position: {
+      ...base.position,
+      attempt: { ...base.position.attempt, number: 3, startedAt: '2026-11-13T12:15:00Z' },
+    },
+    actions: {
+      ...base.actions,
+      ...(base.actions.finish ? { finish: { ...base.actions.finish, attempt: 3 } } : {}),
+    },
+  };
+}
+
 /** The agent case of an agent story, and what the projection (which reads no Git) says of it. */
 function agentCaseOf(scenario: WorkflowStoryScenario): AgentCase | undefined {
   if (scenario === 'agent-refused') {
@@ -493,10 +512,12 @@ function services(scenario: WorkflowStoryScenario) {
       ? finishedAttemptProjection()
       : attemptOf()
         ? agentAttemptProjection(attemptOf()!)
-        : taskWorkflowProjection(taskScenario(), {
-            version: state.version,
-            ...(agentCase ? { agent: projectedAgent(agentCase) } : {}),
-          });
+        : scenario === 'history-taken-over'
+          ? ownerAttempt3(taskWorkflowProjection('rework'))
+          : taskWorkflowProjection(taskScenario(), {
+              version: state.version,
+              ...(agentCase ? { agent: projectedAgent(agentCase) } : {}),
+            });
   const authoring = authoringApi('started');
   const workflowExecutionApi: WorkflowExecutionApi = {
     start: (_subject, input) => {

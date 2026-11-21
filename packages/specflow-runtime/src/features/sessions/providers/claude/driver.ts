@@ -12,6 +12,7 @@ import {
   type ProviderEnvironment,
 } from '../process';
 import { claudeLoss, createClaudeOperation } from './operation';
+import { productCliTrusted } from './cli-path';
 import { inspectClaudeInstallation } from './installation';
 import {
   classifyProviderInstallation,
@@ -562,6 +563,13 @@ export function createClaudeDriver(
             requireAuthentication(current.authenticationFingerprint);
             expectedVersion = claudeVersion(payload);
           },
+          productCliTrusted: productCliTrusted({
+            pathValue: Object.entries(environment.values).find(
+              ([name]) => name.toUpperCase() === 'PATH',
+            )?.[1],
+            platform: process.platform,
+            workspace,
+          }),
           verifyFrame(frame) {
             if (!verified) {
               try {

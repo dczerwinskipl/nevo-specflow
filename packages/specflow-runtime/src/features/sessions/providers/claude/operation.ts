@@ -44,6 +44,8 @@ export function createClaudeOperation(
     launch(signal: AbortSignal): Promise<ClaudeProcess>;
     initialize(payload: Record<string, unknown>): void | Promise<void>;
     verifyFrame?(frame: Record<string, unknown>): void;
+    /** False: a bare nevo-specflow may not be the product CLI (see cli-path.ts); the owner decides. */
+    productCliTrusted?: boolean;
   },
 ): ProviderOperation {
   const context = invocation.providerContext;
@@ -272,6 +274,7 @@ export function createClaudeOperation(
           const action = request.questions[0]?.interaction;
           if (
             invocation.permissions &&
+            options.productCliTrusted !== false &&
             action?.kind === 'permission' &&
             action.action?.operation === 'command' &&
             isAllowlistedCliCommand(action.action.command, invocation.permissions.allow)

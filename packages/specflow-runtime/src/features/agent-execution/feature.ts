@@ -2,7 +2,7 @@ import { AGENT_BROKER_ENVIRONMENT } from '@nevo/specflow-contracts/runtime';
 import { deriveAgentScope, type SpecFlowEngine } from '@nevo/specflow-engine';
 
 import type { RuntimeFeature } from '../runtime-feature';
-import { SessionError, type InvocationCapabilities } from '../sessions';
+import type { InvocationCapabilities } from '../sessions';
 import { createBrokerDispatcher, type BrokerDocuments } from './broker/dispatch';
 import { createEngineBrokerDocuments } from './broker/documents';
 import type { BrokerEndpoint } from './broker/endpoint';
@@ -17,8 +17,6 @@ import { redactCapabilities } from './capability/redaction';
  */
 export function createAgentExecutionFeature(options: {
   engine: SpecFlowEngine;
-  /** Whether no write Turn may receive a capability now (the headless pairing gate, D21). */
-  writeTurnsPaused?: () => boolean;
   /** Test seams. */
   documents?: BrokerDocuments;
   openEndpoint?: () => Promise<BrokerEndpoint>;
@@ -36,13 +34,6 @@ export function createAgentExecutionFeature(options: {
 
   const capabilities: InvocationCapabilities = {
     async mint(binding) {
-      if (options.writeTurnsPaused?.()) {
-        throw new SessionError(
-          'SESSION_PAIRING_PENDING',
-          'Agents wait until the first device is paired with the initial pairing code.',
-        );
-      }
-
       const endpoint = await server.endpoint();
       const handle = registry.mint({
         invocationId: binding.invocationId,

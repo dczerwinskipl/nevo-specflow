@@ -187,7 +187,6 @@ it(
       createEngineSessionEffects(engine),
       createSpecificationWorkspaceResolver(engine),
       undefined,
-      undefined,
       agentExecution.capabilities,
     );
     const actor = 'actor';
@@ -289,7 +288,6 @@ it(
       },
       createEngineSessionEffects(engine),
       createSpecificationWorkspaceResolver(engine),
-      undefined,
       undefined,
       restarted.capabilities,
     );

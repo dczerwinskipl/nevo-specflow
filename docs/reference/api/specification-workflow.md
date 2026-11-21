@@ -218,7 +218,7 @@ replayed?, postActions}`: the transition, the agent's Task decisions and the eff
   owner as actor, judged again by every finish rule (gates, open Tasks; a refusal leaves the result
   waiting), as an ordinary owner write; `postActions` are the owner's (`commit-execution-state`, as
   after an owner's finish). A digest that no longer matches what Confirm would apply (a draft added,
-  removed or edited) is `WORKFLOW_CONFIRMATION_CHANGED` (409), naming what it applies now. `reject`
+  removed or edited, its `task.md` included) is `WORKFLOW_CONFIRMATION_CHANGED` (409), naming what it applies now. `reject`
   takes `{requestId, step, attempt, feedback}` (required) and answers `{subject, position,
 continuation, replayed?}`: the step is ready again with the feedback as its handoff
   (`kind: return`); the agent's work stays committed with its attempt. The same `requestId` again is

@@ -258,9 +258,26 @@ describe('an agent result that waits for the owner (D17)', () => {
     ]);
   });
 
-  it('is refused when what it applies changed since the owner was shown it', async () => {
+  it('is refused when a draft or its task.md changed since the owner was shown it', async () => {
     const fixture = await reviewAwaitingOwner();
+    const documents = fixture.workflow.references.taskDocuments;
+    documents.set('screen', [{ path: 'task.md', revision: 'a'.repeat(64) }]);
     const confirm = await confirmShown(fixture);
+    const expectRefused = async (shownBefore: typeof confirm) => {
+      const refused = confirmAgentResult(fixture.dependencies, shownBefore);
+      await expect(refused).rejects.toMatchObject({ code: 'WORKFLOW_CONFIRMATION_CHANGED' });
+      await expect(refused).rejects.toThrow(/approves the drafts api, screen as they are now/u);
+      expect(await positionOf(fixture.workflow, specification)).toEqual(AWAITING);
+      expect(await taskStatuses(fixture)).toEqual({ api: 'draft', screen: 'draft' });
+      expect((await shown(fixture)).confirmsDigest).not.toBe(shownBefore.confirmsDigest);
+    };
+
+    // The draft's task.md was edited after the owner read the result.
+    documents.set('screen', [{ path: 'task.md', revision: 'b'.repeat(64) }]);
+    await expectRefused(confirm);
+
+    // So was its manifest, after the owner read it again.
+    const again = await confirmShown(fixture);
     const projection = await inspectActions(fixture.workflow, task('screen'));
     await editTask(fixture.workflow, {
       specId: SPEC,
@@ -269,15 +286,9 @@ describe('an agent result that waits for the owner (D17)', () => {
       title: 'Screen, edited after the review',
       actor: owner,
     });
-
-    const refused = confirmAgentResult(fixture.dependencies, confirm);
-    await expect(refused).rejects.toMatchObject({ code: 'WORKFLOW_CONFIRMATION_CHANGED' });
-    await expect(refused).rejects.toThrow(/approves the drafts api, screen as they are now/u);
-    expect(await positionOf(fixture.workflow, specification)).toEqual(AWAITING);
-    expect(await taskStatuses(fixture)).toEqual({ api: 'draft', screen: 'draft' });
+    await expectRefused(again);
 
     // What the owner reads now is what Confirm applies.
-    expect((await shown(fixture)).confirmsDigest).not.toBe(confirm.confirmsDigest);
     await confirmAgentResult(fixture.dependencies, await confirmShown(fixture));
     expect(await taskStatuses(fixture)).toEqual({ api: 'ready', screen: 'ready' });
   });

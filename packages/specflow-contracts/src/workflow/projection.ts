@@ -612,7 +612,7 @@ export const WorkflowPositionSchema = Type.Union([
       ),
     }),
     /**
-     * The digest of `confirms` with each draft's content revision as read: the Confirm request names
+     * The digest of `confirms` with the content revision of each draft's manifest and documents as read: the Confirm request names
      * it (`confirmsDigest`), and is refused `WORKFLOW_CONFIRMATION_CHANGED` when it changed since.
      */
     confirmsDigest: Type.String({ pattern: '^[0-9a-f]{64}$' }),

@@ -78,7 +78,7 @@ import {
   type RelationSteps,
 } from '../gates/document-relations';
 import { onlyTarget, outlineOf, type OutlinePosition, type WorkflowOutline } from './outline';
-import { forOneRead } from './task-references';
+import { forOneRead, type TaskReferences } from './task-references';
 
 export type { StartBlocker } from './start-blockers';
 export type {
@@ -278,7 +278,7 @@ export type ActionPosition =
         readonly taskDecisions?: PendingOwnerDecisions['taskDecisions'];
       };
       /**
-       * The digest of `confirms` with each draft's content revision: Confirm names it, and is
+       * The digest of `confirms` with the content revisions of each draft's manifest and documents: Confirm names it, and is
        * refused (`WORKFLOW_CONFIRMATION_CHANGED`) when what it would apply changed since.
        */
       readonly confirmsDigest: string;
@@ -790,6 +790,8 @@ interface RunInput {
   readonly tasks: ExecutionTasks;
   /** The snapshot read: the content revisions of what a Confirm applies (`confirmsDigest`). */
   readonly snapshot: ExecutionSnapshot;
+  /** The document files of a draft a Confirm approves (`confirmsDigest`). */
+  readonly references: Pick<TaskReferences, 'taskDocumentRevisions'>;
   readonly gates: GateReading;
 }
 
@@ -1052,11 +1054,12 @@ async function awaitingProjection(
     );
   }
 
-  const confirms = resultConfirmsOf(
+  const confirms = await resultConfirmsOf(
     declared.annotations.effects,
     input.tasks.tasks,
     input.snapshot,
     record,
+    input.references,
   );
   const ref = { step: record.step, attempt: record.attempt };
 
@@ -1218,6 +1221,7 @@ async function specificationPosition(
           dependencies.references.pendingDocumentChange(specId, taskId),
         tasks: executionTasks(catalogue, snapshot),
         snapshot,
+        references: dependencies.references,
         gates,
       }),
     )),
@@ -1414,6 +1418,7 @@ export async function taskProjection(
       dependencies.references.pendingDocumentChange(specId, taskId),
     tasks,
     snapshot,
+    references: dependencies.references,
     gates,
   });
 

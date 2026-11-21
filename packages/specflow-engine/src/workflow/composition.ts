@@ -34,6 +34,7 @@ import { guardExecutionClaims } from './state/claim-guard';
 import { executionClaimAdmission } from './write-admission';
 import type { RememberModelDependencies } from './definitions/remember-model';
 import type { TaskReferences } from './operations/task-references';
+import { readTaskDocuments } from '../specs/documents/task-document-reader';
 import {
   hasPendingTaskDocumentChange,
   pendingTaskDocumentChanges,
@@ -159,6 +160,11 @@ function engineReferences(engine: SpecFlowEngine, options: OpenWorkflowOptions):
       checkoutPathExists((await availableSpecification(engine, specId)).workspaceRoot, path),
     pendingDocumentChange: pendingTaskDocuments(engine),
     pendingDocumentChanges: (specId) => pendingTaskDocumentChanges(engine.context, specId),
+    taskDocumentRevisions: async (specId, taskId) =>
+      (await readTaskDocuments(engine, specId, taskId)).documents.map((document) => ({
+        path: document.path,
+        revision: document.file?.revision ?? null,
+      })),
     documentsOfType: async (scope, documentType) => {
       try {
         return await readRegisteredDocumentsOfType(engine, scope, documentType);

@@ -370,7 +370,7 @@ effects with the owner as actor, judged again by every finish rule (a gate that 
 leaves the result waiting), as an ordinary owner write committed by the owner's normal path (the
 `commit-execution-state` post action, as after an owner's finish), never attributed to the agent's
 Turns; there is no second attempt commit. Confirm approves exactly what the owner was shown: the
-projection's `confirmsDigest` (the drafts it approves with their content revisions, and the Task
+projection's `confirmsDigest` (the drafts it approves with the content revisions of their manifests and documents such as `task.md`, and the Task
 decisions) is a required field of the request, and a mismatch is `WORKFLOW_CONFIRMATION_CHANGED`
 naming what Confirm would apply now. **Reject** (`.../confirmation/reject`,
 `workflow reject --feedback`) returns to the step with the feedback as its handoff; the agent's work

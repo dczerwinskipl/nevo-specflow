@@ -337,11 +337,12 @@ async function planConfirm(
   }
 
   // Exactly what the owner was shown: the drafts it approves (with their content) and the decisions.
-  const confirms = resultConfirmsOf(
+  const confirms = await resultConfirmsOf(
     taken.transition.annotations.effects,
     executionTasks(workflow.catalogue, snapshot).tasks,
     snapshot,
     record,
+    workflow.references,
   );
   if (confirmsDigestOf(confirms) !== input.confirmsDigest) {
     throw new WorkflowError(

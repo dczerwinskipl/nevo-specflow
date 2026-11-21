@@ -14,6 +14,7 @@ function fixture(
     launchDelay?: number;
     initializeError?: Error;
     verifyFrame?: (frame: Record<string, unknown>) => void;
+    invocation?: Partial<Invocation>;
   } = {},
 ) {
   const { disposeOnCancel = true, launchDelay = 0, initializeError } = options;
@@ -38,6 +39,7 @@ function fixture(
     executionContext: { kind: 'no-effects' },
     providerContext: { nativeSessionId: randomUUID(), resume: false },
     beforeDispatch,
+    ...options.invocation,
   };
   const owner: ClaudeProcess = {
     write(line) {
@@ -459,5 +461,75 @@ describe('Claude bidirectional operation', () => {
     await f.operation.done;
     expect(f.facts.at(-1)).toMatchObject({ kind: 'lost' });
     expect(f.facts.some((fact) => fact.kind === 'outcome')).toBe(false);
+  });
+  describe('allowlisted product CLI commands of an Ask agent Turn', () => {
+    const allow = ['Bash(nevo-specflow tasks list *)', 'Bash(nevo-specflow workflow context *)'];
+    const bash = (id: string, command: string) => ({
+      type: 'control_request',
+      request_id: id,
+      request: {
+        subtype: 'can_use_tool',
+        tool_name: 'Bash',
+        tool_use_id: 'tool_' + id,
+        input: { command },
+      },
+    });
+    const turn = (providerModeId: string) => ({
+      selection: { providerId: 'claude', mode: 'workspace-write' as const, providerModeId },
+      permissions: { allow },
+    });
+
+    it.each(['manual', 'acceptEdits', 'auto'])(
+      'approves one exact allowlisted command in %s mode, records it, and sends the rest to the owner',
+      async (mode) => {
+        const f = fixture('stopped', { invocation: turn(mode) });
+        await f.ready();
+        f.push(bash('ok', 'nevo-specflow tasks list SPEC-1 --json'));
+        await vi.waitFor(() =>
+          expect(f.sent.filter((frame) => frame.type === 'control_response')).toHaveLength(1),
+        );
+        expect(f.sent.find((frame) => frame.type === 'control_response')).toMatchObject({
+          response: { response: { behavior: 'allow' } },
+        });
+        expect(f.facts).toContainEqual(
+          expect.objectContaining({
+            kind: 'text',
+            text: expect.stringContaining('tasks list SPEC-1') as string,
+          }),
+        );
+        const refused = [
+          'nevo-specflow tasks list SPEC-1; rm x',
+          'FOO=1 nevo-specflow tasks list SPEC-1',
+          './nevo-specflow tasks list SPEC-1',
+          'nevo-specflow workflow confirm SPEC-1',
+          'nevo-specflow tasks list $(id)',
+          'nevo-specflow tasks list *',
+          'nevo-specflow tasks listing',
+        ];
+        for (const [index, command] of refused.entries()) {
+          f.push(bash('no' + String(index), command));
+        }
+
+        await vi.waitFor(() =>
+          expect(f.facts.filter((fact) => fact.kind === 'interaction')).toHaveLength(
+            refused.length,
+          ),
+        );
+        expect(f.sent.filter((frame) => frame.type === 'control_response')).toHaveLength(1);
+        f.controller.abort();
+        await f.operation.done;
+      },
+    );
+
+    it('asks the owner for every command of a Turn without an allowlist', async () => {
+      const f = fixture('stopped', { invocation: { ...turn('manual'), permissions: undefined } });
+      await f.ready();
+      f.push(bash('ok', 'nevo-specflow tasks list SPEC-1'));
+      await vi.waitFor(() =>
+        expect(f.facts.filter((fact) => fact.kind === 'interaction')).toHaveLength(1),
+      );
+      f.controller.abort();
+      await f.operation.done;
+    });
   });
 });

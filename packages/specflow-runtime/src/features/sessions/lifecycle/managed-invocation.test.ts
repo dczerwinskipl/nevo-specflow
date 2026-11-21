@@ -377,10 +377,10 @@ it('hands a supporting driver only the recognised allowlist and reports the igno
   f.options.driver.supportsPermissionAllowlist = true;
   await createManagedInvocation({
     ...f.options,
-    permissions: { allow: ['Read', 'Write', 'Bash(nevo-specflow tasks list *)'] },
+    permissions: { allow: ['Read(src/**)', 'Write', 'Bash(nevo-specflow tasks list *)'] },
   }).done;
   expect(f.start.mock.calls[0]![0].permissions).toEqual({
-    allow: ['Read', 'Bash(nevo-specflow tasks list *)'],
+    allow: ['Read(src/**)', 'Bash(nevo-specflow tasks list *)'],
   });
   expect(f.persist).toHaveBeenCalledWith(
     expect.objectContaining({ kind: 'text', text: expect.stringContaining('"Write"') as string }),
@@ -388,7 +388,7 @@ it('hands a supporting driver only the recognised allowlist and reports the igno
 });
 it('reports not supported instead of faking an allowlist for a driver without one', async () => {
   const f = fixture();
-  await createManagedInvocation({ ...f.options, permissions: { allow: ['Read'] } }).done;
+  await createManagedInvocation({ ...f.options, permissions: { allow: ['Read(src/**)'] } }).done;
   expect(f.start.mock.calls[0]![0].permissions).toBeUndefined();
   expect(f.persist).toHaveBeenCalledWith(
     expect.objectContaining({

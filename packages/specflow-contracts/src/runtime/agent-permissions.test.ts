@@ -8,7 +8,7 @@ describe('defaultAgentAllowlist', () => {
   it('derives a CLI rule per command of the agent command table and passes its own check', () => {
     const rules = defaultAgentAllowlist('claude');
 
-    expect(rules).toEqual(expect.arrayContaining(['Read', 'Glob', 'Grep']));
+    expect(rules.every((rule) => rule.startsWith('Bash(nevo-specflow '))).toBe(true);
     for (const path of Object.keys(AGENT_COMMANDS)) {
       expect(rules).toContain(`Bash(nevo-specflow ${path} *)`);
     }

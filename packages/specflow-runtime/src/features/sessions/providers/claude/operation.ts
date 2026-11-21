@@ -1,4 +1,5 @@
 import { randomUUID, createHash } from 'node:crypto';
+import { isAllowlistedCliCommand } from '@nevo/specflow-contracts/documents';
 import type { RespondInteraction } from '@nevo/specflow-contracts/sessions';
 import type { DriverFact } from '../../persistence/protocol';
 import { SessionError } from '../../errors';
@@ -263,6 +264,33 @@ export function createClaudeOperation(
 
           if (pending.size + request.questions.length > 32) {
             throw new ClaudeProtocolError();
+          }
+
+          // An Ask agent Turn: one exact product CLI call of its allowlist is approved here, never
+          // by the provider's own rules (Bash always asks), and recorded in the Turn. Anything else
+          // goes to the owner.
+          const action = request.questions[0]?.interaction;
+          if (
+            invocation.permissions &&
+            action?.kind === 'permission' &&
+            action.action?.operation === 'command' &&
+            isAllowlistedCliCommand(action.action.command, invocation.permissions.allow)
+          ) {
+            const key = 'auto-approval:' + requestId;
+            await publish({
+              kind: 'work-open',
+              key,
+              workKind: 'commentary',
+              title: 'Product CLI auto-approved',
+            });
+            await publish({
+              kind: 'text',
+              key,
+              channel: 'commentary',
+              text: 'Allowed by the archetype allowlist: ' + action.action.command.slice(0, 500),
+            });
+            await send(request.respond(0, { kind: 'permission', requestId, decision: 'allow' }));
+            continue;
           }
 
           groups.set(requestId, request);

@@ -6,17 +6,19 @@ import { partitionAgentPermissionRules } from '@nevo/specflow-contracts/document
 import { claudeMode, toolsForClaudeMode } from './modes';
 
 /**
- * The `--settings` of a Turn. Setting sources are off, so no owner or project permission is ever
- * merged. `ask` outranks `allow` in Claude Code, so Bash keeps its blanket `ask` only while the
- * allowlist has no Bash rule; with one, an unmatched command follows the selected mode.
+ * The `--settings` of a Turn. Setting sources are off (`--setting-sources ''`), so no owner or
+ * project permission is ever merged. Bash always asks: `ask` outranks `allow`, and an allowlisted
+ * product CLI command is approved by the host instead (see `createClaudeOperation`). Only the scoped
+ * read-tool rules of an Ask agent Turn become native `allow` rules.
  */
 export function claudeSettings(permissions?: { readonly allow: readonly string[] }): string {
-  const allow = permissions ? partitionAgentPermissionRules(permissions.allow).accepted : [];
-  const bashAllowed = allow.some((rule) => rule === 'Bash' || rule.startsWith('Bash('));
+  const allow = (
+    permissions ? partitionAgentPermissionRules(permissions.allow).accepted : []
+  ).filter((rule) => !rule.startsWith('Bash('));
 
   return JSON.stringify({
     disableAllHooks: true,
-    permissions: { ...(allow.length > 0 ? { allow } : {}), ask: bashAllowed ? [] : ['Bash'] },
+    permissions: { ...(allow.length > 0 ? { allow } : {}), ask: ['Bash'] },
     env: { CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR: '1' },
   });
 }

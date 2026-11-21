@@ -18,11 +18,13 @@ const check = (allow: string[]) =>
 
 describe('agent archetype permission rules (D20)', () => {
   it('accepts read-only tools and product CLI commands', () => {
-    expect(check(['Read', 'Grep', 'Bash(nevo-specflow tasks list *)'])).toEqual([]);
+    expect(check(['Read(src/**)', 'Grep(docs/**)', 'Bash(nevo-specflow tasks list *)'])).toEqual(
+      [],
+    );
   });
 
   it('refuses over-broad rules at load, naming the rule location', () => {
-    expect(check(['Read', 'Bash(*)', 'Write'])).toEqual([
+    expect(check(['Read(src/**)', 'Bash(*)', 'WRITE'])).toEqual([
       expect.objectContaining({ location: '/providers/0/permissions/allow/1' }),
       expect.objectContaining({ location: '/providers/0/permissions/allow/2' }),
     ]);

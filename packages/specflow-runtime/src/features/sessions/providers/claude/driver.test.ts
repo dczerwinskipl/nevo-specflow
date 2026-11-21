@@ -59,7 +59,7 @@ describe('Claude native launch contract', () => {
       env: { CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR: '1' },
     });
   });
-  it('maps the Ask agent allowlist to the Turn settings only, dropping the Bash ask for a Bash rule', () => {
+  it('keeps the Bash ask and the empty setting sources whatever the allowlist, with only scoped reads native', () => {
     const selection = {
       providerId: 'claude',
       mode: 'workspace-write',
@@ -67,15 +67,17 @@ describe('Claude native launch contract', () => {
     } as const;
     const settings = (permissions?: { allow: string[] }) => {
       const args = claudeArguments(selection, undefined, permissions);
+      // No owner or project settings are merged: setting sources stay empty next to --settings.
+      expect(args[args.indexOf('--setting-sources') + 1]).toBe('');
 
       return JSON.parse(args[args.indexOf('--settings') + 1]!) as { permissions: unknown };
     };
 
     expect(
-      settings({ allow: ['Read', 'Bash(nevo-specflow specs list *)', 'Write', 'Bash'] })
+      settings({ allow: ['Read(src/**)', 'Bash(nevo-specflow specs list *)', 'Write', 'Bash'] })
         .permissions,
-    ).toEqual({ allow: ['Read', 'Bash(nevo-specflow specs list *)'], ask: [] });
-    expect(settings({ allow: ['Read'] }).permissions).toEqual({ allow: ['Read'], ask: ['Bash'] });
+    ).toEqual({ allow: ['Read(src/**)'], ask: ['Bash'] });
+    expect(settings({ allow: ['Read'] }).permissions).toEqual({ ask: ['Bash'] });
     expect(settings({ allow: [] }).permissions).toEqual({ ask: ['Bash'] });
     expect(settings().permissions).toEqual({ ask: ['Bash'] });
   });

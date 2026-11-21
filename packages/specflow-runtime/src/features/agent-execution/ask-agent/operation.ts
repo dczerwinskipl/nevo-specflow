@@ -503,12 +503,18 @@ export function createAskAgent(dependencies: AskAgentDependencies) {
         ids: { turnId, invocationId },
         agentAttempt: { attemptId },
         // The archetype's allowlist for this provider, else the default (D20): only for this Turn.
+        // An absent or empty `allow` means no list of its own.
         agentPermissions: {
-          allow:
-            workflow.catalogue
+          allow: (() => {
+            const own = workflow.catalogue
               .archetype(actor.details.archetype ?? '')
-              ?.providers.find((entry) => entry.provider === actor.details.provider)?.permissions
-              ?.allow ?? defaultAgentAllowlist(actor.details.provider),
+              ?.providers.find((entry) => entry.provider === actor.details.provider)
+              ?.permissions?.allow;
+
+            return own !== undefined && own.length > 0
+              ? own
+              : defaultAgentAllowlist(actor.details.provider);
+          })(),
         },
       },
     );

@@ -13,7 +13,7 @@ import {
   type StartTurnResult,
   type WorkPage,
 } from '@nevo/specflow-contracts/sessions';
-import { createOwnerRuntimeApp } from '../support/owner-credential';
+import { createRuntimeApp } from '../../src/server/app';
 import { passwordConfig } from '../auth/support/config';
 
 let app: FastifyInstance | undefined,
@@ -29,7 +29,7 @@ afterEach(async () => {
 async function open() {
   directory = await mkdtemp(join(tmpdir(), 'nevo-session-lifecycle-http-'));
   const config = passwordConfig();
-  app = await createOwnerRuntimeApp(
+  app = await createRuntimeApp(
     {
       ...config,
       authentication: { ...config.authentication, mode: 'none', localUserId: 'demo-user' },

@@ -21,7 +21,6 @@ import {
   type OperationProgressRegistry,
 } from '../../src/features/operations';
 import { createRuntimeApp } from '../../src/server/app';
-import { withOwnerRequests } from '../support/owner-credential';
 import { passwordConfig } from '../auth/support/config';
 import { ARCHETYPE_REQUEST } from '../support/archetype';
 
@@ -86,7 +85,6 @@ async function server(
     },
     { auth: { store }, specs: { engine }, operations: { registry } },
   );
-  withOwnerRequests(app);
   apps.push(app);
   await app.ready();
 

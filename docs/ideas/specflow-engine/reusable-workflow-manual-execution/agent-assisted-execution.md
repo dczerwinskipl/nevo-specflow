@@ -540,13 +540,6 @@ depends on the bind address.
   process can read the browser's cookie store, the Runtime's state or its console, and the product
   does not promise otherwise. The guarantee is against a cooperating agent and its tools calling owner
   routes. Stronger isolation needs a separate OS user or a sandbox.
-  - Cookies are scoped by host, not by port: every other server on the same host (for example a
-    preview server an agent starts on another `localhost` port) receives the device cookie with
-    its requests. Owner routes therefore also require a same-origin request (`Sec-Fetch-Site`
-    `same-origin` or `none`, an `Origin` of the Runtime when present) carrying the `X-Nevo-Owner`
-    header, which a page of another origin cannot send without a CORS preflight that the Runtime
-    never grants. This stops use of the credential from a browser page of another origin; it does
-    not stop a same-user process that captured the cookie from replaying it.
 
 Rejected: requiring password or OIDC for every remote use (it remains available as the stronger
 choice for teams); trusting tailnet identity headers (a local agent can forge them on loopback); and

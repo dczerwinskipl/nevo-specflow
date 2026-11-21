@@ -7,7 +7,7 @@ import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { noAuthConfig } from '../../../../test/auth/support/config';
-import { createOwnerRuntimeApp } from '../../../../test/support/owner-credential';
+import { createRuntimeApp } from '../../../server/app';
 import type { TaskDocumentSource } from './task-document-source';
 
 const apps: FastifyInstance[] = [];
@@ -87,7 +87,7 @@ function fakeSource(calls: string[], fail?: () => Error): TaskDocumentSource {
 }
 
 async function listen(role: 'developer' | 'viewer', source: TaskDocumentSource) {
-  const app = await createOwnerRuntimeApp(
+  const app = await createRuntimeApp(
     {
       ...noAuthConfig(),
       authorization: { assignments: [{ userId: 'demo-user', role, scope: { specId: 'spec-1' } }] },

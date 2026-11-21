@@ -47,7 +47,6 @@ export const oidcLoginEndpoint: FastifyPluginCallback<OidcLoginEndpointOptions> 
     {
       config: {
         openApiPublic: true,
-        ownerCredentialExempt: 'Login: it starts the session that is the credential.',
         rateLimit: {
           max: OIDC_START_SOURCE_ATTEMPT_LIMIT,
           timeWindow: OIDC_START_SOURCE_WINDOW_MS,

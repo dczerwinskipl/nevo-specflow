@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { InMemoryAuthenticationStore } from '../../../src/features/auth/authentication/store/in-memory-store';
 import { authCookieNames } from '../../../src/features/auth/authentication/http/cookies';
 import type { RuntimeConfig } from '../../../src/config/types';
-import { createOwnerRuntimeApp } from '../../support/owner-credential';
+import { createRuntimeApp } from '../../../src/server/app';
 
 function baseConfig(): RuntimeConfig {
   return {
@@ -41,7 +41,7 @@ const COOKIE_NAMES = authCookieNames(4318);
 
 describe('authorization HTTP API', () => {
   it('requires a subject when auth is required', async () => {
-    const app = await createOwnerRuntimeApp(baseConfig());
+    const app = await createRuntimeApp(baseConfig());
     try {
       const response = await app.inject({
         method: 'POST',
@@ -62,7 +62,7 @@ describe('authorization HTTP API', () => {
       userId: 'developer',
       authenticatedWith: { kind: 'password' },
     });
-    const app = await createOwnerRuntimeApp(baseConfig(), { auth: { store } });
+    const app = await createRuntimeApp(baseConfig(), { auth: { store } });
     try {
       const spec = await app.inject({
         method: 'POST',
@@ -128,7 +128,7 @@ describe('authorization HTTP API', () => {
       userId: 'scopedDeveloper',
       authenticatedWith: { kind: 'password' },
     });
-    const app = await createOwnerRuntimeApp(baseConfig(), { auth: { store } });
+    const app = await createRuntimeApp(baseConfig(), { auth: { store } });
     try {
       const discover = async (specId: string) =>
         (
@@ -152,7 +152,7 @@ describe('authorization HTTP API', () => {
       userId: 'scopedViewer',
       authenticatedWith: { kind: 'password' },
     });
-    const app = await createOwnerRuntimeApp(baseConfig(), { auth: { store } });
+    const app = await createRuntimeApp(baseConfig(), { auth: { store } });
 
     try {
       const item = await app.inject({
@@ -203,7 +203,7 @@ describe('authorization HTTP API', () => {
       userId: 'developer',
       authenticatedWith: { kind: 'password' },
     });
-    const app = await createOwnerRuntimeApp(baseConfig(), { auth: { store } });
+    const app = await createRuntimeApp(baseConfig(), { auth: { store } });
 
     try {
       const response = await app.inject({
@@ -230,7 +230,7 @@ describe('authorization HTTP API', () => {
       userId: 'developer',
       authenticatedWith: { kind: 'password' },
     });
-    const app = await createOwnerRuntimeApp(baseConfig(), { auth: { store } });
+    const app = await createRuntimeApp(baseConfig(), { auth: { store } });
     const prototypeSensitiveKey = ['__', 'proto__'].join('');
 
     try {
@@ -254,7 +254,7 @@ describe('authorization HTTP API', () => {
 
   it('uses localUserId as effective subject in none mode', async () => {
     const config = baseConfig();
-    const app = await createOwnerRuntimeApp({
+    const app = await createRuntimeApp({
       ...config,
       authentication: { ...config.authentication, mode: 'none', localUserId: 'viewer' },
     });
@@ -279,7 +279,7 @@ describe('authorization HTTP API', () => {
 
   it('returns all resource capabilities as true when access control is disabled', async () => {
     const config = baseConfig();
-    const app = await createOwnerRuntimeApp({
+    const app = await createRuntimeApp({
       ...config,
       authentication: { ...config.authentication, mode: 'none' },
       authorization: { assignments: [] },

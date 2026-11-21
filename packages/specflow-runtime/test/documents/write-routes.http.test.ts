@@ -30,7 +30,6 @@ import { statusForDocumentError } from '../../src/features/documents/content/err
 import { authCookieNames } from '../../src/features/auth/authentication/http/cookies';
 import { InMemoryAuthenticationStore } from '../../src/features/auth/authentication/store/in-memory-store';
 import { createRuntimeApp } from '../../src/server/app';
-import { withOwnerRequests } from '../support/owner-credential';
 import { passwordConfig } from '../auth/support/config';
 
 const apps: FastifyInstance[] = [];
@@ -155,7 +154,6 @@ async function createFixture(
       },
     },
   );
-  withOwnerRequests(app);
 
   return { app, headers, calls };
 }

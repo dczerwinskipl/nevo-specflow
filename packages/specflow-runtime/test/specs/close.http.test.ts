@@ -15,7 +15,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { InMemoryAuthenticationStore } from '../../src/features/auth/authentication/store/in-memory-store';
 import { authCookieNames } from '../../src/features/auth/authentication/http/cookies';
 import { createRuntimeApp } from '../../src/server/app';
-import { withOwnerRequests } from '../support/owner-credential';
 import { passwordConfig } from '../auth/support/config';
 
 const roots: string[] = [];
@@ -121,7 +120,6 @@ async function authedApp(
     },
     { auth: { store }, specs: { engine } },
   );
-  withOwnerRequests(app);
 
   return {
     app,

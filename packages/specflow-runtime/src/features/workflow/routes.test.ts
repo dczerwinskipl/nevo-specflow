@@ -621,6 +621,7 @@ describe('workflow refusals', () => {
     expect([...WORKFLOW_ERROR_CODES].sort()).toEqual(
       [
         ...ENGINE_ERROR_CODES,
+        'WORKFLOW_AGENT_UNAVAILABLE',
         'WORKFLOW_UNAVAILABLE',
         'WORKFLOW_COMMIT_REFUSED',
         'CONTROL_LOCK_BUSY',

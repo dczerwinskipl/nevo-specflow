@@ -60,11 +60,8 @@ export const REFUSED: ReadonlySet<string> = new Set([
   'specs workspace inspect',
   'specs worktree close',
   'start',
-  'tasks create',
-  'tasks edit',
   'tasks remove',
   'tasks status',
-  'workflow finish',
   'workflow reevaluate-wait',
   'workflow return',
   'workflow start',
@@ -122,7 +119,7 @@ export function refuse(
   return report(output, json, {
     code: 'AGENT_SCOPE_REFUSED',
     message: why ?? `"nevo-specflow ${path}" is not available to an agent in this Turn.`,
-    hint: 'This Turn can read, and can create, save and classify documents of its Specification (specs documents add, save, classify). Anything else is for the owner.',
+    hint: 'This Turn can read, and write only what its scope admits: documents of its Specification (specs documents add, save, classify) and, in an agent attempt, Task drafts of a step that produces Tasks (tasks create, edit) and its finish proposal (workflow finish). Anything else is for the owner.',
   });
 }
 
@@ -161,7 +158,11 @@ function resultOf(
   value: Extract<Awaited<ReturnType<AgentBrokerTransport['send']>>, { ok: true }>['value'],
   specId: string,
 ) {
-  if (value.operation === 'scope.describe') {
+  if (
+    value.operation !== 'documents.create' &&
+    value.operation !== 'documents.save' &&
+    value.operation !== 'documents.classify'
+  ) {
     throw new ReportedFailure('The broker answered another operation.', 1);
   }
 
@@ -236,4 +237,52 @@ export async function runBrokeredDocumentWrite(
  */
 export function catchUpLaunchFor<T>(route: AgentRoute, launch: T | undefined): T | undefined {
   return route.kind === 'none' ? launch : undefined;
+}
+
+/**
+ * Sends one Task draft or finish proposal to the broker and prints what it answered: the JSON value
+ * with `--json`, otherwise `lines` of it. A refusal prints its code and reason and exits 1; the
+ * request id is derived from the command, so a repeat replays.
+ */
+export async function runBrokeredWrite(
+  context: RefusalOutput,
+  transport: AgentBrokerTransport,
+  options: { readonly json?: boolean },
+  operation: BrokerOperation,
+  lines: (
+    value: Extract<Awaited<ReturnType<AgentBrokerTransport['send']>>, { ok: true }>['value'],
+  ) => readonly string[],
+): Promise<void> {
+  let response;
+  try {
+    response = await transport.send(stableRequestId(operation), operation);
+  } catch (error) {
+    if (error instanceof AgentBrokerClientError) {
+      return report(context, options.json, {
+        code: 'AGENT_BROKER_UNAVAILABLE',
+        message: error.message,
+        hint: 'Nothing was written. Repeat the same command; the broker replays a request it already answered.',
+      });
+    }
+
+    throw error;
+  }
+
+  if (!response.ok) {
+    return report(context, options.json, {
+      code: response.error.code,
+      message: response.error.message,
+      ...(response.error.details !== undefined ? { details: response.error.details } : {}),
+    });
+  }
+
+  if (options.json) {
+    context.stdout(JSON.stringify(response.value));
+
+    return;
+  }
+
+  for (const line of lines(response.value)) {
+    context.stdout(line);
+  }
 }

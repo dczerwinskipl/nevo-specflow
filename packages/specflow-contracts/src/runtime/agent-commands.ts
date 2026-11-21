@@ -11,6 +11,8 @@ export type AgentCommandPlacement = 'read' | 'brokered';
 export interface AgentFormContext {
   readonly specId: string;
   readonly taskId?: string;
+  /** The bound attempt's step and number (`workflow finish`), for an agent attempt. */
+  readonly attempt?: { readonly step: string; readonly attempt: number };
   /** Archetype template ids `documents add --template` may name (Specification subject only). */
   readonly templateIds?: readonly string[];
 }
@@ -18,7 +20,13 @@ export interface AgentFormContext {
 export interface AgentCommandEntry {
   readonly placement: AgentCommandPlacement;
   /** For a brokered write: the broker operation that carries it (checked against the Turn scope). */
-  readonly operation?: 'documents.create' | 'documents.save' | 'documents.classify';
+  readonly operation?:
+    | 'documents.create'
+    | 'documents.save'
+    | 'documents.classify'
+    | 'tasks.create'
+    | 'tasks.edit'
+    | 'workflow.finish';
   /** The exact CLI form the brief shows (without the executable); absent: not shown in the brief. */
   readonly form?: (context: AgentFormContext) => string;
   readonly purpose?: string;
@@ -105,6 +113,31 @@ export const AGENT_COMMANDS: Readonly<Record<string, AgentCommandEntry>> = {
     form: (c) =>
       `specs documents classify ${c.specId} <document-id>${task(c)} --type <type> --expected-revision <revision>`,
     purpose: 'Give a registered document its type.',
+  },
+  'tasks create': {
+    placement: 'brokered',
+    operation: 'tasks.create',
+    form: (c) =>
+      `tasks create ${c.specId} --id <task-id> --title <title> --type <task-type> [--summary <text>] [--depends-on <task-id>] [--content-file <file> | --stdin]`,
+    purpose:
+      'Draft a Task of this step (it stays a draft; list it in your finish to keep it, the owner approves it).',
+  },
+  'tasks edit': {
+    placement: 'brokered',
+    operation: 'tasks.edit',
+    form: (c) =>
+      `tasks edit ${c.specId} <task-id> --expected-revision <revision> [--title <title>] [--summary <text>] [--depends-on <task-id>]`,
+    purpose: 'Change a draft Task this step drafted; the revision comes from "tasks inspect".',
+  },
+  'workflow finish': {
+    placement: 'brokered',
+    operation: 'workflow.finish',
+    form: (c) =>
+      `workflow finish ${c.specId}${task(c)} --step ${c.attempt?.step ?? '<step-id>'} --attempt ${
+        c.attempt !== undefined ? String(c.attempt.attempt) : '<number>'
+      } --result <result> [--feedback <text>] [--artifact <ref>] [--tasks-file <file>] [--changed <path>]`,
+    purpose:
+      'Propose the result of your attempt once its work is done; name every file you changed outside SpecFlow with --changed. It is applied after you stop.',
   },
 };
 

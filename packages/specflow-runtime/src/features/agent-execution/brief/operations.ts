@@ -58,7 +58,7 @@ export function renderOperations(scope: AgentWriteScope, context: AgentFormConte
     '## Operations you may call in this Turn',
     'Run them with the product CLI. Add `--json` for machine output. Anything else is refused.',
     '',
-    `Writes (Specification ${scope.specId}):`,
+    `Writes (${scope.taskId !== undefined ? `Task ${scope.taskId} of ` : ''}Specification ${scope.specId}):`,
     ...writeOperations(scope, context).map(line),
     '',
     'Reads:',

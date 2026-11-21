@@ -23,6 +23,7 @@ import {
   TaskContextUnresolvedError,
   TasksOpenError,
   WorkspaceRegistryError,
+  type AgentOption,
   type OwnerActor,
 } from '@nevo/specflow-engine';
 import type { FastifyReply } from 'fastify';
@@ -55,6 +56,21 @@ const UNAVAILABLE = new Set<WorkflowErrorCode>([
   'CONTROL_LOCK_OWNERSHIP_LOST',
   'CONTROL_LOCK_INVALID_HOME',
 ]);
+
+/**
+ * Ask agent cannot start or continue now (explain before action): `option` is the unavailable agent
+ * option with its reason, the same the projection shows.
+ */
+export class AgentUnavailableError extends Error {
+  readonly code = 'WORKFLOW_AGENT_UNAVAILABLE';
+  readonly option: Extract<AgentOption, { kind: 'unavailable' }>;
+
+  constructor(option: Extract<AgentOption, { kind: 'unavailable' }>, message: string) {
+    super(message);
+    this.name = 'AgentUnavailableError';
+    this.option = option;
+  }
+}
 
 /** The Runtime has no workflow backend; recognised as a refusal by name and code. */
 export class WorkflowUnavailableError extends Error {
@@ -91,6 +107,10 @@ function isWorkflowErrorCode(value: unknown): value is WorkflowErrorCode {
  * `details.blockers`.
  */
 export function workflowFailure(error: unknown): WorkflowFailure | undefined {
+  if (error instanceof AgentUnavailableError) {
+    return failure(error.code, error.message, { agent: toWire(error.option) });
+  }
+
   if (error instanceof ProjectControlLockError) {
     return failure(error.code, error.message);
   }

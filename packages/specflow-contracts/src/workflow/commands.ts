@@ -7,6 +7,7 @@ import {
 import { SpecIdSchema, TaskIdSchema } from '../identifiers';
 import {
   ATTENTION_REASONS,
+  AgentOptionSchema,
   BlockingTaskSchema,
   ExitBlockerSchema,
   LAUNCH_BLOCKERS,
@@ -322,6 +323,11 @@ export const WORKFLOW_ERROR_CODES = [
   'WORKFLOW_ENGINE_FILE_EDITED',
   'WORKFLOW_UNDECLARED_CHANGES',
   'WORKFLOW_NESTED_REPOSITORY',
+  /**
+   * Ask agent cannot start or continue now; `details.agent` is the unavailable agent option with its
+   * reason (the projection's `agent`, or `agentAttempt.continue`), so the form can explain it.
+   */
+  'WORKFLOW_AGENT_UNAVAILABLE',
   'WORKFLOW_UNAVAILABLE',
   /**
    * The Runtime's own: the commit policy of the workflow state refused the change before anything
@@ -480,6 +486,8 @@ export const WorkflowErrorSchema = Type.Object(
         openTasks: Type.Optional(Type.Array(OpenTaskSchema)),
         /** An Ask agent attribution refusal: the paths it names ({@link WorkflowAttributionSchema}). */
         attribution: Type.Optional(WorkflowAttributionSchema),
+        /** `WORKFLOW_AGENT_UNAVAILABLE`: why an agent cannot do the step now. */
+        agent: Type.Optional(AgentOptionSchema),
         /** `WORKFLOW_SPECIFICATION_BUSY`: what holds the Specification ({@link SPECIFICATION_BUSY_CAUSES}). */
         cause: Type.Optional(
           Type.Unsafe<SpecificationBusyCause>(
@@ -508,3 +516,70 @@ export const WorkflowErrorSchema = Type.Object(
   { $id: 'WorkflowError', additionalProperties: false },
 );
 export type WorkflowError = Static<typeof WorkflowErrorSchema>;
+
+const RequestIdSchema = Type.String({
+  pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+});
+
+/**
+ * Ask agent (D12, D18): an agent attempt of the step the owner was shown. Without `expected.attempt`
+ * a new attempt of `expected.step`; with it (Continue) a new Turn of that active agent attempt in
+ * its own Session. `provider`, `model` and `effort` choose the agent of a fresh Session only (the
+ * projection's `agent.launch` is the default); a continued Session keeps its own, and naming them
+ * then is refused. `message` is the owner's note to the agent, after the brief. The actor is the
+ * authenticated caller; the agent's actor comes from the Session, never from the body.
+ */
+export const AskAgentRequestSchema = Type.Object(
+  {
+    /** The idempotency key of this request: a repeat returns the same attempt and Turn. */
+    requestId: RequestIdSchema,
+    expected: Type.Object(
+      { step: StepId, attempt: Type.Optional(Type.Integer({ minimum: 1 })) },
+      { additionalProperties: false },
+    ),
+    provider: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
+    model: Type.Optional(Type.String({ minLength: 1, maxLength: 256 })),
+    effort: Type.Optional(Type.String({ minLength: 1, maxLength: 64 })),
+    message: Type.Optional(Type.String({ minLength: 1, maxLength: 20_000 })),
+  },
+  { additionalProperties: false },
+);
+export type AskAgentRequest = Static<typeof AskAgentRequestSchema>;
+
+/** The agent attempt that runs, and the Turn just dispatched in its Session. */
+export const AskAgentResultSchema = Type.Object(
+  {
+    kind: Type.Union([Type.Literal('started'), Type.Literal('continued')]),
+    subject: WorkflowSubjectSchema,
+    attemptId: Type.String(),
+    step: StepId,
+    attempt: Type.Integer({ minimum: 1 }),
+    sessionId: Type.String(),
+    turnId: Type.String(),
+    /** The Session was created for this attempt (`fresh`) or continued (`reuse`). */
+    session: Type.Union([Type.Literal('fresh'), Type.Literal('reuse')]),
+  },
+  { additionalProperties: false },
+);
+export type AskAgentResult = Static<typeof AskAgentResultSchema>;
+
+/**
+ * Stop the agent of the active agent attempt (D19): its running Turn is cancelled; the step stays
+ * locked until SpecFlow sees the agent's process has ended, then the attempt waits for Continue,
+ * Take over or Return.
+ */
+export const StopAgentRequestSchema = Type.Object(
+  {
+    requestId: RequestIdSchema,
+    /** The attempt the owner was shown; another one refuses (`WORKFLOW_ATTEMPT_MISMATCH`). */
+    attemptId: Type.String({ minLength: 1, maxLength: 64 }),
+  },
+  { additionalProperties: false },
+);
+export type StopAgentRequest = Static<typeof StopAgentRequestSchema>;
+
+export const StopAgentResultSchema = Type.Object(
+  { attemptId: Type.String(), sessionId: Type.String(), turnId: Type.String() },
+  { additionalProperties: false },
+);
+export type StopAgentResult = Static<typeof StopAgentResultSchema>;

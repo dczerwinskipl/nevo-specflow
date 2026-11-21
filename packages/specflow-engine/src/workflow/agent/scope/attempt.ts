@@ -1,6 +1,7 @@
-import { findStep } from '@nevo/workflow';
+import { activeAttempt, findStep } from '@nevo/workflow';
 
-import { loadSubject } from '../../operations/loaded-execution';
+import { loadSubject, type WorkflowDependencies } from '../../operations/loaded-execution';
+import { agentAttemptBindingOf, type WorkflowSubject } from '../../state/model';
 import type { AgentAttemptDependencies } from '../dependencies';
 import type { AgentAttemptJournal } from '../journal/model';
 import { deriveAgentScope, type AgentWriteScope } from './scope';
@@ -35,4 +36,35 @@ export async function agentAttemptScope(
   });
 
   return { scope, journal };
+}
+
+/**
+ * The agent attempt the subject's active step is in (started by Ask agent), or `undefined` when no
+ * step is active or its attempt is a person's. Read-only and lock-free.
+ */
+export async function activeAgentAttempt(
+  workflow: Pick<WorkflowDependencies, 'catalogue' | 'store'>,
+  subject: WorkflowSubject,
+): Promise<
+  | {
+      readonly attemptId: string;
+      readonly workspaceId: string;
+      readonly step: string;
+      readonly attempt: number;
+    }
+  | undefined
+> {
+  const snapshot = await workflow.store.read(subject.specId);
+  const run = loadSubject(workflow.catalogue, snapshot, subject).run;
+  const active = activeAttempt(run);
+  const binding = agentAttemptBindingOf(active);
+
+  return active && binding && run.position.state === 'active'
+    ? {
+        attemptId: binding.attemptId,
+        workspaceId: binding.workspaceId,
+        step: active.step,
+        attempt: active.attempt,
+      }
+    : undefined;
 }

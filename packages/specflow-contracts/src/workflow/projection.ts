@@ -157,10 +157,10 @@ export const AgentOptionSchema = Type.Union([
   Type.Object({
     kind: Type.Literal('available'),
     /**
-     * The launch the workflow resolves (always set by the Engine). With a fresh Session the owner may
-     * change provider and model; a continued Session keeps its own.
+     * The launch the workflow resolves. With a fresh Session the owner may change provider and model;
+     * a continued Session keeps its own.
      */
-    launch: Type.Optional(AgentLaunchSchema),
+    launch: AgentLaunchSchema,
     /** The step's agent role is independent (a review): always a fresh Session (D18). */
     independent: Type.Optional(Type.Literal(true)),
   }),
@@ -183,7 +183,8 @@ export type AgentOption = Static<typeof AgentOptionSchema>;
  * The agent attempt the active step is in (Ask agent), as the Runtime knows it: its Session, its
  * current Turn, its finish proposal and whether Continue is possible now.
  *
- * - `turn.state`: `working` (the agent runs), `unknown` (its process may still run: every project
+ * - `turn.state`: `working` (the agent runs), `stopping` (the owner stopped it; the step stays
+ *   locked until its process is proven ended), `unknown` (its process may still run: every project
  *   write is blocked until that is known), `ended` (the Turn ended and its claim settled);
  * - `proposal`: the agent's finish proposal: `pending` (not finalized yet), `refused` (with the
  *   reasons it was refused when applied), `finalized`.
@@ -197,7 +198,7 @@ export const AgentAttemptViewSchema = Type.Object({
   model: Type.Optional(Type.String()),
   turn: Type.Object({
     turnId: Type.String(),
-    state: literals(['working', 'unknown', 'ended'] as const),
+    state: literals(['working', 'stopping', 'unknown', 'ended'] as const),
     boundAt: Type.String(),
     endedAt: Type.Optional(Type.String()),
   }),

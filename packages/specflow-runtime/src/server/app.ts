@@ -14,6 +14,7 @@ import type { RuntimeConfig } from '../config/types';
 import {
   checkoutSessions,
   createSessionsFeature,
+  type SessionsRuntime,
   projectSessionStoreDirectory,
   runtimeCheckoutQuiescence,
   type SessionReferenceOwner,
@@ -32,8 +33,15 @@ import {
   createEngineWorkspaceDocuments,
   type DocumentsFeatureDependencies,
 } from '../features/documents';
-import { createWorkflowFeature, type WorkflowFeatureDependencies } from '../features/workflow';
-import { createAgentExecutionFeature } from '../features/agent-execution';
+import {
+  createWorkflowFeature,
+  demoAgentAvailability,
+  type WorkflowFeatureDependencies,
+} from '../features/workflow';
+import {
+  createAgentExecutionFeature,
+  createUnavailableAskAgentFeature,
+} from '../features/agent-execution';
 import {
   createDocsFeature,
   openProjectDocumentLookup,
@@ -222,12 +230,26 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   const workspaceOccupancy = createWorkspaceOccupancy();
   // Project mode: a write Turn of a Specification's Session gets an invocation capability and
   // writes through the local agent broker (D11).
+  // Ask agent: the Session coordinator is read at request time (the Sessions feature owns it).
+  const sessionsHolder: { runtime?: SessionsRuntime } = {};
   const agentExecution =
-    mode === 'project' && engine ? createAgentExecutionFeature({ engine }) : undefined;
+    mode === 'project' && engine
+      ? createAgentExecutionFeature({
+          engine,
+          projectDocument,
+          coordinator: () => sessionsHolder.runtime?.coordinator,
+          projectId: () => engine.context.project.projectId,
+        })
+      : undefined;
   const sessionsFeature = createSessionsFeature({
     ...(engine ? { engine } : {}),
     workspaceOccupancy,
-    ...(agentExecution ? { invocationCapabilities: agentExecution.capabilities } : {}),
+    ...(agentExecution
+      ? {
+          invocationCapabilities: agentExecution.capabilities,
+          settleAgentAttempt: agentExecution.settleAgentAttempt,
+        }
+      : {}),
     config: mode === 'project' ? config.sessions : undefined,
     storage:
       dependencies.sessions?.storage ??
@@ -249,6 +271,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
         }
       : {}),
   });
+  sessionsHolder.runtime = sessionsFeature.runtime;
   // The association registry: the demo catalogue, or the Session store behind the Engine facts.
   const associationTargets =
     demo?.associationTargets ??
@@ -375,11 +398,18 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     }),
     createWorkflowFeature({
       ...(taskEngine ? { openWorkflow: taskEngine.openWorkflow } : {}),
+      // What only the Runtime knows of the agent option; the demo runs no agent.
+      ...(agentExecution
+        ? { agentAvailability: agentExecution.agentAvailability }
+        : demo
+          ? { agentAvailability: demoAgentAvailability }
+          : {}),
       ...dependencies.workflow,
       projectId,
     }),
     sessionsFeature,
-    ...(agentExecution ? [agentExecution] : []),
+    // Without an Engine the Ask agent routes answer 503, like the workflow routes.
+    agentExecution ?? createUnavailableAskAgentFeature(),
     createSessionAssociationsFeature({
       associations,
       targets: associationTargets,

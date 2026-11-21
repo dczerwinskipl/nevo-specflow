@@ -208,6 +208,7 @@ export {
 } from './agent/context';
 export {
   AGENT_WRITE_OPERATIONS,
+  activeAgentAttempt,
   agentAttemptScope,
   admitAgentOperation,
   deriveAgentScope,

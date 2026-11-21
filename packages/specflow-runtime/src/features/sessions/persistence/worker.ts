@@ -36,6 +36,8 @@ import { createSessionManagement } from './session-management';
 import { createFingerprint, createSessionAssociations } from './associations';
 import { createSessionCatalogue } from './catalogue';
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
 const TELEMETRY_PUBLICATION_RETRY_MS = 1000;
 
 /** Separate Worker entry: imported surface checks must not acquire a database. */
@@ -906,8 +908,17 @@ export async function runSessionWorker(): Promise<void> {
           fail('SESSION_INPUT_INVALID', 'Read-only execution cannot carry a write claim binding.');
         }
 
-        const tid = randomUUID(),
-          invocationId = randomUUID(),
+        if (
+          c.ids !== undefined &&
+          (!UUID_PATTERN.test(c.ids.turnId) ||
+            !UUID_PATTERN.test(c.ids.invocationId) ||
+            get('SELECT id FROM turns WHERE id=?', c.ids.turnId))
+        ) {
+          fail('SESSION_INPUT_INVALID', 'Preassigned Turn ids must be new UUIDs.');
+        }
+
+        const tid = c.ids?.turnId ?? randomUUID(),
+          invocationId = c.ids?.invocationId ?? randomUUID(),
           date = now();
         let providerContext:
           { nativeSessionId: string; resume: boolean; scope: string } | undefined;

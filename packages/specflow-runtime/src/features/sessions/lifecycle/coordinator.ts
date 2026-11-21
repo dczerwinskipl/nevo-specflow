@@ -34,6 +34,12 @@ import { redactFact, type InvocationCapabilities } from './invocation-capabiliti
 import { redactAgentCapabilityShapes } from '@nevo/specflow-contracts/runtime';
 import { createSessionTelemetryService } from './telemetry';
 
+/** In-process options of a Turn start (Ask agent); never taken from a request. */
+export interface TurnStartOptions {
+  readonly ids?: { readonly turnId: string; readonly invocationId: string };
+  readonly agentAttempt?: { readonly attemptId: string };
+}
+
 interface ActiveInvocation {
   sessionId: string;
   invocationId: string;
@@ -523,7 +529,16 @@ export function createSessionCoordinator(
 
       return call({ op: 'create', actor, input, ...(association ? { association } : {}) });
     },
-    async start(actor: string, sessionId: string, input: StartTurn): Promise<{ turnId: string }> {
+    /**
+     * Starts a Turn. `options` are in-process only (Ask agent): the Turn and invocation ids chosen
+     * before the Turn exists and the agent attempt the Turn is bound to; such a Turn must write.
+     */
+    async start(
+      actor: string,
+      sessionId: string,
+      input: StartTurn,
+      options: TurnStartOptions = {},
+    ): Promise<{ turnId: string }> {
       input = Object.freeze(structuredClone(input));
       accepting();
       const cached = await call<{ turnId: string } | undefined>({
@@ -566,6 +581,10 @@ export function createSessionCoordinator(
       const driver = driverFor(selection.providerId);
       await validate(driver, selection);
       const writing = selection.mode === 'workspace-write';
+      if (options.agentAttempt && !writing) {
+        throw new SessionError('SESSION_INPUT_INVALID', 'An agent attempt Turn writes.');
+      }
+
       const placement =
         selection.providerId === 'mock'
           ? { context: executionContext }
@@ -601,6 +620,7 @@ export function createSessionCoordinator(
               }
             : {}),
           ...(binding ? { effectBinding: binding } : {}),
+          ...(options.ids ? { ids: options.ids } : {}),
         });
         if (!admitted.fresh) {
           return { turnId: admitted.turnId };
@@ -702,6 +722,7 @@ export function createSessionCoordinator(
                 driver,
                 effects: effects!,
                 ...(invocationCapabilities ? { capabilities: invocationCapabilities } : {}),
+                ...(options.agentAttempt ? { agentAttempt: options.agentAttempt } : {}),
                 signal: controller.signal,
                 stop: () => controller.abort('persistence-loss'),
                 persist: emit,
@@ -808,6 +829,17 @@ export function createSessionCoordinator(
           turnHold?.end();
         }
       }
+    },
+    /** In-process workflow orchestration only: adds Tasks of its home Specification to a Session. */
+    async associateTasks(sessionId: string, specId: string, taskIds: readonly string[]) {
+      accepting();
+      await call({
+        op: 'associate-tasks',
+        sessionId,
+        specId,
+        taskIds: [...taskIds],
+        origin: 'workflow',
+      });
     },
     async cancel(actor: string, sessionId: string, turnId: string, requestId: string) {
       accepting();

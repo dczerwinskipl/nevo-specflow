@@ -1,5 +1,6 @@
 export { createWorkflowFeature, type WorkflowFeatureDependencies } from './feature';
 export type { WorkflowPort } from './port';
+export { demoAgentAvailability } from './demo/agent-availability';
 export {
   createDemoWorkflow,
   type DemoClock,
@@ -9,6 +10,7 @@ export {
   type DemoWorkflowOptions,
 } from './demo/demo-workflow';
 export {
+  AgentUnavailableError,
   ownerActorOf,
   sendWorkflowFailure,
   workflowFailure,

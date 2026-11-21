@@ -179,7 +179,7 @@ export interface AgentAttemptView {
   readonly model?: string;
   readonly turn: {
     readonly turnId: string;
-    readonly state: 'working' | 'unknown' | 'ended';
+    readonly state: 'working' | 'stopping' | 'unknown' | 'ended';
     readonly boundAt: string;
     readonly endedAt?: string;
   };

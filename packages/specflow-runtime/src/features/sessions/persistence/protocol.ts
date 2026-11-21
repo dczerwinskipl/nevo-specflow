@@ -122,6 +122,11 @@ export type StoreCommand =
       nativeContextMode?: 'reserved' | 'provider-assigned';
       nativeWorkspaceIdentity?: string;
       effectBinding?: string;
+      /**
+       * In-process only (Ask agent): the Turn and invocation ids the trusted host chose before the
+       * Turn exists, because the Engine binds them to an agent attempt first. Never from a request.
+       */
+      ids?: { turnId: string; invocationId: string };
     }
   | { op: 'dispatch-intent'; sessionId: string; turnId: string; invocationId: string }
   /** The invocation's native-stop evidence, recorded once, before the dispatch barrier. */

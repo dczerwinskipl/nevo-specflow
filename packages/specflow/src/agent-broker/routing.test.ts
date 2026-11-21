@@ -80,6 +80,53 @@ const run = (h: ReturnType<typeof harness>, ...args: string[]) =>
   h.program.parseAsync(['node', 'nevo-specflow', ...args]);
 
 describe('the CLI under an agent capability', () => {
+  it('sends a Task draft and the finish proposal of the attempt to the broker', async () => {
+    const h = harness(AGENT, () => ({
+      ok: true,
+      value: { operation: 'workflow.finish', result: { kind: 'recorded', transition: 'proposed' } },
+    }));
+    await run(
+      h,
+      'tasks',
+      'create',
+      SPEC,
+      '--id',
+      'api',
+      '--title',
+      'API',
+      '--type',
+      'implementation',
+    );
+    await run(
+      h,
+      'workflow',
+      'finish',
+      SPEC,
+      '--step',
+      'breakdown',
+      '--attempt',
+      '2',
+      '--feedback',
+      'Done.',
+      '--changed',
+      'src/a.ts',
+    );
+
+    expect(h.engineCalls).toEqual([]);
+    expect(h.sent.map((entry) => entry.operation)).toEqual([
+      { name: 'tasks.create', specId: SPEC, taskId: 'api', title: 'API', type: 'implementation' },
+      {
+        name: 'workflow.finish',
+        specId: SPEC,
+        step: 'breakdown',
+        stepAttempt: 2,
+        feedback: 'Done.',
+        changes: { paths: ['src/a.ts'] },
+      },
+    ]);
+    expect(h.out.at(-1)).toMatch(/Proposal recorded: proposed/);
+  });
+
   it('sends documents add to the broker and never opens the Engine', async () => {
     const h = harness(AGENT);
     await run(

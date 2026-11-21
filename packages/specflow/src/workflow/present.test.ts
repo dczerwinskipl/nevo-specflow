@@ -32,7 +32,19 @@ describe('actionLines', () => {
           title: 'Standard',
           firstStep: 'implement',
         },
-        next: { step: { id: 'implement' }, human: true, agent: { kind: 'available' } },
+        next: {
+          step: { id: 'implement' },
+          human: true,
+          agent: {
+            kind: 'available',
+            launch: {
+              archetype: 'implementer',
+              provider: 'claude',
+              model: 'claude-sonnet-5-5',
+              session: { mode: 'fresh' },
+            },
+          },
+        },
       },
       actions: { start: { step: 'implement', firstStart: true, expectedWorkflowRevision: 'r1' } },
     } as unknown as ActionProjection;

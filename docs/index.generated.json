@@ -5191,7 +5191,7 @@
         "changing Task authoring on the Full Task page (documents, context, dependencies, details)",
         "changing the first-start confirmation, Finish or Return dialogs, or exit gates in the UI",
         "changing Close specification or Abandon specification",
-        "changing Ask agent (its Now block states, dialog, Stop, Continue, Take over, owner confirmation)",
+        "changing Run with agent (its Now block states, dialog, Stop, Continue, Take over, owner confirmation)",
         "changing what Close lists as uncommitted changes"
       ],
       "summary": "How a person runs a Specification and its Tasks entirely in the UI, without any Session: the projection-driven Now block with one main action, the Finish, Return and first-start dialogs, exit gates, Task authoring on the Full Task page (documents in the Secondary, context, dependencies, details), the lifecycle actions, and Close and Abandon with grouped blockers.",

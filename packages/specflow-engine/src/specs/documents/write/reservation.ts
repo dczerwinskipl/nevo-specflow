@@ -33,6 +33,7 @@ import {
   listDocumentChangeJournals,
   sweepSettledDocumentChanges,
 } from './journal-store';
+import { foreignUncommitted } from './foreign-ledger';
 import type { WriteRuntime } from './writer-types';
 
 export type ReservationOutcome =
@@ -142,6 +143,16 @@ export async function reserveOnce(
       }
 
       throw error;
+    }
+
+    // An agent Turn's write (D11): under this lock no other writer can add a ledger entry, so what
+    // the ledger holds now is what the write would build on.
+    const owned = rt.options.ownedExecution;
+    if (owned !== undefined) {
+      const foreign = await foreignUncommitted(rt, loaded.workspaceId, plan, owned);
+      if (foreign !== undefined) {
+        return { kind: 'busy', error: foreign, waitable: false };
+      }
     }
 
     const journals = (await listDocumentChangeJournals(rt.context)).filter(
@@ -259,6 +270,14 @@ export async function reserveOnce(
           : { commitMode: 'manual' as const }
         : {}),
       executor: await rt.executor(),
+      ...(owned !== undefined
+        ? {
+            agent: {
+              executionId: owned.operationId,
+              ...(owned.actor !== undefined ? { actor: owned.actor } : {}),
+            },
+          }
+        : {}),
       attempts: 0,
     };
     await publishJournal(rt.context, DOCUMENT_CHANGE_JOURNAL_KIND, journal);
@@ -327,6 +346,7 @@ function busy(
     | 'busy-create-or-close'
     | 'busy-agent-turn'
     | 'busy-agent-turn-unknown'
+    | 'busy-claim-not-held'
     | 'busy-task-resource-change',
   message: string,
   waitable: boolean,

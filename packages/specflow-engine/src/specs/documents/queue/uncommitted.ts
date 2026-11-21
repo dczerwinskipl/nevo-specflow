@@ -53,6 +53,7 @@ export async function completeUncommitted(
       },
       {
         operationId: journal.operationId,
+        ...(journal.agent !== undefined ? { executionId: journal.agent.executionId } : {}),
         reason: UNCOMMITTED_ABANDONED,
         recordedAt: now,
         branch: journal.commit?.branch ?? null,

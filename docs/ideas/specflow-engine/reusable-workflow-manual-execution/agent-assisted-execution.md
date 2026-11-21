@@ -263,6 +263,12 @@ environment does not isolate against a deliberately malicious process of the sam
 contract does not promise it. Stronger separation needs OS user separation or a sandbox, outside
 this scope.
 
+On Windows the broker's named pipe uses Node's default pipe security (orchestrator decision, no
+native ACL code), not an ACL that grants only the Runtime's user SID: the creator, SYSTEM and
+Administrators get full control and everyone else read access, which cannot send a request; pipe
+names can be listed by any local user, so the random name hides nothing and every request still
+needs the 256-bit capability. On Unix the socket is in a `0700` directory owned by the user.
+
 ## Document registration (B6)
 
 A document of a Specification is a registry entry with a type, never a file that happens to end in

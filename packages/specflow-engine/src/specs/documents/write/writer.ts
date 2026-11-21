@@ -318,7 +318,10 @@ async function replayJournal(
 ): Promise<DocumentChangeResult> {
   if (
     expected !== undefined &&
-    (journal.specId !== expected.specId || journal.inputFingerprint !== expected.fingerprint)
+    (journal.specId !== expected.specId ||
+      journal.inputFingerprint !== expected.fingerprint ||
+      // A replay is the same writer's: an agent Turn's operation is never answered to another one.
+      journal.agent?.executionId !== rt.options.ownedExecution?.operationId)
   ) {
     throw documentChangeError(
       'operation-conflict',

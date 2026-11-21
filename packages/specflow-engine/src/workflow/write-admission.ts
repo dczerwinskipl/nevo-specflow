@@ -51,6 +51,10 @@ export function executionClaimAdmission(
           );
         }
 
+        if (error instanceof SharedResourceError && error.code === 'OWNED_CLAIM_NOT_HELD') {
+          throw new SpecificationBusyError(error.message, { cause: 'other' });
+        }
+
         throw error;
       }
     },

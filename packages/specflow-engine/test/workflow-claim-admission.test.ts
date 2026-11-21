@@ -118,6 +118,21 @@ it('admits only the owning Turn while an agent claim is unsettled, with Git off'
   await expect(createTask(foreign, task('after'))).resolves.toMatchObject({
     task: { taskId: 'after' },
   });
+  // A write still naming the settled Turn, or a claim that never existed, is refused: never admitted
+  // as an unclaimed write.
+  const notHeld = { code: 'SPEC_BUSY', details: { cause: 'claim-not-held' } };
+  await expect(
+    applyDocumentChange(engine, spec.specId, randomUUID(), await save('# Late\n'), owned),
+  ).rejects.toMatchObject(notHeld);
+  await expect(
+    applyDocumentChange(engine, spec.specId, randomUUID(), await save('# None\n'), {
+      ownedExecution: { operationId: randomUUID() },
+    }),
+  ).rejects.toMatchObject(notHeld);
+  await expect(createTask(own, task('settled'))).rejects.toMatchObject({
+    code: 'WORKFLOW_SPECIFICATION_BUSY',
+    busy: { cause: 'other' },
+  });
   await expect(
     installProjectDefinitions(engine, { targets: ['agent-archetype/reviewer'], force: true }),
   ).resolves.toMatchObject({

@@ -19,6 +19,41 @@ const windowsBase = [
 const posixBase = ['PATH', 'HOME', 'TMPDIR'];
 const reserved = (key: string) => key.toUpperCase().startsWith('NEVO_');
 
+/**
+ * `environment` with an invocation's `runtime` entries (`NEVO_*` names only) added, for the process
+ * of that invocation alone. Discovery and other processes keep the base environment.
+ */
+export function withRuntimeEntries(
+  environment: ProviderEnvironment,
+  runtime: Readonly<Record<string, string>> | undefined,
+  platform: NodeJS.Platform = process.platform,
+): ProviderEnvironment {
+  if (runtime === undefined || Object.keys(runtime).length === 0) {
+    return environment;
+  }
+
+  const values: Record<string, string> = { ...environment.values };
+  const sources: Record<string, ProviderEnvironment['sources'][string]> = {
+    ...environment.sources,
+  };
+  for (const [key, value] of Object.entries(runtime)) {
+    if (
+      !/^[A-Za-z_][A-Za-z0-9_]*$/.test(key) ||
+      !reserved(key) ||
+      value.includes('\0') ||
+      Buffer.byteLength(value) > 32768
+    ) {
+      throw new Error('Invalid runtime provider environment entry.');
+    }
+
+    const name = platform === 'win32' ? key.toUpperCase() : key;
+    values[name] = value;
+    sources[name] = 'runtime';
+  }
+
+  return { values: Object.freeze(values), sources: Object.freeze(sources) };
+}
+
 /** The same projection is used for discovery and execution; never merge ambient process.env. */
 export function projectProviderEnvironment(options: {
   host: Readonly<Record<string, string | undefined>>;

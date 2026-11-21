@@ -24,6 +24,17 @@
   outline-offset: 2px;
 }
 
+.select-trigger[data-invalid-appearance='message'][aria-invalid='true']:not(:disabled) {
+  border-color: var(--color-border-default);
+}
+
+.select-trigger[data-invalid-appearance='message'][aria-invalid='true']:not(
+    :disabled
+  ):focus-visible {
+  border-color: var(--color-focus-ring);
+  outline: none;
+}
+
 @keyframes select-content-in {
   from {
     opacity: 0;

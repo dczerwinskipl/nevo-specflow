@@ -69,7 +69,10 @@ export const selectTriggerVariants = tv({
   defaultVariants: selectTriggerDefaults,
 });
 
-export type SelectTriggerProps = ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>;
+export type SelectTriggerProps = ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger> & {
+  /** Use message only with a persistent visible error; invalid semantics and focus stay intact. */
+  invalidAppearance?: 'border' | 'message';
+};
 
 export const SelectTrigger = forwardRef<
   ComponentRef<typeof SelectPrimitive.Trigger>,
@@ -83,6 +86,7 @@ export const SelectTrigger = forwardRef<
     className,
     disabled: disabledProp,
     id,
+    invalidAppearance = 'border',
     ...props
   },
   ref,
@@ -103,6 +107,7 @@ export const SelectTrigger = forwardRef<
       ref={ref}
       aria-describedby={field.ariaDescribedBy}
       aria-invalid={field.ariaInvalid}
+      data-invalid-appearance={invalidAppearance}
       autoFocus={autoFocus}
       className={cn(selectTriggerVariants({ state }), className)}
       disabled={field.disabled}

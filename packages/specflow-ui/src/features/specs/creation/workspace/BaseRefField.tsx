@@ -65,6 +65,7 @@ export function BaseRefField({
         <LocalizedOptionPicker
           value={choice.base.ref}
           invalid={Boolean(error)}
+          invalidAppearance={noUsableBases ? 'message' : 'border'}
           placeholder={t('create.workspace.settings.basePlaceholder')}
           controlRef={controlRef}
           onValueChange={(ref) => update.set({ base: { on: true, ref } })}

@@ -144,3 +144,57 @@ export const WrappedOptionsKeepClosedValueInline: Story = {
     );
   },
 };
+
+export const MessageOnlyInvalidKeepsFocusAndSemantics: Story = {
+  args: unused,
+  tags: ['contract'],
+  render: () => (
+    <div className="grid w-72 gap-4">
+      {[2, 9, 3].map((count) => (
+        <Field key={count} invalid>
+          <Field.Label>{`Source ${count}`}</Field.Label>
+          <Field.Error>No source is usable.</Field.Error>
+          <OptionPicker
+            {...unused}
+            items={options(count)}
+            invalidAppearance={count === 3 ? 'border' : 'message'}
+          />
+        </Field>
+      ))}
+    </div>
+  ),
+  play: async ({ canvas, userEvent }) => {
+    const standard = canvas.getByRole('combobox', { name: 'Source 3' });
+    standard.focus();
+    await userEvent.keyboard('{Shift}');
+    const errorColor = getComputedStyle(standard).borderColor;
+    const colorProbe = document.createElement('span');
+    colorProbe.style.color = 'var(--color-focus-ring)';
+    standard.parentElement!.append(colorProbe);
+    const focusColor = getComputedStyle(colorProbe).color;
+    colorProbe.remove();
+    assert(getComputedStyle(standard).outlineStyle === 'solid', 'Default invalid keeps its ring.');
+    for (const count of [2, 9]) {
+      const control = canvas.getByRole('combobox', { name: `Source ${count}` });
+      assert(control.getAttribute('aria-invalid') === 'true', 'Invalid semantics are retained.');
+      const errorId = control.getAttribute('aria-describedby')!;
+      assert(
+        document.getElementById(errorId)?.textContent === 'No source is usable.',
+        'The error is announced.',
+      );
+      assert(
+        getComputedStyle(control).borderColor !== errorColor,
+        'The resting border is neutral.',
+      );
+      control.focus();
+      await userEvent.keyboard('{Shift}');
+      await waitFor(() =>
+        assert(
+          getComputedStyle(control).borderColor === focusColor,
+          'The normal focus border remains visible.',
+        ),
+      );
+      assert(getComputedStyle(control).outlineStyle === 'none', 'There is no second frame.');
+    }
+  },
+};

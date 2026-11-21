@@ -661,6 +661,11 @@ Icons beside a wrapping label are vertically centred and never shrink. `DialogFo
 entry; its type-ahead is first-letter only. `Combobox` (`react-aria-components`) is a text input with a
 filtered list.
 
+`SelectTrigger`, `Combobox` and `OptionPicker` accept `invalidAppearance="message"` only when
+the owner displays a persistent visible error. This keeps `aria-invalid` and error association,
+uses a neutral resting border and the normal single focus border, and avoids stacking a red
+border with a blue focus outline. The default `"border"` appearance is unchanged.
+
 | Use        | When                                                                                                                         |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `Select`   | at most 8 options, no lookup by typing                                                                                       |

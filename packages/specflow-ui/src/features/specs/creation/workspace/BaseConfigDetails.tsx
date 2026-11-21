@@ -1,5 +1,5 @@
 import {
-  Button,
+  linkVariants,
   Drawer,
   DrawerBody,
   DrawerContent,
@@ -32,7 +32,10 @@ export function BaseConfigDetails({
   return (
     <Drawer>
       <DrawerTrigger asChild>
-        <Button variant="ghost" size="sm" className="-ml-control-padding-compact">
+        <button
+          type="button"
+          className={`${linkVariants({ layout: 'standalone' })} w-fit text-label-sm`}
+        >
           {t(
             noUsableBases
               ? 'create.workspace.baseConfigDetails.how'
@@ -40,7 +43,7 @@ export function BaseConfigDetails({
                 ? 'create.workspace.baseConfigDetails.why'
                 : 'create.workspace.baseConfigDetails.unavailableBranches',
           )}
-        </Button>
+        </button>
       </DrawerTrigger>
       <DrawerContent side={isSplit ? 'right' : 'bottom'} closeLabel={t('common.close')}>
         <DrawerHeader>
@@ -53,27 +56,34 @@ export function BaseConfigDetails({
           </DrawerTitle>
           <DrawerDescription>
             {t(
-              noUsableBases
-                ? 'create.workspace.baseConfigNone'
-                : !problem
-                  ? 'create.workspace.baseConfigDetails.unavailableDescription'
-                  : problem.reason === 'ref-not-found'
-                    ? 'create.workspace.baseConfigReason.ref-not-found'
-                    : 'create.workspace.baseConfigDetails.description',
+              problem
+                ? `create.workspace.baseConfigReason.${problem.reason}`
+                : noUsableBases
+                  ? 'create.workspace.baseConfigDetails.inspectReasons'
+                  : 'create.workspace.baseConfigDetails.unavailableDescription',
             )}
           </DrawerDescription>
         </DrawerHeader>
         <DrawerBody>
           <div className="grid gap-3 text-body-sm text-content-secondary">
-            <p>{t('create.workspace.baseConfigDetails.explanation')}</p>
-            {problem && <p>{t(`create.workspace.baseConfigReason.${problem.reason}`)}</p>}
-            <p>
-              {t(
-                noUsableBases
-                  ? 'create.workspace.baseConfigDetails.repair'
-                  : 'create.workspace.baseConfigDetails.action',
-              )}
-            </p>
+            <div className="grid gap-1">
+              <h3 className="text-label-sm text-content-primary">
+                {t('create.workspace.baseConfigDetails.meaning')}
+              </h3>
+              <p>{t('create.workspace.baseConfigDetails.explanation')}</p>
+            </div>
+            <div className="grid gap-1">
+              <h3 className="text-label-sm text-content-primary">
+                {t('create.workspace.baseConfigDetails.nextStep')}
+              </h3>
+              <p>
+                {t(
+                  noUsableBases
+                    ? 'create.workspace.baseConfigDetails.repair'
+                    : 'create.workspace.baseConfigDetails.action',
+                )}
+              </p>
+            </div>
           </div>
         </DrawerBody>
       </DrawerContent>

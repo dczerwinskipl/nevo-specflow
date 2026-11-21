@@ -105,6 +105,12 @@ suggests choosing another unavailable branch. The picker remains inspectable, wi
 unavailable, and Create/Enter still send no request. A usable configured tag or commit prevents
 this state even when all listed branches are unavailable.
 
+In this all-unavailable state, the picker uses the message-only invalid appearance: its visible
+error and accessible invalid/error associations remain, with a neutral resting border and one
+normal focus border. The text-sized details action uses the action color, hover and focus
+feedback. The Drawer opens with the specific cause, followed by **What this means** and **What
+to do**; it does not repeat the form's blocking message.
+
 The initial starting point prefers the configured default when usable (including `HEAD`, a tag
 or a SHA); otherwise it prefers the usable integration branch, then the first usable local branch.
 If none is usable, the configured default stays visible with the blocking explanation. An automatic

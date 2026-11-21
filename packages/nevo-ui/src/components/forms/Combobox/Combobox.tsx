@@ -51,6 +51,8 @@ export interface ComboboxProps {
   onValueChange?: (value: string | null) => void;
   placeholder?: string;
   invalid?: boolean;
+  /** Use message only with a persistent visible error; invalid semantics and focus stay intact. */
+  invalidAppearance?: 'border' | 'message';
   disabled?: boolean;
   /**
    * Local filter `(optionText, query) => boolean`. Default: Polish-safe case/diacritic-insensitive
@@ -97,6 +99,7 @@ export function Combobox({
   inputRef,
   inputValue,
   invalid = false,
+  invalidAppearance = 'border',
   labels: labelOverrides,
   loading = false,
   menuTrigger = 'input',
@@ -144,6 +147,7 @@ export function Combobox({
     >
       <div className="relative w-full min-w-0">
         <ComboboxInput
+          invalidAppearance={invalidAppearance}
           autoFocus={autoFocus}
           id={field.id}
           inputRef={inputRef}
@@ -197,12 +201,14 @@ export function Combobox({
  * and ArrowDown), so a touch user does not get a keyboard with no list.
  */
 function ComboboxInput({
+  invalidAppearance,
   autoFocus,
   id,
   inputRef,
   insideField,
   placeholder,
 }: {
+  invalidAppearance: 'border' | 'message';
   autoFocus: boolean | undefined;
   id: string | undefined;
   inputRef: Ref<HTMLInputElement> | undefined;
@@ -213,6 +219,7 @@ function ComboboxInput({
 
   return (
     <AriaInput
+      data-invalid-appearance={invalidAppearance}
       autoFocus={autoFocus}
       className={cn(textInputControlClassName, 'pr-9 text-ellipsis placeholder:text-ellipsis')}
       id={id}

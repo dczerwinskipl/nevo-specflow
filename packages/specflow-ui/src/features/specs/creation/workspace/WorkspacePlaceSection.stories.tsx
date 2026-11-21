@@ -1460,6 +1460,14 @@ export const BaseConfigurationUnusable: Story = {
     await expect(within(document.body).queryByRole('dialog')).not.toBeInTheDocument();
     await userEvent.click(within(base).getByRole('button', { name: 'Jak to naprawić?' }));
     const panel = await within(document.body).findByRole('dialog');
+    await expect(
+      within(panel).queryByText(
+        'Nie można utworzyć nowego środowiska. Żadna gałąź nie ma poprawnych ustawień SpecFlow.',
+      ),
+    ).not.toBeInTheDocument();
+    await expect(within(panel).getByText(/brakuje sekcji runtime/)).toBeVisible();
+    await expect(within(panel).getByRole('heading', { name: 'Co to oznacza' })).toBeVisible();
+    await expect(within(panel).getByRole('heading', { name: 'Co zrobić' })).toBeVisible();
     await expect(within(panel).getByText(/Nowe środowisko powstaje z wersji/)).toBeVisible();
     await expect(panel).not.toHaveTextContent('Wybierz inną');
     await expect(within(panel).getByText(/^Popraw \.nevo\/config\.yaml/)).toBeVisible();
@@ -1477,6 +1485,11 @@ export const BaseConfigurationUnusable: Story = {
     for (const option of options) {
       await expect(option).toHaveAttribute('aria-disabled', 'true');
       await waitFor(() => expect(within(option).getByText('Niedostępna')).toBeVisible());
+      await expect(
+        within(option).getByText(
+          /Brak ustawień SpecFlow|Brak sekcji runtime|Niepoprawny YAML|Ustawienia nie są plikiem/,
+        ),
+      ).toBeVisible();
       await expect(option).not.toHaveTextContent(/Wybierz inną|commit|\.nevo\/config/);
     }
 

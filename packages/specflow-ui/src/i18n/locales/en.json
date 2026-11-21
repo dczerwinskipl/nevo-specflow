@@ -934,6 +934,9 @@
         "ref-not-found": "The configured starting point no longer exists."
       },
       "baseConfigDetails": {
+        "meaning": "What this means",
+        "inspectReasons": "Each branch lists the reason it is unavailable.",
+        "nextStep": "What to do",
         "how": "How to fix it?",
         "repair": "Fix .nevo/config.yaml on one of the branches and save the change in its Git history (commit). Then refresh the form.",
         "why": "Why?",

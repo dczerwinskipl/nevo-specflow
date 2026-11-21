@@ -934,6 +934,9 @@
         "ref-not-found": "Skonfigurowany punkt początkowy już nie istnieje."
       },
       "baseConfigDetails": {
+        "meaning": "Co to oznacza",
+        "inspectReasons": "Przyczyny niedostępności znajdziesz przy poszczególnych gałęziach.",
+        "nextStep": "Co zrobić",
         "how": "Jak to naprawić?",
         "repair": "Popraw .nevo/config.yaml na jednej z gałęzi i zapisz zmianę w jej historii Git (commit). Następnie odśwież formularz.",
         "why": "Dlaczego?",

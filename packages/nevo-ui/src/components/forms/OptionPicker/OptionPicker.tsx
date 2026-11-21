@@ -28,6 +28,8 @@ export interface OptionPickerProps {
   labels: ComboboxLabels;
   placeholder?: string;
   invalid?: boolean;
+  /** Use message only with a persistent visible error; invalid semantics and focus stay intact. */
+  invalidAppearance?: 'border' | 'message';
   disabled?: boolean;
   /** Receives the focusable control (select trigger or combobox input), e.g. to focus an error. */
   controlRef?: MutableRefObject<HTMLElement | null>;
@@ -48,6 +50,7 @@ export function OptionPicker({
   labels,
   placeholder,
   invalid,
+  invalidAppearance,
   disabled,
   controlRef,
 }: OptionPickerProps) {
@@ -61,6 +64,7 @@ export function OptionPicker({
         }}
         value={value || null}
         invalid={invalid}
+        invalidAppearance={invalidAppearance}
         disabled={disabled}
         placeholder={placeholder}
         labels={labels}
@@ -91,6 +95,7 @@ export function OptionPicker({
   return (
     <Select value={value} invalid={invalid} disabled={disabled} onValueChange={onValueChange}>
       <SelectTrigger
+        invalidAppearance={invalidAppearance}
         ref={(node) => {
           if (controlRef) {
             controlRef.current = node;

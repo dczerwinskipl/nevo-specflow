@@ -306,6 +306,58 @@ describe('finalizeAgentAttempt', () => {
     expect(finishes(fixture)).toBe(1);
   });
 
+  it('judges the attribution at the proposal, at the finalize and at Continue', async () => {
+    const fixture = await agentTurn({ proposal: false });
+    const { dependencies, journal, state } = fixture;
+    const code = (sha: string) => ({
+      path: 'src/a.ts',
+      sha256: sha.repeat(64),
+      added: false,
+      area: { kind: 'code' as const },
+    });
+    state.attribution = { paths: [code('b')], incomplete: false };
+    state.claimDispatched = true;
+    await expect(
+      proposeAgentFinish(dependencies, { turn: turn(), input: {} }),
+    ).rejects.toMatchObject({
+      code: 'WORKFLOW_UNDECLARED_CHANGES',
+      attribution: { undeclared: ['src/a.ts'] },
+    });
+    const changes = { paths: ['src/a.ts'] };
+    await proposeAgentFinish(dependencies, { turn: turn(), input: {}, changes });
+    state.claimDispatched = false;
+    // A Task file written past the Engine after the proposal: the finalize refuses, naming it.
+    const task = 'specs/active/demo/tasks/t-01/task.md';
+    state.attribution = {
+      paths: [
+        code('b'),
+        {
+          path: task,
+          sha256: 'c'.repeat(64),
+          added: false,
+          area: { kind: 'specification', registered: true },
+          engine: ['d'.repeat(64)],
+        },
+      ],
+      incomplete: false,
+    };
+
+    expect(await finalizeAgentAttempt(dependencies, finalizeInput())).toMatchObject({
+      kind: 'refused',
+      refusal: { code: 'WORKFLOW_ENGINE_FILE_EDITED', attribution: { paths: [task], count: 1 } },
+    });
+    expect(journal.journals.get(ATTEMPT_ID)?.proposal).toMatchObject({ changes, state: 'refused' });
+    // Someone edits the agent's file between the Turns: Continue is refused until it is undone.
+    state.attribution = { paths: [code('e')], incomplete: false };
+    await expect(continueAttempt(fixture)).rejects.toMatchObject({
+      code: 'WORKFLOW_BASELINE_CHANGED',
+      attribution: { paths: ['src/a.ts'], count: 1 },
+    });
+    state.attribution = { paths: [code('b')], incomplete: false };
+    await continueAttempt(fixture);
+    expect(journal.journals.get(ATTEMPT_ID)?.turns).toHaveLength(2);
+  });
+
   it('keeps the claim held and the proposal pending on a busy refusal, which passes', async () => {
     const fixture = await agentTurn();
     fixture.state.refuseStore = new SpecificationBusyError('A Close holds the Specification.', {

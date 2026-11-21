@@ -3,6 +3,8 @@ import { createHash } from 'node:crypto';
 import { Type } from 'typebox';
 import { Value } from 'typebox/value';
 
+import { ERROR_DETAIL_PATHS_MAX } from '@nevo/specflow-contracts/documents';
+
 import type { JournalKind } from '../../../specs/durable';
 import { WorkflowError } from '../../errors';
 import { assertFinishInputShape } from '../../input-schema';
@@ -74,9 +76,24 @@ export interface AgentDirtySet {
   readonly truncated?: true;
 }
 
+/**
+ * The paths an attribution refusal names (`boundary/attribution.ts`; the contracts'
+ * `WorkflowAttribution`): the first `ERROR_DETAIL_PATHS_MAX` of them, sorted, of `count`.
+ */
+export interface AttributionDetails {
+  readonly paths: readonly string[];
+  readonly count: number;
+  readonly undeclared?: readonly string[];
+  readonly unchanged?: readonly string[];
+  readonly remedies?: readonly ('classify' | 'delete')[];
+  readonly incomplete?: true;
+}
+
 export interface AgentRefusal {
   readonly code: string;
   readonly message: string;
+  /** The paths an attribution refusal named (`AttributionRefusalError`), for the owner's view. */
+  readonly attribution?: AttributionDetails;
 }
 
 /**
@@ -146,6 +163,11 @@ export interface AgentFinishProposal {
   /** The trusted actor of that Turn; the finalized finish is recorded with exactly this actor. */
   readonly actor: AgentActor;
   readonly input: FinishStepInput['input'];
+  /**
+   * The files outside the Engine's folders the attempt changed, as the agent declared them (sorted;
+   * absent when none). Part of what makes two proposals the same.
+   */
+  readonly changes?: { readonly paths: readonly string[] };
   /** The transition the input takes, as validated at submission. */
   readonly transition: string;
   readonly submittedAt: string;
@@ -195,7 +217,33 @@ const uuid = Type.String({
 const text = (maxLength: number) => Type.String({ minLength: 1, maxLength });
 const timestamp = Type.String({ minLength: 20, maxLength: 40 });
 const sha256 = Type.String({ pattern: '^[0-9a-f]{64}$' });
-const refusal = Type.Object({ code: text(100), message: text(4000) }, closed);
+const pathList = Type.Array(text(AGENT_DIRTY_PATH_LENGTH_MAX), {
+  maxItems: ERROR_DETAIL_PATHS_MAX,
+});
+const refusal = Type.Object(
+  {
+    code: text(100),
+    message: text(4000),
+    attribution: Type.Optional(
+      Type.Object(
+        {
+          paths: pathList,
+          count: Type.Integer({ minimum: 0 }),
+          undeclared: Type.Optional(pathList),
+          unchanged: Type.Optional(pathList),
+          remedies: Type.Optional(
+            Type.Array(Type.Union([Type.Literal('classify'), Type.Literal('delete')]), {
+              maxItems: 2,
+            }),
+          ),
+          incomplete: Type.Optional(Type.Literal(true)),
+        },
+        closed,
+      ),
+    ),
+  },
+  closed,
+);
 
 const JournalSchema = Type.Object(
   {
@@ -228,6 +276,17 @@ const JournalSchema = Type.Object(
           invocationId: uuid,
           actor: ActorSchema,
           input: Type.Unknown(),
+          changes: Type.Optional(
+            Type.Object(
+              {
+                paths: Type.Array(text(AGENT_DIRTY_PATH_LENGTH_MAX), {
+                  minItems: 1,
+                  maxItems: AGENT_DIRTY_PATHS_MAX,
+                }),
+              },
+              closed,
+            ),
+          ),
           transition: text(200),
           submittedAt: timestamp,
           state: Type.Union([

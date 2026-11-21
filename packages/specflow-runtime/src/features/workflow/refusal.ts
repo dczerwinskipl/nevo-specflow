@@ -9,6 +9,7 @@ import {
 } from '@nevo/specflow-contracts/workflow';
 import { TRUSTED_LOCAL_SUBJECT } from '../auth/authorization/request-authorization';
 import {
+  AttributionRefusalError,
   DocumentError,
   DraftConflictError,
   GateUnsatisfiedError,
@@ -147,6 +148,22 @@ export function workflowFailure(error: unknown): WorkflowFailure | undefined {
   // 409: the Specification completes once its open Tasks are done or cancelled.
   if (error instanceof TasksOpenError) {
     return failure(error.code, error.message, { openTasks: toWire(error.openTasks) });
+  }
+
+  // 409: Ask agent attribution: the paths the Engine cannot attribute, or the ones declared wrongly.
+  if (error instanceof AttributionRefusalError) {
+    const { attribution } = error;
+
+    return failure(error.code, error.message, {
+      attribution: {
+        paths: [...attribution.paths],
+        count: attribution.count,
+        ...(attribution.undeclared ? { undeclared: [...attribution.undeclared] } : {}),
+        ...(attribution.unchanged ? { unchanged: [...attribution.unchanged] } : {}),
+        ...(attribution.remedies ? { remedies: [...attribution.remedies] } : {}),
+        ...(attribution.incomplete ? { incomplete: true as const } : {}),
+      },
+    });
   }
 
   // 409: another writer holds the Specification (an agent Turn's claim names its Session).

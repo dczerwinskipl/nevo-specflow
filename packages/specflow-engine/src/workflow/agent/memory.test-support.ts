@@ -7,6 +7,7 @@ import { SpecificationBusyError } from '../errors';
 import { memoryDependencies } from '../operations/operations.test-support';
 import type { PostActionResult } from '../operations/post-actions';
 import type { WorkflowStore } from '../state/store';
+import type { AttributionFacts } from './boundary/attribution';
 import type { AgentAttemptDependencies } from './dependencies';
 import type { FinalizeBoundary } from './finalize/finalize';
 import { memoryAgentAttemptJournal } from './journal/memory.test-support';
@@ -48,6 +49,8 @@ export function memoryAgentDependencies(catalogue: ExecutionCatalogue, attemptId
       path: string;
       sha256: string;
     }[],
+    /** What the attribution checks read; `undefined` is Git off (nothing is checked). */
+    attribution: undefined as AttributionFacts | undefined,
     postActionResults: [
       { action: 'commit-execution-state', status: 'completed' },
     ] as PostActionResult[],
@@ -121,6 +124,7 @@ export function memoryAgentDependencies(catalogue: ExecutionCatalogue, attemptId
       },
     }),
     newId: () => attemptId,
+    boundary: { facts: () => Promise.resolve(state.attribution) },
     finalize: {
       store: () => finalizeStore,
       settleClaim(intent, receipt) {

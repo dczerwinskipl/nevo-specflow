@@ -7,6 +7,7 @@ import { finishDigest } from '../../operations/actors';
 import { planFinish, type FinishStepInput } from '../../operations/finish';
 import { isoNow, loadSubject } from '../../operations/loaded-execution';
 import { agentAttemptBindingOf, type AgentActor, type WorkflowSubject } from '../../state/model';
+import { assertAgentFinishAttribution, type AgentDeclaredChanges } from '../boundary';
 import type { AgentAttemptDependencies } from '../dependencies';
 import { sameAttempt, type AgentAttemptJournal, type AgentFinishProposal } from '../journal/model';
 
@@ -27,6 +28,11 @@ export interface ProposeAgentFinishInput {
   readonly turn: AgentTurnIdentity;
   /** The agent's finish input: result, feedback, artifacts and, for a producing step, its drafts. */
   readonly input: FinishStepInput['input'];
+  /**
+   * The files outside the Engine's folders the attempt changed (`changes.paths`, B3 rule 4); absent
+   * declares none.
+   */
+  readonly changes?: AgentDeclaredChanges;
 }
 
 export interface ProposeAgentFinishResult {
@@ -45,8 +51,10 @@ function mismatch(message: string): never {
 /**
  * Record the agent's finish proposal for its own attempt (D12). The input is validated completely at
  * submission with the rules of an owner's finish (`planFinish`: legal transition, feedback, exit
- * gates, open Tasks, draft conflicts) and with what only the owner decides (D17,
- * `WORKFLOW_OWNER_DECISION_REQUIRED`); a refusal throws its reasons to the agent and records nothing.
+ * gates, open Tasks, draft conflicts), with what only the owner decides (D17,
+ * `WORKFLOW_OWNER_DECISION_REQUIRED`) and with the attribution of the checkout's uncommitted work
+ * against the declared `changes` (B6, B3: `assertAgentFinishAttribution`); a refusal throws its
+ * reasons to the agent and records nothing.
  * The proposal is not a transition: nothing in the execution store changes until it is finalized.
  *
  * Deduplicated by the finish digest: the same proposal again returns the recorded one (pending or
@@ -61,6 +69,7 @@ export function proposeAgentFinish(
 ): Promise<ProposeAgentFinishResult> {
   const { turn, input } = request;
   const { workflow } = dependencies;
+  const changes = declaredChanges(request.changes);
 
   return workflow.serialize(async () => {
     await dependencies.admission({ operationId: turn.invocationId, form: 'turn' }).admitWrite();
@@ -73,6 +82,7 @@ export function proposeAgentFinish(
       recorded !== undefined &&
       recorded.state !== 'refused' &&
       recorded.requestDigest === requestDigest &&
+      isDeepStrictEqual(recorded.changes, changes) &&
       isDeepStrictEqual(recorded.actor, turn.actor)
     ) {
       return { kind: 'replayed', proposal: recorded };
@@ -106,11 +116,15 @@ export function proposeAgentFinish(
       throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'An active attempt replayed a finish.');
     }
 
+    // B6 and B3: the attempt's uncommitted work must be attributable as the proposal declares it.
+    await assertAgentFinishAttribution(dependencies, journal.workspaceId, changes);
+
     const proposal: AgentFinishProposal = {
       requestDigest,
       invocationId: turn.invocationId,
       actor: turn.actor,
       input,
+      ...(changes !== undefined ? { changes } : {}),
       transition: plan.transition,
       submittedAt: isoNow(workflow),
       state: 'pending',
@@ -119,6 +133,19 @@ export function proposeAgentFinish(
 
     return { kind: recorded ? 'replaced' : 'recorded', proposal };
   });
+}
+
+/** The declared changes as recorded: sorted, and absent when none is declared. */
+function declaredChanges(
+  changes: AgentDeclaredChanges | undefined,
+): { readonly paths: readonly string[] } | undefined {
+  if (changes !== undefined && !Array.isArray(changes.paths)) {
+    throw new WorkflowError('WORKFLOW_INPUT_INVALID', 'The declared changes list their paths.');
+  }
+
+  return changes === undefined || changes.paths.length === 0
+    ? undefined
+    : { paths: [...changes.paths].sort() };
 }
 
 /** The journal is the attempt's, and the Turn submitting is its current one. */

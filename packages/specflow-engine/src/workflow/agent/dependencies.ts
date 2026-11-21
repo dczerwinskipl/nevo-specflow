@@ -17,7 +17,9 @@ import { engineExecutionStore, openWorkflow } from '../composition';
 import type { WorkflowDependencies } from '../operations/loaded-execution';
 import type { WorkflowStore } from '../state/store';
 import { executionClaimAdmission, type WorkflowWriteAdmission } from '../write-admission';
+import type { AttributionFacts } from './boundary/attribution';
 import { dirtySetOf, type DirtySetFacts } from './boundary/dirty-set';
+import { engineAttributionFacts } from './boundary/engine-facts';
 import {
   workflowPostActionRunner,
   type AgentPostActionRunner,
@@ -39,6 +41,17 @@ export interface AgentAttemptDependencies {
   /** A new attempt id (a UUID). */
   readonly newId: () => string;
   readonly finalize: AgentFinalizeDependencies;
+  /** What the attribution checks of an agent attempt read (B3, B6). */
+  readonly boundary: AgentBoundaryDependencies;
+}
+
+/** The facts the attribution boundary judges, read from the attempt's checkout. */
+export interface AgentBoundaryDependencies {
+  /**
+   * What is uncommitted in the checkout now and which of it the Engine wrote; `undefined` with Git
+   * off. Lock-free.
+   */
+  facts(workspaceId: string): Promise<AttributionFacts | undefined>;
 }
 
 /** The lock-held forms the finalize section calls, and what runs after it. */
@@ -104,6 +117,7 @@ export async function openAgentAttempts(engine: SpecFlowEngine): Promise<AgentAt
     journal: filesystemAgentAttemptJournal(engine.context),
     admission: (owned) => executionClaimAdmission(engine, owned),
     newId: randomUUID,
+    boundary: { facts: (workspaceId) => engineAttributionFacts(engine, workspaceId) },
     finalize: {
       store: (owned) => engineExecutionStore(engine, owned),
       async settleClaim(intent, receipt, target) {

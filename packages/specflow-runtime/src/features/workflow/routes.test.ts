@@ -2,6 +2,7 @@ import { createAuthorization } from '@nevo/authorization';
 import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
 import { SPECIFICATION_BUSY_CAUSES, WORKFLOW_ERROR_CODES } from '@nevo/specflow-contracts/workflow';
 import {
+  AttributionRefusalError,
   DocumentError,
   ProjectControlLockError,
   SpecificationBusyError,
@@ -591,6 +592,29 @@ describe('workflow refusals', () => {
     const failure = workflowFailure(new ProjectControlLockError('CONTROL_LOCK_CORRUPT', 'Broken.'));
 
     expect(failure).toMatchObject({ status: 503, body: { code: 'CONTROL_LOCK_CORRUPT' } });
+  });
+
+  it('names the paths of an Ask agent attribution refusal', () => {
+    const failure = workflowFailure(
+      new AttributionRefusalError('WORKFLOW_UNDECLARED_CHANGES', 'Declare them.', {
+        paths: ['src/a.ts'],
+        count: 1,
+        undeclared: ['src/a.ts'],
+        unchanged: [],
+      }),
+    );
+
+    expect(failure).toEqual({
+      status: 409,
+      body: {
+        error: 'WORKFLOW_UNDECLARED_CHANGES',
+        code: 'WORKFLOW_UNDECLARED_CHANGES',
+        message: 'Declare them.',
+        details: {
+          attribution: { paths: ['src/a.ts'], count: 1, undeclared: ['src/a.ts'], unchanged: [] },
+        },
+      },
+    });
   });
 
   it('knows exactly the codes of the Engine, plus its own', () => {

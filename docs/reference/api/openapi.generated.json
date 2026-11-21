@@ -10184,6 +10184,36 @@
               {
                 "type": "string",
                 "enum": [
+                  "WORKFLOW_DIRTY_BASELINE"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_BASELINE_CHANGED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_UNREGISTERED_DOCUMENTS"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_ENGINE_FILE_EDITED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_UNDECLARED_CHANGES"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
                   "WORKFLOW_UNAVAILABLE"
                 ]
               },
@@ -10381,6 +10411,36 @@
                 "type": "string",
                 "enum": [
                   "WORKFLOW_OWNER_DECISION_REQUIRED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_DIRTY_BASELINE"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_BASELINE_CHANGED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_UNREGISTERED_DOCUMENTS"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_ENGINE_FILE_EDITED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_UNDECLARED_CHANGES"
                 ]
               },
               {
@@ -10841,6 +10901,62 @@
                         }
                       ]
                     }
+                  }
+                }
+              },
+              "attribution": {
+                "type": "object",
+                "required": [
+                  "paths",
+                  "count"
+                ],
+                "properties": {
+                  "paths": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "undeclared": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "unchanged": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "remedies": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "classify"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "delete"
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "incomplete": {
+                    "type": "boolean",
+                    "enum": [
+                      true
+                    ]
                   }
                 }
               },

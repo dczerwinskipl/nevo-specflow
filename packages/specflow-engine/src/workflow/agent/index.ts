@@ -1,5 +1,12 @@
 // Ask agent: an agent attempt of a workflow step, its Turn bindings and its finish proposal.
 export {
+  admitAgentTurn,
+  AttributionRefusalError,
+  type AgentDeclaredChanges,
+  type AgentTurnAdmissionInput,
+  type AttributionDetails,
+} from './boundary';
+export {
   openAgentAttempts,
   type AgentAttemptDependencies,
   type AgentFinalizeDependencies,

@@ -178,6 +178,21 @@ describe('agent attempt start', () => {
     ).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_MISMATCH' });
   });
 
+  it('refuses a start from a checkout with changes the Engine cannot attribute, writing nothing', async () => {
+    const { dependencies, workflow, journal, state } = agentDependencies();
+    state.attribution = {
+      paths: [{ path: 'notes.txt', sha256: 'a'.repeat(64), added: true, area: { kind: 'code' } }],
+      incomplete: false,
+    };
+
+    await expect(startAgentAttempt(dependencies, startInput())).rejects.toMatchObject({
+      code: 'WORKFLOW_DIRTY_BASELINE',
+      attribution: { paths: ['notes.txt'], count: 1 },
+    });
+    expect(journal.journals.size).toBe(0);
+    expect(await positionOf(workflow, specification)).toBeUndefined();
+  });
+
   it('does not advance the Run when a Turn ends without a proposal', async () => {
     const { dependencies, workflow, state } = agentDependencies();
     await startAgentAttempt(dependencies, startInput());

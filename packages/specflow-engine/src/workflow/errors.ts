@@ -51,6 +51,20 @@ export const WORKFLOW_ERROR_CODES = [
    * owner-authority effect or `confirmation: owner`, or status decisions on Tasks.
    */
   'WORKFLOW_OWNER_DECISION_REQUIRED',
+  /**
+   * Ask agent attribution (B3, B6), thrown as `AttributionRefusalError` naming the paths: the
+   * checkout has changes the Engine cannot attribute at an agent attempt's start
+   * (`WORKFLOW_DIRTY_BASELINE`), files changed since the attempt's last Turn ended at Continue
+   * (`WORKFLOW_BASELINE_CHANGED`), and at an agent finish new files of a Specification directory
+   * without a document type (`WORKFLOW_UNREGISTERED_DOCUMENTS`, D14), Engine-written files whose
+   * bytes are not the Engine's (`WORKFLOW_ENGINE_FILE_EDITED`), or changed files the proposal does
+   * not declare exactly (`WORKFLOW_UNDECLARED_CHANGES`).
+   */
+  'WORKFLOW_DIRTY_BASELINE',
+  'WORKFLOW_BASELINE_CHANGED',
+  'WORKFLOW_UNREGISTERED_DOCUMENTS',
+  'WORKFLOW_ENGINE_FILE_EDITED',
+  'WORKFLOW_UNDECLARED_CHANGES',
 ] as const;
 export type WorkflowErrorCode = (typeof WORKFLOW_ERROR_CODES)[number];
 

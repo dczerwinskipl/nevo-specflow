@@ -157,6 +157,7 @@ export {
   confirmAgentResult,
   rejectAgentResult,
   type AgentResultDecisionInput,
+  type ConfirmAgentResultInput,
   type ConfirmAgentResultResult,
   type RejectAgentResultInput,
   type RejectAgentResultResult,

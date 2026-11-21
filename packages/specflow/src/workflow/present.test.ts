@@ -418,6 +418,7 @@ describe('an agent result that waits for the owner (D17)', () => {
           artifacts: [],
         },
         confirms: { approvesDrafts: ['api', 'screen'] },
+        confirmsDigest: 'd'.repeat(64),
       },
       actions: {
         confirm: { step: 'breakdown-review', attempt: 1 },
@@ -431,12 +432,12 @@ describe('an agent result that waits for the owner (D17)', () => {
       'The agent proposes: Approve, to Implementation',
       'Feedback: Both Tasks are ready.',
       'Confirming approves 2 draft Tasks: api, screen',
-      'Action: confirm "breakdown-review" attempt 1',
+      `Action: confirm "breakdown-review" attempt 1 --confirms-digest ${'d'.repeat(64)}`,
       'Action: reject "breakdown-review" attempt 1 --feedback <text>',
     ]);
   });
 
-  it('reports a Confirm with its commit and a Reject that leaves the work uncommitted', () => {
+  it('reports a Confirm with the owner’s commit and a Reject of committed work', () => {
     expect(
       confirmLines({
         subject: spec,
@@ -445,7 +446,7 @@ describe('an agent result that waits for the owner (D17)', () => {
         continuation: { kind: 'none', reason: 'waiting-for-tasks' },
         postActions: [
           {
-            action: 'attempt-commit',
+            action: 'commit-execution-state',
             status: 'completed',
             commit: { sha: 'abc123', paths: ['a', 'b'] },
           },
@@ -455,7 +456,6 @@ describe('an agent result that waits for the owner (D17)', () => {
       'Confirmed: Specification via "approved"',
       'Position: active on "implementation" (attempt 1)',
       'Next: nothing follows (waiting-for-tasks)',
-      "Committed the agent's attempt: abc123 (2 files)",
     ]);
     expect(
       rejectLines({
@@ -465,7 +465,7 @@ describe('an agent result that waits for the owner (D17)', () => {
         replayed: true,
       }),
     ).toEqual([
-      "Already rejected: Specification; the agent's work stays uncommitted",
+      "Already rejected: Specification; the agent's work was committed with its attempt",
       'Position: ready to start "breakdown-review"',
       'Next: needs the owner: "breakdown-review" (owner-action)',
     ]);

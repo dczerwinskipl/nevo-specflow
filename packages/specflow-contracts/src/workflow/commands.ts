@@ -288,18 +288,30 @@ export type RetryAttemptCommitResult = Static<typeof RetryAttemptCommitResultSch
  * another request decided is `WORKFLOW_ATTEMPT_MISMATCH`.
  */
 export const ConfirmWorkflowRequestSchema = Type.Object(
-  { requestId: RequestIdSchema, step: StepId, attempt: Type.Integer({ minimum: 1 }) },
+  {
+    requestId: RequestIdSchema,
+    step: StepId,
+    attempt: Type.Integer({ minimum: 1 }),
+    /**
+     * The projection's `confirmsDigest` the owner was shown: Confirm applies exactly that, and is
+     * refused `WORKFLOW_CONFIRMATION_CHANGED` (naming what it would apply now) when it changed.
+     */
+    confirmsDigest: Type.String({ pattern: '^[0-9a-f]{64}$' }),
+  },
   { additionalProperties: false },
 );
 export type ConfirmWorkflowRequest = Static<typeof ConfirmWorkflowRequestSchema>;
 
 /**
  * The owner's **Reject** of that result (`actions.reject`): the step goes back to ready to start
- * with `feedback` (required) as its handoff; nothing the agent wrote is undone or committed.
+ * with `feedback` (required) as its handoff; nothing the agent wrote is undone (it was committed
+ * with its attempt when the attempt finished).
  */
 export const RejectWorkflowRequestSchema = Type.Object(
   {
-    ...ConfirmWorkflowRequestSchema.properties,
+    requestId: RequestIdSchema,
+    step: StepId,
+    attempt: Type.Integer({ minimum: 1 }),
     feedback: Type.String({ minLength: 1, maxLength: 20_000 }),
   },
   { additionalProperties: false },
@@ -308,8 +320,8 @@ export type RejectWorkflowRequest = Static<typeof RejectWorkflowRequestSchema>;
 
 /**
  * The confirmed result: the transition taken and what follows, as after a finish, and what the
- * attempt commit (D15), which runs once the step finished, reported (`postActions`; empty for a
- * replay whose commit already ran).
+ * owner's post actions reported (`postActions`: the commit of the workflow state, as after an
+ * owner's finish; a replay runs them again). The agent's attempt commit ran when it finished.
  */
 export const ConfirmWorkflowResultSchema = Type.Object({
   subject: WorkflowSubjectSchema,
@@ -384,6 +396,11 @@ export const WORKFLOW_ERROR_CODES = [
   'WORKFLOW_GATE_UNSATISFIED',
   'WORKFLOW_TASKS_OPEN',
   'WORKFLOW_OWNER_DECISION_REQUIRED',
+  /**
+   * What the owner's Confirm of an agent's result would apply (the drafts it approves, their content,
+   * the Task decisions) is not what they were shown (`confirmsDigest`): read the result again.
+   */
+  'WORKFLOW_CONFIRMATION_CHANGED',
   /**
    * Ask agent attribution (B3, B6): the checkout has uncommitted changes SpecFlow cannot attribute
    * (`WORKFLOW_DIRTY_BASELINE`, at the start), files changed since the agent's last Turn ended

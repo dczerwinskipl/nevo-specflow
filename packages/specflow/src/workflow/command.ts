@@ -315,7 +315,7 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
     workflow
       .command('retry-commit')
       .description(
-        "Retry the failed commit of a finished agent attempt: one commit of the attempt's own files",
+        "Retry the failed commit of a finished agent attempt (one commit of the attempt's own files), or the commit of a confirmation an interruption left undone",
       )
       .requiredOption('--step <step-id>', 'The step the agent finished (see "workflow actions")')
       .requiredOption('--attempt <number>', 'The attempt whose commit failed', parsePositiveInt),
@@ -336,22 +336,35 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
     workflow
       .command('confirm')
       .description(
-        "Confirm an agent's result that waits for you: its transition and effects apply, then its commit",
+        "Confirm an agent's result that waits for you: its transition and effects apply as yours, then the owner's commit",
       )
       .requiredOption('--step <step-id>', 'The step the agent finished (see "workflow actions")')
       .requiredOption('--attempt <number>', 'The attempt whose result waits', parsePositiveInt)
+      .requiredOption(
+        '--confirms-digest <sha256>',
+        'The digest "workflow actions" shows with the result: Confirm applies exactly what you read',
+      )
       .option('--request-id <uuid>', 'Repeat an earlier confirm (idempotency key); new by default'),
   ).action(
     async (
       specId: string,
-      options: CommonOptions & { step: string; attempt: number; requestId?: string },
+      options: CommonOptions & {
+        step: string;
+        attempt: number;
+        confirmsDigest: string;
+        requestId?: string;
+      },
     ) => {
+      const requestId = options.requestId ?? randomUUID();
+      // Before the Engine is opened, so an interrupted confirm can be repeated with the same id.
+      context.stderr(`Request id: ${requestId} (repeat with --request-id ${requestId})`);
       await run(options, 'change', async ({ engine }) => {
         const result = await confirmAgentResult(await openAgentAttempts(engine), {
           subject: subjectOf(specId, options),
           step: options.step,
           attempt: options.attempt,
-          requestId: options.requestId ?? randomUUID(),
+          confirmsDigest: options.confirmsDigest,
+          requestId,
           actor: owner(),
         });
         emit(options, result, confirmLines(result));
@@ -379,13 +392,15 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
         requestId?: string;
       },
     ) => {
+      const requestId = options.requestId ?? randomUUID();
+      context.stderr(`Request id: ${requestId} (repeat with --request-id ${requestId})`);
       await run(options, 'change', async ({ engine }) => {
         const result = await rejectAgentResult(await openAgentAttempts(engine), {
           subject: subjectOf(specId, options),
           step: options.step,
           attempt: options.attempt,
           feedback: options.feedback,
-          requestId: options.requestId ?? randomUUID(),
+          requestId,
           actor: owner(),
         });
         emit(options, result, rejectLines(result));

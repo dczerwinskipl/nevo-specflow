@@ -53,7 +53,8 @@ export interface FinalizeAgentAttemptInput {
  * - `turn-ended`: the Turn ended without a proposal to publish; the attempt stays active;
  * - `awaiting-confirmation`: the proposal takes a decision only the owner takes (D17): it is
  *   published as the attempt's end, and the run waits at its transition for the owner's Confirm or
- *   Reject (`confirmAgentResult`, `rejectAgentResult`); no post action runs until confirmed.
+ *   Reject (`confirmAgentResult`, `rejectAgentResult`); the attempt commit runs now as for a
+ *   finished attempt (`postActions`), so the owner decides on committed work.
  */
 export type FinalizeAgentAttemptResult =
   | {
@@ -66,6 +67,7 @@ export type FinalizeAgentAttemptResult =
       readonly kind: 'awaiting-confirmation';
       readonly transition: string;
       readonly finish?: FinishStepResult;
+      readonly postActions: readonly PostActionResult[];
     }
   | { readonly kind: 'refused'; readonly of: 'proposal' | 'return'; readonly refusal: AgentRefusal }
   | { readonly kind: 'returned'; readonly position?: RunPosition }
@@ -74,12 +76,9 @@ export type FinalizeAgentAttemptResult =
 export type { FinalizeBoundary } from './ports';
 
 type SectionOutcome =
-  | Exclude<FinalizeAgentAttemptResult, { kind: 'finished' }>
-  | {
-      readonly kind: 'finished';
-      readonly transition: string;
-      readonly finish?: FinishStepResult;
-    };
+  | Exclude<FinalizeAgentAttemptResult, { kind: 'finished' | 'awaiting-confirmation' }>
+  | Omit<Extract<FinalizeAgentAttemptResult, { kind: 'finished' }>, 'postActions'>
+  | Omit<Extract<FinalizeAgentAttemptResult, { kind: 'awaiting-confirmation' }>, 'postActions'>;
 
 function mismatch(message: string): never {
   throw new WorkflowError('WORKFLOW_ATTEMPT_MISMATCH', message);
@@ -171,7 +170,9 @@ export async function finalizeAgentAttempt(
     await dependencies.finalize.faults?.('post-actions-pending');
     const postActions = await runAgentPostActions(dependencies, request.attemptId);
 
-    return outcome.kind === 'finished' ? { ...outcome, postActions } : outcome;
+    return outcome.kind === 'finished' || outcome.kind === 'awaiting-confirmation'
+      ? { ...outcome, postActions }
+      : outcome;
   });
 }
 
@@ -390,26 +391,16 @@ async function publishStep(
     await store.apply(journal.subject.specId, plan.kind === 'replayed' ? {} : plan.change);
     await dependencies.finalize.faults?.('step-published');
     const declared = declaredPathsOf(proposal.changes?.paths ?? [], facts);
-    // D17: a decision only the owner takes waits for the owner; the attempt commit waits with it.
-    if (plan.result.position.state === 'awaiting-confirmation') {
-      return {
-        journal: {
-          ...journal,
-          proposal: { ...proposal, state: 'finalized' },
-          confirmation: { state: 'pending', stepTitle: plan.stepTitle, declared },
-        },
-        outcome: {
-          kind: 'awaiting-confirmation',
-          transition: plan.result.transition,
-          finish: plan.result,
-        },
-      };
-    }
+    // D17: a decision only the owner takes waits for the owner. The attempt commit runs now all the
+    // same (owner decision 2026-11-21: commit at finish), so whatever the owner decides, nothing of
+    // the agent's work is left uncommitted; Confirm only applies the transition, as the owner.
+    const awaiting = plan.result.position.state === 'awaiting-confirmation';
 
     return {
       journal: {
         ...journal,
         proposal: { ...proposal, state: 'finalized' },
+        ...(awaiting ? { confirmation: { state: 'pending' as const } } : {}),
         postActions: [
           {
             kind: 'attempt-commit',
@@ -420,7 +411,11 @@ async function publishStep(
           },
         ],
       },
-      outcome: { kind: 'finished', transition: plan.result.transition, finish: plan.result },
+      outcome: {
+        kind: awaiting ? ('awaiting-confirmation' as const) : ('finished' as const),
+        transition: plan.result.transition,
+        finish: plan.result,
+      },
     };
   } catch (error) {
     const refusal = refusalOf(error);

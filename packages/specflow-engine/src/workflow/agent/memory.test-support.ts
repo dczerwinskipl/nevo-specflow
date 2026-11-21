@@ -5,7 +5,7 @@ import type { OwnedExecutionClaim } from '../../specs/durable';
 import type { ExecutionCatalogue } from '../definitions/catalogue';
 import { SpecificationBusyError } from '../errors';
 import { memoryDependencies } from '../operations/operations.test-support';
-import type { PostActionResult } from '../operations/post-actions';
+import type { PostActionResult, StepFinishedEvent } from '../operations/post-actions';
 import type { WorkflowStore } from '../state/store';
 import type { AttributionFacts } from './boundary/attribution';
 import type { AgentAttemptDependencies } from './dependencies';
@@ -55,10 +55,20 @@ export function memoryAgentDependencies(catalogue: ExecutionCatalogue, attemptId
     /** The operation of each post action run (`agentPostActionRunId`), in order. */
     postActionRuns: [] as string[],
     postActionResults: [{ action: 'attempt-commit', status: 'completed' }] as PostActionResult[],
+    /** The owner's post actions the agent operations ran (after a Confirm), in order. */
+    ownerPostActions: [] as StepFinishedEvent[],
   };
   const serialize = workflow.serialize;
   const lockedWorkflow = {
     ...workflow,
+    postActions: {
+      afterStepFinished(event: StepFinishedEvent): Promise<readonly PostActionResult[]> {
+        events.push(state.held ? 'owner-post-action-in-lock' : 'owner-post-action');
+        state.ownerPostActions.push(event);
+
+        return Promise.resolve([{ action: 'commit-execution-state', status: 'completed' }]);
+      },
+    },
     serialize: <T>(operation: () => Promise<T>): Promise<T> => {
       if (state.held) {
         return Promise.reject(new Error('The control lock is not re-entrant.'));

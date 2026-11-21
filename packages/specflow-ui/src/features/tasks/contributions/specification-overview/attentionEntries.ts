@@ -83,6 +83,12 @@ function actionOf(
       return onTask(openTask);
     case 'reevaluate-wait':
       return { label, onClick: () => goToHeading(SPECIFICATION_NOW_HEADING) };
+    // An agent's result that waits for the owner is decided where its step is shown.
+    case 'confirm-result':
+    case 'reject-result':
+      return taskId
+        ? { label, onClick: () => openTask(taskId) }
+        : { label, onClick: () => goToHeading(SPECIFICATION_NOW_HEADING) };
     case 'return-to-step':
       // The Specification's own Return dialog (its Now block, which also offers it in its menu
       // while it loads); a Task's on the Task page.

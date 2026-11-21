@@ -2703,7 +2703,9 @@
         "resume-task": "Wznów",
         "start-step": "Rozpocznij krok",
         "reevaluate-wait": "Przejdź do bieżącego kroku",
-        "return-to-step": "Wróć do wcześniejszego kroku"
+        "return-to-step": "Wróć do wcześniejszego kroku",
+        "confirm-result": "Przejrzyj wynik",
+        "reject-result": "Odrzuć wynik"
       },
       "specification": "Specyfikacja",
       "stuckTitle_one": "Rozwiąż {{count}} blokujące zadanie",

@@ -1,5 +1,3 @@
-import { isDeepStrictEqual } from 'node:util';
-
 import { canonicalJson, decide, findStep, type RunPosition } from '@nevo/workflow';
 
 import { sha256Hex } from '../../../hash';
@@ -7,9 +5,10 @@ import type { ContinuationDecision } from '../../continuation/resolve';
 import { WorkflowError } from '../../errors';
 import { assertOwner } from '../../operations/actors';
 import type { AdvanceContext } from '../../operations/advance';
+import { confirmsDigestOf, describeConfirms, resultConfirmsOf } from '../../operations/confirms';
 import { completeFinish, recordedContinuation } from '../../operations/finish';
-import { isoNow, loadSubject, ofSubject } from '../../operations/loaded-execution';
-import type { PostActionResult } from '../../operations/post-actions';
+import { executionTasks, isoNow, loadSubject, ofSubject } from '../../operations/loaded-execution';
+import { NO_POST_ACTIONS, type PostActionResult } from '../../operations/post-actions';
 import { ExecutionWorkingSet } from '../../operations/working-set';
 import {
   agentAttemptBindingOf,
@@ -21,21 +20,19 @@ import {
 import type { ExecutionChange, ExecutionSnapshot } from '../../state/store';
 import type { AgentAttemptDependencies } from '../dependencies';
 import { runAgentPostActions } from '../finalize/post-actions';
-import {
-  agentPostActionId,
-  isAttemptJournalSettled,
-  type AgentAttemptJournal,
-} from '../journal/model';
+import { isAttemptJournalSettled, type AgentAttemptJournal } from '../journal/model';
 
 /**
  * The owner's decision on an agent's result held for confirmation (D17): an agent proposal that
  * takes a decision only the owner takes (an owner-authority effect such as `approve-draft-tasks`, a
  * `confirmation: owner` transition, or Task status decisions) ends its attempt and leaves the run
- * `awaiting-confirmation`. **Confirm** takes the transition with the owner as actor, as an owner's
- * own finish would (the Task decisions, the effects, the gates and what follows), and then runs the
- * attempt's commit (D15): the step finishes now. **Reject** does not take it: the step is ready to
- * start again with the owner's feedback as its handoff, and the agent's work stays as it is,
- * uncommitted (Close lists it); the Engine never commits a rejected result.
+ * `awaiting-confirmation`. The attempt's commit (D15) ran when the attempt finished (owner decision
+ * 2026-11-21: commit at finish), so the owner decides on committed work. **Confirm** takes the
+ * transition with the owner as actor, as an owner's own finish would (the Task decisions, the
+ * effects, the gates and what follows): an ordinary owner write, committed by the owner's post
+ * action like an owner's finish (never attributed to the agent's Turns). **Reject** does not take
+ * it: the step is ready to start again with the owner's feedback as its handoff; the agent's work
+ * was committed with its attempt, so the next attempt starts from a clean checkout.
  */
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
@@ -51,6 +48,14 @@ export interface AgentResultDecisionInput {
   readonly requestId: string;
 }
 
+export interface ConfirmAgentResultInput extends AgentResultDecisionInput {
+  /**
+   * The projection's `confirmsDigest` the owner was shown: what Confirm applies besides the
+   * transition (the drafts it approves with their content revisions, the Task decisions).
+   */
+  readonly confirmsDigest: string;
+}
+
 export interface RejectAgentResultInput extends AgentResultDecisionInput {
   /** What should change; the step's next attempt reads it first (its handoff). Required. */
   readonly feedback: string;
@@ -64,7 +69,10 @@ export interface ConfirmAgentResultResult {
   /** After a Task's confirmation, what the Specification needs (as after a Task's finish). */
   readonly specification?: ContinuationDecision;
   readonly replayed?: true;
-  /** What the attempt commit reported (none when it ran before, for a replay). */
+  /**
+   * What the owner's post actions reported after the confirmation, as after an owner's finish (the
+   * commit of the workflow state with automatic commits off); a replay runs them again.
+   */
   readonly postActions: readonly PostActionResult[];
 }
 
@@ -86,16 +94,49 @@ function assertRequest(input: AgentResultDecisionInput, action: string): void {
   }
 }
 
-/** The digest a confirm or reject records, so its retry is recognized. */
-function requestDigest(kind: 'confirm' | 'reject', input: AgentResultDecisionInput): string {
+/**
+ * The digest a confirm or reject records, so its retry is recognized: the same request id again
+ * replays. A confirm's `confirmsDigest` is judged only when it applies, so a replay needs only the
+ * request id (the CLI prints it before it runs).
+ */
+function requestDigest(
+  kind: 'confirm' | 'reject',
+  input: AgentResultDecisionInput & { readonly feedback?: string },
+): string {
   return sha256Hex(
     canonicalJson({
       kind,
       step: input.step,
       attempt: input.attempt,
       requestId: input.requestId,
-      ...('feedback' in input ? { feedback: (input as RejectAgentResultInput).feedback } : {}),
+      ...(input.feedback !== undefined ? { feedback: input.feedback } : {}),
     }),
+  );
+}
+
+/**
+ * A confirm or reject of an attempt another request decided already: refused, saying what was
+ * decided and what is left to do. The same request again (its `requestId`) is a replay instead.
+ */
+function assertNotDecidedByAnother(
+  record: AttemptRecord,
+  kind: 'confirm' | 'reject',
+  digest: string,
+): void {
+  const decided = record.confirmation;
+  if (decided === undefined || decided.state === 'pending' || decided.requestDigest === digest) {
+    return;
+  }
+
+  const named = `${record.step}#${String(record.attempt)}`;
+  const remedy =
+    decided.state === 'confirmed'
+      ? 'If its commit did not run (an interruption), repeat that confirm with its request id, or run `nevo-specflow workflow retry-commit` for this attempt.'
+      : 'Its step is ready again: start it, or run it with an agent.';
+
+  throw new WorkflowError(
+    'WORKFLOW_ATTEMPT_MISMATCH',
+    `The result of ${named} was ${decided.state} already by another request; this ${kind} changes nothing. ${remedy}`,
   );
 }
 
@@ -128,10 +169,10 @@ async function agentAttemptOf(
 }
 
 /**
- * The attempt's journal as the run's record says the owner decided: once confirmed, its attempt
- * commit is pending (D15); once rejected, nothing is left to run and the journal settles. Written
- * after the store change in the same section; run again before every decision, so a crash between
- * the two is repaired by the next confirm or reject of the attempt, whichever request it is.
+ * The attempt's journal as the run's record says the owner decided: confirmed or rejected; once
+ * nothing of the attempt is left to run (its attempt commit ran at the finalize), the journal
+ * settles. Written after the store change in the same section; run again before every decision, so
+ * a crash between the two is repaired by the next confirm or reject of the attempt.
  */
 async function recordDecision(
   dependencies: AgentAttemptDependencies,
@@ -139,32 +180,13 @@ async function recordDecision(
   record: AttemptRecord,
 ): Promise<AgentAttemptJournal> {
   const decided = record.confirmation?.state;
-  const confirmation = journal.confirmation;
-  if (confirmation?.state !== 'pending' || decided === undefined || decided === 'pending') {
+  if (journal.confirmation?.state !== 'pending' || decided === undefined || decided === 'pending') {
     return journal;
   }
 
-  const next: AgentAttemptJournal =
-    decided === 'confirmed'
-      ? {
-          ...journal,
-          confirmation: { ...confirmation, state: 'confirmed' },
-          postActions: [
-            {
-              kind: 'attempt-commit',
-              operationId: agentPostActionId(journal.operationId, 'attempt-commit'),
-              stepTitle: confirmation.stepTitle,
-              state: 'pending',
-              declared: confirmation.declared,
-            },
-          ],
-        }
-      : { ...journal, confirmation: { ...confirmation, state: 'rejected' } };
-  if (!isDeepStrictEqual(next, journal)) {
-    await dependencies.admission(undefined).admitWrite();
-    await dependencies.journal.publish(next);
-  }
-
+  const next: AgentAttemptJournal = { ...journal, confirmation: { state: decided } };
+  await dependencies.admission(undefined).admitWrite();
+  await dependencies.journal.publish(next);
   if (isAttemptJournalSettled(next)) {
     await dependencies.journal.settle(next.operationId);
   }
@@ -177,12 +199,14 @@ interface DecisionPlan<TResult> {
   readonly result: TResult;
 }
 
-/** The section shared by Confirm and Reject: repair, plan, publish, record. */
+/**
+ * The section shared by Confirm and Reject: repair, plan, publish (an ordinary owner write through
+ * the workflow store, never attributed to the agent's Turns), record.
+ */
 async function decideInSection<TResult>(
   dependencies: AgentAttemptDependencies,
   input: AgentResultDecisionInput,
-  plan: (snapshot: ExecutionSnapshot) => Promise<DecisionPlan<TResult>>,
-  storeOf: (journal: AgentAttemptJournal) => AgentAttemptDependencies['workflow']['store'],
+  plan: (snapshot: ExecutionSnapshot, record: AttemptRecord) => Promise<DecisionPlan<TResult>>,
 ): Promise<{ readonly result: TResult; readonly attemptId: string }> {
   const { workflow } = dependencies;
 
@@ -190,8 +214,8 @@ async function decideInSection<TResult>(
     const snapshot = await workflow.store.read(input.subject.specId);
     const found = await agentAttemptOf(dependencies, snapshot, input);
     const journal = await recordDecision(dependencies, found.journal, found.record);
-    const planned = await plan(snapshot);
-    await storeOf(journal).apply(input.subject.specId, planned.change);
+    const planned = await plan(snapshot, found.record);
+    await workflow.store.apply(input.subject.specId, planned.change);
     const decided = attemptRecordOf(
       dependencies,
       await workflow.store.read(input.subject.specId),
@@ -209,44 +233,70 @@ async function decideInSection<TResult>(
  * The owner's **Confirm** of an agent's result that waits for them (D17): the held transition is
  * taken with the owner as actor, with its Task decisions and effects (for example `approve-draft-tasks`
  * approves the drafts), judged again by every rule of a finish on the state as it is now (open
- * Tasks, exit gates: a refusal leaves the result waiting). Its store change is attributed to the
- * attempt's last Turn, so the attempt commit, which runs once the change is published and outside
- * the lock, takes it with the rest of the attempt's work.
+ * Tasks, exit gates: a refusal leaves the result waiting). It applies exactly what the owner was
+ * shown: `confirmsDigest` must be the projection's digest of it now, else
+ * `WORKFLOW_CONFIRMATION_CHANGED` names what Confirm would apply instead. Its change is an ordinary
+ * owner write; the owner's post actions commit it as after an owner's finish (the agent's own work
+ * was committed when its attempt finished).
  *
  * Refused `WORKFLOW_ATTEMPT_MISMATCH` for an attempt that is not an agent attempt waiting for the
- * owner or was decided by another request, `WORKFLOW_POSITION_INVALID` when nothing waits. The same
- * request (`requestId`) again is replayed: nothing changes, and the attempt commit is resumed if it
- * has not run.
+ * owner or was decided by another request (saying so, and how to finish an interrupted commit),
+ * `WORKFLOW_POSITION_INVALID` when nothing waits. The same request (`requestId`) again is replayed:
+ * nothing changes, and the post actions run again (an interruption before its commit is completed).
  */
 export async function confirmAgentResult(
   dependencies: AgentAttemptDependencies,
-  input: AgentResultDecisionInput,
+  input: ConfirmAgentResultInput,
 ): Promise<ConfirmAgentResultResult> {
   assertRequest(input, 'confirms an agent’s result');
+  if (!/^[0-9a-f]{64}$/u.test(input.confirmsDigest)) {
+    throw new WorkflowError(
+      'WORKFLOW_INPUT_INVALID',
+      'The confirms digest is the `confirmsDigest` of the result as shown (64 hex digits).',
+    );
+  }
+
   const { workflow } = dependencies;
   const operation = workflow.operation ?? ((work) => work());
 
   return operation(async () => {
-    const { result, attemptId } = await decideInSection(
-      dependencies,
-      input,
-      (snapshot) => planConfirm(dependencies, snapshot, input),
-      (journal) => dependencies.attributedStore(journal.turns.at(-1)!.invocationId),
+    const { result, attemptId } = await decideInSection(dependencies, input, (snapshot, record) =>
+      planConfirm(dependencies, snapshot, record, input),
     );
-    const postActions = await runAgentPostActions(dependencies, attemptId);
+    // An attempt commit a crash left pending runs first, so the owner's commit never takes the
+    // agent's work; then the owner's own post actions, as after an owner's finish.
+    await runAgentPostActions(dependencies, attemptId);
+    const { stepTitle, ...confirmed } = result;
+    const postActions = await (workflow.postActions ?? NO_POST_ACTIONS).afterStepFinished({
+      subject: input.subject,
+      step: input.step,
+      stepTitle,
+      attempt: input.attempt,
+      actor: input.actor,
+      replayed: confirmed.replayed === true,
+    });
 
-    return { ...result, postActions };
+    return { ...confirmed, postActions };
   });
 }
+
+type PlannedConfirm = Omit<ConfirmAgentResultResult, 'postActions'> & {
+  readonly stepTitle: string;
+};
 
 async function planConfirm(
   dependencies: AgentAttemptDependencies,
   snapshot: ExecutionSnapshot,
-  input: AgentResultDecisionInput,
-): Promise<DecisionPlan<Omit<ConfirmAgentResultResult, 'postActions'>>> {
+  record: AttemptRecord,
+  input: ConfirmAgentResultInput,
+): Promise<DecisionPlan<PlannedConfirm>> {
   const { workflow } = dependencies;
   const { subject } = input;
+  const { confirmsDigest: _shown, ...request } = input;
+  const digest = requestDigest('confirm', request);
+  assertNotDecidedByAnother(record, 'confirm', digest);
   const loaded = loadSubject(workflow.catalogue, snapshot, subject);
+  const stepTitle = findStep(loaded.definition, input.step)?.title ?? input.step;
   const context: AdvanceContext = {
     set: new ExecutionWorkingSet(snapshot, workflow.catalogue),
     catalogue: workflow.catalogue,
@@ -258,7 +308,7 @@ async function planConfirm(
     step: input.step,
     attempt: input.attempt,
     actor: input.actor,
-    requestDigest: requestDigest('confirm', input),
+    requestDigest: digest,
   });
   const finished = decision.finished;
   const outcome = finished?.outcome;
@@ -275,6 +325,7 @@ async function planConfirm(
         position: decision.nextRun.position,
         continuation: recordedContinuation(context, loaded, decision),
         replayed: true,
+        stepTitle,
       },
     };
   }
@@ -283,6 +334,20 @@ async function planConfirm(
   const step = findStep(loaded.definition, input.step);
   if (taken?.source !== 'transition' || step?.kind !== 'work') {
     throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'A confirmed result took no transition.');
+  }
+
+  // Exactly what the owner was shown: the drafts it approves (with their content) and the decisions.
+  const confirms = resultConfirmsOf(
+    taken.transition.annotations.effects,
+    executionTasks(workflow.catalogue, snapshot).tasks,
+    snapshot,
+    record,
+  );
+  if (confirmsDigestOf(confirms) !== input.confirmsDigest) {
+    throw new WorkflowError(
+      'WORKFLOW_CONFIRMATION_CHANGED',
+      `The result of ${input.step}#${String(input.attempt)} changed since you were shown it: now ${describeConfirms(confirms)}. Read it again and confirm what you see.`,
+    );
   }
 
   context.set.setRun(subject, decision.nextRun);
@@ -306,6 +371,7 @@ async function planConfirm(
       position: context.set.run(subject).position,
       continuation,
       ...(specification && specification.kind !== 'none' ? { specification } : {}),
+      stepTitle,
     },
   };
 }
@@ -313,8 +379,9 @@ async function planConfirm(
 /**
  * The owner's **Reject** of an agent's result that waits for them (D17, owner decision 2026-11-20):
  * the transition is not taken, and the step is ready to start again with the owner's `feedback` as
- * its handoff (whether the owner then starts it or asks an agent). Nothing the agent wrote is undone
- * or committed: its drafts, documents and files stay, uncommitted. Refusals and replay as
+ * its handoff (whether the owner then starts it or runs it with an agent). Nothing the agent wrote is
+ * undone: its drafts, documents and files were committed with its attempt (owner decision
+ * 2026-11-21), so the next attempt starts from a clean checkout. Refusals and replay as
  * {@link confirmAgentResult}; empty feedback is `WORKFLOW_INPUT_INVALID`.
  */
 export async function rejectAgentResult(
@@ -326,11 +393,8 @@ export async function rejectAgentResult(
   const operation = workflow.operation ?? ((work) => work());
 
   return operation(async () => {
-    const { result } = await decideInSection(
-      dependencies,
-      input,
-      (snapshot) => Promise.resolve(planReject(dependencies, snapshot, input)),
-      () => workflow.store,
+    const { result } = await decideInSection(dependencies, input, (snapshot, record) =>
+      Promise.resolve(planReject(dependencies, snapshot, record, input)),
     );
 
     return result;
@@ -340,10 +404,13 @@ export async function rejectAgentResult(
 function planReject(
   dependencies: AgentAttemptDependencies,
   snapshot: ExecutionSnapshot,
+  record: AttemptRecord,
   input: RejectAgentResultInput,
 ): DecisionPlan<RejectAgentResultResult> {
   const { workflow } = dependencies;
   const { subject } = input;
+  const digest = requestDigest('reject', input);
+  assertNotDecidedByAnother(record, 'reject', digest);
   const loaded = loadSubject(workflow.catalogue, snapshot, subject);
   const context: AdvanceContext = {
     set: new ExecutionWorkingSet(snapshot, workflow.catalogue),
@@ -357,7 +424,7 @@ function planReject(
     attempt: input.attempt,
     actor: input.actor,
     feedback: input.feedback,
-    requestDigest: requestDigest('reject', input),
+    requestDigest: digest,
   });
   if (!decision.replayed) {
     context.set.setRun(subject, decision.nextRun);

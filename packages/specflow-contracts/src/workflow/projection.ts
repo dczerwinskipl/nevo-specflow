@@ -477,6 +477,8 @@ export const ATTENTION_ITEM_REASONS = [
   'type-not-allowed',
   'definition-missing',
   'entry-gate-unsatisfied',
+  /** An agent's result waits for the owner's Confirm or Reject (D17): `confirmationAttempt`. */
+  'awaiting-confirmation',
 ] as const;
 /** The one action an item offers; a client maps it to its command or page. */
 export const ATTENTION_ACTIONS = [
@@ -494,6 +496,9 @@ export const ATTENTION_ACTIONS = [
   /** Resume the Task on hold the item is about (`on-hold → ready`). */
   'resume-task',
   'satisfy-gate',
+  /** Confirm, or reject, the agent's result that waits for the owner (`awaiting-confirmation`). */
+  'confirm-result',
+  'reject-result',
 ] as const;
 
 /**
@@ -525,6 +530,8 @@ export const WorkflowAttentionItemSchema = Type.Object({
   step: Type.Optional(StepIdSchema),
   stepTitle: Type.Optional(Type.String()),
   waitAttempt: Type.Optional(WorkflowAttemptRefSchema),
+  /** `awaiting-confirmation`: the attempt whose result waits for the owner. */
+  confirmationAttempt: Type.Optional(WorkflowAttemptRefSchema),
   reason: literals(ATTENTION_ITEM_REASONS),
   actor: literals(['owner', 'agent'] as const),
   action: literals(ATTENTION_ACTIONS),
@@ -576,7 +583,7 @@ export const WorkflowPositionSchema = Type.Union([
    * `actions.reject`): the attempt that ended, the agent's proposal (its result with where it goes
    * and the exit gates it needs now, its feedback and artifacts), and what Confirm applies besides
    * taking the transition: `approvesDrafts`, the drafts `approve-draft-tasks` approves (as they are
-   * now, in id order), and the agent's `taskDecisions`.
+   * now, in id order), and the agent's `taskDecisions`; `confirmsDigest` pins exactly that.
    */
   Type.Object({
     kind: Type.Literal('awaiting-confirmation'),
@@ -604,6 +611,11 @@ export const WorkflowPositionSchema = Type.Union([
         ),
       ),
     }),
+    /**
+     * The digest of `confirms` with each draft's content revision as read: the Confirm request names
+     * it (`confirmsDigest`), and is refused `WORKFLOW_CONFIRMATION_CHANGED` when it changed since.
+     */
+    confirmsDigest: Type.String({ pattern: '^[0-9a-f]{64}$' }),
   }),
   Type.Object({
     kind: Type.Literal('waiting'),

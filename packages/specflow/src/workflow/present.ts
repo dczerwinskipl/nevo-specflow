@@ -225,7 +225,12 @@ export function actionLines(projection: ActionProjection): string[] {
 
   const { confirm, reject } = projection.actions;
   if (confirm) {
-    lines.push(`Action: confirm "${confirm.step}" attempt ${confirm.attempt}`);
+    // Confirm applies exactly what these lines show: the digest of it goes with the command.
+    const digest =
+      projection.position.kind === 'awaiting-confirmation'
+        ? ` --confirms-digest ${projection.position.confirmsDigest}`
+        : '';
+    lines.push(`Action: confirm "${confirm.step}" attempt ${confirm.attempt}${digest}`);
   }
 
   if (reject) {
@@ -410,7 +415,7 @@ export function retryCommitLines(
   ];
 }
 
-/** `workflow confirm`: the agent's result applied, what follows and what its commit did. */
+/** `workflow confirm`: the agent's result applied as the owner's, what follows and what the owner's commit did. */
 export function confirmLines(result: ConfirmAgentResultResult): string[] {
   return [
     `${result.replayed ? 'Already confirmed' : 'Confirmed'}: ${subjectLabel(result.subject)} via "${result.transition}"`,
@@ -424,7 +429,7 @@ export function confirmLines(result: ConfirmAgentResultResult): string[] {
 /** `workflow reject`: back at the step, with the owner's feedback as its handoff. */
 export function rejectLines(result: RejectAgentResultResult): string[] {
   return [
-    `${result.replayed ? 'Already rejected' : 'Rejected'}: ${subjectLabel(result.subject)}; the agent's work stays uncommitted`,
+    `${result.replayed ? 'Already rejected' : 'Rejected'}: ${subjectLabel(result.subject)}; the agent's work was committed with its attempt`,
     `Position: ${positionLine(result.position)}`,
     `Next: ${continuationLine(result.continuation)}`,
   ];

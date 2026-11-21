@@ -21,7 +21,6 @@ import { WorkflowError } from '../errors';
 import type { TaskProposal } from '../tasks/tasks';
 import type { TaskResourceIssue } from '../../tasks/resource/validate';
 import {
-  pendingOwnerDecisionsOf,
   type ExecutionTask,
   type PendingOwnerDecisions,
   type WorkflowActor,
@@ -42,6 +41,7 @@ import {
   type OpenTask,
 } from '../tasks/tasks';
 import { continuationOf, waitDecision } from './advance';
+import { confirmsDigestOf, resultConfirmsOf } from './confirms';
 import { deriveAttention, startBlockerAttention } from './attention';
 import type { AttentionItem } from '../attention/model';
 import type { BlockingTask } from '../tasks/tasks';
@@ -277,6 +277,11 @@ export type ActionPosition =
         /** The agent's Task status decisions, applied on Confirm. */
         readonly taskDecisions?: PendingOwnerDecisions['taskDecisions'];
       };
+      /**
+       * The digest of `confirms` with each draft's content revision: Confirm names it, and is
+       * refused (`WORKFLOW_CONFIRMATION_CHANGED`) when what it would apply changed since.
+       */
+      readonly confirmsDigest: string;
     }
   /** The subject has not started or is ready, but its next step cannot start. */
   | {
@@ -783,6 +788,8 @@ interface RunInput {
   /** Whether a change of one of a Task's documents is pending (D03). */
   readonly taskDocumentChangePending: (specId: string, taskId: string) => Promise<boolean>;
   readonly tasks: ExecutionTasks;
+  /** The snapshot read: the content revisions of what a Confirm applies (`confirmsDigest`). */
+  readonly snapshot: ExecutionSnapshot;
   readonly gates: GateReading;
 }
 
@@ -1045,13 +1052,12 @@ async function awaitingProjection(
     );
   }
 
-  const drafts = declared.annotations.effects.includes('approve-draft-tasks')
-    ? input.tasks.tasks
-        .filter((task) => task.status === 'draft')
-        .map((task) => task.taskId)
-        .sort()
-    : [];
-  const taskDecisions = pendingOwnerDecisionsOf(record);
+  const confirms = resultConfirmsOf(
+    declared.annotations.effects,
+    input.tasks.tasks,
+    input.snapshot,
+    record,
+  );
   const ref = { step: record.step, attempt: record.attempt };
 
   return {
@@ -1070,11 +1076,12 @@ async function awaitingProjection(
         artifacts: outcome.artifacts,
       },
       confirms: {
-        ...(declared.annotations.effects.includes('approve-draft-tasks')
-          ? { approvesDrafts: drafts }
+        ...(confirms.approvesDrafts !== undefined
+          ? { approvesDrafts: confirms.approvesDrafts.map((draft) => draft.taskId) }
           : {}),
-        ...(taskDecisions.length > 0 ? { taskDecisions } : {}),
+        ...(confirms.taskDecisions.length > 0 ? { taskDecisions: confirms.taskDecisions } : {}),
       },
+      confirmsDigest: confirmsDigestOf(confirms),
     },
     actions: { confirm: ref, reject: ref },
   };
@@ -1210,6 +1217,7 @@ async function specificationPosition(
         taskDocumentChangePending: (specId, taskId) =>
           dependencies.references.pendingDocumentChange(specId, taskId),
         tasks: executionTasks(catalogue, snapshot),
+        snapshot,
         gates,
       }),
     )),
@@ -1405,6 +1413,7 @@ export async function taskProjection(
     taskDocumentChangePending: (specId, taskId) =>
       dependencies.references.pendingDocumentChange(specId, taskId),
     tasks,
+    snapshot,
     gates,
   });
 

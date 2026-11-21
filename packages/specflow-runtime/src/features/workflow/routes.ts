@@ -312,6 +312,7 @@ export const workflowEndpoint: FastifyPluginCallback<WorkflowRoutesOptions> = (
           step: request.body.step,
           attempt: request.body.attempt,
           requestId: request.body.requestId,
+          confirmsDigest: request.body.confirmsDigest,
           actor: actorOf(request),
         });
 

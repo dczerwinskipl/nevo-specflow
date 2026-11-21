@@ -143,7 +143,7 @@ function fakePort(overrides: Partial<WorkflowPort> = {}): { port: WorkflowPort; 
       transition: 'approved',
       position: { state: 'active', step: 'implementation', attempt: 1 },
       continuation: { kind: 'none', reason: 'waiting-for-tasks' },
-      postActions: [{ action: 'attempt-commit', status: 'completed' }],
+      postActions: [{ action: 'commit-execution-state', status: 'completed' }],
     }),
     reject: record('reject', {
       subject: subjectSpec,
@@ -449,26 +449,32 @@ describe('workflow action routes', () => {
     await refused.close();
   });
 
-  it('confirms an agent’s result as the owner, with its request id', async () => {
+  it('confirms an agent’s result as the owner, with its request id and what it was shown', async () => {
     const { port, calls } = fakePort();
     const app = appWith(port);
     const url = `/api/specs/${SPEC}/workflow/confirmation/confirm`;
-    const payload = { requestId: REQUEST_ID, step: 'review', attempt: 1 };
+    const payload = {
+      requestId: REQUEST_ID,
+      step: 'review',
+      attempt: 1,
+      confirmsDigest: 'd'.repeat(64),
+    };
 
     const response = await app.inject({ method: 'POST', url, payload });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
       transition: 'approved',
-      postActions: [{ action: 'attempt-commit', status: 'completed' }],
+      postActions: [{ action: 'commit-execution-state', status: 'completed' }],
     });
     expect(calls.last).toMatchObject({
       subject: subjectSpec,
       ...payload,
       actor: { class: 'human', details: { trust: 'authenticated' } },
     });
-    // No request id, or an actor in the body, is refused before the Engine.
+    // No request id, no digest of what was shown, or an actor in the body, is refused before the Engine.
     for (const body of [
-      { step: 'review', attempt: 1 },
+      { step: 'review', attempt: 1, confirmsDigest: 'd'.repeat(64) },
+      { requestId: REQUEST_ID, step: 'review', attempt: 1 },
       { ...payload, actor: { class: 'agent' } },
     ]) {
       expect((await app.inject({ method: 'POST', url, payload: body })).statusCode).toBe(400);

@@ -18,7 +18,9 @@ export { BLOCKING_TASK_CAUSES, type BlockingTask, type BlockingTaskCause } from 
  * - and the start blockers of an approved Task that has not started that need a person
  *   (`context-unresolved`, `dependency-unsatisfiable`, `type-not-allowed`, `definition-missing`,
  *   `entry-gate-unsatisfied`). Waiting for dependencies that can still complete, an awaited process
- *   artifact, being ready to start and being a draft are not attention.
+ *   artifact, being ready to start and being a draft are not attention;
+ * - `awaiting-confirmation`: an agent's result waits for the owner's Confirm or Reject (D17), on
+ *   the Specification or the Task whose run waits (`confirmationAttempt`).
  */
 export const ATTENTION_ITEM_REASONS = [
   ...ATTENTION_REASONS,
@@ -32,6 +34,7 @@ export const ATTENTION_ITEM_REASONS = [
   'type-not-allowed',
   'definition-missing',
   'entry-gate-unsatisfied',
+  'awaiting-confirmation',
 ] as const;
 export type AttentionItemReason = (typeof ATTENTION_ITEM_REASONS)[number];
 
@@ -59,6 +62,10 @@ export const ATTENTION_ACTIONS = [
   'resume-task',
   /** Make an entry gate of the step hold (for example write the document it names). */
   'satisfy-gate',
+  /** Confirm the agent's result that waits for the owner (D17, `confirmationAttempt`). */
+  'confirm-result',
+  /** Reject it: the step goes back to ready with the owner's feedback. */
+  'reject-result',
 ] as const;
 export type AttentionAction = (typeof ATTENTION_ACTIONS)[number];
 
@@ -88,6 +95,8 @@ export interface AttentionItem {
   /** The step's title, from the definition. */
   readonly stepTitle?: string;
   readonly waitAttempt?: { readonly step: string; readonly attempt: number };
+  /** `awaiting-confirmation`: the attempt whose result waits for the owner. */
+  readonly confirmationAttempt?: { readonly step: string; readonly attempt: number };
   readonly reason: AttentionItemReason;
   readonly actor: AttentionActor;
   /** The one primary action. */

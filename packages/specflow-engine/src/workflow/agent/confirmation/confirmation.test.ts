@@ -1,6 +1,11 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import type { ExecutionCatalogue } from '../../definitions/catalogue';
+import { createDefaultDefinitionRegistry } from '../../../definitions/shipped-registry';
+import { loadDefinitions } from '../../../specs/definitions/loader';
+import { MemoryDefinitionSource } from '../../../specs/definitions/test-support';
+import { resolveExecutionCatalogue, type ExecutionCatalogue } from '../../definitions/catalogue';
+import { inspectActions } from '../../operations/actions';
+import { deriveAttention } from '../../operations/attention';
 import { finishStep } from '../../operations/finish';
 import { inspectExecution } from '../../operations/inspect';
 import {
@@ -10,26 +15,56 @@ import {
   owner,
   positionOf,
   runToBreakdown,
+  seedDefinitionFiles,
   seedExecutionCatalogue,
   specification,
+  specificationWithTasks,
   startSpecification,
+  task,
 } from '../../operations/operations.test-support';
+import { startTaskExecution } from '../../operations/start';
+import { editTask } from '../../operations/task-resource';
 import type { AgentActor } from '../../state/model';
+import type { ExecutionSnapshot } from '../../state/store';
 import { finalizeAgentAttempt } from '../finalize/finalize';
+import { retryAgentAttemptCommit } from '../finalize/post-actions';
 import { memoryAgentDependencies } from '../memory.test-support';
 import { proposeAgentFinish } from '../proposal/propose';
 import { startAgentAttempt } from '../start';
 import { confirmAgentResult, rejectAgentResult } from './confirmation';
 
 let catalogue: ExecutionCatalogue;
+/** The seed workflows, with an exit gate on the breakdown review: a Specification `note`. */
+let gated: ExecutionCatalogue;
 
 beforeAll(async () => {
   catalogue = await seedExecutionCatalogue();
+  const files = await seedDefinitionFiles();
+  files['workflow/specification-standard.yaml'] = (
+    files['workflow/specification-standard.yaml'] ?? ''
+  ).replace(
+    '    purpose: No gaps or conflicts between the Specification, solution and Tasks.\n',
+    [
+      '    purpose: No gaps or conflicts between the Specification, solution and Tasks.',
+      '    exitGates:',
+      '      - type: document',
+      '        documentType: note',
+      '',
+    ].join('\n'),
+  );
+  const loaded = await loadDefinitions(
+    new MemoryDefinitionSource(files),
+    createDefaultDefinitionRegistry(),
+  );
+  expect([...(loaded.invalid.get('workflow') ?? [])]).toEqual([]);
+  gated = resolveExecutionCatalogue(loaded);
 });
 
 const WORKSPACE = '1f0c6a52-6a43-4c55-9d3e-1b7a5d2f8c01';
 const ATTEMPT_ID = '2a1d7b63-7b54-4d66-8e4f-2c8b6e3a9d02';
 const INVOCATION = '3b2e8c74-8c65-4e77-9f5a-3d9c7f4bae03';
+const ATTEMPT_2 = '4c3f9d85-9d76-4f88-8a6b-4ead8a5cbf04';
+const INVOCATION_2 = '7f6ac0b8-c0a9-4cbb-9d9e-7bd0e38fe207';
 const REQUEST_1 = '5d4fae96-ae87-4a99-9b7c-5fbec16dc005';
 const REQUEST_2 = '6e5fbfa7-bf98-4baa-8c8d-6acfd27ed106';
 const reviewer: AgentActor = {
@@ -38,6 +73,8 @@ const reviewer: AgentActor = {
 };
 const REVIEW = { subject: specification, step: 'breakdown-review', attempt: 1 } as const;
 const AWAITING = { state: 'awaiting-confirmation', step: 'breakdown-review', attempt: 1 } as const;
+
+type MemoryFixture = ReturnType<typeof memoryAgentDependencies>;
 
 /**
  * The breakdown drafted {@link TWO_TASKS}; an agent reviewed them and proposed `pass`, whose
@@ -48,8 +85,10 @@ async function reviewAwaitingOwner(
     result: 'pass',
     feedback: 'Both Tasks are ready.',
   },
+  definitions: ExecutionCatalogue = catalogue,
+  beforeProposal: (fixture: MemoryFixture) => void = () => undefined,
 ) {
-  const fixture = memoryAgentDependencies(catalogue, ATTEMPT_ID);
+  const fixture = memoryAgentDependencies(definitions, ATTEMPT_ID);
   const { dependencies, workflow, claims, state } = fixture;
   await runToBreakdown(workflow);
   await finishStep(workflow, {
@@ -68,6 +107,7 @@ async function reviewAwaitingOwner(
     workspaceId: WORKSPACE,
     turn: { invocationId: INVOCATION, turnId: 'turn-1' },
   });
+  beforeProposal(fixture);
   const proposed = await proposeAgentFinish(dependencies, {
     turn: { attemptId: ATTEMPT_ID, invocationId: INVOCATION, actor: reviewer, ...REVIEW },
     input,
@@ -83,6 +123,8 @@ async function reviewAwaitingOwner(
   return { ...fixture, proposed, finalized };
 }
 
+type Fixture = Awaited<ReturnType<typeof reviewAwaitingOwner>>;
+
 async function taskStatuses(fixture: { workflow: Parameters<typeof inspectExecution>[0] }) {
   const inspection = await inspectExecution(fixture.workflow, SPEC);
 
@@ -91,52 +133,176 @@ async function taskStatuses(fixture: { workflow: Parameters<typeof inspectExecut
   );
 }
 
+/** The awaited result as the projection shows it to the owner. */
+async function shown(fixture: Pick<Fixture, 'workflow'>) {
+  const projection = await inspectActions(fixture.workflow, specification);
+  const position = projection.position;
+  if (position.kind !== 'awaiting-confirmation') {
+    throw new Error(`Nothing awaits a confirmation (${position.kind}).`);
+  }
+
+  return position;
+}
+
+/** The owner's Confirm of what the projection shows now. */
+async function confirmShown(fixture: Fixture, requestId = REQUEST_1) {
+  const { confirmsDigest } = await shown(fixture);
+
+  return { ...REVIEW, actor: owner, requestId, confirmsDigest };
+}
+
 describe('an agent result that waits for the owner (D17)', () => {
-  it('is recorded and finalized into a pending confirmation, not applied', async () => {
+  it('waits for the owner, and its attempt commit ran when the attempt finished', async () => {
     const fixture = await reviewAwaitingOwner();
 
     expect(fixture.proposed.proposal).toMatchObject({ state: 'pending', transition: 'approved' });
-    expect(fixture.finalized).toMatchObject({ kind: 'awaiting-confirmation' });
+    expect(fixture.finalized).toMatchObject({
+      kind: 'awaiting-confirmation',
+      postActions: [{ action: 'attempt-commit', status: 'completed' }],
+    });
     expect(await positionOf(fixture.workflow, specification)).toEqual(AWAITING);
     expect(await taskStatuses(fixture)).toEqual({ api: 'draft', screen: 'draft' });
-    // The attempt commit waits for the owner's confirmation: no post action ran.
-    expect(fixture.state.postActionRuns).toEqual([]);
+    // Owner decision 2026-11-21: the attempt commit runs at the finish, before the owner decides.
+    expect(fixture.state.postActionRuns).toHaveLength(1);
     const journal = await fixture.dependencies.journal.read(ATTEMPT_ID);
-    expect(journal).toMatchObject({ proposal: { state: 'finalized' } });
-    expect(journal?.confirmation?.state).toBe('pending');
-    expect(journal?.postActions).toBeUndefined();
+    expect(journal).toMatchObject({
+      proposal: { state: 'finalized' },
+      confirmation: { state: 'pending' },
+      postActions: [{ kind: 'attempt-commit', state: 'done' }],
+    });
+    // Still active: the owner's decision is left to record.
+    expect(fixture.journal.journals.has(ATTEMPT_ID)).toBe(true);
+
+    const position = await shown(fixture);
+    expect(position.confirms).toEqual({ approvesDrafts: ['api', 'screen'] });
+    expect(position.confirmsDigest).toMatch(/^[0-9a-f]{64}$/u);
   });
 
-  it('is applied by the owner’s Confirm: drafts approved, next step, attempt commit', async () => {
+  it('asks the owner to confirm or reject it, naming the attempt', async () => {
     const fixture = await reviewAwaitingOwner();
-    const confirm = { ...REVIEW, actor: owner, requestId: REQUEST_1 };
+    const snapshot = await fixture.workflow.store.read(SPEC);
+
+    expect(deriveAttention(catalogue, snapshot)).toEqual([
+      expect.objectContaining({
+        subject: specification,
+        reason: 'awaiting-confirmation',
+        actor: 'owner',
+        action: 'confirm-result',
+        secondaryAction: 'reject-result',
+        step: 'breakdown-review',
+        stepTitle: 'Review the breakdown',
+        confirmationAttempt: { step: 'breakdown-review', attempt: 1 },
+      }),
+    ]);
+  });
+
+  it('is applied by the owner’s Confirm as an owner write: drafts approved, no second attempt commit', async () => {
+    const fixture = await reviewAwaitingOwner();
+    const confirm = await confirmShown(fixture);
 
     const confirmed = await confirmAgentResult(fixture.dependencies, confirm);
     expect(confirmed).toMatchObject({
       transition: 'approved',
       position: { state: 'active', step: 'implementation', attempt: 1 },
-      postActions: [{ action: 'attempt-commit', status: 'completed' }],
+      postActions: [{ action: 'commit-execution-state', status: 'completed' }],
     });
     expect(await taskStatuses(fixture)).toEqual({ api: 'ready', screen: 'ready' });
+    // The attempt commit ran once, at the finish; Confirm is committed by the owner's post action.
     expect(fixture.state.postActionRuns).toHaveLength(1);
+    expect(fixture.state.ownerPostActions).toEqual([
+      expect.objectContaining({
+        step: 'breakdown-review',
+        stepTitle: 'Review the breakdown',
+        attempt: 1,
+        actor: owner,
+        replayed: false,
+      }),
+    ]);
     // After the confirmation's section, never inside a lock section.
-    expect(fixture.events.indexOf('post-action')).toBeGreaterThan(fixture.events.indexOf('unlock'));
-    expect(fixture.events).not.toContain('post-action-in-lock');
+    expect(fixture.events.indexOf('owner-post-action')).toBeGreaterThan(
+      fixture.events.indexOf('unlock'),
+    );
+    expect(fixture.events).not.toContain('owner-post-action-in-lock');
     expect(fixture.journal.settled.get(ATTEMPT_ID)?.confirmation?.state).toBe('confirmed');
 
-    // The same request again changes nothing and commits nothing again; another one is refused.
+    // The same request again changes nothing and runs the owner's commit again (an interrupted
+    // one completes); another request is refused, saying how to finish the commit.
     const again = await confirmAgentResult(fixture.dependencies, confirm);
-    expect(again).toMatchObject({ replayed: true, postActions: [] });
+    expect(again).toMatchObject({
+      replayed: true,
+      postActions: [{ action: 'commit-execution-state' }],
+    });
     expect(fixture.state.postActionRuns).toHaveLength(1);
-    await expect(
-      confirmAgentResult(fixture.dependencies, { ...confirm, requestId: REQUEST_2 }),
-    ).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_MISMATCH' });
+    expect(fixture.state.ownerPostActions.at(-1)).toMatchObject({ replayed: true });
+    // The request id alone names the request: what was shown is judged only when it applies.
+    expect(
+      await confirmAgentResult(fixture.dependencies, {
+        ...confirm,
+        confirmsDigest: 'e'.repeat(64),
+      }),
+    ).toMatchObject({ replayed: true });
+    const other = confirmAgentResult(fixture.dependencies, { ...confirm, requestId: REQUEST_2 });
+    await expect(other).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_MISMATCH' });
+    await expect(other).rejects.toThrow(/confirmed already.*workflow retry-commit/su);
     await expect(
       rejectAgentResult(fixture.dependencies, { ...confirm, feedback: 'No.' }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_MISMATCH' });
+
+    // Retry commit of a confirmed attempt runs the owner's commit of the confirmation again.
+    const retried = await retryAgentAttemptCommit(fixture.dependencies, {
+      ...REVIEW,
+      actor: owner,
+    });
+    expect(retried.postActions).toEqual([
+      { action: 'commit-execution-state', status: 'completed' },
+    ]);
   });
 
-  it('goes back to the step on the owner’s Reject, with the feedback, nothing committed', async () => {
+  it('is refused when what it applies changed since the owner was shown it', async () => {
+    const fixture = await reviewAwaitingOwner();
+    const confirm = await confirmShown(fixture);
+    const projection = await inspectActions(fixture.workflow, task('screen'));
+    await editTask(fixture.workflow, {
+      specId: SPEC,
+      taskId: 'screen',
+      expectedRevision: projection.task?.revision ?? '',
+      title: 'Screen, edited after the review',
+      actor: owner,
+    });
+
+    const refused = confirmAgentResult(fixture.dependencies, confirm);
+    await expect(refused).rejects.toMatchObject({ code: 'WORKFLOW_CONFIRMATION_CHANGED' });
+    await expect(refused).rejects.toThrow(/approves the drafts api, screen as they are now/u);
+    expect(await positionOf(fixture.workflow, specification)).toEqual(AWAITING);
+    expect(await taskStatuses(fixture)).toEqual({ api: 'draft', screen: 'draft' });
+
+    // What the owner reads now is what Confirm applies.
+    expect((await shown(fixture)).confirmsDigest).not.toBe(confirm.confirmsDigest);
+    await confirmAgentResult(fixture.dependencies, await confirmShown(fixture));
+    expect(await taskStatuses(fixture)).toEqual({ api: 'ready', screen: 'ready' });
+  });
+
+  it('stays waiting, with the reasons, when an exit gate no longer holds at Confirm', async () => {
+    const fixture = await reviewAwaitingOwner(undefined, gated, ({ workflow }) => {
+      workflow.references.gateDocuments.push({ type: 'note', id: 'review', present: true });
+    });
+    expect(fixture.finalized).toMatchObject({ kind: 'awaiting-confirmation' });
+    const confirm = await confirmShown(fixture);
+    fixture.workflow.references.gateDocuments.length = 0;
+
+    await expect(confirmAgentResult(fixture.dependencies, confirm)).rejects.toMatchObject({
+      code: 'WORKFLOW_GATE_UNSATISFIED',
+    });
+    expect(await positionOf(fixture.workflow, specification)).toEqual(AWAITING);
+    expect(await taskStatuses(fixture)).toEqual({ api: 'draft', screen: 'draft' });
+    const position = await shown(fixture);
+    expect(position.proposal.transition.gates).toEqual([
+      expect.objectContaining({ type: 'document', status: 'unsatisfied' }),
+    ]);
+    expect(fixture.state.ownerPostActions).toEqual([]);
+  });
+
+  it('goes back to the step on the owner’s Reject; the next agent attempt starts clean', async () => {
     const fixture = await reviewAwaitingOwner();
     const reject = {
       ...REVIEW,
@@ -154,10 +320,13 @@ describe('an agent result that waits for the owner (D17)', () => {
       continuation: { kind: 'attention', step: 'breakdown-review' },
     });
     expect(await taskStatuses(fixture)).toEqual({ api: 'draft', screen: 'draft' });
-    expect(fixture.state.postActionRuns).toEqual([]);
-    const settled = fixture.journal.settled.get(ATTEMPT_ID);
-    expect(settled?.confirmation?.state).toBe('rejected');
-    expect(settled?.postActions).toBeUndefined();
+    // The agent's work was committed when its attempt finished; nothing of it is left to run.
+    expect(fixture.state.postActionRuns).toHaveLength(1);
+    expect(fixture.journal.settled.get(ATTEMPT_ID)).toMatchObject({
+      confirmation: { state: 'rejected' },
+      postActions: [{ kind: 'attempt-commit', state: 'done' }],
+    });
+    expect(fixture.journal.journals.size).toBe(0);
 
     // The next attempt reads the owner's feedback first.
     const inspection = await inspectExecution(fixture.workflow, SPEC);
@@ -167,8 +336,21 @@ describe('an agent result that waits for the owner (D17)', () => {
       feedback: 'Split the screen Task.',
     });
     expect((await rejectAgentResult(fixture.dependencies, reject)).replayed).toBe(true);
-    const started = await startSpecification(fixture.workflow, owner);
-    expect(started).toMatchObject({ kind: 'started' });
+
+    // A new agent attempt of the step starts.
+    fixture.claims.set(INVOCATION_2, { phase: 'dispatched' });
+    fixture.state.claimDispatched = true;
+    await startAgentAttempt(
+      { ...fixture.dependencies, newId: () => ATTEMPT_2 },
+      {
+        subject: specification,
+        archetype: 'feature',
+        actor: reviewer,
+        expected: { step: 'breakdown-review' },
+        workspaceId: WORKSPACE,
+        turn: { invocationId: INVOCATION_2, turnId: 'turn-2' },
+      },
+    );
     expect(await positionOf(fixture.workflow, specification)).toEqual({
       state: 'active',
       step: 'breakdown-review',
@@ -178,14 +360,17 @@ describe('an agent result that waits for the owner (D17)', () => {
 
   it('is decided only by the owner, and only while it waits', async () => {
     const fixture = await reviewAwaitingOwner();
-    const decide = { ...REVIEW, requestId: REQUEST_1 };
+    const decide = await confirmShown(fixture);
 
     await expect(
       confirmAgentResult(fixture.dependencies, { ...decide, actor: reviewer as never }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_EXECUTOR_NOT_ALLOWED' });
     await expect(
-      confirmAgentResult(fixture.dependencies, { ...decide, step: 'breakdown', actor: owner }),
+      confirmAgentResult(fixture.dependencies, { ...decide, step: 'breakdown' }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_MISMATCH' });
+    await expect(
+      confirmAgentResult(fixture.dependencies, { ...decide, confirmsDigest: 'not-a-digest' }),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_INPUT_INVALID' });
     await expect(startSpecification(fixture.workflow, owner)).rejects.toMatchObject({
       code: 'WORKFLOW_POSITION_INVALID',
     });
@@ -200,12 +385,11 @@ describe('an agent result that waits for the owner (D17)', () => {
     });
     expect(fixture.finalized).toMatchObject({ kind: 'awaiting-confirmation' });
     expect(await taskStatuses(fixture)).toEqual({ api: 'draft', screen: 'draft' });
-
-    await confirmAgentResult(fixture.dependencies, {
-      ...REVIEW,
-      actor: owner,
-      requestId: REQUEST_1,
+    expect((await shown(fixture)).confirms).toEqual({
+      taskDecisions: [{ taskId: 'screen', status: 'cancelled', reason: 'Out of scope.' }],
     });
+
+    await confirmAgentResult(fixture.dependencies, await confirmShown(fixture));
     expect(await taskStatuses(fixture)).toEqual({ api: 'draft', screen: 'cancelled' });
     expect(await positionOf(fixture.workflow, specification)).toEqual({
       state: 'ready',
@@ -232,5 +416,62 @@ describe('an agent result that waits for the owner (D17)', () => {
     });
     expect(finished.position).toEqual({ state: 'active', step: 'implementation', attempt: 1 });
     expect(await taskStatuses({ workflow })).toEqual({ api: 'ready', screen: 'ready' });
+  });
+});
+
+/** The snapshot with the Task's active attempt ended into a result that waits (as a finalize leaves it). */
+function awaitingTask(snapshot: ExecutionSnapshot, taskId: string): ExecutionSnapshot {
+  return {
+    ...snapshot,
+    runs: snapshot.runs.map((record) => {
+      const run = record.value.run;
+      if (record.value.taskId !== taskId || run.position.state !== 'active') {
+        return record;
+      }
+
+      const { step, attempt } = run.position;
+
+      return {
+        ...record,
+        value: {
+          ...record.value,
+          run: {
+            ...run,
+            position: { state: 'awaiting-confirmation', step, attempt },
+            attempts: run.attempts.map((entry) =>
+              entry.step === step && entry.attempt === attempt
+                ? {
+                    ...entry,
+                    endedAt: '2026-11-21T10:00:00.000Z',
+                    finishedBy: claude,
+                    outcome: { kind: 'transition', transition: 'implemented', artifacts: [] },
+                    confirmation: { state: 'pending' },
+                  }
+                : entry,
+            ),
+          },
+        },
+      };
+    }),
+  };
+}
+
+describe('the attention of a Task whose agent result waits for the owner', () => {
+  it('asks the owner to confirm or reject it on the Task', async () => {
+    const { workflow } = memoryAgentDependencies(catalogue, ATTEMPT_ID);
+    await specificationWithTasks(workflow);
+    await startTaskExecution(workflow, { specId: SPEC, taskId: 'api', actor: claude });
+
+    const items = deriveAttention(catalogue, awaitingTask(await workflow.store.read(SPEC), 'api'));
+    expect(items).toEqual([
+      expect.objectContaining({
+        subject: task('api'),
+        reason: 'awaiting-confirmation',
+        action: 'confirm-result',
+        secondaryAction: 'reject-result',
+        stepTitle: 'Implement',
+        confirmationAttempt: { step: 'implement', attempt: 1 },
+      }),
+    ]);
   });
 });

@@ -213,10 +213,7 @@ export interface AgentAttemptJournal {
   readonly returnRequest?: AgentReturnRequest;
   /** The dirty set of the last Turn whose claim settled. */
   readonly dirtySet?: AgentDirtySet;
-  /**
-   * Only once the attempt was finalized (its proposal `finalized`); for a proposal held for the
-   * owner's confirmation, only once the owner confirmed it.
-   */
+  /** Only once the attempt was finalized (its proposal `finalized`), whatever the owner decides after. */
   readonly postActions?: readonly AgentPostActionRecord[];
   /** Only when the finalize held the proposal for the owner's confirmation (D17). */
   readonly confirmation?: AgentOwnerConfirmation;
@@ -224,15 +221,13 @@ export interface AgentAttemptJournal {
 
 /**
  * A finalized proposal that takes a decision only the owner takes (D17): the attempt ended and the
- * run waits at its transition. Its attempt commit (D15) is recorded as a post action only when the
- * owner confirms (the step then finishes); a rejected proposal's work is never committed by the
- * Engine and stays uncommitted (Close lists it). `stepTitle` and `declared` are what that commit
- * takes, as judged when the step state was published.
+ * run waits at its transition. Its attempt commit (D15) is recorded as a post action at the finalize
+ * like any finished attempt's (owner decision 2026-11-21: commit at finish), so nothing of the
+ * agent's work stays uncommitted whatever the owner decides; Confirm then applies the transition as
+ * an ordinary owner write, and Reject returns to the step. The journal stays active until decided.
  */
 export interface AgentOwnerConfirmation {
   readonly state: 'pending' | 'confirmed' | 'rejected';
-  readonly stepTitle: string;
-  readonly declared: readonly AgentDeclaredPath[];
 }
 
 /** The attempt ended: its proposal was published, or the owner's return was applied. */
@@ -391,18 +386,6 @@ const JournalSchema = Type.Object(
             Type.Literal('confirmed'),
             Type.Literal('rejected'),
           ]),
-          stepTitle: text(1000),
-          declared: Type.Array(
-            Type.Object(
-              {
-                path: text(AGENT_DIRTY_PATH_LENGTH_MAX),
-                sha256: Type.Union([sha256, Type.Null()]),
-                oversize: Type.Optional(Type.Literal(true)),
-              },
-              closed,
-            ),
-            { maxItems: AGENT_DIRTY_PATHS_MAX },
-          ),
         },
         closed,
       ),

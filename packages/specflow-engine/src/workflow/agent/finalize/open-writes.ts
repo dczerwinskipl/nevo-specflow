@@ -8,9 +8,7 @@ import { listDocumentChangeJournals } from '../../../specs/documents/write/journ
  * by a broker write of an owned execution; `undefined` for any other writer.
  */
 export function documentChangeExecutionId(journal: DocumentChangeJournal): string | undefined {
-  const agent = (journal as { readonly agent?: { readonly executionId?: unknown } }).agent;
-
-  return typeof agent?.executionId === 'string' ? agent.executionId : undefined;
+  return journal.agent?.executionId;
 }
 
 /**

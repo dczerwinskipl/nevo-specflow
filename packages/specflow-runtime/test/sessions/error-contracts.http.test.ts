@@ -15,7 +15,7 @@ import { SessionError } from '../../src/features/sessions';
 
 /** Fastify's codes for a body it cannot read, answered by the Runtime error handling. */
 type RequestErrorCode = 'FST_ERR_CTP_INVALID_JSON_BODY' | 'FST_ERR_CTP_INVALID_MEDIA_TYPE';
-import { createOwnerRuntimeApp } from '../support/owner-credential';
+import { createRuntimeApp } from '../../src/server/app';
 import { generateOpenApiDocument, type RuntimeOpenApiDocument } from '../../src/server/openapi';
 import { passwordConfig } from '../auth/support/config';
 
@@ -71,7 +71,7 @@ async function runtime(sessions: boolean) {
     directory = await mkdtemp(join(tmpdir(), 'nevo-session-errors-'));
   }
 
-  const app = await createOwnerRuntimeApp(
+  const app = await createRuntimeApp(
     sessions
       ? { ...config, sessions: { enabled: true, providers: { mock: { enabled: true } } } }
       : config,

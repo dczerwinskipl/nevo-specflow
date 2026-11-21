@@ -8,7 +8,6 @@ import { expect, it, vi } from 'vitest';
 import { bootstrapProjectHome } from '@nevo/specflow-engine/testing';
 import type { SessionSnapshot } from '@nevo/specflow-contracts/sessions';
 import { createRuntimeApp } from '../../src/server/app';
-import { createOwnerRuntimeApp } from '../support/owner-credential';
 import { passwordConfig } from '../auth/support/config';
 
 const fixture = vi.hoisted(() => ({ home: '', entry: '', authentication: 'a'.repeat(64) }));
@@ -106,7 +105,7 @@ it('preserves assigned Codex context, Engine settlement and canonical history ac
     const engine = await bootstrapProjectHome(workspace);
     const config = passwordConfig();
     const open = () =>
-      createOwnerRuntimeApp(
+      createRuntimeApp(
         {
           ...config,
           authentication: { ...config.authentication, mode: 'none' },

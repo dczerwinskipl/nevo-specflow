@@ -360,8 +360,7 @@ implemented.** It follows the [Ask agent contract](../../../ideas/specflow-engin
 (D11 to D21) and is delivered by the slices of its
 [delivery plan](../../../ideas/specflow-engine/reusable-workflow-manual-execution/ask-agent-delivery-plan.md).
 The mock is the Storybook set **SpecFlow/Screens/Ask agent (mock)**: the real routed screens with
-the mock's Now block, dialogs and the regions a state changes; device pairing is in
-[Device pairing](device-pairing.md). Ask agent adds no new surface: it lives in the Now block, its
+the mock's Now block, dialogs and the regions a state changes. Ask agent adds no new surface: it lives in the Now block, its
 dialogs, the Close dialog and the Task history. User copy says "the agent stopped", never "turn",
 "claim" or "invocation".
 
@@ -389,7 +388,7 @@ outcome and on which subject. The exact read model belongs to slices 6 to 9.
 
 **Action placement rule (owner decision 2026-11-20).** In every Ask agent dialog and Now block
 state, an action that resolves a blocker lives inside that blocker's alert or note (Check again,
-Retry commit, Cancel the pairing code). A dialog footer holds only Cancel and the one primary
+Retry commit). A dialog footer holds only Cancel and the one primary
 action, disabled while blocked; a Now action row holds the main action and at most one secondary.
 Never three buttons in one row.
 
@@ -401,7 +400,7 @@ proposes a result); decisions that need a person stay with the person. Then, in 
 
 1. **What blocks the start**, only when something does: one attention `Alert` per precondition with
    what, why and what to do, and the action that resolves it at the bottom of that alert (a
-   secondary **Check again**, plus **Cancel the pairing code** for a waiting code). The footer stays
+   secondary **Check again**). The footer stays
    **Cancel** and **Ask agent** (primary, disabled while anything blocks):
    - **Uncommitted changes** (clean baseline): "Commit or undo these changes first": these files
      changed outside SpecFlow and are not committed; the agent starts from a committed checkout so
@@ -412,8 +411,6 @@ proposes a result); decisions that need a person stay with the person. Then, in 
      role does the step, that the project names no agent and model for it, and **Open agent
      settings**. The Session section then shows "Agent and model not chosen", never a preselected
      picker.
-   - **Pairing code waiting** (D21): "Agents cannot start while a pairing code is waiting", why, and
-     what to do: pair a device with it, or **Cancel the pairing code** (owner decision 2026-11-20).
    - **The session to continue is gone** (`session-unavailable`): the workflow continues the session
      that did the step before and it no longer exists; SpecFlow does not start a new one in its
      place (D10); do the step with Start step, or have the workflow changed. The Session section

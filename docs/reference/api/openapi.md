@@ -96,8 +96,8 @@ It works with the Fastify shared-schema mechanism, without a second copy of any 
 
 Current shared contracts: `AuthSessionResponse`, `AuthenticationRequiredErrorResponse`,
 `AuthorizationForbiddenErrorResponse`, `CloseError`, `ClosePreview`, `CloseResult`,
-`CloseWorkspaceResult`, `CreateSpecError`, `DevicePairingErrorResponse`, `DocumentError`, `DocumentOperationResult`,
-`DocumentOperationStatus`, `OperationListResponse`, `OwnerCredentialErrorResponse`, `RateLimitedErrorResponse`,
+`CloseWorkspaceResult`, `CreateSpecError`, `DocumentError`, `DocumentOperationResult`,
+`DocumentOperationStatus`, `OperationListResponse`, `RateLimitedErrorResponse`,
 `RequestErrorResponse`, `SessionCommandResult`, `SessionError`, `SpecificationReadError`,
 `TaskChangeResult` (Task create and edit), `TaskReadError`, `TaskSnapshotExpired`,
 `WorkflowActionProjection` and `WorkflowError` (every workflow action and Task command refusal) and
@@ -205,12 +205,8 @@ code itself:
 | `429`  | every operation without a rate limit of its own (no route sets `rateLimit: false`)                  | `RateLimitedErrorResponse`, with `Retry-After` and `x-ratelimit-*` headers | the default rate limit of the endpoint policy                              |
 | `400`  | operations with a request schema (path, query, headers or body), outside the Session error handling | `RequestErrorResponse`                                                     | Fastify request validation, answered by the Runtime error handler          |
 
-The transform adds one `403` only: the owner-credential guard's (D21), on every owner route (every
-non-GET `/api` route except login, logout and the pairing request and redeem routes, plus the
-paired device list), as `OwnerCredentialErrorResponse` (`owner_credential_required`,
-`owner_request_refused`); where the route documents a `403` of its own, the guard's body is one
-more member of that response's `anyOf`. Whether an operation can refuse a capability is the
-route's own knowledge. A route whose authorization can deny documents `403` with
+The transform never adds `403`: whether an operation can refuse a capability is the route's own
+knowledge. A route whose authorization can deny documents `403` with
 `AuthorizationForbiddenErrorResponse` in its response schema. Every Session route does (the
 capability checks of the Session or of the start), as the Specification, document, Task, close,
 operation and workspace documentation routes already did. `GET /api/openapi.json` and `POST /api/authorization/capabilities`

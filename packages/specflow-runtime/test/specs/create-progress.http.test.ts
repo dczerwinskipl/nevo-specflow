@@ -12,7 +12,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { authCookieNames } from '../../src/features/auth/authentication/http/cookies';
 import { InMemoryAuthenticationStore } from '../../src/features/auth/authentication/store/in-memory-store';
 import { createRuntimeApp } from '../../src/server/app';
-import { withOwnerRequests } from '../support/owner-credential';
 import { passwordConfig } from '../auth/support/config';
 import { ARCHETYPE_REQUEST } from '../support/archetype';
 
@@ -62,11 +61,7 @@ async function server(gitEnabled: boolean) {
     userId: 'demo-user',
     authenticatedWith: { kind: 'password' },
   });
-  // A same-origin owner request of the Runtime's page (D21).
-  const headers = {
-    cookie: authCookieNames(passwordConfig().server.port).session + '=' + session,
-    'x-nevo-owner': '1',
-  };
+  const headers = { cookie: authCookieNames(passwordConfig().server.port).session + '=' + session };
   const app = await createRuntimeApp(
     {
       ...passwordConfig(),
@@ -74,7 +69,6 @@ async function server(gitEnabled: boolean) {
     },
     { auth: { store }, specs: { engine } },
   );
-  withOwnerRequests(app);
   apps.push(app);
   await app.listen({ port: 0, host: '127.0.0.1' });
 

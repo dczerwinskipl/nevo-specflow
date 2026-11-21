@@ -120,6 +120,9 @@ async function openDevicePairing(
   const pairing = createDevicePairing({
     store: await openFileDeviceStore(stateDirectory),
     stateDirectory,
+    warn: (message) =>
+      process.stderr.write(`${message}
+`),
   });
   await pairing.issueInitialCode({
     force: options.pairing?.force === true,

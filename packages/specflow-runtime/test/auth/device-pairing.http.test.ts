@@ -567,6 +567,93 @@ describe('owner credential and device pairing (trusted local mode)', () => {
     });
   });
 
+  it('lifts the headless gate in memory even when the code file cannot be deleted', async () => {
+    const stateDirectory = await temporary();
+    const warnings: string[] = [];
+    const pairing = createDevicePairing({
+      store: createMemoryDeviceStore(),
+      stateDirectory,
+      platform: process.platform === 'win32' ? 'win32' : 'linux',
+      restrictToOwner: () => Promise.resolve(),
+      removeCodeFile: () => Promise.reject(new Error('file is locked')),
+      removeRetryDelayMs: 1,
+      warn: (message) => warnings.push(message),
+    });
+    await pairing.issueInitialCode({ force: false });
+    const code = (await readFile(join(stateDirectory, INITIAL_CODE_FILE), 'utf8')).trim();
+    expect(pairing.headlessPairingPending()).toBe(true);
+
+    const origin = { address: '127.0.0.1' };
+    expect(await pairing.redeem({ kind: 'initial-code', code }, undefined, origin)).toMatchObject({
+      ok: true,
+    });
+    expect(pairing.headlessPairingPending()).toBe(false);
+    expect(warnings).toEqual([expect.stringContaining('file is locked')]);
+    // The spent code pairs nothing, although its file is still there.
+    expect(await pairing.redeem({ kind: 'initial-code', code }, undefined, origin)).toEqual({
+      ok: false,
+      error: 'pairing_secret_invalid',
+    });
+  });
+
+  it('lets a paired device cancel the waiting initial code', async () => {
+    const stateDirectory = await temporary();
+    const owner = testOwnerDevice(PORT, {
+      stateDirectory,
+      platform: process.platform === 'win32' ? 'win32' : 'linux',
+      restrictToOwner: () => Promise.resolve(),
+    });
+    const { app } = await runtime({ pairing: owner.devicePairing });
+    const asOwner = { [owner.cookieName]: owner.credential };
+    const cancel = (cookies?: Record<string, string>) =>
+      app.inject({ method: 'DELETE', url: '/api/auth/pairing/initial-code', cookies });
+
+    expect((await cancel()).statusCode).toBe(403);
+    // Nothing waits: nothing to cancel.
+    expect((await cancel(asOwner)).json()).toEqual({ cancelled: false, fileRemoved: true });
+
+    await owner.devicePairing.issueInitialCode({ force: true });
+    expect(owner.devicePairing.headlessPairingPending()).toBe(true);
+    const file = join(stateDirectory, INITIAL_CODE_FILE);
+    const code = (await readFile(file, 'utf8')).trim();
+    expect((await cancel(asOwner)).json()).toEqual({ cancelled: true, fileRemoved: true });
+    expect(owner.devicePairing.headlessPairingPending()).toBe(false);
+    await expect(stat(file)).rejects.toMatchObject({ code: 'ENOENT' });
+    // The cancelled code pairs nothing.
+    const redeemed = await app.inject({
+      method: 'POST',
+      url: '/api/auth/pairing/redeem',
+      payload: { kind: 'initial-code', code },
+    });
+    expect(redeemed.json()).toEqual({ error: 'pairing_secret_invalid' });
+  });
+
+  it('lets a paired device clear the pending pairing requests', async () => {
+    const owner = testOwnerDevice(PORT);
+    const { app } = await runtime({ pairing: owner.devicePairing });
+    const asOwner = { [owner.cookieName]: owner.credential };
+    const clear = (cookies?: Record<string, string>) =>
+      app.inject({ method: 'DELETE', url: '/api/auth/pairing/requests', cookies });
+
+    expect((await clear()).statusCode).toBe(403);
+    const held = [await requestPairing(app), await requestPairing(app), await requestPairing(app)];
+    // One source holds every slot of its own.
+    const full = await app.inject({ method: 'POST', url: '/api/auth/pairing', payload: {} });
+    expect(full.statusCode).toBe(503);
+    expect(full.json()).toEqual({ error: 'pairing_capacity' });
+
+    expect((await clear(asOwner)).json()).toEqual({ cleared: 3 });
+    expect(
+      (await app.inject({ method: 'POST', url: '/api/auth/pairing', payload: {} })).statusCode,
+    ).toBe(201);
+    const gone = await app.inject({
+      method: 'GET',
+      url: `/api/auth/pairing/${held[0]!.id}`,
+      cookies: held[0]!.asRequester,
+    });
+    expect(gone.statusCode).toBe(404);
+  });
+
   it('prints the initial code on an interactive console and writes no file', async () => {
     const stateDirectory = await temporary();
     const pairing = createDevicePairing({ store: createMemoryDeviceStore(), stateDirectory });

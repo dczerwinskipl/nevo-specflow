@@ -1,5 +1,4 @@
 import { execFile } from 'node:child_process';
-import { existsSync } from 'node:fs';
 import { open, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -73,9 +72,4 @@ export async function writeInitialCodeFile(
 
 export async function removeInitialCodeFile(path: string): Promise<void> {
   await rm(path, { force: true });
-}
-
-/** The headless gate (D21): agent execution and write Turns wait while this file exists. */
-export function initialCodeFileExists(path: string): boolean {
-  return existsSync(path);
 }

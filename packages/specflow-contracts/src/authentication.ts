@@ -309,6 +309,24 @@ export const PairingApprovedSchema = Type.Object(
 );
 export type PairingApproved = Static<typeof PairingApprovedSchema>;
 
+/** `200` of `DELETE /api/auth/pairing/requests`: how many pending requests were cleared. */
+export const PairingRequestsClearedSchema = Type.Object(
+  { cleared: Type.Integer({ minimum: 0 }) },
+  { additionalProperties: false },
+);
+export type PairingRequestsCleared = Static<typeof PairingRequestsClearedSchema>;
+
+/**
+ * `200` of `DELETE /api/auth/pairing/initial-code`: the waiting initial code is cancelled and no
+ * longer pairs a device. `fileRemoved` is false when a headless code file could not be deleted
+ * (the code is spent regardless; the file is removed by hand).
+ */
+export const InitialCodeCancelledSchema = Type.Object(
+  { cancelled: Type.Boolean(), fileRemoved: Type.Boolean() },
+  { additionalProperties: false },
+);
+export type InitialCodeCancelled = Static<typeof InitialCodeCancelledSchema>;
+
 /** `201` of `POST /api/auth/pairing/qr`: a one-time pairing token for a QR code. */
 export const PairingQrTokenSchema = Type.Object(
   { token: PairingTokenSchema, expiresAt: TimestampSchema },

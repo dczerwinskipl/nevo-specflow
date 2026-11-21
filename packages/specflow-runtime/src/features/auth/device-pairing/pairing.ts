@@ -10,7 +10,6 @@ import type {
 
 import {
   INITIAL_CODE_FILE,
-  initialCodeFileExists,
   removeInitialCodeFile,
   writeInitialCodeFile,
   type RestrictToOwner,
@@ -72,6 +71,12 @@ export interface DevicePairingOptions {
   readonly now?: () => number;
   readonly platform?: NodeJS.Platform;
   readonly restrictToOwner?: RestrictToOwner;
+  /** Reports a problem that must not stop pairing (a code file that could not be deleted). */
+  readonly warn?: (message: string) => void;
+  /** Pause between attempts to delete the spent code file. */
+  readonly removeRetryDelayMs?: number;
+  /** Deletes the code file (tests inject a failing one). */
+  readonly removeCodeFile?: (path: string) => Promise<void>;
 }
 
 export type PairingResult<T> = { readonly ok: true; readonly value: T } | PairingRefusal;
@@ -95,7 +100,8 @@ export interface PairingLookup {
 }
 
 /**
- * The headless gate (D21): true while the initial pairing code file exists. While it is true the
+ * The headless gate (D21): true while a headless initial pairing code is waiting (in memory: the
+ * gate does not depend on the code file being deleted). While it is true the
  * Runtime MUST refuse every Session start and Turn, every agent execution and every capability
  * minting, so no agent can read the code.
  */
@@ -153,11 +159,37 @@ export function createDevicePairing(options: DevicePairingOptions) {
       : undefined;
   };
 
-  const clearInitialCode = async () => {
+  /**
+   * Spends the initial code. The code and the headless gate are in memory, so they end first and
+   * never wait on the file: deleting it is retried and a failure is reported, not thrown.
+   * Answers whether no file is left.
+   */
+  const clearInitialCode = async (): Promise<boolean> => {
     initial = undefined;
-    if (initialCodePath) {
-      await removeInitialCodeFile(initialCodePath);
+    if (!initialCodePath) {
+      return true;
     }
+
+    const attempts = 3;
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      try {
+        await (options.removeCodeFile ?? removeInitialCodeFile)(initialCodePath);
+
+        return true;
+      } catch (error) {
+        if (attempt === attempts) {
+          options.warn?.(
+            `The spent initial pairing code file could not be deleted; delete it by hand: ${
+              error instanceof Error ? error.message : 'unknown error'
+            }`,
+          );
+        } else {
+          await new Promise((resolve) => setTimeout(resolve, options.removeRetryDelayMs ?? 100));
+        }
+      }
+    }
+
+    return false;
   };
 
   /** Persists the device first; only a stored device spends a secret or lifts the gate. */
@@ -380,6 +412,33 @@ export function createDevicePairing(options: DevicePairingOptions) {
       return options.store.list();
     },
 
+    /**
+     * Clears every pending (unapproved) request, so one caller that holds the per-source slots
+     * (on loopback every local program shares one source) cannot keep the owner out. Answers how
+     * many were cleared.
+     */
+    clearPendingRequests(): number {
+      prune();
+      let cleared = 0;
+      for (const [id, request] of requests) {
+        if (!request.approved) {
+          requests.delete(id);
+          cleared += 1;
+        }
+      }
+
+      return cleared;
+    },
+
+    /** A paired device cancels a waiting initial code: it pairs nothing and the headless gate lifts. */
+    async cancelInitialCode(): Promise<{ cancelled: boolean; fileRemoved: boolean }> {
+      if (!initial) {
+        return { cancelled: false, fileRemoved: true };
+      }
+
+      return { cancelled: true, fileRemoved: await clearInitialCode() };
+    },
+
     /** Revokes a device and everything it issued: its open lookups, approvals and QR tokens. */
     async revoke(id: string): Promise<boolean> {
       if (!(await options.store.remove(id))) {
@@ -436,9 +495,7 @@ export function createDevicePairing(options: DevicePairingOptions) {
     },
 
     /** See {@link HeadlessPairingGate}. */
-    headlessPairingPending: (() =>
-      initialCodePath !== undefined &&
-      initialCodeFileExists(initialCodePath)) satisfies HeadlessPairingGate,
+    headlessPairingPending: (() => initial?.source === 'file') satisfies HeadlessPairingGate,
   };
 }
 

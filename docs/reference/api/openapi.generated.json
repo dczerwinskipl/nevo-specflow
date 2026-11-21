@@ -12232,6 +12232,112 @@
         }
       }
     },
+    "/api/auth/pairing/initial-code": {
+      "delete": {
+        "operationId": "deleteAuthPairingInitialCode",
+        "summary": "Cancel the waiting initial pairing code",
+        "tags": [
+          "Authentication"
+        ],
+        "description": "A paired device cancels the one-time code a restart with `--pair` is waiting on: it pairs nothing afterwards and agent work resumes.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "cancelled",
+                    "fileRemoved"
+                  ],
+                  "properties": {
+                    "cancelled": {
+                      "type": "boolean"
+                    },
+                    "fileRemoved": {
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticationRequiredErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Device pairing is not used: authentication is required (the session is the owner credential), or this is the demo Runtime (`pairing_not_used`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevicePairingErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: the source exceeded the Runtime default rate limit.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the budget renews."
+              },
+              "x-ratelimit-limit": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The budget of the time window."
+              },
+              "x-ratelimit-remaining": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "`0` on a refusal."
+              },
+              "x-ratelimit-reset": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the window resets."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/pairing/lookup": {
       "post": {
         "operationId": "postAuthPairingLookup",
@@ -12721,6 +12827,109 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DevicePairingErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/pairing/requests": {
+      "delete": {
+        "operationId": "deleteAuthPairingRequests",
+        "summary": "Clear the pending pairing requests",
+        "tags": [
+          "Authentication"
+        ],
+        "description": "An owner clears every pending request: on loopback all local programs share one source address, so one of them can hold every pending slot.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "cleared"
+                  ],
+                  "properties": {
+                    "cleared": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticationRequiredErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode without a paired device credential.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerCredentialErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Device pairing is not used: authentication is required (the session is the owner credential), or this is the demo Runtime (`pairing_not_used`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevicePairingErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: the source exceeded the Runtime default rate limit.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the budget renews."
+              },
+              "x-ratelimit-limit": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The budget of the time window."
+              },
+              "x-ratelimit-remaining": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "`0` on a refusal."
+              },
+              "x-ratelimit-reset": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the window resets."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitedErrorResponse"
                 }
               }
             }

@@ -3,6 +3,7 @@ import { Type } from 'typebox';
 
 import {
   DevicePairingErrorResponseSchema,
+  InitialCodeCancelledSchema,
   OwnerCredentialStatusSchema,
   PairedDeviceListResponseSchema,
   PairingApprovedSchema,
@@ -13,6 +14,7 @@ import {
   PairingRedeemedSchema,
   PairingRedeemRequestSchema,
   PairingRequestCreatedSchema,
+  PairingRequestsClearedSchema,
   PairingRequestStatusSchema,
   type DevicePairingErrorCode,
   type OwnerCredentialStatus,
@@ -410,6 +412,50 @@ export const devicePairingEndpoint: FastifyPluginCallback<DevicePairingEndpointO
         .code(201)
         .header('Cache-Control', 'no-store')
         .send({ device: pairedDeviceView(redeemed.value.device, redeemed.value.device) });
+    },
+  );
+
+  routes.delete(
+    '/api/auth/pairing/requests',
+    {
+      schema: {
+        tags,
+        summary: 'Clear the pending pairing requests',
+        description:
+          'An owner clears every pending request: on loopback all local programs share one source ' +
+          'address, so one of them can hold every pending slot.',
+        response: { 200: PairingRequestsClearedSchema, 409: notUsed },
+      },
+    },
+    (_request, reply) => {
+      if (!pairing) {
+        return refuse(reply, 'pairing_not_used');
+      }
+
+      return reply
+        .header('Cache-Control', 'no-store')
+        .send({ cleared: pairing.clearPendingRequests() });
+    },
+  );
+
+  routes.delete(
+    '/api/auth/pairing/initial-code',
+    {
+      schema: {
+        tags,
+        summary: 'Cancel the waiting initial pairing code',
+        description:
+          'A paired device cancels the one-time code a restart with `--pair` is waiting on: it ' +
+          'pairs nothing afterwards and agent work resumes.',
+        response: { 200: InitialCodeCancelledSchema, 409: notUsed },
+      },
+    },
+    async (_request, reply) => {
+      if (!pairing) {
+        return refuse(reply, 'pairing_not_used');
+      }
+
+      return reply.header('Cache-Control', 'no-store').send(await pairing.cancelInitialCode());
     },
   );
 

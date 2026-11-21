@@ -275,7 +275,11 @@ function CloseContent({
                 />
               ) : null}
               {repository.length > 0 ? (
-                <RepositoryBlockers repository={repository} specTitle={specTitle} />
+                <RepositoryBlockers
+                  repository={repository}
+                  specTitle={specTitle}
+                  onRetried={checkAgain}
+                />
               ) : null}
               {/* Abandoning needs a Close too, which meets the same repository checks. */}
               {onAbandonInstead && blockers.length > 0 ? (
@@ -327,6 +331,7 @@ function CloseContent({
                 <UncommittedOwners
                   hold={outcome.uncommitted}
                   specId={specId}
+                  onRetried={checkAgain}
                   {...(onOpenSpecification
                     ? { onOpenSpecification: (id: string) => go(() => onOpenSpecification(id))() }
                     : {})}

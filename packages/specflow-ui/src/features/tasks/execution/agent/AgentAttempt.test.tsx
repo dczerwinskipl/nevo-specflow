@@ -407,7 +407,9 @@ describe('taking over an agent that stopped', () => {
   it('shows what the agent kept, and Continue with Take over beside it', () => {
     const { container } = renderNow('stopped');
 
-    expect(screen.getByText(/Kept so far: task.md, screens.md and 3 changed files/)).toBeTruthy();
+    expect(document.body.textContent).toContain(
+      'Kept so far: task.md, screens.md and 3 changed files',
+    );
     expect(screen.getByText(/Take over to finish the step yourself/)).toBeTruthy();
     expect(actions(container)).toEqual(['Continue', 'Take over']);
   });

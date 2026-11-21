@@ -5,4 +5,5 @@ export {
   useSpecificationExitActions,
   useSpecificationNowVisible,
 } from './execution/specification/SpecificationWorkflow';
+export { SpecificationAgentAttempts } from './execution/agent/SpecificationAgentAttempts';
 export { SpecificationNow } from './execution/specification/SpecificationNow';

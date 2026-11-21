@@ -169,6 +169,7 @@ export type CloseRefusalKey =
       | 'workflowStateUncommittedStep'
       | 'uncommittedAbandoned'
       | 'uncommittedGit'
+      | 'agentCommitFailed'
       | 'documentsFailed'
       | 'commitBlocked'
       | 'engine'
@@ -180,6 +181,11 @@ export type CloseRefusalKey =
  * finish commits, or saved documents (also the answer when the facts are missing).
  */
 function uncommittedKey(hold: UncommittedHoldDetails | undefined): CloseRefusalKey {
+  // Only agent work whose commit failed: Retry commit is the way forward, not Git.
+  if (hold?.owners.length === 0 && hold.unreadable === 0 && (hold.attempts?.length ?? 0) > 0) {
+    return 'workflowExecution.close.refusal.agentCommitFailed';
+  }
+
   // Facts SpecFlow cannot act on (definitions, unreadable records, mixed causes, none at all): Git.
   const specifications = hold?.owners.flatMap((owner) =>
     owner.kind === 'specification' ? [owner] : [],

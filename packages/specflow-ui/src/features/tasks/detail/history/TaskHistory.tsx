@@ -12,17 +12,22 @@ import { TaskSourceState } from './TaskSourceState';
 import { useTaskHistory } from '../useTaskPages';
 import { formatWhen, personLabel } from '../../execution/presentation';
 import { useViewer } from '../../execution/useViewer';
+import { AgentAttemptHistory, agentAttemptOf } from '../../execution/agent/AgentAttemptHistory';
+import { useWorkflowHistory } from '../../execution/agent/useWorkflowHistory';
 
 export function TaskHistory({
   specId,
   taskId,
   snapshot,
   onOpenResource,
+  onOpenDocument,
 }: {
   readonly specId: string;
   readonly taskId: string;
   readonly snapshot?: TaskSnapshot;
   readonly onOpenResource?: (params: TaskHistoryResourceParams) => void;
+  /** Opens a document an agent attempt wrote, by its checkout-relative path; false: not a Task document. */
+  readonly onOpenDocument?: (path: string) => boolean;
 }) {
   const { t, i18n } = useTranslation();
   const viewer = useViewer();
@@ -68,6 +73,12 @@ export function TaskHistory({
   };
 
   const query = useTaskHistory(specId, taskId, snapshot);
+  // What an agent did in an attempt comes from the workflow history, matched by step and attempt.
+  const workflow = useWorkflowHistory({ specId, taskId });
+  const agentItemOf = (entry: {
+    readonly step: { readonly id: string };
+    readonly key: { readonly attempt: number };
+  }) => agentAttemptOf(workflow.data, entry.step.id, entry.key.attempt);
   const section = snapshot?.sections.history;
   if (query.accessDenied) {
     return <TaskSourceState state="forbidden" />;
@@ -133,6 +144,14 @@ export function TaskHistory({
                   <Typography as="p" variant="body-sm" className="whitespace-pre-line">
                     {entry.feedback}
                   </Typography>
+                ) : null}
+                {agentItemOf(entry) ? (
+                  <AgentAttemptHistory
+                    item={agentItemOf(entry)!}
+                    items={workflow.data?.items ?? []}
+                    subject={{ specId, taskId }}
+                    {...(onOpenDocument ? { openDocument: onOpenDocument } : {})}
+                  />
                 ) : null}
                 <Typography as="p" variant="body-sm" className="text-content-muted">
                   {[

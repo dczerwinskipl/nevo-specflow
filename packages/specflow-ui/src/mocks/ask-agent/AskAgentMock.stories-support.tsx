@@ -1,207 +1,30 @@
-import { useState, type ReactNode } from 'react';
-import { Bot, CircleStop, GitCommitHorizontal } from 'lucide-react';
-import {
-  Button,
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  Field,
-  InformationList,
-  InlineNote,
-  TextArea,
-  Timeline,
-  Typography,
-} from '@nevo/ui';
+import { useEffect, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { InformationList, InlineNote } from '@nevo/ui';
 import { NowBlock } from '../../features/tasks/execution/NowBlock';
-import { NowOperationsMenu } from '../../features/tasks/execution/NowOperationsMenu';
 import { WorkflowExecutionFixture } from '../../features/tasks/execution/ProjectWorkflowExecution.stories-support';
+import { InlineAction } from '../../features/tasks/execution/InlineAction';
 import { specificationWorkflowProjection } from '../../features/tasks/execution/projections.stories-support';
 import { SessionProviderIcon } from '../../features/sessions/shared/SessionProviderIcon';
 import { StoryLocalization } from '../../i18n/StoryLocalization';
 import { OperationalRow } from '../../shared/operational-list';
-import { AGENT_FILES, CloseUncommittedDialog } from './CloseMock.stories-support';
-import {
-  BRANCH,
-  SESSION_TITLE,
-  agentImplementation,
-  breakdownAwaitingConfirmation,
-  readyReviewAfterAgent,
-  takenOverImplementation,
-} from './fixtures.stories-support';
-import {
-  Branch,
-  Goal,
-  Group,
-  LineIcon,
-  MONO,
-  PathList,
-  QuoteBlock,
-  Replace,
-  TextLink,
-  findDeepest,
-  findHistoryList,
-  findNow,
-} from './MockParts.stories-support';
 
 /*
  * PRESENTATION MOCK ONLY (design validation for docs/product/specflow/ui/workflow-execution.md,
- * "Ask agent"). The real routed Full Task page or Specification Overview, with only the Now block
- * (or another region the state changes) replaced by the mock's, and the mock's dialogs open over
- * it. Static data, no commands; no interaction tests.
- *
- * One story, one sequence of times (local time of the fixtures): Review asked for changes at
- * 12:40 PM; the agent started Implementation attempt 2 at 12:52 PM and either finished at 1:18 PM
- * (finished stories) or stopped without a result at 1:10 PM, after which the owner took over at
- * 1:15 PM (attempt 3).
+ * "Run with agent"). What is left of the mock after the rest was built for real: the notice on
+ * another subject while an agent's outcome is unknown (state 15), which waits for the Runtime to
+ * report the project-wide hold (`projectHold`). The real routed Specification Overview with its Now
+ * block and Sessions section replaced; static data, no commands.
  */
 
-export type AskAgentState =
-  | 'running'
-  | 'stopping'
-  | 'return-requested'
-  | 'outcome-unknown'
-  | 'outcome-unknown-other'
-  | 'finished-committed'
-  | 'finished-commit-failed'
-  | 'ended-without-finish'
-  | 'proposal-refused'
-  | 'continue-refused'
-  | 'confirm-pending'
-  | 'confirm-reject'
-  | 'take-over'
-  | 'taken-over-history'
-  | 'close-uncommitted';
-
 const noop = () => undefined;
-const links = {};
 
-/** The Now block's ⋯ menu as it is today (Return, Workflow history, the step id note). */
-function OperationsMenu() {
-  return (
-    <NowOperationsMenu
-      operations={[{ id: 'return', label: 'Return to an earlier step', onSelect: noop }]}
-      onOpenHistory={noop}
-      note={['Step implement · Build and review rev 4']}
-    />
-  );
-}
-
-/** The agent's Session in a position line: its mark and its title as a link. */
-function SessionLink({ title = SESSION_TITLE }: { readonly title?: string }) {
-  return (
-    <span className="inline-flex items-baseline gap-1">
-      <span className="inline-flex h-[1lh] items-center self-start">
-        <SessionProviderIcon providerId="claude" />
-      </span>
-      <TextLink>{title}</TextLink>
-    </span>
-  );
-}
-
-const goal = <Goal text="Write the code and its tests so the behaviour in task.md works." />;
-const reviewGoal = <Goal text="Check the change against task.md and record what was verified." />;
-
-function StartActions({ askDisabled = false }: { readonly askDisabled?: boolean }) {
-  return (
-    <>
-      <Button disabled={askDisabled}>Start step</Button>
-      <Button variant="secondary" leadingIcon={Bot} disabled={askDisabled}>
-        Ask agent
-      </Button>
-    </>
-  );
-}
-
-/* ------------------------------------------------------------------ Now blocks of each state */
-
-type Waiting = 'running' | 'stopping' | 'return-requested' | 'outcome-unknown';
-
-/** The agent's attempt while its process runs, is asked to stop, or may still run. */
-function AgentAttempt({ kind }: { readonly kind: Waiting }) {
-  const line = {
-    running: 'Attempt 2 · agent working since Nov 13, 12:52 PM · ',
-    stopping: 'Attempt 2 · stopping the agent · ',
-    'return-requested': 'Attempt 2 · return requested · waiting for the agent to stop · ',
-    'outcome-unknown': 'Attempt 2 · the agent’s outcome is unknown · ',
-  }[kind];
-
-  const note = {
-    running: undefined,
-    stopping: (
-      <InlineNote tone="info" icon="loader">
-        Asked the agent to stop. Implementation stays locked until SpecFlow sees its process has
-        ended; then you can continue, take over or return.
-      </InlineNote>
-    ),
-    'return-requested': (
-      <InlineNote tone="info" icon="loader">
-        You asked to return to Design. SpecFlow is stopping the agent first: the step goes back to
-        Design only once its process has ended, so nothing it still writes is lost or mixed into the
-        next attempt.
-      </InlineNote>
-    ),
-    'outcome-unknown': (
-      <InlineNote tone="danger" role="alert">
-        <span className="font-medium text-content-primary">
-          SpecFlow cannot tell whether the agent is still working.
-        </span>{' '}
-        Its process may still be running, so nothing can be saved anywhere in this project until
-        that is known: steps, documents and tasks of every specification wait. Check outcome asks
-        the machine running SpecFlow again. If it still cannot tell, end the agent’s process there,
-        then check again.
-      </InlineNote>
-    ),
-  }[kind];
-
-  const actions = {
-    running: (
-      <Button variant="secondary" leadingIcon={CircleStop}>
-        Stop agent
-      </Button>
-    ),
-    stopping: (
-      <Button variant="secondary" disabled aria-busy>
-        Stopping…
-      </Button>
-    ),
-    'return-requested': (
-      <Button variant="secondary" disabled aria-busy>
-        Returning…
-      </Button>
-    ),
-    'outcome-unknown': <Button leadingIcon="refresh">Check outcome</Button>,
-  }[kind];
-
-  return (
-    <NowBlock
-      projection={agentImplementation()}
-      headingId="now-mock"
-      links={links}
-      menu={kind === 'running' ? <OperationsMenu /> : undefined}
-      positionLine={
-        <>
-          {line}
-          <SessionLink />
-        </>
-      }
-      summary={goal}
-      note={note}
-      actions={actions}
-    />
-  );
-}
-
-/** Another subject while an agent's outcome is unknown: every change waits, and says why. */
 function OtherSubjectBlocked() {
   return (
     <NowBlock
       projection={specificationWorkflowProjection('waiting')}
       headingId="now-mock"
-      links={links}
+      links={{}}
       showHandoff={false}
       note={
         <InlineNote tone="attention" role="alert">
@@ -209,515 +32,110 @@ function OtherSubjectBlocked() {
             Nothing can be saved in this project right now.
           </span>{' '}
           SpecFlow cannot tell whether the agent working on t-04 is still running. Open t-04 to
-          check its outcome. <TextLink>Open t-04</TextLink>
+          check its outcome.{' '}
+          <InlineAction className="text-body-sm" onClick={noop}>
+            Open t-04
+          </InlineAction>
         </InlineNote>
       }
     />
   );
 }
 
-function FinishedCommitted() {
-  return (
-    <NowBlock
-      projection={readyReviewAfterAgent()}
-      headingId="now-mock"
-      links={links}
-      menu={<OperationsMenu />}
-      summary={reviewGoal}
-      note={
-        <InlineNote tone="info" icon={GitCommitHorizontal}>
-          The agent finished Implementation. Committed <span className={MONO}>3f2a9c1</span> on{' '}
-          <Branch name={BRANCH} />: 2 documents and 3 files. <TextLink>Show commit</TextLink>
-        </InlineNote>
-      }
-      actions={<StartActions />}
-    />
-  );
-}
-
-function FinishedCommitFailed() {
-  return (
-    <NowBlock
-      projection={readyReviewAfterAgent()}
-      headingId="now-mock"
-      links={links}
-      menu={<OperationsMenu />}
-      summary={reviewGoal}
-      note={
-        <InlineNote tone="attention" role="alert">
-          <span className="font-medium text-content-primary">
-            Implementation is finished, but its commit failed: a Git hook in this repository refused
-            it (<span className={MONO}>COMMIT_HOOK_FAILED</span>).
-          </span>{' '}
-          These 5 files stay uncommitted on <Branch name={BRANCH} />, and Close lists them until
-          they are committed. Until then Ask agent cannot start Review: an agent starts only from a
-          committed checkout.
-          <PathList paths={AGENT_FILES} />
-          <div className="mt-2">
-            <Button size="sm" variant="secondary" leadingIcon={GitCommitHorizontal}>
-              Retry commit
-            </Button>
-          </div>
-        </InlineNote>
-      }
-      actions={<StartActions />}
-    />
-  );
-}
-
-/** The agent's work so far, as the unresolved attempt lists it. */
-function PartialWork() {
-  return (
-    <Typography as="p" variant="body-sm" className="text-content-secondary">
-      Kept so far: <TextLink>task.md</TextLink>, <TextLink>screens.md</TextLink> and 3 changed
-      files. <TextLink>See the attempt</TextLink>
-    </Typography>
-  );
-}
-
-function Unresolved({ kind }: { readonly kind: 'ended' | 'refused' | 'continue-refused' }) {
-  const line =
-    kind === 'refused'
-      ? 'Attempt 2 · the agent’s result was not accepted · '
-      : 'Attempt 2 · the agent stopped without a result at 1:10 PM · ';
-
-  const note =
-    kind === 'refused' ? (
-      <InlineNote tone="danger" role="alert">
-        <span className="font-medium text-content-primary">
-          The agent proposed Ready for review, and SpecFlow did not accept it:
-        </span>
-        <ul className="mt-1 grid list-disc gap-0.5 pl-5">
-          <li>
-            <span className={MONO}>src/auth/session.ts</span> changed, but the agent did not list it
-            among its changes.
-          </li>
-          <li>
-            <span className={MONO}>specs/active/single-sign-on/notes.md</span> has no document type.
-            Give it a type or delete it.
-          </li>
-        </ul>
-        <span className="mt-1 block">
-          Continue lets the agent fix this in the same session. Take over to fix it yourself.
-        </span>
-      </InlineNote>
-    ) : kind === 'continue-refused' ? (
-      <InlineNote tone="attention" role="alert">
-        <span className="font-medium text-content-primary">
-          The agent cannot continue: 2 files changed since it stopped.
-        </span>
-        <PathList paths={['src/auth/refresh.ts', 'docs/notes.md']} />
-        <span className="mt-1 block">
-          SpecFlow never counts someone else’s edits as the agent’s work. Undo these changes, or
-          commit them yourself (they become your commit, not the agent’s), then continue. Or take
-          over and finish the step yourself.
-        </span>
-      </InlineNote>
-    ) : (
-      <InlineNote tone="attention">
-        <span className="font-medium text-content-primary">
-          The agent stopped without proposing a result.
-        </span>{' '}
-        Continue lets it go on in the same session. Take over to finish the step yourself.
-      </InlineNote>
-    );
-
-  return (
-    <NowBlock
-      projection={agentImplementation()}
-      headingId="now-mock"
-      links={links}
-      menu={<OperationsMenu />}
-      positionLine={
-        <>
-          {line}
-          <SessionLink />
-        </>
-      }
-      summary={goal}
-      note={
-        <div className="grid gap-2">
-          {note}
-          <PartialWork />
-        </div>
-      }
-      actions={
-        <>
-          <Button disabled={kind === 'continue-refused'}>Continue</Button>
-          <Button variant="secondary">Take over</Button>
-        </>
-      }
-    />
-  );
-}
-
-function ConfirmPending() {
-  return (
-    <NowBlock
-      projection={breakdownAwaitingConfirmation()}
-      headingId="now-mock"
-      links={links}
-      showHandoff={false}
-      menu={<OperationsMenu />}
-      positionLine={
-        <>
-          Waiting for your confirmation · the agent finished Nov 12, 3:05 PM ·{' '}
-          <SessionLink title="Break down single sign-on" />
-        </>
-      }
-      summary={
-        <Typography as="p" variant="body-md" className="text-content-primary">
-          Split the agreed solution into tasks that can be done and reviewed one by one.
-        </Typography>
-      }
-      note={
-        <div className="grid gap-3">
-          <QuoteBlock
-            label={
-              <>
-                The agent proposes{' '}
-                <span className="font-medium text-content-primary">
-                  <LineIcon name="arrow-right" />
-                  Tasks approved
-                </span>{' '}
-                · Claude · Sonnet 5
-              </>
-            }
-          >
-            Five tasks cover the token exchange, the cookie, refresh, the sign-in screen and the
-            audit log. t-05 depends on t-02 and t-04. The audit log has no acceptance criteria in
-            behaviour.md yet; I wrote them into its task.md.
-          </QuoteBlock>
-          <InlineNote tone="info">
-            Confirming approves the 5 draft tasks (t-01 to t-05) and moves to Waiting for tasks.{' '}
-            <TextLink>See Tasks</TextLink>
-          </InlineNote>
-        </div>
-      }
-      actions={
-        <>
-          <Button>Confirm</Button>
-          <Button variant="secondary">Reject</Button>
-        </>
-      }
-    />
-  );
-}
-
-function TakenOver() {
-  return (
-    <NowBlock
-      projection={takenOverImplementation()}
-      headingId="now-mock"
-      links={links}
-      menu={<OperationsMenu />}
-      positionLine="Attempt 3 · in progress since Nov 13, 1:15 PM · started by you · taken over from the agent"
-      summary={goal}
-      actions={<Button>Finish step</Button>}
-    />
-  );
-}
-
-/* ----------------------------------------------- the Overview's other sections, kept coherent */
-
-/** The Overview's Sessions section with the agent's Session (the Sessions list row). */
-function SessionsWithAgent({ unknown = false }: { readonly unknown?: boolean }) {
+/** The Overview's Sessions section with the agent's Session whose state is unknown. */
+function UnknownSession() {
   return (
     <InformationList>
       <OperationalRow
         leading={<SessionProviderIcon providerId="claude" />}
-        primary={unknown ? SESSION_TITLE : 'Break down single sign-on'}
+        primary="Implement token exchange"
         onPrimaryClick={noop}
         factsLayout="inline"
-        compactFacts={
-          unknown ? ['Nov 13', 'Claude Sonnet 5', '1 task'] : ['Nov 12', 'Claude Sonnet 5']
-        }
-        {...(unknown
-          ? { supporting: { text: 'Session state unknown', textClassName: 'text-content-muted' } }
-          : {})}
+        compactFacts={['Nov 13', 'Claude Sonnet 5', '1 task']}
+        supporting={{ text: 'Session state unknown', textClassName: 'text-content-muted' }}
       />
     </InformationList>
   );
 }
 
-/* ----------------------------------------------------------------------------- dialogs */
+/** The deepest element whose text contains every one of `parts`, outside the mock's own. */
+function findDeepest(...parts: readonly string[]) {
+  return () => {
+    const matches = Array.from(document.querySelectorAll<HTMLElement>('body *')).filter(
+      (element) =>
+        !element.closest('[data-mock-replacement]') &&
+        parts.every((part) => (element.textContent ?? '').includes(part)),
+    );
+    let found = matches.find(
+      (element) =>
+        !Array.from(element.children).some((child) => matches.includes(child as HTMLElement)),
+    );
+    while (
+      found?.parentElement &&
+      (found.parentElement.textContent ?? '').trim() === (found.textContent ?? '').trim()
+    ) {
+      found = found.parentElement;
+    }
 
-function MockDialog({
-  title,
-  description,
-  children,
-  footer,
-}: {
-  readonly title: string;
-  readonly description?: ReactNode;
-  readonly children: ReactNode;
-  readonly footer: ReactNode;
-}) {
-  const [open, setOpen] = useState(true);
+    return found;
+  };
+}
 
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent closeLabel="Close" onOpenAutoFocus={(event) => event.preventDefault()}>
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          {description ? <DialogDescription>{description}</DialogDescription> : null}
-        </DialogHeader>
-        <DialogBody>
-          <div className="grid gap-6">{children}</div>
-        </DialogBody>
-        <DialogFooter>{footer}</DialogFooter>
-      </DialogContent>
-    </Dialog>
+const findNow = () =>
+  Array.from(document.querySelectorAll<HTMLElement>('[data-workflow-now]')).find(
+    (element) => !element.closest('[data-mock-replacement]'),
   );
-}
-
-function RejectDialog() {
-  return (
-    <MockDialog
-      title="Reject the agent’s result"
-      description="Breakdown goes back to ready to start, with your feedback as its hand-off. The agent’s proposal Tasks approved is not applied; the draft tasks and documents it wrote stay as they are."
-      footer={
-        <>
-          <Button variant="secondary">Cancel</Button>
-          <Button disabled>Reject</Button>
-        </>
-      }
-    >
-      <Field>
-        <Field.Label>What should change (required)</Field.Label>
-        <TextArea rows={4} aria-required />
-        <Field.Description>
-          The next attempt reads it first, whether you start it yourself or ask an agent.
-        </Field.Description>
-      </Field>
-    </MockDialog>
-  );
-}
-
-function TakeOverDialog() {
-  return (
-    <MockDialog
-      title="Take over Implementation"
-      description="The agent’s attempt ends as taken over, and your own attempt 3 starts. You then finish the step yourself."
-      footer={
-        <>
-          <Button variant="secondary">Cancel</Button>
-          <Button>Take over</Button>
-        </>
-      }
-    >
-      <Group
-        heading="The agent’s work stays"
-        explanation="Nothing is undone. These files stay as the agent left them, uncommitted until you commit them; finishing the step does not commit them, and Close lists them until they are committed."
-      >
-        <PathList paths={AGENT_FILES} />
-      </Group>
-      <Typography as="p" variant="body-sm" className="text-content-secondary">
-        The session <TextLink>{SESSION_TITLE}</TextLink> stays open to read; it no longer works on
-        this step.
-      </Typography>
-    </MockDialog>
-  );
-}
-
-/* ---------------------------------------------------------------------- Task history */
-
-function HistoryList() {
-  const item = (
-    title: ReactNode,
-    lines: ReactNode,
-    meta: string,
-    tone: 'neutral' | 'info' = 'neutral',
-  ) => (
-    <Timeline.Item>
-      <Timeline.Marker tone={tone} />
-      <Timeline.Content
-        title={
-          <span role="heading" aria-level={3}>
-            {title}
-          </span>
-        }
-      >
-        <div className="grid min-w-0 gap-1 [overflow-wrap:anywhere]">
-          {lines}
-          <Typography as="p" variant="body-sm" className="text-content-muted">
-            {meta}
-          </Typography>
-          <div>
-            <Button size="sm" variant="ghost">
-              Attempt details
-            </Button>
-          </div>
-        </div>
-      </Timeline.Content>
-    </Timeline.Item>
-  );
-
-  return (
-    <Timeline size="md">
-      {item(
-        'Implementation',
-        <Typography as="p" variant="body-sm" className="text-status-info">
-          In progress
-        </Typography>,
-        'Nov 13, 1:15 PM · you · Attempt 3',
-        'info',
-      )}
-      {item(
-        'Implementation',
-        <>
-          <Typography as="p" variant="body-sm" className="text-content-primary">
-            <LineIcon name="undo" />
-            Taken over by you
-          </Typography>
-          <Typography as="p" variant="body-sm" className="text-content-secondary">
-            The agent stopped without a result at 1:10 PM. Its work, kept and not committed:
-          </Typography>
-          <ul className="grid gap-0.5 text-body-sm">
-            <li>
-              Documents: <TextLink>task.md</TextLink> saved, <TextLink>screens.md</TextLink> created
-            </li>
-            <li>Tasks: none</li>
-            <li>
-              Files: <span className={MONO}>src/auth/refresh.ts</span>,{' '}
-              <span className={MONO}>src/auth/state.ts</span>,{' '}
-              <span className={MONO}>src/auth/refresh.test.ts</span>
-            </li>
-          </ul>
-          <Typography as="p" variant="body-sm" className="text-content-secondary">
-            Session <SessionLink />
-          </Typography>
-        </>,
-        'Nov 13, 12:52 PM – 1:15 PM · Claude · Sonnet 5 · Attempt 2',
-      )}
-      {item(
-        'Review',
-        <>
-          <Typography as="p" variant="body-sm" className="text-content-primary">
-            <LineIcon name="arrow-right" />
-            Changes requested
-          </Typography>
-          <Typography as="p" variant="body-sm">
-            The refresh path drops the original return URL when the cookie expires mid-request.
-          </Typography>
-        </>,
-        'Nov 13, 12:40 PM · dominik · Attempt 1',
-      )}
-      {item(
-        'Implementation',
-        <Typography as="p" variant="body-sm" className="text-content-primary">
-          <LineIcon name="arrow-right" />
-          Ready for review
-        </Typography>,
-        'Nov 13, 11:15 AM · dominik · Attempt 1',
-      )}
-    </Timeline>
-  );
-}
-
-/* --------------------------------------------------------------------------- screen */
-
-/** The real screen behind each state: the Full Task page, or the Overview. */
-function screenOf(state: AskAgentState) {
-  if (state === 'close-uncommitted') {
-    return 'close-integrates' as const;
-  }
-
-  return state === 'confirm-pending' ||
-    state === 'confirm-reject' ||
-    state === 'outcome-unknown-other'
-    ? ('waiting' as const)
-    : ('rework' as const);
-}
-
-function nowOf(state: AskAgentState): ReactNode {
-  switch (state) {
-    case 'finished-committed':
-      return <FinishedCommitted />;
-    case 'running':
-    case 'stopping':
-    case 'return-requested':
-    case 'outcome-unknown':
-      return <AgentAttempt kind={state} />;
-    case 'outcome-unknown-other':
-      return <OtherSubjectBlocked />;
-    case 'finished-commit-failed':
-      return <FinishedCommitFailed />;
-    case 'ended-without-finish':
-    case 'take-over':
-      return <Unresolved kind="ended" />;
-    case 'proposal-refused':
-      return <Unresolved kind="refused" />;
-    case 'continue-refused':
-      return <Unresolved kind="continue-refused" />;
-    case 'confirm-pending':
-    case 'confirm-reject':
-      return <ConfirmPending />;
-    case 'taken-over-history':
-      return <TakenOver />;
-    case 'close-uncommitted':
-      return null;
-  }
-}
-
-function dialogOf(state: AskAgentState): ReactNode {
-  switch (state) {
-    case 'confirm-reject':
-      return <RejectDialog />;
-    case 'take-over':
-      return <TakeOverDialog />;
-    case 'close-uncommitted':
-      return <CloseUncommittedDialog />;
-    default:
-      return null;
-  }
-}
-
 const findNoSessions = findDeepest('This specification has no sessions yet.');
-const findTaskCounts = findDeepest('Needs approval', 'Done');
 
-export function AskAgentMock({ state }: { readonly state: AskAgentState }) {
-  const now = nowOf(state);
-  const dialog = dialogOf(state);
-  const confirmation = state === 'confirm-pending' || state === 'confirm-reject';
+/** Renders `children` in place of the element `find` returns, inside the real screen. */
+function Replace({
+  find,
+  children,
+}: {
+  readonly find: () => HTMLElement | null | undefined;
+  readonly children: ReactNode;
+}) {
+  const [host, setHost] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    let created: HTMLElement | null = null;
+    const tick = () => {
+      const target = find();
+      if (!target) {
+        return;
+      }
 
+      target.style.display = 'none';
+      if (!created || !created.isConnected || created.nextElementSibling !== target) {
+        created?.remove();
+        created = document.createElement('div');
+        created.setAttribute('data-mock-replacement', '');
+        target.parentElement?.insertBefore(created, target);
+        setHost(created);
+      }
+    };
+
+    tick();
+    const timer = window.setInterval(tick, 150);
+
+    return () => {
+      window.clearInterval(timer);
+      created?.remove();
+    };
+  }, [find]);
+
+  return host ? createPortal(<StoryLocalization>{children}</StoryLocalization>, host) : null;
+}
+
+export function AskAgentMock() {
   return (
     <>
-      <WorkflowExecutionFixture scenario={screenOf(state)} />
-      {now ? <Replace find={findNow}>{now}</Replace> : null}
-      {confirmation ? (
-        <>
-          <Replace find={findNoSessions}>
-            <SessionsWithAgent />
-          </Replace>
-          <Replace find={findTaskCounts}>
-            <p className="px-3 py-3 text-body-sm text-content-primary">Needs approval 5</p>
-          </Replace>
-        </>
-      ) : null}
-      {state === 'outcome-unknown-other' ? (
-        <Replace find={findNoSessions}>
-          <SessionsWithAgent unknown />
-        </Replace>
-      ) : null}
-      {state === 'taken-over-history' ? (
-        <Replace find={findHistoryList}>
-          <HistoryList />
-        </Replace>
-      ) : null}
-      {dialog ? (
-        <StoryLocalization>
-          <DelayedDialog>{dialog}</DelayedDialog>
-        </StoryLocalization>
-      ) : null}
+      <WorkflowExecutionFixture scenario="waiting" />
+      <Replace find={findNow}>
+        <OtherSubjectBlocked />
+      </Replace>
+      <Replace find={findNoSessions}>
+        <UnknownSession />
+      </Replace>
     </>
   );
-}
-
-/** Opens the dialog once the screen behind it rendered (the routed page loads its data first). */
-function DelayedDialog({ children }: { readonly children: ReactNode }) {
-  const [ready, setReady] = useState(false);
-  useState(() => window.setTimeout(() => setReady(true), 1200));
-
-  return ready ? <>{children}</> : null;
 }

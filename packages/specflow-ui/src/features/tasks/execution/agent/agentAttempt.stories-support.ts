@@ -249,6 +249,59 @@ export function finishedAttemptProjection(): WorkflowActionProjection {
   };
 }
 
+const human = {
+  class: 'human' as const,
+  details: { actorId: 'local:dominik', trust: 'local' as const },
+};
+
+/**
+ * The Task's workflow history after the owner took Implementation over from the agent: the owner's
+ * attempt 3 runs, the agent's attempt 2 stopped without a result and its work stays uncommitted.
+ */
+export function takenOverAttemptHistory() {
+  return {
+    subject: { kind: 'task' as const, specId: 'sso', taskId: 't-04' },
+    items: [
+      {
+        kind: 'attempt' as const,
+        sequence: 4,
+        step: 'implement',
+        stepTitle: 'Implementation',
+        attempt: 3,
+        startedAt: '2026-11-13T12:15:00Z',
+        actor: human,
+      },
+      {
+        kind: 'attempt' as const,
+        sequence: 3,
+        step: 'implement',
+        stepTitle: 'Implementation',
+        attempt: 2,
+        startedAt: '2026-11-13T11:52:00Z',
+        endedAt: '2026-11-13T12:15:00Z',
+        actor: agentActor,
+        outcome: { kind: 'taken-over' as const },
+        agent: {
+          attemptId: ATTEMPT_ID,
+          provider: 'claude',
+          model: 'Sonnet 5',
+          sessionId: SESSION_ID,
+          turns: 1,
+          ended: 'taken-over' as const,
+          takenOverBy: { attempt: 3 },
+          events: [
+            { kind: 'started' as const, at: '2026-11-13T11:52:00Z' },
+            { kind: 'turn-started' as const, at: '2026-11-13T11:52:00Z', turn: 1 },
+            { kind: 'turn-ended' as const, at: '2026-11-13T12:10:00Z', turn: 1 },
+            { kind: 'taken-over' as const, at: '2026-11-13T12:15:00Z' },
+          ],
+          work: { ...work, tasks: [], declared: [], commit: { state: 'none' as const } },
+        },
+      },
+    ],
+  };
+}
+
 /** The workflow history whose newest attempt is that agent attempt, with its commit result. */
 export function finishedAttemptHistory(commit: {
   state: 'committed' | 'failed' | 'pending';

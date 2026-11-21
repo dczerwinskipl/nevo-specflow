@@ -177,7 +177,7 @@ export function SpecificationNow({
       subject={{ specId: workflow.specId }}
       projection={projection}
       headingId={SPECIFICATION_NOW_HEADING}
-      links={{ tasks: () => workflow.openTasks() }}
+      links={{ tasks: () => workflow.openTasks(), attempt: onOpenHistory }}
       primaryAction={
         terminal && projection.specification?.exit ? (
           projection.specification.exit.close.kind === 'unavailable' ? (

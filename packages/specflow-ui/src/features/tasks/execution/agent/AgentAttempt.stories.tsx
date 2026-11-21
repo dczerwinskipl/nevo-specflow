@@ -215,6 +215,37 @@ export const ConfirmationReject: Story = {
 };
 
 /*
+ * The Task's history after the owner took Implementation over: the agent's attempt says how it
+ * ended, lists what it kept (documents linked, files) and its Session; its events open on request.
+ */
+export const TakenOverWithHistory: Story = {
+  args: { scenario: 'history-taken-over' },
+  play: async ({ canvasElement }) => {
+    await findNow(canvasElement);
+    const [history] = await within(canvasElement).findAllByRole(
+      'button',
+      { name: /history/i },
+      wait,
+    );
+    await userEvent.click(history!);
+    const attempt = await waitFor(() => {
+      const found = canvasElement.querySelector<HTMLElement>('[data-agent-attempt="taken-over"]');
+      if (!found) {
+        throw new Error('The agent attempt is not shown yet');
+      }
+
+      return within(found);
+    }, wait);
+    await expect(attempt.getByText(/^Taken over by /)).toBeVisible();
+    await expect(attempt.getByText(/The agent stopped without a result at/)).toBeVisible();
+    await expect(attempt.getByRole('button', { name: 'task.md' })).toBeVisible();
+    await expect(attempt.getByText('src/auth/refresh.ts')).toBeVisible();
+    await userEvent.click(attempt.getByRole('button', { name: 'Show what happened' }));
+    await expect(attempt.getByText(/Turn 1 ended/)).toBeVisible();
+  },
+};
+
+/*
  * The step after an agent finished: the commit it made when it finished (read from the workflow
  * history), or why it failed and Retry commit inside the note.
  */

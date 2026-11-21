@@ -19,6 +19,7 @@ import {
 } from '../detail/history/TaskHistoryResourceInspection';
 import { TaskHistory } from '../detail/history/TaskHistory';
 import { TaskHistoryHeader, TaskResourceHeader } from '../detail/history/TaskReferenceInspection';
+import { taskDocumentStack } from '../../documents';
 import { ProjectTaskWorkspace } from './ProjectTaskWorkspace';
 import { TaskViewStateProvider } from '../detail/TaskViewState';
 
@@ -66,6 +67,19 @@ function HistoryResourceScreen({
 
 function HistoryScreen({ data }: SecondaryScreenProps<TaskContextData, Record<never, never>>) {
   const nav = useSecondaryStack<Pages>();
+  const navigation = useSecondaryNavigation();
+  // The agent's paths are checkout-relative; the Task's documents are its folder's.
+  const openDocument = (path: string) => {
+    const document = data.task.resource.documents.find((item) => path.endsWith(`/${item.path}`));
+    if (document) {
+      void navigation.openTab(taskDocumentStack, {
+        documentId: document.id,
+        name: document.path.split('/').at(-1) ?? document.id,
+      });
+    }
+
+    return document !== undefined;
+  };
 
   return (
     <AppContent className="w-content-standard max-w-full">
@@ -74,6 +88,7 @@ function HistoryScreen({ data }: SecondaryScreenProps<TaskContextData, Record<ne
           specId={data.specId}
           taskId={data.task.id}
           snapshot={data.task.snapshot}
+          onOpenDocument={openDocument}
           onOpenResource={(params) => {
             void nav.navTo('historyResource', params);
           }}

@@ -2614,6 +2614,7 @@
         "workflowStateUncommittedStep": "Zmiany zadań i kroków innej specyfikacji w tym katalogu roboczym nie mają jeszcze commita. Zrób ich commit w Git albo zakończ trwający tam krok (zakończenie robi ich commit) i sprawdź ponownie.",
         "uncommittedAbandoned": "Zmiany w tym katalogu roboczym, których commit porzucono, nie mają commita. Zrób ich commit w Git i sprawdź ponownie.",
         "uncommittedGit": "Pliki zapisane przez SpecFlow w tym katalogu roboczym nie mają commita. Zrób ich commit w Git i sprawdź ponownie.",
+        "agentCommitFailed": "Agent skończył pracę, ale jej commit się nie udał. Ponów commit poniżej i sprawdź ponownie.",
         "documentsFailed": "Commit dokumentu się nie powiódł. Ponów go lub rozwiąż w Dokumentach, a potem sprawdź ponownie."
       },
       "repository": {
@@ -2709,6 +2710,17 @@
         "other": "inna specyfikacja ma zmiany bez commita w tym katalogu roboczym",
         "own": "ma zmiany bez commita w swoim katalogu roboczym",
         "checkout": "pliki zapisane przez SpecFlow w tym katalogu roboczym nie mają commita"
+      },
+      "agentCommit": {
+        "title": "Praca agenta, której commit się nie udał",
+        "lead": "Agent skończył krok, ale Git nie przyjął jego commita. Pliki zostają bez commita, dopóki commit nie zostanie wykonany.",
+        "stepTask": "{{step}} zadania {{task}}, podejście {{attempt}}",
+        "stepSpecification": "{{step}} tej specyfikacji, podejście {{attempt}}",
+        "reason_one": "commit się nie udał: {{reason}} ({{code}}). {{count}} plik.",
+        "reason_few": "commit się nie udał: {{reason}} ({{code}}). {{count}} pliki.",
+        "reason_many": "commit się nie udał: {{reason}} ({{code}}). {{count}} plików.",
+        "reason_other": "commit się nie udał: {{reason}} ({{code}}). {{count}} pliku.",
+        "retryLabel": "Ponów commit: {{step}}"
       }
     },
     "abandon": {
@@ -2818,7 +2830,8 @@
       },
       "takeOver": "Przejmij",
       "takingOver": "Przejmowanie…",
-      "kept": "Zachowano do tej pory: {{documents}}{{files}}",
+      "keptLead": "Zachowano do tej pory:",
+      "seeAttempt": "Zobacz podejście",
       "keptFiles_one": " i {{count}} zmieniony plik",
       "keptFiles_few": " i {{count}} zmienione pliki",
       "keptFiles_many": " i {{count}} zmienionych plików",
@@ -2891,6 +2904,45 @@
       "blocksAgent": "Do tego czasu „Uruchom z agentem” nie może rozpocząć następnego kroku: agent startuje tylko z zatwierdzonego katalogu roboczego.",
       "retry": "Ponów commit",
       "retrying": "Ponawianie…"
+    },
+    "attemptHistory": {
+      "title": "Podejścia agenta",
+      "truncated": "Starsze podejścia nie są pokazane.",
+      "session": "Sesja",
+      "showEvents": "Pokaż, co się działo",
+      "hideEvents": "Ukryj, co się działo",
+      "stopped": "Agent zatrzymał się bez wyniku o {{at}}.",
+      "outcome": {
+        "takenOverBy": "Przejęte przez: {{who}}",
+        "takenOver": "Przejęte",
+        "abandoned": "Porzucone",
+        "returned": "Cofnięte do kroku {{step}}",
+        "active": "Agent nad tym pracuje"
+      },
+      "work": {
+        "lead": "Jego praca:",
+        "leadKept": "Jego praca, zachowana i bez commita:",
+        "documents": "Dokumenty:",
+        "tasks": "Zadania:",
+        "files": "Pliki:",
+        "none": "brak"
+      },
+      "event": {
+        "started": "Start",
+        "turn-started": "Rozpoczęła się tura {{turn}}",
+        "turn-ended": "Skończyła się tura {{turn}}",
+        "proposal-refused": "Wynik nie został przyjęty",
+        "return-requested": "Zlecono cofnięcie",
+        "returned": "Cofnięto do wcześniejszego kroku",
+        "finished": "Skończył z wynikiem",
+        "committed": "Praca zacommitowana",
+        "commit-failed": "Commit się nie udał: {{reason}} ({{code}})",
+        "taken-over": "Przejęte",
+        "abandoned": "Porzucone",
+        "awaiting-confirmation": "Czeka na potwierdzenie",
+        "confirmed": "Wynik potwierdzony",
+        "rejected": "Wynik odrzucony"
+      }
     }
   },
   "taskOverview": {

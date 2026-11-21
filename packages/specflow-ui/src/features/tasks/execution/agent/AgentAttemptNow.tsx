@@ -14,6 +14,8 @@ import type { WorkflowSubjectRef } from '../api';
 import { formatWhen, humanizeId, transitionLabel } from '../presentation';
 import type { NowLinks } from '../StartBlockerLines';
 import { WorkflowRefusalAlert } from '../WorkflowRefusalAlert';
+import { InlineAction } from '../InlineAction';
+import { KeptDocuments } from './KeptDocuments';
 import { AgentBlocker, Paths } from './AgentBlocker';
 import { SessionLink } from './AgentSession';
 import { agentStageOf, continueRefusal, needsPolling, ownRefusal } from './agentAttempt';
@@ -42,7 +44,7 @@ export interface AgentNow {
 }
 
 /** The agent's Session in a position line: its mark and its title as a link. */
-function AttemptSession({
+export function AttemptSession({
   specId,
   sessionId,
   provider,
@@ -568,24 +570,27 @@ export function useAgentAttemptNow({
       const filePaths = [...new Set([...(work.changed?.paths ?? []), ...work.declared])].filter(
         (path) => !work.documents.includes(path) && !work.mixed.includes(path),
       );
-      const keptDocs = docNames.join(', ');
       const kept =
         docNames.length > 0 || filePaths.length > 0 ? (
           <Typography as="p" variant="body-sm" className="text-content-secondary">
-            {docNames.length > 0
-              ? t('workflowExecution.agentAttempt.kept', {
-                  documents: keptDocs,
-                  files:
-                    filePaths.length > 0
-                      ? t('workflowExecution.agentAttempt.keptFiles', { count: filePaths.length })
-                      : '',
-                })
-              : t('workflowExecution.agentAttempt.kept', {
-                  documents: t('workflowExecution.agentAttempt.keptFilesOnly', {
-                    count: filePaths.length,
-                  }),
-                  files: '',
-                })}
+            {t('workflowExecution.agentAttempt.keptLead')}{' '}
+            <KeptDocuments paths={work.documents} openDocument={links.document} />
+            {filePaths.length > 0
+              ? t(
+                  docNames.length > 0
+                    ? 'workflowExecution.agentAttempt.keptFiles'
+                    : 'workflowExecution.agentAttempt.keptFilesOnly',
+                  { count: filePaths.length },
+                )
+              : null}
+            {links.attempt ? (
+              <>
+                {' '}
+                <InlineAction onClick={links.attempt}>
+                  {t('workflowExecution.agentAttempt.seeAttempt')}
+                </InlineAction>
+              </>
+            ) : null}
           </Typography>
         ) : null;
       const canTakeOver = view.takeOver.kind === 'available';

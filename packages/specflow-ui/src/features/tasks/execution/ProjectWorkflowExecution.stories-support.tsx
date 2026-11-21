@@ -3,6 +3,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider, createMemoryHistory } from '@tanstack/react-router';
 import { HttpClientError } from '@nevo/http-client';
 import type { CloseMerge, RepositoryBlocker } from '@nevo/specflow-contracts/specs';
+import type { UncommittedAttempt } from '@nevo/specflow-contracts/documents';
 import type { WorkspaceList } from '@nevo/specflow-contracts/workspaces';
 import type { SpecificationWorkspaceResponse } from '@nevo/specflow-contracts/specs/workspace';
 import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
@@ -25,11 +26,13 @@ import {
 import { managedProviders } from '../../sessions/start/catalogue/providerDescriptors.stories-support';
 import type { WorkflowExecutionApi } from './api';
 import {
+  ATTEMPT_ID,
   PLAN_SESSION_ID,
   PLAN_SESSION_TITLE,
   agentAttemptProjection,
   finishedAttemptHistory,
   finishedAttemptProjection,
+  takenOverAttemptHistory,
   type AttemptCase,
 } from './agent/agentAttempt.stories-support';
 import {
@@ -74,6 +77,8 @@ export type CloseStoryScenario =
   | 'close-repository-target'
   | 'close-repository-other-branches'
   | 'close-repository-no-branches'
+  | 'close-agent-commit'
+  | 'close-agent-commit-repository'
   | 'close-integrates'
   | 'close-nothing-to-merge'
   | 'close-primary'
@@ -96,7 +101,11 @@ export type AttemptStoryScenario = `attempt-${AttemptCase}`;
 /** Review ready after an agent finished Implementation: its commit made, or failed (Retry commit). */
 export type FinishedStoryScenario = 'finished-committed' | 'finished-commit-failed';
 
+/** The Task whose Implementation the owner took over from the agent, with its history. */
+export type HistoryStoryScenario = 'history-taken-over';
+
 export type WorkflowStoryScenario =
+  | HistoryStoryScenario
   | FinishedStoryScenario
   | AttemptStoryScenario
   | TaskWorkflowScenario
@@ -116,6 +125,8 @@ const closeScenarios: readonly string[] = [
   'close-repository-target',
   'close-repository-other-branches',
   'close-repository-no-branches',
+  'close-agent-commit',
+  'close-agent-commit-repository',
   'close-integrates',
   'close-nothing-to-merge',
   'close-primary',
@@ -208,6 +219,27 @@ function repositoryBlockersOf(scenario: WorkflowStoryScenario): readonly Reposit
       return storyRepositoryBlockers;
   }
 }
+
+/** Implementation of t-04: the agent finished, but a Git hook refused its commit (five files). */
+const storyFailedAttempt: UncommittedAttempt = {
+  attemptId: ATTEMPT_ID,
+  specId: SPEC,
+  taskId: 't-04',
+  step: 'implement',
+  attempt: 2,
+  stepTitle: 'Implementation',
+  code: 'COMMIT_BLOCKED',
+  count: 7,
+  paths: [
+    'specs/active/single-sign-on/tasks/t-04/task.md',
+    'specs/active/single-sign-on/tasks/t-04/screens.md',
+    'src/auth/refresh.ts',
+    'src/auth/state.ts',
+    'src/auth/refresh.test.ts',
+    'src/auth/session.ts',
+    'src/auth/cookie.ts',
+  ],
+};
 
 /** The repository preconditions of the `close-repository` story: three files and no branch. */
 export const storyRepositoryBlockers: readonly RepositoryBlocker[] = [
@@ -304,6 +336,56 @@ function closePreviewOf(scenario: WorkflowStoryScenario) {
           },
         }),
       );
+    // Agent work whose commit failed, with another specification's files that wait too.
+    case 'close-agent-commit':
+      return Promise.reject(
+        refusal('DOCUMENT_COMMITS_PENDING', {
+          details: {
+            cause: 'commit-uncommitted',
+            uncommitted: {
+              reasons: ['auto-commit-off'],
+              policy: { documents: 'manual', source: 'default' },
+              owners: [
+                {
+                  kind: 'specification',
+                  specId: '1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f',
+                  title: 'Passkeys spike',
+                  workflowState: 3,
+                  documents: 0,
+                  stepInProgress: true,
+                  count: 3,
+                  paths: [
+                    'specs/active/passkeys-spike/tasks/index.yaml',
+                    'specs/active/passkeys-spike/tasks/oidc-callback/task.md',
+                    'specs/active/passkeys-spike/tasks/oidc-callback/task.yaml',
+                  ],
+                },
+              ],
+              attempts: [storyFailedAttempt],
+              unreadable: 0,
+            },
+          },
+        }),
+      );
+    case 'close-agent-commit-repository':
+      return Promise.reject(
+        refusal('CLOSE_PREFLIGHT', {
+          repository: [
+            {
+              kind: 'uncommitted-changes',
+              checkout: 'specification',
+              workspaceId: SPEC_WORKSPACE,
+              paths: [
+                { path: 'scratch-notes.txt', scope: 'other' },
+                { path: 'package.json', scope: 'other' },
+              ],
+              count: 2,
+              specificationCount: 0,
+              attempts: [storyFailedAttempt],
+            },
+          ],
+        }),
+      );
     case 'close-repository':
     case 'close-repository-no-workspaces':
     case 'close-repository-target':
@@ -392,13 +474,15 @@ function services(scenario: WorkflowStoryScenario) {
   const taskScenario = (): TaskWorkflowScenario =>
     agentCase
       ? 'ready-agent'
-      : scenario === 'start-drift'
-        ? 'first-start'
-        : scenario === 'spike-gate-round-trip'
-          ? state.findings
-            ? 'spike-gate-met'
-            : 'spike-gate'
-          : (scenario as TaskWorkflowScenario);
+      : scenario === 'history-taken-over'
+        ? 'rework'
+        : scenario === 'start-drift'
+          ? 'first-start'
+          : scenario === 'spike-gate-round-trip'
+            ? state.findings
+              ? 'spike-gate-met'
+              : 'spike-gate'
+            : (scenario as TaskWorkflowScenario);
   const finished = scenario === 'finished-committed' || scenario === 'finished-commit-failed';
   const attemptOf = (): AttemptCase | undefined =>
     scenario.startsWith('attempt-')
@@ -448,15 +532,17 @@ function services(scenario: WorkflowStoryScenario) {
     confirmResult: never,
     takeOverAgentExecution: never,
     history: () =>
-      finished
-        ? Promise.resolve(
-            finishedAttemptHistory(
-              scenario === 'finished-committed'
-                ? { state: 'committed' }
-                : { state: 'failed', code: 'COMMIT_BLOCKED' },
-            ) as never,
-          )
-        : never(),
+      scenario === 'history-taken-over'
+        ? Promise.resolve(takenOverAttemptHistory() as never)
+        : finished
+          ? Promise.resolve(
+              finishedAttemptHistory(
+                scenario === 'finished-committed'
+                  ? { state: 'committed' }
+                  : { state: 'failed', code: 'COMMIT_BLOCKED' },
+              ) as never,
+            )
+          : never(),
     rejectResult: never,
     closePreview: () => closePreviewOf(scenario),
     // An agent Session still works in the worktree of the blocked Specification.
@@ -511,7 +597,12 @@ function services(scenario: WorkflowStoryScenario) {
         });
       },
       getHistory: (_spec, _task, token) =>
-        Promise.resolve({ token, items: historyItems(), nextCursor: null, coverage: 'complete' }),
+        Promise.resolve({
+          token,
+          items: historyItems(scenario === 'history-taken-over'),
+          nextCursor: null,
+          coverage: 'complete',
+        }),
     },
     taskAuthoringApi: {
       ...authoring,
@@ -554,7 +645,7 @@ function services(scenario: WorkflowStoryScenario) {
   });
 }
 
-function historyItems() {
+function historyItems(takenOver = false) {
   const fixture = createTaskDetailFixture('rich-human');
   const entry = (
     id: string,
@@ -564,6 +655,10 @@ function historyItems() {
     at: string,
     result: string | null,
     feedback: string | null,
+    actor: { class: 'agent' | 'human'; actorId?: string } = {
+      class: 'human',
+      actorId: 'local:dominik',
+    },
   ) => ({
     id,
     key: { ...fixture.key, stepId, attempt },
@@ -578,13 +673,23 @@ function historyItems() {
     result,
     transitionedTo: null,
     feedback,
-    actor: { class: 'human' as const, actorId: 'local:dominik' },
+    actor,
     resources: [],
     provenance: [{ source: 'workflow_history' as const, sourceId: id }],
   });
 
   return [
-    entry('h4', 'implement', 'Implementation', 2, '2026-11-13T11:52:00Z', null, null),
+    ...(takenOver
+      ? [
+          entry('h5', 'implement', 'Implementation', 3, '2026-11-13T12:15:00Z', null, null),
+          {
+            ...entry('h4', 'implement', 'Implementation', 2, '2026-11-13T11:52:00Z', null, null, {
+              class: 'agent',
+            }),
+            completedAt: '2026-11-13T12:15:00Z',
+          },
+        ]
+      : [entry('h4', 'implement', 'Implementation', 2, '2026-11-13T11:52:00Z', null, null)]),
     entry(
       'h3',
       'review',

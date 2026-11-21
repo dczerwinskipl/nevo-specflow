@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next';
 import { Trans, useTranslation } from 'react-i18next';
 import { GitCommitHorizontal } from 'lucide-react';
 import { Button, InlineNote } from '@nevo/ui';
@@ -39,6 +40,11 @@ const REASONS: Readonly<Record<string, 'branchProtected' | 'blocked'>> = {
   COMMIT_BLOCKED: 'blocked',
 };
 
+/** Why a commit failed, in plain words (the Close dialog and the history say it the same way). */
+export function commitReason(t: TFunction, code: string): string {
+  return t(`workflowExecution.attemptCommit.reason.${REASONS[code] ?? 'other'}`);
+}
+
 function Committed({
   commit,
 }: {
@@ -74,7 +80,7 @@ function Failed({
   const shown = commit.paths.slice(0, PATHS_SHOWN);
   const count = commit.count ?? commit.paths.length;
   const more = count - shown.length;
-  const reason = t(`workflowExecution.attemptCommit.reason.${REASONS[commit.code] ?? 'other'}`);
+  const reason = commitReason(t, commit.code);
 
   return (
     <div className="grid gap-2" data-now-attempt-commit="failed">

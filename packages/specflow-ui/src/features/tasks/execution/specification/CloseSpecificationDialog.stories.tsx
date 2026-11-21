@@ -312,6 +312,50 @@ export const Abandoned: Story = {
   },
 };
 
+/**
+ * Agent work whose commit failed holds the Close beside another specification's files: the
+ * attempt (step, Task, why in plain words, five of its seven files) with Retry commit in the group,
+ * Dismiss and Check again in the footer.
+ */
+export const BlockedByAgentWorkWhoseCommitFailed: Story = {
+  args: { scenario: 'close-agent-commit' },
+  play: async ({ canvasElement }) => {
+    const dialog = await openFromNow(canvasElement);
+    await expect(
+      await dialog.findByRole('heading', { name: 'Agent work whose commit failed · 7' }),
+    ).toBeVisible();
+    await expect(
+      dialog.getByText(/Implementation of t-04, attempt 2: the commit failed/),
+    ).toBeVisible();
+    await expect(dialog.getByText('src/auth/refresh.test.ts')).toBeVisible();
+    await expect(dialog.getByText('and 2 more')).toBeVisible();
+    await expect(
+      dialog.getByRole('button', { name: 'Retry commit of Implementation' }),
+    ).toBeEnabled();
+    await expect(dialog.getByRole('heading', { name: 'Passkeys spike · 3' })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Check again' })).toBeVisible();
+    // Only Dismiss and Check again in the footer: the group's action is inside the group.
+    await expect(dialog.getAllByRole('button', { name: /Retry commit/ })).toHaveLength(1);
+  },
+};
+
+/** The same attempt among the repository's own preconditions (files changed outside SpecFlow). */
+export const BlockedRepositoryWithAgentWork: Story = {
+  args: { scenario: 'close-agent-commit-repository' },
+  play: async ({ canvasElement }) => {
+    const dialog = await openFromNow(canvasElement);
+    await expect(
+      await dialog.findByRole('heading', { name: 'Agent work whose commit failed · 7' }),
+    ).toBeVisible();
+    await expect(
+      dialog.getByRole('heading', { name: /Uncommitted files in this checkout · 2/ }),
+    ).toBeVisible();
+    await expect(
+      dialog.getByRole('button', { name: 'Retry commit of Implementation' }),
+    ).toBeVisible();
+  },
+};
+
 /** The confirmed Close runs: the facts stay, the button is busy, Cancel is off. */
 export const Closing: Story = {
   args: { scenario: 'close-closing' },

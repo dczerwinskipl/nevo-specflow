@@ -60,6 +60,7 @@ function renderDialog({
   getTaskList = never,
   documents,
   onOpenSpecification = vi.fn(),
+  retryAttemptCommit = vi.fn(never),
 }: {
   readonly closePreview: WorkflowExecutionApi['closePreview'];
   readonly close?: WorkflowExecutionApi['close'];
@@ -70,6 +71,7 @@ function renderDialog({
   readonly getTaskList?: () => Promise<never>;
   readonly documents?: CloseSpecificationDialogProps['documents'];
   readonly onOpenSpecification?: (specId: string) => void;
+  readonly retryAttemptCommit?: WorkflowExecutionApi['retryAttemptCommit'];
 }) {
   stubLayoutApis();
   const workflowExecutionApi: WorkflowExecutionApi = {
@@ -82,7 +84,7 @@ function renderDialog({
     startAgentExecution: vi.fn(never),
     closePreview,
     stopAgentExecution: vi.fn(never),
-    retryAttemptCommit: vi.fn(never),
+    retryAttemptCommit,
     confirmResult: vi.fn(never),
     takeOverAgentExecution: vi.fn(never),
     history: vi.fn(never),
@@ -146,6 +148,74 @@ function dirtyPreview() {
 
 const fact = (dialog: HTMLElement, term: string) =>
   within(dialog).getByText(term).nextElementSibling?.textContent;
+
+describe('agent work whose commit failed', () => {
+  const attempt = {
+    attemptId: '5d1c1a52-8f3e-4a6b-9a0e-3b7f2c9d1e44',
+    specId: SPEC,
+    taskId: 't-04',
+    step: 'implement',
+    attempt: 2,
+    stepTitle: 'Implementation',
+    code: 'COMMIT_BLOCKED',
+    count: 7,
+    paths: ['a.ts', 'b.ts', 'c.ts', 'd.ts', 'e.ts'],
+  };
+
+  it('lists the attempt in its own group and retries its commit, then checks again', async () => {
+    const preview = refusal('CLOSE_PREFLIGHT', 422);
+    (preview.cause as { data: Record<string, unknown> }).data.repository = [
+      { ...uncommitted, paths: [], count: 0, specificationCount: 0, attempts: [attempt] },
+    ];
+    const closePreview = vi
+      .fn<WorkflowExecutionApi['closePreview']>()
+      .mockRejectedValueOnce(preview)
+      .mockResolvedValue(planned());
+    const retryAttemptCommit = vi.fn(() => Promise.resolve({} as never));
+    const dialog = renderDialog({ closePreview, retryAttemptCommit });
+
+    expect(
+      await within(dialog).findByRole('heading', { name: 'Agent work whose commit failed · 7' }),
+    ).toBeTruthy();
+    expect(
+      within(dialog).getByText(/Implementation of t-04, attempt 2: the commit failed: a Git hook/),
+    ).toBeTruthy();
+    expect(within(dialog).getByText('and 2 more')).toBeTruthy();
+    // Nothing else is left uncommitted: no second group, and no discard warning.
+    expect(within(dialog).queryByText(/Uncommitted files in this checkout/)).toBeNull();
+    expect(within(dialog).queryByText('Commit them first.')).toBeNull();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Retry commit of Implementation' }));
+
+    await waitFor(() =>
+      expect(retryAttemptCommit).toHaveBeenCalledWith(
+        { specId: SPEC, taskId: 't-04' },
+        { step: 'implement', attempt: 2 },
+      ),
+    );
+    expect(await within(dialog).findByText('Ready to close')).toBeTruthy();
+    expect(closePreview).toHaveBeenCalledTimes(2);
+  });
+
+  it('says the retry was refused and stays', async () => {
+    const hold = refusal('DOCUMENT_COMMITS_PENDING', 409, {
+      cause: 'commit-uncommitted',
+      uncommitted: { reasons: [], owners: [], attempts: [attempt], unreadable: 0 },
+    });
+    const dialog = renderDialog({
+      closePreview: vi.fn(() => Promise.reject(hold)),
+      retryAttemptCommit: vi.fn(() => Promise.reject(refusal('COMMIT_BLOCKED', 409))),
+    });
+
+    expect(
+      await within(dialog).findByText(/An agent finished its work, but its commit failed/),
+    ).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Retry commit of Implementation' }));
+
+    expect(await within(dialog).findByRole('alert')).toBeTruthy();
+    expect(within(dialog).getByRole('button', { name: 'Check again' })).toBeTruthy();
+  });
+});
 
 describe('CloseSpecificationDialog', () => {
   it('names uncommitted files and the discard warning before any press, then checks again to ready', async () => {

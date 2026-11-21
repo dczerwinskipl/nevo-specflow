@@ -19,9 +19,10 @@ export function createPackagingWorkspace(sourceRoot: string): {
     }).split('\0');
     for (const file of new Set(files.filter(Boolean))) {
       const source = join(sourceRoot, file);
+      // Locally deleted tracked source is absent in the snapshot too.
       if (!existsSync(source)) {
         continue;
-      } // Locally deleted tracked source is absent in the snapshot too.
+      }
 
       const target = join(root, file);
       mkdirSync(dirname(target), { recursive: true });

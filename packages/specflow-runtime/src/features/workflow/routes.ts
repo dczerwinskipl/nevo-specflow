@@ -19,6 +19,7 @@ import {
   StartWorkflowResultSchema,
   WorkflowActionProjectionSchema,
   WorkflowErrorSchema,
+  WorkflowHistorySchema,
   WorkflowSpecParamsSchema,
   WorkflowTaskParamsSchema,
   type StartWorkflowResult,
@@ -83,6 +84,7 @@ function unavailablePort(port: WorkflowPort | undefined): WorkflowPort {
     start: refuse,
     finish: refuse,
     return: refuse,
+    history: refuse,
     reevaluateWait: refuse,
     abandon: refuse,
     retryAttemptCommit: refuse,
@@ -178,6 +180,22 @@ export const workflowEndpoint: FastifyPluginCallback<WorkflowRoutesOptions> = (
       ),
     );
 
+    typed.get(
+      `${base}/history`,
+      {
+        onRequest: view,
+        schema: {
+          tags,
+          summary: `Read the workflow history of a ${label}, with its agent attempts' events and work`,
+          params,
+          response: { 200: contractRef(WorkflowHistorySchema), ...errors },
+        },
+      },
+      refusing(async (request, reply) =>
+        reply.code(200).send(toWire(await port.history(subjectOf(request)))),
+      ),
+    );
+
     typed.post(
       `${base}/start`,
       {
@@ -251,12 +269,15 @@ export const workflowEndpoint: FastifyPluginCallback<WorkflowRoutesOptions> = (
         },
       },
       refusing(async (request, reply) => {
-        const returned = await port.return({
-          subject: subjectOf(request),
-          step: request.body.step,
-          ...(request.body.reason !== undefined ? { feedback: request.body.reason } : {}),
-          actor: actorOf(request),
-        });
+        const returned = await port.return(
+          {
+            subject: subjectOf(request),
+            step: request.body.step,
+            ...(request.body.reason !== undefined ? { feedback: request.body.reason } : {}),
+            actor: actorOf(request),
+          },
+          request.authz.readContext().subject,
+        );
 
         return reply.code(200).send(toWire(returned));
       }),

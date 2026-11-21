@@ -196,6 +196,33 @@ export type AgentOption = Static<typeof AgentOptionSchema>;
  * - `proposal`: the agent's finish proposal: `pending` (not finalized yet), `refused` (with the
  *   reasons it was refused when applied), `finalized`.
  */
+/**
+ * What an agent attempt left (partial work is never rolled back, D19), Git-free:
+ *
+ * - `documents`: uncommitted files SpecFlow wrote only for the attempt (documents and Task files),
+ *   checkout-relative; `mixed`: those someone else changed too;
+ * - `tasks`: the Task drafts the attempt produced;
+ * - `declared`: the changed files outside SpecFlow's folders its proposal declared;
+ * - `changed`: what was uncommitted in the checkout when its last Turn ended;
+ * - `commit`: its attempt commit (D15): `none` (it did not finish with its own result), `pending`,
+ *   `committed` or `failed` (with the code; Retry commit is possible).
+ */
+export const AgentAttemptWorkSchema = Type.Object({
+  documents: array(Type.String()),
+  mixed: array(Type.String()),
+  tasks: array(Type.String()),
+  declared: array(Type.String()),
+  changed: Type.Optional(
+    Type.Object({ paths: array(Type.String()), truncated: Type.Optional(Type.Literal(true)) }),
+  ),
+  commit: Type.Object({
+    state: literals(['none', 'pending', 'committed', 'failed'] as const),
+    code: Type.Optional(Type.String()),
+    runs: Type.Optional(Type.Integer({ minimum: 1 })),
+  }),
+});
+export type AgentAttemptWork = Static<typeof AgentAttemptWorkSchema>;
+
 export const AgentAttemptViewSchema = Type.Object({
   attemptId: Type.String(),
   step: StepIdSchema,
@@ -226,6 +253,33 @@ export const AgentAttemptViewSchema = Type.Object({
   ),
   /** Whether Continue (a new Turn of the attempt) can start now, and why not. */
   continue: AgentOptionSchema,
+  /**
+   * The owner's Return during the attempt (D19): `requested` while the agent's Turn may still run
+   * (the Runtime stopped it; the return applies once its process is proven stopped), `refused` when
+   * applying it was refused (with the reason).
+   */
+  returnRequest: Type.Optional(
+    Type.Object({
+      to: StepIdSchema,
+      requestedAt: Type.String(),
+      state: literals(['requested', 'refused'] as const),
+      refusal: Type.Optional(Type.Object({ code: Type.String(), message: Type.String() })),
+    }),
+  ),
+  /**
+   * Whether Take over (F17) is possible now: only once the agent's process is proven ended
+   * (`agent-working`: its Turn runs or is stopping; `outcome-unknown`: SpecFlow cannot tell whether
+   * it still runs; `return-requested`: the owner's return waits to apply).
+   */
+  takeOver: Type.Union([
+    Type.Object({ kind: Type.Literal('available') }),
+    Type.Object({
+      kind: Type.Literal('unavailable'),
+      reason: literals(['agent-working', 'outcome-unknown', 'return-requested'] as const),
+    }),
+  ]),
+  /** What the attempt left so far; nothing is rolled back (D19). */
+  work: AgentAttemptWorkSchema,
 });
 export type AgentAttemptView = Static<typeof AgentAttemptViewSchema>;
 
@@ -557,6 +611,8 @@ export const WorkflowPositionSchema = Type.Union([
       number: Type.Integer({ minimum: 1 }),
       startedAt: Type.String(),
       actor: WorkflowActorSchema,
+      /** The attempt started by taking over the step's previous (agent) attempt (Take over). */
+      takenOverFrom: Type.Optional(Type.Object({ attempt: Type.Integer({ minimum: 1 }) })),
     }),
     /**
      * What finishes the step, for everyone whoever runs the attempt: each result with where it

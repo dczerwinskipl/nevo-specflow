@@ -10,6 +10,8 @@ import {
   AgentStepExecutionResultSchema,
   StopAgentStepExecutionRequestSchema,
   StopAgentStepExecutionResultSchema,
+  TakeOverAgentStepExecutionRequestSchema,
+  TakeOverAgentStepExecutionResultSchema,
   WorkflowErrorSchema,
   WorkflowSpecParamsSchema,
   WorkflowTaskParamsSchema,
@@ -24,6 +26,7 @@ import { specScope, type ProjectIdSource } from '../../specs';
 import {
   AgentUnavailableError,
   WorkflowUnavailableError,
+  ownerActorOf,
   sendWorkflowFailure,
   toWire,
   workflowFailure,
@@ -112,8 +115,9 @@ function refusing<Request, Result>(
 /**
  * The Ask agent owner routes of a Specification and of a Task: start an agent attempt of the step
  * the owner was shown or continue the active one (`agent-execution`), and stop its running agent
- * (`agent-execution/stop`). They drive a run, so they need `Manage`; the caller is the owner, the agent's
- * actor comes only from the Session the Runtime binds.
+ * (`agent-execution/stop`), and take the stopped attempt over (`agent-execution/take-over`). They
+ * drive a run, so they need `Manage`; the caller is the owner, the agent's actor comes only from the
+ * Session the Runtime binds.
  */
 export const agentStepExecutionEndpoint: FastifyPluginCallback<AgentStepExecutionRoutesOptions> = (
   app,
@@ -236,6 +240,38 @@ export const agentStepExecutionEndpoint: FastifyPluginCallback<AgentStepExecutio
         });
 
         return reply.code(200).send(result);
+      }),
+    );
+
+    typed.post(
+      `${base}/agent-execution/take-over`,
+      {
+        onRequest: manage,
+        bodyLimit: BODY_LIMIT_BYTES,
+        schema: {
+          tags,
+          summary: `Take over the stopped agent attempt of a ${label}'s step and go on yourself`,
+          params,
+          body: TakeOverAgentStepExecutionRequestSchema,
+          response: { 200: TakeOverAgentStepExecutionResultSchema, ...errors },
+        },
+      },
+      refusing(async (request, reply) => {
+        const result = await execution().takeOver({
+          subject: subjectOf(request),
+          step: request.body.step,
+          attempt: request.body.attempt,
+          actor: ownerActorOf(principal(request)),
+        });
+
+        return reply.code(200).send(
+          toWire({
+            subject: result.subject,
+            takenOver: result.takenOver,
+            step: result.context.step,
+            attempt: result.context.attempt,
+          }),
+        );
       }),
     );
   }

@@ -1,5 +1,7 @@
 import type {
   ActionProjection,
+  OwnerReturnResult,
+  ReturnToStepInput,
   AgentAttemptDependencies,
   WorkflowDependencies,
   WorkflowSubject,
@@ -30,6 +32,14 @@ export interface WorkflowFeatureDependencies {
     subject: WorkflowSubject,
     projection: ActionProjection,
   ) => Promise<ActionProjection>;
+  /**
+   * The owner's Return when an agent attempt may be active (D19): recorded on the attempt and its
+   * Turn stopped while it may still run, applied now otherwise. Absent: the Engine's return.
+   */
+  readonly agentReturn?: (
+    input: ReturnToStepInput,
+    principal: string,
+  ) => Promise<OwnerReturnResult>;
 }
 
 /**
@@ -48,13 +58,16 @@ export function createWorkflowFeature(
           ? createEngineWorkflowPort(dependencies.openWorkflow, dependencies.openAgentAttempts)
           : undefined);
       const availability = dependencies.agentAvailability;
-      const port: WorkflowPort | undefined =
-        base && availability
-          ? {
-              ...base,
-              actions: async (subject) => availability(subject, await base.actions(subject)),
-            }
-          : base;
+      const agentReturn = dependencies.agentReturn;
+      const port: WorkflowPort | undefined = base
+        ? {
+            ...base,
+            ...(availability
+              ? { actions: async (subject) => availability(subject, await base.actions(subject)) }
+              : {}),
+            ...(agentReturn ? { return: agentReturn } : {}),
+          }
+        : base;
       app.register(workflowEndpoint, {
         port,
         projectId: () => dependencies.projectId?.(),

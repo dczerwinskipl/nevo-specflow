@@ -66,6 +66,7 @@ export const REFUSED: ReadonlySet<string> = new Set([
   'workflow retry-commit',
   'workflow return',
   'workflow start',
+  'workflow take-over',
 ]);
 
 export type CommandPlacement = 'read' | 'brokered' | 'refused';

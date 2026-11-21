@@ -9,13 +9,21 @@ import {
   listUnsettledWorkspaceExecutions,
   readAgentContextDigest,
   readStepContext,
+  readWorkflowHistory,
   resolveSpecificationForRead,
+  returnDuringAgentAttempt,
   startAgentAttempt,
+  takeOverAgentAttempt,
   WorkflowError,
   type ActionProjection,
   type AgentActor,
   type AgentAttemptDependencies,
   type AgentAttemptJournal,
+  type AgentAttemptWork,
+  type OwnerReturnResult,
+  type ReturnToStepInput,
+  type TakeOverAgentAttemptInput,
+  type TakeOverAgentAttemptResult,
   type ExpectedPosition,
   type SpecFlowEngine,
   type WorkflowDependencies,
@@ -67,6 +75,12 @@ export interface AgentStepEngine {
     readonly turn: { readonly invocationId: string; readonly turnId: string };
     readonly launch?: { readonly session: 'fresh' | 'reuse'; readonly effort?: string };
   }): Promise<{ readonly attemptId: string }>;
+  /** What the attempt left so far (Git-free: its journal, the ledger and the Task manifests). */
+  work(subject: WorkflowSubject, active: ActiveAgentAttempt): Promise<AgentAttemptWork>;
+  /** The owner's Return (D19, A2): applied now, or recorded on the agent attempt. */
+  returnStep(input: ReturnToStepInput): Promise<OwnerReturnResult>;
+  /** Take over (F17): the agent attempt ends `taken-over`, the owner's attempt starts. */
+  takeOver(input: TakeOverAgentAttemptInput): Promise<TakeOverAgentAttemptResult>;
   /** The brief of the attempt's active step, rendered from its context and its scope. */
   brief(
     subject: WorkflowSubject,
@@ -160,6 +174,26 @@ export function createAgentStepEngine(dependencies: {
 
       return { attemptId: started.binding.attemptId };
     },
+    async work(subject, active) {
+      const attempts = await dependencies.openAttempts();
+      const history = await readWorkflowHistory(await dependencies.openWorkflow(), subject, {
+        journal: (attemptId) =>
+          attemptId === active.attemptId
+            ? Promise.resolve(active.journal)
+            : Promise.resolve(undefined),
+        ledger: (workspaceId, specId) => attempts.ledger(workspaceId, specId),
+      });
+      const found = history.items.find(
+        (item) =>
+          item.kind === 'attempt' && item.step === active.step && item.attempt === active.attempt,
+      );
+
+      return found?.kind === 'attempt' && found.agent
+        ? found.agent.work
+        : { documents: [], mixed: [], tasks: [], declared: [], commit: { state: 'none' } };
+    },
+    returnStep: async (input) => returnDuringAgentAttempt(await dependencies.openAttempts(), input),
+    takeOver: async (input) => takeOverAgentAttempt(await dependencies.openAttempts(), input),
     async brief(subject, attemptId) {
       const scope = (await agentAttemptScope(await dependencies.openAttempts(), attemptId))?.scope;
       if (!scope) {

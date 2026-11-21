@@ -107,10 +107,12 @@ function fakePort(overrides: Partial<WorkflowPort> = {}): { port: WorkflowPort; 
     } as never),
     finish: record('finish', finished),
     return: record('return', {
+      kind: 'returned' as const,
       subject: subjectSpec,
       position: { state: 'ready', step: 'draft' },
       continuation: { kind: 'none', reason: 'terminal' },
     }),
+    history: record('history', { subject: subjectSpec, items: [] }),
     reevaluateWait: record('reevaluateWait', {
       step: 'implementation',
       attempt: 1,
@@ -385,6 +387,89 @@ describe('workflow action routes', () => {
 
     expect(response.statusCode).toBe(200);
     expect(calls.last).toMatchObject({ step: 'draft', feedback: 'Rework the scope' });
+    await app.close();
+  });
+
+  it('answers a Return during an agent attempt as requested, the step unchanged', async () => {
+    const requested = {
+      kind: 'return-requested' as const,
+      subject: subjectSpec,
+      to: 'draft',
+      attemptId: 'a1',
+      step: 'review',
+      attempt: 1,
+      sessionId: 's1',
+      turnId: 't1',
+      requestedAt: '2026-11-21T10:00:00.000Z',
+    };
+    let principal: string | undefined;
+    const { port } = fakePort({
+      return: (_input, caller) => {
+        principal = caller;
+
+        return Promise.resolve(requested);
+      },
+    });
+    const app = appWith(port);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/specs/${SPEC}/workflow/return`,
+      payload: { step: 'draft', reason: 'Rework the scope' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(requested);
+    expect(principal).toContain('alice');
+    await app.close();
+  });
+
+  it('reads the workflow history of a Specification with an agent attempt', async () => {
+    const work = {
+      documents: ['specs/x/draft.md'],
+      mixed: [],
+      tasks: [],
+      declared: ['src/app.ts'],
+      commit: { state: 'none' as const },
+    };
+    const history = {
+      subject: subjectSpec,
+      items: [
+        {
+          kind: 'attempt' as const,
+          sequence: 1,
+          step: 'draft',
+          stepTitle: 'Draft',
+          attempt: 1,
+          startedAt: '2026-11-21T10:00:00.000Z',
+          endedAt: '2026-11-21T10:05:00.000Z',
+          outcome: { kind: 'taken-over' as const },
+          agent: {
+            attemptId: 'a1',
+            provider: 'mock',
+            sessionId: 's1',
+            turns: 1,
+            ended: 'taken-over' as const,
+            takenOverBy: { attempt: 2 },
+            events: [
+              { kind: 'started' as const, at: '2026-11-21T10:00:00.000Z' },
+              { kind: 'taken-over' as const, at: '2026-11-21T10:05:00.000Z' },
+            ],
+            work,
+          },
+        },
+      ],
+    };
+    const { port } = fakePort({ history: () => Promise.resolve(history) });
+    const app = appWith(port);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/specs/${SPEC}/workflow/history`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(history);
     await app.close();
   });
 

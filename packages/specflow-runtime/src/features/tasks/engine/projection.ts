@@ -388,7 +388,10 @@ export function historyFactsOf(
             ? (outcome.result ?? outcome.transition)
             : outcome.kind,
       transitionedTo: transition ? (destination(definition, transition) ?? null) : null,
-      feedback: outcome && outcome.kind !== 'abandoned' ? (outcome.feedback ?? null) : null,
+      feedback:
+        outcome && (outcome.kind === 'transition' || outcome.kind === 'returned')
+          ? (outcome.feedback ?? null)
+          : null,
       actor: actorOf(record),
       resources: [],
       provenance: [{ source: 'workflow_history', sourceId: id }],

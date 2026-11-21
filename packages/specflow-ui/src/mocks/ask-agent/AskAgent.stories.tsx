@@ -27,7 +27,6 @@ export const DialogContinuesSession: Story = { args: { state: 'dialog-continue' 
 export const DialogIndependentReview: Story = { args: { state: 'dialog-independent' } };
 export const DialogUncommittedChanges: Story = { args: { state: 'dialog-dirty' } };
 export const DialogNoAgentChosen: Story = { args: { state: 'dialog-no-agent' } };
-export const DialogPairingCodeWaiting: Story = { args: { state: 'dialog-pairing-code' } };
 export const DialogSessionUnavailable: Story = { args: { state: 'dialog-session-unavailable' } };
 
 /* 4. Running attempt */

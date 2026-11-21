@@ -1,7 +1,6 @@
 import type { FastifySchema } from 'fastify';
 import type { TSchema } from 'typebox';
 
-import { OwnerCredentialErrorResponseSchema } from '@nevo/specflow-contracts/authentication';
 import { AuthenticationRequiredErrorResponseSchema } from '@nevo/specflow-contracts/authorization';
 import {
   RateLimitedErrorResponseSchema,
@@ -47,56 +46,6 @@ const RATE_LIMITED_RESPONSE = {
     'x-ratelimit-reset': { type: 'string', description: 'Seconds until the window resets.' },
   },
 } as const;
-
-const OWNER_REFUSAL_NOTE =
-  'The owner-credential guard refuses an owner route before it runs: `owner_request_refused` for a ' +
-  'request that is not a same-origin owner request (`Origin` or `Sec-Fetch-Site` of another site ' +
-  'or origin, or no `X-Nevo-Owner: 1` header), `owner_credential_required` in trusted local mode ' +
-  'without a paired device credential.';
-
-/**
- * The route schema as documented, with the guard's `403` added to an owner route (D21): its own
- * response when the route documents no `403`, otherwise one more body of that `403`.
- */
-export function withOwnerCredentialRefusal(schema: FastifySchema, owner: boolean): FastifySchema {
-  if (!owner || !schema.response) {
-    return schema;
-  }
-
-  const response = schema.response as Record<string, Record<string, unknown>>;
-  const ownerRef = contractRef(OwnerCredentialErrorResponseSchema);
-  const own = response[403];
-  if (!own) {
-    return {
-      ...schema,
-      response: { ...response, 403: { ...ownerRef, description: OWNER_REFUSAL_NOTE } },
-    };
-  }
-
-  const {
-    description,
-    'x-response-description': inlineDescription,
-    anyOf,
-    ...body
-  } = own as {
-    description?: string;
-    'x-response-description'?: string;
-    anyOf?: readonly object[];
-  } & Record<string, unknown>;
-  const members = anyOf ?? [body.$ref !== undefined ? { $ref: body.$ref } : body];
-  const before = description ?? inlineDescription ?? STATUS_DESCRIPTIONS[403];
-
-  return {
-    ...schema,
-    response: {
-      ...response,
-      403: {
-        anyOf: [...members, ownerRef],
-        'x-response-description': `${String(before)} ${OWNER_REFUSAL_NOTE}`,
-      },
-    },
-  };
-}
 
 /** The route validates a part of the request: path, query, headers or body. */
 export function hasRequestSchema(schema: FastifySchema | undefined): boolean {

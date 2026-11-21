@@ -46,7 +46,6 @@ import { authCookieNames } from '../../src/features/auth/authentication/http/coo
 import { InMemoryAuthenticationStore } from '../../src/features/auth/authentication/store/in-memory-store';
 import { createEngineDocumentWriteSource } from '../../src/features/documents/write/engine-write-source';
 import { createRuntimeApp } from '../../src/server/app';
-import { withOwnerRequests } from '../support/owner-credential';
 import { passwordConfig } from '../auth/support/config';
 
 const roots: string[] = [];
@@ -230,7 +229,6 @@ async function listen(
       ...(options.now ? { operations: { now: options.now } } : {}),
     },
   );
-  withOwnerRequests(app);
   apps.push(app);
   if (options.scheduler) {
     const scheduler = createDocumentQueueScheduler(fx.engine);
@@ -1402,7 +1400,6 @@ describe('manual commit (ADR 0018)', () => {
       },
       { auth: { store }, specs: { engine: fx.engine }, documents: { writeSource: stuckSource } },
     );
-    withOwnerRequests(app);
     apps.push(app);
     const l: Listening = {
       app,

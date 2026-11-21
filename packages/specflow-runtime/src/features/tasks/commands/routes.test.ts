@@ -13,7 +13,7 @@ import { Value } from 'typebox/value';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { noAuthConfig } from '../../../../test/auth/support/config';
-import { createOwnerRuntimeApp } from '../../../../test/support/owner-credential';
+import { createRuntimeApp } from '../../../server/app';
 import type { TaskCommands } from './task-commands';
 
 const apps: FastifyInstance[] = [];
@@ -50,7 +50,7 @@ async function listen(
   options: { role?: 'developer' | 'viewer'; commands?: TaskCommands | null } = {},
 ) {
   const calls: Call[] = [];
-  const app = await createOwnerRuntimeApp(
+  const app = await createRuntimeApp(
     {
       ...noAuthConfig(),
       authorization: {
@@ -269,7 +269,7 @@ describe('Task command routes', () => {
   it('records the trusted local identity with trust local', async () => {
     const calls: Call[] = [];
     const { localUserId: _unused, ...authentication } = noAuthConfig().authentication;
-    const app = await createOwnerRuntimeApp(
+    const app = await createRuntimeApp(
       { ...noAuthConfig(), authentication },
       { tasks: { commands: fakeCommands(calls) } },
     );

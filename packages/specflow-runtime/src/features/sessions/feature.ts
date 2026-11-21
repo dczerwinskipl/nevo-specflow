@@ -47,8 +47,6 @@ export function createSessionsFeature(
     workspaceOccupancy?: {
       beginTurn(workspaceId: string, sessionId: string): { end(): void } | undefined;
     };
-    /** Session starts and Turns are refused while this answers true (Auth's headless pairing gate). */
-    agentWorkPaused?: () => boolean;
     /** The invocation capabilities of write Turns (the agent-execution feature, D11). */
     invocationCapabilities?: InvocationCapabilities;
   } = {},
@@ -177,7 +175,6 @@ export function createSessionsFeature(
               ? createSpecificationWorkspaceResolver(options.engine)
               : undefined,
             options.workspaceOccupancy,
-            options.agentWorkPaused,
             options.invocationCapabilities,
           )
         : undefined;

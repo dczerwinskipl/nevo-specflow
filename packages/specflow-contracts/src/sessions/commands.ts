@@ -101,11 +101,6 @@ export const SessionErrorCodes = [
   'PROVIDER_UNAVAILABLE',
   'PROVIDER_AUTH_REQUIRED',
   'PROVIDER_CATALOGUE_UNAVAILABLE',
-  /**
-   * A Session start or Turn while the headless Runtime's initial pairing code file exists (D21):
-   * no agent runs, even read-only, while that code can be read. Pair the first device to lift it.
-   */
-  'SESSION_PAIRING_PENDING',
 ] as const;
 /**
  * The `session_error` envelope of a Session refusal, answered by every Session and Session

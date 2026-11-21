@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { DocumentError, deriveAgentScope, type OwnedExecution } from '@nevo/specflow-engine';
 
-import { createAgentExecutionFeature } from '../feature';
 import { createCapabilityRegistry, type CapabilityBinding } from '../capability/registry';
 import { createBrokerDispatcher, type BrokerDocuments } from './dispatch';
 import { brokerOperationId } from './operation-id';
@@ -298,28 +297,5 @@ describe('agent broker dispatch', () => {
     expect(
       await f.dispatcher.handle(f.request(a.value, { ...f.saveOf(), content: 42 })),
     ).toMatchObject({ error: { code: 'AGENT_REQUEST_INVALID' } });
-  });
-});
-
-describe('agent capability minting', () => {
-  it('mints no capability while the headless pairing code is pending', async () => {
-    const openEndpoint = vi.fn(() => Promise.reject(new Error('Must not listen.')));
-    const feature = createAgentExecutionFeature({
-      engine: {} as never,
-      documents: {} as never,
-      writeTurnsPaused: () => true,
-      openEndpoint,
-    });
-    await expect(
-      feature.capabilities.mint({
-        invocationId: 'i',
-        sessionId: 's',
-        turnId: 't',
-        specId: 'S1',
-        workspace: '/work/one',
-        provider: 'claude',
-      }),
-    ).rejects.toMatchObject({ code: 'SESSION_PAIRING_PENDING' });
-    expect(openEndpoint).not.toHaveBeenCalled();
   });
 });

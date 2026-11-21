@@ -119,7 +119,6 @@ function fakes(
         requestedAt: 't3',
       }),
     takeOver: () => Promise.reject(new Error('not used')),
-    settleAbandoned: () => Promise.resolve(),
   };
   const sessions: AgentStepSessions = {
     available: () => true,

@@ -306,8 +306,12 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
                     },
                   }
                 : {}),
-              ...(journal.returnRequest.state === 'requested' && state !== 'ended'
-                ? { stop: state === 'stopping' ? ('sent' as const) : ('failed' as const) }
+              ...(journal.returnRequest.state === 'requested'
+                ? state === 'ended' || state === 'session-missing'
+                  ? // The Turn never ran or has ended without its finalize applying it (an
+                    // abandoned start): it applies at the owner's next action (Return, Take over).
+                    { appliesOn: 'next-action' as const }
+                  : { stop: state === 'stopping' ? ('sent' as const) : ('failed' as const) }
                 : {}),
             },
           }
@@ -357,7 +361,6 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
   async function decorate(
     subject: WorkflowSubject,
     projection: ActionProjection,
-    repaired = false,
   ): Promise<ActionProjection> {
     const position = projection.position;
     if ((position.kind === 'not-started' || position.kind === 'ready') && position.next) {
@@ -369,16 +372,6 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
 
     if (position.kind === 'active' && position.attempt.actor.class === 'agent') {
       const active = await engine.activeAttempt(subject);
-      if (active?.journal.returnRequest?.state === 'requested' && !repaired) {
-        const phase = await engine.claimPhase(active.journal.turns.at(-1)!.invocationId);
-        if (phase === 'settled') {
-          // The Turn was abandoned before it ran and its return never applied (an interrupted
-          // abandon): applied now, and the projection read again.
-          await engine.settleAbandoned(active.attemptId);
-
-          return decorate(subject, await engine.actions(subject), true);
-        }
-      }
 
       return active
         ? { ...projection, agentAttempt: await attemptView(active, subject) }

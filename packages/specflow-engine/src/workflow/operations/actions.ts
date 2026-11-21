@@ -247,6 +247,12 @@ export interface AgentAttemptView {
      * (`failed`: the owner can Stop again).
      */
     readonly stop?: 'sent' | 'failed';
+    /**
+     * While `requested` and no Turn runs any more (it was abandoned before it ran): the return
+     * applies at the owner's next action on the attempt (Return, Take over); nothing is written on
+     * a read.
+     */
+    readonly appliesOn?: 'next-action';
   };
   /**
    * Whether Take over (F17) is possible now: only once the agent's process is proven ended

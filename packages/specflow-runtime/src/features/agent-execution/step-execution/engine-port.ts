@@ -12,7 +12,6 @@ import {
   readAgentAttemptWork,
   resolveSpecificationForRead,
   returnDuringAgentAttempt,
-  settleAbandonedAgentTurn,
   startAgentAttempt,
   takeOverAgentAttempt,
   WorkflowError,
@@ -78,8 +77,6 @@ export interface AgentStepEngine {
   }): Promise<{ readonly attemptId: string }>;
   /** What the attempt left so far (Git-free: its journal, the ledger and the Task manifests). */
   work(subject: WorkflowSubject, active: ActiveAgentAttempt): Promise<AgentAttemptWork>;
-  /** Applies a return a Turn abandoned before it ran left waiting (its claim settled). */
-  settleAbandoned(attemptId: string): Promise<void>;
   /** The owner's Return (D19, A2): applied now, or recorded on the agent attempt. */
   returnStep(input: ReturnToStepInput): Promise<OwnerReturnResult>;
   /** Take over (F17): the agent attempt ends `taken-over`, the owner's attempt starts. */
@@ -182,8 +179,6 @@ export function createAgentStepEngine(dependencies: {
 
       return readAgentAttemptWork(attempts.workflow, attempts, active.journal);
     },
-    settleAbandoned: async (attemptId) =>
-      settleAbandonedAgentTurn(await dependencies.openAttempts(), attemptId),
     returnStep: async (input) => returnDuringAgentAttempt(await dependencies.openAttempts(), input),
     takeOver: async (input) => takeOverAgentAttempt(await dependencies.openAttempts(), input),
     async brief(subject, attemptId) {

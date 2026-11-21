@@ -4,6 +4,7 @@ import { useAppServices } from '../../../../app/useAppServices';
 import { useSpecificationWorkspace } from '../../../specs/read-model';
 import type { WorkflowSubjectRef } from '../api';
 import type { AttemptCommitView } from './AttemptCommitNote';
+import { POLL_MS } from './usePolling';
 
 /** The history read of one subject; refreshed with the subject after a command. */
 export const workflowHistoryKey = (specId: string, taskId: string | undefined) =>
@@ -32,6 +33,18 @@ export function useFinishedAttemptCommit(
     queryFn: ({ signal }) => workflowExecutionApi.history(subject, signal),
     enabled,
     retry: false,
+    // A commit still running changes by itself: read it again until it settles.
+    refetchInterval: (query) =>
+      query.state.data?.items.some(
+        (candidate) =>
+          candidate.kind === 'attempt' &&
+          candidate.step === from?.step &&
+          candidate.attempt === from.attempt &&
+          candidate.agent?.work.commit.state === 'pending',
+      )
+        ? POLL_MS
+        : false,
+    refetchIntervalInBackground: false,
   });
   const branch = useSpecificationWorkspace(subject.specId, specificationApi).data?.repoContext
     ?.branch;

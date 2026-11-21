@@ -2831,16 +2831,18 @@
       "stopAgain": "Stop again",
       "returnNote": "You asked to return to {{target}}. SpecFlow is stopping the agent first: the step goes back to {{target}} only once its process has ended, so nothing it still writes is lost or mixed into the next attempt.",
       "returnStopFailed": "SpecFlow could not stop the agent, so it may still be working. The return to {{target}} waits until the agent has stopped.",
-      "returnNextAction": "The agent has stopped. Your return to {{target}} applies when you next act on this step.",
-      "returnRefused": "The return to {{target}} was not applied ({{code}}). The attempt stays as it is.",
+      "returnNextAction": "The agent has stopped. Your return to {{target}} applies when you next act on this step: choose Return in the menu.",
+      "returnRefused": "The return to {{target}} was not applied: {{reason}} ({{code}}). The attempt stays as it is.",
       "takeOverDialog": {
         "title": "Take over {{step}}",
         "description": "The agent’s attempt ends as taken over, and your own attempt {{attempt}} starts. You then finish the step yourself.",
         "stays": "The agent’s work stays",
         "staysBody": "Nothing is undone. These files stay as the agent left them, uncommitted until you commit them; finishing the step does not commit them, and Close lists them until they are committed.",
         "noFiles": "The agent left no uncommitted files.",
-        "session": "The session {{title}} stays open to read; it no longer works on this step."
-      }
+        "session": "The session <session/> stays open to read; it no longer works on this step.",
+        "sessionGone": "The session <session/> no longer exists, so there is nothing to read."
+      },
+      "earlierStep": "an earlier step"
     },
     "confirmation": {
       "line": "Waiting for your confirmation · the agent finished {{at}}",

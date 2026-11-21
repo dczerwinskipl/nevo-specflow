@@ -1,4 +1,5 @@
-import { useTranslation } from 'react-i18next';
+import type { ReactElement } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   Button,
   Dialog,
@@ -24,7 +25,9 @@ export interface TakeOverDialogProps {
   readonly nextAttempt: number;
   /** The files the agent left uncommitted: they stay. */
   readonly paths: readonly string[];
-  readonly sessionTitle: string;
+  /** The agent's Session, as a link (struck through when it no longer exists). */
+  readonly session: ReactElement;
+  readonly sessionGone: boolean;
   readonly pending: boolean;
   readonly error: unknown;
   readonly onConfirm: () => void;
@@ -40,7 +43,8 @@ export function TakeOverDialog({
   stepTitle,
   nextAttempt,
   paths,
-  sessionTitle,
+  session,
+  sessionGone,
   pending,
   error,
   onConfirm,
@@ -93,8 +97,15 @@ export function TakeOverDialog({
                 </Typography>
               )}
             </section>
-            <Typography as="p" variant="body-sm" className="text-content-secondary">
-              {t('workflowExecution.agentAttempt.takeOverDialog.session', { title: sessionTitle })}
+            <Typography as="p" variant="body-sm" className="text-content-secondary [&_a]:underline">
+              <Trans
+                i18nKey={
+                  sessionGone
+                    ? 'workflowExecution.agentAttempt.takeOverDialog.sessionGone'
+                    : 'workflowExecution.agentAttempt.takeOverDialog.session'
+                }
+                components={{ session }}
+              />
             </Typography>
           </div>
         </DialogBody>

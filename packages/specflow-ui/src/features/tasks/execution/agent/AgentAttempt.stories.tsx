@@ -1,11 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
-import { NowBlock } from '../NowBlock';
 import { WorkflowExecutionFixture } from '../ProjectWorkflowExecution.stories-support';
-import { taskWorkflowProjection } from '../projections.stories-support';
-import { StoryLocalization } from '../../../../i18n/StoryLocalization';
-import { AttemptCommitNote } from './AttemptCommitNote';
-import { agentOptions } from './agentStart.stories-support';
 
 /*
  * The Now block while an agent runs a step and after it stops, once per state the Runtime can report
@@ -220,69 +215,23 @@ export const ConfirmationReject: Story = {
 };
 
 /*
- * What became of the work of the attempt that finished the step before, in the Now block of the step
- * that follows. The projection does not carry it yet, so these two stories compose the block with the
- * note the Task page will show once the read does.
+ * The step after an agent finished: the commit it made when it finished (read from the workflow
+ * history), or why it failed and Retry commit inside the note.
  */
-function FinishedNow({ failed }: { readonly failed: boolean }) {
-  return (
-    <StoryLocalization locale="en">
-      <div className="@container/app-content mx-auto max-w-[40rem] p-6">
-        <NowBlock
-          projection={taskWorkflowProjection('ready-agent', { agent: agentOptions.independent })}
-          headingId="now-story"
-          links={{}}
-          note={
-            <AttemptCommitNote
-              retrying={false}
-              error={undefined}
-              onRetry={() => undefined}
-              commit={
-                failed
-                  ? {
-                      state: 'failed',
-                      step: 'implement',
-                      attempt: 2,
-                      stepTitle: 'Implementation',
-                      nextTitle: 'Review',
-                      code: 'COMMIT_BLOCKED',
-                      branch: 'nevo-1/single-sign-on',
-                      paths: [
-                        'src/auth/refresh.ts',
-                        'src/auth/state.ts',
-                        'src/auth/refresh.test.ts',
-                        'specs/active/single-sign-on/tasks/t-04/task.md',
-                        'specs/active/single-sign-on/tasks/t-04/screens.md',
-                      ],
-                    }
-                  : {
-                      state: 'committed',
-                      stepTitle: 'Implementation',
-                      branch: 'nevo-1/single-sign-on',
-                    }
-              }
-            />
-          }
-        />
-      </div>
-    </StoryLocalization>
-  );
-}
-
-export const FinishedCommitted: StoryObj<typeof FinishedNow> = {
-  render: () => <FinishedNow failed={false} />,
+export const FinishedCommitted: Story = {
+  args: { scenario: 'finished-committed' },
   play: async ({ canvasElement }) => {
     const now = await findNow(canvasElement);
-    await expect(within(now).getByText(/Its work is committed/)).toBeVisible();
+    await expect(await within(now).findByText(/Its work is committed/, {}, wait)).toBeVisible();
     await expect(within(now).getByText('nevo-1/single-sign-on')).toBeVisible();
   },
 };
 
-export const FinishedCommitFailed: StoryObj<typeof FinishedNow> = {
-  render: () => <FinishedNow failed />,
+export const FinishedCommitFailed: Story = {
+  args: { scenario: 'finished-commit-failed' },
   play: async ({ canvasElement }) => {
     const now = await findNow(canvasElement);
-    const alert = within(now).getByRole('alert');
+    const alert = await within(now).findByRole('alert', {}, wait);
     await expect(within(alert).getByText('COMMIT_BLOCKED')).toBeVisible();
     await expect(within(alert).getByText(/Run with agent cannot start Review/)).toBeVisible();
     await expect(within(alert).getByRole('button', { name: 'Retry commit' })).toBeVisible();

@@ -8,13 +8,16 @@ import {
   specificationWorkflowProjection,
   taskWorkflowProjection,
 } from '../projections.stories-support';
-import { SESSION_ID } from './agentStart.stories-support';
+import { SESSION_ID, agentOptions } from './agentStart.stories-support';
 
 /*
  * The agent's attempt of the story Task (Implementation, attempt 2) in each state the Now block
  * explains, and the Specification's Breakdown whose result waits for the owner: shared by the stories
  * and the component tests.
  */
+
+export const PLAN_SESSION_ID = 's-plan-1';
+export const PLAN_SESSION_TITLE = 'Break down single sign-on';
 
 export const ATTEMPT_ID = '5d1c1a52-8f3e-4a6b-9a0e-3b7f2c9d1e44';
 
@@ -38,7 +41,7 @@ export const agentActor: AgentActor = {
   class: 'agent',
   details: {
     archetype: 'implementer',
-    provider: 'Claude',
+    provider: 'claude',
     model: 'Sonnet 5',
     sessionId: SESSION_ID,
   },
@@ -186,7 +189,14 @@ function specificationConfirmation(): WorkflowActionProjection {
         number: 1,
         startedAt: '2026-11-12T13:20:00Z',
         endedAt: '2026-11-12T14:05:00Z',
-        actor: { ...agentActor, details: { ...agentActor.details, archetype: 'planner' } },
+        actor: {
+          ...agentActor,
+          details: {
+            ...agentActor.details,
+            archetype: 'planner',
+            sessionId: PLAN_SESSION_ID,
+          },
+        },
       },
       proposal: {
         transition: {
@@ -214,4 +224,66 @@ function specificationConfirmation(): WorkflowActionProjection {
 /** The projection of a subject in an agent attempt case; the Specification's for `confirmation`. */
 export function agentAttemptProjection(c: AttemptCase): WorkflowActionProjection {
   return c === 'confirmation' ? specificationConfirmation() : taskAttempt(c);
+}
+
+/** Review is ready after the agent finished Implementation: its hand-off is the agent's. */
+export function finishedAttemptProjection(): WorkflowActionProjection {
+  const base = taskWorkflowProjection('ready-agent', { agent: agentOptions.independent });
+
+  return {
+    ...base,
+    handoff: {
+      kind: 'transition',
+      from: {
+        step: 'implement',
+        attempt: 2,
+        title: 'Implementation',
+        at: '2026-11-14T09:10:00Z',
+        actor: agentActor,
+      },
+      transition: 'done',
+      label: 'Done',
+      result: 'done',
+      artifacts: [],
+    },
+  };
+}
+
+/** The workflow history whose newest attempt is that agent attempt, with its commit result. */
+export function finishedAttemptHistory(commit: {
+  state: 'committed' | 'failed' | 'pending';
+  code?: string;
+}) {
+  return {
+    subject: { kind: 'task' as const, specId: 'sso', taskId: 't-04' },
+    items: [
+      {
+        kind: 'attempt' as const,
+        sequence: 2,
+        step: 'implement',
+        stepTitle: 'Implementation',
+        attempt: 2,
+        startedAt: '2026-11-13T11:52:00Z',
+        actor: agentActor,
+        agent: {
+          attemptId: ATTEMPT_ID,
+          provider: 'claude',
+          sessionId: SESSION_ID,
+          turns: 1,
+          ended: 'finished' as const,
+          events: [],
+          work: {
+            documents: [
+              'specs/active/single-sign-on/tasks/t-04/task.md',
+              'specs/active/single-sign-on/tasks/t-04/screens.md',
+            ],
+            mixed: [],
+            tasks: [],
+            declared: AGENT_FILES,
+            commit,
+          },
+        },
+      },
+    ],
+  };
 }

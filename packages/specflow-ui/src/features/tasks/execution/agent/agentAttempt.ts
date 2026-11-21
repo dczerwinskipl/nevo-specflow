@@ -57,3 +57,25 @@ export function ownRefusal(
       ? 'session-gone'
       : undefined;
 }
+
+/**
+ * Whether the Now block must keep reading the projection by itself: the agent's Turn works, is
+ * stopping or may still run, a return waits for it, or its proposal is being applied. Every other
+ * state changes only when the owner acts.
+ */
+export function needsPolling(projection: {
+  readonly agentAttempt?: AgentAttemptView | undefined;
+}): boolean {
+  const view = projection.agentAttempt;
+  if (!view) {
+    return false;
+  }
+
+  return (
+    view.turn.state === 'working' ||
+    view.turn.state === 'stopping' ||
+    view.turn.state === 'unknown' ||
+    view.returnRequest?.state === 'requested' ||
+    view.proposal?.state === 'pending'
+  );
+}

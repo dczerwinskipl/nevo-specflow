@@ -16,7 +16,8 @@ import type { NowLinks } from '../StartBlockerLines';
 import { WorkflowRefusalAlert } from '../WorkflowRefusalAlert';
 import { AgentBlocker, Paths } from './AgentBlocker';
 import { SessionLink } from './AgentSession';
-import { agentStageOf, continueRefusal, ownRefusal } from './agentAttempt';
+import { agentStageOf, continueRefusal, needsPolling, ownRefusal } from './agentAttempt';
+import { usePolling } from './usePolling';
 import { AttemptCommitNote } from './AttemptCommitNote';
 import { TakeOverDialog } from './TakeOverDialog';
 import { useFinishedAttemptCommit } from './useAttemptCommit';
@@ -45,10 +46,13 @@ function AttemptSession({
   specId,
   sessionId,
   provider,
+  gone = false,
 }: {
   readonly specId: string;
   readonly sessionId: string;
   readonly provider: string;
+  /** The Session no longer exists: its title is struck through, never a link. */
+  readonly gone?: boolean;
 }) {
   const { t } = useTranslation();
   const { specificationApi } = useAppServices();
@@ -62,7 +66,11 @@ function AttemptSession({
       <span className="inline-flex h-[1lh] items-center self-start">
         <SessionProviderIcon providerId={provider} />
       </span>
-      <SessionLink sessionId={sessionId} title={title} />
+      {gone ? (
+        <span className="text-content-muted line-through">{title}</span>
+      ) : (
+        <SessionLink sessionId={sessionId} title={title} />
+      )}
     </span>
   );
 }
@@ -71,10 +79,12 @@ function AttemptSession({
 function TakeOverDialogFor({
   specId,
   sessionId,
+  gone,
   ...dialog
-}: Omit<React.ComponentProps<typeof TakeOverDialog>, 'sessionTitle'> & {
+}: Omit<React.ComponentProps<typeof TakeOverDialog>, 'session' | 'sessionGone'> & {
   readonly specId: string;
   readonly sessionId: string;
+  readonly gone: boolean;
 }) {
   const { t } = useTranslation();
   const { specificationApi } = useAppServices();
@@ -83,7 +93,19 @@ function TakeOverDialogFor({
     workspace?.sessions.find((session) => session.id === sessionId)?.title ??
     t('workflowExecution.agentAttempt.sessionFallback');
 
-  return <TakeOverDialog {...dialog} sessionTitle={sessionTitle} />;
+  return (
+    <TakeOverDialog
+      {...dialog}
+      sessionGone={gone}
+      session={
+        gone ? (
+          <span className="text-content-muted line-through">{sessionTitle}</span>
+        ) : (
+          <SessionLink sessionId={sessionId} title={sessionTitle} />
+        )
+      }
+    />
+  );
 }
 
 /** Why SpecFlow did not accept the agent's result, one reason per line in plain words. */
@@ -165,6 +187,11 @@ function ContinueRefused({
         </span>
         <Paths option={refusal} />
         <span className="mt-1 block">{t('workflowExecution.agentAttempt.changed.body')}</span>
+        <div className="mt-2">
+          <Button size="sm" variant="secondary" leadingIcon="refresh" onClick={onCheckAgain}>
+            {t('workflowExecution.agent.checkAgain')}
+          </Button>
+        </div>
       </InlineNote>
     );
   }
@@ -211,14 +238,17 @@ export function useAgentAttemptNow({
   subject,
   projection,
   links,
+  headingId,
 }: {
+  readonly headingId: string;
   readonly subject: WorkflowSubjectRef;
   readonly projection: WorkflowActionProjection;
   readonly links: NowLinks;
 }): AgentNow | undefined {
   const attemptCommit = useFinishedAttemptCommit(subject, projection);
   const { t, i18n } = useTranslation();
-  const commands = useAgentAttemptCommands(subject);
+  const commands = useAgentAttemptCommands(subject, headingId);
+  usePolling(needsPolling(projection), commands.refresh);
   const [rejecting, setRejecting] = useState(false);
   const [takingOver, setTakingOver] = useState(false);
   const { position, agentAttempt: view, actions } = projection;
@@ -227,7 +257,12 @@ export function useAgentAttemptNow({
   const line = (text: string, view: AgentAttemptView) => (
     <>
       {text} ·{' '}
-      <AttemptSession specId={subject.specId} sessionId={view.sessionId} provider={view.provider} />
+      <AttemptSession
+        specId={subject.specId}
+        sessionId={view.sessionId}
+        provider={view.provider}
+        gone={ownRefusal(view.continue) === 'session-gone'}
+      />
     </>
   );
 
@@ -353,10 +388,10 @@ export function useAgentAttemptNow({
         : undefined;
   const refusal = continueRefusal(view);
   const returnRequest = view.returnRequest;
+  // The target's title, never its id; the Return menu is gone while the request waits.
   const returnTarget =
     actions.return?.targets.find((target) => target.step === returnRequest?.to)?.title ??
-    returnRequest?.to ??
-    '';
+    t('workflowExecution.agentAttempt.earlierStep');
 
   if (returnRequest?.state === 'requested') {
     // The Return waits for proof that the agent's process ended; Stop again only when stopping failed.
@@ -402,12 +437,13 @@ export function useAgentAttemptNow({
         >
           {t('workflowExecution.agentAttempt.stopAgain')}
         </Button>
-      ) : (
+      ) : applies ? undefined : (
         <Button variant="secondary" disabled aria-busy>
           {t('workflowExecution.agentAttempt.returning')}
         </Button>
       ),
-      keepsMenu: false,
+      // Once the agent stopped, the owner's next action applies the return: Return stays in the menu.
+      keepsMenu: applies,
       showHandoff: true,
     };
   }
@@ -520,7 +556,7 @@ export function useAgentAttemptNow({
         <InlineNote tone="info" icon="loader">
           {t('workflowExecution.agentAttempt.applying', { result })}
         </InlineNote>
-      ) : (
+      ) : refusal ? null : (
         <InlineNote tone="attention">
           <span className={STRONG}>{t('workflowExecution.agentAttempt.noResult.title')}</span>{' '}
           {t('workflowExecution.agentAttempt.noResult.body')}
@@ -564,6 +600,7 @@ export function useAgentAttemptNow({
               <InlineNote tone="attention">
                 {t('workflowExecution.agentAttempt.returnRefused', {
                   target: returnTarget,
+                  reason: returnRequest.refusal?.message ?? '',
                   code: returnRequest.refusal?.code ?? '',
                 })}
               </InlineNote>
@@ -606,6 +643,7 @@ export function useAgentAttemptNow({
           <TakeOverDialogFor
             specId={subject.specId}
             sessionId={view.sessionId}
+            gone={ownRefusal(view.continue) === 'session-gone'}
             open={takingOver}
             onOpenChange={setTakingOver}
             stepTitle={stepTitle}

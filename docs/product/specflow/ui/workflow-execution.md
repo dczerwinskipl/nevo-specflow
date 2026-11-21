@@ -355,7 +355,7 @@ Dialogs keep one column. Blocker and Task rows keep id → title → state order
 
 ## Run with agent
 
-**Status: UX contract. The entry, the start dialog and the Now block states while an agent works, after it stops and while its result waits for the owner (Stop, Check outcome, Continue or Retry start, Confirm, Reject) are implemented (stories: SpecFlow/Screens/Agent attempt). Not implemented yet: a Return that waits for the agent to stop, Take over with its dialog, the commit note of the finished attempt in the Now block (the projection does not carry the commit result yet), the Overview notice on other subjects while an outcome is unknown, the kept-work line and the attempt history.** It follows the [Ask agent contract](../../../ideas/specflow-engine/reusable-workflow-manual-execution/agent-assisted-execution.md)
+**Status: UX contract. Implemented (stories: SpecFlow/Screens/Run with agent and SpecFlow/Screens/Agent attempt): the entry, the start dialog and every Now block state while an agent works, after it stops and while its result waits for the owner (Stop, Check outcome, Continue or Retry start, a Return that waits for the agent to stop with Stop again, Take over with its dialog, refused results, Continue refused, Confirm, Reject, the commit note with Retry commit read from the workflow history). The Now block reads the attempt again every few seconds while the agent works, is stopping, may still run, a return waits or a proposal is applied. Not implemented yet: the notice on other subjects while an outcome is unknown (needs a project-wide hold in the projection), the commit id and counts in the commit note (the history does not report them), the document links, "See the attempt" and the attempt history (U4).** It follows the [Ask agent contract](../../../ideas/specflow-engine/reusable-workflow-manual-execution/agent-assisted-execution.md)
 (D11 to D21) and is delivered by the slices of its
 [delivery plan](../../../ideas/specflow-engine/reusable-workflow-manual-execution/ask-agent-delivery-plan.md).
 The mock is the Storybook set **SpecFlow/Screens/Ask agent (mock)**: the real routed screens with
@@ -457,7 +457,7 @@ proposes a result); decisions that need a person stay with the person. Then, in 
 
 ### After the agent stops
 
-- Deviation: the commit note has no **Show commit** (no commit view exists) and names documents and files as counts ("Documents: 2, files: 3").
+- Deviation (until the history reports them): the commit note has no **Show commit**, no commit id and no counts; it says "Its work is committed on `<branch>`". The kept-work line names documents and counts files without links, and the Take over dialog names the Session as a link (struck through when it no longer exists).
 - **Finished and committed**: Now moves on to the next step; the hand-off is the agent's (result,
   feedback, "<provider> · <model>"); an info note with the commit icon, "The agent finished <step>.
   Committed `<sha>` on `<branch>`: N documents and N files." and **Show commit**.

@@ -24,7 +24,14 @@ import {
 } from '../pages/ProjectTaskAuthoring.stories-support';
 import { managedProviders } from '../../sessions/start/catalogue/providerDescriptors.stories-support';
 import type { WorkflowExecutionApi } from './api';
-import { agentAttemptProjection, type AttemptCase } from './agent/agentAttempt.stories-support';
+import {
+  PLAN_SESSION_ID,
+  PLAN_SESSION_TITLE,
+  agentAttemptProjection,
+  finishedAttemptHistory,
+  finishedAttemptProjection,
+  type AttemptCase,
+} from './agent/agentAttempt.stories-support';
 import {
   SESSION_ID,
   SESSION_TITLE,
@@ -86,7 +93,11 @@ export type AgentStoryScenario = `agent-${AgentCase}` | 'agent-refused';
  */
 export type AttemptStoryScenario = `attempt-${AttemptCase}`;
 
+/** Review ready after an agent finished Implementation: its commit made, or failed (Retry commit). */
+export type FinishedStoryScenario = 'finished-committed' | 'finished-commit-failed';
+
 export type WorkflowStoryScenario =
+  | FinishedStoryScenario
   | AttemptStoryScenario
   | TaskWorkflowScenario
   | AgentStoryScenario
@@ -388,17 +399,20 @@ function services(scenario: WorkflowStoryScenario) {
             ? 'spike-gate-met'
             : 'spike-gate'
           : (scenario as TaskWorkflowScenario);
+  const finished = scenario === 'finished-committed' || scenario === 'finished-commit-failed';
   const attemptOf = (): AttemptCase | undefined =>
     scenario.startsWith('attempt-')
       ? (scenario.slice('attempt-'.length) as AttemptCase)
       : undefined;
   const taskProjection = (): WorkflowActionProjection =>
-    attemptOf()
-      ? agentAttemptProjection(attemptOf()!)
-      : taskWorkflowProjection(taskScenario(), {
-          version: state.version,
-          ...(agentCase ? { agent: projectedAgent(agentCase) } : {}),
-        });
+    finished
+      ? finishedAttemptProjection()
+      : attemptOf()
+        ? agentAttemptProjection(attemptOf()!)
+        : taskWorkflowProjection(taskScenario(), {
+            version: state.version,
+            ...(agentCase ? { agent: projectedAgent(agentCase) } : {}),
+          });
   const authoring = authoringApi('started');
   const workflowExecutionApi: WorkflowExecutionApi = {
     start: (_subject, input) => {
@@ -433,7 +447,16 @@ function services(scenario: WorkflowStoryScenario) {
     retryAttemptCommit: never,
     confirmResult: never,
     takeOverAgentExecution: never,
-    history: never,
+    history: () =>
+      finished
+        ? Promise.resolve(
+            finishedAttemptHistory(
+              scenario === 'finished-committed'
+                ? { state: 'committed' }
+                : { state: 'failed', code: 'COMMIT_BLOCKED' },
+            ) as never,
+          )
+        : never(),
     rejectResult: never,
     closePreview: () => closePreviewOf(scenario),
     // An agent Session still works in the worktree of the blocked Specification.
@@ -634,7 +657,7 @@ async function specificationWorkspace(
   const plain = await workspaceResponse('draft-problems');
   // Run with agent reads the branch the commit lands on and the title of the Session it continues.
   const base: SpecificationWorkspaceResponse =
-    agentCaseOf(scenario) || scenario.startsWith('attempt-')
+    agentCaseOf(scenario) || scenario.startsWith('attempt-') || scenario.startsWith('finished-')
       ? {
           ...plain,
           sections: {
@@ -651,6 +674,18 @@ async function specificationWorkspace(
               state: 'available',
               data: {
                 items: [
+                  ...(scenario === 'attempt-confirmation'
+                    ? [
+                        {
+                          id: PLAN_SESSION_ID,
+                          title: PLAN_SESSION_TITLE,
+                          status: 'quiet' as const,
+                          taskIds: [],
+                          providerId: 'claude',
+                          updatedAt: '2026-11-12T14:05:00.000Z',
+                        },
+                      ]
+                    : []),
                   {
                     id: SESSION_ID,
                     title: SESSION_TITLE,
@@ -691,6 +726,33 @@ async function specificationWorkspace(
     ...base,
     sections: { ...base.sections, tasks: tasksSection(data, groups), documents: documentsSection },
   });
+
+  if (scenario === 'attempt-confirmation') {
+    // The agent's Breakdown wrote five draft Tasks: the Tasks section counts the same five.
+    const template = data.groups.flatMap((group) => group.tasks)[0]!;
+    const titles = [
+      'Token exchange endpoint',
+      'Session cookie',
+      'Refresh before expiry',
+      'Sign-in screen',
+      'Audit log of sign-in events',
+    ];
+
+    return withTasks([
+      {
+        id: 'needs-approval',
+        name: 'Needs approval',
+        summary: 'row' as const,
+        collapsed: false,
+        tasks: titles.map((title, index) => ({
+          ...template,
+          id: `t-0${index + 1}`,
+          title,
+          status: { id: 'draft', label: 'Needs approval', lifecycle: 'pending' as const },
+        })),
+      },
+    ]);
+  }
 
   if (specificationScenario(scenario) === 'completed') {
     const tasks = data.groups

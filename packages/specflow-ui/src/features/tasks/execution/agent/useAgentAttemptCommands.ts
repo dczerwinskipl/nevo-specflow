@@ -42,7 +42,7 @@ export interface RejectRequest {
  * outcome of a Turn that may still run, retry the commit of its work, and confirm or reject its
  * result. Every command refreshes the subject afterwards (a refusal usually means the position moved).
  */
-export function useAgentAttemptCommands(subject: WorkflowSubjectRef) {
+export function useAgentAttemptCommands(subject: WorkflowSubjectRef, headingId?: string) {
   const { workflowExecutionApi, managedSessionsApi } = useAppServices();
   const queryClient = useQueryClient();
   const { specId, taskId } = subject;
@@ -52,6 +52,14 @@ export function useAgentAttemptCommands(subject: WorkflowSubjectRef) {
       invalidateAfterTaskChange(queryClient, specId),
       queryClient.invalidateQueries({ queryKey: ['workflow', 'history', specId] }),
     ]);
+  // After a command settles the control that was pressed may be gone: focus moves to the Now heading.
+  const settle = async () => {
+    await refresh();
+    if (headingId) {
+      document.getElementById(headingId)?.focus({ preventScroll: true });
+    }
+  };
+
   const stopKey = useRequestKey();
   const continueKey = useRequestKey();
   const confirmKey = useRequestKey();
@@ -64,7 +72,7 @@ export function useAgentAttemptCommands(subject: WorkflowSubjectRef) {
     onSettled: (_result, error) => {
       stopKey.settled(error ?? undefined);
 
-      return refresh();
+      return settle();
     },
   });
   const continueAttempt = useMutation({
@@ -76,7 +84,7 @@ export function useAgentAttemptCommands(subject: WorkflowSubjectRef) {
     onSettled: (_result, error) => {
       continueKey.settled(error ?? undefined);
 
-      return refresh();
+      return settle();
     },
   });
   const checkOutcome = useMutation({
@@ -85,13 +93,13 @@ export function useAgentAttemptCommands(subject: WorkflowSubjectRef) {
     onSettled: (_result, error) => {
       outcomeKey.settled(error ?? undefined);
 
-      return refresh();
+      return settle();
     },
   });
   const retryCommit = useMutation({
     mutationFn: (attempt: { readonly step: string; readonly attempt: number }) =>
       workflowExecutionApi.retryAttemptCommit(target, attempt),
-    onSettled: refresh,
+    onSettled: settle,
   });
   const confirm = useMutation({
     mutationFn: (request: ConfirmRequest) =>
@@ -99,7 +107,7 @@ export function useAgentAttemptCommands(subject: WorkflowSubjectRef) {
     onSettled: (_result, error) => {
       confirmKey.settled(error ?? undefined);
 
-      return refresh();
+      return settle();
     },
   });
   const reject = useMutation({
@@ -108,14 +116,14 @@ export function useAgentAttemptCommands(subject: WorkflowSubjectRef) {
     onSettled: (_result, error) => {
       rejectKey.settled(error ?? undefined);
 
-      return refresh();
+      return settle();
     },
   });
 
   const takeOver = useMutation({
     mutationFn: (attempt: { readonly step: string; readonly attempt: number }) =>
       workflowExecutionApi.takeOverAgentExecution(target, attempt),
-    onSettled: refresh,
+    onSettled: settle,
   });
 
   return { stop, continueAttempt, checkOutcome, retryCommit, confirm, reject, takeOver, refresh };

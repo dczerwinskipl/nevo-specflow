@@ -1,6 +1,14 @@
 // @vitest-environment jsdom
 import { QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createSpecFlowQueryClient } from '../../../../app/queryClient';
 import { LocalizationProvider, createSpecFlowI18n } from '../../../../i18n';
@@ -13,10 +21,13 @@ import type { WorkflowExecutionApi } from '../api';
 import { SPEC, TASK, taskWorkflowProjection } from '../projections.stories-support';
 import { refusal } from '../ProjectWorkflowExecution.stories-support';
 import { WorkflowNow } from '../WorkflowNow';
+import { needsPolling } from './agentAttempt';
+import { POLL_MS, usePolling } from './usePolling';
 import {
   ATTEMPT_ID,
-  agentActor,
   agentAttemptProjection,
+  finishedAttemptHistory,
+  finishedAttemptProjection,
   type AttemptCase,
 } from './agentAttempt.stories-support';
 import { SESSION_ID, agentOptions } from './agentStart.stories-support';
@@ -173,6 +184,11 @@ describe('an agent that stopped', () => {
       'The agent cannot continue: 2 files changed since it stopped.',
     );
     expect(screen.getByText('docs/notes.md')).toBeTruthy();
+    // One explanation: the refusal replaces "stopped without proposing a result"; Check again is inside it.
+    expect(screen.queryByText('The agent stopped without proposing a result.')).toBeNull();
+    expect(
+      within(screen.getByRole('alert')).getByRole('button', { name: 'Check again' }),
+    ).toBeTruthy();
     const button = screen.getByRole('button', { name: 'Continue' });
     expect(button.hasAttribute('disabled')).toBe(true);
     fireEvent.click(button);
@@ -183,6 +199,9 @@ describe('an agent that stopped', () => {
     renderNow('session-gone');
 
     expect(screen.getByRole('alert').textContent).toContain('its session no longer exists');
+    // A Session that is gone is never a link: struck through, in the position line too.
+    expect(screen.queryByRole('link')).toBeNull();
+    expect(document.querySelector('.line-through')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Continue' }).hasAttribute('disabled')).toBe(true);
   });
 });
@@ -249,68 +268,15 @@ describe('a result that waits for the owner', () => {
 });
 
 describe('the commit of a finished attempt', () => {
-  /** Review is ready after the agent finished Implementation (its hand-off is the agent's). */
-  const ready = () => {
-    const base = taskWorkflowProjection('ready-agent', { agent: agentOptions.independent });
-
-    return {
-      ...base,
-      handoff: {
-        kind: 'transition' as const,
-        from: {
-          step: 'implement',
-          attempt: 2,
-          title: 'Implementation',
-          actor: agentActor,
-        },
-        transition: 'done',
-        artifacts: [],
-      },
-    } as WorkflowActionProjection;
-  };
-
-  const history = (commit: { state: 'committed' | 'failed'; code?: string }) =>
-    vi.fn(() =>
-      Promise.resolve({
-        subject: { kind: 'task', specId: SPEC, taskId: TASK },
-        items: [
-          {
-            kind: 'attempt',
-            sequence: 2,
-            step: 'implement',
-            stepTitle: 'Implementation',
-            attempt: 2,
-            startedAt: '2026-11-13T11:52:00Z',
-            actor: agentActor,
-            agent: {
-              attemptId: ATTEMPT_ID,
-              provider: 'claude',
-              sessionId: SESSION_ID,
-              turns: 1,
-              ended: 'finished',
-              events: [],
-              work: {
-                documents: ['src/auth/refresh.ts'],
-                mixed: [],
-                tasks: [],
-                declared: ['src/auth/state.ts'],
-                commit,
-              },
-            },
-          },
-        ],
-      } as never),
-    );
+  const history = (commit: { state: 'committed' | 'failed' | 'pending'; code?: string }) =>
+    vi.fn(() => Promise.resolve(finishedAttemptHistory(commit) as never));
 
   it('keeps Retry commit inside the note, and says the next agent step waits for it', async () => {
     const retry = vi.fn(never);
     renderNow(
       'working',
-      {
-        retryAttemptCommit: retry,
-        history: history({ state: 'failed', code: 'COMMIT_BLOCKED' }),
-      },
-      { projection: ready() },
+      { retryAttemptCommit: retry, history: history({ state: 'failed', code: 'COMMIT_BLOCKED' }) },
+      { projection: finishedAttemptProjection() },
     );
 
     const note = await screen.findByRole('alert');
@@ -329,7 +295,11 @@ describe('the commit of a finished attempt', () => {
   });
 
   it('says the work is committed', async () => {
-    renderNow('working', { history: history({ state: 'committed' }) }, { projection: ready() });
+    renderNow(
+      'working',
+      { history: history({ state: 'committed' }) },
+      { projection: finishedAttemptProjection() },
+    );
 
     expect(await screen.findByText(/Its work is committed/)).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Retry commit' })).toBeNull();
@@ -344,6 +314,62 @@ describe('the commit of a finished attempt', () => {
     );
 
     expect(read).not.toHaveBeenCalled();
+  });
+
+  it('reads the history again while the commit is still pending, and stops once it settles', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      let state: 'pending' | 'committed' = 'pending';
+      const read = vi.fn(() => Promise.resolve(finishedAttemptHistory({ state }) as never));
+      renderNow('working', { history: read }, { projection: finishedAttemptProjection() });
+      await waitFor(() => expect(read).toHaveBeenCalledTimes(1));
+
+      await vi.advanceTimersByTimeAsync(POLL_MS + 100);
+      await waitFor(() => expect(read.mock.calls.length).toBeGreaterThan(1));
+
+      state = 'committed';
+      await vi.advanceTimersByTimeAsync(POLL_MS + 100);
+      expect(await screen.findByText(/Its work is committed/)).toBeTruthy();
+      const settled = read.mock.calls.length;
+      await vi.advanceTimersByTimeAsync(POLL_MS * 3);
+      expect(read.mock.calls.length).toBe(settled);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('polling the attempt', () => {
+  it('turns on while the agent works, is stopping, may still run, a return waits or a proposal is applied', () => {
+    for (const c of ['working', 'stopping', 'unknown', 'return-requested', 'return-stop-failed']) {
+      expect(needsPolling(agentAttemptProjection(c as AttemptCase))).toBe(true);
+    }
+  });
+
+  it('is off once the owner decides: stopped, refused, refused Continue, confirmation, no attempt', () => {
+    for (const c of ['stopped', 'refused', 'continue-refused', 'session-gone', 'confirmation']) {
+      expect(needsPolling(agentAttemptProjection(c as AttemptCase))).toBe(false);
+    }
+
+    expect(needsPolling({})).toBe(false);
+  });
+
+  it('ticks only while active, and stops when the state no longer needs it', () => {
+    vi.useFakeTimers();
+    try {
+      const tick = vi.fn();
+      const { rerender } = renderHook(({ active }) => usePolling(active, tick), {
+        initialProps: { active: true },
+      });
+      vi.advanceTimersByTime(POLL_MS * 2 + 1);
+      expect(tick).toHaveBeenCalledTimes(2);
+
+      rerender({ active: false });
+      vi.advanceTimersByTime(POLL_MS * 3);
+      expect(tick).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
@@ -367,11 +393,13 @@ describe('a return that waits for the agent to stop', () => {
     await waitFor(() => expect(stop).toHaveBeenCalledOnce());
   });
 
-  it('says the return applies at the owner’s next action once the agent stopped', () => {
-    renderNow('return-next-action');
+  it('keeps Return in the menu once the agent stopped, and offers no dead button', () => {
+    const { container } = renderNow('return-next-action');
 
     expect(screen.getByText(/the agent has stopped/)).toBeTruthy();
-    expect(screen.getByText(/applies when you next act on this step/)).toBeTruthy();
+    expect(screen.getByText(/choose Return in the menu/)).toBeTruthy();
+    expect(actions(container)).toEqual([]);
+    expect(screen.getByRole('button', { name: 'Workflow operations' })).toBeTruthy();
   });
 });
 

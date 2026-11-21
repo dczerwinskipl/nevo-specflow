@@ -132,7 +132,7 @@ export function WorkflowNow({
   const { t } = useTranslation();
   const commands = useWorkflowCommands(subject);
   const { actions, position } = projection;
-  const agentNow = useAgentAttemptNow({ subject, projection, links });
+  const agentNow = useAgentAttemptNow({ subject, projection, links, headingId });
   const finish = actions.finish;
   const attemptKey = finish ? attemptKeyOf(finish) : '';
   const [dialog, setDialog] = useState<'start' | 'finish' | 'return' | 'agent'>();

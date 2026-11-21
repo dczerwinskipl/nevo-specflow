@@ -2831,16 +2831,18 @@
       "stopAgain": "Zatrzymaj ponownie",
       "returnNote": "Poproszono o powrót do kroku {{target}}. SpecFlow najpierw zatrzymuje agenta: krok wraca do {{target}} dopiero po zakończeniu jego procesu, więc nic, co jeszcze zapisze, nie zginie ani nie wmiesza się w następne podejście.",
       "returnStopFailed": "SpecFlow nie mógł zatrzymać agenta, więc może on nadal pracować. Powrót do {{target}} czeka, aż agent się zatrzyma.",
-      "returnNextAction": "Agent się zatrzymał. Powrót do {{target}} zostanie zastosowany przy Twojej następnej akcji w tym kroku.",
-      "returnRefused": "Powrót do {{target}} nie został zastosowany ({{code}}). Podejście pozostaje bez zmian.",
+      "returnNextAction": "Agent się zatrzymał. Powrót do {{target}} zostanie zastosowany przy Twojej następnej akcji w tym kroku: wybierz Powrót w menu.",
+      "returnRefused": "Powrót do {{target}} nie został zastosowany: {{reason}} ({{code}}). Podejście pozostaje bez zmian.",
       "takeOverDialog": {
         "title": "Przejmij krok {{step}}",
         "description": "Podejście agenta kończy się jako przejęte i zaczyna się Twoje własne podejście {{attempt}}. Krok kończysz samodzielnie.",
         "stays": "Praca agenta zostaje",
         "staysBody": "Nic nie jest cofane. Te pliki zostają tak, jak zostawił je agent, niezatwierdzone, dopóki ich nie zatwierdzisz; zakończenie kroku ich nie zatwierdza, a Zamknięcie wymienia je, dopóki nie zostaną zatwierdzone.",
         "noFiles": "Agent nie zostawił niezatwierdzonych plików.",
-        "session": "Sesja {{title}} zostaje otwarta do czytania; nie pracuje już nad tym krokiem."
-      }
+        "session": "Sesja <session/> zostaje otwarta do czytania; nie pracuje już nad tym krokiem.",
+        "sessionGone": "Sesja <session/> już nie istnieje, więc nie ma czego czytać."
+      },
+      "earlierStep": "wcześniejszy krok"
     },
     "confirmation": {
       "line": "Czeka na Twoje potwierdzenie · agent skończył {{at}}",

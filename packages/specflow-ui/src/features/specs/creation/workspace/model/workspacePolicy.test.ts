@@ -96,7 +96,7 @@ describe('tileAvailability', () => {
     });
   });
   it.each([
-    ['git-disabled', 'Wyłączone w konfiguracji projektu.'],
+    ['git-disabled', 'Git jest wyłączony w konfiguracji projektu.'],
     ['git-unavailable', 'Git jest teraz niedostępny.'],
     ['membership-mismatch', 'Ten katalog nie należy do repozytorium projektu.'],
   ] as const)('new worktree %s explains itself', (variant, reason) => {

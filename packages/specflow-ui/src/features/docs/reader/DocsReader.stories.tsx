@@ -257,6 +257,15 @@ export const Loading: Story = {
 };
 export const NotConfigured: Story = {
   args: { scenario: 'not-configured', path: '/workspaces/ws-reader/docs' },
+  play: async ({ userEvent }) => {
+    await settleViewport(390, 844);
+    const body = screen();
+    await expect(await body.findByText('No project documentation')).toBeVisible();
+    await expect(body.getByText(/Nevo documentation metadata/)).toBeVisible();
+    const refresh = body.getByRole('button', { name: 'Refresh' });
+    await userEvent.click(refresh);
+    await expect(await body.findByText('No project documentation')).toBeVisible();
+  },
 };
 export const EmptyCorpus: Story = {
   args: { scenario: 'empty-corpus', path: '/workspaces/ws-reader/docs' },

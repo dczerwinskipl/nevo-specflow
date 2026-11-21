@@ -33,8 +33,8 @@ export function projectCreateReadiness(input: {
   archetypesFailed?: boolean;
   /** The selected archetype (undefined while loading, after a failure or with an empty catalogue). */
   archetype: ArchetypeInfo | undefined;
-  /** The catalogue was read and the project has no archetype installed. */
-  noArchetypes?: boolean;
+  /** The Engine catalogue has no usable options, with its actionable recovery message. */
+  archetypeUnavailable?: Message;
 }): ProjectCreateReadiness {
   const { title, goal, workspaceState, choice } = input;
   const tooLong =
@@ -52,10 +52,6 @@ export function projectCreateReadiness(input: {
     return blocked(message('create.prerequisite.forbidden'));
   }
 
-  if (!title.trim()) {
-    return blocked(message('create.prerequisite.title'), 'name');
-  }
-
   if (input.archetypesLoading) {
     return blocked(message('create.archetype.loading'));
   }
@@ -64,12 +60,8 @@ export function projectCreateReadiness(input: {
     return blocked(message('create.archetype.loadFailed'));
   }
 
-  if (input.noArchetypes) {
-    return blocked(message('create.prerequisite.noArchetypes'));
-  }
-
-  if (!input.archetype) {
-    return blocked(message('create.prerequisite.archetype'), 'archetype');
+  if (input.archetypeUnavailable) {
+    return blocked(input.archetypeUnavailable);
   }
 
   switch (workspaceState.status) {
@@ -81,6 +73,15 @@ export function projectCreateReadiness(input: {
       return blocked(message('create.prerequisite.forbidden'));
     case 'ready':
       break;
+  }
+
+  // Once the required options are available, guide missing input in the form's reading order.
+  if (!title.trim()) {
+    return blocked(message('create.prerequisite.title'), 'name');
+  }
+
+  if (!input.archetype) {
+    return blocked(message('create.prerequisite.archetype'), 'archetype');
   }
 
   const [workspaceProblem] = workspaceProblems(choice, workspaceState.options, title);

@@ -5184,6 +5184,32 @@
       ]
     },
     {
+      "id": "ideas.audits.2026-11-21-create-first-run",
+      "type": "reference",
+      "title": "Create and first-run verification for UX package B",
+      "status": "draft",
+      "file": "docs/ideas/audits/2026-11-21-create-first-run.md",
+      "read_when": [
+        "reviewing UX package B issue 182 and its reproduction evidence"
+      ],
+      "summary": "Current-main reproduction, before/after decisions and verification evidence for the Create and first-run follow-ups from the November 16 audit. Evidence, not a second UX contract.",
+      "related": [
+        "product.specflow.specification-creation",
+        "product.specflow.ui.specs-overview",
+        "product.specflow.ui.documentation-reader"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "testing"
+      ],
+      "tags": [
+        "audit",
+        "first-run",
+        "create"
+      ]
+    },
+    {
       "id": "ideas.specflow-engine.acceptance",
       "type": "reference",
       "title": "Open Engine workflow and managed execution acceptance criteria",

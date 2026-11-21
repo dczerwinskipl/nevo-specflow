@@ -134,9 +134,30 @@ export const RefreshKeepsTheChoice: Story = {
 export const NoArchetypesInstalled: Story = {
   args: { catalogue: { ...several, archetypes: [] } },
   play: async ({ canvas }) => {
-    await expect(canvas.getByText(/W tym projekcie nie zainstalowano archetypów/)).toBeVisible();
-    await expect(canvas.getByText('nevo-specflow definitions install')).toBeVisible();
+    await expect(canvas.getByText(/Projekt nie ma dostępnych archetypów/)).toBeVisible();
     await expect(canvas.queryByRole('radio')).toBeNull();
     await expect(selected(canvas)).toHaveTextContent('none');
+  },
+};
+
+export const InvalidDefinitions: Story = {
+  args: {
+    catalogue: {
+      ...several,
+      archetypes: [],
+      problems: [
+        {
+          source: 'specification-archetype/feature.yaml',
+          code: 'yaml-invalid',
+          severity: 'error',
+          message: 'Invalid YAML',
+        },
+      ],
+    },
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText(/Definicje archetypów zawierają błędy/)).toBeVisible();
+    await expect(canvas.queryByText(/definitions install/)).toBeNull();
+    await expect(canvas.queryByRole('radio')).toBeNull();
   },
 };

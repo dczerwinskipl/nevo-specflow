@@ -182,6 +182,10 @@ export function WorkflowNow({
   };
 
   const startNow = () => {
+    if (busy) {
+      return;
+    }
+
     commands.start.reset();
     if (actions.start?.firstStart && firstStart && preview) {
       setConfirmed(undefined);
@@ -194,7 +198,7 @@ export function WorkflowNow({
   };
 
   const confirmStart = () => {
-    if (!preview) {
+    if (!preview || busy) {
       return;
     }
 

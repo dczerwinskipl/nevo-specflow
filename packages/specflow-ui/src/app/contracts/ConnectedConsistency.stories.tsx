@@ -1131,7 +1131,9 @@ export const NewWorkspaceUnavailableByConfiguration: Story = {
     await expect(tile).toHaveAttribute('aria-disabled', 'true');
     await expect(tile).not.toBeChecked();
     await expect(canvas.getByRole('radio', { name: 'Bieżący katalog' })).toBeChecked();
-    await settleViewport(390, 844, () => canvas.getByText('Wyłączone w konfiguracji projektu.'));
+    await settleViewport(390, 844, () =>
+      canvas.getByText('Git jest wyłączony w konfiguracji projektu.'),
+    );
   },
 };
 

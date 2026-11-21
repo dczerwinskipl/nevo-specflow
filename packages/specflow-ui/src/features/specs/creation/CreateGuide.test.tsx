@@ -34,7 +34,10 @@ const operations: OperationsApi = {
   },
 };
 
-function renderProject(variant: OptionsVariant = 'default', { catalogueFails = false } = {}) {
+function renderProject(
+  variant: OptionsVariant = 'default',
+  { catalogueFails = false, noDefinitions = false } = {},
+) {
   const create = vi.fn();
   const onProjectStarted = vi.fn();
   const services = createSpecFlowAppServices({
@@ -42,7 +45,9 @@ function renderProject(variant: OptionsVariant = 'default', { catalogueFails = f
     projectCreationApi: {
       operationEventsUrl: createOperationEventsUrl,
       archetypes: () =>
-        catalogueFails ? Promise.reject(new Error('unavailable')) : Promise.resolve(catalogue),
+        catalogueFails
+          ? Promise.reject(new Error('unavailable'))
+          : Promise.resolve(noDefinitions ? { ...catalogue, archetypes: [] } : catalogue),
       createOptions: () => Promise.resolve(createOptionsWireFixture(variant)),
       create,
     } as unknown as ProjectCreationApi,
@@ -214,13 +219,17 @@ describe('a blocked Create on a project Runtime', () => {
     fireEvent.change(nameField(), { target: { value: 'Payment limits' } });
     const footer = document.querySelector('footer')!;
     await waitFor(() =>
-      expect(within(footer).getByText('The archetypes could not be loaded')).toBeTruthy(),
+      expect(
+        within(footer).getByText('The archetypes could not be loaded. Retry loading them.'),
+      ).toBeTruthy(),
     );
     expect(within(footer).queryByRole('button', { name: 'Go to the field' })).toBeNull();
     // Activating the blocked Create announces the reason and moves nothing.
     nameField().focus();
     fireEvent.click(createButton());
-    await waitFor(() => expect(liveRegion()).toContain('The archetypes could not be loaded'));
+    await waitFor(() =>
+      expect(liveRegion()).toContain('The archetypes could not be loaded. Retry loading them.'),
+    );
     expect(document.activeElement).toBe(nameField());
     expect(create).not.toHaveBeenCalled();
   });
@@ -272,4 +281,18 @@ describe('a blocked Create in the demo', () => {
     expect(model.getAttribute('aria-invalid')).toBe('true');
     expect(create).not.toHaveBeenCalled();
   });
+});
+
+it('explains missing definitions only at Archetype and associates the unavailable submit', async () => {
+  const { create, onProjectStarted } = renderProject('git-disabled', { noDefinitions: true });
+  const footer = await screen.findByRole('group', { name: 'Specification creation' });
+  await waitFor(() =>
+    expect(screen.getByText('This project has no available archetypes.')).toBeTruthy(),
+  );
+  expect(footer.textContent).not.toContain('Enter a specification name');
+  expect(within(footer).queryByRole('button', { name: 'Go to the field' })).toBeNull();
+  fireEvent.click(createButton());
+  expect(create).not.toHaveBeenCalled();
+  expect(onProjectStarted).not.toHaveBeenCalled();
+  expect(screen.getByText(/A project maintainer can set git.enabled: true/)).toBeTruthy();
 });

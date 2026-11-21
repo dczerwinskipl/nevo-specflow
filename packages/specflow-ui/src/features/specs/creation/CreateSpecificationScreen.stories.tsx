@@ -694,7 +694,7 @@ export const UnavailableNewWorkspaceWithReason: Story = {
     const tile = await canvas.findByRole('radio', { name: 'Nowe środowisko pracy' });
     await expect(tile).toHaveAttribute('aria-disabled', 'true');
     await expect(tile).not.toBeChecked();
-    await expect(canvas.getByText('Wyłączone w konfiguracji projektu.')).toBeVisible();
+    await expect(canvas.getByText('Git jest wyłączony w konfiguracji projektu.')).toBeVisible();
     await expect(canvas.getByRole('radio', { name: 'Bieżący katalog' })).toBeChecked();
     for (const width of [390, 1440]) {
       await expectNoOverflow(width);

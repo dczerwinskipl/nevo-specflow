@@ -22,7 +22,9 @@
       "loading": "Loading"
     },
     "selected": "Selected",
-    "clearSearch": "Clear search"
+    "clearSearch": "Clear search",
+    "refresh": "Refresh",
+    "refreshing": "Refreshing…"
   },
   "navigation": {
     "product": "Product navigation",
@@ -153,7 +155,7 @@
     "prepareSpecificationHeading": "Prepare specification for execution",
     "prepareSpecificationDescription": "Start a session with an agent to refine requirements and prepare tasks for execution.",
     "startSession": "Start session",
-    "prepareSessionsDisabled": "An agent prepares the tasks in a session. Sessions are turned off on this server.",
+    "prepareSessionsDisabled": "An agent prepares the tasks in a session. Sessions are turned off in this project.",
     "prepareStartForbidden": "You don't have permission to start a session for this specification.",
     "prepareStartUnavailable": "An agent prepares the tasks in a session. Starting a session is not available here.",
     "tasksHeading": "Tasks",
@@ -542,7 +544,8 @@
       "effort": "Choose an effort this model supports.",
       "mode": "Choose a supported working mode.",
       "archetype": "Choose an archetype.",
-      "noArchetypes": "No archetypes are installed."
+      "noArchetypes": "This project has no available archetypes.",
+      "invalidArchetypes": "The archetype definitions contain errors."
     },
     "announce": {
       "refreshFailed": "Unable to refresh the options. The form is kept.",
@@ -603,13 +606,19 @@
       "guidance": "How to work with a {{archetype}} specification",
       "documents": "Documents to create",
       "choosePrompt": "Choose an archetype to see the documents Create makes.",
-      "none": "No archetypes are installed in this project. To install the defaults, run",
-      "installCommand": "nevo-specflow definitions install",
+      "refresh": "Refresh archetypes",
       "always": "{{type}} ({{file}}) is always created.",
       "expectedUnticked": "{{archetype}} expects a {{type}} document. Without it the specification lists it as missing until you add one.",
       "loading": "Archetypes are loading",
-      "loadFailed": "The archetypes could not be loaded",
-      "refreshed": "The archetypes were refreshed."
+      "loadFailed": "The archetypes could not be loaded. Retry loading them.",
+      "refreshed": "The archetypes were refreshed.",
+      "refreshFailed": "Could not refresh archetypes. The previous catalogue may be out of date. Retry loading it.",
+      "installHelp": "No usable archetypes. Run nevo-specflow definitions install --add-missing in the Project Home, then refresh.",
+      "repairHelp": "No usable archetypes. Run nevo-specflow definitions validate in the Project Home and repair the reported files, then refresh.",
+      "howToFix": "How to fix it?",
+      "helpTitle": "Make archetypes available",
+      "unavailable": "No available archetypes",
+      "howToAdd": "How to add an archetype?"
     },
     "errors": {
       "forbiddenTitle": "You do not have permission to create specifications",
@@ -705,6 +714,7 @@
     },
     "workspace": {
       "heading": "Workspace",
+      "enableGit": "New workspace requires Git. A project maintainer can set git.enabled: true in the Project Home’s .nevo/config.yaml, commit the configuration, then refresh the options.",
       "intro": "Choose where the specification and its changes will live.",
       "refreshOptions": "Refresh workspace options",
       "refreshOptionsAction": "Refresh options",
@@ -725,7 +735,7 @@
         "existingDescription": "Choose a previously created worktree and continue working."
       },
       "tileReason": {
-        "newDisabled": "Disabled in the project configuration.",
+        "newDisabled": "Git is disabled in the project configuration.",
         "newMismatch": "This folder does not belong to the project repository.",
         "newCheckoutUnavailable": "The project folder is unavailable right now.",
         "newGitUnavailable": "Git is unavailable right now.",
@@ -2049,7 +2059,8 @@
       "thenRestart": "Then restart Nevo SpecFlow: the configuration is read only at start, so <strong>Check again</strong> cannot see this change.",
       "emptyHeading": "No agents are listed",
       "emptyLine": "Nevo SpecFlow lists no agent for this project. A project maintainer allows one with sessions.providers.<provider>.allowed: true in .nevo/config.yaml; after a restart of Nevo SpecFlow, check again."
-    }
+    },
+    "sessionsDisabledHelp": "A project maintainer can set sessions.enabled: true in .nevo/config.yaml and restart Nevo SpecFlow. Starting a session also requires an allowed, ready provider."
   },
   "sessionNaming": {
     "pending": "Naming…",
@@ -2958,8 +2969,8 @@
       },
       "notConfigured": {
         "title": "No project documentation",
-        "description": "{{workspace}} has no documentation folder. The reader shows the Markdown documents under the folder set as <code>docs.root</code> in .nevo/config.yaml (docs/ by default).",
-        "descriptionRoot": "{{workspace}} has no documentation folder. The reader shows the Markdown documents under the folder set as <code>docs.root</code> in .nevo/config.yaml, here {{docsRoot}}/."
+        "description": "Create <code>docs/</code> in {{workspace}} and add Markdown documents with Nevo documentation metadata, then refresh. To use an existing folder, set <code>docs.root</code> in <code>.nevo/config.yaml</code>.",
+        "descriptionRoot": "Create <code>{{docsRoot}}/</code> in {{workspace}} and add Markdown documents with Nevo documentation metadata, then refresh. To use another folder, change <code>docs.root</code> in <code>.nevo/config.yaml</code>."
       },
       "empty": {
         "title": "No documents yet",

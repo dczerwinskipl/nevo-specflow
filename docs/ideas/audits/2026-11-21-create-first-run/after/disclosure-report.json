@@ -1,0 +1,210 @@
+[
+  {
+    "name": "create-no-definitions-en-320",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true,
+    "footerHeight": 124
+  },
+  {
+    "name": "empty-no-definitions-en-320",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true
+  },
+  {
+    "name": "create-no-definitions-en-390",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true,
+    "footerHeight": 108
+  },
+  {
+    "name": "empty-no-definitions-en-390",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true
+  },
+  {
+    "name": "create-no-definitions-en-834",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true,
+    "footerHeight": 36
+  },
+  {
+    "name": "empty-no-definitions-en-834",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true
+  },
+  {
+    "name": "create-no-definitions-en-1440",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true,
+    "footerHeight": 36
+  },
+  {
+    "name": "empty-no-definitions-en-1440",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true
+  },
+  {
+    "name": "create-no-definitions-pl-320",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true,
+    "footerHeight": 124
+  },
+  {
+    "name": "empty-no-definitions-pl-320",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true
+  },
+  {
+    "name": "create-no-definitions-pl-390",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true,
+    "footerHeight": 124
+  },
+  {
+    "name": "empty-no-definitions-pl-390",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true
+  },
+  {
+    "name": "create-no-definitions-pl-834",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true,
+    "footerHeight": 36
+  },
+  {
+    "name": "empty-no-definitions-pl-834",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true
+  },
+  {
+    "name": "create-no-definitions-pl-1440",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true,
+    "footerHeight": 36
+  },
+  {
+    "name": "empty-no-definitions-pl-1440",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true
+  },
+  {
+    "name": "create-invalid-en-320",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true,
+    "footerHeight": 124
+  },
+  {
+    "name": "empty-invalid-en-320",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true
+  },
+  {
+    "name": "create-invalid-en-390",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true,
+    "footerHeight": 108
+  },
+  {
+    "name": "empty-invalid-en-390",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true
+  },
+  {
+    "name": "create-invalid-en-834",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true,
+    "footerHeight": 36
+  },
+  {
+    "name": "empty-invalid-en-834",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true
+  },
+  {
+    "name": "create-invalid-en-1440",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true,
+    "footerHeight": 36
+  },
+  {
+    "name": "empty-invalid-en-1440",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true
+  },
+  {
+    "name": "create-invalid-pl-320",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true,
+    "footerHeight": 124
+  },
+  {
+    "name": "empty-invalid-pl-320",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true
+  },
+  {
+    "name": "create-invalid-pl-390",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true,
+    "footerHeight": 108
+  },
+  {
+    "name": "empty-invalid-pl-390",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true
+  },
+  {
+    "name": "create-invalid-pl-834",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true,
+    "footerHeight": 36
+  },
+  {
+    "name": "empty-invalid-pl-834",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true
+  },
+  {
+    "name": "create-invalid-pl-1440",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true,
+    "footerHeight": 36
+  },
+  {
+    "name": "empty-invalid-pl-1440",
+    "shortReason": true,
+    "commandInDetails": true,
+    "keyboardEscapeFocusRestored": true
+  }
+]

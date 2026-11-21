@@ -644,6 +644,8 @@ export const SessionsDisabled: Story = {
   },
   play: async ({ canvas }) => {
     await expect(canvas.getByText('Sesje są wyłączone w tym projekcie.')).toBeVisible();
+    await expect(canvas.getByText(/sessions\.enabled: true/)).toBeVisible();
+    await expect(canvas.getByText(/\.nevo\/config\.yaml/)).toBeVisible();
     await expect(canvas.queryByText('Nie udało się wczytać sesji.')).toBeNull();
     await expect(canvas.queryByRole('radio', { name: 'Bieżące' })).toBeNull();
     // Known from the workspace: the list read is never sent.

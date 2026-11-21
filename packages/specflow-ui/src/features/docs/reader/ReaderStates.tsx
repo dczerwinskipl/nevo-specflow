@@ -87,6 +87,11 @@ export function CorpusProblemView({
               />
             </span>
           }
+          actions={
+            <Button size="sm" variant="secondary" onClick={onRetry}>
+              {t('common.refresh')}
+            </Button>
+          }
         />
       );
     case 'empty':

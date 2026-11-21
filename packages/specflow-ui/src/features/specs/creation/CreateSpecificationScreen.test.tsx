@@ -2,7 +2,8 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { AppShell, AppWorkspaceProvider } from '@nevo/ui';
 import type { CreatedSpec } from '@nevo/specflow-contracts/specs';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { ArchetypeCatalogue } from '@nevo/specflow-contracts/documents';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSpecFlowQueryClient } from '../../../app/queryClient';
 import { VisitStateProvider } from '../../../app/VisitStateProvider';
@@ -119,6 +120,69 @@ afterEach(() => {
 });
 
 describe('CreateSpecificationScreen on a project Runtime', () => {
+  it.each([false, true])(
+    'explains unavailable archetypes by submit and recovers in place (invalid definitions: %s)',
+    async (invalid) => {
+      let served: ArchetypeCatalogue = {
+        ...catalogue,
+        archetypes: [],
+        ...(invalid
+          ? {
+              problems: [
+                {
+                  source: 'specification-archetype/feature.yaml',
+                  code: 'yaml-invalid' as const,
+                  severity: 'error' as const,
+                  message: 'Invalid YAML',
+                },
+              ],
+            }
+          : {}),
+      };
+      const create = vi.fn();
+      const { onProjectStarted } = renderScreen('project', {
+        archetypes: () => Promise.resolve(served),
+        createOptions: () => Promise.resolve(createOptionsWireFixture('git-disabled')),
+        create,
+      });
+      const footer = await screen.findByRole('group', { name: 'Specification creation' });
+      const command = invalid ? /definitions validate/ : /definitions install --add-missing/;
+      await screen.findByRole('textbox', { name: 'Archetype' });
+      expect(screen.getByRole<HTMLInputElement>('textbox', { name: 'Archetype' }).disabled).toBe(
+        true,
+      );
+      expect(footer.textContent).not.toMatch(/archetypes|definitions/);
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: invalid ? 'How to fix it?' : 'How to add an archetype?',
+        }),
+      );
+      const help = await screen.findByRole('dialog');
+      expect(within(help).getByText(command)).toBeTruthy();
+      fireEvent.click(within(help).getByRole('button', { name: 'Close' }));
+      expect(within(footer).queryByText(/Enter a specification name/)).toBeNull();
+      expect(within(footer).queryByRole('button', { name: 'Go to the field' })).toBeNull();
+      expect(screen.queryByRole('radiogroup', { name: 'Archetype' })).toBeNull();
+      const submit = screen.getByRole('button', { name: 'Create specification' });
+      fireEvent.click(submit);
+      expect(create).not.toHaveBeenCalled();
+      expect(onProjectStarted).not.toHaveBeenCalled();
+
+      fireEvent.change(screen.getByLabelText('Specification name'), {
+        target: { value: 'Retained title' },
+      });
+      served = catalogue;
+      fireEvent.click(screen.getByRole('button', { name: 'Refresh archetypes' }));
+      await screen.findByRole('radio', { name: /Feature/ });
+      await waitFor(() => expect(submit.getAttribute('aria-disabled')).toBeNull());
+      expect(screen.getByLabelText<HTMLInputElement>('Specification name').value).toBe(
+        'Retained title',
+      );
+      expect(within(footer).queryByText(command)).toBeNull();
+      expect(onProjectStarted).not.toHaveBeenCalled();
+    },
+  );
+
   it('shows the real form (name, goal, workspace) without the demo workflow or agent', async () => {
     renderScreen('project', {
       createOptions: () => Promise.resolve(createOptionsWireFixture('default')),
@@ -396,4 +460,37 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
     expect(await screen.findByRole('radio', { name: /new workspace/i })).toBeTruthy();
     expect(document.querySelector('[aria-busy="true"]')).toBeNull();
   });
+});
+
+it('reports a failed archetype refresh with retained draft and a working Retry', async () => {
+  const archetypes = vi
+    .fn<ProjectCreationApi['archetypes']>()
+    .mockResolvedValueOnce({ ...catalogue, archetypes: [] })
+    .mockRejectedValueOnce(new Error('Controlled refresh failure'))
+    .mockResolvedValue(catalogue);
+  renderScreen('project', {
+    archetypes,
+    createOptions: () => Promise.resolve(createOptionsWireFixture('git-disabled')),
+  });
+  const name = await screen.findByLabelText<HTMLInputElement>('Specification name');
+  fireEvent.change(name, { target: { value: 'Keep this draft' } });
+  fireEvent.click(await screen.findByRole('button', { name: 'Refresh archetypes' }));
+  const failure = await screen.findByRole('alert');
+  expect(failure.textContent).toContain(
+    'Could not refresh archetypes. The previous catalogue may be out of date.',
+  );
+  expect(name.value).toBe('Keep this draft');
+  const footer = screen.getByRole('group', { name: 'Specification creation' });
+  expect(footer.textContent).not.toContain('definitions install');
+  expect(
+    screen.getByRole('button', { name: 'Create specification' }).getAttribute('aria-disabled'),
+  ).toBe('true');
+  const retry = within(failure).getByRole('button', { name: 'Retry' });
+  retry.focus();
+  fireEvent.click(retry);
+  const feature = await screen.findByRole('radio', { name: /Feature/ });
+  await waitFor(() => expect(document.activeElement).toBe(feature));
+  await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+  expect(name.value).toBe('Keep this draft');
+  expect(archetypes).toHaveBeenCalledTimes(3);
 });

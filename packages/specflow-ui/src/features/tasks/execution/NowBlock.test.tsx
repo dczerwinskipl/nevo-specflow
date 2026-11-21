@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { QueryClientProvider, QueryObserver } from '@tanstack/react-query';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
@@ -10,6 +10,7 @@ import { createSpecFlowAppServices } from '../../../services';
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
 import { stubLayoutApis } from '../../../../test-support/app/stubLayoutApis';
 import { fakeTaskAuthoringApi } from '../authoring/authoring.test-support';
+import { specificationActionsKey } from '../read-model/specificationActions';
 import type { WorkflowExecutionApi } from './api';
 import { SPEC, dominik, withExits } from './projections.stories-support';
 import { WorkflowNow } from './WorkflowNow';
@@ -34,13 +35,16 @@ function renderNow(ui: ReactNode, start: WorkflowExecutionApi['start'] = vi.fn(n
     },
   });
 
-  return render(
-    <QueryClientProvider client={createSpecFlowQueryClient()}>
+  const client = createSpecFlowQueryClient();
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>
       <TestServicesRouterContext services={services}>
-        <LocalizationProvider instance={createSpecFlowI18n('en')}>{ui}</LocalizationProvider>
+        <LocalizationProvider instance={createSpecFlowI18n('en')}>{children}</LocalizationProvider>
       </TestServicesRouterContext>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
+
+  return { ...render(ui, { wrapper }), client };
 }
 
 const outline = (position: number, title: string) => ({
@@ -279,4 +283,88 @@ describe('the Specification Now block', () => {
     expect(pending.getAttribute('aria-busy')).toBe('true');
     expect(screen.queryByText('Ready to start')).toBeNull();
   });
+});
+
+it('keeps Start pending and its refusal across remounts, scoped to its subject, through refresh', async () => {
+  const projection = {
+    ...breakdown(),
+    position: { kind: 'not-started' },
+    actions: { start: {} },
+  } as WorkflowActionProjection;
+  let rejectStart!: (error: Error) => void;
+  const start = vi.fn<WorkflowExecutionApi['start']>(
+    () =>
+      new Promise((_resolve, reject) => {
+        rejectStart = reject;
+      }),
+  );
+  const view = renderNow(<OverviewNow key="wide" projection={projection} />, start);
+  let releaseRefresh!: () => void;
+  const refresh = vi.fn(
+    () =>
+      new Promise<WorkflowActionProjection>((resolve) => {
+        releaseRefresh = () => resolve(projection);
+      }),
+  );
+  const queryKey = specificationActionsKey(SPEC);
+  view.client.setQueryData(queryKey, projection);
+  const observer = new QueryObserver(view.client, {
+    queryKey,
+    queryFn: refresh,
+    staleTime: Infinity,
+  });
+  const unsubscribe = observer.subscribe(() => undefined);
+
+  try {
+    fireEvent.click(screen.getByRole('button', { name: 'Start workflow' }));
+    await screen.findByRole('button', { name: 'Starting…' });
+    view.rerender(<OverviewNow key="narrow" projection={projection} />);
+    const pending = await screen.findByRole('button', { name: 'Starting…' });
+    expect(pending.getAttribute('aria-busy')).toBe('true');
+    expect((pending as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(pending);
+    expect(start).toHaveBeenCalledTimes(1);
+    view.rerender(
+      <WorkflowNow
+        key="other"
+        subject={{ specId: 'other-spec' }}
+        projection={projection}
+        headingId="other-now"
+        links={{}}
+        artifactOptions={[]}
+        specification={{ specId: 'other-spec' }}
+      />,
+    );
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Start workflow' }).disabled).toBe(
+      false,
+    );
+    view.rerender(<OverviewNow key="wide-again" projection={projection} />);
+    await screen.findByRole('button', { name: 'Starting…' });
+    act(() => rejectStart(new Error('Controlled refusal')));
+    await waitFor(() => expect(refresh).toHaveBeenCalledOnce());
+    view.rerender(<OverviewNow key="during-refresh" projection={projection} />);
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Starting…' }).disabled).toBe(
+      true,
+    );
+    act(() => releaseRefresh());
+    await waitFor(() =>
+      expect(
+        screen.getByRole<HTMLButtonElement>('button', { name: 'Start workflow' }).disabled,
+      ).toBe(false),
+    );
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'The workflow did not change. Try again.',
+    );
+    // A failed result remains legible after the request's original controller has gone away.
+    view.rerender(<OverviewNow key="after-refusal" projection={projection} />);
+    expect(screen.getByRole('alert').textContent).toContain(
+      'The workflow did not change. Try again.',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Start workflow' }));
+    await screen.findByRole('button', { name: 'Starting…' });
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(start).toHaveBeenCalledTimes(2);
+  } finally {
+    unsubscribe();
+  }
 });

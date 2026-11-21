@@ -208,18 +208,23 @@ reason?}]` (as the CLI's `--task-decisions-file`): applied after `tasks` and bef
   transition with an owner-authority effect such as `approve-draft-tasks`, one marked
   `confirmation: owner`, or `taskDecisions`) ends the agent's attempt and leaves the run at
   `position.state: awaiting-confirmation` (projection `kind: awaiting-confirmation` with the attempt,
-  the agent's `proposal` `{transition, feedback?, artifacts}` and `confirms` `{approvesDrafts?,
-taskDecisions?}`; `actions.confirm` and `actions.reject` name the attempt). The drafts the agent
-  produced are written; nothing else applies until Confirm. `confirm` takes
-  `{requestId, step, attempt}` and answers `{subject, transition, position, continuation,
-specification?, replayed?, postActions}`: the transition, the agent's Task decisions and the effects
-  apply with the owner as actor, judged again by every finish rule (gates, open Tasks), then the
-  attempt commit runs (`postActions`). `reject` takes `{requestId, step, attempt, feedback}` (required)
-  and answers `{subject, position, continuation, replayed?}`: the step is ready again with the
-  feedback as its handoff (`kind: return`); the agent's work is neither undone nor committed (Close
-  lists it). The same `requestId` again is replayed (`replayed: true`); a confirm or reject of an
-  attempt another request decided is `WORKFLOW_ATTEMPT_MISMATCH`, one with nothing waiting
-  `WORKFLOW_POSITION_INVALID`. While a result waits, start, finish and return are refused
+  the agent's `proposal` `{transition, feedback?, artifacts}`, `confirms` `{approvesDrafts?,
+taskDecisions?}` and `confirmsDigest`; `actions.confirm` and `actions.reject` name the attempt; the
+  attention item `awaiting-confirmation` offers `confirm-result` and `reject-result`). The drafts the
+  agent produced are written, and the attempt commit ran when the attempt finished; nothing else
+  applies until Confirm. `confirm` takes `{requestId, step, attempt, confirmsDigest}` (the digest the
+  projection showed) and answers `{subject, transition, position, continuation, specification?,
+replayed?, postActions}`: the transition, the agent's Task decisions and the effects apply with the
+  owner as actor, judged again by every finish rule (gates, open Tasks; a refusal leaves the result
+  waiting), as an ordinary owner write; `postActions` are the owner's (`commit-execution-state`, as
+  after an owner's finish). A digest that no longer matches what Confirm would apply (a draft added,
+  removed or edited) is `WORKFLOW_CONFIRMATION_CHANGED` (409), naming what it applies now. `reject`
+  takes `{requestId, step, attempt, feedback}` (required) and answers `{subject, position,
+continuation, replayed?}`: the step is ready again with the feedback as its handoff
+  (`kind: return`); the agent's work stays committed with its attempt. The same `requestId` again is
+  replayed (`replayed: true`; a confirm's post actions run again); a confirm or reject of an attempt
+  another request decided is `WORKFLOW_ATTEMPT_MISMATCH` (for a confirmed one: repeat that request
+  or retry the commit), one with nothing waiting `WORKFLOW_POSITION_INVALID`. While a result waits, start, finish and return are refused
   (`WORKFLOW_POSITION_INVALID`). An agent finish outside an agent attempt that takes such a decision
   stays refused with `WORKFLOW_OWNER_DECISION_REQUIRED`.
 - `abandon` is final. A retry with the same reason returns the same result; it is not a bypass of Close:

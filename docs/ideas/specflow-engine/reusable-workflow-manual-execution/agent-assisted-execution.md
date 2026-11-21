@@ -305,7 +305,8 @@ proven stopped. They are kept apart:
    its ledger record, as today.
 2. **Settling the claim** with the native-result receipt.
 3. **Running the post actions**: flushing the document queue when auto-commit is on, then the
-   attempt commit (D15).
+   attempt commit (D15). It runs for a result that awaits the owner's confirmation too (owner
+   decision 2026-11-21): the owner's later Confirm is an owner write of its own.
 
 **1 and 2 run in one critical section; 3 runs after it.** One Engine operation (`finalizeAgentAttempt`) takes
 the project control lock **once** and calls the lock-held forms of the store change and of the claim
@@ -360,16 +361,27 @@ The neutral core has the position `awaiting-confirmation` (the attempt ended wit
 a pending `confirmation`; `confirm` takes it, `reject` returns the run to the attempt's step, ready,
 with the rejection's feedback as the handoff). The finalize publishes the attempt's end and the
 Task drafts it produced, keeps the Task decisions with the pending confirmation and applies nothing
-else; it records no post action. **Confirm** (owner route `.../workflow/confirmation/confirm`, CLI
-`workflow confirm`) applies the transition, the decisions and the effects with the owner as actor,
-judged again by every finish rule, attributes that change to the attempt's last Turn and then runs
-the attempt commit: the step finishes on Confirm, so its commit runs then. **Reject**
-(`.../confirmation/reject`, `workflow reject --feedback`) commits nothing: the agent's work stays
-uncommitted and Close lists it; the owner commits or reverts it (an attempt commit of a later agent
-attempt that changes the same Engine files is refused as mixed authors until then). Both take a
-request id and replay it. An agent Turn cannot call either (the CLI refuses both inside a Turn).
-`WORKFLOW_OWNER_DECISION_REQUIRED` stays for an agent finish that is not an agent attempt's
-proposal.
+else. **Owner decision 2026-11-21 (commit at finish):** the attempt commit (D15) runs when the agent
+attempt finishes, also when its result then awaits confirmation: the finalize records and runs it
+like any finished attempt's, so the owner decides on committed work and nothing of the agent attempt
+is ever left uncommitted. **Confirm** (owner route `.../workflow/confirmation/confirm`, CLI
+`workflow confirm`) only decides the transition: it applies the transition, the decisions and the
+effects with the owner as actor, judged again by every finish rule (a gate that no longer holds
+leaves the result waiting), as an ordinary owner write committed by the owner's normal path (the
+`commit-execution-state` post action, as after an owner's finish), never attributed to the agent's
+Turns; there is no second attempt commit. Confirm approves exactly what the owner was shown: the
+projection's `confirmsDigest` (the drafts it approves with their content revisions, and the Task
+decisions) is a required field of the request, and a mismatch is `WORKFLOW_CONFIRMATION_CHANGED`
+naming what Confirm would apply now. **Reject** (`.../confirmation/reject`,
+`workflow reject --feedback`) returns to the step with the feedback as its handoff; the agent's work
+is already committed, so the next attempt (a person's or an agent's) starts from a clean baseline.
+Both take a request id and replay it (the CLI prints it before it runs); a confirm of an attempt
+another request confirmed says so and points to repeating that request or `workflow retry-commit`,
+which then runs the confirmation's owner commit again. An agent Turn cannot call either (the CLI
+refuses both inside a Turn). `WORKFLOW_OWNER_DECISION_REQUIRED` stays for an agent finish that is
+not an agent attempt's proposal. The attention item `awaiting-confirmation` (actions
+`confirm-result`, `reject-result`, with `confirmationAttempt`) names a waiting result on the
+Specification or the Task.
 
 ## Commit ownership and Close (B3)
 
@@ -524,7 +536,11 @@ preview with remedies; there is no discard action in the product.
 
 **D17 — Human-only decisions. Decided: (a).** Engine-owned effect authority (approval effects are
 owner authority) plus an optional `confirmation: owner` marker on transitions, finalized into a
-pending owner confirmation; refused outright until that exists.
+pending owner confirmation; refused outright until that exists. Owner decision 2026-11-21: the
+attempt commit runs when the attempt finishes, also when its result then awaits confirmation;
+Confirm only decides the transition (applied as an ordinary owner write, committed by the owner's
+normal path, exactly what the owner was shown: `confirmsDigest`), and Reject returns to the step with
+the owner's feedback, leaving no uncommitted agent work.
 
 **D18 — Which Session runs the step. Decided: (c).** The kernel's continuation resolution decides,
 and a step whose archetype is declared independent (a review facet) always gets a fresh Session,

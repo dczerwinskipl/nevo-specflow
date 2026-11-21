@@ -5716,7 +5716,8 @@
                   "step",
                   "attempt",
                   "proposal",
-                  "confirms"
+                  "confirms",
+                  "confirmsDigest"
                 ],
                 "properties": {
                   "kind": {
@@ -6228,6 +6229,10 @@
                         "maxItems": 1000
                       }
                     }
+                  },
+                  "confirmsDigest": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
                   }
                 }
               },
@@ -10140,6 +10145,25 @@
                 },
                 "additionalProperties": false
               },
+              "confirmationAttempt": {
+                "type": "object",
+                "required": [
+                  "step",
+                  "attempt"
+                ],
+                "properties": {
+                  "step": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "attempt": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "additionalProperties": false
+              },
               "reason": {
                 "anyOf": [
                   {
@@ -10249,6 +10273,12 @@
                     "enum": [
                       "entry-gate-unsatisfied"
                     ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "awaiting-confirmation"
+                    ]
                   }
                 ]
               },
@@ -10347,6 +10377,18 @@
                     "enum": [
                       "satisfy-gate"
                     ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "confirm-result"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "reject-result"
+                    ]
                   }
                 ]
               },
@@ -10428,6 +10470,18 @@
                     "type": "string",
                     "enum": [
                       "satisfy-gate"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "confirm-result"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "reject-result"
                     ]
                   }
                 ]
@@ -11856,6 +11910,12 @@
               {
                 "type": "string",
                 "enum": [
+                  "WORKFLOW_CONFIRMATION_CHANGED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
                   "WORKFLOW_DIRTY_BASELINE"
                 ]
               },
@@ -12095,6 +12155,12 @@
                 "type": "string",
                 "enum": [
                   "WORKFLOW_OWNER_DECISION_REQUIRED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_CONFIRMATION_CHANGED"
                 ]
               },
               {
@@ -33540,6 +33606,25 @@
                                               },
                                               "additionalProperties": false
                                             },
+                                            "confirmationAttempt": {
+                                              "type": "object",
+                                              "required": [
+                                                "step",
+                                                "attempt"
+                                              ],
+                                              "properties": {
+                                                "step": {
+                                                  "type": "string",
+                                                  "minLength": 1,
+                                                  "maxLength": 200
+                                                },
+                                                "attempt": {
+                                                  "type": "integer",
+                                                  "minimum": 1
+                                                }
+                                              },
+                                              "additionalProperties": false
+                                            },
                                             "reason": {
                                               "anyOf": [
                                                 {
@@ -33649,6 +33734,12 @@
                                                   "enum": [
                                                     "entry-gate-unsatisfied"
                                                   ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "awaiting-confirmation"
+                                                  ]
                                                 }
                                               ]
                                             },
@@ -33747,6 +33838,18 @@
                                                   "enum": [
                                                     "satisfy-gate"
                                                   ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "confirm-result"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "reject-result"
+                                                  ]
                                                 }
                                               ]
                                             },
@@ -33828,6 +33931,18 @@
                                                   "type": "string",
                                                   "enum": [
                                                     "satisfy-gate"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "confirm-result"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "reject-result"
                                                   ]
                                                 }
                                               ]
@@ -34144,6 +34259,25 @@
                                           },
                                           "additionalProperties": false
                                         },
+                                        "confirmationAttempt": {
+                                          "type": "object",
+                                          "required": [
+                                            "step",
+                                            "attempt"
+                                          ],
+                                          "properties": {
+                                            "step": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 200
+                                            },
+                                            "attempt": {
+                                              "type": "integer",
+                                              "minimum": 1
+                                            }
+                                          },
+                                          "additionalProperties": false
+                                        },
                                         "reason": {
                                           "anyOf": [
                                             {
@@ -34253,6 +34387,12 @@
                                               "enum": [
                                                 "entry-gate-unsatisfied"
                                               ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "awaiting-confirmation"
+                                              ]
                                             }
                                           ]
                                         },
@@ -34351,6 +34491,18 @@
                                               "enum": [
                                                 "satisfy-gate"
                                               ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "confirm-result"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "reject-result"
+                                              ]
                                             }
                                           ]
                                         },
@@ -34432,6 +34584,18 @@
                                               "type": "string",
                                               "enum": [
                                                 "satisfy-gate"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "confirm-result"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "reject-result"
                                               ]
                                             }
                                           ]
@@ -34849,6 +35013,25 @@
                                           },
                                           "additionalProperties": false
                                         },
+                                        "confirmationAttempt": {
+                                          "type": "object",
+                                          "required": [
+                                            "step",
+                                            "attempt"
+                                          ],
+                                          "properties": {
+                                            "step": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 200
+                                            },
+                                            "attempt": {
+                                              "type": "integer",
+                                              "minimum": 1
+                                            }
+                                          },
+                                          "additionalProperties": false
+                                        },
                                         "reason": {
                                           "anyOf": [
                                             {
@@ -34958,6 +35141,12 @@
                                               "enum": [
                                                 "entry-gate-unsatisfied"
                                               ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "awaiting-confirmation"
+                                              ]
                                             }
                                           ]
                                         },
@@ -35056,6 +35245,18 @@
                                               "enum": [
                                                 "satisfy-gate"
                                               ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "confirm-result"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "reject-result"
+                                              ]
                                             }
                                           ]
                                         },
@@ -35137,6 +35338,18 @@
                                               "type": "string",
                                               "enum": [
                                                 "satisfy-gate"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "confirm-result"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "reject-result"
                                               ]
                                             }
                                           ]
@@ -35452,6 +35665,25 @@
                             },
                             "additionalProperties": false
                           },
+                          "confirmationAttempt": {
+                            "type": "object",
+                            "required": [
+                              "step",
+                              "attempt"
+                            ],
+                            "properties": {
+                              "step": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "attempt": {
+                                "type": "integer",
+                                "minimum": 1
+                              }
+                            },
+                            "additionalProperties": false
+                          },
                           "reason": {
                             "anyOf": [
                               {
@@ -35561,6 +35793,12 @@
                                 "enum": [
                                   "entry-gate-unsatisfied"
                                 ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "awaiting-confirmation"
+                                ]
                               }
                             ]
                           },
@@ -35659,6 +35897,18 @@
                                 "enum": [
                                   "satisfy-gate"
                                 ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "confirm-result"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "reject-result"
+                                ]
                               }
                             ]
                           },
@@ -35740,6 +35990,18 @@
                                 "type": "string",
                                 "enum": [
                                   "satisfy-gate"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "confirm-result"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "reject-result"
                                 ]
                               }
                             ]
@@ -37790,6 +38052,25 @@
                                   },
                                   "additionalProperties": false
                                 },
+                                "confirmationAttempt": {
+                                  "type": "object",
+                                  "required": [
+                                    "step",
+                                    "attempt"
+                                  ],
+                                  "properties": {
+                                    "step": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    },
+                                    "attempt": {
+                                      "type": "integer",
+                                      "minimum": 1
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                },
                                 "reason": {
                                   "anyOf": [
                                     {
@@ -37899,6 +38180,12 @@
                                       "enum": [
                                         "entry-gate-unsatisfied"
                                       ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "awaiting-confirmation"
+                                      ]
                                     }
                                   ]
                                 },
@@ -37997,6 +38284,18 @@
                                       "enum": [
                                         "satisfy-gate"
                                       ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "confirm-result"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "reject-result"
+                                      ]
                                     }
                                   ]
                                 },
@@ -38078,6 +38377,18 @@
                                       "type": "string",
                                       "enum": [
                                         "satisfy-gate"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "confirm-result"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "reject-result"
                                       ]
                                     }
                                   ]
@@ -44967,7 +45278,8 @@
                 "required": [
                   "requestId",
                   "step",
-                  "attempt"
+                  "attempt",
+                  "confirmsDigest"
                 ],
                 "properties": {
                   "requestId": {
@@ -44982,6 +45294,10 @@
                   "attempt": {
                     "type": "integer",
                     "minimum": 1
+                  },
+                  "confirmsDigest": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
                   }
                 },
                 "additionalProperties": false
@@ -51259,7 +51575,8 @@
                 "required": [
                   "requestId",
                   "step",
-                  "attempt"
+                  "attempt",
+                  "confirmsDigest"
                 ],
                 "properties": {
                   "requestId": {
@@ -51274,6 +51591,10 @@
                   "attempt": {
                     "type": "integer",
                     "minimum": 1
+                  },
+                  "confirmsDigest": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
                   }
                 },
                 "additionalProperties": false
@@ -55896,6 +56217,18 @@
                                   {
                                     "type": "string",
                                     "enum": [
+                                      "confirm-result"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "reject-result"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
                                       "answer-session"
                                     ]
                                   }
@@ -55979,6 +56312,18 @@
                                     "type": "string",
                                     "enum": [
                                       "satisfy-gate"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "confirm-result"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "reject-result"
                                     ]
                                   },
                                   {
@@ -56458,6 +56803,18 @@
                                               {
                                                 "type": "string",
                                                 "enum": [
+                                                  "confirm-result"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "reject-result"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
                                                   "answer-session"
                                                 ]
                                               }
@@ -56541,6 +56898,18 @@
                                                 "type": "string",
                                                 "enum": [
                                                   "satisfy-gate"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "confirm-result"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "reject-result"
                                                 ]
                                               },
                                               {
@@ -57542,6 +57911,25 @@
                                                                   },
                                                                   "additionalProperties": false
                                                                 },
+                                                                "confirmationAttempt": {
+                                                                  "type": "object",
+                                                                  "required": [
+                                                                    "step",
+                                                                    "attempt"
+                                                                  ],
+                                                                  "properties": {
+                                                                    "step": {
+                                                                      "type": "string",
+                                                                      "minLength": 1,
+                                                                      "maxLength": 200
+                                                                    },
+                                                                    "attempt": {
+                                                                      "type": "integer",
+                                                                      "minimum": 1
+                                                                    }
+                                                                  },
+                                                                  "additionalProperties": false
+                                                                },
                                                                 "reason": {
                                                                   "anyOf": [
                                                                     {
@@ -57651,6 +58039,12 @@
                                                                       "enum": [
                                                                         "entry-gate-unsatisfied"
                                                                       ]
+                                                                    },
+                                                                    {
+                                                                      "type": "string",
+                                                                      "enum": [
+                                                                        "awaiting-confirmation"
+                                                                      ]
                                                                     }
                                                                   ]
                                                                 },
@@ -57749,6 +58143,18 @@
                                                                       "enum": [
                                                                         "satisfy-gate"
                                                                       ]
+                                                                    },
+                                                                    {
+                                                                      "type": "string",
+                                                                      "enum": [
+                                                                        "confirm-result"
+                                                                      ]
+                                                                    },
+                                                                    {
+                                                                      "type": "string",
+                                                                      "enum": [
+                                                                        "reject-result"
+                                                                      ]
                                                                     }
                                                                   ]
                                                                 },
@@ -57830,6 +58236,18 @@
                                                                       "type": "string",
                                                                       "enum": [
                                                                         "satisfy-gate"
+                                                                      ]
+                                                                    },
+                                                                    {
+                                                                      "type": "string",
+                                                                      "enum": [
+                                                                        "confirm-result"
+                                                                      ]
+                                                                    },
+                                                                    {
+                                                                      "type": "string",
+                                                                      "enum": [
+                                                                        "reject-result"
                                                                       ]
                                                                     }
                                                                   ]
@@ -58146,6 +58564,25 @@
                                                               },
                                                               "additionalProperties": false
                                                             },
+                                                            "confirmationAttempt": {
+                                                              "type": "object",
+                                                              "required": [
+                                                                "step",
+                                                                "attempt"
+                                                              ],
+                                                              "properties": {
+                                                                "step": {
+                                                                  "type": "string",
+                                                                  "minLength": 1,
+                                                                  "maxLength": 200
+                                                                },
+                                                                "attempt": {
+                                                                  "type": "integer",
+                                                                  "minimum": 1
+                                                                }
+                                                              },
+                                                              "additionalProperties": false
+                                                            },
                                                             "reason": {
                                                               "anyOf": [
                                                                 {
@@ -58255,6 +58692,12 @@
                                                                   "enum": [
                                                                     "entry-gate-unsatisfied"
                                                                   ]
+                                                                },
+                                                                {
+                                                                  "type": "string",
+                                                                  "enum": [
+                                                                    "awaiting-confirmation"
+                                                                  ]
                                                                 }
                                                               ]
                                                             },
@@ -58353,6 +58796,18 @@
                                                                   "enum": [
                                                                     "satisfy-gate"
                                                                   ]
+                                                                },
+                                                                {
+                                                                  "type": "string",
+                                                                  "enum": [
+                                                                    "confirm-result"
+                                                                  ]
+                                                                },
+                                                                {
+                                                                  "type": "string",
+                                                                  "enum": [
+                                                                    "reject-result"
+                                                                  ]
                                                                 }
                                                               ]
                                                             },
@@ -58434,6 +58889,18 @@
                                                                   "type": "string",
                                                                   "enum": [
                                                                     "satisfy-gate"
+                                                                  ]
+                                                                },
+                                                                {
+                                                                  "type": "string",
+                                                                  "enum": [
+                                                                    "confirm-result"
+                                                                  ]
+                                                                },
+                                                                {
+                                                                  "type": "string",
+                                                                  "enum": [
+                                                                    "reject-result"
                                                                   ]
                                                                 }
                                                               ]
@@ -58851,6 +59318,25 @@
                                                               },
                                                               "additionalProperties": false
                                                             },
+                                                            "confirmationAttempt": {
+                                                              "type": "object",
+                                                              "required": [
+                                                                "step",
+                                                                "attempt"
+                                                              ],
+                                                              "properties": {
+                                                                "step": {
+                                                                  "type": "string",
+                                                                  "minLength": 1,
+                                                                  "maxLength": 200
+                                                                },
+                                                                "attempt": {
+                                                                  "type": "integer",
+                                                                  "minimum": 1
+                                                                }
+                                                              },
+                                                              "additionalProperties": false
+                                                            },
                                                             "reason": {
                                                               "anyOf": [
                                                                 {
@@ -58960,6 +59446,12 @@
                                                                   "enum": [
                                                                     "entry-gate-unsatisfied"
                                                                   ]
+                                                                },
+                                                                {
+                                                                  "type": "string",
+                                                                  "enum": [
+                                                                    "awaiting-confirmation"
+                                                                  ]
                                                                 }
                                                               ]
                                                             },
@@ -59058,6 +59550,18 @@
                                                                   "enum": [
                                                                     "satisfy-gate"
                                                                   ]
+                                                                },
+                                                                {
+                                                                  "type": "string",
+                                                                  "enum": [
+                                                                    "confirm-result"
+                                                                  ]
+                                                                },
+                                                                {
+                                                                  "type": "string",
+                                                                  "enum": [
+                                                                    "reject-result"
+                                                                  ]
                                                                 }
                                                               ]
                                                             },
@@ -59139,6 +59643,18 @@
                                                                   "type": "string",
                                                                   "enum": [
                                                                     "satisfy-gate"
+                                                                  ]
+                                                                },
+                                                                {
+                                                                  "type": "string",
+                                                                  "enum": [
+                                                                    "confirm-result"
+                                                                  ]
+                                                                },
+                                                                {
+                                                                  "type": "string",
+                                                                  "enum": [
+                                                                    "reject-result"
                                                                   ]
                                                                 }
                                                               ]
@@ -59906,6 +60422,18 @@
                                               {
                                                 "type": "string",
                                                 "enum": [
+                                                  "confirm-result"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "reject-result"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
                                                   "answer-session"
                                                 ]
                                               }
@@ -59989,6 +60517,18 @@
                                                 "type": "string",
                                                 "enum": [
                                                   "satisfy-gate"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "confirm-result"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "reject-result"
                                                 ]
                                               },
                                               {
@@ -60517,6 +61057,18 @@
                                               {
                                                 "type": "string",
                                                 "enum": [
+                                                  "confirm-result"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "reject-result"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
                                                   "answer-session"
                                                 ]
                                               }
@@ -60600,6 +61152,18 @@
                                                 "type": "string",
                                                 "enum": [
                                                   "satisfy-gate"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "confirm-result"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "reject-result"
                                                 ]
                                               },
                                               {

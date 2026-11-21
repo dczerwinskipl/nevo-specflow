@@ -131,7 +131,7 @@ export const ProviderNotReady: Story = {
     const claude = await within(dialog).findByRole('radio', { name: /Claude/ }, wait);
     await expect(claude).toBeChecked();
     await expect(
-      within(claude.closest('label') ?? dialog).getByText(/sign in|Sign in/i),
+      within(claude.closest('label') ?? dialog).getByText('Sign-in needed'),
     ).toBeVisible();
     await userEvent.click(within(dialog).getByRole('radio', { name: /Codex/ }));
     await waitFor(() => expectFooter(dialog, true), wait);

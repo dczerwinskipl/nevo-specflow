@@ -46,6 +46,12 @@ export interface AgentTurnBinding {
   readonly turnId: string;
   readonly boundAt: string;
   /**
+   * The digest of the Task context the Turn is briefed with (`taskContext.digest`, sha256 hex), read
+   * in the start's section; absent for a Specification subject. A new attempt's first Turn has the
+   * digest recorded on the attempt; a Continue's is the context as it is when it is bound.
+   */
+  readonly contextDigest?: string;
+  /**
    * When the attempt's finalize section ran for this Turn (it records the Turn's outcome and dirty
    * set and, in the same section, settles the Turn's execution claim).
    */
@@ -327,6 +333,7 @@ const JournalSchema = Type.Object(
           invocationId: uuid,
           turnId: text(200),
           boundAt: timestamp,
+          contextDigest: Type.Optional(sha256),
           finalizedAt: Type.Optional(timestamp),
         },
         closed,

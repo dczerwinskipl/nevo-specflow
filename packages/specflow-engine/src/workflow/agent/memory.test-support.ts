@@ -9,6 +9,7 @@ import { memoryDependencies } from '../operations/operations.test-support';
 import type { PostActionResult, StepFinishedEvent } from '../operations/post-actions';
 import type { WorkflowStore } from '../state/store';
 import type { AttributionFacts } from './boundary/attribution';
+import type { AgentContextSource } from './context/gather';
 import type { AgentAttemptDependencies } from './dependencies';
 import type { FinalizeBoundary } from './finalize/finalize';
 import { memoryAgentAttemptJournal } from './journal/memory.test-support';
@@ -60,6 +61,26 @@ export function memoryAgentDependencies(catalogue: ExecutionCatalogue, attemptId
     ledger: [] as LedgerEntry[],
     /** The owner's post actions the agent operations ran (after a Confirm), in order. */
     ownerPostActions: [] as StepFinishedEvent[],
+    /** The content hash of every registered document file the agent context reads (`context`). */
+    documentSha: 'c'.repeat(64),
+  };
+  /** The agent context: one overview, no document types; every document file hashes `documentSha`. */
+  const context: AgentContextSource = {
+    documents: () =>
+      Promise.resolve([
+        {
+          id: 'overview',
+          type: 'overview',
+          title: 'Overview',
+          path: 'specs/feature/overview.md',
+          revision: 'r1',
+          templateOnly: false,
+        },
+      ]),
+    catalogue: () => Promise.resolve({ documentTypes: [] }),
+    documentFile: (_scope, documentId) =>
+      Promise.resolve({ path: `${documentId}.md`, bytes: 10, sha256: state.documentSha }),
+    checkoutFile: () => Promise.resolve(undefined),
   };
   const serialize = workflow.serialize;
   const lockedWorkflow = {
@@ -122,6 +143,7 @@ export function memoryAgentDependencies(catalogue: ExecutionCatalogue, attemptId
   const dependencies: AgentAttemptDependencies = {
     workflow: lockedWorkflow,
     journal: loggedJournal,
+    context,
     admission: (owned) => ({
       admitWrite() {
         admitted.push(owned);

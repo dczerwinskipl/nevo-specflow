@@ -63,7 +63,9 @@ export {
   type ProposeAgentFinishResult,
 } from './proposal/propose';
 export {
+  readAgentTurnContext,
   startAgentAttempt,
+  type AgentTurnContextInput,
   type StartAgentAttemptInput,
   type StartAgentAttemptResult,
 } from './start';

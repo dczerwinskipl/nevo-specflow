@@ -26,7 +26,7 @@ import { SessionError, type SessionCoordinator } from '../../sessions';
 import { AgentUnavailableError } from '../../workflow';
 import { untrusted } from '../brief/render';
 import { chosenLaunch, withRuntimeReasons, type AgentRuntimeFacts } from './availability';
-import type { ActiveAgentAttempt, AgentStepEngine } from './engine-port';
+import type { ActiveAgentAttempt, AgentBrief, AgentStepEngine } from './engine-port';
 
 /** The Session operations agent step execution uses. */
 export type AgentStepSessions = Pick<
@@ -475,13 +475,15 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
       readonly fresh: boolean;
       readonly effort?: string;
       readonly kind: AgentStepExecutionResult['kind'];
+      /** The brief the start rendered from the context it recorded; absent for a retry. */
+      readonly brief?: AgentBrief;
     },
   ): Promise<AgentStepExecutionResult> {
     const { subject } = request;
     const sessionId = bound.actor.details.sessionId!;
     const turnId = derivedId(request.requestId, 'turn');
     const invocationId = derivedId(request.requestId, 'invocation');
-    const brief = await engine.brief(subject, bound.attemptId);
+    const brief = bound.brief ?? (await engine.brief(subject, bound.attemptId, invocationId));
     if (bound.fresh) {
       await ensureFreshSession(sessions, request, {
         attemptId: bound.attemptId,
@@ -651,7 +653,7 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
 
     const fresh = launch.session.mode === 'fresh' && !continuing;
     // Nothing exists yet: a refusal here leaves no attempt, no Session and no Turn.
-    const { attemptId } = await engine.start({
+    const { attemptId, brief } = await engine.start({
       subject,
       actor,
       expected,
@@ -669,6 +671,7 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
 
     return dispatch(sessions, request, {
       attemptId,
+      brief,
       actor,
       fresh,
       ...(launch.effort !== undefined ? { effort: launch.effort } : {}),

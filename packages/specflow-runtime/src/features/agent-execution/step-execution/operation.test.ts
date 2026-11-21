@@ -47,6 +47,8 @@ function fakes(
   const created = new Set<string>();
   let failCreate = options.failFirstCreate === true;
   const calls: string[] = [];
+  /** The message of every Turn the Sessions started, in order. */
+  const messages: string[] = [];
   let attempt: ActiveAgentAttempt | undefined;
   const turns = new Set<string>();
   let failTurnStart = options.failFirstTurnStart === true;
@@ -94,10 +96,17 @@ function fakes(
         },
       };
 
-      return Promise.resolve({ attemptId: ATTEMPT });
+      return Promise.resolve({
+        attemptId: ATTEMPT,
+        brief: { step: { id: 'breakdown', title: 'Break it down' }, attempt: 1, text: 'started' },
+      });
     },
-    brief: () =>
-      Promise.resolve({ step: { id: 'breakdown', title: 'Break it down' }, attempt: 1, text: 'b' }),
+    brief: (_subject, _attemptId, invocationId) =>
+      Promise.resolve({
+        step: { id: 'breakdown', title: 'Break it down' },
+        attempt: 1,
+        text: `retried ${invocationId}`,
+      }),
     work: () =>
       Promise.resolve({
         documents: [],
@@ -135,8 +144,9 @@ function fakes(
 
       return Promise.resolve({ sessionId: chosen!.sessionId! });
     },
-    start(_actor, sessionId, _input, turnOptions) {
+    start(_actor, sessionId, input, turnOptions) {
       calls.push(`session.start ${sessionId}`);
+      messages.push(input.message);
       if (failTurnStart) {
         failTurnStart = false;
 
@@ -160,6 +170,7 @@ function fakes(
 
   return {
     calls,
+    messages,
     execution: createAgentStepExecution({ engine, sessions: () => sessions }),
     attempt: () => attempt,
   };
@@ -207,7 +218,7 @@ describe('agent step execution', () => {
   });
 
   it('completes a retried start without a second attempt, Session or Turn', async () => {
-    const { calls, execution } = fakes({ failFirstTurnStart: true });
+    const { calls, messages, execution } = fakes({ failFirstTurnStart: true });
     const id = '00000000-0000-4000-8000-000000000003';
     await expect(execution.startAgentStepExecution(request(id))).rejects.toThrow('lost');
 
@@ -218,6 +229,8 @@ describe('agent step execution', () => {
     expect(calls.filter((call) => call.startsWith('engine.start'))).toHaveLength(1);
     // The Session create replays (same request id); the Turn starts once it was not admitted.
     expect(calls.filter((call) => call.startsWith('session.start'))).toHaveLength(2);
+    // The start briefs with the context it recorded; the retry asks the Engine for the bound Turn's.
+    expect(messages).toEqual(['started', `retried ${derivedId(id, 'invocation')}`]);
   });
 
   it('continues in the attempt Session and replays a retried Continue', async () => {

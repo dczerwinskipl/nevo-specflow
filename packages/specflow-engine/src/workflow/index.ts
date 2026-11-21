@@ -174,7 +174,9 @@ export {
   runAgentPostActions,
   type RetryAgentAttemptCommitInput,
   type RetryAgentAttemptCommitResult,
+  readAgentTurnContext,
   startAgentAttempt,
+  type AgentTurnContextInput,
   AGENT_ATTEMPT_EVENT_KINDS,
   readAgentAttemptHistory,
   readAgentAttemptWork,
@@ -224,7 +226,6 @@ export {
 export {
   engineAgentContextSource,
   gatherAgentContext,
-  readAgentContextDigest,
   readStepContext,
   type AgentContextSource,
   type AgentStepContext,

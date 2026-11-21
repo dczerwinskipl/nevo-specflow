@@ -120,6 +120,38 @@ export const FinishWorkflowRequestSchema = Type.Object(
 );
 export type FinishWorkflowRequest = Static<typeof FinishWorkflowRequestSchema>;
 
+/** The changed files one agent finish proposal declares at most (the dirty set's bound). */
+export const AGENT_CHANGED_PATHS_MAX = 500;
+/** The longest checkout-relative path a finish proposal declares. */
+export const AGENT_CHANGED_PATH_LENGTH_MAX = 1024;
+
+/**
+ * An agent's finish proposal for its own attempt (Ask agent, D12): the owner's finish input and the
+ * files outside SpecFlow's own folders the attempt changed (`changes.paths`, B3). The declared set
+ * must equal what is uncommitted outside the Specification directories and SpecFlow's namespace:
+ * an undeclared changed file or a declared file that is not changed refuses the proposal
+ * (`WORKFLOW_UNDECLARED_CHANGES`). Absent `changes` declares no file.
+ */
+export const AgentFinishProposalRequestSchema = Type.Object(
+  {
+    ...FinishWorkflowRequestSchema.properties,
+    changes: Type.Optional(
+      Type.Object(
+        {
+          /** Checkout-relative paths with `/` separators, as `git status` names them; each once. */
+          paths: Type.Array(
+            Type.String({ minLength: 1, maxLength: AGENT_CHANGED_PATH_LENGTH_MAX }),
+            { maxItems: AGENT_CHANGED_PATHS_MAX },
+          ),
+        },
+        { additionalProperties: false },
+      ),
+    ),
+  },
+  { additionalProperties: false },
+);
+export type AgentFinishProposalRequest = Static<typeof AgentFinishProposalRequestSchema>;
+
 /** Send the run back to a declared step it already reached. */
 export const ReturnWorkflowRequestSchema = Type.Object(
   {
@@ -275,6 +307,21 @@ export const WORKFLOW_ERROR_CODES = [
   'WORKFLOW_GATE_UNSATISFIED',
   'WORKFLOW_TASKS_OPEN',
   'WORKFLOW_OWNER_DECISION_REQUIRED',
+  /**
+   * Ask agent attribution (B3, B6): the checkout has uncommitted changes SpecFlow cannot attribute
+   * (`WORKFLOW_DIRTY_BASELINE`, at the start), files changed since the agent's last Turn ended
+   * (`WORKFLOW_BASELINE_CHANGED`, at Continue), new files in a Specification directory without a
+   * document type (`WORKFLOW_UNREGISTERED_DOCUMENTS`), SpecFlow's own files edited past it
+   * (`WORKFLOW_ENGINE_FILE_EDITED`), or changed files the finish proposal does not declare exactly
+   * (`WORKFLOW_UNDECLARED_CHANGES`), or an untracked Git repository inside the checkout
+   * (`WORKFLOW_NESTED_REPOSITORY`); `details.attribution` names the paths.
+   */
+  'WORKFLOW_DIRTY_BASELINE',
+  'WORKFLOW_BASELINE_CHANGED',
+  'WORKFLOW_UNREGISTERED_DOCUMENTS',
+  'WORKFLOW_ENGINE_FILE_EDITED',
+  'WORKFLOW_UNDECLARED_CHANGES',
+  'WORKFLOW_NESTED_REPOSITORY',
   'WORKFLOW_UNAVAILABLE',
   /**
    * The Runtime's own: the commit policy of the workflow state refused the change before anything
@@ -332,6 +379,31 @@ export const WORKFLOW_COMMIT_REFUSAL_CODES = [
   'DOCUMENT_RECOVERY_REQUIRED',
 ] as const;
 export type WorkflowCommitRefusalCode = (typeof WORKFLOW_COMMIT_REFUSAL_CODES)[number];
+
+/**
+ * The paths of an Ask agent attribution refusal (`WORKFLOW_DIRTY_BASELINE`,
+ * `WORKFLOW_BASELINE_CHANGED`, `WORKFLOW_UNREGISTERED_DOCUMENTS`, `WORKFLOW_ENGINE_FILE_EDITED`,
+ * `WORKFLOW_UNDECLARED_CHANGES`): the first of them (`paths`, sorted) of `count`. For
+ * `WORKFLOW_UNDECLARED_CHANGES`, `undeclared` are changed files the proposal does not declare and
+ * `unchanged` declared files that are not changed files of the attempt (`paths` holds both).
+ * `remedies` (`WORKFLOW_UNREGISTERED_DOCUMENTS`): give each file a document type, or delete a new
+ * one, or restore a changed one.
+ * `incomplete`: what is uncommitted cannot be read in full (more changed files than SpecFlow names,
+ * an unreadable record of its own writes, no record of the last Turn), so nothing is attributed.
+ */
+export const WorkflowAttributionSchema = Type.Object({
+  paths: Type.Array(Type.String()),
+  count: Type.Integer({ minimum: 0 }),
+  undeclared: Type.Optional(Type.Array(Type.String())),
+  unchanged: Type.Optional(Type.Array(Type.String())),
+  remedies: Type.Optional(
+    Type.Array(
+      Type.Union([Type.Literal('classify'), Type.Literal('delete'), Type.Literal('restore')]),
+    ),
+  ),
+  incomplete: Type.Optional(Type.Literal(true)),
+});
+export type WorkflowAttribution = Static<typeof WorkflowAttributionSchema>;
 
 /**
  * A refused workflow command. `code` is the stable value clients branch on (`error` repeats it);
@@ -406,6 +478,8 @@ export const WorkflowErrorSchema = Type.Object(
          * Tasks are open; every open Task and why it is open, in id order.
          */
         openTasks: Type.Optional(Type.Array(OpenTaskSchema)),
+        /** An Ask agent attribution refusal: the paths it names ({@link WorkflowAttributionSchema}). */
+        attribution: Type.Optional(WorkflowAttributionSchema),
         /** `WORKFLOW_SPECIFICATION_BUSY`: what holds the Specification ({@link SPECIFICATION_BUSY_CAUSES}). */
         cause: Type.Optional(
           Type.Unsafe<SpecificationBusyCause>(

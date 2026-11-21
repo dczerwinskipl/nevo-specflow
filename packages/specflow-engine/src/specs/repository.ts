@@ -9,6 +9,9 @@ import {
   type SpecificationManifest,
 } from './model';
 
+/** The checkout-relative folder that holds the Specifications (`<root>/active|archive/<slug>`). */
+export const SPECIFICATION_ROOT = 'specs';
+
 export interface WorkspaceSpecification extends SpecificationManifest {
   readonly relativeManifestPath: string;
   readonly relativeOverviewPath: string;
@@ -27,7 +30,7 @@ export async function listWorkspaceSpecifications(
   skipActiveSlugs?: ReadonlySet<string>,
 ): Promise<readonly WorkspaceSpecification[]> {
   await assertWorkspaceRoot(workspaceRoot);
-  const specsRoot = join(workspaceRoot, 'specs');
+  const specsRoot = join(workspaceRoot, SPECIFICATION_ROOT);
   if (!(await physicalDirectoryExists(specsRoot))) {
     return [];
   }

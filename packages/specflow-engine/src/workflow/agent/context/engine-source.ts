@@ -14,6 +14,7 @@ import { AGENT_CONTEXT_DOCUMENTS_MAX, AGENT_CONTEXT_FOLDER_FILES_MAX } from '../
 import type { ContextDocument } from '../../operations/agent-step-context';
 import { fileFact, isCheckoutRelative } from './file-fact';
 import type { AgentContextSource } from './gather';
+import { SPECIFICATION_ROOT } from '../../../specs/repository';
 
 const GLOB_CHARACTERS = /[*?[\]{}]/u;
 
@@ -37,7 +38,11 @@ export function engineAgentContextSource(engine: SpecFlowEngine): AgentContextSo
 
     return {
       workspaceRoot: found.workspaceRoot,
-      folder: posix.join('specs', found.specification.location, found.specification.slug),
+      folder: posix.join(
+        SPECIFICATION_ROOT,
+        found.specification.location,
+        found.specification.slug,
+      ),
       archetype: found.specification.archetype.id,
       documentCount: found.specification.documents.length,
     };

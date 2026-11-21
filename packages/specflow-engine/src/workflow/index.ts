@@ -149,8 +149,13 @@ export {
 } from './operations/reevaluate-wait';
 export { returnToStep, type ReturnToStepInput, type ReturnToStepResult } from './operations/return';
 export {
+  admitAgentTurn,
+  AttributionRefusalError,
   finalizeAgentAttempt,
   openAgentAttempts,
+  type AgentDeclaredChanges,
+  type AgentTurnAdmissionInput,
+  type AttributionDetails,
   proposeAgentFinish,
   readAgentAttempt,
   recoverAgentAttempts,

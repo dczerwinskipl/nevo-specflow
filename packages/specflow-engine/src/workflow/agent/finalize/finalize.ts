@@ -17,6 +17,7 @@ import type { PostActionResult } from '../../operations/post-actions';
 import { planReturn } from '../../operations/return';
 import { agentAttemptBindingOf } from '../../state/model';
 import type { ExecutionSnapshot, WorkflowStore } from '../../state/store';
+import { AttributionRefusalError, assertAgentFinishAttribution } from '../boundary';
 import type { AgentAttemptDependencies } from '../dependencies';
 import {
   agentPostActionId,
@@ -112,6 +113,7 @@ function refusalOf(error: unknown): AgentRefusal | undefined {
     ? {
         code: (error as Error & { code: string }).code.slice(0, 100),
         message: refusalMessage(error),
+        ...(error instanceof AttributionRefusalError ? { attribution: error.attribution } : {}),
       }
     : undefined;
 }
@@ -176,12 +178,22 @@ async function finalizeInSection(
     mismatch('The execution claim is not one of a Turn of this agent attempt.');
   }
 
+  const claim = await finalize.claim(intent.operationId);
+  const phase = claim?.phase;
+  // A replay of a Turn finalized and settled with this receipt: the claim admits nothing any more,
+  // and nothing is written; the recorded outcome is returned and the post actions resume.
+  if (
+    phase === 'settled' &&
+    journal.turns[index]!.finalizedAt !== undefined &&
+    isDeepStrictEqual(claim?.settlement, { kind: 'native-result', receipt })
+  ) {
+    return recordedOutcome(journal);
+  }
+
   const owned: OwnedExecutionClaim = { operationId: intent.operationId, form: 'finalize' };
   await dependencies.admission(owned).admitWrite();
   // Only a claim whose Turn was dispatched has a native result to settle with: refused before the
   // step state is published, so nothing is published that the settlement would then refuse.
-  const claim = await finalize.claim(intent.operationId);
-  const phase = claim?.phase;
   if (phase === undefined) {
     throw new WorkspaceExecutionError(
       'EXECUTION_RECOVERY_REQUIRED',
@@ -346,6 +358,12 @@ async function publishStep(
       },
       { agentProposal: true },
     );
+    // The checkout as the ended Turn left it must still be attributable as declared (B3, B6). A
+    // replay was judged before its publication, which is final: it is never refused afterwards.
+    if (plan.kind !== 'replayed') {
+      await assertAgentFinishAttribution(dependencies, journal.workspaceId, proposal.changes);
+    }
+
     // A replay publishes the pending store journal a crash left, if any (as a repeated finish does).
     await store.apply(journal.subject.specId, plan.kind === 'replayed' ? {} : plan.change);
     await dependencies.finalize.faults?.('step-published');

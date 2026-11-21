@@ -16,6 +16,7 @@ import {
   type AgentAttemptBinding,
   type WorkflowSubject,
 } from '../state/model';
+import { admitAgentTurn } from './boundary';
 import type { AgentAttemptDependencies } from './dependencies';
 import {
   AGENT_ATTEMPT_JOURNAL_VERSION,
@@ -88,7 +89,8 @@ function assertBindingInput(input: StartAgentAttemptInput): void {
  * Start an agent attempt for Ask agent, or continue the active one with a new Turn (`expected` names
  * it). Runs before any Session, claim or provider process exists: a subject that is not ready, a
  * stale expected position or a step whose executors do not include `agent` refuses with nothing
- * written. In one `serialize` section the ordinary start records the attempt with its binding
+ * written, and so does a checkout whose baseline the Engine cannot attribute (`admitAgentTurn`:
+ * `WORKFLOW_DIRTY_BASELINE` for a new attempt, `WORKFLOW_BASELINE_CHANGED` for Continue). In one `serialize` section the ordinary start records the attempt with its binding
  * (`AgentAttemptBinding`, committed with the run), then the attempt's local journal records the
  * Turn's binding. A crash between the two leaves an active attempt with no process and no Turn; the
  * same Session continues it, which records the journal then.
@@ -111,7 +113,19 @@ export async function startAgentAttempt(
   const workflow = dependencies.workflow;
 
   return workflow.serialize(async () => {
-    const options = { actor: input.actor, expected: input.expected, attemptData };
+    const options = {
+      actor: input.actor,
+      expected: input.expected,
+      attemptData,
+      // B3: once the start's own checks passed, the Turn must start from a baseline the Engine can
+      // attribute, before anything is written.
+      admit: () =>
+        admitAgentTurn(dependencies, {
+          subject,
+          workspaceId: input.workspaceId,
+          expected: input.expected,
+        }),
+    };
     let started: StartResult;
     if (subject.kind === 'task') {
       started = await startTaskInSection(workflow, {

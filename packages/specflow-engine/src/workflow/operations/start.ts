@@ -49,6 +49,11 @@ export interface StartOptions {
   readonly expected?: ExpectedPosition;
   /** Recorded with the attempt the start activates; a resume keeps the active attempt's own. */
   readonly attemptData?: AgentAttemptBinding;
+  /**
+   * Called once every check of the start passed (expected position, actor, Task readiness, entry
+   * gates) and before anything is written: Ask agent's baseline admission. A throw refuses the start.
+   */
+  readonly admit?: () => Promise<void>;
 }
 
 /**
@@ -144,6 +149,7 @@ async function startSubject(
     await assertGatesSatisfied(dependencies.references, subject, 'entry', step, entryGatesOf(step));
   }
 
+  await options.admit?.();
   const run = decision.nextRun;
   if (run !== loaded.run || created) {
     await dependencies.store.apply(subject.specId, {

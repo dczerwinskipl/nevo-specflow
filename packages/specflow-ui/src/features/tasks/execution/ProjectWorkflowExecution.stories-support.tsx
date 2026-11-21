@@ -25,6 +25,14 @@ import {
 import { managedProviders } from '../../sessions/start/catalogue/providerDescriptors.stories-support';
 import type { WorkflowExecutionApi } from './api';
 import {
+  PLAN_SESSION_ID,
+  PLAN_SESSION_TITLE,
+  agentAttemptProjection,
+  finishedAttemptHistory,
+  finishedAttemptProjection,
+  type AttemptCase,
+} from './agent/agentAttempt.stories-support';
+import {
   SESSION_ID,
   SESSION_TITLE,
   agentOptions,
@@ -79,7 +87,18 @@ export type CloseStoryScenario =
  */
 export type AgentStoryScenario = `agent-${AgentCase}` | 'agent-refused';
 
+/**
+ * The step run by an agent in each state its Now block explains (`agent/agentAttempt.stories-support`);
+ * `attempt-confirmation` is the Specification Overview whose Breakdown result waits for the owner.
+ */
+export type AttemptStoryScenario = `attempt-${AttemptCase}`;
+
+/** Review ready after an agent finished Implementation: its commit made, or failed (Retry commit). */
+export type FinishedStoryScenario = 'finished-committed' | 'finished-commit-failed';
+
 export type WorkflowStoryScenario =
+  | FinishedStoryScenario
+  | AttemptStoryScenario
   | TaskWorkflowScenario
   | AgentStoryScenario
   | 'start-drift'
@@ -104,6 +123,7 @@ const closeScenarios: readonly string[] = [
   'close-closing',
 ];
 const specScenarios: readonly string[] = [
+  'attempt-confirmation',
   'waiting',
   'close-blocked',
   'abandoned',
@@ -310,11 +330,13 @@ function closePreviewOf(scenario: WorkflowStoryScenario) {
 
 /** The projection scenario behind a Specification story. */
 function specificationScenario(scenario: WorkflowStoryScenario): SpecificationWorkflowScenario {
-  return closeScenarios.includes(scenario)
-    ? 'completed'
-    : specScenarios.includes(scenario)
-      ? (scenario as SpecificationWorkflowScenario)
-      : 'waiting';
+  return scenario === 'attempt-confirmation'
+    ? 'waiting'
+    : closeScenarios.includes(scenario)
+      ? 'completed'
+      : specScenarios.includes(scenario)
+        ? (scenario as SpecificationWorkflowScenario)
+        : 'waiting';
 }
 
 export function refusal(code: string, data: Record<string, unknown> = {}) {
@@ -377,11 +399,20 @@ function services(scenario: WorkflowStoryScenario) {
             ? 'spike-gate-met'
             : 'spike-gate'
           : (scenario as TaskWorkflowScenario);
+  const finished = scenario === 'finished-committed' || scenario === 'finished-commit-failed';
+  const attemptOf = (): AttemptCase | undefined =>
+    scenario.startsWith('attempt-')
+      ? (scenario.slice('attempt-'.length) as AttemptCase)
+      : undefined;
   const taskProjection = (): WorkflowActionProjection =>
-    taskWorkflowProjection(taskScenario(), {
-      version: state.version,
-      ...(agentCase ? { agent: projectedAgent(agentCase) } : {}),
-    });
+    finished
+      ? finishedAttemptProjection()
+      : attemptOf()
+        ? agentAttemptProjection(attemptOf()!)
+        : taskWorkflowProjection(taskScenario(), {
+            version: state.version,
+            ...(agentCase ? { agent: projectedAgent(agentCase) } : {}),
+          });
   const authoring = authoringApi('started');
   const workflowExecutionApi: WorkflowExecutionApi = {
     start: (_subject, input) => {
@@ -412,6 +443,21 @@ function services(scenario: WorkflowStoryScenario) {
             refusal('WORKFLOW_AGENT_UNAVAILABLE', { details: { agent: agentOptions.dirty } }),
           )
         : never(),
+    stopAgentExecution: never,
+    retryAttemptCommit: never,
+    confirmResult: never,
+    takeOverAgentExecution: never,
+    history: () =>
+      finished
+        ? Promise.resolve(
+            finishedAttemptHistory(
+              scenario === 'finished-committed'
+                ? { state: 'committed' }
+                : { state: 'failed', code: 'COMMIT_BLOCKED' },
+            ) as never,
+          )
+        : never(),
+    rejectResult: never,
     closePreview: () => closePreviewOf(scenario),
     // An agent Session still works in the worktree of the blocked Specification.
     closeOccupancy: () =>
@@ -470,7 +516,11 @@ function services(scenario: WorkflowStoryScenario) {
     taskAuthoringApi: {
       ...authoring,
       specificationActions: () =>
-        Promise.resolve({ ...specificationWorkflowProjection(specificationScenario(scenario)) }),
+        Promise.resolve(
+          scenario === 'attempt-confirmation'
+            ? agentAttemptProjection('confirmation')
+            : { ...specificationWorkflowProjection(specificationScenario(scenario)) },
+        ),
       taskActions: () => Promise.resolve(taskProjection()),
       addDocuments: () => {
         state.findings = true;
@@ -606,34 +656,51 @@ async function specificationWorkspace(
 ): Promise<SpecificationWorkspaceResponse> {
   const plain = await workspaceResponse('draft-problems');
   // Run with agent reads the branch the commit lands on and the title of the Session it continues.
-  const base: SpecificationWorkspaceResponse = agentCaseOf(scenario)
-    ? {
-        ...plain,
-        sections: {
-          ...plain.sections,
-          repository: {
-            state: 'available',
-            data: { repositoryName: 'acme-portal', branch: 'nevo-1/single-sign-on', attention: [] },
-          },
-          sessions: {
-            state: 'available',
-            data: {
-              items: [
-                {
-                  id: SESSION_ID,
-                  title: SESSION_TITLE,
-                  status: 'quiet',
-                  taskIds: [TASK],
-                  providerId: 'claude',
-                  updatedAt: '2026-11-13T10:00:00.000Z',
-                },
-              ],
-              attention: [],
+  const base: SpecificationWorkspaceResponse =
+    agentCaseOf(scenario) || scenario.startsWith('attempt-') || scenario.startsWith('finished-')
+      ? {
+          ...plain,
+          sections: {
+            ...plain.sections,
+            repository: {
+              state: 'available',
+              data: {
+                repositoryName: 'acme-portal',
+                branch: 'nevo-1/single-sign-on',
+                attention: [],
+              },
+            },
+            sessions: {
+              state: 'available',
+              data: {
+                items: [
+                  ...(scenario === 'attempt-confirmation'
+                    ? [
+                        {
+                          id: PLAN_SESSION_ID,
+                          title: PLAN_SESSION_TITLE,
+                          status: 'quiet' as const,
+                          taskIds: [],
+                          providerId: 'claude',
+                          updatedAt: '2026-11-12T14:05:00.000Z',
+                        },
+                      ]
+                    : []),
+                  {
+                    id: SESSION_ID,
+                    title: SESSION_TITLE,
+                    status: 'quiet',
+                    taskIds: [TASK],
+                    providerId: 'claude',
+                    updatedAt: '2026-11-13T10:00:00.000Z',
+                  },
+                ],
+                attention: [],
+              },
             },
           },
-        },
-      }
-    : plain;
+        }
+      : plain;
   if (base.sections.tasks.state !== 'available') {
     return base;
   }
@@ -659,6 +726,33 @@ async function specificationWorkspace(
     ...base,
     sections: { ...base.sections, tasks: tasksSection(data, groups), documents: documentsSection },
   });
+
+  if (scenario === 'attempt-confirmation') {
+    // The agent's Breakdown wrote five draft Tasks: the Tasks section counts the same five.
+    const template = data.groups.flatMap((group) => group.tasks)[0]!;
+    const titles = [
+      'Token exchange endpoint',
+      'Session cookie',
+      'Refresh before expiry',
+      'Sign-in screen',
+      'Audit log of sign-in events',
+    ];
+
+    return withTasks([
+      {
+        id: 'needs-approval',
+        name: 'Needs approval',
+        summary: 'row' as const,
+        collapsed: false,
+        tasks: titles.map((title, index) => ({
+          ...template,
+          id: `t-0${index + 1}`,
+          title,
+          status: { id: 'draft', label: 'Needs approval', lifecycle: 'pending' as const },
+        })),
+      },
+    ]);
+  }
 
   if (specificationScenario(scenario) === 'completed') {
     const tasks = data.groups

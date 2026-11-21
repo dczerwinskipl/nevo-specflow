@@ -355,8 +355,7 @@ Dialogs keep one column. Blocker and Task rows keep id → title → state order
 
 ## Run with agent
 
-**Status: UX contract. The entry and start dialog are implemented; the rest is not
-implemented.** It follows [ADR 0026](../../../architecture/decisions/0026-agent-step-execution.md)
+**Status: UX contract. Implemented (stories: SpecFlow/Screens/Run with agent and SpecFlow/Screens/Agent attempt): the entry, the start dialog and every Now block state while an agent works, after it stops and while its result waits for the owner (Stop, Check outcome, Continue or Retry start, a Return that waits for the agent to stop with Stop again, Take over with its dialog, refused results, Continue refused, Confirm, Reject, the commit note with Retry commit read from the workflow history). The Now block reads the attempt again every few seconds while the agent works, is stopping, may still run, a return waits or a proposal is applied. Not implemented yet: the notice on other subjects while an outcome is unknown (needs a project-wide hold in the projection), the commit id and counts in the commit note (the history does not report them), the document links, "See the attempt" and the attempt history (U4).** It follows [ADR 0026](../../../architecture/decisions/0026-agent-step-execution.md)
 (D11 to D20; D21 superseded) and
 [agent step execution](../../../architecture/runtime/agent-step-execution.md).
 The mock is the Storybook set **SpecFlow/Screens/Ask agent (mock)**: the real routed screens with
@@ -458,6 +457,7 @@ proposes a result); decisions that need a person stay with the person. Then, in 
 
 ### After the agent stops
 
+- Deviation (until the history reports them): the commit note has no **Show commit**, no commit id and no counts; it says "Its work is committed on `<branch>`". The kept-work line names documents and counts files without links, and the Take over dialog names the Session as a link (struck through when it no longer exists).
 - **Finished and committed**: Now moves on to the next step; the hand-off is the agent's (result,
   feedback, "<provider> · <model>"); an info note with the commit icon, "The agent finished <step>.
   Committed `<sha>` on `<branch>`: N documents and N files." and **Show commit**.

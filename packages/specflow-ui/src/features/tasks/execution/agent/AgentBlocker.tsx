@@ -27,7 +27,7 @@ function CheckoutPath({ specId }: { readonly specId: string }) {
   );
 }
 
-function Paths({ option }: { readonly option: UnavailableAgent }) {
+export function Paths({ option }: { readonly option: UnavailableAgent }) {
   const { t } = useTranslation();
   const paths = option.paths ?? [];
   const shown = paths.slice(0, PATHS_SHOWN);

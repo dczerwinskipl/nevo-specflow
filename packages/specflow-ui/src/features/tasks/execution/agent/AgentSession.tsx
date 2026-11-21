@@ -32,7 +32,13 @@ export interface FreshChoice {
 export type SessionMode = 'fresh' | 'reuse' | 'gone' | 'not-chosen';
 
 /** A link to the Session where a router exists (the dialog is also shown without one). */
-function SessionLink({ sessionId, title }: { readonly sessionId: string; readonly title: string }) {
+export function SessionLink({
+  sessionId,
+  title,
+}: {
+  readonly sessionId: string;
+  readonly title: string;
+}) {
   const router = useRouter({ warn: false });
   if (!router) {
     return <span className="text-content-primary">{title}</span>;

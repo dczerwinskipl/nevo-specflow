@@ -2747,7 +2747,9 @@
       "localConfigModified": "Lokalna konfiguracja worktree (.nevo/local/config.yaml) została zmieniona, dodana ręcznie albo nie da się jej odczytać. Przenieś ją lub usuń, a potem zamknij ponownie.",
       "busy": "Specyfikacja jest zajęta inną zmianą. Spróbuj za chwilę.",
       "draftConflict": "Zachowany szkic zależy od szkicu, który odznaczono. Zachowaj oba albo odznacz oba.",
-      "tasksOpen": "Specyfikacja nie może się zakończyć, dopóki zadania są otwarte: {{tasks}}. Najpierw je ukończ lub anuluj."
+      "tasksOpen": "Specyfikacja nie może się zakończyć, dopóki zadania są otwarte: {{tasks}}. Najpierw je ukończ lub anuluj.",
+      "confirmationChanged": "To, co zastosowałoby potwierdzenie, zmieniło się od otwarcia tego widoku. Przeczytaj podsumowanie jeszcze raz i potwierdź.",
+      "agentUnavailable": "Agent nie może teraz kontynuować. Powód jest pokazany wyżej."
     },
     "time": {
       "today": "Dziś {{time}}",
@@ -2759,6 +2761,136 @@
       "removed": "Usuwa krok {{step}}",
       "renamed": "Zmienia nazwę kroku {{from}} na {{to}}",
       "transitions": "Zmienia, dokąd prowadzi krok {{step}}"
+    },
+    "agentAttempt": {
+      "sessionFallback": "sesja agenta",
+      "stop": "Zatrzymaj agenta",
+      "stopping": "Zatrzymywanie…",
+      "checkOutcome": "Sprawdź wynik",
+      "continue": "Kontynuuj",
+      "retryStart": "Spróbuj uruchomić ponownie",
+      "line": {
+        "working": "Podejście {{attempt}} · agent pracuje od {{since}}",
+        "stopping": "Podejście {{attempt}} · zatrzymywanie agenta",
+        "unknown": "Podejście {{attempt}} · wynik pracy agenta jest nieznany",
+        "sessionMissing": "Podejście {{attempt}} · agent się nie uruchomił",
+        "stopped": "Podejście {{attempt}} · agent zatrzymał się bez wyniku o {{at}}",
+        "refused": "Podejście {{attempt}} · wynik agenta nie został przyjęty",
+        "applying": "Podejście {{attempt}} · agent zaproponował wynik",
+        "returnRequested": "Podejście {{attempt}} · zażądano powrotu · czekanie na zatrzymanie agenta",
+        "returnStopped": "Podejście {{attempt}} · zażądano powrotu · agent się zatrzymał"
+      },
+      "stoppingNote": "Poproszono agenta o zatrzymanie. Krok {{step}} pozostaje zablokowany, dopóki SpecFlow nie zobaczy, że proces agenta się zakończył; wtedy można kontynuować lub wrócić.",
+      "unknown": {
+        "title": "SpecFlow nie wie, czy agent nadal pracuje.",
+        "body": "Jego proces może nadal działać, więc dopóki to nie jest znane, nic w tym projekcie nie może być zapisane: kroki, dokumenty i zadania każdej specyfikacji czekają. „Sprawdź wynik” ponownie pyta komputer, na którym działa SpecFlow. Jeśli nadal nie da się tego ustalić, zakończ tam proces agenta i sprawdź jeszcze raz."
+      },
+      "missing": {
+        "title": "Agent się nie uruchomił.",
+        "body": "Nie udało się utworzyć jego sesji, więc nic jeszcze nie zrobił. „Spróbuj uruchomić ponownie” pyta jeszcze raz."
+      },
+      "noResult": {
+        "title": "Agent zatrzymał się bez zaproponowania wyniku.",
+        "body": "„Kontynuuj” pozwala mu pracować dalej w tej samej sesji. „Przejmij”, aby dokończyć krok samodzielnie."
+      },
+      "applying": "Agent zaproponował wynik: {{result}}. SpecFlow go stosuje.",
+      "refused": {
+        "title": "Agent zaproponował wynik „{{result}}”, a SpecFlow go nie przyjął:",
+        "undeclared": "<code>{{path}}</code> nie zgadza się z tym, co agent podał jako swoje zmiany.",
+        "unregistered": "<code>{{path}}</code> nie ma typu dokumentu. Nadaj mu typ albo go usuń.",
+        "engineFile": "<code>{{path}}</code> to plik zapisany przez SpecFlow, edytowany poza SpecFlow.",
+        "nested": "<code>{{path}}</code> to repozytorium Git wewnątrz tego katalogu roboczego.",
+        "gate": "Warunek tego wyniku nie jest spełniony.",
+        "tasksOpen": "Zadania są nadal otwarte.",
+        "other": "SpecFlow go nie przyjął",
+        "next": "„Kontynuuj” pozwala agentowi to poprawić w tej samej sesji. „Przejmij”, aby poprawić to samodzielnie."
+      },
+      "changed": {
+        "title_one": "Agent nie może kontynuować: od jego zatrzymania zmienił się {{count}} plik.",
+        "title_few": "Agent nie może kontynuować: od jego zatrzymania zmieniły się {{count}} pliki.",
+        "title_many": "Agent nie może kontynuować: od jego zatrzymania zmieniło się {{count}} plików.",
+        "title_other": "Agent nie może kontynuować: od jego zatrzymania zmieniło się {{count}} pliku.",
+        "body": "SpecFlow nigdy nie uznaje cudzych zmian za pracę agenta. Cofnij te zmiany albo zatwierdź je samodzielnie (staną się Twoim commitem, nie agenta), a potem kontynuuj. Albo przejmij i dokończ krok samodzielnie."
+      },
+      "gone": {
+        "title": "Agent nie może kontynuować: jego sesja już nie istnieje.",
+        "body": "SpecFlow nie uruchamia innej sesji w jej miejsce. Przejmij, aby dokończyć krok samodzielnie, albo wróć do wcześniejszego kroku z menu."
+      },
+      "takeOver": "Przejmij",
+      "takingOver": "Przejmowanie…",
+      "kept": "Zachowano do tej pory: {{documents}}{{files}}",
+      "keptFiles_one": " i {{count}} zmieniony plik",
+      "keptFiles_few": " i {{count}} zmienione pliki",
+      "keptFiles_many": " i {{count}} zmienionych plików",
+      "keptFiles_other": " i {{count}} zmienionego pliku",
+      "keptFilesOnly_one": "{{count}} zmieniony plik",
+      "keptFilesOnly_few": "{{count}} zmienione pliki",
+      "keptFilesOnly_many": "{{count}} zmienionych plików",
+      "keptFilesOnly_other": "{{count}} zmienionego pliku",
+      "returning": "Wracanie…",
+      "stopAgain": "Zatrzymaj ponownie",
+      "returnNote": "Poproszono o powrót do kroku {{target}}. SpecFlow najpierw zatrzymuje agenta: krok wraca do {{target}} dopiero po zakończeniu jego procesu, więc nic, co jeszcze zapisze, nie zginie ani nie wmiesza się w następne podejście.",
+      "returnStopFailed": "SpecFlow nie mógł zatrzymać agenta, więc może on nadal pracować. Powrót do {{target}} czeka, aż agent się zatrzyma.",
+      "returnNextAction": "Agent się zatrzymał. Powrót do {{target}} zostanie zastosowany przy Twojej następnej akcji w tym kroku: wybierz Powrót w menu.",
+      "returnRefused": "Powrót do {{target}} nie został zastosowany: {{reason}} ({{code}}). Podejście pozostaje bez zmian.",
+      "takeOverDialog": {
+        "title": "Przejmij krok {{step}}",
+        "description": "Podejście agenta kończy się jako przejęte i zaczyna się Twoje własne podejście {{attempt}}. Krok kończysz samodzielnie.",
+        "stays": "Praca agenta zostaje",
+        "staysBody": "Nic nie jest cofane. Te pliki zostają tak, jak zostawił je agent, niezatwierdzone, dopóki ich nie zatwierdzisz; zakończenie kroku ich nie zatwierdza, a Zamknięcie wymienia je, dopóki nie zostaną zatwierdzone.",
+        "noFiles": "Agent nie zostawił niezatwierdzonych plików.",
+        "session": "Sesja <session/> zostaje otwarta do czytania; nie pracuje już nad tym krokiem.",
+        "sessionGone": "Sesja <session/> już nie istnieje, więc nie ma czego czytać."
+      },
+      "earlierStep": "wcześniejszy krok"
+    },
+    "confirmation": {
+      "line": "Czeka na Twoje potwierdzenie · agent skończył {{at}}",
+      "proposes": "Agent proponuje",
+      "applies": "Potwierdzenie {{what}}.",
+      "movesTo": "przechodzi do: {{step}}",
+      "ends": {
+        "completed": "kończy przepływ pracy",
+        "abandoned": "kończy przepływ pracy jako porzucony"
+      },
+      "approvesDrafts_one": "zatwierdza zadanie robocze {{first}}",
+      "approvesDrafts_few": "zatwierdza {{count}} zadania robocze ({{first}} do {{last}})",
+      "approvesDrafts_many": "zatwierdza {{count}} zadań roboczych ({{first}} do {{last}})",
+      "approvesDrafts_other": "zatwierdza {{count}} zadania robocze ({{first}} do {{last}})",
+      "recordsDecisions_one": "zapisuje decyzję agenta o {{count}} zadaniu",
+      "recordsDecisions_few": "zapisuje decyzje agenta o {{count}} zadaniach",
+      "recordsDecisions_many": "zapisuje decyzje agenta o {{count}} zadaniach",
+      "recordsDecisions_other": "zapisuje decyzje agenta o {{count}} zadania",
+      "confirm": "Potwierdź",
+      "confirming": "Potwierdzanie…",
+      "reject": "Odrzuć",
+      "rejectTitle": "Odrzuć wynik agenta",
+      "rejectDescription": "Krok {{step}} wraca do stanu gotowego do startu, a Twoja uwaga staje się jego przekazaniem. Propozycja agenta „{{result}}” nie jest stosowana.",
+      "rejectDescriptionDrafts": "Krok {{step}} wraca do stanu gotowego do startu, a Twoja uwaga staje się jego przekazaniem. Propozycja agenta „{{result}}” nie jest stosowana; zadania robocze i dokumenty, które agent napisał, zostają bez zmian.",
+      "feedbackLabel": "Co należy zmienić (wymagane)",
+      "feedbackHint": "Następne podejście przeczyta to jako pierwsze, niezależnie od tego, czy uruchomisz je sam, czy z agentem."
+    },
+    "attemptCommit": {
+      "committed": "Agent skończył krok {{step}}. Jego praca jest zatwierdzona.",
+      "committedOn": "Agent skończył krok {{step}}. Jego praca jest zatwierdzona na <code>{{branch}}</code>.",
+      "failed": "<strong>Krok {{step}} jest skończony, ale jego commit się nie udał: {{reason}} (<code>{{code}}</code>).</strong>",
+      "reason": {
+        "branchProtected": "gałąź jest chroniona",
+        "blocked": "hak Git lub reguła tego repozytorium go odrzuciły",
+        "other": "Git nie mógł go dokończyć"
+      },
+      "staysOn_one": "Ten plik pozostaje niezatwierdzony na <code>{{branch}}</code>, a Zamknięcie wymienia go, dopóki nie zostanie zatwierdzony.",
+      "staysOn_few": "Te {{count}} pliki pozostają niezatwierdzone na <code>{{branch}}</code>, a Zamknięcie wymienia je, dopóki nie zostaną zatwierdzone.",
+      "staysOn_many": "Te {{count}} plików pozostaje niezatwierdzonych na <code>{{branch}}</code>, a Zamknięcie wymienia je, dopóki nie zostaną zatwierdzone.",
+      "staysOn_other": "Te {{count}} pliku pozostaje niezatwierdzonych na <code>{{branch}}</code>, a Zamknięcie wymienia je, dopóki nie zostaną zatwierdzone.",
+      "stays_one": "Ten plik pozostaje niezatwierdzony, a Zamknięcie wymienia go, dopóki nie zostanie zatwierdzony.",
+      "stays_few": "Te {{count}} pliki pozostają niezatwierdzone, a Zamknięcie wymienia je, dopóki nie zostaną zatwierdzone.",
+      "stays_many": "Te {{count}} plików pozostaje niezatwierdzonych, a Zamknięcie wymienia je, dopóki nie zostaną zatwierdzone.",
+      "stays_other": "Te {{count}} pliku pozostaje niezatwierdzonych, a Zamknięcie wymienia je, dopóki nie zostaną zatwierdzone.",
+      "blocksNext": "Do tego czasu „Uruchom z agentem” nie może rozpocząć kroku {{next}}: agent startuje tylko z zatwierdzonego katalogu roboczego.",
+      "blocksAgent": "Do tego czasu „Uruchom z agentem” nie może rozpocząć następnego kroku: agent startuje tylko z zatwierdzonego katalogu roboczego.",
+      "retry": "Ponów commit",
+      "retrying": "Ponawianie…"
     }
   },
   "taskOverview": {

@@ -213,6 +213,13 @@ export function NowBlock({
         actor: actorLabel(t, position.attempt.actor, viewer),
       });
       break;
+    case 'awaiting-confirmation':
+      // The agent's result waits for the owner: the line names who finished it and when.
+      current = <StepTitle step={position.step} />;
+      facts = t('workflowExecution.confirmation.line', {
+        at: when(position.attempt.endedAt ?? position.attempt.startedAt),
+      });
+      break;
     case 'waiting':
       current = <StepTitle step={position.step} />;
       if (projection.attention?.reason === 'wait-transition-missing') {

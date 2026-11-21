@@ -280,6 +280,8 @@ it('gives a Specification Turn its capability: active once dispatched, revoked b
       if (!f.order.includes('capability-revoked')) {
         f.order.push('capability-revoked');
       }
+
+      return 'drained' as const;
     }),
     redact: (text: string) => text.split(secret).join('[redacted]'),
   };
@@ -347,4 +349,26 @@ it('abandons the claim as never dispatched when no capability may be minted', as
     expect.objectContaining({ outcome: 'failed' }),
     'not-dispatched',
   );
+});
+
+it('marks the claim unknown, never settled, when a broker call outlives the revocation wait', async () => {
+  const f = fixture();
+  inSpecification(f);
+  const revoke = vi.fn(() => Promise.resolve('timed-out' as const));
+  const mint = vi.fn(() =>
+    Promise.resolve({
+      environment: { NEVO_AGENT_CAPABILITY: 'nvcap_' + 'y'.repeat(43) },
+      secrets: [],
+      activate: () => undefined,
+      revoke,
+      redact: (text: string) => text,
+    }),
+  );
+  await createManagedInvocation({ ...f.options, capabilities: { mint } }).done;
+  expect(revoke).toHaveBeenCalledTimes(1);
+  expect(f.claim.settle).not.toHaveBeenCalled();
+  expect(f.claim.unknown).toHaveBeenCalled();
+  expect(f.phase()).toBe('unknown');
+  expect(f.finalize).not.toHaveBeenCalled();
+  expect(f.persist).toHaveBeenCalledWith(expect.objectContaining({ kind: 'lost' }));
 });

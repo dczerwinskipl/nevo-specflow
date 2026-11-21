@@ -37,6 +37,9 @@ export function createManagedInvocation(options: {
   let observed: Outcome | undefined;
   let contradictory = false;
   let grant: InvocationGrant | undefined;
+  // One revocation per invocation: every later path waits for the same outcome.
+  let revocation: Promise<'drained' | 'timed-out'> | undefined;
+  const revoke = () => (grant ? (revocation ??= grant.revoke()) : Promise.resolve('drained'));
   // Nothing the provider reports is stored with a capability value in it.
   const redact = <T extends DriverFact>(fact: T): T =>
     grant ? redactFact(fact, (text) => grant!.redact(text)) : fact;
@@ -77,7 +80,7 @@ export function createManagedInvocation(options: {
     dispatched = false;
 
   async function unknown(message: string) {
-    await grant?.revoke();
+    await revoke();
     options.stop();
     // An admitted claim keeps its not-dispatched proof for recovery; only a possibly dispatched
     // one becomes unknown.
@@ -202,7 +205,13 @@ export function createManagedInvocation(options: {
       });
       // The Turn is ending: its capability admits nothing more, and the broker calls still running
       // finish before any settlement.
-      await grant?.revoke();
+      if ((await revoke()) === 'timed-out') {
+        // A broker write may still land: recovery or finalize decides, never a normal settlement.
+        await unknown('Agent broker calls were still running when the Turn ended.');
+
+        return;
+      }
+
       const settled = await native.settlement?.catch(() => undefined);
       const evidence = settled?.result ? { ...settled, result: redact(settled.result) } : settled;
       if (!dispatchAttempted) {
@@ -301,7 +310,7 @@ export function createManagedInvocation(options: {
 
       await unknown('Agent lifecycle or Engine settlement could not be persisted.');
     } finally {
-      await grant?.revoke();
+      await revoke();
     }
   })();
 

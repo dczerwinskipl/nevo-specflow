@@ -28,10 +28,10 @@ export interface InvocationGrant {
   activate(): void;
   /**
    * Admits nothing more at once and resolves once the broker calls already running have finished
-   * (bounded), so none lands after the claim settles. Idempotent; afterwards `activate` changes
-   * nothing.
+   * (`drained`), or when its bounded wait ends with one still running (`timed-out`: a write may
+   * still land, so the claim must not settle normally). Afterwards `activate` changes nothing.
    */
-  revoke(): Promise<void>;
+  revoke(): Promise<'drained' | 'timed-out'>;
   /** The text with every capability value replaced; for transcripts and stored tool output. */
   redact(text: string): string;
 }

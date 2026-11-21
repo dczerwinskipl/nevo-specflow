@@ -60,8 +60,14 @@ export interface CapabilityHandle {
    * Admits nothing more at once, then waits (bounded) for the broker calls already running, so a
    * write either completes before the claim settles or is refused. Idempotent.
    */
-  revoke(): Promise<void>;
+  revoke(): Promise<RevokeResult>;
 }
+
+/**
+ * `drained`: no broker call of the capability runs any more. `timed-out`: one still ran when the
+ * wait ended, so a write may still land; the claim must not settle as if the Turn were finished.
+ */
+export type RevokeResult = 'drained' | 'timed-out';
 
 /**
  * The capabilities of this Runtime process: minted per write Turn, never persisted, compared in
@@ -104,17 +110,20 @@ export function createCapabilityRegistry(
       : undefined;
   }
 
-  function drain(entry: Entry): Promise<void> {
+  function drain(entry: Entry): Promise<RevokeResult> {
     if (entry.inFlight === 0) {
-      return Promise.resolve();
+      return Promise.resolve('drained');
     }
 
     return new Promise((resolve) => {
-      const timer = setTimeout(done, drainMs);
+      const timer = setTimeout(() => {
+        entry.drained = entry.drained.filter((waiter) => waiter !== done);
+        resolve('timed-out');
+      }, drainMs);
       timer.unref?.();
       function done() {
         clearTimeout(timer);
-        resolve();
+        resolve('drained');
       }
 
       entry.drained.push(done);

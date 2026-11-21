@@ -40,3 +40,33 @@ describe('capability redaction', () => {
     expect(redactCapabilities('nothing secret here', [minted])).toBe('nothing secret here');
   });
 });
+
+describe('capability revocation', () => {
+  const binding = {
+    invocationId: 'i-2',
+    sessionId: 's-2',
+    turnId: 't-2',
+    specId: 'S1',
+    workspace: '/w',
+    scope: { kind: 'ad-hoc', specId: 'S1', operations: ['documents.save'] },
+    actor: { class: 'agent', details: { provider: 'claude', sessionId: 's-2' } },
+  } as const;
+
+  it('reports drained once running calls end, and timed-out when one outlives the wait', async () => {
+    const registry = createCapabilityRegistry({ drainMs: 5 });
+    const quiet = registry.mint({ ...binding, invocationId: 'i-quiet' });
+    quiet.activate();
+    expect(await quiet.revoke()).toBe('drained');
+
+    const busy = registry.mint(binding);
+    busy.activate();
+    const admitted = registry.enter(busy.value);
+    expect(admitted.status).toBe('valid');
+    // The call never finishes within the (injected, short) wait.
+    expect(await busy.revoke()).toBe('timed-out');
+    if (admitted.status === 'valid') {
+      expect(admitted.lease.active()).toBe(false);
+      admitted.lease.release();
+    }
+  });
+});

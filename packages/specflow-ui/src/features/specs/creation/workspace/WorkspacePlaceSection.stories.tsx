@@ -171,6 +171,8 @@ export const Default: Story = {
       control: 'select',
       options: [
         'default',
+        'base-config-unusable',
+        'base-config-fallback',
         'git-disabled',
         'git-unavailable',
         'membership-mismatch',
@@ -1441,5 +1443,98 @@ export const InvalidGitConfigurationDisablesOnlyTheNewWorkspace: Story = {
     ).toBeVisible();
     await expect(main).toBeChecked();
     await expect(existing).not.toHaveAttribute('aria-disabled', 'true');
+  },
+};
+
+/** No committed configuration is suitable: the source row explains the required action. */
+export const BaseConfigurationUnusable: Story = {
+  tags: ['contract'],
+  args: { variant: 'base-config-unusable' },
+  play: async ({ canvas, userEvent }) => {
+    const base = row(canvas, 'Zacznij od');
+    await expect(
+      within(base).getByText(
+        'Nie można utworzyć nowego środowiska. Żadna gałąź nie ma poprawnych ustawień SpecFlow.',
+      ),
+    ).toBeInTheDocument();
+    await expect(within(document.body).queryByRole('dialog')).not.toBeInTheDocument();
+    await userEvent.click(within(base).getByRole('button', { name: 'Jak to naprawić?' }));
+    const panel = await within(document.body).findByRole('dialog');
+    await expect(
+      within(panel).queryByText(
+        'Nie można utworzyć nowego środowiska. Żadna gałąź nie ma poprawnych ustawień SpecFlow.',
+      ),
+    ).not.toBeInTheDocument();
+    await expect(within(panel).getByText(/brakuje sekcji runtime/)).toBeVisible();
+    await expect(within(panel).getByRole('heading', { name: 'Co to oznacza' })).toBeVisible();
+    await expect(within(panel).getByRole('heading', { name: 'Co zrobić' })).toBeVisible();
+    await expect(within(panel).getByText(/Nowe środowisko powstaje z wersji/)).toBeVisible();
+    await expect(panel).not.toHaveTextContent('Wybierz inną');
+    await expect(within(panel).getByText(/^Popraw \.nevo\/config\.yaml/)).toBeVisible();
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(within(base).getByRole('button', { name: 'Jak to naprawić?' })).toHaveFocus(),
+    );
+    await expect(canvas.getByLabelText('Żądanie')).toHaveAttribute(
+      'data-problems',
+      expect.stringContaining('Nie można utworzyć nowego środowiska'),
+    );
+    await rowAction(canvas, userEvent, 'Zacznij od');
+    await userEvent.click(within(row(canvas, 'Zacznij od')).getByRole('combobox'));
+    const options = within(document.body).getAllByRole('option');
+    for (const option of options) {
+      await expect(option).toHaveAttribute('aria-disabled', 'true');
+      await waitFor(() => expect(within(option).getByText('Niedostępna')).toBeVisible());
+      await expect(
+        within(option).getByText(
+          /Brak ustawień SpecFlow|Brak sekcji runtime|Niepoprawny YAML|Ustawienia nie są plikiem/,
+        ),
+      ).toBeVisible();
+      await expect(option).not.toHaveTextContent(/Wybierz inną|commit|\.nevo\/config/);
+    }
+
+    await closeList(userEvent);
+  },
+};
+
+export const BaseConfigurationFallback: Story = {
+  tags: ['contract'],
+  args: { variant: 'base-config-fallback' },
+  play: async ({ canvas, userEvent }) => {
+    await expect(within(row(canvas, 'Zacznij od')).getByText('develop')).toBeInTheDocument();
+    await expect(canvas.getByLabelText('Żądanie')).toHaveTextContent(
+      '"baseRef":"refs/heads/develop"',
+    );
+    await expect(canvas.getByLabelText('Żądanie')).toHaveAttribute('data-problems', '');
+    const originalRequest = request(canvas);
+    await rowAction(canvas, userEvent, 'Zacznij od');
+    const picker = within(row(canvas, 'Zacznij od')).getByRole('combobox');
+    await userEvent.click(picker);
+    const unavailable = await within(document.body).findByRole('option', {
+      name: /feature\/unconfigured/,
+    });
+    await expect(unavailable).toHaveAttribute('aria-disabled', 'true');
+    await waitFor(() => expect(within(unavailable).getByText('Niedostępna')).toBeVisible());
+    await waitFor(() =>
+      expect(within(unavailable).getByText('Brak ustawień SpecFlow')).toBeVisible(),
+    );
+    await expect(unavailable).not.toHaveTextContent(/Wybierz inną|commit|\.nevo\/config/);
+    await userEvent.click(unavailable);
+    await expect(within(document.body).getByRole('listbox')).toBeVisible();
+    await expect(picker).toHaveTextContent('develop');
+    await expect(request(canvas)).toBe(originalRequest);
+    await closeList(userEvent);
+    const details = within(row(canvas, 'Zacznij od')).getByRole('button', {
+      name: 'Niedostępne gałęzie',
+    });
+    await expect(details).toBeVisible();
+    await userEvent.click(details);
+    const panel = await within(document.body).findByRole('dialog', { name: 'Niedostępne gałęzie' });
+    await waitFor(() => expect(within(panel).getByText(/\.nevo\/config\.yaml/)).toBeVisible());
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(within(document.body).queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    await waitFor(() => expect(details).toHaveFocus());
   },
 };

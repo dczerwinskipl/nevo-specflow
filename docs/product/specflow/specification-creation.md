@@ -75,6 +75,51 @@ explicit user selection sends it. A custom merge destination pins a verified reg
 workspace's checked-out branch and incarnation. Explicitly selecting primary differs from
 following the configured default if primary currently uses another branch.
 
+**Committed configuration of the starting point.** Before submit, every offered starting branch
+reports whether its commit contains a regular `.nevo/config.yaml`, valid YAML and a `runtime`
+object. The starting-branch picker gives the full option width to the branch name, followed by its
+workspace metadata and then an explicit **Unavailable** danger badge with a short cause. Long branch
+names wrap in full. Selection uses the shared Select/Combobox background and left accent; it takes
+no column or checkmark gutter. This does not change the workspace cards.
+An unusable branch stays visible but cannot be chosen by pointer or keyboard; this never depends on
+whether the person reads its explanation. The badge identifies a blocking availability state, not
+branch metadata or a warning that can be ignored. The cause names the specific reason:
+missing file, non-regular file, invalid YAML or missing runtime configuration. The selected source has a short actionable error on the Start from row (also used by the footer):
+"Cannot start from this branch. Choose another branch." A quiet **Why?** action opens the existing responsive details pattern: a right-side Drawer in
+split workspace layout, a bottom sheet in stacked layout. It explains the problem only when requested: a new workspace starts from a saved commit and
+needs SpecFlow configuration; uncommitted configuration changes in the current folder are not
+copied. It states the specific configuration defect, then offers choosing another starting branch or fixing
+`.nevo/config.yaml` and saving the change in that branch’s Git history (commit). Create
+stays unavailable and leads to Start from using the existing blocked-submit focus guidance. If the
+configured or remembered source is unusable, activating Create or submitting with Enter prepares and
+sends no creation request. Detailed repair instructions stay in **Why?**, rather than in every option.
+When the selected source is usable but other branches are not, the opened source row offers
+**Unavailable branches** with the same explanatory Drawer and repair guidance. The person can inspect
+that guidance without selecting an unusable branch.
+
+When the configured source and every listed branch are unusable, Start from instead shows a
+danger-colored blocking message above its value or picker: **Cannot create a new workspace. No
+branch has valid SpecFlow settings.** Its **How to fix it?** action opens the same responsive
+Drawer with repair and refresh instructions; neither the field nor its footer prerequisite
+suggests choosing another unavailable branch. The picker remains inspectable, with all options
+unavailable, and Create/Enter still send no request. A usable configured tag or commit prevents
+this state even when all listed branches are unavailable.
+
+In this all-unavailable state, the picker uses the message-only invalid appearance: its visible
+error and accessible invalid/error associations remain, with a neutral resting border and one
+normal focus border. The text-sized details action uses the action color, hover and focus
+feedback. The Drawer opens with the specific cause, followed by **What this means** and **What
+to do**; it does not repeat the form's blocking message.
+
+The initial starting point prefers the configured default when usable (including `HEAD`, a tag
+or a SHA); otherwise it prefers the usable integration branch, then the first usable local branch.
+If none is usable, the configured default stays visible with the blocking explanation. An automatic
+alternative is sent as an explicit `target.baseRef` override, so the displayed source and the source
+Create uses always agree. Change prefills this preferred value and Restore default returns to it.
+This check concerns only the starting commit of a **new workspace**; adding a Specification to an
+existing/current checkout is unaffected. The Engine repeats the same check at admission, and
+`GIT_BASE_CONFIG_MISSING` retains its dedicated post-submit explanation for a changed base.
+
 **Merge into** names a **workspace** (the contract's `integrationTargetWorkspaceId` is a workspace
 pin; the default is the primary workspace on the project's integration target branch): show the
 workspace as the primary text and its branch as a secondary branch chip. **Start from** and

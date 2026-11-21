@@ -917,7 +917,42 @@
       "protectedSuggestion": {
         "text": "A new workspace is not affected by protected branches.",
         "action": "Use New workspace"
-      }
+      },
+      "baseConfigNone": "Cannot create a new workspace. No branch has valid SpecFlow settings.",
+      "baseConfig": {
+        "missing": "Cannot start from this branch. Choose another branch.",
+        "not-regular-file": "Cannot start from this branch. Choose another branch.",
+        "invalid-yaml": "Cannot start from this branch. Choose another branch.",
+        "runtime-missing": "Cannot start from this branch. Choose another branch.",
+        "ref-not-found": "The configured starting point no longer exists. Choose another branch."
+      },
+      "baseConfigReason": {
+        "missing": "This branch has no saved SpecFlow settings (.nevo/config.yaml).",
+        "not-regular-file": "The saved SpecFlow settings (.nevo/config.yaml) are not a regular file.",
+        "invalid-yaml": "The saved SpecFlow settings (.nevo/config.yaml) contain invalid YAML.",
+        "runtime-missing": "The saved SpecFlow settings (.nevo/config.yaml) have no runtime section.",
+        "ref-not-found": "The configured starting point no longer exists."
+      },
+      "baseConfigDetails": {
+        "meaning": "What this means",
+        "inspectReasons": "Each branch lists the reason it is unavailable.",
+        "nextStep": "What to do",
+        "how": "How to fix it?",
+        "repair": "Fix .nevo/config.yaml on one of the branches and save the change in its Git history (commit). Then refresh the form.",
+        "why": "Why?",
+        "explanation": "A new workspace starts from the version saved in Git on the selected branch. That version needs working SpecFlow settings. Changes made only in your current folder are not copied to the new workspace.",
+        "action": "Choose another starting branch. To use a branch marked unavailable, fix .nevo/config.yaml and save the change in its Git history (commit).",
+        "title": "Why can’t I start here?",
+        "unavailableBranches": "Unavailable branches",
+        "unavailableDescription": "These branches cannot be selected. Use an available branch or repair the unavailable branch’s settings first."
+      },
+      "baseConfigPickerReason": {
+        "missing": "Missing SpecFlow settings",
+        "not-regular-file": "Settings are not a file",
+        "invalid-yaml": "Invalid YAML",
+        "runtime-missing": "Missing runtime section"
+      },
+      "baseConfigUnavailable": "Unavailable"
     },
     "project": {
       "goalLabel": "Goal (optional)",

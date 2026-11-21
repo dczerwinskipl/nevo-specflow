@@ -2,7 +2,8 @@ import { deriveSpecSlug, engineCommitRefusal } from '@nevo/specflow-contracts/sp
 import type { CreateSpecRequest } from '@nevo/specflow-contracts/specs';
 import type { CreateOptionsView } from './createOptionsView';
 import type { WorkspaceChoice } from './workspaceChoice';
-import { activeTile, defaultBaseValue, defaultTargetWorkspaceId } from './workspaceTiles';
+import { baseRefOverride } from './baseConfig';
+import { activeTile, defaultTargetWorkspaceId } from './workspaceTiles';
 
 type CreateTarget = NonNullable<CreateSpecRequest['target']>;
 
@@ -143,8 +144,9 @@ export function createOverrides(
   title: string,
 ): CreateOverrides {
   const overrides: CreateOverrides = {};
-  if (choice.base.on && choice.base.ref && choice.base.ref !== defaultBaseValue(options)) {
-    overrides.baseRef = choice.base.ref;
+  const baseRef = baseRefOverride(choice, options);
+  if (baseRef) {
+    overrides.baseRef = baseRef;
   }
 
   if (

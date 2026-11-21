@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { OPTION_PICKER_SELECT_MAX, OptionPicker } from './OptionPicker';
 
 const labels = { showOptions: 'Show options', noResults: 'No results', loading: 'Loading' };
@@ -25,4 +25,20 @@ describe('OptionPicker', () => {
     expect(markup).toContain('<input');
     expect(markup).toContain('aria-label="Show options"');
   });
+});
+
+it('renders the closed selected label in truncating mode while both option lists use wrapping mode', () => {
+  for (const count of [2, 9]) {
+    const label = vi.fn((wraps: boolean) => (
+      <span data-wraps={String(wraps)}>A long option name</span>
+    ));
+    const values = items(count).map((item) => ({ ...item, label }));
+    const markup = renderToStaticMarkup(
+      <OptionPicker items={values} value="v0" labels={labels} onValueChange={() => undefined} />,
+    );
+    expect(label.mock.calls.filter(([wraps]) => wraps)).toHaveLength(count);
+    if (count === 2) {
+      expect(markup).toContain('data-wraps="false"');
+    }
+  }
 });

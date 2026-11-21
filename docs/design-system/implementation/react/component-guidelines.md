@@ -220,11 +220,18 @@ choice) is not a radio and keeps the recipe directly.
 
 ## Select items
 
-`SelectItem` stays a single-line option by default. Two optional slots extend it without a local
-fork: `description` (secondary line, `body-sm` + `content-secondary`, wraps) and `meta` (trailing,
-right-aligned text or `Badge`). Both are linked to the option through `aria-describedby`; only the
-main label (`children`, single-line, truncated) is the option's accessible name and the value shown
-in the trigger, so the trigger always stays one line and never contains description or meta.
+`SelectItem` and `ComboboxItem` use the full option width for a vertical stack: the main label,
+optional `meta` (secondary text or a naturally sized `Badge`), then optional `description`
+(`body-sm` + `content-secondary`, including an unavailable reason). Names, metadata and descriptions
+wrap, including long unbroken values. Metadata and descriptions remain part of the option's
+accessible description. Only the main label is the selected value: the closed Select trigger and
+Combobox input stay single-line and never contain metadata or descriptions.
+
+Selection is a visual state of the option: a subtle `surface-selected` background and a thin
+`action-primary` accent at the left edge. Neither the accent nor selection changes content width,
+padding or height. Options have no checkmark and reserve no checkmark gutter. Keyboard focus stays
+visibly distinguishable from selection; the primitive's selected state and keyboard behavior remain
+authoritative. This contract applies to Select and Combobox dropdown options, not radio cards.
 
 - Branch-like values compose the label as `Icon name="branch"` (`size="sm"`) + `Typography
 as="span" variant="code-md"`; `textValue` carries the plain name.
@@ -241,6 +248,8 @@ as="span" variant="code-md"`; `textValue` carries the plain name.
 - The listbox width equals the trigger width, so long descriptions wrap; do not widen the content
   locally. Persistent text outside the control remains the place for an overview of unavailable
   options.
+- All option text stays inside the full-width stack; metadata never takes a separate column away
+  from the label or reason. Select and Combobox share this layout rule.
 
 ## Description list
 
@@ -652,6 +661,11 @@ Icons beside a wrapping label are vertically centred and never shrink. `DialogFo
 entry; its type-ahead is first-letter only. `Combobox` (`react-aria-components`) is a text input with a
 filtered list.
 
+`SelectTrigger`, `Combobox` and `OptionPicker` accept `invalidAppearance="message"` only when
+the owner displays a persistent visible error. This keeps `aria-invalid` and error association,
+uses a neutral resting border and the normal single focus border, and avoids stacking a red
+border with a blue focus outline. The default `"border"` appearance is unchanged.
+
 | Use        | When                                                                                                                         |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `Select`   | at most 8 options, no lookup by typing                                                                                       |
@@ -692,9 +706,9 @@ Nothing converts automatically; existing `Select` consumers stay as they are. AP
   `noResults`, `loading`) in the product.
 - The trigger reuses the `TextInput` control recipe, so it is visually the same 36px control; the
   value is one line with an ellipsis. Options share the `SelectItem` anatomy through
-  `forms/shared/optionRecipes.ts` (wrapping `description`, trailing `meta`, check on the selected
-  option). Combobox option labels wrap (`optionLabelWrappingClassName`) so the distinguishing tail of long
-  values such as branch names is never cut; `Select` keeps the single-line ellipsised label. The list is at
+  `forms/shared/optionRecipes.ts` (wrapping label, then metadata and description; selected background
+  and left accent with no reserved selection column). Both Select and Combobox option labels wrap
+  so the distinguishing tail of long values such as branch names is never cut. The list is at
   least as wide as the input, grows to fit long values, flips above near the viewport bottom and never
   exceeds `100vw - 1rem`.
 - The list opens on click or tap of the input, via the chevron, ArrowDown and typing. Pass `inputRef` to

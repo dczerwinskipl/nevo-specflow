@@ -129,6 +129,23 @@ value as written, one of: `HEAD`; a full commit SHA; `refs/heads/...` or `refs/t
 name without `/`, which designates `refs/heads/<name>` (so a short tag name such as `v1.0` is read as a branch). An existing dirty workspace may be selectable for Create but is
 not an integration-selectable destination. All options are a snapshot, not a reservation.
 
+Each `baseRefs[]` option also carries `projectConfig`: `{status:'usable'}` or
+`{status:'unusable',reason}`. The reasons are `missing` (no committed `.nevo/config.yaml`),
+`not-regular-file` (for example a tree or symbolic link), `invalid-yaml`, and `runtime-missing`
+(the parsed document or its `runtime` value is not an object). This is the same inspection used by
+`verifyBaseProjectConfig` during Create admission; it reads committed bytes, never uncommitted
+configuration in a checkout. Unexpected Git read failures remain errors rather than configuration
+verdicts. Branches with unusable configuration remain listed so clients can explain the remedy.
+
+When Git facts are available, `defaultBaseConfig` inspects the configured `defaultBaseRef`, including
+`HEAD`, tags and full commit IDs that do not appear in `baseRefs`. It has the same variants, plus
+`{status:'unusable',reason:'ref-not-found'}` when the configured ref cannot resolve. The configured
+default itself is unchanged: a client preferring another usable start must send that ref as an
+explicit `target.baseRef` override. With Git disabled or unavailable, `defaultBaseConfig` is absent;
+no configuration inspection spawns Git with Git disabled. These facts apply to the base of a
+**new** worktree, not Create into an existing workspace or its integration-target eligibility.
+Create rechecks admission and retains `GIT_BASE_CONFIG_MISSING` as the race fallback.
+
 Operation lookup returns `{operationId,kind:"specification-create",status:"in-progress"|"recovery-required",code?}`,
 `{…,status:"failed",code}` or completed `CreatedSpec`. The status uses the SAME derivation as the operations list
 (journal stage, then the live registry outcome, which keeps a failure for 60 minutes, else a journal idle for more

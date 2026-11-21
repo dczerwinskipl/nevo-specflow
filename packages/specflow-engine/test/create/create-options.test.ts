@@ -11,7 +11,7 @@ import {
   createSpecificationForTesting,
   workspaceRegistryPath,
 } from '../../src/testing';
-import { createGitTestProject, git } from '../support/git-project';
+import { commitStaged, createGitTestProject, git } from '../support/git-project';
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -23,6 +23,70 @@ afterEach(async () => {
 });
 
 describe('E2.I01 authorized create-options Engine read model', () => {
+  it('reports committed configuration problems despite an uncommitted usable config, including default HEAD/tag/SHA', async () => {
+    const config = 'runtime: {}\ngit:\n  enabled: true\n  worktrees:\n    baseRef: HEAD\n';
+    const root = await createGitTestProject('specflow-create-base-config-', config);
+    roots.push(root);
+    git(root, 'branch', '-m', 'develop');
+    const usableCommit = git(root, 'rev-parse', 'HEAD');
+    const configPath = join(root, '.nevo/config.yaml');
+    for (const [branch, content] of [
+      ['missing-config', undefined],
+      ['invalid-yaml', 'runtime: ['],
+      ['runtime-missing', 'docs: {}\n'],
+      ['not-regular-file', undefined],
+    ] as const) {
+      git(root, 'checkout', '-q', '-B', branch, usableCommit);
+      await rm(configPath);
+      if (branch === 'not-regular-file') {
+        await mkdir(configPath);
+        await writeFile(join(configPath, 'child'), 'not a config');
+      } else if (content !== undefined) {
+        await writeFile(configPath, content);
+      }
+
+      git(root, 'add', '.nevo/config.yaml');
+      commitStaged(root, branch);
+    }
+
+    git(root, 'checkout', '-q', 'runtime-missing');
+    git(root, 'tag', 'bad-config');
+    const badCommit = git(root, 'rev-parse', 'HEAD');
+    // This is the dogfood case: usable configuration exists only in the working tree.
+    await writeFile(configPath, config);
+    const engine = await bootstrapProjectHome(root);
+    const before = git(root, 'status', '--porcelain');
+    const options = await inspectCreateOptions(engine);
+    expect(options.workspaces[0]).toMatchObject({ selectable: true, state: 'dirty' });
+    expect(options.defaultBaseConfig).toEqual({ status: 'unusable', reason: 'runtime-missing' });
+    for (const [branch, reason] of [
+      ['missing-config', 'missing'],
+      ['invalid-yaml', 'invalid-yaml'],
+      ['runtime-missing', 'runtime-missing'],
+      ['not-regular-file', 'not-regular-file'],
+    ]) {
+      expect(
+        options.baseRefs.find((base) => base.ref === 'refs/heads/' + branch)?.projectConfig,
+      ).toEqual({ status: 'unusable', reason });
+    }
+
+    expect(
+      options.baseRefs.find((base) => base.ref === 'refs/heads/develop')?.projectConfig,
+    ).toEqual({ status: 'usable' });
+    expect(git(root, 'status', '--porcelain')).toBe(before);
+    for (const [ref, verdict] of [
+      ['refs/tags/bad-config', { status: 'unusable', reason: 'runtime-missing' }],
+      [badCommit, { status: 'unusable', reason: 'runtime-missing' }],
+      [usableCommit, { status: 'usable' }],
+      ['absent-branch', { status: 'unusable', reason: 'ref-not-found' }],
+    ] as const) {
+      await writeFile(configPath, config.replace('baseRef: HEAD', 'baseRef: ' + ref));
+      const snapshot = await inspectCreateOptions(engine);
+      expect(snapshot.defaultBaseRef).toBe(ref);
+      expect(snapshot.defaultBaseConfig).toEqual(verdict);
+    }
+  }, 180000);
+
   it('shows the real primary branch, local ref candidates and project policy without mutations', async () => {
     const root = await createGitTestProject(
       'specflow-create-options-',
@@ -59,8 +123,12 @@ describe('E2.I01 authorized create-options Engine read model', () => {
     expect(options.newWorktree).toEqual({ status: 'available' });
     expect(options.baseRefs).toEqual(
       expect.arrayContaining([
-        { ref: 'refs/heads/develop', checkedOutWorkspaceId: engine.workspace.workspaceId },
-        { ref: 'refs/heads/feature/x' },
+        {
+          ref: 'refs/heads/develop',
+          projectConfig: { status: 'usable' },
+          checkedOutWorkspaceId: engine.workspace.workspaceId,
+        },
+        { ref: 'refs/heads/feature/x', projectConfig: { status: 'usable' } },
       ]),
     );
     expect(await readFile(workspaceRegistryPath(engine.context), 'utf8')).toBe(registryBefore);
@@ -134,6 +202,7 @@ describe('E2.I01 authorized create-options Engine read model', () => {
     const linkedRef = git(first.workspaceRoot, 'symbolic-ref', 'HEAD');
     expect(options.baseRefs).toContainEqual({
       ref: linkedRef,
+      projectConfig: { status: 'usable' },
       checkedOutWorkspaceId: first.workspaceId,
     });
     expect(await readFile(workspaceRegistryPath(engine.context), 'utf8')).toBe(before);
@@ -214,7 +283,18 @@ describe('E2.I01 authorized create-options Engine read model', () => {
     );
     roots.push(root);
     const engine = await bootstrapProjectHome(root);
-    const options = await inspectCreateOptions(engine);
+    const spawns: unknown[] = [];
+    const listener = (message: unknown): void => void spawns.push(message);
+    subscribe('nevo.specflow.engine.git-process', listener);
+    let options;
+    try {
+      options = await inspectCreateOptions(engine);
+    } finally {
+      unsubscribe('nevo.specflow.engine.git-process', listener);
+    }
+
+    expect(spawns).toEqual([]);
+    expect(options.defaultBaseConfig).toBeUndefined();
     expect(options.newWorktree).toEqual({ status: 'disabled', reason: 'git-disabled' });
     expect(options.workspaces[0]?.state).toBe('available');
     // Git off: byte-identical to before, no commit-related field or reason at all.

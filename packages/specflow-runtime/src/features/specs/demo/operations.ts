@@ -219,6 +219,7 @@ export function createDemoSpecs(state: DemoState, documents: Pick<DemoDocuments,
         });
         liveOptions.baseRefs.push({
           ref: localBranchRef(branch),
+          projectConfig: { status: 'usable' },
           checkedOutWorkspaceId: workspaceId,
         });
       } else {

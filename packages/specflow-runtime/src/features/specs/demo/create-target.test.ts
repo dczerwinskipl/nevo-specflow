@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { DemoCreateRequest } from '@nevo/specflow-contracts/demo';
 import { createDemoEnvironment } from '../../../demo';
-import { DemoTargetError } from './create-target';
-import { demoWorkspaceIds as ids } from './seed';
+import { DemoTargetError, resolveTarget } from './create-target';
+import { demoWorkspaceIds as ids, seedCreateOptions } from './seed';
 
 const op = (n: number) => `7f3a91c2-4b6e-4d1a-9c0e-${String(n).padStart(12, '0')}`;
 function setup() {
@@ -39,6 +39,37 @@ const failure = (fn: () => unknown) => {
 };
 
 describe('target-aware demo create', () => {
+  it('refuses unusable committed bases only for new worktrees', () => {
+    const options = seedCreateOptions();
+    options.defaultBaseConfig = { status: 'unusable', reason: 'runtime-missing' };
+    options.baseRefs[0]!.projectConfig = { status: 'unusable', reason: 'missing' };
+    expect(failure(() => resolveTarget(options, { kind: 'new-worktree' }, 'new-spec'))).toEqual([
+      422,
+      'GIT_BASE_CONFIG_MISSING',
+    ]);
+    expect(
+      failure(() =>
+        resolveTarget(
+          options,
+          {
+            kind: 'new-worktree',
+            baseRef: options.baseRefs[0]!.ref,
+          },
+          'new-spec',
+        ),
+      ),
+    ).toEqual([422, 'GIT_BASE_CONFIG_MISSING']);
+    expect(resolveTarget(options, undefined, 'new-spec').kind).toBe('main');
+    expect(
+      resolveTarget(options, { kind: 'existing', workspaceId: ids.platform }, 'new-spec').kind,
+    ).toBe('existing');
+    options.defaultBaseConfig = { status: 'unusable', reason: 'ref-not-found' };
+    expect(failure(() => resolveTarget(options, { kind: 'new-worktree' }, 'new-spec'))).toEqual([
+      422,
+      'BASE_REF_NOT_FOUND',
+    ]);
+  });
+
   it('pins the target only for an explicit integrationTargetWorkspaceId, never to itself', () => {
     const { env, body } = setup();
     const pinnedResult = env.specs.create(
@@ -116,6 +147,7 @@ describe('target-aware demo create', () => {
     });
     expect(after.baseRefs.at(-1)).toEqual({
       ref: 'refs/heads/feature/payments-v2',
+      projectConfig: { status: 'usable' },
       checkedOutWorkspaceId: result.workspaceId,
     });
     expect(env.state.specifications.get(result.specId)).toMatchObject({

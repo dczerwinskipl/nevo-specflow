@@ -96,3 +96,15 @@ describe('projectCreateReadiness: the field of the first problem', () => {
     ).toBeUndefined();
   });
 });
+
+it('a base without committed configuration blocks submit and leads to Start from', () => {
+  const result = projectCreateReadiness({
+    ...base,
+    workspaceState: { status: 'ready', options: createOptionsFixture('base-config-unusable') },
+  });
+  expect(result).toMatchObject({
+    canSubmit: false,
+    problemField: 'base',
+    prerequisite: { key: 'create.workspace.baseConfigNone' },
+  });
+});

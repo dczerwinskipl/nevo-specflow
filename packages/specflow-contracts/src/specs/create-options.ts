@@ -2,6 +2,34 @@ import { Type, type Static } from 'typebox';
 
 import { WorkspaceIdSchema } from '../identifiers';
 
+/** The committed configuration check used by both Create admission and its options. */
+export const BaseProjectConfigSchema = Type.Union([
+  Type.Object({ status: Type.Literal('usable') }, { additionalProperties: false }),
+  Type.Object(
+    {
+      status: Type.Literal('unusable'),
+      reason: Type.Union([
+        Type.Literal('missing'),
+        Type.Literal('not-regular-file'),
+        Type.Literal('invalid-yaml'),
+        Type.Literal('runtime-missing'),
+      ]),
+    },
+    { additionalProperties: false },
+  ),
+]);
+
+export const DefaultBaseConfigSchema = Type.Union([
+  BaseProjectConfigSchema,
+  Type.Object(
+    { status: Type.Literal('unusable'), reason: Type.Literal('ref-not-found') },
+    { additionalProperties: false },
+  ),
+]);
+
+export type BaseProjectConfig = Static<typeof BaseProjectConfigSchema>;
+export type DefaultBaseConfig = Static<typeof DefaultBaseConfigSchema>;
+
 const Reason = Type.Union([
   Type.Literal('git-disabled'),
   Type.Literal('git-unavailable'),
@@ -95,6 +123,8 @@ export const CreateOptionsSchema = Type.Object(
      * necessarily one of `baseRefs`; {@link designatedBaseRef} gives the ref it designates.
      */
     defaultBaseRef: Type.String({ minLength: 1 }),
+    /** Inspection of the configured ref, including HEAD, tags and commits. Absent without Git facts. */
+    defaultBaseConfig: Type.Optional(DefaultBaseConfigSchema),
     /** Effective pattern; `{shortId}` is optional, so `feature/{slug}` previews as `feature/<slug>`. */
     branchPattern: Type.String({ minLength: 1 }),
     /** Effective folder for new worktrees (machine-local `git.worktreesRoot` or the default). */
@@ -117,6 +147,7 @@ export const CreateOptionsSchema = Type.Object(
            * `target.baseRef` override sends. Its display name is `<branch>`.
            */
           ref: Type.String({ pattern: '^refs/heads/.+$' }),
+          projectConfig: BaseProjectConfigSchema,
           checkedOutWorkspaceId: Type.Optional(WorkspaceIdSchema),
         },
         { additionalProperties: false },

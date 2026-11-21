@@ -88,10 +88,12 @@ describe('create-options endpoint', () => {
     expect(data).toMatchObject({
       newWorktree: { status: 'available' },
       defaultBaseRef: 'develop',
+      defaultBaseConfig: { status: 'usable' },
       branchPattern: 'feature/{slug}',
       integrationTargetBranch: 'develop',
     });
     expect(data.baseRefs.map((b) => b.ref)).toContain('refs/heads/release/1.4');
+    expect(data.baseRefs.every((base) => base.projectConfig.status === 'usable')).toBe(true);
 
     // The workspace list reads the same registry, and its Specifications agree with each
     // Specification's own `workspaceId`.

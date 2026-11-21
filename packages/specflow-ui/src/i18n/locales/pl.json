@@ -917,7 +917,42 @@
       "protectedSuggestion": {
         "text": "Chronione gałęzie nie dotyczą nowego środowiska pracy.",
         "action": "Użyj nowego środowiska pracy"
-      }
+      },
+      "baseConfigNone": "Nie można utworzyć nowego środowiska. Żadna gałąź nie ma poprawnych ustawień SpecFlow.",
+      "baseConfig": {
+        "missing": "Nie można zacząć od tej gałęzi. Wybierz inną gałąź.",
+        "not-regular-file": "Nie można zacząć od tej gałęzi. Wybierz inną gałąź.",
+        "invalid-yaml": "Nie można zacząć od tej gałęzi. Wybierz inną gałąź.",
+        "runtime-missing": "Nie można zacząć od tej gałęzi. Wybierz inną gałąź.",
+        "ref-not-found": "Skonfigurowany punkt początkowy już nie istnieje. Wybierz inną gałąź."
+      },
+      "baseConfigReason": {
+        "missing": "Ta gałąź nie ma zapisanych ustawień SpecFlow (.nevo/config.yaml).",
+        "not-regular-file": "Zapisane ustawienia SpecFlow (.nevo/config.yaml) nie są zwykłym plikiem.",
+        "invalid-yaml": "Zapisane ustawienia SpecFlow (.nevo/config.yaml) zawierają niepoprawny YAML.",
+        "runtime-missing": "W zapisanych ustawieniach SpecFlow (.nevo/config.yaml) brakuje sekcji runtime.",
+        "ref-not-found": "Skonfigurowany punkt początkowy już nie istnieje."
+      },
+      "baseConfigDetails": {
+        "meaning": "Co to oznacza",
+        "inspectReasons": "Przyczyny niedostępności znajdziesz przy poszczególnych gałęziach.",
+        "nextStep": "Co zrobić",
+        "how": "Jak to naprawić?",
+        "repair": "Popraw .nevo/config.yaml na jednej z gałęzi i zapisz zmianę w jej historii Git (commit). Następnie odśwież formularz.",
+        "why": "Dlaczego?",
+        "explanation": "Nowe środowisko powstaje z wersji zapisanej w Git na wybranej gałęzi. Ta wersja potrzebuje działających ustawień SpecFlow. Zmiany wprowadzone tylko w bieżącym katalogu nie są kopiowane do nowego środowiska.",
+        "action": "Wybierz inną gałąź początkową. Aby użyć gałęzi oznaczonej jako niedostępna, popraw .nevo/config.yaml i zapisz zmianę w jej historii Git (commit).",
+        "title": "Dlaczego nie można tu zacząć?",
+        "unavailableBranches": "Niedostępne gałęzie",
+        "unavailableDescription": "Tych gałęzi nie można wybrać. Możesz użyć dostępnej gałęzi albo najpierw naprawić ustawienia niedostępnej."
+      },
+      "baseConfigPickerReason": {
+        "missing": "Brak ustawień SpecFlow",
+        "not-regular-file": "Ustawienia nie są plikiem",
+        "invalid-yaml": "Niepoprawny YAML",
+        "runtime-missing": "Brak sekcji runtime"
+      },
+      "baseConfigUnavailable": "Niedostępna"
     },
     "project": {
       "goalLabel": "Cel (opcjonalnie)",

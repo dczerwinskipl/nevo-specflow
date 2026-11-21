@@ -68,6 +68,7 @@ describe('seed registry', () => {
 
     expect(seed.baseRefs[0]).toEqual({
       ref: 'refs/heads/develop',
+      projectConfig: { status: 'usable' },
       checkedOutWorkspaceId: ids.main,
     });
   });
@@ -136,6 +137,10 @@ describe('options scenarios', () => {
     expect(apply('default')).toEqual(options());
   });
   it('shapes git, integration and selectability variants', () => {
+    for (const scenario of ['git-disabled', 'git-unavailable', 'git-policy-invalid'] as const) {
+      expect(apply(scenario)).not.toHaveProperty('defaultBaseConfig');
+    }
+
     expect(apply('git-disabled')).toMatchObject({
       newWorktree: { status: 'disabled', reason: 'git-disabled' },
       baseRefs: [],

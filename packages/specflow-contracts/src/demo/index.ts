@@ -107,6 +107,7 @@ export const DemoCreateTargetSchema = Type.Union([
 export const DemoCreateErrorCodeSchema = Type.Union([
   Type.Literal('BRANCH_ALREADY_EXISTS'),
   Type.Literal('BASE_REF_NOT_FOUND'),
+  Type.Literal('GIT_BASE_CONFIG_MISSING'),
   Type.Literal('CREATE_CONFLICT'),
   Type.Literal('CREATE_OPERATION_INVALID'),
   Type.Literal('CREATE_RECOVERY_REQUIRED'),

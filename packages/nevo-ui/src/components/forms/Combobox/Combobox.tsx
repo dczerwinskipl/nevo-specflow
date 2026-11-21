@@ -19,10 +19,11 @@ import { Icon } from '../../foundations/Icon';
 import { Typography } from '../../foundations/Typography';
 import { useFieldControl } from '../Field';
 import {
-  optionDescriptionClassName,
+  dropdownOptionDescriptionClassName,
   optionItemClassName,
-  optionLabelWrappingClassName,
+  dropdownOptionLabelClassName,
   optionMetaClassName,
+  optionSelectionAccentClassName,
 } from '../shared/optionRecipes';
 import { isAriaInvalid } from '../shared/textControlState';
 import { textInputControlClassName } from '../TextInput/TextInput';
@@ -50,6 +51,8 @@ export interface ComboboxProps {
   onValueChange?: (value: string | null) => void;
   placeholder?: string;
   invalid?: boolean;
+  /** Use message only with a persistent visible error; invalid semantics and focus stay intact. */
+  invalidAppearance?: 'border' | 'message';
   disabled?: boolean;
   /**
    * Local filter `(optionText, query) => boolean`. Default: Polish-safe case/diacritic-insensitive
@@ -96,6 +99,7 @@ export function Combobox({
   inputRef,
   inputValue,
   invalid = false,
+  invalidAppearance = 'border',
   labels: labelOverrides,
   loading = false,
   menuTrigger = 'input',
@@ -143,6 +147,7 @@ export function Combobox({
     >
       <div className="relative w-full min-w-0">
         <ComboboxInput
+          invalidAppearance={invalidAppearance}
           autoFocus={autoFocus}
           id={field.id}
           inputRef={inputRef}
@@ -196,12 +201,14 @@ export function Combobox({
  * and ArrowDown), so a touch user does not get a keyboard with no list.
  */
 function ComboboxInput({
+  invalidAppearance,
   autoFocus,
   id,
   inputRef,
   insideField,
   placeholder,
 }: {
+  invalidAppearance: 'border' | 'message';
   autoFocus: boolean | undefined;
   id: string | undefined;
   inputRef: Ref<HTMLInputElement> | undefined;
@@ -212,6 +219,7 @@ function ComboboxInput({
 
   return (
     <AriaInput
+      data-invalid-appearance={invalidAppearance}
       autoFocus={autoFocus}
       className={cn(textInputControlClassName, 'pr-9 text-ellipsis placeholder:text-ellipsis')}
       id={id}
@@ -234,7 +242,7 @@ export interface ComboboxItemProps {
   textValue?: string;
   /** Secondary line under the label. Wraps; stays readable when the option is unavailable. */
   description?: ReactNode;
-  /** Trailing right-aligned slot (text or Badge). Never shown in the input. */
+  /** Metadata below the label (text or Badge), before the reason. Never shown in the input. */
   meta?: ReactNode;
   /**
    * Not selectable; put the reason in `description`. v1 divergence from `SelectItem`:
@@ -261,11 +269,7 @@ export function ComboboxItem({
 
   return (
     <AriaListBoxItem
-      className={cn(
-        optionItemClassName({ keepsReasonReadable, unavailable }),
-        'data-[focused]:bg-surface-hover data-[focused]:text-content-primary data-[hovered]:bg-surface-hover data-[hovered]:text-content-primary',
-        className,
-      )}
+      className={cn(optionItemClassName({ keepsReasonReadable, unavailable }), className)}
       data-unavailable={unavailable ? '' : undefined}
       id={value}
       isDisabled={unavailable}
@@ -273,46 +277,42 @@ export function ComboboxItem({
     >
       {({ isSelected }) => (
         <>
-          <span className="flex min-w-0 flex-1 flex-col">
-            <span className={cn('flex min-w-0', keepsReasonReadable && 'opacity-50')}>
-              {/* Deliberately not an aria slot: a slotted label would become the whole accessible
-                  name and leave the visible description/meta out of it (WCAG 2.5.3).
-                  `text-label-sm` (weight 600), not `text-body-sm` (weight 400), whenever a
-                  description sits underneath — same canonical-table fix as `Select`'s own label
-                  (see that component's own doc comment); a plain option with no description keeps
-                  `text-body-sm` unchanged. */}
+          <span className="flex w-full min-w-0 flex-col items-start gap-0.5">
+            <span className={cn('flex w-full min-w-0', keepsReasonReadable && 'opacity-50')}>
+              {/* A slotted label would remove the visible metadata/reason from the accessible name. */}
               <span
                 className={cn(
-                  optionLabelWrappingClassName,
+                  dropdownOptionLabelClassName,
                   hasDescription ? 'text-label-sm' : 'text-body-sm',
-                  !structured && 'flex-1',
                 )}
                 data-combobox-item-part="label"
               >
                 {children}
               </span>
             </span>
+            {hasMeta ? (
+              <span
+                className={cn(optionMetaClassName, keepsReasonReadable && 'opacity-50')}
+                data-combobox-item-part="meta"
+              >
+                {meta}
+              </span>
+            ) : null}
             {hasDescription ? (
               <span
-                className={cn(optionDescriptionClassName, 'text-body-sm')}
+                className={cn(dropdownOptionDescriptionClassName, 'text-body-sm')}
                 data-combobox-item-part="description"
               >
                 {description}
               </span>
             ) : null}
           </span>
-          {hasMeta ? (
-            <span
-              className={cn(optionMetaClassName, keepsReasonReadable && 'opacity-50')}
-              data-combobox-item-part="meta"
-            >
-              {meta}
-            </span>
-          ) : null}
           {isSelected ? (
-            <span className="absolute right-control-padding-compact inline-flex text-content-primary">
-              <Icon name="check" size="sm" />
-            </span>
+            <span
+              aria-hidden="true"
+              className={optionSelectionAccentClassName}
+              data-selection-accent=""
+            />
           ) : null}
         </>
       )}

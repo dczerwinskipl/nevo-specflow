@@ -68,7 +68,13 @@ describe('demo create contract equals the real create contract', () => {
       branchPattern: 'feature/{slug}',
       worktreesRoot: { path: '/work/repo-worktrees', exists: true },
       commits: { protectedBranches: ['main'], allowedBranches: ['feature/**'] },
-      baseRefs: [{ ref: 'refs/heads/develop', checkedOutWorkspaceId: ID }],
+      baseRefs: [
+        {
+          ref: 'refs/heads/develop',
+          projectConfig: { status: 'usable' },
+          checkedOutWorkspaceId: ID,
+        },
+      ],
     };
     expect(Value.Check(CreateOptionsSchema, options)).toBe(true);
     expect(Value.Check(DemoCreateOptionsSchema, options)).toBe(true);

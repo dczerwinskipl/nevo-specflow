@@ -167,10 +167,25 @@ process of the same OS user can read. A host MUST take it only from an identity 
 itself; the Runtime broker (T3) takes it only from a verified invocation capability, never from
 what a client sends.
 
-| Form            | Admitted phases of the named claim      | Who uses it                                                         |
-| --------------- | --------------------------------------- | ------------------------------------------------------------------- |
-| `turn`          | `dispatched` only                       | the writes of a running Turn (the broker); hosts get only this form |
-| `finalize` (T8) | any unsettled phase, `unknown` included | the Engine's own finalize section of an agent attempt, nothing else |
+| Form       | Admitted phases of the named claim      | Who uses it                                                         |
+| ---------- | --------------------------------------- | ------------------------------------------------------------------- |
+| `turn`     | `dispatched` only                       | the writes of a running Turn (the broker); hosts get only this form |
+| `finalize` | any unsettled phase, `unknown` included | the Engine's own finalize section of an agent attempt, nothing else |
+
+**Finalize of an agent attempt.** `finalizeAgentAttempt` (`workflow/agent/finalize/`) takes the
+project control lock once and, admitted with the `finalize` form of the ended Turn's claim, publishes
+the step state (the proposal's finish, or the owner's recorded return), then records the attempt's
+journal (outcome, the Turn's dirty set, pending post actions), then settles the claim with
+`settleWorkspaceExecutionInSection`, the lock-held form of the settlement that refuses to run
+without the lock and never takes it. The control lock is not re-entrant, so no part of the section
+calls an operation that locks. Post actions run after the section is released; recovery runs the
+same finalize again with the same native-stop evidence, and resumes post actions of a finalized
+attempt only once its claim is settled. Before anything is published the finalize refuses, and the
+claim stays held, when the claim was never dispatched or was settled with another receipt, and
+while a document change of that Turn is still being written (`WORKFLOW_SPECIFICATION_BUSY`,
+`write-in-progress`). A transient refusal (busy, source unavailable) also leaves the claim held; a
+refusal of the proposal itself is recorded and the claim settles. A post action that fails stays
+`failed` in the journal for the owner's retry; recovery does not retry it by itself.
 
 ## Publication and archive
 

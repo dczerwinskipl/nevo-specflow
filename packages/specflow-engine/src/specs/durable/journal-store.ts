@@ -109,8 +109,8 @@ async function readJournalFile<T>(
   context: ResolvedProjectHome,
   kind: JournalKind<T>,
   operationId: string,
+  path = journalPath(context, kind, operationId),
 ): Promise<JournalFileRead<T>> {
-  const path = journalPath(context, kind, operationId);
   try {
     const stat = await lstat(path);
     // A redirected, special or oversize file is never a journal this Engine wrote: fail closed.
@@ -143,6 +143,28 @@ export async function readJournal<T>(
   operationId: string,
 ): Promise<T | undefined> {
   const read = await readJournalFile(context, kind, operationId);
+  if (read.kind === 'unsupported') {
+    throw kind.errors.unsupported();
+  }
+
+  return read.kind === 'journal' ? read.journal : undefined;
+}
+
+/**
+ * The journal of one operation that moved to `settled/` ({@link moveJournalToSettled}), validated like
+ * an active one; `undefined` when there is none.
+ */
+export async function readSettledJournal<T>(
+  context: ResolvedProjectHome,
+  kind: JournalKind<T>,
+  operationId: string,
+): Promise<T | undefined> {
+  const read = await readJournalFile(
+    context,
+    kind,
+    operationId,
+    settledJournalPath(context, kind, operationId),
+  );
   if (read.kind === 'unsupported') {
     throw kind.errors.unsupported();
   }

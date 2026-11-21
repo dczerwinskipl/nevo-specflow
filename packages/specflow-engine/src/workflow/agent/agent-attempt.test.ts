@@ -1,15 +1,12 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import type { OwnedExecutionClaim } from '../../specs/durable';
 import type { ExecutionCatalogue } from '../definitions/catalogue';
-import { SpecificationBusyError } from '../errors';
 import { finishStep } from '../operations/finish';
 import {
   SPEC,
   TWO_TASKS,
   agent,
   claude,
-  memoryDependencies,
   positionOf,
   runToBreakdown,
   seedExecutionCatalogue,
@@ -18,8 +15,7 @@ import {
 } from '../operations/operations.test-support';
 import type { WorkflowDependencies } from '../operations/loaded-execution';
 import type { AgentActor } from '../state/model';
-import type { AgentAttemptDependencies } from './dependencies';
-import { memoryAgentAttemptJournal } from './journal/memory.test-support';
+import { memoryAgentDependencies } from './memory.test-support';
 import { proposeAgentFinish, readAgentAttempt, type AgentTurnIdentity } from './proposal/propose';
 import { startAgentAttempt, type StartAgentAttemptInput } from './start';
 
@@ -40,34 +36,9 @@ const writer: AgentActor = {
 
 const ACTIVE_REQUIREMENTS = { state: 'active', step: 'requirements', attempt: 1 } as const;
 
-/** The agent attempt operations over in-memory state; `claim` decides the Turn's admission. */
+/** The agent attempt operations over in-memory state; `state.claimDispatched` decides the Turn's admission. */
 function agentDependencies() {
-  const workflow = memoryDependencies(catalogue);
-  const journal = memoryAgentAttemptJournal();
-  const admitted: (OwnedExecutionClaim | undefined)[] = [];
-  const state = { claimDispatched: true };
-  const dependencies: AgentAttemptDependencies = {
-    workflow,
-    journal,
-    admission: (owned) => ({
-      admitWrite() {
-        admitted.push(owned);
-        if (owned !== undefined && !state.claimDispatched) {
-          return Promise.reject(
-            new SpecificationBusyError('An agent Turn ended.', {
-              cause: 'agent-turn-unknown',
-              sessionId: 'session-a',
-            }),
-          );
-        }
-
-        return Promise.resolve();
-      },
-    }),
-    newId: () => ATTEMPT_ID,
-  };
-
-  return { dependencies, workflow, journal, admitted, state };
+  return memoryAgentDependencies(catalogue, ATTEMPT_ID);
 }
 
 /** Runs the Specification until its breakdown proposed {@link TWO_TASKS}: the review is next. */

@@ -190,3 +190,4 @@ export {
 // The Git commit port, for tests that replace one of its operations (a commit whose outcome is unknown).
 export { createGitCommitPort } from './version-control/commits/git-adapter';
 export type { CommitPort, EngineCommitRequest } from './version-control/commits/port';
+export { settleWorkspaceExecutionInSection } from './execution';

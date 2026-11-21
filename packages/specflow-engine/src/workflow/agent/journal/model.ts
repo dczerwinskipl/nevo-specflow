@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import { Type } from 'typebox';
 import { Value } from 'typebox/value';
 
@@ -7,7 +9,7 @@ import { assertFinishInputShape } from '../../input-schema';
 import { RECORD_BYTES_MAX } from '../../limits';
 import type { FinishStepInput } from '../../operations/finish';
 import { ActorSchema } from '../../state/codec';
-import type { AgentActor, WorkflowSubject } from '../../state/model';
+import type { AgentActor, OwnerActor, WorkflowSubject } from '../../state/model';
 
 /**
  * The local journal of one agent attempt started for Ask agent, keyed by the attempt's `attemptId`
@@ -20,8 +22,17 @@ export const AGENT_ATTEMPT_JOURNAL_VERSION = 1;
 export const AGENT_ATTEMPT_RELATIVE_DIR = 'engine/operations/agent-attempt';
 /** One attempt takes at most this many Turns (each Continue is one). */
 export const AGENT_ATTEMPT_TURNS_MAX = 100;
-/** A proposal holds one finish input, whose records fit the stored run record's budget. */
-const AGENT_ATTEMPT_JOURNAL_MAX_BYTES = 2 * RECORD_BYTES_MAX;
+/** A Turn's dirty set names at most this many paths; more are cut (`truncated`). */
+export const AGENT_DIRTY_PATHS_MAX = 500;
+/** A dirty file larger than this is named but not hashed (`oversize`). */
+export const AGENT_DIRTY_FILE_BYTES_MAX = 64 * 1024 * 1024;
+/** A dirty path longer than this is not named; the set is `truncated`. */
+export const AGENT_DIRTY_PATH_LENGTH_MAX = 1024;
+/**
+ * A proposal holds one finish input, whose records fit the stored run record's budget, and the last
+ * Turn's dirty set at most {@link AGENT_DIRTY_PATHS_MAX} paths.
+ */
+const AGENT_ATTEMPT_JOURNAL_MAX_BYTES = 4 * RECORD_BYTES_MAX;
 
 /**
  * The trusted binding of one Turn of the attempt, recorded before it is dispatched: the Runtime
@@ -32,6 +43,87 @@ export interface AgentTurnBinding {
   readonly invocationId: string;
   readonly turnId: string;
   readonly boundAt: string;
+  /**
+   * When the attempt's finalize section ran for this Turn (it records the Turn's outcome and dirty
+   * set and, in the same section, settles the Turn's execution claim).
+   */
+  readonly finalizedAt?: string;
+}
+
+/**
+ * One path of a dirty set: its content hash (sha256 hex), `null` when it is not a regular file or
+ * is larger than {@link AGENT_DIRTY_FILE_BYTES_MAX} (`oversize`, not hashed).
+ */
+export interface AgentDirtyPath {
+  readonly path: string;
+  readonly sha256: string | null;
+  readonly oversize?: true;
+}
+
+/**
+ * What was uncommitted in the attempt's checkout when a Turn's claim settled (every staged, modified,
+ * removed or untracked path), recorded as data in the finalize section so the next Turn's dispatch
+ * can tell what changed between Turns. Only the last settled Turn's set is kept.
+ */
+export interface AgentDirtySet {
+  readonly invocationId: string;
+  readonly recordedAt: string;
+  /** Sorted by path. */
+  readonly paths: readonly AgentDirtyPath[];
+  /** More paths were dirty than the set names (see {@link AGENT_DIRTY_PATHS_MAX}). */
+  readonly truncated?: true;
+}
+
+export interface AgentRefusal {
+  readonly code: string;
+  readonly message: string;
+}
+
+/**
+ * The owner's return of the step while the attempt's Turn may still run (D19): recorded while the
+ * agent's claim is held, applied as the attempt's `returned` outcome only in the finalize section,
+ * once the Turn is proven stopped. `refused`: the finalize re-validation refused it (`refusal`); the
+ * attempt stays active.
+ */
+export interface AgentReturnRequest {
+  readonly step: string;
+  readonly feedback?: string;
+  readonly actor: OwnerActor;
+  readonly requestedAt: string;
+  readonly state: 'requested' | 'applied' | 'refused';
+  readonly refusal?: AgentRefusal;
+}
+
+/**
+ * The post actions of a finalized attempt, run after the finalize section released the control
+ * lock. `step-finished` is the workflow finish post action (`operations/post-actions.ts`).
+ */
+export type AgentPostActionKind = 'step-finished';
+
+/** What one of the host's post actions reported (`PostActionResult`, without its message). */
+export interface AgentPostActionOutcome {
+  readonly action: string;
+  readonly status: 'completed' | 'skipped' | 'failed';
+  readonly code?: string;
+}
+
+/**
+ * One post action of the attempt, recorded `pending` in the finalize section before the claim
+ * settles, so a crash after the section resumes it rather than losing it. Its `operationId` derives
+ * from `(attemptId, kind)` ({@link agentPostActionId}): a retry or a restart runs the same operation.
+ */
+export interface AgentPostActionRecord {
+  readonly kind: AgentPostActionKind;
+  readonly operationId: string;
+  /** The finished step's title, which the post action words its work with. */
+  readonly stepTitle: string;
+  /**
+   * `pending`: not run yet (or interrupted); `done`: it ran and nothing failed; `failed`: it ran and
+   * reported a failure, kept for a retry (`retryAgentPostActions`).
+   */
+  readonly state: 'pending' | 'done' | 'failed';
+  /** What its last run did (`done` and `failed` only). */
+  readonly outcomes?: readonly AgentPostActionOutcome[];
 }
 
 /**
@@ -59,7 +151,7 @@ export interface AgentFinishProposal {
   readonly submittedAt: string;
   readonly state: AgentProposalState;
   /** Why the finalize re-validation refused it (`state: refused` only). */
-  readonly refusal?: { readonly code: string; readonly message: string };
+  readonly refusal?: AgentRefusal;
 }
 
 export interface AgentAttemptJournal {
@@ -75,6 +167,25 @@ export interface AgentAttemptJournal {
   /** In binding order; never empty. */
   readonly turns: readonly AgentTurnBinding[];
   readonly proposal?: AgentFinishProposal;
+  /** Recorded only by the owner's return during the attempt; applied by the finalize section. */
+  readonly returnRequest?: AgentReturnRequest;
+  /** The dirty set of the last Turn whose claim settled. */
+  readonly dirtySet?: AgentDirtySet;
+  /** Only once the attempt was finalized (its proposal `finalized`). */
+  readonly postActions?: readonly AgentPostActionRecord[];
+}
+
+/** The attempt ended: its proposal was published, or the owner's return was applied. */
+export function isAttemptResolved(journal: AgentAttemptJournal): boolean {
+  return journal.proposal?.state === 'finalized' || journal.returnRequest?.state === 'applied';
+}
+
+/** Ended, and nothing of it is left to run: its journal can move to `settled/`. */
+export function isAttemptJournalSettled(journal: AgentAttemptJournal): boolean {
+  return (
+    isAttemptResolved(journal) &&
+    (journal.postActions ?? []).every((action) => action.state === 'done')
+  );
 }
 
 const closed = { additionalProperties: false } as const;
@@ -83,6 +194,8 @@ const uuid = Type.String({
 });
 const text = (maxLength: number) => Type.String({ minLength: 1, maxLength });
 const timestamp = Type.String({ minLength: 20, maxLength: 40 });
+const sha256 = Type.String({ pattern: '^[0-9a-f]{64}$' });
+const refusal = Type.Object({ code: text(100), message: text(4000) }, closed);
 
 const JournalSchema = Type.Object(
   {
@@ -97,7 +210,15 @@ const JournalSchema = Type.Object(
     actor: ActorSchema,
     workspaceId: uuid,
     turns: Type.Array(
-      Type.Object({ invocationId: uuid, turnId: text(200), boundAt: timestamp }, closed),
+      Type.Object(
+        {
+          invocationId: uuid,
+          turnId: text(200),
+          boundAt: timestamp,
+          finalizedAt: Type.Optional(timestamp),
+        },
+        closed,
+      ),
       { minItems: 1, maxItems: AGENT_ATTEMPT_TURNS_MAX },
     ),
     proposal: Type.Optional(
@@ -114,9 +235,82 @@ const JournalSchema = Type.Object(
             Type.Literal('refused'),
             Type.Literal('finalized'),
           ]),
-          refusal: Type.Optional(Type.Object({ code: text(100), message: text(4000) }, closed)),
+          refusal: Type.Optional(refusal),
         },
         closed,
+      ),
+    ),
+    returnRequest: Type.Optional(
+      Type.Object(
+        {
+          step: text(200),
+          feedback: Type.Optional(text(32768)),
+          actor: ActorSchema,
+          requestedAt: timestamp,
+          state: Type.Union([
+            Type.Literal('requested'),
+            Type.Literal('applied'),
+            Type.Literal('refused'),
+          ]),
+          refusal: Type.Optional(refusal),
+        },
+        closed,
+      ),
+    ),
+    dirtySet: Type.Optional(
+      Type.Object(
+        {
+          invocationId: uuid,
+          recordedAt: timestamp,
+          paths: Type.Array(
+            Type.Object(
+              {
+                path: text(AGENT_DIRTY_PATH_LENGTH_MAX),
+                sha256: Type.Union([sha256, Type.Null()]),
+                oversize: Type.Optional(Type.Literal(true)),
+              },
+              closed,
+            ),
+            { maxItems: AGENT_DIRTY_PATHS_MAX },
+          ),
+          truncated: Type.Optional(Type.Literal(true)),
+        },
+        closed,
+      ),
+    ),
+    postActions: Type.Optional(
+      Type.Array(
+        Type.Object(
+          {
+            kind: Type.Literal('step-finished'),
+            operationId: uuid,
+            stepTitle: text(1000),
+            state: Type.Union([
+              Type.Literal('pending'),
+              Type.Literal('done'),
+              Type.Literal('failed'),
+            ]),
+            outcomes: Type.Optional(
+              Type.Array(
+                Type.Object(
+                  {
+                    action: text(100),
+                    status: Type.Union([
+                      Type.Literal('completed'),
+                      Type.Literal('skipped'),
+                      Type.Literal('failed'),
+                    ]),
+                    code: Type.Optional(text(100)),
+                  },
+                  closed,
+                ),
+                { maxItems: 20 },
+              ),
+            ),
+          },
+          closed,
+        ),
+        { minItems: 1, maxItems: 10 },
       ),
     ),
   },
@@ -148,13 +342,32 @@ export function parseAgentAttemptJournal(value: unknown, operationId: string): A
 
   const journal = value as AgentAttemptJournal;
   const proposal = journal.proposal;
+  const returnRequest = journal.returnRequest;
+  const bound = (invocationId: string) =>
+    journal.turns.some((turn) => turn.invocationId === invocationId);
+  if (
+    (returnRequest !== undefined &&
+      (returnRequest.actor.class !== 'human' ||
+        (returnRequest.state === 'refused') !== (returnRequest.refusal !== undefined))) ||
+    (journal.dirtySet !== undefined && !bound(journal.dirtySet.invocationId)) ||
+    (journal.postActions !== undefined &&
+      (proposal?.state !== 'finalized' ||
+        journal.postActions.some(
+          (action) =>
+            action.operationId !== agentPostActionId(journal.operationId, action.kind) ||
+            (action.state !== 'pending') !== (action.outcomes !== undefined),
+        )))
+  ) {
+    throw invalidAgentAttemptJournal();
+  }
+
   if (
     journal.operationId !== operationId ||
     journal.actor.class !== 'agent' ||
     (proposal !== undefined &&
       (proposal.actor.class !== 'agent' ||
         (proposal.state === 'refused') !== (proposal.refusal !== undefined) ||
-        !journal.turns.some((turn) => turn.invocationId === proposal.invocationId) ||
+        !bound(proposal.invocationId) ||
         !hasFinishInputShape(proposal.input)))
   ) {
     throw invalidAgentAttemptJournal();
@@ -171,7 +384,7 @@ export const AGENT_ATTEMPT_JOURNAL_KIND: JournalKind<AgentAttemptJournal> = {
   maxBytes: AGENT_ATTEMPT_JOURNAL_MAX_BYTES,
   listingMaxFiles: 1000,
   parse: (_context, value, operationId) => parseAgentAttemptJournal(value, operationId),
-  isSettled: (journal) => journal.proposal?.state === 'finalized',
+  isSettled: isAttemptJournalSettled,
   errors: {
     invalid: invalidAgentAttemptJournal,
     unsupported: invalidAgentAttemptJournal,
@@ -180,6 +393,23 @@ export const AGENT_ATTEMPT_JOURNAL_KIND: JournalKind<AgentAttemptJournal> = {
     payloadUnprovable: (message) => new WorkflowError('WORKFLOW_STATE_CORRUPT', message),
   },
 };
+
+/**
+ * The operation id of one post action of the attempt, derived from `(attemptId, kind)`: a UUID
+ * (version 8) of their sha256, so every retry and restart names the same operation.
+ */
+export function agentPostActionId(attemptId: string, kind: AgentPostActionKind): string {
+  const hex = createHash('sha256').update(`agent-post-action:${attemptId}:${kind}`).digest('hex');
+  const variant = ((parseInt(hex[16]!, 16) & 0x3) | 0x8).toString(16);
+
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    '8' + hex.slice(13, 16),
+    variant + hex.slice(17, 20),
+    hex.slice(20, 32),
+  ].join('-');
+}
 
 /** Whether the journal is the one of the attempt `step#attempt` of `subject`. */
 export function sameAttempt(

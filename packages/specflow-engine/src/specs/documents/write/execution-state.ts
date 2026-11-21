@@ -209,6 +209,9 @@ export async function admitExecutionStateCommit(
     workspaceRoot,
     commits,
     now: options.now ?? (() => new Date()),
+    ...(options.ownedExecution !== undefined
+      ? { executionId: options.ownedExecution.operationId }
+      : {}),
   };
 
   return { record: (summary, writes) => recordWrites(target, summary, writes) };
@@ -273,6 +276,12 @@ interface RecordTarget {
   readonly workspaceRoot: string;
   readonly commits: CommitPort;
   readonly now: () => Date;
+  /**
+   * The agent execution the change is made under (its owned claim): recorded on the operation and on
+   * the ledger entries it leaves, so the attempt's own Task drafts and execution state are never
+   * another author's work (`foreign-ledger.ts`) and the attempt commit can take them.
+   */
+  readonly executionId?: string;
 }
 
 async function recordWrites(
@@ -347,6 +356,7 @@ async function recordWrites(
       documentCount: 0,
     },
     attempts: 0,
+    ...(target.executionId !== undefined ? { agent: { executionId: target.executionId } } : {}),
   };
 
   if (target.git.mode === 'auto') {
@@ -374,6 +384,7 @@ async function recordWrites(
       },
       {
         operationId: target.operationId,
+        ...(target.executionId !== undefined ? { executionId: target.executionId } : {}),
         reason: UNCOMMITTED_AUTO_COMMIT_OFF,
         recordedAt: now,
         ...(await ledgerPin(target)),

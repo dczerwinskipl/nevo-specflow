@@ -9,6 +9,7 @@ import {
 import {
   resolveContinuation,
   type AttentionReason,
+  type AgentLaunch,
   type ContinuationDecision,
   type LaunchBlocker,
 } from '../continuation/resolve';
@@ -129,12 +130,73 @@ export const AGENT_UNAVAILABLE_REASONS = [
   /** D10: the transition reuses the Session, but a person finished the previous attempt. */
   'session-unavailable',
 ] as const satisfies readonly (LaunchBlocker | 'not-an-executor')[];
-export type AgentUnavailableReason = (typeof AGENT_UNAVAILABLE_REASONS)[number];
 
-/** Whether an agent could do the step. Only reported in this feature, never dispatched. */
+/**
+ * The reasons only the Runtime knows, which it adds to the projection it serves (explain before
+ * action; the contracts' `AGENT_UNAVAILABLE_REASONS` documents each). The Engine never reports them.
+ */
+export const RUNTIME_AGENT_UNAVAILABLE_REASONS = [
+  'provider-not-ready',
+  'dirty-baseline',
+  'baseline-changed',
+  'project-busy',
+  'demo',
+] as const;
+export type AgentUnavailableReason =
+  (typeof AGENT_UNAVAILABLE_REASONS)[number] | (typeof RUNTIME_AGENT_UNAVAILABLE_REASONS)[number];
+
+/**
+ * Whether an agent could do the step, and how Ask agent would launch it: the agent role, provider,
+ * model and Session the kernel's continuation resolves (D18), `independent` for a step whose
+ * archetype is independent (always a fresh Session). The owner may change provider and model only
+ * for a fresh Session. Never dispatched by the Engine itself.
+ */
 export type AgentOption =
-  | { readonly kind: 'available' }
-  | { readonly kind: 'unavailable'; readonly reason: AgentUnavailableReason };
+  | { readonly kind: 'available'; readonly launch: AgentLaunch; readonly independent?: true }
+  | {
+      readonly kind: 'unavailable';
+      readonly reason: AgentUnavailableReason;
+      /** Runtime reasons: what precisely blocks it (the provider's readiness, the holder). */
+      readonly detail?: string;
+      /** `dirty-baseline`, `baseline-changed`: the first paths of `count`. */
+      readonly paths?: readonly string[];
+      readonly count?: number;
+      /** The launch once the blocker is resolved (a Runtime reason over a resolved launch). */
+      readonly launch?: AgentLaunch;
+      readonly independent?: true;
+    };
+
+/**
+ * The agent attempt of the active step (Ask agent), as the Runtime serves it: the Engine journal of
+ * the attempt and the state of its current Turn's claim. Only the Runtime adds it.
+ */
+export interface AgentAttemptView {
+  readonly attemptId: string;
+  readonly step: string;
+  readonly attempt: number;
+  readonly sessionId: string;
+  readonly provider: string;
+  readonly model?: string;
+  readonly turn: {
+    readonly turnId: string;
+    readonly state: 'working' | 'unknown' | 'ended';
+    readonly boundAt: string;
+    readonly endedAt?: string;
+  };
+  readonly turns: number;
+  readonly proposal?: {
+    readonly transition: string;
+    readonly state: 'pending' | 'refused' | 'finalized';
+    readonly submittedAt: string;
+    readonly refusal?: {
+      readonly code: string;
+      readonly message: string;
+      readonly paths?: readonly string[];
+    };
+  };
+  /** Whether Continue can start now. */
+  readonly continue: AgentOption;
+}
 
 /** The step a start would activate, with who may do it. */
 export interface StartableStep {
@@ -340,6 +402,8 @@ export interface ActionProjection {
    * ended. A read of several Tasks never computes it.
    */
   readonly documentRelations?: readonly DocumentRelation[];
+  /** The agent attempt of the active step; only the Runtime adds it (Ask agent). */
+  readonly agentAttempt?: AgentAttemptView;
   /**
    * For a Task subject that is not broken, in the projection of that one Task (`inspectActions`):
    * its effective context and dependency candidates. A read of several Tasks (`readExecution`,
@@ -487,9 +551,19 @@ const LAUNCH_BLOCKERS: ReadonlySet<string> = new Set<AgentUnavailableReason>(
 );
 
 /** The agent option of the next step, from the same decision a continuation makes (D10). */
-function agentOptionOf(decision: ContinuationDecision): AgentOption {
+function agentOptionOf(
+  decision: ContinuationDecision,
+  catalogue: Pick<ExecutionCatalogue, 'archetype'>,
+): AgentOption {
+  const available = (launch: AgentLaunch): AgentOption => ({
+    kind: 'available',
+    launch,
+    ...(catalogue.archetype(launch.archetype)?.independent === true
+      ? { independent: true as const }
+      : {}),
+  });
   if (decision.kind === 'continue') {
-    return { kind: 'available' };
+    return available(decision.launch);
   }
 
   if (decision.kind === 'attention') {
@@ -498,7 +572,7 @@ function agentOptionOf(decision: ContinuationDecision): AgentOption {
     }
 
     if (decision.suggestion) {
-      return { kind: 'available' };
+      return available(decision.suggestion);
     }
 
     const reason = decision.blocker ?? decision.reason;
@@ -510,11 +584,15 @@ function agentOptionOf(decision: ContinuationDecision): AgentOption {
   throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'The next step of the run is not a work step.');
 }
 
-function startable(step: WorkflowStep, decision: ContinuationDecision): StartableStep {
+function startable(
+  step: WorkflowStep,
+  decision: ContinuationDecision,
+  catalogue: Pick<ExecutionCatalogue, 'archetype'>,
+): StartableStep {
   return {
     step: describeStep(step),
     human: step.kind === 'work' && step.executors.includes('human'),
-    agent: agentOptionOf(decision),
+    agent: agentOptionOf(decision, catalogue),
   };
 }
 
@@ -610,6 +688,7 @@ function firstStepOf(
     startable(
       entry,
       resolveContinuation({ next: entry, archetypes: (id) => catalogue.archetype(id) }),
+      catalogue,
     ),
   );
 }
@@ -806,7 +885,7 @@ async function runProjection(
     const next = await withEntryGates(
       input.gates,
       ready,
-      startable(ready, continuationOf(run, definition, input.catalogue)),
+      startable(ready, continuationOf(run, definition, input.catalogue), input.catalogue),
     );
     const blockers = [...(await input.startBlockers()), ...entryGateBlockers(next)];
 

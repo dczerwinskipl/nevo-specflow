@@ -113,20 +113,113 @@ export const PinPreviewSchema = Type.Object({
   steps: array(Type.Object({ id: StepIdSchema, title: Type.String(), next: array(Type.String()) })),
 });
 
+/**
+ * Why an agent cannot do the step now. The Engine's reasons come from the definitions:
+ * `not-an-executor`, `archetype-missing`, `provider-not-chosen`, `model-missing`,
+ * `session-unavailable` (D10). The Runtime adds what it knows (explain before action):
+ *
+ * - `provider-not-ready`: managed Sessions are off, or the provider the launch names is not enabled
+ *   or not ready (`detail` says which and why);
+ * - `dirty-baseline`: the checkout has changes SpecFlow cannot attribute (`paths`, `count`); an agent
+ *   starts only from a committed checkout;
+ * - `baseline-changed`: Continue only: files changed since the agent's last Turn ended (`paths`);
+ * - `project-busy`: another writer (an agent Turn, a Create or Close) holds the project (`detail`);
+ * - `demo`: the demo Runtime runs no agent.
+ */
 export const AGENT_UNAVAILABLE_REASONS = [
   'not-an-executor',
   'archetype-missing',
   'provider-not-chosen',
   'model-missing',
   'session-unavailable',
+  'provider-not-ready',
+  'dirty-baseline',
+  'baseline-changed',
+  'project-busy',
+  'demo',
 ] as const;
+export type AgentUnavailableReason = (typeof AGENT_UNAVAILABLE_REASONS)[number];
+
+/** How Ask agent would launch the step (D18): the agent role, provider, model and Session. */
+export const AgentLaunchSchema = Type.Object({
+  archetype: Type.String(),
+  provider: Type.String(),
+  model: Type.String(),
+  effort: Type.Optional(Type.String()),
+  session: Type.Union([
+    Type.Object({ mode: Type.Literal('fresh') }),
+    Type.Object({ mode: Type.Literal('reuse'), sessionId: Type.String() }),
+  ]),
+});
+export type AgentLaunch = Static<typeof AgentLaunchSchema>;
+
 export const AgentOptionSchema = Type.Union([
-  Type.Object({ kind: Type.Literal('available') }),
+  Type.Object({
+    kind: Type.Literal('available'),
+    /**
+     * The launch the workflow resolves (always set by the Engine). With a fresh Session the owner may
+     * change provider and model; a continued Session keeps its own.
+     */
+    launch: Type.Optional(AgentLaunchSchema),
+    /** The step's agent role is independent (a review): always a fresh Session (D18). */
+    independent: Type.Optional(Type.Literal(true)),
+  }),
   Type.Object({
     kind: Type.Literal('unavailable'),
     reason: literals(AGENT_UNAVAILABLE_REASONS),
+    /** What precisely blocks it, in plain words (the provider's readiness, the holder). */
+    detail: Type.Optional(Type.String()),
+    /** `dirty-baseline`, `baseline-changed`: the paths (the first of `count`), checkout-relative. */
+    paths: Type.Optional(array(Type.String())),
+    count: Type.Optional(Type.Integer({ minimum: 0 })),
+    /** The launch that would be used once the blocker is resolved, when one resolves. */
+    launch: Type.Optional(AgentLaunchSchema),
+    independent: Type.Optional(Type.Literal(true)),
   }),
 ]);
+export type AgentOption = Static<typeof AgentOptionSchema>;
+
+/**
+ * The agent attempt the active step is in (Ask agent), as the Runtime knows it: its Session, its
+ * current Turn, its finish proposal and whether Continue is possible now.
+ *
+ * - `turn.state`: `working` (the agent runs), `unknown` (its process may still run: every project
+ *   write is blocked until that is known), `ended` (the Turn ended and its claim settled);
+ * - `proposal`: the agent's finish proposal: `pending` (not finalized yet), `refused` (with the
+ *   reasons it was refused when applied), `finalized`.
+ */
+export const AgentAttemptViewSchema = Type.Object({
+  attemptId: Type.String(),
+  step: StepIdSchema,
+  attempt: Type.Integer({ minimum: 1 }),
+  sessionId: Type.String(),
+  provider: Type.String(),
+  model: Type.Optional(Type.String()),
+  turn: Type.Object({
+    turnId: Type.String(),
+    state: literals(['working', 'unknown', 'ended'] as const),
+    boundAt: Type.String(),
+    endedAt: Type.Optional(Type.String()),
+  }),
+  turns: Type.Integer({ minimum: 1 }),
+  proposal: Type.Optional(
+    Type.Object({
+      transition: Type.String(),
+      state: literals(['pending', 'refused', 'finalized'] as const),
+      submittedAt: Type.String(),
+      refusal: Type.Optional(
+        Type.Object({
+          code: Type.String(),
+          message: Type.String(),
+          paths: Type.Optional(array(Type.String())),
+        }),
+      ),
+    }),
+  ),
+  /** Whether Continue (a new Turn of the attempt) can start now, and why not. */
+  continue: AgentOptionSchema,
+});
+export type AgentAttemptView = Static<typeof AgentAttemptViewSchema>;
 
 export const GATE_UNSATISFIED_REASONS = [
   'no-document',
@@ -793,6 +886,8 @@ export const WorkflowActionProjectionSchema = Type.Object(
      * otherwise and from reads of several Tasks.
      */
     documentRelations: Type.Optional(array(DocumentRelationSchema)),
+    /** The agent attempt of the active step (Ask agent), when the active attempt is one. */
+    agentAttempt: Type.Optional(AgentAttemptViewSchema),
   },
   { $id: 'WorkflowActionProjection' },
 );

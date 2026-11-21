@@ -10,4 +10,4 @@ export type {
   ContextInstructions,
   ContextReference,
 } from '../../operations/agent-step-context';
-export { readStepContext } from './read';
+export { readAgentContextDigest, readStepContext } from './read';

@@ -3,10 +3,14 @@
  * never configured and never taken from a request. The Runtime broker only enforces it; the rules
  * of what a binding may do live here.
  *
- * Today one binding exists: an ad-hoc Turn of a Session associated with a Specification, without an
- * agent attempt (D11b), which may create, save and classify documents of that home Specification.
- * The attempt binding (an agent attempt of a step) joins as a second `kind`, with the documents of
- * its subject, Task drafts for a `produces: tasks` step and the finish proposal of the bound attempt.
+ * Two bindings exist:
+ *
+ * - `ad-hoc`: a Turn of a Session associated with a Specification, without an agent attempt (D11b):
+ *   it may create, save and classify documents of that home Specification;
+ * - `attempt`: a Turn of an agent attempt of a step (Ask agent): the documents of its subject
+ *   Specification, Task drafts (create, edit) only when the step declares `produces: tasks`, and the
+ *   finish proposal of the bound attempt. A Task subject writes no Specification document: its work
+ *   is the declared files and its finish proposal.
  */
 
 /** Every write an agent may be granted. A scope admits a subset. */
@@ -14,33 +18,64 @@ export const AGENT_WRITE_OPERATIONS = [
   'documents.create',
   'documents.save',
   'documents.classify',
+  'tasks.create',
+  'tasks.edit',
+  'workflow.finish',
 ] as const;
 export type AgentWriteOperation = (typeof AGENT_WRITE_OPERATIONS)[number];
 
-/**
- * What a Turn is bound to, as the trusted host knows it. The attempt binding (subject, step,
- * attempt) joins as a union member with its own `kind`.
- */
-export interface AgentScopeBinding {
+const DOCUMENT_OPERATIONS = ['documents.create', 'documents.save', 'documents.classify'] as const;
+
+/** What a Turn is bound to, as the trusted host knows it. */
+export type AgentScopeBinding =
   /** A Turn of a Session associated with `specId`, with no agent attempt (D11b). */
-  readonly kind: 'ad-hoc';
-  readonly specId: string;
-}
+  | { readonly kind: 'ad-hoc'; readonly specId: string }
+  /** A Turn of the agent attempt `step#attempt` of `specId` (or its Task `taskId`). */
+  | {
+      readonly kind: 'attempt';
+      readonly specId: string;
+      readonly taskId?: string;
+      readonly attemptId: string;
+      readonly step: string;
+      readonly attempt: number;
+      /** The step declares `produces: tasks`: the attempt may draft Tasks. */
+      readonly producesTasks: boolean;
+    };
 
 export interface AgentWriteScope {
   readonly kind: AgentScopeBinding['kind'];
   /** The Specification every write of the Turn belongs to. */
   readonly specId: string;
+  /** The attempt's Task subject; absent for a Specification subject and an ad-hoc Turn. */
+  readonly taskId?: string;
+  /** The bound attempt (`attempt` scope only). */
+  readonly attempt?: {
+    readonly attemptId: string;
+    readonly step: string;
+    readonly attempt: number;
+  };
   /** The writes the Turn may make, in {@link AGENT_WRITE_OPERATIONS} order. */
   readonly operations: readonly AgentWriteOperation[];
 }
 
 /** The scope of a binding. Pure: the same binding always yields the same scope. */
 export function deriveAgentScope(binding: AgentScopeBinding): AgentWriteScope {
+  if (binding.kind === 'ad-hoc') {
+    return { kind: 'ad-hoc', specId: binding.specId, operations: [...DOCUMENT_OPERATIONS] };
+  }
+
+  const operations: AgentWriteOperation[] = [
+    ...(binding.taskId === undefined ? DOCUMENT_OPERATIONS : []),
+    ...(binding.producesTasks ? (['tasks.create', 'tasks.edit'] as const) : []),
+    'workflow.finish',
+  ];
+
   return {
-    kind: 'ad-hoc',
+    kind: 'attempt',
     specId: binding.specId,
-    operations: ['documents.create', 'documents.save', 'documents.classify'],
+    ...(binding.taskId !== undefined ? { taskId: binding.taskId } : {}),
+    attempt: { attemptId: binding.attemptId, step: binding.step, attempt: binding.attempt },
+    operations,
   };
 }
 
@@ -49,7 +84,10 @@ export interface AgentOperationTarget {
   /** The operation name the client sent (any string: an unknown one is refused). */
   readonly operation: string;
   readonly specId: string;
-  /** A Task's documents; absent for the Specification's own documents. */
+  /**
+   * The Task the request names: a Task's documents, or (`workflow.finish`) the Task subject it
+   * finishes. A Task draft's own id is not a subject and is not named here.
+   */
   readonly taskId?: string;
 }
 
@@ -67,6 +105,11 @@ export type AgentScopeDecision =
 
 const isWriteOperation = (name: string): name is AgentWriteOperation =>
   (AGENT_WRITE_OPERATIONS as readonly string[]).includes(name);
+
+const subjectOf = (scope: AgentWriteScope): string =>
+  scope.taskId === undefined
+    ? `Specification ${scope.specId}`
+    : `Task ${scope.taskId} of Specification ${scope.specId}`;
 
 /** Whether `target` is inside `scope`, with a reason an agent can act on when it is not. */
 export function admitAgentOperation(
@@ -86,15 +129,20 @@ export function admitAgentOperation(
     return {
       admitted: false,
       reason: 'other-specification',
-      message: `This Turn writes only the documents of Specification ${scope.specId}, not of ${target.specId}. Ask the owner in the Session to change the other Specification.`,
+      message: `This Turn writes only for Specification ${scope.specId}, not for ${target.specId}. Ask the owner in the Session to change the other Specification.`,
     };
   }
 
-  if (target.taskId !== undefined) {
+  // The finish proposal names the attempt's own subject; every other write names no Task subject.
+  const expectedTask = target.operation === 'workflow.finish' ? scope.taskId : undefined;
+  if (target.taskId !== expectedTask) {
     return {
       admitted: false,
       reason: 'task-not-in-scope',
-      message: `This Turn writes only the Specification's own documents, not the documents of Task ${target.taskId}. Ask the owner to start the Task's step.`,
+      message:
+        target.taskId === undefined
+          ? `This Turn works on ${subjectOf(scope)}; name it in the command.`
+          : `This Turn works on ${subjectOf(scope)}, not on the documents or the step of Task ${target.taskId}. Ask the owner to start the Task's step.`,
     };
   }
 

@@ -94,6 +94,15 @@ export interface SpecificationCheckout {
   readonly root: string;
 }
 
+/**
+ * An active project document found by its stable id: `path` is its file, relative to the checkout
+ * root with `/` separators. The agent context hashes that file, so the document's content is part of
+ * the attempt's context digest; a bare `true` pins the document by its id only.
+ */
+export interface ProjectDocumentHit {
+  readonly path: string;
+}
+
 export interface OpenWorkflowOptions {
   /**
    * Whether the documentation of the Specification's checkout has an active document of this
@@ -101,7 +110,10 @@ export interface OpenWorkflowOptions {
    * `path` references; reading its documentation belongs to the caller (the Runtime, the CLI).
    * Without it no project document resolves, so such a reference is refused.
    */
-  readonly projectDocument?: (checkout: SpecificationCheckout, id: string) => Promise<boolean>;
+  readonly projectDocument?: (
+    checkout: SpecificationCheckout,
+    id: string,
+  ) => Promise<boolean | ProjectDocumentHit>;
   /**
    * The agent execution whose running Turn makes these workflow writes (the Runtime broker, D11):
    * its `dispatched` claim admits them; every other unsettled writer still refuses them. Named
@@ -117,6 +129,19 @@ export interface OpenWorkflowOptions {
  * documents is pending (Task-scoped Documents, D03).
  */
 function engineReferences(engine: SpecFlowEngine, options: OpenWorkflowOptions): TaskReferences {
+  const projectDocumentOf = async (specId: string, id: string) => {
+    if (!options.projectDocument) {
+      return false;
+    }
+
+    const found = await availableSpecification(engine, specId);
+
+    return options.projectDocument(
+      { workspaceId: found.workspaceId, root: found.workspaceRoot },
+      id,
+    );
+  };
+
   return {
     archetype: async (specId) =>
       (await availableSpecification(engine, specId)).specification.archetype.id,
@@ -124,17 +149,11 @@ function engineReferences(engine: SpecFlowEngine, options: OpenWorkflowOptions):
       (await availableSpecification(engine, specId)).specification.documents.some(
         (document) => document.id === id,
       ),
-    projectDocument: async (specId, id) => {
-      if (!options.projectDocument) {
-        return false;
-      }
+    projectDocument: async (specId, id) => (await projectDocumentOf(specId, id)) !== false,
+    projectDocumentPath: async (specId, id) => {
+      const hit = await projectDocumentOf(specId, id);
 
-      const found = await availableSpecification(engine, specId);
-
-      return options.projectDocument(
-        { workspaceId: found.workspaceId, root: found.workspaceRoot },
-        id,
-      );
+      return typeof hit === 'object' ? hit.path : undefined;
     },
     path: async (specId, path) =>
       checkoutPathExists((await availableSpecification(engine, specId)).workspaceRoot, path),

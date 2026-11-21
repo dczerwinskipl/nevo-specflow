@@ -174,7 +174,10 @@ async function finalizeInSection(
   }
 
   const index = journal.turns.findIndex((turn) => turn.invocationId === intent.operationId);
-  if (index < 0) {
+  if (
+    index < 0 ||
+    (intent.attempt !== undefined && intent.attempt.attemptId !== journal.operationId)
+  ) {
     mismatch('The execution claim is not one of a Turn of this agent attempt.');
   }
 

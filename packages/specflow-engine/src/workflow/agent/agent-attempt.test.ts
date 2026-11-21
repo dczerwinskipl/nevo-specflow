@@ -11,8 +11,11 @@ import {
   runToBreakdown,
   seedExecutionCatalogue,
   specification,
+  owner,
   startSpecification,
+  work,
 } from '../operations/operations.test-support';
+import { createTask, editTask } from '../operations/task-resource';
 import type { WorkflowDependencies } from '../operations/loaded-execution';
 import type { AgentActor } from '../state/model';
 import { memoryAgentDependencies } from './memory.test-support';
@@ -411,5 +414,72 @@ describe('agent finish proposal', () => {
         })
       ).proposal.transition,
     ).toBe('changes-requested');
+  });
+});
+
+describe('Task drafts of an agent attempt (D11 point 7)', () => {
+  const planner: AgentActor = {
+    class: 'agent',
+    details: { archetype: 'task-planner', provider: 'claude', sessionId: 'session-p' },
+  };
+  const draft = { specId: SPEC, taskId: 'api', title: 'API', type: 'implementation' };
+
+  it('drafts and edits Tasks as the producing step, never a manual draft or another step', async () => {
+    const { dependencies, workflow } = agentDependencies();
+    for (let index = 0; index < 3; index += 1) {
+      await work(workflow, specification);
+    }
+
+    const manual = await createTask(workflow, { ...draft, taskId: 'manual', actor: owner });
+    await startAgentAttempt(
+      dependencies,
+      startInput({ actor: planner, expected: { step: 'breakdown' } }),
+    );
+    const created = await createTask(workflow, {
+      ...draft,
+      actor: planner,
+      agentAttempt: { attemptId: ATTEMPT_ID },
+    });
+
+    expect(created.task.origin).toEqual({ kind: 'produced', step: 'breakdown', attempt: 1 });
+    await expect(
+      editTask(workflow, {
+        specId: SPEC,
+        taskId: 'api',
+        expectedRevision: created.revision,
+        title: 'API v2',
+        actor: planner,
+        agentAttempt: { attemptId: ATTEMPT_ID },
+      }),
+    ).resolves.toMatchObject({ task: { title: 'API v2' } });
+    await expect(
+      editTask(workflow, {
+        specId: SPEC,
+        taskId: 'manual',
+        expectedRevision: manual.revision,
+        title: 'Mine now',
+        actor: planner,
+        agentAttempt: { attemptId: ATTEMPT_ID },
+      }),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_EXECUTOR_NOT_ALLOWED' });
+    // Another attempt id, another agent or no attempt at all is refused before anything is written.
+    for (const input of [
+      { actor: planner, agentAttempt: { attemptId: INVOCATION_2 } },
+      { actor: writer, agentAttempt: { attemptId: ATTEMPT_ID } },
+      { actor: planner },
+    ]) {
+      await expect(
+        createTask(workflow, { ...draft, taskId: 'other', ...input }),
+      ).rejects.toMatchObject({ code: 'WORKFLOW_EXECUTOR_NOT_ALLOWED' });
+    }
+  });
+
+  it('refuses an agent draft in a step that does not produce Tasks', async () => {
+    const { dependencies, workflow } = agentDependencies();
+    await startAgentAttempt(dependencies, startInput());
+
+    await expect(
+      createTask(workflow, { ...draft, actor: writer, agentAttempt: { attemptId: ATTEMPT_ID } }),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_EXECUTOR_NOT_ALLOWED' });
   });
 });

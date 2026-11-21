@@ -13,7 +13,7 @@ import { readWorkspaceRegistry } from '../../project/workspace/registry/registry
 import type { OwnedExecutionClaim } from '../../specs/durable';
 import { listUncleanPaths } from '../../specs/lifecycle/preflight';
 import { readProjectGitPolicy } from '../../version-control/worktrees/config';
-import { engineExecutionStore, openWorkflow } from '../composition';
+import { engineExecutionStore, openWorkflow, type OpenWorkflowOptions } from '../composition';
 import type { WorkflowDependencies } from '../operations/loaded-execution';
 import type { WorkflowStore } from '../state/store';
 import { executionClaimAdmission, type WorkflowWriteAdmission } from '../write-admission';
@@ -108,9 +108,16 @@ async function engineDirtySet(
   );
 }
 
-/** The agent attempt operations of an opened Engine. */
-export async function openAgentAttempts(engine: SpecFlowEngine): Promise<AgentAttemptDependencies> {
-  const workflow = await openWorkflow(engine);
+/**
+ * The agent attempt operations of an opened Engine. `options` open its workflow operations (the
+ * project documents of `project-document` context references; never an owned execution: every
+ * agent attempt operation names the claim it runs under itself).
+ */
+export async function openAgentAttempts(
+  engine: SpecFlowEngine,
+  options: Pick<OpenWorkflowOptions, 'projectDocument'> = {},
+): Promise<AgentAttemptDependencies> {
+  const workflow = await openWorkflow(engine, options);
 
   return {
     workflow,

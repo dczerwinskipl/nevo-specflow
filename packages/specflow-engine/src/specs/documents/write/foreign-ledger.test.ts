@@ -66,4 +66,18 @@ describe('foreign ledger authors of an agent write', () => {
     expect(sameAuthor(intent('session-1'), intent('session-1'))).toBe(true);
     expect(sameAuthor(intent('session-1'), intent('session-2'))).toBe(false);
   });
+
+  it('counts only Turns of the same agent attempt as one author once a Turn has one', () => {
+    const turn = (attemptId?: string) => ({
+      operationId: 'x',
+      ownerId: 'session-1',
+      binding: 'a'.repeat(64),
+      ...(attemptId !== undefined ? { attempt: { attemptId } } : {}),
+    });
+    expect(sameAuthor(turn('attempt-1'), turn('attempt-1'))).toBe(true);
+    expect(sameAuthor(turn('attempt-1'), turn('attempt-2'))).toBe(false);
+    // The same Session's ad-hoc Turn is another author of the attempt's work.
+    expect(sameAuthor(turn('attempt-1'), turn())).toBe(false);
+    expect(sameAuthor(turn(), turn('attempt-1'))).toBe(false);
+  });
 });

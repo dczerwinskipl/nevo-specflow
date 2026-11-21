@@ -7,6 +7,7 @@ export {
   readExecutionForRead,
   readTaskProgressForRead,
   type OpenWorkflowOptions,
+  type ProjectDocumentHit,
   type SpecificationCheckout,
 } from './composition';
 export {
@@ -79,6 +80,8 @@ export {
   type ActionDependencies,
   type ActionPosition,
   type ActionProjection,
+  RUNTIME_AGENT_UNAVAILABLE_REASONS,
+  type AgentAttemptView,
   type AgentOption,
   type AgentUnavailableReason,
   type Availability,
@@ -192,6 +195,7 @@ export {
 export {
   engineAgentContextSource,
   gatherAgentContext,
+  readAgentContextDigest,
   readStepContext,
   type AgentContextSource,
   type AgentStepContext,
@@ -204,6 +208,7 @@ export {
 } from './agent/context';
 export {
   AGENT_WRITE_OPERATIONS,
+  agentAttemptScope,
   admitAgentOperation,
   deriveAgentScope,
   type AgentOperationTarget,
@@ -222,6 +227,7 @@ export {
   createTask,
   editTask,
   removeTask,
+  type AgentDraftAttempt,
   type CreateTaskInput,
   type EditTaskInput,
   type RemoveTaskInput,

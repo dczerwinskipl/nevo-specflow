@@ -40,7 +40,9 @@ export function actorLabel(t: TFunction, actor: WorkflowActor, viewer: Viewer = 
     return personLabel(t, actor.details.actorId, viewer);
   }
 
-  return [actor.details.provider, actor.details.model].filter(Boolean).join(' · ');
+  return [providerFallbackName(actor.details.provider), actor.details.model]
+    .filter(Boolean)
+    .join(' · ');
 }
 
 /** `needs-changes` -> `Needs changes`: the fallback for an id that has no label. */
@@ -99,6 +101,30 @@ export function formatWhen(
     hour: 'numeric',
     minute: '2-digit',
   }).format(date);
+}
+
+/**
+ * A span of time as the history shows it: "Nov 13, 12:52 PM – 1:15 PM" (the end carries its date
+ * only when it is another day).
+ */
+export function formatRange(t: TFunction, from: string, to: string, locale: string): string {
+  const start = formatWhen(t, from, locale);
+  const a = new Date(from);
+  const b = new Date(to);
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) {
+    return start;
+  }
+
+  const end = sameDay(a, b)
+    ? new Intl.DateTimeFormat(locale, { timeStyle: 'short' }).format(b)
+    : formatWhen(t, to, locale);
+
+  return `${start} – ${end}`;
+}
+
+/** An agent provider's name when the Sessions list does not give its title: `claude` is "Claude". */
+export function providerFallbackName(provider: string): string {
+  return humanizeId(provider);
 }
 
 export interface PreviewStep {

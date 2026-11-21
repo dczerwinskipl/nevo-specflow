@@ -65,7 +65,13 @@ export function ownRefusal(
  */
 export function needsPolling(projection: {
   readonly agentAttempt?: AgentAttemptView | undefined;
+  readonly projectHold?: unknown;
 }): boolean {
+  // Another subject's agent holds the project: the hold ends by itself, so the block keeps reading.
+  if (projection.projectHold !== undefined) {
+    return true;
+  }
+
   const view = projection.agentAttempt;
   if (!view) {
     return false;

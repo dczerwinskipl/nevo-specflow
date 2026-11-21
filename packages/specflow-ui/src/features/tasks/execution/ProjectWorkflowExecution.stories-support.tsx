@@ -490,7 +490,12 @@ function ownerAttempt3(base: WorkflowActionProjection): WorkflowActionProjection
     ...base,
     position: {
       ...base.position,
-      attempt: { ...base.position.attempt, number: 3, startedAt: '2026-11-13T12:15:00Z' },
+      attempt: {
+        ...base.position.attempt,
+        number: 3,
+        startedAt: '2026-11-13T12:15:00Z',
+        takenOverFrom: { attempt: 2 },
+      },
     },
     actions: {
       ...base.actions,
@@ -815,7 +820,11 @@ async function specificationWorkspace(
   const plain = await workspaceResponse('draft-problems');
   // Run with agent reads the branch the commit lands on and the title of the Session it continues.
   const base: SpecificationWorkspaceResponse =
-    agentCaseOf(scenario) || scenario.startsWith('attempt-') || scenario.startsWith('finished-')
+    agentCaseOf(scenario) ||
+    scenario.startsWith('attempt-') ||
+    scenario.startsWith('finished-') ||
+    scenario.startsWith('hold-') ||
+    scenario.startsWith('history-')
       ? {
           ...plain,
           sections: {
@@ -847,9 +856,16 @@ async function specificationWorkspace(
                   {
                     id: SESSION_ID,
                     title: SESSION_TITLE,
-                    status: 'quiet',
+                    status:
+                      scenario === 'hold-outcome-unknown'
+                        ? 'unknown'
+                        : scenario === 'hold-working'
+                          ? 'active'
+                          : 'quiet',
                     taskIds: [TASK],
                     providerId: 'claude',
+                    providerTitle: 'Claude',
+                    modelTitle: 'Sonnet 5',
                     updatedAt: '2026-11-13T10:00:00.000Z',
                   },
                 ],

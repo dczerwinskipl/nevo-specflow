@@ -2351,6 +2351,7 @@
       "ready": "Ready to start",
       "active": "In progress since {{since}} · started by {{actor}}",
       "activeAttempt": "Attempt {{attempt}} · in progress since {{since}} · started by {{actor}}",
+      "takenOverFrom": "taken over from the agent",
       "starting": "Starting…",
       "track": {
         "current": "Step {{position}} of {{total}}: {{title}}",
@@ -2615,6 +2616,7 @@
         "uncommittedAbandoned": "Changes in this checkout whose commit was abandoned are not committed. Commit them with Git, then check again.",
         "uncommittedGit": "Files SpecFlow wrote in this checkout are not committed. Commit them with Git, then check again.",
         "agentCommitFailed": "An agent finished its work, but its commit failed. Retry the commit below, then check again.",
+        "agentAndOthers": "Some files in this checkout are not committed: an agent's work whose commit failed, and files of other specifications. Each group below says how to commit its files, then check again.",
         "documentsFailed": "A document commit failed. Retry or resolve it in Documents, then check again."
       },
       "repository": {
@@ -2707,6 +2709,7 @@
       "archiveNote": "Closing archives the specification; it cannot be reopened.",
       "submitting": "Closing…",
       "heldBy": {
+        "mixed": "files in its checkout are not committed",
         "other": "another specification has uncommitted changes in this checkout",
         "own": "it has uncommitted changes in its checkout",
         "checkout": "files SpecFlow wrote in this checkout are not committed"
@@ -2923,7 +2926,7 @@
         "body": "SpecFlow cannot tell whether an agent is still running. Check its outcome in"
       },
       "working": {
-        "body": "An agent is working in this project, so changes here wait until it stops. It works on"
+        "body": "An agent is working in this project. Until it stops, starting, finishing or returning a step here is refused; this page updates by itself when it stops. It works on"
       }
     },
     "attemptHistory": {
@@ -2950,8 +2953,8 @@
       },
       "event": {
         "started": "Started",
-        "turn-started": "Turn {{turn}} started",
-        "turn-ended": "Turn {{turn}} ended",
+        "turn-started": "The agent started working",
+        "turn-ended": "The agent stopped",
         "proposal-refused": "Result not accepted",
         "return-requested": "Return requested",
         "returned": "Returned to an earlier step",

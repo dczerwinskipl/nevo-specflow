@@ -75,14 +75,14 @@ describe('the agent attempt in the history', () => {
   it('shows the events only on request, in plain words', () => {
     renderAttempt(takenOverAttemptHistory());
 
-    expect(screen.queryByText(/Turn 1 ended/)).toBeNull();
+    expect(screen.queryByText('The agent stopped')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Show what happened' }));
 
     const events = within(document.querySelector<HTMLElement>('[data-agent-events]')!);
     expect(events.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
       expect.stringContaining('Started'),
-      expect.stringContaining('Turn 1 started'),
-      expect.stringContaining('Turn 1 ended'),
+      expect.stringContaining('The agent started working'),
+      expect.stringContaining('The agent stopped'),
       expect.stringContaining('Taken over'),
     ]);
     expect(screen.getByRole('button', { name: 'Hide what happened' })).toBeTruthy();

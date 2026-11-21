@@ -197,6 +197,45 @@ describe('agent work whose commit failed', () => {
     expect(closePreview).toHaveBeenCalledTimes(2);
   });
 
+  it('with another specification’s files too, summarises both and leads each group on its own', async () => {
+    const OTHER = '1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f';
+    const hold = refusal('DOCUMENT_COMMITS_PENDING', 409, {
+      cause: 'commit-uncommitted',
+      uncommitted: {
+        reasons: ['auto-commit-off'],
+        owners: [
+          {
+            kind: 'specification',
+            specId: OTHER,
+            title: 'passkeys',
+            workflowState: 2,
+            documents: 0,
+            stepInProgress: true,
+            count: 2,
+            paths: ['specs/active/passkeys/tasks/index.yaml'],
+          },
+        ],
+        attempts: [attempt],
+        unreadable: 0,
+      },
+    });
+    const dialog = renderDialog({ closePreview: vi.fn(() => Promise.reject(hold)) });
+
+    expect(
+      await within(dialog).findByText(
+        'SSO sign-in cannot close yet: files in its checkout are not committed.',
+      ),
+    ).toBeTruthy();
+    expect(within(dialog).queryByText(/another specification has uncommitted changes/)).toBeNull();
+    const group = within(dialog).getByRole('region', { name: 'passkeys · 2' });
+    expect(
+      within(group).getByText(/Commit them with Git, or finish the step in progress/),
+    ).toBeTruthy();
+    expect(
+      within(dialog).getByRole('region', { name: 'Agent work whose commit failed · 7' }),
+    ).toBeTruthy();
+  });
+
   it('says the retry was refused and stays', async () => {
     const hold = refusal('DOCUMENT_COMMITS_PENDING', 409, {
       cause: 'commit-uncommitted',

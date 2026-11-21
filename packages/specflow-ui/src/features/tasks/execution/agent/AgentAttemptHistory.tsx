@@ -1,9 +1,16 @@
 import { useState } from 'react';
 import { Link, useRouter } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { Typography } from '@nevo/ui';
+import { Icon, Typography } from '@nevo/ui';
 import type { WorkflowHistory } from '@nevo/specflow-contracts/workflow';
-import { formatWhen, humanizeId, personLabel } from '../presentation';
+import {
+  formatRange,
+  formatWhen,
+  humanizeId,
+  personLabel,
+  providerFallbackName,
+} from '../presentation';
+import { useSessionFacts } from './useSessionFacts';
 import { useViewer } from '../useViewer';
 import type { WorkflowSubjectRef } from '../api';
 import { InlineAction } from '../InlineAction';
@@ -58,6 +65,36 @@ function commitOf(item: AgentHistoryItem): AttemptCommitView | undefined {
     code: work.commit.code ?? 'COMMIT_FAILED',
     paths: [...new Set([...work.documents, ...work.mixed, ...work.declared])],
   };
+}
+
+/**
+ * The quiet line of an agent attempt in the history: its time span, the agent (the provider as the
+ * Sessions list names it, and the model) and the attempt number: "Nov 13, 12:52 PM – 1:15 PM ·
+ * Claude · Sonnet 5 · Attempt 2".
+ */
+export function AgentAttemptMeta({
+  item,
+  specId,
+}: {
+  readonly item: AgentHistoryItem;
+  readonly specId: string;
+}) {
+  const { t, i18n } = useTranslation();
+  const session = useSessionFacts(specId, item.agent.sessionId);
+  const parts = [
+    item.endedAt
+      ? formatRange(t, item.startedAt, item.endedAt, i18n.language)
+      : formatWhen(t, item.startedAt, i18n.language),
+    session.providerTitle ?? providerFallbackName(item.agent.provider),
+    session.modelTitle ?? item.agent.model,
+    t('taskDetails.attempt', { count: item.attempt }),
+  ];
+
+  return (
+    <Typography as="p" variant="body-sm" className="text-content-muted">
+      {parts.filter(Boolean).join(' · ')}
+    </Typography>
+  );
 }
 
 /** A Task draft the attempt produced: its Full Task page where a router exists. */
@@ -172,6 +209,11 @@ export function AgentAttemptHistory({
     <div className="grid min-w-0 gap-1.5" data-agent-attempt={agent.ended}>
       {outcome ? (
         <Typography as="p" variant="body-sm" className="text-content-primary">
+          {agent.ended === 'taken-over' || agent.ended === 'returned' ? (
+            <span className="mr-1 inline-flex h-[1lh] items-center align-top">
+              <Icon name="undo" size="sm" aria-hidden="true" />
+            </span>
+          ) : null}
           {outcome}
         </Typography>
       ) : null}
@@ -238,8 +280,6 @@ export function AgentAttemptHistory({
           sessionId={agent.sessionId}
           provider={agent.provider}
         />
-        {' · '}
-        {[agent.provider, agent.model].filter(Boolean).join(' · ')}
       </Typography>
       <div>
         <InlineAction

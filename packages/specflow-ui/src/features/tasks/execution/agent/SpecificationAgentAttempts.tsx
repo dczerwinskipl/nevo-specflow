@@ -1,7 +1,10 @@
 import { useTranslation } from 'react-i18next';
 import { Timeline, Typography } from '@nevo/ui';
-import { formatWhen } from '../presentation';
-import { AgentAttemptHistory, type AgentHistoryItem } from './AgentAttemptHistory';
+import {
+  AgentAttemptHistory,
+  AgentAttemptMeta,
+  type AgentHistoryItem,
+} from './AgentAttemptHistory';
 import { useWorkflowHistory } from './useWorkflowHistory';
 
 /**
@@ -10,7 +13,7 @@ import { useWorkflowHistory } from './useWorkflowHistory';
  * the Specification has no agent attempt or its history cannot be read.
  */
 export function SpecificationAgentAttempts({ specId }: { readonly specId: string }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const history = useWorkflowHistory({ specId });
   const items = history.data?.items ?? [];
   const attempts = items.filter(
@@ -41,12 +44,7 @@ export function SpecificationAgentAttempts({ specId }: { readonly specId: string
             >
               <div className="grid min-w-0 gap-1 [overflow-wrap:anywhere]">
                 <AgentAttemptHistory item={item} items={items} subject={{ specId }} />
-                <Typography as="p" variant="body-sm" className="text-content-muted">
-                  {[
-                    formatWhen(t, item.endedAt ?? item.startedAt, i18n.language),
-                    t('taskDetails.attempt', { count: item.attempt }),
-                  ].join(' · ')}
-                </Typography>
+                <AgentAttemptMeta item={item} specId={specId} />
               </div>
             </Timeline.Content>
           </Timeline.Item>

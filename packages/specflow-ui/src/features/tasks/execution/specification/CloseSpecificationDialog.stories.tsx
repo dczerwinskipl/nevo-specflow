@@ -332,7 +332,17 @@ export const BlockedByAgentWorkWhoseCommitFailed: Story = {
     await expect(
       dialog.getByRole('button', { name: 'Retry commit of Implementation' }),
     ).toBeEnabled();
+    // Agent work and another specification's files: one summary above, each group its own way.
+    await expect(
+      dialog.getByText('Single sign-on cannot close yet: files in its checkout are not committed.'),
+    ).toBeVisible();
+    await expect(dialog.queryByText(/another specification has uncommitted changes/)).toBeNull();
     await expect(dialog.getByRole('heading', { name: 'Passkeys spike · 3' })).toBeVisible();
+    await expect(
+      within(dialog.getByRole('region', { name: 'Passkeys spike · 3' })).getByText(
+        /Commit them with Git, or finish the step in progress there/,
+      ),
+    ).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Check again' })).toBeVisible();
     // Only Dismiss and Check again in the footer: the group's action is inside the group.
     await expect(dialog.getAllByRole('button', { name: /Retry commit/ })).toHaveLength(1);

@@ -11,7 +11,7 @@ import { useAppServices } from '../../../../app/useAppServices';
 import { useSpecificationWorkspace } from '../../../specs/read-model';
 import { SessionProviderIcon } from '../../../sessions';
 import type { WorkflowSubjectRef } from '../api';
-import { formatWhen, humanizeId, transitionLabel } from '../presentation';
+import { formatWhen, humanizeId, providerFallbackName, transitionLabel } from '../presentation';
 import type { NowLinks } from '../StartBlockerLines';
 import { WorkflowRefusalAlert } from '../WorkflowRefusalAlert';
 import { InlineAction } from '../InlineAction';
@@ -20,6 +20,7 @@ import { AgentBlocker, Paths } from './AgentBlocker';
 import { SessionLink } from './AgentSession';
 import { agentStageOf, continueRefusal, needsPolling, ownRefusal } from './agentAttempt';
 import { usePolling } from './usePolling';
+import { useSessionFacts } from './useSessionFacts';
 import { AttemptCommitNote } from './AttemptCommitNote';
 import { TakeOverDialog } from './TakeOverDialog';
 import { useFinishedAttemptCommit } from './useAttemptCommit';
@@ -56,12 +57,7 @@ export function AttemptSession({
   /** The Session no longer exists: its title is struck through, never a link. */
   readonly gone?: boolean;
 }) {
-  const { t } = useTranslation();
-  const { specificationApi } = useAppServices();
-  const workspace = useSpecificationWorkspace(specId, specificationApi).data;
-  const title =
-    workspace?.sessions.find((session) => session.id === sessionId)?.title ??
-    t('workflowExecution.agentAttempt.sessionFallback');
+  const { title } = useSessionFacts(specId, sessionId);
 
   return (
     <span className="inline-flex items-baseline gap-1">
@@ -222,7 +218,9 @@ function ContinueRefused({
 /** Name of the agent behind a position's actor, as the quote and the finished line say it. */
 function agentName(actor: WorkflowActor | undefined): string {
   return actor?.class === 'agent'
-    ? [actor.details.provider, actor.details.model].filter(Boolean).join(' · ')
+    ? [providerFallbackName(actor.details.provider), actor.details.model]
+        .filter(Boolean)
+        .join(' · ')
     : '';
 }
 

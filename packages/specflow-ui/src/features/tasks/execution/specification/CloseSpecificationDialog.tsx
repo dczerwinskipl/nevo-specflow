@@ -332,6 +332,7 @@ function CloseContent({
                   hold={outcome.uncommitted}
                   specId={specId}
                   onRetried={checkAgain}
+                  {...(outcome.ownersReasonKey ? { ownerLead: t(outcome.ownersReasonKey) } : {})}
                   {...(onOpenSpecification
                     ? { onOpenSpecification: (id: string) => go(() => onOpenSpecification(id))() }
                     : {})}

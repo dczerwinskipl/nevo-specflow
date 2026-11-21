@@ -12,7 +12,11 @@ import { TaskSourceState } from './TaskSourceState';
 import { useTaskHistory } from '../useTaskPages';
 import { formatWhen, personLabel } from '../../execution/presentation';
 import { useViewer } from '../../execution/useViewer';
-import { AgentAttemptHistory, agentAttemptOf } from '../../execution/agent/AgentAttemptHistory';
+import {
+  AgentAttemptHistory,
+  AgentAttemptMeta,
+  agentAttemptOf,
+} from '../../execution/agent/AgentAttemptHistory';
 import { useWorkflowHistory } from '../../execution/agent/useWorkflowHistory';
 
 export function TaskHistory({
@@ -103,119 +107,127 @@ export function TaskHistory({
         />
       ) : null}
       <Timeline size="md">
-        {entries.map(({ entry, token }) => (
-          <Timeline.Item key={entry.id}>
-            <Timeline.Marker tone="neutral" />
-            <Timeline.Content
-              title={
-                <span role="heading" aria-level={3}>
-                  {titleOf(entry.step)}
-                  {/* The separating space stays outside the nested span, or the accessible name
-                      loses it ("implementation→ Verify"). */}
-                  {entry.transitionedTo ? ' ' : null}
-                  {entry.transitionedTo ? (
-                    <span className="font-normal text-content-secondary">
-                      {'→ '}
-                      {entry.transitionedTo.kind === 'step'
-                        ? titleOf(entry.transitionedTo.step)
-                        : t(`taskDetails.outcome.${entry.transitionedTo.outcome}`)}
-                    </span>
-                  ) : null}
-                </span>
-              }
-            >
-              <div className="grid min-w-0 gap-1 [overflow-wrap:anywhere]">
-                {/* The result with a neutral icon: results carry no tone of their own. */}
-                <Typography as="p" variant="body-sm" className="text-content-primary">
-                  {entry.completedAt ? (
-                    entry.result ? (
-                      <>
-                        <span className="mr-1 inline-flex h-[1lh] items-center align-top">
-                          <Icon name="arrow-right" size="sm" aria-hidden="true" />
-                        </span>
-                        {entry.result}
-                      </>
-                    ) : null
-                  ) : (
-                    <span className="text-status-info">{t('taskDetails.historyInProgress')}</span>
-                  )}
-                </Typography>
-                {entry.feedback ? (
-                  <Typography as="p" variant="body-sm" className="whitespace-pre-line">
-                    {entry.feedback}
-                  </Typography>
-                ) : null}
-                {agentItemOf(entry) ? (
-                  <AgentAttemptHistory
-                    item={agentItemOf(entry)!}
-                    items={workflow.data?.items ?? []}
-                    subject={{ specId, taskId }}
-                    {...(onOpenDocument ? { openDocument: onOpenDocument } : {})}
-                  />
-                ) : null}
-                <Typography as="p" variant="body-sm" className="text-content-muted">
-                  {[
-                    (entry.completedAt ?? entry.startedAt)
-                      ? formatWhen(t, entry.completedAt ?? entry.startedAt ?? '', i18n.language)
-                      : undefined,
-                    actorOf(entry.actor),
-                    t('taskDetails.attempt', { count: entry.key.attempt }),
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </Typography>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="justify-self-start"
-                  aria-expanded={!!state.historyExpanded?.[entry.id]}
-                  aria-controls={`${id}-${entry.id}`}
-                  onClick={(event) => {
-                    const expanded = { ...state.historyExpanded };
-                    if (expanded[entry.id]) {
-                      delete expanded[entry.id];
-                    } else {
-                      expanded[entry.id] = `${snapshot?.revision}:${token}`;
-                    }
+        {entries.map(({ entry, token }) => {
+          const agentItem = agentItemOf(entry);
 
-                    update({ historyExpanded: expanded });
-                    event.currentTarget.focus({ preventScroll: true });
-                  }}
-                >
-                  {t(
-                    state.historyExpanded?.[entry.id]
-                      ? 'taskDetails.hideAttemptDetails'
-                      : 'taskDetails.attemptDetails',
-                  )}
-                </Button>
-                {state.historyExpanded?.[entry.id] ? (
-                  <div id={`${id}-${entry.id}`} className="grid min-w-0 gap-3">
-                    {state.historyExpanded[entry.id] !== `${snapshot?.revision}:${token}` ? (
-                      <Typography as="p" variant="body-sm" role="status">
-                        {t('taskDetails.contextChanged')}
-                      </Typography>
+          return (
+            <Timeline.Item key={entry.id}>
+              <Timeline.Marker tone="neutral" />
+              <Timeline.Content
+                title={
+                  <span role="heading" aria-level={3}>
+                    {titleOf(entry.step)}
+                    {/* The separating space stays outside the nested span, or the accessible name
+                      loses it ("implementation→ Verify"). */}
+                    {entry.transitionedTo ? ' ' : null}
+                    {entry.transitionedTo ? (
+                      <span className="font-normal text-content-secondary">
+                        {'→ '}
+                        {entry.transitionedTo.kind === 'step'
+                          ? titleOf(entry.transitionedTo.step)
+                          : t(`taskDetails.outcome.${entry.transitionedTo.outcome}`)}
+                      </span>
+                    ) : null}
+                  </span>
+                }
+              >
+                <div className="grid min-w-0 gap-1 [overflow-wrap:anywhere]">
+                  {/* The result with a neutral icon: results carry no tone of their own. */}
+                  <Typography as="p" variant="body-sm" className="text-content-primary">
+                    {entry.completedAt ? (
+                      entry.result ? (
+                        <>
+                          <span className="mr-1 inline-flex h-[1lh] items-center align-top">
+                            <Icon name="arrow-right" size="sm" aria-hidden="true" />
+                          </span>
+                          {entry.result}
+                        </>
+                      ) : null
                     ) : (
-                      <TaskHistoryDetails
-                        entry={entry}
-                        token={token}
-                        revision={snapshot!.revision}
-                        taskId={taskId}
-                        onOpenResource={
-                          onOpenResource
-                            ? (params) => {
-                                rememberScroll();
-                                onOpenResource(params);
-                              }
-                            : undefined
-                        }
-                      />
+                      <span className="text-status-info">{t('taskDetails.historyInProgress')}</span>
                     )}
-                  </div>
-                ) : null}
-              </div>
-            </Timeline.Content>
-          </Timeline.Item>
-        ))}
+                  </Typography>
+                  {entry.feedback ? (
+                    <Typography as="p" variant="body-sm" className="whitespace-pre-line">
+                      {entry.feedback}
+                    </Typography>
+                  ) : null}
+                  {agentItem ? (
+                    <AgentAttemptHistory
+                      item={agentItem}
+                      items={workflow.data?.items ?? []}
+                      subject={{ specId, taskId }}
+                      {...(onOpenDocument ? { openDocument: onOpenDocument } : {})}
+                    />
+                  ) : null}
+                  {agentItem ? (
+                    <AgentAttemptMeta item={agentItem} specId={specId} />
+                  ) : (
+                    <Typography as="p" variant="body-sm" className="text-content-muted">
+                      {[
+                        (entry.completedAt ?? entry.startedAt)
+                          ? formatWhen(t, entry.completedAt ?? entry.startedAt ?? '', i18n.language)
+                          : undefined,
+                        actorOf(entry.actor),
+                        t('taskDetails.attempt', { count: entry.key.attempt }),
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </Typography>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="justify-self-start"
+                    aria-expanded={!!state.historyExpanded?.[entry.id]}
+                    aria-controls={`${id}-${entry.id}`}
+                    onClick={(event) => {
+                      const expanded = { ...state.historyExpanded };
+                      if (expanded[entry.id]) {
+                        delete expanded[entry.id];
+                      } else {
+                        expanded[entry.id] = `${snapshot?.revision}:${token}`;
+                      }
+
+                      update({ historyExpanded: expanded });
+                      event.currentTarget.focus({ preventScroll: true });
+                    }}
+                  >
+                    {t(
+                      state.historyExpanded?.[entry.id]
+                        ? 'taskDetails.hideAttemptDetails'
+                        : 'taskDetails.attemptDetails',
+                    )}
+                  </Button>
+                  {state.historyExpanded?.[entry.id] ? (
+                    <div id={`${id}-${entry.id}`} className="grid min-w-0 gap-3">
+                      {state.historyExpanded[entry.id] !== `${snapshot?.revision}:${token}` ? (
+                        <Typography as="p" variant="body-sm" role="status">
+                          {t('taskDetails.contextChanged')}
+                        </Typography>
+                      ) : (
+                        <TaskHistoryDetails
+                          entry={entry}
+                          token={token}
+                          revision={snapshot!.revision}
+                          taskId={taskId}
+                          onOpenResource={
+                            onOpenResource
+                              ? (params) => {
+                                  rememberScroll();
+                                  onOpenResource(params);
+                                }
+                              : undefined
+                          }
+                        />
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              </Timeline.Content>
+            </Timeline.Item>
+          );
+        })}
       </Timeline>
       {query.data?.pages.some((page) => page.coverage === 'partial') ? (
         <Typography as="p" variant="body-sm">

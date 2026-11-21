@@ -241,7 +241,7 @@ export const TakenOverWithHistory: Story = {
     await expect(attempt.getByRole('button', { name: 'task.md' })).toBeVisible();
     await expect(attempt.getByText('src/auth/refresh.ts')).toBeVisible();
     await userEvent.click(attempt.getByRole('button', { name: 'Show what happened' }));
-    await expect(attempt.getByText(/Turn 1 ended/)).toBeVisible();
+    await expect(attempt.getByText('The agent stopped')).toBeVisible();
   },
 };
 
@@ -274,7 +274,9 @@ export const HoldOutcomeUnknownOnOtherSubject: Story = {
     await expect(
       within(alert).getByRole('link', { name: 'Token exchange endpoint and session cookie' }),
     ).toBeVisible();
-    await expect(within(alert).getByRole('link', { name: 'the agent’s session' })).toBeVisible();
+    await expect(
+      within(alert).getByRole('link', { name: 'Implement token exchange' }),
+    ).toBeVisible();
     await expect(actionsOf(now)).toEqual([]);
   },
 };

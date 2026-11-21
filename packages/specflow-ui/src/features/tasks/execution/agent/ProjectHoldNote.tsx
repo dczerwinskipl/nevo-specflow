@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { InlineNote } from '@nevo/ui';
 import type { ProjectHold } from '@nevo/specflow-contracts/workflow';
 import { SessionLink } from './AgentSession';
+import { useSessionFacts } from './useSessionFacts';
 
 const STRONG = 'font-medium text-content-primary';
 
@@ -52,30 +53,26 @@ export function ProjectHoldNote({
   readonly hasAction: boolean;
 }) {
   const { t } = useTranslation();
+  const { title } = useSessionFacts(hold.subject.specId, hold.sessionId);
   const session = (
     <>
       {' '}
       {t('workflowExecution.projectHold.session')}{' '}
-      <SessionLink
-        sessionId={hold.sessionId}
-        title={t('workflowExecution.agentAttempt.sessionFallback')}
-      />
+      <SessionLink sessionId={hold.sessionId} title={title} />
     </>
   );
   if (hold.kind === 'agent-outcome-unknown') {
     return (
       <InlineNote tone="attention" role="alert" data-project-hold={hold.kind}>
         <span className={STRONG}>{t('workflowExecution.projectHold.unknown.title')}</span>{' '}
-        {t('workflowExecution.projectHold.unknown.body')} <SubjectLink hold={hold} />
-        {session}
+        {t('workflowExecution.projectHold.unknown.body')} <SubjectLink hold={hold} />.{session}
       </InlineNote>
     );
   }
 
   return hasAction ? (
     <InlineNote tone="info" role="status" data-project-hold={hold.kind}>
-      {t('workflowExecution.projectHold.working.body')} <SubjectLink hold={hold} />
-      {session}
+      {t('workflowExecution.projectHold.working.body')} <SubjectLink hold={hold} />.{session}
     </InlineNote>
   ) : null;
 }

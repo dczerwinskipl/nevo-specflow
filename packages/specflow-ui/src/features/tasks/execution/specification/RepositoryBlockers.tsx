@@ -111,7 +111,10 @@ export function UncommittedOwners({
   specId,
   onOpenSpecification,
   onRetried,
+  ownerLead,
 }: {
+  /** The sentence that says how to commit the owners' files, shown in each owner's group. */
+  readonly ownerLead?: string;
   readonly hold: UncommittedHoldDetails;
   /** The Specification being closed. */
   readonly specId: string;
@@ -153,6 +156,7 @@ export function UncommittedOwners({
               title: ownerName(owner),
               count: owner.count,
             })}
+            {...(ownerLead ? { explanation: ownerLead } : {})}
             {...(owner.kind === 'specification' && owner.specId !== specId && onOpenSpecification
               ? {
                   headingContent: (

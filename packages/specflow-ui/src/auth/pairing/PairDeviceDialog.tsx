@@ -275,6 +275,7 @@ function PairDeviceDialogContent({
                     <Button
                       size="sm"
                       variant="ghost"
+                      className="-ml-2"
                       disabled={clearing.kind === 'clearing'}
                       onClick={clearRequests}
                     >

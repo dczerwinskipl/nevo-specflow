@@ -3066,7 +3066,7 @@
       "success": "{{device}} jest sparowane",
       "successBody": "Może teraz zatwierdzać, kończyć i zamykać pracę.",
       "clear": "Wyczyść oczekujące prośby",
-      "clearHint": "Użyj, gdy urządzenie nie może dostać kodu: prośby z tego komputera zajmują wszystkie miejsca.",
+      "clearHint": "Użyj, gdy urządzenie nie może dostać kodu.",
       "cleared": "Oczekujące prośby wyczyszczone.",
       "clearing": "Czyszczenie",
       "qrLoading": "Przygotowywanie kodu QR",

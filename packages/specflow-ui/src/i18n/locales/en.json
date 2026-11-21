@@ -3066,7 +3066,7 @@
       "success": "{{device}} is paired",
       "successBody": "It can now approve, finish and close work.",
       "clear": "Clear waiting requests",
-      "clearHint": "Use it when a device cannot get a code: requests from this computer fill the places.",
+      "clearHint": "Use it when a device cannot get a code.",
       "cleared": "Waiting requests cleared.",
       "clearing": "Clearing",
       "qrLoading": "Preparing the QR code",

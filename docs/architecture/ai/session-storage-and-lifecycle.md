@@ -370,8 +370,11 @@ CREATE TABLE session_association_tasks(
 - The store operations `identity`/`identities` (batch, at most 500) join the association row, so a
   Session's scope comes from one indexed lookup; `association`, `list` (keyset on `created_seq`,
   bounded scan budget, signed filter-bound cursor) and `associate-tasks` complete the protocol.
-  `associate-tasks` has no HTTP route: only the future in-process workflow orchestrator appends
-  Tasks, and it is refused for another home Specification or a standalone Session.
+  `associate-tasks` has no HTTP route: only the in-process agent step execution appends Tasks
+  (origin `workflow`), when a continued Session moves into a Task's step
+  ([agent step execution](../runtime/agent-step-execution.md)); a fresh Session of an agent attempt
+  is created with its association (origin `workflow`) in the composed create. It is refused for
+  another home Specification or a standalone Session.
 - Both tables are Session-owned in `SESSION_TABLE_OWNERSHIP`: delete removes them in the delete
   transaction; archive leaves them untouched. No cascade on Specification or Task removal: the
   association stays and reads as `missing`. There is no reassign, unlink or grant inheritance.

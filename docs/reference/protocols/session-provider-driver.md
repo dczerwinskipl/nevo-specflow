@@ -166,7 +166,12 @@ platform base (Windows: PATH, PATHEXT, SYSTEMROOT, WINDIR, USERPROFILE, APPDATA,
 ```
 
 - `NEVO_*` names are reserved for Runtime values; neither inheritance nor configuration may supply
-  or override them.
+  or override them. A write Turn of a Specification-associated Session carries the per-invocation
+  runtime entries `NEVO_AGENT_BROKER` (the broker endpoint) and `NEVO_AGENT_CAPABILITY` (the Turn's
+  capability) in `Invocation.runtimeEnvironment`; every writable driver merges `values` into the
+  process it launches and adds `secrets` to its redactor
+  ([agent step execution](../../architecture/runtime/agent-step-execution.md)). The environment never
+  carries the user's login session or any other credential the Runtime issues.
 - Names must be portable identifiers; values reject NUL, are at most 32 KiB each and 128 KiB in
   total. On Windows names are normalized to upper case, and inherited names whose differently cased
   host entries carry different values are rejected as ambiguous rather than picking one.

@@ -732,7 +732,14 @@ section that upserts the ledger; its claim is released and its journal moves to 
 sha256 (or `absent`), the producing operation ids (at most 50 kept) and the pinned branch. `abandon` writes the same
 entries. It holds no claim. A record is `engine/operations/ledger/<workspaceId>/<owner>.json`, published by atomic rename
 under the control lock and read lock-free; entries are `{ path, postSha256 | null, operationIds, operationCount,
-recordedAt, reason }` and the record pins `branch`, `head` and `workspaceRoot`. It is pruned when entries equal `HEAD`
+recordedAt, reason, executions?, authors? }` and the record pins `branch`, `head` and `workspaceRoot`.
+**Authors** (agent step execution, [ADR 0026](../decisions/0026-agent-step-execution.md)): `executions`
+names, for the kept operation ids an agent Turn made, that Turn's execution claim; `authors` is who
+made every operation of the path, merged on each record and never truncated: the agent Turns
+(`executions`, at most 100 distinct, one more makes the entry `unattributed`) and `unattributed`
+when any operation was made without one (an owner, a tool). The attempt commit selects by
+`authors`, so a file an agent saved more than 50 times still commits; a record written before the
+field existed derives it from the kept operations (`ledgerAuthorsOf`). A record is at most 4 MiB. It is pruned when entries equal `HEAD`
 (after a queued batch commits, a flush, a hand commit seen by the 30-second sweep, a manual commit or the Close flush): the
 read-only effective-set read runs outside the lock and an entry is removed only if it is still the one judged. It is the only source of what a manual commit may include. Its revision is
 the sha256 of the sorted `path:postSha256` list.
@@ -761,6 +768,15 @@ releases the lease. A repeat finds its own commit by the `Nevo-Operation` traile
 and HEAD holds it, and never commits twice; a failure that does not prove the commit never ran waits for `recover`. Journal edges:
 `reserved` to `committing` or `failed`; `committing` to itself (a new executor, the start of the commit), `completed`, `failed` or
 `recovery-required`; `recovery-required` to `committing` (resume), `completed` (adopt) or `failed` (abandon).
+
+**Agent writes.** A document write of an agent Turn arrives through the Runtime broker as the Turn's
+owned execution ([agent step execution](agent-step-execution.md)) and is an ordinary document
+operation: same admission, journal, commit policy and ledger, with the agent actor and the Turn
+recorded. It is refused (`foreign-uncommitted`, "commit it first") when a planned path's uncommitted
+ledger entry holds an operation of another author (made without an execution, or by an execution
+that is neither a Turn of the same agent attempt nor, for a Turn without an attempt, of the same
+Session), and when the checkout's ledgers or the claims they name cannot be read in full. So no path
+mixes two authors' uncommitted changes, and the attempt commit never has to take another author's.
 
 **Interaction.** Close refuses while the ledger of any checkout of its plan is non-empty after the flush and prune
 (`DOCUMENT_COMMITS_PENDING`, cause `commit-uncommitted`), except for the execution state of the Specification a
@@ -817,6 +833,12 @@ published change is ONE document operation of action `workflow` (contract
   Tasks HEAD already registers still commit. The next finish after the held Task is committed takes
   the index and the waiting Tasks. The held paths stay uncommitted
   until a person commits them with Git or a Close archives them.
+- **Agent attempts.** A finished agent attempt does not run `commit-execution-state`: its post action
+  `attempt-commit` commits the attempt's own ledger entries (documents, Tasks and execution state its
+  Turns made, the attempt's start included) with its declared code paths, as one commit
+  ([workflow kernel](../workflow/workflow-kernel.md#commits-of-the-execution-state)). The owner's
+  Confirm of a result that waited for them is an owner write and commits through
+  `commit-execution-state` as after an owner's finish.
 - **Workflow subjects** follow the same rule as document subjects: at most 72 characters and never cut. When
   `<summary> in <slug>` does not fit, the summary goes alone, then `change the workflow state`; the body then holds the
   summary and `Specification: <slug>`.

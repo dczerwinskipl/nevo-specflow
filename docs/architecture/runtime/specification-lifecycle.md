@@ -239,8 +239,10 @@ position it ended from), and cancels every Task that is not cancelled or ended w
 Specification refuse it with `WORKFLOW_EXIT_BLOCKED` and the same blockers (plus `operation-in-progress`). After
 it the gate reports nothing. Abandon is a workflow change committed like the others (queued with auto-commit
 on, in the ledger with it off), and Close's Git and workspace rules apply unchanged except for the execution
-state, below. Workflow mutations after the Close reservation are not yet
-refused (writer admission for workflow steps is not implemented).
+state, below. Once a Close of the Specification is reserved, every workflow write of it is refused
+until the Close settles (`WORKFLOW_SPECIFICATION_BUSY`, cause `close`; `workflow/state/close-guard.ts`),
+and every workflow write is admitted against the agent execution claims
+([workspace execution claims](workspace-execution-claims.md#the-project-wide-resource)).
 
 Every Close and integration first flushes the document commit queue of the checkouts it touches and is refused
 with `DOCUMENT_COMMITS_PENDING` while document commits are pending, failed or uncommitted; the rule, its precedence and
@@ -260,6 +262,20 @@ names each path with its `scope`: `specification` below `specs/active/<slug>/` (
 repository root a Specification file. The ledger hold (`DOCUMENT_COMMITS_PENDING`, `commit-uncommitted`) carries
 whose paths it holds and why (`details.uncommitted`): with automatic commits off (the default) another
 Specification's Task and step changes stay in the ledger until its next step finish.
+
+**Uncommitted agent work (D16, [ADR 0026](../decisions/0026-agent-step-execution.md)).** A finished
+agent attempt commits its own work at finish; what stays uncommitted is listed, never discarded:
+
+- an agent attempt whose commit failed is listed apart, in `attempts` of the `uncommitted-changes`
+  blocker and of the `DOCUMENT_COMMITS_PENDING` hold (its step, Task, failure code and its paths:
+  the documents, Tasks and execution state its Turns wrote and its declared files), with the remedy
+  "retry the attempt commit" (`POST .../workflow/attempt-commit/retry`, `nevo-specflow workflow
+retry-commit`); those paths are not counted again under the other kinds;
+- the code changes of an attempt the owner took over, or of a Turn that ended without a finish,
+  are ordinary dirty paths: listed under `other` with the remedy to commit them in Git;
+- the CLI `specs close --preview` and a Close refusal print the same groups as the UI
+  ("Uncommitted changes", one sub-group per kind with its remedy; `uncommitted` in `--json`;
+  `packages/specflow/src/documents/uncommitted-groups.ts`). There is no discard remedy.
 
 **Shared-checkout state isolation (#181, owner decision 2026-11-19).** Two active Specifications
 sharing one checkout — the ordinary primary/current-folder case, or a shared linked worktree closed
@@ -368,5 +384,5 @@ Runtime that owns the Project's Session store (one local owner, see
 A Turn that starts after the answer sees the unfinished Close journal and refuses, so the answer
 cannot go stale before the removal. On Windows a dead Runtime's provider tree dies with its Job
 Object; on POSIX its process group may outlive it, which is why the unsettled-Turn evidence counts. An external agent started outside Runtime holds no claim, and the Engine
-MUST NOT claim it is quiescent. Writer admission for workflow steps is not implemented yet.
+MUST NOT claim it is quiescent.
 See [durable recovery](../../engineering/shared/specflow-git-recovery.md).

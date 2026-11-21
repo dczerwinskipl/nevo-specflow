@@ -240,25 +240,30 @@ missing or conflicting option, an unknown command, a malformed `--operation-id`)
 `nevo-specflow tasks ...` and `nevo-specflow workflow ...` create and drive the manual execution of a
 Specification and of its Tasks, offline, through the same Engine use cases as the Runtime
 (`createTask`, `editTask`, `removeTask`, `setTaskStatus`, `inspectExecution`, `inspectActions`,
-`startSpecificationExecution`, `startTaskExecution`, `finishStep`, `returnToStep`). A Task needs no Specification
+`startSpecificationExecution`, `startTaskExecution`, `finishStep`, `returnToStep`, and for agent
+attempts `readStepContext`, `confirmAgentResult`, `rejectAgentResult`, `retryAgentAttemptCommit`,
+`takeOverAgentAttempt`). A Task needs no Specification
 run. Every command accepts `--project-root <path>` and `--json`.
 
-| Command                                                                                                                                                                                        | Engine function                                                                                   |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `tasks list <spec-id>`                                                                                                                                                                         | `inspectExecution`                                                                                |
-| `tasks inspect <spec-id> <task-id>`                                                                                                                                                            | `inspectExecution`, `inspectActions`                                                              |
-| `tasks create <spec-id> --id <task-id> --title <t> --type <task-type> [--summary <s>] [--depends-on <id>]... [--context <kind:value>]... [--context-file <f>] [--content-file <f> \| --stdin]` | `createTask`                                                                                      |
-| `tasks edit <spec-id> <task-id> --expected-revision <r> [--title <t>] [--summary <s> \| --clear-summary] [--depends-on <id>]... \| --no-dependencies] [context options \| --default-context]`  | `editTask`                                                                                        |
-| `tasks remove <spec-id> <task-id> --expected-revision <r>`                                                                                                                                     | `removeTask`                                                                                      |
-| `tasks status <spec-id> <task-id> approve\|hold\|resume\|cancel [--reason <text>]`                                                                                                             | `setTaskStatus`                                                                                   |
-| `workflow actions <spec-id> [--task <task-id>]`                                                                                                                                                | `inspectActions` (read-only)                                                                      |
-| `workflow start <spec-id> [--task <task-id> [--expected-workflow-revision <r>]]`                                                                                                               | `startSpecificationExecution` / `startTaskExecution`                                              |
-| `workflow finish <spec-id> [--task <task-id>] --step <id> --attempt <n> [--result <r>] [--feedback <t>] [--artifact <ref>]... [--tasks-file <f>] [--task-decisions-file <f>]`                  | `finishStep`                                                                                      |
-| `workflow reevaluate-wait <spec-id> --step <id> --attempt <n>`                                                                                                                                 | Re-evaluate the wait attempt shown by `workflow actions` after Task records were restored         |
-| `workflow confirm <spec-id> [--task <task-id>] --step <id> --attempt <n> --confirms-digest <sha256> [--request-id <uuid>]`                                                                     | Confirm an agent's result that waits for the owner (D17), exactly as `workflow actions` showed it |
-| `workflow reject <spec-id> [--task <task-id>] --step <id> --attempt <n> --feedback <text> [--request-id <uuid>]`                                                                               | Reject it: the step is ready again with the feedback as its handoff                               |
-| `workflow return <spec-id> [--task <task-id>] --step <id> [--reason <text>]`                                                                                                                   | `returnToStep`                                                                                    |
-| `specs abandon <spec-id> --reason <text> --yes`                                                                                                                                                | `abandonSpecification`                                                                            |
+| Command                                                                                                                                                                                             | Engine function                                                                                                           |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `tasks list <spec-id>`                                                                                                                                                                              | `inspectExecution`                                                                                                        |
+| `tasks inspect <spec-id> <task-id>`                                                                                                                                                                 | `inspectExecution`, `inspectActions`                                                                                      |
+| `tasks create <spec-id> --id <task-id> --title <t> --type <task-type> [--summary <s>] [--depends-on <id>]... [--context <kind:value>]... [--context-file <f>] [--content-file <f> \| --stdin]`      | `createTask`                                                                                                              |
+| `tasks edit <spec-id> <task-id> --expected-revision <r> [--title <t>] [--summary <s> \| --clear-summary] [--depends-on <id>]... \| --no-dependencies] [context options \| --default-context]`       | `editTask`                                                                                                                |
+| `tasks remove <spec-id> <task-id> --expected-revision <r>`                                                                                                                                          | `removeTask`                                                                                                              |
+| `tasks status <spec-id> <task-id> approve\|hold\|resume\|cancel [--reason <text>]`                                                                                                                  | `setTaskStatus`                                                                                                           |
+| `workflow actions <spec-id> [--task <task-id>]`                                                                                                                                                     | `inspectActions` (read-only)                                                                                              |
+| `workflow context <spec-id> [--task <task-id>]`                                                                                                                                                     | `readStepContext` (read-only): the active attempt's documents, document types and Task context as references with digests |
+| `workflow start <spec-id> [--task <task-id> [--expected-workflow-revision <r>]]`                                                                                                                    | `startSpecificationExecution` / `startTaskExecution`                                                                      |
+| `workflow finish <spec-id> [--task <task-id>] --step <id> --attempt <n> [--result <r>] [--feedback <t>] [--artifact <ref>]... [--tasks-file <f>] [--task-decisions-file <f>] [--changed <path>]...` | `finishStep`; inside an agent Turn the agent's finish proposal (`--changed`: a file it changed outside SpecFlow)          |
+| `workflow reevaluate-wait <spec-id> --step <id> --attempt <n>`                                                                                                                                      | Re-evaluate the wait attempt shown by `workflow actions` after Task records were restored                                 |
+| `workflow confirm <spec-id> [--task <task-id>] --step <id> --attempt <n> --confirms-digest <sha256> [--request-id <uuid>]`                                                                          | Confirm an agent's result that waits for the owner (D17), exactly as `workflow actions` showed it                         |
+| `workflow reject <spec-id> [--task <task-id>] --step <id> --attempt <n> --feedback <text> [--request-id <uuid>]`                                                                                    | Reject it: the step is ready again with the feedback as its handoff                                                       |
+| `workflow return <spec-id> [--task <task-id>] --step <id> [--reason <text>]`                                                                                                                        | `returnToStep`; during an agent Turn that may still run, a return request (`return-requested`)                            |
+| `workflow retry-commit <spec-id> [--task <task-id>] --step <id> --attempt <n>`                                                                                                                      | `retryAgentAttemptCommit`: the failed commit of a finished agent attempt, or a confirmation's owner commit                |
+| `workflow take-over <spec-id> [--task <task-id>] --step <id> --attempt <n>`                                                                                                                         | `takeOverAgentAttempt`: end the stopped agent attempt `taken-over` and start yours; commits nothing                       |
+| `specs abandon <spec-id> --reason <text> --yes`                                                                                                                                                     | `abandonSpecification`                                                                                                    |
 
 - **Actor.** The CLI builds the actor itself: the owner `{class: human, actorId: local:<os-user>, trust: local}`,
   used for every write and for `workflow start|finish|return`. No option sets an actor, an executor class or a
@@ -276,6 +281,29 @@ run. Every command accepts `--project-root <path>` and `--json`.
   draft changed since: read the actions again). Both print their request id on stderr before they run;
   after an interruption, repeat with `--request-id <uuid>` to replay (a confirm's commit runs again), or
   run `workflow retry-commit --step <id> --attempt <n>` for a confirmed attempt.
+- **Agent attempts.** An agent step is started, continued and stopped from the UI or HTTP
+  (`.../workflow/agent-execution`), not from the CLI. The owner's CLI commands for it are
+  `workflow take-over` (once the agent's process is proven ended; while it may still run
+  `WORKFLOW_SPECIFICATION_BUSY`), `workflow retry-commit` (the remedy Close and `workflow actions`
+  name for an attempt whose commit failed), `workflow return` (while the agent's Turn may still run
+  it records the request and prints `Return requested: ...`; the step returns once the agent's
+  process is proven stopped, and the offline CLI stops nothing, so stop the Turn from the UI) and
+  `workflow confirm|reject`. Run offline while an agent Turn holds the project, every other write
+  command is refused with `WORKFLOW_SPECIFICATION_BUSY` (`agent-turn`, naming the Session).
+- **Inside an agent Turn** (`NEVO_AGENT_CAPABILITY` set by the Runtime): every command is placed
+  before it runs (`packages/specflow/src/agent-broker/routing.ts`, table `AGENT_COMMANDS` of
+  `@nevo/specflow-contracts/documents`). Reads (`specs list`, `specs documents list|read|validate|status`,
+  `tasks list|inspect`, `workflow actions|context`, `project inspect`, `definitions list|show|validate`,
+  `commit status`, `docs list|get|find|context|search`) run locally and never open the Engine for
+  writing. Brokered writes (`specs documents add|save|classify`, `tasks create|edit`,
+  `workflow finish`) are sent to the Runtime's agent broker, which admits only the Turn's scope;
+  the request id of a document write is `--operation-id` when given, else (and for Task drafts and the
+  finish) derived from the command, so a repeat replays.
+  Every other command is refused with `AGENT_SCOPE_REFUSED` before an Engine is opened, the owner
+  commands included (`workflow start|return|confirm|reject|retry-commit|take-over|reevaluate-wait`,
+  `tasks status|remove`, `specs close|abandon|create`, `commit`, `definitions install`). A broker
+  refusal prints `CODE: message` (`AGENT_*` codes, or the Engine's own) and exits 1; see
+  [agent step execution](../../architecture/runtime/agent-step-execution.md#broker).
 - **Context.** `--context <kind:value>` (repeatable) adds a required entry; kinds are `task-doc`, `spec-doc`,
   `project-doc` (document ids), `path` and `instructions` (the text). `--context-file <path>` reads a YAML or JSON
   list in the shape of the `context` of `task.yaml` (optional entries, notes); its entries come first. On `edit`,

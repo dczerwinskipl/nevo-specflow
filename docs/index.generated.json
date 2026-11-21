@@ -479,12 +479,12 @@
       "status": "superseded",
       "file": "docs/ideas/specflow-engine/reusable-workflow-manual-execution/README.md",
       "read_when": [],
-      "summary": "Superseded planning dossier of PR #137. The neutral coordinator, executors and actors, attention and gates are ADR 0023; Tasks as resources are ADR 0024; the UI is the manual workflow execution product document. Still open: agent delegation (E6) and typed transition inputs (E5).",
+      "summary": "Superseded planning dossier of PR #137. The neutral coordinator, executors and actors, attention and gates are ADR 0023; Tasks as resources are ADR 0024; the UI is the manual workflow execution product document; agent delegation (E6) is ADR 0026 (agent step execution). Still open: typed transition inputs (E5).",
       "related": [
         "adr.0024-tasks-are-resources",
         "adr.0023-neutral-workflow-coordinator-and-manual-execution",
-        "ideas.specflow-engine.reusable-workflow.agent-execution",
-        "ideas.specflow-engine.reusable-workflow.ask-agent-plan",
+        "adr.0026-agent-step-execution",
+        "architecture.runtime.agent-step-execution",
         "ideas.specflow-engine.reusable-workflow.typed-inputs"
       ],
       "scope": "specflow",
@@ -826,6 +826,49 @@
       ]
     },
     {
+      "id": "architecture.runtime.agent-step-execution",
+      "type": "architecture",
+      "title": "Agent step execution — broker, invocation capability and the agent attempt lifecycle",
+      "status": "current",
+      "file": "docs/architecture/runtime/agent-step-execution.md",
+      "read_when": [
+        "changing how an agent runs a workflow step (Run with agent), Continue, Stop, Return or Take over",
+        "changing the agent broker, the invocation capability or what an agent Turn may write",
+        "adding a product CLI command (it must be placed as a read, a brokered write or refused)",
+        "changing the finalize, the attempt commit or the recovery of an agent attempt",
+        "diagnosing an AGENT_* broker refusal or a WORKFLOW_* attribution refusal"
+      ],
+      "summary": "How one agent attempt of a Specification or Task step runs end to end: the owner route, the Engine start with the trusted agent actor, the Session and Turn, the per-Turn capability and the per-user local broker through which the agent's product CLI writes as the Turn's own claim, the derived scope, the finish proposal, the finalize that publishes the step and settles the claim in one lock section, the attempt commit, the owner's Stop, Return, Take over, Confirm, Reject and Retry commit, redaction, the provider allowlist, and recovery after a crash.",
+      "related": [
+        "adr.0026-agent-step-execution",
+        "architecture.workflow.workflow-kernel",
+        "architecture.runtime.workspace-execution-claims",
+        "architecture.runtime.specification-documents",
+        "architecture.ai.session-storage-and-lifecycle",
+        "reference.api.specification-workflow",
+        "reference.cli.specflow-specification-commands",
+        "reference.protocols.session-provider-driver"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "workflow",
+        "ai",
+        "security",
+        "cli"
+      ],
+      "tags": [
+        "agent-execution",
+        "broker",
+        "capability",
+        "claims",
+        "finalize",
+        "recovery",
+        "redaction",
+        "permissions"
+      ]
+    },
+    {
       "id": "architecture.runtime.authorization",
       "type": "architecture",
       "title": "Runtime authorization",
@@ -1080,9 +1123,11 @@
         "diagnosing TURN_CONFLICT or SESSION_RECOVERY_REQUIRED from a Turn start or reconcile",
         "designing writer admission for workflow steps or external CLI agents"
       ],
-      "summary": "The Engine journal that admits every native agent execution as a project-wide writer claim: the intent, the phases admitted, dispatched, unknown and settled, settlement only on a proven not-dispatched or native-result receipt, the project-write resource that excludes Create, Close, document changes and manual commits, the archive move, the crash windows, and how Runtime maps the errors.",
+      "summary": "The Engine journal that admits every native agent execution as a project-wide writer claim: the intent, the phases admitted, dispatched, unknown and settled, settlement only on a proven not-dispatched or native-result receipt, the project-write resource that excludes Create, Close, document changes, manual commits and every workflow write, the owned-claim admission of an agent Turn's own writes and of its finalize, the archive move, the crash windows, and how Runtime maps the errors.",
       "related": [
         "architecture.runtime.specflow-engine",
+        "architecture.runtime.agent-step-execution",
+        "adr.0026-agent-step-execution",
         "architecture.ai.session-storage-and-lifecycle",
         "architecture.runtime.specflow-lifecycle",
         "engineering.shared.specflow-git-recovery",
@@ -1138,12 +1183,14 @@
         "wiring the Runtime, CLI or UI to Specification or Task execution",
         "adding a step kind, an effect, an attention reason or a new subject"
       ],
-      "summary": "One deterministic workflow core (the neutral @nevo/workflow coordinator, with the SpecFlow adapter in the Engine) drives both a Specification and each of its Tasks. Entry points only select the subject. Workflows, agent archetypes (preferred provider and a model per provider) and task types are project definitions. A step declares which executor classes may do it, and every attempt records its actor. A Task is a resource (tasks/index.yaml, task.yaml, task.md) with its own type, workflow and preparation status (draft, ready, on-hold, cancelled), changed only by explicit decisions, a declared approval effect or its own escalation; its run is created at its first start. The Engine decides continuations; anything it cannot carry out is attention for the owner, derived from the state on every inspection and never stored. Runs live in the Specification's `.execution/` folder; only the change journal is local. The writes are committed like the Specification's documents (the document commit policy, queue and ledger); with auto-commit off a step's finish commits them, and a Close takes what is left.",
+      "summary": "One deterministic workflow core (the neutral @nevo/workflow coordinator, with the SpecFlow adapter in the Engine) drives both a Specification and each of its Tasks. Entry points only select the subject. Workflows, agent archetypes (preferred provider and a model per provider) and task types are project definitions. A step declares which executor classes may do it, and every attempt records its actor; an agent attempt (agent step execution) finishes through a proposal the Engine finalizes after the agent's process stopped, and a decision only the owner takes waits for the owner's Confirm. A Task is a resource (tasks/index.yaml, task.yaml, task.md) with its own type, workflow and preparation status (draft, ready, on-hold, cancelled), changed only by explicit decisions, a declared approval effect or its own escalation; its run is created at its first start. The Engine decides continuations; anything it cannot carry out is attention for the owner, derived from the state on every inspection and never stored. Runs live in the Specification's `.execution/` folder; only the change journal is local. The writes are committed like the Specification's documents (the document commit policy, queue and ledger); with auto-commit off a step's finish commits them, and a Close takes what is left.",
       "related": [
         "architecture.workflow.deterministic-workflow",
         "adr.0019-workflow-kernel-and-automatic-continuation",
         "adr.0024-tasks-are-resources",
         "adr.0023-neutral-workflow-coordinator-and-manual-execution",
+        "adr.0026-agent-step-execution",
+        "architecture.runtime.agent-step-execution",
         "reference.api.specification-workflow",
         "adr.0017-definitions-as-project-data",
         "architecture.runtime.specflow-engine",
@@ -2215,6 +2262,44 @@
         "engineering.shared.code-organization",
         "reference.api.task-reads",
         "reference.api.specification-workflow"
+      ]
+    },
+    {
+      "id": "adr.0026-agent-step-execution",
+      "type": "adr",
+      "title": "Agent step execution — an agent runs one workflow step through a Runtime broker",
+      "status": "current",
+      "file": "docs/architecture/decisions/0026-agent-step-execution.md",
+      "read_when": [],
+      "summary": "The owner can let an agent run one Specification or Task step (\"Run with agent\"). The agent's product CLI writes through a per-user local broker of the Runtime, authenticated by a per-Turn capability and admitted as the Turn's own execution claim; its finish is a proposal the Engine finalizes with the claim settlement once the process is proven stopped; the Engine commits the attempt's attributable work as one commit at finish; decisions only the owner takes wait for Confirm or Reject. Access to owner routes is the configured authentication mode only; the protocol is cooperative, not containment.",
+      "related": [
+        "architecture.runtime.agent-step-execution",
+        "architecture.workflow.workflow-kernel",
+        "architecture.runtime.workspace-execution-claims",
+        "architecture.runtime.specification-documents",
+        "architecture.runtime.specflow-lifecycle",
+        "adr.0018-engine-commit-policy-and-manual-commit",
+        "adr.0023-neutral-workflow-coordinator-and-manual-execution",
+        "adr.0024-tasks-are-resources",
+        "reference.api.specification-workflow",
+        "reference.cli.specflow-specification-commands"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime",
+        "ai",
+        "security",
+        "cli"
+      ],
+      "tags": [
+        "agent-execution",
+        "broker",
+        "capability",
+        "claims",
+        "commits",
+        "confirmation",
+        "trust-model"
       ]
     },
     {
@@ -3611,7 +3696,8 @@
         "ideas.specflow-engine.workflow-api-requirements",
         "adr.0024-tasks-are-resources",
         "adr.0023-neutral-workflow-coordinator-and-manual-execution",
-        "ideas.specflow-engine.reusable-workflow.agent-execution"
+        "adr.0026-agent-step-execution",
+        "architecture.runtime.agent-step-execution"
       ],
       "scope": "specflow",
       "areas": [
@@ -3630,87 +3716,27 @@
     {
       "id": "ideas.specflow-engine.reusable-workflow.agent-execution",
       "type": "engineering",
-      "title": "Ask agent — agent execution of workflow steps and Tasks (contract)",
-      "status": "draft",
+      "title": "Agent execution of workflow steps (superseded contract)",
+      "status": "superseded",
       "file": "docs/ideas/specflow-engine/reusable-workflow-manual-execution/agent-assisted-execution.md",
       "read_when": [
-        "adding an Ask agent action beside manual Workflow execution",
-        "letting an agent write Specification documents or Task resources during its own Turn",
-        "integrating Managed Sessions with Workflow start, finish, approval and recovery",
-        "deciding which Engine writes an agent may make and which decisions stay with a person",
-        "changing what is committed after an agent step, or what Close does with uncommitted work"
+        "following an old link to the \"Ask agent\" contract or its decisions D11 to D21"
       ],
-      "summary": "The proposed architecture contract for executing one Specification step or one Task step through an agent: the context built from the step, the definition, the Specification and its documents; Engine writes during the agent's Turn through a trusted Runtime broker bound to the invocation, without weakening the project-wide claim; document registration through the Engine; a finish proposal finalized with the claim settlement; owner-only decisions and approvals; a controlled commit policy for documents, Tasks and code; and error recovery. Decisions D11 to D21, all decided by the owner (D21 superseded on 2026-11-21).",
+      "summary": "Superseded working contract of agent execution (PR #169, E6). Implemented as agent step execution: the decisions are ADR 0026, the Runtime side is the agent step execution architecture page, the Engine side the workflow kernel's agent attempts.",
       "related": [
-        "ideas.specflow-engine.reusable-workflow.ask-agent-plan",
-        "adr.0024-tasks-are-resources",
-        "adr.0023-neutral-workflow-coordinator-and-manual-execution",
-        "adr.0018-engine-commit-policy-and-manual-commit",
-        "product.specflow.ui.workflow-execution",
-        "architecture.workflow.workflow-kernel",
-        "architecture.runtime.workspace-execution-claims",
-        "architecture.runtime.specification-documents",
-        "architecture.runtime.specflow-lifecycle",
-        "architecture.ai.session-storage-and-lifecycle",
-        "ideas.specflow-engine.plan-06",
-        "ideas.specflow-engine.managed-session-integration",
-        "ideas.specflow-engine.local-actors",
-        "ideas.specflow-engine.execution-scopes",
-        "reference.api.workspace-docs",
-        "reference.cli.nevo-specflow-docs"
+        "adr.0026-agent-step-execution",
+        "architecture.runtime.agent-step-execution",
+        "architecture.workflow.workflow-kernel"
       ],
       "scope": "specflow",
       "areas": [
         "workflow",
         "runtime",
-        "ai",
-        "ui",
-        "cli",
-        "security",
-        "testing"
+        "ai"
       ],
       "tags": [
-        "agent-execution",
-        "ask-agent",
-        "task-authoring",
-        "managed-sessions",
-        "claims",
-        "commits",
-        "deterministic"
-      ]
-    },
-    {
-      "id": "ideas.specflow-engine.reusable-workflow.ask-agent-plan",
-      "type": "engineering",
-      "title": "Ask agent delivery plan — slices, tests and test budget",
-      "status": "draft",
-      "file": "docs/ideas/specflow-engine/reusable-workflow-manual-execution/ask-agent-delivery-plan.md",
-      "read_when": [
-        "planning or reviewing a PR that delivers part of Ask agent",
-        "deciding where a dogfood finding about agent execution is fixed"
-      ],
-      "summary": "The ordered delivery of the Ask agent contract: nine small slices, each one PR, from Close preservation and claim-aware kernel operations through Runtime-mediated Engine writes, the agent step context, starting and finishing an agent attempt with its boundary checks, the attempt commit, owner confirmation and recovery, each with its test strategy within a strict test budget, plus where the remaining dogfood findings go and who owns them.",
-      "related": [
-        "ideas.specflow-engine.reusable-workflow.agent-execution",
-        "product.specflow.ui.workflow-execution",
-        "architecture.workflow.workflow-kernel",
-        "architecture.runtime.workspace-execution-claims",
-        "ideas.specflow-engine.plan-06"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "workflow",
-        "runtime",
-        "ai",
-        "ui",
-        "cli",
-        "testing"
-      ],
-      "tags": [
-        "agent-execution",
-        "ask-agent",
-        "delivery-plan",
-        "test-budget"
+        "superseded",
+        "agent-execution"
       ]
     },
     {
@@ -3757,7 +3783,7 @@
       "related": [
         "adr.0024-tasks-are-resources",
         "architecture.workflow.workflow-kernel",
-        "ideas.specflow-engine.reusable-workflow.agent-execution"
+        "adr.0026-agent-step-execution"
       ],
       "scope": "specflow",
       "areas": [
@@ -5508,12 +5534,14 @@
         "changing the workflow action projection, a workflow command or its refusal codes",
         "rendering Close blockers or the Abandon action"
       ],
-      "summary": "The workflow action projection of a Specification and of a Task, the owner commands start, finish, return and abandon, the stable refusal codes with their HTTP status, and the blockers of a refused exit.",
+      "summary": "The workflow action projection of a Specification and of a Task, the owner commands start, finish, return and abandon, agent step execution (run with agent, check, stop, take over), Confirm and Reject of an agent's result, Retry commit, the workflow history, the stable refusal codes with their HTTP status, and the blockers of a refused exit.",
       "related": [
         "reference.api.openapi",
         "reference.api.specflow-specification-operations",
         "reference.api.authorization",
-        "reference.cli.specflow-specification-commands"
+        "reference.cli.specflow-specification-commands",
+        "architecture.runtime.agent-step-execution",
+        "adr.0026-agent-step-execution"
       ],
       "scope": "specflow",
       "areas": [

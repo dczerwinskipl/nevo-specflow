@@ -2978,5 +2978,133 @@
       "git-unavailable": "Git niedostępny",
       "git-membership-mismatch": "To już nie jest worktree Git tego projektu"
     }
+  },
+  "pairing": {
+    "device": {
+      "browserOn": "{{browser}} na {{system}}",
+      "unknown": "Nieznana przeglądarka",
+      "thisDevice": "To urządzenie",
+      "pairedOn": "sparowane {{date}}",
+      "from": "z adresu {{address}}"
+    },
+    "errors": {
+      "ownerRequestRefused": "SpecFlow odrzucił to żądanie, bo strona nie została otwarta z jego własnego adresu. Otwórz SpecFlow pod adresem, na którym działa, i spróbuj ponownie.",
+      "ownerCredentialRequired": "Ta przeglądarka nie jest sparowana albo jej parowanie zostało cofnięte. Sparuj ją ponownie, aby kontynuować.",
+      "capacity": "Na tym komputerze czeka zbyt wiele próśb o parowanie. Poczekaj kilka minut albo na sparowanym urządzeniu wybierz Sparuj urządzenie, a potem Wyczyść oczekujące prośby.",
+      "unavailable": "SpecFlow nie odpowiedział. Sprawdź, czy działa, i spróbuj ponownie.",
+      "notUsed": "Ten SpecFlow nie używa parowania urządzeń."
+    },
+    "screen": {
+      "title": "Sparuj to urządzenie",
+      "description": "Tylko sparowane urządzenie może zatwierdzać, kończyć i zamykać pracę w SpecFlow. Parowanie robi się raz dla przeglądarki.",
+      "loading": "Sprawdzanie tego urządzenia",
+      "qrInvalid": "Ten kod QR nie jest już ważny. Działa raz, przez około dwie minuty. Pokaż nowy na sparowanym urządzeniu albo użyj kodu poniżej."
+    },
+    "code": {
+      "label": "Kod parowania tego urządzenia",
+      "valid": "Ważny jeszcze {{time}} · działa raz",
+      "expired": "Ten kod wygasł. Kody działają raz, przez około dwie minuty.",
+      "lost": "Ten kod nie jest już ważny. Sparowane urządzenie mogło go wyczyścić.",
+      "newCode": "Nowy kod",
+      "requesting": "Pobieranie kodu",
+      "thisDevice": "To urządzenie: {{device}} · z adresu {{address}}",
+      "rateLimited": "Zbyt wiele razy poproszono o kod parowania z tego urządzenia. Nowy kod możesz zamówić {{when}}.",
+      "placeholder": "XXXX-XXXX"
+    },
+    "approve": {
+      "title": "Zatwierdź na sparowanym urządzeniu",
+      "step1": "Na urządzeniu, które jest już sparowane, otwórz menu konta.",
+      "step2": "Wybierz Sparuj urządzenie i wpisz kod powyżej.",
+      "step3": "Sprawdź, czy wskazuje to urządzenie, i zatwierdź.",
+      "qrHint": "Na telefonie możesz zamiast tego wybrać tam Pokaż kod QR i zeskanować go aparatem tego telefonu."
+    },
+    "first": {
+      "title": "Pierwsze urządzenie? Użyj kodu SpecFlow",
+      "titleHeadless": "Sparuj pierwsze urządzenie",
+      "body": "Gdy żadne urządzenie nie jest jeszcze sparowane, SpecFlow pokazuje jednorazowy kod w oknie lub terminalu, w którym go uruchomiono.",
+      "bodyHeadless": "Żadne urządzenie nie jest jeszcze sparowane, a ten SpecFlow działa bez okna, w którym mógłby pokazać kod. Zapisał jednorazowy kod na komputerze, na którym działa, czytelny tylko dla konta, które go uruchamia. Odczytaj go tam, na przykład przez SSH, i wpisz tutaj. Dopóki nie sparujesz urządzenia, żaden agent nie startuje.",
+      "bodyHeadlessRepair": "Ten SpecFlow uruchomiono, aby ponownie sparować urządzenie, i zapisał jednorazowy kod na komputerze, na którym działa, czytelny tylko dla konta, które go uruchamia. Odczytaj go tam, na przykład przez SSH, i wpisz tutaj.",
+      "label": "Kod z SpecFlow",
+      "submit": "Sparuj to urządzenie",
+      "pairing": "Parowanie",
+      "invalid": "Ten kod jest nieprawidłowy. Mógł zostać źle wpisany, użyty albo zastąpiony po restarcie. Sprawdź kod na komputerze, na którym działa SpecFlow, i spróbuj ponownie.",
+      "rateLimited": "Zbyt wiele prób. Możesz spróbować ponownie {{when}}."
+    },
+    "paired": {
+      "titleDevice": "To urządzenie jest sparowane",
+      "titlePhone": "Ten telefon jest sparowany",
+      "byApproval": "Zatwierdziło je sparowane urządzenie. Możesz teraz tutaj zatwierdzać, kończyć i zamykać pracę.",
+      "byQr": "Sparowano kodem QR ze sparowanego urządzenia. Możesz teraz tutaj zatwierdzać, kończyć i zamykać pracę.",
+      "alertTitle": "{{device}} · sparowane przed chwilą",
+      "alertBody": "Pozostaje sparowane, dopóki nie cofniesz parowania w Sparowanych urządzeniach, na dowolnym sparowanym urządzeniu.",
+      "continue": "Przejdź do SpecFlow",
+      "byInitialCode": "Sparowano kodem SpecFlow. Możesz teraz tutaj zatwierdzać, kończyć i zamykać pracę."
+    },
+    "menu": {
+      "pairDevice": "Sparuj urządzenie",
+      "pairedDevices": "Sparowane urządzenia"
+    },
+    "dialog": {
+      "title": "Sparuj urządzenie",
+      "description": "Sparowane urządzenie może zatwierdzać, kończyć i zamykać pracę. Paruj tylko urządzenie, które trzymasz w ręku lub widzisz.",
+      "how": "Sposób parowania",
+      "enterCode": "Wpisz jego kod",
+      "showQr": "Pokaż kod QR",
+      "codeLabel": "Kod widoczny na drugim urządzeniu",
+      "checking": "Sprawdzanie kodu",
+      "invalid": "Ten kod jest nieprawidłowy lub wygasł. Na drugim urządzeniu wybierz Nowy kod i wpisz tutaj nowy.",
+      "expired": "Ten kod wygasł. Na drugim urządzeniu wybierz Nowy kod i wpisz tutaj nowy.",
+      "rateLimited": "Zbyt wiele prób. Możesz spróbować ponownie {{when}}.",
+      "asksToPair": "Ten kod prosi o parowanie",
+      "origin": "Z adresu {{address}} · poproszono {{asked}}",
+      "sameAddress": "Adres jest taki sam dla każdego programu na tym komputerze, a nazwę przeglądarki można podrobić.",
+      "attention": "Zatwierdzaj tylko kod, który widzisz na urządzeniu, które trzymasz. Jeśli to nie zostało uruchomione na Twoim urządzeniu, nie zatwierdzaj.",
+      "pair": "Sparuj {{device}}",
+      "pairing": "Parowanie",
+      "cancel": "Anuluj",
+      "done": "Gotowe",
+      "success": "{{device}} jest sparowane",
+      "successBody": "Może teraz zatwierdzać, kończyć i zamykać pracę.",
+      "clear": "Wyczyść oczekujące prośby",
+      "clearHint": "Użyj, gdy urządzenie nie może dostać kodu: prośby z tego komputera zajmują wszystkie miejsca.",
+      "cleared": "Oczekujące prośby wyczyszczone.",
+      "clearing": "Czyszczenie",
+      "qrLoading": "Przygotowywanie kodu QR",
+      "qrLabel": "Kod QR do sparowania telefonu",
+      "qrHint": "Zeskanuj go aparatem telefonu. Działa raz, jeszcze przez {{time}}.",
+      "qrExpired": "Ten kod QR wygasł. Kody QR działają raz, przez około dwie minuty.",
+      "qrNew": "Nowy kod QR",
+      "qrLocalhost": "Otworzono SpecFlow jako {{host}}, adres dostępny tylko z tego komputera. Telefon nie otworzy tego kodu QR. Otwórz SpecFlow pod adresem sieciowym tego komputera, aby sparować telefon.",
+      "qrUnavailable": "Kod QR nie może być pokazany w tej wersji SpecFlow. Sparuj telefon jego kodem."
+    },
+    "devices": {
+      "title": "Sparowane urządzenia",
+      "description": "Te przeglądarki mogą zatwierdzać, kończyć i zamykać pracę w SpecFlow. Cofnij parowanie tej, której już nie używasz lub nie rozpoznajesz.",
+      "loading": "Wczytywanie sparowanych urządzeń",
+      "failed": "Nie udało się wczytać sparowanych urządzeń.",
+      "retry": "Spróbuj ponownie",
+      "revoke": "Cofnij",
+      "close": "Zamknij",
+      "pair": "Sparuj urządzenie",
+      "revokeOtherTitle": "Cofnąć parowanie {{device}}?",
+      "revokeOtherBody": "Nie będzie mogło niczego zatwierdzać, kończyć ani zamykać, dopóki nie zostanie sparowane ponownie. Praca, którą już wykonało, zostaje.",
+      "revokeThisTitle": "Cofnąć parowanie tego urządzenia?",
+      "revokeThisBody": "Ta przeglądarka nie będzie mogła niczego zatwierdzać, kończyć ani zamykać; pokaże Sparuj to urządzenie, dopóki sparowane urządzenie jej ponownie nie zatwierdzi. Praca, którą już wykonała, zostaje.",
+      "revokeThisConfirm": "Cofnij parowanie tego urządzenia",
+      "revokeLastTitle": "Cofnąć parowanie ostatniego urządzenia?",
+      "revokeLastBody": "Żadne urządzenie nie będzie sparowane. Aby sparować je ponownie, potrzebujesz komputera, na którym działa SpecFlow: uruchom go ponownie z --pair i użyj podanego kodu. Dopóki nie sparujesz urządzenia, żaden agent nie startuje.",
+      "cancel": "Anuluj",
+      "revoking": "Cofanie",
+      "revokeFailed": "Nie udało się cofnąć parowania urządzenia."
+    },
+    "waiting": {
+      "title": "Agenci nie mogą startować, gdy czeka kod parowania",
+      "body": "SpecFlow uruchomiono z --pair i zapisał jednorazowy kod parowania na swoim komputerze. Żaden agent nie startuje, dopóki ten kod można odczytać, więc agent nigdy nie użyje go do sparowania samego siebie.",
+      "action": "Sparuj urządzenie tym kodem albo anuluj czekający kod tutaj.",
+      "cancel": "Anuluj kod parowania",
+      "cancelling": "Anulowanie",
+      "checkAgain": "Sprawdź ponownie",
+      "fileLeft": "Kod jest anulowany i agenci mogą startować, ale nie udało się usunąć jego pliku. Usuń go na komputerze, na którym działa SpecFlow."
+    }
   }
 }

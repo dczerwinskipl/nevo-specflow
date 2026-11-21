@@ -18,6 +18,7 @@ import { createHttpClient, type HttpClient } from '@nevo/http-client';
 import { OWNER_REQUEST_HEADER } from '@nevo/specflow-contracts/authentication';
 
 import { createBrowserAuthApi, type AuthApi } from '../auth/api';
+import { createBrowserDevicePairingApi, type DevicePairingApi } from '../auth/pairing/api';
 import { createRuntimeInfoApi, type RuntimeInfoApi } from './runtimeInfoApi';
 import { createAuthStore, type AuthStore } from '../auth/store';
 import { createAuthRecoveryCoordinator, type AuthRecoveryCoordinator } from '../auth/recovery';
@@ -66,6 +67,7 @@ export interface SpecFlowAppServices {
   readonly sessionAssociationsApi: SessionAssociationsApi;
   readonly runtimeInfoApi: RuntimeInfoApi;
   readonly authApi: AuthApi;
+  readonly devicePairingApi: DevicePairingApi;
   readonly authStore: AuthStore;
   readonly authRecovery: AuthRecoveryCoordinator;
   readonly specsOverviewApi: SpecsOverviewApi;
@@ -101,6 +103,7 @@ export interface SpecFlowServicesOptions {
   readonly http?: HttpClient;
   readonly runtimeInfoApi?: RuntimeInfoApi;
   readonly authApi?: AuthApi;
+  readonly devicePairingApi?: DevicePairingApi;
   readonly authStore?: AuthStore;
   readonly authRecovery?: AuthRecoveryCoordinator;
   readonly specsOverviewApi?: SpecsOverviewApi;
@@ -147,6 +150,7 @@ export function createSpecFlowAppServices(
       options.sessionAssociationsApi ?? createSessionAssociationsApi(runtimeHttp),
     runtimeInfoApi: options.runtimeInfoApi ?? createRuntimeInfoApi(runtimeHttp),
     authApi,
+    devicePairingApi: options.devicePairingApi ?? createBrowserDevicePairingApi(http),
     authStore,
     authRecovery,
     specsOverviewApi,

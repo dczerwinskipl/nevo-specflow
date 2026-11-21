@@ -13,16 +13,21 @@ import {
   MenuTrigger,
   Typography,
 } from '@nevo/ui';
+import { Monitor, Smartphone } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { LocaleMenuItems } from '../i18n';
+import type { PairingMenuActions } from '../auth/pairing/usePairingMenu';
 
 export function AccountMenu({
   session,
   onSignOut,
+  devicePairing,
 }: {
   readonly session: AuthSessionResponse;
   readonly onSignOut: () => void | Promise<void>;
+  /** A paired device's pairing actions (D21); absent on any other browser. */
+  readonly devicePairing?: PairingMenuActions;
 }) {
   const { t } = useTranslation();
   const userName = session.user?.name ?? t('account.localAccess');
@@ -57,6 +62,17 @@ export function AccountMenu({
         <MenuLabel>{userName}</MenuLabel>
         <MenuSeparator />
         <LocaleMenuItems />
+        {devicePairing ? (
+          <>
+            <MenuSeparator />
+            <MenuItem leadingIcon={Smartphone} onSelect={devicePairing.onPairDevice}>
+              {t('pairing.menu.pairDevice')}
+            </MenuItem>
+            <MenuItem leadingIcon={Monitor} onSelect={devicePairing.onPairedDevices}>
+              {t('pairing.menu.pairedDevices')}
+            </MenuItem>
+          </>
+        ) : null}
         {session.authenticated ? (
           <>
             <MenuSeparator />

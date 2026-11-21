@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Button, useWorkspaceLayout } from '@nevo/ui';
 import type { AgentChoice } from '../choice/agentChoice';
@@ -22,6 +23,7 @@ export function SessionStartColumn({
   name,
   onNameChange,
   status,
+  failureNotice,
   onStart,
 }: {
   source: SessionStartSource;
@@ -30,6 +32,8 @@ export function SessionStartColumn({
   name: SessionNameChoice;
   onNameChange: (name: SessionNameChoice) => void;
   status: SessionStartStatus;
+  /** Replaces the generic failure alert with the refusal's own remedy. */
+  failureNotice?: ReactNode;
   onStart: () => void;
 }) {
   const { t } = useTranslation();
@@ -72,7 +76,7 @@ export function SessionStartColumn({
           onNameChange={onNameChange}
           status={status}
           pending={source.pending}
-          notice={source.notice}
+          notice={failureNotice ?? source.notice}
           configurationUnavailable={catalogue.configurationUnavailable}
           refreshing={catalogue.refreshing}
           onRefresh={catalogue.refresh}

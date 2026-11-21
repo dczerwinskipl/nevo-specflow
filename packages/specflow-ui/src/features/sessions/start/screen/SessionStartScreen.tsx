@@ -22,6 +22,9 @@ import { initialAgentChoice, type AgentChoice } from '../choice/agentChoice';
 import { initialSessionName, type SessionNameChoice } from '../choice/sessionName';
 import type { SessionStartStatus } from '../form/SessionStartForm';
 import { seedSessionAssociation } from '../../associations/queries';
+import { sessionErrorCode } from '../../managed/api';
+import { PairingCodeWaitingAlert } from '../../../../auth/pairing/PairingCodeWaitingAlert';
+import { useDevicePairingApi } from '../../../../auth/pairing/useDevicePairingApi';
 import { rememberStartedSession, startedSessionFrom } from '../handoff/startedSession';
 import type { SessionStartSource } from '../source/sessionStartSource';
 import { SessionStartColumn } from './SessionStartColumn';
@@ -81,6 +84,9 @@ export function SessionStartScreen({
   const [chosen, setChosen] = useState<AgentChoice | undefined>(defaults?.agent);
   const [name, setName] = useState<SessionNameChoice>(defaults?.name ?? initialSessionName);
   const [status, setStatus] = useState<SessionStartStatus>(defaults?.status ?? 'idle');
+  // Why the last start was refused, when the Runtime said (`SESSION_PAIRING_PENDING`).
+  const [pairingPending, setPairingPending] = useState(false);
+  const pairingApi = useDevicePairingApi();
   useRegisterPinnedSecondaryTab(
     supportsSplit && contextOpen ? { title: t('sessions.context.title') } : null,
   );
@@ -97,6 +103,7 @@ export function SessionStartScreen({
   // The failure is about the choices that were submitted: editing them retires it.
   const edited = () => {
     setStatus('idle');
+    setPairingPending(false);
     source.dismissFailure?.();
   };
 
@@ -109,6 +116,7 @@ export function SessionStartScreen({
     // What is submitted is what the Session is opened with, however the form changes meanwhile.
     const submitted = { agent, name };
     setStatus('starting');
+    setPairingPending(false);
     source.start(submitted.agent, submitted.name).then(
       ({ sessionId, sent, association }) => {
         if (association) {
@@ -133,8 +141,9 @@ export function SessionStartScreen({
 
         onOpenSession(sessionId);
       },
-      () => {
+      (error: unknown) => {
         if (mounted.current) {
+          setPairingPending(sessionErrorCode(error) === 'SESSION_PAIRING_PENDING');
           setStatus('failed');
         }
       },
@@ -205,6 +214,15 @@ export function SessionStartScreen({
               edited();
             }}
             status={status}
+            failureNotice={
+              status === 'failed' && pairingPending && pairingApi ? (
+                <PairingCodeWaitingAlert
+                  api={pairingApi}
+                  onCancelled={edited}
+                  onCheckAgain={start}
+                />
+              ) : undefined
+            }
             onStart={start}
           />
         </AppWorkspace.Primary>

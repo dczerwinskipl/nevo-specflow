@@ -10,6 +10,7 @@ import {
 } from '@tanstack/react-router';
 import type { AuthStore } from '../../auth/store';
 import { resolveAppAccess, safeReturnTo } from '../../auth/access';
+import { resolvePairingAccess } from '../../auth/pairing/access';
 import type { SpecFlowAppServices } from '../dependencies';
 import { SpecFlowShell } from '../SpecFlowShell';
 
@@ -64,6 +65,14 @@ export const appRoute = createRoute({
         search: { returnTo: decision.returnTo },
         throw: true,
       });
+    }
+
+    // Trusted local mode: only a paired device uses the app (D21).
+    if (decision.kind === 'allow') {
+      const unpaired = await resolvePairingAccess(context.services.devicePairingApi);
+      if (unpaired) {
+        redirect({ to: '/pair', search: { returnTo }, throw: true });
+      }
     }
   },
   component: AppRouteLayout,

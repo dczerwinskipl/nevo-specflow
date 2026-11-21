@@ -2978,5 +2978,133 @@
       "git-unavailable": "Git unavailable",
       "git-membership-mismatch": "No longer a Git worktree of this project"
     }
+  },
+  "pairing": {
+    "device": {
+      "browserOn": "{{browser}} on {{system}}",
+      "unknown": "Unknown browser",
+      "thisDevice": "This device",
+      "pairedOn": "paired {{date}}",
+      "from": "from {{address}}"
+    },
+    "errors": {
+      "ownerRequestRefused": "SpecFlow refused this request because the page was not opened from SpecFlow's own address. Open SpecFlow at the address it runs on and try again.",
+      "ownerCredentialRequired": "This browser is not paired, or its pairing was revoked. Pair it again to continue.",
+      "capacity": "Too many pairing requests are waiting on this computer. Wait a couple of minutes, or on a paired device choose Pair a device, then Clear waiting requests.",
+      "unavailable": "SpecFlow could not answer. Check that it is running and try again.",
+      "notUsed": "This SpecFlow does not use device pairing."
+    },
+    "screen": {
+      "title": "Pair this device",
+      "description": "Only a paired device can approve, finish or close work in SpecFlow. Pairing is done once per browser.",
+      "loading": "Checking this device",
+      "qrInvalid": "This QR code is no longer valid. It works once, for about two minutes. Show a new one on a paired device, or use the code below."
+    },
+    "code": {
+      "label": "This device's pairing code",
+      "valid": "Valid for {{time}} · works once",
+      "expired": "This code expired. Codes work once, for about two minutes.",
+      "lost": "This code is no longer valid. A paired device may have cleared it.",
+      "newCode": "New code",
+      "requesting": "Asking for a code",
+      "thisDevice": "This device: {{device}} · from {{address}}",
+      "rateLimited": "Too many pairing codes were asked for from this device. You can ask for a new one {{when}}.",
+      "placeholder": "XXXX-XXXX"
+    },
+    "approve": {
+      "title": "Approve it from a paired device",
+      "step1": "On a device that is already paired, open your account menu.",
+      "step2": "Choose Pair a device and enter the code above.",
+      "step3": "Check that it names this device, then approve.",
+      "qrHint": "On a phone, you can instead choose Show QR code there and scan it with this phone's camera."
+    },
+    "first": {
+      "title": "First device? Use SpecFlow's own code",
+      "titleHeadless": "Pair the first device",
+      "body": "When no device is paired yet, SpecFlow shows a one-time code in the window or terminal that started it.",
+      "bodyHeadless": "No device is paired yet, and this SpecFlow runs without a window to show a code in. It saved a one-time code on the machine running SpecFlow, readable only by the account that runs it. Read it there, for example over SSH, and enter it here. Until a device is paired, no agent starts.",
+      "bodyHeadlessRepair": "This SpecFlow was started to pair a device again and saved a one-time code on the machine running it, readable only by the account that runs it. Read it there, for example over SSH, and enter it here.",
+      "label": "Code from SpecFlow",
+      "submit": "Pair this device",
+      "pairing": "Pairing",
+      "invalid": "This code is not valid. It may be mistyped, used already, or replaced by a restart. Check the code on the machine running SpecFlow and try again.",
+      "rateLimited": "Too many tries. You can try again {{when}}."
+    },
+    "paired": {
+      "titleDevice": "This device is paired",
+      "titlePhone": "This phone is paired",
+      "byApproval": "A paired device approved it. You can now approve, finish and close work here.",
+      "byQr": "Paired with a QR code from a paired device. You can now approve, finish and close work here.",
+      "alertTitle": "{{device}} · paired just now",
+      "alertBody": "It stays paired until you revoke it in Paired devices, on any paired device.",
+      "continue": "Continue to SpecFlow",
+      "byInitialCode": "Paired with SpecFlow's own code. You can now approve, finish and close work here."
+    },
+    "menu": {
+      "pairDevice": "Pair a device",
+      "pairedDevices": "Paired devices"
+    },
+    "dialog": {
+      "title": "Pair a device",
+      "description": "A paired device can approve, finish and close work. Pair only a device you are holding or can see.",
+      "how": "How to pair",
+      "enterCode": "Enter its code",
+      "showQr": "Show QR code",
+      "codeLabel": "Code shown on the other device",
+      "checking": "Checking the code",
+      "invalid": "This code is not valid or has expired. On the other device, choose New code and enter the new one here.",
+      "expired": "This code expired. On the other device, choose New code and enter the new one here.",
+      "rateLimited": "Too many tries. You can try again {{when}}.",
+      "asksToPair": "This code asks to pair",
+      "origin": "From {{address}} · asked {{asked}}",
+      "sameAddress": "The address is the same for every program on this computer, and a browser name can be faked.",
+      "attention": "Approve only a code you see on a device you hold. If you did not start this on a device of your own, do not approve it.",
+      "pair": "Pair {{device}}",
+      "pairing": "Pairing",
+      "cancel": "Cancel",
+      "done": "Done",
+      "success": "{{device}} is paired",
+      "successBody": "It can now approve, finish and close work.",
+      "clear": "Clear waiting requests",
+      "clearHint": "Use it when a device cannot get a code: requests from this computer fill the places.",
+      "cleared": "Waiting requests cleared.",
+      "clearing": "Clearing",
+      "qrLoading": "Preparing the QR code",
+      "qrLabel": "QR code for pairing a phone",
+      "qrHint": "Scan it with the phone's camera. It works once, for {{time}} more.",
+      "qrExpired": "This QR code expired. QR codes work once, for about two minutes.",
+      "qrNew": "New QR code",
+      "qrLocalhost": "You opened SpecFlow as {{host}}, an address only this computer can reach. A phone cannot open this QR code. Open SpecFlow at this computer's network address to pair a phone.",
+      "qrUnavailable": "The QR code cannot be shown in this version of SpecFlow. Pair the phone with its code instead."
+    },
+    "devices": {
+      "title": "Paired devices",
+      "description": "These browsers can approve, finish and close work in SpecFlow. Revoke one you no longer use or do not recognise.",
+      "loading": "Loading paired devices",
+      "failed": "The paired devices could not be loaded.",
+      "retry": "Try again",
+      "revoke": "Revoke",
+      "close": "Close",
+      "pair": "Pair a device",
+      "revokeOtherTitle": "Revoke {{device}}?",
+      "revokeOtherBody": "It can no longer approve, finish or close anything until it is paired again. Work it already did stays.",
+      "revokeThisTitle": "Revoke this device?",
+      "revokeThisBody": "This browser can no longer approve, finish or close anything; it shows Pair this device until a paired device approves it again. Work it already did stays.",
+      "revokeThisConfirm": "Revoke this device",
+      "revokeLastTitle": "Revoke the last paired device?",
+      "revokeLastBody": "No device will be paired. To pair one again you need the machine running SpecFlow: restart it with --pair and use the code it gives. Until a device is paired, no agent starts.",
+      "cancel": "Cancel",
+      "revoking": "Revoking",
+      "revokeFailed": "The device could not be revoked."
+    },
+    "waiting": {
+      "title": "Agents cannot start while a pairing code is waiting",
+      "body": "SpecFlow was started with --pair and wrote a one-time pairing code on its machine. No agent starts while that code can be read, so an agent can never use it to pair itself.",
+      "action": "Pair a device with the code, or cancel the waiting code here.",
+      "cancel": "Cancel the pairing code",
+      "cancelling": "Cancelling",
+      "checkAgain": "Check again",
+      "fileLeft": "The code is cancelled and agents can start, but its file could not be deleted. Delete it on the machine running SpecFlow."
+    }
   }
 }

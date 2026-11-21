@@ -23,6 +23,7 @@ import { useHashSectionFocus } from './useHashSectionFocus';
 import { designLayerMetadata } from '@nevo/figma-capture/metadata';
 import type { AuthStore } from '../../auth/store';
 import { AccountMenu } from '../AccountMenu';
+import { usePairingMenu } from '../../auth/pairing/usePairingMenu';
 import { NevoBrandLogo, defaultNevoBrand } from '../../brand';
 import { useSpecificationNavigationSource } from '../../features/specs/overview/useSpecificationNavigationMetadata';
 import { useSessionNavigationSummary } from '../../features/sessions/navigation/summary';
@@ -86,6 +87,7 @@ export function ProductNavigation({
     sessionDisclosure.setExpanded,
   );
   const noSpecifications = useNoSpecifications();
+  const pairing = usePairingMenu();
   useNavigationFocus();
   useHashSectionFocus();
   const state = useSyncExternalStore(
@@ -326,8 +328,13 @@ export function ProductNavigation({
         {...designLayerMetadata({ layer: 'account-footer' })}
       >
         {state.status === 'ready' ? (
-          <AccountMenu session={state.session} onSignOut={onSignOut} />
+          <AccountMenu
+            session={state.session}
+            onSignOut={onSignOut}
+            devicePairing={pairing.actions}
+          />
         ) : null}
+        {pairing.dialogs}
       </div>
     </div>
   );

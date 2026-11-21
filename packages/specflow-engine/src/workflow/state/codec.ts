@@ -141,6 +141,7 @@ const OutcomeSchema = Type.Union([
   }),
   closed({ kind: Type.Literal('returned'), to: id(), feedback: optional(text(FEEDBACK_MAX)) }),
   closed({ kind: Type.Literal('abandoned') }),
+  closed({ kind: Type.Literal('taken-over') }),
 ]);
 
 const RunSchema = closed({

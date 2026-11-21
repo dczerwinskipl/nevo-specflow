@@ -17,7 +17,7 @@ export type {
   SessionReferenceOwner,
 } from './reference-owner';
 export type { SessionCoordinator, TurnStartOptions } from './lifecycle/coordinator';
-export type { AgentAttemptSettlement } from './effects/engine';
+export type { AgentAttemptSettlement, AgentTurnAdmission } from './effects/engine';
 export type {
   InvocationCapabilities,
   InvocationCapabilityBinding,

@@ -2,6 +2,7 @@ import { isDeepStrictEqual } from 'node:util';
 
 import type { WorkspaceExecutionReceipt } from '../../execution/model';
 import type { OwnedExecutionClaim } from '../../specs/durable';
+import type { LedgerEntry } from '../../specs/durable/ledger/model';
 import type { ExecutionCatalogue } from '../definitions/catalogue';
 import { SpecificationBusyError } from '../errors';
 import { memoryDependencies } from '../operations/operations.test-support';
@@ -55,6 +56,8 @@ export function memoryAgentDependencies(catalogue: ExecutionCatalogue, attemptId
     /** The operation of each post action run (`agentPostActionRunId`), in order. */
     postActionRuns: [] as string[],
     postActionResults: [{ action: 'attempt-commit', status: 'completed' }] as PostActionResult[],
+    /** The uncommitted-changes ledger entries of the Specification (`ledger`). */
+    ledger: [] as LedgerEntry[],
     /** The owner's post actions the agent operations ran (after a Confirm), in order. */
     ownerPostActions: [] as StepFinishedEvent[],
   };
@@ -137,6 +140,7 @@ export function memoryAgentDependencies(catalogue: ExecutionCatalogue, attemptId
     attributedStore: () => workflow.store,
     newId: () => attemptId,
     boundary: { facts: () => Promise.resolve(state.attribution) },
+    ledger: () => Promise.resolve([...state.ledger]),
     finalize: {
       store: () => finalizeStore,
       settleClaim(intent, receipt) {

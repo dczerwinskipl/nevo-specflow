@@ -499,6 +499,95 @@ describe('a repeated finish (F16)', () => {
   });
 });
 
+describe('taking an attempt over', () => {
+  const takeOver = (attempt = 1): WorkflowCommand => ({
+    kind: 'take-over',
+    at: AT,
+    step: 'draft',
+    attempt,
+    actor: person,
+    hostData: { by: 'owner' },
+  });
+
+  it('ends the attempt taken-over and starts the next attempt of the step for the new actor', () => {
+    const decision = decide(DEFINITION, run(start(agent)), takeOver());
+
+    expect(decision.intent).toEqual({ kind: 'execute', step: 'draft', attempt: 2, resumed: false });
+    expect(decision.declaredEffects).toEqual([]);
+    expect(decision.nextRun.position).toEqual({ state: 'active', step: 'draft', attempt: 2 });
+    expect(decision.nextRun.attempts).toMatchObject([
+      { step: 'draft', attempt: 1, actor: agent, endedAt: AT, outcome: { kind: 'taken-over' } },
+      { step: 'draft', attempt: 2, actor: person, hostData: { by: 'owner' } },
+    ]);
+    expect(isPositionJustified(decision.nextRun, DEFINITION)).toBe(true);
+    // The new attempt is the person's: they finish it, and the agent's attempt cannot be finished.
+    const finished = decide(DEFINITION, decision.nextRun, finish('draft', 2, person));
+    expect(finished.intent).toMatchObject({ kind: 'ready', step: 'review' });
+    expect(() => decide(DEFINITION, decision.nextRun, finish('draft', 1, agent))).toThrow(
+      expect.objectContaining({ code: 'WORKFLOW_ATTEMPT_MISMATCH' }),
+    );
+  });
+
+  it('hands the new attempt what the attempt taken over received', () => {
+    const returned = run(...inWait, {
+      kind: 'event',
+      at: AT,
+      name: 'item-stopped',
+      feedback: 'Item 3 is gone.',
+    });
+    const taken = decide(DEFINITION, run(start(agent)), takeOver()).nextRun;
+    expect(handoffOf(taken)).toBeUndefined();
+    const again = decide(
+      DEFINITION,
+      decide(DEFINITION, returned, start(agent)).nextRun,
+      takeOver(2),
+    );
+    expect(handoffOf(again.nextRun)).toMatchObject({
+      kind: 'transition',
+      feedback: 'Item 3 is gone.',
+    });
+  });
+
+  it.each<[string, WorkflowCommand[], WorkflowCommand, string]>([
+    ['without an active step', draftedByAgent, takeOver(), 'WORKFLOW_POSITION_INVALID'],
+    ['of another attempt', [start(agent)], takeOver(2), 'WORKFLOW_ATTEMPT_MISMATCH'],
+    [
+      'by an actor the step does not allow',
+      [...draftedByAgent, start(person)],
+      { kind: 'take-over', at: AT, step: 'review', attempt: 1, actor: agent },
+      'WORKFLOW_EXECUTOR_NOT_ALLOWED',
+    ],
+  ])('refuses a take-over %s', (_name, before, command, code) => {
+    expect(() => decide(DEFINITION, run(...before), command)).toThrow(
+      expect.objectContaining({ code }),
+    );
+  });
+
+  it('rejects a taken-over attempt that no attempt of its step follows', () => {
+    const taken = decide(DEFINITION, run(start(agent)), takeOver()).nextRun;
+    const [first] = taken.attempts;
+    const alone: WorkflowRun = {
+      ...taken,
+      position: { state: 'ready', step: 'draft' },
+      attempts: [first!],
+    };
+    expect(isPositionJustified(alone, DEFINITION)).toBe(false);
+    const returnedBetween: WorkflowRun = {
+      ...alone,
+      returns: [
+        {
+          sequence: 2,
+          at: AT,
+          from: { state: 'ready', step: 'draft' },
+          to: 'draft',
+          feedback: 'x',
+        },
+      ],
+    };
+    expect(isPositionJustified(returnedBetween, DEFINITION)).toBe(false);
+  });
+});
+
 describe('host data of an attempt', () => {
   it('is recorded by the start that activates the attempt and kept by a resume and a finish', () => {
     const started = decide(DEFINITION, newRun(DEFINITION), {

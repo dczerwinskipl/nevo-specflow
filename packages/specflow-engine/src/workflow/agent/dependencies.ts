@@ -10,7 +10,8 @@ import type {
 } from '../../execution/model';
 import type { WorkspaceExecutionTarget } from '../../execution/operations';
 import { readWorkspaceRegistry } from '../../project/workspace/registry/registry';
-import type { OwnedExecutionClaim } from '../../specs/durable';
+import { readLedgerRecord, type OwnedExecutionClaim } from '../../specs/durable';
+import type { LedgerEntry } from '../../specs/durable/ledger/model';
 import { listUncleanPaths } from '../../specs/lifecycle/preflight';
 import { readProjectGitPolicy } from '../../version-control/worktrees/config';
 import { engineExecutionStore, openWorkflow, type OpenWorkflowOptions } from '../composition';
@@ -46,6 +47,11 @@ export interface AgentAttemptDependencies {
   readonly finalize: AgentFinalizeDependencies;
   /** What the attribution checks of an agent attempt read (B3, B6). */
   readonly boundary: AgentBoundaryDependencies;
+  /**
+   * The uncommitted-changes ledger entries of a Specification in a checkout (lock-free): what an
+   * attempt's history lists as the work SpecFlow wrote for it and has not committed.
+   */
+  ledger(workspaceId: string, specId: string): Promise<readonly LedgerEntry[]>;
 }
 
 /** The facts the attribution boundary judges, read from the attempt's checkout. */
@@ -129,6 +135,14 @@ export async function openAgentAttempts(
     attributedStore: (executionId) => engineExecutionStore(engine, undefined, executionId),
     newId: randomUUID,
     boundary: { facts: (workspaceId) => engineAttributionFacts(engine, workspaceId) },
+    async ledger(workspaceId, specId) {
+      const record = await readLedgerRecord(engine.context, workspaceId, {
+        kind: 'specification',
+        id: specId,
+      });
+
+      return record?.entries ?? [];
+    },
     finalize: {
       store: (owned) => engineExecutionStore(engine, owned),
       async settleClaim(intent, receipt, target) {

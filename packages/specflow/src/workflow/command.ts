@@ -11,9 +11,10 @@ import {
   rejectAgentResult,
   resolveSpecification,
   retryAgentAttemptCommit,
-  returnToStep,
+  returnDuringAgentAttempt,
   startSpecificationExecution,
   startTaskExecution,
+  takeOverAgentAttempt,
   type FinishStepInput,
   type TaskDecision,
   type TaskProposal,
@@ -36,6 +37,7 @@ import {
   retryCommitLines,
   returnLines,
   startLines,
+  takeOverLines,
 } from './present';
 
 export interface WorkflowCommandContext extends ExecutionOutput {
@@ -300,8 +302,10 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
       .requiredOption('--step <step-id>', 'The declared return target (see "workflow actions")')
       .option('--reason <text>', 'Why; handed to the step as feedback, required by some returns'),
   ).action(async (specId: string, options: CommonOptions & { step: string; reason?: string }) => {
-    await run(options, 'change', async ({ workflow: dependencies }) => {
-      const result = await returnToStep(dependencies, {
+    await run(options, 'change', async ({ engine }) => {
+      // During an agent attempt whose Turn may still run, the return is recorded and applies once
+      // the agent's process stopped (D19); offline, nothing stops it: the owner stops it.
+      const result = await returnDuringAgentAttempt(await openAgentAttempts(engine), {
         subject: subjectOf(specId, options),
         step: options.step,
         ...(options.reason !== undefined ? { feedback: options.reason } : {}),
@@ -329,6 +333,26 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
         actor: owner(),
       });
       emit(options, result, retryCommitLines(subject, options.step, options.attempt, result));
+    });
+  });
+
+  common(
+    workflow
+      .command('take-over')
+      .description(
+        "Take over a stopped agent attempt and go on yourself; the agent's changes stay uncommitted",
+      )
+      .requiredOption('--step <step-id>', 'The step the agent works on (see "workflow actions")')
+      .requiredOption('--attempt <number>', "The agent's attempt", parsePositiveInt),
+  ).action(async (specId: string, options: CommonOptions & { step: string; attempt: number }) => {
+    await run(options, 'change', async ({ engine }) => {
+      const result = await takeOverAgentAttempt(await openAgentAttempts(engine), {
+        subject: subjectOf(specId, options),
+        step: options.step,
+        attempt: options.attempt,
+        actor: owner(),
+      });
+      emit(options, result, takeOverLines(result));
     });
   });
 

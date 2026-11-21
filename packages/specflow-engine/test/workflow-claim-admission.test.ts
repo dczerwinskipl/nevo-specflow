@@ -242,7 +242,8 @@ it('finalizes an agent attempt whose Turn claim is unknown in one section, then 
   ).toMatchObject({
     kind: 'finished',
     transition: 'agreed',
-    postActions: [{ action: 'commit-execution-state', status: 'skipped' }],
+    // The attempt's own commit (D15) takes the place of the workflow finish post action.
+    postActions: [{ action: 'attempt-commit', status: 'skipped' }],
   });
   const attempt = await readAgentAttempt(agent, binding.attemptId);
   expect(attempt).toMatchObject({

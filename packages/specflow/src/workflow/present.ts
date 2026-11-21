@@ -11,7 +11,7 @@ import type {
   PostActionResult,
   RejectAgentResultResult,
   RetryAgentAttemptCommitResult,
-  ReturnToStepResult,
+  OwnerReturnResult,
   RunPosition,
   SpecificationExitActions,
   StartBlocker,
@@ -19,6 +19,7 @@ import type {
   StartableStep,
   StepContext,
   WorkflowSubject,
+  TakeOverAgentAttemptResult,
 } from '@nevo/specflow-engine';
 
 /** A step as a person reads it: `Title (id)`, or the id alone when there is no title. */
@@ -435,10 +436,32 @@ export function rejectLines(result: RejectAgentResultResult): string[] {
   ];
 }
 
-export function returnLines(result: ReturnToStepResult): string[] {
+export function returnLines(result: OwnerReturnResult): string[] {
+  if (result.kind === 'return-requested') {
+    return [
+      `Return requested: ${subjectLabel(result.subject)} back to ${result.to}`,
+      `The agent's Turn of ${result.step}#${String(result.attempt)} (Session ${result.sessionId}) may still run; the return applies once it has stopped.`,
+      'Stop the agent from the Runtime (Stop) if it is still working.',
+    ];
+  }
+
   return [
     `Returned: ${subjectLabel(result.subject)}`,
     `Position: ${positionLine(result.position)}`,
     `Next: ${continuationLine(result.continuation)}`,
+  ];
+}
+
+/**
+ * `workflow take-over`: the agent attempt that ended and the owner's attempt that started. Nothing
+ * the agent wrote was committed: Close lists what stays uncommitted.
+ */
+export function takeOverLines(result: TakeOverAgentAttemptResult): string[] {
+  const { takenOver, context } = result;
+
+  return [
+    `Took over: ${subjectLabel(result.subject)} ${takenOver.step}#${String(takenOver.attempt)} (the agent's attempt ended)`,
+    `Active: ${named(context.step)}, attempt ${String(context.attempt)} (yours)`,
+    "The agent's changes are kept and not committed; Close lists what is uncommitted.",
   ];
 }

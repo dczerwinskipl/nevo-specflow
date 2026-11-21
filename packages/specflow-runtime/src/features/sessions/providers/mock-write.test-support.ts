@@ -4,11 +4,12 @@ import { createMockDriver } from './mock';
 /**
  * A minimal writable test driver (the mock driver is read-only): each Turn records a fake process
  * identity, crosses the dispatch barrier, correlates its native context, runs `turn` (what the
- * "agent" does) and completes, with positive native-stop evidence. A `turn` that throws leaves the
+ * "agent" does; it sees the Turn's cancellation as `signal`) and completes, with positive native-stop
+ * evidence. A `turn` that throws leaves the
  * Turn's outcome unverified, as a lost provider does. Shared by the Runtime tests of agent Turns.
  */
 export function createWritableTestDriver(
-  turn: (invocation: Invocation, emit: EmitFact) => Promise<void>,
+  turn: (invocation: Invocation, emit: EmitFact, signal: AbortSignal) => Promise<void>,
   options: { providerId?: string } = {},
 ): SessionDriver {
   const providerId = options.providerId ?? 'controlled';
@@ -25,7 +26,7 @@ export function createWritableTestDriver(
     }),
     validate: () => undefined,
     contextScope: () => 'account',
-    start(invocation, emit) {
+    start(invocation, emit, signal) {
       const result = { kind: 'outcome' as const, outcome: 'completed' as const };
       const done = (async () => {
         await invocation.recordProcess?.({ platform: 'posix', groupId: 4242 });
@@ -37,7 +38,7 @@ export function createWritableTestDriver(
           });
         }
 
-        await turn(invocation, emit);
+        await turn(invocation, emit, signal);
         await emit(result);
       })();
 

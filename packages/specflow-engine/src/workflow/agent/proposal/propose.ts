@@ -61,7 +61,8 @@ function mismatch(message: string): never {
  * finalized); a different one, or the same one after its finalize refused it, is validated again and
  * replaces it while it is not finalized. Only the attempt's current Turn submits, while its
  * execution claim is dispatched (the `turn` admission): a call of a stopped or replaced invocation is
- * refused.
+ * refused, and so is any proposal once the owner returned the step during the attempt or took it
+ * over (`WORKFLOW_ATTEMPT_MISMATCH`, D19).
  */
 export function proposeAgentFinish(
   dependencies: AgentAttemptDependencies,
@@ -72,8 +73,11 @@ export function proposeAgentFinish(
   const changes = declaredChanges(request.changes);
 
   return workflow.serialize(async () => {
-    await dependencies.admission({ operationId: turn.invocationId, form: 'turn' }).admitWrite();
     const journal = await dependencies.journal.read(turn.attemptId);
+    // A late proposal of an attempt the owner returned or took over is refused as such, whether or
+    // not its Turn's claim still admits it.
+    assertOwnerHasNotEnded(journal, turn);
+    await dependencies.admission({ operationId: turn.invocationId, form: 'turn' }).admitWrite();
     assertCurrentTurn(journal, turn);
     const requestDigest = finishDigest({ step: turn.step, attempt: turn.attempt, input });
     const recorded = journal.proposal;
@@ -146,6 +150,31 @@ function declaredChanges(
   return changes === undefined || changes.paths.length === 0
     ? undefined
     : { paths: [...changes.paths].sort() };
+}
+
+/**
+ * The owner returned the step during the attempt (the request is recorded, or applied) or took the
+ * attempt over: the agent's proposal is refused (D19), `WORKFLOW_ATTEMPT_MISMATCH`.
+ */
+function assertOwnerHasNotEnded(
+  journal: AgentAttemptJournal | undefined,
+  turn: AgentTurnIdentity,
+): void {
+  if (!journal || !sameAttempt(journal, turn.subject, turn.step, turn.attempt)) {
+    return;
+  }
+
+  const name = `${turn.step}#${String(turn.attempt)}`;
+  if (journal.takeOver !== undefined) {
+    mismatch(`The owner took the attempt ${name} over; it takes no proposal any more.`);
+  }
+
+  const returned = journal.returnRequest?.state;
+  if (returned === 'requested' || returned === 'applied') {
+    mismatch(
+      `The owner returned the step during the attempt ${name}; it takes no proposal any more.`,
+    );
+  }
 }
 
 /** The journal is the attempt's, and the Turn submitting is its current one. */

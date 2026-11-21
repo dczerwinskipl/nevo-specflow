@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { createAuthorization } from '@nevo/authorization';
 import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
-import type { ActionProjection } from '@nevo/specflow-engine';
+import { SpecificationBusyError, type ActionProjection } from '@nevo/specflow-engine';
 import Fastify from 'fastify';
 import { describe, expect, it } from 'vitest';
 
@@ -140,6 +140,62 @@ describe('agent step execution routes', () => {
         expected: { step: 'implement' },
       },
     ]);
+    await app.close();
+  });
+
+  it('takes a stopped agent attempt over as the owner, needs Manage, and refuses while it runs', async () => {
+    const calls: unknown[] = [];
+    const subject = { kind: 'specification' as const, specId: SPEC };
+    let busy = false;
+    const takeOver = (input: unknown) => {
+      calls.push(input);
+      if (busy) {
+        return Promise.reject(
+          new SpecificationBusyError(
+            'The agent is still working on this attempt.',
+            { cause: 'agent-turn', sessionId: 's' },
+            { operationId: 'i', sessionId: 's' },
+          ),
+        );
+      }
+
+      return Promise.resolve({
+        subject,
+        takenOver: { attemptId: 'a', step: 'implement', attempt: 1 },
+        context: {
+          step: { id: 'implement', title: 'Implement', kind: 'work', purpose: 'p' },
+          attempt: 2,
+        },
+      } as never);
+    };
+
+    const url = `/api/specs/${SPEC}/workflow/agent-execution/take-over`;
+    const payload = { step: 'implement', attempt: 1 };
+
+    const refused = appWith({ takeOver }, viewer);
+    expect((await refused.inject({ method: 'POST', url, payload })).statusCode).toBe(403);
+    await refused.close();
+
+    const app = appWith({ takeOver });
+    const response = await app.inject({ method: 'POST', url, payload });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      subject,
+      takenOver: { attemptId: 'a', step: 'implement', attempt: 1 },
+      step: { id: 'implement', title: 'Implement', kind: 'work', purpose: 'p' },
+      attempt: 2,
+    });
+    expect(calls).toMatchObject([
+      { subject, step: 'implement', attempt: 1, actor: { class: 'human' } },
+    ]);
+
+    busy = true;
+    const running = await app.inject({ method: 'POST', url, payload });
+    expect(running.statusCode).toBe(409);
+    expect(running.json()).toMatchObject({
+      code: 'WORKFLOW_SPECIFICATION_BUSY',
+      details: { cause: 'agent-turn' },
+    });
     await app.close();
   });
 

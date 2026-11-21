@@ -304,6 +304,19 @@ describe('the placement of every command', () => {
     expect(failure).toBeInstanceOf(ReportedFailure);
     expect(h.err.join('\n')).toContain('not available to an agent in this Turn');
   });
+
+  it.each([
+    ['return', ['workflow', 'return', SPEC, '--step', 'draft']],
+    ['take-over', ['workflow', 'take-over', SPEC, '--step', 'draft', '--attempt', '1']],
+  ])('refuses workflow %s, an owner action, without opening the Engine', async (name, args) => {
+    expect(placementOf(`workflow ${name}`)).toBe('refused');
+    const h = harness(AGENT);
+    const failure = await run(h, ...args).catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(ReportedFailure);
+    expect(h.err.join('\n')).toContain('not available to an agent in this Turn');
+    expect(h.engineCalls).toEqual([]);
+  });
 });
 
 describe('agent route and catch-up', () => {

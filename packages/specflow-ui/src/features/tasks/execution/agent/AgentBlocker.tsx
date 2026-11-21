@@ -74,7 +74,7 @@ export function AgentBlocker({
   readonly urgent?: boolean;
 }) {
   const { t } = useTranslation();
-  const values = { step, role };
+  const values = { step, role, startLabel: t('workflowExecution.now.start', { step }) };
   const unnamed = role === undefined;
   let key: string;
   let extra: ReactNode = null;

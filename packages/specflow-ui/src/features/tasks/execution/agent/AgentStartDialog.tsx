@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { Bot, GitCommitHorizontal } from 'lucide-react';
@@ -93,7 +93,7 @@ export function AgentStartDialog({
   const providers = useQuery({
     queryKey: ['workflow', 'agent-providers', subject.specId],
     queryFn: ({ signal }) => managedSessionsApi.providers({ specId: subject.specId }, signal),
-    enabled: open && fresh && launch !== undefined,
+    enabled: open && launch !== undefined,
     retry: false,
   });
   const catalogue: AgentCatalogue = providers.data
@@ -120,8 +120,18 @@ export function AgentStartDialog({
       (provider) => provider.id === choice.providerId && provider.available,
     );
 
-  const blocked = option?.kind === 'unavailable';
-  const canStart = option?.kind === 'available' && !start.isPending && (!fresh || chosenReady);
+  // A provider that is not ready only blocks the agent the workflow preselected: for a new Session the
+  // owner may pick a ready one (D18), and the start checks it again. A continued Session has no picker.
+  const pickable =
+    option?.kind === 'unavailable' &&
+    option.reason === 'provider-not-ready' &&
+    fresh &&
+    launch !== undefined &&
+    catalogue.status === 'ready';
+  const blocked = option?.kind === 'unavailable' && !(pickable && chosenReady);
+  const canStart =
+    !start.isPending &&
+    ((option?.kind === 'available' && (!fresh || chosenReady)) || (pickable && chosenReady));
   const otherRefusal = start.isError && !refusedOption;
   const reused = launch?.session.mode === 'reuse' ? launch.session.sessionId : undefined;
   const sessionTitle =
@@ -129,6 +139,15 @@ export function AgentStartDialog({
       ? workspace?.sessions.find((session) => session.id === reused)?.title
       : undefined;
   const branch = workspace?.repoContext?.branch;
+
+  const blockerRef = useRef<HTMLDivElement>(null);
+  // A refused start leaves focus on the button that was disabled by it; the alert takes it.
+  useEffect(() => {
+    if (start.isError) {
+      const target = blockerRef.current?.querySelector<HTMLElement>('button') ?? blockerRef.current;
+      target?.focus();
+    }
+  }, [start.isError, start.error]);
 
   const checkAgain = () => {
     start.reset();
@@ -191,30 +210,21 @@ export function AgentStartDialog({
               </Alert>
             ) : null}
             {blocked ? (
-              <AgentBlocker
-                option={option}
-                specId={subject.specId}
-                step={step.title || step.id}
-                role={roleName}
-                checking={check.isFetching}
-                onCheckAgain={checkAgain}
-                urgent={refusedOption !== undefined}
-              />
+              <div ref={blockerRef} tabIndex={-1} className="outline-none">
+                <AgentBlocker
+                  option={option}
+                  specId={subject.specId}
+                  step={step.title || step.id}
+                  role={roleName}
+                  checking={check.isFetching}
+                  onCheckAgain={checkAgain}
+                  urgent={refusedOption !== undefined}
+                />
+              </div>
             ) : null}
             {otherRefusal ? <WorkflowRefusalAlert error={start.error} /> : null}
             {option ? (
               <>
-                <AgentSession
-                  mode={mode}
-                  independent={independent}
-                  step={step.title || step.id}
-                  role={roleName ?? t('workflowExecution.agent.roleFallback')}
-                  launch={launch}
-                  {...(sessionTitle ? { sessionTitle } : {})}
-                  catalogue={catalogue}
-                  choice={choice}
-                  onChoice={setChosen}
-                />
                 <InlineNote tone="info" icon={GitCommitHorizontal}>
                   {branch ? (
                     <Trans
@@ -226,6 +236,17 @@ export function AgentStartDialog({
                     t('workflowExecution.agent.commitNoBranch')
                   )}
                 </InlineNote>
+                <AgentSession
+                  mode={mode}
+                  independent={independent}
+                  step={step.title || step.id}
+                  role={roleName ?? t('workflowExecution.agent.roleFallback')}
+                  launch={launch}
+                  {...(sessionTitle ? { sessionTitle } : {})}
+                  catalogue={catalogue}
+                  choice={choice}
+                  onChoice={setChosen}
+                />
               </>
             ) : null}
           </div>

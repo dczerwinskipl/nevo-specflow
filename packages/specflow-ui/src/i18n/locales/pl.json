@@ -2305,7 +2305,7 @@
         "sessionUnavailable": {
           "title": "Sesji do kontynuacji już nie ma",
           "body": "Przepływ kontynuuje sesję, która wykonywała krok {{step}} wcześniej, a ta sesja już nie istnieje. SpecFlow nie zakłada nowej w jej miejsce, bo ten krok ma bazować na tym, co ta sesja wie.",
-          "hint": "Wykonaj krok sam przez Rozpocznij krok albo zmień przepływ, tak by ten krok mógł zacząć nową sesję."
+          "hint": "Wykonaj krok sam przez {{startLabel}} albo zmień przepływ, tak by ten krok mógł zacząć nową sesję."
         },
         "projectBusy": {
           "title": "Projekt jest zajęty",
@@ -2315,7 +2315,7 @@
         "demo": {
           "title": "W demo agenci nie działają",
           "body": "Demo nie uruchamia agentów.",
-          "hint": "Wykonaj krok sam przez Rozpocznij krok."
+          "hint": "Wykonaj krok sam przez {{startLabel}}."
         },
         "other": {
           "title": "Agent nie może teraz wykonać tego kroku",
@@ -2325,6 +2325,7 @@
       },
       "session": {
         "newSession": "Nowa sesja",
+        "label": "Sesja",
         "continues": "Kontynuuje",
         "continuesWhy": "{{model}}. Przepływ kontynuuje sesję, która wykonywała krok {{step}} wcześniej, więc agent zachowuje to, czego się tam nauczył. Jego agent i model pozostają bez zmian.",
         "earlier": "wcześniejszą sesję",

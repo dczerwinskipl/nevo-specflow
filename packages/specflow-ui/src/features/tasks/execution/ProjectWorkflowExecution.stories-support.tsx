@@ -24,7 +24,13 @@ import {
 } from '../pages/ProjectTaskAuthoring.stories-support';
 import { managedProviders } from '../../sessions/start/catalogue/providerDescriptors.stories-support';
 import type { WorkflowExecutionApi } from './api';
-import { agentOptions, type AgentCase } from './agent/agentStart.stories-support';
+import {
+  SESSION_ID,
+  SESSION_TITLE,
+  agentOptions,
+  stepOfAgentCase,
+  type AgentCase,
+} from './agent/agentStart.stories-support';
 import {
   SPEC,
   TASK,
@@ -396,7 +402,7 @@ function services(scenario: WorkflowStoryScenario) {
     checkAgentExecution: () =>
       agentCase
         ? Promise.resolve({
-            position: { step: 'implement' },
+            position: { step: stepOfAgentCase(agentCase).id },
             agent: agentOptions[agentCase],
           })
         : never(),
@@ -482,7 +488,17 @@ function services(scenario: WorkflowStoryScenario) {
     workflowExecutionApi,
     managedSessionsApi: {
       ...defaults.managedSessionsApi,
-      providers: () => Promise.resolve({ items: managedProviders }),
+      providers: () =>
+        Promise.resolve({
+          items:
+            scenario === 'agent-provider-not-ready'
+              ? managedProviders.map((provider) =>
+                  provider.providerId === 'claude'
+                    ? { ...provider, readiness: 'authenticationRequired' as const }
+                    : provider,
+                )
+              : managedProviders,
+        }),
     },
     documentApi: taskDocumentApi,
   });
@@ -588,7 +604,36 @@ function tasksSection(
 async function specificationWorkspace(
   scenario: WorkflowStoryScenario,
 ): Promise<SpecificationWorkspaceResponse> {
-  const base = await workspaceResponse('draft-problems');
+  const plain = await workspaceResponse('draft-problems');
+  // Run with agent reads the branch the commit lands on and the title of the Session it continues.
+  const base: SpecificationWorkspaceResponse = agentCaseOf(scenario)
+    ? {
+        ...plain,
+        sections: {
+          ...plain.sections,
+          repository: {
+            state: 'available',
+            data: { repositoryName: 'acme-portal', branch: 'nevo-1/single-sign-on', attention: [] },
+          },
+          sessions: {
+            state: 'available',
+            data: {
+              items: [
+                {
+                  id: SESSION_ID,
+                  title: SESSION_TITLE,
+                  status: 'quiet',
+                  taskIds: [TASK],
+                  providerId: 'claude',
+                  updatedAt: '2026-11-13T10:00:00.000Z',
+                },
+              ],
+              attention: [],
+            },
+          },
+        },
+      }
+    : plain;
   if (base.sections.tasks.state !== 'available') {
     return base;
   }

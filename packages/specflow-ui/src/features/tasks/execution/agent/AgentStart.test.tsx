@@ -27,6 +27,7 @@ const checkOf = (agent: AgentOption): AgentStepExecutionCheck => ({
 function renderNow(
   projected: AgentOption,
   api: Pick<WorkflowExecutionApi, 'checkAgentExecution' | 'startAgentExecution'>,
+  claudeReady = true,
 ) {
   stubLayoutApis();
   const defaults = createSpecFlowAppServices();
@@ -34,7 +35,16 @@ function renderNow(
     taskAuthoringApi: fakeTaskAuthoringApi(),
     managedSessionsApi: {
       ...defaults.managedSessionsApi,
-      providers: () => Promise.resolve({ items: managedProviders }),
+      providers: () =>
+        Promise.resolve({
+          items: claudeReady
+            ? managedProviders
+            : managedProviders.map((provider) =>
+                provider.providerId === 'claude'
+                  ? { ...provider, readiness: 'authenticationRequired' as const }
+                  : provider,
+              ),
+        }),
     },
     workflowExecutionApi: {
       start: vi.fn(never),
@@ -222,14 +232,40 @@ describe('Run with agent dialog', () => {
     expect((footerOf(dialog)[1] as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('shows the Runtime’s own words when the agent is not ready', async () => {
-    renderNow(agentOptions.fresh, {
-      checkAgentExecution: () => Promise.resolve(checkOf(agentOptions['provider-not-ready'])),
-      startAgentExecution: never,
-    });
+  it('marks the agent that is not ready; a ready one may be picked for a new Session', async () => {
+    renderNow(
+      agentOptions.fresh,
+      {
+        checkAgentExecution: () => Promise.resolve(checkOf(agentOptions['provider-not-ready'])),
+        startAgentExecution: never,
+      },
+      false,
+    );
 
     const dialog = await openDialog();
     expect(within(dialog).getByText(/not signed in on this machine/)).toBeTruthy();
+    expect((footerOf(dialog)[1] as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(await within(dialog).findByRole('radio', { name: /Codex/ }));
+    await waitFor(() => expect((footerOf(dialog)[1] as HTMLButtonElement).disabled).toBe(false));
+  });
+
+  it('keeps a continued Session blocked while its agent is not ready', async () => {
+    const reuse = {
+      ...agentOptions['provider-not-ready'],
+      launch: agentOptions.reuse.launch,
+    } as AgentOption;
+    renderNow(
+      agentOptions.reuse,
+      {
+        checkAgentExecution: () => Promise.resolve(checkOf(reuse)),
+        startAgentExecution: never,
+      },
+      false,
+    );
+
+    const dialog = await openDialog();
+    expect(within(dialog).getByText(/not signed in on this machine/)).toBeTruthy();
+    expect(within(dialog).queryByRole('radio')).toBeNull();
     expect((footerOf(dialog)[1] as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -260,6 +296,11 @@ describe('Run with agent dialog', () => {
     expect(within(alert).getByText('Commit or undo these changes first')).toBeTruthy();
     expect(within(alert).getByText('scratch-notes.txt')).toBeTruthy();
     expect((footerOf(dialog)[1] as HTMLButtonElement).disabled).toBe(true);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(alert).getByRole('button', { name: 'Check again' }),
+      ),
+    );
   });
 
   it('explains a check that failed, with Check again inside the alert', async () => {

@@ -2305,7 +2305,7 @@
         "sessionUnavailable": {
           "title": "The session to continue is gone",
           "body": "The workflow continues the session that did {{step}} before, and that session no longer exists. SpecFlow does not start a new one in its place, because this step is meant to build on what that session knows.",
-          "hint": "Do the step yourself with Start step, or have the workflow changed so this step may start a new session."
+          "hint": "Do the step yourself with {{startLabel}}, or have the workflow changed so this step may start a new session."
         },
         "projectBusy": {
           "title": "The project is busy",
@@ -2315,7 +2315,7 @@
         "demo": {
           "title": "Agents do not run in the demo",
           "body": "The demo runs no agents.",
-          "hint": "Do the step yourself with Start step."
+          "hint": "Do the step yourself with {{startLabel}}."
         },
         "other": {
           "title": "An agent cannot run this step now",
@@ -2325,6 +2325,7 @@
       },
       "session": {
         "newSession": "New session",
+        "label": "Session",
         "continues": "Continues",
         "continuesWhy": "{{model}}. The workflow continues the session that did {{step}} before, so the agent keeps what it learned there. Its agent and model stay as they are.",
         "earlier": "the earlier session",

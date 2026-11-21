@@ -51,7 +51,7 @@ Already decided and implemented: manual execution, the neutral coordinator, exec
 Tasks as resources and the Ask agent attachment point
 ([ADR 0023](../../../architecture/decisions/0023-neutral-workflow-coordinator-and-manual-execution.md),
 [ADR 0024](../../../architecture/decisions/0024-tasks-are-resources.md),
-[Manual workflow execution](../../../product/specflow/ui/workflow-execution.md#ask-agent)).
+[Manual workflow execution](../../../product/specflow/ui/workflow-execution.md#run-with-agent)).
 `session: reuse` after a manual step is `session-unavailable`, with no fresh-Session fallback (D10).
 The finish post action that commits the execution state is the seam for an agent step's commit
 (ADR 0024, decision 11).

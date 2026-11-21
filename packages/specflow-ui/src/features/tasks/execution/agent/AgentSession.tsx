@@ -78,10 +78,13 @@ function ContinuedSession({
   return (
     <div className="grid gap-2">
       <Typography as="p" variant="label-sm">
-        {t('workflowExecution.agent.session.continues')}
+        {t('workflowExecution.agent.session.label')}
       </Typography>
       <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-body-md">
         <SessionProviderIcon providerId={launch?.provider} />
+        <span className="text-content-primary">
+          {t('workflowExecution.agent.session.continues')}
+        </span>
         {gone || !sessionId ? (
           <span className="text-content-muted line-through">{title}</span>
         ) : (

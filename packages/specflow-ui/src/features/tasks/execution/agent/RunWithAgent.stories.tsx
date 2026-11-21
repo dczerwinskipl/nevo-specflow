@@ -63,7 +63,7 @@ export const NewSession: Story = {
     const dialog = await openDialog(canvasElement);
     await expect(within(dialog).getByText('Run with agent: Implementation')).toBeVisible();
     await expect(await within(dialog).findByRole('radio', { name: /Claude/ }, wait)).toBeChecked();
-    await expect(within(dialog).getByText(/commits its work on/)).toBeVisible();
+    await expect(within(dialog).getByText('nevo-1/single-sign-on')).toBeVisible();
     await expectFooter(dialog, true);
   },
 };
@@ -73,7 +73,10 @@ export const ContinuesSession: Story = {
   args: { scenario: 'agent-reuse' },
   play: async ({ canvasElement }) => {
     const dialog = await openDialog(canvasElement);
+    await expect(within(dialog).getByText('Session')).toBeVisible();
     await expect(within(dialog).getByText('Continues')).toBeVisible();
+    await expect(within(dialog).getByText('Implement token exchange')).toBeVisible();
+    await expect(within(dialog).getByText(/Claude Sonnet · high/)).toBeVisible();
     await expect(within(dialog).queryByRole('radio')).toBeNull();
     await expectFooter(dialog, true);
   },
@@ -84,6 +87,7 @@ export const IndependentStep: Story = {
   args: { scenario: 'agent-independent' },
   play: async ({ canvasElement }) => {
     const dialog = await openDialog(canvasElement);
+    await expect(within(dialog).getByText('Run with agent: Review')).toBeVisible();
     await expect(await within(dialog).findByText(/done independently/, {}, wait)).toBeVisible();
     await expectFooter(dialog, true);
   },
@@ -114,13 +118,23 @@ export const NoAgentChosen: Story = {
   },
 };
 
-/** The agent the workflow chose is not ready: the Runtime's own words. */
+/**
+ * The agent the workflow chose is not ready: the Runtime's own words, the tile marked, and picking a
+ * ready agent (a new Session may; the start checks it again) enables the start.
+ */
 export const ProviderNotReady: Story = {
   args: { scenario: 'agent-provider-not-ready' },
   play: async ({ canvasElement }) => {
     const dialog = await openDialog(canvasElement);
     await expect(within(dialog).getByText(/not signed in on this machine/)).toBeVisible();
     await expectFooter(dialog, false);
+    const claude = await within(dialog).findByRole('radio', { name: /Claude/ }, wait);
+    await expect(claude).toBeChecked();
+    await expect(
+      within(claude.closest('label') ?? dialog).getByText(/sign in|Sign in/i),
+    ).toBeVisible();
+    await userEvent.click(within(dialog).getByRole('radio', { name: /Codex/ }));
+    await waitFor(() => expectFooter(dialog, true), wait);
   },
 };
 
@@ -142,6 +156,11 @@ export const RefusedOnSubmit: Story = {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Run with agent' }));
     const alert = await within(dialog).findByRole('alert', {}, wait);
     await expect(within(alert).getByText('Commit or undo these changes first')).toBeVisible();
+    // Focus moves to the alert's Check again: it never drops to the page behind the dialog.
+    await waitFor(
+      () => expect(within(alert).getByRole('button', { name: 'Check again' })).toHaveFocus(),
+      wait,
+    );
     await expectFooter(dialog, false);
   },
 };

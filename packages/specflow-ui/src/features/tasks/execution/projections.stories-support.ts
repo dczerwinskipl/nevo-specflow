@@ -426,30 +426,51 @@ function taskFixture(
  * action, and the agent option the Runtime offers for it (Run with agent).
  */
 function readyForAgent(agent: AgentOption): FixtureProjection {
+  const review = agent.kind === 'available' && agent.independent === true;
+
   return {
     subject: { kind: 'task', specId: SPEC, taskId: TASK },
     workflow: buildWorkflow,
     position: {
       kind: 'ready',
-      next: { step: step('implement', 'Implementation'), human: true, agent },
-    },
-    handoff: {
-      kind: 'transition',
-      from: {
-        step: 'review',
-        attempt: 1,
-        title: 'Review',
-        at: '2026-11-13T11:40:00Z',
-        actor: dominik,
+      next: {
+        step: review ? step('review', 'Review') : step('implement', 'Implementation'),
+        human: true,
+        agent,
       },
-      transition: 'changes-requested',
-      label: 'Changes requested',
-      result: 'changes-requested',
-      feedback:
-        'The refresh path drops the original return URL when the cookie expires mid-request. Keep it in the state parameter and add a test for the expiry case.',
-      artifacts: [],
     },
-    actions: { start: { step: 'implement', firstStart: false } },
+    handoff: review
+      ? {
+          kind: 'transition',
+          from: {
+            step: 'implement',
+            attempt: 2,
+            title: 'Implementation',
+            at: '2026-11-14T09:10:00Z',
+            actor: dominik,
+          },
+          transition: 'done',
+          label: 'Done',
+          result: 'done',
+          artifacts: [],
+        }
+      : {
+          kind: 'transition',
+          from: {
+            step: 'review',
+            attempt: 1,
+            title: 'Review',
+            at: '2026-11-13T11:40:00Z',
+            actor: dominik,
+          },
+          transition: 'changes-requested',
+          label: 'Changes requested',
+          result: 'changes-requested',
+          feedback:
+            'The refresh path drops the original return URL when the cookie expires mid-request. Keep it in the state parameter and add a test for the expiry case.',
+          artifacts: [],
+        },
+    actions: { start: { step: review ? 'review' : 'implement', firstStart: false } },
     task: lifecycle(true),
     taskAuthoring,
   };

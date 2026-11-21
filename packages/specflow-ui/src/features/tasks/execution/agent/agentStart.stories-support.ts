@@ -16,6 +16,13 @@ const fresh: AgentLaunch = {
   session: { mode: 'fresh' },
 };
 
+/** The step each case is about: an independent facet is a Review, the others are Implementation. */
+export function stepOfAgentCase(agentCase: AgentCase): { id: string; title: string } {
+  return agentCase === 'independent'
+    ? { id: 'review', title: 'Review' }
+    : { id: 'implement', title: 'Implementation' };
+}
+
 export type AgentCase =
   'fresh' | 'reuse' | 'independent' | 'dirty' | 'no-agent' | 'provider-not-ready' | 'session-gone';
 

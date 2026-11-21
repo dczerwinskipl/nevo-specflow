@@ -353,9 +353,9 @@ band across the body padding below it (`AccentBlock bleed="narrow"`); the action
 action first.
 Dialogs keep one column. Blocker and Task rows keep id → title → state order.
 
-## Ask agent
+## Run with agent
 
-**Status: UX contract (user-facing label "Run with agent"; the feature name stays Ask agent). The entry and start dialog are implemented; the rest is not
+**Status: UX contract. The entry and start dialog are implemented; the rest is not
 implemented.** It follows the [Ask agent contract](../../../ideas/specflow-engine/reusable-workflow-manual-execution/agent-assisted-execution.md)
 (D11 to D21) and is delivered by the slices of its
 [delivery plan](../../../ideas/specflow-engine/reusable-workflow-manual-execution/ask-agent-delivery-plan.md).
@@ -408,12 +408,15 @@ proposes a result); decisions that need a person stay with the person. Then, in 
      itself do not block it. The paths as the Close dialog lists them, the folder with **Copy
      path**, "Commit them, or undo the ones you do not need, then check again." No discard action.
    - **No agent chosen** (`archetype-missing`, `provider-not-chosen`, `model-missing`): which agent
-     role does the step, that the project names no agent and model for it, and **Open agent
-     settings**. The Session section then shows "Agent and model not chosen", never a preselected
+     role does the step and that the project names no agent and model for it (no agent settings
+     screen exists yet, so there is no link). The Session section then shows "Agent and model not chosen", never a preselected
      picker.
+   - **The agent is not ready** (`provider-not-ready`): the Runtime's own words. For a new session
+     the picker marks the agent that is not ready and picking a ready one enables **Run with
+     agent** (the start checks again); a continued session has no picker and stays blocked.
    - **The session to continue is gone** (`session-unavailable`): the workflow continues the session
      that did the step before and it no longer exists; SpecFlow does not start a new one in its
-     place (D10); do the step with Start step, or have the workflow changed. The Session section
+     place (D10); do the step with its Start button, or have the workflow changed. The Session section
      shows the gone title struck through.
 2. **Session** (D18). The workflow decides fresh or continued; the dialog does not offer that choice:
    - **New session**: the start screen's agent tiles (`AgentPicker`) and the Composer's model picker

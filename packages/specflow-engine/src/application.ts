@@ -1,6 +1,7 @@
 import { runReadRequest } from './project/request-verification-memo';
 import type { CheckoutQuiescence } from './specs/lifecycle/checkout-quiescence-port';
 import type { SpecificationExitGuard } from './specs/lifecycle/exit-guard';
+import type { FailedAttemptCommit } from './specs/uncommitted/attempts';
 import {
   resolveProjectHome,
   type ResolveProjectHomeOptions,
@@ -28,6 +29,11 @@ export interface SpecFlowEngine {
    */
   readonly stepInProgress?: (specId: string) => Promise<boolean | undefined>;
   /**
+   * The finished agent attempts of a checkout whose commit failed, with the paths that commit holds
+   * (D15): Close lists them under "retry the attempt commit". Absent where no workflow is composed.
+   */
+  readonly failedAttemptCommits?: (workspaceId: string) => Promise<readonly FailedAttemptCommit[]>;
+  /**
    * Whether an agent can work in a checkout Close would remove, from the host process (the Runtime
    * or the CLI) through `withCheckoutQuiescence`. Absent, Close does not remove a checkout.
    */
@@ -43,6 +49,9 @@ export interface EnginePorts {
   readonly stepInProgress?: (
     engine: SpecFlowEngine,
   ) => (specId: string) => Promise<boolean | undefined>;
+  readonly failedAttemptCommits?: (
+    engine: SpecFlowEngine,
+  ) => (workspaceId: string) => Promise<readonly FailedAttemptCommit[]>;
 }
 
 /**
@@ -72,6 +81,12 @@ export async function openEngineBoundary(
     specificationExit: (specId) => ports.specificationExit(engine)(specId),
     ...(ports.stepInProgress
       ? { stepInProgress: (specId: string) => ports.stepInProgress!(engine)(specId) }
+      : {}),
+    ...(ports.failedAttemptCommits
+      ? {
+          failedAttemptCommits: (workspaceId: string) =>
+            ports.failedAttemptCommits!(engine)(workspaceId),
+        }
       : {}),
     async readRegistry() {
       // Revalidate the physical checkout on each use, including linked

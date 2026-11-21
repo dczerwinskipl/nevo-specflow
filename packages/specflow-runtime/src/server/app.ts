@@ -2,7 +2,7 @@ import compress from '@fastify/compress';
 import cookie from '@fastify/cookie';
 import { RuntimeInfoResponseSchema } from '@nevo/specflow-contracts/runtime';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import { openWorkflow, withCheckoutQuiescence } from '@nevo/specflow-engine';
+import { openAgentAttempts, openWorkflow, withCheckoutQuiescence } from '@nevo/specflow-engine';
 import Fastify, {
   type FastifyInstance,
   type FastifyServerOptions,
@@ -404,6 +404,8 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
         : demo
           ? { agentAvailability: demoAgentAvailability }
           : {}),
+      // Retry commit acts on the Project Home's agent attempts; the demo Runtime has none.
+      ...(engine && !demo ? { openAgentAttempts: () => openAgentAttempts(engine) } : {}),
       ...dependencies.workflow,
       projectId,
     }),

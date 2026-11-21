@@ -7,6 +7,8 @@ import type {
   ContinuationDecision,
   FinishStepResult,
   GateStatus,
+  PostActionResult,
+  RetryAgentAttemptCommitResult,
   ReturnToStepResult,
   RunPosition,
   SpecificationExitActions,
@@ -323,21 +325,49 @@ export function finishLines(result: FinishStepResult): string[] {
     ...(result.specification ? [`Specification: ${continuationLine(result.specification)}`] : []),
     // The finish is recorded either way; the commit of the state reports on its own line: a failure,
     // or the state it left uncommitted because someone edited it since the Engine wrote it.
-    ...(result.postActions ?? []).flatMap((post) => {
-      if (post.status === 'failed') {
-        return [`Post action ${post.action} failed: ${post.code} ${post.message}`];
-      }
+    ...postActionLines(result.postActions ?? []),
+  ];
+}
 
-      if (post.status === 'completed' && post.held) {
-        return [
-          `Workflow state left uncommitted (${post.held.paths.length} files), edited outside the ` +
-            `Engine since it wrote them: ${post.held.edited.join(', ')}. Commit them with Git; ` +
-            'Close takes them otherwise.',
-        ];
-      }
+/** What the post actions of a finish (or a Retry commit) did, one line each that says something. */
+export function postActionLines(postActions: readonly PostActionResult[]): string[] {
+  return postActions.flatMap((post) => {
+    if (post.status === 'failed') {
+      return [`Post action ${post.action} failed: ${post.code} ${post.message}`];
+    }
 
-      return [];
-    }),
+    if (post.action === 'attempt-commit') {
+      return post.status === 'completed' && post.commit?.sha !== undefined
+        ? [
+            `Committed the agent's attempt: ${post.commit.sha} (${String(post.commit.paths.length)} files)`,
+          ]
+        : [
+            `Nothing of the agent's attempt to commit (${post.status === 'skipped' ? post.reason : 'every file equals HEAD'})`,
+          ];
+    }
+
+    if (post.status === 'completed' && post.held) {
+      return [
+        `Workflow state left uncommitted (${post.held.paths.length} files), edited outside the ` +
+          `Engine since it wrote them: ${post.held.edited.join(', ')}. Commit them with Git; ` +
+          'Close takes them otherwise.',
+      ];
+    }
+
+    return [];
+  });
+}
+
+/** `workflow retry-commit`: the attempt and what its commit did now. */
+export function retryCommitLines(
+  subject: WorkflowSubject,
+  step: string,
+  attempt: number,
+  result: RetryAgentAttemptCommitResult,
+): string[] {
+  return [
+    `Retried the commit of ${subjectLabel(subject)} ${step}#${String(attempt)}`,
+    ...postActionLines(result.postActions),
   ];
 }
 

@@ -15,12 +15,18 @@ export const LEDGER_MAX_PATHS = 200;
 /** Operation ids kept per path (the newest); `operationCount` keeps the true number. */
 export const LEDGER_MAX_OPERATION_IDS = 50;
 /**
+ * Distinct agent Turns {@link LedgerAuthors} names per path; one more makes the entry `unattributed`
+ * (fail closed: its authors are no longer known in full).
+ */
+export const LEDGER_MAX_AUTHORS = 100;
+/**
  * Largest record file, as published (indented JSON, like the text `encodeLedgerRecord` measures). Worst case
  * per entry: a 1024-character path of three-byte characters (3072 bytes), 50 operation ids (about 2300
- * bytes) and about 400 bytes of keys, hash and times, so 200 entries are about 1.15 MB. The bound is 2 MiB:
- * a record the path-count limit admits is always writable (ADR 0018 names 64 KiB, which cannot hold it).
+ * bytes), their 50 executions (about 5500 bytes), 100 authors (about 4300 bytes) and about 400 bytes of
+ * keys, hash and times, so 200 entries are about 3.2 MB. The bound is 4 MiB: a record the path-count
+ * limit admits is always writable (ADR 0018 names 64 KiB, which cannot hold it).
  */
-export const LEDGER_MAX_BYTES = 2 * 1024 * 1024;
+export const LEDGER_MAX_BYTES = 4 * 1024 * 1024;
 /** Longest branch name a record pins; a write on a longer one is refused before anything is written. */
 export const LEDGER_BRANCH_MAX_CHARACTERS = 240;
 /** Most checkouts and most records per checkout a listing reads. */
@@ -52,11 +58,66 @@ export interface LedgerEntry {
    * none did.
    */
   readonly executions?: readonly LedgerExecution[];
+  /**
+   * Who made EVERY operation of the path, merged on each record and never truncated (unlike
+   * `operationIds`): the agent Turns (`executions`, sorted, distinct) and whether any operation was
+   * made without one (`unattributed`: an owner, a tool, or more Turns than are named). Absent in a
+   * record written before it existed: {@link ledgerAuthorsOf} derives it then.
+   */
+  readonly authors?: LedgerAuthors;
 }
 
 export interface LedgerExecution {
   readonly operationId: string;
   readonly executionId: string;
+}
+
+export interface LedgerAuthors {
+  readonly executions: readonly string[];
+  readonly unattributed?: true;
+}
+
+/**
+ * The authors of an entry: its own `authors`, else what its kept operations say (`unattributed`
+ * when one of them names no Turn, or when it forgot older operations).
+ */
+export function ledgerAuthorsOf(entry: LedgerEntry): LedgerAuthors {
+  if (entry.authors !== undefined) {
+    return entry.authors;
+  }
+
+  const executions = new Map(
+    (entry.executions ?? []).map((execution) => [execution.operationId, execution.executionId]),
+  );
+  const unattributed =
+    entry.operationCount > entry.operationIds.length ||
+    entry.operationIds.some((id) => !executions.has(id));
+
+  return {
+    executions: [...new Set(executions.values())].sort(),
+    ...(unattributed ? { unattributed: true as const } : {}),
+  };
+}
+
+/** `authors` with one more operation, made by the Turn `executionId` or by none. */
+export function withLedgerAuthor(
+  authors: LedgerAuthors | undefined,
+  executionId: string | undefined,
+): LedgerAuthors {
+  const executions = new Set(authors?.executions ?? []);
+  let unattributed = authors?.unattributed === true || executionId === undefined;
+  if (executionId !== undefined && !executions.has(executionId)) {
+    if (executions.size >= LEDGER_MAX_AUTHORS) {
+      unattributed = true;
+    } else {
+      executions.add(executionId);
+    }
+  }
+
+  return {
+    executions: [...executions].sort(),
+    ...(unattributed ? { unattributed: true as const } : {}),
+  };
 }
 
 /** One durable record per (checkout, owner): `engine/operations/ledger/<workspaceId>/<ownerKey>.json`. */

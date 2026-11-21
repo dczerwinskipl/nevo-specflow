@@ -1,5 +1,6 @@
 import {
   LEDGER_BRANCH_MAX_CHARACTERS,
+  LEDGER_MAX_AUTHORS,
   LEDGER_MAX_BYTES,
   LEDGER_MAX_OPERATION_IDS,
   LEDGER_MAX_PATHS,
@@ -36,8 +37,9 @@ const ENTRY_KEYS = [
   'recordedAt',
   'reason',
   'executions',
+  'authors',
 ];
-const ENTRY_OPTIONAL_KEYS = ['executions'];
+const ENTRY_OPTIONAL_KEYS = ['executions', 'authors'];
 const PATH_MAX = 1024;
 
 function hasExactKeys(
@@ -84,6 +86,30 @@ function isValidExecutions(value: unknown, ids: readonly unknown[]): boolean {
   });
 }
 
+/** Distinct, sorted Turn ids, at most {@link LEDGER_MAX_AUTHORS}; `unattributed` only as `true`. */
+function isValidAuthors(value: unknown): boolean {
+  if (value === undefined) {
+    return true;
+  }
+
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, ['executions', 'unattributed'], ['unattributed']) ||
+    (value.unattributed !== undefined && value.unattributed !== true) ||
+    !Array.isArray(value.executions) ||
+    value.executions.length > LEDGER_MAX_AUTHORS
+  ) {
+    return false;
+  }
+
+  const ids = value.executions as unknown[];
+
+  return ids.every(
+    (id, index) =>
+      typeof id === 'string' && UUID.test(id) && (index === 0 || (ids[index - 1] as string) < id),
+  );
+}
+
 function isInstant(value: unknown): value is string {
   return typeof value === 'string' && !Number.isNaN(Date.parse(value));
 }
@@ -121,7 +147,8 @@ function isValidEntry(value: unknown): value is LedgerEntry {
     value.operationCount >= ids.length &&
     isInstant(value.recordedAt) &&
     (LEDGER_REASONS as readonly unknown[]).includes(value.reason) &&
-    isValidExecutions(value.executions, ids)
+    isValidExecutions(value.executions, ids) &&
+    isValidAuthors(value.authors)
   );
 }
 

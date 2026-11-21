@@ -222,11 +222,14 @@ function engineHolds(engine: SpecFlowEngine): ExecutionHolds {
  * The execution store of an opened Engine, every change admitted against the writer claims with
  * `owned` as the caller's own claim (none: every unsettled agent claim refuses). The host forms come
  * from {@link OpenWorkflowOptions.ownedExecution} (`turn`); the agent attempt's finalize section uses
- * the `finalize` form, inside that section only (`workflow/agent`).
+ * the `finalize` form, inside that section only (`workflow/agent`). `attributedExecution` names the
+ * agent Turn a change without its own claim is made for (the start of an agent attempt): its ledger
+ * entries name that Turn, so the attempt commit can take them (D15); it admits nothing.
  */
 export function engineExecutionStore(
   engine: SpecFlowEngine,
   owned: OwnedExecutionClaim | undefined,
+  attributedExecution?: string,
 ): WorkflowStore {
   // The claim admission first: an agent Turn's claim is the holder a refusal names.
   return guardExecutionClaims(
@@ -239,6 +242,7 @@ export function engineExecutionStore(
             admit: (specId, paths, operationId) =>
               admitExecutionStateChange(engine, specId, paths, operationId, {
                 ...(owned !== undefined ? { ownedExecution: owned } : {}),
+                ...(attributedExecution !== undefined ? { attributedExecution } : {}),
               }),
           },
         }),

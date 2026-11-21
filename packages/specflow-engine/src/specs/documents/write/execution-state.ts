@@ -103,6 +103,12 @@ export interface ExecutionStateCommitOptions {
    * workflow's owned execution): that claim admits it in the phases its form allows.
    */
   readonly ownedExecution?: OwnedExecutionClaim;
+  /**
+   * The agent Turn the change is made for when it is not admitted under that Turn's claim: the start
+   * of an agent attempt, made for its first Turn before the claim exists. Only attributes the ledger
+   * entries (`executions`); it admits nothing. An owned execution attributes its own changes.
+   */
+  readonly attributedExecution?: string;
   readonly commits?: CommitPort;
   readonly git?: GitPreflightOptions;
   readonly now?: () => Date;
@@ -198,6 +204,7 @@ export async function admitExecutionStateCommit(
   );
   await assertWithinBounds(engine, git, { workspaceId, specId }, checkoutPaths);
 
+  const executionId = options.ownedExecution?.operationId ?? options.attributedExecution;
   const target: RecordTarget = {
     engine,
     git,
@@ -209,9 +216,7 @@ export async function admitExecutionStateCommit(
     workspaceRoot,
     commits,
     now: options.now ?? (() => new Date()),
-    ...(options.ownedExecution !== undefined
-      ? { executionId: options.ownedExecution.operationId }
-      : {}),
+    ...(executionId !== undefined ? { executionId } : {}),
   };
 
   return { record: (summary, writes) => recordWrites(target, summary, writes) };
@@ -276,11 +281,7 @@ interface RecordTarget {
   readonly workspaceRoot: string;
   readonly commits: CommitPort;
   readonly now: () => Date;
-  /**
-   * The agent execution the change is made under (its owned claim): recorded on the operation and on
-   * the ledger entries it leaves, so the attempt's own Task drafts and execution state are never
-   * another author's work (`foreign-ledger.ts`) and the attempt commit can take them.
-   */
+  /** The agent Turn the change is made for: its ledger entries name it (`executions`). */
   readonly executionId?: string;
 }
 
@@ -384,9 +385,9 @@ async function recordWrites(
       },
       {
         operationId: target.operationId,
-        ...(target.executionId !== undefined ? { executionId: target.executionId } : {}),
         reason: UNCOMMITTED_AUTO_COMMIT_OFF,
         recordedAt: now,
+        ...(target.executionId !== undefined ? { executionId: target.executionId } : {}),
         ...(await ledgerPin(target)),
         paths: plan.paths.map((path) => ({
           path: path.path,

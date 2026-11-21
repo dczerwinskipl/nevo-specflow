@@ -1,4 +1,7 @@
+import { WorkflowError } from '../../errors';
+import { loadSubject } from '../../operations/loaded-execution';
 import type { PostActionResult } from '../../operations/post-actions';
+import { agentAttemptBindingOf, type OwnerActor, type WorkflowSubject } from '../../state/model';
 import type { AgentAttemptDependencies } from '../dependencies';
 import {
   isAttemptJournalSettled,
@@ -96,7 +99,12 @@ async function runSelectedNow(
 
           const failed = outcomes.some((outcome) => outcome.status === 'failed');
 
-          return { ...action, state: failed ? ('failed' as const) : ('done' as const), outcomes };
+          return {
+            ...action,
+            state: failed ? ('failed' as const) : ('done' as const),
+            outcomes,
+            runs: (action.runs ?? 0) + 1,
+          };
         }),
       };
       await dependencies.journal.publish(next);
@@ -202,4 +210,56 @@ export async function recoverAgentAttempts(
   }
 
   return { recovered, failed, unreadable: listing.unreadable, truncated: listing.truncated };
+}
+
+export interface RetryAgentAttemptCommitInput {
+  readonly subject: WorkflowSubject;
+  readonly step: string;
+  readonly attempt: number;
+  /** Only the owner retries (Retry commit); the agent has no route to it. */
+  readonly actor: OwnerActor;
+}
+
+export interface RetryAgentAttemptCommitResult {
+  /** What the post actions reported: the attempt commit's result. */
+  readonly postActions: readonly PostActionResult[];
+}
+
+/**
+ * The owner's **Retry commit** of a finished agent attempt `step#attempt` of `subject` (D15): runs
+ * its failed attempt commit again, once (`retryAgentPostActions`: a retry while another runs waits
+ * for it and then finds nothing left to run). Refused `WORKFLOW_ATTEMPT_MISMATCH` when the attempt is
+ * not a finished agent attempt, and `WORKFLOW_POSITION_INVALID` when its commit did not fail (it
+ * committed, or it has not run yet: recovery runs it).
+ */
+export async function retryAgentAttemptCommit(
+  dependencies: AgentAttemptDependencies,
+  input: RetryAgentAttemptCommitInput,
+): Promise<RetryAgentAttemptCommitResult> {
+  if (input.actor.class !== 'human') {
+    throw new WorkflowError('WORKFLOW_EXECUTOR_NOT_ALLOWED', 'Only the owner retries a commit.');
+  }
+
+  const { workflow } = dependencies;
+  const snapshot = await workflow.store.read(input.subject.specId);
+  const record = loadSubject(workflow.catalogue, snapshot, input.subject).run.attempts.find(
+    (attempt) => attempt.step === input.step && attempt.attempt === input.attempt,
+  );
+  const attemptId = record ? agentAttemptBindingOf(record)?.attemptId : undefined;
+  const journal = attemptId !== undefined ? await dependencies.journal.read(attemptId) : undefined;
+  if (attemptId === undefined || !journal || !isAttemptResolved(journal)) {
+    throw new WorkflowError(
+      'WORKFLOW_ATTEMPT_MISMATCH',
+      `${input.step}#${String(input.attempt)} is not a finished agent attempt.`,
+    );
+  }
+
+  if (!(journal.postActions ?? []).some((action) => action.state === 'failed')) {
+    throw new WorkflowError(
+      'WORKFLOW_POSITION_INVALID',
+      `The commit of ${input.step}#${String(input.attempt)} did not fail; there is nothing to retry.`,
+    );
+  }
+
+  return { postActions: await retryAgentPostActions(dependencies, attemptId) };
 }

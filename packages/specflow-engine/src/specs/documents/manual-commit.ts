@@ -45,6 +45,8 @@ import {
   type ManualCommitRecoverMode,
   type ManualCommitScope,
   type ManualCommitTarget,
+  type DeclaredCommitPath,
+  type StoredMessage,
 } from '../manual-commit';
 import type { DocumentChangeJournal } from './changes/journal/model';
 import { isBarrierStage, isPendingStage } from './changes/journal/stages';
@@ -71,6 +73,14 @@ export interface ManualCommitCommand {
    * the execution state (`commitExecutionState`). Never set by a transport.
    */
   readonly unlinkedPaths?: readonly string[];
+  /**
+   * Paths outside the ledger the commit takes too while their content is the recorded one, and the
+   * Engine's own message: the attempt commit of an agent attempt (D15). Never set by a transport.
+   */
+  readonly declared?: readonly DeclaredCommitPath[];
+  readonly composed?: StoredMessage;
+  /** `paths` were selected by the entries' durable authors (see `closureOf`). */
+  readonly authorsJudged?: boolean;
 }
 
 export interface ManualCommitCommandOptions extends ManualCommitOptions {
@@ -383,6 +393,9 @@ export async function manualCommit(
       ...(command.paths !== undefined ? { paths: command.paths } : {}),
       ...(command.ledgerRevision !== undefined ? { ledgerRevision: command.ledgerRevision } : {}),
       ...(command.unlinkedPaths !== undefined ? { unlinkedPaths: command.unlinkedPaths } : {}),
+      ...(command.declared !== undefined ? { declared: command.declared } : {}),
+      ...(command.composed !== undefined ? { composed: command.composed } : {}),
+      ...(command.authorsJudged === true ? { authorsJudged: true } : {}),
     },
     manualCommitPorts(engine, options),
   );

@@ -1,5 +1,6 @@
 import type {
   ActionProjection,
+  AgentAttemptDependencies,
   WorkflowDependencies,
   WorkflowSubject,
 } from '@nevo/specflow-engine';
@@ -16,6 +17,8 @@ export interface WorkflowFeatureDependencies {
    * a project Runtime, over the in-memory state in the demo Runtime.
    */
   readonly openWorkflow?: () => Promise<WorkflowDependencies>;
+  /** The agent attempt operations over the Project Home (Retry commit); none in the demo Runtime. */
+  readonly openAgentAttempts?: () => Promise<AgentAttemptDependencies>;
   /** Explicit backend (tests). Wins over the Engine. */
   readonly port?: WorkflowPort;
   readonly projectId?: ProjectIdSource;
@@ -42,7 +45,7 @@ export function createWorkflowFeature(
       const base =
         dependencies.port ??
         (dependencies.openWorkflow
-          ? createEngineWorkflowPort(dependencies.openWorkflow)
+          ? createEngineWorkflowPort(dependencies.openWorkflow, dependencies.openAgentAttempts)
           : undefined);
       const availability = dependencies.agentAvailability;
       const port: WorkflowPort | undefined =

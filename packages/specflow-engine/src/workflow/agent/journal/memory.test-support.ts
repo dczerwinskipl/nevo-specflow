@@ -9,15 +9,19 @@ import { refuseUnsettledAgentAttempt, type AgentAttemptJournalStore } from './st
 export function memoryAgentAttemptJournal(): AgentAttemptJournalStore & {
   readonly journals: Map<string, AgentAttemptJournal>;
   readonly settled: Map<string, AgentAttemptJournal>;
+  /** Ids listed as corrupt journal files. */
+  readonly unreadable: Set<string>;
 } {
   const journals = new Map<string, AgentAttemptJournal>();
   const settled = new Map<string, AgentAttemptJournal>();
+  const unreadable = new Set<string>();
   const parsed = (journal: AgentAttemptJournal) =>
     parseAgentAttemptJournal(structuredClone(journal), journal.operationId);
 
   return {
     journals,
     settled,
+    unreadable,
     read(attemptId) {
       const stored = journals.get(attemptId) ?? settled.get(attemptId);
 
@@ -41,6 +45,11 @@ export function memoryAgentAttemptJournal(): AgentAttemptJournalStore & {
 
       return Promise.resolve();
     },
-    listActive: () => Promise.resolve([...journals.values()].map(parsed)),
+    listActive: () =>
+      Promise.resolve({
+        journals: [...journals.values()].map(parsed),
+        unreadable: [...unreadable],
+        truncated: false,
+      }),
   };
 }

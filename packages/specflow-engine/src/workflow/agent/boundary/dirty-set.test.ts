@@ -1,11 +1,11 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, truncate, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterEach, expect, it } from 'vitest';
 
 import { sha256Hex } from '../../../hash';
-import { AGENT_DIRTY_PATHS_MAX } from '../journal/model';
+import { AGENT_DIRTY_FILE_BYTES_MAX, AGENT_DIRTY_PATHS_MAX } from '../journal/model';
 import { dirtySetOf } from './dirty-set';
 
 const roots: string[] = [];
@@ -27,6 +27,18 @@ it('names each reported path once, sorted, with its content hash or null when go
     ],
     truncated: false,
   });
+});
+
+it('names a file above the byte cap without hashing it', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'specflow-dirty-set-'));
+  roots.push(root);
+  // Sparse: no data is written, only the size is set.
+  await writeFile(join(root, 'big.bin'), '');
+  await truncate(join(root, 'big.bin'), AGENT_DIRTY_FILE_BYTES_MAX + 1);
+
+  expect((await dirtySetOf(root, ['big.bin'])).paths).toEqual([
+    { path: 'big.bin', sha256: null, oversize: true },
+  ]);
 });
 
 it('cuts a set beyond its bounds and says so', async () => {

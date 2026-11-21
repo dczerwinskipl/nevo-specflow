@@ -1,9 +1,15 @@
-import { lstat, readFile, readlink } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { createReadStream } from 'node:fs';
+import { lstat, readlink } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { sha256Hex } from '../../../hash';
-import type { AgentDirtyPath } from '../journal/model';
-import { AGENT_DIRTY_PATH_LENGTH_MAX, AGENT_DIRTY_PATHS_MAX } from '../journal/model';
+import {
+  AGENT_DIRTY_FILE_BYTES_MAX,
+  AGENT_DIRTY_PATH_LENGTH_MAX,
+  AGENT_DIRTY_PATHS_MAX,
+  type AgentDirtyPath,
+} from '../journal/model';
 
 /** What a checkout has uncommitted, as the finalize section records it (`AgentDirtySet`). */
 export interface DirtySetFacts {
@@ -11,22 +17,41 @@ export interface DirtySetFacts {
   readonly truncated: boolean;
 }
 
+/** The sha256 of a file's bytes, read as a stream (no whole-file buffer). */
+async function streamedHash(absolute: string): Promise<string> {
+  const hash = createHash('sha256');
+  for await (const chunk of createReadStream(absolute)) {
+    hash.update(chunk as Buffer);
+  }
+
+  return hash.digest('hex');
+}
+
 /**
- * The content hash of one checkout path: sha256 of a regular file's bytes, of a symbolic link's
- * target, `null` when the path is gone or is anything else (a directory of a nested repository).
+ * One checkout path of a dirty set: sha256 of a regular file's bytes (streamed; a file above
+ * {@link AGENT_DIRTY_FILE_BYTES_MAX} is `oversize` and not hashed), of a symbolic link's target,
+ * `null` when the path is gone or is anything else (a directory of a nested repository).
  */
-async function contentHash(root: string, path: string): Promise<string | null> {
+async function dirtyPath(root: string, path: string): Promise<AgentDirtyPath> {
   const absolute = join(root, ...path.split('/'));
   try {
     const stat = await lstat(absolute);
     if (stat.isSymbolicLink()) {
-      return sha256Hex('symlink:' + (await readlink(absolute)));
+      return { path, sha256: sha256Hex('symlink:' + (await readlink(absolute))) };
     }
 
-    return stat.isFile() ? sha256Hex(await readFile(absolute)) : null;
+    if (!stat.isFile()) {
+      return { path, sha256: null };
+    }
+
+    if (stat.size > AGENT_DIRTY_FILE_BYTES_MAX) {
+      return { path, sha256: null, oversize: true };
+    }
+
+    return { path, sha256: await streamedHash(absolute) };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      return null;
+      return { path, sha256: null };
     }
 
     throw error;
@@ -48,7 +73,7 @@ export async function dirtySetOf(
   const kept = named.slice(0, AGENT_DIRTY_PATHS_MAX);
   const paths: AgentDirtyPath[] = [];
   for (const path of kept) {
-    paths.push({ path, sha256: await contentHash(root, path) });
+    paths.push(await dirtyPath(root, path));
   }
 
   return { paths, truncated: kept.length < unique.length };

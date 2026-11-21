@@ -27,9 +27,10 @@ export {
 } from './finalize/finalize';
 export {
   recoverAgentAttempts,
+  retryAgentPostActions,
   runAgentPostActions,
   type AgentPostActionRunner,
-  type RecoveredAgentAttempt,
+  type AgentAttemptRecovery,
 } from './finalize/post-actions';
 export { filesystemAgentAttemptJournal, type AgentAttemptJournalStore } from './journal/store';
 export {

@@ -40,6 +40,8 @@ export function memoryAgentDependencies(catalogue: ExecutionCatalogue, attemptId
     held: false,
     sections: 0,
     fault: undefined as FinalizeBoundary | undefined,
+    /** Document changes of the Turn still being written (`openWrites`). */
+    openWrites: [] as string[],
     /** Refuses the next finalize store change (its commit admission, for example). */
     refuseStore: undefined as Error | undefined,
     dirtyPaths: [{ path: 'src/a.ts', sha256: 'b'.repeat(64) }] as {
@@ -141,7 +143,19 @@ export function memoryAgentDependencies(catalogue: ExecutionCatalogue, attemptId
 
         return Promise.resolve();
       },
-      claimPhase: (invocationId) => Promise.resolve(claims.get(invocationId)?.phase),
+      claim(invocationId) {
+        const claim = claims.get(invocationId);
+
+        return Promise.resolve(
+          claim && {
+            phase: claim.phase,
+            ...(claim.receipt
+              ? { settlement: { kind: 'native-result', receipt: claim.receipt } }
+              : {}),
+          },
+        );
+      },
+      openWrites: () => Promise.resolve([...state.openWrites]),
       dirtySet: () => Promise.resolve({ paths: state.dirtyPaths, truncated: false }),
       postActions: {
         run() {

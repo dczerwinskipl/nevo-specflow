@@ -10,7 +10,7 @@ import {
 import { DocumentError } from '../../../specs/document-rules/errors';
 import type { OwnedExecutionClaim } from '../../../specs/durable';
 import { SpecificationError } from '../../../specs/model';
-import { WorkflowError } from '../../errors';
+import { SpecificationBusyError, WorkflowError } from '../../errors';
 import { planFinish, type FinishStepResult } from '../../operations/finish';
 import { isoNow, loadSubject } from '../../operations/loaded-execution';
 import type { PostActionResult } from '../../operations/post-actions';
@@ -76,14 +76,36 @@ function corrupt(message: string): never {
 }
 
 /**
+ * Errors that are no verdict on the request: corrupt state, and what passes by itself (another
+ * operation holds the Specification, its source is unavailable for a moment). They leave the claim
+ * held and the proposal pending, so the same finalize, run again, judges it then.
+ */
+const NOT_REFUSALS: ReadonlySet<string> = new Set([
+  'WORKFLOW_STATE_CORRUPT',
+  'WORKFLOW_SPECIFICATION_BUSY',
+  'SPEC_BUSY',
+  'SPEC_SOURCE_UNAVAILABLE',
+]);
+
+/**
+ * The refusal a pending proposal gets when the owner's return request was judged in its place: the
+ * owner's decision wins, so the proposal is not applied; the agent may propose again in a later Turn
+ * if the return was refused. A journal-only code, not a workflow error code.
+ */
+export const RETURN_REQUESTED_REFUSAL: AgentRefusal = {
+  code: 'WORKFLOW_RETURN_REQUESTED',
+  message: 'The owner returned the step during the Turn; the proposal was not applied.',
+};
+
+/**
  * Why a re-validation refused, when the error is a refusal of the request (the proposal or return is
  * no longer valid, or its publication was refused); anything else (a fault, corrupt state) is not a
  * refusal and leaves the claim held for recovery.
  */
 function refusalOf(error: unknown): AgentRefusal | undefined {
   const refused =
-    (error instanceof CoreWorkflowError && error.code !== 'WORKFLOW_STATE_CORRUPT') ||
-    error instanceof DocumentError ||
+    (error instanceof CoreWorkflowError && !NOT_REFUSALS.has(error.code as string)) ||
+    (error instanceof DocumentError && !NOT_REFUSALS.has(error.code)) ||
     error instanceof SpecificationError;
 
   return refused
@@ -158,7 +180,8 @@ async function finalizeInSection(
   await dependencies.admission(owned).admitWrite();
   // Only a claim whose Turn was dispatched has a native result to settle with: refused before the
   // step state is published, so nothing is published that the settlement would then refuse.
-  const phase = await finalize.claimPhase(intent.operationId);
+  const claim = await finalize.claim(intent.operationId);
+  const phase = claim?.phase;
   if (phase === undefined) {
     throw new WorkspaceExecutionError(
       'EXECUTION_RECOVERY_REQUIRED',
@@ -173,13 +196,24 @@ async function finalizeInSection(
     );
   }
 
+  if (
+    phase === 'settled' &&
+    !isDeepStrictEqual(claim?.settlement, { kind: 'native-result', receipt })
+  ) {
+    throw new WorkspaceExecutionError(
+      'EXECUTION_CONFLICT',
+      'Settled execution receipt cannot change.',
+    );
+  }
+
   // Only the attempt's current Turn can still be unsettled: a Turn is bound once the one before it
   // settled. An earlier Turn's finalize is a replay; it publishes nothing.
   const turn = journal.turns[index]!;
-  const current = index === journal.turns.length - 1 && turn.settledAt === undefined;
+  const current = index === journal.turns.length - 1 && turn.finalizedAt === undefined;
   let next = journal;
   let outcome: SectionOutcome = recordedOutcome(journal);
   if (current) {
+    await assertNoOpenTurnWrites(dependencies, intent.operationId);
     ({ journal: next, outcome } = await publishStep(dependencies, journal, owned));
     next = await withTurnSettled(dependencies, next, turn);
   }
@@ -196,6 +230,25 @@ async function finalizeInSection(
   await finalize.faults?.('claim-settled');
 
   return outcome;
+}
+
+/**
+ * A document write of the Turn that is still writing (a broker write that outlived the Turn's
+ * capability) refuses the finalize before anything is published: the claim stays held and the same
+ * finalize, run once that write finished or was recovered, publishes the complete step and dirty set.
+ */
+async function assertNoOpenTurnWrites(
+  dependencies: AgentAttemptDependencies,
+  invocationId: string,
+): Promise<void> {
+  const open = await dependencies.finalize.openWrites(invocationId);
+  if (open.length > 0) {
+    throw new SpecificationBusyError(
+      `A document change of this agent Turn is still being written (${open.join(', ')}); ` +
+        'the Turn is finalized once it has finished or was recovered.',
+      { cause: 'write-in-progress' },
+    );
+  }
 }
 
 /** What an earlier finalize recorded for the attempt. */
@@ -228,7 +281,7 @@ async function withTurnSettled(
   const at = isoNow(dependencies.workflow);
   const facts = await dependencies.finalize.dirtySet(journal.workspaceId);
   const turns = journal.turns.map((entry) =>
-    entry.invocationId === turn.invocationId ? { ...entry, settledAt: at } : entry,
+    entry.invocationId === turn.invocationId ? { ...entry, finalizedAt: at } : entry,
   );
 
   return {
@@ -325,6 +378,16 @@ async function publishStep(
   }
 }
 
+/** The journal with its pending proposal, if any, refused because the owner's return was judged. */
+function withoutPendingProposal(journal: AgentAttemptJournal): AgentAttemptJournal {
+  return journal.proposal?.state === 'pending'
+    ? {
+        ...journal,
+        proposal: { ...journal.proposal, state: 'refused', refusal: RETURN_REQUESTED_REFUSAL },
+      }
+    : journal;
+}
+
 /**
  * The owner's return request (A2), applied now that the Turn is proven stopped: the attempt ends
  * `returned`. An attempt that already ended `returned` is a replay (a crash after this publication).
@@ -345,7 +408,7 @@ async function publishReturn(
   }
 
   const applied: AgentAttemptJournal = {
-    ...journal,
+    ...withoutPendingProposal(journal),
     returnRequest: { ...request, state: 'applied' },
   };
   if (record.outcome?.kind === 'returned') {
@@ -376,7 +439,10 @@ async function publishReturn(
     }
 
     return {
-      journal: { ...journal, returnRequest: { ...request, state: 'refused', refusal } },
+      journal: {
+        ...withoutPendingProposal(journal),
+        returnRequest: { ...request, state: 'refused', refusal },
+      },
       outcome: { kind: 'refused', of: 'return', refusal },
     };
   }

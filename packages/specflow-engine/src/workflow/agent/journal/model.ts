@@ -24,6 +24,8 @@ export const AGENT_ATTEMPT_RELATIVE_DIR = 'engine/operations/agent-attempt';
 export const AGENT_ATTEMPT_TURNS_MAX = 100;
 /** A Turn's dirty set names at most this many paths; more are cut (`truncated`). */
 export const AGENT_DIRTY_PATHS_MAX = 500;
+/** A dirty file larger than this is named but not hashed (`oversize`). */
+export const AGENT_DIRTY_FILE_BYTES_MAX = 64 * 1024 * 1024;
 /** A dirty path longer than this is not named; the set is `truncated`. */
 export const AGENT_DIRTY_PATH_LENGTH_MAX = 1024;
 /**
@@ -41,14 +43,21 @@ export interface AgentTurnBinding {
   readonly invocationId: string;
   readonly turnId: string;
   readonly boundAt: string;
-  /** When the Turn's execution claim was settled by the attempt's finalize section. */
-  readonly settledAt?: string;
+  /**
+   * When the attempt's finalize section ran for this Turn (it records the Turn's outcome and dirty
+   * set and, in the same section, settles the Turn's execution claim).
+   */
+  readonly finalizedAt?: string;
 }
 
-/** One path of a dirty set: its content hash (sha256 hex), `null` when it is not a regular file. */
+/**
+ * One path of a dirty set: its content hash (sha256 hex), `null` when it is not a regular file or
+ * is larger than {@link AGENT_DIRTY_FILE_BYTES_MAX} (`oversize`, not hashed).
+ */
 export interface AgentDirtyPath {
   readonly path: string;
   readonly sha256: string | null;
+  readonly oversize?: true;
 }
 
 /**
@@ -108,8 +117,12 @@ export interface AgentPostActionRecord {
   readonly operationId: string;
   /** The finished step's title, which the post action words its work with. */
   readonly stepTitle: string;
-  readonly state: 'pending' | 'done';
-  /** What it did (`state: done` only). */
+  /**
+   * `pending`: not run yet (or interrupted); `done`: it ran and nothing failed; `failed`: it ran and
+   * reported a failure, kept for a retry (`retryAgentPostActions`).
+   */
+  readonly state: 'pending' | 'done' | 'failed';
+  /** What its last run did (`done` and `failed` only). */
   readonly outcomes?: readonly AgentPostActionOutcome[];
 }
 
@@ -202,7 +215,7 @@ const JournalSchema = Type.Object(
           invocationId: uuid,
           turnId: text(200),
           boundAt: timestamp,
-          settledAt: Type.Optional(timestamp),
+          finalizedAt: Type.Optional(timestamp),
         },
         closed,
       ),
@@ -254,6 +267,7 @@ const JournalSchema = Type.Object(
               {
                 path: text(AGENT_DIRTY_PATH_LENGTH_MAX),
                 sha256: Type.Union([sha256, Type.Null()]),
+                oversize: Type.Optional(Type.Literal(true)),
               },
               closed,
             ),
@@ -271,7 +285,11 @@ const JournalSchema = Type.Object(
             kind: Type.Literal('step-finished'),
             operationId: uuid,
             stepTitle: text(1000),
-            state: Type.Union([Type.Literal('pending'), Type.Literal('done')]),
+            state: Type.Union([
+              Type.Literal('pending'),
+              Type.Literal('done'),
+              Type.Literal('failed'),
+            ]),
             outcomes: Type.Optional(
               Type.Array(
                 Type.Object(
@@ -337,7 +355,7 @@ export function parseAgentAttemptJournal(value: unknown, operationId: string): A
         journal.postActions.some(
           (action) =>
             action.operationId !== agentPostActionId(journal.operationId, action.kind) ||
-            (action.state === 'done') !== (action.outcomes !== undefined),
+            (action.state !== 'pending') !== (action.outcomes !== undefined),
         )))
   ) {
     throw invalidAgentAttemptJournal();

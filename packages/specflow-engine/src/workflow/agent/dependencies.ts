@@ -23,6 +23,7 @@ import {
   type AgentPostActionRunner,
   type FinalizeBoundary,
 } from './finalize/ports';
+import { openDocumentWritesOf } from './finalize/open-writes';
 import { filesystemAgentAttemptJournal, type AgentAttemptJournalStore } from './journal/store';
 
 /** What the agent attempt operations need besides the workflow operations themselves. */
@@ -53,8 +54,15 @@ export interface AgentFinalizeDependencies {
     receipt: WorkspaceExecutionReceipt,
     target: WorkspaceExecutionTarget,
   ): Promise<void>;
-  /** The phase of the execution claim of `invocationId`, `undefined` when none (lock-free read). */
-  claimPhase(invocationId: string): Promise<WorkspaceExecutionJournal['phase'] | undefined>;
+  /** The execution claim of `invocationId`, `undefined` when none (lock-free read). */
+  claim(
+    invocationId: string,
+  ): Promise<Pick<WorkspaceExecutionJournal, 'phase' | 'settlement'> | undefined>;
+  /**
+   * The document changes of the Turn `invocationId` that are still writing (operation ids); the
+   * finalize refuses while there is one.
+   */
+  openWrites(invocationId: string): Promise<readonly string[]>;
   /** What the attempt's checkout has uncommitted now; `undefined` when Git is off. */
   dirtySet(workspaceId: string): Promise<DirtySetFacts | undefined>;
   /** Runs a pending post action after the section (the attempt commit joins here, D15). */
@@ -101,8 +109,8 @@ export async function openAgentAttempts(engine: SpecFlowEngine): Promise<AgentAt
       async settleClaim(intent, receipt, target) {
         await settleWorkspaceExecutionInSection(engine, intent, receipt, target);
       },
-      claimPhase: async (invocationId) =>
-        (await readExecutionJournal(engine.context, invocationId))?.phase,
+      claim: (invocationId) => readExecutionJournal(engine.context, invocationId),
+      openWrites: (invocationId) => openDocumentWritesOf(engine.context, invocationId),
       dirtySet: (workspaceId) => engineDirtySet(engine, workspaceId),
       postActions: workflowPostActionRunner(workflow),
     },

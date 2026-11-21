@@ -180,7 +180,12 @@ journal (outcome, the Turn's dirty set, pending post actions), then settles the 
 without the lock and never takes it. The control lock is not re-entrant, so no part of the section
 calls an operation that locks. Post actions run after the section is released; recovery runs the
 same finalize again with the same native-stop evidence, and resumes post actions of a finalized
-attempt only once its claim is settled.
+attempt only once its claim is settled. Before anything is published the finalize refuses, and the
+claim stays held, when the claim was never dispatched or was settled with another receipt, and
+while a document change of that Turn is still being written (`WORKFLOW_SPECIFICATION_BUSY`,
+`write-in-progress`). A transient refusal (busy, source unavailable) also leaves the claim held; a
+refusal of the proposal itself is recorded and the claim settles. A post action that fails stays
+`failed` in the journal for the owner's retry; recovery does not retry it by itself.
 
 ## Publication and archive
 

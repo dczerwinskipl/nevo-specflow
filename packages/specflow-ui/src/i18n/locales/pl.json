@@ -943,7 +943,6 @@
         "explanation": "Nowe środowisko powstaje z wersji zapisanej w Git na wybranej gałęzi. Ta wersja potrzebuje działających ustawień SpecFlow. Zmiany wprowadzone tylko w bieżącym katalogu nie są kopiowane do nowego środowiska.",
         "action": "Wybierz inną gałąź początkową. Aby użyć gałęzi oznaczonej jako niedostępna, popraw .nevo/config.yaml i zapisz zmianę w jej historii Git (commit).",
         "title": "Dlaczego nie można tu zacząć?",
-        "description": "Ten punkt początkowy nie ma działających ustawień SpecFlow.",
         "unavailableBranches": "Niedostępne gałęzie",
         "unavailableDescription": "Tych gałęzi nie można wybrać. Możesz użyć dostępnej gałęzi albo najpierw naprawić ustawienia niedostępnej."
       },

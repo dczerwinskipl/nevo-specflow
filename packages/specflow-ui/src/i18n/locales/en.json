@@ -943,7 +943,6 @@
         "explanation": "A new workspace starts from the version saved in Git on the selected branch. That version needs working SpecFlow settings. Changes made only in your current folder are not copied to the new workspace.",
         "action": "Choose another starting branch. To use a branch marked unavailable, fix .nevo/config.yaml and save the change in its Git history (commit).",
         "title": "Why can’t I start here?",
-        "description": "This starting point has no working SpecFlow settings.",
         "unavailableBranches": "Unavailable branches",
         "unavailableDescription": "These branches cannot be selected. Use an available branch or repair the unavailable branch’s settings first."
       },

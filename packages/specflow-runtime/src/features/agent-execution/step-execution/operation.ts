@@ -26,7 +26,7 @@ import { SessionError, type SessionCoordinator } from '../../sessions';
 import { AgentUnavailableError } from '../../workflow';
 import { untrusted } from '../brief/render';
 import { chosenLaunch, withRuntimeReasons, type AgentRuntimeFacts } from './availability';
-import type { ActiveAgentAttempt, AgentStepEngine } from './engine-port';
+import type { ActiveAgentAttempt, AgentBrief, AgentStepEngine } from './engine-port';
 
 /** The Session operations agent step execution uses. */
 export type AgentStepSessions = Pick<
@@ -105,6 +105,16 @@ function continueLaunch(active: ActiveAgentAttempt): AgentLaunch {
     ...(active.launch?.effort !== undefined ? { effort: active.launch.effort } : {}),
     session: { mode: 'reuse', sessionId: details.sessionId ?? '' },
   };
+}
+
+function isSameSubject(
+  held: { readonly specId: string; readonly taskId?: string },
+  subject: WorkflowSubject,
+): boolean {
+  return (
+    held.specId === subject.specId &&
+    held.taskId === (subject.kind === 'task' ? subject.taskId : undefined)
+  );
 }
 
 /**
@@ -362,6 +372,17 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
     subject: WorkflowSubject,
     projection: ActionProjection,
   ): Promise<ActionProjection> {
+    const [own, hold] = await Promise.all([decorateOwn(subject, projection), engine.projectHold()]);
+
+    // The subject's own agent is its `agentAttempt`; the hold names only another subject's.
+    return hold && !isSameSubject(hold.subject, subject) ? { ...own, projectHold: hold } : own;
+  }
+
+  /** The projection with the Runtime's agent reasons and the subject's own agent attempt. */
+  async function decorateOwn(
+    subject: WorkflowSubject,
+    projection: ActionProjection,
+  ): Promise<ActionProjection> {
     const position = projection.position;
     if ((position.kind === 'not-started' || position.kind === 'ready') && position.next) {
       const next = position.next;
@@ -382,7 +403,7 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
   }
 
   /**
-   * The explicit check the Ask agent dialog runs when it opens (explain before action): the full
+   * The explicit check the Run with agent dialog runs when it opens (explain before action): the full
    * availability of what a start would work on now, the checkout's baseline included.
    */
   async function check(subject: WorkflowSubject): Promise<{
@@ -475,13 +496,17 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
       readonly fresh: boolean;
       readonly effort?: string;
       readonly kind: AgentStepExecutionResult['kind'];
+      /** The step and attempt the Turn works on. */
+      readonly step: string;
+      readonly attempt: number;
+      /** The brief the start rendered from the context it recorded; absent for a retry. */
+      readonly brief?: AgentBrief;
     },
   ): Promise<AgentStepExecutionResult> {
     const { subject } = request;
     const sessionId = bound.actor.details.sessionId!;
     const turnId = derivedId(request.requestId, 'turn');
     const invocationId = derivedId(request.requestId, 'invocation');
-    const brief = await engine.brief(subject, bound.attemptId);
     if (bound.fresh) {
       await ensureFreshSession(sessions, request, {
         attemptId: bound.attemptId,
@@ -493,7 +518,10 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
       await sessions.associateTasks(sessionId, subject.specId, [subject.taskId]);
     }
 
+    // A Turn that was dispatched already is the recorded result: it is never briefed again, so a
+    // resend while its agent changes files stays idempotent.
     if (!(await sessions.hasTurn(sessionId, turnId))) {
+      const brief = bound.brief ?? (await engine.brief(subject, bound.attemptId, invocationId));
       const message = [
         brief.text,
         ...(request.message !== undefined
@@ -522,8 +550,8 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
       kind: bound.kind,
       subject,
       attemptId: bound.attemptId,
-      step: brief.step.id,
-      attempt: brief.attempt,
+      step: bound.step,
+      attempt: bound.attempt,
       sessionId,
       turnId,
       session: bound.fresh ? 'fresh' : 'reuse',
@@ -551,6 +579,8 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
       // The Engine bound this request's Turn already: complete what a failure left out.
       return dispatch(sessions, request, {
         attemptId: active.attemptId,
+        step: active.step,
+        attempt: active.attempt,
         actor: active.journal.actor,
         fresh: !continuing && active.launch?.session === 'fresh',
         ...(active.launch?.effort !== undefined ? { effort: active.launch.effort } : {}),
@@ -651,7 +681,7 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
 
     const fresh = launch.session.mode === 'fresh' && !continuing;
     // Nothing exists yet: a refusal here leaves no attempt, no Session and no Turn.
-    const { attemptId } = await engine.start({
+    const { attemptId, brief } = await engine.start({
       subject,
       actor,
       expected,
@@ -669,6 +699,9 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
 
     return dispatch(sessions, request, {
       attemptId,
+      brief,
+      step: brief.step.id,
+      attempt: brief.attempt,
       actor,
       fresh,
       ...(launch.effort !== undefined ? { effort: launch.effort } : {}),

@@ -7,7 +7,7 @@
  *
  * - `ad-hoc`: a Turn of a Session associated with a Specification, without an agent attempt (D11b):
  *   it may create, save and classify documents of that home Specification;
- * - `attempt`: a Turn of an agent attempt of a step (Ask agent): the documents of its subject
+ * - `attempt`: a Turn of an agent attempt of a step (agent step execution): the documents of its subject
  *   Specification, Task drafts (create, edit) only when the step declares `produces: tasks`, and the
  *   finish proposal of the bound attempt. A Task subject writes its Task's documents, never the
  *   Specification's own.

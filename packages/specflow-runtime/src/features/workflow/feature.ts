@@ -25,7 +25,7 @@ export interface WorkflowFeatureDependencies {
   readonly port?: WorkflowPort;
   readonly projectId?: ProjectIdSource;
   /**
-   * What only the Runtime knows of the agent option (Ask agent): its reasons and the active agent
+   * What only the Runtime knows of the agent option (agent step execution): its reasons and the active agent
    * attempt, added to every projection the actions route serves.
    */
   readonly agentAvailability?: (

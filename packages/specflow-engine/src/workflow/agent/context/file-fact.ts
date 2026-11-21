@@ -2,8 +2,26 @@ import { lstat, readFile, realpath } from 'node:fs/promises';
 import { isAbsolute, join, relative, sep } from 'node:path';
 
 import { sha256Hex } from '../../../hash';
+import { EXECUTION_DIRECTORY } from '../../../specs/execution-paths';
+import { SPECIFICATION_ROOT } from '../../../specs/repository';
 import { AGENT_CONTEXT_REFERENCE_BYTES_MAX } from '../../limits';
 import type { ContextFileFact, HashBudget } from '../../operations/agent-step-context';
+
+/**
+ * Whether a file a folder or glob reference lists is SpecFlow's own state, left out of its digest:
+ * the run records of a Specification (any `.execution` folder below the Specification root) and anything
+ * in the Engine's namespaces (`namespaces`, checkout-relative: the Project Home's configuration
+ * folder and a local state root inside the checkout). The Engine writes them itself (a start writes
+ * its run record), so they never change what the agent is briefed with.
+ */
+export function isEngineStatePath(path: string, namespaces: readonly string[]): boolean {
+  const segments = path.split('/');
+
+  return (
+    (segments[0] === SPECIFICATION_ROOT && segments.slice(1, -1).includes(EXECUTION_DIRECTORY)) ||
+    namespaces.some((namespace) => path === namespace || path.startsWith(`${namespace}/`))
+  );
+}
 
 /**
  * A reference is a checkout-relative path with `/` separators: no leading `/`, no drive letter, no

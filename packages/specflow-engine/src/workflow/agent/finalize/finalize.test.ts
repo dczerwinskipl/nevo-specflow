@@ -19,6 +19,7 @@ import type { AgentActor } from '../../state/model';
 import { agentPostActionId, type AgentReturnRequest } from '../journal/model';
 import { memoryAgentDependencies } from '../memory.test-support';
 import { proposeAgentFinish, type AgentTurnIdentity } from '../proposal/propose';
+import { readAgentAttemptWork } from '../history/attempt';
 import { startAgentAttempt } from '../start';
 import { finalizeAgentAttempt, type FinalizeBoundary } from './finalize';
 import {
@@ -536,6 +537,47 @@ describe('finalizeAgentAttempt', () => {
     expect(both[0]).toEqual(COMMITTED);
     expect(events.filter((event) => event === 'post-action')).toHaveLength(1);
     expect(fixture.journal.settled.get(ATTEMPT_ID)?.postActions?.[0]?.state).toBe('done');
+  });
+
+  it('keeps the attempt commit sha and counts what it committed, for the history', async () => {
+    const fixture = await agentTurn({ proposal: false });
+    const { dependencies, state, journal } = fixture;
+    state.attribution = {
+      paths: [{ path: 'src/a.ts', sha256: 'b'.repeat(64), added: false, area: { kind: 'code' } }],
+      incomplete: false,
+    };
+    state.claimDispatched = true;
+    await proposeAgentFinish(dependencies, {
+      turn: turn(),
+      input: {},
+      changes: { paths: ['src/a.ts'] },
+    });
+    state.claimDispatched = false;
+    const sha = 'e'.repeat(40);
+    state.postActionResults = [
+      {
+        action: 'attempt-commit',
+        status: 'completed',
+        commit: {
+          sha,
+          paths: ['specs/active/demo/overview.md', 'specs/active/demo/spec.json', 'src/a.ts'],
+        },
+      },
+    ];
+
+    await finalizeAgentAttempt(dependencies, finalizeInput());
+
+    const settled = journal.settled.get(ATTEMPT_ID)!;
+    expect(settled.postActions?.[0]?.outcomes).toEqual([
+      { action: 'attempt-commit', status: 'completed', commit: { sha, documents: 2, files: 1 } },
+    ]);
+    expect((await readAgentAttemptWork(fixture.workflow, dependencies, settled)).commit).toEqual({
+      state: 'committed',
+      runs: 1,
+      sha,
+      documents: 2,
+      files: 1,
+    });
   });
 
   it('refuses another Turn, a Turn never dispatched, or another receipt before anything changes', async () => {

@@ -10,7 +10,7 @@ export interface AllowlistPlan {
 const MAX_LISTED = 5;
 
 /**
- * Plans the provider allowlist of an Ask agent Turn (D20). A driver that cannot apply one gets
+ * Plans the provider allowlist of an agent step execution Turn (D20). A driver that cannot apply one gets
  * nothing and the Turn says so (never a faked restriction); rules the Runtime does not recognise
  * are ignored and named.
  */

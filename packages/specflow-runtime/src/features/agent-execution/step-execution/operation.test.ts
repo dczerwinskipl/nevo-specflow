@@ -1,4 +1,9 @@
-import type { ActionProjection, AgentAttemptJournal, WorkflowSubject } from '@nevo/specflow-engine';
+import type {
+  ActionProjection,
+  AgentAttemptJournal,
+  ProjectHold,
+  WorkflowSubject,
+} from '@nevo/specflow-engine';
 import { describe, expect, it } from 'vitest';
 
 import type { ActiveAgentAttempt, AgentStepEngine } from './engine-port';
@@ -42,11 +47,20 @@ const active: ActionProjection = {
  * invocation), so a retry of the same request finds it.
  */
 function fakes(
-  options: { failFirstTurnStart?: boolean; refuseStart?: boolean; failFirstCreate?: boolean } = {},
+  options: {
+    failFirstTurnStart?: boolean;
+    refuseStart?: boolean;
+    failFirstCreate?: boolean;
+    hold?: ProjectHold;
+  } = {},
 ) {
   const created = new Set<string>();
   let failCreate = options.failFirstCreate === true;
   const calls: string[] = [];
+  /** The message of every Turn the Sessions started, in order. */
+  const messages: string[] = [];
+  /** `contextChanged`: the Task context changed since the Turn was bound (the brief refuses). */
+  const context = { changed: false };
   let attempt: ActiveAgentAttempt | undefined;
   const turns = new Set<string>();
   let failTurnStart = options.failFirstTurnStart === true;
@@ -55,6 +69,7 @@ function fakes(
     activeAttempt: () => Promise.resolve(attempt),
     claimPhase: () => Promise.resolve('settled'),
     busyWriter: () => Promise.resolve(undefined),
+    projectHold: () => Promise.resolve(options.hold),
     archetypeAllowlist: () => Promise.resolve(undefined),
     workspaceIdOf: () => Promise.resolve(WORKSPACE),
     baseline: () => {
@@ -94,10 +109,19 @@ function fakes(
         },
       };
 
-      return Promise.resolve({ attemptId: ATTEMPT });
+      return Promise.resolve({
+        attemptId: ATTEMPT,
+        brief: { step: { id: 'breakdown', title: 'Break it down' }, attempt: 1, text: 'started' },
+      });
     },
-    brief: () =>
-      Promise.resolve({ step: { id: 'breakdown', title: 'Break it down' }, attempt: 1, text: 'b' }),
+    brief: (_subject, _attemptId, invocationId) =>
+      context.changed
+        ? Promise.reject(new Error('WORKFLOW_STATE_CONFLICT'))
+        : Promise.resolve({
+            step: { id: 'breakdown', title: 'Break it down' },
+            attempt: 1,
+            text: `retried ${invocationId}`,
+          }),
     work: () =>
       Promise.resolve({
         documents: [],
@@ -135,8 +159,9 @@ function fakes(
 
       return Promise.resolve({ sessionId: chosen!.sessionId! });
     },
-    start(_actor, sessionId, _input, turnOptions) {
+    start(_actor, sessionId, input, turnOptions) {
       calls.push(`session.start ${sessionId}`);
+      messages.push(input.message);
       if (failTurnStart) {
         failTurnStart = false;
 
@@ -160,6 +185,8 @@ function fakes(
 
   return {
     calls,
+    messages,
+    context,
     execution: createAgentStepExecution({ engine, sessions: () => sessions }),
     attempt: () => attempt,
   };
@@ -207,7 +234,7 @@ describe('agent step execution', () => {
   });
 
   it('completes a retried start without a second attempt, Session or Turn', async () => {
-    const { calls, execution } = fakes({ failFirstTurnStart: true });
+    const { calls, messages, execution } = fakes({ failFirstTurnStart: true });
     const id = '00000000-0000-4000-8000-000000000003';
     await expect(execution.startAgentStepExecution(request(id))).rejects.toThrow('lost');
 
@@ -218,6 +245,18 @@ describe('agent step execution', () => {
     expect(calls.filter((call) => call.startsWith('engine.start'))).toHaveLength(1);
     // The Session create replays (same request id); the Turn starts once it was not admitted.
     expect(calls.filter((call) => call.startsWith('session.start'))).toHaveLength(2);
+    // The start briefs with the context it recorded; the retry asks the Engine for the bound Turn's.
+    expect(messages).toEqual(['started', `retried ${derivedId(id, 'invocation')}`]);
+  });
+
+  it('replays a dispatched Turn without briefing it again, after its agent changed files', async () => {
+    const { execution, context } = fakes();
+    const id = '00000000-0000-4000-8000-00000000000a';
+    const started = await execution.startAgentStepExecution(request(id));
+
+    context.changed = true;
+
+    await expect(execution.startAgentStepExecution(request(id))).resolves.toEqual(started);
   });
 
   it('continues in the attempt Session and replays a retried Continue', async () => {
@@ -275,6 +314,21 @@ describe('agent step execution', () => {
       agent: { kind: 'available', launch },
     });
     expect(calls).toEqual(['baseline']);
+  });
+
+  it("names the agent holding the project for another subject, never for the subject's own", async () => {
+    const hold: ProjectHold = {
+      kind: 'agent-outcome-unknown',
+      subject: { specId: SPEC, taskId: 'api', title: 'API' },
+      sessionId: 'session-b',
+    };
+    const { execution } = fakes({ hold });
+
+    expect((await execution.decorate(subject, ready)).projectHold).toEqual(hold);
+    expect(
+      (await execution.decorate({ kind: 'task', specId: SPEC, taskId: 'api' }, ready)).projectHold,
+    ).toBeUndefined();
+    expect((await fakes().execution.decorate(subject, ready)).projectHold).toBeUndefined();
   });
 
   it('tells the owner a fresh Session is missing and creates it before Continue binds a Turn', async () => {

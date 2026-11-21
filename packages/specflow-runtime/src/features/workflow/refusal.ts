@@ -58,7 +58,7 @@ const UNAVAILABLE = new Set<WorkflowErrorCode>([
 ]);
 
 /**
- * Ask agent cannot start or continue now (explain before action): `option` is the unavailable agent
+ * Agent step execution cannot start or continue now (explain before action): `option` is the unavailable agent
  * option with its reason, the same the projection shows.
  */
 export class AgentUnavailableError extends Error {
@@ -170,7 +170,7 @@ export function workflowFailure(error: unknown): WorkflowFailure | undefined {
     return failure(error.code, error.message, { openTasks: toWire(error.openTasks) });
   }
 
-  // 409: Ask agent attribution: the paths the Engine cannot attribute, or the ones declared wrongly.
+  // 409: Agent step execution attribution: the paths the Engine cannot attribute, or the ones declared wrongly.
   if (error instanceof AttributionRefusalError) {
     const { attribution } = error;
 

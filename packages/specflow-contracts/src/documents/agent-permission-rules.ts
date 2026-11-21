@@ -1,7 +1,7 @@
 import { AGENT_COMMANDS } from './agent-commands';
 
 /**
- * The provider permission allowlist of an Ask agent Turn (D20). The rules an archetype lists per
+ * The provider permission allowlist of an agent step execution Turn (D20). The rules an archetype lists per
  * provider are opaque to the Engine; this is the one place that knows the rule syntax the shipped
  * providers read (`Tool` or `Tool(specifier)`), so that the archetype load refuses an over-broad rule
  * and the Runtime applies only rules it recognises. Read-only tools scoped to the workspace and the

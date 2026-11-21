@@ -131,7 +131,7 @@ export interface NowBlockProps {
   readonly note?: ReactNode;
   /**
    * The action row. It is the single attachment point of a later executor choice (Do it myself /
-   * Ask agent) on the start action; nothing else in the block changes for it.
+   * Run with agent) on the start action; nothing else in the block changes for it.
    */
   readonly actions?: ReactNode;
   /** The block's ⋯ menu beside its heading (other workflow operations, the step id and revision). */
@@ -152,7 +152,7 @@ export interface NowBlockProps {
    */
   readonly hold?: { readonly reason?: string };
   /**
-   * Replaces the quiet position line (Ask agent mock proposal): an agent attempt's line with its
+   * Replaces the quiet position line (Run with agent mock proposal): an agent attempt's line with its
    * Session link, a stop that waits for proof, an attempt that ended without a finish.
    */
   readonly positionLine?: ReactNode;

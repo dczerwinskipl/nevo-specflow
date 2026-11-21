@@ -11,7 +11,7 @@ read_when:
   - changing Task authoring on the Full Task page (documents, context, dependencies, details)
   - changing the first-start confirmation, Finish or Return dialogs, or exit gates in the UI
   - changing Close specification or Abandon specification
-  - changing Ask agent (its Now block states, dialog, Stop, Continue, Take over, owner confirmation)
+  - changing Run with agent (its Now block states, dialog, Stop, Continue, Take over, owner confirmation)
   - changing what Close lists as uncommitted changes
 summary: >
   How a person runs a Specification and its Tasks entirely in the UI, without any Session: the
@@ -359,7 +359,7 @@ Dialogs keep one column. Blocker and Task rows keep id → title → state order
 (D11 to D20; D21 superseded) and
 [agent step execution](../../../architecture/runtime/agent-step-execution.md).
 The mock is the Storybook set **SpecFlow/Screens/Ask agent (mock)**: the real routed screens with
-the mock's Now block, dialogs and the regions a state changes. Ask agent adds no new surface: it lives in the Now block, its
+the mock's Now block, dialogs and the regions a state changes. Run with agent adds no new surface: it lives in the Now block, its
 dialogs, the Close dialog and the Task history. User copy says "the agent stopped", never "turn",
 "claim" or "invocation".
 
@@ -464,7 +464,7 @@ proposes a result); decisions that need a person stay with the person. Then, in 
 - **Finished, commit failed**: the step is published, so Now moves on; an attention note
   (`role="alert"`) says it in plain words with the code after it ("its commit failed: a Git hook in
   this repository refused it (`COMMIT_HOOK_FAILED`)"), that the files stay uncommitted on `<branch>`
-  and Close lists them until committed, and, before any click, that Ask agent cannot start the next
+  and Close lists them until committed, and, before any click, that Run with agent cannot start the next
   step until then (an agent starts only from a committed checkout). Then the attempt's paths (the
   same list Close shows) and a **Retry commit** button (a dedicated owner action, the same button as
   in Close).

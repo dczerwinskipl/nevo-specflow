@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { fileFact, isCheckoutRelative } from './file-fact';
+import { fileFact, isCheckoutRelative, isEngineStatePath } from './file-fact';
 
 let base: string | undefined;
 afterEach(async () => {
@@ -58,5 +58,19 @@ describe('fileFact', () => {
     if (await tryLink(join(base, 'secret.txt'), join(root, 'link.txt'), 'file')) {
       expect(await fileFact(root, 'link.txt', budget)).toBeUndefined();
     }
+  });
+});
+
+describe('isEngineStatePath', () => {
+  it("leaves SpecFlow's own state out of a folder or glob digest, nothing else", () => {
+    const namespaces = ['.nevo'];
+
+    expect(isEngineStatePath('specs/active/demo/.execution/run.json', namespaces)).toBe(true);
+    expect(isEngineStatePath('specs/active/demo/.execution/tasks/t.json', namespaces)).toBe(true);
+    expect(isEngineStatePath('.nevo/project.yaml', namespaces)).toBe(true);
+    expect(isEngineStatePath('specs/active/demo/overview.md', namespaces)).toBe(false);
+    expect(isEngineStatePath('specs/active/demo/tasks/t/task.md', namespaces)).toBe(false);
+    expect(isEngineStatePath('src/.execution/x.ts', namespaces)).toBe(false);
+    expect(isEngineStatePath('.nevo-other/x', namespaces)).toBe(false);
   });
 });

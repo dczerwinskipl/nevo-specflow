@@ -23,9 +23,9 @@ export function createManagedInvocation(options: {
    * when the Turn's transport ends, before the claim settles.
    */
   capabilities?: InvocationCapabilities;
-  /** The agent attempt the Turn is bound to (Ask agent): recorded in the claim, scopes the capability. */
+  /** The agent attempt the Turn is bound to (agent step execution): recorded in the claim, scopes the capability. */
   agentAttempt?: { readonly attemptId: string };
-  /** The archetype allowlist of an Ask agent Turn (D20); reported when the driver cannot apply it. */
+  /** The archetype allowlist of an agent step execution Turn (D20); reported when the driver cannot apply it. */
   permissions?: { readonly allow: readonly string[] };
   signal: AbortSignal;
   stop(): void;

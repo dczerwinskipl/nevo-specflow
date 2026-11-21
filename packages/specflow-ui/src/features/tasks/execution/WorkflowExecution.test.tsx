@@ -46,6 +46,8 @@ function fakeExecutionApi(overrides: Partial<WorkflowExecutionApi> = {}) {
     returnTo: vi.fn(never),
     reevaluateWait: vi.fn(never),
     abandon: vi.fn(never),
+    checkAgentExecution: vi.fn(never),
+    startAgentExecution: vi.fn(never),
     closePreview: vi.fn(never),
     closeOccupancy: vi.fn(() => Promise.resolve({ blockers: [] })),
     close: vi.fn(never),

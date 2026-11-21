@@ -1,5 +1,8 @@
 import type {
   AbandonSpecificationResult,
+  AgentStepExecutionCheck,
+  AgentStepExecutionRequest,
+  AgentStepExecutionResult,
   FinishWorkflowRequest,
   FinishWorkflowResult,
   ReevaluateWaitRequest,
@@ -45,6 +48,20 @@ export interface WorkflowExecutionApi {
   ): Promise<ReturnWorkflowResult>;
   reevaluateWait(specId: string, input: ReevaluateWaitRequest): Promise<ReevaluateWaitResult>;
   abandon(specId: string, reason: string): Promise<AbandonSpecificationResult>;
+  /**
+   * Whether an agent can run the step now, with every reason a start would refuse with, the
+   * checkout's baseline included (`GET .../workflow/agent-execution/check`). The dialog reads it
+   * when it opens.
+   */
+  checkAgentExecution(
+    subject: WorkflowSubjectRef,
+    signal?: AbortSignal,
+  ): Promise<AgentStepExecutionCheck>;
+  /** Run the step the owner was shown with an agent (`POST .../workflow/agent-execution`). */
+  startAgentExecution(
+    subject: WorkflowSubjectRef,
+    input: AgentStepExecutionRequest,
+  ): Promise<AgentStepExecutionResult>;
   closePreview(specId: string, signal?: AbortSignal): Promise<ClosePreviewResult>;
   /** What else holds the checkout a Close would remove (running agent Turns), without planning it. */
   closeOccupancy(specId: string, signal?: AbortSignal): Promise<CloseOccupancy>;
@@ -80,6 +97,15 @@ export function createRuntimeWorkflowExecutionApi(transport: ApiTransport): Work
         { reason },
         { operation: 'workflow.abandon' },
       ),
+    checkAgentExecution: (subject, signal) =>
+      transport.get(`${workflowBase(subject)}/agent-execution/check`, {
+        signal,
+        operation: 'workflow.agent-execution-check',
+      }),
+    startAgentExecution: (subject, input) =>
+      transport.post(`${workflowBase(subject)}/agent-execution`, input, {
+        operation: 'workflow.agent-execution',
+      }),
     closePreview: (specId, signal) =>
       transport.get(`${specBase(specId)}/close/preview`, {
         signal,

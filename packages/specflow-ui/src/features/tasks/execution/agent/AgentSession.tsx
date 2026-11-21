@@ -1,0 +1,215 @@
+import { useId } from 'react';
+import { Link, useRouter } from '@tanstack/react-router';
+import { useTranslation } from 'react-i18next';
+import { Typography } from '@nevo/ui';
+import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
+import type { AgentLaunch } from '@nevo/specflow-contracts/workflow';
+import {
+  AgentPicker,
+  ModelEffortPicker,
+  SessionProviderIcon,
+  type StartCatalogue,
+} from '../../../sessions';
+
+/** How a fresh Session's agent is shown: the Runtime's catalogue, or why there is none. */
+export type AgentCatalogue =
+  | { readonly status: 'loading' }
+  | { readonly status: 'error' }
+  | {
+      readonly status: 'ready';
+      readonly catalogue: StartCatalogue;
+      readonly providers: readonly ProviderDescriptor[];
+    };
+
+/** What the owner picked for a fresh Session: the provider, its model and the model's effort. */
+export interface FreshChoice {
+  readonly providerId: string;
+  readonly modelId: string;
+  readonly effort?: string;
+}
+
+/** The Session the attempt runs in (D18): the workflow decides fresh or continued, not the dialog. */
+export type SessionMode = 'fresh' | 'reuse' | 'gone' | 'not-chosen';
+
+/** A link to the Session where a router exists (the dialog is also shown without one). */
+function SessionLink({ sessionId, title }: { readonly sessionId: string; readonly title: string }) {
+  const router = useRouter({ warn: false });
+  if (!router) {
+    return <span className="text-content-primary">{title}</span>;
+  }
+
+  return (
+    <Link
+      to="/sessions/$sessionId"
+      params={{ sessionId }}
+      search={{ collection: 'current' }}
+      className="text-content-link underline-offset-2 hover:underline"
+    >
+      {title}
+    </Link>
+  );
+}
+
+function ContinuedSession({
+  gone,
+  launch,
+  step,
+  sessionTitle,
+  catalogue,
+}: {
+  readonly gone: boolean;
+  readonly launch: AgentLaunch | undefined;
+  readonly step: string;
+  readonly sessionTitle: string | undefined;
+  readonly catalogue: AgentCatalogue;
+}) {
+  const { t } = useTranslation();
+  const sessionId = launch?.session.mode === 'reuse' ? launch.session.sessionId : undefined;
+  const title = sessionTitle ?? t('workflowExecution.agent.session.earlier');
+  const provider =
+    catalogue.status === 'ready'
+      ? catalogue.providers.find((candidate) => candidate.providerId === launch?.provider)
+      : undefined;
+  const model =
+    provider?.models.find((candidate) => candidate.modelId === launch?.model)?.title ??
+    launch?.model;
+  const modelLine = [model, launch?.effort].filter(Boolean).join(' · ');
+
+  return (
+    <div className="grid gap-2">
+      <Typography as="p" variant="label-sm">
+        {t('workflowExecution.agent.session.label')}
+      </Typography>
+      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-body-md">
+        <SessionProviderIcon providerId={launch?.provider} />
+        <span className="text-content-primary">
+          {t('workflowExecution.agent.session.continues')}
+        </span>
+        {gone || !sessionId ? (
+          <span className="text-content-muted line-through">{title}</span>
+        ) : (
+          <SessionLink sessionId={sessionId} title={title} />
+        )}
+      </p>
+      <Typography as="p" variant="body-sm" className="text-content-secondary">
+        {gone
+          ? t('workflowExecution.agent.session.gone')
+          : t('workflowExecution.agent.session.continuesWhy', { model: modelLine, step })}
+      </Typography>
+    </div>
+  );
+}
+
+/**
+ * The Session section of the dialog: a new Session (the start screen's agent tiles and the
+ * Composer's model picker, preselected from the agent role's settings), the one the workflow
+ * continues (read-only), or that no agent and model are chosen yet. An independent step says why it
+ * always starts a new Session.
+ */
+export function AgentSession({
+  mode,
+  independent,
+  step,
+  role,
+  launch,
+  sessionTitle,
+  catalogue,
+  choice,
+  onChoice,
+}: {
+  readonly mode: SessionMode;
+  readonly independent: boolean;
+  readonly step: string;
+  readonly role: string;
+  readonly launch: AgentLaunch | undefined;
+  readonly sessionTitle?: string;
+  readonly catalogue: AgentCatalogue;
+  readonly choice: FreshChoice;
+  readonly onChoice: (choice: FreshChoice) => void;
+}) {
+  const { t } = useTranslation();
+  const labelId = useId();
+  if (mode === 'reuse' || mode === 'gone') {
+    return (
+      <ContinuedSession
+        gone={mode === 'gone'}
+        launch={launch}
+        step={step}
+        sessionTitle={sessionTitle}
+        catalogue={catalogue}
+      />
+    );
+  }
+
+  const ready = catalogue.status === 'ready' ? catalogue : undefined;
+  const provider = ready?.providers.find((candidate) => candidate.providerId === choice.providerId);
+  const agentLine = [launch?.provider, launch?.model].filter(Boolean).join(' · ');
+
+  return (
+    <div className="grid gap-3">
+      <Typography as="p" variant="label-sm" id={labelId}>
+        {t('workflowExecution.agent.session.newSession')}
+      </Typography>
+      {mode === 'not-chosen' ? (
+        <p className="flex items-center gap-2 text-body-md text-content-muted">
+          <span className="inline-flex size-4 rounded-full border border-dashed border-border-strong" />
+          {t('workflowExecution.agent.session.notChosen')}
+        </p>
+      ) : (
+        <>
+          {ready ? (
+            <>
+              <AgentPicker
+                catalogue={ready.catalogue}
+                providerId={choice.providerId}
+                labelledBy={labelId}
+                onSelect={(providerId) => {
+                  const next = ready.providers.find(
+                    (candidate) => candidate.providerId === providerId,
+                  );
+                  onChoice({ providerId, modelId: next?.models[0]?.modelId ?? '' });
+                }}
+              />
+              {provider ? (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <Typography as="span" variant="body-sm" className="text-content-secondary">
+                    {t('workflowExecution.agent.session.model')}
+                  </Typography>
+                  <ModelEffortPicker
+                    provider={provider}
+                    value={{
+                      modelId: choice.modelId,
+                      ...(choice.effort ? { effort: choice.effort } : {}),
+                    }}
+                    onChange={(modelId, effort) =>
+                      onChoice({
+                        providerId: choice.providerId,
+                        modelId,
+                        ...(effort ? { effort } : {}),
+                      })
+                    }
+                  />
+                </div>
+              ) : null}
+            </>
+          ) : catalogue.status === 'loading' ? (
+            <Typography as="p" variant="body-sm" className="text-content-secondary" role="status">
+              {t('workflowExecution.agent.session.loadingAgents')}
+            </Typography>
+          ) : (
+            <Typography as="p" variant="body-sm" className="text-content-secondary">
+              {t('workflowExecution.agent.session.catalogueFailed', { agent: agentLine, role })}
+            </Typography>
+          )}
+          {ready || independent ? (
+            <Typography as="p" variant="body-sm" className="text-content-secondary">
+              {independent
+                ? t('workflowExecution.agent.session.independent', { step, role })
+                : t('workflowExecution.agent.session.preselected', { role })}
+            </Typography>
+          ) : null}
+        </>
+      )}
+    </div>
+  );
+}

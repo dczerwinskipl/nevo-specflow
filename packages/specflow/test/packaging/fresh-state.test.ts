@@ -34,7 +34,8 @@ describe('pnpm product:pack — self-bootstrapping from a fresh install', () => 
 
       expect(existsSync(artifacts)).toBe(false);
 
-      run('pnpm', ['product:pack'], { cwd: workspace.root, timeout: 180_000 });
+      // This workspace has no warm build outputs while the rest of pnpm check may be running.
+      run('pnpm', ['product:pack'], { cwd: workspace.root, timeout: 300_000 });
 
       for (const name of productDependencies) {
         expect(existsSync(join(workspace.root, 'packages', name, 'dist'))).toBe(true);
@@ -46,5 +47,5 @@ describe('pnpm product:pack — self-bootstrapping from a fresh install', () => 
     } finally {
       workspace.dispose();
     }
-  }, 400_000);
+  }, 600_000);
 });

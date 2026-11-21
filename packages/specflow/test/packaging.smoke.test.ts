@@ -92,7 +92,7 @@ beforeAll(() => {
       {
         cwd: packagingWorkspace.root,
         encoding: 'utf8',
-        timeout: 180_000,
+        timeout: 300_000,
       },
     );
     const parsed = JSON.parse(out.trim().split(/\r?\n/).filter(Boolean).pop() ?? '{}') as {
@@ -126,7 +126,7 @@ beforeAll(() => {
 
   binDir = join(prefix, 'node_modules', '.bin');
   runEnv = { ...process.env, PATH: `${binDir}${delimiter}${process.env.PATH ?? ''}` };
-}, 400_000);
+}, 600_000);
 
 afterAll(async () => {
   packagingWorkspace?.dispose();

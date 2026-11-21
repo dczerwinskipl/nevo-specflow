@@ -2,25 +2,17 @@
  * What an agent attempt's commit holds (D15), decided from the ledger and the attempt's journal
  * alone. Pure: no I/O, no Git.
  */
+import { ledgerAuthorsOf, type LedgerEntry } from '../../../../specs/durable/ledger/model';
 import type { AgentAttemptJournal, AgentDeclaredPath } from '../../journal/model';
-
-/** One ledger entry as the selection reads it (the ledger's `LedgerEntry`). */
-export interface AttemptLedgerEntry {
-  readonly path: string;
-  readonly operationIds: readonly string[];
-  readonly operationCount: number;
-  readonly executions?: readonly { readonly operationId: string; readonly executionId: string }[];
-}
 
 export interface AttemptLedgerSelection {
   /** The entries every operation of which one of the attempt's Turns made: committed. Sorted. */
   readonly paths: readonly string[];
   /**
-   * Entries whose listed operations are all the attempt's, but that forgot older operations (the
-   * ledger keeps the newest ids, `operationCount` counts all): who made those cannot be proven, so
-   * nothing is committed (fail closed). Sorted.
+   * Entries the attempt changed together with someone else (an owner, another attempt, a tool):
+   * the commit would take another author's change, so it is refused, naming them. Sorted.
    */
-  readonly unprovable: readonly string[];
+  readonly mixed: readonly string[];
 }
 
 /** The Runtime invocations of the attempt's Turns: the execution claims its operations name. */
@@ -29,32 +21,29 @@ export function attemptInvocations(journal: AgentAttemptJournal): ReadonlySet<st
 }
 
 /**
- * The ledger entries of the attempt: those whose every operation was made by one of its Turns (an
- * operation names its Turn in `executions`). An entry with an operation of anyone else (the owner,
- * another attempt, an operation made without a Turn) stays out: the commit never takes another
- * author's change.
+ * The ledger entries of the attempt, judged by each entry's authors (`ledgerAuthorsOf`, which no
+ * truncation of its operation ids drops): an entry only the attempt's Turns made is selected; an
+ * entry the attempt never touched stays out (another author's change is never committed); an entry
+ * both made is `mixed` and refuses the commit.
  */
 export function selectAttemptLedgerEntries(
-  entries: readonly AttemptLedgerEntry[],
+  entries: readonly LedgerEntry[],
   invocations: ReadonlySet<string>,
 ): AttemptLedgerSelection {
   const paths: string[] = [];
-  const unprovable: string[] = [];
+  const mixed: string[] = [];
   for (const entry of entries) {
-    const authors = new Map(
-      (entry.executions ?? []).map((execution) => [execution.operationId, execution.executionId]),
-    );
-    const ours =
-      entry.operationIds.length > 0 &&
-      entry.operationIds.every((id) => invocations.has(authors.get(id) ?? ''));
-    if (!ours) {
+    const authors = ledgerAuthorsOf(entry);
+    const ours = authors.executions.filter((id) => invocations.has(id));
+    if (ours.length === 0) {
       continue;
     }
 
-    (entry.operationCount > entry.operationIds.length ? unprovable : paths).push(entry.path);
+    const alone = authors.unattributed !== true && ours.length === authors.executions.length;
+    (alone ? paths : mixed).push(entry.path);
   }
 
-  return { paths: paths.sort(), unprovable: unprovable.sort() };
+  return { paths: paths.sort(), mixed: mixed.sort() };
 }
 
 /** The declared paths that were never hashed (too large, or not named when published). */

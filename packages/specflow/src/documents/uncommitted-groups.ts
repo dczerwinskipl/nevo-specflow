@@ -4,8 +4,9 @@
  * shows the same groups and remedies (`docs/product/specflow/ui/workflow-execution.md`, "Close:
  * one Uncommitted changes group"); the CLI prints them as text and under `uncommitted` in `--json`.
  * There is no discard remedy: SpecFlow never discards work. A kind without paths is omitted.
- * Agent work whose commit failed comes first, one group per attempt: the Engine lists its paths
- * there and leaves them out of the other kinds; its remedy is to retry the attempt commit.
+ * Agent work whose commit failed comes first, one group with an entry per attempt (which step of
+ * which Task, the reason with its code, its paths, its retry command): the Engine lists those paths
+ * there and leaves them out of the other kinds.
  */
 
 import type { CloseRepositoryBlocker, DocumentError } from '@nevo/specflow-engine';
@@ -36,14 +37,21 @@ export interface UncommittedOwnerReport {
 /** One agent attempt whose commit failed (`attempts` of the hold or the blocker). */
 export type UncommittedAttemptEntry = NonNullable<UncommittedBlocker['attempts']>[number];
 
+export interface UncommittedAttemptReport extends Omit<UncommittedAttemptEntry, 'paths'> {
+  readonly paths: readonly string[];
+  readonly more: number;
+  /** The command that retries this attempt's commit. */
+  readonly retry: string;
+}
+
 export interface UncommittedGroupReport {
   readonly kind: 'agent-commit-failed' | 'saved-not-committed' | 'changed-outside';
   readonly count: number;
   readonly remedy: string;
   /** `saved-not-committed`: one entry per owner. */
   readonly owners?: readonly UncommittedOwnerReport[];
-  /** `agent-commit-failed`: the attempt, why its commit failed, and its paths. */
-  readonly attempt?: Omit<UncommittedAttemptEntry, 'paths' | 'count'>;
+  /** `agent-commit-failed`: each attempt, why its commit failed, its paths and its retry. */
+  readonly attempts?: readonly UncommittedAttemptReport[];
   /** `changed-outside`: the checkout and its paths. */
   readonly checkout?: string;
   readonly workspaceId?: string;
@@ -150,17 +158,19 @@ export function uncommittedChangesReport(
     }
   }
 
-  for (const { paths, count, ...attempt } of attempts.values()) {
+  if (attempts.size > 0) {
+    const listed = [...attempts.values()].map((attempt) => ({
+      ...attempt,
+      more: attempt.count - attempt.paths.length,
+      retry: retryCommand(attempt),
+    }));
     groups.push({
       kind: 'agent-commit-failed',
-      count,
+      count: listed.reduce((sum, attempt) => sum + attempt.count, 0),
       remedy:
-        'Retry the attempt commit with "' +
-        retryCommand(attempt) +
-        '" once the cause is fixed; it commits exactly these files and nothing of anyone else.',
-      attempt,
-      paths,
-      more: count - paths.length,
+        'Fix the cause, then retry the attempt commit (Retry commit, or the command under each ' +
+        "attempt); it commits exactly the attempt's files and nothing of anyone else.",
+      attempts: listed,
     });
   }
 
@@ -251,13 +261,16 @@ export function uncommittedChangesLines(report: UncommittedChangesReport): strin
 
   for (const group of report.groups) {
     if (group.kind === 'agent-commit-failed') {
-      const attempt = group.attempt!;
-      lines.push(
-        `Agent work whose commit failed: ${group.count} (` +
-          (attempt.taskId !== undefined ? `Task ${attempt.taskId}, ` : '') +
-          `"${attempt.stepTitle}" attempt ${String(attempt.attempt)}, ${attempt.code})`,
-      );
-      paths(group.paths ?? [], group.more ?? 0, '  ');
+      lines.push(`Agent work whose commit failed: ${group.count}`);
+      for (const attempt of group.attempts ?? []) {
+        lines.push(
+          '  ' +
+            (attempt.taskId !== undefined ? `Task ${attempt.taskId}, ` : 'Specification, ') +
+            `"${attempt.stepTitle}" attempt ${String(attempt.attempt)} (${attempt.code}): ${String(attempt.count)}`,
+        );
+        paths(attempt.paths, attempt.more, '    ');
+        lines.push('    Retry: ' + attempt.retry);
+      }
     } else if (group.kind === 'saved-not-committed') {
       lines.push(`Saved in SpecFlow, not committed yet: ${group.count}`);
       for (const entry of group.owners ?? []) {

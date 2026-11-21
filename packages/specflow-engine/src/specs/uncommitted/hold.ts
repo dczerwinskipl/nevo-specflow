@@ -105,6 +105,7 @@ export async function readUncommittedHold(
     (await engine.failedAttemptCommits?.(workspaceId)) ?? [],
     allowed.flatMap((record) => record.entries.map((entry) => entry.path)),
     UNCOMMITTED_HOLD_PATHS_NAMED,
+    'always',
   );
   const held = allowed.flatMap((record) => {
     const entries = record.entries.filter((entry) => !failed.taken.has(entry.path));
@@ -113,7 +114,7 @@ export async function readUncommittedHold(
   });
   const all = allowed.flatMap((record) => record.entries);
   // A record that cannot be read is a fact nobody can judge: it holds the checkout like an entry.
-  if (all.length === 0 && unreadable === 0) {
+  if (all.length === 0 && failed.attempts.length === 0 && unreadable === 0) {
     return undefined;
   }
 

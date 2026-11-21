@@ -93,6 +93,8 @@ export interface ManualCommitRequestFields {
   readonly unlinkedPaths?: readonly string[];
   /** Paths outside the ledger the commit takes too (see the module comment); internal only. */
   readonly declared?: readonly DeclaredCommitPath[];
+  /** `paths` were selected by the entries' durable authors (see `closureOf`); internal only. */
+  readonly authorsJudged?: boolean;
 }
 
 /** The records of the owners of the target, read without a lock; a corrupt one refuses (fail closed). */
@@ -171,7 +173,12 @@ export async function admitManualCommit(
   }
 
   // 5. The subset.
-  const check = selectEntries(entries, request.paths, new Set(request.unlinkedPaths ?? []));
+  const check = selectEntries(
+    entries,
+    request.paths,
+    new Set(request.unlinkedPaths ?? []),
+    request.authorsJudged === true,
+  );
   if (!check.ok) {
     throw manualCommitError(
       'subset-invalid',

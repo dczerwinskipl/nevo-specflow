@@ -79,6 +79,8 @@ export interface ManualCommitCommand {
    */
   readonly declared?: readonly DeclaredCommitPath[];
   readonly composed?: StoredMessage;
+  /** `paths` were selected by the entries' durable authors (see `closureOf`). */
+  readonly authorsJudged?: boolean;
 }
 
 export interface ManualCommitCommandOptions extends ManualCommitOptions {
@@ -393,6 +395,7 @@ export async function manualCommit(
       ...(command.unlinkedPaths !== undefined ? { unlinkedPaths: command.unlinkedPaths } : {}),
       ...(command.declared !== undefined ? { declared: command.declared } : {}),
       ...(command.composed !== undefined ? { composed: command.composed } : {}),
+      ...(command.authorsJudged === true ? { authorsJudged: true } : {}),
     },
     manualCommitPorts(engine, options),
   );

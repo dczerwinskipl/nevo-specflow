@@ -392,7 +392,18 @@ or a commit of the whole tree, and the agent is not expected to commit by itself
 
    A path whose content differs from its recorded hash or post-image (someone edited it after the
    publish) refuses the commit, naming it, and nothing of it is committed: the commit never takes in
-   another author's change, and an unattributed change is never committed. The commit is made on the
+   another author's change, and an unattributed change is never committed.
+
+   _Implemented (T13):_ "belongs to the attempt" is judged by each ledger entry's durable author set
+   (the agent Turns that made its operations, and whether any operation was made without one),
+   merged on every record and never truncated like the kept operation ids, so a file the agent saved
+   more than 50 times still commits. The attempt's start and finalize attribute their execution
+   state to its Turns. An entry the attempt never touched stays out; an entry the attempt changed
+   together with someone else refuses the commit (`ATTEMPT_COMMIT_MIXED_AUTHORS`, naming it). The
+   Task index (`tasks/index.yaml`) is one such shared entry: when the owner created, edited or
+   removed Tasks and left that uncommitted before the agent changed Tasks, the index mixes both
+   authors and the attempt commit is refused until the owner commits their Task changes and retries;
+   after a committed checkout (the normal start of an attempt) the index is the attempt's alone. The commit is made on the
    working branch of the Specification's workspace; it is not a merge and moves no other branch.
    The subject is `spec(<subject>): <step title> (attempt n) by agent in <slug>` (whole, as PR #163
    made subjects), with the `Nevo-Operation` and attempt trailers. When auto-commit is on, the queued

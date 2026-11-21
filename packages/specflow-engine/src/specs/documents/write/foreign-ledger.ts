@@ -4,7 +4,12 @@ import { readExecutionJournal } from '../../../execution/journal';
 import type { WorkspaceExecutionIntent } from '../../../execution/model';
 import { foldPathKey } from '../../document-rules/document-paths';
 import type { DocumentError } from '../../document-rules/errors';
-import { listLedgerRecords, type LedgerEntry, type OwnedExecution } from '../../durable';
+import {
+  ledgerAuthorsOf,
+  listLedgerRecords,
+  type LedgerEntry,
+  type OwnedExecution,
+} from '../../durable';
 import { documentChangeError } from '../changes/errors';
 import type { DocumentChangePlan } from '../changes/plan/model';
 import type { WriteRuntime } from './writer-types';
@@ -25,9 +30,8 @@ export function sameAuthor(
  * The paths of a planned agent write whose uncommitted ledger entry holds an operation of another
  * author (D11, B3): the agent must not build on someone else's uncommitted change, because the
  * attempt commit takes only entries whose every operation is the agent's own. A path is foreign
- * when any recorded operation was made without an execution, by an execution `authored` rejects,
- * or when the entry kept fewer operation ids than it counts (the oldest were dropped and cannot be
- * attributed: fail closed). Pure.
+ * when its durable authors (`ledgerAuthorsOf`, never truncated) include an operation made without
+ * an execution or by an execution `authored` rejects. Pure.
  */
 export function foreignLedgerPaths(
   entries: readonly LedgerEntry[],
@@ -42,17 +46,8 @@ export function foreignLedgerPaths(
       continue;
     }
 
-    const executions = new Map(
-      (entry.executions ?? []).map((execution) => [execution.operationId, execution.executionId]),
-    );
-    if (
-      entry.operationCount > entry.operationIds.length ||
-      entry.operationIds.some((operationId) => {
-        const executionId = executions.get(operationId);
-
-        return executionId === undefined || !authored(executionId);
-      })
-    ) {
+    const authors = ledgerAuthorsOf(entry);
+    if (authors.unattributed === true || authors.executions.some((id) => !authored(id))) {
       foreign.push(entry.path);
     }
   }
@@ -100,9 +95,7 @@ export async function foreignUncommitted(
   }
 
   const same = new Set<string>([owned.operationId]);
-  const ids = new Set(
-    entries.flatMap((entry) => (entry.executions ?? []).map((execution) => execution.executionId)),
-  );
+  const ids = new Set(entries.flatMap((entry) => ledgerAuthorsOf(entry).executions));
   for (const executionId of ids) {
     if (same.has(executionId)) {
       continue;

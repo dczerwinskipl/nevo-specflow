@@ -15,7 +15,7 @@ export {
   manualCommitError,
   type ManualCommitCause,
 } from './errors';
-export { doneOf, type ManualCommitDone } from './execute';
+export { doneOf, errorOfFailedJournal, type ManualCommitDone } from './execute';
 export {
   findManualCommitJournal,
   listManualCommitJournals,

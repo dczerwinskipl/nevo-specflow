@@ -223,16 +223,18 @@ describe('CLI Close preview with uncommitted changes', () => {
       }),
       false,
     );
-    expect(stderr.slice(1, 6)).toEqual([
+    expect(stderr.slice(1, 8)).toEqual([
       'Uncommitted changes: 4. Closing starts from a committed checkout, and SpecFlow never discards work.',
-      'Agent work whose commit failed: 2 (Task api, "Implement" attempt 2, MANUAL_COMMIT_CONFLICT)',
-      '  src/app.ts',
-      '  specs/active/a/tasks/api/notes.md',
-      '  Remedy: Retry the attempt commit with "nevo-specflow workflow retry-commit ' +
+      'Agent work whose commit failed: 2',
+      '  Task api, "Implement" attempt 2 (MANUAL_COMMIT_CONFLICT): 2',
+      '    src/app.ts',
+      '    specs/active/a/tasks/api/notes.md',
+      '    Retry: nevo-specflow workflow retry-commit ' +
         self +
-        ' --task api --step implement --attempt 2" once the cause is fixed; it commits exactly these files and nothing of anyone else.',
+        ' --task api --step implement --attempt 2',
+      "  Remedy: Fix the cause, then retry the attempt commit (Retry commit, or the command under each attempt); it commits exactly the attempt's files and nothing of anyone else.",
     ]);
-    expect(stderr[6]).toBe('Saved in SpecFlow, not committed yet: 1');
+    expect(stderr[8]).toBe('Saved in SpecFlow, not committed yet: 1');
   });
 
   it('keeps every path in --json, shows five in text, and labels owners only when known', () => {

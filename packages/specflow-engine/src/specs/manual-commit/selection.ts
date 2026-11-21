@@ -59,15 +59,21 @@ export function revisionOfScope(
  * nothing in, and no other path pulls it in. It is for a shared registry that every operation of a
  * kind rewrites whole (the Task index), which would otherwise tie all such operations into one; its
  * caller decides on its own when it may go (`commitExecutionState`). Its truncation does not count.
+ *
+ * `authorsJudged`: the caller selected by each entry's durable authors, so that every entry an
+ * author of the selection touched is selected or refused before (the attempt commit, D15); a
+ * truncated entry then splits nothing and is judged by its known ids like any other.
  */
 export function closureOf(
   entries: readonly ScopeEntry[],
   seed: Iterable<string>,
   unlinked: ReadonlySet<string> = new Set(),
+  authorsJudged = false,
 ): string[] {
   const selected = new Set(seed);
   const linked = entries.filter((entry) => !unlinked.has(entry.path));
   if (
+    !authorsJudged &&
     selected.size > 0 &&
     linked.some((entry) => entry.operationCount > entry.operationIds.length)
   ) {
@@ -113,6 +119,7 @@ export function selectEntries(
   entries: readonly ScopeEntry[],
   requested: readonly string[] | undefined,
   unlinked: ReadonlySet<string> = new Set(),
+  authorsJudged = false,
 ): SubsetCheck {
   if (requested === undefined) {
     return { ok: true, selected: entries };
@@ -125,7 +132,7 @@ export function selectEntries(
     return { ok: false, kind: 'unknown-path', paths: unknown };
   }
 
-  const closure = closureOf(entries, wanted, unlinked);
+  const closure = closureOf(entries, wanted, unlinked, authorsJudged);
   if (closure.length !== wanted.length) {
     return { ok: false, kind: 'not-closed', paths: closure };
   }
@@ -194,6 +201,7 @@ export function fingerprintOfRequest(input: {
   readonly ledgerRevision: string | undefined;
   readonly unlinkedPaths?: readonly string[] | undefined;
   readonly declared?: readonly DeclaredCommitPath[] | undefined;
+  readonly authorsJudged?: boolean | undefined;
 }): string {
   return sha256Hex(
     JSON.stringify({
@@ -213,6 +221,7 @@ export function fingerprintOfRequest(input: {
               .map((entry) => [entry.path, entry.sha256, entry.oversize === true]),
           }
         : {}),
+      ...(input.authorsJudged === true ? { authorsJudged: true } : {}),
     }),
   );
 }

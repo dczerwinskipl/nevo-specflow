@@ -104,6 +104,7 @@ export async function commitUncommitted(
     ledgerRevision: request.ledgerRevision,
     unlinkedPaths: request.unlinkedPaths,
     declared: request.declared,
+    authorsJudged: request.authorsJudged,
   });
 
   const known = await findManualCommitJournal(rt.context, request.operationId);

@@ -38,10 +38,10 @@ export async function failedAgentAttemptCommits(
           record.owner.kind === 'specification' && record.owner.id === journal.subject.specId,
       )
       .flatMap((record) => record.entries);
+    // A refused commit's mixed entries are the attempt's too: listed with it until it commits.
     const ledger = selectAttemptLedgerEntries(entries, attemptInvocations(journal));
-    const paths = [
-      ...new Set([...ledger.paths, ...(action.declared ?? []).map((entry) => entry.path)]),
-    ].sort();
+    const paths = [...ledger.paths, ...ledger.mixed].sort();
+    const declared = (action.declared ?? []).map((entry) => entry.path).sort();
     attempts.push({
       attemptId: journal.operationId,
       specId: journal.subject.specId,
@@ -51,6 +51,7 @@ export async function failedAgentAttemptCommits(
       stepTitle: action.stepTitle,
       code: action.outcomes?.find((outcome) => outcome.status === 'failed')?.code ?? 'FAILED',
       paths,
+      declared,
     });
   }
 

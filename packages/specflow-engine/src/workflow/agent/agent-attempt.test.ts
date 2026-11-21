@@ -11,7 +11,9 @@ import {
   runToBreakdown,
   seedExecutionCatalogue,
   specification,
+  specificationWithTasks,
   owner,
+  task,
   startSpecification,
   work,
 } from '../operations/operations.test-support';
@@ -20,7 +22,7 @@ import type { WorkflowDependencies } from '../operations/loaded-execution';
 import type { AgentActor } from '../state/model';
 import { memoryAgentDependencies } from './memory.test-support';
 import { proposeAgentFinish, readAgentAttempt, type AgentTurnIdentity } from './proposal/propose';
-import { startAgentAttempt, type StartAgentAttemptInput } from './start';
+import { readAgentTurnContext, startAgentAttempt, type StartAgentAttemptInput } from './start';
 
 let catalogue: ExecutionCatalogue;
 
@@ -79,20 +81,15 @@ const turnOf = (overrides: Partial<AgentTurnIdentity> = {}): AgentTurnIdentity =
 describe('agent attempt start', () => {
   it('records the binding on the attempt and the Turn in the journal', async () => {
     const { dependencies, workflow } = agentDependencies();
-    const started = await startAgentAttempt(
-      dependencies,
-      startInput({ contextDigest: 'a'.repeat(64) }),
-    );
+    const started = await startAgentAttempt(dependencies, startInput());
 
     expect(started).toMatchObject({
       kind: 'started',
-      binding: {
-        kind: 'agent-attempt',
-        attemptId: ATTEMPT_ID,
-        workspaceId: WORKSPACE,
-        contextDigest: 'a'.repeat(64),
-      },
+      binding: { kind: 'agent-attempt', attemptId: ATTEMPT_ID, workspaceId: WORKSPACE },
+      context: { step: { id: 'requirements' }, agent: { documents: [{ id: 'overview' }] } },
     });
+    // A Specification's context holds no resolved references, so it has no digest.
+    expect(started.binding.contextDigest).toBeUndefined();
     const run = (await workflow.store.read(SPEC)).specification?.value.run;
     expect(run?.attempts[0]?.hostData).toEqual(started.binding);
     expect(await readAgentAttempt(dependencies, ATTEMPT_ID)).toMatchObject({
@@ -145,17 +142,24 @@ describe('agent attempt start', () => {
       'WORKFLOW_EXECUTOR_NOT_ALLOWED',
     ],
   ])('refuses %s before anything changes', async (_name, overrides, active, code) => {
-    const { dependencies, workflow, journal } = agentDependencies();
+    const { dependencies, workflow, journal, state } = agentDependencies();
     if (active) {
       await startAgentAttempt(dependencies, startInput());
     }
 
     const before = structuredClone([...journal.journals.values()]);
     const position = await positionOf(workflow, specification);
+    const reads = state.contextReads;
     await expect(startAgentAttempt(dependencies, startInput(overrides))).rejects.toMatchObject({
       code,
     });
     expect([...journal.journals.values()]).toEqual(before);
+    // The start's own checks refuse before the context is read (and hashed); only the checkout of
+    // a Continue is judged once its Turn is bound.
+    if (!overrides.workspaceId) {
+      expect(state.contextReads).toBe(reads);
+    }
+
     expect(await positionOf(workflow, specification)).toEqual(position);
   });
 
@@ -225,6 +229,50 @@ describe('agent attempt start', () => {
     await expect(
       proposeAgentFinish(dependencies, { turn: turnOf(), input: {} }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_MISMATCH' });
+  });
+
+  it('briefs a Task Turn with the context whose digest it records, read in the start section', async () => {
+    const { dependencies, workflow, state } = agentDependencies();
+    await specificationWithTasks(workflow);
+    const subject = task('api');
+    const entry = catalogue.workflow(catalogue.taskType('implementation')!.workflow)!.entryStep;
+    const input = startInput({
+      subject,
+      actor: { ...writer, details: { ...writer.details, archetype: 'implementer' } },
+      expected: { step: entry },
+    });
+    const started = await startAgentAttempt(dependencies, input);
+    const digest = started.context.agent.taskContext?.digest;
+
+    expect(digest).toMatch(/^[0-9a-f]{64}$/u);
+    expect(started.binding.contextDigest).toBe(digest);
+    expect((await readAgentAttempt(dependencies, ATTEMPT_ID))?.turns).toMatchObject([
+      { invocationId: INVOCATION_1, contextDigest: digest },
+    ]);
+    const turn = { subject, attemptId: ATTEMPT_ID, invocationId: INVOCATION_1 };
+    expect((await readAgentTurnContext(dependencies, turn)).agent.taskContext?.digest).toBe(digest);
+
+    // A referenced document changes before the Turn is dispatched: it is not briefed with it.
+    state.documentSha = 'd'.repeat(64);
+    await expect(readAgentTurnContext(dependencies, turn)).rejects.toMatchObject({
+      code: 'WORKFLOW_STATE_CONFLICT',
+    });
+    await expect(
+      startAgentAttempt(dependencies, { ...input, expected: { step: entry, attempt: 1 } }),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_STATE_CONFLICT' });
+    // Continue binds a new Turn with the current context; the attempt keeps the digest it started with.
+    const next = await startAgentAttempt(dependencies, {
+      ...input,
+      expected: { step: entry, attempt: 1 },
+      turn: { invocationId: INVOCATION_2, turnId: 'turn-2' },
+    });
+    const current = next.context.agent.taskContext?.digest;
+
+    expect(current).not.toBe(digest);
+    expect(next.binding.contextDigest).toBe(digest);
+    expect((await readAgentAttempt(dependencies, ATTEMPT_ID))?.turns.at(-1)?.contextDigest).toBe(
+      current,
+    );
   });
 });
 
@@ -341,7 +389,7 @@ describe('agent finish proposal', () => {
     expect(again.proposal.refusal).toBeUndefined();
   });
 
-  it('refuses a plain agent finish of an Ask agent attempt, but not the proposal', async () => {
+  it('refuses a plain agent finish of an agent step execution attempt, but not the proposal', async () => {
     const { dependencies, workflow } = agentDependencies();
     await startAgentAttempt(dependencies, startInput());
 

@@ -29,13 +29,18 @@ function inside(from: string, path: string): string | undefined {
  * when it lies inside this checkout, which Git ignores anyway).
  */
 function layoutOf(engine: SpecFlowEngine, root: string): AttributionLayout {
+  return { specificationRoot: SPECIFICATION_ROOT, namespaces: engineNamespacesOf(engine, root) };
+}
+
+/** The Engine's namespaces in the checkout at `root`, checkout-relative ({@link layoutOf}). */
+export function engineNamespacesOf(engine: SpecFlowEngine, root: string): string[] {
   const { project } = engine.context;
   const namespaces = [
     inside(project.homeRoot, dirname(project.projectConfigPath)),
     inside(root, project.stateRoot),
   ].filter((value): value is string => value !== undefined);
 
-  return { specificationRoot: SPECIFICATION_ROOT, namespaces: [...new Set(namespaces)] };
+  return [...new Set(namespaces)];
 }
 
 /**

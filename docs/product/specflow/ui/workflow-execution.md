@@ -11,7 +11,7 @@ read_when:
   - changing Task authoring on the Full Task page (documents, context, dependencies, details)
   - changing the first-start confirmation, Finish or Return dialogs, or exit gates in the UI
   - changing Close specification or Abandon specification
-  - changing Ask agent (its Now block states, dialog, Stop, Continue, Take over, owner confirmation)
+  - changing Run with agent (its Now block states, dialog, Stop, Continue, Take over, owner confirmation)
   - changing what Close lists as uncommitted changes
 summary: >
   How a person runs a Specification and its Tasks entirely in the UI, without any Session: the
@@ -358,7 +358,7 @@ Dialogs keep one column. Blocker and Task rows keep id → title → state order
 **Status: UX contract. Implemented (stories: SpecFlow/Screens/Run with agent and SpecFlow/Screens/Agent attempt): the entry, the start dialog and every Now block state while an agent works, after it stops and while its result waits for the owner (Stop, Check outcome, Continue or Retry start, a Return that waits for the agent to stop with Stop again, Take over with its dialog, refused results, Continue refused, Confirm, Reject, the commit note with Retry commit read from the workflow history). The Now block reads the attempt again every few seconds while the agent works, is stopping, may still run, a return waits or a proposal is applied. The attempt history is implemented (Task history and the Specification history, stories SpecFlow/Screens/Agent attempt "Taken over with history" and SpecFlow/Screens/Close specification "Blocked by agent work whose commit failed"): the agent's outcome, kept work with linked documents, files, commit and Session, its events on request, and the Close group "Agent work whose commit failed" with Retry commit. "See the attempt" and the document links in the kept-work line are built. Not implemented yet: the notice on other subjects while an outcome is unknown (needs a project-wide hold in the projection), the commit id and counts in the commit note (the history does not report them).** It follows [ADR 0026](../../../architecture/decisions/0026-agent-step-execution.md)
 (D11 to D20; D21 superseded) and
 [agent step execution](../../../architecture/runtime/agent-step-execution.md).
-The mock was the Storybook set **SpecFlow/Screens/Ask agent (mock)**; what is built for real is no longer in it, and the one state left there is the notice on other subjects while an outcome is unknown. Ask agent adds no new surface: it lives in the Now block, its
+The mock was the Storybook set **SpecFlow/Screens/Ask agent (mock)**; every state in it is built for real now and the mock is removed. Run with agent adds no new surface: it lives in the Now block, its
 dialogs, the Close dialog and the Task history. User copy says "the agent stopped", never "turn",
 "claim" or "invocation".
 
@@ -463,7 +463,7 @@ proposes a result); decisions that need a person stay with the person. Then, in 
 - **Finished, commit failed**: the step is published, so Now moves on; an attention note
   (`role="alert"`) says it in plain words with the code after it ("its commit failed: a Git hook in
   this repository refused it (`COMMIT_HOOK_FAILED`)"), that the files stay uncommitted on `<branch>`
-  and Close lists them until committed, and, before any click, that Ask agent cannot start the next
+  and Close lists them until committed, and, before any click, that Run with agent cannot start the next
   step until then (an agent starts only from a committed checkout). Then the attempt's paths (the
   same list Close shows) and a **Retry commit** button (a dedicated owner action, the same button as
   in Close).

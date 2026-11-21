@@ -14,7 +14,7 @@ import { ActorSchema } from '../../state/codec';
 import type { AgentActor, OwnerActor, WorkflowSubject } from '../../state/model';
 
 /**
- * The local journal of one agent attempt started for Ask agent, keyed by the attempt's `attemptId`
+ * The local journal of one agent attempt started for agent step execution, keyed by the attempt's `attemptId`
  * (its binding on the attempt record, `AgentAttemptBinding`). It holds what is never committed: the
  * binding of each Turn of the attempt and the agent's finish proposal. It lives under the Project's
  * local state, so a refused proposal is never part of the Specification's history.
@@ -45,6 +45,12 @@ export interface AgentTurnBinding {
   readonly invocationId: string;
   readonly turnId: string;
   readonly boundAt: string;
+  /**
+   * The digest of the Task context the Turn is briefed with (`taskContext.digest`, sha256 hex), read
+   * in the start's section; absent for a Specification subject. A new attempt's first Turn has the
+   * digest recorded on the attempt; a Continue's is the context as it is when it is bound.
+   */
+  readonly contextDigest?: string;
   /**
    * When the attempt's finalize section ran for this Turn (it records the Turn's outcome and dirty
    * set and, in the same section, settles the Turn's execution claim).
@@ -134,6 +140,19 @@ export interface AgentPostActionOutcome {
   readonly action: string;
   readonly status: 'completed' | 'skipped' | 'failed';
   readonly code?: string;
+  /** The commit a completed `attempt-commit` made. */
+  readonly commit?: AgentCommitSummary;
+}
+
+/**
+ * A commit an attempt commit made: its sha (absent when every path already equalled HEAD), how many
+ * of its paths SpecFlow wrote (`documents`: documents, Task files and execution state) and how many
+ * are the agent's declared files (`files`).
+ */
+export interface AgentCommitSummary {
+  readonly sha?: string;
+  readonly documents: number;
+  readonly files: number;
 }
 
 /**
@@ -327,6 +346,7 @@ const JournalSchema = Type.Object(
           invocationId: uuid,
           turnId: text(200),
           boundAt: timestamp,
+          contextDigest: Type.Optional(sha256),
           finalizedAt: Type.Optional(timestamp),
         },
         closed,
@@ -451,6 +471,18 @@ const JournalSchema = Type.Object(
                       Type.Literal('failed'),
                     ]),
                     code: Type.Optional(text(100)),
+                    commit: Type.Optional(
+                      Type.Object(
+                        {
+                          sha: Type.Optional(
+                            Type.String({ pattern: '^[0-9a-f]{40}(?:[0-9a-f]{24})?$' }),
+                          ),
+                          documents: Type.Integer({ minimum: 0 }),
+                          files: Type.Integer({ minimum: 0 }),
+                        },
+                        closed,
+                      ),
+                    ),
                   },
                   closed,
                 ),

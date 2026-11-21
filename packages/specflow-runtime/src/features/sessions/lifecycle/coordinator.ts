@@ -34,7 +34,7 @@ import { redactFact, type InvocationCapabilities } from './invocation-capabiliti
 import { redactAgentCapabilityShapes } from '@nevo/specflow-contracts/runtime';
 import { createSessionTelemetryService } from './telemetry';
 
-/** In-process options of a Turn start (Ask agent); never taken from a request. */
+/** In-process options of a Turn start (agent step execution); never taken from a request. */
 export interface TurnStartOptions {
   readonly ids?: { readonly turnId: string; readonly invocationId: string };
   readonly agentAttempt?: { readonly attemptId: string };
@@ -540,7 +540,7 @@ export function createSessionCoordinator(
       });
     },
     /**
-     * Starts a Turn. `options` are in-process only (Ask agent): the Turn and invocation ids chosen
+     * Starts a Turn. `options` are in-process only (agent step execution): the Turn and invocation ids chosen
      * before the Turn exists and the agent attempt the Turn is bound to; such a Turn must write.
      */
     async start(

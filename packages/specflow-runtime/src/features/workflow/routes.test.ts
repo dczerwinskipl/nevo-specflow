@@ -443,7 +443,14 @@ describe('workflow action routes', () => {
       mixed: [],
       tasks: [],
       declared: ['src/app.ts'],
-      commit: { state: 'none' as const },
+      // A commit is served with its sha and how many paths of each kind it held.
+      commit: {
+        state: 'committed' as const,
+        runs: 1,
+        sha: 'e'.repeat(40),
+        documents: 2,
+        files: 1,
+      },
     };
     const history = {
       subject: subjectSpec,
@@ -823,7 +830,7 @@ describe('workflow refusals', () => {
     expect(failure).toMatchObject({ status: 503, body: { code: 'CONTROL_LOCK_CORRUPT' } });
   });
 
-  it('names the paths of an Ask agent attribution refusal', () => {
+  it('names the paths of an agent step execution attribution refusal', () => {
     const failure = workflowFailure(
       new AttributionRefusalError('WORKFLOW_UNDECLARED_CHANGES', 'Declare them.', {
         paths: ['src/a.ts'],

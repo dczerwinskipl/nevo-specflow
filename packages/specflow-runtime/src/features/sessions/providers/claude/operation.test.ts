@@ -464,7 +464,7 @@ describe('Claude bidirectional operation', () => {
     expect(f.facts.at(-1)).toMatchObject({ kind: 'lost' });
     expect(f.facts.some((fact) => fact.kind === 'outcome')).toBe(false);
   });
-  describe('allowlisted product CLI commands of an Ask agent Turn', () => {
+  describe('allowlisted product CLI commands of an agent step execution Turn', () => {
     const allow = ['Bash(nevo-specflow tasks list *)', 'Bash(nevo-specflow workflow context *)'];
     const bash = (id: string, command: string) => ({
       type: 'control_request',

@@ -147,7 +147,17 @@ runs, or `refused`) and `takeOver` (`available`, or `unavailable`: `agent-workin
 `outcome-unknown`, `return-requested`). `work` is what the attempt left, never rolled back:
 `documents` (uncommitted SpecFlow files only it wrote), `mixed` (those someone else changed too),
 `tasks` (its drafts), `declared` (its declared code paths), `changed` (dirty when its last Turn
-ended) and `commit {state: none | pending | committed | failed, code?, runs?}`.
+ended) and `commit {state: none | pending | committed | failed, code?, runs?, sha?, documents?,
+files?}`: once `committed` with a commit, its `sha` (absent when every path already equalled HEAD),
+how many of its paths SpecFlow wrote (`documents`: documents, Task files, execution state) and how
+many are the agent's declared files (`files`). The workflow history serves the same `work`.
+
+**Project hold.** While an agent working on another subject holds the whole project (its Turn's
+execution claim is unsettled), every projection carries `projectHold`: `{kind: agent-working |
+agent-outcome-unknown, subject: {specId, taskId?, title}, sessionId}`; `agent-outcome-unknown` means
+SpecFlow cannot tell whether that agent's process still runs. It is absent for the holder's own
+subject, whose projection has `agentAttempt`, and read without Git (the execution claims and the
+attempt's journal).
 
 **Gates.** A step's declared gates
 ([workflow kernel](../../architecture/workflow/workflow-kernel.md#gates)) are reported as `GateStatus`

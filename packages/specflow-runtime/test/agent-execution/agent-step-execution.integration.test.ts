@@ -1,4 +1,4 @@
-// Ask agent end to end over the real Session store, the real Engine (shipped definitions, Git on,
+// Agent step execution end to end over the real Session store, the real Engine (shipped definitions, Git on,
 // automatic commits off) and the real broker endpoint, with the shared writable mock driver: the
 // owner asks an agent to do the breakdown step; its Turn writes a document, drafts a Task and
 // proposes its finish through the broker; the Turn ends and its settlement finalizes the attempt,

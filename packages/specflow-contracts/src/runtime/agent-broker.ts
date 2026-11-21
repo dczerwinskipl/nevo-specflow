@@ -55,7 +55,7 @@ export const AGENT_BROKER_LIMITS = {
 
 /**
  * Agent operations the broker knows. The scope of a Turn admits a subset: an ad-hoc Turn (D11b)
- * the documents of its home Specification; an agent attempt (Ask agent) the documents of a
+ * the documents of its home Specification; an agent attempt (agent step execution) the documents of a
  * Specification subject, Task drafts for a step that produces Tasks (`tasks.create`, `tasks.edit`)
  * and the finish proposal of the bound attempt (`workflow.finish`). `scope.describe` is always
  * admitted and answers the Turn's scope.

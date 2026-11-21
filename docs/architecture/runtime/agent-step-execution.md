@@ -96,8 +96,19 @@ sequenceDiagram
    the trusted `AgentActor {archetype, provider, model, sessionId}`, an expected position (a stale
    one refuses), the baseline admission and the attempt binding as `hostData`
    (`{kind: agent-attempt, attemptId, workspaceId, contextDigest?, launch}`), then records the Turn
-   binding `{invocationId, turnId}` in the attempt's journal. The start's own store change is
-   attributed to the first Turn, so the attempt commit takes it.
+   binding `{invocationId, turnId, contextDigest?}` in the attempt's journal. The start's own store
+   change is attributed to the first Turn, so the attempt commit takes it. The agent context is read
+   once, in the same section, in the start's admission hook: after the start's own checks
+   (position, readiness, executors, entry gates), so a refusal never hashes it, and before anything
+   is written. The start returns it, the Runtime renders the brief from it, and its Task context
+   digest is what the attempt (a new attempt) and the Turn record. A folder or glob reference's
+   digest leaves out SpecFlow's own state, which the Engine writes itself (any `.execution` folder
+   below `specs/`, and the Engine's namespaces: the Project Home's configuration folder and a local
+   state root inside the checkout), so the start's own run record never changes it. A retried
+   request whose Turn is not dispatched yet reads the context again (`readAgentTurnContext`) and is
+   refused `WORKFLOW_STATE_CONFLICT` when its digest is not the Turn's; Continue briefs a new Turn
+   with the current context. A retried request whose Turn was dispatched already is answered from
+   the attempt without a new brief.
 3. **Session and Turn.** Session, Turn and invocation ids are derived from the request id, so a
    retried request finds what the first one made. A fresh Session is created with the id the actor
    already names (origin `workflow`, title "Agent step execution"); a continued Session that moves
@@ -249,7 +260,14 @@ call them (the CLI refuses them inside a Turn, and the broker has no such operat
 The projection's `agentAttempt` (Session, Turn state `working|stopping|unknown|ended|session-missing`,
 proposal, `continue`, `returnRequest`, `takeOver`, `work`) and `GET .../workflow/history` (each agent
 attempt's step events and the work it left, partial work never rolled back) are what the UI shows.
-`session-missing` is an attempt whose fresh Session was never created; Continue creates it.
+`session-missing` is an attempt whose fresh Session was never created; Continue creates it. Once the
+attempt commit made a commit, `work.commit` names its `sha` and counts its paths (`documents`
+SpecFlow wrote, `files` the agent declared), from the post action's run record in the journal.
+
+Every projection of another subject carries `projectHold` while an agent Turn holds the project
+(`agent-working`, or `agent-outcome-unknown` while its process may still run), naming the subject it
+works on with its title and its Session. The Runtime derives it in `decorate` from the unsettled
+execution claims that carry an attempt and the attempt's journal, without Git.
 
 ## Provider permissions (D20)
 

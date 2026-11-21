@@ -295,6 +295,8 @@ function workOf(
       : [];
   const commit = journal.postActions?.find((action) => action.kind === 'attempt-commit');
   const failed = commit?.outcomes?.find((entry) => entry.status === 'failed');
+  const made =
+    commit?.state === 'done' ? commit.outcomes?.find((entry) => entry.commit)?.commit : undefined;
   const dirty = journal.dirtySet;
 
   return {
@@ -320,6 +322,13 @@ function workOf(
                 : 'pending',
           ...(failed?.code !== undefined ? { code: failed.code } : {}),
           ...(commit.runs !== undefined ? { runs: commit.runs } : {}),
+          ...(made
+            ? {
+                ...(made.sha !== undefined ? { sha: made.sha } : {}),
+                documents: made.documents,
+                files: made.files,
+              }
+            : {}),
         }
       : { state: 'none' },
   };

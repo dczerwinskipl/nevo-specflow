@@ -285,8 +285,11 @@ claims like every other workflow write.
 `step`, or Continue of the active attempt `step#attempt`; a stale one refuses before anything is
 written), and the baseline admission (below). The attempt's `hostData` is its binding
 `{kind: agent-attempt, attemptId, workspaceId, contextDigest?, launch: {session, effort?}}`
-(`agentAttemptBindingOf`), committed with the run. The same section then records the Turn
-`{invocationId, turnId, boundAt}` in the attempt's local journal; each Continue appends a Turn (at
+(`agentAttemptBindingOf`), committed with the run. `contextDigest` is the Task context digest of
+the agent context the start reads in the same section, before anything is written; the start
+returns that context, so the Turn is briefed with exactly what the attempt records. The same section
+then records the Turn `{invocationId, turnId, boundAt, contextDigest?}` in the attempt's local
+journal (the digest the Turn is briefed with: a Continue's is the context when it is bound); each Continue appends a Turn (at
 most 100), and a Turn is bound only once the one before it settled, because every write is refused
 while an unsettled agent claim exists. A crash between the two leaves an active attempt with no
 Turn, which the same Session continues.
@@ -294,7 +297,9 @@ Turn, which the same Session continues.
 **Journal** (`journal/`, `<stateRoot>/engine/operations/agent-attempt/<attemptId>.json`, `settled/`
 once nothing is left to run): the subject, step, attempt and actor, the Turns, the finish proposal,
 the last settled Turn's dirty set, the owner's return request, the take-over, the confirmation state
-and the post actions. It is local and never committed, so a refused proposal is never part of the
+and the post actions with what their last run reported (for the attempt commit: the commit's sha
+and how many of its paths SpecFlow wrote and the agent declared, counted when the run is recorded,
+which the history's `work.commit` serves). It is local and never committed, so a refused proposal is never part of the
 Specification's history. A journal that does not parse fails closed (`WORKFLOW_STATE_CORRUPT`).
 
 **Proposal** (`proposal/propose.ts`). The agent's `workflow finish` is not a finish:

@@ -78,7 +78,7 @@ export const ActorSchema = Type.Union([
 const uuid = () =>
   Type.String({ pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' });
 
-/** The host data of an agent attempt started for Ask agent (`AgentAttemptBinding`). */
+/** The host data of an agent attempt started for agent step execution (`AgentAttemptBinding`). */
 const AgentAttemptBindingSchema = closed({
   kind: Type.Literal('agent-attempt'),
   attemptId: uuid(),

@@ -57,7 +57,7 @@ export type WorkflowRun = core.WorkflowRun<WorkflowActor>;
 export type AttemptRecord = core.AttemptRecord<WorkflowActor>;
 
 /**
- * The host data SpecFlow records with an agent attempt it starts for Ask agent
+ * The host data SpecFlow records with an agent attempt it starts for agent step execution
  * (`AttemptRecord.hostData`), committed with the run: the id of the attempt's local journal and the
  * checkout the attempt works in. The per-Turn binding (invocation and Turn ids) and the finish
  * proposal are in that journal (`workflow/agent`), never in a Git-tracked file.
@@ -75,7 +75,7 @@ export interface AgentAttemptBinding {
   readonly launch?: { readonly session: 'fresh' | 'reuse'; readonly effort?: string };
 }
 
-/** The binding of an attempt started for Ask agent; `undefined` for any other attempt. */
+/** The binding of an attempt started for agent step execution; `undefined` for any other attempt. */
 export function agentAttemptBindingOf(
   record: AttemptRecord | undefined,
 ): AgentAttemptBinding | undefined {

@@ -133,7 +133,7 @@ export const AGENT_CHANGED_PATHS_MAX = 500;
 export const AGENT_CHANGED_PATH_LENGTH_MAX = 1024;
 
 /**
- * An agent's finish proposal for its own attempt (Ask agent, D12): the owner's finish input and the
+ * An agent's finish proposal for its own attempt (agent step execution, D12): the owner's finish input and the
  * files outside SpecFlow's own folders the attempt changed (`changes.paths`, B3). The declared set
  * must equal what is uncommitted outside the Specification directories and SpecFlow's namespace:
  * an undeclared changed file or a declared file that is not changed refuses the proposal
@@ -426,7 +426,7 @@ export const WORKFLOW_ERROR_CODES = [
    */
   'WORKFLOW_CONFIRMATION_CHANGED',
   /**
-   * Ask agent attribution (B3, B6): the checkout has uncommitted changes SpecFlow cannot attribute
+   * Agent step execution attribution (B3, B6): the checkout has uncommitted changes SpecFlow cannot attribute
    * (`WORKFLOW_DIRTY_BASELINE`, at the start), files changed since the agent's last Turn ended
    * (`WORKFLOW_BASELINE_CHANGED`, at Continue), new files in a Specification directory without a
    * document type (`WORKFLOW_UNREGISTERED_DOCUMENTS`), SpecFlow's own files edited past it
@@ -441,7 +441,7 @@ export const WORKFLOW_ERROR_CODES = [
   'WORKFLOW_UNDECLARED_CHANGES',
   'WORKFLOW_NESTED_REPOSITORY',
   /**
-   * Ask agent cannot start or continue now; `details.agent` is the unavailable agent option with its
+   * Agent step execution cannot start or continue now; `details.agent` is the unavailable agent option with its
    * reason (the projection's `agent`, or `agentAttempt.continue`), so the form can explain it.
    */
   'WORKFLOW_AGENT_UNAVAILABLE',
@@ -506,7 +506,7 @@ export const WORKFLOW_COMMIT_REFUSAL_CODES = [
 export type WorkflowCommitRefusalCode = (typeof WORKFLOW_COMMIT_REFUSAL_CODES)[number];
 
 /**
- * The paths of an Ask agent attribution refusal (`WORKFLOW_DIRTY_BASELINE`,
+ * The paths of an agent step execution attribution refusal (`WORKFLOW_DIRTY_BASELINE`,
  * `WORKFLOW_BASELINE_CHANGED`, `WORKFLOW_UNREGISTERED_DOCUMENTS`, `WORKFLOW_ENGINE_FILE_EDITED`,
  * `WORKFLOW_UNDECLARED_CHANGES`): the first of them (`paths`, sorted) of `count`. For
  * `WORKFLOW_UNDECLARED_CHANGES`, `undeclared` are changed files the proposal does not declare and
@@ -603,7 +603,7 @@ export const WorkflowErrorSchema = Type.Object(
          * Tasks are open; every open Task and why it is open, in id order.
          */
         openTasks: Type.Optional(Type.Array(OpenTaskSchema)),
-        /** An Ask agent attribution refusal: the paths it names ({@link WorkflowAttributionSchema}). */
+        /** An agent step execution attribution refusal: the paths it names ({@link WorkflowAttributionSchema}). */
         attribution: Type.Optional(WorkflowAttributionSchema),
         /** `WORKFLOW_AGENT_UNAVAILABLE`: why an agent cannot do the step now. */
         agent: Type.Optional(AgentOptionSchema),
@@ -637,7 +637,7 @@ export const WorkflowErrorSchema = Type.Object(
 export type WorkflowError = Static<typeof WorkflowErrorSchema>;
 
 /**
- * Ask agent (D12, D18): an agent attempt of the step the owner was shown. Without `expected.attempt`
+ * Agent step execution (D12, D18): an agent attempt of the step the owner was shown. Without `expected.attempt`
  * a new attempt of `expected.step`; with it (Continue) a new Turn of that active agent attempt in
  * its own Session. `provider`, `model` and `effort` choose the agent of a fresh Session only (the
  * projection's `agent.launch` is the default); a continued Session keeps its own, and naming them

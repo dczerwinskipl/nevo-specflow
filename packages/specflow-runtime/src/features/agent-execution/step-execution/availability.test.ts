@@ -63,7 +63,7 @@ describe('the agent option with the Runtime reasons', () => {
   });
 });
 
-describe('the launch an Ask agent start uses (D18)', () => {
+describe('the launch an agent step execution start uses (D18)', () => {
   it('takes the owner choice only for a fresh Session', () => {
     expect(chosenLaunch(launch, {})).toBe(launch);
     expect(chosenLaunch(launch, { model: 'claude-opus-5-5' })).toMatchObject({

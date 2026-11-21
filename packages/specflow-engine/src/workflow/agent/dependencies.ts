@@ -19,6 +19,8 @@ import type { WorkflowDependencies } from '../operations/loaded-execution';
 import type { WorkflowStore } from '../state/store';
 import { executionClaimAdmission, type WorkflowWriteAdmission } from '../write-admission';
 import type { AttributionFacts } from './boundary/attribution';
+import { engineAgentContextSource } from './context/engine-source';
+import type { AgentContextSource } from './context/gather';
 import { dirtySetOf, type DirtySetFacts } from './boundary/dirty-set';
 import { engineAttributionFacts } from './boundary/engine-facts';
 import { attemptCommitRunner } from './finalize/attempt-commit/run';
@@ -30,6 +32,8 @@ import { filesystemAgentAttemptJournal, type AgentAttemptJournalStore } from './
 export interface AgentAttemptDependencies {
   readonly workflow: WorkflowDependencies;
   readonly journal: AgentAttemptJournalStore;
+  /** What the agent context of a subject reads (D13): the brief of a Turn and its digest. */
+  readonly context: AgentContextSource;
   /**
    * The writer-claim admission of a journal write, inside the `serialize` section: `owned` names the
    * execution claim of the Turn that writes (the `turn` form; the `finalize` form only in the
@@ -131,6 +135,7 @@ export async function openAgentAttempts(
   return {
     workflow,
     journal: filesystemAgentAttemptJournal(engine.context),
+    context: engineAgentContextSource(engine),
     admission: (owned) => executionClaimAdmission(engine, owned),
     attributedStore: (executionId) => engineExecutionStore(engine, undefined, executionId),
     newId: randomUUID,

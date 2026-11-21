@@ -14,12 +14,35 @@ import {
 
 export type { AgentPostActionRunner } from './ports';
 
-function outcomesOf(results: readonly PostActionResult[]): readonly AgentPostActionOutcome[] {
-  return results.slice(0, 20).map((result) => ({
-    action: result.action,
-    status: result.status,
-    ...(result.status === 'failed' ? { code: result.code.slice(0, 100) } : {}),
-  }));
+/**
+ * What a run reported, as the journal keeps it. A commit's paths are counted, not kept: those the
+ * agent declared (`files`) and the rest, which SpecFlow wrote (`documents`).
+ */
+function outcomesOf(
+  results: readonly PostActionResult[],
+  action: AgentPostActionRecord,
+): readonly AgentPostActionOutcome[] {
+  const declared = new Set((action.declared ?? []).map((entry) => entry.path));
+
+  return results.slice(0, 20).map((result) => {
+    const commit = result.status === 'completed' ? result.commit : undefined;
+    const files = commit ? commit.paths.filter((path) => declared.has(path)).length : 0;
+
+    return {
+      action: result.action,
+      status: result.status,
+      ...(result.status === 'failed' ? { code: result.code.slice(0, 100) } : {}),
+      ...(commit
+        ? {
+            commit: {
+              ...(commit.sha !== undefined ? { sha: commit.sha } : {}),
+              documents: commit.paths.length - files,
+              files,
+            },
+          }
+        : {}),
+    };
+  });
 }
 
 /**
@@ -77,7 +100,7 @@ async function runSelectedNow(
     ) {
       const reported = await dependencies.finalize.postActions.run(journal, action);
       results.push(...reported);
-      ran.set(action.operationId, outcomesOf(reported));
+      ran.set(action.operationId, outcomesOf(reported, action));
     }
   }
 

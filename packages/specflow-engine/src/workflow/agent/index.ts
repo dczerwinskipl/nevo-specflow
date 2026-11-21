@@ -1,4 +1,4 @@
-// Ask agent: an agent attempt of a workflow step, its Turn bindings and its finish proposal.
+// Agent step execution: an agent attempt of a workflow step, its Turn bindings and its finish proposal.
 export {
   admitAgentTurn,
   AttributionRefusalError,
@@ -63,7 +63,9 @@ export {
   type ProposeAgentFinishResult,
 } from './proposal/propose';
 export {
+  readAgentTurnContext,
   startAgentAttempt,
+  type AgentTurnContextInput,
   type StartAgentAttemptInput,
   type StartAgentAttemptResult,
 } from './start';

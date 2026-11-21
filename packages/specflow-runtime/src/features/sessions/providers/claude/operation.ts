@@ -270,7 +270,7 @@ export function createClaudeOperation(
             throw new ClaudeProtocolError();
           }
 
-          // An Ask agent Turn: one exact product CLI call of its allowlist is approved here, never
+          // An agent step execution Turn: one exact product CLI call of its allowlist is approved here, never
           // by the provider's own rules (Bash always asks), and recorded in the Turn. Anything else
           // goes to the owner.
           const action = request.questions[0]?.interaction;

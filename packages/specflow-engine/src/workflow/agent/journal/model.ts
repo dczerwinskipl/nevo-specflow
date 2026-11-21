@@ -113,9 +113,21 @@ export interface AgentReturnRequest {
 
 /**
  * The post actions of a finalized attempt, run after the finalize section released the control
- * lock. `step-finished` is the workflow finish post action (`operations/post-actions.ts`).
+ * lock. `attempt-commit` is the attempt's one Engine-owned commit (D15); it takes the place of the
+ * workflow finish post action (`commit-execution-state`) for an agent attempt.
  */
-export type AgentPostActionKind = 'step-finished';
+export type AgentPostActionKind = 'attempt-commit';
+
+/**
+ * A changed file the agent declared (`changes.paths`), with its content hash (sha256 hex) when the
+ * step state was published: `null` for a file the attempt removed. The attempt commit takes it only
+ * while its content still is this. `oversize`: too large to hash; it is never committed.
+ */
+export interface AgentDeclaredPath {
+  readonly path: string;
+  readonly sha256: string | null;
+  readonly oversize?: true;
+}
 
 /** What one of the host's post actions reported (`PostActionResult`, without its message). */
 export interface AgentPostActionOutcome {
@@ -141,6 +153,14 @@ export interface AgentPostActionRecord {
   readonly state: 'pending' | 'done' | 'failed';
   /** What its last run did (`done` and `failed` only). */
   readonly outcomes?: readonly AgentPostActionOutcome[];
+  /**
+   * How many runs of it were recorded (absent: none). A run that is not recorded yet (a crash
+   * before its record) is repeated with the same operation; a retry after a recorded failure is a
+   * new one ({@link agentPostActionRunId}).
+   */
+  readonly runs?: number;
+  /** `attempt-commit`: the declared paths with the hashes recorded when the step was published. */
+  readonly declared?: readonly AgentDeclaredPath[];
 }
 
 /**
@@ -348,9 +368,23 @@ const JournalSchema = Type.Object(
       Type.Array(
         Type.Object(
           {
-            kind: Type.Literal('step-finished'),
+            kind: Type.Literal('attempt-commit'),
             operationId: uuid,
             stepTitle: text(1000),
+            runs: Type.Optional(Type.Integer({ minimum: 1 })),
+            declared: Type.Optional(
+              Type.Array(
+                Type.Object(
+                  {
+                    path: text(AGENT_DIRTY_PATH_LENGTH_MAX),
+                    sha256: Type.Union([sha256, Type.Null()]),
+                    oversize: Type.Optional(Type.Literal(true)),
+                  },
+                  closed,
+                ),
+                { maxItems: AGENT_DIRTY_PATHS_MAX },
+              ),
+            ),
             state: Type.Union([
               Type.Literal('pending'),
               Type.Literal('done'),
@@ -421,7 +455,8 @@ export function parseAgentAttemptJournal(value: unknown, operationId: string): A
         journal.postActions.some(
           (action) =>
             action.operationId !== agentPostActionId(journal.operationId, action.kind) ||
-            (action.state !== 'pending') !== (action.outcomes !== undefined),
+            (action.state !== 'pending') !== (action.outcomes !== undefined) ||
+            (action.state !== 'pending') !== (action.runs !== undefined),
         )))
   ) {
     throw invalidAgentAttemptJournal();
@@ -465,7 +500,12 @@ export const AGENT_ATTEMPT_JOURNAL_KIND: JournalKind<AgentAttemptJournal> = {
  * (version 8) of their sha256, so every retry and restart names the same operation.
  */
 export function agentPostActionId(attemptId: string, kind: AgentPostActionKind): string {
-  const hex = createHash('sha256').update(`agent-post-action:${attemptId}:${kind}`).digest('hex');
+  return uuidOf(`agent-post-action:${attemptId}:${kind}`);
+}
+
+/** A UUID (version 8) of the sha256 of `seed`. */
+function uuidOf(seed: string): string {
+  const hex = createHash('sha256').update(seed).digest('hex');
   const variant = ((parseInt(hex[16]!, 16) & 0x3) | 0x8).toString(16);
 
   return [
@@ -475,6 +515,17 @@ export function agentPostActionId(attemptId: string, kind: AgentPostActionKind):
     variant + hex.slice(17, 20),
     hex.slice(20, 32),
   ].join('-');
+}
+
+/**
+ * The operation id of one run of a post action: the action's own id for its first run (and for a
+ * run repeated after a crash before its record), a derived one for each retry after a recorded run,
+ * so a retry is a new operation (its predecessor ended) and a restart is not.
+ */
+export function agentPostActionRunId(action: AgentPostActionRecord): string {
+  return action.runs === undefined
+    ? action.operationId
+    : uuidOf(`agent-post-action-run:${action.operationId}:${String(action.runs)}`);
 }
 
 /** Whether the journal is the one of the attempt `step#attempt` of `subject`. */

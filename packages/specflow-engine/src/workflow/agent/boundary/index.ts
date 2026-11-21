@@ -9,6 +9,7 @@ import {
   assertCleanBaseline,
   assertDeclaredPathsShape,
   assertFinishAttribution,
+  type AttributionFacts,
 } from './attribution';
 
 export {
@@ -96,17 +97,20 @@ export async function admitAgentTurn(
 /**
  * The attribution checks of an agent finish (B6, B3 rules 3 and 4) on the attempt's checkout now:
  * at submission (`proposeAgentFinish`) and again at the finalize re-validation. The declared paths'
- * shape is checked first and always; with Git off nothing else is.
+ * shape is checked first and always; with Git off nothing else is. Returns the facts it judged
+ * (`undefined` with Git off): the finalize records the declared paths' hashes from them.
  */
 export async function assertAgentFinishAttribution(
   dependencies: Pick<AgentAttemptDependencies, 'boundary'>,
   workspaceId: string,
   changes: AgentDeclaredChanges | undefined,
-): Promise<void> {
+): Promise<AttributionFacts | undefined> {
   const declared = changes?.paths ?? [];
   assertDeclaredPathsShape(declared);
   const facts = await dependencies.boundary.facts(workspaceId);
   if (facts !== undefined) {
     assertFinishAttribution(facts, declared);
   }
+
+  return facts;
 }

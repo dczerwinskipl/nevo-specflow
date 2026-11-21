@@ -210,10 +210,14 @@ export type StartWorkflowResult = Static<typeof StartWorkflowResultSchema>;
 
 /**
  * What the host did once the finish was recorded (`commit-execution-state`: commit the
- * Specification's execution state when auto-commit is off). A failed post action does not fail the
- * finish; its `message` is display-only.
+ * Specification's execution state when auto-commit is off; `attempt-commit`: the one commit of an
+ * agent attempt, D15, its documents, Tasks, execution state and declared files, whatever the commit
+ * policy). A failed post action does not fail the finish; its `message` is display-only.
  */
-const PostActionName = Type.Literal('commit-execution-state');
+const PostActionName = Type.Union([
+  Type.Literal('commit-execution-state'),
+  Type.Literal('attempt-commit'),
+]);
 
 export const PostActionResultSchema = Type.Union([
   Type.Object({
@@ -253,6 +257,22 @@ export const FinishWorkflowResultSchema = Type.Object({
   postActions: Type.Optional(Type.Array(PostActionResultSchema)),
 });
 export type FinishWorkflowResult = Static<typeof FinishWorkflowResultSchema>;
+
+/**
+ * The owner's **Retry commit** of a finished agent attempt whose commit failed (D15): the attempt
+ * `step#attempt` of the subject, as the Now block and Close name it.
+ */
+export const RetryAttemptCommitRequestSchema = Type.Object(
+  { step: StepId, attempt: Type.Integer({ minimum: 1 }) },
+  { additionalProperties: false },
+);
+export type RetryAttemptCommitRequest = Static<typeof RetryAttemptCommitRequestSchema>;
+
+/** What the retried attempt commit reported (`attempt-commit`: completed, skipped or failed). */
+export const RetryAttemptCommitResultSchema = Type.Object({
+  postActions: Type.Array(PostActionResultSchema),
+});
+export type RetryAttemptCommitResult = Static<typeof RetryAttemptCommitResultSchema>;
 
 export const ReturnWorkflowResultSchema = Type.Object({
   subject: WorkflowSubjectSchema,
@@ -351,13 +371,15 @@ const codes = Type.Unsafe<WorkflowErrorCode>(
  * What holds a Specification whose workflow cannot change now (`WORKFLOW_SPECIFICATION_BUSY`):
  * `agent-turn` an agent Session Turn holds the project-wide write claim (retry once it ends, or stop
  * it); `agent-turn-unknown` that Turn ended without a verified outcome (resolve the Session: Check
- * outcome, or its recovery); `close` a Close of the Specification is unsettled. The other values are
+ * outcome, or its recovery); `claim-not-held` a write of an agent execution whose claim is no
+ * longer held (its Turn settled: start a new one); `close` a Close of the Specification is unsettled. The other values are
  * the busy causes of the commit admission of the workflow state, as in the documents' `SPEC_BUSY`;
  * `other` a busy refusal whose cause is not one of these (still a refusal: retry later).
  */
 export const SPECIFICATION_BUSY_CAUSES = [
   'agent-turn',
   'agent-turn-unknown',
+  'claim-not-held',
   'close',
   'create-or-close',
   'commit-in-progress',

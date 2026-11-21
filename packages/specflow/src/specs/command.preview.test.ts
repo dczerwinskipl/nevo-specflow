@@ -10,7 +10,10 @@ vi.mock('@nevo/specflow-engine', async (importOriginal) => ({
   withCheckoutQuiescence: vi.fn((engine: unknown) => engine),
   planPublicWorkspaceCloseOperation: vi.fn(),
 }));
-vi.mock('@nevo/specflow-runtime', () => ({ sessionStoreCheckoutQuiescence: vi.fn() }));
+vi.mock('@nevo/specflow-runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@nevo/specflow-runtime')>()),
+  sessionStoreCheckoutQuiescence: vi.fn(),
+}));
 vi.mock('../engine-at', () => ({
   engineAt: vi.fn(() => Promise.resolve({ context: { project: { homeRoot: '/project' } } })),
 }));

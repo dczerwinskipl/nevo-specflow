@@ -9,7 +9,14 @@ import { ledgerOwnerOfKey } from '../durable/ledger/model';
 import { manualCommitError } from './errors';
 import { MANUAL_COMMIT_MAX_OWNERS, MANUAL_COMMIT_MAX_PATHS } from './model';
 
-/** One ledger entry the commit was judged on. */
+/**
+ * The owner key of a snapshot entry that is no ledger entry: a path outside the ledger the commit
+ * takes while its content is the recorded one (an agent attempt's declared path, D15). The ledger
+ * prune never touches it.
+ */
+export const DECLARED_SNAPSHOT_OWNER = 'declared';
+
+/** One ledger entry the commit was judged on, or a declared path ({@link DECLARED_SNAPSHOT_OWNER}). */
 export interface SnapshotEntry {
   readonly owner: string;
   readonly path: string;
@@ -85,7 +92,7 @@ export function decodeSnapshot(text: string): SnapshotEntry[] {
       !isRecord(entry) ||
       !exactKeys(entry, ['owner', 'path', 'postSha256', 'operationCount']) ||
       typeof entry.owner !== 'string' ||
-      ledgerOwnerOfKey(entry.owner) === undefined ||
+      (entry.owner !== DECLARED_SNAPSHOT_OWNER && ledgerOwnerOfKey(entry.owner) === undefined) ||
       typeof entry.path !== 'string' ||
       entry.path.length === 0 ||
       entry.path.length > 1024 ||
@@ -113,10 +120,40 @@ export function decodeSnapshot(text: string): SnapshotEntry[] {
 export interface StoredMessage {
   readonly subject: string;
   readonly body: string;
+  /**
+   * `Nevo-*` trailers of the Engine's own message (an attempt commit's), added to the manual
+   * commit's; absent for a person's message.
+   */
+  readonly trailers?: Readonly<Record<string, string>>;
 }
 
+const TRAILER_KEY = /^Nevo-[A-Za-z]+$/u;
+const TRAILERS_MAX = 10;
+
 export function encodeMessage(message: StoredMessage): EncodedPayload {
-  return encoded(JSON.stringify({ subject: message.subject, body: message.body }));
+  return encoded(
+    JSON.stringify({
+      subject: message.subject,
+      body: message.body,
+      ...(message.trailers !== undefined ? { trailers: message.trailers } : {}),
+    }),
+  );
+}
+
+function isTrailers(value: unknown): value is Record<string, string> {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  const entries = Object.entries(value);
+
+  return (
+    entries.length <= TRAILERS_MAX &&
+    entries.every(
+      ([key, text]) =>
+        TRAILER_KEY.test(key) && typeof text === 'string' && text.length > 0 && text.length <= 200,
+    )
+  );
 }
 
 export function decodeMessage(text: string): StoredMessage {
@@ -129,13 +166,18 @@ export function decodeMessage(text: string): StoredMessage {
 
   if (
     !isRecord(value) ||
-    !exactKeys(value, ['subject', 'body']) ||
+    !exactKeys(value, ['subject', 'body', 'trailers'], ['trailers']) ||
     typeof value.subject !== 'string' ||
     value.subject.length === 0 ||
-    typeof value.body !== 'string'
+    typeof value.body !== 'string' ||
+    (value.trailers !== undefined && !isTrailers(value.trailers))
   ) {
     throw unprovable();
   }
 
-  return { subject: value.subject, body: value.body };
+  return {
+    subject: value.subject,
+    body: value.body,
+    ...(value.trailers !== undefined ? { trailers: value.trailers } : {}),
+  };
 }

@@ -128,6 +128,15 @@ function fakePort(overrides: Partial<WorkflowPort> = {}): { port: WorkflowPort; 
       cancelledTasks: ['t1'],
       abandonedTaskRuns: [],
     }),
+    retryAttemptCommit: record('retryAttemptCommit', {
+      postActions: [
+        {
+          action: 'attempt-commit',
+          status: 'completed',
+          commit: { sha: 'a'.repeat(40), paths: ['src/app.ts'] },
+        },
+      ],
+    }),
     ...overrides,
   };
 
@@ -377,6 +386,54 @@ describe('workflow action routes', () => {
     expect(response.statusCode).toBe(200);
     expect(calls.last).toMatchObject({ step: 'draft', feedback: 'Rework the scope' });
     await app.close();
+  });
+
+  it("retries a Task attempt's commit as the owner, needs manage, and maps a refusal", async () => {
+    const { port, calls } = fakePort();
+    const app = appWith(port);
+    const url = `/api/specs/${SPEC}/tasks/t1/workflow/attempt-commit/retry`;
+
+    const response = await app.inject({
+      method: 'POST',
+      url,
+      payload: { step: 'implement', attempt: 2 },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      postActions: [{ action: 'attempt-commit', status: 'completed' }],
+    });
+    expect(calls.last).toMatchObject({
+      subject: { kind: 'task', specId: SPEC, taskId: 't1' },
+      step: 'implement',
+      attempt: 2,
+      actor: { class: 'human' },
+    });
+    expect((await app.inject({ method: 'POST', url, payload: { step: 'x' } })).statusCode).toBe(
+      400,
+    );
+    await app.close();
+
+    const viewerApp = appWith(port, viewer);
+    expect(
+      (await viewerApp.inject({ method: 'POST', url, payload: { step: 'implement', attempt: 2 } }))
+        .statusCode,
+    ).toBe(403);
+    await viewerApp.close();
+
+    const refused = appWith(
+      fakePort({
+        retryAttemptCommit: () =>
+          Promise.reject(new WorkflowError('WORKFLOW_POSITION_INVALID', 'Nothing to retry.')),
+      }).port,
+    );
+    const answer = await refused.inject({
+      method: 'POST',
+      url,
+      payload: { step: 'implement', attempt: 2 },
+    });
+    expect(answer.statusCode).toBe(409);
+    expect(answer.json()).toMatchObject({ code: 'WORKFLOW_POSITION_INVALID' });
+    await refused.close();
   });
 
   it('answers a refused abandon with 409 and the blockers', async () => {

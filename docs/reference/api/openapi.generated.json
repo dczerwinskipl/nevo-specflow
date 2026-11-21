@@ -561,6 +561,71 @@
                     },
                     "maxItems": 64
                   },
+                  "attempts": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "attemptId",
+                        "specId",
+                        "step",
+                        "attempt",
+                        "stepTitle",
+                        "code",
+                        "count",
+                        "paths"
+                      ],
+                      "properties": {
+                        "attemptId": {
+                          "type": "string",
+                          "minLength": 36,
+                          "maxLength": 36
+                        },
+                        "specId": {
+                          "$ref": "#/components/schemas/SpecId"
+                        },
+                        "taskId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64
+                        },
+                        "step": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "attempt": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "stepTitle": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 1000
+                        },
+                        "code": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "count": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "paths": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 4096
+                          },
+                          "maxItems": 8
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "maxItems": 8
+                  },
                   "unreadable": {
                     "type": "integer",
                     "minimum": 0
@@ -760,11 +825,76 @@
                     },
                     "count": {
                       "type": "integer",
-                      "minimum": 1
+                      "minimum": 0
                     },
                     "specificationCount": {
                       "type": "integer",
                       "minimum": 0
+                    },
+                    "attempts": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "attemptId",
+                          "specId",
+                          "step",
+                          "attempt",
+                          "stepTitle",
+                          "code",
+                          "count",
+                          "paths"
+                        ],
+                        "properties": {
+                          "attemptId": {
+                            "type": "string",
+                            "minLength": 36,
+                            "maxLength": 36
+                          },
+                          "specId": {
+                            "$ref": "#/components/schemas/SpecId"
+                          },
+                          "taskId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 64
+                          },
+                          "step": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "attempt": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "stepTitle": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1000
+                          },
+                          "code": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                          },
+                          "count": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "paths": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 4096
+                            },
+                            "maxItems": 8
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "maxItems": 8
                     }
                   },
                   "additionalProperties": false
@@ -1707,6 +1837,71 @@
                     },
                     "maxItems": 64
                   },
+                  "attempts": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "attemptId",
+                        "specId",
+                        "step",
+                        "attempt",
+                        "stepTitle",
+                        "code",
+                        "count",
+                        "paths"
+                      ],
+                      "properties": {
+                        "attemptId": {
+                          "type": "string",
+                          "minLength": 36,
+                          "maxLength": 36
+                        },
+                        "specId": {
+                          "$ref": "#/components/schemas/SpecId"
+                        },
+                        "taskId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64
+                        },
+                        "step": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "attempt": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "stepTitle": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 1000
+                        },
+                        "code": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "count": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "paths": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 4096
+                          },
+                          "maxItems": 8
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "maxItems": 8
+                  },
                   "unreadable": {
                     "type": "integer",
                     "minimum": 0
@@ -2457,6 +2652,71 @@
                       ]
                     },
                     "maxItems": 64
+                  },
+                  "attempts": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "attemptId",
+                        "specId",
+                        "step",
+                        "attempt",
+                        "stepTitle",
+                        "code",
+                        "count",
+                        "paths"
+                      ],
+                      "properties": {
+                        "attemptId": {
+                          "type": "string",
+                          "minLength": 36,
+                          "maxLength": 36
+                        },
+                        "specId": {
+                          "$ref": "#/components/schemas/SpecId"
+                        },
+                        "taskId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64
+                        },
+                        "step": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "attempt": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "stepTitle": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 1000
+                        },
+                        "code": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "count": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "paths": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 4096
+                          },
+                          "maxItems": 8
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "maxItems": 8
                   },
                   "unreadable": {
                     "type": "integer",
@@ -12066,6 +12326,12 @@
                     "type": "string",
                     "enum": [
                       "agent-turn-unknown"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "claim-not-held"
                     ]
                   },
                   {
@@ -43266,6 +43532,337 @@
         }
       }
     },
+    "/api/specs/{specId}/tasks/{taskId}/workflow/attempt-commit/retry": {
+      "post": {
+        "operationId": "postSpecsBySpecIdTasksByTaskIdWorkflowAttemptCommitRetry",
+        "summary": "Retry the failed commit of a finished agent attempt of a Task",
+        "tags": [
+          "Workflow"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "step",
+                  "attempt"
+                ],
+                "properties": {
+                  "step": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "attempt": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/SpecId"
+            },
+            "in": "path",
+            "name": "specId",
+            "required": true
+          },
+          {
+            "schema": {
+              "$ref": "#/components/schemas/TaskId"
+            },
+            "in": "path",
+            "name": "taskId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "postActions"
+                  ],
+                  "properties": {
+                    "postActions": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "required": [
+                              "action",
+                              "status"
+                            ],
+                            "properties": {
+                              "action": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "commit-execution-state"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "attempt-commit"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "completed"
+                                ]
+                              },
+                              "commit": {
+                                "type": "object",
+                                "required": [
+                                  "paths"
+                                ],
+                                "properties": {
+                                  "sha": {
+                                    "type": "string"
+                                  },
+                                  "paths": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              },
+                              "held": {
+                                "type": "object",
+                                "required": [
+                                  "edited",
+                                  "paths"
+                                ],
+                                "properties": {
+                                  "edited": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "paths": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": [
+                              "action",
+                              "status",
+                              "reason"
+                            ],
+                            "properties": {
+                              "action": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "commit-execution-state"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "attempt-commit"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "skipped"
+                                ]
+                              },
+                              "reason": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": [
+                              "action",
+                              "status",
+                              "code",
+                              "message"
+                            ],
+                            "properties": {
+                              "action": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "commit-execution-state"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "attempt-commit"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "failed"
+                                ]
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`, or `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY` for a malformed or empty JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticationRequiredErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The principal lacks a required capability.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state of the resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request is well-formed but cannot be processed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: the source exceeded the Runtime default rate limit.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the budget renews."
+              },
+              "x-ratelimit-limit": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The budget of the time window."
+              },
+              "x-ratelimit-remaining": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "`0` on a refusal."
+              },
+              "x-ratelimit-reset": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the window resets."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/specs/{specId}/tasks/{taskId}/workflow/finish": {
       "post": {
         "operationId": "postSpecsBySpecIdTasksByTaskIdWorkflowFinish",
@@ -44272,9 +44869,19 @@
                             ],
                             "properties": {
                               "action": {
-                                "type": "string",
-                                "enum": [
-                                  "commit-execution-state"
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "commit-execution-state"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "attempt-commit"
+                                    ]
+                                  }
                                 ]
                               },
                               "status": {
@@ -44332,9 +44939,19 @@
                             ],
                             "properties": {
                               "action": {
-                                "type": "string",
-                                "enum": [
-                                  "commit-execution-state"
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "commit-execution-state"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "attempt-commit"
+                                    ]
+                                  }
                                 ]
                               },
                               "status": {
@@ -44358,9 +44975,19 @@
                             ],
                             "properties": {
                               "action": {
-                                "type": "string",
-                                "enum": [
-                                  "commit-execution-state"
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "commit-execution-state"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "attempt-commit"
+                                    ]
+                                  }
                                 ]
                               },
                               "status": {
@@ -46796,6 +47423,329 @@
         }
       }
     },
+    "/api/specs/{specId}/workflow/attempt-commit/retry": {
+      "post": {
+        "operationId": "postSpecsBySpecIdWorkflowAttemptCommitRetry",
+        "summary": "Retry the failed commit of a finished agent attempt of a Specification",
+        "tags": [
+          "Workflow"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "step",
+                  "attempt"
+                ],
+                "properties": {
+                  "step": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "attempt": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/SpecId"
+            },
+            "in": "path",
+            "name": "specId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "postActions"
+                  ],
+                  "properties": {
+                    "postActions": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "required": [
+                              "action",
+                              "status"
+                            ],
+                            "properties": {
+                              "action": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "commit-execution-state"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "attempt-commit"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "completed"
+                                ]
+                              },
+                              "commit": {
+                                "type": "object",
+                                "required": [
+                                  "paths"
+                                ],
+                                "properties": {
+                                  "sha": {
+                                    "type": "string"
+                                  },
+                                  "paths": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              },
+                              "held": {
+                                "type": "object",
+                                "required": [
+                                  "edited",
+                                  "paths"
+                                ],
+                                "properties": {
+                                  "edited": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "paths": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": [
+                              "action",
+                              "status",
+                              "reason"
+                            ],
+                            "properties": {
+                              "action": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "commit-execution-state"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "attempt-commit"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "skipped"
+                                ]
+                              },
+                              "reason": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": [
+                              "action",
+                              "status",
+                              "code",
+                              "message"
+                            ],
+                            "properties": {
+                              "action": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "commit-execution-state"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "attempt-commit"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "failed"
+                                ]
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`, or `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY` for a malformed or empty JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticationRequiredErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The principal lacks a required capability.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state of the resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request is well-formed but cannot be processed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: the source exceeded the Runtime default rate limit.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the budget renews."
+              },
+              "x-ratelimit-limit": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The budget of the time window."
+              },
+              "x-ratelimit-remaining": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "`0` on a refusal."
+              },
+              "x-ratelimit-reset": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the window resets."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/specs/{specId}/workflow/finish": {
       "post": {
         "operationId": "postSpecsBySpecIdWorkflowFinish",
@@ -47794,9 +48744,19 @@
                             ],
                             "properties": {
                               "action": {
-                                "type": "string",
-                                "enum": [
-                                  "commit-execution-state"
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "commit-execution-state"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "attempt-commit"
+                                    ]
+                                  }
                                 ]
                               },
                               "status": {
@@ -47854,9 +48814,19 @@
                             ],
                             "properties": {
                               "action": {
-                                "type": "string",
-                                "enum": [
-                                  "commit-execution-state"
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "commit-execution-state"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "attempt-commit"
+                                    ]
+                                  }
                                 ]
                               },
                               "status": {
@@ -47880,9 +48850,19 @@
                             ],
                             "properties": {
                               "action": {
-                                "type": "string",
-                                "enum": [
-                                  "commit-execution-state"
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "commit-execution-state"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "attempt-commit"
+                                    ]
+                                  }
                                 ]
                               },
                               "status": {

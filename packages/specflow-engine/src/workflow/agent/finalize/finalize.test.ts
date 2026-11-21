@@ -21,7 +21,12 @@ import { memoryAgentDependencies } from '../memory.test-support';
 import { proposeAgentFinish, type AgentTurnIdentity } from '../proposal/propose';
 import { startAgentAttempt } from '../start';
 import { finalizeAgentAttempt, type FinalizeBoundary } from './finalize';
-import { recoverAgentAttempts, retryAgentPostActions, runAgentPostActions } from './post-actions';
+import {
+  recoverAgentAttempts,
+  retryAgentAttemptCommit,
+  retryAgentPostActions,
+  runAgentPostActions,
+} from './post-actions';
 
 /** The seed definitions with an exit gate on `requirements`: a `note` of the Specification. */
 async function gatedCatalogue(): Promise<ExecutionCatalogue> {
@@ -62,7 +67,7 @@ const writer: AgentActor = {
   details: { archetype: 'spec-writer', provider: 'claude', sessionId: 'session-a' },
 };
 const ACTIVE = { state: 'active', step: 'requirements', attempt: 1 } as const;
-const COMMITTED: PostActionResult[] = [{ action: 'commit-execution-state', status: 'completed' }];
+const COMMITTED: PostActionResult[] = [{ action: 'attempt-commit', status: 'completed' }];
 const NOTHING_RECOVERED = { recovered: [], failed: [], unreadable: [], truncated: false };
 const AT = expect.any(String) as unknown;
 
@@ -189,10 +194,11 @@ describe('finalizeAgentAttempt', () => {
       dirtySet: { invocationId: INVOCATION_1, paths: [{ path: 'src/a.ts' }] },
       postActions: [
         {
-          kind: 'step-finished',
-          operationId: agentPostActionId(ATTEMPT_ID, 'step-finished'),
+          kind: 'attempt-commit',
+          operationId: agentPostActionId(ATTEMPT_ID, 'attempt-commit'),
           state: 'done',
           outcomes: COMMITTED,
+          runs: 1,
         },
       ],
     });
@@ -468,12 +474,12 @@ describe('finalizeAgentAttempt', () => {
     expect(finishes(fixture)).toBe(0);
   });
 
-  it('keeps a failed post action retryable: recovery leaves it, the retry runs it once', async () => {
+  it('keeps a failed attempt commit apart from the published step: recovery leaves it, Retry commit runs it once', async () => {
     const fixture = await agentTurn();
     const { dependencies, journal, state, events } = fixture;
     const failed: PostActionResult[] = [
       {
-        action: 'commit-execution-state',
+        action: 'attempt-commit',
         status: 'failed',
         code: 'DOCUMENT_COMMIT_REFUSED',
         message: 'Protected branch.',
@@ -496,11 +502,25 @@ describe('finalizeAgentAttempt', () => {
       unreadable: ['5e6f0a96-0e87-4a99-9b7c-5fbec16dc006'],
     });
 
+    // The owner's Retry commit: a new operation (the failed one ended), run once.
     state.postActionResults = COMMITTED;
-    expect(await retryAgentPostActions(dependencies, ATTEMPT_ID)).toEqual(COMMITTED);
+    const retry = { subject: specification, step: 'requirements', attempt: 1, actor: owner };
+    await expect(
+      retryAgentAttemptCommit(dependencies, { ...retry, attempt: 2 }),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_MISMATCH' });
+    expect(await retryAgentAttemptCommit(dependencies, retry)).toEqual({ postActions: COMMITTED });
+    await expect(retryAgentAttemptCommit(dependencies, retry)).rejects.toMatchObject({
+      code: 'WORKFLOW_POSITION_INVALID',
+    });
     expect(await retryAgentPostActions(dependencies, ATTEMPT_ID)).toEqual([]);
     expect(events.filter((event) => event === 'post-action')).toHaveLength(2);
-    expect(journal.settled.get(ATTEMPT_ID)?.postActions?.[0]?.state).toBe('done');
+    const [first, second] = state.postActionRuns;
+    expect(first).toBe(agentPostActionId(ATTEMPT_ID, 'attempt-commit'));
+    expect(second).not.toBe(first);
+    expect(journal.settled.get(ATTEMPT_ID)?.postActions?.[0]).toMatchObject({
+      state: 'done',
+      runs: 2,
+    });
   });
 
   it('runs a post action once when the finalize and a recovery reach it at the same time', async () => {

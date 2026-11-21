@@ -103,6 +103,12 @@ export interface ExecutionStateCommitOptions {
    * workflow's owned execution): that claim admits it in the phases its form allows.
    */
   readonly ownedExecution?: OwnedExecutionClaim;
+  /**
+   * The agent Turn the change is made for when it is not admitted under that Turn's claim: the start
+   * of an agent attempt, made for its first Turn before the claim exists. Only attributes the ledger
+   * entries (`executions`); it admits nothing. An owned execution attributes its own changes.
+   */
+  readonly attributedExecution?: string;
   readonly commits?: CommitPort;
   readonly git?: GitPreflightOptions;
   readonly now?: () => Date;
@@ -198,6 +204,7 @@ export async function admitExecutionStateCommit(
   );
   await assertWithinBounds(engine, git, { workspaceId, specId }, checkoutPaths);
 
+  const executionId = options.ownedExecution?.operationId ?? options.attributedExecution;
   const target: RecordTarget = {
     engine,
     git,
@@ -209,9 +216,7 @@ export async function admitExecutionStateCommit(
     workspaceRoot,
     commits,
     now: options.now ?? (() => new Date()),
-    ...(options.ownedExecution !== undefined
-      ? { executionId: options.ownedExecution.operationId }
-      : {}),
+    ...(executionId !== undefined ? { executionId } : {}),
   };
 
   return { record: (summary, writes) => recordWrites(target, summary, writes) };

@@ -17,11 +17,16 @@ import type { PostActionResult } from '../../operations/post-actions';
 import { planReturn } from '../../operations/return';
 import { agentAttemptBindingOf } from '../../state/model';
 import type { ExecutionSnapshot, WorkflowStore } from '../../state/store';
-import { AttributionRefusalError, assertAgentFinishAttribution } from '../boundary';
+import {
+  AttributionRefusalError,
+  assertAgentFinishAttribution,
+  type AttributionFacts,
+} from '../boundary';
 import type { AgentAttemptDependencies } from '../dependencies';
 import {
   agentPostActionId,
   type AgentAttemptJournal,
+  type AgentDeclaredPath,
   type AgentRefusal,
   type AgentTurnBinding,
 } from '../journal/model';
@@ -363,9 +368,12 @@ async function publishStep(
     );
     // The checkout as the ended Turn left it must still be attributable as declared (B3, B6). A
     // replay was judged before its publication, which is final: it is never refused afterwards.
-    if (plan.kind !== 'replayed') {
-      await assertAgentFinishAttribution(dependencies, journal.workspaceId, proposal.changes);
-    }
+    // The declared paths' hashes as judged now are what the attempt commit takes (D15). A replay
+    // was judged before its publication: the checkout as it is now is read for the record only.
+    const facts =
+      plan.kind !== 'replayed'
+        ? await assertAgentFinishAttribution(dependencies, journal.workspaceId, proposal.changes)
+        : await dependencies.boundary.facts(journal.workspaceId);
 
     // A replay publishes the pending store journal a crash left, if any (as a repeated finish does).
     await store.apply(journal.subject.specId, plan.kind === 'replayed' ? {} : plan.change);
@@ -377,10 +385,11 @@ async function publishStep(
         proposal: { ...proposal, state: 'finalized' },
         postActions: [
           {
-            kind: 'step-finished',
-            operationId: agentPostActionId(journal.operationId, 'step-finished'),
+            kind: 'attempt-commit',
+            operationId: agentPostActionId(journal.operationId, 'attempt-commit'),
             stepTitle: plan.stepTitle,
             state: 'pending',
+            declared: declaredPathsOf(proposal.changes?.paths ?? [], facts),
           },
         ],
       },
@@ -397,6 +406,31 @@ async function publishStep(
       outcome: { kind: 'refused', of: 'proposal', refusal },
     };
   }
+}
+
+/**
+ * The declared paths with their content hashes in `facts` (the checkout as the finish was judged);
+ * none with Git off (nothing is committed then). A declared path the facts do not name (a replay
+ * after the checkout changed) or cannot hash is recorded `oversize`: the attempt commit refuses it
+ * rather than guess what the agent wrote.
+ */
+function declaredPathsOf(
+  paths: readonly string[],
+  facts: AttributionFacts | undefined,
+): readonly AgentDeclaredPath[] {
+  if (facts === undefined) {
+    return [];
+  }
+
+  const byPath = new Map(facts.paths.map((fact) => [fact.path, fact]));
+
+  return paths.map((path) => {
+    const fact = byPath.get(path);
+
+    return fact === undefined || fact.oversize
+      ? { path, sha256: null, oversize: true as const }
+      : { path, sha256: fact.sha256 };
+  });
 }
 
 /** The journal with its pending proposal, if any, refused because the owner's return was judged. */

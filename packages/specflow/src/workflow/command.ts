@@ -3,8 +3,10 @@ import {
   finishStep,
   inspectActions,
   readStepContext,
+  openAgentAttempts,
   reevaluateWait,
   resolveSpecification,
+  retryAgentAttemptCommit,
   returnToStep,
   startSpecificationExecution,
   startTaskExecution,
@@ -21,7 +23,14 @@ import { runBrokeredWrite } from '../agent-broker/routing';
 import { runExecution, type ExecutionOutput, type ExecutionSession } from '../execution-session';
 import { localOwner } from '../local-actor';
 import { parsePositiveInt, readStructuredFile } from '../structured-input';
-import { actionLines, contextLines, finishLines, returnLines, startLines } from './present';
+import {
+  actionLines,
+  contextLines,
+  finishLines,
+  retryCommitLines,
+  returnLines,
+  startLines,
+} from './present';
 
 export interface WorkflowCommandContext extends ExecutionOutput {
   readonly cwd: string;
@@ -293,6 +302,27 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
         actor: owner(),
       });
       emit(options, result, returnLines(result));
+    });
+  });
+
+  common(
+    workflow
+      .command('retry-commit')
+      .description(
+        "Retry the failed commit of a finished agent attempt: one commit of the attempt's own files",
+      )
+      .requiredOption('--step <step-id>', 'The step the agent finished (see "workflow actions")')
+      .requiredOption('--attempt <number>', 'The attempt whose commit failed', parsePositiveInt),
+  ).action(async (specId: string, options: CommonOptions & { step: string; attempt: number }) => {
+    await run(options, 'change', async ({ engine }) => {
+      const subject = subjectOf(specId, options);
+      const result = await retryAgentAttemptCommit(await openAgentAttempts(engine), {
+        subject,
+        step: options.step,
+        attempt: options.attempt,
+        actor: owner(),
+      });
+      emit(options, result, retryCommitLines(subject, options.step, options.attempt, result));
     });
   });
 

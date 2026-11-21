@@ -345,13 +345,15 @@ const codes = Type.Unsafe<WorkflowErrorCode>(
  * What holds a Specification whose workflow cannot change now (`WORKFLOW_SPECIFICATION_BUSY`):
  * `agent-turn` an agent Session Turn holds the project-wide write claim (retry once it ends, or stop
  * it); `agent-turn-unknown` that Turn ended without a verified outcome (resolve the Session: Check
- * outcome, or its recovery); `close` a Close of the Specification is unsettled. The other values are
+ * outcome, or its recovery); `claim-not-held` a write of an agent execution whose claim is no
+ * longer held (its Turn settled: start a new one); `close` a Close of the Specification is unsettled. The other values are
  * the busy causes of the commit admission of the workflow state, as in the documents' `SPEC_BUSY`;
  * `other` a busy refusal whose cause is not one of these (still a refusal: retry later).
  */
 export const SPECIFICATION_BUSY_CAUSES = [
   'agent-turn',
   'agent-turn-unknown',
+  'claim-not-held',
   'close',
   'create-or-close',
   'commit-in-progress',

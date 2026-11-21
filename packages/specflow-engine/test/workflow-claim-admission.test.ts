@@ -141,7 +141,7 @@ it('admits only the owning Turn while an agent claim is unsettled, with Git off'
   ).rejects.toMatchObject(notHeld);
   await expect(createTask(own, task('settled'))).rejects.toMatchObject({
     code: 'WORKFLOW_SPECIFICATION_BUSY',
-    busy: { cause: 'other' },
+    busy: { cause: 'claim-not-held' },
   });
   await expect(
     installProjectDefinitions(engine, { targets: ['agent-archetype/reviewer'], force: true }),

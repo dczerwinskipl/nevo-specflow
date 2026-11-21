@@ -9,7 +9,7 @@ import type {
   GateStatus,
   PostActionResult,
   RetryAgentAttemptCommitResult,
-  ReturnToStepResult,
+  OwnerReturnResult,
   RunPosition,
   SpecificationExitActions,
   StartBlocker,
@@ -372,7 +372,15 @@ export function retryCommitLines(
   ];
 }
 
-export function returnLines(result: ReturnToStepResult): string[] {
+export function returnLines(result: OwnerReturnResult): string[] {
+  if (result.kind === 'return-requested') {
+    return [
+      `Return requested: ${subjectLabel(result.subject)} back to ${result.to}`,
+      `The agent's Turn of ${result.step}#${String(result.attempt)} (Session ${result.sessionId}) may still run; the return applies once it has stopped.`,
+      'Stop the agent from the Runtime (Stop) if it is still working.',
+    ];
+  }
+
   return [
     `Returned: ${subjectLabel(result.subject)}`,
     `Position: ${positionLine(result.position)}`,

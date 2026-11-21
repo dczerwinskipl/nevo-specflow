@@ -45,9 +45,24 @@ export type AgentAttemptSettlement = (
   receipt: WorkspaceExecutionReceipt,
 ) => Promise<void>;
 
+/**
+ * The agent-execution feature's judgement of an agent attempt Turn's claim (D19): `admissible`
+ * prepares (outside the lock) the check that runs inside the claim admission's control-lock section
+ * and refuses a Turn whose attempt the owner took over or returned after it was bound (the check
+ * must not take the lock); `abandoned` applies what such an owner action left waiting once the claim
+ * was abandoned as never dispatched (no finalize runs then).
+ */
+export interface AgentTurnAdmission {
+  admissible(attemptId: string, invocationId: string): Promise<() => Promise<void>>;
+  abandoned(attemptId: string): Promise<void>;
+}
+
 export function createEngineSessionEffects(
   engine: SpecFlowEngine,
-  options: { readonly settleAgentAttempt?: AgentAttemptSettlement } = {},
+  options: {
+    readonly settleAgentAttempt?: AgentAttemptSettlement;
+    readonly agentTurns?: AgentTurnAdmission;
+  } = {},
 ): SessionEffects {
   function intent(identity: SessionEffectIdentity): WorkspaceExecutionIntent {
     return {
@@ -125,6 +140,10 @@ export function createEngineSessionEffects(
     try {
       return await run();
     } catch (error) {
+      if (error instanceof SessionError) {
+        throw error;
+      }
+
       if ((error as { code?: unknown }).code === 'RESOURCE_CONFLICT') {
         throw new SessionError(
           'TURN_CONFLICT',
@@ -150,7 +169,29 @@ export function createEngineSessionEffects(
       }
 
       const request = intent(identity);
-      const record = await guarded(() => admitWorkspaceExecution(engine, request, target));
+      const { attemptId } = identity;
+      const turns = options.agentTurns;
+      const check =
+        attemptId !== undefined && turns
+          ? await guarded(() => turns.admissible(attemptId, identity.invocationId))
+          : undefined;
+      const admissible = check
+        ? async () => {
+            try {
+              await check();
+            } catch (error) {
+              // The owner ended the attempt or replaced the Turn: refused before any claim, so
+              // the Turn ends as never started.
+              throw new SessionError(
+                'TURN_CONFLICT',
+                error instanceof Error ? error.message : 'The agent attempt cannot run.',
+              );
+            }
+          }
+        : undefined;
+      const record = await guarded(() =>
+        admitWorkspaceExecution(engine, request, target, admissible ? { admissible } : {}),
+      );
       if (record.phase !== 'admitted') {
         throw new SessionError(
           'SESSION_RECOVERY_REQUIRED',
@@ -167,6 +208,11 @@ export function createEngineSessionEffects(
         abandon: () =>
           guarded(async () => {
             await abandonWorkspaceExecutionAdmission(engine, request, target);
+            if (attemptId !== undefined) {
+              // A return recorded while the claim was only admitted applies now (no finalize runs
+              // for a Turn that never started); a failure here is repaired at the next owner read.
+              await turns?.abandoned(attemptId).catch(() => undefined);
+            }
           }),
         unknown: () =>
           guarded(async () => {

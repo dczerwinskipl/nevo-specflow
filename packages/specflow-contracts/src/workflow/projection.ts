@@ -264,6 +264,8 @@ export const AgentAttemptViewSchema = Type.Object({
       requestedAt: Type.String(),
       state: literals(['requested', 'refused'] as const),
       refusal: Type.Optional(Type.Object({ code: Type.String(), message: Type.String() })),
+      /** While `requested`: the Turn is stopping (`sent`) or still runs (`failed`: Stop again). */
+      stop: Type.Optional(literals(['sent', 'failed'] as const)),
     }),
   ),
   /**

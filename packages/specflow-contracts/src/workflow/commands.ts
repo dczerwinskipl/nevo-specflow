@@ -299,6 +299,8 @@ export const ReturnWorkflowResultSchema = Type.Union([
     sessionId: Type.String(),
     turnId: Type.String(),
     requestedAt: Type.String(),
+    /** The Runtime's stop of the Turn was sent, or failed (Stop again); absent offline. */
+    stop: Type.Optional(literals(['sent', 'failed'] as const)),
   }),
 ]);
 export type ReturnWorkflowResult = Static<typeof ReturnWorkflowResultSchema>;
@@ -798,6 +800,8 @@ export const WorkflowHistorySchema = Type.Object(
       ]),
       { maxItems: 10_000 },
     ),
+    /** Older records were left out (the newest 200 are returned). */
+    truncated: Type.Optional(Type.Literal(true)),
   },
   { $id: 'WorkflowHistory' },
 );

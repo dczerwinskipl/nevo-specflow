@@ -11177,6 +11177,22 @@
                         "type": "string"
                       }
                     }
+                  },
+                  "stop": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "sent"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "failed"
+                        ]
+                      }
+                    ]
                   }
                 }
               },
@@ -13418,6 +13434,12 @@
               ]
             },
             "maxItems": 10000
+          },
+          "truncated": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
           }
         }
       },
@@ -47624,6 +47646,22 @@
                         },
                         "requestedAt": {
                           "type": "string"
+                        },
+                        "stop": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "sent"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "failed"
+                              ]
+                            }
+                          ]
                         }
                       }
                     }
@@ -52683,6 +52721,22 @@
                         },
                         "requestedAt": {
                           "type": "string"
+                        },
+                        "stop": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "sent"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "failed"
+                              ]
+                            }
+                          ]
                         }
                       }
                     }

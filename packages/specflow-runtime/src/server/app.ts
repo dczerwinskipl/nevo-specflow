@@ -248,6 +248,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       ? {
           invocationCapabilities: agentExecution.capabilities,
           settleAgentAttempt: agentExecution.settleAgentAttempt,
+          agentTurns: agentExecution.agentTurns,
         }
       : {}),
     config: mode === 'project' ? config.sessions : undefined,

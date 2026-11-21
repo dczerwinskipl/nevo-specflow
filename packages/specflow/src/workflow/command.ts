@@ -7,7 +7,7 @@ import {
   reevaluateWait,
   resolveSpecification,
   retryAgentAttemptCommit,
-  returnToStep,
+  returnDuringAgentAttempt,
   startSpecificationExecution,
   startTaskExecution,
   takeOverAgentAttempt,
@@ -296,8 +296,10 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
       .requiredOption('--step <step-id>', 'The declared return target (see "workflow actions")')
       .option('--reason <text>', 'Why; handed to the step as feedback, required by some returns'),
   ).action(async (specId: string, options: CommonOptions & { step: string; reason?: string }) => {
-    await run(options, 'change', async ({ workflow: dependencies }) => {
-      const result = await returnToStep(dependencies, {
+    await run(options, 'change', async ({ engine }) => {
+      // During an agent attempt whose Turn may still run, the return is recorded and applies once
+      // the agent's process stopped (D19); offline, nothing stops it: the owner stops it.
+      const result = await returnDuringAgentAttempt(await openAgentAttempts(engine), {
         subject: subjectOf(specId, options),
         step: options.step,
         ...(options.reason !== undefined ? { feedback: options.reason } : {}),

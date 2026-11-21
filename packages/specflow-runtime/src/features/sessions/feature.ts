@@ -21,6 +21,7 @@ import {
   createEngineSessionEffects,
   workspaceExecutionIdentity,
   type AgentAttemptSettlement,
+  type AgentTurnAdmission,
 } from './effects/engine';
 import type { SessionCoordinator } from './lifecycle/coordinator';
 import { createSpecificationWorkspaceResolver } from './workspace/specification-workspace';
@@ -55,6 +56,8 @@ export function createSessionsFeature(
     invocationCapabilities?: InvocationCapabilities;
     /** The finalize that settles a Turn of an agent attempt (the agent-execution feature, D12). */
     settleAgentAttempt?: AgentAttemptSettlement;
+    /** The admission and abandon judgement of agent attempt Turns (the agent-execution feature). */
+    agentTurns?: AgentTurnAdmission;
   } = {},
 ): RuntimeFeature & { readonly runtime: SessionsRuntime } {
   let registered: SessionCoordinator | undefined;
@@ -97,10 +100,12 @@ export function createSessionsFeature(
         options.engine &&
         options.storage?.workspace === options.engine.workspace.root &&
         options.storage.projectId === options.engine.context.project.projectId
-          ? createEngineSessionEffects(
-              options.engine,
-              options.settleAgentAttempt ? { settleAgentAttempt: options.settleAgentAttempt } : {},
-            )
+          ? createEngineSessionEffects(options.engine, {
+              ...(options.settleAgentAttempt
+                ? { settleAgentAttempt: options.settleAgentAttempt }
+                : {}),
+              ...(options.agentTurns ? { agentTurns: options.agentTurns } : {}),
+            })
           : undefined;
       if (options.config?.providers.mock.enabled) {
         drivers.push(createMockDriver());

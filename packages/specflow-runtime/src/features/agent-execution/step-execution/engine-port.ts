@@ -9,9 +9,10 @@ import {
   listUnsettledWorkspaceExecutions,
   readAgentContextDigest,
   readStepContext,
-  readWorkflowHistory,
+  readAgentAttemptWork,
   resolveSpecificationForRead,
   returnDuringAgentAttempt,
+  settleAbandonedAgentTurn,
   startAgentAttempt,
   takeOverAgentAttempt,
   WorkflowError,
@@ -77,6 +78,8 @@ export interface AgentStepEngine {
   }): Promise<{ readonly attemptId: string }>;
   /** What the attempt left so far (Git-free: its journal, the ledger and the Task manifests). */
   work(subject: WorkflowSubject, active: ActiveAgentAttempt): Promise<AgentAttemptWork>;
+  /** Applies a return a Turn abandoned before it ran left waiting (its claim settled). */
+  settleAbandoned(attemptId: string): Promise<void>;
   /** The owner's Return (D19, A2): applied now, or recorded on the agent attempt. */
   returnStep(input: ReturnToStepInput): Promise<OwnerReturnResult>;
   /** Take over (F17): the agent attempt ends `taken-over`, the owner's attempt starts. */
@@ -174,24 +177,13 @@ export function createAgentStepEngine(dependencies: {
 
       return { attemptId: started.binding.attemptId };
     },
-    async work(subject, active) {
+    async work(_subject, active) {
       const attempts = await dependencies.openAttempts();
-      const history = await readWorkflowHistory(await dependencies.openWorkflow(), subject, {
-        journal: (attemptId) =>
-          attemptId === active.attemptId
-            ? Promise.resolve(active.journal)
-            : Promise.resolve(undefined),
-        ledger: (workspaceId, specId) => attempts.ledger(workspaceId, specId),
-      });
-      const found = history.items.find(
-        (item) =>
-          item.kind === 'attempt' && item.step === active.step && item.attempt === active.attempt,
-      );
 
-      return found?.kind === 'attempt' && found.agent
-        ? found.agent.work
-        : { documents: [], mixed: [], tasks: [], declared: [], commit: { state: 'none' } };
+      return readAgentAttemptWork(attempts.workflow, attempts, active.journal);
     },
+    settleAbandoned: async (attemptId) =>
+      settleAbandonedAgentTurn(await dependencies.openAttempts(), attemptId),
     returnStep: async (input) => returnDuringAgentAttempt(await dependencies.openAttempts(), input),
     takeOver: async (input) => takeOverAgentAttempt(await dependencies.openAttempts(), input),
     async brief(subject, attemptId) {

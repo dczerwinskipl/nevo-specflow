@@ -306,22 +306,38 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
                     },
                   }
                 : {}),
+              ...(journal.returnRequest.state === 'requested' && state !== 'ended'
+                ? { stop: state === 'stopping' ? ('sent' as const) : ('failed' as const) }
+                : {}),
             },
           }
         : {}),
-      takeOver: await takeOverOption(active),
+      takeOver: await takeOverOption(active, state),
       work: await engine.work(subject, active),
     };
   }
 
   /**
    * Whether Take over can run now: only once the agent's process is proven ended (its last Turn's
-   * claim settled, or never admitted) and no return of the attempt waits to apply. Read from the
-   * claim itself, the same fact the Engine judges.
+   * claim settled, or never admitted) and no return of the attempt waits to apply. A bound Turn
+   * whose Session is still starting it (no claim yet) is `agent-working` too: Take over waits until
+   * it runs and is stopped, or its start fails (a Take over that lands first refuses that Turn's
+   * admission, so it never runs).
    */
-  async function takeOverOption(active: ActiveAgentAttempt): Promise<AgentAttemptView['takeOver']> {
+  async function takeOverOption(
+    active: ActiveAgentAttempt,
+    state: AgentAttemptView['turn']['state'],
+  ): Promise<AgentAttemptView['takeOver']> {
     if (active.journal.returnRequest?.state === 'requested') {
       return { kind: 'unavailable', reason: 'return-requested' };
+    }
+
+    if (state === 'unknown') {
+      return { kind: 'unavailable', reason: 'outcome-unknown' };
+    }
+
+    if (state === 'working' || state === 'stopping') {
+      return { kind: 'unavailable', reason: 'agent-working' };
     }
 
     const phase = await engine.claimPhase(active.journal.turns.at(-1)!.invocationId);
@@ -341,6 +357,7 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
   async function decorate(
     subject: WorkflowSubject,
     projection: ActionProjection,
+    repaired = false,
   ): Promise<ActionProjection> {
     const position = projection.position;
     if ((position.kind === 'not-started' || position.kind === 'ready') && position.next) {
@@ -352,6 +369,16 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
 
     if (position.kind === 'active' && position.attempt.actor.class === 'agent') {
       const active = await engine.activeAttempt(subject);
+      if (active?.journal.returnRequest?.state === 'requested' && !repaired) {
+        const phase = await engine.claimPhase(active.journal.turns.at(-1)!.invocationId);
+        if (phase === 'settled') {
+          // The Turn was abandoned before it ran and its return never applied (an interrupted
+          // abandon): applied now, and the projection read again.
+          await engine.settleAbandoned(active.attemptId);
+
+          return decorate(subject, await engine.actions(subject), true);
+        }
+      }
 
       return active
         ? { ...projection, agentAttempt: await attemptView(active, subject) }
@@ -698,23 +725,32 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
     principal: string,
   ): Promise<OwnerReturnResult> {
     const result = await engine.returnStep(input);
-    const sessions = dependencies.sessions();
-    if (result.kind === 'return-requested' && sessions && result.sessionId !== '') {
-      try {
-        await sessions.cancel(
-          principal,
-          result.sessionId,
-          result.turnId,
-          derivedId(`${result.attemptId}:${result.requestedAt}`, 'return-stop'),
-        );
-      } catch (error) {
-        if (!(error instanceof SessionError)) {
-          throw error;
-        }
-      }
+    if (result.kind !== 'return-requested') {
+      return result;
     }
 
-    return result;
+    const sessions = dependencies.sessions();
+    if (!sessions || result.sessionId === '') {
+      return { ...result, stop: 'failed' };
+    }
+
+    try {
+      await sessions.cancel(
+        principal,
+        result.sessionId,
+        result.turnId,
+        derivedId(`${result.attemptId}:${result.requestedAt}`, 'return-stop'),
+      );
+
+      return { ...result, stop: 'sent' };
+    } catch (error) {
+      if (!(error instanceof SessionError)) {
+        throw error;
+      }
+
+      // Not stopped now (its outcome unknown, or the Session cannot be reached): Stop again.
+      return { ...result, stop: 'failed' };
+    }
   }
 
   /** Take over (F17): the Engine refuses it while the agent's process may still run. */

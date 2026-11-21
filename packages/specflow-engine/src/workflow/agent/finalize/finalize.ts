@@ -178,12 +178,22 @@ async function finalizeInSection(
     mismatch('The execution claim is not one of a Turn of this agent attempt.');
   }
 
+  const claim = await finalize.claim(intent.operationId);
+  const phase = claim?.phase;
+  // A replay of a Turn finalized and settled with this receipt: the claim admits nothing any more,
+  // and nothing is written; the recorded outcome is returned and the post actions resume.
+  if (
+    phase === 'settled' &&
+    journal.turns[index]!.finalizedAt !== undefined &&
+    isDeepStrictEqual(claim?.settlement, { kind: 'native-result', receipt })
+  ) {
+    return recordedOutcome(journal);
+  }
+
   const owned: OwnedExecutionClaim = { operationId: intent.operationId, form: 'finalize' };
   await dependencies.admission(owned).admitWrite();
   // Only a claim whose Turn was dispatched has a native result to settle with: refused before the
   // step state is published, so nothing is published that the settlement would then refuse.
-  const claim = await finalize.claim(intent.operationId);
-  const phase = claim?.phase;
   if (phase === undefined) {
     throw new WorkspaceExecutionError(
       'EXECUTION_RECOVERY_REQUIRED',

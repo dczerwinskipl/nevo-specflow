@@ -20,4 +20,10 @@ export {
   agentBrokerEnvironment,
   sendAgentBrokerRequest,
 } from './features/agent-execution';
+// The one table of the commands an agent may run: the CLI routing and the agent brief read it.
+export {
+  AGENT_BROKERED_COMMANDS,
+  AGENT_COMMANDS,
+  AGENT_READ_COMMANDS,
+} from '@nevo/specflow-contracts/runtime';
 export type { RuntimeWebApp, RuntimeWebAppAsset } from './server/web-app';

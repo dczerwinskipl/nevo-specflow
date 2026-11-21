@@ -7,6 +7,7 @@ import {
 import { SpecIdSchema, TaskIdSchema } from '../identifiers';
 import {
   ATTENTION_REASONS,
+  AgentAttemptWorkSchema,
   AgentOptionSchema,
   BlockingTaskSchema,
   ExitBlockerSchema,
@@ -342,11 +343,34 @@ export const RejectWorkflowResultSchema = Type.Object({
 });
 export type RejectWorkflowResult = Static<typeof RejectWorkflowResultSchema>;
 
-export const ReturnWorkflowResultSchema = Type.Object({
-  subject: WorkflowSubjectSchema,
-  position: WorkflowRunPositionSchema,
-  continuation: WorkflowContinuationSchema,
-});
+/**
+ * What the owner's Return did (D19): `returned`, the run moved back now; `return-requested`, an
+ * agent's Turn of the active attempt may still run: the return is recorded on the attempt, the
+ * Runtime stopped the Turn, and the return applies once the agent's process is proven stopped (the
+ * projection shows it as `agentAttempt.returnRequest` until then).
+ */
+export const ReturnWorkflowResultSchema = Type.Union([
+  Type.Object({
+    kind: Type.Literal('returned'),
+    subject: WorkflowSubjectSchema,
+    position: WorkflowRunPositionSchema,
+    continuation: WorkflowContinuationSchema,
+  }),
+  Type.Object({
+    kind: Type.Literal('return-requested'),
+    subject: WorkflowSubjectSchema,
+    /** The return target. */
+    to: StepId,
+    attemptId: Type.String(),
+    step: StepId,
+    attempt: Type.Integer({ minimum: 1 }),
+    sessionId: Type.String(),
+    turnId: Type.String(),
+    requestedAt: Type.String(),
+    /** The Runtime's stop of the Turn was sent, or failed (Stop again); absent offline. */
+    stop: Type.Optional(literals(['sent', 'failed'] as const)),
+  }),
+]);
 export type ReturnWorkflowResult = Static<typeof ReturnWorkflowResultSchema>;
 
 export const AbandonSpecificationResultSchema = Type.Object({
@@ -692,3 +716,165 @@ export const AgentStepExecutionCheckSchema = Type.Object(
   { additionalProperties: false },
 );
 export type AgentStepExecutionCheck = Static<typeof AgentStepExecutionCheckSchema>;
+
+/**
+ * Take over (F17, D19): the owner ends the active agent attempt `step#attempt` the owner was shown
+ * (`taken-over`) and starts their own attempt of the step, once the agent's process is proven ended
+ * (`WORKFLOW_SPECIFICATION_BUSY` while it may still run). Nothing the agent wrote is undone or
+ * committed; Close lists what stays uncommitted.
+ */
+export const TakeOverAgentStepExecutionRequestSchema = Type.Object(
+  { step: StepId, attempt: Type.Integer({ minimum: 1 }) },
+  { additionalProperties: false },
+);
+export type TakeOverAgentStepExecutionRequest = Static<
+  typeof TakeOverAgentStepExecutionRequestSchema
+>;
+
+export const TakeOverAgentStepExecutionResultSchema = Type.Object(
+  {
+    subject: WorkflowSubjectSchema,
+    /** The agent attempt that ended `taken-over`. */
+    takenOver: Type.Object({
+      attemptId: Type.String(),
+      step: StepId,
+      attempt: Type.Integer({ minimum: 1 }),
+    }),
+    /** The owner's attempt that started. */
+    step: WorkflowStepSchema,
+    attempt: Type.Integer({ minimum: 1 }),
+  },
+  { additionalProperties: false },
+);
+export type TakeOverAgentStepExecutionResult = Static<
+  typeof TakeOverAgentStepExecutionResultSchema
+>;
+
+const AttemptOutcomeSchema = Type.Union([
+  Type.Object({
+    kind: Type.Literal('transition'),
+    transition: Type.String(),
+    result: Type.Optional(Type.String()),
+    feedback: Type.Optional(Type.String()),
+    artifacts: Type.Array(Type.String(), { maxItems: 1000 }),
+  }),
+  Type.Object({
+    kind: Type.Literal('returned'),
+    to: Type.String(),
+    feedback: Type.Optional(Type.String()),
+  }),
+  Type.Object({ kind: Type.Literal('abandoned') }),
+  Type.Object({ kind: Type.Literal('taken-over') }),
+]);
+
+export const AGENT_ATTEMPT_EVENT_KINDS = [
+  'started',
+  'turn-started',
+  'turn-ended',
+  'proposal-refused',
+  'return-requested',
+  'returned',
+  'finished',
+  'committed',
+  'commit-failed',
+  'taken-over',
+  'abandoned',
+  'awaiting-confirmation',
+  'confirmed',
+  'rejected',
+] as const;
+
+/**
+ * The agent detail of one attempt in the Workflow history: who worked on it, how it ended, its step
+ * events (oldest first; `turn` numbers a Turn event, `code` names a refusal or a commit failure,
+ * `runs` how often the commit ran) and the work it left.
+ */
+export const AgentAttemptHistorySchema = Type.Object({
+  attemptId: Type.String(),
+  provider: Type.String(),
+  model: Type.Optional(Type.String()),
+  sessionId: Type.String(),
+  turns: Type.Integer({ minimum: 0 }),
+  ended: literals(['active', 'finished', 'returned', 'taken-over', 'abandoned'] as const),
+  takenOverBy: Type.Optional(Type.Object({ attempt: Type.Integer({ minimum: 1 }) })),
+  returnRequest: Type.Optional(
+    Type.Object({
+      to: Type.String(),
+      requestedAt: Type.String(),
+      state: Type.Union([
+        Type.Literal('requested'),
+        Type.Literal('applied'),
+        Type.Literal('refused'),
+      ]),
+      refusal: Type.Optional(Type.Object({ code: Type.String(), message: Type.String() })),
+    }),
+  ),
+  proposal: Type.Optional(
+    Type.Object({
+      transition: Type.String(),
+      state: Type.Union([
+        Type.Literal('pending'),
+        Type.Literal('refused'),
+        Type.Literal('finalized'),
+      ]),
+      submittedAt: Type.String(),
+      refusal: Type.Optional(
+        Type.Object({
+          code: Type.String(),
+          message: Type.String(),
+          paths: Type.Optional(Type.Array(Type.String(), { maxItems: 1000 })),
+        }),
+      ),
+    }),
+  ),
+  events: Type.Array(
+    Type.Object({
+      kind: literals(AGENT_ATTEMPT_EVENT_KINDS),
+      at: Type.Optional(Type.String()),
+      turn: Type.Optional(Type.Integer({ minimum: 1 })),
+      code: Type.Optional(Type.String()),
+      runs: Type.Optional(Type.Integer({ minimum: 1 })),
+    }),
+    { maxItems: 1000 },
+  ),
+  work: AgentAttemptWorkSchema,
+});
+export type AgentAttemptHistory = Static<typeof AgentAttemptHistorySchema>;
+
+/**
+ * `GET .../workflow/history`: every attempt and return of the subject's run, newest first (empty
+ * before it started); an agent attempt with its step events and the work it left (`agent`).
+ */
+export const WorkflowHistorySchema = Type.Object(
+  {
+    subject: WorkflowSubjectSchema,
+    items: Type.Array(
+      Type.Union([
+        Type.Object({
+          kind: Type.Literal('attempt'),
+          sequence: Type.Integer({ minimum: 1 }),
+          step: StepId,
+          stepTitle: Type.String(),
+          attempt: Type.Integer({ minimum: 1 }),
+          startedAt: Type.String(),
+          endedAt: Type.Optional(Type.String()),
+          actor: Type.Optional(WorkflowActorSchema),
+          outcome: Type.Optional(AttemptOutcomeSchema),
+          agent: Type.Optional(AgentAttemptHistorySchema),
+        }),
+        Type.Object({
+          kind: Type.Literal('return'),
+          sequence: Type.Integer({ minimum: 1 }),
+          at: Type.String(),
+          to: StepId,
+          feedback: Type.Optional(Type.String()),
+        }),
+      ]),
+      { maxItems: 10_000 },
+    ),
+    /** Older records were left out (the newest 200 are returned). */
+    truncated: Type.Optional(Type.Literal(true)),
+  },
+  { $id: 'WorkflowHistory' },
+);
+export type WorkflowHistory = Static<typeof WorkflowHistorySchema>;

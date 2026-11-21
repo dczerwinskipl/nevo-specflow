@@ -40,7 +40,9 @@ import { assertPinned } from '../definitions/revision';
  * - `confirm` takes the held transition, as the finish would have; `reject` does not take it and
  *   returns the run to the attempt's step, ready to start, with the rejection's feedback;
  * - `event` completes the active wait step with the transition its trigger names;
- * - `return` moves the run back to a declared step it has already reached.
+ * - `return` moves the run back to a declared step it has already reached;
+ * - `take-over` ends the active work attempt without a result and starts a new attempt of the same
+ *   step for another actor, who goes on with the work as it stands.
  */
 
 export type WorkflowCommand<TActor extends ActorRecord = ActorRecord> =
@@ -110,6 +112,17 @@ export type WorkflowCommand<TActor extends ActorRecord = ActorRecord> =
       readonly at: string;
       readonly step: string;
       readonly feedback?: string;
+    }
+  | {
+      readonly kind: 'take-over';
+      readonly at: string;
+      /** The active attempt the caller takes over; a stale caller never ends a newer attempt. */
+      readonly step: string;
+      readonly attempt: number;
+      /** Who works on the new attempt; any actor of a class the step allows. */
+      readonly actor: TActor;
+      /** Recorded with the new attempt. */
+      readonly hostData?: unknown;
     };
 
 /** What the host should do with the run after the decision. */
@@ -803,6 +816,57 @@ function decideReturn<A extends HostAnnotations, TActor extends ActorRecord>(
   };
 }
 
+function decideTakeOver<A extends HostAnnotations, TActor extends ActorRecord>(
+  definition: WorkflowDefinition<A>,
+  run: WorkflowRun<TActor>,
+  command: Extract<WorkflowCommand<TActor>, { kind: 'take-over' }>,
+): WorkflowDecision<A, TActor> {
+  const position = run.position;
+  if (position.state !== 'active') {
+    throw new WorkflowError('WORKFLOW_POSITION_INVALID', 'No step is active.');
+  }
+
+  if (position.step !== command.step || position.attempt !== command.attempt) {
+    throw new WorkflowError(
+      'WORKFLOW_ATTEMPT_MISMATCH',
+      `The active attempt is ${position.step}#${String(position.attempt)}, not ${command.step}#${String(command.attempt)}.`,
+    );
+  }
+
+  const step = stepOf(definition, position.step);
+  if (step.kind === 'wait') {
+    throw new WorkflowError('WORKFLOW_POSITION_INVALID', 'Nobody works on a wait step.');
+  }
+
+  // The new actor's class must be one the step allows; it need not be the class that started.
+  assertActorAllowed(step, command.actor, undefined);
+  const current = activeAttempt(run);
+  if (!current) {
+    throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'The active attempt has no history record.');
+  }
+
+  const ended: WorkflowRun<TActor> = {
+    ...run,
+    attempts: run.attempts.map((record) =>
+      record === current
+        ? { ...record, endedAt: command.at, outcome: { kind: 'taken-over' } }
+        : record,
+    ),
+  };
+  const nextRun = activate(ended, step.id, command.at, command.actor, command.hostData);
+
+  return {
+    nextRun,
+    intent: {
+      kind: 'execute',
+      step: step.id,
+      attempt: nextAttemptNumber(ended, step.id),
+      resumed: false,
+    },
+    declaredEffects: [],
+  };
+}
+
 /**
  * Decide one command on one run. The run must be pinned to `definition`
  * (`WORKFLOW_DEFINITION_CHANGED` otherwise) and its position must follow from its history
@@ -828,5 +892,7 @@ export function decide<A extends HostAnnotations, TActor extends ActorRecord>(
       return decideConfirmation(definition, run, command);
     case 'return':
       return decideReturn(definition, run, command);
+    case 'take-over':
+      return decideTakeOver(definition, run, command);
   }
 }

@@ -108,11 +108,17 @@ function assertSameIncarnation(
   }
 }
 
-/** A durable claim precedes any native process or side effect; retries only read the same claim. */
+/**
+ * A durable claim precedes any native process or side effect; retries only read the same claim.
+ * `admissible` judges, inside the admission's control-lock section and before a new claim is
+ * recorded, whether its owner may still run (an agent attempt's Turn: the attempt is unresolved);
+ * it must not take the lock, and a refusal it throws admits nothing.
+ */
 export async function admitWorkspaceExecution(
   engine: SpecFlowEngine,
   intent: WorkspaceExecutionIntent,
   target: WorkspaceExecutionTarget = {},
+  options: { readonly admissible?: () => Promise<void> } = {},
 ): Promise<WorkspaceExecutionJournal> {
   validateExecutionIntent(intent);
   const registry = await engine.readRegistry();
@@ -140,6 +146,7 @@ export async function admitWorkspaceExecution(
       return existing;
     }
 
+    await options.admissible?.();
     const latest = await readWorkspaceRegistry(engine.context);
     assertSameIncarnation(engine, latest, target, workspace);
     assertSpecificationBinding(latest, target, workspace);

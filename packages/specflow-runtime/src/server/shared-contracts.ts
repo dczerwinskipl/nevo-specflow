@@ -43,6 +43,7 @@ import {
 import {
   WorkflowActionProjectionSchema,
   WorkflowErrorSchema,
+  WorkflowHistorySchema,
 } from '@nevo/specflow-contracts/workflow';
 import {
   TaskChangeResultSchema,
@@ -81,6 +82,7 @@ const SHARED_CONTRACTS: readonly TSchema[] = [
   TaskSnapshotExpiredSchema,
   WorkflowActionProjectionSchema,
   WorkflowErrorSchema,
+  WorkflowHistorySchema,
   WorkspaceDocsErrorSchema,
 ];
 

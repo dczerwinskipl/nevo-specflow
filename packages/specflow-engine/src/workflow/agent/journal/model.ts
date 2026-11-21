@@ -153,6 +153,8 @@ export interface AgentPostActionRecord {
   readonly state: 'pending' | 'done' | 'failed';
   /** What its last run did (`done` and `failed` only). */
   readonly outcomes?: readonly AgentPostActionOutcome[];
+  /** When its last run was recorded (`done` and `failed` only; absent in an older journal). */
+  readonly ranAt?: string;
   /**
    * How many runs of it were recorded (absent: none). A run that is not recorded yet (a crash
    * before its record) is repeated with the same operation; a retry after a recorded failure is a
@@ -196,6 +198,18 @@ export interface AgentFinishProposal {
   readonly refusal?: AgentRefusal;
 }
 
+/**
+ * The owner took the attempt over (F17, D19) once its last Turn's claim was settled: the attempt
+ * ended `taken-over` and the owner's own attempt `attempt` of the step started. Nothing the agent
+ * wrote is undone or committed by it.
+ */
+export interface AgentTakeOver {
+  readonly actor: OwnerActor;
+  readonly at: string;
+  /** The owner's attempt that took it over. */
+  readonly attempt: number;
+}
+
 export interface AgentAttemptJournal {
   readonly version: typeof AGENT_ATTEMPT_JOURNAL_VERSION;
   /** The attempt's `attemptId`. */
@@ -215,6 +229,8 @@ export interface AgentAttemptJournal {
   readonly dirtySet?: AgentDirtySet;
   /** Only once the attempt was finalized (its proposal `finalized`), whatever the owner decides after. */
   readonly postActions?: readonly AgentPostActionRecord[];
+  /** Only once the owner took the attempt over. */
+  readonly takeOver?: AgentTakeOver;
   /** Only when the finalize held the proposal for the owner's confirmation (D17). */
   readonly confirmation?: AgentOwnerConfirmation;
 }
@@ -230,9 +246,16 @@ export interface AgentOwnerConfirmation {
   readonly state: 'pending' | 'confirmed' | 'rejected';
 }
 
-/** The attempt ended: its proposal was published, or the owner's return was applied. */
+/**
+ * The attempt ended: its proposal was published, the owner's return was applied, or the owner took
+ * it over.
+ */
 export function isAttemptResolved(journal: AgentAttemptJournal): boolean {
-  return journal.proposal?.state === 'finalized' || journal.returnRequest?.state === 'applied';
+  return (
+    journal.proposal?.state === 'finalized' ||
+    journal.returnRequest?.state === 'applied' ||
+    journal.takeOver !== undefined
+  );
 }
 
 /** Ended, and nothing of it is left to run: its journal can move to `settled/`. */
@@ -398,6 +421,7 @@ const JournalSchema = Type.Object(
             operationId: uuid,
             stepTitle: text(1000),
             runs: Type.Optional(Type.Integer({ minimum: 1 })),
+            ranAt: Type.Optional(timestamp),
             declared: Type.Optional(
               Type.Array(
                 Type.Object(
@@ -439,6 +463,12 @@ const JournalSchema = Type.Object(
         { minItems: 1, maxItems: 10 },
       ),
     ),
+    takeOver: Type.Optional(
+      Type.Object(
+        { actor: ActorSchema, at: timestamp, attempt: Type.Integer({ minimum: 2 }) },
+        closed,
+      ),
+    ),
   },
   closed,
 );
@@ -476,6 +506,13 @@ export function parseAgentAttemptJournal(value: unknown, operationId: string): A
       (returnRequest.actor.class !== 'human' ||
         (returnRequest.state === 'refused') !== (returnRequest.refusal !== undefined))) ||
     (journal.dirtySet !== undefined && !bound(journal.dirtySet.invocationId)) ||
+    (journal.takeOver !== undefined &&
+      (journal.takeOver.actor.class !== 'human' ||
+        journal.takeOver.attempt <= journal.attempt ||
+        journal.proposal?.state === 'finalized' ||
+        journal.proposal?.state === 'pending' ||
+        journal.returnRequest?.state === 'applied' ||
+        journal.returnRequest?.state === 'requested')) ||
     (journal.postActions !== undefined &&
       (proposal?.state !== 'finalized' ||
         journal.postActions.some(

@@ -131,6 +131,43 @@ async function project() {
   return { checkout, specId, engine };
 }
 
+/** The Session coordinator over a real store and agent execution, as the Runtime wires them. */
+async function runtime(
+  engine: Awaited<ReturnType<typeof project>>['engine'],
+  checkout: string,
+  driver: ReturnType<typeof createWritableTestDriver>,
+) {
+  const store = await openSessionStore({
+    directory: join(root, 'store'),
+    projectId: engine.context.project.projectId,
+  });
+  const agentExecution = createAgentExecutionFeature({
+    engine,
+    coordinator: () => coordinator,
+  });
+  closeBroker = () => agentExecution.close();
+  coordinator = createSessionCoordinator(
+    store,
+    driver,
+    engine.context.project.projectId,
+    true,
+    {
+      kind: 'read-only',
+      workspace: checkout,
+      temporaryRoot: join(root, 'temporary'),
+      workspaceIdentity: workspaceExecutionIdentity(engine),
+    },
+    createEngineSessionEffects(engine, {
+      settleAgentAttempt: agentExecution.settleAgentAttempt,
+    }),
+    createSpecificationWorkspaceResolver(engine),
+    undefined,
+    agentExecution.capabilities,
+  );
+
+  return agentExecution;
+}
+
 it('runs an agent attempt: a document, a Task draft and a finish proposal, finalized when the Turn ends', async () => {
   const { checkout, specId, engine } = await project();
   const seen: Record<string, AgentBrokerResponse> = {};
@@ -169,33 +206,7 @@ it('runs an agent attempt: a document, a Task draft and a finish proposal, final
     });
   });
 
-  const store = await openSessionStore({
-    directory: join(root, 'store'),
-    projectId: engine.context.project.projectId,
-  });
-  const agentExecution = createAgentExecutionFeature({
-    engine,
-    coordinator: () => coordinator,
-  });
-  closeBroker = () => agentExecution.close();
-  coordinator = createSessionCoordinator(
-    store,
-    driver,
-    engine.context.project.projectId,
-    true,
-    {
-      kind: 'read-only',
-      workspace: checkout,
-      temporaryRoot: join(root, 'temporary'),
-      workspaceIdentity: workspaceExecutionIdentity(engine),
-    },
-    createEngineSessionEffects(engine, {
-      settleAgentAttempt: agentExecution.settleAgentAttempt,
-    }),
-    createSpecificationWorkspaceResolver(engine),
-    undefined,
-    agentExecution.capabilities,
-  );
+  const agentExecution = await runtime(engine, checkout, driver);
   const subject = { kind: 'specification', specId } as const;
 
   // The projection explains the defaults: the planner's provider is not enabled here.
@@ -288,4 +299,72 @@ it('runs an agent attempt: a document, a Task draft and a finish proposal, final
     intent: { attempt: { attemptId: started.attemptId } },
     settlement: { kind: 'native-result' },
   });
+}, 180_000);
+
+it('returns during an agent attempt: the Turn is cancelled, a late proposal refused, the return applied once it stopped', async () => {
+  const { checkout, specId, engine } = await project();
+  const seen: Record<string, AgentBrokerResponse> = {};
+  let working: () => void = () => undefined;
+  const turnWorking = new Promise<void>((resolve) => {
+    working = resolve;
+  });
+  const driver = createWritableTestDriver(async (invocation, _emit, signal) => {
+    const broker = agentBrokerEnvironment(invocation.runtimeEnvironment?.values ?? {})!;
+    const send = (
+      requestId: string,
+      operation: Parameters<typeof sendAgentBrokerRequest>[0]['operation'],
+    ) => sendAgentBrokerRequest({ ...broker, requestId, operation });
+    seen.document = await send('create-plan-1', {
+      name: 'documents.create',
+      specId,
+      documents: [{ path: 'plan.md', type: 'note', content: '# Plan\n' }],
+    });
+    working();
+    // The agent keeps working until the owner's Return stops it, then tries to finish anyway.
+    await new Promise<void>((resolve) => {
+      signal.addEventListener('abort', () => resolve(), { once: true });
+    });
+    seen.late = await send('finish-late', {
+      name: 'workflow.finish',
+      specId,
+      step: 'breakdown',
+      stepAttempt: 1,
+    });
+  });
+  const agentExecution = await runtime(engine, checkout, driver);
+  const subject = { kind: 'specification', specId } as const;
+  const started = await agentExecution.agentStepExecution.startAgentStepExecution({
+    subject,
+    principal: 'owner',
+    requestId: randomUUID(),
+    expected: { step: 'breakdown' },
+    provider: 'controlled',
+    model: 'mock-model',
+  });
+  await turnWorking;
+
+  const returned = await agentExecution.agentStepExecution.returnStep(
+    { subject, step: 'solution', feedback: 'Rethink the split.', actor: owner },
+    'owner',
+  );
+  expect(returned).toMatchObject({
+    kind: 'return-requested',
+    to: 'solution',
+    attemptId: started.attemptId,
+    turnId: started.turnId,
+  });
+
+  await vi.waitFor(
+    async () => {
+      const attempt = await readAgentAttempt(await openAgentAttempts(engine), started.attemptId);
+      expect(attempt?.returnRequest?.state).toBe('applied');
+    },
+    { timeout: 60_000 },
+  );
+  expect(seen.document).toMatchObject({ ok: true });
+  expect(seen.late).toMatchObject({ ok: false, error: { code: 'WORKFLOW_ATTEMPT_MISMATCH' } });
+  // Applied by the Turn's finalize: the run is back at the solution; the agent's document stays.
+  const after = await inspectActionsForRead(await openWorkflow(engine), subject);
+  expect(after.position).toMatchObject({ kind: 'ready', next: { step: { id: 'solution' } } });
+  expect(await readFile(join(checkout, 'specs/active/hand/plan.md'), 'utf8')).toBe('# Plan\n');
 }, 180_000);

@@ -8,6 +8,10 @@ import type {
 import {
   WorkflowError,
   type ActionProjection,
+  type OwnerReturnResult,
+  type ReturnToStepInput,
+  type TakeOverAgentAttemptInput,
+  type TakeOverAgentAttemptResult,
   type AgentActor,
   type AgentAttemptView,
   type AgentLaunch,
@@ -18,7 +22,7 @@ import {
 
 import { defaultAgentAllowlist } from '@nevo/specflow-contracts/runtime';
 
-import type { SessionCoordinator } from '../../sessions';
+import { SessionError, type SessionCoordinator } from '../../sessions';
 import { AgentUnavailableError } from '../../workflow';
 import { untrusted } from '../brief/render';
 import { chosenLaunch, withRuntimeReasons, type AgentRuntimeFacts } from './availability';
@@ -288,7 +292,66 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
           }
         : {}),
       continue: await continueOption(active, subject, state, false),
+      ...(journal.returnRequest && journal.returnRequest.state !== 'applied'
+        ? {
+            returnRequest: {
+              to: journal.returnRequest.step,
+              requestedAt: journal.returnRequest.requestedAt,
+              state: journal.returnRequest.state,
+              ...(journal.returnRequest.refusal
+                ? {
+                    refusal: {
+                      code: journal.returnRequest.refusal.code,
+                      message: journal.returnRequest.refusal.message,
+                    },
+                  }
+                : {}),
+              ...(journal.returnRequest.state === 'requested'
+                ? state === 'ended' || state === 'session-missing'
+                  ? // The Turn never ran or has ended without its finalize applying it (an
+                    // abandoned start): it applies at the owner's next action (Return, Take over).
+                    { appliesOn: 'next-action' as const }
+                  : { stop: state === 'stopping' ? ('sent' as const) : ('failed' as const) }
+                : {}),
+            },
+          }
+        : {}),
+      takeOver: await takeOverOption(active, state),
+      work: await engine.work(subject, active),
     };
+  }
+
+  /**
+   * Whether Take over can run now: only once the agent's process is proven ended (its last Turn's
+   * claim settled, or never admitted) and no return of the attempt waits to apply. A bound Turn
+   * whose Session is still starting it (no claim yet) is `agent-working` too: Take over waits until
+   * it runs and is stopped, or its start fails (a Take over that lands first refuses that Turn's
+   * admission, so it never runs).
+   */
+  async function takeOverOption(
+    active: ActiveAgentAttempt,
+    state: AgentAttemptView['turn']['state'],
+  ): Promise<AgentAttemptView['takeOver']> {
+    if (active.journal.returnRequest?.state === 'requested') {
+      return { kind: 'unavailable', reason: 'return-requested' };
+    }
+
+    if (state === 'unknown') {
+      return { kind: 'unavailable', reason: 'outcome-unknown' };
+    }
+
+    if (state === 'working' || state === 'stopping') {
+      return { kind: 'unavailable', reason: 'agent-working' };
+    }
+
+    const phase = await engine.claimPhase(active.journal.turns.at(-1)!.invocationId);
+    if (phase === 'unknown') {
+      return { kind: 'unavailable', reason: 'outcome-unknown' };
+    }
+
+    return phase === undefined || phase === 'settled'
+      ? { kind: 'available' }
+      : { kind: 'unavailable', reason: 'agent-working' };
   }
 
   /**
@@ -643,7 +706,52 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
     return { attemptId: active.attemptId, sessionId, turnId: turn.turnId };
   }
 
-  return { decorate, check, startAgentStepExecution, stopAgentStepExecution };
+  /**
+   * The owner's Return (D19, A2). With no agent Turn that may still run, the return applies now.
+   * Otherwise the Engine records it on the attempt and the Turn is cancelled here; the claim stays
+   * held until the agent's process is proven stopped, and the Turn's finalize then applies the
+   * return. A Turn that cannot be cancelled now (its outcome unknown, or it ended meanwhile) keeps
+   * the recorded request: the finalize applies it whenever the claim settles.
+   */
+  async function returnStep(
+    input: ReturnToStepInput,
+    principal: string,
+  ): Promise<OwnerReturnResult> {
+    const result = await engine.returnStep(input);
+    if (result.kind !== 'return-requested') {
+      return result;
+    }
+
+    const sessions = dependencies.sessions();
+    if (!sessions || result.sessionId === '') {
+      return { ...result, stop: 'failed' };
+    }
+
+    try {
+      await sessions.cancel(
+        principal,
+        result.sessionId,
+        result.turnId,
+        derivedId(`${result.attemptId}:${result.requestedAt}`, 'return-stop'),
+      );
+
+      return { ...result, stop: 'sent' };
+    } catch (error) {
+      if (!(error instanceof SessionError)) {
+        throw error;
+      }
+
+      // Not stopped now (its outcome unknown, or the Session cannot be reached): Stop again.
+      return { ...result, stop: 'failed' };
+    }
+  }
+
+  /** Take over (F17): the Engine refuses it while the agent's process may still run. */
+  function takeOver(input: TakeOverAgentAttemptInput): Promise<TakeOverAgentAttemptResult> {
+    return engine.takeOver(input);
+  }
+
+  return { decorate, check, startAgentStepExecution, stopAgentStepExecution, returnStep, takeOver };
 }
 
 export type AgentStepExecution = ReturnType<typeof createAgentStepExecution>;

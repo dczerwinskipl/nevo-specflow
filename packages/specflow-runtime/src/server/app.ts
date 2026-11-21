@@ -248,6 +248,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       ? {
           invocationCapabilities: agentExecution.capabilities,
           settleAgentAttempt: agentExecution.settleAgentAttempt,
+          agentTurns: agentExecution.agentTurns,
         }
       : {}),
     config: mode === 'project' ? config.sessions : undefined,
@@ -400,7 +401,10 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       ...(taskEngine ? { openWorkflow: taskEngine.openWorkflow } : {}),
       // What only the Runtime knows of the agent option; the demo runs no agent.
       ...(agentExecution
-        ? { agentAvailability: agentExecution.agentAvailability }
+        ? {
+            agentAvailability: agentExecution.agentAvailability,
+            agentReturn: agentExecution.agentStepExecution.returnStep,
+          }
         : demo
           ? { agentAvailability: demoAgentAvailability }
           : {}),

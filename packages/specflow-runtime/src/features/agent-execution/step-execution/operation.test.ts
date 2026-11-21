@@ -98,6 +98,27 @@ function fakes(
     },
     brief: () =>
       Promise.resolve({ step: { id: 'breakdown', title: 'Break it down' }, attempt: 1, text: 'b' }),
+    work: () =>
+      Promise.resolve({
+        documents: [],
+        mixed: [],
+        tasks: [],
+        declared: [],
+        commit: { state: 'none' },
+      }),
+    returnStep: (input) =>
+      Promise.resolve({
+        kind: 'return-requested',
+        subject: input.subject,
+        to: input.step,
+        attemptId: ATTEMPT,
+        step: 'breakdown',
+        attempt: 1,
+        sessionId: attempt?.journal.actor.details.sessionId ?? '',
+        turnId: attempt?.journal.turns.at(-1)?.turnId ?? '',
+        requestedAt: 't3',
+      }),
+    takeOver: () => Promise.reject(new Error('not used')),
   };
   const sessions: AgentStepSessions = {
     available: () => true,
@@ -281,5 +302,25 @@ describe('agent step execution', () => {
     ]);
     expect(continued).toMatchObject({ kind: 'continued', session: 'reuse' });
     expect(attempt()?.journal.turns).toHaveLength(2);
+  });
+
+  it("stops the agent's Turn when the owner's Return is recorded on the attempt", async () => {
+    const { calls, execution, attempt } = fakes();
+    await execution.startAgentStepExecution(request('00000000-0000-4000-8000-000000000009'));
+    const turnId = attempt()!.journal.turns.at(-1)!.turnId;
+
+    const returned = await execution.returnStep(
+      {
+        subject,
+        step: 'solution',
+        actor: { class: 'human', details: { actorId: 'o', trust: 'local' } },
+      },
+      'owner',
+    );
+
+    expect(returned.kind).toBe('return-requested');
+    expect(calls.at(-1)).toBe(
+      `session.cancel ${derivedId('00000000-0000-4000-8000-000000000009', 'session')} ${turnId}`,
+    );
   });
 });

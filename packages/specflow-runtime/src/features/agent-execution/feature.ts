@@ -2,6 +2,8 @@ import { AGENT_BROKER_ENVIRONMENT } from '@nevo/specflow-contracts/runtime';
 import {
   admitAgentTurn,
   agentAttemptScope,
+  assertAgentTurnAdmissible,
+  settleAbandonedAgentTurn,
   deriveAgentScope,
   finalizeAgentAttempt,
   openAgentAttempts,
@@ -17,6 +19,7 @@ import type { RuntimeFeature } from '../runtime-feature';
 import {
   SessionError,
   type AgentAttemptSettlement,
+  type AgentTurnAdmission,
   type InvocationCapabilities,
   type InvocationCapabilityBinding,
   type SessionCoordinator,
@@ -73,6 +76,7 @@ export function createAgentExecutionFeature(
 ): RuntimeFeature & {
   readonly capabilities: InvocationCapabilities;
   readonly settleAgentAttempt: AgentAttemptSettlement;
+  readonly agentTurns: AgentTurnAdmission;
   readonly agentAvailability: ReturnType<typeof createAgentStepExecution>['decorate'];
   /** Ask agent, Continue and Stop (the owner routes call it). */
   readonly agentStepExecution: ReturnType<typeof createAgentStepExecution>;
@@ -201,10 +205,20 @@ export function createAgentExecutionFeature(
     });
   };
 
+  const agentTurns: AgentTurnAdmission = {
+    async admissible(attemptId, invocationId) {
+      const attempts = await openAttempts();
+
+      return () => assertAgentTurnAdmissible(attempts, attemptId, invocationId);
+    },
+    abandoned: async (attemptId) => settleAbandonedAgentTurn(await openAttempts(), attemptId),
+  };
+
   return {
     authorizationResources: [],
     capabilities,
     settleAgentAttempt,
+    agentTurns,
     agentAvailability: (subject, projection) => agentStepExecution.decorate(subject, projection),
     agentStepExecution,
     close: () => server.close(),

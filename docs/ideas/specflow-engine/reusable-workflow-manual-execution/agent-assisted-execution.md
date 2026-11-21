@@ -551,6 +551,17 @@ provider and model only for a fresh Session; the choice is recorded on the attem
 Take over (F17) is an explicit owner operation, allowed once the claim is settled: it ends the agent
 attempt as `taken-over` and starts an owner attempt.
 
+- Take over commits nothing, and neither does anything else on the agent's behalf. The owner's own
+  finish of the attempt that took over commits the workflow state as any owner finish does, and
+  that includes the agent's Task drafts the Task index links: by finishing, the owner accepts them.
+  The agent's declared code changes outside SpecFlow's folders stay uncommitted, and Close lists
+  them until the owner commits them.
+- Return during an agent attempt whose Turn may still run records a return request on the attempt
+  and stops the Turn; the attempt becomes `returned` once the agent's process is proven stopped.
+- A Take over or Return that lands after a Turn was bound but before its claim was admitted refuses
+  that Turn's admission: it never runs. A return recorded while the claim was only admitted applies
+  when that admission is abandoned as never dispatched.
+
 **D20 — Permission prompts. Decided: (a).** The Runtime starts an Ask agent Turn with the provider's
 allowlist for read-only tools and the product CLI, configured per archetype; it is provider
 configuration, not an Engine rule.

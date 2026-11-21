@@ -9,13 +9,14 @@ import type {
   RejectAgentResultResult,
   FinishStepResult,
   OwnerActor,
+  OwnerReturnResult,
   ReevaluateWaitInput,
   ReevaluateWaitResult,
   ReturnToStepInput,
-  ReturnToStepResult,
   RetryAgentAttemptCommitInput,
   RetryAgentAttemptCommitResult,
   StartResult,
+  WorkflowHistory,
   WorkflowSubject,
 } from '@nevo/specflow-engine';
 
@@ -32,7 +33,13 @@ export interface WorkflowPort {
     readonly expectedWorkflowRevision?: string;
   }): Promise<StartResult>;
   finish(input: FinishStepInput): Promise<FinishStepResult>;
-  return(input: ReturnToStepInput): Promise<ReturnToStepResult>;
+  /**
+   * The owner's Return: applied now, or (D19) recorded on the agent attempt whose Turn may still
+   * run. `principal` is the caller as the Session routes name it (the Turn is stopped as theirs).
+   */
+  return(input: ReturnToStepInput, principal: string): Promise<OwnerReturnResult>;
+  /** The subject's Workflow history, an agent attempt with its step events and work (read-only). */
+  history(subject: WorkflowSubject): Promise<WorkflowHistory>;
   reevaluateWait(input: ReevaluateWaitInput): Promise<ReevaluateWaitResult>;
   abandon(input: AbandonSpecificationInput): Promise<AbandonSpecificationResult>;
   /** The owner's Retry commit of a finished agent attempt whose commit failed (D15). */

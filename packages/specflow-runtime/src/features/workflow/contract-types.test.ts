@@ -7,6 +7,7 @@ import type {
   WorkflowActionProjection,
   WorkflowAttentionItem,
   WorkflowError,
+  WorkflowHistory as WorkflowHistoryContract,
 } from '@nevo/specflow-contracts/workflow';
 import type { TaskContextEntry } from '@nevo/specflow-contracts/documents';
 import type { TaskListResponse, TaskResourceFacts } from '@nevo/specflow-contracts/tasks';
@@ -18,7 +19,7 @@ import type {
   DraftConflict,
   FinishStepResult,
   GateUnsatisfiedError,
-  ReturnToStepResult,
+  OwnerReturnResult,
   RunPosition,
   TaskFacts,
   TaskDecision,
@@ -27,6 +28,7 @@ import type {
   TaskReadiness,
   UnresolvedContextEntry,
   InvalidContextEntry,
+  WorkflowHistory,
 } from '@nevo/specflow-engine';
 import { describe, expect, it } from 'vitest';
 
@@ -57,7 +59,8 @@ describe('workflow contract types', () => {
   it('match the Engine both ways', () => {
     same<ActionProjection, WorkflowActionProjection>(true);
     same<FinishStepResult, FinishWorkflowResult>(true);
-    same<ReturnToStepResult, ReturnWorkflowResult>(true);
+    same<OwnerReturnResult, ReturnWorkflowResult>(true);
+    same<WorkflowHistory, WorkflowHistoryContract>(true);
     same<AbandonSpecificationResult, AbandonContract>(true);
     same<TaskProposal, TaskProposalContract>(true);
     same<TaskDecision, TaskDecisionContract>(true);

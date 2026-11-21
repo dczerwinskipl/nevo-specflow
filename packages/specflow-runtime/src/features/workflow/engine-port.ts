@@ -4,6 +4,7 @@ import {
   finishStep,
   rejectAgentResult,
   inspectActionsForRead,
+  readWorkflowHistory,
   reevaluateWait,
   retryAgentAttemptCommit,
   returnToStep,
@@ -57,7 +58,21 @@ export function createEngineWorkflowPort(
     },
 
     async return(input) {
-      return returnToStep(await open(), input);
+      // Without the agent attempt operations (the demo) no agent attempt exists: it applies now.
+      return { kind: 'returned', ...(await returnToStep(await open(), input)) };
+    },
+
+    async history(subject) {
+      if (!openAgentAttempts) {
+        return readWorkflowHistory(await open(), subject);
+      }
+
+      const attempts = await openAgentAttempts();
+
+      return readWorkflowHistory(await open(), subject, {
+        journal: (attemptId) => attempts.journal.read(attemptId),
+        ledger: (workspaceId, specId) => attempts.ledger(workspaceId, specId),
+      });
     },
 
     async reevaluateWait(input) {

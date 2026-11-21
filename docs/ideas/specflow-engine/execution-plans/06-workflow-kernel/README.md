@@ -24,7 +24,8 @@ related:
   - ideas.specflow-engine.workflow-api-requirements
   - adr.0024-tasks-are-resources
   - adr.0023-neutral-workflow-coordinator-and-manual-execution
-  - ideas.specflow-engine.reusable-workflow.agent-execution
+  - adr.0026-agent-step-execution
+  - architecture.runtime.agent-step-execution
 ---
 
 # Plan 06 — Workflow kernel
@@ -72,10 +73,16 @@ commits. PR #137 added manual execution end to end: Task and workflow commands o
 authoring, the Now block, the Overview control center and the Tasks page). Behaviour:
 `architecture.workflow.workflow-kernel`.
 
-Status of the follow-ups below: **done** F04 (commits; the agent push is E6), F16, F18, F20 (storage
-and context authoring; context resolution for agents is E6); **partly done** F02 (CLI; MCP open), F03
-(`document` gates; `command` and `human` open), F06, F09 (manual commands and UI; the quick screen and
-"remember" are open); **deferred** F12; **open** F01, F05, F07, F08, F11, F13, F14, F15, F17, F19.
+PR #169 added agent step execution ([ADR 0026](../../../../architecture/decisions/0026-agent-step-execution.md)):
+an agent runs one step through the Runtime broker, its finish is a proposal finalized with the claim
+settlement, its work is one attempt commit, and the owner confirms what only the owner decides.
+
+Status of the follow-ups below: **done** F04 (commits, with the attempt commit of an agent attempt;
+push stays out of scope), F05 (for agent execution claims), F13, F16, F17, F18, F20 (storage, context
+authoring and the agent's resolved context); **partly done** F02 (CLI and the agent actor from the
+Session binding through the broker; MCP open), F03 (`document` gates; `command` and `human` open),
+F06, F09 (manual commands and UI; the quick screen and "remember" are open); **deferred** F12;
+**open** F01, F07, F08, F11, F14, F15, F19.
 
 ## 3. Follow-ups
 
@@ -103,7 +110,9 @@ a second progression algorithm.
 ### F02 — Agent completion signal (CLI + MCP)
 
 **Partly done.** The offline CLI `nevo-specflow workflow actions|start|finish|return` exists (owner
-actor `local:<os-user>`); the MCP tool and an agent actor from a Session binding are open (E6).
+actor `local:<os-user>`); an agent's `workflow finish` inside its Turn is sent to the Runtime broker,
+which builds the agent actor from the Session binding (ADR 0026). The MCP tool is open (it would be a
+second transport over the same broker).
 
 - **CLI:** `nevo-specflow workflow inspect|start|finish --input-file result.json --json`, offline, over
   the same operations (see `ideas.specflow-engine.offline-cli-and-external-agents`).
@@ -129,10 +138,15 @@ implemented (workflow kernel, "Gates"). Open: the `command` and `human` gate typ
 
 **Done** (owner decision 2026-11-12): store writes are committed through the document commit policy,
 queue and ledger; with auto-commit off a finish runs the post action `commit-execution-state`; Close
-and Abandon take what is left. Open: the push of an agent step's work through the same post-action
-seam (E6).
+and Abandon take what is left. An agent attempt commits its own work through the post action
+`attempt-commit` (ADR 0026, D15). Push stays out of scope.
 
 ### F05 — Workspace admission for writable steps
+
+**Done for agent execution claims:** every workflow write is admitted against the unsettled agent
+claims with Git on or off, and an agent Turn's own writes pass its claim through the owned-claim
+admission ([workspace execution claims](../../../../architecture/runtime/workspace-execution-claims.md#the-project-wide-resource)).
+Open: a writer outside the Engine (Git: checkout, pull, merge), below.
 
 The store re-checks every target right before it publishes, which narrows but does not close the
 window in which a concurrent external writer (Git: checkout, pull, merge) changes a record between
@@ -208,6 +222,10 @@ abandon) and the UI exist. Open: the quick start screen with `suggestion` / `blo
 
 ### F13 — Stopping a Session on return
 
+**Done** (ADR 0026, D19): a return during an agent Turn that may still run is recorded on the attempt,
+the Runtime stops the Turn, and the attempt ends `returned` once the process is proven stopped; a late
+proposal is `WORKFLOW_ATTEMPT_MISMATCH`. The original note:
+
 A return ends the active attempt as `returned`; the Runtime must cancel a Session still working on it
 and ignore a late finish (already rejected as `WORKFLOW_ATTEMPT_MISMATCH`).
 
@@ -244,7 +262,11 @@ different input for a finished attempt stays a mismatch.
 
 ### F17 — Owner takeover of an agent step (explicit operation)
 
-**Open.** Today a step allows a person when its `executors` include `human`, but an active attempt is
+**Done** (ADR 0026, D19): Take over (`.../workflow/agent-execution/take-over`, `workflow take-over`),
+allowed once the agent's last Turn is proven ended; the attempt ends `taken-over` (core command
+`take-over`) and the owner's attempt starts; it commits nothing. The original note:
+
+A step allows a person when its `executors` include `human`, but an active attempt is
 continued only by the class that started it, and an active agent attempt started
 in a Session is resumed and finished only by that Session (`WORKFLOW_EXECUTOR_NOT_ALLOWED`). If the owner should be
 able to take over an agent step (for example after the Session died), that is an explicit operation
@@ -282,16 +304,16 @@ that no sequence of valid operations reaches the budget.
 
 **Done** ([ADR 0024](../../../../architecture/decisions/0024-tasks-are-resources.md)): Task folders,
 the index, `task.md` and Task-scoped documents, the slim run record created at the first start, typed
-context authoring with process artifacts, and broken-Task isolation. Open: resolving the context for an
-agent (references with digests, budgets, per-attempt evidence) and path hints, part of
-[agent-assisted execution](../../reusable-workflow-manual-execution/agent-assisted-execution.md).
+context authoring with process artifacts, and broken-Task isolation. The context resolved for an agent
+(references with digests, budgets, the digest on the attempt) shipped with agent step execution
+([ADR 0026](../../../../architecture/decisions/0026-agent-step-execution.md)). Open: path hints.
 
 ## 4. What is missing (summary)
 
 Runtime orchestration (F01), the MCP completion transport (F02), `command` and `human` gates (F03),
-writer admission (F05), acceptance after cancelled Tasks (F06), re-pinning (F07), parallel worktrees
-(F08), the quick start screen (F09), caching (F11), running selected Tasks (F12, deferred), Session
-cancel on return (F13), status projection (F14), model availability (F15), owner takeover of an agent
-step (F17) and a bounded run history (F19). Agent delegation of single steps and typed inputs are the
-open ideas [E6](../../reusable-workflow-manual-execution/agent-assisted-execution.md) and
-[E5](../../reusable-workflow-manual-execution/typed-transition-inputs.md).
+admission against writers outside the Engine (F05), acceptance after cancelled Tasks (F06),
+re-pinning (F07), parallel worktrees (F08), the quick start screen (F09), caching (F11), running
+selected Tasks (F12, deferred), status projection (F14), model availability (F15) and a bounded run
+history (F19). Typed inputs are the open idea
+[E5](../../reusable-workflow-manual-execution/typed-transition-inputs.md); agent delegation of single
+steps shipped ([ADR 0026](../../../../architecture/decisions/0026-agent-step-execution.md)).

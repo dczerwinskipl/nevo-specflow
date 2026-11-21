@@ -15,10 +15,13 @@ summary: >
   The Engine journal that admits every native agent execution as a project-wide writer claim: the
   intent, the phases admitted, dispatched, unknown and settled, settlement only on a proven
   not-dispatched or native-result receipt, the project-write resource that excludes Create, Close,
-  document changes and manual commits, the archive move, the crash windows, and how Runtime maps the
-  errors.
+  document changes, manual commits and every workflow write, the owned-claim admission of an agent
+  Turn's own writes and of its finalize, the archive move, the crash windows, and how Runtime maps
+  the errors.
 related:
   - architecture.runtime.specflow-engine
+  - architecture.runtime.agent-step-execution
+  - adr.0026-agent-step-execution
   - architecture.ai.session-storage-and-lifecycle
   - architecture.runtime.specflow-lifecycle
   - engineering.shared.specflow-git-recovery
@@ -41,15 +44,15 @@ Code: `packages/specflow-engine/src/execution/` (`model.ts`, `journal.ts`, `oper
 
 There is no separate reservation store. One JSON record per execution is the claim:
 
-| Field                                        | Meaning                                                                                                                                                                                   |
-| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `intent {operationId, ownerId, binding}`     | `operationId` is the Runtime invocation id (a UUID, also the file name); `ownerId` the Session id; `binding` a sha256 of the Session, request, provider selection and workspace identity. |
-| `projectId`, `gitInstanceId`                 | The Project Home the claim belongs to. A record of another project is corrupt.                                                                                                            |
-| `workspace {workspaceId, root, instanceId?}` | The workspace incarnation the execution runs in: the Engine's own checkout, or a registered workspace named at admission (a Specification's worktree).                                    |
-| `registryRevision`                           | The workspace registry revision at admission.                                                                                                                                             |
-| `resources`                                  | Exactly one: `project-write:<projectId>`.                                                                                                                                                 |
-| `phase`                                      | `admitted`, `dispatched`, `unknown` or `settled`.                                                                                                                                         |
-| `settlement`                                 | Present exactly when `settled`: `not-dispatched`, or `native-result` with a receipt.                                                                                                      |
+| Field                                              | Meaning                                                                                                                                                                                                                                                                                                  |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `intent {operationId, ownerId, binding, attempt?}` | `operationId` is the Runtime invocation id (a UUID, also the file name); `ownerId` the Session id; `binding` a sha256 of the Session, request, provider selection and workspace identity; `attempt {attemptId}` the agent attempt the Turn belongs to (agent step execution), absent for any other Turn. |
+| `projectId`, `gitInstanceId`                       | The Project Home the claim belongs to. A record of another project is corrupt.                                                                                                                                                                                                                           |
+| `workspace {workspaceId, root, instanceId?}`       | The workspace incarnation the execution runs in: the Engine's own checkout, or a registered workspace named at admission (a Specification's worktree).                                                                                                                                                   |
+| `registryRevision`                                 | The workspace registry revision at admission.                                                                                                                                                                                                                                                            |
+| `resources`                                        | Exactly one: `project-write:<projectId>`.                                                                                                                                                                                                                                                                |
+| `phase`                                            | `admitted`, `dispatched`, `unknown` or `settled`.                                                                                                                                                                                                                                                        |
+| `settlement`                                       | Present exactly when `settled`: `not-dispatched`, or `native-result` with a receipt.                                                                                                                                                                                                                     |
 
 Location: `<stateRoot>/engine/operations/external-execution/<operationId>.json`; settled records move
 to `external-execution/settled/`. The directories MUST be plain directories (no symlink or junction,
@@ -164,13 +167,24 @@ write options). That claim is then the caller's own, in one of two forms (`Owned
 
 `ownedExecution` is not an authenticator: the operation id is in the claim journal, which any
 process of the same OS user can read. A host MUST take it only from an identity it verified
-itself; the Runtime broker (T3) takes it only from a verified invocation capability, never from
-what a client sends.
+itself; the Runtime broker takes it only from a verified invocation capability, never from what a
+client sends ([agent step execution](agent-step-execution.md#broker)). An owned document write
+records the agent actor and the execution on its journal, so the ledger entries it leaves name the
+Turn as their author.
 
 | Form       | Admitted phases of the named claim      | Who uses it                                                         |
 | ---------- | --------------------------------------- | ------------------------------------------------------------------- |
 | `turn`     | `dispatched` only                       | the writes of a running Turn (the broker); hosts get only this form |
 | `finalize` | any unsettled phase, `unknown` included | the Engine's own finalize section of an agent attempt, nothing else |
+
+**Admission of an agent attempt Turn.** A claim whose intent names an `attempt` is admitted only
+while that attempt is still the active attempt of its run, has not ended, was not returned or taken
+over, and the Turn is its last bound Turn (`assertAgentTurnAdmissible`, judged inside the admission's
+lock section); a Take over or Return that landed after the Turn was bound refuses it here, before
+any process exists. Such a claim settles only through the attempt's finalize: the Runtime's
+settlement of a claim with an `attempt` calls `finalizeAgentAttempt` (also from startup recovery and
+reconcile), never the bare settlement. A claim abandoned as never dispatched runs no finalize; what
+an owner action left waiting on the attempt is applied then (`settleAbandonedAgentTurn`).
 
 **Finalize of an agent attempt.** `finalizeAgentAttempt` (`workflow/agent/finalize/`) takes the
 project control lock once and, admitted with the `finalize` form of the ended Turn's claim, publishes

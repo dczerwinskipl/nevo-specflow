@@ -356,9 +356,9 @@ Dialogs keep one column. Blocker and Task rows keep id → title → state order
 ## Run with agent
 
 **Status: UX contract. The entry and start dialog are implemented; the rest is not
-implemented.** It follows the [Ask agent contract](../../../ideas/specflow-engine/reusable-workflow-manual-execution/agent-assisted-execution.md)
-(D11 to D21) and is delivered by the slices of its
-[delivery plan](../../../ideas/specflow-engine/reusable-workflow-manual-execution/ask-agent-delivery-plan.md).
+implemented.** It follows [ADR 0026](../../../architecture/decisions/0026-agent-step-execution.md)
+(D11 to D20; D21 superseded) and
+[agent step execution](../../../architecture/runtime/agent-step-execution.md).
 The mock is the Storybook set **SpecFlow/Screens/Ask agent (mock)**: the real routed screens with
 the mock's Now block, dialogs and the regions a state changes. Ask agent adds no new surface: it lives in the Now block, its
 dialogs, the Close dialog and the Task history. User copy says "the agent stopped", never "turn",

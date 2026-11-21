@@ -12,7 +12,9 @@ summary: >
   One deterministic workflow core (the neutral @nevo/workflow coordinator, with the SpecFlow adapter in
   the Engine) drives both a Specification and each of its Tasks. Entry points only select the subject.
   Workflows, agent archetypes (preferred provider and a model per provider) and task types are project
-  definitions. A step declares which executor classes may do it, and every attempt records its actor.
+  definitions. A step declares which executor classes may do it, and every attempt records its actor;
+  an agent attempt (agent step execution) finishes through a proposal the Engine finalizes after the
+  agent's process stopped, and a decision only the owner takes waits for the owner's Confirm.
   A Task is a resource (tasks/index.yaml, task.yaml, task.md) with its own type, workflow and
   preparation status (draft, ready, on-hold, cancelled), changed only by explicit decisions, a declared
   approval effect or its own escalation; its run is created at its first start. The Engine decides
@@ -26,6 +28,8 @@ related:
   - adr.0019-workflow-kernel-and-automatic-continuation
   - adr.0024-tasks-are-resources
   - adr.0023-neutral-workflow-coordinator-and-manual-execution
+  - adr.0026-agent-step-execution
+  - architecture.runtime.agent-step-execution
   - reference.api.specification-workflow
   - adr.0017-definitions-as-project-data
   - architecture.runtime.specflow-engine
@@ -39,7 +43,9 @@ This document describes how the rules of
 recorded in [ADR 0019](../decisions/0019-workflow-kernel-and-automatic-continuation.md),
 [ADR 0024](../decisions/0024-tasks-are-resources.md) (Tasks are resources) and
 [ADR 0023](../decisions/0023-neutral-workflow-coordinator-and-manual-execution.md) (neutral
-coordinator, executors and actors). The code lives in two places:
+coordinator, executors and actors) and [ADR 0026](../decisions/0026-agent-step-execution.md) (agent
+step execution; the Runtime side is [agent step execution](../runtime/agent-step-execution.md)). The
+code lives in two places:
 
 - `packages/workflow/src/` (`@nevo/workflow`): the product-neutral core. Compiled definitions
   (`definitions/`), runs, pins, replay (`execution/replay.ts`) and the coordinator
@@ -91,12 +97,12 @@ Everything else is shared.
 Each kind of definition is a directory under `.nevo/definitions/`. The product ships seeds of each kind
 in `packages/specflow-engine/definitions/`.
 
-| Kind                      | Holds                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `workflow`                | `subject: specification \| task`, `entryStep`, `steps[]`, `returns[]`. A step is `work` (fields `executors: [agent, human]` (one or both), `archetype`, `interaction`, optional `produces: tasks`, `entryGates`, `exitGates`; see "Gates") or `wait-for-tasks`. A transition has `result?`, `to: {step} \| {terminal}`, `continuation: auto \| owner-action`, `session: fresh \| reuse`, `feedback`, `effects`, in a Task workflow `escalate`, and on a wait step `on`. |
-| `agent-archetype`         | Who works on a step: an optional agent `profile`, `instructions`, `preferredProvider`, and `providers[]` with an optional `model` and `effort` each. An entry without a model means "known provider, model not chosen yet".                                                                                                                                                                                                                                             |
-| `task-type`               | What a Task is (`description`, `useWhen`, `instructions`) and the Task `workflow` it runs.                                                                                                                                                                                                                                                                                                                                                                              |
-| `specification-archetype` | Gains an optional `execution: {workflow, taskTypes?}`. `taskTypes` defaults to `['*']`, meaning every task type is allowed. Resolved when execution starts.                                                                                                                                                                                                                                                                                                             |
+| Kind                      | Holds                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `workflow`                | `subject: specification \| task`, `entryStep`, `steps[]`, `returns[]`. A step is `work` (fields `executors: [agent, human]` (one or both), `archetype`, `interaction`, optional `produces: tasks`, `entryGates`, `exitGates`; see "Gates") or `wait-for-tasks`. A transition has `result?`, `to: {step} \| {terminal}`, `continuation: auto \| owner-action`, `session: fresh \| reuse`, `feedback`, `effects`, `confirmation: owner`, in a Task workflow `escalate`, and on a wait step `on`. |
+| `agent-archetype`         | Who works on a step: an optional agent `profile`, `instructions`, `independent` (a review facet: always a fresh Session), `preferredProvider`, and `providers[]` with an optional `model`, `effort` and `permissions.allow` (the provider allowlist of an agent step Turn, opaque to the Engine) each. An entry without a model means "known provider, model not chosen yet".                                                                                                                  |
+| `task-type`               | What a Task is (`description`, `useWhen`, `instructions`) and the Task `workflow` it runs.                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `specification-archetype` | Gains an optional `execution: {workflow, taskTypes?}`. `taskTypes` defaults to `['*']`, meaning every task type is allowed. Resolved when execution starts.                                                                                                                                                                                                                                                                                                                                    |
 
 A workflow and a Specification archetype are separate definitions. The archetype only refers to a
 workflow. The adapter compiles a workflow file into a core definition (`definitions/model.ts`): a
@@ -109,7 +115,9 @@ fails closed with `WORKFLOW_STATE_CORRUPT`, and nothing reads or migrates it.
 **No cascade.** A broken definition never takes the definitions that refer to it down:
 
 - A workflow does not check the agent archetypes of its steps. They are resolved when a step is
-  continued, and a missing or invalid one gives the attention reason `archetype-missing`.
+  continued, and a missing or invalid one gives the attention reason `archetype-missing`. The only
+  archetype fact a workflow reads at load is whether a valid one is `independent` (for the
+  `session: reuse` rule below); a missing or invalid archetype is not a problem of the workflow.
 - A Specification archetype does not check its execution binding, so its document templates keep
   working. `startSpecificationExecution` resolves the binding (`resolveSpecificationExecution`). It
   fails with `WORKFLOW_NOT_CONFIGURED` when the workflow is missing or does not drive a Specification,
@@ -130,7 +138,9 @@ never loads:
 - only a Specification workflow can produce Tasks, wait for Tasks or have Task effects;
 - only a Task workflow escalates, and an escalating transition has `feedback: required` and a step
   target;
-- `session: reuse` can only lead to a step an agent may do;
+- `session: reuse` can only lead to a step an agent may do, and never to a step whose archetype is
+  `independent` (D18; the shipped `reviewer` is);
+- `confirmation: owner` is allowed on work-step transitions only;
 - a wait step's transitions are selected by a Task event `on: tasks-finished | task-escalated`
   instead of a result (see "Wait step"). `on` exists only on wait-step transitions; a wait-step
   transition without `on` counts as `tasks-finished`, so older files stay valid. A wait step has
@@ -158,6 +168,9 @@ of:
 - `not-started`;
 - `active {step, attempt}`;
 - `ready {step}`: a checkpoint after a finish or a return; the next start activates `step`;
+- `awaiting-confirmation {step, attempt}`: the attempt ended with a transition the host holds for a
+  confirmation; a `confirm` takes it, a `reject` returns the run to `step`, ready (see
+  [Owner confirmation](#owner-confirmation));
 - `terminal {outcome}`.
 
 Readiness, Task facts and statuses are derived from these, never stored.
@@ -225,14 +238,24 @@ The rules:
   finishes an agent's attempt and an agent never a person's.
 - The adapter adds that an active agent attempt started in a Session (its actor carries a
   `sessionId`) can be resumed and finished only by the same provider and Session id.
-- The attempt records who started it (`actor`) and who finished it (`finishedBy`).
-- The owner operations `returnToStep`, `setTaskStatus`, the Task resource commands and
-  `abandonSpecification` take an `OwnerActor` (`assertOwner`); anything else, including no actor, is
-  refused the same way.
+- The attempt records who started it (`actor`) and who finished it (`finishedBy`), and the host's
+  opaque `hostData` given at its start (an agent attempt's binding, see
+  [Agent attempts](#agent-attempts)); the core keeps it and never interprets it.
+- The owner operations `returnToStep`, `setTaskStatus`, the Task resource commands,
+  `abandonSpecification`, Confirm, Reject, Take over and Retry commit take an `OwnerActor`
+  (`assertOwner`); anything else, including no actor, is refused the same way. Task create and edit
+  accept an `AgentActor` only as the owned execution of an agent attempt Turn of a step that
+  produces Tasks.
+- **Effect authority** (`definitions/effect-authority.ts`, exhaustive over the effects): an effect is
+  `agent` or `owner` authority; `approve-draft-tasks` is `owner`. An agent finish whose transition
+  has an owner-authority effect or `confirmation: owner`, or that carries `taskDecisions`, takes a
+  decision only the owner takes: inside an agent attempt it waits for the owner's confirmation;
+  any other agent finish taking one is refused (`WORKFLOW_OWNER_DECISION_REQUIRED`). A person's own
+  finish needs no confirmation.
 
-Breaking a rule fails with `WORKFLOW_EXECUTOR_NOT_ALLOWED` before anything changes. Handing an active
-agent step over to the owner (owner takeover) is not supported; it would be an explicit operation of
-its own (plan 06, F17), not a finish. No dispatch preference is stored: whether a person or an agent
+Breaking a rule fails with `WORKFLOW_EXECUTOR_NOT_ALLOWED` before anything changes. The owner takes
+an agent attempt over only through the explicit Take over operation (F17, the core command
+`take-over`), never through a finish. No dispatch preference is stored: whether a person or an agent
 does the next step is chosen when it starts.
 
 **After a manual step, no Session to reuse.** When a person finishes into a `session: reuse`
@@ -247,6 +270,144 @@ work attempt with the same digest and actor is a retry: it returns the recorded 
 publishing, the retry first completes the pending journal (an empty change publishes it) and runs the
 post actions again. Anything else naming that attempt is `WORKFLOW_ATTEMPT_MISMATCH`. A replayed
 finish does not evaluate gates again.
+
+## Agent attempts
+
+An agent attempt is the attempt an agent works on when the owner runs a step with an agent ("Run
+with agent"; [ADR 0026](../decisions/0026-agent-step-execution.md)). The Engine side is
+`workflow/agent/`; the Runtime side (capability, broker, Session and Turn) is
+[agent step execution](../runtime/agent-step-execution.md). Every operation below runs in the
+workflow's `serialize` section (the project control lock) and is admitted against the writer
+claims like every other workflow write.
+
+**Start and binding.** `startAgentAttempt` is the ordinary start with three additions: a trusted
+`AgentActor` whose `sessionId` the Runtime chose, an **expected position** (a new attempt of
+`step`, or Continue of the active attempt `step#attempt`; a stale one refuses before anything is
+written), and the baseline admission (below). The attempt's `hostData` is its binding
+`{kind: agent-attempt, attemptId, workspaceId, contextDigest?, launch: {session, effort?}}`
+(`agentAttemptBindingOf`), committed with the run. The same section then records the Turn
+`{invocationId, turnId, boundAt}` in the attempt's local journal; each Continue appends a Turn (at
+most 100), and a Turn is bound only once the one before it settled, because every write is refused
+while an unsettled agent claim exists. A crash between the two leaves an active attempt with no
+Turn, which the same Session continues.
+
+**Journal** (`journal/`, `<stateRoot>/engine/operations/agent-attempt/<attemptId>.json`, `settled/`
+once nothing is left to run): the subject, step, attempt and actor, the Turns, the finish proposal,
+the last settled Turn's dirty set, the owner's return request, the take-over, the confirmation state
+and the post actions. It is local and never committed, so a refused proposal is never part of the
+Specification's history. A journal that does not parse fails closed (`WORKFLOW_STATE_CORRUPT`).
+
+**Proposal** (`proposal/propose.ts`). The agent's `workflow finish` is not a finish:
+`proposeAgentFinish` validates the input completely with `planFinish` (legal transition, feedback,
+exit gates, open Tasks, draft conflicts) plus the attribution checks, and records it as the
+journal's `proposal` (`pending`), with the declared `changes.paths` and the finish digest. Only the
+attempt's current Turn submits, while its claim is `dispatched`; the same proposal again is
+`replayed`, a different one `replaced` while not finalized; a proposal of a stopped or replaced Turn,
+or of an attempt the owner returned or took over, is `WORKFLOW_ATTEMPT_MISMATCH`.
+
+**Attribution** (`boundary/`, with Git on; with Git off nothing is checked). The facts are the
+checkout's `git status` (ignored files never count) and, for each dirty path, the Engine's
+uncommitted writes of it; a path is the Engine's when its bytes are the post-image of its latest
+uncommitted write. Facts that cannot be read in full attribute nothing (fail closed).
+
+| Check                                                  | When                                                  | Refusal                           |
+| ------------------------------------------------------ | ----------------------------------------------------- | --------------------------------- |
+| Clean baseline but for the Engine's own writes         | a new attempt, or one none of whose Turns settled yet | `WORKFLOW_DIRTY_BASELINE`         |
+| Nothing changed since the previous Turn's dirty set    | Continue (start and dispatch)                         | `WORKFLOW_BASELINE_CHANGED`       |
+| No uncommitted file without a type in a Spec directory | proposal and finalize                                 | `WORKFLOW_UNREGISTERED_DOCUMENTS` |
+| No SpecFlow file differs from its Engine post-image    | proposal and finalize                                 | `WORKFLOW_ENGINE_FILE_EDITED`     |
+| Declared paths equal the dirty set outside SpecFlow's  | proposal and finalize                                 | `WORKFLOW_UNDECLARED_CHANGES`     |
+| No untracked Git repository inside the checkout        | proposal and finalize                                 | `WORKFLOW_NESTED_REPOSITORY`      |
+
+"Outside SpecFlow's" means outside the Specification directories (from the configured
+Specification root) and the Engine's namespace (from the Project Home), never hardcoded paths.
+`details.attribution` names the paths (at most `ERROR_DETAIL_PATHS_MAX`, with the count).
+
+**Finalize** (`finalize/finalize.ts`). Once a Turn ended and its process is proven stopped, the
+Runtime calls `finalizeAgentAttempt(attemptId, intent, receipt)`. It takes the control lock once
+and, admitted under the `finalize` form of the Turn's own claim
+([workspace execution claims](../runtime/workspace-execution-claims.md#the-project-wide-resource)):
+
+1. publishes the step state: the owner's recorded return request applies as `returned`; else the
+   pending proposal is re-validated with exactly its recorded actor and input (attribution
+   included) and published as the attempt's finish, with the declared paths' content hashes as
+   judged now; a refusal publishes nothing and is recorded on the proposal (`refused`);
+2. records the journal: the outcome, the Turn's `finalizedAt` and the checkout's dirty set, and the
+   post action `attempt-commit` as `pending`;
+3. settles the claim with the native-result receipt (`settleWorkspaceExecutionInSection`).
+
+Store change first, settlement last: two durable publications, not one transaction; no other
+writer is admitted in between. The same finalize again is the recovery (a published finish replays
+by its request digest, a recorded journal is not written again, the settlement repeats with the
+same receipt). Errors that are no verdict (corrupt state, busy, source unavailable, a document write
+of the Turn still open) leave the claim held and the proposal pending. A Turn without a proposal
+ends as `turn-ended`: the attempt stays active and the owner can Continue, Take over or Return.
+Post actions run after the lock is released (`finalize/post-actions.ts`); a failed one stays
+`failed` for the owner's Retry commit and is never retried by recovery on its own.
+
+**Attempt commit** (`finalize/attempt-commit/`): the attempt's one commit, in place of
+`commit-execution-state`; see [Commits of the execution state](#commits-of-the-execution-state).
+
+### Owner confirmation
+
+A decision only the owner takes (see Effect authority above) does not apply from an agent's
+proposal. The finalize publishes the proposal as the core `finish` with `confirmation`: the attempt
+ends with its transition and `outcome`, the record carries `confirmation: {state: pending,
+hostData?}` (the host data holds the Task decisions, `owner-decisions`), and the run is
+`awaiting-confirmation`. The Task drafts the attempt produced are written; nothing else applies. The
+attempt commit runs now, as for a finished attempt (owner decision 2026-11-21), so the owner decides
+on committed work.
+
+- **Confirm** (`confirmAgentResult`, core `confirm`): takes the held transition with the owner as
+  actor, with the Task decisions and the effects (for example `approve-draft-tasks`), judged again by
+  every finish rule on the state as it is now (a refusal leaves the result waiting). It applies
+  exactly what the projection showed: the request names `confirmsDigest` (the drafts it approves
+  with the content revisions of their manifests and documents, and the Task decisions); another
+  digest is `WORKFLOW_CONFIRMATION_CHANGED`. The change is an ordinary owner write, committed by the
+  owner's `commit-execution-state` post action, never attributed to the agent's Turns.
+- **Reject** (`rejectAgentResult`, core `reject`): the transition is not taken; the run is `ready` at
+  the attempt's step with the owner's feedback (required) as its handoff (`kind: return`). Nothing the
+  agent wrote is undone; it was committed with its attempt.
+- Both take a request id: the same request again is replayed; a confirm or reject of an attempt
+  another request decided is `WORKFLOW_ATTEMPT_MISMATCH` (for a confirmed one: repeat that request,
+  or Retry commit for its owner commit); with nothing waiting `WORKFLOW_POSITION_INVALID`. While a
+  result waits, start, finish and return are `WORKFLOW_POSITION_INVALID`. The confirmation state is
+  recorded in the attempt's journal after the store change, and repaired from the run by the next
+  decision after a crash.
+- The attention item `awaiting-confirmation` (actions `confirm-result`, `reject-result`) names the
+  waiting result on the Specification or the Task.
+
+### Stop, Return and Take over
+
+- **Stop** is the Runtime's cancel of the Turn; nothing changes in the run. Once the process is
+  proven stopped the finalize records `turn-ended`.
+- **Return** (`returnDuringAgentAttempt`). Every rule of the return is judged now. If no agent
+  Turn may still run (its claim settled or never admitted), it applies now, as `returnToStep` does.
+  Otherwise the return is recorded on the attempt (`returnRequest: requested`), admitted under the
+  Turn's own unsettled claim, without writing the step state; the Runtime stops the Turn and the
+  finalize applies it as `returned` (a pending proposal is then refused). A request recorded while the
+  claim was only admitted applies when that admission is abandoned as never dispatched.
+- **Take over** (`takeOverAgentAttempt`, core `take-over`, F17): allowed once the last Turn's claim is
+  settled (or was never admitted); while it may still run `WORKFLOW_SPECIFICATION_BUSY`
+  (`agent-turn` or `agent-turn-unknown`), while a return waits to apply
+  `WORKFLOW_POSITION_INVALID`. In one change the agent
+  attempt ends with outcome `taken-over` and the owner's attempt of the same step starts with the same
+  handoff. It commits nothing and undoes nothing: the owner's own finish commits the workflow state
+  as any owner finish does (the agent's Task drafts the owner keeps included); the agent's declared
+  code changes stay uncommitted until the owner commits them, and Close lists them.
+- A Take over or Return that lands after a Turn was bound but before its claim was admitted refuses
+  that Turn's admission (`WORKFLOW_ATTEMPT_MISMATCH`): it never runs.
+
+### History
+
+`readWorkflowHistory` (route `GET .../workflow/history`) lists every attempt and return of the
+subject's run, newest first (at most 200), and for an agent attempt its provider, Session, Turns,
+how it ended, the proposal and return request, its step events (`started`, `turn-started`,
+`turn-ended`, `proposal-refused`, `return-requested`, `returned`, `finished`, `committed`,
+`commit-failed`, `taken-over`, `abandoned`, `awaiting-confirmation`, `confirmed`, `rejected`) and
+the work it left (`readAgentAttemptWork`: uncommitted SpecFlow files only it wrote and those mixed
+with another author, its Task drafts, its declared paths, the last dirty set, and the commit state).
+Partial work is never rolled back by the product.
 
 ## Gates
 
@@ -816,12 +977,13 @@ proceed.
 
 ## State and storage
 
-| What                                    | Where                                                  | Belongs to                 |
-| --------------------------------------- | ------------------------------------------------------ | -------------------------- |
-| Specification run                       | `<specification>/.execution/specification.yaml`        | Git (committed, see below) |
-| Task runs (created at the first start)  | `<specification>/.execution/tasks/<taskId>.yaml`       | Git (committed, see below) |
-| Task resources (index, manifests, docs) | `<specification>/tasks/`                               | Git (committed, see below) |
-| Change journal                          | `<stateRoot>/engine/operations/workflow/<specId>.json` | local                      |
+| What                                    | Where                                                   | Belongs to                 |
+| --------------------------------------- | ------------------------------------------------------- | -------------------------- |
+| Specification run                       | `<specification>/.execution/specification.yaml`         | Git (committed, see below) |
+| Task runs (created at the first start)  | `<specification>/.execution/tasks/<taskId>.yaml`        | Git (committed, see below) |
+| Task resources (index, manifests, docs) | `<specification>/tasks/`                                | Git (committed, see below) |
+| Change journal                          | `<stateRoot>/engine/operations/workflow/<specId>.json`  | local                      |
+| Agent attempt journal                   | `<stateRoot>/engine/operations/agent-attempt/<id>.json` | local                      |
 
 - **Location.** `.execution/` starts with a dot, so the document tree never lists it. It moves with
   the Specification when the Specification is archived.
@@ -915,8 +1077,27 @@ documents ([documents layer](../runtime/specification-documents.md#commits-of-wo
   wrote it is held out of that commit with its operations, never refusing it (`held`, see
   [commits of workflow state](../runtime/specification-documents.md#commits-of-workflow-state)). A
   failed post action does not fail the finish; a
-  repeated finish runs it again. The post-action hook is the seam where E6 adds the push of an agent
-  step's work (not implemented).
+  repeated finish runs it again.
+- **Agent attempts: the attempt commit** (ADR 0026, D15). A finalized agent attempt runs the post
+  action `attempt-commit` instead of `commit-execution-state`, whatever `git.commits.auto.documents`
+  says, after the finalize section released the lock: one manual commit (lease, journal,
+  verification, prune) on the branch the checkout is on, holding the Specification's ledger entries
+  that only the attempt's Turns made (judged by each entry's durable `authors`, never truncated, see
+  [the ledger](../runtime/specification-documents.md#commit-policy-the-uncommitted-changes-ledger-and-manual-commit);
+  the attempt's start and finalize attribute their execution state to its Turns) and the declared
+  paths whose content still has the hash recorded at publication. With automatic commits on, the
+  Specification's document queue drains first. Subject
+  `spec(<task id | specification>): <step title> (attempt n) by agent in <slug>` (a shorter form is
+  taken whole when it does not fit), trailers `Nevo-Action: attempt-commit`, `Nevo-Attempt`,
+  `Nevo-Step` and, for a Task, `Nevo-Task`. An entry the attempt changed together with someone else
+  (`ATTEMPT_COMMIT_MIXED_AUTHORS`; the Task index is such an entry when the owner left Task changes
+  uncommitted before the agent changed Tasks), a declared path that could not be hashed
+  (`ATTEMPT_COMMIT_UNATTRIBUTABLE`) or a path changed since (`MANUAL_COMMIT_CONFLICT`) refuses the
+  whole commit; the step stays published, the result reports
+  `postActions: [{action: attempt-commit, status: failed, code}]`, and the owner retries it
+  (`.../workflow/attempt-commit/retry`, `workflow retry-commit`). It runs also for a result that then
+  waits for the owner's confirmation; the owner's later Confirm is committed by
+  `commit-execution-state`. A Take over commits nothing. Push stays out of scope (ADR 0018).
 - **Close and Abandon.** Abandon is a workflow change like the others. A Specification Close takes
   whatever execution state of that Specification is still uncommitted (in the ledger, or dirty
   without a record, for example a hand edit) into its archive commit; anything else that is dirty still refuses
@@ -926,7 +1107,7 @@ documents ([documents layer](../runtime/specification-documents.md#commits-of-wo
 
 | To add                        | Change                                                                                                                                                                                                                                                                                       |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A Task effect                 | Add a value to `WORKFLOW_EFFECTS` (contracts) and a case to `applyTaskEffects`.                                                                                                                                                                                                              |
+| A Task effect                 | Add a value to `WORKFLOW_EFFECTS` (contracts), a case to `applyTaskEffects` and its authority to `EFFECT_AUTHORITY` (`definitions/effect-authority.ts`).                                                                                                                                     |
 | A Task status change          | Extend `ALLOWED_DECISIONS` in `tasks/tasks.ts`; the store invariants for statuses live in `state/validate.ts`.                                                                                                                                                                               |
 | An attention reason           | A continuation reason: add it to `ATTENTION_REASONS` and give `resolveAgentLaunch` / `resolveContinuation` (or `waitDecision`) the rule that produces it. A state reason: add it to `ATTENTION_ITEM_REASONS` with its action, and derive it in `deriveAttention` or `startBlockerAttention`. |
 | A step kind (e.g. gate)       | Add a union member in the contracts schema and in `definitions/model.ts`, then a rule in `workflow-rules.ts` and handling in `progression` and `advance`.                                                                                                                                    |

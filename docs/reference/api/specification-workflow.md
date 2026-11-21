@@ -12,19 +12,23 @@ read_when:
   - rendering Close blockers or the Abandon action
 summary: >
   The workflow action projection of a Specification and of a Task, the owner commands start, finish,
-  return and abandon, the stable refusal codes with their HTTP status, and the blockers of a refused
-  exit.
+  return and abandon, agent step execution (run with agent, check, stop, take over), Confirm and
+  Reject of an agent's result, Retry commit, the workflow history, the stable refusal codes with
+  their HTTP status, and the blockers of a refused exit.
 related:
   - reference.api.openapi
   - reference.api.specflow-specification-operations
   - reference.api.authorization
   - reference.cli.specflow-specification-commands
+  - architecture.runtime.agent-step-execution
+  - adr.0026-agent-step-execution
 ---
 
 # Specification and Task workflow action HTTP API
 
 Exact schemas are in `packages/specflow-contracts/src/workflow/` (subpath
-`@nevo/specflow-contracts/workflow`); the routes are `packages/specflow-runtime/src/features/workflow/`.
+`@nevo/specflow-contracts/workflow`); the routes are `packages/specflow-runtime/src/features/workflow/` and, for agent step execution,
+`features/agent-execution/step-execution/endpoint.ts`.
 The Engine owns every rule; the routes authorize, derive the actor and map refusals. A project
 Runtime serves them over its Project Home, the demo Runtime over in-memory state
 ([ADR 0025](../../architecture/decisions/0025-demo-runs-the-engine-in-memory.md)); without an
@@ -36,6 +40,8 @@ Engine they answer 503 `WORKFLOW_UNAVAILABLE`.
 | ---- | ---------------------------------------------------------------- | -------------------------- | ----------------------------------------------------------------- |
 | GET  | `/api/specs/:specId/workflow/actions`                            | `spec.view`                | Projection of the Specification                                   |
 | GET  | `/api/specs/:specId/tasks/:taskId/workflow/actions`              | `spec.view`                | Projection of a Task                                              |
+| GET  | `/api/specs/:specId/workflow/history`                            | `spec.view`                | Attempts and returns of the run, with agent attempt detail        |
+| GET  | `/api/specs/:specId/tasks/:taskId/workflow/history`              | `spec.view`                | Same for a Task                                                   |
 | POST | `/api/specs/:specId/workflow/start`                              | `spec.manage`              | Start or resume the next step                                     |
 | POST | `/api/specs/:specId/tasks/:taskId/workflow/start`                | `spec.manage`              | Same for a Task                                                   |
 | POST | `/api/specs/:specId/workflow/finish`                             | `spec.manage`              | Finish the active attempt                                         |
@@ -47,6 +53,13 @@ Engine they answer 503 `WORKFLOW_UNAVAILABLE`.
 | POST | `/api/specs/:specId/workflow/confirmation/reject`                | `spec.manage`              | Reject it: back to its step with the owner's feedback             |
 | POST | `/api/specs/:specId/tasks/:taskId/workflow/confirmation/confirm` | `spec.manage`              | Same for a Task                                                   |
 | POST | `/api/specs/:specId/tasks/:taskId/workflow/confirmation/reject`  | `spec.manage`              | Same for a Task                                                   |
+| POST | `/api/specs/:specId/workflow/attempt-commit/retry`               | `spec.manage`              | Retry the failed commit of a finished agent attempt (D15)         |
+| POST | `/api/specs/:specId/tasks/:taskId/workflow/attempt-commit/retry` | `spec.manage`              | Same for a Task                                                   |
+| POST | `/api/specs/:specId/workflow/agent-execution`                    | `spec.manage`              | Run the next step with an agent, or Continue its agent attempt    |
+| GET  | `/api/specs/:specId/workflow/agent-execution/check`              | `spec.view`                | Whether an agent can run the step now, with every reason          |
+| POST | `/api/specs/:specId/workflow/agent-execution/stop`               | `spec.manage`              | Stop the agent's running Turn                                     |
+| POST | `/api/specs/:specId/workflow/agent-execution/take-over`          | `spec.manage`              | Take the stopped agent attempt over                               |
+| ...  | `/api/specs/:specId/tasks/:taskId/workflow/agent-execution[...]` | as above                   | The same four for a Task                                          |
 | POST | `/api/specs/:specId/workflow/abandon`                            | `spec.close-specification` | End the Specification without realizing it                        |
 
 Capabilities are checked on the Specification scope before the body is read. All answers are
@@ -57,7 +70,13 @@ Capabilities are checked on the Specification scope before the body is read. All
 The recorded actor is always the authenticated caller, derived from `request.authz`; no request carries
 an actor, an executor class or a trust level. An authenticated subject is `{class: human, trust:
 authenticated}`; the trusted local identity of a Runtime without authentication is `trust: local`.
-Every route is an **owner** action: an agent attempt is never started or finished through these routes.
+Every route is an **owner** action. An agent attempt is started, continued, stopped and taken over
+by the owner through the `agent-execution` routes, but the agent's own writes and its finish
+proposal never use HTTP: they go through the Runtime's agent broker with the Turn's capability
+([agent step execution](../../architecture/runtime/agent-step-execution.md)). The routes are
+protected by the configured authentication mode only; with `runtime.authentication.mode: none`
+any local process can call them, by the host's choice
+([ADR 0026](../../architecture/decisions/0026-agent-step-execution.md#trust-model-and-its-limits)).
 
 ## Projection
 
@@ -107,8 +126,28 @@ and never derive them from `actions.finish` or `next.entryGates` themselves.
 A client renders only what the projection allows. `kind`, `reason` and every code are stable values; the
 only free text is a `message` (and the step `purpose` and `instructions`), which is for display and must
 not be parsed. A step the owner may do has `human: true`; `agent` states whether an agent could do it
-(`unavailable` with a reason such as `provider-not-chosen` or `session-unavailable`) and nothing is
-dispatched.
+and nothing is dispatched by reading it: `available` with the `launch` the workflow resolves
+(`{archetype, provider, model, effort?, session: fresh | reuse+sessionId}`), `independent: true` for
+an independent archetype (always a fresh Session) and `baseline: unchecked` (the projection runs no
+Git; `agent-execution/check` judges the checkout), or `unavailable` with a `reason`:
+`not-an-executor`, `archetype-missing`, `provider-not-chosen`, `model-missing`,
+`session-unavailable` (the definitions), `demo`, `provider-not-ready`, `project-busy`,
+`dirty-baseline`, `baseline-changed` (the Runtime; `paths` and `count` name the files), with an
+optional `detail` and the `launch` that would run once resolved.
+
+**Agent attempt.** While the active attempt is an agent's, the projection carries `agentAttempt`:
+`{attemptId, step, attempt, sessionId, provider, model?, turn: {turnId, state, boundAt, endedAt?},
+turns, proposal?, continue, returnRequest?, takeOver, work}`. `turn.state` is `working`, `stopping`
+(stopped, its process not yet proven ended), `unknown` (every project write is blocked until it is
+known), `ended` or `session-missing` (the fresh Session was never created: Continue creates it).
+`proposal` is `{transition, state: pending | refused | finalized, submittedAt, refusal?: {code,
+message, paths?}}`. `continue` is an agent option (Continue possible now, or why not).
+`returnRequest` (`requested` with `stop: sent | failed` and `appliesOn: next-action` once no Turn
+runs, or `refused`) and `takeOver` (`available`, or `unavailable`: `agent-working`,
+`outcome-unknown`, `return-requested`). `work` is what the attempt left, never rolled back:
+`documents` (uncommitted SpecFlow files only it wrote), `mixed` (those someone else changed too),
+`tasks` (its drafts), `declared` (its declared code paths), `changed` (dirty when its last Turn
+ended) and `commit {state: none | pending | committed | failed, code?, runs?}`.
 
 **Gates.** A step's declared gates
 ([workflow kernel](../../architecture/workflow/workflow-kernel.md#gates)) are reported as `GateStatus`
@@ -166,7 +205,7 @@ Close still checks Git and the workspace itself.
 | ------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | start   | `{expectedWorkflowRevision?}`                                             | `{kind: started\|resumed\|terminal, subject, step?, attempt?}`                         |
 | finish  | `{step, attempt, result?, feedback?, artifacts?, tasks?, taskDecisions?}` | `{subject, transition, position, continuation, createdTasks, replayed?, postActions?}` |
-| return  | `{step, reason?}` (`reason` is carried as the step's feedback)            | `{subject, position, continuation}`                                                    |
+| return  | `{step, reason?}` (`reason` is carried as the step's feedback)            | `{kind: returned, subject, position, continuation}` or `{kind: return-requested, ...}` |
 | abandon | `{reason}`                                                                | `{specId, abandonment, cancelledTasks, abandonedTaskRuns}`                             |
 
 - A step that produces Tasks (`produces: tasks` in the projection, for example Breakdown) is finished with `tasks`:
@@ -227,6 +266,45 @@ continuation, replayed?}`: the step is ready again with the feedback as its hand
   or retry the commit), one with nothing waiting `WORKFLOW_POSITION_INVALID`. While a result waits, start, finish and return are refused
   (`WORKFLOW_POSITION_INVALID`). An agent finish outside an agent attempt that takes such a decision
   stays refused with `WORKFLOW_OWNER_DECISION_REQUIRED`.
+- **Return during an agent attempt (D19).** When an agent Turn of the active attempt may still run,
+  `return` answers `{kind: return-requested, subject, to, attemptId, step, attempt, sessionId, turnId,
+requestedAt, stop?: sent | failed}`: the return is recorded on the attempt, the Runtime stopped the
+  Turn (`failed`: stop it again), and it applies once the agent's process is proven stopped (a late
+  proposal of that attempt is then `WORKFLOW_ATTEMPT_MISMATCH`). Otherwise it returns now
+  (`kind: returned`).
+- **Agent step execution** (`agent-execution`). `POST` takes `{requestId, expected: {step,
+attempt?}, provider?, model?, effort?, message?}`: without `expected.attempt` a new agent attempt
+  of the step the owner was shown; with it (Continue) a new Turn of that active agent attempt in its
+  own Session. `provider`, `model` and `effort` choose the agent of a fresh Session only (naming them
+  for a continued Session is `WORKFLOW_INPUT_INVALID`); `message` is the owner's note after the
+  brief. It answers `{kind: started | continued, subject, attemptId, step, attempt, sessionId,
+turnId, session: fresh | reuse}`; the same `requestId` again returns the same attempt and Turn and
+  completes what a failure left out. Every refusal that can be known comes before anything exists:
+  `WORKFLOW_AGENT_UNAVAILABLE` with `details.agent` (the unavailable option and its reason; a
+  Session refusal on the way is mapped to `provider-not-ready`, `project-busy` or
+  `session-unavailable`), the Engine's start refusals (`WORKFLOW_ATTEMPT_MISMATCH` for a stale
+  position, `WORKFLOW_DIRTY_BASELINE`, `WORKFLOW_BASELINE_CHANGED`). `GET .../check` answers
+  `{position: {step, attempt?}, agent}` with the same reasons, the checkout's baseline included.
+  `stop` takes `{requestId, attemptId}` and answers `{attemptId, sessionId, turnId}`: the Turn is
+  cancelled and the step stays locked until the process is proven ended. `take-over` takes `{step,
+attempt}` and answers `{subject, takenOver: {attemptId, step, attempt}, step, attempt}` (the owner's
+  new attempt); while the agent may still run `WORKFLOW_SPECIFICATION_BUSY`, while a return waits
+  `WORKFLOW_POSITION_INVALID`. Take over commits nothing. Without an Engine (the demo) these routes
+  answer 503 `WORKFLOW_UNAVAILABLE`.
+- **Retry commit** (`attempt-commit/retry`) takes `{step, attempt}` and answers `{postActions}`
+  (`attempt-commit`: `completed` with `commit {sha?, paths}`, `skipped` with a reason, or `failed`
+  with a code: `ATTEMPT_COMMIT_MIXED_AUTHORS`, `ATTEMPT_COMMIT_UNATTRIBUTABLE`,
+  `MANUAL_COMMIT_CONFLICT` or another commit code). For a confirmed attempt whose commit did not
+  fail it runs the confirmation's owner commit again. Not a finished agent attempt:
+  `WORKFLOW_ATTEMPT_MISMATCH`; its commit did not fail: `WORKFLOW_POSITION_INVALID`.
+- **History** (`GET .../history`) answers `{subject, items, truncated?}`, newest first, at most 200:
+  `attempt` items `{sequence, step, stepTitle, attempt, startedAt, endedAt?, actor?, outcome?,
+agent?}` (outcome `transition`, `returned`, `abandoned` or `taken-over`) and `return` items
+  `{sequence, at, to, feedback?}`. `agent` is an agent attempt's `{attemptId, provider, model?,
+sessionId, turns, ended, takenOverBy?, returnRequest?, proposal?, events, work}`; `events` are
+  `{kind, at?, turn?, code?, runs?}` with kinds `started`, `turn-started`, `turn-ended`,
+  `proposal-refused`, `return-requested`, `returned`, `finished`, `committed`, `commit-failed`,
+  `taken-over`, `abandoned`, `awaiting-confirmation`, `confirmed`, `rejected`.
 - `abandon` is final. A retry with the same reason returns the same result; it is not a bypass of Close:
   pending writes, broken Tasks and other operations refuse it.
 
@@ -246,16 +324,24 @@ step, gates}` with every unsatisfied `GateStatus`; it refuses a start or a finis
 written, and a repeated finish (`replayed`) never evaluates gates again. `details.openTasks`
 (`WORKFLOW_TASKS_OPEN`, 409) lists the open Tasks `[{taskId, cause}]` that refuse a Specification
 finish into `terminal completed`, judged after the finish's own Task decisions and before anything is
-written; Abandon is not affected and a repeated finish returns the recorded result. An unknown Specification is `WORKFLOW_SUBJECT_NOT_FOUND`; a canonical
+written; Abandon is not affected and a repeated finish returns the recorded result.
+`WORKFLOW_SPECIFICATION_BUSY` carries `details.cause` (`agent-turn` and `agent-turn-unknown` with
+`details.sessionId`: an agent Turn holds the project-wide write claim, or ended without a verified
+outcome; `claim-not-held`; `close`; `write-in-progress`; the commit admission's causes). The
+attribution codes (`WORKFLOW_DIRTY_BASELINE` ... `WORKFLOW_NESTED_REPOSITORY`) carry
+`details.attribution` `{paths, count, undeclared?, unchanged?, remedies?, incomplete?}`: the
+first paths of `count`; for `WORKFLOW_UNDECLARED_CHANGES` the undeclared and the declared-but-unchanged
+files; for `WORKFLOW_UNREGISTERED_DOCUMENTS` the remedies (`classify`, `delete`, `restore`);
+`incomplete` when the checkout could not be read in full, so nothing was attributed. An unknown Specification is `WORKFLOW_SUBJECT_NOT_FOUND`; a canonical
 source that cannot be used now is `WORKFLOW_UNAVAILABLE`. The same refusals, statuses and body answer
 the [Task commands](task-reads.md#task-commands) (`workflowFailure` in `features/workflow`).
 
-| Status | Codes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 404    | `WORKFLOW_SUBJECT_NOT_FOUND`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| 409    | `WORKFLOW_DEFINITION_CHANGED`, `WORKFLOW_ATTEMPT_MISMATCH`, `WORKFLOW_POSITION_INVALID`, `WORKFLOW_EXECUTOR_NOT_ALLOWED`, `WORKFLOW_TASK_BLOCKED`, `WORKFLOW_DEPENDENCY_UNSATISFIED`, `WORKFLOW_SPECIFICATION_NOT_STARTED`, `WORKFLOW_SPECIFICATION_ENDED`, `WORKFLOW_SPECIFICATION_BUSY`, `WORKFLOW_EXIT_BLOCKED`, `WORKFLOW_TASK_BUSY`, `WORKFLOW_STATE_CONFLICT`, `WORKFLOW_TASK_REVISION_CONFLICT`, `WORKFLOW_TASK_EXISTS`, `WORKFLOW_TASK_NOT_REMOVABLE`, `WORKFLOW_GATE_UNSATISFIED`, `WORKFLOW_TASKS_OPEN` |
-| 422    | `WORKFLOW_INPUT_INVALID`, `WORKFLOW_RETURN_NOT_ALLOWED`, `WORKFLOW_NOT_CONFIGURED`, `WORKFLOW_DEFINITION_MISSING`, `WORKFLOW_TASK_TYPE_NOT_ALLOWED`, `WORKFLOW_TASK_TYPE_IMMUTABLE`, `WORKFLOW_TASK_CONTEXT_UNRESOLVED`                                                                                                                                                                                                                                                                                           |
-| 503    | `WORKFLOW_STATE_CORRUPT`, `WORKFLOW_UNAVAILABLE`, and the project lock's `CONTROL_LOCK_BUSY` (with `Retry-After`; the only retryable one), `CONTROL_LOCK_CORRUPT`, `CONTROL_LOCK_OWNERSHIP_LOST`, `CONTROL_LOCK_INVALID_HOME`                                                                                                                                                                                                                                                                                     |
+| Status | Codes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 404    | `WORKFLOW_SUBJECT_NOT_FOUND`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| 409    | `WORKFLOW_DEFINITION_CHANGED`, `WORKFLOW_ATTEMPT_MISMATCH`, `WORKFLOW_POSITION_INVALID`, `WORKFLOW_EXECUTOR_NOT_ALLOWED`, `WORKFLOW_TASK_BLOCKED`, `WORKFLOW_DEPENDENCY_UNSATISFIED`, `WORKFLOW_SPECIFICATION_NOT_STARTED`, `WORKFLOW_SPECIFICATION_ENDED`, `WORKFLOW_SPECIFICATION_BUSY`, `WORKFLOW_EXIT_BLOCKED`, `WORKFLOW_TASK_BUSY`, `WORKFLOW_STATE_CONFLICT`, `WORKFLOW_TASK_REVISION_CONFLICT`, `WORKFLOW_TASK_EXISTS`, `WORKFLOW_TASK_NOT_REMOVABLE`, `WORKFLOW_GATE_UNSATISFIED`, `WORKFLOW_TASKS_OPEN`, `WORKFLOW_OWNER_DECISION_REQUIRED`, `WORKFLOW_CONFIRMATION_CHANGED`, `WORKFLOW_DIRTY_BASELINE`, `WORKFLOW_BASELINE_CHANGED`, `WORKFLOW_UNREGISTERED_DOCUMENTS`, `WORKFLOW_ENGINE_FILE_EDITED`, `WORKFLOW_UNDECLARED_CHANGES`, `WORKFLOW_NESTED_REPOSITORY`, `WORKFLOW_AGENT_UNAVAILABLE`, `WORKFLOW_COMMIT_REFUSED` |
+| 422    | `WORKFLOW_INPUT_INVALID`, `WORKFLOW_RETURN_NOT_ALLOWED`, `WORKFLOW_NOT_CONFIGURED`, `WORKFLOW_DEFINITION_MISSING`, `WORKFLOW_TASK_TYPE_NOT_ALLOWED`, `WORKFLOW_TASK_TYPE_IMMUTABLE`, `WORKFLOW_TASK_CONTEXT_UNRESOLVED`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| 503    | `WORKFLOW_STATE_CORRUPT`, `WORKFLOW_UNAVAILABLE`, and the project lock's `CONTROL_LOCK_BUSY` (with `Retry-After`; the only retryable one), `CONTROL_LOCK_CORRUPT`, `CONTROL_LOCK_OWNERSHIP_LOST`, `CONTROL_LOCK_INVALID_HOME`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 
 `401`, `403` and `400` (request validation) are the shared Runtime answers. A Specification Close that
 the workflow refuses is `409 CLOSE_BLOCKED` with the same `blockers` (see

@@ -26,6 +26,7 @@ semantics live under [workflow architecture](../workflow/).
 - [Specification Create/Close lifecycle](specification-lifecycle.md)
 - [Specification documents](specification-documents.md)
 - [Workspace execution claims](workspace-execution-claims.md)
+- [Agent step execution](agent-step-execution.md): broker, invocation capability, agent attempt lifecycle
 
 ## Runtime reads and policy
 

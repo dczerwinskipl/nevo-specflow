@@ -149,7 +149,7 @@ export type AgentUnavailableReason =
   (typeof AGENT_UNAVAILABLE_REASONS)[number] | (typeof RUNTIME_AGENT_UNAVAILABLE_REASONS)[number];
 
 /**
- * Whether an agent could do the step, and how Ask agent would launch it: the agent role, provider,
+ * Whether an agent could do the step, and how agent step execution would launch it: the agent role, provider,
  * model and Session the kernel's continuation resolves (D18), `independent` for a step whose
  * archetype is independent (always a fresh Session). The owner may change provider and model only
  * for a fresh Session. Never dispatched by the Engine itself.
@@ -203,11 +203,18 @@ export interface AgentAttemptWork {
     readonly code?: string;
     /** How many times it ran (a retry is a run). */
     readonly runs?: number;
+    /**
+     * `committed` with a commit: its sha (absent when every path already equalled HEAD), and how many
+     * of its paths are SpecFlow's (`documents`) and the agent's declared files (`files`).
+     */
+    readonly sha?: string;
+    readonly documents?: number;
+    readonly files?: number;
   };
 }
 
 /**
- * The agent attempt of the active step (Ask agent), as the Runtime serves it: the Engine journal of
+ * The agent attempt of the active step (agent step execution), as the Runtime serves it: the Engine journal of
  * the attempt and the state of its current Turn's claim. Only the Runtime adds it.
  */
 export interface AgentAttemptView {
@@ -491,6 +498,13 @@ export interface SpecificationLevelActions {
   readonly exit?: SpecificationExitActions;
 }
 
+/** The agent holding the whole project, working on another subject (`ActionProjection.projectHold`). */
+export interface ProjectHold {
+  readonly kind: 'agent-working' | 'agent-outcome-unknown';
+  readonly subject: { readonly specId: string; readonly taskId?: string; readonly title: string };
+  readonly sessionId: string;
+}
+
 export interface ActionProjection {
   readonly subject: WorkflowSubject;
   /** The pinned workflow, or the one a first start would pin; absent when neither resolves. */
@@ -515,8 +529,13 @@ export interface ActionProjection {
    * ended. A read of several Tasks never computes it.
    */
   readonly documentRelations?: readonly DocumentRelation[];
-  /** The agent attempt of the active step; only the Runtime adds it (Ask agent). */
+  /** The agent attempt of the active step; only the Runtime adds it (agent step execution). */
   readonly agentAttempt?: AgentAttemptView;
+  /**
+   * An agent working on another subject holds the project (its Turn runs, or SpecFlow cannot tell
+   * whether its process still runs); only the Runtime adds it.
+   */
+  readonly projectHold?: ProjectHold;
   /**
    * For a Task subject that is not broken, in the projection of that one Task (`inspectActions`):
    * its effective context and dependency candidates. A read of several Tasks (`readExecution`,

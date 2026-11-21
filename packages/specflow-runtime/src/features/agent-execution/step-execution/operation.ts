@@ -107,6 +107,16 @@ function continueLaunch(active: ActiveAgentAttempt): AgentLaunch {
   };
 }
 
+function isSameSubject(
+  held: { readonly specId: string; readonly taskId?: string },
+  subject: WorkflowSubject,
+): boolean {
+  return (
+    held.specId === subject.specId &&
+    held.taskId === (subject.kind === 'task' ? subject.taskId : undefined)
+  );
+}
+
 /**
  * Agent step execution (D12, D18, D19): the Runtime side of one agent attempt. Every refusal that
  * can be known comes before anything exists (the Runtime's reasons, the Engine's start checks); the
@@ -362,6 +372,17 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
     subject: WorkflowSubject,
     projection: ActionProjection,
   ): Promise<ActionProjection> {
+    const [own, hold] = await Promise.all([decorateOwn(subject, projection), engine.projectHold()]);
+
+    // The subject's own agent is its `agentAttempt`; the hold names only another subject's.
+    return hold && !isSameSubject(hold.subject, subject) ? { ...own, projectHold: hold } : own;
+  }
+
+  /** The projection with the Runtime's agent reasons and the subject's own agent attempt. */
+  async function decorateOwn(
+    subject: WorkflowSubject,
+    projection: ActionProjection,
+  ): Promise<ActionProjection> {
     const position = projection.position;
     if ((position.kind === 'not-started' || position.kind === 'ready') && position.next) {
       const next = position.next;
@@ -382,7 +403,7 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
   }
 
   /**
-   * The explicit check the Ask agent dialog runs when it opens (explain before action): the full
+   * The explicit check the Run with agent dialog runs when it opens (explain before action): the full
    * availability of what a start would work on now, the checkout's baseline included.
    */
   async function check(subject: WorkflowSubject): Promise<{

@@ -113,7 +113,7 @@ function refusing<Request, Result>(
 }
 
 /**
- * The Ask agent owner routes of a Specification and of a Task: start an agent attempt of the step
+ * The agent step execution owner routes of a Specification and of a Task: start an agent attempt of the step
  * the owner was shown or continue the active one (`agent-execution`), and stop its running agent
  * (`agent-execution/stop`), and take the stopped attempt over (`agent-execution/take-over`). They
  * drive a run, so they need `Manage`; the caller is the owner, the agent's actor comes only from the
@@ -176,7 +176,7 @@ export const agentStepExecutionEndpoint: FastifyPluginCallback<AgentStepExecutio
         bodyLimit: BODY_LIMIT_BYTES,
         schema: {
           tags,
-          summary: `Ask an agent to do the next step of a ${label}, or continue its attempt`,
+          summary: `Start agent step execution of the next step of a ${label}, or continue its attempt`,
           params,
           body: AgentStepExecutionRequestSchema,
           response: { 200: AgentStepExecutionResultSchema, ...errors },

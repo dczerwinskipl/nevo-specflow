@@ -11970,10 +11970,68 @@
                       "runs": {
                         "type": "integer",
                         "minimum": 1
+                      },
+                      "sha": {
+                        "type": "string"
+                      },
+                      "documents": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "files": {
+                        "type": "integer",
+                        "minimum": 0
                       }
                     }
                   }
                 }
+              }
+            }
+          },
+          "projectHold": {
+            "type": "object",
+            "required": [
+              "kind",
+              "subject",
+              "sessionId"
+            ],
+            "properties": {
+              "kind": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "agent-working"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "agent-outcome-unknown"
+                    ]
+                  }
+                ]
+              },
+              "subject": {
+                "type": "object",
+                "required": [
+                  "specId",
+                  "title"
+                ],
+                "properties": {
+                  "specId": {
+                    "$ref": "#/components/schemas/SpecId"
+                  },
+                  "taskId": {
+                    "$ref": "#/components/schemas/TaskId"
+                  },
+                  "title": {
+                    "type": "string"
+                  }
+                }
+              },
+              "sessionId": {
+                "type": "string"
               }
             }
           }
@@ -14040,6 +14098,17 @@
                                 "runs": {
                                   "type": "integer",
                                   "minimum": 1
+                                },
+                                "sha": {
+                                  "type": "string"
+                                },
+                                "documents": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                },
+                                "files": {
+                                  "type": "integer",
+                                  "minimum": 0
                                 }
                               }
                             }
@@ -44960,7 +45029,7 @@
     "/api/specs/{specId}/tasks/{taskId}/workflow/agent-execution": {
       "post": {
         "operationId": "postSpecsBySpecIdTasksByTaskIdWorkflowAgentExecution",
-        "summary": "Ask an agent to do the next step of a Task, or continue its attempt",
+        "summary": "Start agent step execution of the next step of a Task, or continue its attempt",
         "tags": [
           "Workflow"
         ],
@@ -51898,7 +51967,7 @@
     "/api/specs/{specId}/workflow/agent-execution": {
       "post": {
         "operationId": "postSpecsBySpecIdWorkflowAgentExecution",
-        "summary": "Ask an agent to do the next step of a Specification, or continue its attempt",
+        "summary": "Start agent step execution of the next step of a Specification, or continue its attempt",
         "tags": [
           "Workflow"
         ],

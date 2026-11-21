@@ -1,4 +1,9 @@
-import type { ActionProjection, AgentAttemptJournal, WorkflowSubject } from '@nevo/specflow-engine';
+import type {
+  ActionProjection,
+  AgentAttemptJournal,
+  ProjectHold,
+  WorkflowSubject,
+} from '@nevo/specflow-engine';
 import { describe, expect, it } from 'vitest';
 
 import type { ActiveAgentAttempt, AgentStepEngine } from './engine-port';
@@ -42,7 +47,12 @@ const active: ActionProjection = {
  * invocation), so a retry of the same request finds it.
  */
 function fakes(
-  options: { failFirstTurnStart?: boolean; refuseStart?: boolean; failFirstCreate?: boolean } = {},
+  options: {
+    failFirstTurnStart?: boolean;
+    refuseStart?: boolean;
+    failFirstCreate?: boolean;
+    hold?: ProjectHold;
+  } = {},
 ) {
   const created = new Set<string>();
   let failCreate = options.failFirstCreate === true;
@@ -57,6 +67,7 @@ function fakes(
     activeAttempt: () => Promise.resolve(attempt),
     claimPhase: () => Promise.resolve('settled'),
     busyWriter: () => Promise.resolve(undefined),
+    projectHold: () => Promise.resolve(options.hold),
     archetypeAllowlist: () => Promise.resolve(undefined),
     workspaceIdOf: () => Promise.resolve(WORKSPACE),
     baseline: () => {
@@ -288,6 +299,21 @@ describe('agent step execution', () => {
       agent: { kind: 'available', launch },
     });
     expect(calls).toEqual(['baseline']);
+  });
+
+  it("names the agent holding the project for another subject, never for the subject's own", async () => {
+    const hold: ProjectHold = {
+      kind: 'agent-outcome-unknown',
+      subject: { specId: SPEC, taskId: 'api', title: 'API' },
+      sessionId: 'session-b',
+    };
+    const { execution } = fakes({ hold });
+
+    expect((await execution.decorate(subject, ready)).projectHold).toEqual(hold);
+    expect(
+      (await execution.decorate({ kind: 'task', specId: SPEC, taskId: 'api' }, ready)).projectHold,
+    ).toBeUndefined();
+    expect((await fakes().execution.decorate(subject, ready)).projectHold).toBeUndefined();
   });
 
   it('tells the owner a fresh Session is missing and creates it before Continue binds a Turn', async () => {

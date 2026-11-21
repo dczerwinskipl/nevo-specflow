@@ -146,7 +146,7 @@ export const AGENT_UNAVAILABLE_REASONS = [
 ] as const;
 export type AgentUnavailableReason = (typeof AGENT_UNAVAILABLE_REASONS)[number];
 
-/** How Ask agent would launch the step (D18): the agent role, provider, model and Session. */
+/** How agent step execution would launch the step (D18): the agent role, provider, model and Session. */
 export const AgentLaunchSchema = Type.Object({
   archetype: Type.String(),
   provider: Type.String(),
@@ -191,7 +191,7 @@ export const AgentOptionSchema = Type.Union([
 export type AgentOption = Static<typeof AgentOptionSchema>;
 
 /**
- * The agent attempt the active step is in (Ask agent), as the Runtime knows it: its Session, its
+ * The agent attempt the active step is in (agent step execution), as the Runtime knows it: its Session, its
  * current Turn, its finish proposal and whether Continue is possible now.
  *
  * - `turn.state`: `working` (the agent runs), `stopping` (the owner stopped it; the step stays
@@ -211,7 +211,10 @@ export type AgentOption = Static<typeof AgentOptionSchema>;
  * - `declared`: the changed files outside SpecFlow's folders its proposal declared;
  * - `changed`: what was uncommitted in the checkout when its last Turn ended;
  * - `commit`: its attempt commit (D15): `none` (it did not finish with its own result), `pending`,
- *   `committed` or `failed` (with the code; Retry commit is possible).
+ *   `committed` or `failed` (with the code; Retry commit is possible). Once `committed` with a
+ *   commit: its `sha` (absent when every path already equalled HEAD), how many of its paths SpecFlow
+ *   wrote (`documents`: documents, Task files, execution state) and how many are the agent's
+ *   declared files (`files`).
  */
 export const AgentAttemptWorkSchema = Type.Object({
   documents: array(Type.String()),
@@ -225,6 +228,9 @@ export const AgentAttemptWorkSchema = Type.Object({
     state: literals(['none', 'pending', 'committed', 'failed'] as const),
     code: Type.Optional(Type.String()),
     runs: Type.Optional(Type.Integer({ minimum: 1 })),
+    sha: Type.Optional(Type.String()),
+    documents: Type.Optional(Type.Integer({ minimum: 0 })),
+    files: Type.Optional(Type.Integer({ minimum: 0 })),
   }),
 });
 export type AgentAttemptWork = Static<typeof AgentAttemptWorkSchema>;
@@ -292,6 +298,24 @@ export const AgentAttemptViewSchema = Type.Object({
   work: AgentAttemptWorkSchema,
 });
 export type AgentAttemptView = Static<typeof AgentAttemptViewSchema>;
+
+/**
+ * The agent that holds the whole project now, working on another subject (the projection's own
+ * agent attempt is `agentAttempt`): while its Turn runs (`agent-working`) or SpecFlow cannot tell
+ * whether its process still runs (`agent-outcome-unknown`), nothing else can be saved in the
+ * project. `subject` names what it works on (a Task with `taskId`) and its title; `sessionId` its
+ * Session. Read from the execution claims and the attempt's journal, without Git.
+ */
+export const ProjectHoldSchema = Type.Object({
+  kind: literals(['agent-working', 'agent-outcome-unknown'] as const),
+  subject: Type.Object({
+    specId: SpecIdSchema,
+    taskId: Type.Optional(TaskIdSchema),
+    title: Type.String(),
+  }),
+  sessionId: Type.String(),
+});
+export type ProjectHold = Static<typeof ProjectHoldSchema>;
 
 export const GATE_UNSATISFIED_REASONS = [
   'no-document',
@@ -1010,8 +1034,10 @@ export const WorkflowActionProjectionSchema = Type.Object(
      * otherwise and from reads of several Tasks.
      */
     documentRelations: Type.Optional(array(DocumentRelationSchema)),
-    /** The agent attempt of the active step (Ask agent), when the active attempt is one. */
+    /** The agent attempt of the active step (agent step execution), when the active attempt is one. */
     agentAttempt: Type.Optional(AgentAttemptViewSchema),
+    /** An agent working on another subject holds the project ({@link ProjectHoldSchema}). */
+    projectHold: Type.Optional(ProjectHoldSchema),
   },
   { $id: 'WorkflowActionProjection' },
 );

@@ -19,6 +19,7 @@ import {
   type AgentAttemptJournal,
   type AgentAttemptWork,
   type OwnerReturnResult,
+  type ProjectHold,
   type ReturnToStepInput,
   type TakeOverAgentAttemptInput,
   type TakeOverAgentAttemptResult,
@@ -56,6 +57,11 @@ export interface AgentStepEngine {
   ): Promise<'admitted' | 'dispatched' | 'unknown' | 'settled' | undefined>;
   /** An unsettled writer claim of the project, worded for the owner. */
   busyWriter(): Promise<AgentRuntimeFacts['busy']>;
+  /**
+   * The agent holding the project now: the unsettled execution claim of an agent attempt's Turn
+   * (`unknown` first), with what it works on. Git-free: the claims and the attempt's journal.
+   */
+  projectHold(): Promise<ProjectHold | undefined>;
   workspaceIdOf(specId: string): Promise<string | undefined>;
   /** The permission rules the archetype lists for a provider (D20); absent when it lists none. */
   archetypeAllowlist(archetype: string, provider: string): Promise<readonly string[] | undefined>;
@@ -105,6 +111,25 @@ export function createAgentStepEngine(dependencies: {
 }): AgentStepEngine {
   const { engine } = dependencies;
 
+  /** The title of a subject: a Task's from the execution store, a Specification's from its manifest. */
+  async function titleOf(
+    attempts: AgentAttemptDependencies,
+    subject: WorkflowSubject,
+  ): Promise<string> {
+    if (subject.kind === 'task') {
+      const snapshot = await attempts.workflow.store.read(subject.specId);
+
+      return (
+        snapshot.manifests.find((entry) => entry.value.id === subject.taskId)?.value.title ??
+        subject.taskId
+      );
+    }
+
+    const found = await resolveSpecificationForRead(engine, subject.specId);
+
+    return found.status === 'available' ? found.specification.title : subject.specId;
+  }
+
   async function rendered(
     attempts: AgentAttemptDependencies,
     attemptId: string,
@@ -146,6 +171,33 @@ export function createAgentStepEngine(dependencies: {
           held.phase === 'unknown'
             ? `SpecFlow cannot tell whether the agent of Session ${held.intent.ownerId} is still running; nothing can be saved in this project until that is known.`
             : `The agent of Session ${held.intent.ownerId} is working in this project; wait until it stops.`,
+      };
+    },
+    async projectHold() {
+      const page = await listUnsettledWorkspaceExecutions(engine, { limit: 20 });
+      const held = page.items.filter(
+        (record) => record.phase !== 'settled' && record.intent.attempt !== undefined,
+      );
+      const claim = held.find((record) => record.phase === 'unknown') ?? held[0];
+      const attempts = claim ? await dependencies.openAttempts() : undefined;
+      const journal =
+        claim && attempts
+          ? await attempts.journal.read(claim.intent.attempt!.attemptId)
+          : undefined;
+      if (!claim || !attempts || !journal) {
+        return undefined;
+      }
+
+      const { subject } = journal;
+
+      return {
+        kind: claim.phase === 'unknown' ? 'agent-outcome-unknown' : 'agent-working',
+        subject: {
+          specId: subject.specId,
+          ...(subject.kind === 'task' ? { taskId: subject.taskId } : {}),
+          title: await titleOf(attempts, subject),
+        },
+        sessionId: journal.actor.details.sessionId ?? claim.intent.ownerId,
       };
     },
     async archetypeAllowlist(archetype, provider) {

@@ -82,6 +82,7 @@ export {
   type ActionProjection,
   RUNTIME_AGENT_UNAVAILABLE_REASONS,
   type AgentAttemptView,
+  type ProjectHold,
   type AgentOption,
   type AgentUnavailableReason,
   type Availability,

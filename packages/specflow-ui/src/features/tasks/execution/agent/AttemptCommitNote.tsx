@@ -19,6 +19,10 @@ export type AttemptCommitView =
       readonly state: 'committed';
       readonly stepTitle: string;
       readonly branch?: string;
+      /** The commit the attempt made, with how many of its paths are documents and files. */
+      readonly sha?: string;
+      readonly documents?: number;
+      readonly files?: number;
     }
   | {
       readonly state: 'failed';
@@ -50,15 +54,35 @@ function Committed({
 }: {
   readonly commit: Extract<AttemptCommitView, { state: 'committed' }>;
 }) {
+  const { t } = useTranslation();
+  const counts = [
+    commit.documents
+      ? t('workflowExecution.attemptCommit.countDocuments', { count: commit.documents })
+      : undefined,
+    commit.files
+      ? t('workflowExecution.attemptCommit.countFiles', { count: commit.files })
+      : undefined,
+  ].filter(Boolean);
+  const list =
+    counts.length > 0 ? `: ${counts.join(t('workflowExecution.attemptCommit.and'))}` : '';
+  const key = commit.sha
+    ? commit.branch
+      ? 'workflowExecution.attemptCommit.committedShaOn'
+      : 'workflowExecution.attemptCommit.committedSha'
+    : commit.branch
+      ? 'workflowExecution.attemptCommit.committedOn'
+      : 'workflowExecution.attemptCommit.committed';
+
   return (
     <InlineNote tone="info" icon={GitCommitHorizontal} data-now-attempt-commit="committed">
       <Trans
-        i18nKey={
-          commit.branch
-            ? 'workflowExecution.attemptCommit.committedOn'
-            : 'workflowExecution.attemptCommit.committed'
-        }
-        values={{ step: commit.stepTitle, branch: commit.branch }}
+        i18nKey={key}
+        values={{
+          step: commit.stepTitle,
+          branch: commit.branch,
+          sha: commit.sha?.slice(0, 7),
+          list,
+        }}
         components={{ code: CODE }}
       />
     </InlineNote>

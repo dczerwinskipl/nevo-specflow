@@ -2886,6 +2886,17 @@
     "attemptCommit": {
       "committed": "Agent skończył krok {{step}}. Jego praca jest zatwierdzona.",
       "committedOn": "Agent skończył krok {{step}}. Jego praca jest zatwierdzona na <code>{{branch}}</code>.",
+      "committedSha": "Agent skończył krok {{step}}. Commit <code>{{sha}}</code>{{list}}.",
+      "committedShaOn": "Agent skończył krok {{step}}. Commit <code>{{sha}}</code> na <code>{{branch}}</code>{{list}}.",
+      "countDocuments_one": "{{count}} dokument",
+      "countDocuments_few": "{{count}} dokumenty",
+      "countDocuments_many": "{{count}} dokumentów",
+      "countDocuments_other": "{{count}} dokumentu",
+      "countFiles_one": "{{count}} plik",
+      "countFiles_few": "{{count}} pliki",
+      "countFiles_many": "{{count}} plików",
+      "countFiles_other": "{{count}} pliku",
+      "and": " i ",
       "failed": "<strong>Krok {{step}} jest skończony, ale jego commit się nie udał: {{reason}} (<code>{{code}}</code>).</strong>",
       "reason": {
         "branchProtected": "gałąź jest chroniona",
@@ -2904,6 +2915,16 @@
       "blocksAgent": "Do tego czasu „Uruchom z agentem” nie może rozpocząć następnego kroku: agent startuje tylko z zatwierdzonego katalogu roboczego.",
       "retry": "Ponów commit",
       "retrying": "Ponawianie…"
+    },
+    "projectHold": {
+      "session": "Sesja:",
+      "unknown": {
+        "title": "Nic nie może się teraz zapisać w tym projekcie.",
+        "body": "SpecFlow nie wie, czy agent nadal działa. Sprawdź jego wynik w:"
+      },
+      "working": {
+        "body": "Agent pracuje w tym projekcie, więc zmiany tutaj poczekają, aż się zatrzyma. Pracuje nad:"
+      }
     },
     "attemptHistory": {
       "title": "Podejścia agenta",

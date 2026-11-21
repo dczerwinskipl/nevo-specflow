@@ -27,6 +27,7 @@ import { managedProviders } from '../../sessions/start/catalogue/providerDescrip
 import type { WorkflowExecutionApi } from './api';
 import {
   ATTEMPT_ID,
+  STORY_SHA,
   PLAN_SESSION_ID,
   PLAN_SESSION_TITLE,
   agentAttemptProjection,
@@ -104,8 +105,12 @@ export type FinishedStoryScenario = 'finished-committed' | 'finished-commit-fail
 /** The Task whose Implementation the owner took over from the agent, with its history. */
 export type HistoryStoryScenario = 'history-taken-over';
 
+/** Another subject's agent holds the project: its outcome is unknown (Overview), or it works (Task). */
+export type HoldStoryScenario = 'hold-outcome-unknown' | 'hold-working';
+
 export type WorkflowStoryScenario =
   | HistoryStoryScenario
+  | HoldStoryScenario
   | FinishedStoryScenario
   | AttemptStoryScenario
   | TaskWorkflowScenario
@@ -135,6 +140,7 @@ const closeScenarios: readonly string[] = [
 ];
 const specScenarios: readonly string[] = [
   'attempt-confirmation',
+  'hold-outcome-unknown',
   'waiting',
   'close-blocked',
   'abandoned',
@@ -412,7 +418,7 @@ function closePreviewOf(scenario: WorkflowStoryScenario) {
 
 /** The projection scenario behind a Specification story. */
 function specificationScenario(scenario: WorkflowStoryScenario): SpecificationWorkflowScenario {
-  return scenario === 'attempt-confirmation'
+  return scenario === 'attempt-confirmation' || scenario === 'hold-outcome-unknown'
     ? 'waiting'
     : closeScenarios.includes(scenario)
       ? 'completed'
@@ -455,6 +461,25 @@ const heldTaskList = {
   ],
 };
 
+/** The projection of a subject while the agent of another subject (t-04) holds the project. */
+function withHold(
+  base: WorkflowActionProjection,
+  kind: 'agent-working' | 'agent-outcome-unknown',
+): WorkflowActionProjection {
+  return {
+    ...base,
+    projectHold: {
+      kind,
+      subject: {
+        specId: SPEC,
+        taskId: 't-04',
+        title: 'Token exchange endpoint and session cookie',
+      },
+      sessionId: SESSION_ID,
+    },
+  };
+}
+
 /** Implementation after the owner took it over: the owner's attempt 3 (the agent's was 2). */
 function ownerAttempt3(base: WorkflowActionProjection): WorkflowActionProjection {
   if (base.position.kind !== 'active') {
@@ -493,7 +518,7 @@ function services(scenario: WorkflowStoryScenario) {
   const taskScenario = (): TaskWorkflowScenario =>
     agentCase
       ? 'ready-agent'
-      : scenario === 'history-taken-over'
+      : scenario === 'history-taken-over' || scenario === 'hold-working'
         ? 'rework'
         : scenario === 'start-drift'
           ? 'first-start'
@@ -559,7 +584,7 @@ function services(scenario: WorkflowStoryScenario) {
           ? Promise.resolve(
               finishedAttemptHistory(
                 scenario === 'finished-committed'
-                  ? { state: 'committed' }
+                  ? { state: 'committed', sha: STORY_SHA, documents: 2, files: 3 }
                   : { state: 'failed', code: 'COMMIT_BLOCKED' },
               ) as never,
             )
@@ -629,11 +654,18 @@ function services(scenario: WorkflowStoryScenario) {
       ...authoring,
       specificationActions: () =>
         Promise.resolve(
-          scenario === 'attempt-confirmation'
-            ? agentAttemptProjection('confirmation')
-            : { ...specificationWorkflowProjection(specificationScenario(scenario)) },
+          scenario === 'hold-outcome-unknown'
+            ? withHold(specificationWorkflowProjection('waiting'), 'agent-outcome-unknown')
+            : scenario === 'attempt-confirmation'
+              ? agentAttemptProjection('confirmation')
+              : { ...specificationWorkflowProjection(specificationScenario(scenario)) },
         ),
-      taskActions: () => Promise.resolve(taskProjection()),
+      taskActions: () =>
+        Promise.resolve(
+          scenario === 'hold-working'
+            ? withHold(taskProjection(), 'agent-working')
+            : taskProjection(),
+        ),
       addDocuments: () => {
         state.findings = true;
 

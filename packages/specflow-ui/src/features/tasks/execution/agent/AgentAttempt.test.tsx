@@ -305,6 +305,28 @@ describe('the commit of a finished attempt', () => {
     expect(screen.queryByRole('button', { name: 'Retry commit' })).toBeNull();
   });
 
+  it('names the commit by its short id with the counts when the history reports them', async () => {
+    renderNow(
+      'working',
+      {
+        history: vi.fn(() =>
+          Promise.resolve(
+            finishedAttemptHistory({
+              state: 'committed',
+              sha: '3f9a1c7e5b2d4a6c8e0f1b3d5a7c9e2f4b6d8a0c',
+              documents: 1,
+              files: 3,
+            }) as never,
+          ),
+        ),
+      },
+      { projection: finishedAttemptProjection() },
+    );
+
+    expect(await screen.findByText('3f9a1c7')).toBeTruthy();
+    expect(document.body.textContent).toContain('1 document and 3 files');
+  });
+
   it('reads nothing when a person finished the step before', () => {
     const read = history({ state: 'committed' });
     renderNow(

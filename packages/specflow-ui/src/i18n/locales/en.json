@@ -2886,6 +2886,17 @@
     "attemptCommit": {
       "committed": "The agent finished {{step}}. Its work is committed.",
       "committedOn": "The agent finished {{step}}. Its work is committed on <code>{{branch}}</code>.",
+      "committedSha": "The agent finished {{step}}. Committed <code>{{sha}}</code>{{list}}.",
+      "committedShaOn": "The agent finished {{step}}. Committed <code>{{sha}}</code> on <code>{{branch}}</code>{{list}}.",
+      "countDocuments_one": "{{count}} document",
+      "countDocuments_few": "{{count}} documents",
+      "countDocuments_many": "{{count}} documents",
+      "countDocuments_other": "{{count}} documents",
+      "countFiles_one": "{{count}} file",
+      "countFiles_few": "{{count}} files",
+      "countFiles_many": "{{count}} files",
+      "countFiles_other": "{{count}} files",
+      "and": " and ",
       "failed": "<strong>{{step}} is finished, but its commit failed: {{reason}} (<code>{{code}}</code>).</strong>",
       "reason": {
         "branchProtected": "the branch is protected",
@@ -2904,6 +2915,16 @@
       "blocksAgent": "Until then Run with agent cannot start the next step: an agent starts only from a committed checkout.",
       "retry": "Retry commit",
       "retrying": "Retrying…"
+    },
+    "projectHold": {
+      "session": "Session:",
+      "unknown": {
+        "title": "Nothing can be saved in this project right now.",
+        "body": "SpecFlow cannot tell whether an agent is still running. Check its outcome in"
+      },
+      "working": {
+        "body": "An agent is working in this project, so changes here wait until it stops. It works on"
+      }
     },
     "attemptHistory": {
       "title": "Agent attempts",

@@ -10,6 +10,7 @@ import { InlineAction } from '../InlineAction';
 import { AttemptSession } from './AgentAttemptNow';
 import { AttemptCommitNote, commitReason, type AttemptCommitView } from './AttemptCommitNote';
 import { KeptDocuments } from './KeptDocuments';
+import { committedFacts } from './useAttemptCommit';
 import { useAgentAttemptCommands } from './useAgentAttemptCommands';
 
 export type HistoryItem = WorkflowHistory['items'][number];
@@ -38,7 +39,11 @@ export function agentAttemptOf(
 function commitOf(item: AgentHistoryItem): AttemptCommitView | undefined {
   const { work } = item.agent;
   if (work.commit.state === 'committed') {
-    return { state: 'committed', stepTitle: item.stepTitle || item.step };
+    return {
+      state: 'committed',
+      stepTitle: item.stepTitle || item.step,
+      ...committedFacts(work.commit),
+    };
   }
 
   if (work.commit.state !== 'failed') {

@@ -253,8 +253,42 @@ export const FinishedCommitted: Story = {
   args: { scenario: 'finished-committed' },
   play: async ({ canvasElement }) => {
     const now = await findNow(canvasElement);
-    await expect(await within(now).findByText(/Its work is committed/, {}, wait)).toBeVisible();
+    await expect(await within(now).findByText('3f9a1c7', {}, wait)).toBeVisible();
+    await expect(within(now).getByText(/2 documents and 3 files/)).toBeVisible();
     await expect(within(now).getByText('nevo-1/single-sign-on')).toBeVisible();
+  },
+};
+
+/*
+ * Another subject's agent holds the project. Its outcome unknown: the Overview says nothing can be
+ * saved, links the holding Task and its Session, and offers no action of its own.
+ */
+export const HoldOutcomeUnknownOnOtherSubject: Story = {
+  args: { scenario: 'hold-outcome-unknown' },
+  play: async ({ canvasElement }) => {
+    const now = await findNow(canvasElement);
+    const alert = await within(now).findByRole('alert', {}, wait);
+    await expect(
+      within(alert).getByText('Nothing can be saved in this project right now.'),
+    ).toBeVisible();
+    await expect(
+      within(alert).getByRole('link', { name: 'Token exchange endpoint and session cookie' }),
+    ).toBeVisible();
+    await expect(within(alert).getByRole('link', { name: 'the agent’s session' })).toBeVisible();
+    await expect(actionsOf(now)).toEqual([]);
+  },
+};
+
+/** While the agent merely works, a lighter note where this block has an action that would wait. */
+export const HoldWorkingOnOtherSubject: Story = {
+  args: { scenario: 'hold-working' },
+  play: async ({ canvasElement }) => {
+    const now = await findNow(canvasElement);
+    await expect(
+      await within(now).findByText(/An agent is working in this project/, {}, wait),
+    ).toBeVisible();
+    await expect(within(now).queryByRole('alert')).toBeNull();
+    await expect(within(now).getByRole('button', { name: 'Finish step' })).toBeEnabled();
   },
 };
 

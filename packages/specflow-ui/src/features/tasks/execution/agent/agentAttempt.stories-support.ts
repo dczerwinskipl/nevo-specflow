@@ -19,6 +19,7 @@ import { SESSION_ID, agentOptions } from './agentStart.stories-support';
 export const PLAN_SESSION_ID = 's-plan-1';
 export const PLAN_SESSION_TITLE = 'Break down single sign-on';
 
+export const STORY_SHA = '3f9a1c7e5b2d4a6c8e0f1b3d5a7c9e2f4b6d8a0c';
 export const ATTEMPT_ID = '5d1c1a52-8f3e-4a6b-9a0e-3b7f2c9d1e44';
 
 export type AttemptCase =
@@ -306,6 +307,9 @@ export function takenOverAttemptHistory() {
 export function finishedAttemptHistory(commit: {
   state: 'committed' | 'failed' | 'pending';
   code?: string;
+  sha?: string;
+  documents?: number;
+  files?: number;
 }) {
   return {
     subject: { kind: 'task' as const, specId: 'sso', taskId: 't-04' },

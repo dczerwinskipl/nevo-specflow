@@ -275,7 +275,7 @@ export async function planFinish(
     );
   }
 
-  // No agent takes a decision only the owner takes (D17). An Ask agent proposal that takes one is
+  // No agent takes a decision only the owner takes (D17). An agent attempt's proposal taking one is
   // held for the owner's confirmation; any other agent finish is refused, judged before anything is
   // planned, so the agent learns it before the drafts, Tasks and gates.
   const taskDecisions = request.input.taskDecisions ?? [];

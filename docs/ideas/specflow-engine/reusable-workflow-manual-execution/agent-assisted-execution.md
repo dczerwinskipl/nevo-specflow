@@ -355,6 +355,22 @@ refuses such an agent proposal outright (`WORKFLOW_OWNER_DECISION_REQUIRED`), so
 agent approve. Task
 approval itself (`setTaskStatus approve`) stays an owner operation, as today.
 
+_Implemented (T14):_ non-empty `taskDecisions` in an agent proposal count as owner authority too.
+The neutral core has the position `awaiting-confirmation` (the attempt ended with its transition and
+a pending `confirmation`; `confirm` takes it, `reject` returns the run to the attempt's step, ready,
+with the rejection's feedback as the handoff). The finalize publishes the attempt's end and the
+Task drafts it produced, keeps the Task decisions with the pending confirmation and applies nothing
+else; it records no post action. **Confirm** (owner route `.../workflow/confirmation/confirm`, CLI
+`workflow confirm`) applies the transition, the decisions and the effects with the owner as actor,
+judged again by every finish rule, attributes that change to the attempt's last Turn and then runs
+the attempt commit: the step finishes on Confirm, so its commit runs then. **Reject**
+(`.../confirmation/reject`, `workflow reject --feedback`) commits nothing: the agent's work stays
+uncommitted and Close lists it; the owner commits or reverts it (an attempt commit of a later agent
+attempt that changes the same Engine files is refused as mixed authors until then). Both take a
+request id and replay it. An agent Turn cannot call either (the CLI refuses both inside a Turn).
+`WORKFLOW_OWNER_DECISION_REQUIRED` stays for an agent finish that is not an agent attempt's
+proposal.
+
 ## Commit ownership and Close (B3)
 
 **Rule.** The Engine commits only paths it can attribute; it never runs `git add -A`, `git commit -a`
@@ -453,8 +469,8 @@ These are the machine-checked rules the slices MUST enforce; each has one owner.
 4. The step state and the claim settlement are published in one control-lock section, step state
    first; post actions run only after that section, never nested in a lock section (Engine).
 5. An agent actor never applies an owner-authority effect or a `confirmation: owner` transition, and
-   never calls an owner operation (Engine). Before owner confirmation exists, such an agent proposal
-   is refused outright.
+   never calls an owner operation (Engine). Such an agent proposal is finalized into a pending owner
+   confirmation (T14); any other agent finish taking such a decision is refused outright.
 6. **The provider environment never receives the user's login session or any credential the
    Runtime issues; agent writes go only through the broker with agent scope** (Runtime). Owner
    routes are protected by the configured authentication mode; in mode `none` that protection is

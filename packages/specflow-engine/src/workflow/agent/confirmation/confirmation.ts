@@ -28,7 +28,7 @@ import {
 } from '../journal/model';
 
 /**
- * The owner's decision on an agent's result held for confirmation (D17): an Ask agent proposal that
+ * The owner's decision on an agent's result held for confirmation (D17): an agent proposal that
  * takes a decision only the owner takes (an owner-authority effect such as `approve-draft-tasks`, a
  * `confirmation: owner` transition, or Task status decisions) ends its attempt and leaves the run
  * `awaiting-confirmation`. **Confirm** takes the transition with the owner as actor, as an owner's
@@ -109,7 +109,7 @@ function attemptRecordOf(
   );
 }
 
-/** The attempt named and its local journal: only an Ask agent attempt has a result to decide. */
+/** The attempt named and its local journal: only an agent attempt (started with an agent) has a result to decide. */
 async function agentAttemptOf(
   dependencies: AgentAttemptDependencies,
   snapshot: ExecutionSnapshot,

@@ -54,7 +54,7 @@ export function assertOwner(actor: unknown, action: string): asserts actor is Ow
 /**
  * An agent's finish proposal never takes a decision only the owner takes (D17): a transition whose
  * effects are owner authority or that declares `confirmation: owner`, and status decisions on Tasks
- * (approve, hold, resume, cancel). An Ask agent proposal that takes one is held for the owner's
+ * (approve, hold, resume, cancel). An agent attempt's proposal that takes one is held for the owner's
  * confirmation instead (`planFinish`); this refuses it on every other agent finish, which has no
  * attempt the owner could confirm.
  */

@@ -1,5 +1,7 @@
 import type { Command } from 'commander';
 
+import { AGENT_BROKERED_COMMANDS, AGENT_READ_COMMANDS } from '@nevo/specflow-runtime';
+
 import { commitLine } from '../documents/present';
 import { ReportedFailure } from '../exit-code';
 import {
@@ -15,36 +17,14 @@ import {
  * command not listed here is a write the broker protocol does not know and is refused, so a new
  * command is closed to an agent until someone decides otherwise here.
  *
+ * The table itself lives in the contracts (`AGENT_COMMANDS`), shared with the agent brief.
+ *
  * - `read`: stays local (it opens the Engine for reading only, or no Engine at all).
  * - `brokered`: the write is sent to the Runtime's broker; the Engine is never opened for writing.
  */
-export const READS: ReadonlySet<string> = new Set([
-  'specs list',
-  'specs documents list',
-  'specs documents read',
-  'specs documents validate',
-  'specs documents status',
-  'tasks list',
-  'tasks inspect',
-  'workflow actions',
-  'workflow context',
-  'project inspect',
-  'definitions list',
-  'definitions show',
-  'definitions validate',
-  'commit status',
-  'docs list',
-  'docs get',
-  'docs find',
-  'docs context',
-  'docs search',
-]);
+export const READS: ReadonlySet<string> = AGENT_READ_COMMANDS;
 
-export const BROKERED: ReadonlySet<string> = new Set([
-  'specs documents add',
-  'specs documents save',
-  'specs documents classify',
-]);
+export const BROKERED: ReadonlySet<string> = AGENT_BROKERED_COMMANDS;
 
 /**
  * Every other registered command, listed on purpose: a table test requires each registered command

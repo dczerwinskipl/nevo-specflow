@@ -86,6 +86,8 @@ function services(source: ControlCenterSource) {
       stopAgentExecution: never,
       retryAttemptCommit: never,
       confirmResult: never,
+      takeOverAgentExecution: never,
+      history: never,
       rejectResult: never,
       closeOccupancy: never,
       close: never,

@@ -63,6 +63,48 @@ export const Stopping: Story = {
   },
 };
 
+/** A Return during the attempt waits for the agent to stop: nothing to click, and why. */
+export const ReturnRequested: Story = {
+  args: { scenario: 'attempt-return-requested' },
+  play: async ({ canvasElement }) => {
+    const now = await findNow(canvasElement);
+    await expect(
+      await within(now).findByText(/return requested · waiting for the agent to stop/, {}, wait),
+    ).toBeVisible();
+    await expect(within(now).getByText(/only once its process has ended/)).toBeVisible();
+    await expect(actionsOf(now)).toEqual(['Returning…']);
+  },
+};
+
+/** The agent could not be stopped: the return keeps waiting and Stop again is the action. */
+export const ReturnStopFailed: Story = {
+  args: { scenario: 'attempt-return-stop-failed' },
+  play: async ({ canvasElement }) => {
+    const now = await findNow(canvasElement);
+    await expect(await within(now).findByRole('alert', {}, wait)).toBeVisible();
+    await expect(actionsOf(now)).toEqual(['Stop again']);
+  },
+};
+
+/** Take over: the dialog says the agent's files stay uncommitted and lists them. */
+export const TakeOver: Story = {
+  args: { scenario: 'attempt-stopped' },
+  play: async ({ canvasElement }) => {
+    const now = await findNow(canvasElement);
+    await userEvent.click(await within(now).findByRole('button', { name: 'Take over' }, wait));
+    const dialog = await within(document.body).findByRole('dialog', {}, wait);
+    await expect(within(dialog).getByText('Take over Implementation')).toBeVisible();
+    await expect(within(dialog).getByText('The agent’s work stays')).toBeVisible();
+    await expect(within(dialog).getByText('src/auth/refresh.ts')).toBeVisible();
+    const footer = within(dialog).getByRole('button', { name: 'Cancel' }).parentElement!;
+    await expect(
+      within(footer)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(['Cancel', 'Take over']);
+  },
+};
+
 /** Outcome unknown: a danger note, and Check outcome as the main action. */
 export const OutcomeUnknown: Story = {
   args: { scenario: 'attempt-unknown' },
@@ -82,7 +124,7 @@ export const SessionMissing: Story = {
   play: async ({ canvasElement }) => {
     const now = await findNow(canvasElement);
     await expect(await within(now).findByText(/the agent did not start/, {}, wait)).toBeVisible();
-    await expect(actionsOf(now)).toEqual(['Retry start']);
+    await expect(actionsOf(now)).toEqual(['Retry start', 'Take over']);
   },
 };
 
@@ -97,7 +139,7 @@ export const EndedWithoutResult: Story = {
     await expect(
       within(now).getByText('The agent stopped without proposing a result.'),
     ).toBeVisible();
-    await expect(actionsOf(now)).toEqual(['Continue']);
+    await expect(actionsOf(now)).toEqual(['Continue', 'Take over']);
     await expect(within(now).getByRole('button', { name: 'Continue' })).toBeEnabled();
   },
 };
@@ -216,10 +258,7 @@ function FinishedNow({ failed }: { readonly failed: boolean }) {
                   : {
                       state: 'committed',
                       stepTitle: 'Implementation',
-                      sha: '3f2a9c1',
                       branch: 'nevo-1/single-sign-on',
-                      documents: 2,
-                      files: 3,
                     }
               }
             />
@@ -234,8 +273,8 @@ export const FinishedCommitted: StoryObj<typeof FinishedNow> = {
   render: () => <FinishedNow failed={false} />,
   play: async ({ canvasElement }) => {
     const now = await findNow(canvasElement);
-    await expect(within(now).getByText(/Committed/)).toBeVisible();
-    await expect(within(now).getByText('3f2a9c1')).toBeVisible();
+    await expect(within(now).getByText(/Its work is committed/)).toBeVisible();
+    await expect(within(now).getByText('nevo-1/single-sign-on')).toBeVisible();
   },
 };
 

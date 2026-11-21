@@ -41,6 +41,8 @@ function renderTaskNow(
       stopAgentExecution: vi.fn(never),
       retryAttemptCommit: vi.fn(never),
       confirmResult: vi.fn(never),
+      takeOverAgentExecution: vi.fn(never),
+      history: vi.fn(never),
       rejectResult: vi.fn(never),
       closePreview: vi.fn(never),
       closeOccupancy: vi.fn(never),

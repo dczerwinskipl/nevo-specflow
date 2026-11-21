@@ -47,7 +47,11 @@ export function useAgentAttemptCommands(subject: WorkflowSubjectRef) {
   const queryClient = useQueryClient();
   const { specId, taskId } = subject;
   const target: WorkflowSubjectRef = taskId === undefined ? { specId } : { specId, taskId };
-  const refresh = () => invalidateAfterTaskChange(queryClient, specId);
+  const refresh = () =>
+    Promise.all([
+      invalidateAfterTaskChange(queryClient, specId),
+      queryClient.invalidateQueries({ queryKey: ['workflow', 'history', specId] }),
+    ]);
   const stopKey = useRequestKey();
   const continueKey = useRequestKey();
   const confirmKey = useRequestKey();
@@ -108,5 +112,11 @@ export function useAgentAttemptCommands(subject: WorkflowSubjectRef) {
     },
   });
 
-  return { stop, continueAttempt, checkOutcome, retryCommit, confirm, reject, refresh };
+  const takeOver = useMutation({
+    mutationFn: (attempt: { readonly step: string; readonly attempt: number }) =>
+      workflowExecutionApi.takeOverAgentExecution(target, attempt),
+    onSettled: refresh,
+  });
+
+  return { stop, continueAttempt, checkOutcome, retryCommit, confirm, reject, takeOver, refresh };
 }

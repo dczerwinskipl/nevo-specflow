@@ -2776,7 +2776,9 @@
         "sessionMissing": "Podejście {{attempt}} · agent się nie uruchomił",
         "stopped": "Podejście {{attempt}} · agent zatrzymał się bez wyniku o {{at}}",
         "refused": "Podejście {{attempt}} · wynik agenta nie został przyjęty",
-        "applying": "Podejście {{attempt}} · agent zaproponował wynik"
+        "applying": "Podejście {{attempt}} · agent zaproponował wynik",
+        "returnRequested": "Podejście {{attempt}} · zażądano powrotu · czekanie na zatrzymanie agenta",
+        "returnStopped": "Podejście {{attempt}} · zażądano powrotu · agent się zatrzymał"
       },
       "stoppingNote": "Poproszono agenta o zatrzymanie. Krok {{step}} pozostaje zablokowany, dopóki SpecFlow nie zobaczy, że proces agenta się zakończył; wtedy można kontynuować lub wrócić.",
       "unknown": {
@@ -2789,7 +2791,7 @@
       },
       "noResult": {
         "title": "Agent zatrzymał się bez zaproponowania wyniku.",
-        "body": "„Kontynuuj” pozwala mu pracować dalej w tej samej sesji."
+        "body": "„Kontynuuj” pozwala mu pracować dalej w tej samej sesji. „Przejmij”, aby dokończyć krok samodzielnie."
       },
       "applying": "Agent zaproponował wynik: {{result}}. SpecFlow go stosuje.",
       "refused": {
@@ -2801,18 +2803,43 @@
         "gate": "Warunek tego wyniku nie jest spełniony.",
         "tasksOpen": "Zadania są nadal otwarte.",
         "other": "SpecFlow go nie przyjął",
-        "next": "„Kontynuuj” pozwala agentowi to poprawić w tej samej sesji."
+        "next": "„Kontynuuj” pozwala agentowi to poprawić w tej samej sesji. „Przejmij”, aby poprawić to samodzielnie."
       },
       "changed": {
         "title_one": "Agent nie może kontynuować: od jego zatrzymania zmienił się {{count}} plik.",
         "title_few": "Agent nie może kontynuować: od jego zatrzymania zmieniły się {{count}} pliki.",
         "title_many": "Agent nie może kontynuować: od jego zatrzymania zmieniło się {{count}} plików.",
         "title_other": "Agent nie może kontynuować: od jego zatrzymania zmieniło się {{count}} pliku.",
-        "body": "SpecFlow nigdy nie uznaje cudzych zmian za pracę agenta. Cofnij te zmiany albo zatwierdź je samodzielnie (staną się Twoim commitem, nie agenta), a potem kontynuuj."
+        "body": "SpecFlow nigdy nie uznaje cudzych zmian za pracę agenta. Cofnij te zmiany albo zatwierdź je samodzielnie (staną się Twoim commitem, nie agenta), a potem kontynuuj. Albo przejmij i dokończ krok samodzielnie."
       },
       "gone": {
         "title": "Agent nie może kontynuować: jego sesja już nie istnieje.",
-        "body": "SpecFlow nie uruchamia innej sesji w jej miejsce. Wróć do wcześniejszego kroku z menu."
+        "body": "SpecFlow nie uruchamia innej sesji w jej miejsce. Przejmij, aby dokończyć krok samodzielnie, albo wróć do wcześniejszego kroku z menu."
+      },
+      "takeOver": "Przejmij",
+      "takingOver": "Przejmowanie…",
+      "kept": "Zachowano do tej pory: {{documents}}{{files}}",
+      "keptFiles_one": " i {{count}} zmieniony plik",
+      "keptFiles_few": " i {{count}} zmienione pliki",
+      "keptFiles_many": " i {{count}} zmienionych plików",
+      "keptFiles_other": " i {{count}} zmienionego pliku",
+      "keptFilesOnly_one": "{{count}} zmieniony plik",
+      "keptFilesOnly_few": "{{count}} zmienione pliki",
+      "keptFilesOnly_many": "{{count}} zmienionych plików",
+      "keptFilesOnly_other": "{{count}} zmienionego pliku",
+      "returning": "Wracanie…",
+      "stopAgain": "Zatrzymaj ponownie",
+      "returnNote": "Poproszono o powrót do kroku {{target}}. SpecFlow najpierw zatrzymuje agenta: krok wraca do {{target}} dopiero po zakończeniu jego procesu, więc nic, co jeszcze zapisze, nie zginie ani nie wmiesza się w następne podejście.",
+      "returnStopFailed": "SpecFlow nie mógł zatrzymać agenta, więc może on nadal pracować. Powrót do {{target}} czeka, aż agent się zatrzyma.",
+      "returnNextAction": "Agent się zatrzymał. Powrót do {{target}} zostanie zastosowany przy Twojej następnej akcji w tym kroku.",
+      "returnRefused": "Powrót do {{target}} nie został zastosowany ({{code}}). Podejście pozostaje bez zmian.",
+      "takeOverDialog": {
+        "title": "Przejmij krok {{step}}",
+        "description": "Podejście agenta kończy się jako przejęte i zaczyna się Twoje własne podejście {{attempt}}. Krok kończysz samodzielnie.",
+        "stays": "Praca agenta zostaje",
+        "staysBody": "Nic nie jest cofane. Te pliki zostają tak, jak zostawił je agent, niezatwierdzone, dopóki ich nie zatwierdzisz; zakończenie kroku ich nie zatwierdza, a Zamknięcie wymienia je, dopóki nie zostaną zatwierdzone.",
+        "noFiles": "Agent nie zostawił niezatwierdzonych plików.",
+        "session": "Sesja {{title}} zostaje otwarta do czytania; nie pracuje już nad tym krokiem."
       }
     },
     "confirmation": {
@@ -2842,8 +2869,8 @@
       "feedbackHint": "Następne podejście przeczyta to jako pierwsze, niezależnie od tego, czy uruchomisz je sam, czy z agentem."
     },
     "attemptCommit": {
-      "committed": "Agent skończył krok {{step}}. Zatwierdzono <code>{{sha}}</code>. Dokumenty: {{documents}}, pliki: {{files}}.",
-      "committedOn": "Agent skończył krok {{step}}. Zatwierdzono <code>{{sha}}</code> na <code>{{branch}}</code>. Dokumenty: {{documents}}, pliki: {{files}}.",
+      "committed": "Agent skończył krok {{step}}. Jego praca jest zatwierdzona.",
+      "committedOn": "Agent skończył krok {{step}}. Jego praca jest zatwierdzona na <code>{{branch}}</code>.",
       "failed": "<strong>Krok {{step}} jest skończony, ale jego commit się nie udał: {{reason}} (<code>{{code}}</code>).</strong>",
       "reason": {
         "branchProtected": "gałąź jest chroniona",

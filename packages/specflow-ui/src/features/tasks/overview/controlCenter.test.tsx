@@ -88,6 +88,8 @@ async function renderAt(
         stopAgentExecution: vi.fn(),
         retryAttemptCommit: vi.fn(),
         confirmResult: vi.fn(),
+        takeOverAgentExecution: vi.fn(),
+        history: vi.fn(),
         rejectResult: vi.fn(),
         closePreview: vi.fn(),
         closeOccupancy: vi.fn(),

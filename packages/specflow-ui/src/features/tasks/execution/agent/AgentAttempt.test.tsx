@@ -15,10 +15,10 @@ import { refusal } from '../ProjectWorkflowExecution.stories-support';
 import { WorkflowNow } from '../WorkflowNow';
 import {
   ATTEMPT_ID,
+  agentActor,
   agentAttemptProjection,
   type AttemptCase,
 } from './agentAttempt.stories-support';
-import type { AttemptCommitView } from './AttemptCommitNote';
 import { SESSION_ID, agentOptions } from './agentStart.stories-support';
 
 afterEach(cleanup);
@@ -31,7 +31,6 @@ function renderNow(
   api: Partial<WorkflowExecutionApi> = {},
   options: {
     readonly reconcile?: ReturnType<typeof vi.fn>;
-    readonly attemptCommit?: AttemptCommitView;
     readonly projection?: WorkflowActionProjection;
   } = {},
 ) {
@@ -54,6 +53,8 @@ function renderNow(
       stopAgentExecution: vi.fn(never),
       retryAttemptCommit: vi.fn(never),
       confirmResult: vi.fn(never),
+      takeOverAgentExecution: vi.fn(never),
+      history: vi.fn(never),
       rejectResult: vi.fn(never),
       closePreview: vi.fn(never),
       closeOccupancy: vi.fn(never),
@@ -74,7 +75,6 @@ function renderNow(
             headingId="now"
             links={{}}
             artifactOptions={[]}
-            {...(options.attemptCommit ? { attemptCommit: options.attemptCommit } : {})}
           />
         </LocalizationProvider>
       </TestServicesRouterContext>
@@ -134,7 +134,7 @@ describe('an agent that stopped', () => {
     const { container } = renderNow('stopped', { startAgentExecution: start });
 
     expect(screen.getByText('The agent stopped without proposing a result.')).toBeTruthy();
-    expect(actions(container)).toEqual(['Continue']);
+    expect(actions(container)).toEqual(['Continue', 'Take over']);
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     await waitFor(() =>
@@ -249,31 +249,75 @@ describe('a result that waits for the owner', () => {
 });
 
 describe('the commit of a finished attempt', () => {
-  const failed: AttemptCommitView = {
-    state: 'failed',
-    step: 'implement',
-    attempt: 2,
-    stepTitle: 'Implementation',
-    nextTitle: 'Review',
-    code: 'COMMIT_BLOCKED',
-    branch: 'nevo-1/single-sign-on',
-    paths: ['src/auth/refresh.ts', 'src/auth/state.ts'],
+  /** Review is ready after the agent finished Implementation (its hand-off is the agent's). */
+  const ready = () => {
+    const base = taskWorkflowProjection('ready-agent', { agent: agentOptions.independent });
+
+    return {
+      ...base,
+      handoff: {
+        kind: 'transition' as const,
+        from: {
+          step: 'implement',
+          attempt: 2,
+          title: 'Implementation',
+          actor: agentActor,
+        },
+        transition: 'done',
+        artifacts: [],
+      },
+    } as WorkflowActionProjection;
   };
 
-  const ready = () => taskWorkflowProjection('ready-agent', { agent: agentOptions.independent });
+  const history = (commit: { state: 'committed' | 'failed'; code?: string }) =>
+    vi.fn(() =>
+      Promise.resolve({
+        subject: { kind: 'task', specId: SPEC, taskId: TASK },
+        items: [
+          {
+            kind: 'attempt',
+            sequence: 2,
+            step: 'implement',
+            stepTitle: 'Implementation',
+            attempt: 2,
+            startedAt: '2026-11-13T11:52:00Z',
+            actor: agentActor,
+            agent: {
+              attemptId: ATTEMPT_ID,
+              provider: 'claude',
+              sessionId: SESSION_ID,
+              turns: 1,
+              ended: 'finished',
+              events: [],
+              work: {
+                documents: ['src/auth/refresh.ts'],
+                mixed: [],
+                tasks: [],
+                declared: ['src/auth/state.ts'],
+                commit,
+              },
+            },
+          },
+        ],
+      } as never),
+    );
 
   it('keeps Retry commit inside the note, and says the next agent step waits for it', async () => {
     const retry = vi.fn(never);
     renderNow(
       'working',
-      { retryAttemptCommit: retry },
-      { attemptCommit: failed, projection: ready() },
+      {
+        retryAttemptCommit: retry,
+        history: history({ state: 'failed', code: 'COMMIT_BLOCKED' }),
+      },
+      { projection: ready() },
     );
 
-    const note = screen.getByRole('alert');
+    const note = await screen.findByRole('alert');
     expect(note.textContent).toContain('Implementation is finished, but its commit failed');
     expect(note.textContent).toContain('COMMIT_BLOCKED');
     expect(note.textContent).toContain('Run with agent cannot start Review');
+    expect(within(note).getByText('src/auth/state.ts')).toBeTruthy();
     fireEvent.click(within(note).getByRole('button', { name: 'Retry commit' }));
 
     await waitFor(() =>
@@ -284,24 +328,85 @@ describe('the commit of a finished attempt', () => {
     );
   });
 
-  it('says where a commit landed', () => {
+  it('says the work is committed', async () => {
+    renderNow('working', { history: history({ state: 'committed' }) }, { projection: ready() });
+
+    expect(await screen.findByText(/Its work is committed/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Retry commit' })).toBeNull();
+  });
+
+  it('reads nothing when a person finished the step before', () => {
+    const read = history({ state: 'committed' });
     renderNow(
       'working',
-      {},
-      {
-        attemptCommit: {
-          state: 'committed',
-          stepTitle: 'Implementation',
-          sha: '3f2a9c1',
-          branch: 'nevo-1/single-sign-on',
-          documents: 2,
-          files: 3,
-        },
-        projection: ready(),
-      },
+      { history: read },
+      { projection: taskWorkflowProjection('ready-agent', { agent: agentOptions.independent }) },
     );
 
-    expect(screen.getByText('3f2a9c1')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Retry commit' })).toBeNull();
+    expect(read).not.toHaveBeenCalled();
+  });
+});
+
+describe('a return that waits for the agent to stop', () => {
+  it('says the step goes back only once the process has ended, and offers no action', () => {
+    const { container } = renderNow('return-requested');
+
+    expect(screen.getByText(/return requested · waiting for the agent to stop/)).toBeTruthy();
+    expect(screen.getByText(/only once its process has ended/)).toBeTruthy();
+    expect(actions(container)).toEqual(['Returning…']);
+  });
+
+  it('offers Stop again when the agent could not be stopped', async () => {
+    const stop = vi.fn(never);
+    const { container } = renderNow('return-stop-failed', { stopAgentExecution: stop });
+
+    expect(screen.getByRole('alert').textContent).toContain('could not stop the agent');
+    expect(actions(container)).toEqual(['Stop again']);
+    fireEvent.click(screen.getByRole('button', { name: 'Stop again' }));
+
+    await waitFor(() => expect(stop).toHaveBeenCalledOnce());
+  });
+
+  it('says the return applies at the owner’s next action once the agent stopped', () => {
+    renderNow('return-next-action');
+
+    expect(screen.getByText(/the agent has stopped/)).toBeTruthy();
+    expect(screen.getByText(/applies when you next act on this step/)).toBeTruthy();
+  });
+});
+
+describe('taking over an agent that stopped', () => {
+  it('shows what the agent kept, and Continue with Take over beside it', () => {
+    const { container } = renderNow('stopped');
+
+    expect(screen.getByText(/Kept so far: task.md, screens.md and 3 changed files/)).toBeTruthy();
+    expect(screen.getByText(/Take over to finish the step yourself/)).toBeTruthy();
+    expect(actions(container)).toEqual(['Continue', 'Take over']);
+  });
+
+  it('is not offered while the agent works or its outcome is unknown', () => {
+    const { container } = renderNow('unknown');
+
+    expect(actions(container)).toEqual(['Check outcome']);
+  });
+
+  it('says the agent’s files stay uncommitted, then takes over the attempt it was shown', async () => {
+    const takeOver = vi.fn(never);
+    renderNow('stopped', { takeOverAgentExecution: takeOver });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Take over' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Take over Implementation')).toBeTruthy();
+    expect(within(dialog).getByText(/your own attempt 3 starts/)).toBeTruthy();
+    expect(within(dialog).getByText(/finishing the step does not commit them/)).toBeTruthy();
+    expect(within(dialog).getByText('src/auth/refresh.ts')).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Take over' }));
+
+    await waitFor(() =>
+      expect(takeOver).toHaveBeenCalledWith(
+        { specId: SPEC, taskId: TASK },
+        { step: 'implement', attempt: 2 },
+      ),
+    );
   });
 });

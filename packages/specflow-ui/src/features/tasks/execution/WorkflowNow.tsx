@@ -23,7 +23,6 @@ import type { GateAction } from './GateList';
 import { NowBlock } from './NowBlock';
 import { AgentStartDialog } from './agent/AgentStartDialog';
 import { useAgentAttemptNow } from './agent/AgentAttemptNow';
-import type { AttemptCommitView } from './agent/AttemptCommitNote';
 import { offersAgent } from './agent/agentOption';
 import { ReturnStepDialog } from './ReturnStepDialog';
 import { StartTaskDialog, type PinPreview } from './StartTaskDialog';
@@ -74,12 +73,6 @@ export interface WorkflowNowProps {
   readonly hold?: { readonly reason?: string };
   /** Opens the subject's workflow history from the ⋯ menu. */
   readonly onOpenHistory?: () => void;
-  /**
-   * What became of the work of the agent attempt that finished the step before (its commit), when
-   * the read says. The projection does not carry it yet; the attempt's `work.commit` and history
-   * will (T15), and the screens pass it from there.
-   */
-  readonly attemptCommit?: AttemptCommitView;
   /**
    * The Specification Overview's own parts: Start workflow, New task beside Finish step at a step
    * that produces Tasks, the wait step's Task progress, and a Requires attention "return" that
@@ -135,17 +128,11 @@ export function WorkflowNow({
   onOpenHistory,
   hold,
   specification,
-  attemptCommit,
 }: WorkflowNowProps) {
   const { t } = useTranslation();
   const commands = useWorkflowCommands(subject);
   const { actions, position } = projection;
-  const agentNow = useAgentAttemptNow({
-    subject,
-    projection,
-    links,
-    ...(attemptCommit ? { attemptCommit } : {}),
-  });
+  const agentNow = useAgentAttemptNow({ subject, projection, links });
   const finish = actions.finish;
   const attemptKey = finish ? attemptKeyOf(finish) : '';
   const [dialog, setDialog] = useState<'start' | 'finish' | 'return' | 'agent'>();

@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { CircleStop } from 'lucide-react';
-import { Button, InlineNote } from '@nevo/ui';
+import { Button, InlineNote, Typography } from '@nevo/ui';
 import type {
   AgentAttemptView,
   WorkflowActionProjection,
@@ -17,7 +17,9 @@ import { WorkflowRefusalAlert } from '../WorkflowRefusalAlert';
 import { AgentBlocker, Paths } from './AgentBlocker';
 import { SessionLink } from './AgentSession';
 import { agentStageOf, continueRefusal, ownRefusal } from './agentAttempt';
-import { AttemptCommitNote, type AttemptCommitView } from './AttemptCommitNote';
+import { AttemptCommitNote } from './AttemptCommitNote';
+import { TakeOverDialog } from './TakeOverDialog';
+import { useFinishedAttemptCommit } from './useAttemptCommit';
 import { ConfirmApplies, ProposalQuote, RejectResultDialog } from './ConfirmationParts';
 import { useAgentAttemptCommands } from './useAgentAttemptCommands';
 
@@ -63,6 +65,25 @@ function AttemptSession({
       <SessionLink sessionId={sessionId} title={title} />
     </span>
   );
+}
+
+/** The take-over dialog with the title of the agent's Session. */
+function TakeOverDialogFor({
+  specId,
+  sessionId,
+  ...dialog
+}: Omit<React.ComponentProps<typeof TakeOverDialog>, 'sessionTitle'> & {
+  readonly specId: string;
+  readonly sessionId: string;
+}) {
+  const { t } = useTranslation();
+  const { specificationApi } = useAppServices();
+  const workspace = useSpecificationWorkspace(specId, specificationApi).data;
+  const sessionTitle =
+    workspace?.sessions.find((session) => session.id === sessionId)?.title ??
+    t('workflowExecution.agentAttempt.sessionFallback');
+
+  return <TakeOverDialog {...dialog} sessionTitle={sessionTitle} />;
 }
 
 /** Why SpecFlow did not accept the agent's result, one reason per line in plain words. */
@@ -183,24 +204,23 @@ function agentName(actor: WorkflowActor | undefined): string {
  * or Retry start, Confirm and Reject. The note puts what resolves a blocker inside it; the action row
  * holds the main action and at most one secondary.
  *
- * Take over and a Return that waits for the agent to stop (the Runtime's `returnRequest`) are the
- * next states of this block: their data is not in the projection yet, and `stopped` is where Take
- * over joins Continue.
+ * A Return during the attempt is a request (`returnRequest`): the step goes back once the agent's
+ * process is proven ended. Take over (`takeOver`) joins Continue once it is.
  */
 export function useAgentAttemptNow({
   subject,
   projection,
   links,
-  attemptCommit,
 }: {
   readonly subject: WorkflowSubjectRef;
   readonly projection: WorkflowActionProjection;
   readonly links: NowLinks;
-  readonly attemptCommit?: AttemptCommitView;
 }): AgentNow | undefined {
+  const attemptCommit = useFinishedAttemptCommit(subject, projection);
   const { t, i18n } = useTranslation();
   const commands = useAgentAttemptCommands(subject);
   const [rejecting, setRejecting] = useState(false);
+  const [takingOver, setTakingOver] = useState(false);
   const { position, agentAttempt: view, actions } = projection;
   const when = (at: string, timeOnlyToday = false) =>
     formatWhen(t, at, i18n.language, { timeOnlyToday });
@@ -332,6 +352,65 @@ export function useAgentAttemptNow({
         ? commands.checkOutcome.error
         : undefined;
   const refusal = continueRefusal(view);
+  const returnRequest = view.returnRequest;
+  const returnTarget =
+    actions.return?.targets.find((target) => target.step === returnRequest?.to)?.title ??
+    returnRequest?.to ??
+    '';
+
+  if (returnRequest?.state === 'requested') {
+    // The Return waits for proof that the agent's process ended; Stop again only when stopping failed.
+    const stopFailed = returnRequest.stop === 'failed';
+    const applies = returnRequest.appliesOn === 'next-action';
+
+    return {
+      positionLine: line(
+        t(
+          applies
+            ? 'workflowExecution.agentAttempt.line.returnStopped'
+            : 'workflowExecution.agentAttempt.line.returnRequested',
+          { attempt },
+        ),
+        view,
+      ),
+      note: (
+        <div className="grid gap-2">
+          {stopFailed ? (
+            <InlineNote tone="attention" role="alert">
+              {t('workflowExecution.agentAttempt.returnStopFailed', { target: returnTarget })}
+            </InlineNote>
+          ) : (
+            <InlineNote tone="info" icon={applies ? undefined : 'loader'}>
+              {t(
+                applies
+                  ? 'workflowExecution.agentAttempt.returnNextAction'
+                  : 'workflowExecution.agentAttempt.returnNote',
+                { target: returnTarget },
+              )}
+            </InlineNote>
+          )}
+          {failed ? <WorkflowRefusalAlert error={failed} /> : null}
+        </div>
+      ),
+      actions: stopFailed ? (
+        <Button
+          variant="secondary"
+          leadingIcon={CircleStop}
+          onClick={() => commands.stop.mutate(view.attemptId)}
+          disabled={commands.stop.isPending}
+          aria-busy={commands.stop.isPending}
+        >
+          {t('workflowExecution.agentAttempt.stopAgain')}
+        </Button>
+      ) : (
+        <Button variant="secondary" disabled aria-busy>
+          {t('workflowExecution.agentAttempt.returning')}
+        </Button>
+      ),
+      keepsMenu: false,
+      showHandoff: true,
+    };
+  }
 
   switch (stage.stage) {
     case 'working':
@@ -448,12 +527,47 @@ export function useAgentAttemptNow({
         </InlineNote>
       );
       const continuing = commands.continueAttempt.isPending;
+      const { work } = view;
+      const docNames = work.documents.map((path) => path.split('/').at(-1) ?? path);
+      const filePaths = [...new Set([...(work.changed?.paths ?? []), ...work.declared])].filter(
+        (path) => !work.documents.includes(path) && !work.mixed.includes(path),
+      );
+      const keptDocs = docNames.join(', ');
+      const kept =
+        docNames.length > 0 || filePaths.length > 0 ? (
+          <Typography as="p" variant="body-sm" className="text-content-secondary">
+            {docNames.length > 0
+              ? t('workflowExecution.agentAttempt.kept', {
+                  documents: keptDocs,
+                  files:
+                    filePaths.length > 0
+                      ? t('workflowExecution.agentAttempt.keptFiles', { count: filePaths.length })
+                      : '',
+                })
+              : t('workflowExecution.agentAttempt.kept', {
+                  documents: t('workflowExecution.agentAttempt.keptFilesOnly', {
+                    count: filePaths.length,
+                  }),
+                  files: '',
+                })}
+          </Typography>
+        ) : null;
+      const canTakeOver = view.takeOver.kind === 'available';
+      const takeOverPaths = [...new Set([...work.documents, ...work.mixed, ...filePaths])];
 
       return {
         positionLine: line(text, view),
         note: (
           <div className="grid gap-2">
             {explanation}
+            {returnRequest?.state === 'refused' ? (
+              <InlineNote tone="attention">
+                {t('workflowExecution.agentAttempt.returnRefused', {
+                  target: returnTarget,
+                  code: returnRequest.refusal?.code ?? '',
+                })}
+              </InlineNote>
+            ) : null}
             {refusal ? (
               <ContinueRefused
                 view={view}
@@ -462,25 +576,48 @@ export function useAgentAttemptNow({
                 onCheckAgain={() => void commands.refresh()}
               />
             ) : null}
+            {kept}
             {failed ? <WorkflowRefusalAlert error={failed} /> : null}
           </div>
         ),
         actions: (
-          <Button
-            onClick={() => {
-              commands.continueAttempt.mutate(sent);
-            }}
-            disabled={refusal !== undefined || continuing || proposal?.state === 'pending'}
-            aria-busy={continuing}
-          >
-            {continuing
-              ? t('workflowExecution.agent.submitting')
-              : missing
-                ? t('workflowExecution.agentAttempt.retryStart')
-                : t('workflowExecution.agentAttempt.continue')}
-          </Button>
+          <>
+            <Button
+              onClick={() => {
+                commands.continueAttempt.mutate(sent);
+              }}
+              disabled={refusal !== undefined || continuing || proposal?.state === 'pending'}
+              aria-busy={continuing}
+            >
+              {continuing
+                ? t('workflowExecution.agent.submitting')
+                : missing
+                  ? t('workflowExecution.agentAttempt.retryStart')
+                  : t('workflowExecution.agentAttempt.continue')}
+            </Button>
+            {canTakeOver ? (
+              <Button variant="secondary" onClick={() => setTakingOver(true)}>
+                {t('workflowExecution.agentAttempt.takeOver')}
+              </Button>
+            ) : null}
+          </>
         ),
-        dialogs: null,
+        dialogs: canTakeOver ? (
+          <TakeOverDialogFor
+            specId={subject.specId}
+            sessionId={view.sessionId}
+            open={takingOver}
+            onOpenChange={setTakingOver}
+            stepTitle={stepTitle}
+            nextAttempt={attempt + 1}
+            paths={takeOverPaths}
+            pending={commands.takeOver.isPending}
+            error={commands.takeOver.error}
+            onConfirm={() =>
+              commands.takeOver.mutate(sent, { onSuccess: () => setTakingOver(false) })
+            }
+          />
+        ) : null,
         keepsMenu: true,
         showHandoff: true,
       };

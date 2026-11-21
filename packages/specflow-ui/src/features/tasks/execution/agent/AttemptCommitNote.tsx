@@ -17,10 +17,7 @@ export type AttemptCommitView =
   | {
       readonly state: 'committed';
       readonly stepTitle: string;
-      readonly sha: string;
       readonly branch?: string;
-      readonly documents: number;
-      readonly files: number;
     }
   | {
       readonly state: 'failed';
@@ -55,13 +52,7 @@ function Committed({
             ? 'workflowExecution.attemptCommit.committedOn'
             : 'workflowExecution.attemptCommit.committed'
         }
-        values={{
-          step: commit.stepTitle,
-          sha: commit.sha,
-          branch: commit.branch,
-          documents: commit.documents,
-          files: commit.files,
-        }}
+        values={{ step: commit.stepTitle, branch: commit.branch }}
         components={{ code: CODE }}
       />
     </InlineNote>

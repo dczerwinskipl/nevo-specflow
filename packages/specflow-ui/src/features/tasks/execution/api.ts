@@ -18,6 +18,9 @@ import type {
   StartWorkflowRequest,
   StartWorkflowResult,
   StopAgentStepExecutionRequest,
+  TakeOverAgentStepExecutionRequest,
+  TakeOverAgentStepExecutionResult,
+  WorkflowHistory,
   StopAgentStepExecutionResult,
 } from '@nevo/specflow-contracts/workflow';
 import type { CloseOccupancy, ClosePreview } from '@nevo/specflow-contracts/specs';
@@ -90,6 +93,13 @@ export interface WorkflowExecutionApi {
     subject: WorkflowSubjectRef,
     input: RejectWorkflowRequest,
   ): Promise<RejectWorkflowResult>;
+  /** Take over the agent's attempt once its process is proven ended (`POST .../workflow/agent-execution/take-over`). */
+  takeOverAgentExecution(
+    subject: WorkflowSubjectRef,
+    input: TakeOverAgentStepExecutionRequest,
+  ): Promise<TakeOverAgentStepExecutionResult>;
+  /** Every attempt and return of the subject's run, with the agent attempts' work (`GET .../workflow/history`). */
+  history(subject: WorkflowSubjectRef, signal?: AbortSignal): Promise<WorkflowHistory>;
   closePreview(specId: string, signal?: AbortSignal): Promise<ClosePreviewResult>;
   /** What else holds the checkout a Close would remove (running agent Turns), without planning it. */
   closeOccupancy(specId: string, signal?: AbortSignal): Promise<CloseOccupancy>;
@@ -149,6 +159,15 @@ export function createRuntimeWorkflowExecutionApi(transport: ApiTransport): Work
     rejectResult: (subject, input) =>
       transport.post(`${workflowBase(subject)}/confirmation/reject`, input, {
         operation: 'workflow.reject',
+      }),
+    takeOverAgentExecution: (subject, input) =>
+      transport.post(`${workflowBase(subject)}/agent-execution/take-over`, input, {
+        operation: 'workflow.agent-execution-take-over',
+      }),
+    history: (subject, signal) =>
+      transport.get(`${workflowBase(subject)}/history`, {
+        signal,
+        operation: 'workflow.history',
       }),
     closePreview: (specId, signal) =>
       transport.get(`${specBase(specId)}/close/preview`, {

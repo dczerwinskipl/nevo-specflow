@@ -432,6 +432,8 @@ function services(scenario: WorkflowStoryScenario) {
     stopAgentExecution: never,
     retryAttemptCommit: never,
     confirmResult: never,
+    takeOverAgentExecution: never,
+    history: never,
     rejectResult: never,
     closePreview: () => closePreviewOf(scenario),
     // An agent Session still works in the worktree of the blocked Specification.

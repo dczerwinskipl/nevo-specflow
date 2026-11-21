@@ -27,6 +27,9 @@ export type AttemptCase =
   | 'refused'
   | 'continue-refused'
   | 'session-gone'
+  | 'return-requested'
+  | 'return-stop-failed'
+  | 'return-next-action'
   | 'confirmation';
 
 type AgentActor = Extract<WorkflowActor, { class: 'agent' }>;
@@ -50,6 +53,20 @@ const launch: AgentLaunch = {
 
 const ended = { state: 'ended' as const, endedAt: '2026-11-13T12:10:00Z' };
 
+/** What the stopped agent left: two documents and three changed files, nothing committed. */
+export const AGENT_FILES = ['src/auth/refresh.ts', 'src/auth/state.ts', 'src/auth/refresh.test.ts'];
+const work: AgentAttemptView['work'] = {
+  documents: [
+    'specs/active/single-sign-on/tasks/t-04/task.md',
+    'specs/active/single-sign-on/tasks/t-04/screens.md',
+  ],
+  mixed: [],
+  tasks: [],
+  declared: [],
+  changed: { paths: AGENT_FILES },
+  commit: { state: 'none' },
+};
+
 function view(c: Exclude<AttemptCase, 'confirmation'>): AgentAttemptView {
   const turn = {
     turnId: 'turn-1',
@@ -60,9 +77,11 @@ function view(c: Exclude<AttemptCase, 'confirmation'>): AgentAttemptView {
         ? { state: 'stopping' as const }
         : c === 'unknown'
           ? { state: 'unknown' as const }
-          : c === 'session-missing'
-            ? { state: 'session-missing' as const }
-            : ended),
+          : c === 'return-requested' || c === 'return-stop-failed'
+            ? { state: 'stopping' as const }
+            : c === 'session-missing'
+              ? { state: 'session-missing' as const }
+              : ended),
   };
 
   return {
@@ -85,6 +104,30 @@ function view(c: Exclude<AttemptCase, 'confirmation'>): AgentAttemptView {
               message: 'display only',
               paths: ['specs/active/single-sign-on/notes.md'],
             },
+          },
+        }
+      : {}),
+    work,
+    takeOver:
+      c === 'working' || c === 'stopping' || c === 'return-requested' || c === 'return-stop-failed'
+        ? {
+            kind: 'unavailable',
+            reason: c === 'working' || c === 'stopping' ? 'agent-working' : 'return-requested',
+          }
+        : c === 'unknown'
+          ? { kind: 'unavailable', reason: 'outcome-unknown' }
+          : { kind: 'available' },
+    ...(c === 'return-requested' || c === 'return-stop-failed' || c === 'return-next-action'
+      ? {
+          returnRequest: {
+            to: 'design',
+            requestedAt: '2026-11-13T12:05:00Z',
+            state: 'requested' as const,
+            ...(c === 'return-stop-failed'
+              ? { stop: 'failed' as const }
+              : c === 'return-requested'
+                ? { stop: 'sent' as const }
+                : { appliesOn: 'next-action' as const }),
           },
         }
       : {}),

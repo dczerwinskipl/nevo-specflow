@@ -18,7 +18,7 @@ summary: >
   Engine writes during the agent's Turn through a trusted Runtime broker bound to the invocation,
   without weakening the project-wide claim; document registration through the Engine; a finish
   proposal finalized with the claim settlement; owner-only decisions and approvals; a controlled
-  commit policy for documents, Tasks and code; and error recovery. Decisions D11 to D21, all decided by the owner.
+  commit policy for documents, Tasks and code; and error recovery. Decisions D11 to D21, all decided by the owner (D21 superseded on 2026-11-21).
 related:
   - ideas.specflow-engine.reusable-workflow.ask-agent-plan
   - adr.0024-tasks-are-resources
@@ -87,7 +87,7 @@ to do every Start, Finish, approval and Task creation. The findings this contrac
 | Gap: the owner approved the breakdown and the Task review                                                                       | [Agent and human authority](#agent-and-human-authority)                                                              |
 | Gap: every brief written by hand (step text, documents, rules)                                                                  | [Context](#context-building-d13)                                                                                     |
 | Gap: about 30 permission prompts for read-only tools and the product CLI                                                        | D20                                                                                                                  |
-| Review of this plan: with authentication `none`, an agent can call the owner routes itself                                      | [Owner routes](#engine-writes-during-a-turn-d11), D21                                                                |
+| Review of this plan: with authentication `none`, an agent can call the owner routes itself                                      | [Owner routes](#engine-writes-during-a-turn-d11), D21 (superseded: the host's choice)                                |
 | B2: a Turn is lost when a tool runs long or writes outside the workspace                                                        | Not here: a Session driver defect, see the [delivery plan](ask-agent-delivery-plan.md#findings-outside-the-slices)   |
 
 ## Current state
@@ -244,22 +244,27 @@ bypass or re-enter it without proven identity and permission scope.
 agent-turn`, naming the Session; B1's message). The broker answers out-of-scope requests with a reason the agent can
    act on, and an invalid context reference with the field and the accepted form (B7).
 
-**Owner routes.** The broker gives the agent its own scope; it must not be able to use the owner's.
-Today, with `runtime.authentication.mode: none` (the dogfood setup of this repository), any local
-process, the agent and its subprocesses included, can call the owner HTTP routes (Finish, Approve,
-Return) and the Runtime builds an `OwnerActor` for it. The offline CLI builds `local:<os-user>` the
-same way. So "the actor comes only from the trusted binding" holds only once owner routes require
-something the agent's environment does not have (D21), and once kernel operations consult the claim
-(F05), which refuses the offline owner CLI while an agent Turn runs.
+**Owner routes.** The broker gives the agent its own scope; the agent's own writes never carry the
+owner's. Owner HTTP routes (Finish, Approve, Return) are protected by the configured authentication
+mode only (IdP, password or `none`); the Runtime adds no owner credential, device pairing or owner
+header on top (owner decision 2026-11-21, superseding D21). With `runtime.authentication.mode: none`
+(the dogfood setup of this repository) the host has knowingly chosen no authentication: any local
+process, the agent and its subprocesses included, can call the owner routes and the Runtime builds
+an `OwnerActor` for it. That is the host's accepted risk, documented here, not a defect. The
+provider environment never receives the user's login session or any credential the Runtime issues,
+so with IdP or password authentication the agent cannot act as the owner through the HTTP routes.
+The offline CLI builds `local:<os-user>`; kernel operations consult the claim (F05), which refuses
+the offline owner CLI while an agent Turn runs.
 
 **Trust model.** This is a cooperative protocol, not containment. The native agent still has the OS
 user's write access; a process of the same user can read the capability from the agent's
 environment, and, with enough effort, any credential that user can read. What the contract enforces:
-the claim keeps every other Engine writer out; owner routes refuse a caller without the owner
-credential (D21); the finish validates the real workspace state
+the claim keeps every other Engine writer out; owner routes refuse a caller the configured
+authentication mode does not admit (in mode `none`, none is refused, by the host's choice); the
+finish validates the real workspace state
 ([Commit ownership](#commit-ownership-and-close-b3)), so a write that bypassed the Engine is detected
-rather than trusted. What it does not: keeping credentials and the owner route out of the provider's
-environment does not isolate against a deliberately malicious process of the same OS user, and the
+rather than trusted. What it does not: keeping the login session and Runtime-issued credentials out
+of the provider's environment does not isolate against a deliberately malicious process of the same OS user, and the
 contract does not promise it. Stronger separation needs OS user separation or a sandbox, outside
 this scope.
 
@@ -439,11 +444,10 @@ These are the machine-checked rules the slices MUST enforce; each has one owner.
 5. An agent actor never applies an owner-authority effect or a `confirmation: owner` transition, and
    never calls an owner operation (Engine). Before owner confirmation exists, such an agent proposal
    is refused outright.
-6. **An agent can never call an owner route.** Every owner operation, pairing approval included,
-   requires an owner credential (D21) on every route and from every device, in every authentication
-   mode; the provider environment never receives one, and nothing an agent can call issues one
-   (Runtime). Within the cooperative trust model above, this is what makes invariant 5 hold against
-   the agent's own HTTP calls.
+6. **The provider environment never receives the user's login session or any credential the
+   Runtime issues; agent writes go only through the broker with agent scope** (Runtime). Owner
+   routes are protected by the configured authentication mode; in mode `none` that protection is
+   absent by the host's choice (documented, not a defect; owner decision 2026-11-21).
 7. An agent finish is refused while unregistered uncommitted files, Engine files edited past their
    post-image, or undeclared changes exist; a Turn of an attempt is not dispatched while the dirty
    set changed since the previous Turn (Engine).
@@ -508,42 +512,9 @@ attempt as `taken-over` and starts an owner attempt.
 allowlist for read-only tools and the product CLI, configured per archetype; it is provider
 configuration, not an Engine rule.
 
-**D21 — Owner credential and device pairing. Decided: (a), device pairing.** Owner routes require a
-per-device owner credential (an `HttpOnly`, `SameSite=Strict` cookie, listed and revocable), in every
-authentication mode. With authentication on, the authenticated subject is the credential. The
-bootstrap assumes no local launcher and works the same for a local browser, a remote browser and a
-phone, including over Tailscale. Tailscale Serve forwards to the loopback listener, so nothing
-depends on the bind address.
-
-- **Pairing a device.** A browser without a credential shows "Pair this device" with a short code
-  (8 characters, single-use, valid about two minutes, rate-limited) and where the request came from.
-  An already paired device approves that code, or shows a QR code holding a one-time pairing token
-  that a phone scans. Approval is an owner route, so an agent can create a pairing request but never
-  approve one, and a request the owner did not start is rejected.
-- **Initial pairing with an interactive console.** The Runtime prints a one-time initial pairing code
-  on its own console (the terminal or desktop window that started it). Provider processes never read
-  that console: the Runtime pipes their output separately.
-- **Initial pairing on a headless Runtime** (a service or container, no interactive console).
-  - While no device is paired, or when the owner starts it with `--pair`, the Runtime writes one
-    initial pairing code to an owner-only file in its local state (mode `0600`, the user's ACL on
-    Windows). It is never logged.
-  - **While that code exists, the Runtime refuses every agent execution and every write Turn**, so
-    no agent runs while the code can be read.
-  - Pairing the first device deletes the file and lifts the refusal. The owner reads the code over
-    their own access to the machine, for example SSH, and enters it on the device.
-  - Losing every paired device is recovered the same way: restart with `--pair`.
-- **Common rules.** The provider environment never holds a credential, a pairing code or a token.
-  Every owner operation, pairing approval included, requires a credential. The offline owner CLI is
-  refused by the claim while an agent Turn runs (F05).
-- **Trust-model limitation (explicit).** Keeping credentials out of the provider's environment does
-  not isolate the owner from a deliberately malicious process running as the same OS user. Such a
-  process can read the browser's cookie store, the Runtime's state or its console, and the product
-  does not promise otherwise. The guarantee is against a cooperating agent and its tools calling owner
-  routes. Stronger isolation needs a separate OS user or a sandbox.
-
-Rejected: requiring password or OIDC for every remote use (it remains available as the stronger
-choice for teams); trusting tailnet identity headers (a local agent can forge them on loopback); and
-declaring separation cooperative or refusing agents when authentication is `none`.
+**D21 — superseded by owner decision 2026-11-21:** owner routes are protected by the configured
+authentication mode only (IdP, password, none); in `none` the host knowingly accepts that any local
+process, the agent included, can call owner routes; no pairing or extra credential.
 
 ## Readiness
 

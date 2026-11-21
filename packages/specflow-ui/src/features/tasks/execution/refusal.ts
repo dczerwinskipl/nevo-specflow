@@ -1,7 +1,12 @@
 import type { UncommittedHoldDetails } from '@nevo/specflow-contracts/documents';
 import type { CloseRefusalBlocker, RepositoryBlocker } from '@nevo/specflow-contracts/specs';
 import { isHttpClientError } from '@nevo/http-client';
-import type { GateStatus, OpenTask, WorkflowError } from '@nevo/specflow-contracts/workflow';
+import type {
+  AgentOption,
+  GateStatus,
+  OpenTask,
+  WorkflowError,
+} from '@nevo/specflow-contracts/workflow';
 import { isApiError } from '../../../api';
 import { apiErrorCode } from '../../../shared/http/apiErrorCode';
 
@@ -27,6 +32,10 @@ export interface WorkflowRefusal {
   readonly draftConflicts: NonNullable<Details['draftConflicts']>;
   /** `WORKFLOW_TASKS_OPEN`: the open Tasks the Specification's completion waits for. */
   readonly openTasks: readonly OpenTask[];
+  /** `WORKFLOW_AGENT_UNAVAILABLE`: why an agent cannot do the step now (`details.agent`). */
+  readonly agent?: AgentOption;
+  /** `WORKFLOW_DIRTY_BASELINE`: the changes SpecFlow cannot attribute (`details.attribution`). */
+  readonly attribution?: NonNullable<Details['attribution']>;
   /** The answer was lost: the request may have been applied. */
   readonly outcomeUnknown: boolean;
 }
@@ -61,6 +70,8 @@ export function workflowRefusalOf(error: unknown): WorkflowRefusal {
     ...(typeof documentDetails?.uncommitted === 'object' && documentDetails.uncommitted !== null
       ? { uncommittedHold: documentDetails.uncommitted }
       : {}),
+    ...(details?.agent ? { agent: details.agent } : {}),
+    ...(details?.attribution ? { attribution: details.attribution } : {}),
     draftConflicts: details?.draftConflicts ?? [],
     openTasks: details?.openTasks ?? [],
     outcomeUnknown: isApiError(error) && error.outcome === 'unknown',

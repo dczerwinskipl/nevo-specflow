@@ -1,7 +1,6 @@
-import { useId, useState, type ReactNode } from 'react';
-import { Bot, ChevronDown, CircleStop, GitCommitHorizontal } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { Bot, CircleStop, GitCommitHorizontal } from 'lucide-react';
 import {
-  Alert,
   Button,
   Dialog,
   DialogBody,
@@ -11,13 +10,8 @@ import {
   DialogHeader,
   DialogTitle,
   Field,
-  IconButton,
   InformationList,
   InlineNote,
-  Menu,
-  MenuContent,
-  MenuItem,
-  MenuTrigger,
   TextArea,
   Timeline,
   Typography,
@@ -26,10 +20,7 @@ import { NowBlock } from '../../features/tasks/execution/NowBlock';
 import { NowOperationsMenu } from '../../features/tasks/execution/NowOperationsMenu';
 import { WorkflowExecutionFixture } from '../../features/tasks/execution/ProjectWorkflowExecution.stories-support';
 import { specificationWorkflowProjection } from '../../features/tasks/execution/projections.stories-support';
-import { ModelEffortPicker } from '../../features/sessions/managed/ModelEffortPicker';
 import { SessionProviderIcon } from '../../features/sessions/shared/SessionProviderIcon';
-import { AgentPicker } from '../../features/sessions/start/fields/AgentPicker';
-import { codexClaudeCatalogue } from '../../features/sessions/start/catalogue/startCatalogue.stories-support';
 import { StoryLocalization } from '../../i18n/StoryLocalization';
 import { OperationalRow } from '../../shared/operational-list';
 import { AGENT_FILES, CloseUncommittedDialog } from './CloseMock.stories-support';
@@ -38,13 +29,11 @@ import {
   SESSION_TITLE,
   agentImplementation,
   breakdownAwaitingConfirmation,
-  readyImplementation,
   readyReviewAfterAgent,
   takenOverImplementation,
 } from './fixtures.stories-support';
 import {
   Branch,
-  CheckoutPath,
   Goal,
   Group,
   LineIcon,
@@ -71,14 +60,6 @@ import {
  */
 
 export type AskAgentState =
-  | 'entry-a-two-buttons'
-  | 'entry-b-split'
-  | 'dialog-fresh'
-  | 'dialog-continue'
-  | 'dialog-independent'
-  | 'dialog-dirty'
-  | 'dialog-no-agent'
-  | 'dialog-session-unavailable'
   | 'running'
   | 'stopping'
   | 'return-requested'
@@ -97,14 +78,6 @@ export type AskAgentState =
 
 const noop = () => undefined;
 const links = {};
-
-const claudeProvider = {
-  capabilities: { modelOverride: true, effortOverride: true },
-  models: [
-    { modelId: 'sonnet-5', title: 'Claude Sonnet 5', efforts: ['medium', 'high'] },
-    { modelId: 'opus-5', title: 'Claude Opus 5', efforts: ['medium', 'high'] },
-  ],
-};
 
 /** The Now block's ⋯ menu as it is today (Return, Workflow history, the step id note). */
 function OperationsMenu() {
@@ -144,54 +117,6 @@ function StartActions({ askDisabled = false }: { readonly askDisabled?: boolean 
 }
 
 /* ------------------------------------------------------------------ Now blocks of each state */
-
-/** A: the manual start stays the main action; Ask agent is the one button-styled secondary. */
-function EntryTwoButtons() {
-  return (
-    <NowBlock
-      projection={readyImplementation()}
-      headingId="now-mock"
-      links={links}
-      menu={<OperationsMenu />}
-      summary={goal}
-      actions={<StartActions />}
-    />
-  );
-}
-
-/** B: one split button; its menu holds both ways (the contract's first sketch). */
-function EntrySplit() {
-  return (
-    <NowBlock
-      projection={readyImplementation()}
-      headingId="now-mock"
-      links={links}
-      menu={<OperationsMenu />}
-      summary={goal}
-      actions={
-        <div className="inline-flex">
-          <Button className="rounded-r-none">Start step</Button>
-          <Menu modal={false} defaultOpen>
-            <MenuTrigger asChild>
-              <IconButton
-                icon={ChevronDown}
-                aria-label="More ways to start"
-                className="rounded-l-none border-l border-l-black/20"
-                variant="primary"
-              />
-            </MenuTrigger>
-            <MenuContent align="start">
-              <MenuItem onSelect={noop}>Do it myself</MenuItem>
-              <MenuItem leadingIcon={Bot} onSelect={noop}>
-                Ask agent
-              </MenuItem>
-            </MenuContent>
-          </Menu>
-        </div>
-      }
-    />
-  );
-}
 
 type Waiting = 'running' | 'stopping' | 'return-requested' | 'outcome-unknown';
 
@@ -546,191 +471,6 @@ function MockDialog({
   );
 }
 
-type SessionMode = 'fresh' | 'continue' | 'independent' | 'not-chosen' | 'gone';
-
-function SessionChoice({ mode }: { readonly mode: SessionMode }) {
-  const [model, setModel] = useState({ modelId: 'sonnet-5', effort: 'high' });
-  const [provider, setProvider] = useState('claude');
-  const labelId = useId();
-
-  if (mode === 'continue' || mode === 'gone') {
-    return (
-      <div className="grid gap-2">
-        <Typography as="p" variant="label-sm">
-          Session
-        </Typography>
-        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-body-md">
-          <SessionProviderIcon providerId="claude" />
-          <span>Continues</span>
-          {mode === 'gone' ? (
-            <span className="text-content-muted line-through">{SESSION_TITLE}</span>
-          ) : (
-            <TextLink>{SESSION_TITLE}</TextLink>
-          )}
-        </p>
-        <Typography as="p" variant="body-sm" className="text-content-secondary">
-          {mode === 'gone'
-            ? 'This session no longer exists.'
-            : 'Claude Sonnet 5 · high. The workflow continues the session that did Implementation before, so the agent keeps what it learned there. Its agent and model stay as they are.'}
-        </Typography>
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid gap-3">
-      <Typography as="p" variant="label-sm" id={labelId}>
-        New session
-      </Typography>
-      {mode === 'not-chosen' ? (
-        <div className="grid gap-1">
-          <p className="flex items-center gap-2 text-body-md text-content-muted">
-            <span className="inline-flex size-4 rounded-full border border-dashed border-border-strong" />
-            Agent and model not chosen
-          </p>
-        </div>
-      ) : (
-        <>
-          <AgentPicker
-            catalogue={codexClaudeCatalogue}
-            providerId={provider}
-            labelledBy={labelId}
-            onSelect={setProvider}
-          />
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <Typography as="span" variant="body-sm" className="text-content-secondary">
-              Model
-            </Typography>
-            <ModelEffortPicker
-              provider={claudeProvider}
-              value={model}
-              onChange={(modelId, effort) => setModel({ modelId, effort: effort ?? 'high' })}
-            />
-          </div>
-          <Typography as="p" variant="body-sm" className="text-content-secondary">
-            {mode === 'independent'
-              ? 'Review is done independently: it always starts in a new session, never in the one that wrote the change. Preselected from the Reviewer agent settings.'
-              : 'Preselected from the Implementer agent settings. Your choice applies to this attempt only.'}
-          </Typography>
-        </>
-      )}
-    </div>
-  );
-}
-
-function CommitDisclosure() {
-  return (
-    <InlineNote tone="info" icon={GitCommitHorizontal}>
-      When the agent finishes, SpecFlow commits its work on <Branch name={BRANCH} /> as one commit;
-      changes of others are never included.
-    </InlineNote>
-  );
-}
-
-type Blocker = 'dirty' | 'no-agent' | 'session-unavailable';
-
-function AskAgentBlocker({ kind }: { readonly kind: Blocker }) {
-  switch (kind) {
-    case 'dirty':
-      return (
-        <Alert tone="attention" title="Commit or undo these changes first">
-          <div className="grid gap-2">
-            <p>
-              These files changed outside SpecFlow and are not committed. The agent starts from a
-              committed checkout, so that everything that changes afterwards is its own work.
-              (Documents and tasks SpecFlow saved itself do not block it.)
-            </p>
-            <PathList paths={['src/auth/refresh.ts', 'scratch-notes.txt', 'package.json']} />
-            <CheckoutPath path="D:\repos\acme-portal\.nevo\worktrees\nevo-1" />
-            <p>Commit them, or undo the ones you do not need, then check again.</p>
-            <div className="flex flex-wrap gap-2 pt-1">
-              <Button size="sm" variant="secondary" leadingIcon="refresh">
-                Check again
-              </Button>
-            </div>
-          </div>
-        </Alert>
-      );
-    case 'no-agent':
-      return (
-        <Alert tone="attention" title="No agent is chosen for Implementation">
-          <div className="grid gap-2">
-            <p>
-              Implementation is done by the Implementer agent, and the project names no agent and
-              model for it yet, so SpecFlow cannot tell which one to start.
-            </p>
-            <p>
-              Choose them for Implementer in the project’s agent settings, then check again.{' '}
-              <TextLink>Open agent settings</TextLink>
-            </p>
-            <div className="flex flex-wrap gap-2 pt-1">
-              <Button size="sm" variant="secondary" leadingIcon="refresh">
-                Check again
-              </Button>
-            </div>
-          </div>
-        </Alert>
-      );
-    case 'session-unavailable':
-      return (
-        <Alert tone="attention" title="The session to continue is gone">
-          <div className="grid gap-2">
-            <p>
-              The workflow continues the session that did Implementation before, and that session no
-              longer exists. SpecFlow does not start a new one in its place, because this step is
-              meant to build on what that session knows.
-            </p>
-            <p>
-              Do the step yourself with Start step, or have the workflow changed so this step may
-              start a new session.
-            </p>
-            <div className="flex flex-wrap gap-2 pt-1">
-              <Button size="sm" variant="secondary" leadingIcon="refresh">
-                Check again
-              </Button>
-            </div>
-          </div>
-        </Alert>
-      );
-  }
-}
-
-function AskAgentDialog({
-  mode = 'fresh',
-  blocker,
-  step = 'Implementation',
-}: {
-  readonly mode?: SessionMode;
-  readonly blocker?: Blocker;
-  readonly step?: string;
-}) {
-  return (
-    <MockDialog
-      title={`Ask agent: ${step}`}
-      description="The agent does this step of t-04 on its own: it reads the step, task.md and the task’s context, writes the documents and code the step needs, and proposes a result. Decisions that need you stay with you."
-      footer={
-        blocker ? (
-          <>
-            <Button variant="secondary">Cancel</Button>
-            <Button leadingIcon={Bot} disabled>
-              Ask agent
-            </Button>
-          </>
-        ) : (
-          <>
-            <Button variant="secondary">Cancel</Button>
-            <Button leadingIcon={Bot}>Ask agent</Button>
-          </>
-        )
-      }
-    >
-      {blocker ? <AskAgentBlocker kind={blocker} /> : null}
-      <SessionChoice mode={mode} />
-      <CommitDisclosure />
-    </MockDialog>
-  );
-}
-
 function RejectDialog() {
   return (
     <MockDialog
@@ -892,16 +632,6 @@ function screenOf(state: AskAgentState) {
 
 function nowOf(state: AskAgentState): ReactNode {
   switch (state) {
-    case 'entry-a-two-buttons':
-    case 'dialog-fresh':
-    case 'dialog-continue':
-    case 'dialog-dirty':
-    case 'dialog-no-agent':
-    case 'dialog-session-unavailable':
-      return <EntryTwoButtons />;
-    case 'entry-b-split':
-      return <EntrySplit />;
-    case 'dialog-independent':
     case 'finished-committed':
       return <FinishedCommitted />;
     case 'running':
@@ -932,18 +662,6 @@ function nowOf(state: AskAgentState): ReactNode {
 
 function dialogOf(state: AskAgentState): ReactNode {
   switch (state) {
-    case 'dialog-fresh':
-      return <AskAgentDialog />;
-    case 'dialog-continue':
-      return <AskAgentDialog mode="continue" />;
-    case 'dialog-independent':
-      return <AskAgentDialog mode="independent" step="Review" />;
-    case 'dialog-dirty':
-      return <AskAgentDialog blocker="dirty" />;
-    case 'dialog-no-agent':
-      return <AskAgentDialog blocker="no-agent" mode="not-chosen" />;
-    case 'dialog-session-unavailable':
-      return <AskAgentDialog blocker="session-unavailable" mode="gone" />;
     case 'confirm-reject':
       return <RejectDialog />;
     case 'take-over':

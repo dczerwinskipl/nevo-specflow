@@ -83,6 +83,8 @@ async function renderAt(
         returnTo: vi.fn(),
         reevaluateWait: vi.fn(),
         abandon: vi.fn(),
+        checkAgentExecution: vi.fn(),
+        startAgentExecution: vi.fn(),
         closePreview: vi.fn(),
         closeOccupancy: vi.fn(),
         close: vi.fn(),

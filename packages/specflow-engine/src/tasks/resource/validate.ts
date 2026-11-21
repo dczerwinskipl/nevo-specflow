@@ -39,7 +39,7 @@ export type TaskResourceIssue =
 /** What the validation needs of a Task run record: its position and whether it has history. */
 export interface TaskRunSummary {
   readonly taskId: string;
-  readonly state: 'not-started' | 'active' | 'ready' | 'terminal';
+  readonly state: 'not-started' | 'active' | 'awaiting-confirmation' | 'ready' | 'terminal';
   readonly attempts: number;
 }
 
@@ -82,7 +82,10 @@ export function validateTaskResources(state: TaskResourceState): TaskResourceIss
       issues.push({ kind: 'broken', taskId: run.taskId, reason: 'unregistered-run' });
     } else if (manifest.status === 'draft' && (run.state !== 'not-started' || run.attempts > 0)) {
       issues.push({ kind: 'broken', taskId: run.taskId, reason: 'draft-with-run' });
-    } else if (manifest.status === 'cancelled' && run.state === 'active') {
+    } else if (
+      manifest.status === 'cancelled' &&
+      (run.state === 'active' || run.state === 'awaiting-confirmation')
+    ) {
       issues.push({ kind: 'broken', taskId: run.taskId, reason: 'cancelled-while-active' });
     }
   }

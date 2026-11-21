@@ -50,7 +50,10 @@ export interface FinalizeAgentAttemptInput {
  * - `refused`: the re-validation refused the proposal (or the owner's return, `of: return`); the
  *   claim is settled and the attempt stays active with the refusal recorded;
  * - `returned`: the owner's recorded return request ended the attempt `returned`;
- * - `turn-ended`: the Turn ended without a proposal to publish; the attempt stays active.
+ * - `turn-ended`: the Turn ended without a proposal to publish; the attempt stays active;
+ * - `awaiting-confirmation`: the proposal takes a decision only the owner takes (D17): it is
+ *   published as the attempt's end, and the run waits at its transition for the owner's Confirm or
+ *   Reject (`confirmAgentResult`, `rejectAgentResult`); no post action runs until confirmed.
  */
 export type FinalizeAgentAttemptResult =
   | {
@@ -58,6 +61,11 @@ export type FinalizeAgentAttemptResult =
       readonly transition: string;
       readonly finish?: FinishStepResult;
       readonly postActions: readonly PostActionResult[];
+    }
+  | {
+      readonly kind: 'awaiting-confirmation';
+      readonly transition: string;
+      readonly finish?: FinishStepResult;
     }
   | { readonly kind: 'refused'; readonly of: 'proposal' | 'return'; readonly refusal: AgentRefusal }
   | { readonly kind: 'returned'; readonly position?: RunPosition }
@@ -278,7 +286,10 @@ function recordedOutcome(journal: AgentAttemptJournal): SectionOutcome {
   }
 
   if (journal.proposal?.state === 'finalized') {
-    return { kind: 'finished', transition: journal.proposal.transition };
+    // What the finalize did, whatever the owner decided since.
+    return journal.confirmation !== undefined
+      ? { kind: 'awaiting-confirmation', transition: journal.proposal.transition }
+      : { kind: 'finished', transition: journal.proposal.transition };
   }
 
   if (journal.returnRequest?.state === 'refused' && journal.returnRequest.refusal) {
@@ -378,6 +389,22 @@ async function publishStep(
     // A replay publishes the pending store journal a crash left, if any (as a repeated finish does).
     await store.apply(journal.subject.specId, plan.kind === 'replayed' ? {} : plan.change);
     await dependencies.finalize.faults?.('step-published');
+    const declared = declaredPathsOf(proposal.changes?.paths ?? [], facts);
+    // D17: a decision only the owner takes waits for the owner; the attempt commit waits with it.
+    if (plan.result.position.state === 'awaiting-confirmation') {
+      return {
+        journal: {
+          ...journal,
+          proposal: { ...proposal, state: 'finalized' },
+          confirmation: { state: 'pending', stepTitle: plan.stepTitle, declared },
+        },
+        outcome: {
+          kind: 'awaiting-confirmation',
+          transition: plan.result.transition,
+          finish: plan.result,
+        },
+      };
+    }
 
     return {
       journal: {
@@ -389,7 +416,7 @@ async function publishStep(
             operationId: agentPostActionId(journal.operationId, 'attempt-commit'),
             stepTitle: plan.stepTitle,
             state: 'pending',
-            declared: declaredPathsOf(proposal.changes?.paths ?? [], facts),
+            declared,
           },
         ],
       },

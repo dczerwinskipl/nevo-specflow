@@ -4,10 +4,12 @@ import type {
   AttentionItem,
   ActionProjection,
   CloseBlocker,
+  ConfirmAgentResultResult,
   ContinuationDecision,
   FinishStepResult,
   GateStatus,
   PostActionResult,
+  RejectAgentResultResult,
   RetryAgentAttemptCommitResult,
   ReturnToStepResult,
   RunPosition,
@@ -37,6 +39,8 @@ export function positionLine(position: RunPosition): string {
       return `active on "${position.step}" (attempt ${position.attempt})`;
     case 'ready':
       return `ready to start "${position.step}"`;
+    case 'awaiting-confirmation':
+      return `waiting for the owner to confirm the result of "${position.step}" (attempt ${position.attempt})`;
     case 'terminal':
       return `ended: ${position.outcome}`;
   }
@@ -116,6 +120,32 @@ function positionLines(position: ActionPosition): string[] {
         `State: active on ${named(position.step)} (attempt ${position.attempt.number})`,
         `Worked by: ${position.attempt.actor.class}`,
       ];
+    case 'awaiting-confirmation': {
+      const { proposal, confirms } = position;
+      const transition = proposal.transition;
+
+      return [
+        `State: waiting for your confirmation of ${named(position.step)} (attempt ${position.attempt.number})`,
+        `The agent proposes: ${transition.label ?? transition.result ?? transition.id}` +
+          (transition.targetTitle !== undefined ? `, to ${transition.targetTitle}` : ''),
+        ...(proposal.feedback !== undefined ? [`Feedback: ${proposal.feedback}`] : []),
+        ...(confirms.approvesDrafts !== undefined
+          ? [
+              `Confirming approves ${String(confirms.approvesDrafts.length)} draft Tasks` +
+                (confirms.approvesDrafts.length > 0
+                  ? `: ${confirms.approvesDrafts.join(', ')}`
+                  : ''),
+            ]
+          : []),
+        ...(confirms.taskDecisions ?? []).map(
+          (decision) =>
+            `Confirming sets Task ${decision.taskId} ${decision.status}` +
+            (decision.reason !== undefined ? ` (${decision.reason})` : ''),
+        ),
+        ...(transition.gates ?? []).map((gate) => `  ${gateLine(gate)}`),
+      ];
+    }
+
     case 'waiting':
       return [
         `State: waiting on ${named(position.step)} for ${position.blockingTasks.count} of ${position.totalTasks} Tasks`,
@@ -191,6 +221,15 @@ export function actionLines(projection: ActionProjection): string[] {
 
       lines.push(...(transition.gates ?? []).map((gate) => `  ${gateLine(gate)}`));
     }
+  }
+
+  const { confirm, reject } = projection.actions;
+  if (confirm) {
+    lines.push(`Action: confirm "${confirm.step}" attempt ${confirm.attempt}`);
+  }
+
+  if (reject) {
+    lines.push(`Action: reject "${reject.step}" attempt ${reject.attempt} --feedback <text>`);
   }
 
   for (const target of back?.targets ?? []) {
@@ -368,6 +407,26 @@ export function retryCommitLines(
   return [
     `Retried the commit of ${subjectLabel(subject)} ${step}#${String(attempt)}`,
     ...postActionLines(result.postActions),
+  ];
+}
+
+/** `workflow confirm`: the agent's result applied, what follows and what its commit did. */
+export function confirmLines(result: ConfirmAgentResultResult): string[] {
+  return [
+    `${result.replayed ? 'Already confirmed' : 'Confirmed'}: ${subjectLabel(result.subject)} via "${result.transition}"`,
+    `Position: ${positionLine(result.position)}`,
+    `Next: ${continuationLine(result.continuation)}`,
+    ...(result.specification ? [`Specification: ${continuationLine(result.specification)}`] : []),
+    ...postActionLines(result.postActions),
+  ];
+}
+
+/** `workflow reject`: back at the step, with the owner's feedback as its handoff. */
+export function rejectLines(result: RejectAgentResultResult): string[] {
+  return [
+    `${result.replayed ? 'Already rejected' : 'Rejected'}: ${subjectLabel(result.subject)}; the agent's work stays uncommitted`,
+    `Position: ${positionLine(result.position)}`,
+    `Next: ${continuationLine(result.continuation)}`,
   ];
 }
 

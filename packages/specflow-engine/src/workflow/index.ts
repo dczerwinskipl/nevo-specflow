@@ -154,6 +154,12 @@ export { returnToStep, type ReturnToStepInput, type ReturnToStepResult } from '.
 export {
   admitAgentTurn,
   AttributionRefusalError,
+  confirmAgentResult,
+  rejectAgentResult,
+  type AgentResultDecisionInput,
+  type ConfirmAgentResultResult,
+  type RejectAgentResultInput,
+  type RejectAgentResultResult,
   finalizeAgentAttempt,
   openAgentAttempts,
   type AgentDeclaredChanges,

@@ -2,7 +2,11 @@ import type {
   AbandonSpecificationInput,
   AbandonSpecificationResult,
   ActionProjection,
+  AgentResultDecisionInput,
+  ConfirmAgentResultResult,
   FinishStepInput,
+  RejectAgentResultInput,
+  RejectAgentResultResult,
   FinishStepResult,
   OwnerActor,
   ReevaluateWaitInput,
@@ -33,4 +37,8 @@ export interface WorkflowPort {
   abandon(input: AbandonSpecificationInput): Promise<AbandonSpecificationResult>;
   /** The owner's Retry commit of a finished agent attempt whose commit failed (D15). */
   retryAttemptCommit(input: RetryAgentAttemptCommitInput): Promise<RetryAgentAttemptCommitResult>;
+  /** The owner's Confirm of an agent's result that waits for them (D17). */
+  confirm(input: AgentResultDecisionInput): Promise<ConfirmAgentResultResult>;
+  /** The owner's Reject of that result: back to its step with the owner's feedback. */
+  reject(input: RejectAgentResultInput): Promise<RejectAgentResultResult>;
 }

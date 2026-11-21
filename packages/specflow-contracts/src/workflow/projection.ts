@@ -54,6 +54,12 @@ export const WorkflowRunPositionSchema = Type.Union([
     attempt: Type.Integer({ minimum: 1 }),
   }),
   Type.Object({ state: Type.Literal('ready'), step: StepIdSchema }),
+  /** The attempt ended with an agent's result that waits for the owner's Confirm or Reject (D17). */
+  Type.Object({
+    state: Type.Literal('awaiting-confirmation'),
+    step: StepIdSchema,
+    attempt: Type.Integer({ minimum: 1 }),
+  }),
   Type.Object({ state: Type.Literal('terminal'), outcome: TerminalOutcomeSchema }),
 ]);
 export type WorkflowRunPosition = Static<typeof WorkflowRunPositionSchema>;
@@ -558,6 +564,40 @@ export const WorkflowPositionSchema = Type.Union([
      */
     exits: array(StepExitSchema),
   }),
+  /**
+   * An agent's result waits for the owner's Confirm or Reject (D17, `actions.confirm`,
+   * `actions.reject`): the attempt that ended, the agent's proposal (its result with where it goes
+   * and the exit gates it needs now, its feedback and artifacts), and what Confirm applies besides
+   * taking the transition: `approvesDrafts`, the drafts `approve-draft-tasks` approves (as they are
+   * now, in id order), and the agent's `taskDecisions`.
+   */
+  Type.Object({
+    kind: Type.Literal('awaiting-confirmation'),
+    step: WorkflowStepSchema,
+    attempt: Type.Object({
+      number: Type.Integer({ minimum: 1 }),
+      startedAt: Type.String(),
+      endedAt: Type.Optional(Type.String()),
+      actor: WorkflowActorSchema,
+    }),
+    proposal: Type.Object({
+      transition: StepExitSchema,
+      feedback: Type.Optional(text()),
+      artifacts: array(Type.String()),
+    }),
+    confirms: Type.Object({
+      approvesDrafts: Type.Optional(array(TaskIdSchema)),
+      taskDecisions: Type.Optional(
+        array(
+          Type.Object({
+            taskId: TaskIdSchema,
+            status: literals(['ready', 'on-hold', 'cancelled'] as const),
+            reason: Type.Optional(Type.String()),
+          }),
+        ),
+      ),
+    }),
+  }),
   Type.Object({
     kind: Type.Literal('waiting'),
     step: WorkflowStepSchema,
@@ -677,6 +717,10 @@ export const WorkflowActionsSchema = Type.Object({
       ),
     }),
   ),
+  /** The agent's result that waits for the owner (`awaiting-confirmation`): Confirm applies it. */
+  confirm: Type.Optional(WorkflowAttemptRefSchema),
+  /** Reject returns the run to that step with the owner's feedback as its handoff. */
+  reject: Type.Optional(WorkflowAttemptRefSchema),
   return: Type.Optional(
     Type.Object({
       targets: array(

@@ -40,6 +40,11 @@ const literals = <const T extends readonly string[]>(values: T) =>
 
 const StepId = Type.String({ minLength: 1, maxLength: 200 });
 
+/** The idempotency key of an owner request (a UUID): a repeat returns the same outcome. */
+const RequestIdSchema = Type.String({
+  pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+});
+
 /** Start (or resume) the next step of the owner. */
 export const StartWorkflowRequestSchema = Type.Object(
   {
@@ -178,6 +183,8 @@ export const WorkflowContinuationSchema = Type.Union([
       Type.Literal('terminal'),
       Type.Literal('waiting-for-tasks'),
       Type.Literal('on-hold'),
+      /** An agent's result waits for the owner's Confirm or Reject (D17). */
+      Type.Literal('awaiting-confirmation'),
     ]),
   }),
   Type.Object({
@@ -273,6 +280,55 @@ export const RetryAttemptCommitResultSchema = Type.Object({
   postActions: Type.Array(PostActionResultSchema),
 });
 export type RetryAttemptCommitResult = Static<typeof RetryAttemptCommitResultSchema>;
+
+/**
+ * The owner's **Confirm** of an agent's result that waits for them (D17, `actions.confirm`): the
+ * attempt `step#attempt` the owner was shown. `requestId` is the idempotency key: the same request
+ * again returns the recorded decision with `replayed: true`; a confirm or reject of an attempt
+ * another request decided is `WORKFLOW_ATTEMPT_MISMATCH`.
+ */
+export const ConfirmWorkflowRequestSchema = Type.Object(
+  { requestId: RequestIdSchema, step: StepId, attempt: Type.Integer({ minimum: 1 }) },
+  { additionalProperties: false },
+);
+export type ConfirmWorkflowRequest = Static<typeof ConfirmWorkflowRequestSchema>;
+
+/**
+ * The owner's **Reject** of that result (`actions.reject`): the step goes back to ready to start
+ * with `feedback` (required) as its handoff; nothing the agent wrote is undone or committed.
+ */
+export const RejectWorkflowRequestSchema = Type.Object(
+  {
+    ...ConfirmWorkflowRequestSchema.properties,
+    feedback: Type.String({ minLength: 1, maxLength: 20_000 }),
+  },
+  { additionalProperties: false },
+);
+export type RejectWorkflowRequest = Static<typeof RejectWorkflowRequestSchema>;
+
+/**
+ * The confirmed result: the transition taken and what follows, as after a finish, and what the
+ * attempt commit (D15), which runs once the step finished, reported (`postActions`; empty for a
+ * replay whose commit already ran).
+ */
+export const ConfirmWorkflowResultSchema = Type.Object({
+  subject: WorkflowSubjectSchema,
+  transition: Type.String(),
+  position: WorkflowRunPositionSchema,
+  continuation: WorkflowContinuationSchema,
+  specification: Type.Optional(WorkflowContinuationSchema),
+  replayed: Type.Optional(Type.Literal(true)),
+  postActions: Type.Array(PostActionResultSchema),
+});
+export type ConfirmWorkflowResult = Static<typeof ConfirmWorkflowResultSchema>;
+
+export const RejectWorkflowResultSchema = Type.Object({
+  subject: WorkflowSubjectSchema,
+  position: WorkflowRunPositionSchema,
+  continuation: WorkflowContinuationSchema,
+  replayed: Type.Optional(Type.Literal(true)),
+});
+export type RejectWorkflowResult = Static<typeof RejectWorkflowResultSchema>;
 
 export const ReturnWorkflowResultSchema = Type.Object({
   subject: WorkflowSubjectSchema,
@@ -538,10 +594,6 @@ export const WorkflowErrorSchema = Type.Object(
   { $id: 'WorkflowError', additionalProperties: false },
 );
 export type WorkflowError = Static<typeof WorkflowErrorSchema>;
-
-const RequestIdSchema = Type.String({
-  pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
-});
 
 /**
  * Ask agent (D12, D18): an agent attempt of the step the owner was shown. Without `expected.attempt`

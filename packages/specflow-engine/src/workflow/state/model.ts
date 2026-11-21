@@ -79,6 +79,29 @@ export function agentAttemptBindingOf(
   return data?.kind === 'agent-attempt' ? data : undefined;
 }
 
+/**
+ * The host data of an agent's finish held for the owner's confirmation
+ * (`AttemptRecord.confirmation.hostData`): the Task status decisions of the finish, which only the
+ * owner takes (D17), applied once the owner confirms. Absent when the finish has none.
+ */
+export interface PendingOwnerDecisions {
+  readonly kind: 'owner-decisions';
+  readonly taskDecisions: readonly {
+    readonly taskId: string;
+    readonly status: 'ready' | 'on-hold' | 'cancelled';
+    readonly reason?: string;
+  }[];
+}
+
+/** The Task decisions a held finish applies once confirmed; none when it has none. */
+export function pendingOwnerDecisionsOf(
+  record: AttemptRecord | undefined,
+): PendingOwnerDecisions['taskDecisions'] {
+  const data = record?.confirmation?.hostData as PendingOwnerDecisions | undefined;
+
+  return data?.kind === 'owner-decisions' ? data.taskDecisions : [];
+}
+
 export interface SpecificationExecutionRecord {
   readonly specId: string;
   /** The Specification archetype whose execution binding started this run. */

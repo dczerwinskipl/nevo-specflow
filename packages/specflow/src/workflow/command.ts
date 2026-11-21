@@ -1,10 +1,14 @@
+import { randomUUID } from 'node:crypto';
+
 import {
+  confirmAgentResult,
   engineAgentContextSource,
   finishStep,
   inspectActions,
   readStepContext,
   openAgentAttempts,
   reevaluateWait,
+  rejectAgentResult,
   resolveSpecification,
   retryAgentAttemptCommit,
   returnToStep,
@@ -25,8 +29,10 @@ import { localOwner } from '../local-actor';
 import { parsePositiveInt, readStructuredFile } from '../structured-input';
 import {
   actionLines,
+  confirmLines,
   contextLines,
   finishLines,
+  rejectLines,
   retryCommitLines,
   returnLines,
   startLines,
@@ -325,6 +331,67 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
       emit(options, result, retryCommitLines(subject, options.step, options.attempt, result));
     });
   });
+
+  common(
+    workflow
+      .command('confirm')
+      .description(
+        "Confirm an agent's result that waits for you: its transition and effects apply, then its commit",
+      )
+      .requiredOption('--step <step-id>', 'The step the agent finished (see "workflow actions")')
+      .requiredOption('--attempt <number>', 'The attempt whose result waits', parsePositiveInt)
+      .option('--request-id <uuid>', 'Repeat an earlier confirm (idempotency key); new by default'),
+  ).action(
+    async (
+      specId: string,
+      options: CommonOptions & { step: string; attempt: number; requestId?: string },
+    ) => {
+      await run(options, 'change', async ({ engine }) => {
+        const result = await confirmAgentResult(await openAgentAttempts(engine), {
+          subject: subjectOf(specId, options),
+          step: options.step,
+          attempt: options.attempt,
+          requestId: options.requestId ?? randomUUID(),
+          actor: owner(),
+        });
+        emit(options, result, confirmLines(result));
+      });
+    },
+  );
+
+  common(
+    workflow
+      .command('reject')
+      .description(
+        "Reject an agent's result that waits for you: the step is ready again with your feedback",
+      )
+      .requiredOption('--step <step-id>', 'The step the agent finished (see "workflow actions")')
+      .requiredOption('--attempt <number>', 'The attempt whose result waits', parsePositiveInt)
+      .requiredOption('--feedback <text>', 'What should change; the next attempt reads it first')
+      .option('--request-id <uuid>', 'Repeat an earlier reject (idempotency key); new by default'),
+  ).action(
+    async (
+      specId: string,
+      options: CommonOptions & {
+        step: string;
+        attempt: number;
+        feedback: string;
+        requestId?: string;
+      },
+    ) => {
+      await run(options, 'change', async ({ engine }) => {
+        const result = await rejectAgentResult(await openAgentAttempts(engine), {
+          subject: subjectOf(specId, options),
+          step: options.step,
+          attempt: options.attempt,
+          feedback: options.feedback,
+          requestId: options.requestId ?? randomUUID(),
+          actor: owner(),
+        });
+        emit(options, result, rejectLines(result));
+      });
+    },
+  );
 
   workflow
     .command('reevaluate-wait')

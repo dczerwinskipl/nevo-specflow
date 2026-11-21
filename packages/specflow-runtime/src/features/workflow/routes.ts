@@ -7,10 +7,14 @@ import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
 import {
   AbandonSpecificationRequestSchema,
   AbandonSpecificationResultSchema,
+  ConfirmWorkflowRequestSchema,
+  ConfirmWorkflowResultSchema,
   FinishWorkflowRequestSchema,
   FinishWorkflowResultSchema,
   ReevaluateWaitRequestSchema,
   ReevaluateWaitResultSchema,
+  RejectWorkflowRequestSchema,
+  RejectWorkflowResultSchema,
   ReturnWorkflowRequestSchema,
   ReturnWorkflowResultSchema,
   RetryAttemptCommitRequestSchema,
@@ -86,6 +90,8 @@ function unavailablePort(port: WorkflowPort | undefined): WorkflowPort {
     reevaluateWait: refuse,
     abandon: refuse,
     retryAttemptCommit: refuse,
+    confirm: refuse,
+    reject: refuse,
   };
 }
 
@@ -284,6 +290,59 @@ export const workflowEndpoint: FastifyPluginCallback<WorkflowRoutesOptions> = (
         });
 
         return reply.code(200).send(toWire(retried));
+      }),
+    );
+
+    typed.post(
+      `${base}/confirmation/confirm`,
+      {
+        onRequest: manage,
+        bodyLimit: BODY_LIMIT_BYTES,
+        schema: {
+          tags,
+          summary: `Confirm an agent's result that waits for the owner on a ${label}`,
+          params,
+          body: ConfirmWorkflowRequestSchema,
+          response: { 200: ConfirmWorkflowResultSchema, ...errors },
+        },
+      },
+      refusing(async (request, reply) => {
+        const confirmed = await port.confirm({
+          subject: subjectOf(request),
+          step: request.body.step,
+          attempt: request.body.attempt,
+          requestId: request.body.requestId,
+          actor: actorOf(request),
+        });
+
+        return reply.code(200).send(toWire(confirmed));
+      }),
+    );
+
+    typed.post(
+      `${base}/confirmation/reject`,
+      {
+        onRequest: manage,
+        bodyLimit: BODY_LIMIT_BYTES,
+        schema: {
+          tags,
+          summary: `Reject an agent's result that waits for the owner on a ${label}`,
+          params,
+          body: RejectWorkflowRequestSchema,
+          response: { 200: RejectWorkflowResultSchema, ...errors },
+        },
+      },
+      refusing(async (request, reply) => {
+        const rejected = await port.reject({
+          subject: subjectOf(request),
+          step: request.body.step,
+          attempt: request.body.attempt,
+          requestId: request.body.requestId,
+          feedback: request.body.feedback,
+          actor: actorOf(request),
+        });
+
+        return reply.code(200).send(toWire(rejected));
       }),
     );
   }

@@ -523,6 +523,130 @@ describe('host data of an attempt', () => {
   });
 });
 
+describe('a finish held for a confirmation', () => {
+  const held = finish('draft', 1, agent, {
+    feedback: 'Drafted.',
+    requestDigest: 'f1',
+    confirmation: { hostData: { decisions: 1 } },
+  });
+  const confirm = (digest?: string): WorkflowCommand => ({
+    kind: 'confirm',
+    at: AT,
+    step: 'draft',
+    attempt: 1,
+    actor: person,
+    ...(digest !== undefined ? { requestDigest: digest } : {}),
+  });
+  const reject = (feedback: string, digest?: string): WorkflowCommand => ({
+    kind: 'reject',
+    at: AT,
+    step: 'draft',
+    attempt: 1,
+    actor: person,
+    feedback,
+    ...(digest !== undefined ? { requestDigest: digest } : {}),
+  });
+
+  it('ends the attempt and waits at the transition, taking nothing and handing nothing on', () => {
+    const decision = decide(DEFINITION, run(start(agent)), held);
+    expect(decision.nextRun.position).toEqual({
+      state: 'awaiting-confirmation',
+      step: 'draft',
+      attempt: 1,
+    });
+    expect(decision.intent).toEqual({
+      kind: 'await-confirmation',
+      step: 'draft',
+      attempt: 1,
+      transition: 'drafted',
+    });
+    expect(decision.declaredEffects).toEqual([]);
+    expect(decision.nextRun.attempts[0]).toMatchObject({
+      endedAt: AT,
+      finishedBy: agent,
+      outcome: { kind: 'transition', transition: 'drafted', feedback: 'Drafted.' },
+      confirmation: { state: 'pending', hostData: { decisions: 1 } },
+    });
+    expect(handoffOf(decision.nextRun)).toBeUndefined();
+    expect(isPositionJustified(decision.nextRun, DEFINITION)).toBe(true);
+    // The same finish again is its retry; start, return and another finish are refused.
+    expect(decide(DEFINITION, decision.nextRun, held).replayed).toBe(true);
+    for (const [command, code] of [
+      [start(agent), 'WORKFLOW_POSITION_INVALID'],
+      [{ kind: 'return', at: AT, step: 'draft', feedback: 'x' }, 'WORKFLOW_POSITION_INVALID'],
+      [finish('draft', 1, agent), 'WORKFLOW_ATTEMPT_MISMATCH'],
+    ] as const) {
+      expect(() => decide(DEFINITION, decision.nextRun, command)).toThrow(
+        expect.objectContaining({ code }),
+      );
+    }
+  });
+
+  it('takes the transition on confirm, with its effect, and recognizes the retry', () => {
+    const awaiting = run(start(agent), held);
+    const decision = decide(DEFINITION, awaiting, confirm('c1'));
+    expect(decision.nextRun.position).toEqual({ state: 'ready', step: 'review' });
+    expect(decision.intent).toEqual({ kind: 'ready', step: 'review', continuation: 'auto' });
+    expect(decision.declaredEffects).toMatchObject([
+      { source: 'transition', step: 'draft', transition: { id: 'drafted' } },
+    ]);
+    expect(decision.nextRun.attempts[0]?.confirmation).toEqual({
+      state: 'confirmed',
+      hostData: { decisions: 1 },
+      at: AT,
+      actor: person,
+      requestDigest: 'c1',
+    });
+    expect(handoffOf(decision.nextRun)).toMatchObject({ kind: 'transition', feedback: 'Drafted.' });
+    expect(isPositionJustified(decision.nextRun, DEFINITION)).toBe(true);
+
+    const retry = decide(DEFINITION, decision.nextRun, confirm('c1'));
+    expect(retry.replayed).toBe(true);
+    expect(retry.nextRun).toBe(decision.nextRun);
+    for (const command of [confirm('c2'), confirm(), reject('No.', 'c1')]) {
+      expect(() => decide(DEFINITION, decision.nextRun, command)).toThrow(
+        expect.objectContaining({ code: 'WORKFLOW_ATTEMPT_MISMATCH' }),
+      );
+    }
+  });
+
+  it('returns to the step on reject, with the feedback as its handoff', () => {
+    const awaiting = run(start(agent), held);
+    expect(() => decide(DEFINITION, awaiting, reject('  '))).toThrow(
+      expect.objectContaining({ code: 'WORKFLOW_INPUT_INVALID' }),
+    );
+    const decision = decide(DEFINITION, awaiting, reject('List the sources.', 'r1'));
+    expect(decision.nextRun.position).toEqual({ state: 'ready', step: 'draft' });
+    expect(decision.intent).toEqual({ kind: 'ready', step: 'draft', continuation: 'owner-action' });
+    expect(decision.declaredEffects).toEqual([]);
+    expect(handoffOf(decision.nextRun)).toEqual({
+      kind: 'return',
+      at: AT,
+      feedback: 'List the sources.',
+    });
+    expect(isPositionJustified(decision.nextRun, DEFINITION)).toBe(true);
+    expect(decide(DEFINITION, decision.nextRun, reject('List the sources.', 'r1')).replayed).toBe(
+      true,
+    );
+
+    // The step starts again as a new attempt; the rejected one stays in the history.
+    const again = decide(DEFINITION, decision.nextRun, start(person)).nextRun;
+    expect(again.position).toEqual({ state: 'active', step: 'draft', attempt: 2 });
+    expect(isPositionJustified(again, DEFINITION)).toBe(true);
+  });
+
+  it('refuses a confirm with nothing waiting, and replays a hand-edited confirmation as corrupt', () => {
+    expect(() => decide(DEFINITION, run(start(agent)), confirm())).toThrow(
+      expect.objectContaining({ code: 'WORKFLOW_POSITION_INVALID' }),
+    );
+    const awaiting = run(start(agent), held);
+    const moved: WorkflowRun = { ...awaiting, position: { state: 'ready', step: 'review' } };
+    expect(isPositionJustified(moved, DEFINITION)).toBe(false);
+    const abandoned = abandonRun(awaiting, { at: AT, actor: person, reason: 'Stop.' });
+    expect(isPositionJustified(abandoned, DEFINITION)).toBe(true);
+  });
+});
+
 describe('two runs of one definition', () => {
   it('keep separate histories under the same pin', () => {
     const first = run(start(agent), finish('draft', 1, agent));

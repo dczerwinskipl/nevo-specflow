@@ -61,8 +61,29 @@ describe('agent write scope', () => {
       'tasks.edit',
       'workflow.finish',
     ]);
-    // A Task subject writes no Specification document; its finish names the Task.
-    expect(attempt({ taskId: 'T1' }).operations).toEqual(['workflow.finish']);
+    // A Task subject writes its Task's documents; its finish names the Task.
+    expect(attempt({ taskId: 'T1' }).operations).toEqual([
+      'documents.create',
+      'documents.save',
+      'documents.classify',
+      'workflow.finish',
+    ]);
+  });
+
+  it.each([
+    ['documents.save', 'T1', true],
+    ['documents.create', 'T1', true],
+    ['documents.classify', 'T2', false],
+    ['documents.save', undefined, false],
+  ] as const)('admits %s of Task %s only for the Task subject (%s)', (operation, taskId, ok) => {
+    const decision = admitAgentOperation(attempt({ taskId: 'T1' }), {
+      operation,
+      specId: 'S1',
+      ...(taskId !== undefined ? { taskId } : {}),
+    });
+    expect(decision).toMatchObject(
+      ok ? { admitted: true } : { admitted: false, reason: 'task-not-in-scope' },
+    );
   });
 
   it('admits the finish of the attempt subject only', () => {

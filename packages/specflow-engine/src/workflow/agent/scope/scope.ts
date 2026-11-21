@@ -9,8 +9,8 @@
  *   it may create, save and classify documents of that home Specification;
  * - `attempt`: a Turn of an agent attempt of a step (Ask agent): the documents of its subject
  *   Specification, Task drafts (create, edit) only when the step declares `produces: tasks`, and the
- *   finish proposal of the bound attempt. A Task subject writes no Specification document: its work
- *   is the declared files and its finish proposal.
+ *   finish proposal of the bound attempt. A Task subject writes its Task's documents, never the
+ *   Specification's own.
  */
 
 /** Every write an agent may be granted. A scope admits a subset. */
@@ -65,7 +65,7 @@ export function deriveAgentScope(binding: AgentScopeBinding): AgentWriteScope {
   }
 
   const operations: AgentWriteOperation[] = [
-    ...(binding.taskId === undefined ? DOCUMENT_OPERATIONS : []),
+    ...DOCUMENT_OPERATIONS,
     ...(binding.producesTasks ? (['tasks.create', 'tasks.edit'] as const) : []),
     'workflow.finish',
   ];
@@ -86,7 +86,7 @@ export interface AgentOperationTarget {
   readonly specId: string;
   /**
    * The Task the request names: a Task's documents, or (`workflow.finish`) the Task subject it
-   * finishes. A Task draft's own id is not a subject and is not named here.
+   * finishes; it must be the scope's Task subject. A Task draft's own id is not named here.
    */
   readonly taskId?: string;
 }
@@ -133,8 +133,9 @@ export function admitAgentOperation(
     };
   }
 
-  // The finish proposal names the attempt's own subject; every other write names no Task subject.
-  const expectedTask = target.operation === 'workflow.finish' ? scope.taskId : undefined;
+  // Documents and the finish proposal name the attempt's own subject (a Task's documents for a Task
+  // subject); a Task draft names no subject.
+  const expectedTask = target.operation.startsWith('tasks.') ? undefined : scope.taskId;
   if (target.taskId !== expectedTask) {
     return {
       admitted: false,

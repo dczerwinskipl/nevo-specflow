@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Bot } from 'lucide-react';
 import { Button, InlineNote, Typography } from '@nevo/ui';
 import { writeOutcomeUnknown } from '../../../shared/http/apiErrorCode';
 import { subscribeTaskAttention } from '../overview/attentionRequests';
@@ -20,6 +21,8 @@ import {
 import { closableInFinishDialog } from './FinishTasksOpen';
 import type { GateAction } from './GateList';
 import { NowBlock } from './NowBlock';
+import { AgentStartDialog } from './agent/AgentStartDialog';
+import { offersAgent } from './agent/agentOption';
 import { ReturnStepDialog } from './ReturnStepDialog';
 import { StartTaskDialog, type PinPreview } from './StartTaskDialog';
 import type { NowLinks } from './StartBlockerLines';
@@ -130,7 +133,7 @@ export function WorkflowNow({
   const { actions, position } = projection;
   const finish = actions.finish;
   const attemptKey = finish ? attemptKeyOf(finish) : '';
-  const [dialog, setDialog] = useState<'start' | 'finish' | 'return'>();
+  const [dialog, setDialog] = useState<'start' | 'finish' | 'return' | 'agent'>();
   // The attempt the Finish dialog was opened for. When the projection moves on (the finish was
   // recorded although its answer was lost, or someone else finished it), the dialog closes and
   // never offers a retry for an attempt nobody worked on.
@@ -376,9 +379,23 @@ export function WorkflowNow({
     // would then be the next step's Start, and one Enter or Space would start a step nobody chose.
     (showStart ? (
       // The busy pattern: the pending label until the new position is read, never a stale one.
-      <Button key="start" onClick={startNow} disabled={busy} aria-busy={starting}>
-        {starting ? t('workflowExecution.now.starting') : startLabel}
-      </Button>
+      <>
+        <Button key="start" onClick={startNow} disabled={busy} aria-busy={starting}>
+          {starting ? t('workflowExecution.now.starting') : startLabel}
+        </Button>
+        {/* The one secondary: only when the step's executors include an agent. */}
+        {next && offersAgent(next.agent) ? (
+          <Button
+            key="run-with-agent"
+            variant="secondary"
+            leadingIcon={Bot}
+            onClick={() => setDialog('agent')}
+            disabled={busy}
+          >
+            {t('workflowExecution.now.runWithAgent')}
+          </Button>
+        ) : null}
+      </>
     ) : showFinish ? (
       <>
         <Button key="finish" onClick={openFinish} disabled={busy}>
@@ -597,6 +614,15 @@ export function WorkflowNow({
                 },
               }
             : {})}
+        />
+      ) : null}
+      {next && dialog === 'agent' ? (
+        <AgentStartDialog
+          subject={subject}
+          step={{ id: next.step.id, title: next.step.title }}
+          archetype={next.agent.launch?.archetype}
+          open
+          onOpenChange={(open) => !open && setDialog(undefined)}
         />
       ) : null}
       {finish && step ? (

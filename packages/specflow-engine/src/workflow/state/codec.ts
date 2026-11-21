@@ -14,6 +14,7 @@ import {
   RECORD_BYTES_MAX,
   RETURNS_MAX,
   TASK_ID_PATTERN_SOURCE,
+  TASKS_PER_SPECIFICATION_MAX,
 } from '../limits';
 import type { SpecificationExecutionRecord, TaskRunRecord } from './model';
 
@@ -43,6 +44,11 @@ const PositionSchema = Type.Union([
   closed({ state: Type.Literal('not-started') }),
   closed({ state: Type.Literal('active'), step: id(), attempt: Type.Integer({ minimum: 1 }) }),
   closed({ state: Type.Literal('ready'), step: id() }),
+  closed({
+    state: Type.Literal('awaiting-confirmation'),
+    step: id(),
+    attempt: Type.Integer({ minimum: 1 }),
+  }),
   closed({
     state: Type.Literal('terminal'),
     outcome: Type.Union([Type.Literal('completed'), Type.Literal('abandoned')]),
@@ -86,6 +92,45 @@ const AgentAttemptBindingSchema = closed({
   ),
 });
 
+/**
+ * What an agent's finish held for the owner's confirmation applies once confirmed besides its
+ * transition (`PendingOwnerDecisions`): its Task status decisions.
+ */
+const PendingOwnerDecisionsSchema = closed({
+  kind: Type.Literal('owner-decisions'),
+  taskDecisions: Type.Array(
+    closed({
+      taskId: Type.String({ pattern: TASK_ID_PATTERN_SOURCE }),
+      status: Type.Union([
+        Type.Literal('ready'),
+        Type.Literal('on-hold'),
+        Type.Literal('cancelled'),
+      ]),
+      reason: optional(text(FEEDBACK_MAX)),
+    }),
+    { minItems: 1, maxItems: TASKS_PER_SPECIFICATION_MAX },
+  ),
+});
+
+const ConfirmationSchema = Type.Union([
+  closed({ state: Type.Literal('pending'), hostData: optional(PendingOwnerDecisionsSchema) }),
+  closed({
+    state: Type.Literal('confirmed'),
+    hostData: optional(PendingOwnerDecisionsSchema),
+    at: timestamp(),
+    actor: ActorSchema,
+    requestDigest: optional(Type.String({ pattern: '^[0-9a-f]{64}$' })),
+  }),
+  closed({
+    state: Type.Literal('rejected'),
+    hostData: optional(PendingOwnerDecisionsSchema),
+    at: timestamp(),
+    actor: ActorSchema,
+    feedback: text(FEEDBACK_MAX),
+    requestDigest: optional(Type.String({ pattern: '^[0-9a-f]{64}$' })),
+  }),
+]);
+
 const OutcomeSchema = Type.Union([
   closed({
     kind: Type.Literal('transition'),
@@ -118,6 +163,7 @@ const RunSchema = closed({
       finishedBy: optional(ActorSchema),
       requestDigest: optional(Type.String({ pattern: '^[0-9a-f]{64}$' })),
       outcome: optional(OutcomeSchema),
+      confirmation: optional(ConfirmationSchema),
     }),
     { maxItems: ATTEMPTS_MAX },
   ),

@@ -34,6 +34,7 @@ import { guardExecutionClaims } from './state/claim-guard';
 import { executionClaimAdmission } from './write-admission';
 import type { RememberModelDependencies } from './definitions/remember-model';
 import type { TaskReferences } from './operations/task-references';
+import { readTaskDocuments } from '../specs/documents/task-document-reader';
 import {
   hasPendingTaskDocumentChange,
   pendingTaskDocumentChanges,
@@ -159,6 +160,11 @@ function engineReferences(engine: SpecFlowEngine, options: OpenWorkflowOptions):
       checkoutPathExists((await availableSpecification(engine, specId)).workspaceRoot, path),
     pendingDocumentChange: pendingTaskDocuments(engine),
     pendingDocumentChanges: (specId) => pendingTaskDocumentChanges(engine.context, specId),
+    taskDocumentRevisions: async (specId, taskId) =>
+      (await readTaskDocuments(engine, specId, taskId)).documents.map((document) => ({
+        path: document.path,
+        revision: document.file?.revision ?? null,
+      })),
     documentsOfType: async (scope, documentType) => {
       try {
         return await readRegisteredDocumentsOfType(engine, scope, documentType);
@@ -429,8 +435,9 @@ export async function specificationCloseBlockers(
 }
 
 /**
- * Whether a step of the Specification run or of a Task run is in progress (position `active`): its
- * finish commits the execution state when automatic commits are off. Lock-free read for a refusal's
+ * Whether a step of the Specification run or of a Task run is in progress (position `active`, or
+ * `awaiting-confirmation` of an agent's result): its finish (or the confirmation) commits the
+ * execution state when automatic commits are off. Lock-free read for a refusal's
  * facts; `undefined` when the records cannot be read.
  */
 export async function specificationStepInProgress(
@@ -442,7 +449,9 @@ export async function specificationStepInProgress(
 
     return [snapshot.specification?.value.run, ...snapshot.runs.map((record) => record.value.run)]
       .filter((run) => run !== undefined)
-      .some((run) => run.position.state === 'active');
+      .some(
+        (run) => run.position.state === 'active' || run.position.state === 'awaiting-confirmation',
+      );
   } catch {
     return undefined;
   }

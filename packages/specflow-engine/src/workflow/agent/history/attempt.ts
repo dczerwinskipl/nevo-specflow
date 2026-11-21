@@ -25,6 +25,9 @@ export const AGENT_ATTEMPT_EVENT_KINDS = [
   'commit-failed',
   'taken-over',
   'abandoned',
+  'awaiting-confirmation',
+  'confirmed',
+  'rejected',
 ] as const;
 
 /**
@@ -213,8 +216,13 @@ function eventsOf(record: AttemptRecord, journal: AgentAttemptJournal): AgentAtt
 
   const outcome = record.outcome;
   const endedAt = record.endedAt !== undefined ? { at: record.endedAt } : {};
+  const confirmation = record.confirmation;
   if (outcome?.kind === 'transition') {
     events.push({ kind: 'finished', ...endedAt });
+    if (confirmation) {
+      // The result waits for the owner (D17); its attempt commit ran at the finish all the same.
+      events.push({ kind: 'awaiting-confirmation', ...endedAt });
+    }
   } else if (outcome !== undefined) {
     events.push({ kind: outcome.kind, ...endedAt });
   }
@@ -232,6 +240,10 @@ function eventsOf(record: AttemptRecord, journal: AgentAttemptJournal): AgentAtt
         ? { kind: 'commit-failed', ...at, ...runs, code: failed?.code ?? 'FAILED' }
         : { kind: 'committed', ...at, ...runs },
     );
+  }
+
+  if (confirmation && confirmation.state !== 'pending') {
+    events.push({ kind: confirmation.state, at: confirmation.at });
   }
 
   // Stable by time where every event has one; the order above already follows the attempt.

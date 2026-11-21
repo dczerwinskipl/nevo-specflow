@@ -1,6 +1,8 @@
 import {
   abandonSpecification,
+  confirmAgentResult,
   finishStep,
+  rejectAgentResult,
   inspectActionsForRead,
   readWorkflowHistory,
   reevaluateWait,
@@ -87,6 +89,22 @@ export function createEngineWorkflowPort(
       }
 
       return retryAgentAttemptCommit(await openAgentAttempts(), input);
+    },
+
+    async confirm(input) {
+      if (!openAgentAttempts) {
+        throw new WorkflowUnavailableError();
+      }
+
+      return confirmAgentResult(await openAgentAttempts(), input);
+    },
+
+    async reject(input) {
+      if (!openAgentAttempts) {
+        throw new WorkflowUnavailableError();
+      }
+
+      return rejectAgentResult(await openAgentAttempts(), input);
     },
   };
 }

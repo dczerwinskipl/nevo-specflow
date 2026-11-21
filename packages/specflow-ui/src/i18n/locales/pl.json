@@ -2270,6 +2270,76 @@
     "actor": {
       "you": "ciebie"
     },
+    "agent": {
+      "title": "Uruchom z agentem: {{step}}",
+      "descriptionTask": "Agent wykonuje ten krok zadania {{task}} samodzielnie: czyta krok, jego dokumenty i kontekst, pisze to, czego krok wymaga, i proponuje wynik. Decyzje, które należą do Ciebie, zostają u Ciebie.",
+      "descriptionSpecification": "Agent wykonuje ten krok specyfikacji samodzielnie: czyta krok, jego dokumenty i kontekst, pisze to, czego krok wymaga, i proponuje wynik. Decyzje, które należą do Ciebie, zostają u Ciebie.",
+      "checking": "Sprawdzamy, czy agent może wykonać ten krok…",
+      "checkFailedTitle": "SpecFlow nie mógł sprawdzić agenta",
+      "checkFailedBody": "Sprawdzanie się nie zakończyło, więc nic nie zostało uruchomione.",
+      "checkAgain": "Sprawdź ponownie",
+      "checkingAgain": "Sprawdzanie…",
+      "submit": "Uruchom z agentem",
+      "submitting": "Uruchamianie…",
+      "role": "Agent: {{name}}",
+      "roleFallback": "agenta",
+      "blocker": {
+        "dirty": {
+          "title": "Najpierw zacommituj lub cofnij te zmiany",
+          "body": "Te pliki zmieniono poza SpecFlow i nie są zacommitowane. Agent startuje z zacommitowanego checkoutu, żeby wszystko, co zmieni się potem, było jego pracą. (Dokumenty i zadania zapisane przez SpecFlow nie blokują startu.)",
+          "more": "i jeszcze {{count}}",
+          "hint": "Zacommituj je albo cofnij te, których nie potrzebujesz, i sprawdź ponownie."
+        },
+        "noAgent": {
+          "title": "Nie wybrano agenta dla kroku {{step}}",
+          "body": "Krok {{step}} wykonuje rola: {{role}}, a projekt nie wskazuje dla niej agenta ani modelu, więc SpecFlow nie wie, którego uruchomić.",
+          "hint": "Wybierz agenta i model dla roli „{{role}}” w ustawieniach agentów projektu i sprawdź ponownie.",
+          "bodyUnnamed": "Krok {{step}} wykonuje agent, a projekt nie wskazuje dla niego agenta ani modelu, więc SpecFlow nie wie, którego uruchomić.",
+          "hintUnnamed": "Wybierz ich w ustawieniach agentów projektu i sprawdź ponownie."
+        },
+        "providerNotReady": {
+          "title": "Agent nie jest gotowy",
+          "body": "Agent wybrany przez przepływ nie może teraz wystartować.",
+          "hint": "Napraw to i sprawdź ponownie."
+        },
+        "sessionUnavailable": {
+          "title": "Sesji do kontynuacji już nie ma",
+          "body": "Przepływ kontynuuje sesję, która wykonywała krok {{step}} wcześniej, a ta sesja już nie istnieje. SpecFlow nie zakłada nowej w jej miejsce, bo ten krok ma bazować na tym, co ta sesja wie.",
+          "hint": "Wykonaj krok sam przez {{startLabel}} albo zmień przepływ, tak by ten krok mógł zacząć nową sesję."
+        },
+        "projectBusy": {
+          "title": "Projekt jest zajęty",
+          "body": "W projekcie zapisuje się inna zmiana, więc agent nie może teraz wystartować.",
+          "hint": "Poczekaj, aż się skończy, i sprawdź ponownie."
+        },
+        "demo": {
+          "title": "W demo agenci nie działają",
+          "body": "Demo nie uruchamia agentów.",
+          "hint": "Wykonaj krok sam przez {{startLabel}}."
+        },
+        "other": {
+          "title": "Agent nie może teraz wykonać tego kroku",
+          "body": "Krok zmienił się od otwarcia albo nie wykonuje go agent.",
+          "hint": "Sprawdź ponownie, żeby odczytać go jeszcze raz."
+        }
+      },
+      "session": {
+        "newSession": "Nowa sesja",
+        "label": "Sesja",
+        "continues": "Kontynuuje",
+        "continuesWhy": "{{model}}. Przepływ kontynuuje sesję, która wykonywała krok {{step}} wcześniej, więc agent zachowuje to, czego się tam nauczył. Jego agent i model pozostają bez zmian.",
+        "earlier": "wcześniejszą sesję",
+        "gone": "Ta sesja już nie istnieje.",
+        "notChosen": "Nie wybrano agenta ani modelu",
+        "model": "Model",
+        "preselected": "Wstępnie wybrane z ustawień roli „{{role}}”. Twój wybór dotyczy tylko tej próby.",
+        "independent": "Krok {{step}} jest wykonywany niezależnie: zawsze startuje w nowej sesji, nigdy w tej, która napisała zmianę. Wstępnie wybrane z ustawień roli „{{role}}”.",
+        "catalogueFailed": "Nie udało się wyświetlić listy agentów, więc próba wystartuje z agentem {{agent}} z ustawień roli „{{role}}”.",
+        "loadingAgents": "Wczytywanie agentów…"
+      },
+      "commit": "Gdy agent skończy, SpecFlow zacommituje jego pracę na <code>{{branch}}</code> jako jeden commit; zmiany innych osób nigdy nie są dołączane.",
+      "commitNoBranch": "Gdy agent skończy, SpecFlow zacommituje jego pracę na gałęzi specyfikacji jako jeden commit; zmiany innych osób nigdy nie są dołączane."
+    },
     "now": {
       "heading": "Teraz",
       "workflow": "{{title}} · wersja {{version}}",
@@ -2341,7 +2411,8 @@
       "tasksOpenDrafts": "Aby zakończyć z wynikiem {{result}}, pomiń otwarte szkice tego kroku: odznacz {{tasks}} przy kończeniu.",
       "technicalStep": "Krok {{step}} · {{title}} wersja {{version}}",
       "technical": "{{title}} wersja {{version}}",
-      "openDocument": "Otwórz {{name}}"
+      "openDocument": "Otwórz {{name}}",
+      "runWithAgent": "Uruchom z agentem"
     },
     "blocker": {
       "dependencies_one": "Czeka na {{count}} zależność",
@@ -2703,7 +2774,9 @@
         "resume-task": "Wznów",
         "start-step": "Rozpocznij krok",
         "reevaluate-wait": "Przejdź do bieżącego kroku",
-        "return-to-step": "Wróć do wcześniejszego kroku"
+        "return-to-step": "Wróć do wcześniejszego kroku",
+        "confirm-result": "Przejrzyj wynik",
+        "reject-result": "Odrzuć wynik"
       },
       "specification": "Specyfikacja",
       "stuckTitle_one": "Rozwiąż {{count}} blokujące zadanie",

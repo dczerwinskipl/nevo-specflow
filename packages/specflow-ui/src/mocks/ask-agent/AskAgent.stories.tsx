@@ -11,7 +11,7 @@ const meta = {
   title: 'SpecFlow/Screens/Ask agent (mock)',
   component: AskAgentMock,
   parameters: { layout: 'fullscreen', chromatic: { disableSnapshot: true }, a11y: { test: 'off' } },
-  args: { state: 'entry-a-two-buttons' },
+  args: { state: 'running' },
 } satisfies Meta<typeof AskAgentMock>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -19,18 +19,10 @@ type Story = StoryObj<typeof meta>;
 /* 1. Close preview (D16) */
 export const CloseUncommittedChanges: Story = { args: { state: 'close-uncommitted' } };
 
-/* 3. Entry: the Now block's start actions (A/B) and the Ask agent dialog */
-export const EntryATwoButtons: Story = {};
-export const EntryBSplitButton: Story = { args: { state: 'entry-b-split' } };
-export const DialogNewSession: Story = { args: { state: 'dialog-fresh' } };
-export const DialogContinuesSession: Story = { args: { state: 'dialog-continue' } };
-export const DialogIndependentReview: Story = { args: { state: 'dialog-independent' } };
-export const DialogUncommittedChanges: Story = { args: { state: 'dialog-dirty' } };
-export const DialogNoAgentChosen: Story = { args: { state: 'dialog-no-agent' } };
-export const DialogSessionUnavailable: Story = { args: { state: 'dialog-session-unavailable' } };
+/* 3. The entry and the start dialog are real now: SpecFlow/Screens/Run with agent. */
 
 /* 4. Running attempt */
-export const Running: Story = { args: { state: 'running' } };
+export const Running: Story = {};
 export const Stopping: Story = { args: { state: 'stopping' } };
 export const ReturnRequested: Story = { args: { state: 'return-requested' } };
 export const OutcomeUnknown: Story = { args: { state: 'outcome-unknown' } };

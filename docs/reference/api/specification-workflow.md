@@ -32,18 +32,22 @@ Engine they answer 503 `WORKFLOW_UNAVAILABLE`.
 
 ## Routes
 
-| HTTP | Route                                               | Capability                 | Meaning                                                           |
-| ---- | --------------------------------------------------- | -------------------------- | ----------------------------------------------------------------- |
-| GET  | `/api/specs/:specId/workflow/actions`               | `spec.view`                | Projection of the Specification                                   |
-| GET  | `/api/specs/:specId/tasks/:taskId/workflow/actions` | `spec.view`                | Projection of a Task                                              |
-| POST | `/api/specs/:specId/workflow/start`                 | `spec.manage`              | Start or resume the next step                                     |
-| POST | `/api/specs/:specId/tasks/:taskId/workflow/start`   | `spec.manage`              | Same for a Task                                                   |
-| POST | `/api/specs/:specId/workflow/finish`                | `spec.manage`              | Finish the active attempt                                         |
-| POST | `/api/specs/:specId/tasks/:taskId/workflow/finish`  | `spec.manage`              | Same for a Task                                                   |
-| POST | `/api/specs/:specId/workflow/reevaluate-wait`       | `spec.manage`              | Deliver a missed completion event to a Specification wait attempt |
-| POST | `/api/specs/:specId/workflow/return`                | `spec.manage`              | Return to a declared earlier step                                 |
-| POST | `/api/specs/:specId/tasks/:taskId/workflow/return`  | `spec.manage`              | Same for a Task                                                   |
-| POST | `/api/specs/:specId/workflow/abandon`               | `spec.close-specification` | End the Specification without realizing it                        |
+| HTTP | Route                                                            | Capability                 | Meaning                                                           |
+| ---- | ---------------------------------------------------------------- | -------------------------- | ----------------------------------------------------------------- |
+| GET  | `/api/specs/:specId/workflow/actions`                            | `spec.view`                | Projection of the Specification                                   |
+| GET  | `/api/specs/:specId/tasks/:taskId/workflow/actions`              | `spec.view`                | Projection of a Task                                              |
+| POST | `/api/specs/:specId/workflow/start`                              | `spec.manage`              | Start or resume the next step                                     |
+| POST | `/api/specs/:specId/tasks/:taskId/workflow/start`                | `spec.manage`              | Same for a Task                                                   |
+| POST | `/api/specs/:specId/workflow/finish`                             | `spec.manage`              | Finish the active attempt                                         |
+| POST | `/api/specs/:specId/tasks/:taskId/workflow/finish`               | `spec.manage`              | Same for a Task                                                   |
+| POST | `/api/specs/:specId/workflow/reevaluate-wait`                    | `spec.manage`              | Deliver a missed completion event to a Specification wait attempt |
+| POST | `/api/specs/:specId/workflow/return`                             | `spec.manage`              | Return to a declared earlier step                                 |
+| POST | `/api/specs/:specId/tasks/:taskId/workflow/return`               | `spec.manage`              | Same for a Task                                                   |
+| POST | `/api/specs/:specId/workflow/confirmation/confirm`               | `spec.manage`              | Confirm an agent's result that waits for the owner (D17)          |
+| POST | `/api/specs/:specId/workflow/confirmation/reject`                | `spec.manage`              | Reject it: back to its step with the owner's feedback             |
+| POST | `/api/specs/:specId/tasks/:taskId/workflow/confirmation/confirm` | `spec.manage`              | Same for a Task                                                   |
+| POST | `/api/specs/:specId/tasks/:taskId/workflow/confirmation/reject`  | `spec.manage`              | Same for a Task                                                   |
+| POST | `/api/specs/:specId/workflow/abandon`                            | `spec.close-specification` | End the Specification without realizing it                        |
 
 Capabilities are checked on the Specification scope before the body is read. All answers are
 `Cache-Control: no-store`; bodies are limited to 64 KiB.
@@ -200,6 +204,29 @@ reason?}]` (as the CLI's `--task-decisions-file`): applied after `tasks` and bef
   A stale attempt with a different outcome yields `WORKFLOW_ATTEMPT_MISMATCH` (409).
   Open or escalated Tasks, and Tasks classified as broken, yield `WORKFLOW_TASK_BLOCKED` (409).
   An unreadable Task record can fail earlier with `WORKFLOW_STATE_CORRUPT` (503).
+- **Owner confirmation (D17).** An agent's result that takes a decision only the owner takes (a
+  transition with an owner-authority effect such as `approve-draft-tasks`, one marked
+  `confirmation: owner`, or `taskDecisions`) ends the agent's attempt and leaves the run at
+  `position.state: awaiting-confirmation` (projection `kind: awaiting-confirmation` with the attempt,
+  the agent's `proposal` `{transition, feedback?, artifacts}`, `confirms` `{approvesDrafts?,
+taskDecisions?}` and `confirmsDigest`; `actions.confirm` and `actions.reject` name the attempt; the
+  attention item `awaiting-confirmation` offers `confirm-result` and `reject-result`). The drafts the
+  agent produced are written, and the attempt commit ran when the attempt finished; nothing else
+  applies until Confirm. `confirm` takes `{requestId, step, attempt, confirmsDigest}` (the digest the
+  projection showed) and answers `{subject, transition, position, continuation, specification?,
+replayed?, postActions}`: the transition, the agent's Task decisions and the effects apply with the
+  owner as actor, judged again by every finish rule (gates, open Tasks; a refusal leaves the result
+  waiting), as an ordinary owner write; `postActions` are the owner's (`commit-execution-state`, as
+  after an owner's finish). A digest that no longer matches what Confirm would apply (a draft added,
+  removed or edited, its `task.md` included) is `WORKFLOW_CONFIRMATION_CHANGED` (409), naming what it applies now. `reject`
+  takes `{requestId, step, attempt, feedback}` (required) and answers `{subject, position,
+continuation, replayed?}`: the step is ready again with the feedback as its handoff
+  (`kind: return`); the agent's work stays committed with its attempt. The same `requestId` again is
+  replayed (`replayed: true`; a confirm's post actions run again); a confirm or reject of an attempt
+  another request decided is `WORKFLOW_ATTEMPT_MISMATCH` (for a confirmed one: repeat that request
+  or retry the commit), one with nothing waiting `WORKFLOW_POSITION_INVALID`. While a result waits, start, finish and return are refused
+  (`WORKFLOW_POSITION_INVALID`). An agent finish outside an agent attempt that takes such a decision
+  stays refused with `WORKFLOW_OWNER_DECISION_REQUIRED`.
 - `abandon` is final. A retry with the same reason returns the same result; it is not a bypass of Close:
   pending writes, broken Tasks and other operations refuse it.
 

@@ -12,6 +12,7 @@ import {
 } from '../../operations/operations.test-support';
 import type { AgentActor } from '../../state/model';
 import { finalizeAgentAttempt } from '../finalize/finalize';
+import { agentAttemptHistoryOf } from '../history/attempt';
 import { readWorkflowHistory } from '../history/workflow';
 import { memoryAgentDependencies } from '../memory.test-support';
 import { proposeAgentFinish, type AgentTurnIdentity } from '../proposal/propose';
@@ -304,5 +305,39 @@ describe('an owner action before the Turn ran (D19)', () => {
 
     await expect(takeOver(fixture)).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_MISMATCH' });
     expect(fixture.journal.settled.get(ATTEMPT_ID)?.takeOver).toMatchObject({ attempt: 2 });
+  });
+});
+
+describe('the history of an agent result that waited for the owner (D17)', () => {
+  it('lists awaiting confirmation at the finish and the owner decision when it was taken', async () => {
+    const fixture = await runningAgent();
+    const journal = fixture.journal.journals.get(ATTEMPT_ID)!;
+    const record = (await fixture.workflow.store.read(SPEC)).specification!.value.run.attempts[0]!;
+    const finished = {
+      ...record,
+      endedAt: '2026-11-21T10:05:00.000Z',
+      outcome: { kind: 'transition' as const, transition: 'agreed', artifacts: [] },
+    };
+    const owner_ = { class: 'human' as const, details: { actorId: 'o', trust: 'local' as const } };
+    const history = (confirmation: NonNullable<typeof record.confirmation>) =>
+      agentAttemptHistoryOf({ ...finished, confirmation }, journal, [], {
+        subject: specification,
+        manifests: [],
+      }).events.map((event) => event.kind);
+
+    expect(history({ state: 'pending' })).toEqual([
+      'started',
+      'turn-started',
+      'finished',
+      'awaiting-confirmation',
+    ]);
+    expect(
+      history({
+        state: 'rejected',
+        at: '2026-11-21T10:09:00.000Z',
+        actor: owner_,
+        feedback: 'No.',
+      }),
+    ).toEqual(['started', 'turn-started', 'finished', 'awaiting-confirmation', 'rejected']);
   });
 });

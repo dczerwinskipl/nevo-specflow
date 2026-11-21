@@ -227,10 +227,23 @@ export interface AgentAttemptJournal {
   readonly returnRequest?: AgentReturnRequest;
   /** The dirty set of the last Turn whose claim settled. */
   readonly dirtySet?: AgentDirtySet;
-  /** Only once the attempt was finalized (its proposal `finalized`). */
+  /** Only once the attempt was finalized (its proposal `finalized`), whatever the owner decides after. */
   readonly postActions?: readonly AgentPostActionRecord[];
   /** Only once the owner took the attempt over. */
   readonly takeOver?: AgentTakeOver;
+  /** Only when the finalize held the proposal for the owner's confirmation (D17). */
+  readonly confirmation?: AgentOwnerConfirmation;
+}
+
+/**
+ * A finalized proposal that takes a decision only the owner takes (D17): the attempt ended and the
+ * run waits at its transition. Its attempt commit (D15) is recorded as a post action at the finalize
+ * like any finished attempt's (owner decision 2026-11-21: commit at finish), so nothing of the
+ * agent's work stays uncommitted whatever the owner decides; Confirm then applies the transition as
+ * an ordinary owner write, and Reject returns to the step. The journal stays active until decided.
+ */
+export interface AgentOwnerConfirmation {
+  readonly state: 'pending' | 'confirmed' | 'rejected';
 }
 
 /**
@@ -249,6 +262,7 @@ export function isAttemptResolved(journal: AgentAttemptJournal): boolean {
 export function isAttemptJournalSettled(journal: AgentAttemptJournal): boolean {
   return (
     isAttemptResolved(journal) &&
+    journal.confirmation?.state !== 'pending' &&
     (journal.postActions ?? []).every((action) => action.state === 'done')
   );
 }
@@ -383,6 +397,18 @@ const JournalSchema = Type.Object(
             { maxItems: AGENT_DIRTY_PATHS_MAX },
           ),
           truncated: Type.Optional(Type.Literal(true)),
+        },
+        closed,
+      ),
+    ),
+    confirmation: Type.Optional(
+      Type.Object(
+        {
+          state: Type.Union([
+            Type.Literal('pending'),
+            Type.Literal('confirmed'),
+            Type.Literal('rejected'),
+          ]),
         },
         closed,
       ),

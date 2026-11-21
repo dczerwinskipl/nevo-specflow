@@ -36,6 +36,8 @@ function renderTaskNow(
       returnTo: vi.fn(never),
       reevaluateWait: vi.fn(never),
       abandon: vi.fn(never),
+      checkAgentExecution: vi.fn(never),
+      startAgentExecution: vi.fn(never),
       closePreview: vi.fn(never),
       closeOccupancy: vi.fn(never),
       close: vi.fn(never),

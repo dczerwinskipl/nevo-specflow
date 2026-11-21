@@ -54,6 +54,12 @@ export const WorkflowRunPositionSchema = Type.Union([
     attempt: Type.Integer({ minimum: 1 }),
   }),
   Type.Object({ state: Type.Literal('ready'), step: StepIdSchema }),
+  /** The attempt ended with an agent's result that waits for the owner's Confirm or Reject (D17). */
+  Type.Object({
+    state: Type.Literal('awaiting-confirmation'),
+    step: StepIdSchema,
+    attempt: Type.Integer({ minimum: 1 }),
+  }),
   Type.Object({ state: Type.Literal('terminal'), outcome: TerminalOutcomeSchema }),
 ]);
 export type WorkflowRunPosition = Static<typeof WorkflowRunPositionSchema>;
@@ -529,6 +535,8 @@ export const ATTENTION_ITEM_REASONS = [
   'type-not-allowed',
   'definition-missing',
   'entry-gate-unsatisfied',
+  /** An agent's result waits for the owner's Confirm or Reject (D17): `confirmationAttempt`. */
+  'awaiting-confirmation',
 ] as const;
 /** The one action an item offers; a client maps it to its command or page. */
 export const ATTENTION_ACTIONS = [
@@ -546,6 +554,9 @@ export const ATTENTION_ACTIONS = [
   /** Resume the Task on hold the item is about (`on-hold → ready`). */
   'resume-task',
   'satisfy-gate',
+  /** Confirm, or reject, the agent's result that waits for the owner (`awaiting-confirmation`). */
+  'confirm-result',
+  'reject-result',
 ] as const;
 
 /**
@@ -577,6 +588,8 @@ export const WorkflowAttentionItemSchema = Type.Object({
   step: Type.Optional(StepIdSchema),
   stepTitle: Type.Optional(Type.String()),
   waitAttempt: Type.Optional(WorkflowAttemptRefSchema),
+  /** `awaiting-confirmation`: the attempt whose result waits for the owner. */
+  confirmationAttempt: Type.Optional(WorkflowAttemptRefSchema),
   reason: literals(ATTENTION_ITEM_REASONS),
   actor: literals(['owner', 'agent'] as const),
   action: literals(ATTENTION_ACTIONS),
@@ -624,6 +637,45 @@ export const WorkflowPositionSchema = Type.Union([
      * finish, and whether a result can be taken now, is `actions.finish`.
      */
     exits: array(StepExitSchema),
+  }),
+  /**
+   * An agent's result waits for the owner's Confirm or Reject (D17, `actions.confirm`,
+   * `actions.reject`): the attempt that ended, the agent's proposal (its result with where it goes
+   * and the exit gates it needs now, its feedback and artifacts), and what Confirm applies besides
+   * taking the transition: `approvesDrafts`, the drafts `approve-draft-tasks` approves (as they are
+   * now, in id order), and the agent's `taskDecisions`; `confirmsDigest` pins exactly that.
+   */
+  Type.Object({
+    kind: Type.Literal('awaiting-confirmation'),
+    step: WorkflowStepSchema,
+    attempt: Type.Object({
+      number: Type.Integer({ minimum: 1 }),
+      startedAt: Type.String(),
+      endedAt: Type.Optional(Type.String()),
+      actor: WorkflowActorSchema,
+    }),
+    proposal: Type.Object({
+      transition: StepExitSchema,
+      feedback: Type.Optional(text()),
+      artifacts: array(Type.String()),
+    }),
+    confirms: Type.Object({
+      approvesDrafts: Type.Optional(array(TaskIdSchema)),
+      taskDecisions: Type.Optional(
+        array(
+          Type.Object({
+            taskId: TaskIdSchema,
+            status: literals(['ready', 'on-hold', 'cancelled'] as const),
+            reason: Type.Optional(Type.String()),
+          }),
+        ),
+      ),
+    }),
+    /**
+     * The digest of `confirms` with the content revision of each draft's manifest and documents as read: the Confirm request names
+     * it (`confirmsDigest`), and is refused `WORKFLOW_CONFIRMATION_CHANGED` when it changed since.
+     */
+    confirmsDigest: Type.String({ pattern: '^[0-9a-f]{64}$' }),
   }),
   Type.Object({
     kind: Type.Literal('waiting'),
@@ -744,6 +796,10 @@ export const WorkflowActionsSchema = Type.Object({
       ),
     }),
   ),
+  /** The agent's result that waits for the owner (`awaiting-confirmation`): Confirm applies it. */
+  confirm: Type.Optional(WorkflowAttemptRefSchema),
+  /** Reject returns the run to that step with the owner's feedback as its handoff. */
+  reject: Type.Optional(WorkflowAttemptRefSchema),
   return: Type.Optional(
     Type.Object({
       targets: array(

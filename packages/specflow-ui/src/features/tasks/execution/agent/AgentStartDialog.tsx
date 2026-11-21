@@ -1,0 +1,272 @@
+import { useEffect, useRef, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
+import { Bot, GitCommitHorizontal } from 'lucide-react';
+import {
+  Alert,
+  Button,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  InlineNote,
+} from '@nevo/ui';
+import type { AgentOption } from '@nevo/specflow-contracts/workflow';
+import { useAppServices } from '../../../../app/useAppServices';
+import { useSpecificationWorkspace } from '../../../specs/read-model';
+import { startCatalogueFromProviders } from '../../../sessions';
+import { focusInitial } from '../focusInitial';
+import type { WorkflowSubjectRef } from '../api';
+import { WorkflowRefusalAlert } from '../WorkflowRefusalAlert';
+import { AgentBlocker } from './AgentBlocker';
+import {
+  AgentSession,
+  type AgentCatalogue,
+  type FreshChoice,
+  type SessionMode,
+} from './AgentSession';
+import { NO_AGENT_REASONS, archetypeTitle, optionOfRefusal } from './agentOption';
+import { useAgentStart } from './useAgentStart';
+
+const CODE = <span className="font-mono whitespace-nowrap text-content-primary" />;
+
+export interface AgentStartDialogProps {
+  readonly subject: WorkflowSubjectRef;
+  /** The step the owner was shown (the projection's `next`). */
+  readonly step: { readonly id: string; readonly title: string };
+  /** The agent role the projection names, when it does (an unavailable option may not). */
+  readonly archetype?: string | undefined;
+  readonly open: boolean;
+  readonly onOpenChange: (open: boolean) => void;
+}
+
+/** The Session section's mode: the workflow decides it, from the option and its launch. */
+function sessionModeOf(option: AgentOption): SessionMode {
+  if (option.kind === 'unavailable') {
+    if (option.reason === 'session-unavailable') {
+      return 'gone';
+    }
+
+    if ((NO_AGENT_REASONS as readonly string[]).includes(option.reason) && !option.launch) {
+      return 'not-chosen';
+    }
+  }
+
+  return option.launch?.session.mode === 'reuse' ? 'reuse' : 'fresh';
+}
+
+/**
+ * Run with agent: what happens, what blocks the start (read from the Runtime when the dialog opens,
+ * before anything is sent), the Session the attempt runs in and the commit disclosure. The footer is
+ * Cancel and the one primary action, disabled while anything blocks; Check again is inside the
+ * blocker's alert. A refusal of the start that names the agent (or the dirty checkout) shows the same
+ * blocker; any other refusal is explained by its code.
+ */
+export function AgentStartDialog({
+  subject,
+  step,
+  archetype,
+  open,
+  onOpenChange,
+}: AgentStartDialogProps) {
+  const { t } = useTranslation();
+  const { managedSessionsApi, specificationApi } = useAppServices();
+  const { check, start } = useAgentStart(subject, step.id, open);
+  const workspace = useSpecificationWorkspace(subject.specId, specificationApi).data;
+  const [chosen, setChosen] = useState<FreshChoice>();
+
+  const refusedOption = start.isError ? optionOfRefusal(start.error) : undefined;
+  const option: AgentOption | undefined = refusedOption ?? check.data?.agent;
+  const launch = option?.launch;
+  const archetypeName = archetypeTitle(launch?.archetype ?? archetype ?? '');
+  // The Runtime names no role when it knows no agent for the step: the copy then says "an agent".
+  const roleName = archetypeName
+    ? t('workflowExecution.agent.role', { name: archetypeName })
+    : undefined;
+  const mode = option ? sessionModeOf(option) : 'fresh';
+  const fresh = mode === 'fresh';
+  const independent = option?.independent === true;
+
+  const providers = useQuery({
+    queryKey: ['workflow', 'agent-providers', subject.specId],
+    queryFn: ({ signal }) => managedSessionsApi.providers({ specId: subject.specId }, signal),
+    enabled: open && launch !== undefined,
+    retry: false,
+  });
+  const catalogue: AgentCatalogue = providers.data
+    ? {
+        status: 'ready',
+        catalogue: startCatalogueFromProviders(providers.data.items),
+        providers: providers.data.items,
+      }
+    : providers.isError
+      ? { status: 'error' }
+      : { status: 'loading' };
+  const choice: FreshChoice =
+    chosen ??
+    (launch
+      ? {
+          providerId: launch.provider,
+          modelId: launch.model,
+          ...(launch.effort ? { effort: launch.effort } : {}),
+        }
+      : { providerId: '', modelId: '' });
+  const chosenReady =
+    catalogue.status !== 'ready' ||
+    catalogue.catalogue.providers.some(
+      (provider) => provider.id === choice.providerId && provider.available,
+    );
+
+  // A provider that is not ready only blocks the agent the workflow preselected: for a new Session the
+  // owner may pick a ready one (D18), and the start checks it again. A continued Session has no picker.
+  const pickable =
+    option?.kind === 'unavailable' &&
+    option.reason === 'provider-not-ready' &&
+    fresh &&
+    launch !== undefined &&
+    catalogue.status === 'ready';
+  const blocked = option?.kind === 'unavailable' && !(pickable && chosenReady);
+  const canStart =
+    !start.isPending &&
+    ((option?.kind === 'available' && (!fresh || chosenReady)) || (pickable && chosenReady));
+  const otherRefusal = start.isError && !refusedOption;
+  const reused = launch?.session.mode === 'reuse' ? launch.session.sessionId : undefined;
+  const sessionTitle =
+    reused !== undefined
+      ? workspace?.sessions.find((session) => session.id === reused)?.title
+      : undefined;
+  const branch = workspace?.repoContext?.branch;
+
+  const blockerRef = useRef<HTMLDivElement>(null);
+  // A refused start leaves focus on the button that was disabled by it; the alert takes it.
+  useEffect(() => {
+    if (start.isError) {
+      const target = blockerRef.current?.querySelector<HTMLElement>('button') ?? blockerRef.current;
+      target?.focus();
+    }
+  }, [start.isError, start.error]);
+
+  const checkAgain = () => {
+    start.reset();
+    void check.refetch();
+  };
+
+  const submit = () => {
+    start.mutate(
+      fresh && catalogue.status === 'ready'
+        ? {
+            provider: choice.providerId,
+            model: choice.modelId,
+            ...(choice.effort ? { effort: choice.effort } : {}),
+          }
+        : {},
+      { onSuccess: () => onOpenChange(false) },
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent closeLabel={t('common.close')} onOpenAutoFocus={focusInitial}>
+        <DialogHeader>
+          <DialogTitle>
+            {t('workflowExecution.agent.title', { step: step.title || step.id })}
+          </DialogTitle>
+          <DialogDescription>
+            {subject.taskId === undefined
+              ? t('workflowExecution.agent.descriptionSpecification')
+              : t('workflowExecution.agent.descriptionTask', { task: subject.taskId })}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogBody>
+          <div className="grid gap-6" aria-busy={check.isPending}>
+            {check.isPending ? (
+              <p role="status" className="text-body-sm text-content-secondary">
+                {t('workflowExecution.agent.checking')}
+              </p>
+            ) : null}
+            {check.isError && !option ? (
+              <Alert
+                role="alert"
+                tone="attention"
+                title={t('workflowExecution.agent.checkFailedTitle')}
+              >
+                <div className="grid gap-2">
+                  <p>{t('workflowExecution.agent.checkFailedBody')}</p>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      leadingIcon="refresh"
+                      onClick={checkAgain}
+                      disabled={check.isFetching}
+                    >
+                      {t('workflowExecution.agent.checkAgain')}
+                    </Button>
+                  </div>
+                </div>
+              </Alert>
+            ) : null}
+            {blocked ? (
+              <div ref={blockerRef} tabIndex={-1} className="outline-none">
+                <AgentBlocker
+                  option={option}
+                  specId={subject.specId}
+                  step={step.title || step.id}
+                  role={roleName}
+                  checking={check.isFetching}
+                  onCheckAgain={checkAgain}
+                  urgent={refusedOption !== undefined}
+                />
+              </div>
+            ) : null}
+            {otherRefusal ? <WorkflowRefusalAlert error={start.error} /> : null}
+            {option ? (
+              <>
+                <InlineNote tone="info" icon={GitCommitHorizontal}>
+                  {branch ? (
+                    <Trans
+                      i18nKey="workflowExecution.agent.commit"
+                      values={{ branch }}
+                      components={{ code: CODE }}
+                    />
+                  ) : (
+                    t('workflowExecution.agent.commitNoBranch')
+                  )}
+                </InlineNote>
+                <AgentSession
+                  mode={mode}
+                  independent={independent}
+                  step={step.title || step.id}
+                  role={roleName ?? t('workflowExecution.agent.roleFallback')}
+                  launch={launch}
+                  {...(sessionTitle ? { sessionTitle } : {})}
+                  catalogue={catalogue}
+                  choice={choice}
+                  onChoice={setChosen}
+                />
+              </>
+            ) : null}
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <Button data-initial-focus="" variant="secondary" onClick={() => onOpenChange(false)}>
+            {t('common.cancel')}
+          </Button>
+          <Button
+            leadingIcon={Bot}
+            onClick={submit}
+            disabled={!canStart}
+            aria-busy={start.isPending}
+          >
+            {start.isPending
+              ? t('workflowExecution.agent.submitting')
+              : t('workflowExecution.agent.submit')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

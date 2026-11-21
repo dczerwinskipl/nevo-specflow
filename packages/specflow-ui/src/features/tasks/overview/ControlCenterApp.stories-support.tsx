@@ -80,6 +80,8 @@ function services(source: ControlCenterSource) {
       returnTo: never,
       reevaluateWait: never,
       abandon: never,
+      checkAgentExecution: never,
+      startAgentExecution: never,
       closePreview: never,
       closeOccupancy: never,
       close: never,

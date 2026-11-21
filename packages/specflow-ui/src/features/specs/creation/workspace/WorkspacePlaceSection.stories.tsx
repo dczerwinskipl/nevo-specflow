@@ -1453,22 +1453,23 @@ export const BaseConfigurationUnusable: Story = {
   play: async ({ canvas, userEvent }) => {
     const base = row(canvas, 'Zacznij od');
     await expect(
-      within(base).getByText('Nie można zacząć od tej gałęzi. Wybierz inną gałąź.'),
+      within(base).getByText(
+        'Nie można utworzyć nowego środowiska. Żadna gałąź nie ma poprawnych ustawień SpecFlow.',
+      ),
     ).toBeInTheDocument();
     await expect(within(document.body).queryByRole('dialog')).not.toBeInTheDocument();
-    await userEvent.click(within(base).getByRole('button', { name: 'Dlaczego?' }));
-    const panel = await within(document.body).findByRole('dialog', {
-      name: 'Dlaczego nie można tu zacząć?',
-    });
+    await userEvent.click(within(base).getByRole('button', { name: 'Jak to naprawić?' }));
+    const panel = await within(document.body).findByRole('dialog');
     await expect(within(panel).getByText(/Nowe środowisko powstaje z wersji/)).toBeVisible();
-    await expect(within(panel).getByText(/brakuje sekcji runtime/)).toBeVisible();
+    await expect(panel).not.toHaveTextContent('Wybierz inną');
+    await expect(within(panel).getByText(/^Popraw \.nevo\/config\.yaml/)).toBeVisible();
     await userEvent.keyboard('{Escape}');
     await waitFor(() =>
-      expect(within(base).getByRole('button', { name: 'Dlaczego?' })).toHaveFocus(),
+      expect(within(base).getByRole('button', { name: 'Jak to naprawić?' })).toHaveFocus(),
     );
     await expect(canvas.getByLabelText('Żądanie')).toHaveAttribute(
       'data-problems',
-      expect.stringContaining('Nie można zacząć od tej gałęzi'),
+      expect.stringContaining('Nie można utworzyć nowego środowiska'),
     );
     await rowAction(canvas, userEvent, 'Zacznij od');
     await userEvent.click(within(row(canvas, 'Zacznij od')).getByRole('combobox'));

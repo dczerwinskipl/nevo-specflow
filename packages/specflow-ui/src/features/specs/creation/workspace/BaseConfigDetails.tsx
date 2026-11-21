@@ -16,14 +16,16 @@ import { useTranslation } from 'react-i18next';
 export function BaseConfigDetails({
   config,
   hasUnavailableBases = false,
+  noUsableBases = false,
 }: {
   config: DefaultBaseConfig | undefined;
   hasUnavailableBases?: boolean;
+  noUsableBases?: boolean;
 }) {
   const { t } = useTranslation();
   const isSplit = useWorkspaceLayout().mode === 'split';
   const problem = config?.status === 'unusable' ? config : undefined;
-  if (!problem && !hasUnavailableBases) {
+  if (!problem && !hasUnavailableBases && !noUsableBases) {
     return null;
   }
 
@@ -32,9 +34,11 @@ export function BaseConfigDetails({
       <DrawerTrigger asChild>
         <Button variant="ghost" size="sm" className="-ml-control-padding-compact">
           {t(
-            problem
-              ? 'create.workspace.baseConfigDetails.why'
-              : 'create.workspace.baseConfigDetails.unavailableBranches',
+            noUsableBases
+              ? 'create.workspace.baseConfigDetails.how'
+              : problem
+                ? 'create.workspace.baseConfigDetails.why'
+                : 'create.workspace.baseConfigDetails.unavailableBranches',
           )}
         </Button>
       </DrawerTrigger>
@@ -42,18 +46,20 @@ export function BaseConfigDetails({
         <DrawerHeader>
           <DrawerTitle>
             {t(
-              problem
+              problem || noUsableBases
                 ? 'create.workspace.baseConfigDetails.title'
                 : 'create.workspace.baseConfigDetails.unavailableBranches',
             )}
           </DrawerTitle>
           <DrawerDescription>
             {t(
-              !problem
-                ? 'create.workspace.baseConfigDetails.unavailableDescription'
-                : problem.reason === 'ref-not-found'
-                  ? 'create.workspace.baseConfigReason.ref-not-found'
-                  : 'create.workspace.baseConfigDetails.description',
+              noUsableBases
+                ? 'create.workspace.baseConfigNone'
+                : !problem
+                  ? 'create.workspace.baseConfigDetails.unavailableDescription'
+                  : problem.reason === 'ref-not-found'
+                    ? 'create.workspace.baseConfigReason.ref-not-found'
+                    : 'create.workspace.baseConfigDetails.description',
             )}
           </DrawerDescription>
         </DrawerHeader>
@@ -61,7 +67,13 @@ export function BaseConfigDetails({
           <div className="grid gap-3 text-body-sm text-content-secondary">
             <p>{t('create.workspace.baseConfigDetails.explanation')}</p>
             {problem && <p>{t(`create.workspace.baseConfigReason.${problem.reason}`)}</p>}
-            <p>{t('create.workspace.baseConfigDetails.action')}</p>
+            <p>
+              {t(
+                noUsableBases
+                  ? 'create.workspace.baseConfigDetails.repair'
+                  : 'create.workspace.baseConfigDetails.action',
+              )}
+            </p>
           </div>
         </DrawerBody>
       </DrawerContent>

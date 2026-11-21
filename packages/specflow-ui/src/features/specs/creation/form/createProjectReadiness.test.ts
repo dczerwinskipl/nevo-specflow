@@ -105,6 +105,6 @@ it('a base without committed configuration blocks submit and leads to Start from
   expect(result).toMatchObject({
     canSubmit: false,
     problemField: 'base',
-    prerequisite: { key: 'create.workspace.baseConfig.runtime-missing' },
+    prerequisite: { key: 'create.workspace.baseConfigNone' },
   });
 });

@@ -10,7 +10,7 @@ import { initialWorkspaceChoice, type WorkspaceChoice } from './model/workspaceC
 
 afterEach(cleanup);
 
-it.each([undefined, 'refs/heads/feature/payments'])(
+it.each([undefined, '', 'refs/heads/feature/payments', 'refs/heads/deleted'])(
   'a blocked Create focuses the invalid source without replacing a remembered %s',
   async (selectedRef) => {
     vi.stubGlobal(
@@ -22,6 +22,16 @@ it.each([undefined, 'refs/heads/feature/payments'])(
       },
     );
     Element.prototype.scrollIntoView = () => undefined;
+    const options = createOptionsFixture('base-config-unusable');
+
+    if (selectedRef === '') {
+      options.defaultBaseRef = 'refs/tags/unavailable';
+    }
+
+    if (selectedRef === 'refs/heads/deleted') {
+      options.baseRefs = [];
+    }
+
     const handle = createRef<WorkspacePlaceSectionHandle>();
     let observed = initialWorkspaceChoice;
     function Harness() {
@@ -34,7 +44,7 @@ it.each([undefined, 'refs/heads/feature/payments'])(
 
       return (
         <WorkspacePlaceSection
-          state={{ status: 'ready', options: createOptionsFixture('base-config-unusable') }}
+          state={{ status: 'ready', options }}
           choice={choice}
           update={update}
           locked={false}
@@ -43,6 +53,7 @@ it.each([undefined, 'refs/heads/feature/payments'])(
           title="Payment limits"
           headingId="workspace-heading"
           handleRef={handle}
+          showRequired
         />
       );
     }
@@ -61,7 +72,10 @@ it.each([undefined, 'refs/heads/feature/payments'])(
     const description = picker.getAttribute('aria-describedby')!;
     expect(observed.base.ref).toBe(selectedRef ?? 'refs/heads/develop');
     expect(document.getElementById(description)?.textContent).toContain(
-      'Cannot start from this branch. Choose another branch.',
+      'Cannot create a new workspace. No branch has valid SpecFlow settings.',
+    );
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'How to fix it?' }).disabled).toBe(
+      false,
     );
     vi.unstubAllGlobals();
   },

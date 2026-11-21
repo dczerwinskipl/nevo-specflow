@@ -9,7 +9,7 @@ import { BranchRef } from './BranchRef';
 import { MergeSuggestionNotice } from './MergeSuggestionNotice';
 import type { SettingsFocusRequest, SettingsUpdate } from './settingsTypes';
 import type { WorkspaceChoice } from './model/workspaceChoice';
-import { selectedBaseConfig } from './model/baseConfig';
+import { noUsableBaseConfig, selectedBaseConfig } from './model/baseConfig';
 import { BaseConfigDetails } from './BaseConfigDetails';
 
 /**
@@ -36,6 +36,7 @@ export function BaseRefField({
   const { t } = useTranslation();
   const text = useMessage();
   const primary = options.workspaces.find((w) => w.workspaceId === options.primaryWorkspaceId);
+  const noUsableBases = noUsableBaseConfig(options);
 
   const baseRefMeta = (ref: string, checkedOutWorkspaceId?: string) => {
     if (!checkedOutWorkspaceId || !ref) {
@@ -57,6 +58,10 @@ export function BaseRefField({
     <div className="grid min-w-0 gap-3">
       <Field invalid={Boolean(error)}>
         <Field.Label className="sr-only">{t('create.workspace.fact.base')}</Field.Label>
+        {error && noUsableBases && <Field.Error>{text(error)}</Field.Error>}
+        {noUsableBases && (
+          <BaseConfigDetails config={selectedBaseConfig(choice, options)} noUsableBases />
+        )}
         <LocalizedOptionPicker
           value={choice.base.ref}
           invalid={Boolean(error)}
@@ -81,14 +86,16 @@ export function BaseRefField({
             label: (wraps) => <BranchRef name={refDisplayName(item.ref)} truncate={!wraps} />,
           }))}
         />
-        {error && <Field.Error>{text(error)}</Field.Error>}
+        {error && !noUsableBases && <Field.Error>{text(error)}</Field.Error>}
       </Field>
-      <BaseConfigDetails
-        config={selectedBaseConfig(choice, options)}
-        hasUnavailableBases={options.baseRefs.some(
-          (item) => item.projectConfig.status === 'unusable',
-        )}
-      />
+      {!noUsableBases && (
+        <BaseConfigDetails
+          config={selectedBaseConfig(choice, options)}
+          hasUnavailableBases={options.baseRefs.some(
+            (item) => item.projectConfig.status === 'unusable',
+          )}
+        />
+      )}
       <MergeSuggestionNotice
         options={options}
         choice={choice}

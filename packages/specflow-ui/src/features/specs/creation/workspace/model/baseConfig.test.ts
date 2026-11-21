@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createOptionsFixture } from '../../options/creationOptions.stories-support';
-import { baseConfigMessage, preferredBaseRef } from './baseConfig';
+import { baseConfigMessage, noUsableBaseConfig, preferredBaseRef } from './baseConfig';
 import { buildCreateTarget } from './createRequest';
 import { buildCreateFacts } from './createFacts';
 import { baseOverride } from './workspaceOverrides';
@@ -54,7 +54,7 @@ describe('committed configuration of the starting source', () => {
     const options = createOptionsFixture('base-config-unusable');
     expect(preferredBaseRef(options)).toBe('HEAD');
     expect(workspaceProblems(choice, options)).toEqual([
-      { field: 'base', message: baseConfigMessage(options.defaultBaseConfig) },
+      { field: 'base', message: { key: 'create.workspace.baseConfigNone' } },
     ]);
     expect(workspaceProblems({ ...choice, tile: 'main' }, options)).toEqual([]);
     expect(
@@ -67,6 +67,7 @@ describe('committed configuration of the starting source', () => {
 
   it('flags a remembered selected branch that becomes unusable without silently choosing another', () => {
     const options = createOptionsFixture('base-config-unusable');
+    options.baseRefs[0] = { ...options.baseRefs[0]!, projectConfig: { status: 'usable' } };
     const selected = { ...choice, base: { on: true, ref: options.baseRefs[2]!.ref } };
     expect(workspaceProblems(selected, options)[0]).toEqual({
       field: 'base',
@@ -77,4 +78,43 @@ describe('committed configuration of the starting source', () => {
       baseRef: selected.base.ref,
     });
   });
+});
+
+describe('no usable starting configuration', () => {
+  it('keeps the global blocking reason when opening an unusable default outside the branch list', () => {
+    const options = createOptionsFixture('base-config-unusable');
+    options.defaultBaseRef = 'refs/tags/unavailable';
+    const opened = { ...choice, ...baseOverride(options, choice, true) };
+    expect(opened.base.ref).toBe('');
+    expect(workspaceProblems(opened, options)).toEqual([
+      { field: 'base', message: { key: 'create.workspace.baseConfigNone' } },
+    ]);
+  });
+
+  it('reports all-unavailable only when the default and every listed branch are unusable', () => {
+    const options = createOptionsFixture('base-config-unusable');
+    expect(noUsableBaseConfig(options)).toBe(true);
+    expect(noUsableBaseConfig({ ...options, baseRefs: [] })).toBe(true);
+    expect(noUsableBaseConfig(createOptionsFixture('base-config-fallback'))).toBe(false);
+    expect(noUsableBaseConfig({ ...options, defaultBaseConfig: undefined })).toBe(false);
+  });
+
+  it.each(['refs/tags/v1', '0123456789abcdef0123456789abcdef01234567'])(
+    'keeps usable configured %s when every listed branch is unavailable or none is listed',
+    (defaultBaseRef) => {
+      for (const empty of [false, true]) {
+        const options = createOptionsFixture('base-config-unusable');
+        options.defaultBaseRef = defaultBaseRef;
+        options.defaultBaseConfig = { status: 'usable' };
+        if (empty) {
+          options.baseRefs = [];
+        }
+
+        expect(noUsableBaseConfig(options)).toBe(false);
+        expect(preferredBaseRef(options)).toBe(defaultBaseRef);
+        expect(workspaceProblems(choice, options)).toEqual([]);
+        expect(buildCreateTarget(choice, options)).toEqual({ kind: 'new-worktree' });
+      }
+    },
+  );
 });

@@ -7,7 +7,7 @@ import {
 import type { CreateOptionsView } from './createOptionsView';
 import { message, type Message } from '../../../../../i18n/message';
 import type { WorkspaceChoice } from './workspaceChoice';
-import { baseConfigMessage, selectedBaseConfig } from './baseConfig';
+import { baseConfigMessage, noUsableBaseConfig, selectedBaseConfig } from './baseConfig';
 import {
   branchPreview,
   readableBranchName,
@@ -51,7 +51,9 @@ export function revalidate(choice: WorkspaceChoice, options: CreateOptionsView):
     errors.base = staleMessages.base;
   }
 
-  errors.base ??= baseConfigMessage(selectedBaseConfig(choice, options));
+  errors.base = noUsableBaseConfig(options)
+    ? message('create.workspace.baseConfigNone')
+    : (errors.base ?? baseConfigMessage(selectedBaseConfig(choice, options)));
   if (errors.base === undefined) {
     delete errors.base;
   }
@@ -124,7 +126,12 @@ export function workspaceProblems(
   }
 
   if (tile === 'new') {
-    add('base', choice.base.on && !choice.base.ref ? requiredMessages.base : errors.base);
+    add(
+      'base',
+      choice.base.on && !choice.base.ref && !noUsableBaseConfig(options)
+        ? requiredMessages.base
+        : errors.base,
+    );
     add(
       'target',
       choice.target.on && !choice.target.workspaceId ? requiredMessages.target : errors.target,

@@ -36,7 +36,7 @@ import {
   targetUnchangeable,
 } from './model/workspaceOverrides';
 import { BaseConfigDetails } from './BaseConfigDetails';
-import { preferredBaseRef, selectedBaseConfig } from './model/baseConfig';
+import { noUsableBaseConfig, preferredBaseRef, selectedBaseConfig } from './model/baseConfig';
 import { primaryWorkspace, targetStatus } from './model/workspaceTiles';
 import {
   generatedBranchProblem,
@@ -55,12 +55,14 @@ export interface WorkspaceSettingsControls {
 }
 
 /** A quiet line under a row value: a caveat, or why the row cannot be changed. */
-const rowNote = (children: ReactNode, tone: 'muted' | 'attention' = 'muted') => (
+const rowNote = (children: ReactNode, tone: 'muted' | 'attention' | 'danger' = 'muted') => (
   <span
     className={
-      tone === 'attention'
-        ? 'mt-0.5 block text-body-sm text-status-attention'
-        : 'mt-0.5 block text-body-sm text-content-muted'
+      tone === 'danger'
+        ? 'mt-0.5 block text-body-sm text-status-danger'
+        : tone === 'attention'
+          ? 'mt-0.5 block text-body-sm text-status-attention'
+          : 'mt-0.5 block text-body-sm text-content-muted'
     }
   >
     {children}
@@ -233,6 +235,7 @@ export function NewWorkspaceSettings({
   const generatedProblem = generatedBranchProblem(choice, options, title);
   const branchOpen = branchNameChanged(choice);
   const merge = mergeDefault(options, t, text);
+  const noUsableBases = noUsableBaseConfig(options);
 
   const branchName = overrides.branch ?? branchPreview(options, slug);
   // The visible word plus the row, so each action has its own name that starts with what is seen.
@@ -271,6 +274,14 @@ export function NewWorkspaceSettings({
               />
             ) : (
               <>
+                {errors.base && noUsableBases ? (
+                  <span id={baseErrorId}>{rowNote(text(errors.base), 'danger')}</span>
+                ) : null}
+                {noUsableBases && (
+                  <div>
+                    <BaseConfigDetails config={selectedBaseConfig(choice, options)} noUsableBases />
+                  </div>
+                )}
                 <span
                   ref={(element) => {
                     refs.base.current = element;
@@ -281,10 +292,12 @@ export function NewWorkspaceSettings({
                 >
                   <BaseDefault options={options} />
                 </span>
-                {errors.base ? (
+                {errors.base && !noUsableBases ? (
                   <span id={baseErrorId}>{rowNote(text(errors.base), 'attention')}</span>
                 ) : null}
-                <BaseConfigDetails config={selectedBaseConfig(choice, options)} />
+                {!noUsableBases && (
+                  <BaseConfigDetails config={selectedBaseConfig(choice, options)} />
+                )}
                 {baseUnchangeable(options, choice) &&
                   rowNote(t('create.workspace.settings.baseNone'))}
               </>

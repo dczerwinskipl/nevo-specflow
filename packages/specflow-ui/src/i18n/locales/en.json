@@ -918,6 +918,7 @@
         "text": "A new workspace is not affected by protected branches.",
         "action": "Use New workspace"
       },
+      "baseConfigNone": "Cannot create a new workspace. No branch has valid SpecFlow settings.",
       "baseConfig": {
         "missing": "Cannot start from this branch. Choose another branch.",
         "not-regular-file": "Cannot start from this branch. Choose another branch.",
@@ -933,6 +934,8 @@
         "ref-not-found": "The configured starting point no longer exists."
       },
       "baseConfigDetails": {
+        "how": "How to fix it?",
+        "repair": "Fix .nevo/config.yaml on one of the branches and save the change in its Git history (commit). Then refresh the form.",
         "why": "Why?",
         "explanation": "A new workspace starts from the version saved in Git on the selected branch. That version needs working SpecFlow settings. Changes made only in your current folder are not copied to the new workspace.",
         "action": "Choose another starting branch. To use a branch marked unavailable, fix .nevo/config.yaml and save the change in its Git history (commit).",

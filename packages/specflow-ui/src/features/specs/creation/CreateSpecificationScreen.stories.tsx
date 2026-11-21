@@ -1744,11 +1744,12 @@ export const UnusableStartingConfigurationBlocksClickAndEnter: Story = {
     const base = await canvas.findByRole('combobox', { name: 'Zacznij od' });
     await waitFor(() => expect(base).toHaveFocus());
     await expect(base).toHaveAttribute('aria-invalid', 'true');
-    await expect(
-      canvas.getByText('Nie można zacząć od tej gałęzi. Wybierz inną gałąź.', {
-        selector: '.field-error',
-      }),
-    ).toBeVisible();
+    await expect(canvas.getByRole('group', { name: 'Zacznij od' })).toHaveTextContent(
+      'Nie można utworzyć nowego środowiska. Żadna gałąź nie ma poprawnych ustawień SpecFlow.',
+    );
+    await expect(canvas.getByRole('group', { name: 'Zacznij od' })).not.toHaveTextContent(
+      'Wybierz inną',
+    );
     await expect(createRequests).toHaveLength(0);
 
     name.focus();

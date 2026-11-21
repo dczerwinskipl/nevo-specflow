@@ -33,6 +33,14 @@ export function preferredBaseRef(options: CreateOptionsView): string {
   );
 }
 
+/** A valid configured tag or commit remains usable even when no listed branch is. */
+export function noUsableBaseConfig(options: CreateOptionsView): boolean {
+  return (
+    options.defaultBaseConfig?.status === 'unusable' &&
+    !options.baseRefs.some((item) => item.projectConfig.status === 'usable')
+  );
+}
+
 export function effectiveBaseRef(choice: WorkspaceChoice, options: CreateOptionsView): string {
   return choice.base.on ? choice.base.ref : preferredBaseRef(options);
 }

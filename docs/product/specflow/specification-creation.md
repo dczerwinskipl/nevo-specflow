@@ -97,6 +97,14 @@ When the selected source is usable but other branches are not, the opened source
 **Unavailable branches** with the same explanatory Drawer and repair guidance. The person can inspect
 that guidance without selecting an unusable branch.
 
+When the configured source and every listed branch are unusable, Start from instead shows a
+danger-colored blocking message above its value or picker: **Cannot create a new workspace. No
+branch has valid SpecFlow settings.** Its **How to fix it?** action opens the same responsive
+Drawer with repair and refresh instructions; neither the field nor its footer prerequisite
+suggests choosing another unavailable branch. The picker remains inspectable, with all options
+unavailable, and Create/Enter still send no request. A usable configured tag or commit prevents
+this state even when all listed branches are unavailable.
+
 The initial starting point prefers the configured default when usable (including `HEAD`, a tag
 or a SHA); otherwise it prefers the usable integration branch, then the first usable local branch.
 If none is usable, the configured default stays visible with the blocking explanation. An automatic

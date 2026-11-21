@@ -918,6 +918,7 @@
         "text": "Chronione gałęzie nie dotyczą nowego środowiska pracy.",
         "action": "Użyj nowego środowiska pracy"
       },
+      "baseConfigNone": "Nie można utworzyć nowego środowiska. Żadna gałąź nie ma poprawnych ustawień SpecFlow.",
       "baseConfig": {
         "missing": "Nie można zacząć od tej gałęzi. Wybierz inną gałąź.",
         "not-regular-file": "Nie można zacząć od tej gałęzi. Wybierz inną gałąź.",
@@ -933,6 +934,8 @@
         "ref-not-found": "Skonfigurowany punkt początkowy już nie istnieje."
       },
       "baseConfigDetails": {
+        "how": "Jak to naprawić?",
+        "repair": "Popraw .nevo/config.yaml na jednej z gałęzi i zapisz zmianę w jej historii Git (commit). Następnie odśwież formularz.",
         "why": "Dlaczego?",
         "explanation": "Nowe środowisko powstaje z wersji zapisanej w Git na wybranej gałęzi. Ta wersja potrzebuje działających ustawień SpecFlow. Zmiany wprowadzone tylko w bieżącym katalogu nie są kopiowane do nowego środowiska.",
         "action": "Wybierz inną gałąź początkową. Aby użyć gałęzi oznaczonej jako niedostępna, popraw .nevo/config.yaml i zapisz zmianę w jej historii Git (commit).",

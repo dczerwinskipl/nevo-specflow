@@ -10903,6 +10903,12 @@
                   {
                     "type": "string",
                     "enum": [
+                      "claim-not-held"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
                       "close"
                     ]
                   },

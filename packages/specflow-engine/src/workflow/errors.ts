@@ -74,7 +74,9 @@ export class WorkflowError extends CoreWorkflowError<WorkflowErrorCode> {}
 
 /**
  * Why a Specification is busy (`WORKFLOW_SPECIFICATION_BUSY`): an agent Turn's claim (`agent-turn`,
- * or `agent-turn-unknown` once that Turn ended without a verified outcome), an unsettled Close
+ * or `agent-turn-unknown` once that Turn ended without a verified outcome), a write naming an owned
+ * execution whose claim is not held (`claim-not-held`: its Turn settled, or the claim never existed),
+ * an unsettled Close
  * (`close`), or a busy cause of the workflow state's commit admission (the documents' `SPEC_BUSY`
  * causes). `other`: a busy refusal whose cause this list does not know, kept as a refusal rather than
  * dropped. The Runtime's contract test keeps the contracts' list equal to this one.
@@ -82,6 +84,7 @@ export class WorkflowError extends CoreWorkflowError<WorkflowErrorCode> {}
 export const SPECIFICATION_BUSY_CAUSES = [
   'agent-turn',
   'agent-turn-unknown',
+  'claim-not-held',
   'close',
   'create-or-close',
   'commit-in-progress',

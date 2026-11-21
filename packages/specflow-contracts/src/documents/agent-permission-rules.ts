@@ -30,6 +30,7 @@ const REFUSED_TOOLS: ReadonlySet<string> = new Set(
 );
 /** Characters that let a command do more than the one command, or expand to something else. */
 const SHELL_UNSAFE = /[;&|<>$`()\\\n\r*?[\]{}]/;
+const RETARGETING_OPTIONS = /^--(?:project-root|worktree|workspace-id|to-root)(?:=|$)/;
 const RULE = /^([A-Za-z0-9_.*-]+)(?:\(([^]*)\))?$/;
 const ABSOLUTE_PATH = /^(?:[/\\~]|[A-Za-z]:)/;
 
@@ -104,6 +105,10 @@ export function checkAgentPermissionRule(rule: string): AgentPermissionRuleCheck
       return { kind: 'over-broad', reason: `${name} must be scoped to a workspace-relative path.` };
     }
 
+    if (specifier.startsWith('**/')) {
+      return { kind: 'over-broad', reason: `${name} must not start with a "**/" wildcard.` };
+    }
+
     if (ABSOLUTE_PATH.test(specifier) || specifier.split(/[/\\]/).includes('..')) {
       return {
         kind: 'over-broad',
@@ -150,6 +155,11 @@ export function partitionAgentPermissionRules(rules: readonly string[]): AgentPe
  */
 export function isAllowlistedCliCommand(command: string, rules: readonly string[]): boolean {
   if (SHELL_UNSAFE.test(command)) {
+    return false;
+  }
+
+  // Options that point the CLI at another project, worktree or workspace than the Turn's own.
+  if (command.split(/\s+/).some((word) => RETARGETING_OPTIONS.test(word.replace(/["']/g, '')))) {
     return false;
   }
 

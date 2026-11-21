@@ -1,46 +1,67 @@
-import { existsSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
 import { posix, win32 } from 'node:path';
 
 import { PRODUCT_CLI } from '@nevo/specflow-contracts/documents';
 
 const WINDOWS_EXTENSIONS = ['', '.exe', '.cmd', '.bat', '.com', '.ps1'];
 
+export type ProductCliTrust =
+  { readonly trusted: true } | { readonly trusted: false; readonly reason: string };
+
 /**
  * Whether a bare `nevo-specflow` in the provider's shell can only be the installed product CLI: the
- * host auto-approves an allowlisted call (D20) only then. Refused when the effective `PATH` has a
- * relative or empty entry (`.`, '', `./x`: the shell would run a file of the workspace), and on
- * Windows, where the shell may also look in the current directory, when the executable `PATH`
- * resolves lies inside the Turn's workspace. Resolved once, at Turn start.
+ * host auto-approves an allowlisted call (D20) only then. Not trusted when the effective `PATH` has a
+ * relative or empty entry (`.`, '', `./x`), when any `PATH` entry lies inside the Turn's workspace
+ * (an agent that may write there, for example `node_modules/.bin` of a Runtime started through pnpm,
+ * could plant the command), or when the executable `PATH` resolves lies inside the workspace (also
+ * through a link). Resolved once, at Turn start; the reason is recorded in the Turn.
  */
-export function productCliTrusted(input: {
+export function productCliTrust(input: {
   readonly pathValue: string | undefined;
   readonly platform: NodeJS.Platform;
   readonly workspace: string;
   readonly exists?: (path: string) => boolean;
-}): boolean {
+  readonly real?: (path: string) => string;
+}): ProductCliTrust {
   const windows = input.platform === 'win32';
   const flavour = windows ? win32 : posix;
-  const entries = (input.pathValue ?? '').split(windows ? ';' : ':');
-  if (entries.some((entry) => entry.trim() === '' || !flavour.isAbsolute(entry.trim()))) {
-    return false;
+  const entries = (input.pathValue ?? '').split(windows ? ';' : ':').map((entry) => entry.trim());
+  if (entries.some((entry) => entry === '' || !flavour.isAbsolute(entry))) {
+    return { trusted: false, reason: 'PATH has a relative or empty entry.' };
   }
 
-  if (!windows) {
-    return true;
+  const fold = (path: string) => (windows ? path.toLowerCase() : path);
+  const root = fold(flavour.resolve(input.workspace));
+  const inside = (path: string) => {
+    const relative = flavour.relative(root, fold(flavour.resolve(path)));
+
+    return !relative.startsWith('..') && !flavour.isAbsolute(relative);
+  };
+
+  if (entries.some(inside)) {
+    return { trusted: false, reason: "A PATH entry lies inside the Turn's workspace." };
   }
 
   const exists = input.exists ?? existsSync;
-  const root = flavour.resolve(input.workspace).toLowerCase();
+  const real =
+    input.real ??
+    ((path: string) => {
+      try {
+        return realpathSync(path);
+      } catch {
+        return path;
+      }
+    });
   for (const entry of entries) {
-    for (const extension of WINDOWS_EXTENSIONS) {
-      const candidate = flavour.join(entry.trim(), PRODUCT_CLI + extension);
+    for (const extension of windows ? WINDOWS_EXTENSIONS : ['']) {
+      const candidate = flavour.join(entry, PRODUCT_CLI + extension);
       if (exists(candidate)) {
-        const relative = flavour.relative(root, flavour.resolve(candidate).toLowerCase());
-
-        return relative.startsWith('..') || flavour.isAbsolute(relative);
+        return inside(real(candidate))
+          ? { trusted: false, reason: `${PRODUCT_CLI} resolves to a file inside the workspace.` }
+          : { trusted: true };
       }
     }
   }
 
-  return true;
+  return { trusted: true };
 }

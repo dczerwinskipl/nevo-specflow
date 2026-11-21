@@ -8,6 +8,7 @@ import { ProviderTimeouts } from '../driver';
 import type { launchOwnedProcess } from '../process';
 import { ProviderProcessError } from '../process';
 import { createClaudeProtocol, ClaudeProtocolError, identifier, object } from './protocol';
+import type { ProductCliTrust } from './cli-path';
 import { claudeUserMessage } from './requests';
 import { prepareClaudeRequest } from './permissions';
 import { claudeMode, toolsForClaudeMode } from './modes';
@@ -44,8 +45,8 @@ export function createClaudeOperation(
     launch(signal: AbortSignal): Promise<ClaudeProcess>;
     initialize(payload: Record<string, unknown>): void | Promise<void>;
     verifyFrame?(frame: Record<string, unknown>): void;
-    /** False: a bare nevo-specflow may not be the product CLI (see cli-path.ts); the owner decides. */
-    productCliTrusted?: boolean;
+    /** Whether a bare nevo-specflow can only be the product CLI (see cli-path.ts); absent: trusted. */
+    productCli?: ProductCliTrust;
   },
 ): ProviderOperation {
   const context = invocation.providerContext;
@@ -58,6 +59,7 @@ export function createClaudeOperation(
   const seen = new Map<string, string>();
   let owner: ClaudeProcess | undefined;
   let closed = false;
+  let distrustReported = false;
   let initialized = false;
   let dispatched = false;
   let pendingOutcome: Extract<DriverFact, { kind: 'outcome' }> | undefined;
@@ -274,26 +276,47 @@ export function createClaudeOperation(
           const action = request.questions[0]?.interaction;
           if (
             invocation.permissions &&
-            options.productCliTrusted !== false &&
             action?.kind === 'permission' &&
             action.action?.operation === 'command' &&
             isAllowlistedCliCommand(action.action.command, invocation.permissions.allow)
           ) {
-            const key = 'auto-approval:' + requestId;
-            await publish({
-              kind: 'work-open',
-              key,
-              workKind: 'commentary',
-              title: 'Product CLI auto-approved',
-            });
-            await publish({
-              kind: 'text',
-              key,
-              channel: 'commentary',
-              text: 'Allowed by the archetype allowlist: ' + action.action.command.slice(0, 500),
-            });
-            await send(request.respond(0, { kind: 'permission', requestId, decision: 'allow' }));
-            continue;
+            const trust = options.productCli;
+            if (trust?.trusted === false) {
+              // The owner decides; say once why the allowlist is off for this Turn.
+              if (!distrustReported) {
+                distrustReported = true;
+                await publish({
+                  kind: 'work-open',
+                  key: 'auto-approval-off',
+                  workKind: 'commentary',
+                  title: 'Product CLI approval off',
+                });
+                await publish({
+                  kind: 'text',
+                  key: 'auto-approval-off',
+                  channel: 'commentary',
+                  text:
+                    'Allowlisted product CLI commands are not approved automatically in this Turn: ' +
+                    trust.reason,
+                });
+              }
+            } else {
+              const key = 'auto-approval:' + requestId;
+              await publish({
+                kind: 'work-open',
+                key,
+                workKind: 'commentary',
+                title: 'Product CLI auto-approved',
+              });
+              await publish({
+                kind: 'text',
+                key,
+                channel: 'commentary',
+                text: 'Allowed by the archetype allowlist: ' + action.action.command.slice(0, 500),
+              });
+              await send(request.respond(0, { kind: 'permission', requestId, decision: 'allow' }));
+              continue;
+            }
           }
 
           groups.set(requestId, request);

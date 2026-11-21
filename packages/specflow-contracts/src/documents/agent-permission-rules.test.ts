@@ -43,6 +43,7 @@ describe('checkAgentPermissionRule', () => {
     'Read(C:/Users/x/**)',
     'Read(~/.ssh/**)',
     'Read(../outside/**)',
+    'Grep(**/secret.txt)',
     'read(src/**)',
   ])('refuses %s as over-broad', (rule) =>
     expect(checkAgentPermissionRule(rule).kind).toBe('over-broad'),
@@ -87,6 +88,15 @@ describe('isAllowlistedCliCommand', () => {
     'nevo-specflow workflow confirm SPEC-1',
     'nevo-specflow workflow actions SPEC-1',
     'nevo-specflow',
+    'nevo-specflow\ttasks list SPEC-1',
+    'nevo-specflow tasks list\tSPEC-1',
+    'nevo-specflow tasks list SPEC-1',
+    'nevo-specflow tasks list SPEC-1',
+    'nevo-specflow tasks listSPEC-1',
+    'FOO=1\tnevo-specflow tasks list SPEC-1',
+    'nevo-specflow tasks list SPEC-1 --project-root /other',
+    'nevo-specflow tasks list SPEC-1 --project-root=/other',
+    'nevo-specflow tasks list SPEC-1 "--project-root" /other',
   ])('leaves %j to the owner', (command) =>
     expect(isAllowlistedCliCommand(command, rules)).toBe(false),
   );

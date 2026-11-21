@@ -15,6 +15,7 @@ function fixture(
     initializeError?: Error;
     verifyFrame?: (frame: Record<string, unknown>) => void;
     invocation?: Partial<Invocation>;
+    productCli?: { trusted: false; reason: string };
   } = {},
 ) {
   const { disposeOnCancel = true, launchDelay = 0, initializeError } = options;
@@ -117,6 +118,7 @@ function fixture(
         }
       },
       verifyFrame: options.verifyFrame,
+      ...(options.productCli ? { productCli: options.productCli } : {}),
     },
   );
   const ready = () =>
@@ -520,6 +522,27 @@ describe('Claude bidirectional operation', () => {
         await f.operation.done;
       },
     );
+
+    it('sends an allowlisted command to the owner and records why when PATH is not trusted', async () => {
+      const f = fixture('stopped', {
+        invocation: turn('manual'),
+        productCli: { trusted: false, reason: 'A PATH entry lies inside the Turn workspace.' },
+      });
+      await f.ready();
+      f.push(bash('a', 'nevo-specflow tasks list SPEC-1'));
+      f.push(bash('b', 'nevo-specflow tasks list SPEC-2'));
+      await vi.waitFor(() =>
+        expect(f.facts.filter((fact) => fact.kind === 'interaction')).toHaveLength(2),
+      );
+      expect(f.sent.some((frame) => frame.type === 'control_response')).toBe(false);
+      expect(
+        f.facts.filter(
+          (fact) => fact.kind === 'text' && fact.text.includes('PATH entry lies inside'),
+        ),
+      ).toHaveLength(1);
+      f.controller.abort();
+      await f.operation.done;
+    });
 
     it('asks the owner for every command of a Turn without an allowlist', async () => {
       const f = fixture('stopped', { invocation: { ...turn('manual'), permissions: undefined } });

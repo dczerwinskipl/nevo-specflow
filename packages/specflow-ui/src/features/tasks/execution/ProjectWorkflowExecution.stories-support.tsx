@@ -22,7 +22,9 @@ import {
   taskResponse,
   workspaceResponse,
 } from '../pages/ProjectTaskAuthoring.stories-support';
+import { managedProviders } from '../../sessions/start/catalogue/providerDescriptors.stories-support';
 import type { WorkflowExecutionApi } from './api';
+import { agentOptions, type AgentCase } from './agent/agentStart.stories-support';
 import {
   SPEC,
   TASK,
@@ -64,8 +66,16 @@ export type CloseStoryScenario =
   | 'close-git-off'
   | 'close-closing';
 
+/**
+ * Implementation ready to start on the Task page, one per case of Run with agent
+ * (`agent/agentStart.stories-support`); `agent-refused` is the fresh case whose start the Runtime
+ * refuses because the checkout is dirty.
+ */
+export type AgentStoryScenario = `agent-${AgentCase}` | 'agent-refused';
+
 export type WorkflowStoryScenario =
   | TaskWorkflowScenario
+  | AgentStoryScenario
   | 'start-drift'
   | 'spike-gate-round-trip'
   | SpecificationWorkflowScenario
@@ -335,18 +345,37 @@ const heldTaskList = {
   ],
 };
 
+/** The agent case of an agent story, and what the projection (which reads no Git) says of it. */
+function agentCaseOf(scenario: WorkflowStoryScenario): AgentCase | undefined {
+  if (scenario === 'agent-refused') {
+    return 'fresh';
+  }
+
+  return scenario.startsWith('agent-') ? (scenario.slice('agent-'.length) as AgentCase) : undefined;
+}
+
+/** The projection reads no Git: a dirty checkout shows only in the check and the refused start. */
+const projectedAgent = (agentCase: AgentCase) =>
+  agentOptions[agentCase === 'dirty' ? 'fresh' : agentCase];
+
 function services(scenario: WorkflowStoryScenario) {
   const state = { version: 4, findings: false };
+  const agentCase = agentCaseOf(scenario);
   const taskScenario = (): TaskWorkflowScenario =>
-    scenario === 'start-drift'
-      ? 'first-start'
-      : scenario === 'spike-gate-round-trip'
-        ? state.findings
-          ? 'spike-gate-met'
-          : 'spike-gate'
-        : (scenario as TaskWorkflowScenario);
+    agentCase
+      ? 'ready-agent'
+      : scenario === 'start-drift'
+        ? 'first-start'
+        : scenario === 'spike-gate-round-trip'
+          ? state.findings
+            ? 'spike-gate-met'
+            : 'spike-gate'
+          : (scenario as TaskWorkflowScenario);
   const taskProjection = (): WorkflowActionProjection =>
-    taskWorkflowProjection(taskScenario(), { version: state.version });
+    taskWorkflowProjection(taskScenario(), {
+      version: state.version,
+      ...(agentCase ? { agent: projectedAgent(agentCase) } : {}),
+    });
   const authoring = authoringApi('started');
   const workflowExecutionApi: WorkflowExecutionApi = {
     start: (_subject, input) => {
@@ -363,6 +392,20 @@ function services(scenario: WorkflowStoryScenario) {
     returnTo: never,
     reevaluateWait: never,
     abandon: never,
+    // The check reads the checkout too, so a dirty one shows up here and not in the projection.
+    checkAgentExecution: () =>
+      agentCase
+        ? Promise.resolve({
+            position: { step: 'implement' },
+            agent: agentOptions[agentCase],
+          })
+        : never(),
+    startAgentExecution: () =>
+      scenario === 'agent-refused'
+        ? Promise.reject(
+            refusal('WORKFLOW_AGENT_UNAVAILABLE', { details: { agent: agentOptions.dirty } }),
+          )
+        : never(),
     closePreview: () => closePreviewOf(scenario),
     // An agent Session still works in the worktree of the blocked Specification.
     closeOccupancy: () =>
@@ -437,6 +480,10 @@ function services(scenario: WorkflowStoryScenario) {
       },
     },
     workflowExecutionApi,
+    managedSessionsApi: {
+      ...defaults.managedSessionsApi,
+      providers: () => Promise.resolve({ items: managedProviders }),
+    },
     documentApi: taskDocumentApi,
   });
 }

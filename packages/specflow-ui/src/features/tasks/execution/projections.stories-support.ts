@@ -1,5 +1,6 @@
 import type { TaskResourceFacts } from '@nevo/specflow-contracts/tasks';
 import type {
+  AgentOption,
   ExitBlocker,
   GateStatus,
   WorkflowActionProjection,
@@ -87,6 +88,7 @@ export type TaskWorkflowScenario =
   | 'rework'
   | 'implement-gate'
   | 'review-agent'
+  | 'ready-agent'
   | 'spike-gate'
   | 'spike-gate-met';
 
@@ -140,16 +142,20 @@ const taskAuthoring: NonNullable<WorkflowActionProjection['taskAuthoring']> = {
 /** A Task's workflow projection in one of the mock's positions. */
 export function taskWorkflowProjection(
   scenario: TaskWorkflowScenario,
-  options: { readonly version?: number } = {},
+  options: { readonly version?: number; readonly agent?: AgentOption } = {},
 ): WorkflowActionProjection {
   return withExits(taskFixture(scenario, options));
 }
 
 function taskFixture(
   scenario: TaskWorkflowScenario,
-  options: { readonly version?: number },
+  options: { readonly version?: number; readonly agent?: AgentOption },
 ): FixtureProjection {
   const subject = { kind: 'task' as const, specId: SPEC, taskId: TASK };
+  if (scenario === 'ready-agent') {
+    return readyForAgent(options.agent ?? unavailable('provider-not-chosen'));
+  }
+
   if (scenario === 'review-agent') {
     return reviewByAgent();
   }
@@ -416,6 +422,40 @@ function taskFixture(
 }
 
 /**
+ * Implementation ready to start its second attempt after a review asked for changes: the Start step
+ * action, and the agent option the Runtime offers for it (Run with agent).
+ */
+function readyForAgent(agent: AgentOption): FixtureProjection {
+  return {
+    subject: { kind: 'task', specId: SPEC, taskId: TASK },
+    workflow: buildWorkflow,
+    position: {
+      kind: 'ready',
+      next: { step: step('implement', 'Implementation'), human: true, agent },
+    },
+    handoff: {
+      kind: 'transition',
+      from: {
+        step: 'review',
+        attempt: 1,
+        title: 'Review',
+        at: '2026-11-13T11:40:00Z',
+        actor: dominik,
+      },
+      transition: 'changes-requested',
+      label: 'Changes requested',
+      result: 'changes-requested',
+      feedback:
+        'The refresh path drops the original return URL when the cookie expires mid-request. Keep it in the state parameter and add a test for the expiry case.',
+      artifacts: [],
+    },
+    actions: { start: { step: 'implement', firstStart: false } },
+    task: lifecycle(true),
+    taskAuthoring,
+  };
+}
+
+/**
  * Review run by an agent: the viewer has no Finish step, but Now still says what finishes it. Its
  * exit gate applies only to Approved (`when: [approved]`); Changes requested needs none. The only
  * return goes to Review itself (start it again).
@@ -481,7 +521,7 @@ function reviewByAgent(): WorkflowActionProjection {
 /** The Task resource facts that match a projection scenario. */
 export function taskResourceFor(scenario: TaskWorkflowScenario): TaskResourceFacts {
   const held = scenario === 'on-hold';
-  const started = scenario !== 'first-start' && !held;
+  const started = scenario !== 'first-start' && scenario !== 'ready-agent' && !held;
   const spike = scenario === 'spike-gate' || scenario === 'spike-gate-met';
   const position: TaskResourceFacts['position'] = started
     ? {

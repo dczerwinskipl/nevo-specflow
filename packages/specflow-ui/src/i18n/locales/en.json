@@ -2270,6 +2270,75 @@
     "actor": {
       "you": "you"
     },
+    "agent": {
+      "title": "Run with agent: {{step}}",
+      "descriptionTask": "The agent does this step of {{task}} on its own: it reads the step, its documents and context, writes what the step needs and proposes a result. Decisions that need you stay with you.",
+      "descriptionSpecification": "The agent does this step of this specification on its own: it reads the step, its documents and context, writes what the step needs and proposes a result. Decisions that need you stay with you.",
+      "checking": "Checking whether an agent can run this step…",
+      "checkFailedTitle": "SpecFlow could not check the agent",
+      "checkFailedBody": "The check did not finish, so nothing was started.",
+      "checkAgain": "Check again",
+      "checkingAgain": "Checking…",
+      "submit": "Run with agent",
+      "submitting": "Starting…",
+      "role": "{{name}} agent",
+      "roleFallback": "agent",
+      "blocker": {
+        "dirty": {
+          "title": "Commit or undo these changes first",
+          "body": "These files changed outside SpecFlow and are not committed. The agent starts from a committed checkout, so that everything that changes afterwards is its own work. (Documents and tasks SpecFlow saved itself do not block it.)",
+          "more": "and {{count}} more",
+          "hint": "Commit them, or undo the ones you do not need, then check again."
+        },
+        "noAgent": {
+          "title": "No agent is chosen for {{step}}",
+          "body": "{{step}} is done by the {{role}}, and the project names no agent and model for it yet, so SpecFlow cannot tell which one to start.",
+          "hint": "Choose them for the {{role}} in the project’s agent settings, then check again.",
+          "bodyUnnamed": "{{step}} is done by an agent, and the project names no agent and model for it yet, so SpecFlow cannot tell which one to start.",
+          "hintUnnamed": "Choose them in the project’s agent settings, then check again."
+        },
+        "providerNotReady": {
+          "title": "The agent is not ready",
+          "body": "The agent the workflow chose cannot start now.",
+          "hint": "Fix that, then check again."
+        },
+        "sessionUnavailable": {
+          "title": "The session to continue is gone",
+          "body": "The workflow continues the session that did {{step}} before, and that session no longer exists. SpecFlow does not start a new one in its place, because this step is meant to build on what that session knows.",
+          "hint": "Do the step yourself with Start step, or have the workflow changed so this step may start a new session."
+        },
+        "projectBusy": {
+          "title": "The project is busy",
+          "body": "Another change is being saved in this project, so an agent cannot start now.",
+          "hint": "Wait until it ends, then check again."
+        },
+        "demo": {
+          "title": "Agents do not run in the demo",
+          "body": "The demo runs no agents.",
+          "hint": "Do the step yourself with Start step."
+        },
+        "other": {
+          "title": "An agent cannot run this step now",
+          "body": "The step changed since you opened it, or no agent does it.",
+          "hint": "Check again to read it once more."
+        }
+      },
+      "session": {
+        "newSession": "New session",
+        "continues": "Continues",
+        "continuesWhy": "{{model}}. The workflow continues the session that did {{step}} before, so the agent keeps what it learned there. Its agent and model stay as they are.",
+        "earlier": "the earlier session",
+        "gone": "This session no longer exists.",
+        "notChosen": "Agent and model not chosen",
+        "model": "Model",
+        "preselected": "Preselected from the {{role}} settings. Your choice applies to this attempt only.",
+        "independent": "{{step}} is done independently: it always starts in a new session, never in the one that wrote the change. Preselected from the {{role}} settings.",
+        "catalogueFailed": "The agents could not be listed, so the attempt starts with {{agent}} from the {{role}} settings.",
+        "loadingAgents": "Loading the agents…"
+      },
+      "commit": "When the agent finishes, SpecFlow commits its work on <code>{{branch}}</code> as one commit; changes of others are never included.",
+      "commitNoBranch": "When the agent finishes, SpecFlow commits its work on the specification’s branch as one commit; changes of others are never included."
+    },
     "now": {
       "heading": "Now",
       "workflow": "{{title}} · rev {{version}}",
@@ -2341,7 +2410,8 @@
       "tasksOpenDrafts": "To finish with {{result}}, leave out the open drafts of this step: untick {{tasks}} when you finish.",
       "technicalStep": "Step {{step}} · {{title}} rev {{version}}",
       "technical": "{{title}} rev {{version}}",
-      "openDocument": "Open {{name}}"
+      "openDocument": "Open {{name}}",
+      "runWithAgent": "Run with agent"
     },
     "blocker": {
       "dependencies_one": "Waiting for {{count}} dependency",

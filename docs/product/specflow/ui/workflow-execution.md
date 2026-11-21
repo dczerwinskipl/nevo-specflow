@@ -355,7 +355,7 @@ Dialogs keep one column. Blocker and Task rows keep id → title → state order
 
 ## Ask agent
 
-**Status: UX contract from the mock of 2026-11-20, revised after an independent UX review; not
+**Status: UX contract (user-facing label "Run with agent"; the feature name stays Ask agent). The entry and start dialog are implemented; the rest is not
 implemented.** It follows the [Ask agent contract](../../../ideas/specflow-engine/reusable-workflow-manual-execution/agent-assisted-execution.md)
 (D11 to D21) and is delivered by the slices of its
 [delivery plan](../../../ideas/specflow-engine/reusable-workflow-manual-execution/ask-agent-delivery-plan.md).
@@ -374,34 +374,34 @@ refused with its reasons, Continue refused with the changed paths); the attempt 
 attempt's partial work; and, on every subject, that project writes are blocked by an unknown agent
 outcome and on which subject. The exact read model belongs to slices 6 to 9.
 
-### Start step and Ask agent
+### Start step and Run with agent
 
 - On a ready step whose `executors` include `agent`, the action row holds **Start step** (main) and
-  **Ask agent** (the one button-styled secondary, `bot` icon). A step without `agent` shows Start
-  step alone, with no disabled Ask agent. Ask agent only starts an attempt; it is never offered
+  **Run with agent** (the one button-styled secondary, `bot` icon). A step without `agent` shows Start
+  step alone, with no disabled Run with agent. Run with agent only starts an attempt; it is never offered
   during a person's active attempt.
-- Ask agent stays enabled when the projection says the agent is unavailable: its dialog explains
+- Run with agent stays enabled when the projection says the agent is unavailable: its dialog explains
   the precondition before anything is sent. It is omitted only for `not-an-executor`.
 - Owner decision (2026-11-20): two buttons. Rejected: a split button (Start step with a menu of Do it
-  myself and Ask agent), which hides the agent behind a second click and needs a component the
+  myself and Run with agent), which hides the agent behind a second click and needs a component the
   design system does not have.
 
-**Action placement rule (owner decision 2026-11-20).** In every Ask agent dialog and Now block
+**Action placement rule (owner decision 2026-11-20).** In every Run with agent dialog and Now block
 state, an action that resolves a blocker lives inside that blocker's alert or note (Check again,
 Retry commit). A dialog footer holds only Cancel and the one primary
 action, disabled while blocked; a Now action row holds the main action and at most one secondary.
 Never three buttons in one row.
 
-### Ask agent dialog
+### Run with agent dialog
 
-Title "Ask agent: <step title>". The description says what happens: the agent does this step of
+Title "Run with agent: <step title>". The description says what happens: the agent does this step of
 <subject> on its own (reads the step, its documents and context, writes what the step needs and
 proposes a result); decisions that need a person stay with the person. Then, in order:
 
 1. **What blocks the start**, only when something does: one attention `Alert` per precondition with
    what, why and what to do, and the action that resolves it at the bottom of that alert (a
    secondary **Check again**). The footer stays
-   **Cancel** and **Ask agent** (primary, disabled while anything blocks):
+   **Cancel** and **Run with agent** (primary, disabled while anything blocks):
    - **Uncommitted changes** (clean baseline): "Commit or undo these changes first": these files
      changed outside SpecFlow and are not committed; the agent starts from a committed checkout so
      that everything that changes afterwards is its own work; documents and tasks SpecFlow saved

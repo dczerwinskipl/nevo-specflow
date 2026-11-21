@@ -282,9 +282,9 @@ interface RecordTarget {
   readonly commits: CommitPort;
   readonly now: () => Date;
   /**
-   * The agent execution the change is made under (its owned claim): recorded on the operation and on
-   * the ledger entries it leaves, so the attempt's own Task drafts and execution state are never
-   * another author's work (`foreign-ledger.ts`) and the attempt commit can take them.
+   * The agent execution the change is made under (its owned claim) or attributed to: recorded on
+   * the operation and on the ledger entries it leaves (`executions`), so the attempt's own Task
+   * drafts and execution state are never another author's work and the attempt commit takes them.
    */
   readonly executionId?: string;
 }

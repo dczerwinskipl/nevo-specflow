@@ -62,6 +62,12 @@ export interface Invocation {
     readonly values: Readonly<Record<string, string>>;
     readonly secrets: readonly string[];
   };
+  /**
+   * The provider's own allowlist for this Turn (Ask agent, D20): tool rules it may use without a
+   * prompt, already limited to the rules the Runtime recognises. Never merged with owner or project
+   * permissions. Read only by a driver with `supportsPermissionAllowlist`.
+   */
+  permissions?: { readonly allow: readonly string[] };
   beforeDispatch?: () => Promise<void>;
   /**
    * Durably records the native-stop evidence of the invocation's provider process; a driver passes
@@ -94,6 +100,8 @@ export interface SessionDriver {
    * Its identity must be durably correlated before any user input is dispatched. */
   readonly nativeContextMode?: 'reserved' | 'provider-assigned';
   supportsManagedWrites?: boolean;
+  /** The driver turns `Invocation.permissions` into its provider's native allowlist. */
+  supportsPermissionAllowlist?: boolean;
   /**
    * The driver runs a read-only invocation in the verified workspace its execution context names
    * (a Specification's worktree), not only in the Runtime's own checkout.

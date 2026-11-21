@@ -79,6 +79,7 @@ export const AgentBrokerRequestIdSchema = Type.String({
 });
 
 const SpecIdSchema = Type.String({ minLength: 1, maxLength: 128 });
+const TaskSubjectIdSchema = Type.String({ minLength: 1, maxLength: 128 });
 
 export const AgentBrokerOperationSchema = Type.Union([
   Type.Object({ name: Type.Literal('scope.describe') }, { additionalProperties: false }),
@@ -86,6 +87,8 @@ export const AgentBrokerOperationSchema = Type.Union([
     {
       name: Type.Literal('documents.create'),
       specId: SpecIdSchema,
+      /** A Task's documents (the Turn's Task subject); absent: the Specification's own. */
+      taskId: Type.Optional(TaskSubjectIdSchema),
       documents: Type.Array(CreateDocumentEntrySchema, { minItems: 1 }),
       folders: Type.Optional(Type.Array(Type.String({ minLength: 1 }))),
       catalogueRevision: Type.Optional(Type.String({ minLength: 1 })),
@@ -96,6 +99,7 @@ export const AgentBrokerOperationSchema = Type.Union([
     {
       name: Type.Literal('documents.save'),
       specId: SpecIdSchema,
+      taskId: Type.Optional(TaskSubjectIdSchema),
       documentId: IdSchema,
       content: Type.String(),
       expectedRevision: Type.String({ minLength: 1 }),
@@ -106,6 +110,7 @@ export const AgentBrokerOperationSchema = Type.Union([
     {
       name: Type.Literal('documents.classify'),
       specId: SpecIdSchema,
+      taskId: Type.Optional(TaskSubjectIdSchema),
       documentId: IdSchema,
       type: CatalogueIdSchema,
       expectedRevision: Type.String({ minLength: 1 }),

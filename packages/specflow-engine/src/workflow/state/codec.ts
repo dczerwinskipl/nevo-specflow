@@ -84,6 +84,12 @@ const AgentAttemptBindingSchema = closed({
   attemptId: uuid(),
   workspaceId: uuid(),
   contextDigest: optional(Type.String({ pattern: '^[0-9a-f]{64}$' })),
+  launch: optional(
+    closed({
+      session: Type.Union([Type.Literal('fresh'), Type.Literal('reuse')]),
+      effort: optional(Type.String({ minLength: 1, maxLength: 64 })),
+    }),
+  ),
 });
 
 /**

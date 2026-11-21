@@ -2,6 +2,7 @@ import type { DriverFact } from '../persistence/protocol';
 import type { Invocation, SessionDriver, ProviderOperation, EmitFact } from '../providers/driver';
 import { validateDriverFact } from '../providers/facts';
 import { SessionError } from '../errors';
+import { planPermissionAllowlist } from './permission-allowlist';
 import type { SessionEffects, SessionEffectClaim } from './effects';
 import {
   redactFact,
@@ -24,6 +25,8 @@ export function createManagedInvocation(options: {
   capabilities?: InvocationCapabilities;
   /** The agent attempt the Turn is bound to (Ask agent): recorded in the claim, scopes the capability. */
   agentAttempt?: { readonly attemptId: string };
+  /** The archetype allowlist of an Ask agent Turn (D20); reported when the driver cannot apply it. */
+  permissions?: { readonly allow: readonly string[] };
   signal: AbortSignal;
   stop(): void;
   persist: EmitFact;
@@ -187,10 +190,27 @@ export function createManagedInvocation(options: {
         });
       }
 
+      const allowlist = planPermissionAllowlist(
+        options.invocation.selection.providerId,
+        options.driver.supportsPermissionAllowlist === true,
+        options.permissions?.allow ?? [],
+      );
+      if (allowlist.notice !== undefined) {
+        const key = 'permission-allowlist';
+        await emit({
+          kind: 'work-open',
+          key,
+          workKind: 'commentary',
+          title: 'Permission allowlist',
+        });
+        await emit({ kind: 'text', key, channel: 'commentary', text: allowlist.notice });
+      }
+
       driverInvoked = true;
       native = options.driver.start(
         {
           ...options.invocation,
+          ...(allowlist.permissions ? { permissions: allowlist.permissions } : {}),
           ...evidenceFirst,
           ...(grant
             ? { runtimeEnvironment: { values: grant.environment, secrets: grant.secrets } }

@@ -12,8 +12,8 @@ import { registerSharedContracts } from '../../../server/shared-contracts';
 import { createRequestAuthorization } from '../../auth/authorization/request-authorization';
 import { SessionError } from '../../sessions';
 import { AgentUnavailableError, demoAgentAvailability } from '../../workflow';
-import { askAgentEndpoint } from './endpoint';
-import type { AskAgent } from './operation';
+import { agentStepExecutionEndpoint } from './endpoint';
+import type { AgentStepExecution } from './operation';
 
 const SPEC = 'spec-1';
 const alice = { kind: 'user' as const, id: 'alice' };
@@ -36,29 +36,34 @@ const launch = {
   session: { mode: 'fresh' as const },
 };
 
-function appWith(askAgent: Partial<AskAgent>, user = alice) {
+function appWith(agentStepExecution: Partial<AgentStepExecution>, user = alice) {
   const app = Fastify({ ajv: RUNTIME_FASTIFY_OPTIONS.ajv });
   registerSharedContracts(app);
   registerRuntimeErrorHandler(app);
   app.decorateRequest('authz', {
     getter: () => createRequestAuthorization({ mode: 'subject', subject: user }, policy),
   });
-  app.register(askAgentEndpoint, { askAgent: askAgent as AskAgent });
+  app.register(agentStepExecutionEndpoint, {
+    agentStepExecution: agentStepExecution as AgentStepExecution,
+  });
 
   return app;
 }
 
-const ask = (app: ReturnType<typeof appWith>, path = `/api/specs/${SPEC}/workflow/ask-agent`) =>
+const ask = (
+  app: ReturnType<typeof appWith>,
+  path = `/api/specs/${SPEC}/workflow/agent-execution`,
+) =>
   app.inject({
     method: 'POST',
     url: path,
     payload: { requestId: randomUUID(), expected: { step: 'implement' } },
   });
 
-describe('Ask agent routes', () => {
+describe('agent step execution routes', () => {
   it('explains an unavailable agent with its reason and paths (409, before anything starts)', async () => {
     const app = appWith({
-      askAgent: () =>
+      startAgentStepExecution: () =>
         Promise.reject(
           new AgentUnavailableError(
             {
@@ -85,13 +90,13 @@ describe('Ask agent routes', () => {
 
   it("answers a Session refusal as the agent's provider not being ready", async () => {
     const app = appWith({
-      askAgent: () =>
+      startAgentStepExecution: () =>
         Promise.reject(
           new SessionError('PROVIDER_UNAVAILABLE', 'Session provider is not enabled.'),
         ),
     });
 
-    const response = await ask(app, `/api/specs/${SPEC}/tasks/t1/workflow/ask-agent`);
+    const response = await ask(app, `/api/specs/${SPEC}/tasks/t1/workflow/agent-execution`);
 
     expect(response.json()).toMatchObject({
       code: 'WORKFLOW_AGENT_UNAVAILABLE',
@@ -114,18 +119,18 @@ describe('Ask agent routes', () => {
       turnId: 't',
       session: 'fresh' as const,
     };
-    const askAgent = (request: unknown) => {
+    const startAgentStepExecution = (request: unknown) => {
       calls.push(request);
 
       return Promise.resolve(result);
     };
 
-    const refused = appWith({ askAgent }, viewer);
+    const refused = appWith({ startAgentStepExecution }, viewer);
     expect((await ask(refused)).statusCode).toBe(403);
     await refused.close();
 
-    const app = appWith({ askAgent });
-    const response = await ask(app, `/api/specs/${SPEC}/tasks/t1/workflow/ask-agent`);
+    const app = appWith({ startAgentStepExecution });
+    const response = await ask(app, `/api/specs/${SPEC}/tasks/t1/workflow/agent-execution`);
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual(result);
     expect(calls).toMatchObject([

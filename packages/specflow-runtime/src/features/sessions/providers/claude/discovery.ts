@@ -2,11 +2,31 @@ import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 import { resolve } from 'node:path';
 import type { Invocation } from '../driver';
 import { object, ClaudeProtocolError } from './protocol';
+import { partitionAgentPermissionRules } from '@nevo/specflow-contracts/documents';
 import { claudeMode, toolsForClaudeMode } from './modes';
+
+/**
+ * The `--settings` of a Turn. Setting sources are off (`--setting-sources ''`), so no owner or
+ * project permission is ever merged. Bash always asks: `ask` outranks `allow`, and an allowlisted
+ * product CLI command is approved by the host instead (see `createClaudeOperation`). Only the scoped
+ * read-tool rules of an Ask agent Turn become native `allow` rules.
+ */
+export function claudeSettings(permissions?: { readonly allow: readonly string[] }): string {
+  const allow = (
+    permissions ? partitionAgentPermissionRules(permissions.allow).accepted : []
+  ).filter((rule) => !rule.startsWith('Bash('));
+
+  return JSON.stringify({
+    disableAllHooks: true,
+    permissions: { ...(allow.length > 0 ? { allow } : {}), ask: ['Bash'] },
+    env: { CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR: '1' },
+  });
+}
 
 export function claudeArguments(
   selection?: Invocation['selection'],
   context?: Invocation['providerContext'],
+  permissions?: Invocation['permissions'],
 ): string[] {
   const mode = claudeMode(selection);
 
@@ -33,7 +53,7 @@ export function claudeArguments(
     '--setting-sources',
     '',
     '--settings',
-    '{"disableAllHooks":true,"permissions":{"ask":["Bash"]},"env":{"CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR":"1"}}',
+    claudeSettings(permissions),
     '--disable-slash-commands',
     '--no-chrome',
     ...(context ? [context.resume ? '--resume' : '--session-id', context.nativeSessionId] : []),

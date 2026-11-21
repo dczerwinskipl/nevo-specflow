@@ -12,6 +12,7 @@ import {
   type ProviderEnvironment,
 } from '../process';
 import { claudeLoss, createClaudeOperation } from './operation';
+import { productCliTrust } from './cli-path';
 import { inspectClaudeInstallation } from './installation';
 import {
   classifyProviderInstallation,
@@ -407,6 +408,7 @@ export function createClaudeDriver(
   return {
     telemetryGroups: ['usage', 'cost', 'limits'],
     supportsManagedWrites: options.managedWrites === true,
+    supportsPermissionAllowlist: true,
     supportsSessionWorkspaces: true,
     describe: () => structuredClone(descriptor),
     refresh,
@@ -517,7 +519,11 @@ export function createClaudeDriver(
               scope: temporary,
               executable: installation.executable,
               cwd: workspace,
-              args: claudeArguments(invocation.selection, invocation.providerContext),
+              args: claudeArguments(
+                invocation.selection,
+                invocation.providerContext,
+                invocation.permissions,
+              ),
               environment: withRuntimeEntries(environment, invocation.runtimeEnvironment?.values),
               signal: operationSignal,
               secrets: [...installation.secrets, ...(invocation.runtimeEnvironment?.secrets ?? [])],
@@ -557,6 +563,13 @@ export function createClaudeDriver(
             requireAuthentication(current.authenticationFingerprint);
             expectedVersion = claudeVersion(payload);
           },
+          productCli: productCliTrust({
+            pathValue: Object.entries(environment.values).find(
+              ([name]) => name.toUpperCase() === 'PATH',
+            )?.[1],
+            platform: process.platform,
+            workspace,
+          }),
           verifyFrame(frame) {
             if (!verified) {
               try {

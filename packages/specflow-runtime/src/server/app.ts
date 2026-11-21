@@ -40,7 +40,7 @@ import {
 } from '../features/workflow';
 import {
   createAgentExecutionFeature,
-  createUnavailableAskAgentFeature,
+  createUnavailableAgentStepExecutionFeature,
 } from '../features/agent-execution';
 import {
   createDocsFeature,
@@ -411,7 +411,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     }),
     sessionsFeature,
     // Without an Engine the Ask agent routes answer 503, like the workflow routes.
-    agentExecution ?? createUnavailableAskAgentFeature(),
+    agentExecution ?? createUnavailableAgentStepExecutionFeature(),
     createSessionAssociationsFeature({
       associations,
       targets: associationTargets,

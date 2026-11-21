@@ -1,5 +1,6 @@
 import {
   AgentArchetypeDefinitionFileSchema,
+  checkAgentPermissionRule,
   TaskTypeDefinitionFileSchema,
   WorkflowDefinitionFileSchema,
   findAgentArchetypeFileLimitViolations,
@@ -275,6 +276,17 @@ export const agentArchetypeKind = defineDefinitionKind<
       }
 
       seen.add(entry.provider);
+      // An over-broad rule (a write tool, an unrestricted shell) is refused, not ignored (D20).
+      entry.permissions?.allow.forEach((rule, ruleIndex) => {
+        const check = checkAgentPermissionRule(rule);
+        if (check.kind === 'over-broad') {
+          issues.push({
+            code: 'schema-invalid',
+            location: `/providers/${index}/permissions/allow/${ruleIndex}`,
+            message: `The permission rule "${rule}" is too broad: ${check.reason}`,
+          });
+        }
+      });
     });
     if (archetype.preferredProvider !== undefined && !seen.has(archetype.preferredProvider)) {
       issues.push({

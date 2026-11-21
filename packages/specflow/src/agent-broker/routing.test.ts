@@ -127,6 +127,30 @@ describe('the CLI under an agent capability', () => {
     expect(h.out.at(-1)).toMatch(/Proposal recorded: proposed/);
   });
 
+  it("sends a write of a Task's documents to the broker with its Task", async () => {
+    const h = harness(AGENT);
+    await run(
+      h,
+      'specs',
+      'documents',
+      'add',
+      SPEC,
+      '--task',
+      't1',
+      '--path',
+      'notes.md',
+      '--stdin',
+    );
+
+    expect(h.engineCalls).toEqual([]);
+    expect(h.sent[0]!.operation).toEqual({
+      name: 'documents.create',
+      specId: SPEC,
+      taskId: 't1',
+      documents: [{ path: 'notes.md', content: '# Notes\n' }],
+    });
+  });
+
   it('sends documents add to the broker and never opens the Engine', async () => {
     const h = harness(AGENT);
     await run(

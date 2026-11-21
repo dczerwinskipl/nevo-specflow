@@ -5,32 +5,34 @@ import {
 } from '@nevo/specflow-contracts/authorization';
 import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
 import {
-  AskAgentRequestSchema,
-  AskAgentResultSchema,
-  StopAgentRequestSchema,
-  StopAgentResultSchema,
+  AgentStepExecutionCheckSchema,
+  AgentStepExecutionRequestSchema,
+  AgentStepExecutionResultSchema,
+  StopAgentStepExecutionRequestSchema,
+  StopAgentStepExecutionResultSchema,
   WorkflowErrorSchema,
   WorkflowSpecParamsSchema,
   WorkflowTaskParamsSchema,
 } from '@nevo/specflow-contracts/workflow';
-import type { WorkflowSubject } from '@nevo/specflow-engine';
+import { WorkflowError, type AgentOption, type WorkflowSubject } from '@nevo/specflow-engine';
 import type { FastifyPluginCallback, FastifyReply, FastifyRequest } from 'fastify';
 
 import { contractRef } from '../../../server/shared-contracts';
-import { requireCapability } from '../../auth';
+import { requireCapability, type ResourceCapability } from '../../auth';
 import { SessionError } from '../../sessions';
 import { specScope, type ProjectIdSource } from '../../specs';
 import {
   AgentUnavailableError,
   WorkflowUnavailableError,
   sendWorkflowFailure,
+  toWire,
   workflowFailure,
 } from '../../workflow';
-import type { AskAgent } from './operation';
+import type { AgentStepExecution } from './operation';
 
-export interface AskAgentRoutesOptions {
+export interface AgentStepExecutionRoutesOptions {
   /** Absent: every route answers 503 `WORKFLOW_UNAVAILABLE` (no Engine, the demo). */
-  readonly askAgent?: AskAgent;
+  readonly agentStepExecution?: AgentStepExecution;
   readonly projectId?: ProjectIdSource;
 }
 
@@ -45,17 +47,42 @@ const errors = {
   503: contractRef(WorkflowErrorSchema),
 } as const;
 
+/** What a Session refusal on the way to the Turn means for the agent, by its code. */
+const SESSION_REASONS: Partial<
+  Record<string, Extract<AgentOption, { kind: 'unavailable' }>['reason']>
+> = {
+  PROVIDER_UNAVAILABLE: 'provider-not-ready',
+  PROVIDER_AUTH_REQUIRED: 'provider-not-ready',
+  PROVIDER_CATALOGUE_UNAVAILABLE: 'provider-not-ready',
+  CAPABILITY_UNSUPPORTED: 'provider-not-ready',
+  MODEL_UNSUPPORTED: 'provider-not-ready',
+  SESSION_DISABLED: 'provider-not-ready',
+  TURN_CONFLICT: 'project-busy',
+  SESSION_NOT_FOUND: 'session-unavailable',
+  SESSION_ARCHIVED: 'session-unavailable',
+};
+
 /**
- * A Session refusal on the way to the Turn (the provider, the Session store) is the agent being
- * unavailable now, said in the Session's own words.
+ * A Session refusal on the way to the Turn, in the workflow vocabulary: the agent unavailable for a
+ * reason the owner can act on (said in the Session's words), the request invalid, or the Session
+ * store unavailable for now (503).
  */
 function refusalOf(error: unknown) {
   if (error instanceof SessionError) {
+    const reason = SESSION_REASONS[error.code];
+    if (reason !== undefined) {
+      return workflowFailure(
+        new AgentUnavailableError(
+          { kind: 'unavailable', reason, detail: error.message },
+          error.message,
+        ),
+      );
+    }
+
     return workflowFailure(
-      new AgentUnavailableError(
-        { kind: 'unavailable', reason: 'provider-not-ready', detail: error.message },
-        error.message,
-      ),
+      error.code === 'SESSION_INPUT_INVALID' || error.code === 'IDEMPOTENCY_CONFLICT'
+        ? new WorkflowError('WORKFLOW_INPUT_INVALID', error.message)
+        : new WorkflowUnavailableError(),
     );
   }
 
@@ -84,29 +111,32 @@ function refusing<Request, Result>(
 
 /**
  * The Ask agent owner routes of a Specification and of a Task: start an agent attempt of the step
- * the owner was shown or continue the active one (`ask-agent`), and stop its running agent
- * (`agent/stop`). They drive a run, so they need `Manage`; the caller is the owner, the agent's
+ * the owner was shown or continue the active one (`agent-execution`), and stop its running agent
+ * (`agent-execution/stop`). They drive a run, so they need `Manage`; the caller is the owner, the agent's
  * actor comes only from the Session the Runtime binds.
  */
-export const askAgentEndpoint: FastifyPluginCallback<AskAgentRoutesOptions> = (
+export const agentStepExecutionEndpoint: FastifyPluginCallback<AgentStepExecutionRoutesOptions> = (
   app,
   options,
   done,
 ) => {
   const typed = app.withTypeProvider<TypeBoxTypeProvider>();
-  const manage = requireCapability({
-    resource: SpecCapabilities,
-    capability: SpecCapabilities.capabilities.Manage,
-    scope: (request) =>
-      specScope(options.projectId?.(), (request.params as { specId: string }).specId),
-  });
+  const guard = (capability: ResourceCapability<typeof SpecCapabilities>) =>
+    requireCapability({
+      resource: SpecCapabilities,
+      capability,
+      scope: (request) =>
+        specScope(options.projectId?.(), (request.params as { specId: string }).specId),
+    });
+  const manage = guard(SpecCapabilities.capabilities.Manage);
+  const view = guard(SpecCapabilities.capabilities.View);
   const principal = (request: FastifyRequest) => request.authz.readContext().subject;
-  const askAgent = (): AskAgent => {
-    if (!options.askAgent) {
+  const execution = (): AgentStepExecution => {
+    if (!options.agentStepExecution) {
       throw new WorkflowUnavailableError();
     }
 
-    return options.askAgent;
+    return options.agentStepExecution;
   };
 
   const subjects = [
@@ -136,7 +166,7 @@ export const askAgentEndpoint: FastifyPluginCallback<AskAgentRoutesOptions> = (
     const tags = ['Workflow'];
 
     typed.post(
-      `${base}/ask-agent`,
+      `${base}/agent-execution`,
       {
         onRequest: manage,
         bodyLimit: BODY_LIMIT_BYTES,
@@ -144,13 +174,13 @@ export const askAgentEndpoint: FastifyPluginCallback<AskAgentRoutesOptions> = (
           tags,
           summary: `Ask an agent to do the next step of a ${label}, or continue its attempt`,
           params,
-          body: AskAgentRequestSchema,
-          response: { 200: AskAgentResultSchema, ...errors },
+          body: AgentStepExecutionRequestSchema,
+          response: { 200: AgentStepExecutionResultSchema, ...errors },
         },
       },
       refusing(async (request, reply) => {
         const { requestId, expected, provider, model, effort, message } = request.body;
-        const result = await askAgent().askAgent({
+        const result = await execution().startAgentStepExecution({
           subject: subjectOf(request),
           principal: principal(request),
           requestId,
@@ -168,8 +198,24 @@ export const askAgentEndpoint: FastifyPluginCallback<AskAgentRoutesOptions> = (
       }),
     );
 
+    typed.get(
+      `${base}/agent-execution/check`,
+      {
+        onRequest: view,
+        schema: {
+          tags,
+          summary: `Check whether an agent can run the step of a ${label} now`,
+          params,
+          response: { 200: AgentStepExecutionCheckSchema, ...errors },
+        },
+      },
+      refusing(async (request, reply) =>
+        reply.code(200).send(toWire(await execution().check(subjectOf(request)))),
+      ),
+    );
+
     typed.post(
-      `${base}/agent/stop`,
+      `${base}/agent-execution/stop`,
       {
         onRequest: manage,
         bodyLimit: BODY_LIMIT_BYTES,
@@ -177,12 +223,12 @@ export const askAgentEndpoint: FastifyPluginCallback<AskAgentRoutesOptions> = (
           tags,
           summary: `Stop the agent working on a ${label}'s step`,
           params,
-          body: StopAgentRequestSchema,
-          response: { 200: StopAgentResultSchema, ...errors },
+          body: StopAgentStepExecutionRequestSchema,
+          response: { 200: StopAgentStepExecutionResultSchema, ...errors },
         },
       },
       refusing(async (request, reply) => {
-        const result = await askAgent().stopAgent({
+        const result = await execution().stopAgentStepExecution({
           subject: subjectOf(request),
           principal: principal(request),
           requestId: request.body.requestId,

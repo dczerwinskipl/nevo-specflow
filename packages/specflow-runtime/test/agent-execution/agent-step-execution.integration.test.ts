@@ -61,7 +61,7 @@ afterEach(async () => {
 const owner: OwnerActor = { class: 'human', details: { actorId: 'owner', trust: 'local' } };
 
 async function project() {
-  root = await realpath(await mkdtemp(join(tmpdir(), 'ask-agent-')));
+  root = await realpath(await mkdtemp(join(tmpdir(), 'agent-step-')));
   const checkout = join(root, 'checkout');
   await mkdir(checkout);
   const git = (...args: string[]) =>
@@ -216,7 +216,7 @@ it('runs an agent attempt: a document, a Task draft and a finish proposal, final
   });
 
   // The owner chooses the enabled provider for the fresh Session.
-  const started = await agentExecution.askAgent.askAgent({
+  const started = await agentExecution.agentStepExecution.startAgentStepExecution({
     subject,
     principal: 'owner',
     requestId: randomUUID(),

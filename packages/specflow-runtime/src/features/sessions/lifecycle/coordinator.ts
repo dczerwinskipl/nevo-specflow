@@ -38,6 +38,8 @@ import { createSessionTelemetryService } from './telemetry';
 export interface TurnStartOptions {
   readonly ids?: { readonly turnId: string; readonly invocationId: string };
   readonly agentAttempt?: { readonly attemptId: string };
+  /** The archetype's provider allowlist for this Turn (D20); applied only by a driver that supports it. */
+  readonly agentPermissions?: { readonly allow: readonly string[] };
 }
 
 interface ActiveInvocation {
@@ -497,10 +499,12 @@ export function createSessionCoordinator(
       );
     },
     /** `association` is written verbatim; only a Turn start reads it (execution workspace). */
+    /** `options.sessionId` is in-process only (agent step execution): the Session's chosen id. */
     async create(
       actor: string,
       input: CreateSession,
       association?: AssociationWrite,
+      options: { readonly sessionId?: string } = {},
     ): Promise<{ sessionId: string }> {
       input = Object.freeze(structuredClone(input));
       association = association && Object.freeze(structuredClone(association));
@@ -527,7 +531,13 @@ export function createSessionCoordinator(
         throw worktreeProviderUnsupported();
       }
 
-      return call({ op: 'create', actor, input, ...(association ? { association } : {}) });
+      return call({
+        op: 'create',
+        actor,
+        input,
+        ...(association ? { association } : {}),
+        ...(options.sessionId !== undefined ? { sessionId: options.sessionId } : {}),
+      });
     },
     /**
      * Starts a Turn. `options` are in-process only (Ask agent): the Turn and invocation ids chosen
@@ -723,6 +733,7 @@ export function createSessionCoordinator(
                 effects: effects!,
                 ...(invocationCapabilities ? { capabilities: invocationCapabilities } : {}),
                 ...(options.agentAttempt ? { agentAttempt: options.agentAttempt } : {}),
+                ...(options.agentPermissions ? { permissions: options.agentPermissions } : {}),
                 signal: controller.signal,
                 stop: () => controller.abort('persistence-loss'),
                 persist: emit,
@@ -830,6 +841,11 @@ export function createSessionCoordinator(
         }
       }
     },
+    /** Whether a Session with this id exists. */
+    hasSession: (sessionId: string) => call<boolean>({ op: 'has-session', sessionId }),
+    /** Whether the Session has the Turn `turnId` (a Turn start that may have been admitted). */
+    hasTurn: (sessionId: string, turnId: string) =>
+      call<boolean>({ op: 'has-turn', sessionId, turnId }),
     /** In-process workflow orchestration only: adds Tasks of its home Specification to a Session. */
     async associateTasks(sessionId: string, specId: string, taskIds: readonly string[]) {
       accepting();

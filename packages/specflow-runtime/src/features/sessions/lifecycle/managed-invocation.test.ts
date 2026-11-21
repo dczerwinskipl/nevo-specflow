@@ -372,3 +372,34 @@ it('marks the claim unknown, never settled, when a broker call outlives the revo
   expect(f.finalize).not.toHaveBeenCalled();
   expect(f.persist).toHaveBeenCalledWith(expect.objectContaining({ kind: 'lost' }));
 });
+it('hands a supporting driver only the recognised allowlist and reports the ignored rules', async () => {
+  const f = fixture();
+  f.options.driver.supportsPermissionAllowlist = true;
+  await createManagedInvocation({
+    ...f.options,
+    permissions: { allow: ['Read', 'Write', 'Bash(nevo-specflow tasks list *)'] },
+  }).done;
+  expect(f.start.mock.calls[0]![0].permissions).toEqual({
+    allow: ['Read', 'Bash(nevo-specflow tasks list *)'],
+  });
+  expect(f.persist).toHaveBeenCalledWith(
+    expect.objectContaining({ kind: 'text', text: expect.stringContaining('"Write"') as string }),
+  );
+});
+it('reports not supported instead of faking an allowlist for a driver without one', async () => {
+  const f = fixture();
+  await createManagedInvocation({ ...f.options, permissions: { allow: ['Read'] } }).done;
+  expect(f.start.mock.calls[0]![0].permissions).toBeUndefined();
+  expect(f.persist).toHaveBeenCalledWith(
+    expect.objectContaining({
+      kind: 'text',
+      text: expect.stringContaining('not supported') as string,
+    }),
+  );
+});
+it('leaves a Turn without an allowlist unchanged', async () => {
+  const f = fixture();
+  await createManagedInvocation(f.options).done;
+  expect(f.start.mock.calls[0]![0].permissions).toBeUndefined();
+  expect(f.persist).not.toHaveBeenCalled();
+});

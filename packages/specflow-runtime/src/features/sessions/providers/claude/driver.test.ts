@@ -59,6 +59,26 @@ describe('Claude native launch contract', () => {
       env: { CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR: '1' },
     });
   });
+  it('maps the Ask agent allowlist to the Turn settings only, dropping the Bash ask for a Bash rule', () => {
+    const selection = {
+      providerId: 'claude',
+      mode: 'workspace-write',
+      providerModeId: 'manual',
+    } as const;
+    const settings = (permissions?: { allow: string[] }) => {
+      const args = claudeArguments(selection, undefined, permissions);
+
+      return JSON.parse(args[args.indexOf('--settings') + 1]!) as { permissions: unknown };
+    };
+
+    expect(
+      settings({ allow: ['Read', 'Bash(nevo-specflow specs list *)', 'Write', 'Bash'] })
+        .permissions,
+    ).toEqual({ allow: ['Read', 'Bash(nevo-specflow specs list *)'], ask: [] });
+    expect(settings({ allow: ['Read'] }).permissions).toEqual({ allow: ['Read'], ask: ['Bash'] });
+    expect(settings({ allow: [] }).permissions).toEqual({ ask: ['Bash'] });
+    expect(settings().permissions).toEqual({ ask: ['Bash'] });
+  });
   it('uses native model/effort metadata and refuses changed version or ambiguous models', () => {
     const payload = {
       claude_code_version: '2.1.296',

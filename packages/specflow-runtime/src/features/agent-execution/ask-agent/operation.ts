@@ -27,6 +27,8 @@ import {
   type WorkflowSubject,
 } from '@nevo/specflow-engine';
 
+import { defaultAgentAllowlist } from '@nevo/specflow-contracts/runtime';
+
 import type { SessionCoordinator } from '../../sessions';
 import { AgentUnavailableError } from '../../workflow';
 import { renderAgentBrief, untrusted } from '../brief/render';
@@ -497,7 +499,18 @@ export function createAskAgent(dependencies: AskAgentDependencies) {
         message: brief,
         mode: 'workspace-write',
       },
-      { ids: { turnId, invocationId }, agentAttempt: { attemptId } },
+      {
+        ids: { turnId, invocationId },
+        agentAttempt: { attemptId },
+        // The archetype's allowlist for this provider, else the default (D20): only for this Turn.
+        agentPermissions: {
+          allow:
+            workflow.catalogue
+              .archetype(actor.details.archetype ?? '')
+              ?.providers.find((entry) => entry.provider === actor.details.provider)?.permissions
+              ?.allow ?? defaultAgentAllowlist(actor.details.provider),
+        },
+      },
     );
 
     return {

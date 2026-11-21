@@ -2,11 +2,29 @@ import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 import { resolve } from 'node:path';
 import type { Invocation } from '../driver';
 import { object, ClaudeProtocolError } from './protocol';
+import { partitionAgentPermissionRules } from '@nevo/specflow-contracts/documents';
 import { claudeMode, toolsForClaudeMode } from './modes';
+
+/**
+ * The `--settings` of a Turn. Setting sources are off, so no owner or project permission is ever
+ * merged. `ask` outranks `allow` in Claude Code, so Bash keeps its blanket `ask` only while the
+ * allowlist has no Bash rule; with one, an unmatched command follows the selected mode.
+ */
+export function claudeSettings(permissions?: { readonly allow: readonly string[] }): string {
+  const allow = permissions ? partitionAgentPermissionRules(permissions.allow).accepted : [];
+  const bashAllowed = allow.some((rule) => rule === 'Bash' || rule.startsWith('Bash('));
+
+  return JSON.stringify({
+    disableAllHooks: true,
+    permissions: { ...(allow.length > 0 ? { allow } : {}), ask: bashAllowed ? [] : ['Bash'] },
+    env: { CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR: '1' },
+  });
+}
 
 export function claudeArguments(
   selection?: Invocation['selection'],
   context?: Invocation['providerContext'],
+  permissions?: Invocation['permissions'],
 ): string[] {
   const mode = claudeMode(selection);
 
@@ -33,7 +51,7 @@ export function claudeArguments(
     '--setting-sources',
     '',
     '--settings',
-    '{"disableAllHooks":true,"permissions":{"ask":["Bash"]},"env":{"CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR":"1"}}',
+    claudeSettings(permissions),
     '--disable-slash-commands',
     '--no-chrome',
     ...(context ? [context.resume ? '--resume' : '--session-id', context.nativeSessionId] : []),

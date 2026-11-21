@@ -407,6 +407,7 @@ export function createClaudeDriver(
   return {
     telemetryGroups: ['usage', 'cost', 'limits'],
     supportsManagedWrites: options.managedWrites === true,
+    supportsPermissionAllowlist: true,
     supportsSessionWorkspaces: true,
     describe: () => structuredClone(descriptor),
     refresh,
@@ -517,7 +518,11 @@ export function createClaudeDriver(
               scope: temporary,
               executable: installation.executable,
               cwd: workspace,
-              args: claudeArguments(invocation.selection, invocation.providerContext),
+              args: claudeArguments(
+                invocation.selection,
+                invocation.providerContext,
+                invocation.permissions,
+              ),
               environment: withRuntimeEntries(environment, invocation.runtimeEnvironment?.values),
               signal: operationSignal,
               secrets: [...installation.secrets, ...(invocation.runtimeEnvironment?.secrets ?? [])],

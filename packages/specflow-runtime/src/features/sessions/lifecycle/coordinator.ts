@@ -38,6 +38,8 @@ import { createSessionTelemetryService } from './telemetry';
 export interface TurnStartOptions {
   readonly ids?: { readonly turnId: string; readonly invocationId: string };
   readonly agentAttempt?: { readonly attemptId: string };
+  /** The archetype's provider allowlist for this Turn (D20); applied only by a driver that supports it. */
+  readonly agentPermissions?: { readonly allow: readonly string[] };
 }
 
 interface ActiveInvocation {
@@ -723,6 +725,7 @@ export function createSessionCoordinator(
                 effects: effects!,
                 ...(invocationCapabilities ? { capabilities: invocationCapabilities } : {}),
                 ...(options.agentAttempt ? { agentAttempt: options.agentAttempt } : {}),
+                ...(options.agentPermissions ? { permissions: options.agentPermissions } : {}),
                 signal: controller.signal,
                 stop: () => controller.abort('persistence-loss'),
                 persist: emit,

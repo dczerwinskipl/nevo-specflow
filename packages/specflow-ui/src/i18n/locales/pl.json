@@ -940,10 +940,10 @@
         "description": "Ten punkt początkowy nie ma działających ustawień SpecFlow."
       },
       "baseConfigPickerReason": {
-        "missing": "Brak ustawień SpecFlow",
-        "not-regular-file": "Ustawienia nie są plikiem",
-        "invalid-yaml": "Niepoprawny YAML",
-        "runtime-missing": "Brak sekcji runtime"
+        "missing": "Brak ustawień SpecFlow. Dodaj je i zapisz w commicie.",
+        "not-regular-file": "Ustawienia nie są plikiem. Zastąp je plikiem i zapisz w commicie.",
+        "invalid-yaml": "Niepoprawny YAML. Popraw ustawienia i zapisz je w commicie.",
+        "runtime-missing": "Brak sekcji runtime. Uzupełnij ustawienia i zapisz je w commicie."
       }
     },
     "project": {

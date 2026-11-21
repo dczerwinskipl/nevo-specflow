@@ -6,7 +6,7 @@ export interface OptionPickerItem {
   value: string;
   /** Plain text used for filtering and as the accessible name of the chosen option. */
   textValue: string;
-  /** A function receives `wraps`: true in the searchable list, whose options wrap instead of truncating. */
+  /** A function receives `wraps`: true in either option list, false for the closed Select value. */
   label: ReactNode | ((wraps: boolean) => ReactNode);
   description?: ReactNode;
   meta?: ReactNode;
@@ -86,6 +86,8 @@ export function OptionPicker({
     );
   }
 
+  const selected = items.find((item) => item.value === value);
+
   return (
     <Select value={value} invalid={invalid} disabled={disabled} onValueChange={onValueChange}>
       <SelectTrigger
@@ -95,7 +97,9 @@ export function OptionPicker({
           }
         }}
       >
-        <SelectValue placeholder={placeholder} />
+        <SelectValue placeholder={placeholder}>
+          {selected ? <span>{labelOf(selected, false)}</span> : undefined}
+        </SelectValue>
       </SelectTrigger>
       <SelectContent>
         {items.map((item) => (
@@ -107,7 +111,7 @@ export function OptionPicker({
             meta={item.meta}
             unavailable={item.unavailable}
           >
-            {labelOf(item, false)}
+            {labelOf(item, true)}
           </SelectItem>
         ))}
       </SelectContent>

@@ -77,7 +77,11 @@ following the configured default if primary currently uses another branch.
 
 **Committed configuration of the starting point.** Before submit, every offered starting branch
 reports whether its commit contains a regular `.nevo/config.yaml`, valid YAML and a `runtime`
-object. An unusable branch stays visible and unavailable in the picker, with its short specific reason:
+object. The starting-branch picker gives the full option width to the branch name, followed by its
+workspace metadata and then any unavailable reason with a concise repair instruction. Long branch
+names wrap in full. Selection uses the shared Select/Combobox background and left accent; it takes
+no column or checkmark gutter. This does not change the workspace cards.
+An unusable branch stays visible and unavailable in the picker, naming the specific reason:
 missing file, non-regular file, invalid YAML or missing runtime configuration. The selected source has a short actionable error on the Start from row (also used by the footer):
 "Cannot start from this branch. Choose another branch." A quiet **Why?** action opens the existing responsive details pattern: a right-side Drawer in
 split workspace layout, a bottom sheet in stacked layout. It explains the problem only when requested: a new workspace starts from a saved commit and

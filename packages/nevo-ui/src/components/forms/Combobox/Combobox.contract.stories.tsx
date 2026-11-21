@@ -1,7 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useRef, useState } from 'react';
-import { assertSeparatedOptionText } from '../shared/optionTextGeometry.stories-support';
+import {
+  assertStackedOptionText,
+  assertSelectionPreservesContent,
+} from '../shared/optionTextGeometry.stories-support';
 import { Field } from '../Field';
+import { Badge } from '../../feedback/Badge';
 import { Combobox, ComboboxItem } from './Combobox';
 
 const meta = {
@@ -300,7 +304,23 @@ export const TabDoesNotCommitPartialText: Story = {
 export const NarrowDescriptionAndMetadata: Story = {
   render: () => (
     <div className="w-72">
-      <Combobox aria-label="Starting branch" placeholder="Choose a branch">
+      <Combobox defaultValue="chosen" aria-label="Starting branch" placeholder="Choose a branch">
+        <ComboboxItem
+          value="chosen"
+          className="selection-contract-option"
+          description="Configuration ready"
+          meta={<Badge>Ready</Badge>}
+        >
+          feature/a-long-starting-branch-name-that-must-wrap-and-remain-fully-readable
+        </ComboboxItem>
+        <ComboboxItem
+          value="other"
+          className="selection-contract-option"
+          description="Configuration ready"
+          meta={<Badge>Ready</Badge>}
+        >
+          feature/a-long-starting-branch-name-that-must-wrap-and-remain-fully-readable
+        </ComboboxItem>
         <ComboboxItem value="available">main</ComboboxItem>
         <ComboboxItem
           value="invalid"
@@ -333,11 +353,43 @@ export const NarrowDescriptionAndMetadata: Story = {
       await userEvent.keyboard('{ArrowDown}');
       const list = await until(listbox);
       await document.fonts.ready;
+      const focused = await until(() => list.querySelector<HTMLElement>('[data-focused]'));
+      assert(
+        getComputedStyle(focused).outlineStyle === 'solid' &&
+          parseFloat(getComputedStyle(focused).outlineWidth) > 0,
+        'Keyboard focus has a visible outline independent of the selected background.',
+      );
       const options = list.querySelectorAll<HTMLElement>('[data-unavailable]');
       assert(options.length === 2, 'Both unavailable reasons must be listed.');
       for (const option of options) {
-        assertSeparatedOptionText(option, 'combobox');
+        assertStackedOptionText(option, 'combobox');
       }
+
+      const pair = list.querySelectorAll<HTMLElement>('.selection-contract-option');
+      assert(pair.length === 2, 'Selected and unselected twins must be listed.');
+      assertSelectionPreservesContent(pair[0]!, pair[1]!, 'combobox');
+      assertStackedOptionText(pair[0]!, 'combobox');
+      const metadata = pair[0]!.querySelector<HTMLElement>('[data-combobox-item-part=meta]')!;
+      assert(
+        metadata.getBoundingClientRect().width < pair[0]!.getBoundingClientRect().width / 2,
+        'A Badge keeps its natural width.',
+      );
+      const labelSelector = '[data-combobox-item-part=label]';
+      const before = pair[0]!.querySelector<HTMLElement>(labelSelector)!.getBoundingClientRect();
+      await userEvent.click(pair[1]!);
+      await until(() => !listbox());
+      input.focus();
+      await userEvent.keyboard('{ArrowDown}');
+      const changedList = await until(listbox);
+      const changedPair = changedList.querySelectorAll<HTMLElement>('.selection-contract-option');
+      assertSelectionPreservesContent(changedPair[1]!, changedPair[0]!, 'combobox');
+      const after = changedPair[0]!
+        .querySelector<HTMLElement>(labelSelector)!
+        .getBoundingClientRect();
+      assert(
+        Math.abs(after.width - before.width) < 1 && Math.abs(after.height - before.height) < 1,
+        `Changing selection keeps the name geometry stable: before ${before.width}x${before.height}, after ${after.width}x${after.height}.`,
+      );
     } finally {
       if (listbox()) {
         await userEvent.keyboard('{Escape}');
@@ -345,6 +397,8 @@ export const NarrowDescriptionAndMetadata: Story = {
       }
 
       await page.viewport(previous.width, previous.height);
+      await until(() => window.innerWidth === previous.width);
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     }
   },
 };

@@ -940,10 +940,10 @@
         "description": "This starting point has no working SpecFlow settings."
       },
       "baseConfigPickerReason": {
-        "missing": "Missing SpecFlow settings",
-        "not-regular-file": "Settings are not a file",
-        "invalid-yaml": "Invalid YAML",
-        "runtime-missing": "Missing runtime section"
+        "missing": "Missing SpecFlow settings. Add them and save them in a commit.",
+        "not-regular-file": "Settings are not a file. Replace them with a file and save it in a commit.",
+        "invalid-yaml": "Invalid YAML. Fix the settings and save them in a commit.",
+        "runtime-missing": "Missing runtime section. Complete the settings and save them in a commit."
       }
     },
     "project": {

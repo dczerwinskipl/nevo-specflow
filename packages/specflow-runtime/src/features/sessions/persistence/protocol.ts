@@ -119,6 +119,8 @@ export type StoreCommand =
       /** In-process only (agent step execution): the id the trusted host chose for the Session. */
       sessionId?: string;
     }
+  /** `boolean`: a Session with this id exists (archived included). */
+  | { op: 'has-session'; sessionId: string }
   /** `boolean`: the Session has this Turn (in any state). */
   | { op: 'has-turn'; sessionId: string; turnId: string }
   | {

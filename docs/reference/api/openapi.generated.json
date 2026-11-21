@@ -10788,6 +10788,12 @@
                         "enum": [
                           "ended"
                         ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "session-missing"
+                        ]
                       }
                     ]
                   },

@@ -189,7 +189,9 @@ export type AgentOption = Static<typeof AgentOptionSchema>;
  * current Turn, its finish proposal and whether Continue is possible now.
  *
  * - `turn.state`: `working` (the agent runs), `stopping` (the owner stopped it; the step stays
- *   locked until its process is proven ended), `unknown` (its process may still run: every project
+ *   locked until its process is proven ended), `session-missing` (the attempt started but its fresh
+ *   Session was never created: Continue creates it and starts the Turn, the "Retry start" action),
+ *   `unknown` (its process may still run: every project
  *   write is blocked until that is known), `ended` (the Turn ended and its claim settled);
  * - `proposal`: the agent's finish proposal: `pending` (not finalized yet), `refused` (with the
  *   reasons it was refused when applied), `finalized`.
@@ -203,7 +205,7 @@ export const AgentAttemptViewSchema = Type.Object({
   model: Type.Optional(Type.String()),
   turn: Type.Object({
     turnId: Type.String(),
-    state: literals(['working', 'stopping', 'unknown', 'ended'] as const),
+    state: literals(['working', 'stopping', 'unknown', 'ended', 'session-missing'] as const),
     boundAt: Type.String(),
     endedAt: Type.Optional(Type.String()),
   }),

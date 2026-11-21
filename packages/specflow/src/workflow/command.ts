@@ -18,6 +18,8 @@ import {
 } from '@nevo/specflow-engine';
 import { Command } from 'commander';
 
+import type { AgentBrokerTransport, BrokerOperation } from '../agent-broker/client';
+import { runBrokeredWrite } from '../agent-broker/routing';
 import { runExecution, type ExecutionOutput, type ExecutionSession } from '../execution-session';
 import { localOwner } from '../local-actor';
 import { parsePositiveInt, readStructuredFile } from '../structured-input';
@@ -34,6 +36,11 @@ export interface WorkflowCommandContext extends ExecutionOutput {
   readonly cwd: string;
   /** The OS user behind the owner actor; the installed user unless a test supplies one. */
   readonly osUser?: string;
+  /**
+   * Inside an agent Turn: the Runtime's broker, to which `finish` sends the attempt's finish
+   * proposal (recorded, applied once the Turn ended; the Engine is never opened for writing).
+   */
+  readonly broker?: AgentBrokerTransport;
 }
 
 interface CommonOptions {
@@ -72,6 +79,37 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
     options.task === undefined
       ? { kind: 'specification', specId }
       : { kind: 'task', specId, taskId: options.task };
+
+  /** The finish input of `workflow finish`, with its files read (the owner's and an agent's). */
+  const finishInputOf = async (options: {
+    readonly result?: string;
+    readonly feedback?: string;
+    readonly artifact: string[];
+    readonly tasksFile?: string;
+    readonly taskDecisionsFile?: string;
+  }): Promise<FinishStepInput['input']> => ({
+    ...(options.result !== undefined ? { result: options.result } : {}),
+    ...(options.feedback !== undefined ? { feedback: options.feedback } : {}),
+    ...(options.artifact.length > 0 ? { artifacts: options.artifact } : {}),
+    ...(options.tasksFile !== undefined
+      ? {
+          tasks: (await readStructuredFile(
+            context.cwd,
+            options.tasksFile,
+            'tasks',
+          )) as TaskProposal[],
+        }
+      : {}),
+    ...(options.taskDecisionsFile !== undefined
+      ? {
+          taskDecisions: (await readStructuredFile(
+            context.cwd,
+            options.taskDecisionsFile,
+            'Task decisions',
+          )) as TaskDecision[],
+        }
+      : {}),
+  });
 
   const run = (
     options: CommonOptions,
@@ -179,6 +217,12 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
       .option(
         '--task-decisions-file <path>',
         'A Specification step: YAML/JSON list of Task status decisions',
+      )
+      .option(
+        '--changed <path>',
+        'Inside an agent Turn: a file you changed outside SpecFlow, checkout-relative (repeatable)',
+        collect,
+        [] as string[],
       ),
   ).action(
     async (
@@ -191,32 +235,46 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
         artifact: string[];
         tasksFile?: string;
         taskDecisionsFile?: string;
+        changed: string[];
       },
     ) => {
+      if (context.broker !== undefined) {
+        const input = await finishInputOf(options);
+        await runBrokeredWrite(
+          context,
+          context.broker,
+          options,
+          {
+            ...input,
+            name: 'workflow.finish',
+            specId,
+            ...(options.task !== undefined ? { taskId: options.task } : {}),
+            step: options.step,
+            stepAttempt: options.attempt,
+            ...(options.changed.length > 0 ? { changes: { paths: options.changed } } : {}),
+          } as BrokerOperation,
+          (value) => {
+            const result = ('result' in value ? value.result : undefined) as
+              { kind?: string; transition?: string } | undefined;
+
+            return [
+              `Proposal ${result?.kind ?? ''}: ${result?.transition ?? ''}. It is applied once this Turn ends; stop now.`,
+            ];
+          },
+        );
+
+        return;
+      }
+
       await run(options, 'change', async ({ workflow: dependencies }) => {
-        const input: FinishStepInput['input'] = {
-          ...(options.result !== undefined ? { result: options.result } : {}),
-          ...(options.feedback !== undefined ? { feedback: options.feedback } : {}),
-          ...(options.artifact.length > 0 ? { artifacts: options.artifact } : {}),
-          ...(options.tasksFile !== undefined
-            ? {
-                tasks: (await readStructuredFile(
-                  context.cwd,
-                  options.tasksFile,
-                  'tasks',
-                )) as TaskProposal[],
-              }
-            : {}),
-          ...(options.taskDecisionsFile !== undefined
-            ? {
-                taskDecisions: (await readStructuredFile(
-                  context.cwd,
-                  options.taskDecisionsFile,
-                  'Task decisions',
-                )) as TaskDecision[],
-              }
-            : {}),
-        };
+        if (options.changed.length > 0) {
+          throw new WorkflowError(
+            'WORKFLOW_INPUT_INVALID',
+            '--changed is for an agent finish proposal inside an agent Turn.',
+          );
+        }
+
+        const input = await finishInputOf(options);
         const result = await finishStep(dependencies, {
           subject: subjectOf(specId, options),
           step: options.step,

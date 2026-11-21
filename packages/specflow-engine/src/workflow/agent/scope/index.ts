@@ -1,3 +1,4 @@
+export { activeAgentAttempt, agentAttemptScope } from './attempt';
 export {
   AGENT_WRITE_OPERATIONS,
   admitAgentOperation,

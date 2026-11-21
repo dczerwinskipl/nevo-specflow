@@ -49,6 +49,8 @@ export interface StartAgentAttemptInput {
    * with a new attempt; a Continue keeps the attempt's own.
    */
   readonly contextDigest?: string;
+  /** The launch of a new attempt (D18): fresh or continued Session, and the chosen effort. */
+  readonly launch?: { readonly session: 'fresh' | 'reuse'; readonly effort?: string };
 }
 
 export interface StartAgentAttemptResult {
@@ -109,6 +111,14 @@ export async function startAgentAttempt(
     attemptId: dependencies.newId(),
     workspaceId: input.workspaceId,
     ...(input.contextDigest !== undefined ? { contextDigest: input.contextDigest } : {}),
+    ...(input.launch !== undefined
+      ? {
+          launch: {
+            session: input.launch.session,
+            ...(input.launch.effort !== undefined ? { effort: input.launch.effort } : {}),
+          },
+        }
+      : {}),
   };
   // The start's own store change is the attempt's, made for its first Turn: its ledger entries name
   // that Turn, so the attempt commit takes them with the rest of the attempt (D15).

@@ -4368,13 +4368,85 @@
                           {
                             "type": "object",
                             "required": [
-                              "kind"
+                              "kind",
+                              "launch"
                             ],
                             "properties": {
                               "kind": {
                                 "type": "string",
                                 "enum": [
                                   "available"
+                                ]
+                              },
+                              "launch": {
+                                "type": "object",
+                                "required": [
+                                  "archetype",
+                                  "provider",
+                                  "model",
+                                  "session"
+                                ],
+                                "properties": {
+                                  "archetype": {
+                                    "type": "string"
+                                  },
+                                  "provider": {
+                                    "type": "string"
+                                  },
+                                  "model": {
+                                    "type": "string"
+                                  },
+                                  "effort": {
+                                    "type": "string"
+                                  },
+                                  "session": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "mode"
+                                        ],
+                                        "properties": {
+                                          "mode": {
+                                            "type": "string",
+                                            "enum": [
+                                              "fresh"
+                                            ]
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "mode",
+                                          "sessionId"
+                                        ],
+                                        "properties": {
+                                          "mode": {
+                                            "type": "string",
+                                            "enum": [
+                                              "reuse"
+                                            ]
+                                          },
+                                          "sessionId": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              },
+                              "independent": {
+                                "type": "boolean",
+                                "enum": [
+                                  true
+                                ]
+                              },
+                              "baseline": {
+                                "type": "string",
+                                "enum": [
+                                  "unchecked"
                                 ]
                               }
                             }
@@ -4423,7 +4495,116 @@
                                     "enum": [
                                       "session-unavailable"
                                     ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "provider-not-ready"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "dirty-baseline"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "baseline-changed"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "project-busy"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "demo"
+                                    ]
                                   }
+                                ]
+                              },
+                              "detail": {
+                                "type": "string"
+                              },
+                              "paths": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "maxItems": 1000
+                              },
+                              "count": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "launch": {
+                                "type": "object",
+                                "required": [
+                                  "archetype",
+                                  "provider",
+                                  "model",
+                                  "session"
+                                ],
+                                "properties": {
+                                  "archetype": {
+                                    "type": "string"
+                                  },
+                                  "provider": {
+                                    "type": "string"
+                                  },
+                                  "model": {
+                                    "type": "string"
+                                  },
+                                  "effort": {
+                                    "type": "string"
+                                  },
+                                  "session": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "mode"
+                                        ],
+                                        "properties": {
+                                          "mode": {
+                                            "type": "string",
+                                            "enum": [
+                                              "fresh"
+                                            ]
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "mode",
+                                          "sessionId"
+                                        ],
+                                        "properties": {
+                                          "mode": {
+                                            "type": "string",
+                                            "enum": [
+                                              "reuse"
+                                            ]
+                                          },
+                                          "sessionId": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              },
+                              "independent": {
+                                "type": "boolean",
+                                "enum": [
+                                  true
                                 ]
                               }
                             }
@@ -4690,13 +4871,85 @@
                           {
                             "type": "object",
                             "required": [
-                              "kind"
+                              "kind",
+                              "launch"
                             ],
                             "properties": {
                               "kind": {
                                 "type": "string",
                                 "enum": [
                                   "available"
+                                ]
+                              },
+                              "launch": {
+                                "type": "object",
+                                "required": [
+                                  "archetype",
+                                  "provider",
+                                  "model",
+                                  "session"
+                                ],
+                                "properties": {
+                                  "archetype": {
+                                    "type": "string"
+                                  },
+                                  "provider": {
+                                    "type": "string"
+                                  },
+                                  "model": {
+                                    "type": "string"
+                                  },
+                                  "effort": {
+                                    "type": "string"
+                                  },
+                                  "session": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "mode"
+                                        ],
+                                        "properties": {
+                                          "mode": {
+                                            "type": "string",
+                                            "enum": [
+                                              "fresh"
+                                            ]
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "mode",
+                                          "sessionId"
+                                        ],
+                                        "properties": {
+                                          "mode": {
+                                            "type": "string",
+                                            "enum": [
+                                              "reuse"
+                                            ]
+                                          },
+                                          "sessionId": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              },
+                              "independent": {
+                                "type": "boolean",
+                                "enum": [
+                                  true
+                                ]
+                              },
+                              "baseline": {
+                                "type": "string",
+                                "enum": [
+                                  "unchecked"
                                 ]
                               }
                             }
@@ -4745,7 +4998,116 @@
                                     "enum": [
                                       "session-unavailable"
                                     ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "provider-not-ready"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "dirty-baseline"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "baseline-changed"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "project-busy"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "demo"
+                                    ]
                                   }
+                                ]
+                              },
+                              "detail": {
+                                "type": "string"
+                              },
+                              "paths": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "maxItems": 1000
+                              },
+                              "count": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "launch": {
+                                "type": "object",
+                                "required": [
+                                  "archetype",
+                                  "provider",
+                                  "model",
+                                  "session"
+                                ],
+                                "properties": {
+                                  "archetype": {
+                                    "type": "string"
+                                  },
+                                  "provider": {
+                                    "type": "string"
+                                  },
+                                  "model": {
+                                    "type": "string"
+                                  },
+                                  "effort": {
+                                    "type": "string"
+                                  },
+                                  "session": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "mode"
+                                        ],
+                                        "properties": {
+                                          "mode": {
+                                            "type": "string",
+                                            "enum": [
+                                              "fresh"
+                                            ]
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "mode",
+                                          "sessionId"
+                                        ],
+                                        "properties": {
+                                          "mode": {
+                                            "type": "string",
+                                            "enum": [
+                                              "reuse"
+                                            ]
+                                          },
+                                          "sessionId": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              },
+                              "independent": {
+                                "type": "boolean",
+                                "enum": [
+                                  true
                                 ]
                               }
                             }
@@ -6246,13 +6608,85 @@
                           {
                             "type": "object",
                             "required": [
-                              "kind"
+                              "kind",
+                              "launch"
                             ],
                             "properties": {
                               "kind": {
                                 "type": "string",
                                 "enum": [
                                   "available"
+                                ]
+                              },
+                              "launch": {
+                                "type": "object",
+                                "required": [
+                                  "archetype",
+                                  "provider",
+                                  "model",
+                                  "session"
+                                ],
+                                "properties": {
+                                  "archetype": {
+                                    "type": "string"
+                                  },
+                                  "provider": {
+                                    "type": "string"
+                                  },
+                                  "model": {
+                                    "type": "string"
+                                  },
+                                  "effort": {
+                                    "type": "string"
+                                  },
+                                  "session": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "mode"
+                                        ],
+                                        "properties": {
+                                          "mode": {
+                                            "type": "string",
+                                            "enum": [
+                                              "fresh"
+                                            ]
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "mode",
+                                          "sessionId"
+                                        ],
+                                        "properties": {
+                                          "mode": {
+                                            "type": "string",
+                                            "enum": [
+                                              "reuse"
+                                            ]
+                                          },
+                                          "sessionId": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              },
+                              "independent": {
+                                "type": "boolean",
+                                "enum": [
+                                  true
+                                ]
+                              },
+                              "baseline": {
+                                "type": "string",
+                                "enum": [
+                                  "unchecked"
                                 ]
                               }
                             }
@@ -6301,7 +6735,116 @@
                                     "enum": [
                                       "session-unavailable"
                                     ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "provider-not-ready"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "dirty-baseline"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "baseline-changed"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "project-busy"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "demo"
+                                    ]
                                   }
+                                ]
+                              },
+                              "detail": {
+                                "type": "string"
+                              },
+                              "paths": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "maxItems": 1000
+                              },
+                              "count": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "launch": {
+                                "type": "object",
+                                "required": [
+                                  "archetype",
+                                  "provider",
+                                  "model",
+                                  "session"
+                                ],
+                                "properties": {
+                                  "archetype": {
+                                    "type": "string"
+                                  },
+                                  "provider": {
+                                    "type": "string"
+                                  },
+                                  "model": {
+                                    "type": "string"
+                                  },
+                                  "effort": {
+                                    "type": "string"
+                                  },
+                                  "session": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "mode"
+                                        ],
+                                        "properties": {
+                                          "mode": {
+                                            "type": "string",
+                                            "enum": [
+                                              "fresh"
+                                            ]
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "mode",
+                                          "sessionId"
+                                        ],
+                                        "properties": {
+                                          "mode": {
+                                            "type": "string",
+                                            "enum": [
+                                              "reuse"
+                                            ]
+                                          },
+                                          "sessionId": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              },
+                              "independent": {
+                                "type": "boolean",
+                                "enum": [
+                                  true
                                 ]
                               }
                             }
@@ -10174,6 +10717,401 @@
               }
             },
             "maxItems": 1000
+          },
+          "agentAttempt": {
+            "type": "object",
+            "required": [
+              "attemptId",
+              "step",
+              "attempt",
+              "sessionId",
+              "provider",
+              "turn",
+              "turns",
+              "continue"
+            ],
+            "properties": {
+              "attemptId": {
+                "type": "string"
+              },
+              "step": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "attempt": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "sessionId": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "model": {
+                "type": "string"
+              },
+              "turn": {
+                "type": "object",
+                "required": [
+                  "turnId",
+                  "state",
+                  "boundAt"
+                ],
+                "properties": {
+                  "turnId": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "working"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "stopping"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "unknown"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "ended"
+                        ]
+                      }
+                    ]
+                  },
+                  "boundAt": {
+                    "type": "string"
+                  },
+                  "endedAt": {
+                    "type": "string"
+                  }
+                }
+              },
+              "turns": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "proposal": {
+                "type": "object",
+                "required": [
+                  "transition",
+                  "state",
+                  "submittedAt"
+                ],
+                "properties": {
+                  "transition": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "pending"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "refused"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "finalized"
+                        ]
+                      }
+                    ]
+                  },
+                  "submittedAt": {
+                    "type": "string"
+                  },
+                  "refusal": {
+                    "type": "object",
+                    "required": [
+                      "code",
+                      "message"
+                    ],
+                    "properties": {
+                      "code": {
+                        "type": "string"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "paths": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "maxItems": 1000
+                      }
+                    }
+                  }
+                }
+              },
+              "continue": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "kind",
+                      "launch"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "available"
+                        ]
+                      },
+                      "launch": {
+                        "type": "object",
+                        "required": [
+                          "archetype",
+                          "provider",
+                          "model",
+                          "session"
+                        ],
+                        "properties": {
+                          "archetype": {
+                            "type": "string"
+                          },
+                          "provider": {
+                            "type": "string"
+                          },
+                          "model": {
+                            "type": "string"
+                          },
+                          "effort": {
+                            "type": "string"
+                          },
+                          "session": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": [
+                                  "mode"
+                                ],
+                                "properties": {
+                                  "mode": {
+                                    "type": "string",
+                                    "enum": [
+                                      "fresh"
+                                    ]
+                                  }
+                                }
+                              },
+                              {
+                                "type": "object",
+                                "required": [
+                                  "mode",
+                                  "sessionId"
+                                ],
+                                "properties": {
+                                  "mode": {
+                                    "type": "string",
+                                    "enum": [
+                                      "reuse"
+                                    ]
+                                  },
+                                  "sessionId": {
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "independent": {
+                        "type": "boolean",
+                        "enum": [
+                          true
+                        ]
+                      },
+                      "baseline": {
+                        "type": "string",
+                        "enum": [
+                          "unchecked"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "kind",
+                      "reason"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "unavailable"
+                        ]
+                      },
+                      "reason": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "not-an-executor"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "archetype-missing"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "provider-not-chosen"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "model-missing"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "session-unavailable"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "provider-not-ready"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "dirty-baseline"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "baseline-changed"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "project-busy"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "demo"
+                            ]
+                          }
+                        ]
+                      },
+                      "detail": {
+                        "type": "string"
+                      },
+                      "paths": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "maxItems": 1000
+                      },
+                      "count": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "launch": {
+                        "type": "object",
+                        "required": [
+                          "archetype",
+                          "provider",
+                          "model",
+                          "session"
+                        ],
+                        "properties": {
+                          "archetype": {
+                            "type": "string"
+                          },
+                          "provider": {
+                            "type": "string"
+                          },
+                          "model": {
+                            "type": "string"
+                          },
+                          "effort": {
+                            "type": "string"
+                          },
+                          "session": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": [
+                                  "mode"
+                                ],
+                                "properties": {
+                                  "mode": {
+                                    "type": "string",
+                                    "enum": [
+                                      "fresh"
+                                    ]
+                                  }
+                                }
+                              },
+                              {
+                                "type": "object",
+                                "required": [
+                                  "mode",
+                                  "sessionId"
+                                ],
+                                "properties": {
+                                  "mode": {
+                                    "type": "string",
+                                    "enum": [
+                                      "reuse"
+                                    ]
+                                  },
+                                  "sessionId": {
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "independent": {
+                        "type": "boolean",
+                        "enum": [
+                          true
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
           }
         }
       },
@@ -10383,6 +11321,12 @@
                 "type": "string",
                 "enum": [
                   "WORKFLOW_NESTED_REPOSITORY"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_AGENT_UNAVAILABLE"
                 ]
               },
               {
@@ -10621,6 +11565,12 @@
                 "type": "string",
                 "enum": [
                   "WORKFLOW_NESTED_REPOSITORY"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_AGENT_UNAVAILABLE"
                 ]
               },
               {
@@ -11145,6 +12095,254 @@
                     ]
                   }
                 }
+              },
+              "agent": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "kind",
+                      "launch"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "available"
+                        ]
+                      },
+                      "launch": {
+                        "type": "object",
+                        "required": [
+                          "archetype",
+                          "provider",
+                          "model",
+                          "session"
+                        ],
+                        "properties": {
+                          "archetype": {
+                            "type": "string"
+                          },
+                          "provider": {
+                            "type": "string"
+                          },
+                          "model": {
+                            "type": "string"
+                          },
+                          "effort": {
+                            "type": "string"
+                          },
+                          "session": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": [
+                                  "mode"
+                                ],
+                                "properties": {
+                                  "mode": {
+                                    "type": "string",
+                                    "enum": [
+                                      "fresh"
+                                    ]
+                                  }
+                                }
+                              },
+                              {
+                                "type": "object",
+                                "required": [
+                                  "mode",
+                                  "sessionId"
+                                ],
+                                "properties": {
+                                  "mode": {
+                                    "type": "string",
+                                    "enum": [
+                                      "reuse"
+                                    ]
+                                  },
+                                  "sessionId": {
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "independent": {
+                        "type": "boolean",
+                        "enum": [
+                          true
+                        ]
+                      },
+                      "baseline": {
+                        "type": "string",
+                        "enum": [
+                          "unchecked"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "kind",
+                      "reason"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "unavailable"
+                        ]
+                      },
+                      "reason": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "not-an-executor"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "archetype-missing"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "provider-not-chosen"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "model-missing"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "session-unavailable"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "provider-not-ready"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "dirty-baseline"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "baseline-changed"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "project-busy"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "demo"
+                            ]
+                          }
+                        ]
+                      },
+                      "detail": {
+                        "type": "string"
+                      },
+                      "paths": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "maxItems": 1000
+                      },
+                      "count": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "launch": {
+                        "type": "object",
+                        "required": [
+                          "archetype",
+                          "provider",
+                          "model",
+                          "session"
+                        ],
+                        "properties": {
+                          "archetype": {
+                            "type": "string"
+                          },
+                          "provider": {
+                            "type": "string"
+                          },
+                          "model": {
+                            "type": "string"
+                          },
+                          "effort": {
+                            "type": "string"
+                          },
+                          "session": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": [
+                                  "mode"
+                                ],
+                                "properties": {
+                                  "mode": {
+                                    "type": "string",
+                                    "enum": [
+                                      "fresh"
+                                    ]
+                                  }
+                                }
+                              },
+                              {
+                                "type": "object",
+                                "required": [
+                                  "mode",
+                                  "sessionId"
+                                ],
+                                "properties": {
+                                  "mode": {
+                                    "type": "string",
+                                    "enum": [
+                                      "reuse"
+                                    ]
+                                  },
+                                  "sessionId": {
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "independent": {
+                        "type": "boolean",
+                        "enum": [
+                          true
+                        ]
+                      }
+                    }
+                  }
+                ]
               },
               "cause": {
                 "anyOf": [
@@ -41855,6 +43053,938 @@
         }
       }
     },
+    "/api/specs/{specId}/tasks/{taskId}/workflow/agent-execution": {
+      "post": {
+        "operationId": "postSpecsBySpecIdTasksByTaskIdWorkflowAgentExecution",
+        "summary": "Ask an agent to do the next step of a Task, or continue its attempt",
+        "tags": [
+          "Workflow"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "requestId",
+                  "expected"
+                ],
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                  },
+                  "expected": {
+                    "type": "object",
+                    "required": [
+                      "step"
+                    ],
+                    "properties": {
+                      "step": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "attempt": {
+                        "type": "integer",
+                        "minimum": 1
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "provider": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "model": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "effort": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 20000
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/SpecId"
+            },
+            "in": "path",
+            "name": "specId",
+            "required": true
+          },
+          {
+            "schema": {
+              "$ref": "#/components/schemas/TaskId"
+            },
+            "in": "path",
+            "name": "taskId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "subject",
+                    "attemptId",
+                    "step",
+                    "attempt",
+                    "sessionId",
+                    "turnId",
+                    "session"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "started"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "continued"
+                          ]
+                        }
+                      ]
+                    },
+                    "subject": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "kind",
+                            "specId"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "specification"
+                              ]
+                            },
+                            "specId": {
+                              "$ref": "#/components/schemas/SpecId"
+                            }
+                          }
+                        },
+                        {
+                          "type": "object",
+                          "required": [
+                            "kind",
+                            "specId",
+                            "taskId"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "task"
+                              ]
+                            },
+                            "specId": {
+                              "$ref": "#/components/schemas/SpecId"
+                            },
+                            "taskId": {
+                              "$ref": "#/components/schemas/TaskId"
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "attemptId": {
+                      "type": "string"
+                    },
+                    "step": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "attempt": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "sessionId": {
+                      "type": "string"
+                    },
+                    "turnId": {
+                      "type": "string"
+                    },
+                    "session": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "fresh"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "reuse"
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`, or `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY` for a malformed or empty JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticationRequiredErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The principal lacks a required capability.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state of the resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request is well-formed but cannot be processed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: the source exceeded the Runtime default rate limit.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the budget renews."
+              },
+              "x-ratelimit-limit": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The budget of the time window."
+              },
+              "x-ratelimit-remaining": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "`0` on a refusal."
+              },
+              "x-ratelimit-reset": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the window resets."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/specs/{specId}/tasks/{taskId}/workflow/agent-execution/check": {
+      "get": {
+        "operationId": "getSpecsBySpecIdTasksByTaskIdWorkflowAgentExecutionCheck",
+        "summary": "Check whether an agent can run the step of a Task now",
+        "tags": [
+          "Workflow"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/SpecId"
+            },
+            "in": "path",
+            "name": "specId",
+            "required": true
+          },
+          {
+            "schema": {
+              "$ref": "#/components/schemas/TaskId"
+            },
+            "in": "path",
+            "name": "taskId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "position",
+                    "agent"
+                  ],
+                  "properties": {
+                    "position": {
+                      "type": "object",
+                      "required": [
+                        "step"
+                      ],
+                      "properties": {
+                        "step": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "attempt": {
+                          "type": "integer",
+                          "minimum": 1
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "agent": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "kind",
+                            "launch"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "available"
+                              ]
+                            },
+                            "launch": {
+                              "type": "object",
+                              "required": [
+                                "archetype",
+                                "provider",
+                                "model",
+                                "session"
+                              ],
+                              "properties": {
+                                "archetype": {
+                                  "type": "string"
+                                },
+                                "provider": {
+                                  "type": "string"
+                                },
+                                "model": {
+                                  "type": "string"
+                                },
+                                "effort": {
+                                  "type": "string"
+                                },
+                                "session": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "mode"
+                                      ],
+                                      "properties": {
+                                        "mode": {
+                                          "type": "string",
+                                          "enum": [
+                                            "fresh"
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "mode",
+                                        "sessionId"
+                                      ],
+                                      "properties": {
+                                        "mode": {
+                                          "type": "string",
+                                          "enum": [
+                                            "reuse"
+                                          ]
+                                        },
+                                        "sessionId": {
+                                          "type": "string"
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            "independent": {
+                              "type": "boolean",
+                              "enum": [
+                                true
+                              ]
+                            },
+                            "baseline": {
+                              "type": "string",
+                              "enum": [
+                                "unchecked"
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "type": "object",
+                          "required": [
+                            "kind",
+                            "reason"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "unavailable"
+                              ]
+                            },
+                            "reason": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "not-an-executor"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "archetype-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "provider-not-chosen"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "model-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "session-unavailable"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "provider-not-ready"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "dirty-baseline"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "baseline-changed"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "project-busy"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "demo"
+                                  ]
+                                }
+                              ]
+                            },
+                            "detail": {
+                              "type": "string"
+                            },
+                            "paths": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              },
+                              "maxItems": 1000
+                            },
+                            "count": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "launch": {
+                              "type": "object",
+                              "required": [
+                                "archetype",
+                                "provider",
+                                "model",
+                                "session"
+                              ],
+                              "properties": {
+                                "archetype": {
+                                  "type": "string"
+                                },
+                                "provider": {
+                                  "type": "string"
+                                },
+                                "model": {
+                                  "type": "string"
+                                },
+                                "effort": {
+                                  "type": "string"
+                                },
+                                "session": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "mode"
+                                      ],
+                                      "properties": {
+                                        "mode": {
+                                          "type": "string",
+                                          "enum": [
+                                            "fresh"
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "mode",
+                                        "sessionId"
+                                      ],
+                                      "properties": {
+                                        "mode": {
+                                          "type": "string",
+                                          "enum": [
+                                            "reuse"
+                                          ]
+                                        },
+                                        "sessionId": {
+                                          "type": "string"
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            "independent": {
+                              "type": "boolean",
+                              "enum": [
+                                true
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticationRequiredErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The principal lacks a required capability.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state of the resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request is well-formed but cannot be processed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: the source exceeded the Runtime default rate limit.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the budget renews."
+              },
+              "x-ratelimit-limit": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The budget of the time window."
+              },
+              "x-ratelimit-remaining": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "`0` on a refusal."
+              },
+              "x-ratelimit-reset": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the window resets."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/specs/{specId}/tasks/{taskId}/workflow/agent-execution/stop": {
+      "post": {
+        "operationId": "postSpecsBySpecIdTasksByTaskIdWorkflowAgentExecutionStop",
+        "summary": "Stop the agent working on a Task's step",
+        "tags": [
+          "Workflow"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "requestId",
+                  "attemptId"
+                ],
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                  },
+                  "attemptId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/SpecId"
+            },
+            "in": "path",
+            "name": "specId",
+            "required": true
+          },
+          {
+            "schema": {
+              "$ref": "#/components/schemas/TaskId"
+            },
+            "in": "path",
+            "name": "taskId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "attemptId",
+                    "sessionId",
+                    "turnId"
+                  ],
+                  "properties": {
+                    "attemptId": {
+                      "type": "string"
+                    },
+                    "sessionId": {
+                      "type": "string"
+                    },
+                    "turnId": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`, or `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY` for a malformed or empty JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticationRequiredErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The principal lacks a required capability.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state of the resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request is well-formed but cannot be processed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: the source exceeded the Runtime default rate limit.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the budget renews."
+              },
+              "x-ratelimit-limit": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The budget of the time window."
+              },
+              "x-ratelimit-remaining": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "`0` on a refusal."
+              },
+              "x-ratelimit-reset": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the window resets."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/specs/{specId}/tasks/{taskId}/workflow/attempt-commit/retry": {
       "post": {
         "operationId": "postSpecsBySpecIdTasksByTaskIdWorkflowAttemptCommitRetry",
@@ -45146,6 +47276,914 @@
           },
           "400": {
             "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticationRequiredErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The principal lacks a required capability.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state of the resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request is well-formed but cannot be processed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: the source exceeded the Runtime default rate limit.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the budget renews."
+              },
+              "x-ratelimit-limit": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The budget of the time window."
+              },
+              "x-ratelimit-remaining": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "`0` on a refusal."
+              },
+              "x-ratelimit-reset": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the window resets."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/specs/{specId}/workflow/agent-execution": {
+      "post": {
+        "operationId": "postSpecsBySpecIdWorkflowAgentExecution",
+        "summary": "Ask an agent to do the next step of a Specification, or continue its attempt",
+        "tags": [
+          "Workflow"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "requestId",
+                  "expected"
+                ],
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                  },
+                  "expected": {
+                    "type": "object",
+                    "required": [
+                      "step"
+                    ],
+                    "properties": {
+                      "step": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "attempt": {
+                        "type": "integer",
+                        "minimum": 1
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "provider": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "model": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "effort": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 20000
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/SpecId"
+            },
+            "in": "path",
+            "name": "specId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "subject",
+                    "attemptId",
+                    "step",
+                    "attempt",
+                    "sessionId",
+                    "turnId",
+                    "session"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "started"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "continued"
+                          ]
+                        }
+                      ]
+                    },
+                    "subject": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "kind",
+                            "specId"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "specification"
+                              ]
+                            },
+                            "specId": {
+                              "$ref": "#/components/schemas/SpecId"
+                            }
+                          }
+                        },
+                        {
+                          "type": "object",
+                          "required": [
+                            "kind",
+                            "specId",
+                            "taskId"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "task"
+                              ]
+                            },
+                            "specId": {
+                              "$ref": "#/components/schemas/SpecId"
+                            },
+                            "taskId": {
+                              "$ref": "#/components/schemas/TaskId"
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "attemptId": {
+                      "type": "string"
+                    },
+                    "step": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "attempt": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "sessionId": {
+                      "type": "string"
+                    },
+                    "turnId": {
+                      "type": "string"
+                    },
+                    "session": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "fresh"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "reuse"
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`, or `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY` for a malformed or empty JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticationRequiredErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The principal lacks a required capability.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state of the resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request is well-formed but cannot be processed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: the source exceeded the Runtime default rate limit.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the budget renews."
+              },
+              "x-ratelimit-limit": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The budget of the time window."
+              },
+              "x-ratelimit-remaining": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "`0` on a refusal."
+              },
+              "x-ratelimit-reset": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the window resets."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/specs/{specId}/workflow/agent-execution/check": {
+      "get": {
+        "operationId": "getSpecsBySpecIdWorkflowAgentExecutionCheck",
+        "summary": "Check whether an agent can run the step of a Specification now",
+        "tags": [
+          "Workflow"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/SpecId"
+            },
+            "in": "path",
+            "name": "specId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "position",
+                    "agent"
+                  ],
+                  "properties": {
+                    "position": {
+                      "type": "object",
+                      "required": [
+                        "step"
+                      ],
+                      "properties": {
+                        "step": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "attempt": {
+                          "type": "integer",
+                          "minimum": 1
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "agent": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "kind",
+                            "launch"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "available"
+                              ]
+                            },
+                            "launch": {
+                              "type": "object",
+                              "required": [
+                                "archetype",
+                                "provider",
+                                "model",
+                                "session"
+                              ],
+                              "properties": {
+                                "archetype": {
+                                  "type": "string"
+                                },
+                                "provider": {
+                                  "type": "string"
+                                },
+                                "model": {
+                                  "type": "string"
+                                },
+                                "effort": {
+                                  "type": "string"
+                                },
+                                "session": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "mode"
+                                      ],
+                                      "properties": {
+                                        "mode": {
+                                          "type": "string",
+                                          "enum": [
+                                            "fresh"
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "mode",
+                                        "sessionId"
+                                      ],
+                                      "properties": {
+                                        "mode": {
+                                          "type": "string",
+                                          "enum": [
+                                            "reuse"
+                                          ]
+                                        },
+                                        "sessionId": {
+                                          "type": "string"
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            "independent": {
+                              "type": "boolean",
+                              "enum": [
+                                true
+                              ]
+                            },
+                            "baseline": {
+                              "type": "string",
+                              "enum": [
+                                "unchecked"
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "type": "object",
+                          "required": [
+                            "kind",
+                            "reason"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "unavailable"
+                              ]
+                            },
+                            "reason": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "not-an-executor"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "archetype-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "provider-not-chosen"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "model-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "session-unavailable"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "provider-not-ready"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "dirty-baseline"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "baseline-changed"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "project-busy"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "demo"
+                                  ]
+                                }
+                              ]
+                            },
+                            "detail": {
+                              "type": "string"
+                            },
+                            "paths": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              },
+                              "maxItems": 1000
+                            },
+                            "count": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "launch": {
+                              "type": "object",
+                              "required": [
+                                "archetype",
+                                "provider",
+                                "model",
+                                "session"
+                              ],
+                              "properties": {
+                                "archetype": {
+                                  "type": "string"
+                                },
+                                "provider": {
+                                  "type": "string"
+                                },
+                                "model": {
+                                  "type": "string"
+                                },
+                                "effort": {
+                                  "type": "string"
+                                },
+                                "session": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "mode"
+                                      ],
+                                      "properties": {
+                                        "mode": {
+                                          "type": "string",
+                                          "enum": [
+                                            "fresh"
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "mode",
+                                        "sessionId"
+                                      ],
+                                      "properties": {
+                                        "mode": {
+                                          "type": "string",
+                                          "enum": [
+                                            "reuse"
+                                          ]
+                                        },
+                                        "sessionId": {
+                                          "type": "string"
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            "independent": {
+                              "type": "boolean",
+                              "enum": [
+                                true
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticationRequiredErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The principal lacks a required capability.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state of the resource.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request is well-formed but cannot be processed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: the source exceeded the Runtime default rate limit.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the budget renews."
+              },
+              "x-ratelimit-limit": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The budget of the time window."
+              },
+              "x-ratelimit-remaining": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "`0` on a refusal."
+              },
+              "x-ratelimit-reset": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the window resets."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/specs/{specId}/workflow/agent-execution/stop": {
+      "post": {
+        "operationId": "postSpecsBySpecIdWorkflowAgentExecutionStop",
+        "summary": "Stop the agent working on a Specification's step",
+        "tags": [
+          "Workflow"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "requestId",
+                  "attemptId"
+                ],
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                  },
+                  "attemptId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/SpecId"
+            },
+            "in": "path",
+            "name": "specId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "attemptId",
+                    "sessionId",
+                    "turnId"
+                  ],
+                  "properties": {
+                    "attemptId": {
+                      "type": "string"
+                    },
+                    "sessionId": {
+                      "type": "string"
+                    },
+                    "turnId": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`, or `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY` for a malformed or empty JSON body.",
             "content": {
               "application/json": {
                 "schema": {

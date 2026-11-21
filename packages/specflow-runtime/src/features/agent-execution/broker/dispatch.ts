@@ -14,14 +14,27 @@ import type {
   SaveInput,
   SaveResult,
 } from '@nevo/specflow-contracts/documents';
+import type {
+  CreateTaskInput,
+  EditTaskInput,
+  TaskChangeResult,
+} from '@nevo/specflow-contracts/tasks';
+import type { AgentFinishProposalRequest } from '@nevo/specflow-contracts/workflow';
 import { DocumentError, admitAgentOperation, type OwnedExecution } from '@nevo/specflow-engine';
 import { Type, type Static, type TSchema } from 'typebox';
 import { Value } from 'typebox/value';
 
-import type { CapabilityLease, CapabilityRegistry } from '../capability/registry';
+import type {
+  CapabilityBinding,
+  CapabilityLease,
+  CapabilityRegistry,
+} from '../capability/registry';
 import { brokerOperationId } from './operation-id';
 
-/** The Engine document use cases the broker calls: the same ones the UI's routes call. */
+/**
+ * The Engine document use cases the broker calls: the same ones the UI's routes call. `taskId`
+ * names a Task's documents (the Task-document use case), absent the Specification's own.
+ */
 export interface BrokerDocuments {
   /** The workspace root the Specification lives in now, or `undefined` when it is not available. */
   workspaceOf(specId: string): Promise<string | undefined>;
@@ -29,19 +42,46 @@ export interface BrokerDocuments {
     specId: string,
     input: CreateDocumentsInput,
     owned: OwnedExecution,
+    taskId?: string,
   ): Promise<DocumentOperationResult>;
   save(
     specId: string,
     documentId: string,
     input: SaveInput,
     owned: OwnedExecution,
+    taskId?: string,
   ): Promise<SaveResult>;
   operate(
     specId: string,
     input: DocumentOperationInput,
     owned: OwnedExecution,
+    taskId?: string,
   ): Promise<DocumentOperationResult>;
 }
+
+/**
+ * The Engine workflow use cases an agent attempt's Turn calls through the broker (Task drafts of its
+ * producing step, its finish proposal), each as the Turn's owned execution with the binding's actor.
+ */
+export interface BrokerWorkflow {
+  createTask(
+    binding: CapabilityBinding,
+    input: CreateTaskInput & { readonly specId: string },
+  ): Promise<TaskChangeResult>;
+  editTask(
+    binding: CapabilityBinding,
+    input: EditTaskInput & { readonly specId: string; readonly taskId: string },
+  ): Promise<TaskChangeResult>;
+  propose(
+    binding: CapabilityBinding,
+    input: AgentFinishProposalRequest,
+  ): Promise<{ readonly kind: 'recorded' | 'replaced' | 'replayed'; readonly transition: string }>;
+}
+
+/** Turns an Engine refusal into the agent's answer; anything else is not a refusal. */
+export type BrokerRefusalOf = (
+  error: unknown,
+) => { readonly code: string; readonly message: string; readonly details?: object } | undefined;
 
 /**
  * Field names only the broker decides. A request naming one (at any depth) is refused, never
@@ -135,8 +175,15 @@ const CAPABILITY_REFUSALS = {
 export function createBrokerDispatcher(options: {
   registry: CapabilityRegistry;
   documents: BrokerDocuments;
+  /** The attempt scope's workflow writes; absent: those operations are unavailable. */
+  workflow?: BrokerWorkflow;
+  /** Maps workflow refusals (the workflow routes' mapping). */
+  refusalOf?: BrokerRefusalOf;
 }) {
   const { registry, documents } = options;
+  const unavailable = (): never => {
+    throw new Error('The broker has no workflow writes.');
+  };
 
   async function run(
     request: AgentBrokerRequest,
@@ -152,6 +199,15 @@ export function createBrokerDispatcher(options: {
           scope: {
             kind: binding.scope.kind,
             specId: binding.scope.specId,
+            ...(binding.scope.taskId !== undefined ? { taskId: binding.scope.taskId } : {}),
+            ...(binding.scope.attempt !== undefined
+              ? {
+                  attempt: {
+                    step: binding.scope.attempt.step,
+                    attempt: binding.scope.attempt.attempt,
+                  },
+                }
+              : {}),
             operations: ['scope.describe', ...binding.scope.operations],
           },
         },
@@ -161,6 +217,11 @@ export function createBrokerDispatcher(options: {
     const decision = admitAgentOperation(binding.scope, {
       operation: operation.name,
       specId: operation.specId,
+      ...('taskId' in operation &&
+      operation.taskId !== undefined &&
+      !operation.name.startsWith('tasks.')
+        ? { taskId: operation.taskId }
+        : {}),
     });
     if (!decision.admitted) {
       return refusal('AGENT_SCOPE_REFUSED', decision.message, {
@@ -183,6 +244,22 @@ export function createBrokerDispatcher(options: {
       return refusal('AGENT_CAPABILITY_INVALID', CAPABILITY_REFUSALS.ended, { reason: 'ended' });
     }
 
+    if (
+      operation.name === 'workflow.finish' &&
+      (operation.step !== binding.scope.attempt?.step ||
+        operation.stepAttempt !== binding.scope.attempt.attempt)
+    ) {
+      const bound = binding.scope.attempt;
+
+      return refusal(
+        'AGENT_SCOPE_REFUSED',
+        bound
+          ? `This Turn works on step "${bound.step}", attempt ${String(bound.attempt)}; finish exactly that.`
+          : 'This Turn has no attempt to finish.',
+        { reason: 'other-attempt', operation: operation.name },
+      );
+    }
+
     const operationId = brokerOperationId(binding.invocationId, request.requestId);
     const owned: OwnedExecution = { operationId: binding.invocationId, actor: binding.actor };
     let value: AgentBrokerResult;
@@ -201,6 +278,7 @@ export function createBrokerDispatcher(options: {
                 : {}),
             },
             owned,
+            operation.taskId,
           ),
         };
         break;
@@ -216,6 +294,7 @@ export function createBrokerDispatcher(options: {
               expectedRevision: operation.expectedRevision,
             },
             owned,
+            operation.taskId,
           ),
         };
         break;
@@ -233,9 +312,39 @@ export function createBrokerDispatcher(options: {
               expectedRevision: operation.expectedRevision,
             },
             owned,
+            operation.taskId,
           ),
         };
         break;
+      case 'tasks.create': {
+        const { name: _name, ...input } = operation;
+        value = {
+          operation: operation.name,
+          result: await (options.workflow ?? unavailable()).createTask(binding, input),
+        };
+        break;
+      }
+
+      case 'tasks.edit': {
+        const { name: _name, ...input } = operation;
+        value = {
+          operation: operation.name,
+          result: await (options.workflow ?? unavailable()).editTask(binding, input),
+        };
+        break;
+      }
+
+      case 'workflow.finish': {
+        const { name: _name, specId: _spec, taskId: _task, stepAttempt, ...input } = operation;
+        value = {
+          operation: operation.name,
+          result: await (options.workflow ?? unavailable()).propose(binding, {
+            ...input,
+            attempt: stepAttempt,
+          }),
+        };
+        break;
+      }
     }
 
     return { ok: true, value };
@@ -318,6 +427,15 @@ export function createBrokerDispatcher(options: {
     } catch (error) {
       if (error instanceof DocumentError) {
         return refusal(error.code, error.message, error.details);
+      }
+
+      const refused = options.refusalOf?.(error);
+      if (refused) {
+        return refusal(
+          refused.code,
+          refused.message,
+          refused.details as Record<string, unknown> | undefined,
+        );
       }
 
       return refusal(

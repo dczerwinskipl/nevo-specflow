@@ -357,6 +357,7 @@ async function recordWrites(
       documentCount: 0,
     },
     attempts: 0,
+    ...(target.executionId !== undefined ? { agent: { executionId: target.executionId } } : {}),
   };
 
   if (target.git.mode === 'auto') {

@@ -1,4 +1,9 @@
-import type { AgentAttemptDependencies, WorkflowDependencies } from '@nevo/specflow-engine';
+import type {
+  ActionProjection,
+  AgentAttemptDependencies,
+  WorkflowDependencies,
+  WorkflowSubject,
+} from '@nevo/specflow-engine';
 
 import type { RuntimeFeature } from '../runtime-feature';
 import type { ProjectIdSource } from '../specs';
@@ -17,6 +22,14 @@ export interface WorkflowFeatureDependencies {
   /** Explicit backend (tests). Wins over the Engine. */
   readonly port?: WorkflowPort;
   readonly projectId?: ProjectIdSource;
+  /**
+   * What only the Runtime knows of the agent option (Ask agent): its reasons and the active agent
+   * attempt, added to every projection the actions route serves.
+   */
+  readonly agentAvailability?: (
+    subject: WorkflowSubject,
+    projection: ActionProjection,
+  ) => Promise<ActionProjection>;
 }
 
 /**
@@ -29,11 +42,19 @@ export function createWorkflowFeature(
   return {
     authorizationResources: [],
     register(app) {
-      const port =
+      const base =
         dependencies.port ??
         (dependencies.openWorkflow
           ? createEngineWorkflowPort(dependencies.openWorkflow, dependencies.openAgentAttempts)
           : undefined);
+      const availability = dependencies.agentAvailability;
+      const port: WorkflowPort | undefined =
+        base && availability
+          ? {
+              ...base,
+              actions: async (subject) => availability(subject, await base.actions(subject)),
+            }
+          : base;
       app.register(workflowEndpoint, {
         port,
         projectId: () => dependencies.projectId?.(),

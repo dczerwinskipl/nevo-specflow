@@ -1,6 +1,10 @@
 import { resolveSpecificationForRead, type SpecFlowEngine } from '@nevo/specflow-engine';
 
-import { createEngineDocumentWriteSource, type EngineDocumentWriteOptions } from '../../documents';
+import {
+  createEngineDocumentWriteSource,
+  createEngineTaskDocumentSource,
+  type EngineDocumentWriteOptions,
+} from '../../documents';
 import type { BrokerDocuments } from './dispatch';
 
 /**
@@ -16,6 +20,9 @@ export function createEngineBrokerDocuments(
       ...options,
       write: { ...options.write, ownedExecution: owned },
     });
+  // A Task subject's documents: the Task-document use case, as the same owned execution.
+  const taskSource = (owned: Parameters<BrokerDocuments['save']>[3]) =>
+    createEngineTaskDocumentSource(engine, { write: { ...options.write, ownedExecution: owned } });
 
   return {
     async workspaceOf(specId) {
@@ -27,8 +34,17 @@ export function createEngineBrokerDocuments(
         return undefined;
       }
     },
-    create: (specId, input, owned) => source(owned).create(specId, input),
-    save: (specId, documentId, input, owned) => source(owned).save(specId, documentId, input),
-    operate: (specId, input, owned) => source(owned).operate(specId, input),
+    create: (specId, input, owned, taskId) =>
+      taskId === undefined
+        ? source(owned).create(specId, input)
+        : taskSource(owned).create(specId, taskId, input),
+    save: (specId, documentId, input, owned, taskId) =>
+      taskId === undefined
+        ? source(owned).save(specId, documentId, input)
+        : taskSource(owned).save(specId, taskId, documentId, input),
+    operate: (specId, input, owned, taskId) =>
+      taskId === undefined
+        ? source(owned).operate(specId, input)
+        : taskSource(owned).operate(specId, taskId, input),
   };
 }

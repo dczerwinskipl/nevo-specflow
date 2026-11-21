@@ -271,7 +271,18 @@ describe('Task positions', () => {
           workflowId: 'task-standard',
           firstStep: 'implement',
         }) as unknown,
-        next: expect.objectContaining({ human: true, agent: { kind: 'available' } }) as unknown,
+        next: expect.objectContaining({
+          human: true,
+          agent: {
+            kind: 'available',
+            launch: {
+              archetype: 'implementer',
+              provider: 'claude',
+              model: 'claude-sonnet-5-5',
+              session: { mode: 'fresh' },
+            },
+          },
+        }) as unknown,
       },
       actions: {},
       documentRelations: [],

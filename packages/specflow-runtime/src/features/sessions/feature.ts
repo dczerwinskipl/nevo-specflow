@@ -17,7 +17,11 @@ import { homedir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import type { SpecFlowEngine } from '@nevo/specflow-engine';
-import { createEngineSessionEffects, workspaceExecutionIdentity } from './effects/engine';
+import {
+  createEngineSessionEffects,
+  workspaceExecutionIdentity,
+  type AgentAttemptSettlement,
+} from './effects/engine';
 import type { SessionCoordinator } from './lifecycle/coordinator';
 import { createSpecificationWorkspaceResolver } from './workspace/specification-workspace';
 import { withheldProviderDescriptor } from './providers/withheld';
@@ -49,6 +53,8 @@ export function createSessionsFeature(
     };
     /** The invocation capabilities of write Turns (the agent-execution feature, D11). */
     invocationCapabilities?: InvocationCapabilities;
+    /** The finalize that settles a Turn of an agent attempt (the agent-execution feature, D12). */
+    settleAgentAttempt?: AgentAttemptSettlement;
   } = {},
 ): RuntimeFeature & { readonly runtime: SessionsRuntime } {
   let registered: SessionCoordinator | undefined;
@@ -91,7 +97,10 @@ export function createSessionsFeature(
         options.engine &&
         options.storage?.workspace === options.engine.workspace.root &&
         options.storage.projectId === options.engine.context.project.projectId
-          ? createEngineSessionEffects(options.engine)
+          ? createEngineSessionEffects(
+              options.engine,
+              options.settleAgentAttempt ? { settleAgentAttempt: options.settleAgentAttempt } : {},
+            )
           : undefined;
       if (options.config?.providers.mock.enabled) {
         drivers.push(createMockDriver());

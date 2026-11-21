@@ -11,6 +11,8 @@ import {
 } from '@nevo/specflow-engine';
 import { Command, InvalidArgumentError } from 'commander';
 
+import type { AgentBrokerTransport, BrokerOperation } from '../agent-broker/client';
+import { runBrokeredWrite } from '../agent-broker/routing';
 import { readContentInput } from '../documents/content-input';
 import { runExecution, type ExecutionOutput, type ExecutionSession } from '../execution-session';
 import { localOwner } from '../local-actor';
@@ -25,6 +27,11 @@ export interface TasksCommandContext extends ExecutionOutput {
   readonly readStdin?: () => Promise<string>;
   /** The OS user behind the owner actor; the installed user unless a test supplies one. */
   readonly osUser?: string;
+  /**
+   * Inside an agent Turn: the Runtime's broker, to which `create` and `edit` send a Task draft of the
+   * Turn's producing step (the Engine is never opened for writing).
+   */
+  readonly broker?: AgentBrokerTransport;
 }
 
 interface CommonOptions {
@@ -46,6 +53,15 @@ const STATUS_VERBS: Readonly<Record<string, TaskDecisionStatus>> = {
   resume: 'ready',
   cancel: 'cancelled',
 };
+
+/** What a brokered Task draft prints: the Task and the revision for its next edit. */
+const brokeredTaskLines =
+  (verb: string) =>
+  (value: { readonly operation: string; readonly result?: unknown }): readonly string[] => {
+    const result = value.result as { taskId?: string; revision?: string } | undefined;
+
+    return [`${verb} draft Task ${result?.taskId ?? ''} (revision ${result?.revision ?? ''})`];
+  };
 
 function collect(value: string, previous: string[]): string[] {
   return [...previous, value];
@@ -176,6 +192,33 @@ export function createTasksCommand(context: TasksCommandContext): Command {
         command.error('Give at most one of --content-file and --stdin.');
       }
 
+      if (context.broker !== undefined) {
+        const entries = await contextOf(context.cwd, options);
+        const document =
+          options.contentFile !== undefined || options.stdin
+            ? await readContentInput(options, context)
+            : undefined;
+        await runBrokeredWrite(
+          context,
+          context.broker,
+          options,
+          {
+            name: 'tasks.create',
+            specId,
+            taskId: options.id,
+            title: options.title,
+            type: options.type,
+            ...(options.summary !== undefined ? { summary: options.summary } : {}),
+            ...(options.dependsOn?.length ? { dependsOn: options.dependsOn } : {}),
+            ...(entries !== undefined ? { context: [...entries] } : {}),
+            ...(document !== undefined ? { document } : {}),
+          },
+          brokeredTaskLines('Created'),
+        );
+
+        return;
+      }
+
       await run(options, 'change', async ({ workflow }) => {
         const entries = await contextOf(context.cwd, options);
         const document =
@@ -246,6 +289,31 @@ export function createTasksCommand(context: TasksCommandContext): Command {
 
       if (options.dependencies === false && (options.dependsOn?.length ?? 0) > 0) {
         command.error('Give at most one of --depends-on and --no-dependencies.');
+      }
+
+      if (context.broker !== undefined) {
+        const entries = await contextOf(context.cwd, options);
+        const {
+          specId: _spec,
+          taskId: _task,
+          actor: _actor,
+          ...edit
+        } = editTaskInput({
+          specId,
+          taskId,
+          options,
+          context: entries,
+          actor: owner(),
+        });
+        await runBrokeredWrite(
+          context,
+          context.broker,
+          options,
+          { ...edit, name: 'tasks.edit', specId, taskId } as BrokerOperation,
+          brokeredTaskLines('Edited'),
+        );
+
+        return;
       }
 
       await run(options, 'change', async ({ workflow }) => {

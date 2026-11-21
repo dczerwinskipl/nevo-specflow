@@ -15,14 +15,19 @@ import type { DocumentChangePlan } from '../changes/plan/model';
 import type { WriteRuntime } from './writer-types';
 
 /**
- * Whether two agent executions are the same author of uncommitted work: for a Turn without an agent
- * attempt (D11b) the same Session (`ownerId`), whose Turns are one conversation. The attempt
- * binding (T11) narrows this to the same attempt, read from the same durable intent.
+ * Whether two agent executions are the same author of uncommitted work, read from their durable
+ * intents: two Turns of one agent attempt (the attempt commit takes only that attempt's entries), or
+ * two Turns without an attempt of the same Session (D11b, one conversation). A Turn of an attempt and
+ * a Turn outside it are never the same author, even in the same Session.
  */
 export function sameAuthor(
   current: WorkspaceExecutionIntent,
   other: WorkspaceExecutionIntent,
 ): boolean {
+  if (current.attempt !== undefined || other.attempt !== undefined) {
+    return current.attempt?.attemptId === other.attempt?.attemptId;
+  }
+
   return current.ownerId === other.ownerId;
 }
 

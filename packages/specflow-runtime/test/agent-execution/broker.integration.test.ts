@@ -217,9 +217,9 @@ it(
     });
     const created = seen.created as Extract<AgentBrokerResponse, { ok: true }>;
     const replayed = seen.replayed as Extract<AgentBrokerResponse, { ok: true }>;
-    expect(replayed.ok && 'result' in replayed.value && replayed.value.result.operationId).toBe(
-      'result' in created.value && created.value.result.operationId,
-    );
+    const operationOf = (value: (typeof created)['value']) =>
+      'result' in value && 'operationId' in value.result ? value.result.operationId : undefined;
+    expect(replayed.ok && operationOf(replayed.value)).toBe(operationOf(created.value));
     expect(seen.foreignLedger).toMatchObject({
       ok: false,
       error: { code: 'DOCUMENT_COMMITS_PENDING', details: { cause: 'foreign-uncommitted' } },

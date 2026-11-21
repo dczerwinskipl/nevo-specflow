@@ -209,4 +209,45 @@ describe('agent context of a step', () => {
       ),
     ).toEqual(['task', 'overview']);
   });
+
+  it('hashes a project document by the file its documentation names, so it enters the digest', async () => {
+    const references = {
+      ...fakeReferences(),
+      projectDocumentPath: () => Promise.resolve('docs/guide.md'),
+    };
+    const task = {
+      specId: SPEC,
+      taskId: 't',
+      documents: [{ id: 'task', path: 'task.md', type: 'task' }],
+      context: [
+        { kind: 'project-document', id: 'architecture.workflow.workflow-kernel', required: true },
+      ],
+    } as unknown as ExecutionTask;
+    const digest = async (sha256: string) =>
+      (
+        await gatherAgentContext(
+          { references },
+          {
+            ...source,
+            checkoutFile: (_specId, path) =>
+              Promise.resolve(path === 'docs/guide.md' ? file(path, sha256) : undefined),
+          },
+          { kind: 'task', specId: SPEC, taskId: 't' },
+          task,
+        )
+      ).taskContext;
+
+    const first = await digest('c'.repeat(64));
+    expect(first?.entries).toEqual([
+      {
+        kind: 'project-document',
+        ref: 'architecture.workflow.workflow-kernel',
+        path: 'docs/guide.md',
+        bytes: 10,
+        sha256: 'c'.repeat(64),
+        required: true,
+      },
+    ]);
+    expect((await digest('d'.repeat(64)))?.digest).not.toBe(first?.digest);
+  });
 });

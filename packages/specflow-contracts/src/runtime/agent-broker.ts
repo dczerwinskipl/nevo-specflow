@@ -6,6 +6,12 @@ import {
   SaveResultSchema,
 } from '../documents/operations';
 import { CatalogueIdSchema, IdSchema } from '../documents/vocabulary';
+import {
+  CreateTaskInputSchema,
+  EditTaskInputSchema,
+  TaskChangeResultSchema,
+} from '../tasks/task-resource';
+import { AgentFinishProposalRequestSchema } from '../workflow/commands';
 
 /**
  * The agent broker (D11): the Runtime's per-user local endpoint through which the product CLI of a
@@ -49,14 +55,19 @@ export const AGENT_BROKER_LIMITS = {
 
 /**
  * Agent operations the broker knows. The scope of a Turn admits a subset: an ad-hoc Turn (D11b)
- * the documents of its home Specification; the attempt scope adds Task drafts and the finish
- * proposal. `scope.describe` is always admitted and answers the Turn's scope.
+ * the documents of its home Specification; an agent attempt (Ask agent) the documents of a
+ * Specification subject, Task drafts for a step that produces Tasks (`tasks.create`, `tasks.edit`)
+ * and the finish proposal of the bound attempt (`workflow.finish`). `scope.describe` is always
+ * admitted and answers the Turn's scope.
  */
 export const AGENT_BROKER_OPERATIONS = [
   'scope.describe',
   'documents.create',
   'documents.save',
   'documents.classify',
+  'tasks.create',
+  'tasks.edit',
+  'workflow.finish',
 ] as const;
 export type AgentBrokerOperationName = (typeof AGENT_BROKER_OPERATIONS)[number];
 
@@ -68,6 +79,7 @@ export const AgentBrokerRequestIdSchema = Type.String({
 });
 
 const SpecIdSchema = Type.String({ minLength: 1, maxLength: 128 });
+const TaskSubjectIdSchema = Type.String({ minLength: 1, maxLength: 128 });
 
 export const AgentBrokerOperationSchema = Type.Union([
   Type.Object({ name: Type.Literal('scope.describe') }, { additionalProperties: false }),
@@ -75,6 +87,8 @@ export const AgentBrokerOperationSchema = Type.Union([
     {
       name: Type.Literal('documents.create'),
       specId: SpecIdSchema,
+      /** A Task's documents (the Turn's Task subject); absent: the Specification's own. */
+      taskId: Type.Optional(TaskSubjectIdSchema),
       documents: Type.Array(CreateDocumentEntrySchema, { minItems: 1 }),
       folders: Type.Optional(Type.Array(Type.String({ minLength: 1 }))),
       catalogueRevision: Type.Optional(Type.String({ minLength: 1 })),
@@ -85,6 +99,7 @@ export const AgentBrokerOperationSchema = Type.Union([
     {
       name: Type.Literal('documents.save'),
       specId: SpecIdSchema,
+      taskId: Type.Optional(TaskSubjectIdSchema),
       documentId: IdSchema,
       content: Type.String(),
       expectedRevision: Type.String({ minLength: 1 }),
@@ -95,9 +110,51 @@ export const AgentBrokerOperationSchema = Type.Union([
     {
       name: Type.Literal('documents.classify'),
       specId: SpecIdSchema,
+      taskId: Type.Optional(TaskSubjectIdSchema),
       documentId: IdSchema,
       type: CatalogueIdSchema,
       expectedRevision: Type.String({ minLength: 1 }),
+    },
+    { additionalProperties: false },
+  ),
+  /** A draft Task of the bound attempt's producing step (origin `produced`). */
+  Type.Object(
+    {
+      name: Type.Literal('tasks.create'),
+      specId: SpecIdSchema,
+      ...CreateTaskInputSchema.properties,
+    },
+    { additionalProperties: false },
+  ),
+  /** An edit of a draft Task the bound attempt's step drafted. */
+  Type.Object(
+    {
+      name: Type.Literal('tasks.edit'),
+      specId: SpecIdSchema,
+      taskId: Type.String({ minLength: 1, maxLength: 128 }),
+      ...EditTaskInputSchema.properties,
+    },
+    { additionalProperties: false },
+  ),
+  /**
+   * The finish proposal of the bound attempt (D12): the step and attempt number it finishes
+   * (`stepAttempt`; an `attempt` field is the Runtime's to decide) and the owner's finish input with
+   * the declared changed files. Recorded, never applied during the Turn.
+   */
+  Type.Object(
+    {
+      name: Type.Literal('workflow.finish'),
+      specId: SpecIdSchema,
+      /** The Task subject, when the attempt is a Task's. */
+      taskId: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
+      step: AgentFinishProposalRequestSchema.properties.step,
+      stepAttempt: AgentFinishProposalRequestSchema.properties.attempt,
+      result: AgentFinishProposalRequestSchema.properties.result,
+      feedback: AgentFinishProposalRequestSchema.properties.feedback,
+      artifacts: AgentFinishProposalRequestSchema.properties.artifacts,
+      tasks: AgentFinishProposalRequestSchema.properties.tasks,
+      taskDecisions: AgentFinishProposalRequestSchema.properties.taskDecisions,
+      changes: AgentFinishProposalRequestSchema.properties.changes,
     },
     { additionalProperties: false },
   ),
@@ -118,15 +175,27 @@ export type AgentBrokerRequest = Static<typeof AgentBrokerRequestSchema>;
 /** The scope of the Turn, as `scope.describe` answers it (for the brief and the CLI's refusals). */
 export const AgentBrokerScopeSchema = Type.Object(
   {
-    /** `ad-hoc`: a Turn without an agent attempt (D11b). The attempt scope joins later. */
-    kind: Type.Literal('ad-hoc'),
+    /** `ad-hoc`: a Turn without an agent attempt (D11b); `attempt`: a Turn of an agent attempt. */
+    kind: Type.Union([Type.Literal('ad-hoc'), Type.Literal('attempt')]),
     specId: SpecIdSchema,
+    /** The attempt's Task subject. */
+    taskId: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
+    /** The bound attempt (`attempt` only): the step and attempt number `workflow.finish` names. */
+    attempt: Type.Optional(
+      Type.Object(
+        { step: Type.String({ minLength: 1 }), attempt: Type.Integer({ minimum: 1 }) },
+        { additionalProperties: false },
+      ),
+    ),
     operations: Type.Array(
       Type.Union([
         Type.Literal('scope.describe'),
         Type.Literal('documents.create'),
         Type.Literal('documents.save'),
         Type.Literal('documents.classify'),
+        Type.Literal('tasks.create'),
+        Type.Literal('tasks.edit'),
+        Type.Literal('workflow.finish'),
       ]),
     ),
   },
@@ -180,6 +249,34 @@ export const AgentBrokerResultSchema = Type.Union([
     {
       operation: Type.Union([Type.Literal('documents.create'), Type.Literal('documents.classify')]),
       result: DocumentOperationResultSchema,
+    },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      operation: Type.Union([Type.Literal('tasks.create'), Type.Literal('tasks.edit')]),
+      result: TaskChangeResultSchema,
+    },
+    { additionalProperties: false },
+  ),
+  /**
+   * The proposal is recorded (`recorded`, `replaced`, or `replayed` for the same one again); it is
+   * applied only once the Turn ended and the agent's process is proven stopped.
+   */
+  Type.Object(
+    {
+      operation: Type.Literal('workflow.finish'),
+      result: Type.Object(
+        {
+          kind: Type.Union([
+            Type.Literal('recorded'),
+            Type.Literal('replaced'),
+            Type.Literal('replayed'),
+          ]),
+          transition: Type.String(),
+        },
+        { additionalProperties: false },
+      ),
     },
     { additionalProperties: false },
   ),

@@ -88,6 +88,9 @@ export function renderAgentBrief(input: BriefInput): string {
   const formContext: AgentFormContext = {
     specId: scope.specId,
     ...(taskId !== undefined ? { taskId } : {}),
+    ...(scope.attempt !== undefined
+      ? { attempt: { step: scope.attempt.step, attempt: scope.attempt.attempt } }
+      : {}),
     ...(taskId === undefined && agent?.archetype?.templates.length
       ? { templateIds: agent.archetype.templates.map((template) => template.id) }
       : {}),

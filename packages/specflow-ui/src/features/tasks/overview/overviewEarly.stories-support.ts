@@ -277,7 +277,19 @@ function earlyFixture(scenario: EarlyScenario): FixtureProjection {
             next: [steps[index + 1]?.id ?? 'end'],
           })),
         },
-        next: { step: step(0), human: true, agent: { kind: 'available' } },
+        next: {
+          step: step(0),
+          human: true,
+          agent: {
+            kind: 'available',
+            launch: {
+              archetype: 'implementer',
+              provider: 'claude',
+              model: 'claude-sonnet-5-5',
+              session: { mode: 'fresh' },
+            },
+          },
+        },
       },
       actions: {
         start: { step: steps[0].id, firstStart: true, expectedWorkflowRevision: workflow.revision },
@@ -302,7 +314,19 @@ function earlyFixture(scenario: EarlyScenario): FixtureProjection {
       workflow,
       position: {
         kind: 'ready',
-        next: { step: step(index), human: true, agent: { kind: 'available' } },
+        next: {
+          step: step(index),
+          human: true,
+          agent: {
+            kind: 'available',
+            launch: {
+              archetype: 'implementer',
+              provider: 'claude',
+              model: 'claude-sonnet-5-5',
+              session: { mode: 'fresh' },
+            },
+          },
+        },
       },
       actions: { start: { step: steps[index]!.id, firstStart: false } },
       specification,

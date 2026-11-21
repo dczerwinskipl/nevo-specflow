@@ -51,3 +51,26 @@ export function readStepContext(
     });
   });
 }
+
+/**
+ * The digest of a subject's resolved agent context (D13), read before its agent attempt starts so the
+ * start records it on the attempt: the Task's resolved context entries; `undefined` for a
+ * Specification subject (its context holds no resolved references). Read-only, any position.
+ */
+export function readAgentContextDigest(
+  dependencies: WorkflowDependencies,
+  source: AgentContextSource,
+  subject: WorkflowSubject,
+): Promise<string | undefined> {
+  return dependencies.serialize(async () => {
+    if (subject.kind !== 'task') {
+      return undefined;
+    }
+
+    const snapshot = await dependencies.store.read(subject.specId);
+    const task = loadSubject(dependencies.catalogue, snapshot, subject).task;
+    const agent = await gatherAgentContext(forOneRead(dependencies), source, subject, task);
+
+    return agent.taskContext?.digest;
+  });
+}

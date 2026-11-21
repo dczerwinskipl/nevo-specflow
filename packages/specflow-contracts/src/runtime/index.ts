@@ -38,3 +38,4 @@ export type RequestErrorResponse = Static<typeof RequestErrorResponseSchema>;
 
 export * from './agent-broker';
 export * from './agent-commands';
+export * from './agent-permissions';

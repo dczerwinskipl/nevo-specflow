@@ -90,7 +90,19 @@ export function readyImplementation(): WorkflowActionProjection {
     workflow,
     position: {
       kind: 'ready',
-      next: { step: implementStep, human: true, agent: { kind: 'available' } },
+      next: {
+        step: implementStep,
+        human: true,
+        agent: {
+          kind: 'available',
+          launch: {
+            archetype: 'implementer',
+            provider: 'claude',
+            model: 'claude-sonnet-5-5',
+            session: { mode: 'fresh' },
+          },
+        },
+      },
     },
     handoff: reviewHandoff,
     actions: { start: { step: 'implement', firstStart: false } },
@@ -161,7 +173,19 @@ export function readyReviewAfterAgent(): WorkflowActionProjection {
     workflow,
     position: {
       kind: 'ready',
-      next: { step: reviewStep, human: true, agent: { kind: 'available' } },
+      next: {
+        step: reviewStep,
+        human: true,
+        agent: {
+          kind: 'available',
+          launch: {
+            archetype: 'implementer',
+            provider: 'claude',
+            model: 'claude-sonnet-5-5',
+            session: { mode: 'fresh' },
+          },
+        },
+      },
     },
     handoff: {
       kind: 'transition',

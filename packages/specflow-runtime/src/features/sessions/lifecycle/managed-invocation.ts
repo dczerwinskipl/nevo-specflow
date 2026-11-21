@@ -2,6 +2,7 @@ import type { DriverFact } from '../persistence/protocol';
 import type { Invocation, SessionDriver, ProviderOperation, EmitFact } from '../providers/driver';
 import { validateDriverFact } from '../providers/facts';
 import { SessionError } from '../errors';
+import { planPermissionAllowlist } from './permission-allowlist';
 import type { SessionEffects, SessionEffectClaim } from './effects';
 import {
   redactFact,
@@ -22,6 +23,10 @@ export function createManagedInvocation(options: {
    * when the Turn's transport ends, before the claim settles.
    */
   capabilities?: InvocationCapabilities;
+  /** The agent attempt the Turn is bound to (Ask agent): recorded in the claim, scopes the capability. */
+  agentAttempt?: { readonly attemptId: string };
+  /** The archetype allowlist of an Ask agent Turn (D20); reported when the driver cannot apply it. */
+  permissions?: { readonly allow: readonly string[] };
   signal: AbortSignal;
   stop(): void;
   persist: EmitFact;
@@ -138,6 +143,7 @@ export function createManagedInvocation(options: {
         workspace: context.workspace,
         workspaceIdentity: context.workspaceIdentity,
         ...(context.specId !== undefined ? { specId: context.specId } : {}),
+        ...(options.agentAttempt ? { attemptId: options.agentAttempt.attemptId } : {}),
       });
       // Every write driver works only in the root the Engine claimed; checked before dispatch, so a
       // mismatch is abandoned as never started.
@@ -161,6 +167,14 @@ export function createManagedInvocation(options: {
         return;
       }
 
+      if (options.agentAttempt && (!options.capabilities || context.specId === undefined)) {
+        // An attempt's Turn writes only through the broker: never dispatched without a capability.
+        throw new SessionError(
+          'CAPABILITY_UNSUPPORTED',
+          'An agent attempt runs only in its Specification with the agent broker.',
+        );
+      }
+
       if (options.capabilities && context.specId !== undefined) {
         grant = await options.capabilities.mint({
           invocationId: options.invocation.invocationId,
@@ -172,13 +186,31 @@ export function createManagedInvocation(options: {
           ...(options.invocation.selection.modelId !== undefined
             ? { model: options.invocation.selection.modelId }
             : {}),
+          ...(options.agentAttempt ? { attemptId: options.agentAttempt.attemptId } : {}),
         });
+      }
+
+      const allowlist = planPermissionAllowlist(
+        options.invocation.selection.providerId,
+        options.driver.supportsPermissionAllowlist === true,
+        options.permissions?.allow ?? [],
+      );
+      if (allowlist.notice !== undefined) {
+        const key = 'permission-allowlist';
+        await emit({
+          kind: 'work-open',
+          key,
+          workKind: 'commentary',
+          title: 'Permission allowlist',
+        });
+        await emit({ kind: 'text', key, channel: 'commentary', text: allowlist.notice });
       }
 
       driverInvoked = true;
       native = options.driver.start(
         {
           ...options.invocation,
+          ...(allowlist.permissions ? { permissions: allowlist.permissions } : {}),
           ...evidenceFirst,
           ...(grant
             ? { runtimeEnvironment: { values: grant.environment, secrets: grant.secrets } }

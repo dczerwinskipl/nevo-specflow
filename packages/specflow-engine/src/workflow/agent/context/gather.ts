@@ -115,13 +115,20 @@ async function resolveEntries(
         break;
       }
 
-      case 'project-document':
+      case 'project-document': {
+        if (!(await references.projectDocument(specId, entry.id))) {
+          facts.push({ entry });
+          break;
+        }
+
+        // Its file, when the documentation names it, is hashed into the digest like a path.
+        const path = await references.projectDocumentPath?.(specId, entry.id);
         facts.push(
-          (await references.projectDocument(specId, entry.id))
-            ? found(entry, undefined)
-            : { entry },
+          found(entry, path ? await source.checkoutFile(specId, path, budget) : undefined),
         );
         break;
+      }
+
       case 'path': {
         // A file is pinned by its digest, a folder or a glob by the digest of its file list.
         const file = await source.checkoutFile(specId, entry.path, budget);

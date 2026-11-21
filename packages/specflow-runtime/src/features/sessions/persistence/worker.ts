@@ -36,6 +36,8 @@ import { createSessionManagement } from './session-management';
 import { createFingerprint, createSessionAssociations } from './associations';
 import { createSessionCatalogue } from './catalogue';
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
 const TELEMETRY_PUBLICATION_RETRY_MS = 1000;
 
 /** Separate Worker entry: imported surface checks must not acquire a database. */
@@ -790,6 +792,10 @@ export async function runSessionWorker(): Promise<void> {
       return associations.read(c.sessionId);
     }
 
+    if (c.op === 'has-turn') {
+      return !!get('SELECT id FROM turns WHERE id=? AND session=?', c.turnId, c.sessionId);
+    }
+
     if (c.op === 'associate-tasks') {
       return transaction(() => {
         session(c.sessionId);
@@ -813,7 +819,15 @@ export async function runSessionWorker(): Promise<void> {
           return cached;
         }
 
-        const id = randomUUID(),
+        if (
+          c.sessionId !== undefined &&
+          (!UUID_PATTERN.test(c.sessionId) ||
+            get('SELECT id FROM sessions WHERE id=?', c.sessionId))
+        ) {
+          fail('SESSION_INPUT_INVALID', 'A preassigned Session id must be a new UUID.');
+        }
+
+        const id = c.sessionId ?? randomUUID(),
           date = now();
         const createdSeq =
           Number(get('SELECT value FROM meta WHERE key=?', CREATED_SEQ_KEY)?.value ?? 0) + 1;
@@ -906,8 +920,17 @@ export async function runSessionWorker(): Promise<void> {
           fail('SESSION_INPUT_INVALID', 'Read-only execution cannot carry a write claim binding.');
         }
 
-        const tid = randomUUID(),
-          invocationId = randomUUID(),
+        if (
+          c.ids !== undefined &&
+          (!UUID_PATTERN.test(c.ids.turnId) ||
+            !UUID_PATTERN.test(c.ids.invocationId) ||
+            get('SELECT id FROM turns WHERE id=?', c.ids.turnId))
+        ) {
+          fail('SESSION_INPUT_INVALID', 'Preassigned Turn ids must be new UUIDs.');
+        }
+
+        const tid = c.ids?.turnId ?? randomUUID(),
+          invocationId = c.ids?.invocationId ?? randomUUID(),
           date = now();
         let providerContext:
           { nativeSessionId: string; resume: boolean; scope: string } | undefined;

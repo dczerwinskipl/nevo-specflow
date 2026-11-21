@@ -111,7 +111,16 @@ export type StoreCommand =
       input: unknown;
     }
   /** `association` is an opaque sidecar written verbatim in the same transaction. */
-  | { op: 'create'; actor: string; input: CreateSession; association?: AssociationWrite }
+  | {
+      op: 'create';
+      actor: string;
+      input: CreateSession;
+      association?: AssociationWrite;
+      /** In-process only (agent step execution): the id the trusted host chose for the Session. */
+      sessionId?: string;
+    }
+  /** `boolean`: the Session has this Turn (in any state). */
+  | { op: 'has-turn'; sessionId: string; turnId: string }
   | {
       op: 'start';
       actor: string;
@@ -122,6 +131,11 @@ export type StoreCommand =
       nativeContextMode?: 'reserved' | 'provider-assigned';
       nativeWorkspaceIdentity?: string;
       effectBinding?: string;
+      /**
+       * In-process only (Ask agent): the Turn and invocation ids the trusted host chose before the
+       * Turn exists, because the Engine binds them to an agent attempt first. Never from a request.
+       */
+      ids?: { turnId: string; invocationId: string };
     }
   | { op: 'dispatch-intent'; sessionId: string; turnId: string; invocationId: string }
   /** The invocation's native-stop evidence, recorded once, before the dispatch barrier. */

@@ -98,6 +98,7 @@ export function createProgram(io: ProgramIO): Command {
       stderr: io.stderr,
       ...(io.readStdin ? { readStdin: io.readStdin } : {}),
       ...(io.osUser ? { osUser: io.osUser } : {}),
+      ...(agentRoute.kind === 'broker' ? { broker: agentRoute.transport } : {}),
     }),
   );
   program.addCommand(
@@ -106,6 +107,7 @@ export function createProgram(io: ProgramIO): Command {
       stdout: io.stdout,
       stderr: io.stderr,
       ...(io.osUser ? { osUser: io.osUser } : {}),
+      ...(agentRoute.kind === 'broker' ? { broker: agentRoute.transport } : {}),
     }),
   );
   program.addCommand(createDefinitionsCommand({ cwd: io.cwd ?? '.', stdout: io.stdout }));

@@ -158,10 +158,11 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
     await runBrokeredDocumentWrite(output, context.broker!, options, action, operation);
   };
 
-  const noTaskOrWait = (options: WriteOptions): (string | undefined)[] => [
-    options.task !== undefined
-      ? 'Documents of a Task are not available to an agent in this Turn; use the Specification documents.'
-      : undefined,
+  /** The Task whose documents a brokered write names (`--task`); the broker checks the scope. */
+  const taskOf = (options: WriteOptions) =>
+    options.task !== undefined ? { taskId: options.task } : {};
+
+  const noWait = (options: WriteOptions): (string | undefined)[] => [
     options.wait || options.waitMs !== undefined
       ? '--wait is not available to an agent in this Turn; the Runtime commits the documents.'
       : undefined,
@@ -350,9 +351,10 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
           template !== undefined
             ? { path: options.path!, templateId: template, ...type }
             : { path: options.path!, content: await readContentInput(options, context), ...type };
-        await viaBroker(options, noTaskOrWait(options), 'create', {
+        await viaBroker(options, noWait(options), 'create', {
           name: 'documents.create',
           specId,
+          ...taskOf(options),
           documents: [entry],
           ...(options.catalogueRevision !== undefined
             ? { catalogueRevision: options.catalogueRevision }
@@ -431,9 +433,10 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
       }
 
       if (context.broker !== undefined) {
-        await viaBroker(options, noTaskOrWait(options), 'save', {
+        await viaBroker(options, noWait(options), 'save', {
           name: 'documents.save',
           specId,
+          ...taskOf(options),
           documentId,
           content: await readContentInput(options, context),
           expectedRevision: options.expectedRevision,
@@ -545,9 +548,10 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
       options: WriteOptions & { type: string; expectedRevision: string },
     ) => {
       if (context.broker !== undefined) {
-        await viaBroker(options, noTaskOrWait(options), 'classify', {
+        await viaBroker(options, noWait(options), 'classify', {
           name: 'documents.classify',
           specId,
+          ...taskOf(options),
           documentId,
           type: options.type,
           expectedRevision: options.expectedRevision,

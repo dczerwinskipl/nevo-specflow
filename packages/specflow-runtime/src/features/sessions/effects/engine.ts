@@ -7,6 +7,7 @@ import {
   inspectWorkspaceExecution,
   type SpecFlowEngine,
   type WorkspaceExecutionIntent,
+  type WorkspaceExecutionReceipt,
 } from '@nevo/specflow-engine';
 import { createHash } from 'node:crypto';
 import type { SessionEffects, SessionEffectIdentity } from '../lifecycle/effects';
@@ -34,13 +35,68 @@ export function recordedIdentity(
     .digest('hex');
 }
 
-export function createEngineSessionEffects(engine: SpecFlowEngine): SessionEffects {
+/**
+ * Settles the claim of a Turn of an agent attempt instead of the bare settlement: the attempt's
+ * finalize (the agent-execution feature), which publishes the step state and settles the claim in
+ * one section (D12). Called with the claim's recorded intent and the native-stop receipt.
+ */
+export type AgentAttemptSettlement = (
+  intent: WorkspaceExecutionIntent & { readonly attempt: { readonly attemptId: string } },
+  receipt: WorkspaceExecutionReceipt,
+) => Promise<void>;
+
+export function createEngineSessionEffects(
+  engine: SpecFlowEngine,
+  options: { readonly settleAgentAttempt?: AgentAttemptSettlement } = {},
+): SessionEffects {
   function intent(identity: SessionEffectIdentity): WorkspaceExecutionIntent {
     return {
       operationId: identity.invocationId,
       ownerId: identity.sessionId,
       binding: identity.binding,
+      ...(identity.attemptId !== undefined ? { attempt: { attemptId: identity.attemptId } } : {}),
     };
+  }
+
+  /**
+   * The intent as the claim recorded it, when it is this identity's: a recovery identity (from the
+   * Session store) does not carry the agent attempt, which the recorded intent does.
+   */
+  async function recordedIntent(
+    identity: SessionEffectIdentity,
+  ): Promise<WorkspaceExecutionIntent> {
+    const expected = intent(identity);
+    const record = await inspectWorkspaceExecution(engine, identity.invocationId);
+    const recorded = record?.intent;
+
+    return recorded?.operationId === expected.operationId &&
+      recorded.ownerId === expected.ownerId &&
+      recorded.binding === expected.binding &&
+      (expected.attempt === undefined || recorded.attempt?.attemptId === expected.attempt.attemptId)
+      ? recorded
+      : expected;
+  }
+
+  /** The settlement of a claim with a native-stop receipt: the attempt's finalize, or the bare one. */
+  async function settleWith(
+    request: WorkspaceExecutionIntent,
+    receipt: WorkspaceExecutionReceipt,
+    target: Parameters<typeof settleWorkspaceExecution>[3],
+  ): Promise<void> {
+    if (request.attempt !== undefined) {
+      if (!options.settleAgentAttempt) {
+        throw new SessionError(
+          'SESSION_RECOVERY_REQUIRED',
+          'An agent attempt Turn settles only through its finalize.',
+        );
+      }
+
+      await options.settleAgentAttempt({ ...request, attempt: request.attempt }, receipt);
+
+      return;
+    }
+
+    await settleWorkspaceExecution(engine, request, receipt, target);
   }
 
   /**
@@ -118,12 +174,7 @@ export function createEngineSessionEffects(engine: SpecFlowEngine): SessionEffec
           }),
         settle: (evidence) =>
           guarded(async () => {
-            await settleWorkspaceExecution(
-              engine,
-              request,
-              { ...evidence, invocationId: identity.invocationId },
-              target,
-            );
+            await settleWith(request, { ...evidence, invocationId: identity.invocationId }, target);
           }),
       };
     },
@@ -157,9 +208,8 @@ export function createEngineSessionEffects(engine: SpecFlowEngine): SessionEffec
           return undefined;
         }
 
-        record = await guarded(() =>
-          abandonWorkspaceExecutionAdmission(engine, intent(identity), target),
-        );
+        const recorded = record.intent;
+        record = await guarded(() => abandonWorkspaceExecutionAdmission(engine, recorded, target));
       }
 
       if (record.phase !== 'settled') {
@@ -187,10 +237,9 @@ export function createEngineSessionEffects(engine: SpecFlowEngine): SessionEffec
         );
       }
 
-      await guarded(() =>
-        settleWorkspaceExecution(
-          engine,
-          intent(identity),
+      await guarded(async () =>
+        settleWith(
+          await recordedIntent(identity),
           { invocationId: identity.invocationId, process: 'stopped', outcome: 'interrupted' },
           target,
         ),

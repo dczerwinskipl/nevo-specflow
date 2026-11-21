@@ -33,6 +33,8 @@ export {
 export {
   abandonRun,
   activeAttempt,
+  historyOf,
+  isReturnRecord,
   newRun,
   type AttemptOutcome,
   type AttemptRecord,

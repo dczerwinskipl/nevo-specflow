@@ -46,7 +46,12 @@ export type AttemptOutcome =
   /** The owner returned the run to an earlier step while this attempt was active. */
   | { readonly kind: 'returned'; readonly to: string; readonly feedback?: string }
   /** The run was abandoned while this attempt was active (`abandonRun`). */
-  | { readonly kind: 'abandoned' };
+  | { readonly kind: 'abandoned' }
+  /**
+   * Another actor took the active attempt over (`take-over`): the attempt ended without a result,
+   * and the next record is a new attempt of the same step, worked on by that actor.
+   */
+  | { readonly kind: 'taken-over' };
 
 export interface AttemptRecord<TActor extends ActorRecord = ActorRecord> {
   readonly step: string;

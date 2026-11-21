@@ -10214,6 +10214,12 @@
               {
                 "type": "string",
                 "enum": [
+                  "WORKFLOW_NESTED_REPOSITORY"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
                   "WORKFLOW_UNAVAILABLE"
                 ]
               },
@@ -10441,6 +10447,12 @@
                 "type": "string",
                 "enum": [
                   "WORKFLOW_UNDECLARED_CHANGES"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_NESTED_REPOSITORY"
                 ]
               },
               {
@@ -10947,6 +10959,12 @@
                           "type": "string",
                           "enum": [
                             "delete"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "restore"
                           ]
                         }
                       ]

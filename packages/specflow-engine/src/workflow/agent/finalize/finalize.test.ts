@@ -336,7 +336,16 @@ describe('finalizeAgentAttempt', () => {
           sha256: 'c'.repeat(64),
           added: false,
           area: { kind: 'specification', registered: true },
-          engine: ['d'.repeat(64)],
+          engine: [
+            {
+              sha256: 'd'.repeat(64),
+              source: 'ledger' as const,
+              operationIds: ['op-1'],
+              operationCount: 1,
+              executions: [],
+              latest: true,
+            },
+          ],
         },
       ],
       incomplete: false,

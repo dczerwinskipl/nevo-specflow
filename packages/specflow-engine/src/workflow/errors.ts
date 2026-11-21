@@ -65,6 +65,8 @@ export const WORKFLOW_ERROR_CODES = [
   'WORKFLOW_UNREGISTERED_DOCUMENTS',
   'WORKFLOW_ENGINE_FILE_EDITED',
   'WORKFLOW_UNDECLARED_CHANGES',
+  /** An untracked Git repository inside the attempt's checkout: nothing in it can be attributed. */
+  'WORKFLOW_NESTED_REPOSITORY',
 ] as const;
 export type WorkflowErrorCode = (typeof WORKFLOW_ERROR_CODES)[number];
 

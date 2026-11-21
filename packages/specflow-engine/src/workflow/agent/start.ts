@@ -113,13 +113,19 @@ export async function startAgentAttempt(
   const workflow = dependencies.workflow;
 
   return workflow.serialize(async () => {
-    // B3: the Turn starts from a baseline the Engine can attribute, before anything is written.
-    await admitAgentTurn(dependencies, {
-      subject,
-      workspaceId: input.workspaceId,
+    const options = {
+      actor: input.actor,
       expected: input.expected,
-    });
-    const options = { actor: input.actor, expected: input.expected, attemptData };
+      attemptData,
+      // B3: once the start's own checks passed, the Turn must start from a baseline the Engine can
+      // attribute, before anything is written.
+      admit: () =>
+        admitAgentTurn(dependencies, {
+          subject,
+          workspaceId: input.workspaceId,
+          expected: input.expected,
+        }),
+    };
     let started: StartResult;
     if (subject.kind === 'task') {
       started = await startTaskInSection(workflow, {

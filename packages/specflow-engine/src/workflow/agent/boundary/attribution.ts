@@ -10,20 +10,39 @@ import {
 
 /**
  * Attribution of an agent attempt's uncommitted work (B3, B6): who changed each dirty path of the
- * attempt's checkout. The Engine attributes a path to itself when its bytes are a post-image of one of
- * its own uncommitted writes (the ledger, a document change waiting for its commit); everything else
- * dirty was written past the Engine. Pure: the facts come from `facts.ts`.
+ * attempt's checkout. The Engine attributes a path to itself when its bytes are the post-image of
+ * its latest uncommitted write of it (the newest document change waiting for its commit, else the
+ * ledger entry); everything else dirty was written past the Engine. Pure: the facts come from
+ * `facts.ts`.
  */
 
 /**
- * Where a dirty path lies: `specification` inside a Specification directory (`<root>/<location>/<slug>/`
- * of the configured Specification root; `registered` whether its container's registry lists it),
- * `engine` in the Engine's own namespace (derived from the Project Home), `code` anywhere else.
+ * Where a dirty path lies: `specification` inside a Specification directory (`<root>/<location>/
+ * <slug>/` of the Specification root; `registered` whether its container's registry lists it),
+ * `engine` in the Engine's own namespace (derived from the Project Home), `nested-repository` an
+ * untracked Git repository inside the checkout (Git names its folder, `dir/`), `code` anywhere else.
  */
 export type AttributionArea =
   | { readonly kind: 'code' }
   | { readonly kind: 'engine' }
+  | { readonly kind: 'nested-repository' }
   | { readonly kind: 'specification'; readonly registered: boolean };
+
+/**
+ * One uncommitted write of the Engine to a path: a ledger entry (`operationIds` the newest it keeps,
+ * `operationCount` how many there were) or an unsettled document change (one operation). Its
+ * `executions` name the agent Turns (execution claims) that made its operations; an operation
+ * without one was not an agent's. `latest` marks the write whose post-image the path must have.
+ */
+export interface EngineWriteFact {
+  /** The post-image's sha256; `null` when the write removed the path. */
+  readonly sha256: string | null;
+  readonly source: 'ledger' | 'journal';
+  readonly operationIds: readonly string[];
+  readonly operationCount: number;
+  readonly executions: readonly { readonly operationId: string; readonly executionId: string }[];
+  readonly latest: boolean;
+}
 
 /** One dirty path of the checkout, as Git status reports it (ignored files never are). */
 export interface DirtyPathFact {
@@ -31,11 +50,11 @@ export interface DirtyPathFact {
   /** sha256 of its bytes now; `null` when it is gone or not a regular file, or `oversize`. */
   readonly sha256: string | null;
   readonly oversize?: true;
-  /** Not in HEAD: untracked or staged as new. */
+  /** Not in HEAD: untracked, staged as new, or the new side of a staged rename or copy. */
   readonly added: boolean;
   readonly area: AttributionArea;
-  /** The post-images (sha256, `null` = removed) the Engine's own uncommitted writes left on it. */
-  readonly engine?: readonly (string | null)[];
+  /** The Engine's uncommitted writes of the path, oldest first (one is `latest`). */
+  readonly engine?: readonly EngineWriteFact[];
 }
 
 /** What is uncommitted in the attempt's checkout; `incomplete` when it cannot be read in full. */
@@ -57,6 +76,7 @@ type AttributionCode = Extract<
   | 'WORKFLOW_UNREGISTERED_DOCUMENTS'
   | 'WORKFLOW_ENGINE_FILE_EDITED'
   | 'WORKFLOW_UNDECLARED_CHANGES'
+  | 'WORKFLOW_NESTED_REPOSITORY'
 >;
 
 /** An attribution refusal: what it refuses is in `code`, the paths in `attribution`. */
@@ -69,14 +89,16 @@ export class AttributionRefusalError extends WorkflowError {
   }
 }
 
-/** Whether the path's bytes now are one of the Engine's post-images of it. */
+/**
+ * Whether the path's bytes now are the post-image of the Engine's latest write of it. An older
+ * post-image restored by hand is not the Engine's: its latest write is gone.
+ */
 export function isEngineAttributed(fact: DirtyPathFact): boolean {
-  return (
-    fact.oversize !== true &&
-    (fact.engine ?? []).some((post) =>
-      post === null ? fact.sha256 === null : post === fact.sha256,
-    )
-  );
+  const latest = fact.engine?.find((write) => write.latest);
+  // `undefined` (no Engine write) never equals a hash or `null`.
+  const expected = latest === undefined ? undefined : latest.sha256;
+
+  return fact.oversize !== true && expected === fact.sha256;
 }
 
 function named(paths: readonly string[]): readonly string[] {
@@ -173,7 +195,10 @@ export function assertBaselineUnchanged(
   }
 }
 
-/** A declared path: checkout-relative, `/` separators, no empty, `.` or `..` segment; each once. */
+/**
+ * A declared path: checkout-relative, `/` separators, no empty, `.` or `..` segment (a nested
+ * repository's folder may end in `/`, as Git names it; the finish then refuses it by name); each once.
+ */
 export function assertDeclaredPathsShape(paths: readonly string[]): void {
   if (paths.length > AGENT_DIRTY_PATHS_MAX) {
     throw new WorkflowError(
@@ -188,7 +213,9 @@ export function assertDeclaredPathsShape(paths: readonly string[]): void {
       path.length > AGENT_DIRTY_PATH_LENGTH_MAX ||
       path.includes('\\') ||
       path.includes('\0') ||
-      path.split('/').some((segment) => segment === '' || segment === '.' || segment === '..'),
+      (path.endsWith('/') ? path.slice(0, -1) : path)
+        .split('/')
+        .some((segment) => segment === '' || segment === '.' || segment === '..'),
   );
   if (invalid !== undefined) {
     throw new WorkflowError(
@@ -206,8 +233,11 @@ export function assertDeclaredPathsShape(paths: readonly string[]): void {
  * The attribution checks of an agent finish (B6, B3 rules 3 and 4), at submission and again at the
  * finalize, in this order:
  *
- * 1. a new file of a Specification directory that its registry does not list
- *    (`WORKFLOW_UNREGISTERED_DOCUMENTS`, D14: classify it with a type, or delete it);
+ * 0. an untracked nested Git repository: nothing in it can be attributed or committed
+ *    (`WORKFLOW_NESTED_REPOSITORY`: commit it in its own repository, remove it, or ignore it);
+ * 1. a file of a Specification directory that its registry does not list
+ *    (`WORKFLOW_UNREGISTERED_DOCUMENTS`, D14: a new one is classified with a type or deleted, an
+ *    edited tracked one classified or restored);
  * 2. a dirty file of a Specification directory or of the Engine's namespace whose bytes are none of
  *    the Engine's post-images: a document, Task or execution file written past the Engine
  *    (`WORKFLOW_ENGINE_FILE_EDITED`);
@@ -229,20 +259,49 @@ export function assertFinishAttribution(
   }
 
   const unattributed = facts.paths.filter((fact) => !isEngineAttributed(fact));
-  const unregistered = unattributed
-    .filter((fact) => fact.area.kind === 'specification' && fact.added && !fact.area.registered)
+  const nested = unattributed
+    .filter((fact) => fact.area.kind === 'nested-repository')
     .map((fact) => fact.path);
-  if (unregistered.length > 0) {
+  if (nested.length > 0) {
     throw new AttributionRefusalError(
-      'WORKFLOW_UNREGISTERED_DOCUMENTS',
-      `${String(unregistered.length)} new file(s) of the Specification have no document type: ` +
-        `${listed(unregistered)}. Give each a type (nevo-specflow documents classify --type) or ` +
-        'delete it, then finish again.',
-      { ...details(unregistered), remedies: ['classify', 'delete'] },
+      'WORKFLOW_NESTED_REPOSITORY',
+      `${String(nested.length)} Git repositor(ies) inside the checkout cannot be attributed: ` +
+        `${listed(nested)}. Commit its work in its own repository, remove it, or ignore it ` +
+        '(.gitignore), then finish again.',
+      details(nested),
     );
   }
 
-  const edited = unattributed.filter((fact) => fact.area.kind !== 'code').map((fact) => fact.path);
+  const unregistered = unattributed.filter(
+    (fact) => fact.area.kind === 'specification' && !fact.area.registered,
+  );
+  if (unregistered.length > 0) {
+    const created = unregistered.filter((fact) => fact.added).map((fact) => fact.path);
+    const edited = unregistered.filter((fact) => !fact.added).map((fact) => fact.path);
+    const parts = [
+      ...(created.length > 0 ? [`new, give each a type or delete it: ${listed(created)}`] : []),
+      ...(edited.length > 0 ? [`changed, give each a type or restore it: ${listed(edited)}`] : []),
+    ];
+
+    throw new AttributionRefusalError(
+      'WORKFLOW_UNREGISTERED_DOCUMENTS',
+      `${String(unregistered.length)} file(s) of the Specification have no document type ` +
+        `(${parts.join('; ')}). Classify with nevo-specflow documents classify --type, then ` +
+        'finish again.',
+      {
+        ...details([...created, ...edited]),
+        remedies: [
+          'classify',
+          ...(created.length > 0 ? (['delete'] as const) : []),
+          ...(edited.length > 0 ? (['restore'] as const) : []),
+        ],
+      },
+    );
+  }
+
+  const edited = unattributed
+    .filter((fact) => fact.area.kind === 'specification' || fact.area.kind === 'engine')
+    .map((fact) => fact.path);
   if (edited.length > 0) {
     throw new AttributionRefusalError(
       'WORKFLOW_ENGINE_FILE_EDITED',

@@ -10,7 +10,7 @@ import { listLedgerRecords, readPayload } from '../../../specs/durable';
 import { listUncleanPaths } from '../../../specs/lifecycle/preflight';
 import { SPECIFICATION_ROOT } from '../../../specs/repository';
 import { readProjectGitPolicy } from '../../../version-control/worktrees/config';
-import type { AttributionFacts } from './attribution';
+import type { AttributionFacts, EngineWriteFact } from './attribution';
 import { attributionFactsOf, type AttributionLayout, type EngineWrites } from './facts';
 
 /** A path below `from` as a checkout-relative POSIX path; `undefined` when it is not below it. */
@@ -39,23 +39,27 @@ function layoutOf(engine: SpecFlowEngine, root: string): AttributionLayout {
 }
 
 /**
- * The post-images of the Engine's uncommitted writes to a checkout: every ledger entry (each owner:
+ * The Engine's uncommitted writes to a checkout, by path: every ledger entry (each owner:
  * Specifications and definitions), and every document change of the checkout that is not settled
  * yet (waiting in the queue, committing, failed to commit, or still writing; the workflow's
- * execution state is one such change with auto-commit on). A ledger or a plan that cannot be read
- * makes the writes incomplete.
+ * execution state is one such change with auto-commit on). The `latest` write of a path is its
+ * newest unsettled document change (highest sequence), else its ledger entry; only its post-image
+ * attributes the path. A ledger or a plan that cannot be read makes the writes incomplete.
  */
 async function engineWritesOf(engine: SpecFlowEngine, workspaceId: string): Promise<EngineWrites> {
-  const postImages = new Map<string, (string | null)[]>();
-  const add = (path: string, post: string | null) => {
-    const known = postImages.get(path) ?? [];
-    known.push(post);
-    postImages.set(path, known);
-  };
+  const ledger = new Map<string, EngineWriteFact>();
+  const journaled = new Map<string, { sequence: number; write: EngineWriteFact }[]>();
 
   const listing = await listLedgerRecords(engine.context, { workspaceId });
   for (const entry of listing.records.flatMap((record) => record.entries)) {
-    add(entry.path, entry.postSha256);
+    ledger.set(entry.path, {
+      sha256: entry.postSha256,
+      source: 'ledger',
+      operationIds: entry.operationIds,
+      operationCount: entry.operationCount,
+      executions: entry.executions ?? [],
+      latest: false,
+    });
   }
 
   let complete = listing.unreadable === 0 && !listing.truncated;
@@ -74,8 +78,22 @@ async function engineWritesOf(engine: SpecFlowEngine, workspaceId: string): Prom
         ),
         journal.plan,
       );
+      const executionId = journal.agent?.executionId;
       for (const path of plan.paths) {
-        add(path.path, path.post?.sha256 ?? null);
+        const known = journaled.get(path.path) ?? [];
+        known.push({
+          sequence: journal.sequence,
+          write: {
+            sha256: path.post?.sha256 ?? null,
+            source: 'journal',
+            operationIds: [journal.operationId],
+            operationCount: 1,
+            executions:
+              executionId !== undefined ? [{ operationId: journal.operationId, executionId }] : [],
+            latest: false,
+          },
+        });
+        journaled.set(path.path, known);
       }
     }
   } catch {
@@ -83,7 +101,20 @@ async function engineWritesOf(engine: SpecFlowEngine, workspaceId: string): Prom
     complete = false;
   }
 
-  return { postImages, complete };
+  const byPath = new Map<string, readonly EngineWriteFact[]>();
+  for (const path of new Set([...ledger.keys(), ...journaled.keys()])) {
+    const changes = (journaled.get(path) ?? [])
+      .sort((left, right) => left.sequence - right.sequence)
+      .map((entry) => entry.write);
+    const entry = ledger.get(path);
+    const writes = [...(entry ? [entry] : []), ...changes];
+    byPath.set(
+      path,
+      writes.map((write, index) => ({ ...write, latest: index === writes.length - 1 })),
+    );
+  }
+
+  return { byPath, complete };
 }
 
 /**
@@ -106,7 +137,13 @@ export async function engineAttributionFacts(
     return { paths: [], incomplete: true };
   }
 
-  const unclean = await listUncleanPaths(workspace.root);
+  let unclean;
+  try {
+    unclean = await listUncleanPaths(workspace.root);
+  } catch {
+    // Git cannot tell what is uncommitted: nothing is attributed (an attribution refusal, not Close's).
+    return { paths: [], incomplete: true };
+  }
 
   return attributionFactsOf(
     workspace.root,

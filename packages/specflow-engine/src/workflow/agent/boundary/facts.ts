@@ -1,28 +1,36 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { TASK_MAIN_DOCUMENT } from '@nevo/specflow-contracts/documents';
+
 import { EXECUTION_DIRECTORY } from '../../../specs/execution-paths';
 import { parseSpecificationManifestText } from '../../../specs/model';
 import type { UncleanPath } from '../../../specs/lifecycle/preflight';
 import { parseTaskManifest } from '../../../tasks/resource/codec';
 import { TASK_MANIFEST_FILE, TASKS_FOLDER } from '../../../tasks/resource/model';
-import type { AttributionArea, AttributionFacts, DirtyPathFact } from './attribution';
+import type {
+  AttributionArea,
+  AttributionFacts,
+  DirtyPathFact,
+  EngineWriteFact,
+} from './attribution';
 import { dirtySetOf } from './dirty-set';
 
 /**
- * Where a checkout keeps what the Engine owns, checkout-relative with `/` separators, derived from
- * the configuration (never hardcoded at the call site): the Specification root (`<root>/<location>/
- * <slug>/` are Specification directories) and the Engine's namespaces (its project folder of the
- * Project Home, and the local state when it lies in this checkout).
+ * Where a checkout keeps what the Engine owns, checkout-relative with `/` separators, passed in by
+ * the composition (never hardcoded here): the Specification root (the Engine's constant
+ * `SPECIFICATION_ROOT`; `<root>/<location>/<slug>/` are Specification directories) and the Engine's
+ * namespaces derived from the Project Home (its project folder, and the local state when it lies in
+ * this checkout).
  */
 export interface AttributionLayout {
   readonly specificationRoot: string;
   readonly namespaces: readonly string[];
 }
 
-/** The Engine's own uncommitted writes of the checkout: post-images by path. */
+/** The Engine's own uncommitted writes of the checkout by path, oldest first; one is `latest`. */
 export interface EngineWrites {
-  readonly postImages: ReadonlyMap<string, readonly (string | null)[]>;
+  readonly byPath: ReadonlyMap<string, readonly EngineWriteFact[]>;
   /** A record of them could not be read in full: nothing is attributed (fail closed). */
   readonly complete: boolean;
 }
@@ -86,7 +94,26 @@ function registryReader(root: string): RegistryReader {
 }
 
 /**
- * Whether a new file of a Specification directory is registered: listed by the Specification's
+ * The paths a status reports as not in HEAD: untracked, staged as new, and the new side of a staged
+ * rename or copy (`listUncleanPaths` reports it first, then its origin, with the same status).
+ */
+function addedPaths(unclean: readonly UncleanPath[]): ReadonlySet<string> {
+  const added = new Set<string>();
+  for (let index = 0; index < unclean.length; index += 1) {
+    const { status, path } = unclean[index]!;
+    if (status.includes('R') || status.includes('C')) {
+      added.add(path);
+      index += 1;
+    } else if (status === '??' || status.startsWith('A')) {
+      added.add(path);
+    }
+  }
+
+  return added;
+}
+
+/**
+ * Whether a file of a Specification directory is registered: listed by the Specification's
  * manifest, or (below `tasks/<taskId>/`) by its Task's `task.yaml`. The registry files and the
  * execution state (`.execution/**`, `tasks/index.yaml`) are the Engine's own files, never documents.
  */
@@ -103,7 +130,8 @@ async function isRegistered(
     }
 
     const relative = segments.slice(2).join('/');
-    if (relative === TASK_MANIFEST_FILE) {
+    // The registry file, and the main document every Task registers.
+    if (relative === TASK_MANIFEST_FILE || relative === TASK_MAIN_DOCUMENT.path) {
       return true;
     }
 
@@ -122,8 +150,8 @@ async function isRegistered(
 /**
  * The attribution facts of a checkout from what its Git status reports (`listUncleanPaths`: staged,
  * modified, removed and untracked paths, never ignored ones): each path's content hash now
- * (`dirtySetOf`, bounded), whether it is new, where it lies and which post-images the Engine's own
- * uncommitted writes left on it. Lock-free; reads only the checkout.
+ * (`dirtySetOf`, bounded), whether it is new, where it lies and which of the Engine's own uncommitted
+ * writes touched it. Lock-free; reads only the checkout.
  */
 export async function attributionFactsOf(
   root: string,
@@ -131,11 +159,7 @@ export async function attributionFactsOf(
   layout: AttributionLayout,
   writes: EngineWrites,
 ): Promise<AttributionFacts> {
-  const added = new Set(
-    unclean
-      .filter((entry) => entry.status === '??' || entry.status.startsWith('A'))
-      .map((entry) => entry.path),
-  );
+  const added = addedPaths(unclean);
   const dirty = await dirtySetOf(
     root,
     unclean.map((entry) => entry.path),
@@ -146,11 +170,13 @@ export async function attributionFactsOf(
     const isAdded = added.has(entry.path);
     const directory = specificationDirectoryOf(entry.path, layout.specificationRoot);
     let area: AttributionArea;
-    if (directory !== undefined) {
+    if (entry.path.endsWith('/')) {
+      // Git names an untracked nested repository as its folder; nothing in it can be attributed.
+      area = { kind: 'nested-repository' };
+    } else if (directory !== undefined) {
       area = {
         kind: 'specification',
-        // Only a new file can be unregistered; a tracked one is judged by its bytes alone.
-        registered: !isAdded || (await isRegistered(entry.path, directory, registries)),
+        registered: await isRegistered(entry.path, directory, registries),
       };
     } else if (layout.namespaces.some((namespace) => under(entry.path, namespace))) {
       area = { kind: 'engine' };
@@ -158,7 +184,7 @@ export async function attributionFactsOf(
       area = { kind: 'code' };
     }
 
-    const engine = writes.postImages.get(entry.path);
+    const engine = writes.byPath.get(entry.path);
     paths.push({
       path: entry.path,
       sha256: entry.sha256,

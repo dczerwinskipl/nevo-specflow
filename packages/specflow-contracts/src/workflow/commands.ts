@@ -313,13 +313,15 @@ export const WORKFLOW_ERROR_CODES = [
    * (`WORKFLOW_BASELINE_CHANGED`, at Continue), new files in a Specification directory without a
    * document type (`WORKFLOW_UNREGISTERED_DOCUMENTS`), SpecFlow's own files edited past it
    * (`WORKFLOW_ENGINE_FILE_EDITED`), or changed files the finish proposal does not declare exactly
-   * (`WORKFLOW_UNDECLARED_CHANGES`); `details.attribution` names the paths.
+   * (`WORKFLOW_UNDECLARED_CHANGES`), or an untracked Git repository inside the checkout
+   * (`WORKFLOW_NESTED_REPOSITORY`); `details.attribution` names the paths.
    */
   'WORKFLOW_DIRTY_BASELINE',
   'WORKFLOW_BASELINE_CHANGED',
   'WORKFLOW_UNREGISTERED_DOCUMENTS',
   'WORKFLOW_ENGINE_FILE_EDITED',
   'WORKFLOW_UNDECLARED_CHANGES',
+  'WORKFLOW_NESTED_REPOSITORY',
   'WORKFLOW_UNAVAILABLE',
   /**
    * The Runtime's own: the commit policy of the workflow state refused the change before anything
@@ -384,7 +386,8 @@ export type WorkflowCommitRefusalCode = (typeof WORKFLOW_COMMIT_REFUSAL_CODES)[n
  * `WORKFLOW_UNDECLARED_CHANGES`): the first of them (`paths`, sorted) of `count`. For
  * `WORKFLOW_UNDECLARED_CHANGES`, `undeclared` are changed files the proposal does not declare and
  * `unchanged` declared files that are not changed files of the attempt (`paths` holds both).
- * `remedies` (`WORKFLOW_UNREGISTERED_DOCUMENTS`): give each file a document type, or delete it.
+ * `remedies` (`WORKFLOW_UNREGISTERED_DOCUMENTS`): give each file a document type, or delete a new
+ * one, or restore a changed one.
  * `incomplete`: what is uncommitted cannot be read in full (more changed files than SpecFlow names,
  * an unreadable record of its own writes, no record of the last Turn), so nothing is attributed.
  */
@@ -394,7 +397,9 @@ export const WorkflowAttributionSchema = Type.Object({
   undeclared: Type.Optional(Type.Array(Type.String())),
   unchanged: Type.Optional(Type.Array(Type.String())),
   remedies: Type.Optional(
-    Type.Array(Type.Union([Type.Literal('classify'), Type.Literal('delete')])),
+    Type.Array(
+      Type.Union([Type.Literal('classify'), Type.Literal('delete'), Type.Literal('restore')]),
+    ),
   ),
   incomplete: Type.Optional(Type.Literal(true)),
 });

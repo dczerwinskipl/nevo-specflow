@@ -85,7 +85,7 @@ export interface AttributionDetails {
   readonly count: number;
   readonly undeclared?: readonly string[];
   readonly unchanged?: readonly string[];
-  readonly remedies?: readonly ('classify' | 'delete')[];
+  readonly remedies?: readonly ('classify' | 'delete' | 'restore')[];
   readonly incomplete?: true;
 }
 
@@ -232,9 +232,16 @@ const refusal = Type.Object(
           undeclared: Type.Optional(pathList),
           unchanged: Type.Optional(pathList),
           remedies: Type.Optional(
-            Type.Array(Type.Union([Type.Literal('classify'), Type.Literal('delete')]), {
-              maxItems: 2,
-            }),
+            Type.Array(
+              Type.Union([
+                Type.Literal('classify'),
+                Type.Literal('delete'),
+                Type.Literal('restore'),
+              ]),
+              {
+                maxItems: 3,
+              },
+            ),
           ),
           incomplete: Type.Optional(Type.Literal(true)),
         },

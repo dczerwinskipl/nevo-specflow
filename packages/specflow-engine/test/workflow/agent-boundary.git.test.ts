@@ -10,6 +10,7 @@ import {
   assertCleanBaseline,
   assertFinishAttribution,
   type AttributionFacts,
+  type EngineWriteFact,
 } from '../../src/workflow/agent/boundary/attribution';
 import {
   attributionFactsOf,
@@ -24,7 +25,7 @@ import { writeSpecificationManifestFixture } from '../support/manifest-fixture';
 const LAYOUT: AttributionLayout = { specificationRoot: 'specs', namespaces: ['.nevo'] };
 const SPEC = 'specs/active/demo';
 const TASK = `${SPEC}/tasks/t-01/task.md`;
-const NONE: EngineWrites = { postImages: new Map(), complete: true };
+const NONE: EngineWrites = { byPath: new Map(), complete: true };
 let root: string;
 
 async function put(path: string, content: string): Promise<void> {
@@ -32,11 +33,32 @@ async function put(path: string, content: string): Promise<void> {
   await writeFile(join(root, path), content);
 }
 
-/** The Engine wrote these paths uncommitted, leaving `content` (the ledger's post-images). */
-function engineWrote(entries: Record<string, string>): EngineWrites {
+function write(content: string, latest: boolean, index = 0): EngineWriteFact {
   return {
-    postImages: new Map(
-      Object.entries(entries).map(([path, content]) => [path, [sha256Hex(content)]]),
+    sha256: sha256Hex(content),
+    source: index === 0 ? 'ledger' : 'journal',
+    operationIds: [`op-${String(index)}`],
+    operationCount: 1,
+    executions: [],
+    latest,
+  };
+}
+
+/**
+ * The Engine wrote these paths uncommitted: each path's contents oldest first, the last its latest
+ * write (the ledger entry, then document changes waiting for their commit).
+ */
+function engineWrote(entries: Record<string, string | readonly string[]>): EngineWrites {
+  return {
+    byPath: new Map(
+      Object.entries(entries).map(([path, contents]) => {
+        const list = typeof contents === 'string' ? [contents] : contents;
+
+        return [
+          path,
+          list.map((content, index) => write(content, index === list.length - 1, index)),
+        ];
+      }),
     ),
     complete: true,
   };
@@ -71,7 +93,7 @@ afterAll(async () => {
 
 beforeEach(() => {
   git(root, 'reset', '-q', '--hard');
-  git(root, 'clean', '-qfd');
+  git(root, 'clean', '-qffd');
 });
 
 describe('agent attempt attribution on a Git checkout', () => {
@@ -110,14 +132,19 @@ describe('agent attempt attribution on a Git checkout', () => {
 
   it('refuses a new file of the Specification without a document type, naming both remedies', async () => {
     await put(`${SPEC}/draft.md`, 'draft\n');
+    // The new side of a staged rename is new as well.
+    git(root, 'mv', 'src/a.ts', `${SPEC}/moved.ts`);
 
     await expect(facts().then((now) => assertFinishAttribution(now, []))).rejects.toMatchObject({
       code: 'WORKFLOW_UNREGISTERED_DOCUMENTS',
-      attribution: { paths: [`${SPEC}/draft.md`], remedies: ['classify', 'delete'] },
+      attribution: {
+        paths: [`${SPEC}/draft.md`, `${SPEC}/moved.ts`],
+        remedies: ['classify', 'delete'],
+      },
     });
   });
 
-  it('refuses a task.md edited past the post-image the Engine left', async () => {
+  it('refuses a task.md edited past the post-image the Engine left, or set back to an older one', async () => {
     await put(TASK, '# Task, edited by hand\n');
     const now = await facts(engineWrote({ [TASK]: '# Task, saved by the Engine\n' }));
 
@@ -127,6 +154,27 @@ describe('agent attempt attribution on a Git checkout', () => {
         attribution: { paths: [TASK], count: 1 },
       }) as Error,
     );
+    // The Engine saved it twice; restoring the first save by hand is not its latest write.
+    await put(TASK, '# Task, first save\n');
+    const restored = await facts(
+      engineWrote({ [TASK]: ['# Task, first save\n', '# Task, second save\n'] }),
+    );
+    expect(() => assertFinishAttribution(restored, [])).toThrow(
+      expect.objectContaining({ code: 'WORKFLOW_ENGINE_FILE_EDITED' }) as Error,
+    );
+  });
+
+  it('names a nested Git repository on its own', async () => {
+    await mkdir(join(root, 'vendor/lib'), { recursive: true });
+    git(join(root, 'vendor/lib'), 'init', '-q');
+    await put('vendor/lib/x.ts', 'x\n');
+
+    await expect(
+      facts().then((now) => assertFinishAttribution(now, ['vendor/lib/'])),
+    ).rejects.toMatchObject({
+      code: 'WORKFLOW_NESTED_REPOSITORY',
+      attribution: { paths: ['vendor/lib/'], count: 1 },
+    });
   });
 
   it('refuses Continue after a file changed between Turns, not after one committed by hand', async () => {
@@ -177,7 +225,7 @@ describe('agent attempt attribution on a Git checkout', () => {
       );
     }
 
-    const unreadable = await facts({ postImages: new Map(), complete: false });
+    const unreadable = await facts({ byPath: new Map(), complete: false });
     expect(() => assertFinishAttribution(unreadable, ['src/a.ts'])).toThrow(
       expect.objectContaining({
         code: 'WORKFLOW_UNDECLARED_CHANGES',

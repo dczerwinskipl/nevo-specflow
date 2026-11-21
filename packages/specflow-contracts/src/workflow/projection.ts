@@ -228,7 +228,7 @@ export const AgentAttemptWorkSchema = Type.Object({
     state: literals(['none', 'pending', 'committed', 'failed'] as const),
     code: Type.Optional(Type.String()),
     runs: Type.Optional(Type.Integer({ minimum: 1 })),
-    sha: Type.Optional(Type.String()),
+    sha: Type.Optional(Type.String({ pattern: '^[0-9a-f]{40}(?:[0-9a-f]{24})?$' })),
     documents: Type.Optional(Type.Integer({ minimum: 0 })),
     files: Type.Optional(Type.Integer({ minimum: 0 })),
   }),

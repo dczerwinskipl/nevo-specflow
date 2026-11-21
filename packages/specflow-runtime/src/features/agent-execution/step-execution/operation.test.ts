@@ -59,6 +59,8 @@ function fakes(
   const calls: string[] = [];
   /** The message of every Turn the Sessions started, in order. */
   const messages: string[] = [];
+  /** `contextChanged`: the Task context changed since the Turn was bound (the brief refuses). */
+  const context = { changed: false };
   let attempt: ActiveAgentAttempt | undefined;
   const turns = new Set<string>();
   let failTurnStart = options.failFirstTurnStart === true;
@@ -113,11 +115,13 @@ function fakes(
       });
     },
     brief: (_subject, _attemptId, invocationId) =>
-      Promise.resolve({
-        step: { id: 'breakdown', title: 'Break it down' },
-        attempt: 1,
-        text: `retried ${invocationId}`,
-      }),
+      context.changed
+        ? Promise.reject(new Error('WORKFLOW_STATE_CONFLICT'))
+        : Promise.resolve({
+            step: { id: 'breakdown', title: 'Break it down' },
+            attempt: 1,
+            text: `retried ${invocationId}`,
+          }),
     work: () =>
       Promise.resolve({
         documents: [],
@@ -182,6 +186,7 @@ function fakes(
   return {
     calls,
     messages,
+    context,
     execution: createAgentStepExecution({ engine, sessions: () => sessions }),
     attempt: () => attempt,
   };
@@ -242,6 +247,16 @@ describe('agent step execution', () => {
     expect(calls.filter((call) => call.startsWith('session.start'))).toHaveLength(2);
     // The start briefs with the context it recorded; the retry asks the Engine for the bound Turn's.
     expect(messages).toEqual(['started', `retried ${derivedId(id, 'invocation')}`]);
+  });
+
+  it('replays a dispatched Turn without briefing it again, after its agent changed files', async () => {
+    const { execution, context } = fakes();
+    const id = '00000000-0000-4000-8000-00000000000a';
+    const started = await execution.startAgentStepExecution(request(id));
+
+    context.changed = true;
+
+    await expect(execution.startAgentStepExecution(request(id))).resolves.toEqual(started);
   });
 
   it('continues in the attempt Session and replays a retried Continue', async () => {

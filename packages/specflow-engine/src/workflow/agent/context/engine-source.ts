@@ -12,7 +12,8 @@ import { WorkflowError } from '../../errors';
 import { checkoutFilesOf } from '../../checkout-paths';
 import { AGENT_CONTEXT_DOCUMENTS_MAX, AGENT_CONTEXT_FOLDER_FILES_MAX } from '../../limits';
 import type { ContextDocument } from '../../operations/agent-step-context';
-import { fileFact, isCheckoutRelative } from './file-fact';
+import { engineNamespacesOf } from '../boundary/engine-facts';
+import { fileFact, isCheckoutRelative, isEngineStatePath } from './file-fact';
 import type { AgentContextSource } from './gather';
 import { SPECIFICATION_ROOT } from '../../../specs/repository';
 
@@ -160,10 +161,13 @@ export function engineAgentContextSource(engine: SpecFlowEngine): AgentContextSo
         return single;
       }
 
-      const files = await checkoutFilesOf(workspaceRoot, path);
-      if (!files) {
+      const listed = await checkoutFilesOf(workspaceRoot, path);
+      if (!listed) {
         return undefined;
       }
+
+      const namespaces = engineNamespacesOf(engine, workspaceRoot);
+      const files = listed.filter((file) => !isEngineStatePath(file, namespaces));
 
       if (files.length > AGENT_CONTEXT_FOLDER_FILES_MAX) {
         throw new WorkflowError(

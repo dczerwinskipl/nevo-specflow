@@ -112,36 +112,39 @@ export async function startAgentAttempt(
   };
 
   return workflow.serialize(async () => {
-    // The context is read once, here: the brief is rendered from it and its digest is recorded, so
-    // what the attempt and its Turn record is what the agent is briefed with.
-    const agent = await agentContextInSection(workflow, dependencies.context, subject);
-    const contextDigest = agent.taskContext?.digest;
-    const attemptData: AgentAttemptBinding = {
-      kind: 'agent-attempt',
-      attemptId,
-      workspaceId: input.workspaceId,
-      ...(contextDigest !== undefined ? { contextDigest } : {}),
-      ...(input.launch !== undefined
-        ? {
-            launch: {
-              session: input.launch.session,
-              ...(input.launch.effort !== undefined ? { effort: input.launch.effort } : {}),
-            },
-          }
-        : {}),
-    };
+    let agent: AgentStepContext | undefined;
     const options = {
       actor: input.actor,
       expected: input.expected,
-      attemptData,
-      // B3: once the start's own checks passed, the Turn must start from a baseline the Engine can
-      // attribute, before anything is written.
-      admit: () =>
-        admitAgentTurn(dependencies, {
+      // Once the start's own checks passed and before anything is written: the Turn must start from
+      // a baseline the Engine can attribute (B3), and the agent context is read, once. The brief is
+      // rendered from it and its digest is recorded, so what the attempt and its Turn record is
+      // what the agent is briefed with.
+      async admit() {
+        await admitAgentTurn(dependencies, {
           subject,
           workspaceId: input.workspaceId,
           expected: input.expected,
-        }),
+        });
+        agent = await agentContextInSection(workflow, dependencies.context, subject);
+        const contextDigest = agent.taskContext?.digest;
+        const attemptData: AgentAttemptBinding = {
+          kind: 'agent-attempt',
+          attemptId,
+          workspaceId: input.workspaceId,
+          ...(contextDigest !== undefined ? { contextDigest } : {}),
+          ...(input.launch !== undefined
+            ? {
+                launch: {
+                  session: input.launch.session,
+                  ...(input.launch.effort !== undefined ? { effort: input.launch.effort } : {}),
+                },
+              }
+            : {}),
+        };
+
+        return { attemptData };
+      },
     };
     let started: StartResult;
     if (subject.kind === 'task') {
@@ -166,11 +169,11 @@ export async function startAgentAttempt(
     }
 
     // `expected` refuses a terminal run before the start, so this start activated or resumed one.
-    if (started.kind === 'terminal') {
+    if (started.kind === 'terminal' || !agent) {
       throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'An agent start reached no attempt.');
     }
 
-    const binding = await bindTurn(dependencies, input, contextDigest);
+    const binding = await bindTurn(dependencies, input, agent.taskContext?.digest);
 
     return { kind: started.kind, subject, context: { ...started.context, agent }, binding };
   });

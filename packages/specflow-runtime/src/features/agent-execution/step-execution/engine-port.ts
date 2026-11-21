@@ -31,6 +31,7 @@ import {
 } from '@nevo/specflow-engine';
 
 import { renderAgentBrief } from '../brief/render';
+import { projectHoldOf } from './project-hold';
 import type { AgentRuntimeFacts } from './availability';
 
 /** The agent attempt the subject's active step is in, as the Engine recorded it. */
@@ -175,30 +176,16 @@ export function createAgentStepEngine(dependencies: {
     },
     async projectHold() {
       const page = await listUnsettledWorkspaceExecutions(engine, { limit: 20 });
-      const held = page.items.filter(
-        (record) => record.phase !== 'settled' && record.intent.attempt !== undefined,
-      );
-      const claim = held.find((record) => record.phase === 'unknown') ?? held[0];
-      const attempts = claim ? await dependencies.openAttempts() : undefined;
-      const journal =
-        claim && attempts
-          ? await attempts.journal.read(claim.intent.attempt!.attemptId)
-          : undefined;
-      if (!claim || !attempts || !journal) {
+      if (!page.items.some((record) => record.phase !== 'settled' && record.intent.attempt)) {
         return undefined;
       }
 
-      const { subject } = journal;
+      const attempts = await dependencies.openAttempts();
 
-      return {
-        kind: claim.phase === 'unknown' ? 'agent-outcome-unknown' : 'agent-working',
-        subject: {
-          specId: subject.specId,
-          ...(subject.kind === 'task' ? { taskId: subject.taskId } : {}),
-          title: await titleOf(attempts, subject),
-        },
-        sessionId: journal.actor.details.sessionId ?? claim.intent.ownerId,
-      };
+      return projectHoldOf(page.items, {
+        journal: (attemptId) => attempts.journal.read(attemptId),
+        title: (subject) => titleOf(attempts, subject),
+      });
     },
     async archetypeAllowlist(archetype, provider) {
       return (await dependencies.openWorkflow()).catalogue

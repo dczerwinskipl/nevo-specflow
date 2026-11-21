@@ -142,17 +142,24 @@ describe('agent attempt start', () => {
       'WORKFLOW_EXECUTOR_NOT_ALLOWED',
     ],
   ])('refuses %s before anything changes', async (_name, overrides, active, code) => {
-    const { dependencies, workflow, journal } = agentDependencies();
+    const { dependencies, workflow, journal, state } = agentDependencies();
     if (active) {
       await startAgentAttempt(dependencies, startInput());
     }
 
     const before = structuredClone([...journal.journals.values()]);
     const position = await positionOf(workflow, specification);
+    const reads = state.contextReads;
     await expect(startAgentAttempt(dependencies, startInput(overrides))).rejects.toMatchObject({
       code,
     });
     expect([...journal.journals.values()]).toEqual(before);
+    // The start's own checks refuse before the context is read (and hashed); only the checkout of
+    // a Continue is judged once its Turn is bound.
+    if (!overrides.workspaceId) {
+      expect(state.contextReads).toBe(reads);
+    }
+
     expect(await positionOf(workflow, specification)).toEqual(position);
   });
 

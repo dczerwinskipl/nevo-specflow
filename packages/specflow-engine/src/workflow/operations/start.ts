@@ -47,13 +47,13 @@ export interface StartOptions {
    * so a stale request never starts or resumes another attempt (`WORKFLOW_ATTEMPT_MISMATCH`).
    */
   readonly expected?: ExpectedPosition;
-  /** Recorded with the attempt the start activates; a resume keeps the active attempt's own. */
-  readonly attemptData?: AgentAttemptBinding;
   /**
    * Called once every check of the start passed (expected position, actor, Task readiness, entry
-   * gates) and before anything is written: agent step execution's baseline admission. A throw refuses the start.
+   * gates) and before anything is written: agent step execution's baseline admission and context
+   * read. A throw refuses the start. `attemptData` is recorded with the attempt the start activates;
+   * a resume keeps the active attempt's own.
    */
-  readonly admit?: () => Promise<void>;
+  readonly admit?: () => Promise<{ readonly attemptData?: AgentAttemptBinding } | void>;
 }
 
 /**
@@ -116,11 +116,11 @@ async function startSubject(
   // A resume continues the active attempt: only its own Session may resume an agent attempt. The
   // core refuses a wait step (the Engine enters and settles it) and an actor of the wrong class.
   assertSameSession(loaded.run, options.actor);
+  const at = isoNow(dependencies);
   const decision = decide(loaded.definition, loaded.run, {
     kind: 'start',
-    at: isoNow(dependencies),
+    at,
     actor: options.actor,
-    ...(options.attemptData !== undefined ? { hostData: options.attemptData } : {}),
   });
   const intent = decision.intent;
   const step = findStep(loaded.definition, intent.kind === 'execute' ? intent.step : '');
@@ -149,8 +149,17 @@ async function startSubject(
     await assertGatesSatisfied(dependencies.references, subject, 'entry', step, entryGatesOf(step));
   }
 
-  await options.admit?.();
-  const run = decision.nextRun;
+  const attemptData = (await options.admit?.())?.attemptData;
+  // The host data is known only once the start was admitted; the same decision records it.
+  const run =
+    attemptData !== undefined && !intent.resumed
+      ? decide(loaded.definition, loaded.run, {
+          kind: 'start',
+          at,
+          actor: options.actor,
+          hostData: attemptData,
+        }).nextRun
+      : decision.nextRun;
   if (run !== loaded.run || created) {
     await dependencies.store.apply(subject.specId, {
       ...changeFor(snapshot, loaded, run, created ? null : loaded.revision),

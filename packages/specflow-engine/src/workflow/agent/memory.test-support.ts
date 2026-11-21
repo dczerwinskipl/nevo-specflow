@@ -63,11 +63,15 @@ export function memoryAgentDependencies(catalogue: ExecutionCatalogue, attemptId
     ownerPostActions: [] as StepFinishedEvent[],
     /** The content hash of every registered document file the agent context reads (`context`). */
     documentSha: 'c'.repeat(64),
+    /** How many times the agent context was read (`context.documents`). */
+    contextReads: 0,
   };
   /** The agent context: one overview, no document types; every document file hashes `documentSha`. */
   const context: AgentContextSource = {
-    documents: () =>
-      Promise.resolve([
+    documents: () => {
+      state.contextReads += 1;
+
+      return Promise.resolve([
         {
           id: 'overview',
           type: 'overview',
@@ -76,7 +80,8 @@ export function memoryAgentDependencies(catalogue: ExecutionCatalogue, attemptId
           revision: 'r1',
           templateOnly: false,
         },
-      ]),
+      ]);
+    },
     catalogue: () => Promise.resolve({ documentTypes: [] }),
     documentFile: (_scope, documentId) =>
       Promise.resolve({ path: `${documentId}.md`, bytes: 10, sha256: state.documentSha }),

@@ -496,6 +496,9 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
       readonly fresh: boolean;
       readonly effort?: string;
       readonly kind: AgentStepExecutionResult['kind'];
+      /** The step and attempt the Turn works on. */
+      readonly step: string;
+      readonly attempt: number;
       /** The brief the start rendered from the context it recorded; absent for a retry. */
       readonly brief?: AgentBrief;
     },
@@ -504,7 +507,6 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
     const sessionId = bound.actor.details.sessionId!;
     const turnId = derivedId(request.requestId, 'turn');
     const invocationId = derivedId(request.requestId, 'invocation');
-    const brief = bound.brief ?? (await engine.brief(subject, bound.attemptId, invocationId));
     if (bound.fresh) {
       await ensureFreshSession(sessions, request, {
         attemptId: bound.attemptId,
@@ -516,7 +518,10 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
       await sessions.associateTasks(sessionId, subject.specId, [subject.taskId]);
     }
 
+    // A Turn that was dispatched already is the recorded result: it is never briefed again, so a
+    // resend while its agent changes files stays idempotent.
     if (!(await sessions.hasTurn(sessionId, turnId))) {
+      const brief = bound.brief ?? (await engine.brief(subject, bound.attemptId, invocationId));
       const message = [
         brief.text,
         ...(request.message !== undefined
@@ -545,8 +550,8 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
       kind: bound.kind,
       subject,
       attemptId: bound.attemptId,
-      step: brief.step.id,
-      attempt: brief.attempt,
+      step: bound.step,
+      attempt: bound.attempt,
       sessionId,
       turnId,
       session: bound.fresh ? 'fresh' : 'reuse',
@@ -574,6 +579,8 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
       // The Engine bound this request's Turn already: complete what a failure left out.
       return dispatch(sessions, request, {
         attemptId: active.attemptId,
+        step: active.step,
+        attempt: active.attempt,
         actor: active.journal.actor,
         fresh: !continuing && active.launch?.session === 'fresh',
         ...(active.launch?.effort !== undefined ? { effort: active.launch.effort } : {}),
@@ -693,6 +700,8 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
     return dispatch(sessions, request, {
       attemptId,
       brief,
+      step: brief.step.id,
+      attempt: brief.attempt,
       actor,
       fresh,
       ...(launch.effort !== undefined ? { effort: launch.effort } : {}),

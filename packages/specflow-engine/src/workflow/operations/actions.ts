@@ -176,6 +176,34 @@ export type AgentOption =
     };
 
 /**
+ * What an agent attempt left (partial work is never rolled back, D19): what SpecFlow wrote for it
+ * and has not committed, the Task drafts it produced, the files it declared and what was changed in
+ * the checkout when its last Turn ended, and whether its own commit ran. Git-free: read from the
+ * attempt's journal, the uncommitted-changes ledger and the Task manifests.
+ *
+ * - `documents`: uncommitted files SpecFlow wrote only for the attempt's Turns (documents and Task
+ *   files), checkout-relative and sorted; `mixed`: those someone else changed too;
+ * - `tasks`: the Task drafts the attempt's step produced in this attempt, in id order;
+ * - `declared`: the changed files outside SpecFlow's folders its proposal declared;
+ * - `changed`: what was uncommitted in the checkout when its last Turn's claim settled;
+ * - `commit`: its attempt commit (D15): `none` (it did not finish with its own result: returned,
+ *   taken over or still active), `pending`, `committed` or `failed` (with the code, retry possible).
+ */
+export interface AgentAttemptWork {
+  readonly documents: readonly string[];
+  readonly mixed: readonly string[];
+  readonly tasks: readonly string[];
+  readonly declared: readonly string[];
+  readonly changed?: { readonly paths: readonly string[]; readonly truncated?: true };
+  readonly commit: {
+    readonly state: 'none' | 'pending' | 'committed' | 'failed';
+    readonly code?: string;
+    /** How many times it ran (a retry is a run). */
+    readonly runs?: number;
+  };
+}
+
+/**
  * The agent attempt of the active step (Ask agent), as the Runtime serves it: the Engine journal of
  * the attempt and the state of its current Turn's claim. Only the Runtime adds it.
  */
@@ -205,6 +233,29 @@ export interface AgentAttemptView {
   };
   /** Whether Continue can start now. */
   readonly continue: AgentOption;
+  /**
+   * The owner's return during the attempt (D19, A2): `requested` while the Turn may still run (it is
+   * applied once the agent's process is proven stopped), `refused` when applying it was refused.
+   */
+  readonly returnRequest?: {
+    readonly to: string;
+    readonly requestedAt: string;
+    readonly state: 'requested' | 'refused';
+    readonly refusal?: { readonly code: string; readonly message: string };
+  };
+  /**
+   * Whether Take over (F17) is possible now: only once the agent's process is proven ended
+   * (`agent-working`: its Turn runs or is stopping; `outcome-unknown`: SpecFlow cannot tell whether
+   * it still runs; `return-requested`: the owner's return waits to apply).
+   */
+  readonly takeOver:
+    | { readonly kind: 'available' }
+    | {
+        readonly kind: 'unavailable';
+        readonly reason: 'agent-working' | 'outcome-unknown' | 'return-requested';
+      };
+  /** What the attempt left so far (nothing is rolled back). */
+  readonly work: AgentAttemptWork;
 }
 
 /** The step a start would activate, with who may do it. */
@@ -227,6 +278,8 @@ export type ActionPosition =
         readonly number: number;
         readonly startedAt: string;
         readonly actor: WorkflowActor;
+        /** The attempt started by taking over the step's previous attempt (Take over, F17). */
+        readonly takenOverFrom?: { readonly attempt: number };
       };
       /**
        * What finishes the step, read for everyone whoever runs the attempt: each result with where
@@ -953,7 +1006,19 @@ async function runProjection(
     position: {
       kind: 'active',
       step: describeStep(step),
-      attempt: { number: attempt.attempt, startedAt: attempt.startedAt, actor: attempt.actor },
+      attempt: {
+        number: attempt.attempt,
+        startedAt: attempt.startedAt,
+        actor: attempt.actor,
+        ...(run.attempts.some(
+          (record) =>
+            record.step === attempt.step &&
+            record.attempt === attempt.attempt - 1 &&
+            record.outcome?.kind === 'taken-over',
+        )
+          ? { takenOverFrom: { attempt: attempt.attempt - 1 } }
+          : {}),
+      },
       exits,
     },
     actions: {

@@ -1,5 +1,5 @@
 import { WorkflowError } from '../../errors';
-import { loadSubject } from '../../operations/loaded-execution';
+import { isoNow, loadSubject } from '../../operations/loaded-execution';
 import type { PostActionResult } from '../../operations/post-actions';
 import { agentAttemptBindingOf, type OwnerActor, type WorkflowSubject } from '../../state/model';
 import type { AgentAttemptDependencies } from '../dependencies';
@@ -89,6 +89,7 @@ async function runSelectedNow(
     const recorded = (action: AgentPostActionRecord) =>
       action.state !== 'done' && ran.has(action.operationId);
     if (current.postActions?.some(recorded)) {
+      const ranAt = isoNow(dependencies.workflow);
       next = {
         ...current,
         postActions: current.postActions.map((action) => {
@@ -103,6 +104,7 @@ async function runSelectedNow(
             ...action,
             state: failed ? ('failed' as const) : ('done' as const),
             outcomes,
+            ranAt,
             runs: (action.runs ?? 0) + 1,
           };
         }),

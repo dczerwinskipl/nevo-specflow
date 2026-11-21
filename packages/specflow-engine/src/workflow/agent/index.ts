@@ -26,6 +26,7 @@ export {
   type AgentProposalState,
   type AgentRefusal,
   type AgentReturnRequest,
+  type AgentTakeOver,
   type AgentTurnBinding,
 } from './journal/model';
 export {
@@ -57,3 +58,22 @@ export {
   type StartAgentAttemptInput,
   type StartAgentAttemptResult,
 } from './start';
+export {
+  AGENT_ATTEMPT_EVENT_KINDS,
+  readAgentAttemptHistory,
+  type AgentAttemptEvent,
+  type AgentAttemptHistory,
+  type AgentAttemptWork,
+  type AgentHistorySources,
+} from './history/attempt';
+export {
+  readWorkflowHistory,
+  type WorkflowHistory,
+  type WorkflowHistoryItem,
+} from './history/workflow';
+export { returnDuringAgentAttempt, type OwnerReturnResult } from './owner/return';
+export {
+  takeOverAgentAttempt,
+  type TakeOverAgentAttemptInput,
+  type TakeOverAgentAttemptResult,
+} from './owner/take-over';

@@ -11,6 +11,7 @@ import type { AttributionFacts } from './boundary/attribution';
 import type { AgentAttemptDependencies } from './dependencies';
 import type { FinalizeBoundary } from './finalize/finalize';
 import { memoryAgentAttemptJournal } from './journal/memory.test-support';
+import { agentPostActionRunId } from './journal/model';
 
 /** One execution claim of the fake claim journal. */
 export interface FakeClaim {
@@ -51,9 +52,9 @@ export function memoryAgentDependencies(catalogue: ExecutionCatalogue, attemptId
     }[],
     /** What the attribution checks read; `undefined` is Git off (nothing is checked). */
     attribution: undefined as AttributionFacts | undefined,
-    postActionResults: [
-      { action: 'commit-execution-state', status: 'completed' },
-    ] as PostActionResult[],
+    /** The operation of each post action run (`agentPostActionRunId`), in order. */
+    postActionRuns: [] as string[],
+    postActionResults: [{ action: 'attempt-commit', status: 'completed' }] as PostActionResult[],
   };
   const serialize = workflow.serialize;
   const lockedWorkflow = {
@@ -123,6 +124,7 @@ export function memoryAgentDependencies(catalogue: ExecutionCatalogue, attemptId
         return Promise.resolve();
       },
     }),
+    attributedStore: () => workflow.store,
     newId: () => attemptId,
     boundary: { facts: () => Promise.resolve(state.attribution) },
     finalize: {
@@ -162,8 +164,9 @@ export function memoryAgentDependencies(catalogue: ExecutionCatalogue, attemptId
       openWrites: () => Promise.resolve([...state.openWrites]),
       dirtySet: () => Promise.resolve({ paths: state.dirtyPaths, truncated: false }),
       postActions: {
-        run() {
+        run(_journal, action) {
           events.push(state.held ? 'post-action-in-lock' : 'post-action');
+          state.postActionRuns.push(agentPostActionRunId(action));
 
           return Promise.resolve(state.postActionResults);
         },

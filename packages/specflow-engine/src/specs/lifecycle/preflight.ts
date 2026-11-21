@@ -37,6 +37,7 @@ import {
 import { sortedResources } from './resources';
 import { readIntegrationCandidates } from './integration-candidates';
 import { closeRepositoryMode, type CloseRepositoryMode } from './repository-mode';
+import { attemptsHolding, type FailedAttemptCommit } from '../uncommitted/attempts';
 
 export type CloseRequest =
   | {
@@ -223,6 +224,11 @@ export interface CleanTreeCheck {
    * carries its {@link CloseRepositoryBlocker} for that checkout.
    */
   readonly role?: CloseCheckoutRole;
+  /**
+   * Agent attempts of this checkout whose commit failed (D15): the blocker lists their dirty paths
+   * under each attempt (retry the attempt commit) and leaves them out of its `paths` and counts.
+   */
+  readonly attempts?: readonly FailedAttemptCommit[];
 }
 
 /** One other active Specification's own directory, exempted from a sibling Close's clean-tree check. */
@@ -319,8 +325,12 @@ export async function inspectCleanGitWorkspace(
     .filter((path) => !isAcceptedDirtyPath(path, check));
   if (unclean.length > 0) {
     // One order everywhere: the Specification's own paths first (message, `paths`, blocker).
-    const scoped = scopedPaths(unclean, directory);
-    const ordered = scoped.map((entry) => entry.path);
+    const failed = attemptsHolding(check.attempts ?? [], unclean, UNCLEAN_PATHS_NAMED);
+    const scoped = scopedPaths(
+      unclean.filter((path) => !failed.taken.has(path)),
+      directory,
+    );
+    const ordered = scopedPaths(unclean, directory).map((entry) => entry.path);
     const named = ordered.slice(0, UNCLEAN_PATHS_NAMED).join(', ');
     const more =
       unclean.length > UNCLEAN_PATHS_NAMED
@@ -340,9 +350,10 @@ export async function inspectCleanGitWorkspace(
                   checkout: role,
                   workspaceId: workspace.workspaceId,
                   paths: scoped.slice(0, UNCLEAN_PATHS_NAMED),
-                  count: unclean.length,
+                  count: scoped.length,
                   specificationCount: scoped.filter((entry) => entry.scope === 'specification')
                     .length,
+                  ...(failed.attempts.length > 0 ? { attempts: failed.attempts.slice(0, 8) } : {}),
                 },
               ],
             }
@@ -689,6 +700,7 @@ async function previewGitClose(
       acceptExecutionState: request.kind === 'specification-close',
       siblingDirectories: siblings.map((entry) => entry.directory),
       role: 'specification',
+      attempts: (await engine.failedAttemptCommits?.(sourceWorkspace.workspaceId)) ?? [],
     });
   } catch (error) {
     // Only a refusal that names repository preconditions takes the missing branch along; any other

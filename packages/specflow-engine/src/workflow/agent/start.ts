@@ -110,7 +110,12 @@ export async function startAgentAttempt(
     workspaceId: input.workspaceId,
     ...(input.contextDigest !== undefined ? { contextDigest: input.contextDigest } : {}),
   };
-  const workflow = dependencies.workflow;
+  // The start's own store change is the attempt's, made for its first Turn: its ledger entries name
+  // that Turn, so the attempt commit takes them with the rest of the attempt (D15).
+  const workflow = {
+    ...dependencies.workflow,
+    store: dependencies.attributedStore(input.turn.invocationId),
+  };
 
   return workflow.serialize(async () => {
     const options = {

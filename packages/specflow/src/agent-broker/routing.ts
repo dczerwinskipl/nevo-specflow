@@ -66,6 +66,7 @@ export const REFUSED: ReadonlySet<string> = new Set([
   'tasks status',
   'workflow finish',
   'workflow reevaluate-wait',
+  'workflow retry-commit',
   'workflow return',
   'workflow start',
 ]);

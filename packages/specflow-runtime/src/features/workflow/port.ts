@@ -9,6 +9,8 @@ import type {
   ReevaluateWaitResult,
   ReturnToStepInput,
   ReturnToStepResult,
+  RetryAgentAttemptCommitInput,
+  RetryAgentAttemptCommitResult,
   StartResult,
   WorkflowSubject,
 } from '@nevo/specflow-engine';
@@ -29,4 +31,6 @@ export interface WorkflowPort {
   return(input: ReturnToStepInput): Promise<ReturnToStepResult>;
   reevaluateWait(input: ReevaluateWaitInput): Promise<ReevaluateWaitResult>;
   abandon(input: AbandonSpecificationInput): Promise<AbandonSpecificationResult>;
+  /** The owner's Retry commit of a finished agent attempt whose commit failed (D15). */
+  retryAttemptCommit(input: RetryAgentAttemptCommitInput): Promise<RetryAgentAttemptCommitResult>;
 }

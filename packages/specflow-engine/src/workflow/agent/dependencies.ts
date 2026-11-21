@@ -20,11 +20,8 @@ import { executionClaimAdmission, type WorkflowWriteAdmission } from '../write-a
 import type { AttributionFacts } from './boundary/attribution';
 import { dirtySetOf, type DirtySetFacts } from './boundary/dirty-set';
 import { engineAttributionFacts } from './boundary/engine-facts';
-import {
-  workflowPostActionRunner,
-  type AgentPostActionRunner,
-  type FinalizeBoundary,
-} from './finalize/ports';
+import { attemptCommitRunner } from './finalize/attempt-commit/run';
+import type { AgentPostActionRunner, FinalizeBoundary } from './finalize/ports';
 import { openDocumentWritesOf } from './finalize/open-writes';
 import { filesystemAgentAttemptJournal, type AgentAttemptJournalStore } from './journal/store';
 
@@ -38,6 +35,12 @@ export interface AgentAttemptDependencies {
    * finalize section), none for an owner's request.
    */
   readonly admission: (owned: OwnedExecutionClaim | undefined) => WorkflowWriteAdmission;
+  /**
+   * The execution store whose changes are attributed to the agent Turn `executionId` in the ledger
+   * (`executions`) and admitted like any change without an own claim: the start of an attempt,
+   * made for its first Turn before that Turn's claim exists.
+   */
+  attributedStore(executionId: string): WorkflowStore;
   /** A new attempt id (a UUID). */
   readonly newId: () => string;
   readonly finalize: AgentFinalizeDependencies;
@@ -78,7 +81,7 @@ export interface AgentFinalizeDependencies {
   openWrites(invocationId: string): Promise<readonly string[]>;
   /** What the attempt's checkout has uncommitted now; `undefined` when Git is off. */
   dirtySet(workspaceId: string): Promise<DirtySetFacts | undefined>;
-  /** Runs a pending post action after the section (the attempt commit joins here, D15). */
+  /** Runs a pending post action after the section: the attempt commit (D15). */
   readonly postActions: AgentPostActionRunner;
   /** Test seam: called at each crash boundary of the finalize; a throw simulates the crash. */
   readonly faults?: (boundary: FinalizeBoundary) => void | Promise<void>;
@@ -116,6 +119,7 @@ export async function openAgentAttempts(engine: SpecFlowEngine): Promise<AgentAt
     workflow,
     journal: filesystemAgentAttemptJournal(engine.context),
     admission: (owned) => executionClaimAdmission(engine, owned),
+    attributedStore: (executionId) => engineExecutionStore(engine, undefined, executionId),
     newId: randomUUID,
     boundary: { facts: (workspaceId) => engineAttributionFacts(engine, workspaceId) },
     finalize: {
@@ -126,7 +130,7 @@ export async function openAgentAttempts(engine: SpecFlowEngine): Promise<AgentAt
       claim: (invocationId) => readExecutionJournal(engine.context, invocationId),
       openWrites: (invocationId) => openDocumentWritesOf(engine.context, invocationId),
       dirtySet: (workspaceId) => engineDirtySet(engine, workspaceId),
-      postActions: workflowPostActionRunner(workflow),
+      postActions: attemptCommitRunner(engine),
     },
   };
 }

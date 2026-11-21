@@ -199,8 +199,18 @@ function blockersOf(error: unknown): { blockers?: ExitBlocker[] } {
 /** A mutable contract copy of one Engine repository blocker. */
 function repositoryBlocker(blocker: CloseRepositoryBlocker): RepositoryBlocker {
   switch (blocker.kind) {
-    case 'uncommitted-changes':
-      return { ...blocker, paths: blocker.paths.map((entry) => ({ ...entry })) };
+    case 'uncommitted-changes': {
+      const { attempts, ...rest } = blocker;
+
+      return {
+        ...rest,
+        paths: blocker.paths.map((entry) => ({ ...entry })),
+        ...(attempts !== undefined
+          ? { attempts: attempts.map((attempt) => ({ ...attempt, paths: [...attempt.paths] })) }
+          : {}),
+      };
+    }
+
     case 'integration-target-missing':
       return {
         kind: blocker.kind,

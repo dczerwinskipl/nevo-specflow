@@ -14,7 +14,9 @@ export {
 export {
   AGENT_ATTEMPT_JOURNAL_KIND,
   agentPostActionId,
+  agentPostActionRunId,
   type AgentAttemptJournal,
+  type AgentDeclaredPath,
   type AgentDirtyPath,
   type AgentDirtySet,
   type AgentFinishProposal,
@@ -34,7 +36,10 @@ export {
 } from './finalize/finalize';
 export {
   recoverAgentAttempts,
+  retryAgentAttemptCommit,
   retryAgentPostActions,
+  type RetryAgentAttemptCommitInput,
+  type RetryAgentAttemptCommitResult,
   runAgentPostActions,
   type AgentPostActionRunner,
   type AgentAttemptRecovery,

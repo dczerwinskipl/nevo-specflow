@@ -1,4 +1,6 @@
 import {
+  ledgerAuthorsOf,
+  withLedgerAuthor,
   LEDGER_MAX_OPERATION_IDS,
   LEDGER_MAX_PATHS,
   LEDGER_VERSION,
@@ -92,6 +94,10 @@ export function applyLedgerUpsert(
       recordedAt: upsert.recordedAt,
       reason: upsert.reason,
       ...(executions.length > 0 ? { executions } : {}),
+      authors: withLedgerAuthor(
+        known !== undefined ? ledgerAuthorsOf(known) : undefined,
+        upsert.executionId,
+      ),
     });
   }
 

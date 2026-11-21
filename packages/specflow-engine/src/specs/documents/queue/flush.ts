@@ -5,6 +5,7 @@ import type { DocumentChangeStage } from '../changes/journal/stages';
 import { listDocumentChangeJournals } from '../write/journal-store';
 import { listManualCommitJournals } from '../../manual-commit';
 import {
+  UNCOMMITTED_ATTEMPTS_MAX,
   UNCOMMITTED_HOLD_OWNERS_MAX,
   type UncommittedHoldDetails,
 } from '@nevo/specflow-contracts/documents';
@@ -173,6 +174,13 @@ function uncommittedDetails(hold: UncommittedHold): UncommittedHoldDetails {
     owners: hold.owners
       .slice(0, UNCOMMITTED_HOLD_OWNERS_MAX)
       .map((owner) => ({ ...owner, paths: [...owner.paths] })),
+    ...(hold.attempts !== undefined && hold.attempts.length > 0
+      ? {
+          attempts: hold.attempts
+            .slice(0, UNCOMMITTED_ATTEMPTS_MAX)
+            .map((attempt) => ({ ...attempt, paths: [...attempt.paths] })),
+        }
+      : {}),
     unreadable: hold.unreadable,
   };
 }

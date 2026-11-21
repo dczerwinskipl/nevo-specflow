@@ -497,10 +497,12 @@ export function createSessionCoordinator(
       );
     },
     /** `association` is written verbatim; only a Turn start reads it (execution workspace). */
+    /** `options.sessionId` is in-process only (agent step execution): the Session's chosen id. */
     async create(
       actor: string,
       input: CreateSession,
       association?: AssociationWrite,
+      options: { readonly sessionId?: string } = {},
     ): Promise<{ sessionId: string }> {
       input = Object.freeze(structuredClone(input));
       association = association && Object.freeze(structuredClone(association));
@@ -527,7 +529,13 @@ export function createSessionCoordinator(
         throw worktreeProviderUnsupported();
       }
 
-      return call({ op: 'create', actor, input, ...(association ? { association } : {}) });
+      return call({
+        op: 'create',
+        actor,
+        input,
+        ...(association ? { association } : {}),
+        ...(options.sessionId !== undefined ? { sessionId: options.sessionId } : {}),
+      });
     },
     /**
      * Starts a Turn. `options` are in-process only (Ask agent): the Turn and invocation ids chosen
@@ -830,6 +838,9 @@ export function createSessionCoordinator(
         }
       }
     },
+    /** Whether the Session has the Turn `turnId` (a Turn start that may have been admitted). */
+    hasTurn: (sessionId: string, turnId: string) =>
+      call<boolean>({ op: 'has-turn', sessionId, turnId }),
     /** In-process workflow orchestration only: adds Tasks of its home Specification to a Session. */
     async associateTasks(sessionId: string, specId: string, taskIds: readonly string[]) {
       accepting();

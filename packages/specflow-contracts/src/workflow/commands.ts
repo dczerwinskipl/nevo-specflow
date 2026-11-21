@@ -583,3 +583,21 @@ export const StopAgentStepExecutionResultSchema = Type.Object(
   { additionalProperties: false },
 );
 export type StopAgentStepExecutionResult = Static<typeof StopAgentStepExecutionResultSchema>;
+
+/**
+ * `GET .../workflow/agent-execution/check`: whether an agent can run the step now, with every reason
+ * the start would refuse with, the checkout's baseline included (explain before action: the dialog
+ * calls it when it opens). `position` is what a start would work on: the next step (a new attempt),
+ * or the active agent attempt (Continue, with `attempt`).
+ */
+export const AgentStepExecutionCheckSchema = Type.Object(
+  {
+    position: Type.Object(
+      { step: StepId, attempt: Type.Optional(Type.Integer({ minimum: 1 })) },
+      { additionalProperties: false },
+    ),
+    agent: AgentOptionSchema,
+  },
+  { additionalProperties: false },
+);
+export type AgentStepExecutionCheck = Static<typeof AgentStepExecutionCheckSchema>;

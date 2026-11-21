@@ -1,7 +1,11 @@
 import { activeAttempt, findStep } from '@nevo/workflow';
 
 import { loadSubject, type WorkflowDependencies } from '../../operations/loaded-execution';
-import { agentAttemptBindingOf, type WorkflowSubject } from '../../state/model';
+import {
+  agentAttemptBindingOf,
+  type AgentAttemptBinding,
+  type WorkflowSubject,
+} from '../../state/model';
 import type { AgentAttemptDependencies } from '../dependencies';
 import type { AgentAttemptJournal } from '../journal/model';
 import { deriveAgentScope, type AgentWriteScope } from './scope';
@@ -51,6 +55,7 @@ export async function activeAgentAttempt(
       readonly workspaceId: string;
       readonly step: string;
       readonly attempt: number;
+      readonly launch?: AgentAttemptBinding['launch'];
     }
   | undefined
 > {
@@ -65,6 +70,7 @@ export async function activeAgentAttempt(
         workspaceId: binding.workspaceId,
         step: active.step,
         attempt: active.attempt,
+        ...(binding.launch !== undefined ? { launch: binding.launch } : {}),
       }
     : undefined;
 }

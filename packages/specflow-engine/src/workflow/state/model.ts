@@ -68,6 +68,11 @@ export interface AgentAttemptBinding {
   readonly workspaceId: string;
   /** The digest of the step context the attempt was started with (sha256 hex), when given. */
   readonly contextDigest?: string;
+  /**
+   * The launch the owner started the attempt with (D18), with the provider and model of its actor:
+   * a fresh Session or the continued one, and the effort when one was chosen.
+   */
+  readonly launch?: { readonly session: 'fresh' | 'reuse'; readonly effort?: string };
 }
 
 /** The binding of an attempt started for Ask agent; `undefined` for any other attempt. */

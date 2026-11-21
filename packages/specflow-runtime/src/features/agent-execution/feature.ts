@@ -33,6 +33,7 @@ import {
 import { createEngineBrokerDocuments } from './broker/documents';
 import type { BrokerEndpoint } from './broker/endpoint';
 import { createBrokerServer } from './broker/server';
+import { createAgentStepEngine } from './step-execution/engine-port';
 import { createEngineBrokerWorkflow } from './broker/workflow';
 import { createCapabilityRegistry } from './capability/registry';
 import { redactCapabilities } from './capability/redaction';
@@ -103,10 +104,12 @@ export function createAgentExecutionFeature(
     ...(options.openEndpoint ? { openEndpoint: options.openEndpoint } : {}),
   });
   const agentStepExecution = createAgentStepExecution({
-    engine,
-    openWorkflow: () => openWorkflow(engine, workflowOptions()),
-    openAttempts,
-    coordinator: () => options.coordinator?.(),
+    engine: createAgentStepEngine({
+      engine,
+      openWorkflow: () => openWorkflow(engine, workflowOptions()),
+      openAttempts,
+    }),
+    sessions: () => options.coordinator?.(),
   });
 
   /**

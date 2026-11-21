@@ -111,7 +111,16 @@ export type StoreCommand =
       input: unknown;
     }
   /** `association` is an opaque sidecar written verbatim in the same transaction. */
-  | { op: 'create'; actor: string; input: CreateSession; association?: AssociationWrite }
+  | {
+      op: 'create';
+      actor: string;
+      input: CreateSession;
+      association?: AssociationWrite;
+      /** In-process only (agent step execution): the id the trusted host chose for the Session. */
+      sessionId?: string;
+    }
+  /** `boolean`: the Session has this Turn (in any state). */
+  | { op: 'has-turn'; sessionId: string; turnId: string }
   | {
       op: 'start';
       actor: string;

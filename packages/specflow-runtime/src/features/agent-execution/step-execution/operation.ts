@@ -1,47 +1,44 @@
 import { createHash } from 'node:crypto';
 
 import type {
+  AgentStepExecutionCheck,
   AgentStepExecutionResult,
   StopAgentStepExecutionResult,
 } from '@nevo/specflow-contracts/workflow';
 import {
-  AttributionRefusalError,
   WorkflowError,
-  activeAgentAttempt,
-  admitAgentTurn,
-  agentAttemptScope,
-  engineAgentContextSource,
-  inspectActionsForRead,
-  inspectWorkspaceExecution,
-  listUnsettledWorkspaceExecutions,
-  readAgentContextDigest,
-  readStepContext,
-  resolveSpecificationForRead,
-  startAgentAttempt,
   type ActionProjection,
   type AgentActor,
-  type AgentAttemptDependencies,
   type AgentAttemptView,
   type AgentLaunch,
   type AgentOption,
   type ExpectedPosition,
-  type SpecFlowEngine,
-  type WorkflowDependencies,
   type WorkflowSubject,
 } from '@nevo/specflow-engine';
 
 import type { SessionCoordinator } from '../../sessions';
 import { AgentUnavailableError } from '../../workflow';
-import { renderAgentBrief, untrusted } from '../brief/render';
+import { untrusted } from '../brief/render';
 import { chosenLaunch, withRuntimeReasons, type AgentRuntimeFacts } from './availability';
+import type { ActiveAgentAttempt, AgentStepEngine } from './engine-port';
+
+/** The Session operations agent step execution uses. */
+export type AgentStepSessions = Pick<
+  SessionCoordinator,
+  | 'available'
+  | 'provider'
+  | 'create'
+  | 'start'
+  | 'cancel'
+  | 'snapshot'
+  | 'associateTasks'
+  | 'hasTurn'
+>;
 
 export interface AgentStepExecutionDependencies {
-  readonly engine: SpecFlowEngine;
-  /** The workflow operations, opened per call (definitions and project documents as they are now). */
-  readonly openWorkflow: () => Promise<WorkflowDependencies>;
-  readonly openAttempts: () => Promise<AgentAttemptDependencies>;
-  /** The managed Session coordinator; absent while managed Sessions are disabled. */
-  readonly coordinator: () => SessionCoordinator | undefined;
+  readonly engine: AgentStepEngine;
+  /** The managed Sessions; absent while managed Sessions are disabled. */
+  readonly sessions: () => AgentStepSessions | undefined;
 }
 
 export interface AgentStepExecutionRequest {
@@ -58,8 +55,11 @@ export interface AgentStepExecutionRequest {
 
 const RUNTIME_ACTOR = 'runtime-agent-execution';
 
-/** A UUID derived from the request, so a repeated request reuses its Session create and Turn. */
-function derivedId(requestId: string, purpose: string): string {
+/**
+ * A UUID derived from the request: a repeated request names the same Session, Turn and invocation,
+ * so its retry finds what the first one made instead of making it again.
+ */
+export function derivedId(requestId: string, purpose: string): string {
   const hex = createHash('sha256').update(`${requestId}:${purpose}`).digest('hex');
 
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
@@ -69,54 +69,59 @@ function invalid(message: string): never {
   throw new WorkflowError('WORKFLOW_INPUT_INVALID', message);
 }
 
+function unavailable(
+  option: Extract<AgentOption, { kind: 'unavailable' }>,
+  message: string,
+): never {
+  throw new AgentUnavailableError(option, message);
+}
+
 /** The startable step a new attempt would work on, from the projection. */
 function nextOf(projection: ActionProjection) {
   const position = projection.position;
 
-  return position.kind === 'not-started' || position.kind === 'ready' || position.kind === 'blocked'
+  return position.kind === 'not-started' || position.kind === 'ready'
     ? position.next
-    : undefined;
+    : position.kind === 'blocked'
+      ? position.next
+      : undefined;
+}
+
+/** How a Continue launches: the attempt's own agent in its own Session. */
+function continueLaunch(active: ActiveAgentAttempt): AgentLaunch {
+  const { details } = active.journal.actor;
+
+  return {
+    archetype: details.archetype ?? '',
+    provider: details.provider,
+    model: details.model ?? '',
+    ...(active.launch?.effort !== undefined ? { effort: active.launch.effort } : {}),
+    session: { mode: 'reuse', sessionId: details.sessionId ?? '' },
+  };
 }
 
 /**
- * Ask agent (D12, D18, D19): the Runtime side of one agent attempt. Every refusal comes before
- * anything exists when it can be known (the projection's reasons, the Engine's start checks); the
- * Engine starts the attempt with the trusted agent actor and binds the Turn; the Session is the
- * kernel's continuation (an independent step always a fresh one); the Turn is dispatched with the
- * brief, its claim bound to the attempt, so its writes go through the broker in the attempt's scope
- * and its settlement finalizes the attempt.
+ * Agent step execution (D12, D18, D19): the Runtime side of one agent attempt. Every refusal that
+ * can be known comes before anything exists (the Runtime's reasons, the Engine's start checks); the
+ * Engine starts the attempt with the trusted agent actor and binds the Turn; only then is a fresh
+ * Session created (with the id the actor already names), so a refused start leaves no Session; the
+ * Turn is dispatched with the brief, its claim bound to the attempt. A repeated request finds the
+ * Turn the Engine bound for it and completes what is missing, never a second attempt or Session.
  */
 export function createAgentStepExecution(dependencies: AgentStepExecutionDependencies) {
   const { engine } = dependencies;
-  const source = engineAgentContextSource(engine);
-
-  /** An unsettled writer claim of the project, worded for the owner. */
-  async function busyWriter(): Promise<AgentRuntimeFacts['busy']> {
-    const page = await listUnsettledWorkspaceExecutions(engine, { limit: 20 });
-    const held = page.items.find((record) => record.phase !== 'settled');
-    if (!held) {
-      return undefined;
-    }
-
-    return {
-      detail:
-        held.phase === 'unknown'
-          ? `SpecFlow cannot tell whether the agent of Session ${held.intent.ownerId} is still running; nothing can be saved in this project until that is known.`
-          : `The agent of Session ${held.intent.ownerId} is working in this project; wait until it stops.`,
-    };
-  }
 
   function providerFacts(provider: string): AgentRuntimeFacts['provider'] {
-    const coordinator = dependencies.coordinator();
-    if (!coordinator) {
+    const sessions = dependencies.sessions();
+    if (!sessions) {
       return undefined;
     }
 
-    if (coordinator.available(provider)) {
+    if (sessions.available(provider)) {
       return { ready: true };
     }
 
-    const described = coordinator.provider(provider);
+    const described = sessions.provider(provider);
 
     return {
       ready: false,
@@ -126,121 +131,118 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
     };
   }
 
-  /** The baseline refusal of a Turn at `expected`, as facts. */
-  async function baselineFacts(
-    attempts: AgentAttemptDependencies,
-    subject: WorkflowSubject,
-    workspaceId: string,
-    expected: ExpectedPosition,
-  ): Promise<AgentRuntimeFacts['baseline']> {
-    try {
-      await admitAgentTurn(attempts, { subject, workspaceId, expected });
-
-      return undefined;
-    } catch (error) {
-      if (
-        error instanceof AttributionRefusalError &&
-        (error.code === 'WORKFLOW_DIRTY_BASELINE' || error.code === 'WORKFLOW_BASELINE_CHANGED')
-      ) {
-        return {
-          reason: error.code === 'WORKFLOW_DIRTY_BASELINE' ? 'dirty-baseline' : 'baseline-changed',
-          paths: [...error.attribution.paths],
-          count: error.attribution.count,
-        };
-      }
-
-      throw error;
-    }
-  }
-
-  async function workspaceIdOf(specId: string): Promise<string | undefined> {
-    const found = await resolveSpecificationForRead(engine, specId);
-
-    return found.status === 'available' ? found.workspaceId : undefined;
-  }
-
-  /** The option with every Runtime reason (cheapest first: the baseline reads the checkout). */
+  /**
+   * The option with the Runtime's reasons. `checkout` reads the checkout's baseline (Git): the
+   * explicit check and the start; the projection never does and says `baseline: unchecked`.
+   */
   async function judged(
     option: AgentOption,
     subject: WorkflowSubject,
     expected: ExpectedPosition,
-    attempts: () => Promise<AgentAttemptDependencies>,
+    checkout: boolean,
   ): Promise<AgentOption> {
     if (option.kind === 'unavailable') {
       return option;
     }
 
     const facts: AgentRuntimeFacts = {
-      sessions: dependencies.coordinator() !== undefined,
+      sessions: dependencies.sessions() !== undefined,
       provider: providerFacts(option.launch.provider),
-      busy: await busyWriter(),
+      busy: await engine.busyWriter(),
     };
     const first = withRuntimeReasons(option, facts);
     if (first.kind === 'unavailable') {
       return first;
     }
 
-    const workspaceId = await workspaceIdOf(subject.specId);
-    if (workspaceId === undefined) {
-      return option;
+    if (!checkout) {
+      return { ...option, baseline: 'unchecked' };
     }
 
-    return withRuntimeReasons(option, {
-      ...facts,
-      baseline: await baselineFacts(await attempts(), subject, workspaceId, expected),
-    });
+    const { baseline: _unchecked, ...checked } = option;
+    const workspaceId = await engine.workspaceIdOf(subject.specId);
+
+    return workspaceId === undefined
+      ? checked
+      : withRuntimeReasons(checked, {
+          ...facts,
+          baseline: await engine.baseline(subject, workspaceId, expected),
+        });
   }
 
-  /** The agent attempt of the active step, with its Turn's state and whether Continue can start. */
-  async function attemptView(
-    workflow: WorkflowDependencies,
+  /** Where the attempt's current Turn is: its Session, then its execution claim. */
+  async function turnState(active: ActiveAgentAttempt): Promise<AgentAttemptView['turn']['state']> {
+    const turn = active.journal.turns.at(-1)!;
+    if (turn.finalizedAt !== undefined) {
+      return 'ended';
+    }
+
+    const phase = await engine.claimPhase(turn.invocationId);
+    if (phase === 'unknown') {
+      return 'unknown';
+    }
+
+    const sessionId = active.journal.actor.details.sessionId ?? '';
+    const activeTurn = (
+      await dependencies
+        .sessions()
+        ?.snapshot(sessionId, RUNTIME_ACTOR)
+        .catch(() => undefined)
+    )?.activeTurn;
+    if (activeTurn?.turnId === turn.turnId) {
+      return activeTurn.state === 'cancelling'
+        ? 'stopping'
+        : activeTurn.state === 'unknown'
+          ? 'unknown'
+          : 'working';
+    }
+
+    return phase !== undefined && phase !== 'settled' ? 'working' : 'ended';
+  }
+
+  /** Whether Continue can start now: only once the Turn ended. */
+  async function continueOption(
+    active: ActiveAgentAttempt,
     subject: WorkflowSubject,
-    attempts: () => Promise<AgentAttemptDependencies>,
-  ): Promise<AgentAttemptView | undefined> {
-    const active = await activeAgentAttempt(workflow, subject);
-    if (!active) {
-      return undefined;
+    state: AgentAttemptView['turn']['state'],
+    checkout: boolean,
+  ): Promise<AgentOption> {
+    const launch = continueLaunch(active);
+    if (state !== 'ended') {
+      return {
+        kind: 'unavailable',
+        reason: 'project-busy',
+        detail:
+          state === 'unknown'
+            ? "SpecFlow cannot tell whether the agent's process is still running."
+            : 'The agent is still working on this attempt.',
+        launch,
+      };
     }
 
-    const journal = await (await attempts()).journal.read(active.attemptId);
-    const turn = journal?.turns.at(-1);
-    if (!journal || !turn) {
-      return undefined;
-    }
+    return judged(
+      { kind: 'available', launch },
+      subject,
+      { step: active.step, attempt: active.attempt },
+      checkout,
+    );
+  }
 
+  async function attemptView(
+    active: ActiveAgentAttempt,
+    subject: WorkflowSubject,
+  ): Promise<AgentAttemptView> {
+    const { journal } = active;
+    const turn = journal.turns.at(-1)!;
     const actor = journal.actor;
-    const sessionId = actor.details.sessionId ?? '';
-    const state = await turnState(sessionId, turn);
-    const launch: AgentLaunch = {
-      archetype: actor.details.archetype ?? '',
-      provider: actor.details.provider,
-      model: actor.details.model ?? '',
-      session: { mode: 'reuse', sessionId },
-    };
-    const proceed: AgentOption =
-      state === 'ended'
-        ? await judged(
-            { kind: 'available', launch },
-            subject,
-            { step: active.step, attempt: active.attempt },
-            attempts,
-          )
-        : {
-            kind: 'unavailable',
-            reason: 'project-busy',
-            detail:
-              state === 'unknown'
-                ? "SpecFlow cannot tell whether the agent's process is still running."
-                : 'The agent is still working on this attempt.',
-            launch,
-          };
+    const state = await turnState(active);
     const proposal = journal.proposal;
 
     return {
       attemptId: active.attemptId,
       step: active.step,
       attempt: active.attempt,
-      sessionId,
+      sessionId: actor.details.sessionId ?? '',
       provider: actor.details.provider,
       ...(actor.details.model !== undefined ? { model: actor.details.model } : {}),
       turn: {
@@ -270,93 +272,182 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
             },
           }
         : {}),
-      continue: proceed,
+      continue: await continueOption(active, subject, state, false),
     };
   }
 
   /**
-   * Where the attempt's current Turn is: from its Session (running, being cancelled, outcome
-   * unknown) and its execution claim, else ended.
+   * The projection with the Runtime's agent reasons and the active agent attempt. Read path: no Git
+   * (the baseline is `unchecked`; `check` reads it).
    */
-  async function turnState(
-    sessionId: string,
-    turn: { readonly turnId: string; readonly invocationId: string; readonly finalizedAt?: string },
-  ): Promise<AgentAttemptView['turn']['state']> {
-    if (turn.finalizedAt !== undefined) {
-      return 'ended';
-    }
-
-    const claim = await inspectWorkspaceExecution(engine, turn.invocationId);
-    if (claim?.phase === 'unknown') {
-      return 'unknown';
-    }
-
-    const coordinator = dependencies.coordinator();
-    const activeTurn = coordinator
-      ? (await coordinator.snapshot(sessionId, RUNTIME_ACTOR).catch(() => undefined))?.activeTurn
-      : undefined;
-    if (activeTurn?.turnId === turn.turnId) {
-      return activeTurn.state === 'cancelling'
-        ? 'stopping'
-        : activeTurn.state === 'unknown'
-          ? 'unknown'
-          : 'working';
-    }
-
-    return claim !== undefined && claim.phase !== 'settled' ? 'working' : 'ended';
-  }
-
-  /** The projection with the Runtime's agent reasons and the active agent attempt. */
   async function decorate(
     subject: WorkflowSubject,
     projection: ActionProjection,
   ): Promise<ActionProjection> {
-    let opened: Promise<AgentAttemptDependencies> | undefined;
-    const attempts = () => (opened ??= dependencies.openAttempts());
     const position = projection.position;
     if ((position.kind === 'not-started' || position.kind === 'ready') && position.next) {
       const next = position.next;
-      const agent = await judged(next.agent, subject, { step: next.step.id }, attempts);
+      const agent = await judged(next.agent, subject, { step: next.step.id }, false);
 
       return { ...projection, position: { ...position, next: { ...next, agent } } };
     }
 
     if (position.kind === 'active' && position.attempt.actor.class === 'agent') {
-      const view = await attemptView(await dependencies.openWorkflow(), subject, attempts);
+      const active = await engine.activeAttempt(subject);
 
-      return view ? { ...projection, agentAttempt: view } : projection;
+      return active
+        ? { ...projection, agentAttempt: await attemptView(active, subject) }
+        : projection;
     }
 
     return projection;
   }
 
-  async function startAgentStepExecution(
-    request: AgentStepExecutionRequest,
-  ): Promise<AgentStepExecutionResult> {
-    const coordinator = dependencies.coordinator();
-    const { subject, expected } = request;
-    const workflow = await dependencies.openWorkflow();
-    const continuing = expected.attempt !== undefined;
-    const raw = await inspectActionsForRead(workflow, subject);
-    // A new attempt is judged with the agent the owner chose, below; Continue with its own Session.
-    const projection = continuing ? await decorate(subject, raw) : raw;
-    let launch: AgentLaunch;
-    let actor: AgentActor;
-    let sessionId: string;
-    let fresh = false;
-    if (continuing) {
-      const view = projection.agentAttempt;
-      if (view?.step !== expected.step || view.attempt !== expected.attempt) {
+  /**
+   * The explicit check the Ask agent dialog runs when it opens (explain before action): the full
+   * availability of what a start would work on now, the checkout's baseline included.
+   */
+  async function check(subject: WorkflowSubject): Promise<{
+    readonly position: AgentStepExecutionCheck['position'];
+    readonly agent: AgentOption;
+  }> {
+    const projection = await engine.actions(subject);
+    const position = projection.position;
+    if (position.kind === 'active') {
+      const active = await engine.activeAttempt(subject);
+      if (!active) {
         throw new WorkflowError(
-          'WORKFLOW_ATTEMPT_MISMATCH',
-          `The step ${expected.step} has no agent attempt ${String(expected.attempt)} to continue.`,
+          'WORKFLOW_POSITION_INVALID',
+          'A person works on the active step; an agent cannot continue it.',
         );
       }
 
-      if (view.continue.kind === 'unavailable') {
-        throw new AgentUnavailableError(
-          view.continue,
-          'The agent cannot continue this attempt now.',
+      return {
+        position: { step: active.step, attempt: active.attempt },
+        agent: await continueOption(active, subject, await turnState(active), true),
+      };
+    }
+
+    const next = nextOf(projection);
+    if (!next) {
+      throw new WorkflowError('WORKFLOW_POSITION_INVALID', 'No step can be started now.');
+    }
+
+    return {
+      position: { step: next.step.id },
+      agent: await judged(next.agent, subject, { step: next.step.id }, true),
+    };
+  }
+
+  /** Creates the fresh Session, joins a Task, and dispatches the Turn unless it exists already. */
+  async function dispatch(
+    sessions: AgentStepSessions,
+    request: AgentStepExecutionRequest,
+    bound: {
+      readonly attemptId: string;
+      readonly actor: AgentActor;
+      readonly fresh: boolean;
+      readonly effort?: string;
+      readonly kind: AgentStepExecutionResult['kind'];
+    },
+  ): Promise<AgentStepExecutionResult> {
+    const { subject } = request;
+    const sessionId = bound.actor.details.sessionId!;
+    const turnId = derivedId(request.requestId, 'turn');
+    const invocationId = derivedId(request.requestId, 'invocation');
+    const brief = await engine.brief(subject, bound.attemptId);
+    if (bound.fresh) {
+      // Replays on a retry (same request id and input), creating the Session at most once.
+      await sessions.create(
+        request.principal,
+        {
+          requestId: derivedId(request.requestId, 'session-request'),
+          providerId: bound.actor.details.provider,
+          ...(bound.actor.details.model !== undefined
+            ? { modelId: bound.actor.details.model }
+            : {}),
+          ...(bound.effort !== undefined ? { effort: bound.effort } : {}),
+          mode: 'workspace-write',
+          title: `Agent: ${brief.step.title}`.slice(0, 256),
+        },
+        {
+          specId: subject.specId,
+          taskIds: subject.kind === 'task' ? [subject.taskId] : [],
+          origin: 'workflow',
+        },
+        { sessionId },
+      );
+    } else if (subject.kind === 'task') {
+      // A Session that continues into a Task's step belongs to that Task too.
+      await sessions.associateTasks(sessionId, subject.specId, [subject.taskId]);
+    }
+
+    if (!(await sessions.hasTurn(sessionId, turnId))) {
+      const message = [
+        brief.text,
+        ...(request.message !== undefined
+          ? ['', '## Note from the owner', untrusted('owner', request.message)]
+          : []),
+      ].join('\n');
+      await sessions.start(
+        request.principal,
+        sessionId,
+        {
+          requestId: derivedId(request.requestId, 'turn-request'),
+          message,
+          mode: 'workspace-write',
+        },
+        { ids: { turnId, invocationId }, agentAttempt: { attemptId: bound.attemptId } },
+      );
+    }
+
+    return {
+      kind: bound.kind,
+      subject,
+      attemptId: bound.attemptId,
+      step: brief.step.id,
+      attempt: brief.attempt,
+      sessionId,
+      turnId,
+      session: bound.fresh ? 'fresh' : 'reuse',
+    };
+  }
+
+  async function startAgentStepExecution(
+    request: AgentStepExecutionRequest,
+  ): Promise<AgentStepExecutionResult> {
+    const { subject, expected } = request;
+    const sessions = dependencies.sessions();
+    const invocationId = derivedId(request.requestId, 'invocation');
+    const turnId = derivedId(request.requestId, 'turn');
+    const continuing = expected.attempt !== undefined;
+    const active = await engine.activeAttempt(subject);
+    const retry = active?.journal.turns.some((turn) => turn.invocationId === invocationId);
+    if (active && retry) {
+      if (!sessions) {
+        unavailable(
+          { kind: 'unavailable', reason: 'provider-not-ready' },
+          'Managed agent Sessions are not enabled in this Runtime.',
+        );
+      }
+
+      // The Engine bound this request's Turn already: complete what a failure left out.
+      return dispatch(sessions, request, {
+        attemptId: active.attemptId,
+        actor: active.journal.actor,
+        fresh: !continuing && active.launch?.session === 'fresh',
+        ...(active.launch?.effort !== undefined ? { effort: active.launch.effort } : {}),
+        kind: continuing ? 'continued' : 'started',
+      });
+    }
+
+    let launch: AgentLaunch;
+    let actor: AgentActor;
+    if (continuing) {
+      if (active?.step !== expected.step || active.attempt !== expected.attempt) {
+        throw new WorkflowError(
+          'WORKFLOW_ATTEMPT_MISMATCH',
+          `The step ${expected.step} has no agent attempt ${String(expected.attempt)} to continue.`,
         );
       }
 
@@ -364,16 +455,15 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
         invalid('A continued Session keeps its agent and model.');
       }
 
-      const journal = await (await dependencies.openAttempts()).journal.read(view.attemptId);
-      if (!journal) {
-        throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'The agent attempt has no journal.');
+      const option = await continueOption(active, subject, await turnState(active), true);
+      if (option.kind === 'unavailable') {
+        unavailable(option, 'The agent cannot continue this attempt now.');
       }
 
-      launch = view.continue.launch;
-      actor = journal.actor;
-      sessionId = view.sessionId;
+      launch = option.launch;
+      actor = active.journal.actor;
     } else {
-      const next = nextOf(projection);
+      const next = nextOf(await engine.actions(subject));
       if (next?.step.id !== expected.step) {
         throw new WorkflowError(
           'WORKFLOW_ATTEMPT_MISMATCH',
@@ -382,7 +472,7 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
       }
 
       if (next.agent.kind === 'unavailable') {
-        throw new AgentUnavailableError(next.agent, 'An agent cannot do this step now.');
+        unavailable(next.agent, 'An agent cannot do this step now.');
       }
 
       const chosen = chosenLaunch(next.agent.launch, request);
@@ -396,125 +486,69 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
         invalid(`Choose a model for ${chosen.provider}.`);
       }
 
+      // Judged with the agent the owner chose, the checkout's baseline included.
       const option = await judged(
         { ...next.agent, launch: chosen },
         subject,
         { step: next.step.id },
-        () => dependencies.openAttempts(),
+        true,
       );
       if (option.kind === 'unavailable') {
-        throw new AgentUnavailableError(option, 'An agent cannot do this step now.');
+        unavailable(option, 'An agent cannot do this step now.');
       }
 
       launch = chosen;
-      if (!coordinator) {
-        throw new AgentUnavailableError(
-          { kind: 'unavailable', reason: 'provider-not-ready', launch },
-          'Managed agent Sessions are not enabled in this Runtime.',
-        );
-      }
-
-      if (launch.session.mode === 'reuse') {
-        sessionId = launch.session.sessionId;
-      } else {
-        fresh = true;
-        ({ sessionId } = await coordinator.create(
-          request.principal,
-          {
-            requestId: derivedId(request.requestId, 'session'),
-            providerId: launch.provider,
-            modelId: launch.model,
-            ...(launch.effort !== undefined ? { effort: launch.effort } : {}),
-            mode: 'workspace-write',
-            title: `Ask agent: ${next.step.title}`.slice(0, 256),
-          },
-          {
-            specId: subject.specId,
-            taskIds: subject.kind === 'task' ? [subject.taskId] : [],
-            origin: 'workflow',
-          },
-        ));
-      }
-
       actor = {
         class: 'agent',
         details: {
           archetype: launch.archetype,
           provider: launch.provider,
           model: launch.model,
-          sessionId,
+          sessionId:
+            launch.session.mode === 'reuse'
+              ? launch.session.sessionId
+              : derivedId(request.requestId, 'session'),
         },
       };
     }
 
-    if (!coordinator) {
-      throw new AgentUnavailableError(
+    if (!sessions) {
+      unavailable(
         { kind: 'unavailable', reason: 'provider-not-ready', launch },
         'Managed agent Sessions are not enabled in this Runtime.',
       );
     }
 
-    const workspaceId = await workspaceIdOf(subject.specId);
+    const workspaceId = await engine.workspaceIdOf(subject.specId);
     if (workspaceId === undefined) {
       throw new WorkflowError('WORKFLOW_SUBJECT_NOT_FOUND', 'The Specification is not available.');
     }
 
-    const attempts = await dependencies.openAttempts();
-    const invocationId = derivedId(request.requestId, 'invocation');
-    const turnId = derivedId(request.requestId, 'turn');
-    const contextDigest = continuing
-      ? undefined
-      : await readAgentContextDigest(workflow, source, subject);
-    const started = await startAgentAttempt(attempts, {
+    const fresh = launch.session.mode === 'fresh' && !continuing;
+    // Nothing exists yet: a refusal here leaves no attempt, no Session and no Turn.
+    const { attemptId } = await engine.start({
       subject,
-      ...(subject.kind === 'specification'
-        ? { archetype: await workflow.references.archetype(subject.specId) }
-        : {}),
       actor,
       expected,
       workspaceId,
       turn: { invocationId, turnId },
-      ...(contextDigest !== undefined ? { contextDigest } : {}),
+      ...(continuing
+        ? {}
+        : {
+            launch: {
+              session: fresh ? 'fresh' : 'reuse',
+              ...(launch.effort !== undefined ? { effort: launch.effort } : {}),
+            },
+          }),
     });
-    const { attemptId } = started.binding;
-    // A Session that continues into a Task's step belongs to that Task too.
-    if (!fresh && subject.kind === 'task') {
-      await coordinator.associateTasks(sessionId, subject.specId, [subject.taskId]);
-    }
 
-    const scope = (await agentAttemptScope(attempts, attemptId))?.scope;
-    if (!scope) {
-      throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'The agent attempt has no journal.');
-    }
-
-    const context = await readStepContext(workflow, source, subject);
-    const brief = [
-      renderAgentBrief({ context, scope }),
-      ...(request.message !== undefined
-        ? ['', '## Note from the owner', untrusted('owner', request.message)]
-        : []),
-    ].join('\n');
-    await coordinator.start(
-      request.principal,
-      sessionId,
-      {
-        requestId: derivedId(request.requestId, 'turn-request'),
-        message: brief,
-        mode: 'workspace-write',
-      },
-      { ids: { turnId, invocationId }, agentAttempt: { attemptId } },
-    );
-
-    return {
-      kind: continuing ? 'continued' : 'started',
-      subject,
+    return dispatch(sessions, request, {
       attemptId,
-      step: context.step.id,
-      attempt: context.attempt,
-      sessionId,
-      turnId,
-      session: fresh ? 'fresh' : 'reuse',
-    };
+      actor,
+      fresh,
+      ...(launch.effort !== undefined ? { effort: launch.effort } : {}),
+      kind: continuing ? 'continued' : 'started',
+    });
   }
 
   /**
@@ -527,8 +561,8 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
     readonly requestId: string;
     readonly attemptId: string;
   }): Promise<StopAgentStepExecutionResult> {
-    const coordinator = dependencies.coordinator();
-    const active = await activeAgentAttempt(await dependencies.openWorkflow(), request.subject);
+    const sessions = dependencies.sessions();
+    const active = await engine.activeAttempt(request.subject);
     if (active?.attemptId !== request.attemptId) {
       throw new WorkflowError(
         'WORKFLOW_ATTEMPT_MISMATCH',
@@ -536,19 +570,18 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
       );
     }
 
-    const journal = await (await dependencies.openAttempts()).journal.read(active.attemptId);
-    const turn = journal?.turns.at(-1);
-    const sessionId = journal?.actor.details.sessionId;
-    if (!turn || !sessionId || !coordinator) {
+    const turn = active.journal.turns.at(-1);
+    const sessionId = active.journal.actor.details.sessionId;
+    if (!turn || !sessionId || !sessions) {
       throw new WorkflowError('WORKFLOW_POSITION_INVALID', 'The agent is not working now.');
     }
 
-    await coordinator.cancel(request.principal, sessionId, turn.turnId, request.requestId);
+    await sessions.cancel(request.principal, sessionId, turn.turnId, request.requestId);
 
     return { attemptId: active.attemptId, sessionId, turnId: turn.turnId };
   }
 
-  return { decorate, startAgentStepExecution, stopAgentStepExecution };
+  return { decorate, check, startAgentStepExecution, stopAgentStepExecution };
 }
 
 export type AgentStepExecution = ReturnType<typeof createAgentStepExecution>;

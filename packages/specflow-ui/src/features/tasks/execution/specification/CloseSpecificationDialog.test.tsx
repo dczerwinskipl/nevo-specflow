@@ -81,6 +81,10 @@ function renderDialog({
     checkAgentExecution: vi.fn(never),
     startAgentExecution: vi.fn(never),
     closePreview,
+    stopAgentExecution: vi.fn(never),
+    retryAttemptCommit: vi.fn(never),
+    confirmResult: vi.fn(never),
+    rejectResult: vi.fn(never),
     closeOccupancy: vi.fn(() => Promise.resolve({ blockers: [] })),
     close,
   };

@@ -3,14 +3,22 @@ import type {
   AgentStepExecutionCheck,
   AgentStepExecutionRequest,
   AgentStepExecutionResult,
+  ConfirmWorkflowRequest,
+  ConfirmWorkflowResult,
   FinishWorkflowRequest,
   FinishWorkflowResult,
   ReevaluateWaitRequest,
   ReevaluateWaitResult,
+  RejectWorkflowRequest,
+  RejectWorkflowResult,
+  RetryAttemptCommitRequest,
+  RetryAttemptCommitResult,
   ReturnWorkflowRequest,
   ReturnWorkflowResult,
   StartWorkflowRequest,
   StartWorkflowResult,
+  StopAgentStepExecutionRequest,
+  StopAgentStepExecutionResult,
 } from '@nevo/specflow-contracts/workflow';
 import type { CloseOccupancy, ClosePreview } from '@nevo/specflow-contracts/specs';
 import type { ApiTransport, ErrorCodeTable } from '../../../api';
@@ -62,6 +70,26 @@ export interface WorkflowExecutionApi {
     subject: WorkflowSubjectRef,
     input: AgentStepExecutionRequest,
   ): Promise<AgentStepExecutionResult>;
+  /** Stop the agent of the active agent attempt (`POST .../workflow/agent-execution/stop`). */
+  stopAgentExecution(
+    subject: WorkflowSubjectRef,
+    input: StopAgentStepExecutionRequest,
+  ): Promise<StopAgentStepExecutionResult>;
+  /** Retry the failed commit of a finished agent attempt (`POST .../workflow/attempt-commit/retry`). */
+  retryAttemptCommit(
+    subject: WorkflowSubjectRef,
+    input: RetryAttemptCommitRequest,
+  ): Promise<RetryAttemptCommitResult>;
+  /** Confirm the agent's result that waits for the owner (`POST .../workflow/confirmation/confirm`). */
+  confirmResult(
+    subject: WorkflowSubjectRef,
+    input: ConfirmWorkflowRequest,
+  ): Promise<ConfirmWorkflowResult>;
+  /** Reject it, with the owner's feedback (`POST .../workflow/confirmation/reject`). */
+  rejectResult(
+    subject: WorkflowSubjectRef,
+    input: RejectWorkflowRequest,
+  ): Promise<RejectWorkflowResult>;
   closePreview(specId: string, signal?: AbortSignal): Promise<ClosePreviewResult>;
   /** What else holds the checkout a Close would remove (running agent Turns), without planning it. */
   closeOccupancy(specId: string, signal?: AbortSignal): Promise<CloseOccupancy>;
@@ -105,6 +133,22 @@ export function createRuntimeWorkflowExecutionApi(transport: ApiTransport): Work
     startAgentExecution: (subject, input) =>
       transport.post(`${workflowBase(subject)}/agent-execution`, input, {
         operation: 'workflow.agent-execution',
+      }),
+    stopAgentExecution: (subject, input) =>
+      transport.post(`${workflowBase(subject)}/agent-execution/stop`, input, {
+        operation: 'workflow.agent-execution-stop',
+      }),
+    retryAttemptCommit: (subject, input) =>
+      transport.post(`${workflowBase(subject)}/attempt-commit/retry`, input, {
+        operation: 'workflow.attempt-commit-retry',
+      }),
+    confirmResult: (subject, input) =>
+      transport.post(`${workflowBase(subject)}/confirmation/confirm`, input, {
+        operation: 'workflow.confirm',
+      }),
+    rejectResult: (subject, input) =>
+      transport.post(`${workflowBase(subject)}/confirmation/reject`, input, {
+        operation: 'workflow.reject',
       }),
     closePreview: (specId, signal) =>
       transport.get(`${specBase(specId)}/close/preview`, {

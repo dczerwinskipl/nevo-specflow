@@ -97,6 +97,11 @@ export function workflowRefusalKey(refusal: WorkflowRefusal) {
     case 'WORKFLOW_POSITION_INVALID':
     case 'WORKFLOW_STATE_CONFLICT':
       return 'workflowExecution.refusal.stateChanged';
+    case 'WORKFLOW_CONFIRMATION_CHANGED':
+      return 'workflowExecution.refusal.confirmationChanged';
+    case 'WORKFLOW_AGENT_UNAVAILABLE':
+    case 'WORKFLOW_BASELINE_CHANGED':
+      return 'workflowExecution.refusal.agentUnavailable';
     case 'WORKFLOW_GATE_UNSATISFIED':
       return 'workflowExecution.refusal.gateUnsatisfied';
     case 'WORKFLOW_TASKS_OPEN':

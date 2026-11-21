@@ -1,0 +1,251 @@
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { NowBlock } from '../NowBlock';
+import { WorkflowExecutionFixture } from '../ProjectWorkflowExecution.stories-support';
+import { taskWorkflowProjection } from '../projections.stories-support';
+import { StoryLocalization } from '../../../../i18n/StoryLocalization';
+import { AttemptCommitNote } from './AttemptCommitNote';
+import { agentOptions } from './agentStart.stories-support';
+
+/*
+ * The Now block while an agent runs a step and after it stops, once per state the Runtime can report
+ * (`agentAttempt.stories-support`), on the routed Full Task page (the Specification Overview for the
+ * result that waits for the owner). Only the Runtime ports are fakes. Each story checks the position
+ * line, the note that explains the state and the actions: the main action and at most one secondary,
+ * never three buttons in one row.
+ */
+const meta = {
+  title: 'SpecFlow/Screens/Agent attempt',
+  component: WorkflowExecutionFixture,
+  excludeStories: ['WorkflowExecutionFixture'],
+  parameters: { layout: 'fullscreen' },
+  args: { scenario: 'attempt-working' },
+} satisfies Meta<typeof WorkflowExecutionFixture>;
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const wait = { timeout: 10000 };
+
+async function findNow(canvasElement: HTMLElement) {
+  return within(canvasElement).findByRole('region', { name: 'Now' }, wait);
+}
+
+/** The labels of the action row's buttons, in order. */
+function actionsOf(now: HTMLElement) {
+  const row = now.querySelector('[data-slot="workflow-actions"]');
+
+  return Array.from(row?.querySelectorAll('button') ?? []).map((button) => button.textContent);
+}
+
+/** Running: the Session in the position line and Stop agent as the one action. */
+export const Running: Story = {
+  play: async ({ canvasElement }) => {
+    const now = await findNow(canvasElement);
+    await expect(await within(now).findByText(/agent working since/, {}, wait)).toBeVisible();
+    await expect(
+      await within(now).findByRole('link', { name: 'Implement token exchange' }, wait),
+    ).toBeVisible();
+    await expect(actionsOf(now)).toEqual(['Stop agent']);
+  },
+};
+
+/** Stopping: the step stays locked until the process is proven ended; nothing says "stopped" yet. */
+export const Stopping: Story = {
+  args: { scenario: 'attempt-stopping' },
+  play: async ({ canvasElement }) => {
+    const now = await findNow(canvasElement);
+    await expect(await within(now).findByText(/stopping the agent/, {}, wait)).toBeVisible();
+    await expect(within(now).getByText(/stays locked until SpecFlow sees/)).toBeVisible();
+    const stopping = within(now).getByRole('button', { name: 'Stopping…' });
+    await expect(stopping).toBeDisabled();
+    await expect(stopping).toHaveAttribute('aria-busy', 'true');
+    await expect(within(now).queryByText(/stopped/)).toBeNull();
+  },
+};
+
+/** Outcome unknown: a danger note, and Check outcome as the main action. */
+export const OutcomeUnknown: Story = {
+  args: { scenario: 'attempt-unknown' },
+  play: async ({ canvasElement }) => {
+    const now = await findNow(canvasElement);
+    const alert = await within(now).findByRole('alert', {}, wait);
+    await expect(
+      within(alert).getByText(/cannot tell whether the agent is still working/),
+    ).toBeVisible();
+    await expect(actionsOf(now)).toEqual(['Check outcome']);
+  },
+};
+
+/** The attempt started but its Session was never created: Continue reads Retry start. */
+export const SessionMissing: Story = {
+  args: { scenario: 'attempt-session-missing' },
+  play: async ({ canvasElement }) => {
+    const now = await findNow(canvasElement);
+    await expect(await within(now).findByText(/the agent did not start/, {}, wait)).toBeVisible();
+    await expect(actionsOf(now)).toEqual(['Retry start']);
+  },
+};
+
+/** Ended without a result: what Continue does, and Continue as the main action. */
+export const EndedWithoutResult: Story = {
+  args: { scenario: 'attempt-stopped' },
+  play: async ({ canvasElement }) => {
+    const now = await findNow(canvasElement);
+    await expect(
+      await within(now).findByText(/stopped without a result at/, {}, wait),
+    ).toBeVisible();
+    await expect(
+      within(now).getByText('The agent stopped without proposing a result.'),
+    ).toBeVisible();
+    await expect(actionsOf(now)).toEqual(['Continue']);
+    await expect(within(now).getByRole('button', { name: 'Continue' })).toBeEnabled();
+  },
+};
+
+/** The agent's result was not accepted: one reason per line, in plain words. */
+export const ProposalRefused: Story = {
+  args: { scenario: 'attempt-refused' },
+  play: async ({ canvasElement }) => {
+    const now = await findNow(canvasElement);
+    const alert = await within(now).findByRole('alert', {}, wait);
+    await expect(
+      within(alert).getByText(
+        /The agent proposed Ready for review, and SpecFlow did not accept it/,
+      ),
+    ).toBeVisible();
+    await expect(within(alert).getByText('specs/active/single-sign-on/notes.md')).toBeVisible();
+    await expect(within(alert).getByText(/Give it a type or delete it/)).toBeVisible();
+    await expect(within(now).getByRole('button', { name: 'Continue' })).toBeEnabled();
+  },
+};
+
+/** Files changed between the Turns: shown before the click, with Continue disabled. */
+export const ContinueRefusedFilesChanged: Story = {
+  args: { scenario: 'attempt-continue-refused' },
+  play: async ({ canvasElement }) => {
+    const now = await findNow(canvasElement);
+    const alert = await within(now).findByRole('alert', {}, wait);
+    await expect(
+      within(alert).getByText('The agent cannot continue: 2 files changed since it stopped.'),
+    ).toBeVisible();
+    await expect(within(alert).getByText('src/auth/refresh.ts')).toBeVisible();
+    await expect(within(alert).getByText(/never counts someone else’s edits/)).toBeVisible();
+    await expect(within(now).getByRole('button', { name: 'Continue' })).toBeDisabled();
+  },
+};
+
+/** The Session the attempt ran in no longer exists: Continue is refused and says why. */
+export const SessionGone: Story = {
+  args: { scenario: 'attempt-session-gone' },
+  play: async ({ canvasElement }) => {
+    const now = await findNow(canvasElement);
+    await expect(
+      await within(now).findByText(/its session no longer exists/, {}, wait),
+    ).toBeVisible();
+    await expect(within(now).getByRole('button', { name: 'Continue' })).toBeDisabled();
+  },
+};
+
+/** The agent's result waits for the owner: the proposal, what Confirm applies, Confirm and Reject. */
+export const ConfirmationPending: Story = {
+  args: { scenario: 'attempt-confirmation' },
+  play: async ({ canvasElement }) => {
+    const now = await findNow(canvasElement);
+    await expect(
+      await within(now).findByText(/Waiting for your confirmation/, {}, wait),
+    ).toBeVisible();
+    await expect(within(now).getByText('Tasks approved')).toBeVisible();
+    await expect(
+      within(now).getByText(/Confirming approves the 5 draft tasks \(t-01 to t-05\)/),
+    ).toBeVisible();
+    await expect(actionsOf(now)).toEqual(['Confirm', 'Reject']);
+  },
+};
+
+/** Reject needs the owner's feedback before it can be sent. */
+export const ConfirmationReject: Story = {
+  args: { scenario: 'attempt-confirmation' },
+  play: async ({ canvasElement }) => {
+    const now = await findNow(canvasElement);
+    await userEvent.click(await within(now).findByRole('button', { name: 'Reject' }, wait));
+    const dialog = await within(document.body).findByRole('dialog', {}, wait);
+    await expect(within(dialog).getByText('Reject the agent’s result')).toBeVisible();
+    const reject = within(dialog).getByRole('button', { name: 'Reject' });
+    await expect(reject).toBeDisabled();
+    await userEvent.type(within(dialog).getByRole('textbox'), 'Split the audit log task.');
+    await waitFor(() => expect(reject).toBeEnabled());
+  },
+};
+
+/*
+ * What became of the work of the attempt that finished the step before, in the Now block of the step
+ * that follows. The projection does not carry it yet, so these two stories compose the block with the
+ * note the Task page will show once the read does.
+ */
+function FinishedNow({ failed }: { readonly failed: boolean }) {
+  return (
+    <StoryLocalization locale="en">
+      <div className="@container/app-content mx-auto max-w-[40rem] p-6">
+        <NowBlock
+          projection={taskWorkflowProjection('ready-agent', { agent: agentOptions.independent })}
+          headingId="now-story"
+          links={{}}
+          note={
+            <AttemptCommitNote
+              retrying={false}
+              error={undefined}
+              onRetry={() => undefined}
+              commit={
+                failed
+                  ? {
+                      state: 'failed',
+                      step: 'implement',
+                      attempt: 2,
+                      stepTitle: 'Implementation',
+                      nextTitle: 'Review',
+                      code: 'COMMIT_BLOCKED',
+                      branch: 'nevo-1/single-sign-on',
+                      paths: [
+                        'src/auth/refresh.ts',
+                        'src/auth/state.ts',
+                        'src/auth/refresh.test.ts',
+                        'specs/active/single-sign-on/tasks/t-04/task.md',
+                        'specs/active/single-sign-on/tasks/t-04/screens.md',
+                      ],
+                    }
+                  : {
+                      state: 'committed',
+                      stepTitle: 'Implementation',
+                      sha: '3f2a9c1',
+                      branch: 'nevo-1/single-sign-on',
+                      documents: 2,
+                      files: 3,
+                    }
+              }
+            />
+          }
+        />
+      </div>
+    </StoryLocalization>
+  );
+}
+
+export const FinishedCommitted: StoryObj<typeof FinishedNow> = {
+  render: () => <FinishedNow failed={false} />,
+  play: async ({ canvasElement }) => {
+    const now = await findNow(canvasElement);
+    await expect(within(now).getByText(/Committed/)).toBeVisible();
+    await expect(within(now).getByText('3f2a9c1')).toBeVisible();
+  },
+};
+
+export const FinishedCommitFailed: StoryObj<typeof FinishedNow> = {
+  render: () => <FinishedNow failed />,
+  play: async ({ canvasElement }) => {
+    const now = await findNow(canvasElement);
+    const alert = within(now).getByRole('alert');
+    await expect(within(alert).getByText('COMMIT_BLOCKED')).toBeVisible();
+    await expect(within(alert).getByText(/Run with agent cannot start Review/)).toBeVisible();
+    await expect(within(alert).getByRole('button', { name: 'Retry commit' })).toBeVisible();
+  },
+};

@@ -24,6 +24,7 @@ import {
 } from '../pages/ProjectTaskAuthoring.stories-support';
 import { managedProviders } from '../../sessions/start/catalogue/providerDescriptors.stories-support';
 import type { WorkflowExecutionApi } from './api';
+import { agentAttemptProjection, type AttemptCase } from './agent/agentAttempt.stories-support';
 import {
   SESSION_ID,
   SESSION_TITLE,
@@ -79,7 +80,14 @@ export type CloseStoryScenario =
  */
 export type AgentStoryScenario = `agent-${AgentCase}` | 'agent-refused';
 
+/**
+ * The step run by an agent in each state its Now block explains (`agent/agentAttempt.stories-support`);
+ * `attempt-confirmation` is the Specification Overview whose Breakdown result waits for the owner.
+ */
+export type AttemptStoryScenario = `attempt-${AttemptCase}`;
+
 export type WorkflowStoryScenario =
+  | AttemptStoryScenario
   | TaskWorkflowScenario
   | AgentStoryScenario
   | 'start-drift'
@@ -104,6 +112,7 @@ const closeScenarios: readonly string[] = [
   'close-closing',
 ];
 const specScenarios: readonly string[] = [
+  'attempt-confirmation',
   'waiting',
   'close-blocked',
   'abandoned',
@@ -310,11 +319,13 @@ function closePreviewOf(scenario: WorkflowStoryScenario) {
 
 /** The projection scenario behind a Specification story. */
 function specificationScenario(scenario: WorkflowStoryScenario): SpecificationWorkflowScenario {
-  return closeScenarios.includes(scenario)
-    ? 'completed'
-    : specScenarios.includes(scenario)
-      ? (scenario as SpecificationWorkflowScenario)
-      : 'waiting';
+  return scenario === 'attempt-confirmation'
+    ? 'waiting'
+    : closeScenarios.includes(scenario)
+      ? 'completed'
+      : specScenarios.includes(scenario)
+        ? (scenario as SpecificationWorkflowScenario)
+        : 'waiting';
 }
 
 export function refusal(code: string, data: Record<string, unknown> = {}) {
@@ -377,11 +388,17 @@ function services(scenario: WorkflowStoryScenario) {
             ? 'spike-gate-met'
             : 'spike-gate'
           : (scenario as TaskWorkflowScenario);
+  const attemptOf = (): AttemptCase | undefined =>
+    scenario.startsWith('attempt-')
+      ? (scenario.slice('attempt-'.length) as AttemptCase)
+      : undefined;
   const taskProjection = (): WorkflowActionProjection =>
-    taskWorkflowProjection(taskScenario(), {
-      version: state.version,
-      ...(agentCase ? { agent: projectedAgent(agentCase) } : {}),
-    });
+    attemptOf()
+      ? agentAttemptProjection(attemptOf()!)
+      : taskWorkflowProjection(taskScenario(), {
+          version: state.version,
+          ...(agentCase ? { agent: projectedAgent(agentCase) } : {}),
+        });
   const authoring = authoringApi('started');
   const workflowExecutionApi: WorkflowExecutionApi = {
     start: (_subject, input) => {
@@ -412,6 +429,10 @@ function services(scenario: WorkflowStoryScenario) {
             refusal('WORKFLOW_AGENT_UNAVAILABLE', { details: { agent: agentOptions.dirty } }),
           )
         : never(),
+    stopAgentExecution: never,
+    retryAttemptCommit: never,
+    confirmResult: never,
+    rejectResult: never,
     closePreview: () => closePreviewOf(scenario),
     // An agent Session still works in the worktree of the blocked Specification.
     closeOccupancy: () =>
@@ -470,7 +491,11 @@ function services(scenario: WorkflowStoryScenario) {
     taskAuthoringApi: {
       ...authoring,
       specificationActions: () =>
-        Promise.resolve({ ...specificationWorkflowProjection(specificationScenario(scenario)) }),
+        Promise.resolve(
+          scenario === 'attempt-confirmation'
+            ? agentAttemptProjection('confirmation')
+            : { ...specificationWorkflowProjection(specificationScenario(scenario)) },
+        ),
       taskActions: () => Promise.resolve(taskProjection()),
       addDocuments: () => {
         state.findings = true;
@@ -606,34 +631,39 @@ async function specificationWorkspace(
 ): Promise<SpecificationWorkspaceResponse> {
   const plain = await workspaceResponse('draft-problems');
   // Run with agent reads the branch the commit lands on and the title of the Session it continues.
-  const base: SpecificationWorkspaceResponse = agentCaseOf(scenario)
-    ? {
-        ...plain,
-        sections: {
-          ...plain.sections,
-          repository: {
-            state: 'available',
-            data: { repositoryName: 'acme-portal', branch: 'nevo-1/single-sign-on', attention: [] },
-          },
-          sessions: {
-            state: 'available',
-            data: {
-              items: [
-                {
-                  id: SESSION_ID,
-                  title: SESSION_TITLE,
-                  status: 'quiet',
-                  taskIds: [TASK],
-                  providerId: 'claude',
-                  updatedAt: '2026-11-13T10:00:00.000Z',
-                },
-              ],
-              attention: [],
+  const base: SpecificationWorkspaceResponse =
+    agentCaseOf(scenario) || scenario.startsWith('attempt-')
+      ? {
+          ...plain,
+          sections: {
+            ...plain.sections,
+            repository: {
+              state: 'available',
+              data: {
+                repositoryName: 'acme-portal',
+                branch: 'nevo-1/single-sign-on',
+                attention: [],
+              },
+            },
+            sessions: {
+              state: 'available',
+              data: {
+                items: [
+                  {
+                    id: SESSION_ID,
+                    title: SESSION_TITLE,
+                    status: 'quiet',
+                    taskIds: [TASK],
+                    providerId: 'claude',
+                    updatedAt: '2026-11-13T10:00:00.000Z',
+                  },
+                ],
+                attention: [],
+              },
             },
           },
-        },
-      }
-    : plain;
+        }
+      : plain;
   if (base.sections.tasks.state !== 'available') {
     return base;
   }

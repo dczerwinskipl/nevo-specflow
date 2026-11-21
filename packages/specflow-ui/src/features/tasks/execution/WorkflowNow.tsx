@@ -22,6 +22,8 @@ import { closableInFinishDialog } from './FinishTasksOpen';
 import type { GateAction } from './GateList';
 import { NowBlock } from './NowBlock';
 import { AgentStartDialog } from './agent/AgentStartDialog';
+import { useAgentAttemptNow } from './agent/AgentAttemptNow';
+import type { AttemptCommitView } from './agent/AttemptCommitNote';
 import { offersAgent } from './agent/agentOption';
 import { ReturnStepDialog } from './ReturnStepDialog';
 import { StartTaskDialog, type PinPreview } from './StartTaskDialog';
@@ -72,6 +74,12 @@ export interface WorkflowNowProps {
   readonly hold?: { readonly reason?: string };
   /** Opens the subject's workflow history from the ⋯ menu. */
   readonly onOpenHistory?: () => void;
+  /**
+   * What became of the work of the agent attempt that finished the step before (its commit), when
+   * the read says. The projection does not carry it yet; the attempt's `work.commit` and history
+   * will (T15), and the screens pass it from there.
+   */
+  readonly attemptCommit?: AttemptCommitView;
   /**
    * The Specification Overview's own parts: Start workflow, New task beside Finish step at a step
    * that produces Tasks, the wait step's Task progress, and a Requires attention "return" that
@@ -127,10 +135,17 @@ export function WorkflowNow({
   onOpenHistory,
   hold,
   specification,
+  attemptCommit,
 }: WorkflowNowProps) {
   const { t } = useTranslation();
   const commands = useWorkflowCommands(subject);
   const { actions, position } = projection;
+  const agentNow = useAgentAttemptNow({
+    subject,
+    projection,
+    links,
+    ...(attemptCommit ? { attemptCommit } : {}),
+  });
   const finish = actions.finish;
   const attemptKey = finish ? attemptKeyOf(finish) : '';
   const [dialog, setDialog] = useState<'start' | 'finish' | 'return' | 'agent'>();
@@ -374,6 +389,8 @@ export function WorkflowNow({
       </Button>
     ) : undefined) ??
     primaryAction ??
+    // The agent's attempt (or its result waiting for the owner) has its own actions.
+    agentNow?.actions ??
     // Distinct keys: the button that opened Finish must never become Start. When a finish whose
     // answer was lost closes its dialog, the dialog returns focus to its opener; a reused element
     // would then be the next step's Start, and one Enter or Space would start a step nobody chose.
@@ -511,6 +528,7 @@ export function WorkflowNow({
 
   const note = (
     <>
+      {agentNow?.note}
       {attemptedWait && commands.reevaluateWait.isError ? (
         <WorkflowRefusalAlert error={commands.reevaluateWait.error} />
       ) : null}
@@ -576,17 +594,20 @@ export function WorkflowNow({
           )
         }
         starting={starting}
-        menu={menu}
+        // The agent's attempt names its own state; a stop that waits for proof locks the menu.
+        menu={agentNow?.keepsMenu === false ? undefined : menu}
         summary={summary}
+        {...(agentNow?.positionLine ? { positionLine: agentNow.positionLine } : {})}
+        showHandoff={!specification && agentNow?.showHandoff !== false}
         {...(hold ? { hold } : {})}
         {...(specification
           ? {
-              showHandoff: false,
               waitingContent: specification.waitingContent,
               titleNote: specification.titleNote,
             }
           : {})}
       />
+      {agentNow?.dialogs}
       {firstStart && preview ? (
         <StartTaskDialog
           open={dialog === 'start'}

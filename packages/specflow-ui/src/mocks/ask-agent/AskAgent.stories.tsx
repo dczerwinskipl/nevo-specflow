@@ -11,7 +11,7 @@ const meta = {
   title: 'SpecFlow/Screens/Ask agent (mock)',
   component: AskAgentMock,
   parameters: { layout: 'fullscreen', chromatic: { disableSnapshot: true }, a11y: { test: 'off' } },
-  args: { state: 'running' },
+  args: { state: 'return-requested' },
 } satisfies Meta<typeof AskAgentMock>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -21,24 +21,14 @@ export const CloseUncommittedChanges: Story = { args: { state: 'close-uncommitte
 
 /* 3. The entry and the start dialog are real now: SpecFlow/Screens/Run with agent. */
 
-/* 4. Running attempt */
-export const Running: Story = {};
-export const Stopping: Story = { args: { state: 'stopping' } };
+/* 4. Running attempt: Stop, outcome unknown, finished, refused, confirmation are real now: SpecFlow/Screens/Agent attempt. */
 export const ReturnRequested: Story = { args: { state: 'return-requested' } };
-export const OutcomeUnknown: Story = { args: { state: 'outcome-unknown' } };
 /** Another subject (the Overview) while an agent's outcome is unknown: every change waits. */
 export const OutcomeUnknownOtherSubject: Story = { args: { state: 'outcome-unknown-other' } };
 
 /* 5. After the agent stops */
-export const FinishedCommitted: Story = { args: { state: 'finished-committed' } };
-export const FinishedCommitFailed: Story = { args: { state: 'finished-commit-failed' } };
-export const EndedWithoutFinish: Story = { args: { state: 'ended-without-finish' } };
-export const ProposalRefused: Story = { args: { state: 'proposal-refused' } };
-export const ContinueRefusedFilesChanged: Story = { args: { state: 'continue-refused' } };
 
 /* 6. Pending owner confirmation (D17) */
-export const ConfirmationPending: Story = { args: { state: 'confirm-pending' } };
-export const ConfirmationReject: Story = { args: { state: 'confirm-reject' } };
 
 /* 7. Take over and the attempt's history */
 export const TakeOver: Story = { args: { state: 'take-over' } };

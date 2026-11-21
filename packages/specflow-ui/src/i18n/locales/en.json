@@ -2747,7 +2747,9 @@
       "localConfigModified": "The worktree's local configuration (.nevo/local/config.yaml) was changed, added by hand or cannot be read. Move or delete it, then close again.",
       "busy": "The specification is busy with another change. Try again in a moment.",
       "draftConflict": "A draft you keep depends on a draft you unticked. Keep both, or untick both.",
-      "tasksOpen": "The specification cannot complete while tasks are open: {{tasks}}. Finish or cancel them first."
+      "tasksOpen": "The specification cannot complete while tasks are open: {{tasks}}. Finish or cancel them first.",
+      "confirmationChanged": "What Confirm would apply changed since you opened this. Read the summary again, then confirm.",
+      "agentUnavailable": "The agent cannot continue now. The reason is shown above."
     },
     "time": {
       "today": "Today {{time}}",
@@ -2759,6 +2761,107 @@
       "removed": "Removes step {{step}}",
       "renamed": "Renames step {{from}} to {{to}}",
       "transitions": "Changes where {{step}} leads"
+    },
+    "agentAttempt": {
+      "sessionFallback": "the agent’s session",
+      "stop": "Stop agent",
+      "stopping": "Stopping…",
+      "checkOutcome": "Check outcome",
+      "continue": "Continue",
+      "retryStart": "Retry start",
+      "line": {
+        "working": "Attempt {{attempt}} · agent working since {{since}}",
+        "stopping": "Attempt {{attempt}} · stopping the agent",
+        "unknown": "Attempt {{attempt}} · the agent’s outcome is unknown",
+        "sessionMissing": "Attempt {{attempt}} · the agent did not start",
+        "stopped": "Attempt {{attempt}} · the agent stopped without a result at {{at}}",
+        "refused": "Attempt {{attempt}} · the agent’s result was not accepted",
+        "applying": "Attempt {{attempt}} · the agent proposed a result"
+      },
+      "stoppingNote": "Asked the agent to stop. {{step}} stays locked until SpecFlow sees its process has ended; then you can continue or return.",
+      "unknown": {
+        "title": "SpecFlow cannot tell whether the agent is still working.",
+        "body": "Its process may still be running, so nothing can be saved anywhere in this project until that is known: steps, documents and tasks of every specification wait. Check outcome asks the machine running SpecFlow again. If it still cannot tell, end the agent’s process there, then check again."
+      },
+      "missing": {
+        "title": "The agent did not start.",
+        "body": "Its session could not be created, so it has done nothing yet. Retry start asks again."
+      },
+      "noResult": {
+        "title": "The agent stopped without proposing a result.",
+        "body": "Continue lets it go on in the same session."
+      },
+      "applying": "The agent proposed {{result}}. SpecFlow is applying it.",
+      "refused": {
+        "title": "The agent proposed {{result}}, and SpecFlow did not accept it:",
+        "undeclared": "<code>{{path}}</code> does not match what the agent listed as its changes.",
+        "unregistered": "<code>{{path}}</code> has no document type. Give it a type or delete it.",
+        "engineFile": "<code>{{path}}</code> is a file SpecFlow wrote, and it was edited outside SpecFlow.",
+        "nested": "<code>{{path}}</code> is a Git repository inside this checkout.",
+        "gate": "A condition for this result is not met.",
+        "tasksOpen": "Tasks are still open.",
+        "other": "SpecFlow did not accept it",
+        "next": "Continue lets the agent fix this in the same session."
+      },
+      "changed": {
+        "title_one": "The agent cannot continue: {{count}} file changed since it stopped.",
+        "title_few": "The agent cannot continue: {{count}} files changed since it stopped.",
+        "title_many": "The agent cannot continue: {{count}} files changed since it stopped.",
+        "title_other": "The agent cannot continue: {{count}} files changed since it stopped.",
+        "body": "SpecFlow never counts someone else’s edits as the agent’s work. Undo these changes, or commit them yourself (they become your commit, not the agent’s), then continue."
+      },
+      "gone": {
+        "title": "The agent cannot continue: its session no longer exists.",
+        "body": "SpecFlow does not start another session in its place. Return to an earlier step from the menu."
+      }
+    },
+    "confirmation": {
+      "line": "Waiting for your confirmation · the agent finished {{at}}",
+      "proposes": "The agent proposes",
+      "applies": "Confirming {{what}}.",
+      "movesTo": "moves to {{step}}",
+      "ends": {
+        "completed": "completes the workflow",
+        "abandoned": "ends the workflow as abandoned"
+      },
+      "approvesDrafts_one": "approves the draft task {{first}}",
+      "approvesDrafts_few": "approves the {{count}} draft tasks ({{first}} to {{last}})",
+      "approvesDrafts_many": "approves the {{count}} draft tasks ({{first}} to {{last}})",
+      "approvesDrafts_other": "approves the {{count}} draft tasks ({{first}} to {{last}})",
+      "recordsDecisions_one": "records the agent’s decision on {{count}} task",
+      "recordsDecisions_few": "records the agent’s decisions on {{count}} tasks",
+      "recordsDecisions_many": "records the agent’s decisions on {{count}} tasks",
+      "recordsDecisions_other": "records the agent’s decisions on {{count}} tasks",
+      "confirm": "Confirm",
+      "confirming": "Confirming…",
+      "reject": "Reject",
+      "rejectTitle": "Reject the agent’s result",
+      "rejectDescription": "{{step}} goes back to ready to start, with your feedback as its hand-off. The agent’s proposal {{result}} is not applied.",
+      "rejectDescriptionDrafts": "{{step}} goes back to ready to start, with your feedback as its hand-off. The agent’s proposal {{result}} is not applied; the draft tasks and documents it wrote stay as they are.",
+      "feedbackLabel": "What should change (required)",
+      "feedbackHint": "The next attempt reads it first, whether you start it yourself or run it with an agent."
+    },
+    "attemptCommit": {
+      "committed": "The agent finished {{step}}. Committed <code>{{sha}}</code>. Documents: {{documents}}, files: {{files}}.",
+      "committedOn": "The agent finished {{step}}. Committed <code>{{sha}}</code> on <code>{{branch}}</code>. Documents: {{documents}}, files: {{files}}.",
+      "failed": "<strong>{{step}} is finished, but its commit failed: {{reason}} (<code>{{code}}</code>).</strong>",
+      "reason": {
+        "branchProtected": "the branch is protected",
+        "blocked": "a Git hook or rule in this repository refused it",
+        "other": "Git could not complete it"
+      },
+      "staysOn_one": "This file stays uncommitted on <code>{{branch}}</code>, and Close lists it until it is committed.",
+      "staysOn_few": "These {{count}} files stay uncommitted on <code>{{branch}}</code>, and Close lists them until they are committed.",
+      "staysOn_many": "These {{count}} files stay uncommitted on <code>{{branch}}</code>, and Close lists them until they are committed.",
+      "staysOn_other": "These {{count}} files stay uncommitted on <code>{{branch}}</code>, and Close lists them until they are committed.",
+      "stays_one": "This file stays uncommitted, and Close lists it until it is committed.",
+      "stays_few": "These {{count}} files stay uncommitted, and Close lists them until they are committed.",
+      "stays_many": "These {{count}} files stay uncommitted, and Close lists them until they are committed.",
+      "stays_other": "These {{count}} files stay uncommitted, and Close lists them until they are committed.",
+      "blocksNext": "Until then Run with agent cannot start {{next}}: an agent starts only from a committed checkout.",
+      "blocksAgent": "Until then Run with agent cannot start the next step: an agent starts only from a committed checkout.",
+      "retry": "Retry commit",
+      "retrying": "Retrying…"
     }
   },
   "taskOverview": {

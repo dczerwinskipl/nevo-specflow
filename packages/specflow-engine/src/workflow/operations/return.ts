@@ -3,6 +3,7 @@ import { decide, type RunPosition } from '@nevo/workflow';
 import { WorkflowError } from '../errors';
 import { assertFeedback } from '../input-schema';
 import type { OwnerActor, WorkflowSubject } from '../state/model';
+import type { ExecutionChange, ExecutionSnapshot } from '../state/store';
 import { assertOwner } from './actors';
 import { advance, applyEffects, type AdvanceContext } from './advance';
 import {
@@ -49,40 +50,68 @@ export function returnToStep(
 ): Promise<ReturnToStepResult> {
   return dependencies.serialize(async () => {
     assertOwner(request.actor, 'returns a run to an earlier step');
-    const { subject } = request;
-    const snapshot = await dependencies.store.read(subject.specId);
-    const held =
-      subject.kind === 'task'
-        ? loadTask(dependencies.catalogue, snapshot, subject.taskId).task
-        : undefined;
-    if (held && held.status !== 'ready') {
-      throw new WorkflowError(
-        'WORKFLOW_TASK_BLOCKED',
-        `The Task "${held.taskId}" is ${held.status}; only a ready Task can return.`,
-      );
-    }
+    const plan = planReturn(
+      dependencies,
+      await dependencies.store.read(request.subject.specId),
+      request,
+    );
+    await dependencies.store.apply(request.subject.specId, plan.change);
 
-    const loaded = loadSubject(dependencies.catalogue, snapshot, subject);
-    assertFeedback(request.feedback);
-    const context: AdvanceContext = {
-      set: new ExecutionWorkingSet(snapshot, dependencies.catalogue),
-      catalogue: dependencies.catalogue,
-      at: isoNow(dependencies),
-    };
-    const decision = decide(loaded.definition, loaded.run, {
-      kind: 'return',
-      at: context.at,
-      step: request.step,
-      ...(request.feedback !== undefined ? { feedback: request.feedback } : {}),
-    });
-    context.set.setRun(subject, decision.nextRun);
-    applyEffects(context, decision.declaredEffects);
-    const continuation = advance(context, subject, loaded.definition, decision.intent);
-    await dependencies.store.apply(subject.specId, {
+    return plan.result;
+  });
+}
+
+/** A return planned on a snapshot, nothing written: the one change that records it, and its result. */
+export interface ReturnPlan {
+  readonly change: ExecutionChange;
+  readonly result: ReturnToStepResult;
+}
+
+/**
+ * Every rule of a return, judged on `snapshot` without writing anything. The caller holds the
+ * `serialize` section the snapshot was read in: an owner's return applies the change at once; the
+ * finalize section of an agent attempt applies the owner's recorded return request (`workflow/agent`).
+ */
+export function planReturn(
+  dependencies: WorkflowDependencies,
+  snapshot: ExecutionSnapshot,
+  request: ReturnToStepInput,
+): ReturnPlan {
+  assertOwner(request.actor, 'returns a run to an earlier step');
+  const { subject } = request;
+  const held =
+    subject.kind === 'task'
+      ? loadTask(dependencies.catalogue, snapshot, subject.taskId).task
+      : undefined;
+  if (held && held.status !== 'ready') {
+    throw new WorkflowError(
+      'WORKFLOW_TASK_BLOCKED',
+      `The Task "${held.taskId}" is ${held.status}; only a ready Task can return.`,
+    );
+  }
+
+  const loaded = loadSubject(dependencies.catalogue, snapshot, subject);
+  assertFeedback(request.feedback);
+  const context: AdvanceContext = {
+    set: new ExecutionWorkingSet(snapshot, dependencies.catalogue),
+    catalogue: dependencies.catalogue,
+    at: isoNow(dependencies),
+  };
+  const decision = decide(loaded.definition, loaded.run, {
+    kind: 'return',
+    at: context.at,
+    step: request.step,
+    ...(request.feedback !== undefined ? { feedback: request.feedback } : {}),
+  });
+  context.set.setRun(subject, decision.nextRun);
+  applyEffects(context, decision.declaredEffects);
+  const continuation = advance(context, subject, loaded.definition, decision.intent);
+
+  return {
+    change: {
       ...context.set.change(),
       summary: `return to step ${request.step}${ofSubject(subject)}`,
-    });
-
-    return { subject, position: context.set.run(subject).position, continuation };
-  });
+    },
+    result: { subject, position: context.set.run(subject).position, continuation },
+  };
 }

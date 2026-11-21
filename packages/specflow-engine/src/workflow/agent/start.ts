@@ -196,7 +196,7 @@ async function bindTurn(
   if (!binding) {
     throw new WorkflowError(
       'WORKFLOW_EXECUTOR_NOT_ALLOWED',
-      `The active attempt of "${active.step}" was not started by agent step execution; it cannot get a new Turn.`,
+      `The active attempt of "${active.step}" was not started with Run with agent; it cannot get a new Turn.`,
     );
   }
 

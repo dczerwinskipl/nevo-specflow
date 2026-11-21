@@ -134,7 +134,7 @@ export type StoreCommand =
       nativeWorkspaceIdentity?: string;
       effectBinding?: string;
       /**
-       * In-process only (Ask agent): the Turn and invocation ids the trusted host chose before the
+       * In-process only (agent step execution): the Turn and invocation ids the trusted host chose before the
        * Turn exists, because the Engine binds them to an agent attempt first. Never from a request.
        */
       ids?: { turnId: string; invocationId: string };

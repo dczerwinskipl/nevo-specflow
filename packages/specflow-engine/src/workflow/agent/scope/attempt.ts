@@ -43,7 +43,7 @@ export async function agentAttemptScope(
 }
 
 /**
- * The agent attempt the subject's active step is in (started by Ask agent), or `undefined` when no
+ * The agent attempt the subject's active step is in (started by agent step execution), or `undefined` when no
  * step is active or its attempt is a person's. Read-only and lock-free.
  */
 export async function activeAgentAttempt(

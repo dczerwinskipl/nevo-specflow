@@ -41,7 +41,7 @@ import { createEngineBrokerWorkflow } from './broker/workflow';
 import { createCapabilityRegistry } from './capability/registry';
 import { redactCapabilities } from './capability/redaction';
 
-/** The Ask agent routes of a Runtime without agent execution (no Engine, the demo): 503. */
+/** The agent step execution routes of a Runtime without agent execution (no Engine, the demo): 503. */
 export function createUnavailableAgentStepExecutionFeature(): RuntimeFeature {
   return {
     authorizationResources: [],
@@ -67,7 +67,7 @@ export interface AgentExecutionFeatureOptions {
 
 /**
  * Agent execution (D11, D12): the invocation capability of each write Turn and the local broker
- * through which that Turn's product CLI writes, as the Turn's own claim; Ask agent (start, Continue,
+ * through which that Turn's product CLI writes, as the Turn's own claim; agent step execution (start, Continue,
  * Stop) and the finalize of an agent attempt's Turn when its claim settles. Sessions receives
  * `capabilities` and `settleAgentAttempt`; the workflow routes receive `agentAvailability`.
  */
@@ -78,7 +78,7 @@ export function createAgentExecutionFeature(
   readonly settleAgentAttempt: AgentAttemptSettlement;
   readonly agentTurns: AgentTurnAdmission;
   readonly agentAvailability: ReturnType<typeof createAgentStepExecution>['decorate'];
-  /** Ask agent, Continue and Stop (the owner routes call it). */
+  /** Agent step execution, Continue and Stop (the owner routes call it). */
   readonly agentStepExecution: ReturnType<typeof createAgentStepExecution>;
   close(): Promise<void>;
 } {

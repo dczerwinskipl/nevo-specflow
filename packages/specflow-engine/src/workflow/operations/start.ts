@@ -43,7 +43,7 @@ export interface StartOptions {
    */
   readonly actor: WorkflowActor;
   /**
-   * The position the caller showed and asks to start (Ask agent): checked before anything is written,
+   * The position the caller showed and asks to start (agent step execution): checked before anything is written,
    * so a stale request never starts or resumes another attempt (`WORKFLOW_ATTEMPT_MISMATCH`).
    */
   readonly expected?: ExpectedPosition;
@@ -51,7 +51,7 @@ export interface StartOptions {
   readonly attemptData?: AgentAttemptBinding;
   /**
    * Called once every check of the start passed (expected position, actor, Task readiness, entry
-   * gates) and before anything is written: Ask agent's baseline admission. A throw refuses the start.
+   * gates) and before anything is written: agent step execution's baseline admission. A throw refuses the start.
    */
   readonly admit?: () => Promise<void>;
 }

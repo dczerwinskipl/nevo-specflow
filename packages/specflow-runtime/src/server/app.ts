@@ -230,7 +230,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   const workspaceOccupancy = createWorkspaceOccupancy();
   // Project mode: a write Turn of a Specification's Session gets an invocation capability and
   // writes through the local agent broker (D11).
-  // Ask agent: the Session coordinator is read at request time (the Sessions feature owns it).
+  // Agent step execution: the Session coordinator is read at request time (the Sessions feature owns it).
   const sessionsHolder: { runtime?: SessionsRuntime } = {};
   const agentExecution =
     mode === 'project' && engine
@@ -414,7 +414,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       projectId,
     }),
     sessionsFeature,
-    // Without an Engine the Ask agent routes answer 503, like the workflow routes.
+    // Without an Engine the agent step execution routes answer 503, like the workflow routes.
     agentExecution ?? createUnavailableAgentStepExecutionFeature(),
     createSessionAssociationsFeature({
       associations,

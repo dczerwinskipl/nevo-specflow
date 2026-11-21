@@ -63,7 +63,7 @@ export interface Invocation {
     readonly secrets: readonly string[];
   };
   /**
-   * The provider's own allowlist for this Turn (Ask agent, D20): tool rules it may use without a
+   * The provider's own allowlist for this Turn (agent step execution, D20): tool rules it may use without a
    * prompt, already limited to the rules the Runtime recognises. Never merged with owner or project
    * permissions. Read only by a driver with `supportsPermissionAllowlist`.
    */

@@ -382,7 +382,7 @@ describe('agent finish proposal', () => {
     expect(again.proposal.refusal).toBeUndefined();
   });
 
-  it('refuses a plain agent finish of an Ask agent attempt, but not the proposal', async () => {
+  it('refuses a plain agent finish of an agent step execution attempt, but not the proposal', async () => {
     const { dependencies, workflow } = agentDependencies();
     await startAgentAttempt(dependencies, startInput());
 

@@ -9,7 +9,7 @@ import { claudeMode, toolsForClaudeMode } from './modes';
  * The `--settings` of a Turn. Setting sources are off (`--setting-sources ''`), so no owner or
  * project permission is ever merged. Bash always asks: `ask` outranks `allow`, and an allowlisted
  * product CLI command is approved by the host instead (see `createClaudeOperation`). Only the scoped
- * read-tool rules of an Ask agent Turn become native `allow` rules.
+ * read-tool rules of an agent step execution Turn become native `allow` rules.
  */
 export function claudeSettings(permissions?: { readonly allow: readonly string[] }): string {
   const allow = (

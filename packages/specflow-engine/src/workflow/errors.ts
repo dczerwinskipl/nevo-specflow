@@ -57,7 +57,7 @@ export const WORKFLOW_ERROR_CODES = [
    */
   'WORKFLOW_CONFIRMATION_CHANGED',
   /**
-   * Ask agent attribution (B3, B6), thrown as `AttributionRefusalError` naming the paths: the
+   * Agent step execution attribution (B3, B6), thrown as `AttributionRefusalError` naming the paths: the
    * checkout has changes the Engine cannot attribute at an agent attempt's start
    * (`WORKFLOW_DIRTY_BASELINE`), files changed since the attempt's last Turn ended at Continue
    * (`WORKFLOW_BASELINE_CHANGED`), and at an agent finish new files of a Specification directory

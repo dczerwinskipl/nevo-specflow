@@ -14,7 +14,7 @@ export interface InvocationCapabilityBinding {
   /** The Turn's provider and model: the agent its writes are made as. */
   readonly provider: string;
   readonly model?: string;
-  /** The agent attempt the Turn belongs to (Ask agent): its scope is the attempt's. */
+  /** The agent attempt the Turn belongs to (agent step execution): its scope is the attempt's. */
   readonly attemptId?: string;
 }
 

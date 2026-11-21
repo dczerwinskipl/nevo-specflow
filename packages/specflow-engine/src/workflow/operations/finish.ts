@@ -179,7 +179,7 @@ export type FinishPlan =
 
 export interface FinishPlanOptions {
   /**
-   * The finish is an agent's proposal of an Ask agent attempt, or its finalize: the only path that
+   * The finish is an agent's proposal of an agent step execution attempt, or its finalize: the only path that
    * finishes such an attempt for its agent. A proposal that takes a decision only the owner takes
    * (D17) is planned held for the owner's confirmation (`awaiting-confirmation`); any other agent
    * finish taking one is refused with `WORKFLOW_OWNER_DECISION_REQUIRED`.
@@ -188,7 +188,7 @@ export interface FinishPlanOptions {
 }
 
 /**
- * An attempt started by Ask agent advances only through its proposal and finalize (the agent's own
+ * An attempt started by agent step execution advances only through its proposal and finalize (the agent's own
  * Turn never finishes it directly); an owner finishes it only by taking it over.
  */
 function assertNotBoundAttempt(
@@ -203,7 +203,7 @@ function assertNotBoundAttempt(
   ) {
     throw new WorkflowError(
       'WORKFLOW_EXECUTOR_NOT_ALLOWED',
-      `The attempt ${request.step}#${String(request.attempt)} is an Ask agent attempt: its agent submits a finish proposal, which is applied when its Turn ends.`,
+      `The attempt ${request.step}#${String(request.attempt)} was started with Run with agent: its agent submits a finish proposal, which is applied when its Turn ends.`,
     );
   }
 }

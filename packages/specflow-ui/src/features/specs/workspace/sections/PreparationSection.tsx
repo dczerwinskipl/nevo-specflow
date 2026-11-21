@@ -48,6 +48,11 @@ export function PreparationSection({ startSession }: PreparationSectionProps) {
       <Typography as="p" variant="body-sm" className="mt-2 text-content-secondary">
         {description}
       </Typography>
+      {startSession?.reason === 'sessions_disabled' ? (
+        <Typography as="p" variant="body-sm" className="mt-2 wrap-anywhere text-content-secondary">
+          {t('sessionStart.sessionsDisabledHelp')}
+        </Typography>
+      ) : null}
       {/* Without a start only the narrow history link remains, so the row is narrow-only too. */}
       <div className={cn('mt-4 flex flex-wrap items-center gap-4', !offered && 'lg:hidden')}>
         {offered ? (

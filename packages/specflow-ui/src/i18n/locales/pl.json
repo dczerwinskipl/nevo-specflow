@@ -22,7 +22,9 @@
       "loading": "Wczytywanie"
     },
     "selected": "Wybrano",
-    "clearSearch": "Wyczyść wyszukiwanie"
+    "clearSearch": "Wyczyść wyszukiwanie",
+    "refresh": "Odśwież",
+    "refreshing": "Odświeżanie…"
   },
   "navigation": {
     "product": "Nawigacja produktu",
@@ -153,7 +155,7 @@
     "prepareSpecificationHeading": "Przygotuj specyfikację do realizacji",
     "prepareSpecificationDescription": "Rozpocznij sesję z agentem, aby dopracować wymagania i przygotować zadania do realizacji.",
     "startSession": "Rozpocznij sesję",
-    "prepareSessionsDisabled": "Zadania przygotowuje agent w sesji. Sesje są wyłączone na tym serwerze.",
+    "prepareSessionsDisabled": "Zadania przygotowuje agent w sesji. Sesje są wyłączone w tym projekcie.",
     "prepareStartForbidden": "Nie masz uprawnień do rozpoczęcia sesji dla tej specyfikacji.",
     "prepareStartUnavailable": "Zadania przygotowuje agent w sesji. Rozpoczęcie sesji nie jest tu dostępne.",
     "tasksHeading": "Zadania",
@@ -542,7 +544,8 @@
       "effort": "Wybierz wysiłek, który obsługuje ten model.",
       "mode": "Wybierz obsługiwany tryb pracy.",
       "archetype": "Wybierz archetyp.",
-      "noArchetypes": "Nie zainstalowano archetypów."
+      "noArchetypes": "Projekt nie ma dostępnych archetypów.",
+      "invalidArchetypes": "Definicje archetypów zawierają błędy."
     },
     "announce": {
       "refreshFailed": "Nie udało się odświeżyć opcji. Formularz zachowany.",
@@ -603,13 +606,19 @@
       "guidance": "Jak pracować z archetypem {{archetype}}",
       "documents": "Dokumenty do utworzenia",
       "choosePrompt": "Wybierz archetyp, aby zobaczyć dokumenty, które powstaną.",
-      "none": "W tym projekcie nie zainstalowano archetypów. Aby zainstalować domyślne, uruchom",
-      "installCommand": "nevo-specflow definitions install",
+      "refresh": "Odśwież archetypy",
       "always": "{{type}} ({{file}}) jest tworzony zawsze.",
       "expectedUnticked": "{{archetype}} oczekuje dokumentu typu {{type}}. Bez niego specyfikacja pokaże go jako brakujący, dopóki go nie dodasz.",
       "loading": "Wczytywanie archetypów",
-      "loadFailed": "Nie udało się wczytać archetypów",
-      "refreshed": "Archetypy zostały odświeżone."
+      "loadFailed": "Nie udało się wczytać archetypów. Ponów ich wczytanie.",
+      "refreshed": "Archetypy zostały odświeżone.",
+      "refreshFailed": "Nie udało się odświeżyć archetypów. Poprzedni katalog może być nieaktualny. Spróbuj wczytać go ponownie.",
+      "installHelp": "Brak dostępnych archetypów. W katalogu głównym projektu (Project Home) uruchom nevo-specflow definitions install --add-missing, a następnie odśwież.",
+      "repairHelp": "Brak dostępnych archetypów. W katalogu głównym projektu (Project Home) uruchom nevo-specflow definitions validate i popraw wskazane pliki, a następnie odśwież.",
+      "howToFix": "Jak naprawić?",
+      "helpTitle": "Udostępnij archetypy",
+      "unavailable": "Brak dostępnych archetypów",
+      "howToAdd": "Jak dodać archetyp?"
     },
     "errors": {
       "forbiddenTitle": "Nie masz uprawnień do tworzenia specyfikacji",
@@ -705,6 +714,7 @@
     },
     "workspace": {
       "heading": "Miejsce pracy",
+      "enableGit": "Nowe środowisko pracy wymaga Gita. Opiekun projektu może ustawić git.enabled: true w pliku .nevo/config.yaml katalogu głównego projektu (Project Home), zapisać konfigurację w commicie i odświeżyć opcje.",
       "intro": "Wybierz, gdzie powstanie specyfikacja i jej zmiany.",
       "refreshOptions": "Odśwież opcje środowiska pracy",
       "refreshOptionsAction": "Odśwież opcje",
@@ -725,7 +735,7 @@
         "existingDescription": "Wybierz wcześniej utworzony worktree i kontynuuj pracę."
       },
       "tileReason": {
-        "newDisabled": "Wyłączone w konfiguracji projektu.",
+        "newDisabled": "Git jest wyłączony w konfiguracji projektu.",
         "newMismatch": "Ten katalog nie należy do repozytorium projektu.",
         "newCheckoutUnavailable": "Katalog projektu jest teraz niedostępny.",
         "newGitUnavailable": "Git jest teraz niedostępny.",
@@ -2049,7 +2059,8 @@
       "thenRestart": "Następnie uruchom ponownie Nevo SpecFlow: konfiguracja jest czytana tylko przy starcie, więc <strong>Sprawdź ponownie</strong> nie zobaczy tej zmiany.",
       "emptyHeading": "Brak agentów na liście",
       "emptyLine": "Nevo SpecFlow nie udostępnia żadnego agenta dla tego projektu. Opiekun projektu dopuszcza agenta ustawieniem sessions.providers.<dostawca>.allowed: true w .nevo/config.yaml; po ponownym uruchomieniu Nevo SpecFlow sprawdź ponownie."
-    }
+    },
+    "sessionsDisabledHelp": "Opiekun projektu może ustawić sessions.enabled: true w .nevo/config.yaml i ponownie uruchomić Nevo SpecFlow. Rozpoczęcie sesji wymaga też dozwolonego, gotowego dostawcy."
   },
   "sessionNaming": {
     "pending": "Nadawanie nazwy…",
@@ -2958,8 +2969,8 @@
       },
       "notConfigured": {
         "title": "Brak dokumentacji projektu",
-        "description": "{{workspace}} nie ma katalogu dokumentacji. Czytnik pokazuje dokumenty Markdown z katalogu ustawionego jako <code>docs.root</code> w .nevo/config.yaml (domyślnie docs/).",
-        "descriptionRoot": "{{workspace}} nie ma katalogu dokumentacji. Czytnik pokazuje dokumenty Markdown z katalogu ustawionego jako <code>docs.root</code> w .nevo/config.yaml, tutaj {{docsRoot}}/."
+        "description": "Utwórz <code>docs/</code> w {{workspace}} i dodaj dokumenty Markdown z metadanymi dokumentacji Nevo, a następnie odśwież. Aby użyć istniejącego katalogu, ustaw <code>docs.root</code> w <code>.nevo/config.yaml</code>.",
+        "descriptionRoot": "Utwórz <code>{{docsRoot}}/</code> w {{workspace}} i dodaj dokumenty Markdown z metadanymi dokumentacji Nevo, a następnie odśwież. Aby użyć innego katalogu, zmień <code>docs.root</code> w <code>.nevo/config.yaml</code>."
       },
       "empty": {
         "title": "Nie ma jeszcze dokumentów",

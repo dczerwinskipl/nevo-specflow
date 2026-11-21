@@ -135,6 +135,9 @@ export function SpecificationSessionsList({
         <Typography variant="body-sm" className="text-content-secondary">
           {t('sessionStart.sessionsDisabled')}
         </Typography>
+        <Typography variant="body-sm" className="wrap-anywhere text-content-secondary">
+          {t('sessionStart.sessionsDisabledHelp')}
+        </Typography>
       </div>
     );
   }

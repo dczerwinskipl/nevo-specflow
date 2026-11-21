@@ -296,7 +296,7 @@ describe('Specification Overview without Tasks', () => {
   });
 
   it.each([
-    ['sessions_disabled', 'Sessions are turned off on this server.'],
+    ['sessions_disabled', 'Sessions are turned off in this project.'],
     ['forbidden', "You don't have permission to start a session for this specification."],
   ])('explains the preparation path without a button when the start is %s', (reason, text) => {
     const { container } = renderEmpty(

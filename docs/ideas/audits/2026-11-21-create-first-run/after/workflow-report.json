@@ -1,0 +1,92 @@
+[
+  {
+    "outcome": "success",
+    "width": 1440,
+    "pending": true,
+    "disabled": true,
+    "ariaBusy": true,
+    "requests": 1
+  },
+  {
+    "outcome": "success",
+    "width": 834,
+    "pending": true,
+    "disabled": true,
+    "ariaBusy": true,
+    "requests": 1
+  },
+  {
+    "outcome": "success",
+    "width": 390,
+    "pending": true,
+    "disabled": true,
+    "ariaBusy": true,
+    "requests": 1
+  },
+  {
+    "outcome": "success",
+    "width": 320,
+    "pending": true,
+    "disabled": true,
+    "ariaBusy": true,
+    "requests": 1
+  },
+  {
+    "outcome": "success",
+    "width": 834,
+    "pending": true,
+    "disabled": true,
+    "ariaBusy": true,
+    "requests": 1
+  },
+  {
+    "outcome": "success",
+    "settled": true,
+    "text": "Overview\nRefreshing…\nPending final complete\nNOW\n\nGather requirements\n\nStep 1 of 7 · next: Write the Specification\n\nIn progress since 6:55 PM · started by you\n\nA shared, owner-confirmed picture of the goal, scope and acceptance.\n\nFinish step\nTASKS\nAll tasks\nThe \"Break the solution down\" step (4 of 7) creates the tasks.\nNew task\nDOCUMENTS\n1\noverview.md\nOverview\nInitial content only\nDocumentation\nusable"
+  },
+  {
+    "outcome": "failure",
+    "width": 1440,
+    "pending": true,
+    "disabled": true,
+    "ariaBusy": true,
+    "requests": 1
+  },
+  {
+    "outcome": "failure",
+    "width": 834,
+    "pending": true,
+    "disabled": true,
+    "ariaBusy": true,
+    "requests": 1
+  },
+  {
+    "outcome": "failure",
+    "width": 390,
+    "pending": true,
+    "disabled": true,
+    "ariaBusy": true,
+    "requests": 1
+  },
+  {
+    "outcome": "failure",
+    "width": 320,
+    "pending": true,
+    "disabled": true,
+    "ariaBusy": true,
+    "requests": 1
+  },
+  {
+    "outcome": "failure",
+    "width": 834,
+    "pending": true,
+    "disabled": true,
+    "ariaBusy": true,
+    "requests": 1
+  },
+  {
+    "outcome": "failure",
+    "settled": true,
+    "text": "Overview\nPending responsive failure\nNOW\n\nNot started\n\nFirst step · Gather requirements\n\nA shared, owner-confirmed picture of the goal, scope and acceptance.\n\nThe answer was lost; the change may have been made. Reload before trying again.\nStart workflow\nTASKS\nAll tasks\nThe \"Break the solution down\" step (4 of 7) creates the tasks.\nNew task\nDOCUMENTS\n1\noverview.md\nOverview\nInitial content only\nDocumentation\nusable"
+  }
+]

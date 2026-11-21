@@ -502,6 +502,15 @@ available". One neutral message serves every missing document (removed while rea
 address to an unknown id, which may exist only in another workspace): the reader does not guess
 the cause (decision D-E).
 
+### First run without documentation
+
+When the selected workspace has no documentation root, the inline empty state MUST give an
+external next action: create the configured folder (`docs/` by default) and add Markdown documents
+with Nevo documentation metadata, or point `docs.root` in `.nevo/config.yaml` at an existing
+documentation folder. It MUST offer **Refresh** to re-read that workspace after the files are added.
+The reader stays read-only; Refresh does not create folders or documents. An existing but empty
+corpus and a corpus whose files all failed validation keep their distinct states and recovery.
+
 ## Keyboard and accessibility
 
 - Order: way back to the Session (when present), workspace picker, fallback or skipped line, search

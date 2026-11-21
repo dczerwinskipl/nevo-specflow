@@ -206,6 +206,12 @@ describe('NewSessionScreen', () => {
   ])('replaces the start form when the workspace says %s', async (reason, text) => {
     renderScreen('project', ok, { available: false, reason });
     expect(await screen.findByText(text)).toBeTruthy();
+    if (reason === 'sessions_disabled') {
+      expect(screen.getByText(/sessions\.enabled: true in \.nevo\/config\.yaml/)).toBeTruthy();
+    } else {
+      expect(screen.queryByText(/sessions\.enabled/)).toBeNull();
+    }
+
     expect(screen.queryByRole('heading', { level: 2, name: 'Start a session' })).toBeNull();
     expect(screen.queryByRole('button', { name: /^Back/ })).toBeNull();
   });

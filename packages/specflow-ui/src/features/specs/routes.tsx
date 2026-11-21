@@ -1,4 +1,5 @@
 import { Fragment, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { createRoute, Link, Outlet, redirect, useRouter } from '@tanstack/react-router';
 import { appRoute, rootRoute } from '../../app/router/root';
 import { parseSpecificationCollection } from '../../app/router/search';
@@ -12,6 +13,10 @@ import { SpecsAccessDenied } from './overview/SpecsAccessDenied';
 import { SpecificationSurface } from './SpecificationSurface';
 import { specPrimaryLinkClassName } from './overview/rows/SpecPrimaryLink';
 import type { TaskSection } from './workspace/WorkspaceContext';
+import { documentCatalogueKeys } from '../documents/read-model';
+import { archetypeAvailabilityProblem } from './archetypeAvailability';
+import { message } from '../../i18n/message';
+import { isApiError } from '../../api';
 
 export const specsForbiddenRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -173,6 +178,26 @@ function SpecsRouteScreen() {
   const navigate = specsRoute.useNavigate();
   const { state, refresh } = useSpecsOverview(services.specsOverviewApi, collection);
   const panels = useUiModules().get(specsOverviewPanels);
+  const firstRun =
+    mode === 'project' && collection === 'current' && state.projection?.items.length === 0;
+  const catalogue = useQuery({
+    queryKey: documentCatalogueKeys.catalogue('project'),
+    queryFn: ({ signal }) => services.projectCreationApi.archetypes(signal),
+    enabled: firstRun,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+  });
+  const creationPrerequisite = !firstRun
+    ? undefined
+    : catalogue.isPending
+      ? message('create.archetype.loading')
+      : catalogue.isError
+        ? message(
+            isApiError(catalogue.error) && catalogue.error.kind === 'forbidden'
+              ? 'create.prerequisite.forbidden'
+              : 'create.archetype.loadFailed',
+          )
+        : archetypeAvailabilityProblem(catalogue.data);
 
   useEffect(() => {
     // Overview authorization denotes application-wide Specs access, unlike
@@ -199,6 +224,9 @@ function SpecsRouteScreen() {
       onCreate={() => void navigate({ to: '/specs/new', search: { collection } })}
       // Create waits for the Runtime mode (it picks the flow); the control stays, disabled.
       createDisabled={mode === 'loading' || mode === 'unavailable'}
+      creationPrerequisite={creationPrerequisite}
+      creationRefreshing={catalogue.isFetching}
+      onRefreshCreation={() => void catalogue.refetch()}
       onCollectionChange={(value) => void navigate({ search: { collection: value } })}
       specificationHref={(specId) =>
         `/specs/${encodeURIComponent(specId)}?collection=${collection}`

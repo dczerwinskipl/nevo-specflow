@@ -1,0 +1,156 @@
+[
+  {
+    "kind": "request",
+    "url": "http://127.0.0.1:4383/specs/ac16e5ab-36b4-48e4-a5cc-db88409b417f?collection=current",
+    "closing": false,
+    "time": 1795284133341
+  },
+  {
+    "kind": "request",
+    "url": "http://127.0.0.1:4383/assets/index-CdeGdYNs.js",
+    "closing": false,
+    "time": 1795284133350
+  },
+  {
+    "kind": "request",
+    "url": "http://127.0.0.1:4383/assets/index-DeQ9P9oF.css",
+    "closing": false,
+    "time": 1795284133350
+  },
+  {
+    "kind": "finished",
+    "url": "http://127.0.0.1:4383/specs/ac16e5ab-36b4-48e4-a5cc-db88409b417f?collection=current",
+    "closing": false,
+    "time": 1795284133350
+  },
+  {
+    "kind": "finished",
+    "url": "http://127.0.0.1:4383/assets/index-DeQ9P9oF.css",
+    "closing": false,
+    "time": 1795284133359
+  },
+  {
+    "kind": "finished",
+    "url": "http://127.0.0.1:4383/assets/index-CdeGdYNs.js",
+    "closing": false,
+    "time": 1795284133541
+  },
+  {
+    "kind": "request",
+    "url": "http://127.0.0.1:4383/api/auth/session",
+    "closing": false,
+    "time": 1795284133705
+  },
+  {
+    "kind": "request",
+    "url": "http://127.0.0.1:4383/assets/inter-latin-wght-normal-Dx4kXJAl.woff2",
+    "closing": false,
+    "time": 1795284133772
+  },
+  {
+    "kind": "finished",
+    "url": "http://127.0.0.1:4383/api/auth/session",
+    "closing": false,
+    "time": 1795284133772
+  },
+  {
+    "kind": "request",
+    "url": "http://127.0.0.1:4383/api/specs/ac16e5ab-36b4-48e4-a5cc-db88409b417f/workspace",
+    "closing": false,
+    "time": 1795284133776
+  },
+  {
+    "kind": "finished",
+    "url": "http://127.0.0.1:4383/assets/inter-latin-wght-normal-Dx4kXJAl.woff2",
+    "closing": false,
+    "time": 1795284133781
+  },
+  {
+    "kind": "finished",
+    "url": "http://127.0.0.1:4383/api/specs/ac16e5ab-36b4-48e4-a5cc-db88409b417f/workspace",
+    "closing": false,
+    "time": 1795284134102
+  },
+  {
+    "kind": "request",
+    "url": "http://127.0.0.1:4383/api/runtime/info",
+    "closing": false,
+    "time": 1795284134151
+  },
+  {
+    "kind": "request",
+    "url": "http://127.0.0.1:4383/api/specs/ac16e5ab-36b4-48e4-a5cc-db88409b417f/workflow/actions",
+    "closing": false,
+    "time": 1795284134151
+  },
+  {
+    "kind": "request",
+    "url": "http://127.0.0.1:4383/api/workspaces",
+    "closing": false,
+    "time": 1795284134151
+  },
+  {
+    "kind": "finished",
+    "url": "http://127.0.0.1:4383/api/runtime/info",
+    "closing": false,
+    "time": 1795284134152
+  },
+  {
+    "kind": "failed",
+    "url": "http://127.0.0.1:4383/api/specs/ac16e5ab-36b4-48e4-a5cc-db88409b417f/workflow/actions",
+    "closing": false,
+    "time": 1795284134170,
+    "error": {
+      "errorText": "net::ERR_ABORTED"
+    }
+  },
+  {
+    "kind": "failed",
+    "url": "http://127.0.0.1:4383/api/workspaces",
+    "closing": false,
+    "time": 1795284134170,
+    "error": {
+      "errorText": "net::ERR_ABORTED"
+    }
+  },
+  {
+    "kind": "request",
+    "url": "http://127.0.0.1:4383/api/specs/ac16e5ab-36b4-48e4-a5cc-db88409b417f/workflow/actions",
+    "closing": false,
+    "time": 1795284134170
+  },
+  {
+    "kind": "request",
+    "url": "http://127.0.0.1:4383/api/specs/archetypes",
+    "closing": false,
+    "time": 1795284134170
+  },
+  {
+    "kind": "request",
+    "url": "http://127.0.0.1:4383/api/workspaces",
+    "closing": false,
+    "time": 1795284134170
+  },
+  {
+    "kind": "finished",
+    "url": "http://127.0.0.1:4383/api/specs/archetypes",
+    "closing": false,
+    "time": 1795284134191
+  },
+  {
+    "kind": "finished",
+    "url": "http://127.0.0.1:4383/api/workspaces",
+    "closing": false,
+    "time": 1795284134209
+  },
+  {
+    "kind": "finished",
+    "url": "http://127.0.0.1:4383/api/specs/ac16e5ab-36b4-48e4-a5cc-db88409b417f/workflow/actions",
+    "closing": false,
+    "time": 1795284134726
+  },
+  {
+    "kind": "page-close",
+    "time": 1795284135236
+  }
+]

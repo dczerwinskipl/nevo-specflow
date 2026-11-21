@@ -21,6 +21,7 @@ export function CreateFooter({
   submitDisabled,
   submitBlocked = false,
   onGuide,
+  blockedDescriptionId,
 }: {
   submitRef?: RefObject<HTMLButtonElement | null>;
   /** Translated reason Create is unavailable; undefined shows `note` instead. */
@@ -32,6 +33,7 @@ export function CreateFooter({
   submitBlocked?: boolean;
   /** Leads to the field that holds `prerequisite`; absent when no field can fix it. */
   onGuide?: () => void;
+  blockedDescriptionId?: string;
 }) {
   const { t } = useTranslation();
   const prerequisiteId = useId();
@@ -40,12 +42,13 @@ export function CreateFooter({
     <footer
       role="group"
       aria-label={t('create.formRegion')}
-      // One line while both fit (down to 320 px): the hint takes the free space and wraps when long,
+      // On very narrow surfaces the hint gets its own row, so actionable copy stays readable.
+      // Otherwise the hint takes the free space and wraps when long,
       // the button stays at the end. A label too long for the row moves the button to its own line,
       // where its label wraps instead of overflowing.
       className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 @lg:gap-x-4"
     >
-      <div className="flex min-w-0 flex-1 basis-28 flex-wrap items-center gap-x-2 gap-y-1">
+      <div className="flex min-w-0 flex-1 basis-28 @max-[22rem]/app-content:basis-full flex-wrap items-center gap-x-2 gap-y-1">
         {prerequisite ? (
           <>
             <InlineNote id={prerequisiteId} className="min-w-0">
@@ -57,15 +60,15 @@ export function CreateFooter({
               </Button>
             ) : null}
           </>
-        ) : (
+        ) : note ? (
           <InlineNote icon={null}>{note}</InlineNote>
-        )}
+        ) : null}
       </div>
-      <div className="min-w-0 max-w-full">
+      <div className="ml-auto min-w-0 max-w-full">
         <Button
           ref={submitRef}
           type="submit"
-          aria-describedby={prerequisite ? prerequisiteId : undefined}
+          aria-describedby={blockedDescriptionId ?? (prerequisite ? prerequisiteId : undefined)}
           aria-disabled={submitBlocked && !submitDisabled ? true : undefined}
           disabled={submitDisabled}
         >

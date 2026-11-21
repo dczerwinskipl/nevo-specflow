@@ -77,7 +77,10 @@ dashboard configuration). The Overview renders what the reads deliver.
   T-05 is on hold and no other task is open."). Now offers the workflow's **main** action: Start
   workflow, Finish step, or Close specification once it ended; none while the workflow waits by
   itself. While a start is being recorded the Start button reads "Starting…" (busy) and the quiet
-  line says the same until the new position is read, never a stale "Ready to start". Under the
+  line says the same until the new position is read, never a stale "Ready to start". This
+  pending state follows the workflow subject across responsive remounts and leaving/reopening its
+  Overview in the same application session; changing layout cannot re-enable Start for a request
+  still being recorded. Other Specifications keep their independent availability. Under the
   step's purpose, **Done when** lists the active step's exit gates as a neutral checklist (an unmet
   gate is an open circle with "not yet"; the list is shared with the Task Now, see
   [Now block](workflow-execution.md#now-block); a step without document gates has no Done when
@@ -105,6 +108,9 @@ dashboard configuration). The Overview renders what the reads deliver.
   available (or its reason is `no_provider`) it offers **Start session**, which opens
   `/specs/:specId/sessions/new`; otherwise it explains the preparation path without a button
   (`sessions_disabled`, `forbidden`, any other reason).
+  The `sessions_disabled` case uses the shared [Sessions-off guidance](specification-sessions.md#states)
+  naming project policy and how a project maintainer enables it; it remains distinct from a
+  forbidden action or failed read.
 - **Requires attention** — the attention items only, at most five, then **Show N more**, in the
   projection's priority order. Each item names what it is about (`T-07 · Backend`, Specification,
   `Session · Claude`), its reason (the attention tone, danger for a broken Task; an icon on the

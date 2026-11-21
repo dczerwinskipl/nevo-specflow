@@ -381,6 +381,11 @@ export function WorkspacePlaceSection({
             );
           })}
         </ChoiceTileGroup>
+        {ready.newWorktree.status === 'disabled' && ready.newWorktree.reason === 'git-disabled' && (
+          <InlineNote className="max-w-content-narrow">
+            {t('create.workspace.enableGit')}
+          </InlineNote>
+        )}
         {available.new.ok &&
           active !== 'new' &&
           (available.main.protected === true || available.existing.protected === true) && (

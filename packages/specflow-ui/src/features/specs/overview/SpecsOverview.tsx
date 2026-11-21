@@ -25,6 +25,7 @@ import { collectionTitleTrackMaxWidth } from '../../../shared/operational-list';
 import { overviewCapabilities } from './presentation';
 import { filterSpecsOverview, isSearchable } from './search/search';
 import { useCollectionSearch } from './search/useCollectionSearch';
+import type { Message } from '../../../i18n/message';
 
 export interface SpecsOverviewProps {
   readonly state: SpecsOverviewState;
@@ -34,6 +35,10 @@ export interface SpecsOverviewProps {
   readonly onCreate?: () => void;
   /** Create is offered but cannot be used yet (for example the Runtime mode is still unknown). */
   readonly createDisabled?: boolean;
+  /** First-run availability read by the route; absent when creation has no known blocker. */
+  readonly creationPrerequisite?: Message;
+  readonly creationRefreshing?: boolean;
+  readonly onRefreshCreation?: () => void;
   /**
    * Background operations above the list (the operations panel). The host builds it from API data
    * and decides which collections show it; it renders nothing while it has nothing to say.
@@ -55,6 +60,9 @@ export function SpecsOverview({
   onOpenTarget,
   onCreate,
   createDisabled = false,
+  creationPrerequisite,
+  creationRefreshing,
+  onRefreshCreation,
   operationsPanel,
   sample = false,
   specificationHref,
@@ -169,6 +177,9 @@ export function SpecsOverview({
                     onClearSearch={search.clear}
                     onCreate={onCreate}
                     createDisabled={createDisabled}
+                    creationPrerequisite={creationPrerequisite}
+                    creationRefreshing={creationRefreshing}
+                    onRefreshCreation={onRefreshCreation}
                   />
                 ) : null}
               </div>

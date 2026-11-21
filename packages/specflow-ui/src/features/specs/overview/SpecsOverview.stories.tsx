@@ -32,6 +32,7 @@ import type {
   CurrentSpecTarget,
 } from './model';
 import { SpecsOverview } from './SpecsOverview';
+import { message } from '../../../i18n/message';
 import { OperationsPanelHost } from '../../../shared/operations';
 import type { OperationListItem } from '../../../shared/operations/operationList';
 import {
@@ -131,11 +132,13 @@ function OverviewFixture({
   locale = 'en',
   interactive = true,
   operations,
+  creationProblem,
 }: {
   state: SpecsOverviewState;
   locale?: AppLocale;
   interactive?: boolean;
   operations?: readonly OperationListItem[];
+  creationProblem?: 'missing' | 'invalid';
 }) {
   const queryClient = useMemo(() => createSpecFlowQueryClient(), []);
   const router = useMemo(() => {
@@ -176,7 +179,12 @@ function OverviewFixture({
       path: '/',
       component: () => (
         <SpecFlowShell auth={auth}>
-          <OverviewFixtureContent state={state} interactive={interactive} operations={operations} />
+          <OverviewFixtureContent
+            state={state}
+            interactive={interactive}
+            operations={operations}
+            creationProblem={creationProblem}
+          />
         </SpecFlowShell>
       ),
     });
@@ -199,7 +207,7 @@ function OverviewFixture({
       routeTree: root.addChildren([overview, login, playground]),
       history: createMemoryHistory({ initialEntries: ['/'] }),
     });
-  }, [state, interactive, operations]);
+  }, [state, interactive, operations, creationProblem]);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -214,10 +222,12 @@ function OverviewFixtureContent({
   state,
   interactive,
   operations,
+  creationProblem,
 }: {
   state: SpecsOverviewState;
   interactive: boolean;
   operations?: readonly OperationListItem[];
+  creationProblem?: 'missing' | 'invalid';
 }) {
   const operationsPanel = useMemo(
     () =>
@@ -233,11 +243,23 @@ function OverviewFixtureContent({
   const [collectionOverride, setCollectionOverride] = useState<SpecsOverviewState>();
   const [target, setTarget] = useState<CurrentSpecTarget>();
   const [refreshes, setRefreshes] = useState(0);
+  const [creationRefreshed, setCreationRefreshed] = useState(false);
 
   return (
     <>
       <SpecsOverview
         state={collectionOverride ?? state}
+        creationPrerequisite={
+          creationProblem && !creationRefreshed
+            ? message(
+                creationProblem === 'invalid'
+                  ? 'create.prerequisite.invalidArchetypes'
+                  : 'create.prerequisite.noArchetypes',
+              )
+            : undefined
+        }
+        onRefreshCreation={() => setCreationRefreshed(true)}
+        onCreate={creationProblem ? () => undefined : undefined}
         operationsPanel={operationsPanel}
         onCollectionChange={(collection) =>
           setCollectionOverride({
@@ -327,6 +349,28 @@ export const Default: Story = {
     },
     locale: { control: 'inline-radio', options: ['en', 'pl'] },
     interactive: { control: 'boolean' },
+  },
+};
+
+/** Missing definitions are a creation prerequisite, not an empty user-input error. */
+export const FirstRunWithoutDefinitions: Story = {
+  tags: ['contract'],
+  args: { state: stateOptions.emptyCurrent, creationProblem: 'missing' },
+  play: async ({ canvas, userEvent }) => {
+    await expect(canvas.getByText(/This project has no available archetypes/)).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'New specification' })).toBeEnabled();
+    await userEvent.click(canvas.getByRole('button', { name: 'Refresh' }));
+    await expect(canvas.queryByText(/This project has no available archetypes/)).toBeNull();
+  },
+};
+
+export const FirstRunWithInvalidDefinitions: Story = {
+  tags: ['contract'],
+  args: { state: stateOptions.emptyCurrent, creationProblem: 'invalid' },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText(/The archetype definitions contain errors/)).toBeVisible();
+    await expect(canvas.queryByText(/definitions install/)).toBeNull();
+    await expect(canvas.getByRole('button', { name: 'New specification' })).toBeEnabled();
   },
 };
 const pullRequestContractPlay: NonNullable<Story['play']> = async ({

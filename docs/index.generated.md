@@ -243,6 +243,7 @@ Regenerate with `nevo-specflow docs check --write`. Human-authored navigation li
 
 | ID | Title | Status | Summary |
 |---|---|---|---|
+| `ideas.audits.2026-11-21-create-first-run` | [Create and first-run verification for UX package B](ideas/audits/2026-11-21-create-first-run.md) | draft | Current-main reproduction, before/after decisions and verification evidence for the Create and first-run follow-ups from the November 16 audit. Evidence, not a second UX contract. |
 | `ideas.specflow-engine.acceptance` | [Open Engine workflow and managed execution acceptance criteria](ideas/specflow-engine/acceptance-criteria.md) | draft | Open evidence-based acceptance gates: offline workflow coordination (FB01-FB09), the remaining managed execution integration criteria (SI04-SI08) and the deferred multi-instance gate. |
 | `reference.api.authorization` | [Authorization HTTP API](reference/api/authorization.md) | current | Runtime capability discovery derives the current subject, accepts a resource and optional required scope, and returns a boolean action projection for that exact authorization target. |
 | `reference.api.openapi` | [Runtime OpenAPI document](reference/api/openapi.md) | current | Runtime serves an OpenAPI 3.1 document of its HTTP API at GET /api/openapi.json, generated from the TypeBox route schemas; a committed copy of the project-mode surface lives in docs/reference/api/openapi.generated.json and is regenerated with pnpm api:openapi. |

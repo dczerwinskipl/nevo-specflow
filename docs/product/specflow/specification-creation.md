@@ -63,6 +63,29 @@ no field can fix (options or archetypes loading, no permission, nothing installe
 footer without the action. Locked states (no permission, an operation in progress) still disable the
 button.
 
+**First-run availability.** A confirmed unavailable catalogue takes precedence over missing user
+input: entering a name cannot repair definitions. The blocker belongs directly under Archetype,
+not in a top-level alert or duplicated pinned-footer panel (owner refinement of package B).
+Show a disabled field without an empty list affordance, one compact explanation and **How to add an
+archetype?** (invalid definitions: **How to fix it?**). Keep name and goal editable. Create remains
+unavailable and is associated with the inline reason through `aria-describedby`; activating it sends
+nothing and does not blame the name field while project configuration blocks creation.
+
+The instruction opens the existing responsive details pattern (right Drawer in split layout,
+bottom sheet in stacked layout). Missing definitions: name Project Home and the non-overwriting
+`nevo-specflow definitions install --add-missing` remedy, then refresh. Invalid installed definitions:
+run `nevo-specflow definitions validate` and repair the reported files under `.nevo/definitions`.
+The installer does not repair edited invalid files. Keep technical commands behind the details
+action. A failed refresh explicitly reports failure, retains the draft and offers Retry. After
+successful recovery, focus moves from a disappearing refresh control to the selected/first radio
+only when the user has not moved focus elsewhere. Engine authorization and commit policy remain
+authoritative for every command. Pending reads, failed reads and unavailable options stay distinct.
+
+When New workspace is disabled because managed Git is off, its existing explanation identifies
+`git.enabled: true` in Project Home's `.nevo/config.yaml`, saving the change in Git and refreshing the
+options. It does not promise that enabling Git bypasses branch policy, filesystem availability or
+other Engine checks. The three workspace cards keep their existing layout and selection behavior.
+
 Display branch, Spec count and availability from `create-options`. Disabled, detached and
 (Git enabled) protected-branch workspaces cannot be selected. A dirty existing checkout can still be suitable for adding another
 Spec, while future integration requires an eligible clean attached destination. A missing branch
@@ -322,6 +345,8 @@ Lifecycle states keep their semantics:
 - **In progress**: as above; the leave note and **Back to specifications** are shown.
 - **Done**: the heading becomes **Specification created**, every step is checked, and the
   specification opens by itself after a moment; **Open specification** opens it at once.
+  This project-mode result page is the completion feedback; it does not also publish a duplicate
+  Specification created toast. The meaningful uncommitted-files warning remains when applicable.
 - **Refused before anything was done** (a taken branch, invalid name, stale options, a refused
   name, offline): the failure explanation of the form, the plain statement **Nothing was created**
   (only for the codes where that is certain; a failure the server concluded without a result does

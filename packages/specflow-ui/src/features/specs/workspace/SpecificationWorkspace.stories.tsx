@@ -183,9 +183,10 @@ export const ProjectModeWithSession: Story = {
 export const ProjectModeSessionsDisabled: Story = {
   args: { state: 'sessions-disabled' },
   play: async ({ canvas, canvasElement }) => {
-    await canvas.findByText(/Sessions are turned off on this server\./u);
+    await canvas.findByText(/Sessions are turned off in this project\./u);
     await expect(canvas.getByText('No tasks yet')).toBeVisible();
-    await expect(canvas.getByText(/Sessions are turned off on this server\./u)).toBeVisible();
+    await expect(canvas.getByText(/Sessions are turned off in this project\./u)).toBeVisible();
+    await expect(canvas.getByText(/sessions\.enabled: true/)).toBeVisible();
     await expect(canvas.queryByRole('button', { name: 'Start session' })).toBeNull();
     await expect(canvasElement.querySelector('#resume-heading')).toBeNull();
     await expectNothingUnavailable(canvasElement);

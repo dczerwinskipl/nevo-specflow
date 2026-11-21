@@ -1,0 +1,162 @@
+[
+  {
+    "kind": "missing",
+    "locale": "pl-PL",
+    "width": 320,
+    "fieldDisabled": true,
+    "otherFieldsEditable": true,
+    "footerDoesNotRepeatReason": true,
+    "submitDescribedByInlineReason": true,
+    "keyboardHelpAndFocus": true
+  },
+  {
+    "kind": "missing",
+    "locale": "pl-PL",
+    "width": 390,
+    "fieldDisabled": true,
+    "otherFieldsEditable": true,
+    "footerDoesNotRepeatReason": true,
+    "submitDescribedByInlineReason": true,
+    "keyboardHelpAndFocus": true
+  },
+  {
+    "kind": "missing",
+    "locale": "pl-PL",
+    "width": 834,
+    "fieldDisabled": true,
+    "otherFieldsEditable": true,
+    "footerDoesNotRepeatReason": true,
+    "submitDescribedByInlineReason": true,
+    "keyboardHelpAndFocus": true
+  },
+  {
+    "kind": "missing",
+    "locale": "pl-PL",
+    "width": 1440,
+    "fieldDisabled": true,
+    "otherFieldsEditable": true,
+    "footerDoesNotRepeatReason": true,
+    "submitDescribedByInlineReason": true,
+    "keyboardHelpAndFocus": true
+  },
+  {
+    "kind": "missing",
+    "locale": "en-US",
+    "width": 320,
+    "fieldDisabled": true,
+    "otherFieldsEditable": true,
+    "footerDoesNotRepeatReason": true,
+    "submitDescribedByInlineReason": true,
+    "keyboardHelpAndFocus": true
+  },
+  {
+    "kind": "missing",
+    "locale": "en-US",
+    "width": 390,
+    "fieldDisabled": true,
+    "otherFieldsEditable": true,
+    "footerDoesNotRepeatReason": true,
+    "submitDescribedByInlineReason": true,
+    "keyboardHelpAndFocus": true
+  },
+  {
+    "kind": "missing",
+    "locale": "en-US",
+    "width": 834,
+    "fieldDisabled": true,
+    "otherFieldsEditable": true,
+    "footerDoesNotRepeatReason": true,
+    "submitDescribedByInlineReason": true,
+    "keyboardHelpAndFocus": true
+  },
+  {
+    "kind": "missing",
+    "locale": "en-US",
+    "width": 1440,
+    "fieldDisabled": true,
+    "otherFieldsEditable": true,
+    "footerDoesNotRepeatReason": true,
+    "submitDescribedByInlineReason": true,
+    "keyboardHelpAndFocus": true
+  },
+  {
+    "kind": "invalid",
+    "locale": "pl-PL",
+    "width": 320,
+    "fieldDisabled": true,
+    "otherFieldsEditable": true,
+    "footerDoesNotRepeatReason": true,
+    "submitDescribedByInlineReason": true,
+    "keyboardHelpAndFocus": true
+  },
+  {
+    "kind": "invalid",
+    "locale": "pl-PL",
+    "width": 390,
+    "fieldDisabled": true,
+    "otherFieldsEditable": true,
+    "footerDoesNotRepeatReason": true,
+    "submitDescribedByInlineReason": true,
+    "keyboardHelpAndFocus": true
+  },
+  {
+    "kind": "invalid",
+    "locale": "pl-PL",
+    "width": 834,
+    "fieldDisabled": true,
+    "otherFieldsEditable": true,
+    "footerDoesNotRepeatReason": true,
+    "submitDescribedByInlineReason": true,
+    "keyboardHelpAndFocus": true
+  },
+  {
+    "kind": "invalid",
+    "locale": "pl-PL",
+    "width": 1440,
+    "fieldDisabled": true,
+    "otherFieldsEditable": true,
+    "footerDoesNotRepeatReason": true,
+    "submitDescribedByInlineReason": true,
+    "keyboardHelpAndFocus": true
+  },
+  {
+    "kind": "invalid",
+    "locale": "en-US",
+    "width": 320,
+    "fieldDisabled": true,
+    "otherFieldsEditable": true,
+    "footerDoesNotRepeatReason": true,
+    "submitDescribedByInlineReason": true,
+    "keyboardHelpAndFocus": true
+  },
+  {
+    "kind": "invalid",
+    "locale": "en-US",
+    "width": 390,
+    "fieldDisabled": true,
+    "otherFieldsEditable": true,
+    "footerDoesNotRepeatReason": true,
+    "submitDescribedByInlineReason": true,
+    "keyboardHelpAndFocus": true
+  },
+  {
+    "kind": "invalid",
+    "locale": "en-US",
+    "width": 834,
+    "fieldDisabled": true,
+    "otherFieldsEditable": true,
+    "footerDoesNotRepeatReason": true,
+    "submitDescribedByInlineReason": true,
+    "keyboardHelpAndFocus": true
+  },
+  {
+    "kind": "invalid",
+    "locale": "en-US",
+    "width": 1440,
+    "fieldDisabled": true,
+    "otherFieldsEditable": true,
+    "footerDoesNotRepeatReason": true,
+    "submitDescribedByInlineReason": true,
+    "keyboardHelpAndFocus": true
+  }
+]

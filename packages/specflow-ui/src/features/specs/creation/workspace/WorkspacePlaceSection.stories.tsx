@@ -810,7 +810,7 @@ export const UnavailableTileIsReachableAndReadable: Story = {
     await expect(fresh).not.toBeDisabled();
     await expect(main).toBeChecked();
     // The reason is the visible description, connected to the radio.
-    const reason = canvas.getByText('Wyłączone w konfiguracji projektu.');
+    const reason = canvas.getByText('Git jest wyłączony w konfiguracji projektu.');
     await expect(reason).toBeVisible();
     await expect(fresh.getAttribute('aria-describedby')).toBe(reason.id);
     main.focus();

@@ -16,7 +16,11 @@ import {
   inspectWorkspaceForRead,
   inspectWorkspaces,
 } from '../src';
-import { bootstrapProjectHome, createSpecificationForTesting } from '../src/testing';
+import {
+  bootstrapProjectHome,
+  createSpecificationForTesting,
+  installDefinitionsForTesting,
+} from '../src/testing';
 import { createGitTestProject } from './support/git-project';
 
 const roots: string[] = [];
@@ -108,6 +112,10 @@ describe('git-disabled project end to end', () => {
   it('serves reads and creates into the existing workspace without any Git process', async () => {
     const { engine } = await project(false);
     const target = await primaryTarget(engine);
+    // Installing the definitions is a project-file mutation under the control lock, whose admission
+    // proves the Project Home with Git (docs/architecture/runtime/project-home-and-workspaces.md):
+    // setup, not part of the Git-free create and reads measured here.
+    await installDefinitionsForTesting(engine);
     const { spawns, result } = await countGit(async () => {
       const created = await createSpecificationForTesting(engine, {
         operationId: randomUUID(),

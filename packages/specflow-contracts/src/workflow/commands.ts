@@ -120,6 +120,38 @@ export const FinishWorkflowRequestSchema = Type.Object(
 );
 export type FinishWorkflowRequest = Static<typeof FinishWorkflowRequestSchema>;
 
+/** The changed files one agent finish proposal declares at most (the dirty set's bound). */
+export const AGENT_CHANGED_PATHS_MAX = 500;
+/** The longest checkout-relative path a finish proposal declares. */
+export const AGENT_CHANGED_PATH_LENGTH_MAX = 1024;
+
+/**
+ * An agent's finish proposal for its own attempt (Ask agent, D12): the owner's finish input and the
+ * files outside SpecFlow's own folders the attempt changed (`changes.paths`, B3). The declared set
+ * must equal what is uncommitted outside the Specification directories and SpecFlow's namespace:
+ * an undeclared changed file or a declared file that is not changed refuses the proposal
+ * (`WORKFLOW_UNDECLARED_CHANGES`). Absent `changes` declares no file.
+ */
+export const AgentFinishProposalRequestSchema = Type.Object(
+  {
+    ...FinishWorkflowRequestSchema.properties,
+    changes: Type.Optional(
+      Type.Object(
+        {
+          /** Checkout-relative paths with `/` separators, as `git status` names them; each once. */
+          paths: Type.Array(
+            Type.String({ minLength: 1, maxLength: AGENT_CHANGED_PATH_LENGTH_MAX }),
+            { maxItems: AGENT_CHANGED_PATHS_MAX },
+          ),
+        },
+        { additionalProperties: false },
+      ),
+    ),
+  },
+  { additionalProperties: false },
+);
+export type AgentFinishProposalRequest = Static<typeof AgentFinishProposalRequestSchema>;
+
 /** Send the run back to a declared step it already reached. */
 export const ReturnWorkflowRequestSchema = Type.Object(
   {
@@ -274,7 +306,29 @@ export const WORKFLOW_ERROR_CODES = [
   'WORKFLOW_EXIT_BLOCKED',
   'WORKFLOW_GATE_UNSATISFIED',
   'WORKFLOW_TASKS_OPEN',
+  'WORKFLOW_OWNER_DECISION_REQUIRED',
+  /**
+   * Ask agent attribution (B3, B6): the checkout has uncommitted changes SpecFlow cannot attribute
+   * (`WORKFLOW_DIRTY_BASELINE`, at the start), files changed since the agent's last Turn ended
+   * (`WORKFLOW_BASELINE_CHANGED`, at Continue), new files in a Specification directory without a
+   * document type (`WORKFLOW_UNREGISTERED_DOCUMENTS`), SpecFlow's own files edited past it
+   * (`WORKFLOW_ENGINE_FILE_EDITED`), or changed files the finish proposal does not declare exactly
+   * (`WORKFLOW_UNDECLARED_CHANGES`), or an untracked Git repository inside the checkout
+   * (`WORKFLOW_NESTED_REPOSITORY`); `details.attribution` names the paths.
+   */
+  'WORKFLOW_DIRTY_BASELINE',
+  'WORKFLOW_BASELINE_CHANGED',
+  'WORKFLOW_UNREGISTERED_DOCUMENTS',
+  'WORKFLOW_ENGINE_FILE_EDITED',
+  'WORKFLOW_UNDECLARED_CHANGES',
+  'WORKFLOW_NESTED_REPOSITORY',
   'WORKFLOW_UNAVAILABLE',
+  /**
+   * The Runtime's own: the commit policy of the workflow state refused the change before anything
+   * was written (a protected branch, Git unavailable, too many uncommitted paths, a journal to
+   * recover); `details.commit` names the refusal in the documents' vocabulary.
+   */
+  'WORKFLOW_COMMIT_REFUSED',
   /** The project control lock (as in Close): only `CONTROL_LOCK_BUSY` is worth a retry. */
   'CONTROL_LOCK_BUSY',
   'CONTROL_LOCK_CORRUPT',
@@ -288,10 +342,75 @@ const codes = Type.Unsafe<WorkflowErrorCode>(
 );
 
 /**
+ * What holds a Specification whose workflow cannot change now (`WORKFLOW_SPECIFICATION_BUSY`):
+ * `agent-turn` an agent Session Turn holds the project-wide write claim (retry once it ends, or stop
+ * it); `agent-turn-unknown` that Turn ended without a verified outcome (resolve the Session: Check
+ * outcome, or its recovery); `close` a Close of the Specification is unsettled. The other values are
+ * the busy causes of the commit admission of the workflow state, as in the documents' `SPEC_BUSY`;
+ * `other` a busy refusal whose cause is not one of these (still a refusal: retry later).
+ */
+export const SPECIFICATION_BUSY_CAUSES = [
+  'agent-turn',
+  'agent-turn-unknown',
+  'close',
+  'create-or-close',
+  'commit-in-progress',
+  'queue-full',
+  'held-limit',
+  'recovery-required',
+  'manifest-changed',
+  'source-changed',
+  'write-in-progress',
+  'task-resource-change',
+  'other',
+] as const;
+export type SpecificationBusyCause = (typeof SPECIFICATION_BUSY_CAUSES)[number];
+
+/**
+ * The document refusals of the workflow state's commit admission that a workflow command answers as
+ * `WORKFLOW_COMMIT_REFUSED` (the same codes, reasons and causes as a document write's refusal).
+ */
+export const WORKFLOW_COMMIT_REFUSAL_CODES = [
+  'BRANCH_PROTECTED',
+  'COMMIT_BLOCKED',
+  'GIT_POLICY_INVALID',
+  'DOCUMENT_UNCOMMITTED_LIMIT',
+  'DOCUMENT_OPERATION_INVALID',
+  'DOCUMENT_RECOVERY_REQUIRED',
+] as const;
+export type WorkflowCommitRefusalCode = (typeof WORKFLOW_COMMIT_REFUSAL_CODES)[number];
+
+/**
+ * The paths of an Ask agent attribution refusal (`WORKFLOW_DIRTY_BASELINE`,
+ * `WORKFLOW_BASELINE_CHANGED`, `WORKFLOW_UNREGISTERED_DOCUMENTS`, `WORKFLOW_ENGINE_FILE_EDITED`,
+ * `WORKFLOW_UNDECLARED_CHANGES`): the first of them (`paths`, sorted) of `count`. For
+ * `WORKFLOW_UNDECLARED_CHANGES`, `undeclared` are changed files the proposal does not declare and
+ * `unchanged` declared files that are not changed files of the attempt (`paths` holds both).
+ * `remedies` (`WORKFLOW_UNREGISTERED_DOCUMENTS`): give each file a document type, or delete a new
+ * one, or restore a changed one.
+ * `incomplete`: what is uncommitted cannot be read in full (more changed files than SpecFlow names,
+ * an unreadable record of its own writes, no record of the last Turn), so nothing is attributed.
+ */
+export const WorkflowAttributionSchema = Type.Object({
+  paths: Type.Array(Type.String()),
+  count: Type.Integer({ minimum: 0 }),
+  undeclared: Type.Optional(Type.Array(Type.String())),
+  unchanged: Type.Optional(Type.Array(Type.String())),
+  remedies: Type.Optional(
+    Type.Array(
+      Type.Union([Type.Literal('classify'), Type.Literal('delete'), Type.Literal('restore')]),
+    ),
+  ),
+  incomplete: Type.Optional(Type.Literal(true)),
+});
+export type WorkflowAttribution = Static<typeof WorkflowAttributionSchema>;
+
+/**
  * A refused workflow command. `code` is the stable value clients branch on (`error` repeats it);
  * `message` is display-only text and may change. `details.blockers` lists what holds a Specification
  * (`WORKFLOW_EXIT_BLOCKED`), `details.openTasks` the Tasks a completion waits for
- * (`WORKFLOW_TASKS_OPEN`).
+ * (`WORKFLOW_TASKS_OPEN`), `details.cause` (and `sessionId`) what holds a busy Specification
+ * (`WORKFLOW_SPECIFICATION_BUSY`).
  */
 export const WorkflowErrorSchema = Type.Object(
   {
@@ -359,6 +478,30 @@ export const WorkflowErrorSchema = Type.Object(
          * Tasks are open; every open Task and why it is open, in id order.
          */
         openTasks: Type.Optional(Type.Array(OpenTaskSchema)),
+        /** An Ask agent attribution refusal: the paths it names ({@link WorkflowAttributionSchema}). */
+        attribution: Type.Optional(WorkflowAttributionSchema),
+        /** `WORKFLOW_SPECIFICATION_BUSY`: what holds the Specification ({@link SPECIFICATION_BUSY_CAUSES}). */
+        cause: Type.Optional(
+          Type.Unsafe<SpecificationBusyCause>(
+            Type.Union(SPECIFICATION_BUSY_CAUSES.map((cause) => Type.Literal(cause))),
+          ),
+        ),
+        /** `WORKFLOW_SPECIFICATION_BUSY` of `agent-turn` / `agent-turn-unknown`: the Session holding the claim. */
+        sessionId: Type.Optional(Type.String({ minLength: 1, maxLength: 256 })),
+        /** `WORKFLOW_COMMIT_REFUSED`: the document refusal, with its `reason`, `cause` and `blockedBy`. */
+        commit: Type.Optional(
+          Type.Object(
+            {
+              code: Type.Unsafe<WorkflowCommitRefusalCode>(
+                Type.Union(WORKFLOW_COMMIT_REFUSAL_CODES.map((code) => Type.Literal(code))),
+              ),
+              reason: Type.Optional(Type.String({ maxLength: 64 })),
+              cause: Type.Optional(Type.String({ maxLength: 64 })),
+              blockedBy: Type.Optional(Type.String({ maxLength: 64 })),
+            },
+            { additionalProperties: false },
+          ),
+        ),
       }),
     ),
   },

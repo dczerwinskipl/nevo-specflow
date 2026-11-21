@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { MemoryDefinitionSource } from '../../specs/definitions/test-support';
+import { NO_CLAIMS } from '../write-admission';
 import { rememberArchetypeModel, setArchetypeProviderModel } from './remember-model';
 
 const SOURCE = `kind: agent-archetype
@@ -64,7 +65,12 @@ describe('rememberArchetypeModel', () => {
 
   it('keeps both of two concurrent choices', async () => {
     const files = new MemoryDefinitionSource({ [PATH]: SOURCE });
-    const dependencies = { source: files, writer: files, serialize: serialized() };
+    const dependencies = {
+      source: files,
+      writer: files,
+      serialize: serialized(),
+      admission: NO_CLAIMS,
+    };
 
     await Promise.all([
       rememberArchetypeModel(dependencies, 'reviewer', { provider: 'codex', model: 'gpt-x' }),

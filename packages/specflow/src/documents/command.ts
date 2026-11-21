@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 
 import { Command, InvalidArgumentError } from 'commander';
 
+import type { AgentBrokerTransport } from '../agent-broker/client';
+import { refuse, runBrokeredDocumentWrite } from '../agent-broker/routing';
 import { ReportedFailure } from '../exit-code';
 import { engineDocumentsApi, type DocumentsEngineApi, type DocumentWriteRequest } from './api';
 import { readContentInput } from './content-input';
@@ -28,6 +30,8 @@ export interface DocumentsCommandContext {
   readonly api?: DocumentsEngineApi;
   /** How long the drain at exit may take (default 10 s, the shutdown deadline of the queue). */
   readonly exitFlushDeadlineMs?: number;
+  /** Inside an agent Turn: the Runtime's broker, to which `add`, `save` and `classify` send their write. */
+  readonly broker?: AgentBrokerTransport;
 }
 
 /** The longest `flush` waits when no `--wait-ms` is given. */
@@ -135,6 +139,33 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
   };
 
   const usage = (command: Command, message: string): never => command.error(message);
+
+  /**
+   * Inside an agent Turn the write goes to the broker and the Engine is never opened. What the broker
+   * protocol cannot carry (a Task scope, waiting for the commit) is refused, not done locally.
+   */
+  const viaBroker = async (
+    options: WriteOptions,
+    unsupported: readonly (string | undefined)[],
+    action: 'create' | 'save' | 'classify',
+    operation: Parameters<typeof runBrokeredDocumentWrite>[4],
+  ): Promise<void> => {
+    const found = unsupported.find((reason) => reason !== undefined);
+    if (found !== undefined) {
+      refuse(output, options.json, 'specs documents', found);
+    }
+
+    await runBrokeredDocumentWrite(output, context.broker!, options, action, operation);
+  };
+
+  const noTaskOrWait = (options: WriteOptions): (string | undefined)[] => [
+    options.task !== undefined
+      ? 'Documents of a Task are not available to an agent in this Turn; use the Specification documents.'
+      : undefined,
+    options.wait || options.waitMs !== undefined
+      ? '--wait is not available to an agent in this Turn; the Runtime commits the documents.'
+      : undefined,
+  ];
 
   /** Exactly one of `--document` and `--folder`. */
   const targetOf = (command: Command, options: TargetOptions) => {
@@ -303,6 +334,34 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
         usage(command, '--catalogue-revision applies to --template only.');
       }
 
+      if (context.broker !== undefined) {
+        const template = options.template;
+        if (template !== undefined && options.path === undefined) {
+          refuse(
+            output,
+            options.json,
+            'specs documents add',
+            'Give --path with --template: an agent in this Turn names where the document goes.',
+          );
+        }
+
+        const type = options.type !== undefined ? { type: options.type } : {};
+        const entry =
+          template !== undefined
+            ? { path: options.path!, templateId: template, ...type }
+            : { path: options.path!, content: await readContentInput(options, context), ...type };
+        await viaBroker(options, noTaskOrWait(options), 'create', {
+          name: 'documents.create',
+          specId,
+          documents: [entry],
+          ...(options.catalogueRevision !== undefined
+            ? { catalogueRevision: options.catalogueRevision }
+            : {}),
+        });
+
+        return;
+      }
+
       await run(options, async (session) => {
         if (options.template !== undefined) {
           const tree = await api.readTree(session.engine, specId);
@@ -369,6 +428,18 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
     ) => {
       if ((options.contentFile === undefined) === (options.stdin !== true)) {
         usage(command, 'Give exactly one of --content-file and --stdin.');
+      }
+
+      if (context.broker !== undefined) {
+        await viaBroker(options, noTaskOrWait(options), 'save', {
+          name: 'documents.save',
+          specId,
+          documentId,
+          content: await readContentInput(options, context),
+          expectedRevision: options.expectedRevision,
+        });
+
+        return;
       }
 
       await run(options, async (session) => {
@@ -473,6 +544,18 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
       documentId: string,
       options: WriteOptions & { type: string; expectedRevision: string },
     ) => {
+      if (context.broker !== undefined) {
+        await viaBroker(options, noTaskOrWait(options), 'classify', {
+          name: 'documents.classify',
+          specId,
+          documentId,
+          type: options.type,
+          expectedRevision: options.expectedRevision,
+        });
+
+        return;
+      }
+
       await run(options, (session) =>
         write(session, options, specId, {
           action: 'classify',

@@ -29,5 +29,5 @@ Dispositions of the F20 decisions:
   Q10 broken-Task isolation, the slim run record, typed context authoring and process artifacts.
 - **Superseded:** the creation-time `expectedBinding` and rebind (replaced by first-start validation
   with `expectedWorkflowRevision`).
-- **Still open** ([agent-assisted execution](reusable-workflow-manual-execution/agent-assisted-execution.md#context-resolution-for-agents)):
+- **Still open** ([agent-assisted execution](reusable-workflow-manual-execution/agent-assisted-execution.md#context-building-d13)):
   Q9 path hints, Q12 per-attempt context evidence, resolved references with digests and budgets.

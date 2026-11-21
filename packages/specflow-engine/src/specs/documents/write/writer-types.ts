@@ -2,7 +2,7 @@ import type { CommitInfo } from '@nevo/specflow-contracts/documents';
 
 import type { SpecFlowEngine } from '../../../application';
 import type { ResolvedProjectHome } from '../../../project/home/home';
-import type { ClaimSelf, MutationResource } from '../../durable';
+import type { ClaimSelf, MutationResource, OwnedExecution } from '../../durable';
 import type { DocumentChangeJournal } from '../changes/journal/model';
 import type { DocumentChangeStage } from '../changes/journal/stages';
 import type {
@@ -85,6 +85,12 @@ export interface DocumentWriteOptions extends DocumentAdmissionOptions {
    * running, for a platform or process that cannot be proven dead. Never set by a transport.
    */
   readonly confirmWriterStopped?: boolean;
+  /**
+   * The agent execution whose running Turn makes this write (the Runtime broker, D11): its
+   * `dispatched` claim admits the write, every other unsettled writer still refuses it. Named
+   * in-process by the trusted host, never taken from a request.
+   */
+  readonly ownedExecution?: OwnedExecution;
 }
 
 /** What a write answers: the facts the transports shape their responses from. */

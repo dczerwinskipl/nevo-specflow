@@ -10086,7 +10086,55 @@
               {
                 "type": "string",
                 "enum": [
+                  "WORKFLOW_OWNER_DECISION_REQUIRED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_DIRTY_BASELINE"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_BASELINE_CHANGED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_UNREGISTERED_DOCUMENTS"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_ENGINE_FILE_EDITED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_UNDECLARED_CHANGES"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_NESTED_REPOSITORY"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
                   "WORKFLOW_UNAVAILABLE"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_COMMIT_REFUSED"
                 ]
               },
               {
@@ -10276,7 +10324,55 @@
               {
                 "type": "string",
                 "enum": [
+                  "WORKFLOW_OWNER_DECISION_REQUIRED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_DIRTY_BASELINE"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_BASELINE_CHANGED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_UNREGISTERED_DOCUMENTS"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_ENGINE_FILE_EDITED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_UNDECLARED_CHANGES"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_NESTED_REPOSITORY"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
                   "WORKFLOW_UNAVAILABLE"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_COMMIT_REFUSED"
                 ]
               },
               {
@@ -10727,6 +10823,216 @@
                     }
                   }
                 }
+              },
+              "attribution": {
+                "type": "object",
+                "required": [
+                  "paths",
+                  "count"
+                ],
+                "properties": {
+                  "paths": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "undeclared": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "unchanged": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "remedies": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "classify"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "delete"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "restore"
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "incomplete": {
+                    "type": "boolean",
+                    "enum": [
+                      true
+                    ]
+                  }
+                }
+              },
+              "cause": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "agent-turn"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "agent-turn-unknown"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "close"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "create-or-close"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "commit-in-progress"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "queue-full"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "held-limit"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "recovery-required"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "manifest-changed"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "source-changed"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "write-in-progress"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "task-resource-change"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "other"
+                    ]
+                  }
+                ]
+              },
+              "sessionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "commit": {
+                "type": "object",
+                "required": [
+                  "code"
+                ],
+                "properties": {
+                  "code": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "BRANCH_PROTECTED"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "COMMIT_BLOCKED"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "GIT_POLICY_INVALID"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "DOCUMENT_UNCOMMITTED_LIMIT"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "DOCUMENT_OPERATION_INVALID"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "DOCUMENT_RECOVERY_REQUIRED"
+                        ]
+                      }
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "cause": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "blockedBy": {
+                    "type": "string",
+                    "maxLength": 64
+                  }
+                },
+                "additionalProperties": false
               }
             }
           }

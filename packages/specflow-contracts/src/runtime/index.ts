@@ -35,3 +35,6 @@ export const RequestErrorResponseSchema = Type.Object(
   { $id: 'RequestErrorResponse' },
 );
 export type RequestErrorResponse = Static<typeof RequestErrorResponseSchema>;
+
+export * from './agent-broker';
+export * from './agent-commands';

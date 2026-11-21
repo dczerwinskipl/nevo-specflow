@@ -21,16 +21,20 @@ export type ClaimHolder =
       readonly phase: 'admitted' | 'dispatched' | 'unknown';
     };
 
+/**
+ * `OWNED_CLAIM_NOT_HELD`: the write names an owned execution that has no unsettled claim (none was
+ * admitted, or it settled): the Turn has ended or never ran, so the write is refused, never
+ * admitted as an unclaimed one.
+ */
+export type SharedResourceErrorCode =
+  'RESOURCE_CONFLICT' | 'RESOURCE_JOURNAL_CORRUPT' | 'OWNED_CLAIM_NOT_HELD';
+
 export class SharedResourceError extends Error {
-  readonly code: 'RESOURCE_CONFLICT' | 'RESOURCE_JOURNAL_CORRUPT';
+  readonly code: SharedResourceErrorCode;
   /** The claim that conflicts (`RESOURCE_CONFLICT`); absent for a corrupt journal. */
   readonly holder: ClaimHolder | undefined;
 
-  constructor(
-    code: 'RESOURCE_CONFLICT' | 'RESOURCE_JOURNAL_CORRUPT',
-    message: string,
-    holder?: ClaimHolder,
-  ) {
+  constructor(code: SharedResourceErrorCode, message: string, holder?: ClaimHolder) {
     super(message);
     this.name = 'SharedResourceError';
     this.code = code;
@@ -85,6 +89,75 @@ export function overlaps(left: readonly string[], right: readonly string[]): boo
 export interface ClaimSelf {
   readonly kind: 'create' | 'close' | 'document-change' | 'manual-commit' | 'external';
   readonly operationId: string;
+  /**
+   * The native agent execution the caller acts for, named in-process by the trusted host (never
+   * taken from a request): its claim is the caller's own (see {@link OwnedExecutionClaim}). Every
+   * other unsettled writer still conflicts.
+   */
+  readonly ownedExecution?: OwnedExecutionClaim;
+}
+
+/**
+ * The owned-claim admission of an agent execution (D11), in one of two forms:
+ *
+ * - `turn`: a write of the running Turn (the broker): admitted only while the claim is `dispatched`;
+ *   an `admitted` claim has dispatched nothing yet and an `unknown` one belongs to a Turn that ended.
+ * - `finalize`: the finalize section of the attempt (the step state published together with the
+ *   claim settlement): admitted in any unsettled phase, `unknown` included. Only the Engine's own
+ *   finalize builds this form, inside that lock section; no host option yields it.
+ */
+export interface OwnedExecutionClaim {
+  /** The execution claim's `operationId` (the Runtime invocation id). */
+  readonly operationId: string;
+  readonly form: 'turn' | 'finalize';
+}
+
+/**
+ * What a trusted host names for a write of an agent Turn (the broker): the execution claim the write
+ * belongs to. It always becomes the `turn` form; the `finalize` form is the Engine's own.
+ */
+export interface OwnedExecution {
+  readonly operationId: string;
+  /**
+   * The agent the write is made for, built by the trusted host from the Turn's binding (never from
+   * a request). A document write records it, with `operationId`, on its journal; the ledger entries
+   * it leaves name `operationId` as their execution.
+   */
+  readonly actor?: AgentWriteActor;
+}
+
+/** An agent as a durable write records it: the shape of the workflow's `AgentActor`. */
+export interface AgentWriteActor {
+  readonly class: 'agent';
+  readonly details: {
+    readonly archetype?: string;
+    readonly provider: string;
+    readonly model?: string;
+    readonly sessionId?: string;
+  };
+}
+
+/** The `turn` form of a host's {@link OwnedExecution}, as the claim check takes it. */
+export function ownedTurnOf(owned: OwnedExecution | undefined): {
+  readonly ownedExecution?: OwnedExecutionClaim;
+} {
+  return owned === undefined
+    ? {}
+    : { ownedExecution: { operationId: owned.operationId, form: 'turn' } };
+}
+
+/** Whether `self` names the unsettled execution claim `operationId` in `phase` as its own. */
+export function ownsExecutionClaim(
+  self: { readonly ownedExecution?: OwnedExecutionClaim } | undefined,
+  operationId: string,
+  phase: 'admitted' | 'dispatched' | 'unknown',
+): boolean {
+  const owned = self?.ownedExecution;
+  if (owned?.operationId !== operationId) {
+    return false;
+  }
+
+  return owned.form === 'finalize' || phase === 'dispatched';
 }
 
 /**

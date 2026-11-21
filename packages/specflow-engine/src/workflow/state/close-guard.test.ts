@@ -21,6 +21,7 @@ describe('guardCloseReservations', () => {
 
     await expect(store.apply('closing', {})).rejects.toMatchObject({
       code: 'WORKFLOW_SPECIFICATION_BUSY',
+      busy: { cause: 'close' },
     });
     expect(applied).toEqual([]);
     await store.apply('other', {});

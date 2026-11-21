@@ -3,6 +3,11 @@ import type { Invocation, SessionDriver, ProviderOperation, EmitFact } from '../
 import { validateDriverFact } from '../providers/facts';
 import { SessionError } from '../errors';
 import type { SessionEffects, SessionEffectClaim } from './effects';
+import {
+  redactFact,
+  type InvocationCapabilities,
+  type InvocationGrant,
+} from './invocation-capabilities';
 
 type Outcome = Extract<DriverFact, { kind: 'outcome' }>;
 /** Engine owns effects; the SQLite Worker remains the only canonical Turn authority. */
@@ -11,6 +16,12 @@ export function createManagedInvocation(options: {
   binding: string;
   driver: SessionDriver;
   effects: SessionEffects;
+  /**
+   * Mints the invocation capability of a Turn of a Session associated with a Specification (D11):
+   * after the Engine claim, before the driver starts; active once the claim is dispatched, revoked
+   * when the Turn's transport ends, before the claim settles.
+   */
+  capabilities?: InvocationCapabilities;
   signal: AbortSignal;
   stop(): void;
   persist: EmitFact;
@@ -25,7 +36,15 @@ export function createManagedInvocation(options: {
   let driverInvoked = false;
   let observed: Outcome | undefined;
   let contradictory = false;
-  const emit: EmitFact = async (fact) => {
+  let grant: InvocationGrant | undefined;
+  // One revocation per invocation: every later path waits for the same outcome.
+  let revocation: Promise<'drained' | 'timed-out'> | undefined;
+  const revoke = () => (grant ? (revocation ??= grant.revoke()) : Promise.resolve('drained'));
+  // Nothing the provider reports is stored with a capability value in it.
+  const redact = <T extends DriverFact>(fact: T): T =>
+    grant ? redactFact(fact, (text) => grant!.redact(text)) : fact;
+  const emit: EmitFact = async (reported) => {
+    const fact = redact(reported);
     validateDriverFact(fact);
     if (fact.kind === 'outcome') {
       if (
@@ -61,6 +80,7 @@ export function createManagedInvocation(options: {
     dispatched = false;
 
   async function unknown(message: string) {
+    await revoke();
     options.stop();
     // An admitted claim keeps its not-dispatched proof for recovery; only a possibly dispatched
     // one becomes unknown.
@@ -81,6 +101,7 @@ export function createManagedInvocation(options: {
             dispatchAttempted = true;
             await claim!.dispatch();
             dispatched = true;
+            grant?.activate();
           },
         }
       : {}),
@@ -140,11 +161,28 @@ export function createManagedInvocation(options: {
         return;
       }
 
+      if (options.capabilities && context.specId !== undefined) {
+        grant = await options.capabilities.mint({
+          invocationId: options.invocation.invocationId,
+          sessionId: options.invocation.sessionId,
+          turnId: options.invocation.turnId,
+          specId: context.specId,
+          workspace: claim.workspace,
+          provider: options.invocation.selection.providerId,
+          ...(options.invocation.selection.modelId !== undefined
+            ? { model: options.invocation.selection.modelId }
+            : {}),
+        });
+      }
+
       driverInvoked = true;
       native = options.driver.start(
         {
           ...options.invocation,
           ...evidenceFirst,
+          ...(grant
+            ? { runtimeEnvironment: { values: grant.environment, secrets: grant.secrets } }
+            : {}),
           executionContext: {
             ...context,
             workspaceIdentity: context.workspaceIdentity,
@@ -165,7 +203,17 @@ export function createManagedInvocation(options: {
       await native.done.catch(() => {
         outputUncertain = true;
       });
-      const evidence = await native.settlement?.catch(() => undefined);
+      // The Turn is ending: its capability admits nothing more, and the broker calls still running
+      // finish before any settlement.
+      if ((await revoke()) === 'timed-out') {
+        // A broker write may still land: recovery or finalize decides, never a normal settlement.
+        await unknown('Agent broker calls were still running when the Turn ended.');
+
+        return;
+      }
+
+      const settled = await native.settlement?.catch(() => undefined);
+      const evidence = settled?.result ? { ...settled, result: redact(settled.result) } : settled;
       if (!dispatchAttempted) {
         // No provider process of this invocation was recorded, so none received input: the claim
         // is still admitted and settles as never dispatched.
@@ -261,6 +309,8 @@ export function createManagedInvocation(options: {
       }
 
       await unknown('Agent lifecycle or Engine settlement could not be persisted.');
+    } finally {
+      await revoke();
     }
   })();
 

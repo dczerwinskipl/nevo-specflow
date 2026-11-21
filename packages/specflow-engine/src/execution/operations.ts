@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from 'node:util';
 import type { SpecFlowEngine } from '../application';
-import { withProjectControlLock } from '../project/control-lock';
+import { holdsProjectControlLock, withProjectControlLock } from '../project/control-lock';
 import { readWorkspaceRegistry, verifyWorkspaceRoot } from '../project/workspace/registry/registry';
 import type { WorkspaceRegistry } from '../project/workspace/registry/types';
 import { assertSharedResourcesAvailable } from '../specs/coordination/resources';
@@ -170,41 +170,54 @@ export async function admitWorkspaceExecution(
   });
 }
 
+type ExecutionUpdate = (record: WorkspaceExecutionJournal) => WorkspaceExecutionJournal;
+
 async function transition(
   engine: SpecFlowEngine,
   intent: WorkspaceExecutionIntent,
   target: WorkspaceExecutionTarget,
-  update: (record: WorkspaceExecutionJournal) => WorkspaceExecutionJournal,
+  update: ExecutionUpdate,
 ): Promise<WorkspaceExecutionJournal> {
   validateExecutionIntent(intent);
   const workspace = targetWorkspace(engine, await engine.readRegistry(), target);
 
-  return withProjectControlLock(engine.context, async () => {
-    const record = await readExecutionJournal(engine.context, intent.operationId);
-    if (!record) {
-      throw new WorkspaceExecutionError(
-        'EXECUTION_RECOVERY_REQUIRED',
-        'Execution admission is missing.',
-      );
-    }
+  return withProjectControlLock(engine.context, () =>
+    transitionInSection(engine, intent, target, workspace, update),
+  );
+}
 
-    matching(record, intent, workspace);
-    const latest = await readWorkspaceRegistry(engine.context);
-    assertSameIncarnation(engine, latest, target, workspace);
-    if (latest.revision !== record.registryRevision) {
-      throw new WorkspaceExecutionError(
-        'EXECUTION_RECOVERY_REQUIRED',
-        'Registry changed while an execution claim was held.',
-      );
-    }
+/** The lock-held half of {@link transition}: the caller holds the project control lock. */
+async function transitionInSection(
+  engine: SpecFlowEngine,
+  intent: WorkspaceExecutionIntent,
+  target: WorkspaceExecutionTarget,
+  workspace: ClaimWorkspace,
+  update: ExecutionUpdate,
+): Promise<WorkspaceExecutionJournal> {
+  const record = await readExecutionJournal(engine.context, intent.operationId);
+  if (!record) {
+    throw new WorkspaceExecutionError(
+      'EXECUTION_RECOVERY_REQUIRED',
+      'Execution admission is missing.',
+    );
+  }
 
-    const result = update(record);
-    if (!isDeepStrictEqual(result, record)) {
-      await publishExecutionJournal(engine.context, result);
-    }
+  matching(record, intent, workspace);
+  const latest = await readWorkspaceRegistry(engine.context);
+  assertSameIncarnation(engine, latest, target, workspace);
+  if (latest.revision !== record.registryRevision) {
+    throw new WorkspaceExecutionError(
+      'EXECUTION_RECOVERY_REQUIRED',
+      'Registry changed while an execution claim was held.',
+    );
+  }
 
-    return result;
-  });
+  const result = update(record);
+  if (!isDeepStrictEqual(result, record)) {
+    await publishExecutionJournal(engine.context, result);
+  }
+
+  return result;
 }
 
 /** Runtime must await this boundary BEFORE invoking the provider driver. */
@@ -264,6 +277,35 @@ export function settleWorkspaceExecution(
   receipt: WorkspaceExecutionReceipt,
   target: WorkspaceExecutionTarget = {},
 ) {
+  assertReceiptOf(intent, receipt);
+
+  return transition(engine, intent, target, settlementOf(receipt));
+}
+
+/**
+ * {@link settleWorkspaceExecution} inside a project control-lock section the caller already holds
+ * (the control lock is not re-entrant): the finalize section of an agent attempt publishes its step
+ * state and then settles the claim in one section (`workflow/agent/finalize`). It never takes the
+ * lock; called without it, it refuses before reading anything.
+ */
+export async function settleWorkspaceExecutionInSection(
+  engine: SpecFlowEngine,
+  intent: WorkspaceExecutionIntent,
+  receipt: WorkspaceExecutionReceipt,
+  target: WorkspaceExecutionTarget = {},
+): Promise<WorkspaceExecutionJournal> {
+  if (!holdsProjectControlLock(engine.context)) {
+    throw new Error('The lock-held settlement runs inside a project control-lock section.');
+  }
+
+  validateExecutionIntent(intent);
+  assertReceiptOf(intent, receipt);
+  const workspace = targetWorkspace(engine, await engine.readRegistry(), target);
+
+  return transitionInSection(engine, intent, target, workspace, settlementOf(receipt));
+}
+
+function assertReceiptOf(intent: WorkspaceExecutionIntent, receipt: WorkspaceExecutionReceipt) {
   validateExecutionReceipt(receipt);
   if (receipt.invocationId !== intent.operationId) {
     throw new WorkspaceExecutionError(
@@ -271,8 +313,11 @@ export function settleWorkspaceExecution(
       'Settlement belongs to another invocation.',
     );
   }
+}
 
-  return transition(engine, intent, target, (record) => {
+/** The native-result settlement: idempotent for the same receipt, never of an undispatched claim. */
+function settlementOf(receipt: WorkspaceExecutionReceipt): ExecutionUpdate {
+  return (record) => {
     const settlement = { kind: 'native-result' as const, receipt: structuredClone(receipt) };
     if (record.phase === 'settled') {
       if (!isDeepStrictEqual(record.settlement, settlement)) {
@@ -293,5 +338,5 @@ export function settleWorkspaceExecution(
     }
 
     return { ...record, phase: 'settled', settlement };
-  });
+  };
 }

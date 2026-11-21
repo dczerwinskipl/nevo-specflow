@@ -30,6 +30,7 @@ import {
   type CloseArchiveMove,
 } from './model';
 import { sha256Hex } from '../../hash';
+import { SPECIFICATION_ROOT } from '../repository';
 
 function failure(message: string): CloseOperationError {
   return new CloseOperationError('CLOSE_RECOVERY_REQUIRED', message);
@@ -301,7 +302,7 @@ export async function moveToArchive(
   archivedManifest: string,
   afterArchiveMove?: () => Promise<void>,
 ): Promise<void> {
-  const archiveParent = join(root, 'specs', 'archive');
+  const archiveParent = join(root, SPECIFICATION_ROOT, 'archive');
   if (await absent(archiveParent)) {
     await mkdir(archiveParent);
   }

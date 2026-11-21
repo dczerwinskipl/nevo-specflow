@@ -21,6 +21,7 @@ import { createEngineSessionEffects, workspaceExecutionIdentity } from './effect
 import type { SessionCoordinator } from './lifecycle/coordinator';
 import { createSpecificationWorkspaceResolver } from './workspace/specification-workspace';
 import { withheldProviderDescriptor } from './providers/withheld';
+import type { InvocationCapabilities } from './lifecycle/invocation-capabilities';
 
 /**
  * The registered Sessions runtime, read at request time by the features composed over it (the
@@ -46,6 +47,8 @@ export function createSessionsFeature(
     workspaceOccupancy?: {
       beginTurn(workspaceId: string, sessionId: string): { end(): void } | undefined;
     };
+    /** The invocation capabilities of write Turns (the agent-execution feature, D11). */
+    invocationCapabilities?: InvocationCapabilities;
   } = {},
 ): RuntimeFeature & { readonly runtime: SessionsRuntime } {
   let registered: SessionCoordinator | undefined;
@@ -172,6 +175,7 @@ export function createSessionsFeature(
               ? createSpecificationWorkspaceResolver(options.engine)
               : undefined,
             options.workspaceOccupancy,
+            options.invocationCapabilities,
           )
         : undefined;
       if (coordinator) {

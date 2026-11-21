@@ -35,7 +35,10 @@ export const WORKFLOW_ERROR_CODES = [
   'WORKFLOW_TASK_BUSY',
   /** The Specification's workflow ended already: completed, or abandoned (for another reason). */
   'WORKFLOW_SPECIFICATION_ENDED',
-  /** A Close of the Specification is unsettled: its workflow cannot change until it settles. */
+  /**
+   * Another writer holds the Specification: an agent Session Turn's project-wide write claim, or an
+   * unsettled Close of it. Thrown as {@link SpecificationBusyError}, which names the holder.
+   */
   'WORKFLOW_SPECIFICATION_BUSY',
   /** Unfinished work or pending writes hold the Specification; the error lists them (`blockers`). */
   'WORKFLOW_EXIT_BLOCKED',
@@ -43,7 +46,81 @@ export const WORKFLOW_ERROR_CODES = [
   'WORKFLOW_GATE_UNSATISFIED',
   /** A Specification cannot complete while Tasks are open; the error lists them (`openTasks`). */
   'WORKFLOW_TASKS_OPEN',
+  /**
+   * An agent's finish proposal takes a decision only the owner takes: a transition with an
+   * owner-authority effect or `confirmation: owner`, or status decisions on Tasks.
+   */
+  'WORKFLOW_OWNER_DECISION_REQUIRED',
+  /**
+   * Ask agent attribution (B3, B6), thrown as `AttributionRefusalError` naming the paths: the
+   * checkout has changes the Engine cannot attribute at an agent attempt's start
+   * (`WORKFLOW_DIRTY_BASELINE`), files changed since the attempt's last Turn ended at Continue
+   * (`WORKFLOW_BASELINE_CHANGED`), and at an agent finish new files of a Specification directory
+   * without a document type (`WORKFLOW_UNREGISTERED_DOCUMENTS`, D14), Engine-written files whose
+   * bytes are not the Engine's (`WORKFLOW_ENGINE_FILE_EDITED`), or changed files the proposal does
+   * not declare exactly (`WORKFLOW_UNDECLARED_CHANGES`).
+   */
+  'WORKFLOW_DIRTY_BASELINE',
+  'WORKFLOW_BASELINE_CHANGED',
+  'WORKFLOW_UNREGISTERED_DOCUMENTS',
+  'WORKFLOW_ENGINE_FILE_EDITED',
+  'WORKFLOW_UNDECLARED_CHANGES',
+  /** An untracked Git repository inside the attempt's checkout: nothing in it can be attributed. */
+  'WORKFLOW_NESTED_REPOSITORY',
 ] as const;
 export type WorkflowErrorCode = (typeof WORKFLOW_ERROR_CODES)[number];
 
 export class WorkflowError extends CoreWorkflowError<WorkflowErrorCode> {}
+
+/**
+ * Why a Specification is busy (`WORKFLOW_SPECIFICATION_BUSY`): an agent Turn's claim (`agent-turn`,
+ * or `agent-turn-unknown` once that Turn ended without a verified outcome), an unsettled Close
+ * (`close`), or a busy cause of the workflow state's commit admission (the documents' `SPEC_BUSY`
+ * causes). `other`: a busy refusal whose cause this list does not know, kept as a refusal rather than
+ * dropped. The Runtime's contract test keeps the contracts' list equal to this one.
+ */
+export const SPECIFICATION_BUSY_CAUSES = [
+  'agent-turn',
+  'agent-turn-unknown',
+  'close',
+  'create-or-close',
+  'commit-in-progress',
+  'queue-full',
+  'held-limit',
+  'recovery-required',
+  'manifest-changed',
+  'source-changed',
+  'write-in-progress',
+  'task-resource-change',
+  'other',
+] as const;
+export type SpecificationBusyCause = (typeof SPECIFICATION_BUSY_CAUSES)[number];
+
+/**
+ * What holds a busy Specification, the `details` of `WORKFLOW_SPECIFICATION_BUSY`: the cause and,
+ * for an agent Turn's claim, its Session.
+ */
+export interface SpecificationBusy {
+  readonly cause: SpecificationBusyCause;
+  readonly sessionId?: string;
+}
+
+/**
+ * `WORKFLOW_SPECIFICATION_BUSY`: the workflow of the Specification cannot change now, and why. The
+ * message names the holder and the remedy. `claim` is the execution claim met (in-process only, for
+ * a host that reacts to its own agent's claim; it is never sent).
+ */
+export class SpecificationBusyError extends WorkflowError {
+  readonly busy: SpecificationBusy;
+  readonly claim: { readonly operationId: string; readonly sessionId: string } | undefined;
+
+  constructor(
+    message: string,
+    busy: SpecificationBusy,
+    claim?: { readonly operationId: string; readonly sessionId: string },
+  ) {
+    super('WORKFLOW_SPECIFICATION_BUSY', message);
+    this.busy = busy;
+    this.claim = claim;
+  }
+}

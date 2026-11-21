@@ -151,6 +151,11 @@ export interface NowBlockProps {
    * workflow stands becomes the quiet line under it ("Not started · First step · Implement").
    */
   readonly hold?: { readonly reason?: string };
+  /**
+   * Replaces the quiet position line (Ask agent mock proposal): an agent attempt's line with its
+   * Session link, a stop that waits for proof, an attempt that ended without a finish.
+   */
+  readonly positionLine?: ReactNode;
 }
 
 /**
@@ -174,6 +179,7 @@ export function NowBlock({
   summary,
   starting = false,
   hold,
+  positionLine,
 }: NowBlockProps) {
   const { t, i18n } = useTranslation();
   const viewer = useViewer();
@@ -288,7 +294,7 @@ export function NowBlock({
   }
 
   // On hold, the hold leads with its reason; where the workflow stands is the quiet line under it.
-  let quiet: ReactNode = facts;
+  let quiet: ReactNode = positionLine ?? facts;
   if (hold) {
     quiet = (
       <>

@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 import {
   abandonLines,
   actionLines,
+  contextLines,
   exitLines,
   finishLines,
   positionLine,
@@ -330,5 +331,53 @@ describe('abandonLines', () => {
 describe('positionLine', () => {
   it('names the terminal outcome', () => {
     expect(positionLine({ state: 'terminal', outcome: 'completed' })).toBe('ended: completed');
+  });
+});
+
+describe('contextLines', () => {
+  it('lists documents, types and the Task context by digest', () => {
+    const context = {
+      subject,
+      step: { id: 'implement', title: 'Implement' },
+      attempt: 1,
+      agent: {
+        documents: [
+          { id: 'overview', type: 'overview', path: 'specs/a/overview.md', templateOnly: true },
+        ],
+        documentTypes: [
+          {
+            id: 'decisions',
+            title: 'Decisions',
+            useWhen: 'a choice is made',
+            defaultFilename: 'decisions.md',
+          },
+        ],
+        taskContext: {
+          digest: 'd1',
+          entries: [
+            {
+              kind: 'path',
+              ref: 'src/a.ts',
+              path: 'src/a.ts',
+              sha256: 'a'.repeat(64),
+              bytes: 3,
+              required: true,
+            },
+            { kind: 'instructions', text: 'Be brief.', required: false },
+          ],
+        },
+      },
+    } as unknown as Parameters<typeof contextLines>[0];
+
+    expect(contextLines(context)).toEqual([
+      'Context: Task build, step Implement (implement) (attempt 1)',
+      'Documents (1):',
+      '  overview [overview] specs/a/overview.md (template only)',
+      'Document types you may register (documents add --type <id>):',
+      '  decisions: Decisions. Use when a choice is made (default decisions.md)',
+      'Task context (digest d1):',
+      '  path src/a.ts -> src/a.ts sha256:aaaaaaaaaaaa 3 bytes',
+      '  instructions (optional): Be brief.',
+    ]);
   });
 });

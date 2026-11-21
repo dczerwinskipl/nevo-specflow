@@ -8,6 +8,7 @@ import {
 } from '@nevo/specflow-engine';
 
 import { ReportedFailure } from '../exit-code';
+import { uncommittedChangesLines, uncommittedChangesReport } from '../documents/uncommitted-groups';
 
 type PreviewRequest = Parameters<typeof previewPublicCloseOperation>[1];
 
@@ -130,37 +131,51 @@ export function integrationTargetMissingLines(blocker: MissingTarget): string[] 
 }
 
 /**
- * A Close preview refused for a missing integration branch: the refusal and the candidates are
- * printed (stderr; `--json` also prints `{error}` on stdout) and the command fails as reported. Any
- * other error is left to the caller.
+ * A Close refused for repository blockers (`CLOSE_PREFLIGHT`): a missing integration branch prints
+ * its candidates, uncommitted changes print the one "Uncommitted changes" report with a remedy per
+ * kind (D16). Text goes to stderr; `--json` also prints `{error}` on stdout, with the grouped
+ * report under `uncommitted` beside the raw `repository` blockers. The command fails as reported.
+ * Any other error is left to the caller. `specId` is the Specification the Close is for.
  */
-export async function reportingMissingIntegrationTarget<T>(
+export async function reportingRepositoryBlockers<T>(
   output: { readonly stdout: (line: string) => void; readonly stderr: (line: string) => void },
   json: boolean | undefined,
   body: () => Promise<T>,
+  specId?: string,
 ): Promise<T> {
   try {
     return await body();
   } catch (error) {
-    const missing =
-      error instanceof CloseOperationError
-        ? error.repository.find(
-            (blocker): blocker is MissingTarget => blocker.kind === 'integration-target-missing',
-          )
-        : undefined;
-    if (!(error instanceof CloseOperationError) || !missing) {
+    if (!(error instanceof CloseOperationError)) {
+      throw error;
+    }
+
+    const missing = error.repository.find(
+      (blocker): blocker is MissingTarget => blocker.kind === 'integration-target-missing',
+    );
+    const uncommitted = uncommittedChangesReport({ blockers: error.repository }, specId);
+    if (!missing && !uncommitted) {
       throw error;
     }
 
     output.stderr(error.code + ': ' + error.message);
-    for (const line of integrationTargetMissingLines(missing)) {
+    for (const line of missing ? integrationTargetMissingLines(missing) : []) {
+      output.stderr(line);
+    }
+
+    for (const line of uncommitted ? uncommittedChangesLines(uncommitted) : []) {
       output.stderr(line);
     }
 
     if (json) {
       output.stdout(
         JSON.stringify({
-          error: { code: error.code, message: error.message, repository: error.repository },
+          error: {
+            code: error.code,
+            message: error.message,
+            repository: error.repository,
+            ...(uncommitted ? { uncommitted } : {}),
+          },
         }),
       );
     }

@@ -1,9 +1,9 @@
-import { WorkflowError } from '../errors';
+import { SpecificationBusyError } from '../errors';
 import type { WorkflowStore } from './store';
 
 /**
  * Whether an unsettled Close (Specification, Worktree or Workspace Close) names the Specification.
- * Only Close holds count: an agent's own project-write execution claim must not block its finish.
+ * Only Close holds count here; the agent execution claims are `claim-guard.ts`.
  */
 export type CloseInProgress = (specId: string) => Promise<boolean>;
 
@@ -23,9 +23,9 @@ export function guardCloseReservations(
     taskFolderExists: (specId, taskId) => store.taskFolderExists(specId, taskId),
     async apply(specId, change) {
       if (await closing(specId)) {
-        throw new WorkflowError(
-          'WORKFLOW_SPECIFICATION_BUSY',
+        throw new SpecificationBusyError(
           `A Close of the Specification "${specId}" is in progress; its workflow cannot change now.`,
+          { cause: 'close' },
         );
       }
 

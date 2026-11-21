@@ -165,12 +165,30 @@ it('refuses a Task change while an agent Turn holds the project, naming its Sess
     type: 'implementation',
     actor: { class: 'human', details: { actorId: 'local:owner', trust: 'local' } },
   });
+  // The kernel admission refuses before the commit admission (F05), naming the Session.
   await expect(refused).rejects.toMatchObject({
-    code: 'SPEC_BUSY',
-    details: { reason: 'busy', cause: 'agent-turn' },
+    code: 'WORKFLOW_SPECIFICATION_BUSY',
+    busy: { cause: 'agent-turn', sessionId: intent.ownerId },
   });
   await expect(refused).rejects.toThrow(`agent Session Turn (Session ${intent.ownerId})`);
-  await abandonWorkspaceExecutionAdmission(engine, intent);
+
+  // With Git on, the owning Turn's write passes both the kernel and the commit admission (D11).
+  await markWorkspaceExecutionDispatched(engine, intent);
+  const own = await openWorkflow(engine, { ownedExecution: { operationId: intent.operationId } });
+  await expect(
+    createTask(own, {
+      specId: spec.specId,
+      taskId: 'docs',
+      title: 'Document it',
+      type: 'implementation',
+      actor: { class: 'human', details: { actorId: 'local:owner', trust: 'local' } },
+    }),
+  ).resolves.toMatchObject({ task: { taskId: 'docs' } });
+  await settleWorkspaceExecution(engine, intent, {
+    invocationId: intent.operationId,
+    process: 'stopped',
+    outcome: 'completed',
+  });
 }, 240_000);
 it('does not admit an external writer while an interrupted Create retains resources', async () => {
   const { engine, intent, create } = await fixture();

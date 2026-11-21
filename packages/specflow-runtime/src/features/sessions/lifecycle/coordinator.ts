@@ -30,6 +30,8 @@ import { validateDriverFact } from '../providers/facts';
 import { nativeStopEvidence } from '../providers/process';
 import { executionBinding, type SessionEffects } from './effects';
 import { createManagedInvocation } from './managed-invocation';
+import { redactFact, type InvocationCapabilities } from './invocation-capabilities';
+import { redactAgentCapabilityShapes } from '@nevo/specflow-contracts/runtime';
 import { createSessionTelemetryService } from './telemetry';
 
 interface ActiveInvocation {
@@ -74,6 +76,8 @@ export function createSessionCoordinator(
   workspaceOccupancy?: {
     beginTurn(workspaceId: string, sessionId: string): { end(): void } | undefined;
   },
+  /** Gives a write Turn of a Specification's Session its invocation capability (D11). */
+  invocationCapabilities?: InvocationCapabilities,
 ) {
   const driverList: readonly SessionDriver[] = Array.isArray(drivers)
     ? drivers
@@ -610,7 +614,9 @@ export function createSessionCoordinator(
         let seq = 0,
           tail = Promise.resolve();
         let uncertain = false;
-        const emit = async (fact: DriverFact) => {
+        const emit = async (reported: DriverFact) => {
+          // Whatever the provider reports, nothing shaped like an agent capability is stored.
+          const fact = redactFact(reported, redactAgentCapabilityShapes);
           validateDriverFact(fact);
           if (fact.kind === 'text' && utf8Bytes(fact.text) > SessionLimits.chunkBytes) {
             throw new SessionError(
@@ -695,6 +701,7 @@ export function createSessionCoordinator(
                 binding: binding!,
                 driver,
                 effects: effects!,
+                ...(invocationCapabilities ? { capabilities: invocationCapabilities } : {}),
                 signal: controller.signal,
                 stop: () => controller.abort('persistence-loss'),
                 persist: emit,

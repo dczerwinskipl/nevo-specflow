@@ -63,3 +63,23 @@ export const RECORD_BYTES_MAX = 256 * 1024;
  * index, and per Task its run record, its manifest and its initial `task.md`.
  */
 export const JOURNAL_BYTES_MAX = 2 * (3 * TASKS_PER_SPECIFICATION_MAX + 2) * RECORD_BYTES_MAX;
+
+/**
+ * Budgets of the agent step context (`workflow/agent/context`). The context is references with
+ * digests; only the entries' `instructions` and the catalogue's texts are inline. A context over a
+ * budget is refused (`WORKFLOW_INPUT_INVALID`), never silently cut.
+ */
+export const AGENT_CONTEXT_DOCUMENTS_MAX = 500;
+export const AGENT_CONTEXT_DOCUMENT_TYPES_MAX = 100;
+/** The inline `instructions` entries of a Task's context, in total. */
+export const AGENT_CONTEXT_INSTRUCTIONS_BYTES_MAX = 32 * 1024;
+/** The instruction texts of the document types and archetype templates, in total. */
+export const AGENT_CONTEXT_CATALOGUE_BYTES_MAX = 256 * 1024;
+/** A referenced file is hashed only up to this size; a larger one refuses the context. */
+export const AGENT_CONTEXT_REFERENCE_BYTES_MAX = 8 * 1024 * 1024;
+/** The entries of one Task context. */
+export const AGENT_CONTEXT_ENTRIES_MAX = 100;
+/** Every file of one context hashed together (references, folders and globs included). */
+export const AGENT_CONTEXT_HASHED_BYTES_MAX = 32 * 1024 * 1024;
+/** The files one folder or glob reference may name. */
+export const AGENT_CONTEXT_FOLDER_FILES_MAX = 200;

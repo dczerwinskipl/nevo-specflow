@@ -15,6 +15,7 @@ related:
   - adr.0024-tasks-are-resources
   - adr.0023-neutral-workflow-coordinator-and-manual-execution
   - ideas.specflow-engine.reusable-workflow.agent-execution
+  - ideas.specflow-engine.reusable-workflow.ask-agent-plan
   - ideas.specflow-engine.reusable-workflow.typed-inputs
 ---
 
@@ -29,6 +30,6 @@ The PR #137 dossier is implemented. Each part's disposition:
 | E2 Task resources, D03, D04, D06, D07 Close guard and Abandon, commits | Implemented: [ADR 0024](../../../architecture/decisions/0024-tasks-are-resources.md)                                                                                                                                      |
 | E3/E4 UI ([UX contract](ux-contract.md))                               | Implemented: [Manual workflow execution](../../../product/specflow/ui/workflow-execution.md), [Specification Overview](../../../product/specflow/ui/specification-overview.md)                                            |
 | E5 typed transition inputs (D08, with F19)                             | Still open: [Typed transition inputs](typed-transition-inputs.md)                                                                                                                                                         |
-| E6 agent delegation (D11–D13, context resolution, push post action)    | Still open: [Agent-assisted execution](agent-assisted-execution.md)                                                                                                                                                       |
+| E6 agent delegation (D11–D20, context, commits, approvals, recovery)   | Still open: [Ask agent contract](agent-assisted-execution.md) and its [delivery plan](ask-agent-delivery-plan.md)                                                                                                         |
 
 The boundaries and delivery-plan documents were working material and were removed after promotion.

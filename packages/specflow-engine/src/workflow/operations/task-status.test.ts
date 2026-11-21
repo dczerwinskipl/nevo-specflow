@@ -12,7 +12,6 @@ import { inspectExecution } from './inspect';
 import {
   SPEC,
   TWO_TASKS,
-  agent,
   claude,
   memoryDependencies,
   owner,
@@ -216,7 +215,7 @@ describe('setTaskStatus', () => {
       input: { tasks: TWO_TASKS },
       actor: claude,
     });
-    const reviewer = agent('codex', 'session-r', 'x');
+    const reviewer = owner;
     const review = (taskDecisions: FinishStepInput['input']['taskDecisions']) =>
       finishStep(dependencies, {
         subject: specification,
@@ -267,7 +266,7 @@ describe('setTaskStatus', () => {
       dependencies,
       specification,
       { result: 'pass', taskDecisions: [{ taskId: 'screen', status: 'cancelled' }] },
-      agent('codex', 'session-r', 'x'),
+      owner,
     );
 
     expect(reviewed.continuation).toEqual({ kind: 'none', reason: 'waiting-for-tasks' });
@@ -380,7 +379,7 @@ describe('escalation to the Specification', () => {
       },
       actor: claude,
     });
-    await work(dependencies, specification, { result: 'pass' }, agent('codex', 'session-r', 'x'));
+    await work(dependencies, specification, { result: 'pass' }, owner);
     await work(dependencies, task('api'));
     await work(dependencies, task('web'));
   };
@@ -495,7 +494,7 @@ describe('escalation to the Specification', () => {
           { taskId: 'screen', status: 'ready' },
         ],
       },
-      agent('codex', 'session-r', 'x'),
+      owner,
     );
     await work(dependencies, task('api'));
     await escalate(dependencies, 'Split the API Task.');
@@ -507,7 +506,7 @@ describe('escalation to the Specification', () => {
       input: { tasks: [{ id: 'extra', title: 'Extra', type: 'implementation' }] },
       actor: claude,
     });
-    await startSpecification(dependencies);
+    await startSpecification(dependencies, owner);
     const before = await inspectExecution(dependencies, SPEC);
 
     await expect(
@@ -516,7 +515,7 @@ describe('escalation to the Specification', () => {
         step: 'breakdown-review',
         attempt: 2,
         input: { result: 'pass' },
-        actor: claude,
+        actor: owner,
       }),
     ).rejects.toMatchObject({
       code: 'WORKFLOW_INPUT_INVALID',
@@ -659,7 +658,9 @@ describe('escalation to the Specification', () => {
       input: { tasks: [] },
       actor: claude,
     });
-    await expect(work(dependencies, specification, { result: 'pass' })).rejects.toMatchObject({
+    await expect(
+      work(dependencies, specification, { result: 'pass' }, owner),
+    ).rejects.toMatchObject({
       code: 'WORKFLOW_INPUT_INVALID',
       message: 'Cannot enter the wait step "implementation": Tasks escalated: api.',
     });

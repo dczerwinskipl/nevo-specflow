@@ -64,7 +64,15 @@ export {
   type FinishingSession,
   type LaunchBlocker,
 } from './continuation/resolve';
-export { WORKFLOW_ERROR_CODES, WorkflowError, type WorkflowErrorCode } from './errors';
+export {
+  SPECIFICATION_BUSY_CAUSES,
+  WORKFLOW_ERROR_CODES,
+  SpecificationBusyError,
+  WorkflowError,
+  type SpecificationBusy,
+  type SpecificationBusyCause,
+  type WorkflowErrorCode,
+} from './errors';
 export {
   AGENT_UNAVAILABLE_REASONS,
   inspectActions,
@@ -141,12 +149,70 @@ export {
 } from './operations/reevaluate-wait';
 export { returnToStep, type ReturnToStepInput, type ReturnToStepResult } from './operations/return';
 export {
+  admitAgentTurn,
+  AttributionRefusalError,
+  finalizeAgentAttempt,
+  openAgentAttempts,
+  type AgentDeclaredChanges,
+  type AgentTurnAdmissionInput,
+  type AttributionDetails,
+  proposeAgentFinish,
+  readAgentAttempt,
+  recoverAgentAttempts,
+  retryAgentPostActions,
+  runAgentPostActions,
+  startAgentAttempt,
+  type AgentAttemptDependencies,
+  type AgentAttemptJournal,
+  type AgentAttemptRecovery,
+  type AgentDirtySet,
+  type AgentFinishProposal,
+  type AgentPostActionRecord,
+  type AgentProposalState,
+  type AgentRefusal,
+  type AgentReturnRequest,
+  type AgentTurnBinding,
+  type FinalizeAgentAttemptInput,
+  type FinalizeAgentAttemptResult,
+  type FinalizeBoundary,
+  type AgentTurnIdentity,
+  type ProposeAgentFinishInput,
+  type ProposeAgentFinishResult,
+  type StartAgentAttemptInput,
+  type StartAgentAttemptResult,
+} from './agent';
+export {
   startSpecificationExecution,
   startTaskExecution,
+  type ExpectedPosition,
   type StartResult,
   type StartSpecificationInput,
   type StartTaskInput,
 } from './operations/start';
+export {
+  engineAgentContextSource,
+  gatherAgentContext,
+  readStepContext,
+  type AgentContextSource,
+  type AgentStepContext,
+  type ContextArchetype,
+  type ContextDocument,
+  type ContextDocumentType,
+  type ContextEntry,
+  type ContextInstructions,
+  type ContextReference,
+} from './agent/context';
+export {
+  AGENT_WRITE_OPERATIONS,
+  admitAgentOperation,
+  deriveAgentScope,
+  type AgentOperationTarget,
+  type AgentScopeBinding,
+  type AgentScopeDecision,
+  type AgentScopeRefusalReason,
+  type AgentWriteOperation,
+  type AgentWriteScope,
+} from './agent/scope';
 export type {
   StepContext,
   StepDescription,
@@ -185,6 +251,7 @@ export type { FinishInput } from './input-schema';
 export { TASK_STATUSES } from './state/model';
 export type {
   AgentActor,
+  AgentAttemptBinding,
   AttemptRecord,
   ExecutionTask,
   OwnerActor,

@@ -70,6 +70,20 @@ describe('resolveContinuation', () => {
     });
   });
 
+  it('starts a fresh Session for an independent archetype even when the transition says reuse', () => {
+    expect(
+      resolveContinuation({
+        transition: transition({ session: 'reuse' }),
+        next: review,
+        archetypes: () => ({ ...reviewer, independent: true }),
+        finishing: { provider: 'claude', sessionId: 's-1' },
+      }),
+    ).toMatchObject({
+      kind: 'continue',
+      launch: { provider: 'codex', session: { mode: 'fresh' } },
+    });
+  });
+
   it.each([
     [
       'the continued provider has no model',

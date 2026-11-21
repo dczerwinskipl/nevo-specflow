@@ -33,6 +33,7 @@ import {
   type DocumentsFeatureDependencies,
 } from '../features/documents';
 import { createWorkflowFeature, type WorkflowFeatureDependencies } from '../features/workflow';
+import { createAgentExecutionFeature } from '../features/agent-execution';
 import {
   createDocsFeature,
   openProjectDocumentLookup,
@@ -219,9 +220,14 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   // Which checkouts agent Session Turns work in: Close never removes one of them (and holds a
   // checkout against new Turns while it removes it).
   const workspaceOccupancy = createWorkspaceOccupancy();
+  // Project mode: a write Turn of a Specification's Session gets an invocation capability and
+  // writes through the local agent broker (D11).
+  const agentExecution =
+    mode === 'project' && engine ? createAgentExecutionFeature({ engine }) : undefined;
   const sessionsFeature = createSessionsFeature({
     ...(engine ? { engine } : {}),
     workspaceOccupancy,
+    ...(agentExecution ? { invocationCapabilities: agentExecution.capabilities } : {}),
     config: mode === 'project' ? config.sessions : undefined,
     storage:
       dependencies.sessions?.storage ??
@@ -373,6 +379,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       projectId,
     }),
     sessionsFeature,
+    ...(agentExecution ? [agentExecution] : []),
     createSessionAssociationsFeature({
       associations,
       targets: associationTargets,

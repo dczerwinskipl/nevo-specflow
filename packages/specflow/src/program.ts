@@ -12,6 +12,8 @@ import type { RuntimeSetupUi } from '@nevo/specflow-runtime';
 import { createDocsCommand, type BackgroundIndexLaunch } from '@nevo/specflow-docs/cli';
 import { Command } from 'commander';
 
+import { agentRouteOf, type AgentBrokerTransport } from './agent-broker/client';
+import { guardAgentCommand } from './agent-broker/routing';
 import type { CommitCommandContext } from './commit/command';
 import { createCommitCommand } from './commit/command';
 import { createDefinitionsCommand } from './definitions/command';
@@ -38,6 +40,10 @@ export interface ProgramIO {
   /** The OS user behind the owner actor of `tasks` and `workflow`; the installed user by default. */
   readonly osUser?: string;
   readonly documentsApi?: DocumentsCommandContext['api'];
+  /** The process environment; `process.env` by default. A capability in it means an agent Turn (D11). */
+  readonly environment?: Readonly<Record<string, string | undefined>>;
+  /** The broker connection of an agent Turn; the Runtime's endpoint from the environment by default. */
+  readonly agentBroker?: AgentBrokerTransport;
   readonly commitApi?: CommitCommandContext['api'];
   readonly initUi?: RuntimeSetupUi;
   readonly initializeProject?: ProjectInitCommandContext['initialize'];
@@ -57,6 +63,13 @@ export function createProgram(io: ProgramIO): Command {
     // `commit` and `commit status` take the same options: each belongs to the command it is written after.
     .enablePositionalOptions();
 
+  // Inside an agent Turn (a capability in the environment) every command is placed before it runs:
+  // a read stays local, a document write goes to the Runtime's broker, anything else is refused.
+  const agentRoute = agentRouteOf(io.environment ?? process.env, io.agentBroker);
+  program.hook('preAction', (_program, action) => {
+    guardAgentCommand(agentRoute, action, { stdout: io.stdout, stderr: io.stderr });
+  });
+
   program.addCommand(
     createProjectInitCommand({
       cwd: io.cwd ?? '.',
@@ -74,6 +87,7 @@ export function createProgram(io: ProgramIO): Command {
       stderr: io.stderr,
       ...(io.readStdin ? { readStdin: io.readStdin } : {}),
       ...(io.documentsApi ? { api: io.documentsApi } : {}),
+      ...(agentRoute.kind === 'broker' ? { broker: agentRoute.transport } : {}),
       ...(io.osUser ? { osUser: io.osUser } : {}),
     }),
   );

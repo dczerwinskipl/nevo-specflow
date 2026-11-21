@@ -578,6 +578,7 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
       stderr: context.stderr ?? (() => undefined),
       ...(context.readStdin ? { readStdin: context.readStdin } : {}),
       ...(context.api ? { api: context.api } : {}),
+      ...(context.broker ? { broker: context.broker } : {}),
     }),
   );
 

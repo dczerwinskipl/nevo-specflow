@@ -340,7 +340,7 @@ it('abandons the claim as never dispatched when no capability may be minted', as
   const f = fixture();
   inSpecification(f);
   const mint = vi.fn(() =>
-    Promise.reject(new SessionError('SESSION_PAIRING_PENDING', 'Pairing pending.')),
+    Promise.reject(new SessionError('PROVIDER_UNAVAILABLE', 'Broker unavailable.')),
   );
   await createManagedInvocation({ ...f.options, capabilities: { mint } }).done;
   expect(f.start).not.toHaveBeenCalled();

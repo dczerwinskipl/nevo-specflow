@@ -1,7 +1,7 @@
 import { Value } from 'typebox/value';
 import { describe, expect, it } from 'vitest';
 import { RequestErrorResponseSchema } from '@nevo/specflow-contracts/runtime';
-import { createOwnerRuntimeApp } from '../support/owner-credential';
+import { createRuntimeApp } from '../../src/server/app';
 import { generateOpenApiDocument } from '../../src/server/openapi';
 import { oidcConfig, passwordConfig } from '../auth/support/config';
 
@@ -16,8 +16,8 @@ describe('Runtime request validation', () => {
   it('answers a request that fails its route schema with the documented Fastify error body', async () => {
     const base = passwordConfig();
     const config = { ...base, authentication: { ...base.authentication, mode: 'none' as const } };
-    const app = await createOwnerRuntimeApp(config, {});
-    const demo = await createOwnerRuntimeApp(config, { dataMode: 'demo' });
+    const app = await createRuntimeApp(config, {});
+    const demo = await createRuntimeApp(config, { dataMode: 'demo' });
     try {
       const paths = (await generateOpenApiDocument(app)).paths as Paths;
       // One route per validated part: path parameter, query and body.
@@ -51,7 +51,7 @@ describe('Runtime request validation', () => {
   });
 
   it('answers an invalid OIDC start body with a 400 its own response contract describes', async () => {
-    const app = await createOwnerRuntimeApp(oidcConfig({}), {});
+    const app = await createRuntimeApp(oidcConfig({}), {});
     try {
       const response = await app.inject({
         method: 'POST',

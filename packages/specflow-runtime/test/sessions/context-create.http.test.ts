@@ -10,7 +10,7 @@ import {
   type CreateContextSessionResult,
   type SessionSnapshot,
 } from '@nevo/specflow-contracts/sessions';
-import { createOwnerRuntimeApp } from '../support/owner-credential';
+import { createRuntimeApp } from '../../src/server/app';
 import { passwordConfig } from '../auth/support/config';
 import { associationTargets } from '../support/association-targets';
 
@@ -38,7 +38,7 @@ async function open(
   directory = await mkdtemp(join(tmpdir(), 'nevo-context-create-'));
   const config = passwordConfig();
   const targets = options.targets ?? associationTargets();
-  app = await createOwnerRuntimeApp(
+  app = await createRuntimeApp(
     {
       ...config,
       authentication: { ...config.authentication, mode: 'none', localUserId: 'demo-user' },
@@ -213,7 +213,7 @@ describe('POST /api/specs/:specId/sessions', () => {
 
   it('is not served by a demo Runtime', async () => {
     const config = passwordConfig();
-    app = await createOwnerRuntimeApp(
+    app = await createRuntimeApp(
       { ...config, authentication: { ...config.authentication, mode: 'none' } },
       { dataMode: 'demo' },
     );

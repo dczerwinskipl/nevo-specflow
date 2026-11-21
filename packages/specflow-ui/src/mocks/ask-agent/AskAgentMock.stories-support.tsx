@@ -78,7 +78,6 @@ export type AskAgentState =
   | 'dialog-independent'
   | 'dialog-dirty'
   | 'dialog-no-agent'
-  | 'dialog-pairing-code'
   | 'dialog-session-unavailable'
   | 'running'
   | 'stopping'
@@ -628,7 +627,7 @@ function CommitDisclosure() {
   );
 }
 
-type Blocker = 'dirty' | 'no-agent' | 'pairing-code' | 'session-unavailable';
+type Blocker = 'dirty' | 'no-agent' | 'session-unavailable';
 
 function AskAgentBlocker({ kind }: { readonly kind: Blocker }) {
   switch (kind) {
@@ -665,27 +664,6 @@ function AskAgentBlocker({ kind }: { readonly kind: Blocker }) {
               <TextLink>Open agent settings</TextLink>
             </p>
             <div className="flex flex-wrap gap-2 pt-1">
-              <Button size="sm" variant="secondary" leadingIcon="refresh">
-                Check again
-              </Button>
-            </div>
-          </div>
-        </Alert>
-      );
-    case 'pairing-code':
-      return (
-        <Alert tone="attention" title="Agents cannot start while a pairing code is waiting">
-          <div className="grid gap-2">
-            <p>
-              SpecFlow was started with <span className={MONO}>--pair</span> and wrote a one-time
-              pairing code on its machine. No agent starts while that code can be read, so an agent
-              can never use it to pair itself.
-            </p>
-            <p>Pair a device with the code, or cancel the waiting code here.</p>
-            <div className="flex flex-wrap gap-2 pt-1">
-              <Button size="sm" variant="secondary">
-                Cancel the pairing code
-              </Button>
               <Button size="sm" variant="secondary" leadingIcon="refresh">
                 Check again
               </Button>
@@ -919,7 +897,6 @@ function nowOf(state: AskAgentState): ReactNode {
     case 'dialog-continue':
     case 'dialog-dirty':
     case 'dialog-no-agent':
-    case 'dialog-pairing-code':
     case 'dialog-session-unavailable':
       return <EntryTwoButtons />;
     case 'entry-b-split':
@@ -965,8 +942,6 @@ function dialogOf(state: AskAgentState): ReactNode {
       return <AskAgentDialog blocker="dirty" />;
     case 'dialog-no-agent':
       return <AskAgentDialog blocker="no-agent" mode="not-chosen" />;
-    case 'dialog-pairing-code':
-      return <AskAgentDialog blocker="pairing-code" />;
     case 'dialog-session-unavailable':
       return <AskAgentDialog blocker="session-unavailable" mode="gone" />;
     case 'confirm-reject':

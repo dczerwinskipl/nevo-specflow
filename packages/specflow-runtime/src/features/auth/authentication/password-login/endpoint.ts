@@ -40,7 +40,6 @@ export const passwordLoginEndpoint: FastifyPluginCallback<PasswordLoginEndpointO
       bodyLimit: PASSWORD_LOGIN_BODY_LIMIT,
       config: {
         openApiPublic: true,
-        ownerCredentialExempt: 'Login: it starts the session that is the credential.',
         rateLimit: {
           max: PASSWORD_SOURCE_ATTEMPT_LIMIT,
           timeWindow: PASSWORD_SOURCE_WINDOW_MS,

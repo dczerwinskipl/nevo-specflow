@@ -11,8 +11,8 @@ read_when:
   - deciding where a dogfood finding about agent execution is fixed
 summary: >
   The ordered delivery of the Ask agent contract: nine small slices, each one PR, from Close
-  preservation and claim-aware kernel operations through Runtime-mediated Engine writes, the owner
-  credential, the agent step context, starting and finishing an agent attempt with its boundary
+  preservation and claim-aware kernel operations through Runtime-mediated Engine writes, the agent
+  step context, starting and finishing an agent attempt with its boundary
   checks, the attempt commit, owner confirmation and recovery, each with its test strategy within a
   strict test budget, plus where the remaining dogfood findings go and who owns them.
 related:
@@ -86,19 +86,13 @@ One manual dogfood rerun of the 2026-11-16 flow closes the plan (not in CI).
   stored transcript entry. One Runtime integration test with the mock driver: a Turn runs `docs
 create --type` and succeeds.
 
-### 4. Owner credential on owner routes
+### 4. Owner credential on owner routes (dropped)
 
-- **Delivers:** the per-device owner credential of D21 on every owner mutation route in every
-  authentication mode, device pairing (approval from a paired device or a QR code for phones, the
-  initial code on the Runtime's console, or, headless, in an owner-only file while every agent
-  execution is refused), the device list with
-  revoke, and a provider environment stripped of any credential, code or token.
-- **Decisions:** D21.
-- **Depends on:** nothing; it must land before slice 6 makes agent execution reachable.
-- **Tests:** Runtime route tests: in mode `none`, Finish, Approve and Return without the credential
-  are refused and with it succeed; a pairing request cannot be approved without an owner credential
-  or the console; a code is single-use, expires and is rate-limited; a revoked device is refused; the
-  provider launch environment holds no credential, code or token.
+Dropped by the owner decision of 2026-11-21, which supersedes D21: owner routes are protected by the
+configured authentication mode only (IdP, password, none), with no owner credential, device pairing
+or owner header. In mode `none` the host knowingly accepts that any local process, the agent
+included, can call owner routes. The provider environment still never receives the user's login
+session or any credential the Runtime issues.
 
 ### 5. Agent step context
 

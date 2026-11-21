@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 
 import {
   DOCUMENT_SHUTDOWN_DEADLINE_MS,
@@ -10,7 +10,6 @@ import {
 import Fastify, { type FastifyInstance, type RawServerBase } from 'fastify';
 
 import { loadRuntimeConfig, type LoadRuntimeConfigOptions } from './config/index';
-import { createDevicePairing, openFileDeviceStore, type DevicePairing } from './features/auth';
 import type { RuntimeConfig } from './config/types';
 import {
   configureRuntimeApp,
@@ -24,16 +23,6 @@ export interface RuntimeStartOptions extends LoadRuntimeConfigOptions {
   /** With `demo`: accept the `demoScenario` seam (default off; isolated scenario environments only). */
   readonly demoScenarios?: boolean;
   readonly dependencies?: RuntimeAppDependencies;
-  /** Device pairing of trusted local mode (D21). */
-  readonly pairing?: {
-    /** Issue a new initial pairing code although devices are paired (`start --pair`). */
-    readonly force?: boolean;
-    /**
-     * The interactive console (stdin and stdout are TTYs) the initial code is printed on; without
-     * it the Runtime is headless and writes the code to an owner-only file in its local state.
-     */
-    readonly console?: (line: string) => void;
-  };
   /** The document commit scheduler of a project Runtime. */
   readonly documentQueue?: {
     /** Replaces the Engine scheduler; the value false runs the Runtime without one (tests). */
@@ -50,10 +39,8 @@ export interface RuntimeHandle {
 
 export async function startRuntime(options: RuntimeStartOptions): Promise<RuntimeHandle> {
   const loaded = await loadRuntimeConfig(options);
-  const devicePairing = await openDevicePairing(options, loaded.config);
   const app = await createListeningApp(loaded.config, options.projectRoot, {
     ...options.dependencies,
-    ...(devicePairing ? { auth: { ...options.dependencies?.auth, devicePairing } } : {}),
     ...(options.demo
       ? { dataMode: 'demo' as const, ...(options.demoScenarios ? { demoScenarios: true } : {}) }
       : {}),
@@ -93,40 +80,6 @@ export async function startRuntime(options: RuntimeStartOptions): Promise<Runtim
 
     throw error;
   }
-}
-
-/**
- * A project Runtime in trusted local mode keeps its paired devices in `<stateRoot>/auth/` and, while
- * none is paired (or with `--pair`), issues the initial pairing code before it serves anything.
- */
-async function openDevicePairing(
-  options: RuntimeStartOptions,
-  config: RuntimeConfig,
-): Promise<DevicePairing | undefined> {
-  if (options.demo || config.authentication.mode !== 'none') {
-    return undefined;
-  }
-
-  if (options.dependencies?.auth?.devicePairing) {
-    return options.dependencies.auth.devicePairing;
-  }
-
-  const homeRoot =
-    options.dependencies?.specs?.engine?.context?.project.homeRoot ?? resolve(options.projectRoot);
-  const stateRoot =
-    options.dependencies?.specs?.engine?.context?.project.stateRoot ??
-    join(homeRoot, '.nevo/local/state');
-  const stateDirectory = join(stateRoot, 'auth');
-  const pairing = createDevicePairing({
-    store: await openFileDeviceStore(stateDirectory),
-    stateDirectory,
-  });
-  await pairing.issueInitialCode({
-    force: options.pairing?.force === true,
-    ...(options.pairing?.console ? { console: options.pairing.console } : {}),
-  });
-
-  return pairing;
 }
 
 async function createListeningApp(

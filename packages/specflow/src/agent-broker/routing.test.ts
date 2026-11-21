@@ -1,10 +1,12 @@
 // The CLI inside an agent Turn (D11 point 2): a fake broker, never a real pipe.
+import type { Command } from 'commander';
 import { describe, expect, it } from 'vitest';
 
 import type { DocumentsEngineApi } from '../documents/api';
 import { ReportedFailure } from '../exit-code';
 import { createProgram } from '../program';
 import { agentRouteOf, type AgentBrokerTransport, type BrokerResponse } from './client';
+import { BROKERED, READS, REFUSED, catchUpLaunchFor, commandPath, placementOf } from './routing';
 
 const SPEC = '11111111-1111-4111-8111-111111111111';
 const AGENT = { NEVO_AGENT_CAPABILITY: 'nvcap_x', NEVO_AGENT_BROKER: 'broker-endpoint' } as const;
@@ -185,6 +187,149 @@ describe('the CLI under an agent capability', () => {
 
     expect(h.err.join('\n')).not.toContain('not available to an agent');
     expect(h.sent).toEqual([]);
+  });
+});
+
+describe('the placement of every command', () => {
+  const registered = (): string[] => {
+    const program = createProgram({
+      stdout: () => undefined,
+      stderr: () => undefined,
+      environment: {},
+    });
+    const paths: string[] = [];
+    const walk = (command: Command): void => {
+      if (command.commands.length === 0) {
+        paths.push(commandPath(command));
+      }
+
+      command.commands.forEach(walk);
+    };
+
+    walk(program);
+
+    return paths;
+  };
+
+  it('lists every registered command exactly once, and no command that does not exist', () => {
+    const paths = registered();
+    for (const path of paths) {
+      const sets = [READS, BROKERED, REFUSED].filter((set) => set.has(path));
+      expect(sets, path).toHaveLength(1);
+    }
+
+    for (const path of [...READS, ...BROKERED, ...REFUSED]) {
+      expect(paths, path).toContain(path);
+    }
+  });
+
+  it('refuses tasks status, a write of the Task status', async () => {
+    expect(placementOf('tasks status')).toBe('refused');
+    const h = harness(AGENT);
+    const failure = await run(h, 'tasks', 'status', SPEC, 'task-1', 'approve').catch(
+      (error: unknown) => error,
+    );
+
+    expect(failure).toBeInstanceOf(ReportedFailure);
+    expect(h.err.join('\n')).toContain('not available to an agent in this Turn');
+  });
+});
+
+describe('agent route and catch-up', () => {
+  it('treats a broker endpoint without a capability as broken, not as no Turn', () => {
+    expect(agentRouteOf({ NEVO_AGENT_BROKER: 'endpoint' }).kind).toBe('broken');
+    expect(agentRouteOf({ NEVO_AGENT_BROKER: 'endpoint', NEVO_AGENT_CAPABILITY: '' }).kind).toBe(
+      'broken',
+    );
+    expect(agentRouteOf({ NEVO_AGENT_CAPABILITY: 'nvcap_x' }).kind).toBe('broken');
+  });
+
+  it('refuses a write when the endpoint has no capability', async () => {
+    const h = harness({ NEVO_AGENT_BROKER: 'endpoint' });
+    const failure = await run(
+      h,
+      'specs',
+      'documents',
+      'add',
+      SPEC,
+      '--path',
+      'a.md',
+      '--stdin',
+    ).catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(ReportedFailure);
+    expect(h.engineCalls).toEqual([]);
+  });
+
+  it('starts no background index catch-up inside an agent Turn', () => {
+    const launch = { command: 'node', args: [] };
+    expect(
+      catchUpLaunchFor(agentRouteOf(AGENT, { send: () => Promise.reject(new Error('x')) }), launch),
+    ).toBeUndefined();
+    expect(catchUpLaunchFor({ kind: 'broken', message: 'm' }, launch)).toBeUndefined();
+    expect(catchUpLaunchFor(agentRouteOf({}), launch)).toBe(launch);
+  });
+});
+
+describe('the brokered save and classify', () => {
+  it('sends save with the revision and the content', async () => {
+    const h = harness(AGENT, () => ({
+      ok: true,
+      value: {
+        operation: 'documents.save',
+        result: {
+          operationId: '33333333-3333-4333-8333-333333333333',
+          document: { id: 'notes', path: 'notes.md', revision: 'rev-2' },
+          commit: COMMIT,
+        },
+      },
+    }));
+    await run(
+      h,
+      'specs',
+      'documents',
+      'save',
+      SPEC,
+      'notes',
+      '--expected-revision',
+      'rev-1',
+      '--stdin',
+    );
+
+    expect(h.engineCalls).toEqual([]);
+    expect(h.sent[0]!.operation).toEqual({
+      name: 'documents.save',
+      specId: SPEC,
+      documentId: 'notes',
+      content: '# Notes\n',
+      expectedRevision: 'rev-1',
+    });
+    expect(h.out.join('\n')).toContain('revision rev-2');
+  });
+
+  it('sends classify with the type and the revision', async () => {
+    const h = harness(AGENT);
+    await run(
+      h,
+      'specs',
+      'documents',
+      'classify',
+      SPEC,
+      'notes',
+      '--type',
+      'notes',
+      '--expected-revision',
+      'rev-1',
+    );
+
+    expect(h.engineCalls).toEqual([]);
+    expect(h.sent[0]!.operation).toEqual({
+      name: 'documents.classify',
+      specId: SPEC,
+      documentId: 'notes',
+      type: 'notes',
+      expectedRevision: 'rev-1',
+    });
   });
 });
 

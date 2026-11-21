@@ -18,7 +18,7 @@ import {
  * - `read`: stays local (it opens the Engine for reading only, or no Engine at all).
  * - `brokered`: the write is sent to the Runtime's broker; the Engine is never opened for writing.
  */
-const READS: ReadonlySet<string> = new Set([
+export const READS: ReadonlySet<string> = new Set([
   'specs list',
   'specs documents list',
   'specs documents read',
@@ -26,7 +26,6 @@ const READS: ReadonlySet<string> = new Set([
   'specs documents status',
   'tasks list',
   'tasks inspect',
-  'tasks status',
   'workflow actions',
   'workflow context',
   'project inspect',
@@ -41,10 +40,54 @@ const READS: ReadonlySet<string> = new Set([
   'docs search',
 ]);
 
-const BROKERED: ReadonlySet<string> = new Set([
+export const BROKERED: ReadonlySet<string> = new Set([
   'specs documents add',
   'specs documents save',
   'specs documents classify',
+]);
+
+/**
+ * Every other registered command, listed on purpose: a table test requires each registered command
+ * to be in exactly one of the three sets, so a new command cannot slip into an agent Turn unseen.
+ * Anything not in READS or BROKERED is refused whether or not it is listed here.
+ */
+export const REFUSED: ReadonlySet<string> = new Set([
+  'auth hash-password',
+  'definitions install',
+  'docs check',
+  'docs semantic index',
+  'docs semantic status',
+  'init',
+  'project bootstrap',
+  'specs abandon',
+  'specs close',
+  'specs close-inspect',
+  'specs close-reconcile-scratch',
+  'specs close-recover',
+  'specs create',
+  'specs documents abandon',
+  'specs documents delete',
+  'specs documents flush',
+  'specs documents folder',
+  'specs documents move',
+  'specs documents recover',
+  'specs documents rename',
+  'specs documents resolve',
+  'specs documents retry',
+  'specs recover',
+  'specs resolve',
+  'specs workspace close',
+  'specs workspace inspect',
+  'specs worktree close',
+  'start',
+  'tasks create',
+  'tasks edit',
+  'tasks remove',
+  'tasks status',
+  'workflow finish',
+  'workflow reevaluate-wait',
+  'workflow return',
+  'workflow start',
 ]);
 
 export type CommandPlacement = 'read' | 'brokered' | 'refused';
@@ -205,4 +248,12 @@ export async function runBrokeredDocumentWrite(
   }
 
   context.stdout(`Commit: ${commitLine(result.commit)}`);
+}
+
+/**
+ * The background index catch-up `docs search` may start. Inside an agent Turn there is none: the
+ * search reads the existing index and never writes a marker or spawns a process.
+ */
+export function catchUpLaunchFor<T>(route: AgentRoute, launch: T | undefined): T | undefined {
+  return route.kind === 'none' ? launch : undefined;
 }

@@ -13,7 +13,7 @@ import { createDocsCommand, type BackgroundIndexLaunch } from '@nevo/specflow-do
 import { Command } from 'commander';
 
 import { agentRouteOf, type AgentBrokerTransport } from './agent-broker/client';
-import { guardAgentCommand } from './agent-broker/routing';
+import { catchUpLaunchFor, guardAgentCommand } from './agent-broker/routing';
 import type { CommitCommandContext } from './commit/command';
 import { createCommitCommand } from './commit/command';
 import { createDefinitionsCommand } from './definitions/command';
@@ -118,6 +118,8 @@ export function createProgram(io: ProgramIO): Command {
     }),
   );
 
+  const catchUp = catchUpLaunchFor(agentRoute, io.docsBackgroundIndex);
+
   // An ordinary command: it never starts Runtime or loads UI assets (ADR 0020).
   program.addCommand(
     createDocsCommand({
@@ -125,7 +127,9 @@ export function createProgram(io: ProgramIO): Command {
       stdout: io.stdout,
       stderr: io.stderr,
       checkWriteCommand: 'nevo-specflow docs check --write',
-      ...(io.docsBackgroundIndex ? { backgroundIndex: io.docsBackgroundIndex } : {}),
+      // Inside an agent Turn `docs search` reads the existing index only: no catch-up marker, no
+      // detached process.
+      ...(catchUp ? { backgroundIndex: catchUp } : {}),
     }),
   );
 

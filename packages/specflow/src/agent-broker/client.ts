@@ -31,6 +31,14 @@ export function agentRouteOf(
   environment: Readonly<Record<string, string | undefined>>,
   transport?: AgentBrokerTransport,
 ): AgentRoute {
+  // The broker without a capability is as unusable as the reverse: never read as "not an agent Turn".
+  if (environment.NEVO_AGENT_BROKER && !environment.NEVO_AGENT_CAPABILITY) {
+    return {
+      kind: 'broken',
+      message: 'The agent broker endpoint is set but the capability is missing; tell the owner.',
+    };
+  }
+
   let target: ReturnType<typeof agentBrokerEnvironment>;
   try {
     target = agentBrokerEnvironment(environment);

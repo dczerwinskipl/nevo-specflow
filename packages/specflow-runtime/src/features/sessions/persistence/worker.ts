@@ -792,6 +792,10 @@ export async function runSessionWorker(): Promise<void> {
       return associations.read(c.sessionId);
     }
 
+    if (c.op === 'has-session') {
+      return !!get('SELECT id FROM sessions WHERE id=?', c.sessionId);
+    }
+
     if (c.op === 'has-turn') {
       return !!get('SELECT id FROM turns WHERE id=? AND session=?', c.turnId, c.sessionId);
     }
@@ -819,12 +823,13 @@ export async function runSessionWorker(): Promise<void> {
           return cached;
         }
 
-        if (
-          c.sessionId !== undefined &&
-          (!UUID_PATTERN.test(c.sessionId) ||
-            get('SELECT id FROM sessions WHERE id=?', c.sessionId))
-        ) {
-          fail('SESSION_INPUT_INVALID', 'A preassigned Session id must be a new UUID.');
+        if (c.sessionId !== undefined && !UUID_PATTERN.test(c.sessionId)) {
+          fail('SESSION_INPUT_INVALID', 'A preassigned Session id must be a UUID.');
+        }
+
+        // The trusted host's chosen id names one Session: created once, whoever repeats the create.
+        if (c.sessionId !== undefined && get('SELECT id FROM sessions WHERE id=?', c.sessionId)) {
+          return { sessionId: c.sessionId };
         }
 
         const id = c.sessionId ?? randomUUID(),

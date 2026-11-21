@@ -32,6 +32,7 @@ export type AgentStepSessions = Pick<
   | 'cancel'
   | 'snapshot'
   | 'associateTasks'
+  | 'hasSession'
   | 'hasTurn'
 >;
 
@@ -173,6 +174,13 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
   /** Where the attempt's current Turn is: its Session, then its execution claim. */
   async function turnState(active: ActiveAgentAttempt): Promise<AgentAttemptView['turn']['state']> {
     const turn = active.journal.turns.at(-1)!;
+    const sessionId = active.journal.actor.details.sessionId ?? '';
+    const sessions = dependencies.sessions();
+    // A Session that does not exist is its own state, never read as an ended Turn.
+    if (sessions && !(await sessions.hasSession(sessionId))) {
+      return 'session-missing';
+    }
+
     if (turn.finalizedAt !== undefined) {
       return 'ended';
     }
@@ -182,13 +190,9 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
       return 'unknown';
     }
 
-    const sessionId = active.journal.actor.details.sessionId ?? '';
-    const activeTurn = (
-      await dependencies
-        .sessions()
-        ?.snapshot(sessionId, RUNTIME_ACTOR)
-        .catch(() => undefined)
-    )?.activeTurn;
+    const activeTurn = sessions
+      ? (await sessions.snapshot(sessionId, RUNTIME_ACTOR)).activeTurn
+      : undefined;
     if (activeTurn?.turnId === turn.turnId) {
       return activeTurn.state === 'cancelling'
         ? 'stopping'
@@ -208,7 +212,16 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
     checkout: boolean,
   ): Promise<AgentOption> {
     const launch = continueLaunch(active);
-    if (state !== 'ended') {
+    if (state === 'session-missing' && active.launch?.session !== 'fresh') {
+      return {
+        kind: 'unavailable',
+        reason: 'session-unavailable',
+        detail: 'The Session this attempt continues no longer exists.',
+        launch,
+      };
+    }
+
+    if (state !== 'ended' && state !== 'session-missing') {
       return {
         kind: 'unavailable',
         reason: 'project-busy',
@@ -339,6 +352,43 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
     };
   }
 
+  /**
+   * The fresh Session of an attempt, created by whichever request comes first (the start, its retry,
+   * or a Continue after a create that failed): keyed on the attempt and created with the id its
+   * agent actor names, so it exists at most once and never under another id.
+   */
+  async function ensureFreshSession(
+    sessions: AgentStepSessions,
+    request: Pick<AgentStepExecutionRequest, 'principal' | 'subject'>,
+    attempt: { readonly attemptId: string; readonly actor: AgentActor; readonly effort?: string },
+  ): Promise<void> {
+    const sessionId = attempt.actor.details.sessionId!;
+    if (await sessions.hasSession(sessionId)) {
+      return;
+    }
+
+    const { subject } = request;
+    await sessions.create(
+      request.principal,
+      {
+        requestId: derivedId(attempt.attemptId, 'session-request'),
+        providerId: attempt.actor.details.provider,
+        ...(attempt.actor.details.model !== undefined
+          ? { modelId: attempt.actor.details.model }
+          : {}),
+        ...(attempt.effort !== undefined ? { effort: attempt.effort } : {}),
+        mode: 'workspace-write',
+        title: 'Agent step execution',
+      },
+      {
+        specId: subject.specId,
+        taskIds: subject.kind === 'task' ? [subject.taskId] : [],
+        origin: 'workflow',
+      },
+      { sessionId },
+    );
+  }
+
   /** Creates the fresh Session, joins a Task, and dispatches the Turn unless it exists already. */
   async function dispatch(
     sessions: AgentStepSessions,
@@ -357,26 +407,11 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
     const invocationId = derivedId(request.requestId, 'invocation');
     const brief = await engine.brief(subject, bound.attemptId);
     if (bound.fresh) {
-      // Replays on a retry (same request id and input), creating the Session at most once.
-      await sessions.create(
-        request.principal,
-        {
-          requestId: derivedId(request.requestId, 'session-request'),
-          providerId: bound.actor.details.provider,
-          ...(bound.actor.details.model !== undefined
-            ? { modelId: bound.actor.details.model }
-            : {}),
-          ...(bound.effort !== undefined ? { effort: bound.effort } : {}),
-          mode: 'workspace-write',
-          title: `Agent: ${brief.step.title}`.slice(0, 256),
-        },
-        {
-          specId: subject.specId,
-          taskIds: subject.kind === 'task' ? [subject.taskId] : [],
-          origin: 'workflow',
-        },
-        { sessionId },
-      );
+      await ensureFreshSession(sessions, request, {
+        attemptId: bound.attemptId,
+        actor: bound.actor,
+        ...(bound.effort !== undefined ? { effort: bound.effort } : {}),
+      });
     } else if (subject.kind === 'task') {
       // A Session that continues into a Task's step belongs to that Task too.
       await sessions.associateTasks(sessionId, subject.specId, [subject.taskId]);
@@ -462,6 +497,14 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
 
       launch = option.launch;
       actor = active.journal.actor;
+      if (sessions && active.launch?.session === 'fresh') {
+        // A fresh Session a failed create left missing is made now, before another Turn is bound.
+        await ensureFreshSession(sessions, request, {
+          attemptId: active.attemptId,
+          actor,
+          ...(active.launch.effort !== undefined ? { effort: active.launch.effort } : {}),
+        });
+      }
     } else {
       const next = nextOf(await engine.actions(subject));
       if (next?.step.id !== expected.step) {

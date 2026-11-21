@@ -41,7 +41,11 @@ const active: ActionProjection = {
  * A fake Engine: `start` records the attempt the way the Engine's journal does (one Turn per
  * invocation), so a retry of the same request finds it.
  */
-function fakes(options: { failFirstTurnStart?: boolean; refuseStart?: boolean } = {}) {
+function fakes(
+  options: { failFirstTurnStart?: boolean; refuseStart?: boolean; failFirstCreate?: boolean } = {},
+) {
+  const created = new Set<string>();
+  let failCreate = options.failFirstCreate === true;
   const calls: string[] = [];
   let attempt: ActiveAgentAttempt | undefined;
   const turns = new Set<string>();
@@ -97,10 +101,17 @@ function fakes(options: { failFirstTurnStart?: boolean; refuseStart?: boolean } 
   const sessions: AgentStepSessions = {
     available: () => true,
     provider: () => undefined,
-    create(_actor, input, _association, created) {
+    create(_actor, input, _association, chosen) {
       calls.push(`session.create ${input.requestId}`);
+      if (failCreate) {
+        failCreate = false;
 
-      return Promise.resolve({ sessionId: created?.sessionId ?? 'x' });
+        return Promise.reject(new Error('create failed'));
+      }
+
+      created.add(chosen!.sessionId!);
+
+      return Promise.resolve({ sessionId: chosen!.sessionId! });
     },
     start(_actor, sessionId, _input, turnOptions) {
       calls.push(`session.start ${sessionId}`);
@@ -121,6 +132,7 @@ function fakes(options: { failFirstTurnStart?: boolean; refuseStart?: boolean } 
     },
     snapshot: () => Promise.resolve({ activeTurn: undefined } as never),
     associateTasks: () => Promise.resolve(),
+    hasSession: (sessionId) => Promise.resolve(created.has(sessionId)),
     hasTurn: (_sessionId, turnId) => Promise.resolve(turns.has(turnId)),
   };
 
@@ -151,7 +163,7 @@ describe('agent step execution', () => {
     expect(calls).toEqual([
       'baseline',
       'engine.start new',
-      `session.create ${derivedId(id, 'session-request')}`,
+      `session.create ${derivedId(ATTEMPT, 'session-request')}`,
       `session.start ${derivedId(id, 'session')}`,
     ]);
     expect(result).toMatchObject({
@@ -241,5 +253,32 @@ describe('agent step execution', () => {
       agent: { kind: 'available', launch },
     });
     expect(calls).toEqual(['baseline']);
+  });
+
+  it('tells the owner a fresh Session is missing and creates it before Continue binds a Turn', async () => {
+    const { calls, execution, attempt } = fakes({ failFirstCreate: true });
+    await expect(
+      execution.startAgentStepExecution(request('00000000-0000-4000-8000-000000000007')),
+    ).rejects.toThrow('create failed');
+
+    // The attempt started, its Session does not exist: a state of its own, Continue is the retry.
+    const projected = await execution.decorate(subject, active);
+    expect(projected.agentAttempt).toMatchObject({
+      turn: { state: 'session-missing' },
+      continue: { kind: 'available' },
+    });
+
+    calls.length = 0;
+    const id = '00000000-0000-4000-8000-000000000008';
+    const continued = await execution.startAgentStepExecution(request(id, { attempt: 1 }));
+
+    expect(calls).toEqual([
+      'baseline',
+      `session.create ${derivedId(ATTEMPT, 'session-request')}`,
+      'engine.start continue',
+      `session.start ${derivedId('00000000-0000-4000-8000-000000000007', 'session')}`,
+    ]);
+    expect(continued).toMatchObject({ kind: 'continued', session: 'reuse' });
+    expect(attempt()?.journal.turns).toHaveLength(2);
   });
 });

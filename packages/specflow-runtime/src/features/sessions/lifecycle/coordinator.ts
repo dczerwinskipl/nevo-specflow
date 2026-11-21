@@ -838,6 +838,8 @@ export function createSessionCoordinator(
         }
       }
     },
+    /** Whether a Session with this id exists. */
+    hasSession: (sessionId: string) => call<boolean>({ op: 'has-session', sessionId }),
     /** Whether the Session has the Turn `turnId` (a Turn start that may have been admitted). */
     hasTurn: (sessionId: string, turnId: string) =>
       call<boolean>({ op: 'has-turn', sessionId, turnId }),

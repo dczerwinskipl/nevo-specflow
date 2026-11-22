@@ -277,7 +277,7 @@ export const workflowEndpoint: FastifyPluginCallback<WorkflowRoutesOptions> = (
         tags: ['Workflow'],
         summary: 'Re-evaluate a Specification wait attempt',
           description:
-            'Re-evaluate a Specification's named waiting attempt when a Tasks-finished event may have been missed. Requires spec.manage. Input is step/attempt; results settled or already-settled. A different completed attempt conflicts; open/escalated/broken Tasks refuse WORKFLOW_TASK_BLOCKED. This is not an arbitrary transition or Task state mutation.',
+            'Re-evaluate a Specification\'s named waiting attempt when a Tasks-finished event may have been missed. Requires spec.manage. Input is step/attempt; results settled or already-settled. A different completed attempt conflicts; open/escalated/broken Tasks refuse WORKFLOW_TASK_BLOCKED. This is not an arbitrary transition or Task state mutation.',
         params: WorkflowSpecParamsSchema,
         body: ReevaluateWaitRequestSchema,
         response: { 200: ReevaluateWaitResultSchema, ...errors },

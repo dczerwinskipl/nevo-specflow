@@ -98,7 +98,7 @@ export const taskCommandRoutes: FastifyPluginCallback<TaskCommandRoutesOptions> 
         tags: ['Tasks'],
         summary: 'Create a Task',
         description:
-          'Create a new Task with status draft, a type from the Specification's effective catalogue and optional context and task.md content. Requires spec.manage at trusted Specification scope; the human actor comes from request.authz, never request body. A Task's type is immutable. The Engine checks Task id, dependency graph, active Specification lifecycle and context; required Task-owned output artifacts cannot be declared as required inputs. Successful 201 TaskChangeResult carries the resource revision. Body capped to 2 MiB.',
+          'Create a new Task with status draft, a type from the Specification\'s effective catalogue and optional context and task.md content. Requires spec.manage at trusted Specification scope; the human actor comes from request.authz, never request body. A Task\'s type is immutable. The Engine checks Task id, dependency graph, active Specification lifecycle and context; required Task-owned output artifacts cannot be declared as required inputs. Successful 201 TaskChangeResult carries the resource revision. Body capped to 2 MiB.',
         params: SpecParamsSchema,
         body: CreateTaskInputSchema,
         response: { 201: contractRef(TaskChangeResultSchema), ...errors },

@@ -71,7 +71,7 @@ export const taskReadEndpoint: FastifyPluginCallback<{ dependencies: TaskReadDep
         tags: ['Tasks'],
         summary: 'Read a Task',
         description:
-          'Read one Task's resource and bounded execution snapshot from one Engine readExecution, including workflow position and section availability but not whole Task history, full document text or Sessions. Requires spec.view at trusted Specification scope; Session references are independently filtered by session.view at their store-derived scopes. Empty available data is not unavailable/forbidden; no GET starts work. Missing Task 404 specification_task_not_found, unreadable/unavailable checkout 503 specification_source_unavailable (Retry-After:1 on busy control lock). Project mode cannot fall back to demo data. Cache-Control: no-store.',
+          'Read one Task\'s resource and bounded execution snapshot from one Engine readExecution, including workflow position and section availability but not whole Task history, full document text or Sessions. Requires spec.view at trusted Specification scope; Session references are independently filtered by session.view at their store-derived scopes. Empty available data is not unavailable/forbidden; no GET starts work. Missing Task 404 specification_task_not_found, unreadable/unavailable checkout 503 specification_source_unavailable (Retry-After:1 on busy control lock). Project mode cannot fall back to demo data. Cache-Control: no-store.',
         params: SpecificationTaskParamsSchema,
         response: { 200: SpecificationTaskResponseSchema, ...errors },
       },

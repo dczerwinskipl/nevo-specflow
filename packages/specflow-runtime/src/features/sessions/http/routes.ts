@@ -401,7 +401,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
           tags: ['Sessions'],
           summary: 'Start a Turn',
           description:
-            'Start a Turn with a prompt and optional model/mode/effort overrides, without changing the Session's saved defaults. Requires session.manage at store-derived scope, plus project-wide session.execute-write for workspace-write. Runtime validates selected provider, compatible native mode and verified associated workspace before dispatch; a Turn does not fall back to the Runtime checkout. Accepted 202 is durable admission, not a promise the provider succeeded; resolve uncertain outcome by idempotent retry/reads.',
+            'Start a Turn with a prompt and optional model/mode/effort overrides, without changing the Session\'s saved defaults. Requires session.manage at store-derived scope, plus project-wide session.execute-write for workspace-write. Runtime validates selected provider, compatible native mode and verified associated workspace before dispatch; a Turn does not fall back to the Runtime checkout. Accepted 202 is durable admission, not a promise the provider succeeded; resolve uncertain outcome by idempotent retry/reads.',
           params: params(),
           body: StartTurnSchema,
           response: { 202: StartTurnResultSchema, ...capabilityRefusal },

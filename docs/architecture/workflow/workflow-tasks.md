@@ -50,22 +50,14 @@ one Task:
   it was active; and (`executionTasks` in `operations/loaded-execution.ts`) a Task whose stored position
   does not follow from its history under its pinned definition.
 
-A dangling or broken Task is **broken** for every decision. A Task whose pinned workflow is missing or
-changed is not broken: it is trusted as stored until re-pinning
-([plan 06](../../ideas/specflow-engine/execution-plans/06-workflow-kernel/README.md), F07), and its next
-operation fails with `WORKFLOW_DEFINITION_CHANGED`. Only that Task breaks, and every decision sees the
-same list (`executionTasks` leaves broken Tasks out of the Tasks the operations, `deriveAttention` and
-`inspectExecution` decide on): `inspectExecution` lists it in `brokenTasks`; starting, finishing,
-returning or deciding it with `setTaskStatus` is refused with `WORKFLOW_STATE_CORRUPT` naming it, before
-anything is written; it counts as open, so the wait step never completes over it; a Task that depends on
-it never becomes startable (`dependencies {waitingFor}`); and when nothing else can progress, the
-Specification gets `tasks-stuck`. The Engine never repairs it: restoring the files from Git makes the
-Task usable again. If the restored Task is already closed and no Task is open any more, no Task event
-will complete the wait. The owner can re-evaluate the active wait attempt to deliver the
-`tasks-finished` event. A broken Task is open, so a Specification never completes over it (see
-"Completion requires closed Tasks"). A Specification
-step's context lists the broken Tasks by id in `broken`, not in `existingTasks`; a `taskDecisions` entry
-naming one is refused with `WORKFLOW_INPUT_INVALID` (`Unknown Task`).
+- A dangling or broken Task is **broken** for every decision.
+- A Task whose pinned workflow is missing or changed is not broken: it is trusted as stored until re-pinning ([plan 06](../../ideas/specflow-engine/execution-plans/06-workflow-kernel/README.md), F07), and its next operation fails with `WORKFLOW_DEFINITION_CHANGED`.
+- Only that Task breaks, and every decision sees the same list (`executionTasks` leaves broken Tasks out of the Tasks the operations, `deriveAttention` and `inspectExecution` decide on): `inspectExecution` lists it in `brokenTasks`; starting, finishing, returning or deciding it with `setTaskStatus` is refused with `WORKFLOW_STATE_CORRUPT` naming it, before anything is written; it counts as open, so the wait step never completes over it; a Task that depends on it never becomes startable (`dependencies {waitingFor}`); and when nothing else can progress, the Specification gets `tasks-stuck`.
+- The Engine never repairs it: restoring the files from Git makes the Task usable again.
+- If the restored Task is already closed and no Task is open any more, no Task event will complete the wait.
+- The owner can re-evaluate the active wait attempt to deliver the `tasks-finished` event.
+- A broken Task is open, so a Specification never completes over it (see "Completion requires closed Tasks").
+- A Specification step's context lists the broken Tasks by id in `broken`, not in `existingTasks`; a `taskDecisions` entry naming one is refused with `WORKFLOW_INPUT_INVALID` (`Unknown Task`).
 
 Every `dependsOn` names a registered Task, and the dependencies form no cycle; a stored state that
 breaks this is `WORKFLOW_STATE_CORRUPT`.
@@ -91,6 +83,9 @@ Once the Specification run ended (completed or abandoned), `createTask`, `editTa
 refuse with `WORKFLOW_SPECIFICATION_ENDED`: the Tasks stay as they are, readable for audit. The projection
 reports the same (`createTask` and the Task's edit and `remove` actions `unavailable` with reason
 `specification-ended`). `setTaskStatus` does not consult the Specification run.
+
+
+#### Task type admission
 
 **Effective policy.** The task types a Specification allows now are its run's `taskTypes` snapshot once
 it started, otherwise the live execution binding of its archetype (`effectiveTaskTypesOf`); without a
@@ -121,6 +116,9 @@ dependsOn?}`. Every Task:
   the id pattern excludes Windows device names (`con`, `prn`, `aux`, `nul`, `com1` to `com9`, `lpt1` to
   `lpt9`);
 - has a title of at most 200 characters, a summary of at most 4 000 and at most 100 dependencies.
+
+
+#### Draft replacement semantics
 
 The list is the complete set of **the drafts this producing step owns** after the finish
 (`materializeTasks`): the drafts whose origin is `produced` by the same step, from any of its attempts.
@@ -156,6 +154,9 @@ last explicit change in `statusChange {source: decision | escalation, at, reason
 | `on-hold`   | Kept, but no step of it starts until a decision makes it `ready` again.        |
 | `cancelled` | Will not be done. Final: a cancelled Task is replaced by a new Task if needed. |
 
+
+#### Task status versus completion
+
 There is no `completed` status: completion is the run reaching `terminal {completed}`. The status
 changes only by:
 
@@ -187,13 +188,16 @@ Task whose direct dependency ended `abandoned` or was cancelled fails with
 be returned. A Task that is not `ready` after its own finish gets the continuation `none {on-hold}`
 and no attention.
 
-The entry gate of every Task step is its own context: a required context entry that does not resolve
-refuses the start (`WORKFLOW_TASK_CONTEXT_UNRESOLVED`). A reference entry may be marked as a **process
-artifact** (`artifact: true` in `task.yaml`; not for `instructions`): something another step or Task
-produces. While it is missing it is `awaited`, not stale: create and edit accept it, the projection
-reports it as the blocker `context-awaited` (apart from `context-unresolved`, so a surface shows no
-warning on Approve), and a required one still refuses the start, listed apart in the refusal
-(`awaited`). There is no producer link; the artifact simply has to exist when the step starts.
+
+#### Context admission
+
+- The entry gate of every Task step is its own context: a required context entry that does not resolve refuses the start (`WORKFLOW_TASK_CONTEXT_UNRESOLVED`).
+- A reference entry may be marked as a **process artifact** (`artifact: true` in `task.yaml`; not for `instructions`): something another step or Task produces.
+- While it is missing it is `awaited`, not stale: create and edit accept it, the projection reports it as the blocker `context-awaited` (apart from `context-unresolved`, so a surface shows no warning on Approve), and a required one still refuses the start, listed apart in the refusal (`awaited`).
+- There is no producer link; the artifact simply has to exist when the step starts.
+
+
+#### Context and gates
 
 **Context is input, gates are output.** A Task's context lists what the Task needs before it starts.
 What the Task itself produces is expressed by gates: an exit gate on the step that produces the
@@ -238,6 +242,9 @@ the handoff.
 
 ### Completion requires closed Tasks
 
+
+#### Completion guards
+
 Rule ([ADR 0024](../decisions/0024-tasks-are-resources.md), decision 12): a
 Specification run never reaches the terminal outcome `completed` while a Task is **open**, in any
 Specification workflow, with or without a wait step. Open is every Task that is not closed (its run
@@ -246,21 +253,26 @@ waiting or held one, and a broken one (its work is not known). A Task whose own 
 completed or abandoned, is closed. The rule is `tasksOpenAtCompletion` (with `openTasks`) in
 `tasks/tasks.ts`; it never looks at step ids or names.
 
-- **Finish.** `advance` (`operations/advance.ts`) refuses a Specification decision whose intent is
-  `terminal {completed}` while Tasks are open, with `WORKFLOW_TASKS_OPEN` (`TasksOpenError`,
-  `openTasks: [{taskId, cause}]` in id order). Like the draft and escalation guard it judges the state
-  the change would produce, after the finish's `tasks`, its `taskDecisions` and the transition's
-  effects, so a finish that cancels the last open Tasks itself completes; and it runs before anything
-  is written, so the attempt stays active. A wait step's `tasks-finished` completes only with every
-  Task closed and `task-escalated` always leads to a step, so both pass. A repeated finish (F16
-  replay) returns the recorded result without asking the rule again. Abandon is not affected. The
-  finish asks the rule before its exit gates, so a finish with both problems is refused for its open
-  Tasks; once they are closed, an unmet gate still refuses it.
+
+#### Finish refusal
+
+- **Finish.** `advance` (`operations/advance.ts`) refuses a Specification decision whose intent is `terminal {completed}` while Tasks are open, with `WORKFLOW_TASKS_OPEN` (`TasksOpenError`, `openTasks: [{taskId, cause}]` in id order).
+   - Like the draft and escalation guard it judges the state the change would produce, after the finish's `tasks`, its `taskDecisions` and the transition's effects, so a finish that cancels the last open Tasks itself completes; and it runs before anything is written, so the attempt stays active.
+   - A wait step's `tasks-finished` completes only with every Task closed and `task-escalated` always leads to a step, so both pass.
+   - A repeated finish (F16 replay) returns the recorded result without asking the rule again.
+   - Abandon is not affected.
+   - The finish asks the rule before its exit gates, so a finish with both problems is refused for its open Tasks; once they are closed, an unmet gate still refuses it.
+
+#### Blocker classification
+
 - **Causes.** `cause` is one of `BLOCKING_TASK_CAUSES` (`draft`, `on-hold`, `broken`,
   `dependency-unsatisfiable`, which only a person resolves) or `active` (an attempt runs), `waiting`
   (`ready`, waiting for open dependencies) and `ready` (can start, or continue with its next step).
   `blockingTasks` (the `tasks-stuck` explanation) is `openTasks` restricted to the blocking causes, so
   both explanations use one model and one vocabulary.
+
+#### Projected refusals
+
 - **Projection.** The action projection asks the same rule on the current Tasks: such a transition is
   `unavailable: tasks-open` with `openTasks` (it wins over `gate-unsatisfied`; meeting a gate would
   not help). Because the finish judges the state after its own input, the projection also plans the

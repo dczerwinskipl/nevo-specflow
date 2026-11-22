@@ -21,8 +21,8 @@ Choose the resource first:
 
 | What you need                                          | API entry point                                              |
 | ------------------------------------------------------ | ------------------------------------------------------------ |
-| Login, session cookie and OIDC | [OpenAPI authentication operations](api/openapi.md) |
-| Check caller capabilities and access scopes | [Authorization](api/authorization.md) |
+| Login, session cookie and OIDC                         | [OpenAPI authentication operations](api/openapi.md)          |
+| Check caller capabilities and access scopes            | [Authorization](api/authorization.md)                        |
 | Create or close a Specification, worktree or workspace | [Create and Close](api/specflow-specification-operations.md) |
 | Browse active and archived Specifications              | [Overview](api/specs-overview.md)                            |
 | Read one Specification's combined workspace view       | [Specification Workspace](api/specification-workspace.md)    |

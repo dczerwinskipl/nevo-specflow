@@ -110,6 +110,10 @@ export const ComposerOnlyWhenTheFormFits: Story = {
     await waitFor(() => expect(canvas.queryByRole('textbox', { name: 'Wiadomość' })).toBeNull());
     await settle(1920, 1080);
     await expect(await canvas.findByRole('textbox', { name: 'Wiadomość' })).toBeDisabled();
+    await expect(canvas.getByRole('textbox', { name: 'Wiadomość' })).toHaveAttribute(
+      'placeholder',
+      'Rozpocznij sesję, aby wysłać wiadomość',
+    );
   },
 };
 
@@ -509,7 +513,9 @@ export const ManagedStartFlow: Story = {
     await pick(canvas, 'Model', 'Claude Sonnet');
     await pick(canvas, 'Effort', 'high');
     await userEvent.click(canvas.getByRole('radio', { name: 'Plan' }));
-    await expect(canvas.getByText(/agent nada jej nazwę/)).toBeVisible();
+    await expect(
+      canvas.getByText('Sesja otworzy się bez wiadomości. Nazwę możesz nadać później.'),
+    ).toBeVisible();
     await userEvent.type(canvas.getByRole('textbox', { name: /Nazwa sesji/ }), 'Przegląd SSO');
     await expect(
       canvas.getByText('Sesja otworzy się bez wiadomości, z Twoją nazwą.'),

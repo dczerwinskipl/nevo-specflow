@@ -235,8 +235,8 @@ Every UI start is from a Specification: **New session** opens `/specs/:specId/se
   Create with an agent, which exists only in demo mode, keeps its labelled fields and tiles
   ([Create Specification, Demo mode](../specification-creation.md#demo-mode)); the Composer keeps
   its compact pickers.
-- **Composer before Start.** Split layout: inactive in its final place, placeholder **Choose the
-  agent and start the session**, no pickers, Send disabled. Single-surface (narrow) layout: not shown
+- **Composer before Start.** Split layout: inactive in its final place, placeholder **Start the
+  session to send a message**, no pickers, Send disabled. Single-surface (narrow) layout: not shown
   until Start.
 - **Blocked.** Start is disabled and the note names the first reason in reading order:
   configuration to refresh → choose an available agent → **Choose a model** → choose a supported
@@ -265,8 +265,8 @@ left empty (or blank), the Session is created without one and keeps the title **
 the person renames it. The note next to Start says which applies.
 
 Agent naming is not implemented: the Runtime reports no naming signal, so the header **Naming…**
-status is never shown, and the note next to Start ("the agent names it after the first one")
-describes the planned behaviour
+status is never shown. The note next to Start says **The session opens without a message. You can
+name it later.** It does not promise automatic naming. Automatic naming remains planned behaviour
 ([open idea](../../../ideas/specflow-ui/full-session-screen-structure.md#6-still-deferred)).
 
 ## Secondary tabs

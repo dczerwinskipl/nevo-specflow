@@ -20,7 +20,7 @@ export interface StartedSession {
   modeId?: string;
   /** The mode's title as the user saw it. */
   modeTitle?: string;
-  /** The own name; absent when the agent names the Session from the first message. */
+  /** The own name; absent for an unnamed Session. */
   title?: string;
 }
 
@@ -36,7 +36,7 @@ export interface SentStart {
   effort?: string;
   /** The work mode's id in the provider's catalogue. */
   modeId?: string;
-  /** The own name; absent when the agent names the Session. */
+  /** The own name; absent for an unnamed Session. */
   title?: string;
 }
 

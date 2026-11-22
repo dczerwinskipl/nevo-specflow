@@ -2,9 +2,9 @@
 export const sessionNameMaxLength = 256;
 
 /**
- * How the new Session gets its name. `agent`: the agent names it from the first message. `custom`:
- * the Session is created with the typed `value`. The start form has one optional name field, so
- * the mode follows what is typed (`sessionNameFrom`): a blank field lets the agent name it.
+ * The start form's name choice. `agent` is the existing unnamed choice id: no title is sent;
+ * automatic agent naming is not implemented. `custom` creates the Session with the typed value.
+ * The mode follows the one optional name field (`sessionNameFrom`).
  */
 export interface SessionNameChoice {
   mode: 'agent' | 'custom';

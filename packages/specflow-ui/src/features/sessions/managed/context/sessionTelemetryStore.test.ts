@@ -53,6 +53,36 @@ afterEach(() => {
 });
 
 describe('telemetry reads', () => {
+  it('updates reported cost with usage while provider limits remain independently stale (B9)', async () => {
+    const cost = fullTelemetrySnapshot.cost.session;
+    const usage = fullTelemetrySnapshot.usage.session;
+    if (cost.status === 'unavailable' || usage.status === 'unavailable') {
+      throw new Error('This fixture needs observed cost and usage.');
+    }
+
+    const first: TelemetrySnapshot = {
+      ...at(50),
+      cost: { session: { ...cost, value: { ...cost.value, amount: '0.3489' } } },
+      limits: { ...fullTelemetrySnapshot.limits, freshness: 'stale' },
+    };
+    const next: TelemetrySnapshot = {
+      ...first,
+      revision: 51,
+      cost: { session: { ...cost, value: { ...cost.value, amount: '0.52' } } },
+      usage: { session: { ...usage, value: { ...usage.value, outputTokens: 6400 } } },
+    };
+    const { store, telemetry, emit } = setup();
+    telemetry.mockResolvedValueOnce(snapshotRead(first)).mockResolvedValueOnce(snapshotRead(next));
+    emit({ kind: 'resync' });
+    await vi.runAllTimersAsync();
+    expect(store.getSnapshot().snapshot?.cost).toEqual(first.cost);
+    emit({ kind: 'revision', revision: 51 });
+    await vi.runAllTimersAsync();
+    expect(store.getSnapshot().snapshot?.cost).toEqual(next.cost);
+    expect(store.getSnapshot().snapshot?.usage).toEqual(next.usage);
+    expect(store.getSnapshot().snapshot?.limits).toEqual(first.limits);
+  });
+
   it('reads on resync and revalidates with the received ETag; 304 keeps the snapshot', async () => {
     const { store, telemetry, emit } = setup();
     telemetry.mockResolvedValueOnce(snapshotRead(at(5), '"r5"'));

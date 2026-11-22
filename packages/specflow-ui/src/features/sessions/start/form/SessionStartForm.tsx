@@ -82,7 +82,7 @@ export function SessionStartForm({
     : prerequisite
       ? text(prerequisite)
       : name.mode === 'agent'
-        ? t('sessionStart.footer.agentNames')
+        ? t('sessionStart.footer.nameLater')
         : t('sessionStart.footer.ready');
   const label =
     status === 'starting'

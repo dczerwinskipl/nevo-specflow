@@ -73,6 +73,14 @@ and the filesystem alone, report no branch or dirty state, and `create-options` 
 `newWorktree` as disabled with reason `git-disabled`. The Engine still needs Git once at open to
 establish Project Home; a project that is not a Git repository is not supported.
 
+## Project dependencies in a new worktree
+
+A managed linked worktree starts from the tracked Git base. It does not copy ignored directories
+such as `node_modules` from another checkout. Create does not run a package installer or a project's
+setup/build scripts. Before running tests there, run that project's documented dependency and build
+setup inside the new checkout. Automatic environment provisioning is a separate workspace-lifecycle
+capability, not an implicit effect of creating a Specification or starting a Session.
+
 ## Canonical discovery
 
 A bound Specification is read from the registered verified checkout's

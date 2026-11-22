@@ -4132,6 +4132,28 @@
       ]
     },
     {
+      "id": "ideas.audits.2026-11-22-sessions-workflow",
+      "type": "product",
+      "title": "Sessions and workflow follow-ups — issue 184",
+      "status": "draft",
+      "file": "docs/ideas/audits/2026-11-22-sessions-workflow.md",
+      "read_when": [
+        "reviewing the disposition and verification of issue 184"
+      ],
+      "summary": "Current-main verification of the Sessions and workflow observations from audit 168.",
+      "related": [],
+      "scope": "specflow",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "audit",
+        "ux",
+        "sessions",
+        "workflow"
+      ]
+    },
+    {
       "id": "ideas.specflow-engine.reusable-workflow.ux-contract",
       "type": "product",
       "title": "Manual Specification and Task workflow execution — UX contract (superseded)",

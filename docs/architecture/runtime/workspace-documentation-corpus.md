@@ -115,7 +115,6 @@ search freshness, not a duplicate endpoint reference.
   `index-building`/other lexical reason. One linked worktree may be seeding from
   Project Home, this same checkout may be actively refreshing, or another checkout
   may occupy the endpoint. The corresponding `indexProgress` is supplied when available.
-  An endpoint-capacity configuration is an unimplemented follow-up, not current behavior.
 - At most **four** workspace corpora are retained open, with least-recently-used disposal.
   Before worktree disposal, release that workspace's corpus and wait for its refresh.
   Closing Runtime cancels running refreshes and waits for the index to be released;

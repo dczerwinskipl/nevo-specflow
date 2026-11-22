@@ -46936,6 +46936,7 @@
       "get": {
         "operationId": "getSpecsBySpecIdWorkspace",
         "summary": "Read the workspace view of a Specification",
+        "description": "Read the bounded Specification Workspace composition. Requires spec.view at trusted {projectId,specId}; individual Session rows, attention and activity require session.view at a trusted Session scope. An available empty section is a successful read, not a missing adapter. Project mode never falls back to demo data. 404 specification_not_found is an unknown Specification; 503 specification_source_unavailable is a failed canonical source or composition. No full Task or document body is embedded. Cache-Control: no-store.",
         "tags": [
           "Specifications"
         ],
@@ -46970,7 +46971,8 @@
                   ],
                   "properties": {
                     "revision": {
-                      "type": "string"
+                      "type": "string",
+                      "description": "Manifest sourceRevision only; it does not change when Session details, Task progress or overview text change."
                     },
                     "workspaceId": {
                       "$ref": "#/components/schemas/WorkspaceId"
@@ -47001,7 +47003,8 @@
                           "type": "string"
                         },
                         "summary": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Plain text from the overview Goal paragraph, else the first body paragraph. Read bounded to 32 KiB and output to 320 graphemes; empty when unavailable."
                         },
                         "preparationState": {
                           "anyOf": [
@@ -47023,7 +47026,8 @@
                                 "prepared"
                               ]
                             }
-                          ]
+                          ],
+                          "description": "Engine Task preparation: empty with no readable Tasks, preparing while a Task is draft, otherwise prepared."
                         },
                         "attention": {
                           "type": "array",
@@ -50813,7 +50817,8 @@
                                             "type": "string"
                                           },
                                           "kind": {
-                                            "type": "string"
+                                            "type": "string",
+                                            "description": "Archetype document type id, not the document content kind text/image/binary."
                                           },
                                           "summary": {
                                             "type": "string"
@@ -50978,7 +50983,8 @@
                                                   "unknown"
                                                 ]
                                               }
-                                            ]
+                                            ],
+                                            "description": "Effective Session provider readiness, not Task run status: active, attention, quiet, authenticationRequired or unknown."
                                           },
                                           "providerId": {
                                             "type": "string",
@@ -51010,7 +51016,8 @@
                                       }
                                     },
                                     "hasMore": {
-                                      "type": "boolean"
+                                      "type": "boolean",
+                                      "description": "True when more than the bounded 100 non-archived associated Sessions exist."
                                     },
                                     "attention": {
                                       "type": "array",
@@ -51518,7 +51525,8 @@
                                                   "session_started"
                                                 ]
                                               }
-                                            ]
+                                            ],
+                                            "description": "Known Runtime event for client localization (specification_created or session_started); title and description are fallbacks."
                                           },
                                           "title": {
                                             "type": "string"
@@ -52158,7 +52166,8 @@
                               "type": "string"
                             },
                             "path": {
-                              "type": "string"
+                              "type": "string",
+                              "description": "Temporary route override in demo; absent when the normal composed Specification Session route is used."
                             }
                           }
                         }

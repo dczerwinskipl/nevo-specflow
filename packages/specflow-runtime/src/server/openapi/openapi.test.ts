@@ -153,6 +153,16 @@ describe('Runtime OpenAPI document', () => {
       expect(listOperation.description).toContain('independently filtered by spec.view');
       expect(listOperation.parameters.map((parameter) => parameter.name)).toContain('If-None-Match');
       expect(listOperation.responses['304']?.description).toContain('Not modified');
+      const workspaceRead = paths['/api/specs/{specId}/workspace']?.get as {
+        description: string;
+        responses: Record<string, { content?: Record<string, { schema: unknown }> }>;
+      };
+      expect(workspaceRead.description).toContain('individual Session rows');
+      const workspaceBody = workspaceRead.responses['200']?.content?.['application/json']?.schema as {
+        properties: { revision: { description?: string }; specification: { properties: { summary: { description?: string } } } };
+      };
+      expect(workspaceBody.properties.revision.description).toContain('sourceRevision');
+      expect(workspaceBody.properties.specification.properties.summary.description).toContain('320 graphemes');
       const documentRead = paths['/api/specs/{specId}/documents/{documentId}']?.get as {
         parameters: readonly { in: string; name: string; required?: boolean }[];
       };

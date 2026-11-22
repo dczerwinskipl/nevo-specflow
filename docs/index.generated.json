@@ -1033,6 +1033,42 @@
       ]
     },
     {
+      "id": "architecture.runtime.specification-workspace-composition",
+      "type": "architecture",
+      "title": "Specification Workspace read composition",
+      "status": "current",
+      "file": "docs/architecture/runtime/specification-workspace-composition.md",
+      "read_when": [
+        "changing the Specification Workspace read composition",
+        "altering Workspace section availability, bounded projections or freshness",
+        "changing the visibility of Sessions or Tasks inside a Workspace"
+      ],
+      "summary": "Composition and degradation invariants for Specification Workspace: authoritative Engine identity, Task/Document sections, per-Session authorization, bounded activity and freshness.",
+      "related": [
+        "reference.api.specification-workspace",
+        "architecture.runtime.authorization",
+        "architecture.runtime.specification-documents",
+        "architecture.runtime.task-read-composition",
+        "product.specflow.ui.data-loading-and-integration"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "security",
+        "workflow",
+        "ui"
+      ],
+      "tags": [
+        "specifications",
+        "workspace",
+        "tasks",
+        "documents",
+        "sessions",
+        "read-model"
+      ]
+    },
+    {
       "id": "architecture.runtime.task-read-composition",
       "type": "architecture",
       "title": "Task read composition and domain ownership",

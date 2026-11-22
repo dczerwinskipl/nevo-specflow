@@ -19,47 +19,41 @@ related:
   - reference.api.operation-progress
 ---
 
-# Specification Create and Close HTTP reference
+# Specification Create and Close API
 
-Exact schemas are in `packages/specflow-contracts/src/specs/`; transport mapping lives in
-`packages/specflow-runtime/src/features/specs/`. This document describes current E2, not
-future Workflow or provider Session APIs.
+The HTTP requests, response schemas, error codes and admission headers are defined in
+[OpenAPI](openapi.md), tags `Specifications`, `Workspaces` and `Operations`.
 
 ## Create
 
-The authoritative transport contract is generated as:
-`GET /api/specs/create-options` (`getSpecsCreateOptions`),
-`GET /api/specs/archetypes` (`getSpecsArchetypes`),
-`POST /api/specs` (`postSpecs`), and
-`GET /api/specs/create/operations/{operationId}`
-(`getSpecsCreateOperationsByOperationId`) in [OpenAPI](openapi.md).
+| Operation | Purpose |
+| --- | --- |
+| `GET /api/specs/archetypes` | Read available Specification archetypes |
+| `GET /api/specs/create-options` | Inspect workspace, branch and Git creation options |
+| `POST /api/specs` | Create a Specification or accept an asynchronous operation |
+| `GET /api/specs/create/operations/{operationId}` | Inspect the Create outcome |
 
-**Source:** TypeBox in `packages/specflow-contracts/src/specs/create.ts` and
-`create-options.ts`, routes in `packages/specflow-runtime/src/features/specs/create/endpoint.ts`.
-Request/response shapes, refusal statuses, `Prefer: respond-async`, ETag and operation lookup
-are documented on those operations in generated OpenAPI, not hand-copied here.
-
-**Domain behavior:** [Create options and admission](../../architecture/runtime/specification-create-options.md)
-explains the role of `baseRef`, workspace joining, information exposure, Git-off, invalid
-policy and idempotency. [Specification lifecycle](../../architecture/runtime/specification-lifecycle.md)
-owns durable effects/recovery. The [Create product contract](../../product/specflow/specification-creation.md)
-owns UI flow. [Progress SSE](operation-progress.md) is optional, not authoritative.
+Create options are advisory; the Engine validates the selected target and permissions again
+when creating. See [Create options and admission](../../architecture/runtime/specification-create-options.md),
+[Specification lifecycle](../../architecture/runtime/specification-lifecycle.md) and
+[Create UI](../../product/specflow/specification-creation.md).
+Live progress is available through [SSE](operation-progress.md).
 
 ## Close
 
-The authoritative HTTP contracts and refusal responses for Specification, Worktree and
-Workspace Close are generated in [OpenAPI](openapi.md) from
-`packages/specflow-contracts/src/specs/close.ts` and the feature routes in
-`packages/specflow-runtime/src/features/specs/close/endpoint.ts`.
+Specification, worktree and workspace closure have distinct effects and authorization.
 
-**Operations:** Spec Close `/api/specs/{specId}/close` with `/preview` and `/occupancy`;
-Worktree Close `/api/specs/{specId}/worktree/close` with `/preview`; Workspace Close
-`/api/workspaces/{workspaceId}/close` with `/preview`; operation inspection and
-`reconcile-scratch` are documented separately in the generated schema.
+| Operation family | Scope |
+| --- | --- |
+| `/api/specs/{specId}/close` | Archive one Specification, optionally integrate its branch |
+| `/api/specs/{specId}/worktree/close` | Close the linked worktree |
+| `/api/workspaces/{workspaceId}/close` | Close a complete workspace, including its bound Specifications |
 
-**Behavior:** [Close admission and refusals](../../architecture/runtime/specification-close-admission.md)
-explains the three intents, Git-off archive-only mode, Session occupancy, pending documents,
-branch discovery, externally merged branches and safe local-config disposal.
+Each family has a `/preview` read and an operation-inspection route.
+Specification Close also exposes `/occupancy`; recovery actions are available under
+the documented operation paths.
+
+See [Close admission and refusals](../../architecture/runtime/specification-close-admission.md)
+for blockers and required confirmation, and
 [Specification lifecycle](../../architecture/runtime/specification-lifecycle.md)
-owns journals, integration proof, CAS rebind and recovery. There is no demo-specific public
-Close schema.
+for Git effects, journal recovery and rebind guarantees.

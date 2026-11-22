@@ -12,6 +12,11 @@ summary: >
 
 - [Deterministic workflow](deterministic-workflow.md)
 - [Workflow kernel](workflow-kernel.md)
+  - [Definitions, executors and gates](workflow-definitions-and-gates.md)
+  - [Runs, handoffs, returns and wait](workflow-runs-and-handoffs.md)
+  - [Task resources and preparation](workflow-tasks.md)
+  - [Continuation and attention](workflow-continuation-and-attention.md)
+  - [Storage and recovery](workflow-storage-and-recovery.md)
 
 ## Responsibility map
 

@@ -130,7 +130,7 @@ dashboard configuration). The Overview renders what the reads deliver.
   without a confirmation, like the Task page's Resume; a refusal is a notification; a repeated
   click while it runs sends nothing more, and the same holds for Start step), its alternative
   Cancel task. A hold that nothing waits on is not listed; its row shows
-  "On hold" with the reason as its supporting line ([workflow kernel, Held Tasks](../../../architecture/workflow/workflow-kernel.md#continuation-and-attention)).
+  "On hold" with the reason as its supporting line ([workflow kernel, Held Tasks](../../../architecture/workflow/workflow-continuation-and-attention.md#continuation-and-attention)).
 - **Tasks** — the Runtime's preview of the configured grouping, rendered as delivered, always as
   Task rows (no mode switch by Task count). Each group the configuration marks `row` shows its first
   Tasks (at most two, `TaskOverview.rows[].tasks`, chosen by the Runtime in importance order:

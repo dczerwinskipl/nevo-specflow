@@ -30,23 +30,22 @@ document owns only what they mean in the product. Approved mock: Storybook
   workspace (`fit="available"`): Wide 25 / 75, Compact 1/3 / 2/3, with the tree capped at 360 px
   (`primaryMaxPx`) so the document gets the rest on wide screens. The tree MUST be permanently
   visible whenever the workspace splits (>= 840 px); it MUST NOT be a drawer or toggle there.
-- **Contents and properties (preview only).** A markdown preview with at least two headings (h1-h4) offers
-  its contents. When the document panel is at least 840 px wide (a 1400 px window and wider) (measured on the panel, so the text keeps
-  at least 528 px, about 62 characters or more) the text keeps its 760 px measure at most and a sticky column
-  beside it holds the properties and the contents, the current heading marked while reading; the column
-  is 27% of the panel between 232 and 320 px and its rows are one line with the full title on hover. The
-  contents are a compact tree of the headings in the file tree's family: one row height, one indent step per
-  real heading level (a flat list when all headings share a level), normal weight, no icons or numbering; the
-  current section is a quiet tint with an accent bar and follows the reading position; choosing a heading
-  scrolls to it smoothly (at once with reduced motion). In a
-  narrower panel there is no column and no box in the text: a contents icon (`list`) follows the tab strip or the narrow
-  switcher in the header, always right after them and not beside the actions, and opens the contents as a bottom sheet, and the same entry is the first item of
-  the Display group of the `...` menu. The icon is region navigation, not a header action, so it costs no
-  direct slot. The sheet is titled Contents only (the tab already names the document). Choosing a heading
-  closes the sheet, scrolls to the heading and focuses it; closing without a
-  choice returns focus to the icon. The properties are one collapsed plain row (a thin rule, no frame) in the text and in the column, with a 44 px hit area on touch. Editing, plain text
-  and documents with fewer than two headings have no contents. A permanent contents bar was considered
-  and rejected in review.
+
+### Contents and properties
+
+- **Contents and properties (preview only).** A markdown preview with at least two headings (h1-h4) offers its contents.
+   - When the document panel is at least 840 px wide (a 1400 px window and wider) (measured on the panel, so the text keeps at least 528 px, about 62 characters or more) the text keeps its 760 px measure at most and a sticky column beside it holds the properties and the contents, the current heading marked while reading; the column is 27% of the panel between 232 and 320 px and its rows are one line with the full title on hover.
+   - The contents are a compact tree of the headings in the file tree's family: one row height, one indent step per real heading level (a flat list when all headings share a level), normal weight, no icons or numbering; the current section is a quiet tint with an accent bar and follows the reading position; choosing a heading scrolls to it smoothly (at once with reduced motion).
+   - In a narrower panel there is no column and no box in the text: a contents icon (`list`) follows the tab strip or the narrow switcher in the header, always right after them and not beside the actions, and opens the contents as a bottom sheet, and the same entry is the first item of the Display group of the `...` menu.
+   - The icon is region navigation, not a header action, so it costs no direct slot.
+   - The sheet is titled Contents only (the tab already names the document).
+   - Choosing a heading closes the sheet, scrolls to the heading and focuses it; closing without a choice returns focus to the icon.
+   - The properties are one collapsed plain row (a thin rule, no frame) in the text and in the column, with a 44 px hit area on touch.
+   - Editing, plain text and documents with fewer than two headings have no contents.
+   - A permanent contents bar was considered and rejected in review.
+
+### Source editor
+
 - **Source editor.** Line numbers are a quiet band of their own beside the text, and the current line is marked
   from that band to the end of the line. While the source editor is shown, the Display group of the `...`
   menu has a checked **Wrap lines**: on unless the reader turned it off, kept in this browser separately for a
@@ -56,22 +55,28 @@ document owns only what they mean in the product. Approved mock: Storybook
   MUST NOT close tabs or change the route. The region has no close of its own while stacked (it would repeat
   Back); the split layouts keep it as "close every tab". The stacked screen follows the active tab, so a tab switch
   while it is open does not close and reopen it.
+
+### Tab lifecycle
+
 - **Open rule.** Opening a file from the tree opens a new tab; opening an open file activates its
   tab. There is no preview tab.
 - **Scope.** Open tabs live for the visit to one specification and are not persisted. Unsaved drafts
   stay in the visit-scoped draft store, so switching tabs MUST NOT lose edits.
-- **URL.** The active tab is the route `documents/$documentId`; the set of other open tabs is not in
-  the URL. The route is the single source of the active tab: a document in the URL (a deep link, a
-  reload) opens exactly one tab. Switching to an open tab replaces the history entry; opening a new tab
-  (from the tree, a new file, an import) pushes one. Both keep the location state, so the return link to a
-  Session or the Specification overview survives tab changes. Closing the active tab moves to its right
-  neighbour, else the left one, by replacing the entry; closing the last tab shows the document list. The browser Back button may return to the address of a tab that was closed: the route is the source of the active tab, so that address opens its tab again.
-- **Unsaved changes.** Closing a tab with edits asks (Save / Discard / Cancel) for that tab, also for a tab
-  that is not on screen; Discard removes its draft, so reopening shows the saved document. Leaving the
-  screen, switching specification, a tree operation, closing every tab (_Close all documents_ in the document's `...` menu — the split tab rail has
-  no region-level close) or unloading
-  the page asks once, listing the unsaved documents (Save all / Discard all / Cancel). When Save all
-  cannot save everything the dialog stays open and lists the documents that are still unsaved.
+
+### URL and tab identity
+
+- **URL.** The active tab is the route `documents/$documentId`; the set of other open tabs is not in the URL.
+   - The route is the single source of the active tab: a document in the URL (a deep link, a reload) opens exactly one tab.
+   - Switching to an open tab replaces the history entry; opening a new tab (from the tree, a new file, an import) pushes one.
+   - Both keep the location state, so the return link to a Session or the Specification overview survives tab changes.
+   - Closing the active tab moves to its right neighbour, else the left one, by replacing the entry; closing the last tab shows the document list.
+   - The browser Back button may return to the address of a tab that was closed: the route is the source of the active tab, so that address opens its tab again.
+
+### Preserving drafts
+
+- **Unsaved changes.** Closing a tab with edits asks (Save / Discard / Cancel) for that tab, also for a tab that is not on screen; Discard removes its draft, so reopening shows the saved document.
+   - Leaving the screen, switching specification, a tree operation, closing every tab (_Close all documents_ in the document's `...` menu — the split tab rail has no region-level close) or unloading the page asks once, listing the unsaved documents (Save all / Discard all / Cancel).
+   - When Save all cannot save everything the dialog stays open and lists the documents that are still unsaved.
 - **Switching tabs is not leaving.** Moving between open tabs changes the route
   `documents/$documentId` but stays on the Documents screen, so it MUST NOT trigger the leave guard
   or its Save / Discard / Cancel dialog. Drafts of the other tabs are kept. Only closing a tab, leaving
@@ -109,6 +114,9 @@ Each kind declares its views and actions to the host; the rules for descriptors,
 The kinds are `documentContentKinds` in `features/documents/content-kinds`; the first kind that
 matches a document wins, plain text being the fallback.
 
+
+### Markdown and source text
+
 - **Markdown.** Views preview and edit; opens in preview. Edit/Preview is one icon action that names
   the action (pencil in preview, eye in edit), always direct, except while editing with unsaved
   changes, when Save takes the narrow header's single slot and the mode action is direct only on
@@ -119,11 +127,17 @@ matches a document wins, plain text being the fallback.
   in the menu.
 - **Save and Discard** (markdown and plain text) exist only while the draft differs. Save is the
   `primary` action, always direct, and shows Saving while it commits.
+
+### Images and binary previews
+
 - **Image.** One view, fitted to the area. The `display` group has a checked **Actual size** item
   (100 %); Download is the promoted (`primary`) header action. Never dirty.
 - **File** (binary, or text above the read limit). The body explains the file and carries a
   Download button; the header keeps Download in the menu only (`direct: 'never'`), so the two never
   differ in weight.
+
+### Source editor options
+
 - **Source editor preferences.** **Wrap lines** in the `display` group while the source editor is
   shown (see Documents above).
 - **Editor look.** Editable source MUST look like an editor: monospace, a line-number gutter sized
@@ -159,6 +173,9 @@ frames only.
 
 ### 5.1 Read-only on open
 
+
+#### Read-only policy
+
 - A document is read-only when `editable` is false or a Specification-wide write capability is
   unavailable (the contract has no per-document write action yet). The reason is chosen in this order: `archived`,
   `git-policy-invalid`, `branch-protected`, `branch-not-allowed`, `commit-blocked`, `not-editable`.
@@ -179,6 +196,9 @@ frames only.
   or made by the commit policy); the dirty mark clears and the live region announces "Saved". The commit
   state is not shown in this release. The document heading shows the new derived title; the tab label (file name)
   does not change.
+
+#### Save refusals and conflict resolution
+
 - Refusals keep the draft and show an Alert (role `alert`) at the top of the document; focus stays in
   the editor. After DOCUMENT_REVISION_CONFLICT **Save is unavailable until the user chooses Copy my
   version or Load the version on disk** (saving again would only repeat the conflict); after Copy my

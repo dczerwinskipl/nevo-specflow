@@ -44,9 +44,9 @@ Sizes are approximate and are triage signals, not automatic failures.
 | P2 | [React component guidelines](../design-system/implementation/react/component-guidelines.md) | 65 KB | Move component-specific contracts out of general React guidance |
 | P2 | [Secondary navigation](../design-system/implementation/react/secondary-navigation.md) | 48 KB | Separate component API, navigation invariants and worked examples |
 | P2 | [Session storage lifecycle](../architecture/ai/session-storage-and-lifecycle.md) | 28 KB | Split persistence and ownership from recovery/operator action |
-| Review | [Specification documents API](../reference/api/specification-documents.md) | 120 KB | Keep exact coverage, but enable narrower section/resource retrieval; derive schema details from TypeBox where possible |
-| Review | [Sessions API](../reference/api/sessions.md) | 56 KB | Group by independent resource and route families |
-| Review | [Demo creation API](../reference/api/specification-creation-demo.md) | 33 KB | Retire only after demo/project HTTP convergence; see [demo API proposal](demo-api-convergence.md) |
+| P1 | [Specification documents API](../reference/api/specification-documents.md) | 120 KB | Retire duplicated HTTP schemas/routes after mapping domain-only rules to Architecture/Product and verifying OpenAPI coverage |
+| P1 | [Sessions API](../reference/api/sessions.md) | 56 KB | Replace HTTP field and route reference with generated OpenAPI; preserve non-schema lifecycle and protocol semantics in their actual owners |
+| P2 | [Demo creation API](../reference/api/specification-creation-demo.md) | 33 KB | Retire after demo/project HTTP convergence; do not promote the demo-only routes into a second public OpenAPI surface (see [demo API proposal](demo-api-convergence.md)) |
 
 ## Ownership and document shape
 
@@ -54,7 +54,8 @@ Sizes are approximate and are triage signals, not automatic failures.
 | --- | --- |
 | User-visible behavior and interaction | Product |
 | State ownership, lifecycle, security and invariants | Architecture |
-| Wire shapes, errors, configuration and endpoints | Reference; executable TypeBox contract takes precedence for exact schemas |
+| HTTP paths, request/response, status and schema shapes | TypeBox and route schemas, exposed through generated OpenAPI 3.1; **not** manually duplicated in Markdown |
+| Configuration and non-HTTP protocols | Their existing configuration/protocol references (unless an equivalent generated contract exists) |
 | Operator procedures, debugging, tests and recovery commands | Engineering |
 | Rationale and rejected alternatives | ADR, where the decision has durable significance |
 | Implementation evidence, PR/commit/review IDs | GitHub history, linked historical record or a draft proposal; never the basis of a `current` contract |
@@ -66,19 +67,32 @@ Preserve existing stable document IDs for entry-point documents; when splitting 
 
 **Do not rewrite ADR history as if it had always been correct.** Historical decisions may retain their original wording, including amendments. Use their successors and the current domain contract to determine today's behavior; do not make a reader traverse multiple amended ADRs just to learn a current API.
 
+## Generated OpenAPI replaces handwritten HTTP references
+
+The Runtime already emits **OpenAPI 3.1** from Fastify TypeBox schemas at `GET /api/openapi.json`. The committed `docs/reference/api/openapi.generated.json` is generated with `pnpm api:openapi` and checked with `pnpm api:openapi --check`. Route registration enforces tag/summary and checks for missing response documentation; the canonical generated project-mode document currently reports no missing response-schema routes. Demo-specific seams are deliberately excluded from this OpenAPI document.
+
+**Decision proposed:** replace individual HTTP reference Markdown pages, rather than reorganize them into smaller Markdown copies. Use code/TypeBox as the source of contract truth, OpenAPI as the public machine-readable HTTP description, and Architecture/Product/Engineering for behaviors that a schema cannot express. A single short `reference/api/README.md` can document where to find the generated and live specs and how to use them. Keep `openapi.md` only if its explanation of generator limitations, verification and protocol details remains useful; simplify its HTTP-reference repetition.
+
+The checked-in OpenAPI JSON is approximately **2.26 MB**, so loading it wholesale into every agent context is counterproductive. Provide a deterministic local operation lookup that extracts `method + path` or `operationId`, only the referenced schemas (resolving `$ref` transitively with cycle protection), errors/headers, and the operation description. Initial implementation can be a small CLI/script over the committed JSON; measure retrieved tokens for representative requests before adding a new product command. A raw reference to the whole file is not an agent retrieval strategy.
+
+**Coverage gate before deleting any Markdown:** the schema must truly describe the relevant request/response/status/headers and documented failure codes; if a field or refusal is only in prose, annotate its TypeBox schema/route documentation or migrate the semantic rule to its single domain owner. OpenAPI describes transport, but does not replace concurrency, idempotency, crash recovery, security reasoning, state-machine invariants, operator steps or a user journey. Ensure generated project-mode OpenAPI correctly reflects enabled provider differences; do not treat a single configured server as a universal route inventory without checking its generation policy.
+
+Retire each old reference document **only after** resolving incoming `related` IDs, Markdown links/fragments and agent skill references. The audit should distinguish a short navigation page from a copied endpoint catalogue; neither broken citations nor silently dropped edge cases are acceptable.
+
 ## Implementation sequence
 
 1. **Baseline:** capture document IDs, section IDs, inbound links and rule inventory for each batch. Record examples of agent tasks and their context/token consumption before changing anything. Confirm whether each apparent legacy clause remains enforced by code.
 2. **Lifecycle and task reads:** refactor Specification Create/Close and Task read composition. Preserve the complete list of safety invariants (idempotency, durable journals, CAS, quiescence, shared workspace isolation, recovery-required paths, authorization) and error semantics. Move executable recovery procedures to their engineering owner, not a duplicated copy.
 3. **Engine/workflow and document ownership:** split large architecture files along existing capability boundaries. Cross-link, do not copy, overlapping ownership.
 4. **UI/product:** split large screen contracts by independent user journey; keep layout constraints in Design System and UI-specific behavior in Product.
-5. **Reference:** use resource-sized sections and link to TypeBox/OpenAPI for exact schemas. Do not remove a documented edge case merely because its schema is machine readable. Treat the standalone demo reference as a separate convergence decision.
+5. **HTTP reference consolidation:** audit every `docs/reference/api/*.md` against the checked-in generated OpenAPI; migrate non-schema semantics to the owning architecture/product/engineering docs, then retire redundant HTTP Markdown pages. Keep only a small API reference index explaining where to obtain the spec and query an operation. Do not retire the standalone demo reference until its separate public routes have been removed (see demo convergence).
 6. **Guardrails:** add non-blocking documentation review diagnostics for oversized sections, deeply nested prose and PR/commit/review references in `current` non-ADR documents. Explicitly allow IDs in examples, historical ADRs and proposals. A grep match is a triage signal, not proof of a violation.
 
 ## Verification and acceptance
 
 - For every changed document, make an old-rule -> new-owner mapping. Each still-valid rule has exactly one authoritative home; every removed statement has a reason and a code/contract check.
-- `pnpm docs:check` passes, including index and Markdown link fragments; regenerate both indexes for new IDs. Existing document IDs remain resolvable.
+- `pnpm docs:check` passes, including index and Markdown link fragments; regenerate both indexes for new IDs. Migrated document IDs have a deliberate replacement, and all inbound links/section anchors are updated before deletion.
+- `pnpm api:openapi --check` passes. Every removed HTTP field, route, response or error has equivalent generated coverage; any unique semantics have an authoritative non-HTTP home.
 - Check five representative requests: Create recovery, shared Workspace Close, document commits, Task workflow transitions, and UI document search. Compare **retrieved tokens**, not just total repository bytes, with the baseline.
 - Human review can answer each request by opening a concise entry point and only the necessary detail. Agent review distinguishes implemented behavior from planned work without interpreting old PR history.
 - Avoid a blanket word-count cap. Section size, information ownership and verified semantic coverage determine whether a split is useful.

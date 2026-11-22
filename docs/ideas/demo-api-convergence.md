@@ -29,7 +29,7 @@ related:
 
 The demo currently has genuine differences (no Git checkout or provider execution, no restart durability, custom scenarios), but none of them inherently requires alternative HTTP path names. Express unavailable capabilities explicitly rather than teaching the UI a different protocol.
 
-## Observed code, not just documentation
+## Current route differences
 
 | Capability                 | Project mode                                           | Demo mode                                                       | Gap                                                           |
 | -------------------------- | ------------------------------------------------------ | --------------------------------------------------------------- | ------------------------------------------------------------- |
@@ -44,7 +44,7 @@ The demo currently has genuine differences (no Git checkout or provider executio
 
 Evidence: `packages/specflow-runtime/src/features/specs/create/endpoint.ts`, `features/specs/demo/endpoints.ts`, `features/documents/write/routes.ts`, `features/documents/demo/endpoints.ts`, `features/sessions/demo/endpoints.ts`, `packages/specflow-contracts/src/demo/index.ts` and `packages/specflow-ui/src/features/specs/creation/api/api.project.ts` / `api.demo.ts`.
 
-**Documentation drift already exists:** [the documents HTTP reference](../reference/api/specification-documents.md) and [the demo creation reference](../reference/api/specification-creation-demo.md) still suggest that the project Runtime cannot write documents. It now registers real document write routes. Validate actual registration and behavior before changing a status claim.
+Project mode supports document writes on the common `/api/specs/**` routes. Demo document mutations use the separate `/api/demo/**` routes listed in the [demo API reference](../reference/api/specification-creation-demo.md).
 
 ## Proposed target contract
 
@@ -65,7 +65,7 @@ No promise is made that every real operation is supported by demo. An unsupporte
 | B     | Route shared document reads and writes through one feature-owned registration with injected sources                                                                                             | Same HTTP status, request/response and auth tests for both modes; isolated storage                                      |
 | C     | Unify catalogue, Create options, Create command, operation inspection and progress                                                                                                              | Canonical identity, concurrency/idempotency, 201/202 and error/recovery scenarios; no accidental Git operations in demo |
 | D     | Replace placeholder allocation with the shared Session resource model, or clearly scoped unsupported capability                                                                                 | Real/mock Session semantics; correct access scopes and no fake native execution                                         |
-| E     | Remove `/api/demo/**` product routes, duplicate demo contracts and mode-specific UI API adapters; retire the 33 KB standalone [demo reference](../reference/api/specification-creation-demo.md) | No production client uses an old path; schema parity and documentation index/check pass                                 |
+| E     | Remove `/api/demo/**` product routes, duplicate demo contracts and mode-specific UI API adapters; retire the standalone [demo reference](../reference/api/specification-creation-demo.md) | No production client uses an old path; schema parity and documentation index/check pass                                 |
 
 Remove the dedicated demo API reference only when the last public demo-specific endpoint is gone. Before then, mark it as a **transitional current contract** that clearly states the actual behavior; do not delete the only documented behavior in advance.
 

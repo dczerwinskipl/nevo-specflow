@@ -20,8 +20,9 @@ related:
 
 # Documentation maintainability audit
 
-**Status:** implementation audit for the proposed PR stack (#203, #204, #205), based on
-the HTTP/OpenAPI migration head of #201. This is a **draft audit record**, not
+**Status:** retrospective audit of the completed #201/#203/#204/#205 stack and
+follow-up readability work (#209/#210), against `main` at
+`7b91ebcb20047aba7295d735e88f6a1072805873`. This is a **draft audit record**, not
 an authoritative system contract. GitHub issues [#206](https://github.com/dczerwinskipl/nevo-specflow/issues/206)
 and [#207](https://github.com/dczerwinskipl/nevo-specflow/issues/207)
 own remaining investigation and the measured retrieval benchmark, respectively.
@@ -104,3 +105,21 @@ and draft audit records, but not in authoritative behavior descriptions.
 reads whole non-reference documents and selective sections of reference documents. Ranking may be
 lexical or hybrid and corpus/index freshness matters. A count of Markdown lines or the size
 of an entry-point file is **not** equivalent to measured token savings.
+
+## Current-document readability inventory (2026-11-23)
+
+Scope: every Markdown file under Architecture, Product, Engineering, Design System and Reference
+with `status: current` at the pinned `main` revision above. ADRs and README navigation
+files without `status: current` are excluded. The audit is based on **full text**, not file
+size alone. A >100-word paragraph or >120-word bullet is a **review signal**, not a policy failure.
+
+Disposition: **Keep** means no structural readability finding in this pass; **Reformat**
+means a long or mixed rule needs clearer presentation; **Deduplicate** requires an authority
+check; **Move history** means non-current material should move to Ideas/ADR; **Split** is
+reserved for an independently owned subject. An unverified source-code contract is never
+silently treated as verified. The `Check` column records editorial parity where performed,
+not code-level agreement. All final link, index, source parity and retrieval checks remain
+tracked by #206/#207 until evidenced on the final PR HEAD.
+
+| Current document and primary owner | Disposition | Evidence or follow-up | Check |
+| --- | --- | --- | --- |

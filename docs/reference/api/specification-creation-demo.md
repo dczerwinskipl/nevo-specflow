@@ -81,7 +81,7 @@ in connected routes. Names below are the temporary contract, not a production AP
 The document reads are not demo routes: the demo Runtime serves the real `GET /api/specs/:specId/document-tree`,
 `GET /api/specs/:specId/documents/:documentId` and `GET .../raw` routes from its in-memory data, with the shapes,
 headers and error codes of [the documents contract](specification-documents.md). The writes above emulate the D4
-operations of that contract (which the project Runtime does not serve yet) with its schemas
+operations of that contract (which the project Runtime now serves on the ordinary `/api/specs/...` paths) with its schemas
 (`@nevo/specflow-contracts/documents`, re-exported under demo names).
 
 Catalogue accepts optional `specId` query context for an existing Specification. After `spec.view`

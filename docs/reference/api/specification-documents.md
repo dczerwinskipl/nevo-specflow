@@ -35,10 +35,10 @@ owned by [the architecture document](../../architecture/runtime/specification-do
 
 The demo and the real backend use the **same schemas, re-exported under demo names** (the technique already
 used for `DemoCreateOptionsSchema`). The **reads** (document tree, document content, raw) are served on the real
-routes in both Runtimes: the demo Runtime supplies its data through the same document read-source port. Only the
-D4 **writes**, which the real Runtime does not serve yet, and the demo creation catalogue live under `/api/demo`
-as an emulation with the real shapes. Swapping demo for real changes the data source (and, for the writes, the path
-prefix), never a shape. Demo-only data (providers, simulated location, `DEMO_*` codes) stays in the demo-only part.
+routes in both Runtimes: the demo Runtime supplies its data through the same document read-source port. The project Runtime now serves document writes under `/api/specs/:specId/...`, while the demo Runtime
+registers equivalent writes under `/api/demo/specs/:specId/...`. Both use the shared document schemas but
+currently differ in route registration, backing store and commit behavior. The document reads use the
+same `/api/specs/:specId/...` paths in both modes. The demo creation catalogue remains a separate demo route. Demo-only data (providers, simulated location, `DEMO_*` codes) stays in the demo-only part.
 
 ## Endpoints
 

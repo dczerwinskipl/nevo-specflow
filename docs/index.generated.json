@@ -1208,6 +1208,40 @@
       ]
     },
     {
+      "id": "ideas.demo-api-convergence",
+      "type": "architecture",
+      "title": "Unify demo and project Runtime HTTP contracts proposal",
+      "status": "draft",
+      "file": "docs/ideas/demo-api-convergence.md",
+      "read_when": [
+        "deciding whether demo needs a separate API surface",
+        "replacing demo creation, document writes or Session allocation with shared routes"
+      ],
+      "summary": "Proposed single HTTP and TypeBox contract for demo and project Runtime, with mode-specific in-memory ports, realistic capability reporting and isolated test scenarios.",
+      "related": [
+        "adr.0025-demo-runs-the-engine-in-memory",
+        "reference.api.specflow-specification-operations",
+        "reference.api.specification-documents",
+        "reference.api.sessions",
+        "reference.api.specification-creation-demo",
+        "ideas.documentation-maintainability"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "ui",
+        "testing"
+      ],
+      "tags": [
+        "demo",
+        "api",
+        "contracts",
+        "adapters",
+        "in-memory"
+      ]
+    },
+    {
       "id": "ideas.developer-workspace.code-inspection-and-editing",
       "type": "architecture",
       "title": "Code inspection, editing, and full IDE integration",
@@ -2824,6 +2858,36 @@
         "server",
         "ui",
         "security"
+      ]
+    },
+    {
+      "id": "ideas.documentation-maintainability",
+      "type": "engineering",
+      "title": "Documentation maintainability and context-budget refactor proposal",
+      "status": "draft",
+      "file": "docs/ideas/documentation-maintainability.md",
+      "read_when": [
+        "planning a documentation refactor without losing domain invariants",
+        "reviewing the cost and authority of documentation retrieved by agents"
+      ],
+      "summary": "Proposed staged cleanup of oversized current documents, unstable implementation references, duplicated rules and inefficient section retrieval.",
+      "related": [
+        "adr.0007-documentation-architecture-and-taxonomy",
+        "architecture.principles.normative-language",
+        "reference.cli.nevo-specflow-docs",
+        "ideas.demo-api-convergence"
+      ],
+      "scope": "repo",
+      "areas": [
+        "docs",
+        "testing"
+      ],
+      "tags": [
+        "documentation",
+        "maintainability",
+        "authority",
+        "discovery",
+        "token-budget"
       ]
     },
     {

@@ -37,7 +37,7 @@ waiting for, act on what requires them now, see the Tasks at a glance, and conti
 open a document. The full Task inventory is the Tasks page (`/specs/:specId/tasks`). Sections are
 contributions of their owning features ([application architecture](application-architecture.md));
 the read is the [Specification Workspace API](../../../reference/api/specification-workspace.md),
-the Tasks page reads [Task reads, Tasks page](../../../reference/api/task-reads.md#tasks-page).
+the Tasks page reads [Task reads, Tasks page](../../../reference/api/task-reads.md#read-tasks).
 
 The Now block, its dialogs, Task authoring, Close and Abandon are described in
 [Manual workflow execution](workflow-execution.md); the separation of workflow state, attention and
@@ -286,7 +286,7 @@ The Overview shows what the Engine and the Session store hold. The demo Runtime 
 screens from the same reads: its Engine runs in memory over seeded state (Now, Requires attention,
 Tasks and Full Task are a project's; Start, Finish and Task commands change that state until the
 Runtime stops), and its documents, Sessions and history are the demo data
-([Specification Workspace API, Data source](../../../reference/api/specification-workspace.md#data-source)):
+([Specification Workspace API, Data source](../../../architecture/runtime/specification-workspace-composition.md#identity-source-and-failure)):
 
 - **Description** — the first paragraph of the overview document's **Goal** section (else its
   first paragraph) as plain text (at most 320 graphemes),

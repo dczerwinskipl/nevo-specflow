@@ -28,12 +28,18 @@ related:
   an optional `#sectionId` (the section ids of
   [`docs search`](../../../reference/cli/nevo-specflow-docs.md)). `documentId` is the document's
   frontmatter `id`, so the same document keeps its id in every workspace. There is no chooser page.
+
+### Reader entry points
+
 - **Contextual entries (always):** the Specification Overview's compact **Documentation** row (the
   workspace bound to the Specification as its second line, after Tasks and Documents, never above
   Tasks: the Overview has no workspace facts section to join), the Session Context's Documentation row,
   and internal links between documents.
 - **Global entry:** a permanent **Documentation** row under Specifications in the navigation,
   opening `/docs`. It is not a new navigation level and shows no Specification section.
+
+### Current workspace
+
 - **Current workspace (tab context).** One value per browser tab, the default of the reader:
   - **set by** entering a Specification (its bound workspace), an explicit pick in the picker, and
     opening a `/workspaces/:workspaceId/docs…` link (an explicit address is an explicit choice);
@@ -63,19 +69,20 @@ related:
   <Session title>"), and the picker says "this Session's workspace". In the Session Context the entry
   is one row ("Documentation", "This Session's workspace") of the Specification section, under
   Documents; a Session without a Specification shows it as the first row of Work.
+
+### Switching workspaces
+
 - **Picking another workspace** navigates to the same `documentId` and keeps the search text; both
   are looked up again in the new workspace. If the document is not there, the pane says
   "<title> is not in <workspace>" and the article area shows that workspace's root index (or the
   no-index sentence). Nothing from the previous workspace is shown under the
   new one.
-- **The address always names the document being read.** Every opened document
-  (tree, result, link, Related, a successor), at every width, is a route push, so the same link
-  behaves the same on Wide and Narrow, browser Back and Forward follow the history, a reload or a
-  resize opens the document the address names, and Copy link copies it. Choosing the document and
-  section already shown (on split layouts the root index of the workspace's own address too) opens
-  nothing and adds no history entry. Back and Forward return to each article at its reading
-  position, kept in memory per history entry for the browser tab, also after leaving the reader and
-  coming back.
+
+### Document route
+
+- **The address always names the document being read.** Every opened document (tree, result, link, Related, a successor), at every width, is a route push, so the same link behaves the same on Wide and Narrow, browser Back and Forward follow the history, a reload or a resize opens the document the address names, and Copy link copies it.
+   - Choosing the document and section already shown (on split layouts the root index of the workspace's own address too) opens nothing and adds no history entry.
+   - Back and Forward return to each article at its reading position, kept in memory per history entry for the browser tab, also after leaving the reader and coming back.
 - **The address holds the search .** The reader's address MUST hold the
   search as `?q=<text>&proposals=1`:
   - written with replace once typing pauses (the checkbox at once), so typing adds no history
@@ -86,22 +93,20 @@ related:
   - a reload, Copy link or a resize keeps the search;
   - `q` does not depend on the workspace: picking another workspace keeps it and searches again
     there.
+
+### Browser and stack Back
+
 - **Back on Wide and Compact:** browser Back returns to the previous document; there is no
   in-reader Back control, because the tree and the results stay visible beside the article.
-- **Back on Narrow:** the article is a pushed Secondary stack screen over the tree. Opening from
-  the tree or the results starts a new stack. A link of an article changes the address and
-  **pushes another article screen**; its header Back is browser Back, named for the previous
-  article ("Back to <title>"), and returns to it at its reading position. The first screen's Back
-  returns to the documentation: it steps back to the tree's entry when that is the previous entry,
-  and otherwise (an address opened directly, a reload or a resize after a hop) replaces the address
-  with the tree's, so it never adds a history entry; after a reload on a hop, browser Back from the
-  documentation then reaches the previous article. Browser Back and Forward move the stack the
-  same way. After a reload or a resize the stack is rebuilt minimally: the tree, then the
-  address's article. Back keeps the route, the search text and results, the tree expansion, the
-  selection and the pane's scroll (the Documents rule). The stack exists only while the layout is
-  stacked: it closes when the workspace becomes wide enough to split, and it closes when the reader
-  is left or the workspace is switched (the same document reopens in the new workspace when it
-  exists). Each stacked header names its own document.
+- **Back on Narrow:** the article is a pushed Secondary stack screen over the tree.
+   - Opening from the tree or the results starts a new stack.
+   - A link of an article changes the address and **pushes another article screen**; its header Back is browser Back, named for the previous article ("Back to <title>"), and returns to it at its reading position.
+   - The first screen's Back returns to the documentation: it steps back to the tree's entry when that is the previous entry, and otherwise (an address opened directly, a reload or a resize after a hop) replaces the address with the tree's, so it never adds a history entry; after a reload on a hop, browser Back from the documentation then reaches the previous article.
+   - Browser Back and Forward move the stack the same way.
+   - After a reload or a resize the stack is rebuilt minimally: the tree, then the address's article.
+   - Back keeps the route, the search text and results, the tree expansion, the selection and the pane's scroll (the Documents rule).
+   - The stack exists only while the layout is stacked: it closes when the workspace becomes wide enough to split, and it closes when the reader is left or the workspace is switched (the same document reopens in the new workspace when it exists).
+   - Each stacked header names its own document.
 
 ## Workspace picker and Specification switcher
 
@@ -116,6 +121,9 @@ geometry, and each passes only the facts of its own kind:
 | Detail line (one line)             | kind · bound Specification titles · "this Session's workspace" | key                    |
 
 **Name:** one line.
+
+
+### Name truncation
 
 - **Identifier-like names** (no whitespace: workspace and branch names) truncate **in the middle**
   and keep their distinguishing end: the last segment after a separator (`-`, `_`, `/`, `.`), with
@@ -136,6 +144,9 @@ The full name is reachable:
 
 - a small status dot (`StatusIndicator`) and short text after the name, which never truncates (the
   name truncates first);
+
+### Workspace status
+
 - **local changes:** an amber (`attention`) dot and "Local changes" ("Zmiany lokalne") in
   `content-secondary`. Informational only: the picker is not styled as a warning. This amber for an
   informational state is an explicit documented exception to the general rule of
@@ -199,6 +210,9 @@ element with that id in the article, if there is one.
 
 ## Routing and runtime behavior
 
+
+### Navigation intent
+
 - **Entry intent.** A pick or a Session entry travels as router location state of that one
   navigation and is consumed once the tab's store holds it (the entry is replaced without it), so a
   reload or Back to the entry does not replay an explicit pick: a remembered workspace that became
@@ -207,30 +221,31 @@ element with that id in the article, if there is one.
 - **Document not available.** One state for every `404` of an article (removed while
   reading or an unknown address): "This document is no longer available in this workspace" with
   the document id. There is no "opened from the reader" heuristic.
+
+### Corpus consistency
+
 - **One corpus on screen.** Every answer reconciles its workspace's other cached answers with its
   revision (the outdated ones are refetched), but the query cache keeps serving an outdated answer
   while it refetches. So the article renders only when its revision equals the tree's (the tree
   resolves its links); otherwise the article area shows its loading state. While the tree itself is
   being refetched because the shown article answered another revision, the tree pane shows its
   loading rows instead of the older tree. No HTTP validators (ETag, If-Match) are involved.
-- **Always URL.** Every opened document is a route push whose location state says how it was
-  opened (`openedFrom`: the history entry it was opened from, whether that entry named a document,
-  and whether a link of an article opened it). Reading positions are kept in memory by history
-  entry for the tab (the latest 200 entries), on every layout. Opening the document and section
-  the address already shows (or the root index on a split layout's workspace address) does nothing. On Narrow the stack is a projection of the address
-  (`useNarrowArticleStack`): an address one entry below the top pops it, an entry a link opened
-  from the top is pushed (the link, or Forward), anything else opens a new stack with that article
-  alone (the tree, the results, a reload, a resize from a split layout). Only the reader moves the
-  stack: a stacked screen's leave guard turns the header Back into browser Back below the first
-  screen and, on the first screen, into a step back to the tree's entry when that is the previous
-  entry, else a replace with the tree's address.
-- **Search in the address.** The reader's layout route validates `?q=&proposals=1` (a trimmed
-  text of at most 500 characters, `proposals` only as `1`, anything else dropped), and every
-  navigation inside the reader passes it on. The field writes its text once typing pauses, and the
-  checkbox at once, as a replace that keeps the entry's identity (its reading position and stack
-  screen stay); the address answering the field's own write never resets what was typed since.
-  Back, Forward, a link and a reload set the field from the address. The tree pane's scroll is
-  kept in memory per history entry, like reading positions. Copy link carries the search.
+- **Always URL.** Every opened document is a route push whose location state says how it was opened (`openedFrom`: the history entry it was opened from, whether that entry named a document, and whether a link of an article opened it).
+   - Reading positions are kept in memory by history entry for the tab (the latest 200 entries), on every layout.
+   - Opening the document and section the address already shows (or the root index on a split layout's workspace address) does nothing.
+   - On Narrow the stack is a projection of the address (`useNarrowArticleStack`): an address one entry below the top pops it, an entry a link opened from the top is pushed (the link, or Forward), anything else opens a new stack with that article alone (the tree, the results, a reload, a resize from a split layout).
+   - Only the reader moves the stack: a stacked screen's leave guard turns the header Back into browser Back below the first screen and, on the first screen, into a step back to the tree's entry when that is the previous entry, else a replace with the tree's address.
+
+### Search URL state
+
+- **Search in the address.** The reader's layout route validates `?q=&proposals=1` (a trimmed text of at most 500 characters, `proposals` only as `1`, anything else dropped), and every navigation inside the reader passes it on.
+   - The field writes its text once typing pauses, and the checkbox at once, as a replace that keeps the entry's identity (its reading position and stack screen stay); the address answering the field's own write never resets what was typed since.
+   - Back, Forward, a link and a reload set the field from the address.
+   - The tree pane's scroll is kept in memory per history entry, like reading positions.
+   - Copy link carries the search.
+
+### Search request budget
+
 - **Answer budget.** The Runtime's search answers within `DOCS_SEARCH_ANSWER_BUDGET_MS` (7 s,
   `@nevo/specflow-contracts/docs`): its read-time refresh (probe and embedding) ends 4 s after the
   start so the query embedding still fits, and a refresh cut by that deadline leaves the gap to the
@@ -238,17 +253,20 @@ element with that id in the article, if there is one.
   waits `docsSearchTimeoutMs` (12 s: the budget plus 5 s for the corpus load and the transport)
   instead of the HTTP client's 10 s default. The refresh and concurrency policy is described in the
   [workspace documentation corpus](../../../architecture/runtime/workspace-documentation-corpus.md#semantic-refresh-and-concurrency-policy).
+
+### Search waiting states
+
 - **Waiting timeline.** The stages (quiet under 400 ms, delayed, preparing from 2 s) run from the
   request (`useSearchWaiting`), and typing more restarts them. The last settled answer is held with
   its workspace and filter for the wait of the next one, and is never shown under another
   workspace.
-- **Sticky field.** The scroller content has the vertical inset only and every block its own 8 px
-  inline inset, so the sticky bar spans the pane without negative margins. The bar's sentinel sits
-  at the top of the tree block; its view timeline drives the docked surface (Nevo UI
-  `.workspace-docked-sticky`, transparent at rest). Without scroll-driven animations the material
-  stays on and `useStuck` observes the sentinel in the pane's scroll viewport for the divider: an
-  observer answers after the measured frame is painted, so the material is never tied to it. No new
-  design-system token was needed.
+- **Sticky field.** The scroller content has the vertical inset only and every block its own 8 px inline inset, so the sticky bar spans the pane without negative margins.
+   - The bar's sentinel sits at the top of the tree block; its view timeline drives the docked surface (Nevo UI `.workspace-docked-sticky`, transparent at rest).
+   - Without scroll-driven animations the material stays on and `useStuck` observes the sentinel in the pane's scroll viewport for the divider: an observer answers after the measured frame is painted, so the material is never tied to it.
+   - No new design-system token was needed.
+
+### Truncation implementation
+
 - **Name cut.** The trigger's middle cut measures the name in its rendered font on a canvas
   (`shared/text-measure`), again on resize and once web fonts are ready; until the box has a width
   (a closed drawer) the whole name shows, clipped by CSS, and counts as not truncated.

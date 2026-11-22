@@ -40,9 +40,8 @@ local file also holds a real provider's optional absolute `executable`. Local co
 the feature, allow a provider or enable or configure one the project does not allow; such values, a project
 `executable`, project-level `providers.<provider>.enabled` and unknown keys are refused at
 load ([project versus local](../runtime/configuration.md#session-providers-project-and-workstation)).
-Start the existing product server and open a Specification's **Sessions** list; a Session started
-there (`/specs/:specId/sessions/new`) opens at `/sessions/:sessionId`. Every UI start is from a
-Specification; `/sessions/new` redirects to `/`.
+The [Specification Sessions UI](../../product/specflow/ui/specification-sessions.md)
+owns navigation and start-screen behavior.
 The explicitly labelled mock performs no external effects. The Claude, Codex and Antigravity
 adapters (project `sessions.providers.<provider>.allowed`, local `enabled` and `executable`) use this same API; their supported
 platforms, logins, modes and limits are in the [provider reference](../../reference/providers/README.md).
@@ -141,14 +140,13 @@ Runtime's checkout is `readiness: 'unavailable'` with `reasonCode`
 `SPECIFICATION_WORKTREE_UNSUPPORTED` ([Execution workspace](session-admission-and-providers.md#authorization-and-transport)); the UI explains it in
 its own words.
 
-ProviderDescriptor = {providerId, title, readiness:'ready'|'unavailable'|'authenticationRequired'|
-'unknown', reason?:string, reasonCode?:string, executable?:{path,source:'configured'|'path'|'discovered',location?,version?},
-checkedLocations?:[{source,path,location?}], unresolvedLauncher?:{path,package}, signInCommand?:string, compatibility?:{classification:'tested'|'provisional'|'unsupported',protocolProfile,version?}, capabilities:{questions,permissions,cancel,resume,modelOverride,effortOverride},
-models:[{modelId,title,efforts:string[]}], modes:('read-only'|'workspace-write')[]}.
-Catalogue response is <=128 KiB; <=32 providers, <=100 models each, <=16 efforts per model,
-titles/reasons <=512 bytes. Cap by total bytes as well; oversized provider catalogue is explicit
-PROVIDER_CATALOGUE_UNAVAILABLE, not a silent omission of selected model. Catalogue is advisory;
-command-time validation is authoritative.
+Provider discovery reports readiness and reason codes, available capabilities and
+the selectable models and modes. An oversized catalogue refuses
+`PROVIDER_CATALOGUE_UNAVAILABLE` rather than silently omitting a choice.
+The exact fields and size limits are in [OpenAPI](../../reference/api/openapi.md),
+operation `getSessionProviders`. Provider selection is revalidated when a
+command is admitted.
+
 The catalogue lists the drivers the configuration enables, then every provider it withholds:
 unavailable, with no model, mode or capability, and reason code `NOT_ALLOWED_BY_PROJECT` (the project
 does not allow it; a maintainer sets `allowed: true` in `.nevo/config.yaml`) or

@@ -7,14 +7,13 @@ scope: specflow
 areas: [server, runtime, workflow, security]
 tags: [tasks, documents, pagination, compatibility, commands]
 read_when:
-  - implementing the Task read ownership refactor
-  - migrating Task schemas out of Specification Workspace
+  - listing Tasks and reading Task details or history
+  - understanding Task resource and history responses
   - implementing scoped Task page tokens and continuation
   - creating, editing, removing or deciding the status of a Task over HTTP
 summary: >
-  Compatible Task and Document HTTP ownership, application outcomes, page lease
-  semantics, the Engine-backed project-mode reads and the owner's Task commands (create, edit,
-  remove, status) with their refusal statuses.
+  Task inventory, detail, history, pagination and mutation endpoints, with
+  authorization, revision preconditions and workflow admission rules.
 related:
   - architecture.runtime.task-read-composition
   - reference.api.specification-workspace

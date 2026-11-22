@@ -9,7 +9,7 @@ import { CorpusRevisionSchema, WorkspaceDocsSkippedSchema } from './shared';
 
 /** A search hit; its `file` is relative to `docs.root` (the CLI's is relative to the checkout). */
 export const WorkspaceDocsSearchHitSchema = Type.Object(
-  { ...DocsSearchHitSchema.properties, file: Type.String({ minLength: 1 }) },
+  { ...DocsSearchHitSchema.properties, file: Type.String({ minLength: 1, description: 'Workspace search hit file path relative to docs.root, not to the checkout as in the CLI.' }) },
   { additionalProperties: false },
 );
 export type WorkspaceDocsSearchHit = Static<typeof WorkspaceDocsSearchHitSchema>;
@@ -33,7 +33,7 @@ const envelope = {
    * `includeProposals=true` and the same `limit` (and the same relevance cutoff,
    * `ai.embeddings.minSimilarity`); `0` when they were included.
    */
-  proposalsLeftOut: Type.Integer({ minimum: 0 }),
+  proposalsLeftOut: Type.Integer({ minimum: 0, description: 'Number of proposal results left out under the same limit and relevance cutoff; zero when includeProposals=true.' }),
   indexProgress: Type.Optional(WorkspaceDocsIndexProgressSchema),
   skipped: WorkspaceDocsSkippedSchema,
 };

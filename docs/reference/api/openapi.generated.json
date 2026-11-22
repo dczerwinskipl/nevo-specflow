@@ -53588,6 +53588,7 @@
       "get": {
         "operationId": "getWorkspacesByWorkspaceIdDocs",
         "summary": "List a workspace's documentation",
+        "description": "List documentation from this registered, verified workspace's own docs.root and docs.yaml. Requires docs.view at trusted {projectId} before workspace lookup. Returns active, inactive and skipped documents, with corpusRevision: an opaque content/settings digest (not Git HEAD/ETag). All paths are relative to docs.root; no conditional HTTP ETag is supported. Unregistered workspace is 404 DOCS_WORKSPACE_NOT_FOUND, inaccessible/closing checkout 409 DOCS_WORKSPACE_UNAVAILABLE, invalid docs root/settings 503 DOCS_NOT_CONFIGURED or DOCS_UNAVAILABLE. Demo mode without project documentation is 503 DOCS_NOT_SERVED. Cache-Control: no-store.",
         "tags": [
           "Documentation"
         ],
@@ -53627,15 +53628,18 @@
                     },
                     "corpusRevision": {
                       "type": "string",
-                      "minLength": 1
+                      "minLength": 1,
+                      "description": "Opaque digest of effective docs configuration and included document paths/content hashes; NOT Git HEAD, an index generation or an HTTP ETag. Compare across tree, article and search."
                     },
                     "docsRoot": {
                       "type": "string",
-                      "minLength": 1
+                      "minLength": 1,
+                      "description": "docs.root relative to the checkout; every document path is relative to this root, with forward slashes."
                     },
                     "rootIndexDocumentId": {
                       "type": "string",
-                      "minLength": 1
+                      "minLength": 1,
+                      "description": "Document id of active readable <docs.root>/README.md; absent when unavailable or inactive."
                     },
                     "documents": {
                       "type": "array",
@@ -53836,6 +53840,7 @@
       "get": {
         "operationId": "getWorkspacesByWorkspaceIdDocsDocumentsByDocumentId",
         "summary": "Read a document of a workspace",
+        "description": "Read one workspace documentation article: metadata, Markdown body and heading sections from one file read, with corpusRevision and related document states. Requires docs.view at project scope before workspace lookup. A deprecated/superseded article is 410 DOCS_DOCUMENT_INACTIVE (with known successor); a skipped or duplicate id is 404 DOCS_DOCUMENT_SKIPPED; absent or concurrently changed file is 404 DOCS_DOCUMENT_NOT_FOUND. These refusals include workspaceId and corpusRevision. Section line numbers are relative to the returned body, unlike search-hit lines which include frontmatter. Cache-Control: no-store.",
         "tags": [
           "Documentation"
         ],
@@ -53885,7 +53890,8 @@
                     },
                     "corpusRevision": {
                       "type": "string",
-                      "minLength": 1
+                      "minLength": 1,
+                      "description": "Opaque digest of effective docs configuration and included document paths/content hashes; NOT Git HEAD, an index generation or an HTTP ETag. Compare across tree, article and search."
                     },
                     "document": {
                       "type": "object",
@@ -53992,7 +53998,8 @@
                       "additionalProperties": false
                     },
                     "body": {
-                      "type": "string"
+                      "type": "string",
+                      "description": "Markdown body after frontmatter, read coherently together with the document metadata."
                     },
                     "sections": {
                       "type": "array",
@@ -54016,7 +54023,8 @@
                           },
                           "line": {
                             "type": "integer",
-                            "minimum": 1
+                            "minimum": 1,
+                            "description": "1-based heading line in the returned Markdown body (not the original file); search-hit line numbers include frontmatter."
                           }
                         },
                         "additionalProperties": false
@@ -54289,6 +54297,7 @@
       "get": {
         "operationId": "getWorkspacesByWorkspaceIdDocsSearch",
         "summary": "Search a workspace's documentation",
+        "description": "Search this verified workspace's documentation corpus with ranked section hits. Requires docs.view at project scope. Search may return hybrid or lexical mode: a lexical fallback is normal 200, not a service failure. Every request performs bounded read-time index refresh (up to 16 chunks, 7000 ms post-corpus budget), then schedules background catch-up if needed. Only trusted Runtime ai.embeddings config supplies the embedding endpoint. Proposals are excluded by default; snippets are on unless disabled. corpusRevision allows clients to detect tree/article/search mismatch. The background index state is reported as reason/indexProgress, with no separate status endpoint. Cache-Control: no-store.",
         "tags": [
           "Documentation"
         ],
@@ -54402,7 +54411,8 @@
                         },
                         "corpusRevision": {
                           "type": "string",
-                          "minLength": 1
+                          "minLength": 1,
+                          "description": "Opaque digest of effective docs configuration and included document paths/content hashes; NOT Git HEAD, an index generation or an HTTP ETag. Compare across tree, article and search."
                         },
                         "results": {
                           "type": "array",
@@ -54460,7 +54470,8 @@
                               },
                               "file": {
                                 "type": "string",
-                                "minLength": 1
+                                "minLength": 1,
+                                "description": "Workspace search hit file path relative to docs.root, not to the checkout as in the CLI."
                               },
                               "score": {
                                 "type": "number"
@@ -54532,7 +54543,8 @@
                         },
                         "proposalsLeftOut": {
                           "type": "integer",
-                          "minimum": 0
+                          "minimum": 0,
+                          "description": "Number of proposal results left out under the same limit and relevance cutoff; zero when includeProposals=true."
                         },
                         "indexProgress": {
                           "type": "object",
@@ -54645,7 +54657,8 @@
                         },
                         "corpusRevision": {
                           "type": "string",
-                          "minLength": 1
+                          "minLength": 1,
+                          "description": "Opaque digest of effective docs configuration and included document paths/content hashes; NOT Git HEAD, an index generation or an HTTP ETag. Compare across tree, article and search."
                         },
                         "results": {
                           "type": "array",
@@ -54703,7 +54716,8 @@
                               },
                               "file": {
                                 "type": "string",
-                                "minLength": 1
+                                "minLength": 1,
+                                "description": "Workspace search hit file path relative to docs.root, not to the checkout as in the CLI."
                               },
                               "score": {
                                 "type": "number"
@@ -54775,7 +54789,8 @@
                         },
                         "proposalsLeftOut": {
                           "type": "integer",
-                          "minimum": 0
+                          "minimum": 0,
+                          "description": "Number of proposal results left out under the same limit and relevance cutoff; zero when includeProposals=true."
                         },
                         "indexProgress": {
                           "type": "object",

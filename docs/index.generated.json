@@ -1174,6 +1174,42 @@
       ]
     },
     {
+      "id": "architecture.runtime.workspace-documentation-corpus",
+      "type": "architecture",
+      "title": "Workspace-scoped documentation corpus, freshness and search",
+      "status": "current",
+      "file": "docs/architecture/runtime/workspace-documentation-corpus.md",
+      "read_when": [
+        "implementing a workspace-scoped documentation reader",
+        "debugging lexical fallback, embedding refresh or stale corpus content",
+        "changing index storage, secure workspace isolation or read-time budget"
+      ],
+      "summary": "Runtime documentation reads use verified workspace checkouts and stable corpus revisions, with bounded search refresh, lexical fallback, isolated index ownership and scoped authorization.",
+      "related": [
+        "adr.0022-workspace-scoped-documentation-reader",
+        "reference.api.workspace-docs",
+        "reference.cli.nevo-specflow-docs",
+        "reference.configuration.documentation-and-embeddings",
+        "product.specflow.ui.documentation-reader",
+        "architecture.runtime.authorization"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "docs",
+        "security",
+        "ai"
+      ],
+      "tags": [
+        "docs",
+        "workspace",
+        "corpus",
+        "semantic-search",
+        "refresh",
+        "authorization"
+      ]
+    },
+    {
       "id": "architecture.runtime.workspace-execution-claims",
       "type": "architecture",
       "title": "Workspace execution claims",

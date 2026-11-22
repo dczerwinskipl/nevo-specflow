@@ -8,7 +8,7 @@ import { Type, type Static } from 'typebox';
  * generation, and there are no preconditions on it: a client compares the revisions of the tree,
  * an article and a search to tell whether they describe the same documentation.
  */
-export const CorpusRevisionSchema = Type.String({ minLength: 1 });
+export const CorpusRevisionSchema = Type.String({ minLength: 1, description: 'Opaque digest of effective docs configuration and included document paths/content hashes; NOT Git HEAD, an index generation or an HTTP ETag. Compare across tree, article and search.' });
 
 /**
  * A document left out of the workspace's documentation: its own frontmatter is invalid, or its id

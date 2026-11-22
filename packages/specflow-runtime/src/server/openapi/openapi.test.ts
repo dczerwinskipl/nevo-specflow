@@ -168,6 +168,14 @@ describe('Runtime OpenAPI document', () => {
       expect(specClose.description).toContain('never accepts finishAfterExternalMerge');
       const worktreeClose = paths['/api/specs/{specId}/worktree/close']?.post as { description: string };
       expect(worktreeClose.description).toContain('whole-branch content equivalence');
+      const docsSearch = paths['/api/workspaces/{workspaceId}/docs/search']?.get as {
+        description: string;
+      };
+      expect(docsSearch.description).toContain('lexical fallback is normal 200');
+      const docsArticle = paths['/api/workspaces/{workspaceId}/docs/documents/{documentId}']?.get as {
+        description: string;
+      };
+      expect(docsArticle.description).toContain('410 DOCS_DOCUMENT_INACTIVE');
       const workspaceClose = paths['/api/workspaces/{workspaceId}/close']?.post as { description: string };
       expect(workspaceClose.description).toContain('including all its canonical Specifications');
       expect(createOperation.parameters.some((parameter) => parameter.name === 'Prefer')).toBe(true);

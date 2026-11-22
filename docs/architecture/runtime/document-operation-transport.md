@@ -25,9 +25,7 @@ related:
 The exact endpoints, TypeBox schemas and refusal codes are generated as
 [OpenAPI](../../reference/api/openapi.md) under `Documents`. The main document
 [architecture](specification-documents.md) owns the manifest, registry, path
-validation, write journals and commit policy. Document reads and mutation receipts
-reflect those same Engine facts.
-
+validation, write journals and commit policy. 
 ## Read authority and conditional retrieval
 
 - Document tree is an Engine projection of the manifest, its registered files

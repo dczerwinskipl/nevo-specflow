@@ -25,7 +25,6 @@ related:
 
 The Runtime serves one bounded Session telemetry snapshot plus explicit refresh, defined in
 [generated OpenAPI](../../reference/api/openapi.md), under `Session Telemetry`.
-Telemetry observations and refreshes must preserve source provenance, coverage and authorization.
 
 ## Observation semantics
 

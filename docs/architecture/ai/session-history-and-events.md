@@ -8,7 +8,6 @@ areas: [ai, runtime, server, security]
 tags: [sessions, history, cursor, work, sse, content]
 read_when:
   - reviewing session history, content ranges, work digest and live events
-  - changing managed Session behavior previously described in the Session HTTP reference
 summary: >-
   Bounded Session history and Work pages, signed durable cursors, UTF-8 content ranges, native tool classification and SSE resync guarantees.
 related:
@@ -20,11 +19,9 @@ related:
 
 # Session history, content ranges, Work digest and live events
 
-The exact Session HTTP request/response shapes, errors and headers are generated in
-[Runtime OpenAPI](../../reference/api/openapi.md) from
-`@nevo/specflow-contracts/sessions` and the owning Runtime routes.
-This document preserves the **domain behavior and safety guarantees** needed
-to interpret those operations; it is not a duplicate wire contract.
+Session history, Work, content and event streaming use bounded reads and scoped
+continuation. Their HTTP routes and schemas are in
+[Session OpenAPI](../../reference/api/openapi.md).
 
 ## Bounded history and Work
 
@@ -37,8 +34,6 @@ The byte budget includes JSON escapes, metadata and the signed cursor. If the in
 window exceeds it, return a smaller contiguous newest window and set the cursor immediately before
 its oldest returned item. Do not skip excluded entries or scan older rows to fill the page. Work and
 ToolAction pages use the same count-and-byte policy.
-
-**Wire types:** consult the generated OpenAPI schemas; domain rules below remain authoritative.
 
 Start history with Snapshot.history.before; subsequent pages use returned before. before is present
 iff hasOlder. A normal empty result means confirmed end. No unbounded scan to fill a page.
@@ -72,8 +67,6 @@ Work/action limits match HistoryPage. Exact Work identity/kind is immutable; no 
 
 `WorkPage.counts` is the Turn-wide Work aggregate, independent of which page is returned:
 
-**Wire types:** consult the generated OpenAPI schemas; domain rules below remain authoritative.
-
 Runtime keeps the aggregate in the Turn record and updates it in the same transaction as every Work
 open and Work state change (provider facts, interaction admission and delivery, Turn settlement,
 restart recovery), like `actionCount`; the `work` read projects it and never scans Work at read
@@ -85,8 +78,6 @@ backfilled. The UI MUST hide its summary row when `counts` is absent and MUST NO
 ### Work digest
 
 A digest tallies the Turn's ToolActions by operation:
-
-**Wire types:** consult the generated OpenAPI schemas; domain rules below remain authoritative.
 
 Runtime maintains it in the Turn record in the same transaction as each ToolAction open and state
 change, including actions that Turn settlement marks failed. The Turn's latest `work-summary`

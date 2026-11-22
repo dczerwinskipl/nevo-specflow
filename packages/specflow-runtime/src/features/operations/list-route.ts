@@ -34,8 +34,8 @@ export const OPERATION_LIST_QUERY_INVALID_CODE = 'OPERATION_LIST_QUERY_INVALID';
  */
 export const OperationListQueryStringSchema = Type.Object(
   {
-    status: Type.Optional(Type.String({ minLength: 1, maxLength: 200 })),
-    limit: Type.Optional(Type.String({ pattern: '^[0-9]{1,3}$' })),
+    status: Type.Optional(Type.String({ minLength: 1, maxLength: 200, description: 'Optional comma-separated list of statuses, from in-progress,recovery-required,failed,completed,queued,scheduled. Omitted means all. Unknown/empty filter returns 400 OPERATION_LIST_QUERY_INVALID.' })),
+    limit: Type.Optional(Type.String({ pattern: '^[0-9]{1,3}
   },
   { additionalProperties: false },
 );
@@ -50,6 +50,175 @@ export interface OperationListRoute {
   readonly path: string;
   /** The OpenAPI summary of the list (its group is `Operations`). */
   readonly summary: string;
+  /** Describes capability admission, visibility and the operational semantics of this feature. */
+  readonly description?: string;
+  /** The feature kinds. `undefined` = the backing source is unavailable (answers 503). */
+  readonly sources: readonly OperationListSource[] | undefined;
+  readonly registry: OperationProgressRegistry;
+  /** Coarse gate (authentication and a feature capability); throws an auth error. */
+  authorize(request: FastifyRequest): void | Promise<void>;
+  /**
+   * Per-row admission by the feature own capability. Rows are the already serialised summaries:
+   * a row without `subject.specId` (an unreadable journal, an operation not yet reserved) is the
+   * feature decision too.
+   */
+  canView(authorization: RequestAuthorization, row: OperationSummary): boolean;
+  readonly config?: Partial<OperationListConfig>;
+  /** Test seam. */
+  readonly now?: () => Date;
+}
+
+/**
+ * Registers `GET <path>`: the read-only operation list of one feature (its kinds only). Routing,
+ * coarse authorization and the per-row capability belong to the owning feature; the merge of the
+ * persisted rows with the live registry, the status table, retention, counts, ordering, ETag and
+ * strict serialisation are this shared mechanism. A new feature adds one call with its sources.
+ */
+export function registerOperationListRoute<RawServer extends RawServerBase>(
+  app: FastifyInstance<RawServer>,
+  route: OperationListRoute,
+): void {
+  const now = route.now ?? (() => new Date());
+  app.withTypeProvider<TypeBoxTypeProvider>().get(
+    route.path,
+    {
+      preHandler: async (request) => {
+        // The Runtime serves HTTP/1 only; the generic RawServer is just the caller app type.
+        await route.authorize(request as unknown as FastifyRequest);
+      },
+      config: {
+        openApiParameters: {
+          header: { 'If-None-Match': 'Optional weak ETag returned by this list; matching content returns 304 with no body. generatedAt is not part of the validator.' },
+        },
+        openApiResponses: {
+          304: {
+            description: 'Not modified: the visible operation items, counts and truncation state match If-None-Match.',
+            headers: { ETag: 'Weak validator of items, counts and truncated.' },
+          },
+        },
+      },
+      schema: {
+        tags: ['Operations'],
+        summary: route.summary,
+        ...(route.description ? { description: route.description } : {}),
+        querystring: OperationListQueryStringSchema,
+        response: {
+          200: contractRef(OperationListResponseSchema),
+          400: OperationListErrorSchema,
+          401: contractRef(AuthenticationRequiredErrorResponseSchema),
+          403: contractRef(AuthorizationForbiddenErrorResponseSchema),
+          503: OperationListErrorSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      reply.header('Cache-Control', 'no-store');
+      const query = parseOperationListQuery(request.query);
+      if (!query) {
+        return reply.code(400).send({
+          error: OPERATION_LIST_QUERY_INVALID_CODE,
+          code: OPERATION_LIST_QUERY_INVALID_CODE,
+        });
+      }
+
+      const { statuses, limit } = query;
+      if (!route.sources) {
+        return reply
+          .code(503)
+          .send({ error: OPERATIONS_UNAVAILABLE_CODE, code: OPERATIONS_UNAVAILABLE_CODE });
+      }
+
+      const authorization = (request as unknown as FastifyRequest).authz;
+      let list;
+      try {
+        list = await buildOperationList({
+          sources: route.sources,
+          registry: route.registry,
+          now: now(),
+          ...(route.config ? { config: route.config } : {}),
+          admit: (row) => route.canView(authorization, row),
+          ...(statuses ? { statuses } : {}),
+          limit,
+        });
+      } catch (error) {
+        // Never surface raw errors (paths, Git text): log here, answer with the stable code.
+        request.log.error({ err: error }, 'Operation list failed');
+
+        return reply
+          .code(503)
+          .send({ error: OPERATIONS_UNAVAILABLE_CODE, code: OPERATIONS_UNAVAILABLE_CODE });
+      }
+
+      // The weak validator ignores `generatedAt`, so an unchanged list answers 304 on every poll.
+      const etag = operationListEtag(list);
+      reply.header('ETag', etag);
+      if (matchesEtag(request.headers['if-none-match'], etag)) {
+        return sendNotModified(reply);
+      }
+
+      return reply.code(200).send(list);
+    },
+  );
+}
+
+/** Wire query of the list routes -> decoded filter and limit; undefined = invalid (answer 400). */
+export function parseOperationListQuery(query: {
+  readonly status?: string | undefined;
+  readonly limit?: string | undefined;
+}): { readonly statuses?: ReadonlySet<string>; readonly limit: number } | undefined {
+  const statuses = parseStatuses(query.status);
+  const limit = query.limit === undefined ? OPERATION_LIST_DEFAULT_LIMIT : Number(query.limit);
+  if (statuses === 'invalid' || !(limit >= 1 && limit <= OPERATION_LIST_MAX_LIMIT)) {
+    return undefined;
+  }
+
+  return { ...(statuses ? { statuses } : {}), limit };
+}
+
+function parseStatuses(raw: string | undefined): ReadonlySet<string> | undefined | 'invalid' {
+  if (raw === undefined) {
+    return undefined;
+  }
+
+  const values = raw
+    .split(',')
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+  const known: readonly string[] = OPERATION_LIST_ALL_STATUSES;
+  if (values.length === 0 || values.some((value) => !known.includes(value))) {
+    return 'invalid';
+  }
+
+  return new Set(values);
+}
+
+/** Weak validator over the content only: `generatedAt` is ignored so an unchanged list stays 304. */
+export function operationListEtag(list: OperationListResponse): string {
+  return (
+    'W/"' +
+    createHash('sha1')
+      .update(JSON.stringify([list.items, list.counts, list.truncated]))
+      .digest('base64url') +
+    '"'
+  );
+}
+, description: 'Maximum rows after status filtering: decimal digits 1 through 50, default 20. Invalid input returns 400 OPERATION_LIST_QUERY_INVALID.' })),
+  },
+  { additionalProperties: false },
+);
+
+const OperationListErrorSchema = Type.Object(
+  { error: Type.String(), code: Type.String() },
+  { additionalProperties: false },
+);
+
+export interface OperationListRoute {
+  /** Route path owned by the consuming feature (for example `/api/specs/operations`). */
+  readonly path: string;
+  /** The OpenAPI summary of the list (its group is `Operations`). */
+  readonly summary: string;
+  /** Describes capability admission, visibility and the operational semantics of this feature. */
+  readonly description?: string;
   /** The feature kinds. `undefined` = the backing source is unavailable (answers 503). */
   readonly sources: readonly OperationListSource[] | undefined;
   readonly registry: OperationProgressRegistry;

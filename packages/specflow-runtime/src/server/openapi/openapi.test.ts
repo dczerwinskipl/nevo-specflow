@@ -145,6 +145,14 @@ describe('Runtime OpenAPI document', () => {
       expect(streamOperation.description).toContain('not the source of truth');
       expect(streamOperation.responses['200']?.description).toContain('snapshot|step|completed');
       expect(streamOperation.responses['429']?.description).toContain('OPERATION_STREAMS_LIMIT');
+      const listOperation = paths['/api/specs/operations']?.get as {
+        description: string;
+        parameters: { name: string }[];
+        responses: Record<string, { description?: string }>;
+      };
+      expect(listOperation.description).toContain('independently filtered by spec.view');
+      expect(listOperation.parameters.map((parameter) => parameter.name)).toContain('If-None-Match');
+      expect(listOperation.responses['304']?.description).toContain('Not modified');
       const documentRead = paths['/api/specs/{specId}/documents/{documentId}']?.get as {
         parameters: readonly { in: string; name: string; required?: boolean }[];
       };

@@ -247,7 +247,28 @@ export const ProposalDocument: Story = {
 export const FeatureWorktree: Story = {
   args: { path: '/workspaces/ws-sso/docs/product.specflow.ui.authentication-recovery' },
 };
-export const SkippedOne: Story = { args: { scenario: 'skipped-one' } };
+export const SkippedOne: Story = {
+  args: { scenario: 'skipped-one', path: main },
+  globals: { viewport: { value: 'phone390', isRotated: false } },
+  play: async ({ userEvent }) => {
+    await settleViewport(390, 844);
+    const body = screen();
+    const skipped = await body.findByRole('button', { name: /^1 document is skipped/ });
+    await expect(skipped).toHaveAttribute('aria-expanded', 'false');
+    await expect(body.queryByText(/Frontmatter:.*found "wip"/)).not.toBeInTheDocument();
+
+    const field = body.getByRole('searchbox', { name: 'Search documentation' });
+    await userEvent.type(field, 'back narrow');
+    await expect(await body.findByRole('button', { name: /^UI interaction model/ })).toBeVisible();
+    await expect(skipped).toHaveAttribute('aria-expanded', 'false');
+
+    skipped.focus();
+    await userEvent.keyboard('{Enter}');
+    await expect(body.getByText(/Frontmatter:.*found "wip"/)).toBeVisible();
+    await userEvent.keyboard('{Enter}');
+    await expect(skipped).toHaveAttribute('aria-expanded', 'false');
+  },
+};
 export const SkippedMany: Story = { args: { scenario: 'skipped-many' } };
 export const IndexBuilding: Story = { args: { scenario: 'index-building' } };
 export const NoRootIndex: Story = { args: { scenario: 'no-root-index' } };

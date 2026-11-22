@@ -5,10 +5,8 @@ import { SkippedDocumentList } from '../skipped/SkippedDocumentList';
 
 /**
  * The documents the reader skips (invalid frontmatter, a duplicated id), said once and quietly
- * under the workspace picker: one document with its path and error, several as a collapsed
- * disclosure listing each full path (wrapping) and its error. Under the Alert that every document
- * is skipped (`placement="alert"`) it is not inset again, and one document is listed without
- * repeating that it has errors.
+ * under the workspace picker in a collapsed disclosure. The all-skipped Alert keeps a single
+ * file's full diagnostic visible.
  */
 export function SkippedDocuments({
   skipped,
@@ -38,11 +36,8 @@ export function SkippedDocuments({
 
   return (
     <div className={placement === 'pane' ? 'grid gap-2 px-2' : 'grid gap-2'} role="note">
-      {skipped.length === 1 ? (
-        <>
-          {placement === 'pane' && <span className="text-status-attention">{line}</span>}
-          {list}
-        </>
+      {placement === 'alert' && skipped.length === 1 ? (
+        list
       ) : (
         <Collapsible className={placement === 'pane' ? '-ml-control-padding-compact' : undefined}>
           <Collapsible.Trigger className="px-0 text-status-attention">{line}</Collapsible.Trigger>

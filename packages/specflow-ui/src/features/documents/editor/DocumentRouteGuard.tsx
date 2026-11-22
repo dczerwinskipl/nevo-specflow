@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useBlocker } from '@tanstack/react-router';
 import { UnsavedChangesDialog } from './UnsavedChangesDialog';
 import { useDirtyDocuments, useDocumentDraftStore } from './DocumentDraftProvider';
-import { useDocumentSaveOwner } from './DocumentEditorProvider';
+import { useDocumentEditor, useDocumentSaveOwner } from './DocumentEditorProvider';
 import { isWithinSpecDocuments } from '../../../app/navigation/routeScope';
 import { useDocumentTabs } from '../tabs/DocumentTabsProvider';
 
@@ -36,6 +36,7 @@ export function DocumentRouteGuard({
 }) {
   const store = useDocumentDraftStore();
   const ops = useDocumentSaveOwner();
+  const editor = useDocumentEditor();
   const { tabs } = useDocumentTabs();
   const dirtyIds = useDirtyDocuments(specId);
   const { t } = useTranslation();
@@ -44,6 +45,8 @@ export function DocumentRouteGuard({
   const waiting = useRef<((allow: boolean) => void)[]>([]);
   // Documents the user chose to discard, removed once the departure has really happened.
   const discarded = useRef<string[]>([]);
+  const promptOpener = useRef<HTMLElement | null>(null);
+  const stayed = useRef(false);
   const mounted = useRef(false);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -55,6 +58,8 @@ export function DocumentRouteGuard({
       new Promise<boolean>((resolve) => {
         if (waiting.current.length === 0) {
           discarded.current = [];
+          const active = document.activeElement;
+          promptOpener.current = active instanceof HTMLElement ? active : null;
         }
 
         waiting.current.push(resolve);
@@ -68,6 +73,7 @@ export function DocumentRouteGuard({
     }
   }, [store, specId]);
   const finish = useCallback((allow: boolean) => {
+    stayed.current = !allow;
     setOpen(false);
     setFailed([]);
     for (const resolve of waiting.current.splice(0)) {
@@ -195,6 +201,22 @@ export function DocumentRouteGuard({
       failureTitle={t('documents.guard.saveAllFailed')}
       pending={saving}
       saveFailed={failed.length > 0}
+      onCloseAutoFocus={(event) => {
+        if (!stayed.current) {
+          return;
+        }
+
+        // A contextual switcher may have closed while the confirmation was open.
+        event.preventDefault();
+        const opener = promptOpener.current;
+        if (opener?.isConnected) {
+          opener.focus({ preventScroll: true });
+        }
+
+        if (document.activeElement !== opener) {
+          editor?.focusContent();
+        }
+      }}
       onContinue={() => finish(false)}
       onDiscard={discardAll}
       onSave={() => void saveAll()}

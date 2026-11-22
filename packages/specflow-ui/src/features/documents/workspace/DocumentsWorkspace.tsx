@@ -133,8 +133,8 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
     onCloseAll: tabs.tabs.length > 0 ? () => opening.closeAll() : undefined,
     onAssignType: assignTypeFor(treeActions, tree.data, documentId),
   });
-  // Once per visit (this screen's mount), as soon as the tree and the layout are known: the main
-  // file opens when nothing is chosen. Decided once, so closing it never reopens it in this visit.
+  // Decide once when the tree and layout are known. Closing a tab or resizing the tree after
+  // entering on a stacked layout must not open the main document.
   const startDecided = useRef(false);
   const { show } = tabs;
   const openTabCount = tabs.tabs.length;
@@ -148,12 +148,10 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
       tree: tree.data,
       documentId,
       openTabs: openTabCount,
+      supportsSplit,
     });
     if (start) {
-      // Split: replaces the entry, so Back leaves the screen instead of returning to an empty
-      // document area. Stacked: pushes it, so Back returns to the tree, the visit's useful first
-      // view there.
-      void show(start, { replace: supportsSplit });
+      void show(start, { replace: true });
     }
   }, [tree.data, measured, supportsSplit, documentId, openTabCount, show]);
   const rootActions = documentRootActions(

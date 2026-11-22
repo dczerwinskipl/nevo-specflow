@@ -23,7 +23,7 @@ related:
 
 This file covers presentation rules only. The Engine owns writes,
 revisions, Git policy and commits
-([architecture](../../architecture/runtime/specification-documents.md)).
+([architecture](../../../architecture/runtime/specification-documents.md)).
 The exact HTTP response fields are in [OpenAPI](../../../reference/api/openapi.md).
 
 ## Browsing, creating and protecting

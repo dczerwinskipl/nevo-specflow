@@ -10,9 +10,8 @@ read_when:
   - adding a new operation kind or a new feature-owned operation list
   - changing the operation list schema, retention or status derivation
 summary: >
-  GET /api/specs/operations lists Specification Create operations from the Engine journals and the
-  live progress registry: schema, status table, retention, authorization, ETag, query, error codes and
-  the demo mirror.
+  Read authorized Specification Create operations with status filtering, ETag,
+  conditional responses, stable errors and operation inspection.
 related:
   - reference.api.specification-documents
   - reference.api.operation-progress

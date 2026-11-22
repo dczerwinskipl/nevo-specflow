@@ -45,3 +45,7 @@ The Git Create/Close lifecycle belongs to
 [Specification lifecycle](../../architecture/runtime/specification-lifecycle.md).
 
 This page preserves a stable discovery ID. It must not duplicate an endpoint or field catalogue.
+
+## Demo Runtime
+
+The demo Runtime exposes the same GET route, backed by its in-memory workspace registry. Its seeded and simulated worktree data does not represent physical Git execution. See [demo and project API convergence](../../ideas/demo-api-convergence.md) for the planned removal of remaining demo-only routes and [Workspace list source](../../architecture/runtime/authorization.md) for scope enforcement.

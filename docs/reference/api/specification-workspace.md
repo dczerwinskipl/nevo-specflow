@@ -29,3 +29,15 @@ The UI's independent query lifetimes are described in
 [UI data loading](../../product/specflow/ui/data-loading-and-integration.md).
 
 This page preserves its stable discovery ID and must not copy route fields or error tables.
+
+## Data source
+
+See [Identity, source and failure](../../architecture/runtime/specification-workspace-composition.md#identity-source-and-failure) for the Engine registry binding, source choice and section degradation.
+
+### Project summary, Tasks and activity
+
+See [Summary and Documents](../../architecture/runtime/specification-workspace-composition.md#summary-and-documents), [Tasks and preparation](../../architecture/runtime/specification-workspace-composition.md#tasks-and-preparation) and [Activity, authorization and freshness](../../architecture/runtime/specification-workspace-composition.md#activity-authorization-and-freshness).
+
+### Project Sessions section
+
+See [Sessions, capability and attention](../../architecture/runtime/specification-workspace-composition.md#sessions-capability-and-attention) for Session associations, capability projection, recommendations and caching.

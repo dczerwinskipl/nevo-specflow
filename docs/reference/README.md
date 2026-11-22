@@ -27,6 +27,7 @@ Choose the resource first:
 | Browse active and archived Specifications              | [Overview](api/specs-overview.md)                            |
 | Read one Specification's combined workspace view       | [Specification Workspace](api/specification-workspace.md)    |
 | List workspaces and availability                       | [Workspaces](api/workspaces.md)                              |
+| Define document types and Specification archetypes | [Project definitions](configuration/specification-definitions.md) |
 | Read, write or commit Specification and Task documents | [Documents](api/specification-documents.md)                  |
 | List, inspect, create or edit Tasks                    | [Tasks](api/task-reads.md)                                   |
 | Start, finish, return or abandon workflow steps        | [Workflow](api/specification-workflow.md)                    |

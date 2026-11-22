@@ -48,8 +48,9 @@ Specification, atomically:
 - The Engine verifies the Specification and every `taskId` before the write (time-of-check only):
   `404 {error: 'specification_not_found'}`, `404 {error: 'specification_task_not_found'}` (unknown
   Task or one of another Specification), `503 {error: 'specification_source_unavailable'}` when the
-  Specification or Task source is unreadable. The project-mode Runtime has no Engine Task source
-  yet, so a create with `taskIds` answers that 503 there.
+  Specification or Task source is unreadable. When the configured Task definition source cannot be read, the request answers 503;
+  an unknown Task or one bound to a different Specification answers 404. A matching Task
+  resolved from the Engine definition source is accepted.
 - The Session and its association rows are written in one store transaction under the
   project-scoped create idempotency key; its fingerprint covers `{input, association}`. The same
   `requestId` sent standalone and from a Specification, or to two Specifications, is

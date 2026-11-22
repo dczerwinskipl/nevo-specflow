@@ -28,7 +28,7 @@ continuation. Their HTTP routes and schemas are in
 Snapshot limit is fixed: up to the latest 40 conversation entries, <=256 KiB UTF-8 JSON overall, no full
 content chunks or complete Turn hydration. Entry previews include references when shortened.
 History default/max 40 entries, <=256 KiB overall. One indexed lookahead establishes hasOlder,
-not an exact count. Response:
+not an exact count.
 
 The byte budget includes JSON escapes, metadata and the signed cursor. If the indexed count-bounded
 window exceeds it, return a smaller contiguous newest window and set the cursor immediately before
@@ -57,8 +57,7 @@ and raw provider SDK objects are never exposed in the page.
 
 ### Work aggregate counts
 
-`WorkPage.counts` is the Turn-wide Work aggregate, independent of which page is returned:
-
+`WorkPage.counts` is the Turn-wide Work aggregate, independent of the current page.
 Runtime keeps the aggregate in the Turn record and updates it in the same transaction as every Work
 open and Work state change (provider facts, interaction admission and delivery, Turn settlement,
 restart recovery), like `actionCount`; the `work` read projects it and never scans Work at read
@@ -69,9 +68,7 @@ backfilled. The UI MUST hide its summary row when `counts` is absent and MUST NO
 
 ### Work digest
 
-A digest tallies the Turn's ToolActions by operation:
-
-Runtime maintains it in the Turn record in the same transaction as each ToolAction open and state
+The Work digest counts the Turn's ToolActions by operation. Runtime maintains it in the Turn record in the same transaction as each ToolAction open and state
 change, including actions that Turn settlement marks failed. The Turn's latest `work-summary`
 entry carries the current digest: a new tool Work's entry starts with the digest at that moment,
 and each later change revises that entry (`revision` increments) and emits one `conversation`
@@ -118,7 +115,11 @@ on its next snapshot/resync or `conversation` change; it MUST NOT add its own co
 | Antigravity | `run_command`                                                                         | command      |
 | any         | anything else (`call_mcp_tool`, undeclared names, mock scenarios without `operation`) | other        |
 
-revision is required and immutable. offset defaults 0; limitBytes defaults/max 64 KiB.
+## Content ranges
+
+`GET /api/sessions/{sessionId}/content/{contentId}` reads a bounded UTF-8 range
+from a specific content revision. The revision is required and immutable;
+`offset` defaults to 0 and `limitBytes` defaults to and is capped at 64 KiB.
 Offsets count UTF-8 bytes and must be valid character boundaries; invalid/out-of-range -> 400.
 A conversation `TextPreview.text` is the UTF-8 byte prefix of its content (at most 2048 bytes, cut on a
 character boundary), so a client continues with `offset` = the UTF-8 byte length of the preview text,

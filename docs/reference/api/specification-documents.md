@@ -57,6 +57,9 @@ Task document writes use the Task-scoped `.../documents` and
 `.../document-operations` routes. Saving content and committing it to Git are
 separate states; callers must not treat an accepted save as a completed commit.
 
+For project-specific document types and Specification archetypes, see
+[Definition files and YAML examples](../configuration/specification-definitions.md).
+
 For write ownership, path safety, definitions, Git policy and recovery, see
 [Specification document architecture](../../architecture/runtime/specification-documents.md)
 and [document operation behavior](../../architecture/runtime/document-operation-transport.md).

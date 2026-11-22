@@ -8,7 +8,6 @@ areas: [ai, runtime, server, security]
 tags: [sessions, security, authorization, provider, workspace, demo]
 read_when:
   - reviewing session authorization, providers and demo boundaries
-  - changing managed Session behavior previously described in the Session HTTP reference
 summary: >-
   Managed Session access scopes, provider capabilities, workspace execution admission, revoked streaming access and demo read-only semantics.
 related:
@@ -20,11 +19,8 @@ related:
 
 # Session authorization, providers and demo boundaries
 
-The exact Session HTTP request/response shapes, errors and headers are generated in
-[Runtime OpenAPI](../../reference/api/openapi.md) from
-`@nevo/specflow-contracts/sessions` and the owning Runtime routes.
-This document preserves the **domain behavior and safety guarantees** needed
-to interpret those operations; it is not a duplicate wire contract.
+Provider admission, authorization scopes, and demo Session boundaries are described here.
+Exact HTTP operations are available in [Session OpenAPI](../../reference/api/openapi.md).
 
 ## Enable Sessions
 

@@ -264,10 +264,6 @@ the conversation.** It names the provider only; model and mode are visible in th
 left empty (or blank), the Session is created without one and keeps the title **New session** until
 the person renames it. The note next to Start says which applies.
 
-Agent naming is not implemented: the Runtime reports no naming signal, so the header **Naming…**
-status is never shown. The note next to Start says **The session opens without a message. You can
-name it later.** It does not promise automatic naming.
-
 ## Secondary tabs
 
 On split-capable layouts **Context** is the pinned home tab and the editor-tab rail is visible from

@@ -132,7 +132,7 @@ describe('Runtime OpenAPI document', () => {
           workspaces: { items: { properties: Record<string, { description?: string }> } };
         };
       };
-      expect(workspaceSchema.properties.workspaces.items.properties.dirty.description).toContain(
+      expect(workspaceSchema.properties.workspaces.items.properties.dirty?.description).toContain(
         'untracked files',
       );
       const overviewOperation = paths['/api/specs/overview']?.get as {
@@ -142,8 +142,8 @@ describe('Runtime OpenAPI document', () => {
       expect(overviewOperation.description).toContain('filters each row');
       const overviewSchema = overviewOperation.responses['200']?.content?.['application/json']
         ?.schema as { anyOf: { properties: Record<string, { description?: string }> }[] };
-      expect(overviewSchema.anyOf[0]?.properties.sections.description).toContain('display order');
-      expect(overviewSchema.anyOf[1]?.properties.items.description).toContain('Historical');
+      expect(overviewSchema.anyOf[0]?.properties.sections?.description).toContain('display order');
+      expect(overviewSchema.anyOf[1]?.properties.items?.description).toContain('Historical');
       const streamOperation = paths['/api/specs/create/operations/{operationId}/events']?.get as {
         description: string;
         responses: Record<

@@ -9922,7 +9922,8 @@
             },
             "maxItems": 1000
           }
-        }
+        },
+        "description": "The Engine-owned subject-specific workflow and available human actions. Stable codes and reasons are machine-readable; labels/messages are display-only. No client-side derivation of permissions or gates."
       },
       "WorkflowError": {
         "type": "object",
@@ -41406,6 +41407,7 @@
       "get": {
         "operationId": "getSpecsBySpecIdTasksByTaskIdWorkflowActions",
         "summary": "Read the workflow actions of a Task",
+        "description": "Read the Engine-owned action projection for this subject: pinned workflow/first-start candidate, position, allowed owner actions, per-transition gates, Task authoring, document relations and Specification exit. Requires spec.view at trusted Specification scope. Client renders allowed actions only; reasons and codes are stable, messages and step purpose/instructions are display-only. An unresolved workflow or inaccessible source refuses with typed WorkflowError. Demo uses the same Engine logic over in-memory state. Cache-Control: no-store.",
         "tags": [
           "Workflow"
         ],
@@ -41556,6 +41558,7 @@
       "post": {
         "operationId": "postSpecsBySpecIdTasksByTaskIdWorkflowFinish",
         "summary": "Finish the active workflow step of a Task",
+        "description": "Finish an active owner workflow attempt, naming step and attempt so stale clients cannot complete a newer run. Requires spec.manage. A step that produces Tasks accepts the complete owned draft set; omitted owned drafts are cancelled, unrelated drafts untouched. Specification taskDecisions apply before terminal completion; Task finishes reject them. Replaying the same successful finish returns the recorded result with replayed:true; post-actions report separately and do not undo the workflow result. Gate, open-Task or attempt mismatch refusals are typed. Body limit 64 KiB.",
         "tags": [
           "Workflow"
         ],
@@ -41632,7 +41635,8 @@
                       },
                       "additionalProperties": false
                     },
-                    "maxItems": 100
+                    "maxItems": 100,
+                    "description": "Complete list of draft Tasks owned by this producing step; omitted owned drafts are cancelled, unrelated drafts unaffected."
                   },
                   "taskDecisions": {
                     "type": "array",
@@ -41675,7 +41679,8 @@
                       },
                       "additionalProperties": false
                     },
-                    "maxItems": 200
+                    "maxItems": 200,
+                    "description": "Specification-only Task status decisions, applied after tasks and before transition effects; a Task finish rejects this field."
                   }
                 },
                 "additionalProperties": false
@@ -42544,7 +42549,8 @@
                       "type": "boolean",
                       "enum": [
                         true
-                      ]
+                      ],
+                      "description": "Same successful finish was replayed; no workflow state transition was rerun."
                     },
                     "postActions": {
                       "type": "array",
@@ -42664,7 +42670,8 @@
                             }
                           }
                         ]
-                      }
+                      },
+                      "description": "Effects attempted after the finish was recorded; their failure does not undo the successful finish."
                     }
                   }
                 }
@@ -42784,6 +42791,7 @@
       "post": {
         "operationId": "postSpecsBySpecIdTasksByTaskIdWorkflowReturn",
         "summary": "Return a Task workflow to an earlier step",
+        "description": "Return the owner workflow run to a permitted earlier step, optionally carrying reason as feedback. Requires spec.manage; the target must be a declared return, never an arbitrary step. Actor is resolved by Runtime, not request. Typed refusal for return-not-allowed or stale execution. 64 KiB body limit.",
         "tags": [
           "Workflow"
         ],
@@ -43440,6 +43448,7 @@
       "post": {
         "operationId": "postSpecsBySpecIdTasksByTaskIdWorkflowStart",
         "summary": "Start or resume the next workflow step of a Task",
+        "description": "Start or resume the next owner workflow step; Runtime derives human actor from trusted request.authz, never from request data. Requires spec.manage at Specification scope. For a Task first start, expectedWorkflowRevision pins the revision the owner previewed; changed definitions refuse WORKFLOW_DEFINITION_CHANGED. An agent attempt is not started here. 64 KiB body limit, Cache-Control: no-store.",
         "tags": [
           "Workflow"
         ],
@@ -44067,6 +44076,7 @@
       "post": {
         "operationId": "postSpecsBySpecIdWorkflowAbandon",
         "summary": "Abandon a Specification without realizing it",
+        "description": "Permanently abandon a Specification workflow without realizing it; this is not Git Close. Requires spec.close-specification. Runtime supplies the human actor; body requires reason. Same-reason retry is idempotent, but pending writes, broken Tasks and other operations still block. Result includes cancelled Task identities and abandoned Task runs. 64 KiB body limit.",
         "tags": [
           "Workflow"
         ],
@@ -44451,6 +44461,7 @@
       "get": {
         "operationId": "getSpecsBySpecIdWorkflowActions",
         "summary": "Read the workflow actions of a Specification",
+        "description": "Read the Engine-owned action projection for this subject: pinned workflow/first-start candidate, position, allowed owner actions, per-transition gates, Task authoring, document relations and Specification exit. Requires spec.view at trusted Specification scope. Client renders allowed actions only; reasons and codes are stable, messages and step purpose/instructions are display-only. An unresolved workflow or inaccessible source refuses with typed WorkflowError. Demo uses the same Engine logic over in-memory state. Cache-Control: no-store.",
         "tags": [
           "Workflow"
         ],
@@ -44593,6 +44604,7 @@
       "post": {
         "operationId": "postSpecsBySpecIdWorkflowFinish",
         "summary": "Finish the active workflow step of a Specification",
+        "description": "Finish an active owner workflow attempt, naming step and attempt so stale clients cannot complete a newer run. Requires spec.manage. A step that produces Tasks accepts the complete owned draft set; omitted owned drafts are cancelled, unrelated drafts untouched. Specification taskDecisions apply before terminal completion; Task finishes reject them. Replaying the same successful finish returns the recorded result with replayed:true; post-actions report separately and do not undo the workflow result. Gate, open-Task or attempt mismatch refusals are typed. Body limit 64 KiB.",
         "tags": [
           "Workflow"
         ],
@@ -44669,7 +44681,8 @@
                       },
                       "additionalProperties": false
                     },
-                    "maxItems": 100
+                    "maxItems": 100,
+                    "description": "Complete list of draft Tasks owned by this producing step; omitted owned drafts are cancelled, unrelated drafts unaffected."
                   },
                   "taskDecisions": {
                     "type": "array",
@@ -44712,7 +44725,8 @@
                       },
                       "additionalProperties": false
                     },
-                    "maxItems": 200
+                    "maxItems": 200,
+                    "description": "Specification-only Task status decisions, applied after tasks and before transition effects; a Task finish rejects this field."
                   }
                 },
                 "additionalProperties": false
@@ -45573,7 +45587,8 @@
                       "type": "boolean",
                       "enum": [
                         true
-                      ]
+                      ],
+                      "description": "Same successful finish was replayed; no workflow state transition was rerun."
                     },
                     "postActions": {
                       "type": "array",
@@ -45693,7 +45708,8 @@
                             }
                           }
                         ]
-                      }
+                      },
+                      "description": "Effects attempted after the finish was recorded; their failure does not undo the successful finish."
                     }
                   }
                 }
@@ -45813,6 +45829,7 @@
       "post": {
         "operationId": "postSpecsBySpecIdWorkflowReevaluateWait",
         "summary": "Re-evaluate a Specification wait attempt",
+        "description": "Re-evaluate a Specification's named waiting attempt when a Tasks-finished event may have been missed. Requires spec.manage. Input is step/attempt; results settled or already-settled. A different completed attempt conflicts; open/escalated/broken Tasks refuse WORKFLOW_TASK_BLOCKED. This is not an arbitrary transition or Task state mutation.",
         "tags": [
           "Workflow"
         ],
@@ -46013,6 +46030,7 @@
       "post": {
         "operationId": "postSpecsBySpecIdWorkflowReturn",
         "summary": "Return a Specification workflow to an earlier step",
+        "description": "Return the owner workflow run to a permitted earlier step, optionally carrying reason as feedback. Requires spec.manage; the target must be a declared return, never an arbitrary step. Actor is resolved by Runtime, not request. Typed refusal for return-not-allowed or stale execution. 64 KiB body limit.",
         "tags": [
           "Workflow"
         ],
@@ -46661,6 +46679,7 @@
       "post": {
         "operationId": "postSpecsBySpecIdWorkflowStart",
         "summary": "Start or resume the next workflow step of a Specification",
+        "description": "Start or resume the next owner workflow step; Runtime derives human actor from trusted request.authz, never from request data. Requires spec.manage at Specification scope. For a Task first start, expectedWorkflowRevision pins the revision the owner previewed; changed definitions refuse WORKFLOW_DEFINITION_CHANGED. An agent attempt is not started here. 64 KiB body limit, Cache-Control: no-store.",
         "tags": [
           "Workflow"
         ],
@@ -46674,7 +46693,8 @@
                   "expectedWorkflowRevision": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 128
+                    "maxLength": 128,
+                    "description": "Revision confirmed in the workflow projection before first Task start; a mismatch refuses WORKFLOW_DEFINITION_CHANGED."
                   }
                 },
                 "additionalProperties": false

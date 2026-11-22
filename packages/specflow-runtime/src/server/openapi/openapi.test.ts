@@ -176,6 +176,14 @@ describe('Runtime OpenAPI document', () => {
         description: string;
       };
       expect(docsArticle.description).toContain('410 DOCS_DOCUMENT_INACTIVE');
+      const workflowFinish = paths['/api/specs/{specId}/workflow/finish']?.post as {
+        description: string;
+      };
+      expect(workflowFinish.description).toContain('replayed:true');
+      const workflowActions = paths['/api/specs/{specId}/tasks/{taskId}/workflow/actions']?.get as {
+        description: string;
+      };
+      expect(workflowActions.description).toContain('document relations');
       const workspaceClose = paths['/api/workspaces/{workspaceId}/close']?.post as { description: string };
       expect(workspaceClose.description).toContain('including all its canonical Specifications');
       expect(createOperation.parameters.some((parameter) => parameter.name === 'Prefer')).toBe(true);

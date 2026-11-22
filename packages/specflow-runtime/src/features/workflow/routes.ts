@@ -166,6 +166,8 @@ export const workflowEndpoint: FastifyPluginCallback<WorkflowRoutesOptions> = (
         schema: {
           tags,
           summary: `Read the workflow actions of a ${label}`,
+          description:
+            'Read the Engine-owned action projection for this subject: pinned workflow/first-start candidate, position, allowed owner actions, per-transition gates, Task authoring, document relations and Specification exit. Requires spec.view at trusted Specification scope. Client renders allowed actions only; reasons and codes are stable, messages and step purpose/instructions are display-only. An unresolved workflow or inaccessible source refuses with typed WorkflowError. Demo uses the same Engine logic over in-memory state. Cache-Control: no-store.',
           params,
           response: { 200: contractRef(WorkflowActionProjectionSchema), ...errors },
         },
@@ -183,6 +185,8 @@ export const workflowEndpoint: FastifyPluginCallback<WorkflowRoutesOptions> = (
         schema: {
           tags,
           summary: `Start or resume the next workflow step of a ${label}`,
+          description:
+            'Start or resume the next owner workflow step; Runtime derives human actor from trusted request.authz, never from request data. Requires spec.manage at Specification scope. For a Task first start, expectedWorkflowRevision pins the revision the owner previewed; changed definitions refuse WORKFLOW_DEFINITION_CHANGED. An agent attempt is not started here. 64 KiB body limit, Cache-Control: no-store.',
           params,
           body: StartWorkflowRequestSchema,
           response: { 200: StartWorkflowResultSchema, ...errors },
@@ -209,6 +213,8 @@ export const workflowEndpoint: FastifyPluginCallback<WorkflowRoutesOptions> = (
         schema: {
           tags,
           summary: `Finish the active workflow step of a ${label}`,
+          description:
+            'Finish an active owner workflow attempt, naming step and attempt so stale clients cannot complete a newer run. Requires spec.manage. A step that produces Tasks accepts the complete owned draft set; omitted owned drafts are cancelled, unrelated drafts untouched. Specification taskDecisions apply before terminal completion; Task finishes reject them. Replaying the same successful finish returns the recorded result with replayed:true; post-actions report separately and do not undo the workflow result. Gate, open-Task or attempt mismatch refusals are typed. Body limit 64 KiB.',
           params,
           body: FinishWorkflowRequestSchema,
           response: { 200: FinishWorkflowResultSchema, ...errors },
@@ -242,6 +248,8 @@ export const workflowEndpoint: FastifyPluginCallback<WorkflowRoutesOptions> = (
         schema: {
           tags,
           summary: `Return a ${label} workflow to an earlier step`,
+          description:
+            'Return the owner workflow run to a permitted earlier step, optionally carrying reason as feedback. Requires spec.manage; the target must be a declared return, never an arbitrary step. Actor is resolved by Runtime, not request. Typed refusal for return-not-allowed or stale execution. 64 KiB body limit.',
           params,
           body: ReturnWorkflowRequestSchema,
           response: { 200: ReturnWorkflowResultSchema, ...errors },
@@ -268,6 +276,8 @@ export const workflowEndpoint: FastifyPluginCallback<WorkflowRoutesOptions> = (
       schema: {
         tags: ['Workflow'],
         summary: 'Re-evaluate a Specification wait attempt',
+          description:
+            'Re-evaluate a Specification's named waiting attempt when a Tasks-finished event may have been missed. Requires spec.manage. Input is step/attempt; results settled or already-settled. A different completed attempt conflicts; open/escalated/broken Tasks refuse WORKFLOW_TASK_BLOCKED. This is not an arbitrary transition or Task state mutation.',
         params: WorkflowSpecParamsSchema,
         body: ReevaluateWaitRequestSchema,
         response: { 200: ReevaluateWaitResultSchema, ...errors },
@@ -292,6 +302,8 @@ export const workflowEndpoint: FastifyPluginCallback<WorkflowRoutesOptions> = (
       schema: {
         tags: ['Workflow'],
         summary: 'Abandon a Specification without realizing it',
+          description:
+            'Permanently abandon a Specification workflow without realizing it; this is not Git Close. Requires spec.close-specification. Runtime supplies the human actor; body requires reason. Same-reason retry is idempotent, but pending writes, broken Tasks and other operations still block. Result includes cancelled Task identities and abandoned Task runs. 64 KiB body limit.',
         params: WorkflowSpecParamsSchema,
         body: AbandonSpecificationRequestSchema,
         response: { 200: AbandonSpecificationResultSchema, ...errors },

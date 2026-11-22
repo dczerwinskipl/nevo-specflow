@@ -1246,6 +1246,41 @@
       ]
     },
     {
+      "id": "architecture.workflow.action-projections",
+      "type": "architecture",
+      "title": "Owner workflow actions and projection semantics",
+      "status": "current",
+      "file": "docs/architecture/workflow/workflow-action-projections.md",
+      "read_when": [
+        "changing manual owner workflow actions or projections",
+        "implementing gated Task/Specification completion and replay",
+        "rendering workflow documents, steps, Tasks and exit blockers in UI"
+      ],
+      "summary": "Workflow action projections are Engine-owned decisions over pinned definitions, gates and Task state. Owner commands carry trusted actor identity, deterministic attempts, idempotent finish and typed refusals.",
+      "related": [
+        "architecture.workflow.workflow-kernel",
+        "reference.api.specification-workflow",
+        "reference.api.specflow-specification-operations",
+        "architecture.runtime.task-read-composition",
+        "product.specflow.ui.workflow-execution"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime",
+        "ui",
+        "security"
+      ],
+      "tags": [
+        "workflow",
+        "task",
+        "transitions",
+        "gates",
+        "projection",
+        "authorization"
+      ]
+    },
+    {
       "id": "architecture.workflow.deterministic-workflow",
       "type": "architecture",
       "title": "Deterministic workflow",

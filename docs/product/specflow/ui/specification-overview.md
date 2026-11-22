@@ -167,7 +167,7 @@ dashboard configuration). The Overview renders what the reads deliver.
 - **Documents** — the Documents page's own row (type glyph and file name, the type in the tooltip
   and read with the name) in a flat list, every row the same height, at most eight before **Show
   all**. Each row carries the shared document state label
-  ([document state](documents-archetypes-ui.md#document-state-label)): **Initial content only**
+  ([document state](documents-tree.md#document-state-label)): **Initial content only**
   while the file is still the initial content the Engine wrote (the workspace read's
   `contentState: baseline`), and how the workflow uses the document now, from the Specification
   projection's `documentRelations`, with "this step" for the active step that Now shows (**Needed to

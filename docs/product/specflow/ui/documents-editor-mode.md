@@ -154,3 +154,78 @@ frames only.
   including Back behavior in a Session with open tabs.
 - Verify the tree/document geometry on the real `AppWorkspace` at tablet widths: the Storybook mock
   composes the layout by hand, so it does not prove scroll, borders, region widths or breakpoints.
+
+## Document tab behavior and refusal states
+
+### 5.1 Read-only on open
+
+- A document is read-only when `editable` is false or a Specification-wide write capability is
+  unavailable (the contract has no per-document write action yet). The reason is chosen in this order: `archived`,
+  `git-policy-invalid`, `branch-protected`, `branch-not-allowed`, `commit-blocked`, `not-editable`.
+- The first line of the document content is an `InlineNote` (info): `Read-only: <reason>` plus the remedy
+  for that reason. It is in the document flow, not sticky, not a box. The Edit action is not
+  offered; Show path and Close tab stay.
+- The same workspace renders in the demo and in a project Runtime; only the documents adapter differs.
+- The same Specification-wide reason appears once above the tree (3.1, item 2); the per-document
+  `not-editable` reason appears only in the tab.
+
+### 5.2 Save
+
+- Save is promoted only while dirty (today). While the request runs: label `Saving…`, disabled, the
+  Discard action disabled, the editor stays editable (edits after the request are a new draft), the tab
+  keeps its dirty mark. The live region announces "Saving…" once if the save takes longer than one
+  second.
+- Success: the save is acknowledged once the content is on disk (its commit is the Engine's, queued
+  or made by the commit policy); the dirty mark clears and the live region announces "Saved". The commit
+  state is not shown in this release. The document heading shows the new derived title; the tab label (file name)
+  does not change.
+- Refusals keep the draft and show an Alert (role `alert`) at the top of the document; focus stays in
+  the editor. After DOCUMENT_REVISION_CONFLICT **Save is unavailable until the user chooses Copy my
+  version or Load the version on disk** (saving again would only repeat the conflict); after Copy my
+  version the editor reloads the disk version as the base and keeps the user's text on the clipboard, so
+  the user merges by hand and Save returns. For the other refusals Save stays available unless the reason
+  makes it pointless:
+
+| Error                                                     | Alert title                                   | Body / actions                                                                                                                                                                             |
+| --------------------------------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `DOCUMENT_REVISION_CONFLICT`                              | Not saved: <file> changed on disk             | The file was changed outside this editor after you opened it. Nothing was overwritten and your changes are still here. **Copy my version**, **Load the version on disk** (asks to discard) |
+| `BRANCH_PROTECTED`, `GIT_POLICY_INVALID`, `SPEC_ARCHIVED` | Not saved: <reason>                           | Remedy line. The tab switches to read-only (5.1) but keeps the draft until the user closes or discards it.                                                                                 |
+| `COMMIT_BLOCKED`                                          | Not saved: Git cannot take a commit right now | Remedy line; **Try again**.                                                                                                                                                                |
+| `SPEC_BUSY`                                               | Not saved: another change is in progress      | **Try again**.                                                                                                                                                                             |
+| `DOCUMENT_RECOVERY_REQUIRED`                              | The save did not finish                       | "Finish the save before editing further." **Resume** (same operation id). Editing is locked until resumed.                                                                                 |
+| `DOCUMENT_FILE_MISSING`                                   | Not saved: the file is missing                | The tab becomes the missing state (5.5) and keeps the draft.                                                                                                                               |
+
+- Close tab / leave with a draft after a refusal uses the existing Unsaved changes dialog.
+
+### 5.3 Image and binary
+
+- **Image** (`kind: image`): the image from `raw` (`<img src>`, never inline SVG markup) fitted to the area;
+  a checked **Actual size** item in the Display group (fitted when unchecked), and **Download**
+  (`download` icon), the promoted action of an image tab, marked `primary: true`. No Edit, no Save,
+  never dirty.
+- **Binary** (`kind: binary`): left-aligned on the reading measure: "This file cannot be shown here.
+  Download it to open it in another program.", a description list (Path, Type or No type, Size,
+  Format = `mediaType`) and **Download** (secondary text button in the body only; the header action is
+  `direct: 'never'`, so it appears in the "..." menu and the two Downloads never differ in weight). No
+  centred empty-area composition.
+- Text that is viewable but not editable (`kind: text`, `editable: false`) opens in the source/preview view
+  with the `not-editable` read-only line.
+- Text above the JSON read limit (`DOCUMENT_TOO_LARGE`): the binary composition with the line "This file
+  is too large to show here."
+
+### 5.4 Tab labels and ids
+
+- Label = **file name** (today's rule, `documentTabs.ts`); the derived title is the document's
+  heading and is added to the tooltip. Description (tooltip, Opened menu, narrow switcher list) = path.
+- After a rename or move the label follows the new name in place; the tab does not move.
+- An id change (classify; rename or move of an unclassified file, whose id derives from its path) keeps
+  the tab, its draft and position, and **replaces** the route with the new id.
+
+### 5.5 Missing (dangling) tab
+
+- Opened from a dangling row, or when a document disappears (existing missing state). The tab shows the
+  ItemTabs `missing` state with the file name as label.
+- Content: attention Alert "<file> is missing", body "The specification lists <file> as a <type> document,
+  but the file is not in the folder. It may have been moved or deleted outside SpecFlow." and "To keep it,
+  restore the file (for example with Git) and refresh.", action **Remove registration** (opens the
+  confirmation, 3.6). A kept draft adds today's missing-hint line.

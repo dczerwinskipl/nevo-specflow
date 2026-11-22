@@ -13,7 +13,7 @@ export type OpenApiDocumentedResponse = {
 } & (
   | {
       /** The media type of the body; absent for a response without a body. */
-      readonly mediaType?: 'text/event-stream';
+      readonly mediaType?: 'text/event-stream' | '*/*';
       readonly contract?: never;
     }
   | {

@@ -39,6 +39,23 @@ export const rawDocumentEndpoint: FastifyPluginCallback<DocumentReadEndpointOpti
     '/api/specs/:specId/documents/:documentId/raw',
     {
       preHandler: viewGuard(options.projectId),
+      config: {
+        openApiResponses: {
+          200: {
+            description:
+              'Raw content bytes of the requested document revision. The actual Content-Type depends on the file; unsafe formats are forced to attachment. The bytes are streamed without JSON serialization.',
+            mediaType: '*/*',
+            headers: {
+              'Content-Type': 'Validated MIME type of the document bytes.',
+              'Content-Disposition': 'Safe inline/attachment disposition and sanitized filename.',
+              'Content-Length': 'Size of the streamed content in bytes.',
+              'X-Content-Type-Options': 'nosniff; browser content-type protection.',
+              'Content-Security-Policy': 'Sandbox policy for inline content.',
+              ETag: 'Strong content revision validator.',
+            },
+          },
+        },
+      },
       schema: {
         tags: ['Documents'],
         summary: 'Read the raw content of a document',
@@ -47,7 +64,7 @@ export const rawDocumentEndpoint: FastifyPluginCallback<DocumentReadEndpointOpti
         params: SpecificationDocumentParamsSchema,
         querystring: RawQuerySchema,
         // The 200 payload is a byte stream: it is sent as is and never serialized.
-        response: { 200: Type.Any(), 304: Type.Null(), ...documentReadErrorResponses },
+        response: { 304: Type.Null(), ...documentReadErrorResponses },
       },
     },
     documentRoute(async (request, reply) => {

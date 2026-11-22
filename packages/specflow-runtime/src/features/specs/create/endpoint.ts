@@ -359,7 +359,19 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
         body: CreateSpecRequestSchema,
         response: {
           201: CreatedSpecSchema,
-          202: CreateOperationAcceptedSchema,
+          202: {
+            ...CreateOperationAcceptedSchema,
+            headers: {
+              Location: {
+                type: 'string',
+                description: 'Path of the accepted Create operation inspection resource.',
+              },
+              'Preference-Applied': {
+                type: 'string',
+                description: 'respond-async, when the asynchronous preference was honored.',
+              },
+            },
+          },
           400: contractRef(CreateSpecErrorSchema),
           401: contractRef(AuthenticationRequiredErrorResponseSchema),
           403: contractRef(AuthorizationForbiddenErrorResponseSchema),

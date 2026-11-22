@@ -572,6 +572,24 @@ describe('Runtime OpenAPI document', () => {
         'text/event-stream',
       ]);
 
+      const raw = operation(document, '/api/specs/{specId}/documents/{documentId}/raw', 'get');
+      expect(raw.responses[200]?.content).toEqual({
+        '*/*': { schema: { type: 'string', format: 'binary' } },
+      });
+      expect(Object.keys(raw.responses[200]?.headers ?? {})).toEqual([
+        'Content-Type',
+        'Content-Disposition',
+        'Content-Length',
+        'X-Content-Type-Options',
+        'Content-Security-Policy',
+        'ETag',
+      ]);
+      const create = operation(document, '/api/specs', 'post');
+      expect(Object.keys(create.responses[202]?.headers ?? {})).toEqual([
+        'Location',
+        'Preference-Applied',
+      ]);
+
       // The route itself is unchanged: logout still answers 204 without a body.
       const reply = await app.inject({ method: 'POST', url: '/api/auth/logout' });
       expect(reply.statusCode).toBe(204);

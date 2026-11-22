@@ -151,3 +151,18 @@ tracked by #206/#207 until evidenced on the final PR HEAD.
 | `architecture/decisions/0017-definitions-as-project-data.md` | Reformat | 1 long paragraphs; 2 long bullets; max section 850 words | code check pending |
 | `architecture/decisions/0018-engine-commit-policy-and-manual-commit.md` | Reformat | 1 long paragraphs; 3 long bullets; max section 2089 words | code check pending |
 | `architecture/decisions/0019-workflow-kernel-and-automatic-continuation.md` | Reformat | 0 long paragraphs; 2 long bullets; max section 604 words | code check pending |
+| `architecture/decisions/0020-documentation-discovery-is-a-product-capability.md` | Reformat | 0 long paragraphs, 5 long bullets; longest section 373 words | code check pending |
+| `architecture/decisions/0021-product-neutral-ai-semantic-search-engine.md` | Reformat | 1 long paragraphs, 3 long bullets; longest section 940 words | code check pending |
+| `architecture/decisions/0022-workspace-scoped-documentation-reader.md` | Reformat | 0 long paragraphs, 5 long bullets; longest section 423 words | code check pending |
+| `architecture/decisions/0023-neutral-workflow-coordinator-and-manual-execution.md` | Reformat | 0 long paragraphs, 1 long bullets; longest section 463 words | code check pending |
+| `architecture/decisions/0024-tasks-are-resources.md` | Reformat | 0 long paragraphs, 1 long bullets; longest section 418 words | code check pending |
+| `architecture/decisions/0025-demo-runs-the-engine-in-memory.md` | Reformat | 0 long paragraphs, 1 long bullets; longest section 287 words | code check pending |
+| `architecture/decisions/README.md` | Reformat | 0 long paragraphs, 1 long bullets; longest section 271 words | code check pending |
+| `architecture/overview.md` | Reformat | 0 long paragraphs, 1 long bullets; longest section 256 words | code check pending |
+| `architecture/principles/README.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `architecture/principles/enforceable-invariants.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `architecture/principles/normative-language.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `architecture/repository-structure.md` | Reformat | 1 long paragraphs, 1 long bullets; longest section 675 words | code check pending |
+| `architecture/runtime/README.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `architecture/runtime/auth/README.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `architecture/runtime/auth/authorization.md` | Keep | no long paragraph/bullet detected | code check pending |

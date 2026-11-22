@@ -587,7 +587,12 @@ describe('SPEC_MANIFEST_DIRTY', () => {
 describe.skipIf(!onPosix)('the save budget (Linux)', () => {
   it('admits a save in under 150 ms at p95 on a cache hit, without a Git process', async () => {
     const { engine, specId } = await workProject();
-    await admitDocumentChange(engine, { kind: 'specification', specId }, save());
+    // Measure cache hits even when the complete sample series exceeds the 2 s
+    // TTL under concurrent load. Only the cache clock is fixed; latency below
+    // still uses real time. Expiry is covered separately above.
+    const cache = new GitPreflightCache({ now: () => 0 });
+    const options = { git: { cache } };
+    await admitDocumentChange(engine, { kind: 'specification', specId }, save(), options);
     const samples: number[] = [];
     const { count } = await gitProcessesDuring(async () => {
       for (let index = 0; index < 100; index += 1) {
@@ -596,6 +601,7 @@ describe.skipIf(!onPosix)('the save budget (Linux)', () => {
           engine,
           { kind: 'specification', specId },
           save(`content ${index}\n`),
+          options,
         );
         samples.push(performance.now() - started);
       }

@@ -1040,6 +1040,39 @@
       ]
     },
     {
+      "id": "architecture.runtime.document-operation-transport",
+      "type": "architecture",
+      "title": "Document operation transport, revision and commit projection",
+      "status": "current",
+      "file": "docs/architecture/runtime/document-operation-transport.md",
+      "read_when": [
+        "implementing document API response and header semantics",
+        "changing revisioned reads, raw downloads or document operations",
+        "verifying pending/failed/uncommitted commit state propagation"
+      ],
+      "summary": "HTTP-visible semantics of Specification and Task document reads and writes, exact revision requests, safe raw content, conditional caching and independent commit state.",
+      "related": [
+        "architecture.runtime.specification-documents",
+        "reference.api.specification-documents",
+        "reference.api.specflow-specification-operations",
+        "architecture.runtime.specflow-lifecycle"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "security",
+        "git"
+      ],
+      "tags": [
+        "documents",
+        "operations",
+        "etag",
+        "revisions",
+        "commits"
+      ]
+    },
+    {
       "id": "architecture.runtime.endpoint-policy",
       "type": "architecture",
       "title": "Runtime endpoint policy",
@@ -5256,6 +5289,37 @@
         "product.shared.vocabulary",
         "design-system.principles.ui-ux-guidelines",
         "architecture.ai.canonical-session-turn-work"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.document-editor-client-behavior",
+      "type": "product",
+      "title": "Document editor save, commit and Close interaction behavior",
+      "status": "current",
+      "file": "docs/product/specflow/ui/document-editor-client-behavior.md",
+      "read_when": [
+        "implementing document editor save and commit feedback",
+        "mapping document errors into user-visible recovery steps"
+      ],
+      "summary": "Editor feedback, commit queue and manual-commit affordances, conflict draft retention and Close blocker presentation for Specification documents.",
+      "related": [
+        "product.specflow.specification-documents",
+        "product.specflow.ui.documents-editor-mode",
+        "architecture.runtime.document-operation-transport",
+        "reference.api.specification-documents"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "workflow",
+        "documents"
+      ],
+      "tags": [
+        "documents",
+        "editor",
+        "commits",
+        "recovery",
+        "close"
       ]
     },
     {

@@ -199,6 +199,14 @@ describe('Runtime OpenAPI document', () => {
       expect(sessionEvents.description).toContain('resync-required');
       const sessionAssociation = paths['/api/sessions/{sessionId}/association']?.get as { description: string };
       expect(sessionAssociation.description).toContain('independently check spec.view');
+      const documentsSave = paths['/api/specs/{specId}/documents/{documentId}']?.put as {
+        description: string;
+      };
+      expect(documentsSave.description).toContain('NOT that Git commit finished');
+      const documentsRaw = paths['/api/specs/{specId}/documents/{documentId}/raw']?.get as {
+        description: string;
+      };
+      expect(documentsRaw.description).toContain('before sending bytes');
       expect(historyOperation.parameters.find((parameter) => parameter.name === 'cursor')
         ?.schema.description).toContain('page size');
       const taskListOperation = paths['/api/specs/{specId}/tasks']?.get as {

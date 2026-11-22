@@ -25744,6 +25744,7 @@
       "post": {
         "operationId": "postSpecsBySpecIdCommit",
         "summary": "Commit document changes",
+        "description": "Commit an authorized set of currently uncommitted ledger paths under spec.manage, using operationId and the current ledger revision. Reject stale or non-closed subsets rather than committing unrelated documents/Task/definitions. The message and selected entries must obey server limits. Replay identical operationId without a second Git side effect. A 200 means the Git commit completed.",
         "tags": [
           "Documents"
         ],
@@ -26078,6 +26079,7 @@
       "post": {
         "operationId": "postSpecsBySpecIdDocumentCommitsFlush",
         "summary": "Flush the queued document commits",
+        "description": "Flush pending document commit work for this Specification, under spec.manage. This is a commit-queue operation, not a document save; failed/held operations still need explicit recovery. Serializes with other commit jobs and respects Git protection.",
         "tags": [
           "Documents"
         ],
@@ -26282,6 +26284,7 @@
       "post": {
         "operationId": "postSpecsBySpecIdDocumentOperations",
         "summary": "Start a document operation",
+        "description": "Rename, move, delete or classify a registered/unclassified document or folder under spec.manage. OperationId is idempotency key; expectedRevision and path constraints are rechecked. A classified u- document receives a new registered id; clients follow the returned identity. Commit state is independent of whether disk write succeeded.",
         "tags": [
           "Documents"
         ],
@@ -26534,6 +26537,7 @@
       "get": {
         "operationId": "getSpecsBySpecIdDocumentOperationsByOperationId",
         "summary": "Read a document operation",
+        "description": "Read status of one document change and its asynchronous commit without mutating or flushing the queue. A strong operation ETag supports If-None-Match/304. Pending, failed, recovery-required, uncommitted, committed and not-applicable carry typed causes and retry/abandon capabilities. Not the same as the generic Specification Create operation status.",
         "tags": [
           "Documents"
         ],
@@ -26709,6 +26713,7 @@
       "post": {
         "operationId": "postSpecsBySpecIdDocumentOperationsByOperationIdAbandon",
         "summary": "Abandon a document operation",
+        "description": "Abandon a failed document commit batch, not its already saved file content. Files remain in the worktree and are reported as uncommitted with reason abandoned; a later manual/Git commit or authorized recovery is needed for Close.",
         "tags": [
           "Documents"
         ],
@@ -26893,6 +26898,7 @@
       "post": {
         "operationId": "postSpecsBySpecIdDocumentOperationsByOperationIdRetry",
         "summary": "Retry a document operation",
+        "description": "Explicitly retry the failed commit of a previously recorded document operation under spec.manage. Engine rechecks the checkout, current content and Git policy and may still refuse; retry does not rewrite the saved document or silently override newer external edits.",
         "tags": [
           "Documents"
         ],
@@ -27077,6 +27083,7 @@
       "get": {
         "operationId": "getSpecsBySpecIdDocumentTree",
         "summary": "Read the document tree of a Specification",
+        "description": "Read the Engine-owned Specification document tree from its manifest, registered files and bounded unclassified discovery. Requires spec.view. Includes completeness, dangling/missing files, commit state and action availability computed from current policy. Tree ETag changes when document/commit projection changes; If-None-Match may return 304. A read does not invoke Git or attempt a commit. Paths are relative to the Specification folder; unavailable archive or checkout returns typed errors. Cache-Control: no-store.",
         "tags": [
           "Documents"
         ],
@@ -28746,6 +28753,7 @@
       "post": {
         "operationId": "postSpecsBySpecIdDocuments",
         "summary": "Add a document",
+        "description": "Create registered documents from current project definitions/templates or caller text under spec.manage. The Engine owns path/type identity, template selection, title derivation and case-collision/size checks. A write result includes revision and commit status. Unknown template/type or path conflict is a typed refusal; action must not write a partial document set.",
         "tags": [
           "Documents"
         ],
@@ -28989,6 +28997,7 @@
       "post": {
         "operationId": "postSpecsBySpecIdDocumentsSave",
         "summary": "Save several documents",
+        "description": "Save 1..25 documents together under spec.manage; check every expectedRevision before any writes. Revision conflict returns details.conflicts and writes none. A successful 200 means all file writes are durable, with one queued commit (or uncommitted in manual mode), not a completed Git commit. Reuse operationId only for identical uncertain retry.",
         "tags": [
           "Documents"
         ],
@@ -29325,6 +29334,7 @@
       "get": {
         "operationId": "getSpecsBySpecIdDocumentsByDocumentId",
         "summary": "Read a document",
+        "description": "Read one registered or unclassified Specification document by id. Requires spec.view. Optional revision requests exactly that version; unavailable revision is 409 DOCUMENT_REVISION_UNAVAILABLE, never a fallback to latest. Text is returned as JSON; image/binary content has metadata only and is read through the raw route. Response ETag covers the revision; If-None-Match may answer 304. Client selection follows the returned id after classifying an unregistered file.",
         "tags": [
           "Documents"
         ],
@@ -29573,6 +29583,7 @@
       "put": {
         "operationId": "putSpecsBySpecIdDocumentsByDocumentId",
         "summary": "Write a document",
+        "description": "Save a text document with operationId and expectedRevision under spec.manage. One successful 200 means disk write accepted and commit queued, NOT that Git commit finished. Revision conflict writes nothing and leaves draft unchanged. A fresh user action gets a fresh operationId; unchanged request replay retains the same id. Commit status may be pending/committed/failed/uncommitted/not-applicable. Autosave backs off on SPEC_BUSY and retryAfterMs.",
         "tags": [
           "Documents"
         ],
@@ -29596,7 +29607,8 @@
                   },
                   "expectedRevision": {
                     "type": "string",
-                    "minLength": 1
+                    "minLength": 1,
+                    "description": "Optimistic revision; a mismatch refuses DOCUMENT_REVISION_CONFLICT without modifying the saved file."
                   }
                 },
                 "additionalProperties": false
@@ -29896,6 +29908,7 @@
       "get": {
         "operationId": "getSpecsBySpecIdDocumentsByDocumentIdRaw",
         "summary": "Read the raw content of a document",
+        "description": "Stream raw image or binary/text bytes for a document under spec.view, with validated safe Content-Type, Content-Disposition, Content-Length, X-Content-Type-Options and sandbox CSP. Query download accepts only 0 or 1; default safe inline for approved images, forced attachment for non-image or download=1. The stream is released on 304/abort/error, and all authorization/validation happens before sending bytes. A strong ETag permits If-None-Match/304. SVG has image media type to allow img rendering but sandbox CSP prevents script execution as a page.",
         "tags": [
           "Documents"
         ],
@@ -29915,7 +29928,8 @@
                     "1"
                   ]
                 }
-              ]
+              ],
+              "description": "0 requests safe inline rendering of approved image formats; 1 forces attachment download. Other values are invalid."
             },
             "in": "query",
             "name": "download",
@@ -30071,6 +30085,7 @@
       "post": {
         "operationId": "postSpecsBySpecIdFolders",
         "summary": "Add a document folder",
+        "description": "Create one folder in the Specification document tree under spec.manage. Engine validates rooted relative path, case collisions, protected root, folders/files and Windows host path length. Folder revision is a precondition for subsequent moves/renames. Returns structured operation result.",
         "tags": [
           "Documents"
         ],
@@ -38774,6 +38789,7 @@
       "post": {
         "operationId": "postSpecsBySpecIdTasksByTaskIdDocumentOperations",
         "summary": "Start a Task document operation",
+        "description": "Rename, move, delete or classify a Task document under spec.manage. Task registry, required path and revision checks remain authoritative; a successful operation returns typed result. Never change another Task or Specification document.",
         "tags": [
           "Documents"
         ],
@@ -39034,6 +39050,7 @@
       "get": {
         "operationId": "getSpecsBySpecIdTasksByTaskIdDocumentTree",
         "summary": "Read the documents of a Task",
+        "description": "Read Engine-owned Task document tree, scoped to its Specification and Task under spec.view. The Task folder and task.yaml registry determine required/registered/dangling paths, separate from Specification documents. Same document action vocabulary and safe content kinds.",
         "tags": [
           "Documents"
         ],
@@ -39329,6 +39346,7 @@
       "post": {
         "operationId": "postSpecsBySpecIdTasksByTaskIdDocuments",
         "summary": "Add a Task document",
+        "description": "Add a Task document under the Task resource registry. Server enforces Task path, content/type and registration rules. Success returns documented operation result and revision; task-specific output artifact policy remains Engine-owned.",
         "tags": [
           "Documents"
         ],
@@ -39580,6 +39598,7 @@
       "get": {
         "operationId": "getSpecsBySpecIdTasksByTaskIdDocumentsByDocumentId",
         "summary": "Read a Task document",
+        "description": "Read an individual Task document as JSON text/metadata, optionally at an exact recorded revision. Requires spec.view and current Task/source membership; unavailable revision never returns latest content. Task document reads do not reconstruct Workflow state or write files.",
         "tags": [
           "Documents"
         ],
@@ -39836,6 +39855,7 @@
       "put": {
         "operationId": "putSpecsBySpecIdTasksByTaskIdDocumentsByDocumentId",
         "summary": "Write a Task document",
+        "description": "Save text content of a Task document with operationId and expectedRevision under spec.manage. Engine serializes the write with Task workflow state. Success acknowledges disk write/commit state, not unrelated workflow transitions.",
         "tags": [
           "Documents"
         ],
@@ -43825,6 +43845,7 @@
       "get": {
         "operationId": "getSpecsBySpecIdUncommitted",
         "summary": "Read the uncommitted document changes",
+        "description": "Read the Engine-owned uncommitted-change ledger and effective document commit policy for this Specification under spec.view. Includes owner/scopes, reasons and safe checkout-relative paths; no absolute machine paths. A missing or empty ledger is not proof that arbitrary Git changes are clean.",
         "tags": [
           "Documents"
         ],

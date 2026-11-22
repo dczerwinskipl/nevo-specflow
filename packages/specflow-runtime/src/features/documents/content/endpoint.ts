@@ -39,6 +39,8 @@ export const documentContentEndpoint: FastifyPluginCallback<DocumentReadEndpoint
       schema: {
         tags: ['Documents'],
         summary: 'Read the document tree of a Specification',
+        description:
+          'Read the Engine-owned Specification document tree from its manifest, registered files and bounded unclassified discovery. Requires spec.view. Includes completeness, dangling/missing files, commit state and action availability computed from current policy. Tree ETag changes when document/commit projection changes; If-None-Match may return 304. A read does not invoke Git or attempt a commit. Paths are relative to the Specification folder; unavailable archive or checkout returns typed errors. Cache-Control: no-store.',
         params: DocumentTreeParamsSchema,
         response: { 200: DocumentTreeSchema, 304: Type.Null(), ...documentReadErrorResponses },
       },
@@ -67,6 +69,8 @@ export const documentContentEndpoint: FastifyPluginCallback<DocumentReadEndpoint
       schema: {
         tags: ['Documents'],
         summary: 'Read a document',
+        description:
+          'Read one registered or unclassified Specification document by id. Requires spec.view. Optional revision requests exactly that version; unavailable revision is 409 DOCUMENT_REVISION_UNAVAILABLE, never a fallback to latest. Text is returned as JSON; image/binary content has metadata only and is read through the raw route. Response ETag covers the revision; If-None-Match may answer 304. Client selection follows the returned id after classifying an unregistered file.',
         params: SpecificationDocumentParamsSchema,
         querystring: DocumentQuerySchema,
         response: { 200: DocumentContentSchema, ...documentReadErrorResponses },

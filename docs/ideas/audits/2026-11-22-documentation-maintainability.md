@@ -109,8 +109,8 @@ of an entry-point file is **not** equivalent to measured token savings.
 ## Current-document readability inventory (2026-11-23)
 
 Scope: every Markdown file under Architecture, Product, Engineering, Design System and Reference
-with `status: current` at the pinned `main` revision above. ADRs and README navigation
-files without `status: current` are excluded. The audit is based on **full text**, not file
+with `status: current` at the pinned `main` revision above. Current ADRs and README
+navigation files are included; decision chronology belongs in ADRs by design. The audit is based on **full text**, not file
 size alone. A >100-word paragraph or >120-word bullet is a **review signal**, not a policy failure.
 
 Disposition: **Keep** means no structural readability finding in this pass; **Reformat**

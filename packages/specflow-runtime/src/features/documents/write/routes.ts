@@ -102,6 +102,8 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
       schema: {
         tags: ['Documents'],
         summary: 'Write a document',
+        description:
+          'Save a text document with operationId and expectedRevision under spec.manage. One successful 200 means disk write accepted and commit queued, NOT that Git commit finished. Revision conflict writes nothing and leaves draft unchanged. A fresh user action gets a fresh operationId; unchanged request replay retains the same id. Commit status may be pending/committed/failed/uncommitted/not-applicable. Autosave backs off on SPEC_BUSY and retryAfterMs.',
         params: SpecificationDocumentParamsSchema,
         body: SaveInputSchema,
         response: { 200: SaveResultSchema, ...documentWriteErrorResponses },
@@ -123,6 +125,8 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
       schema: {
         tags: ['Documents'],
         summary: 'Save several documents',
+        description:
+          'Save 1..25 documents together under spec.manage; check every expectedRevision before any writes. Revision conflict returns details.conflicts and writes none. A successful 200 means all file writes are durable, with one queued commit (or uncommitted in manual mode), not a completed Git commit. Reuse operationId only for identical uncertain retry.',
         params: SpecParamsSchema,
         body: BatchSaveInputSchema,
         response: { 200: BatchSaveResultSchema, ...documentWriteErrorResponses },
@@ -142,6 +146,8 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
       schema: {
         tags: ['Documents'],
         summary: 'Add a document',
+        description:
+          'Create registered documents from current project definitions/templates or caller text under spec.manage. The Engine owns path/type identity, template selection, title derivation and case-collision/size checks. A write result includes revision and commit status. Unknown template/type or path conflict is a typed refusal; action must not write a partial document set.',
         params: SpecParamsSchema,
         body: CreateDocumentsInputSchema,
         response: {
@@ -164,6 +170,8 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
       schema: {
         tags: ['Documents'],
         summary: 'Add a document folder',
+        description:
+          'Create one folder in the Specification document tree under spec.manage. Engine validates rooted relative path, case collisions, protected root, folders/files and Windows host path length. Folder revision is a precondition for subsequent moves/renames. Returns structured operation result.',
         params: SpecParamsSchema,
         body: FolderInputSchema,
         response: {
@@ -186,6 +194,8 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
       schema: {
         tags: ['Documents'],
         summary: 'Start a document operation',
+        description:
+          'Rename, move, delete or classify a registered/unclassified document or folder under spec.manage. OperationId is idempotency key; expectedRevision and path constraints are rechecked. A classified u- document receives a new registered id; clients follow the returned identity. Commit state is independent of whether disk write succeeded.',
         params: SpecParamsSchema,
         body: DocumentOperationInputSchema,
         response: {
@@ -206,6 +216,8 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
       schema: {
         tags: ['Documents'],
         summary: 'Read a document operation',
+        description:
+          'Read status of one document change and its asynchronous commit without mutating or flushing the queue. A strong operation ETag supports If-None-Match/304. Pending, failed, recovery-required, uncommitted, committed and not-applicable carry typed causes and retry/abandon capabilities. Not the same as the generic Specification Create operation status.',
         params: OperationParamsSchema,
         response: {
           200: contractRef(DocumentOperationStatusSchema),
@@ -234,6 +246,8 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
       schema: {
         tags: ['Documents'],
         summary: 'Read the uncommitted document changes',
+        description:
+          'Read the Engine-owned uncommitted-change ledger and effective document commit policy for this Specification under spec.view. Includes owner/scopes, reasons and safe checkout-relative paths; no absolute machine paths. A missing or empty ledger is not proof that arbitrary Git changes are clean.',
         params: SpecParamsSchema,
         response: {
           200: UncommittedViewSchema,
@@ -265,6 +279,8 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
       schema: {
         tags: ['Documents'],
         summary: 'Commit document changes',
+        description:
+          'Commit an authorized set of currently uncommitted ledger paths under spec.manage, using operationId and the current ledger revision. Reject stale or non-closed subsets rather than committing unrelated documents/Task/definitions. The message and selected entries must obey server limits. Replay identical operationId without a second Git side effect. A 200 means the Git commit completed.',
         params: SpecParamsSchema,
         body: ManualCommitInputSchema,
         response: { 200: ManualCommitResultSchema, ...documentWriteErrorResponses },
@@ -300,6 +316,10 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
           tags: ['Documents'],
           summary:
             action === 'retry' ? 'Retry a document operation' : 'Abandon a document operation',
+          description:
+            action === 'retry'
+              ? 'Explicitly retry the failed commit of a previously recorded document operation under spec.manage. Engine rechecks the checkout, current content and Git policy and may still refuse; retry does not rewrite the saved document or silently override newer external edits.'
+              : 'Abandon a failed document commit batch, not its already saved file content. Files remain in the worktree and are reported as uncommitted with reason abandoned; a later manual/Git commit or authorized recovery is needed for Close.',
           params: OperationParamsSchema,
           body: EmptyBodySchema,
           response: {
@@ -329,6 +349,8 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
       schema: {
         tags: ['Documents'],
         summary: 'Flush the queued document commits',
+        description:
+          'Flush pending document commit work for this Specification, under spec.manage. This is a commit-queue operation, not a document save; failed/held operations still need explicit recovery. Serializes with other commit jobs and respects Git protection.',
         params: SpecParamsSchema,
         body: FlushInputSchema,
         response: { 200: FlushResultSchema, ...documentWriteErrorResponses },

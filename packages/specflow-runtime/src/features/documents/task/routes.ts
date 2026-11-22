@@ -80,6 +80,8 @@ export const taskDocumentRoutes: FastifyPluginCallback<TaskDocumentRoutesOptions
       schema: {
         tags: ['Documents'],
         summary: 'Read the documents of a Task',
+        description:
+          'Read Engine-owned Task document tree, scoped to its Specification and Task under spec.view. The Task folder and task.yaml registry determine required/registered/dangling paths, separate from Specification documents. Same document action vocabulary and safe content kinds.',
         params: TaskParamsSchema,
         response: { 200: TaskDocumentTreeSchema, 304: Type.Null(), ...documentReadErrorResponses },
       },
@@ -105,6 +107,8 @@ export const taskDocumentRoutes: FastifyPluginCallback<TaskDocumentRoutesOptions
       schema: {
         tags: ['Documents'],
         summary: 'Read a Task document',
+        description:
+          'Read an individual Task document as JSON text/metadata, optionally at an exact recorded revision. Requires spec.view and current Task/source membership; unavailable revision never returns latest content. Task document reads do not reconstruct Workflow state or write files.',
         params: TaskDocumentParamsSchema,
         querystring: DocumentQuerySchema,
         response: { 200: DocumentContentSchema, ...documentReadErrorResponses },
@@ -131,6 +135,8 @@ export const taskDocumentRoutes: FastifyPluginCallback<TaskDocumentRoutesOptions
       schema: {
         tags: ['Documents'],
         summary: 'Write a Task document',
+        description:
+          'Save text content of a Task document with operationId and expectedRevision under spec.manage. Engine serializes the write with Task workflow state. Success acknowledges disk write/commit state, not unrelated workflow transitions.',
         params: TaskDocumentParamsSchema,
         body: SaveInputSchema,
         response: { 200: SaveResultSchema, ...documentWriteErrorResponses },
@@ -152,6 +158,8 @@ export const taskDocumentRoutes: FastifyPluginCallback<TaskDocumentRoutesOptions
       schema: {
         tags: ['Documents'],
         summary: 'Add a Task document',
+        description:
+          'Add a Task document under the Task resource registry. Server enforces Task path, content/type and registration rules. Success returns documented operation result and revision; task-specific output artifact policy remains Engine-owned.',
         params: TaskParamsSchema,
         body: CreateDocumentsInputSchema,
         response: {
@@ -176,6 +184,8 @@ export const taskDocumentRoutes: FastifyPluginCallback<TaskDocumentRoutesOptions
       schema: {
         tags: ['Documents'],
         summary: 'Start a Task document operation',
+        description:
+          'Rename, move, delete or classify a Task document under spec.manage. Task registry, required path and revision checks remain authoritative; a successful operation returns typed result. Never change another Task or Specification document.',
         params: TaskParamsSchema,
         body: DocumentOperationInputSchema,
         response: {

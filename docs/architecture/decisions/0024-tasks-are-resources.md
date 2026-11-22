@@ -34,7 +34,7 @@ registry) and [ADR 0019](0019-workflow-kernel-and-automatic-continuation.md) dec
 state lives, and that it is committed). Builds on
 [ADR 0023](0023-neutral-workflow-coordinator-and-manual-execution.md). Behaviour:
 [Workflow kernel, Tasks](../workflow/workflow-kernel.md#tasks). Commands:
-[Task reads](../../reference/api/task-reads.md#task-commands).
+[Task reads](../../reference/api/task-reads.md#edit-tasks).
 
 ## Context
 

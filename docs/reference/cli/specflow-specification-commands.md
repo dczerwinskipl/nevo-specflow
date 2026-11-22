@@ -314,7 +314,7 @@ run. Every command accepts `--project-root <path>` and `--json`.
 after `abandon`) the Engine leaves its edits uncommitted and records them in a ledger. `nevo-specflow commit` commits
 exactly those paths with your message, through the same commit port, lease and claims as the commit queue, and never
 anything else (it is not `git commit -a`). The HTTP route is `POST /api/specs/:specId/commit`
-([documents reference](../api/specification-documents.md#commit-policy-uncommitted-changes-and-manual-commit)); the
+([documents reference](../api/specification-documents.md#write-and-observe-commits)); the
 `definitions` scope is the command line's alone.
 
 ```sh

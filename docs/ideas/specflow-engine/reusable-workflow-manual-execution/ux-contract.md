@@ -27,7 +27,7 @@ Accepted and implemented. The authoritative contracts are:
   and the Tasks page;
 - [ADR 0023](../../../architecture/decisions/0023-neutral-workflow-coordinator-and-manual-execution.md):
   workflow state, attention and grouping kept apart;
-- [Task reads](../../../reference/api/task-reads.md#dashboard-grouping): the default dashboard grouping.
+- [Task reads](../../../architecture/runtime/task-read-pagination-and-grouping.md#task-list-and-runtime-grouping): the default dashboard grouping.
 
 The presentation mock was removed; the production Storybook stories are `SpecFlow/Screens/Manual
 workflow execution` (`packages/specflow-ui/src/features/tasks/execution/ProjectWorkflowExecution.stories.tsx`)

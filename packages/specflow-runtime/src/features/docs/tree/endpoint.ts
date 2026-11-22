@@ -30,6 +30,8 @@ export const docsTreeEndpoint: FastifyPluginCallback<WorkspaceDocsEndpointOption
       schema: {
         tags: ['Documentation'],
         summary: "List a workspace's documentation",
+        description:
+          "List documentation from this registered, verified workspace's own docs.root and docs.yaml. Requires docs.view at trusted {projectId} before workspace lookup. Returns active, inactive and skipped documents, with corpusRevision: an opaque content/settings digest (not Git HEAD/ETag). All paths are relative to docs.root; no conditional HTTP ETag is supported. Unregistered workspace is 404 DOCS_WORKSPACE_NOT_FOUND, inaccessible/closing checkout 409 DOCS_WORKSPACE_UNAVAILABLE, invalid docs root/settings 503 DOCS_NOT_CONFIGURED or DOCS_UNAVAILABLE. Demo mode without project documentation is 503 DOCS_NOT_SERVED. Cache-Control: no-store.",
         params: WorkspaceDocsParamsSchema,
         response: { 200: WorkspaceDocsTreeSchema, ...workspaceDocsErrorResponses },
       },

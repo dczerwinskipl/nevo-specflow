@@ -53,6 +53,8 @@ export const docsArticleEndpoint: FastifyPluginCallback<WorkspaceDocsEndpointOpt
       schema: {
         tags: ['Documentation'],
         summary: 'Read a document of a workspace',
+        description:
+          'Read one workspace documentation article: metadata, Markdown body and heading sections from one file read, with corpusRevision and related document states. Requires docs.view at project scope before workspace lookup. A deprecated/superseded article is 410 DOCS_DOCUMENT_INACTIVE (with known successor); a skipped or duplicate id is 404 DOCS_DOCUMENT_SKIPPED; absent or concurrently changed file is 404 DOCS_DOCUMENT_NOT_FOUND. These refusals include workspaceId and corpusRevision. Section line numbers are relative to the returned body, unlike search-hit lines which include frontmatter. Cache-Control: no-store.',
         params: ArticleParamsSchema,
         response: {
           200: WorkspaceDocsArticleSchema,

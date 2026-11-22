@@ -112,19 +112,19 @@ of matching rows reveals which Sessions belong to the Specification.
 
 ## 3. Contracts (owning documents)
 
-| Subject                                                                                       | Owning document                                                                                                           |
-| --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Composed create, association read, Session list, error codes, Session scope rule              | [Sessions API](../../../reference/api/sessions.md#session-list-association-read-and-composed-create)                      |
-| Schema v3, association tables, store operations, delete map, "Authorization and associations" | [Session storage and lifecycle](../../../architecture/ai/session-storage-and-lifecycle.md#authorization-and-associations) |
-| `spec.start-session`, `specScope`/`sessionScope`, execute-write exception, coverage table     | [Runtime authorization](../../../architecture/runtime/auth/authorization.md#specflow-required-scopes)                     |
-| Role list and what an assignment scope covers                                                 | [Authorization configuration](../../../reference/configuration/authorization.md)                                          |
-| Project Sessions section, `startSession`, `recommendedSessionId`, optional title, freshness   | [Specification Workspace API](../../../reference/api/specification-workspace.md#project-sessions-section)                 |
-| Session reference scope in Task reads                                                         | [Task reads](../../../reference/api/task-reads.md#authorization-and-typed-application-outcomes)                           |
-| Context from the association read                                                             | [Full Session — Context](../../../product/specflow/ui/full-session.md#context)                                            |
-| Delete destination, not-found action, archive copy                                            | [Full Session — Session actions](../../../product/specflow/ui/full-session.md#session-actions)                            |
-| UI starts only from a Specification, `/sessions/new` redirect, navigator Specification        | [Interaction model](../../../product/specflow/ui/interaction-model.md#starting-a-session-and-the-navigator)               |
-| Specification Sessions list                                                                   | [Specification Sessions list](../../../product/specflow/ui/specification-sessions.md)                                     |
-| Session status ownership                                                                      | [AI Session UX](../../../product/specflow/ui/ai-session-ux.md#session-status-ownership-accepted-2026-11-08)               |
+| Subject                                                                                       | Owning document                                                                                                                       |
+| --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Composed create, association read, Session list, error codes, Session scope rule              | [Sessions API](../../../architecture/ai/session-association-and-list.md#session-list-association-read-and-composed-create)            |
+| Schema v3, association tables, store operations, delete map, "Authorization and associations" | [Session storage and lifecycle](../../../architecture/ai/session-storage-and-lifecycle.md#authorization-and-associations)             |
+| `spec.start-session`, `specScope`/`sessionScope`, execute-write exception, coverage table     | [Runtime authorization](../../../architecture/runtime/auth/authorization.md#specflow-required-scopes)                                 |
+| Role list and what an assignment scope covers                                                 | [Authorization configuration](../../../reference/configuration/authorization.md)                                                      |
+| Project Sessions section, `startSession`, `recommendedSessionId`, optional title, freshness   | [Specification Workspace API](../../../architecture/runtime/specification-workspace-composition.md#sessions-capability-and-attention) |
+| Session reference scope in Task reads                                                         | [Task reads](../../../architecture/runtime/task-read-pagination-and-grouping.md#visibility-and-errors)                                |
+| Context from the association read                                                             | [Full Session — Context](../../../product/specflow/ui/full-session.md#context)                                                        |
+| Delete destination, not-found action, archive copy                                            | [Full Session — Session actions](../../../product/specflow/ui/full-session.md#session-actions)                                        |
+| UI starts only from a Specification, `/sessions/new` redirect, navigator Specification        | [Interaction model](../../../product/specflow/ui/interaction-model.md#starting-a-session-and-the-navigator)                           |
+| Specification Sessions list                                                                   | [Specification Sessions list](../../../product/specflow/ui/specification-sessions.md)                                                 |
+| Session status ownership                                                                      | [AI Session UX](../../../product/specflow/ui/ai-session-ux.md#session-status-ownership-accepted-2026-11-08)                           |
 
 ## 4. Fit with the deterministic workflow engine
 

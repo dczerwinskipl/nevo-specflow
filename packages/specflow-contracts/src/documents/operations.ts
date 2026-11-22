@@ -104,7 +104,11 @@ export const SaveInputSchema = Type.Object(
   {
     operationId: OperationIdSchema,
     content: Type.String(),
-    expectedRevision: Type.String({ minLength: 1 }),
+    expectedRevision: Type.String({
+      minLength: 1,
+      description:
+        'Optimistic revision of the document/folder being changed; a mismatch writes nothing and refuses DOCUMENT_REVISION_CONFLICT.',
+    }),
   },
   { additionalProperties: false },
 );

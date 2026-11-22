@@ -102,8 +102,7 @@ export function registerOperationEventsRoute<RawServer extends RawServerBase>(
           200: {
             description:
               'Server-sent progress events of the operation: each event is named by the progress ' +
-              'event type, its `data` is the JSON progress event and its `id` (when present) ' +
-              'resumes the stream through `Last-Event-ID`. Comment lines keep the connection alive.',
+              'Server-Sent Events (SSE). Each frame has event: snapshot|step|completed|failed|recovery-required, a single JSON data line and id: <monotonic sequence> when available. snapshot contains status and applicable steps; step contains step id and running|done|skipped; completed carries the operation result; failed carries a stable public code only; recovery-required signals operator recovery. The first event is a snapshot, and terminal events close the stream. Unknown steps are ignored by clients. The stream is a display aid, not an authority. A heartbeat comment is sent about every 15 seconds. Runtime keeps terminal events for about 60 seconds, then forgets them. A subscription to an unknown id waits up to 30 seconds, then emits failed/OPERATION_NOT_FOUND (not evidence of a failed operation).',
             headers: { 'Cache-Control': '`no-store`.' },
             mediaType: 'text/event-stream',
           },
@@ -112,13 +111,22 @@ export function registerOperationEventsRoute<RawServer extends RawServerBase>(
       schema: {
         tags: ['Operations'],
         summary: route.summary,
+        description:
+          'Best-effort progress stream for an operation owned by this feature. The stream is not the source of truth: use the operation request and inspection endpoint for outcomes. It starts with a snapshot, then step updates and a terminal completed, failed or recovery-required event; each frame is SSE with event, JSON data and an optional monotonic per-operation id. Reconnection with Last-Event-ID replays newer events, or produces a snapshot after retention/restart. Progress state is in memory; clients fall back to inspection if SSE is unavailable. An unknown id may wait briefly; closed streams do not imply the operation failed.',
         params: OperationProgressParamsSchema,
         response: {
           401: contractRef(AuthenticationRequiredErrorResponseSchema),
           403: contractRef(AuthorizationForbiddenErrorResponseSchema),
           429: Type.Object(
-            { error: Type.String(), code: Type.String() },
-            { additionalProperties: false },
+            {
+              error: Type.Literal(OPERATION_STREAMS_LIMIT_CODE),
+              code: Type.Literal(OPERATION_STREAMS_LIMIT_CODE),
+            },
+            {
+              additionalProperties: false,
+              'x-response-description':
+                'Server stream capacity exceeded. Retry-After is sent; the JSON body uses the code OPERATION_STREAMS_LIMIT. The server caps concurrent streams globally, per principal and for unknown operation ids.',
+            },
           ),
         },
       },

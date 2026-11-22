@@ -392,7 +392,7 @@ the same name and space is noticed by the next full refresh (`semantic index`, t
 catch-up or the Runtime start). Status only reports; it starts nothing.
 The endpoint line shows `space <spaceId>` when `ai.embeddings.spaceId` is set. `--json` prints the
 same report as one JSON object, the `DocsStatus` contract. The Runtime has no status endpoint; its
-[workspace search](../api/workspace-docs.md#get-apiworkspacesworkspaceiddocssearch) carries the
+[workspace search](../api/workspace-docs.md) carries the
 index progress.
 
 ```text

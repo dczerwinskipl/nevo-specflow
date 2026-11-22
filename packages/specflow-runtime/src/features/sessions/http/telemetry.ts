@@ -131,6 +131,8 @@ export function registerTelemetryRoutes(
       schema: {
         tags: ['Session Telemetry'],
         summary: 'Refresh the telemetry of a Session',
+        description:
+          'Schedule a bounded read-only native telemetry refresh for selected groups. Requires session.manage; limits additionally require session.view-provider-limits. Exactly the requested authorized, supported groups are admitted, otherwise 403 or 422 CAPABILITY_UNSUPPORTED (never silently omitted). A 202 receipt means queued/running, not a completed measurement. Deduplicate the same requestId/body per actor and Session for 24 hours; changed body gives 409 IDEMPOTENCY_CONFLICT. Current scheduler supports account-scoped limits only. Account cooldown 30 seconds yields 429 and Retry-After; at most 10 seconds native work and one read per binding. Refresh never sends prompts or resumes a Turn.',
         params,
         body: RefreshTelemetrySchema,
         response: {

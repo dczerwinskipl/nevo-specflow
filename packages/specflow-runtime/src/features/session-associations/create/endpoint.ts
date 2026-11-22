@@ -79,6 +79,8 @@ export function registerCreateContextSessionRoute(
       schema: {
         tags: ['Sessions'],
         summary: 'Start a Session in a Specification',
+        description:
+          'Create a Session atomically associated with a Specification under spec.start-session and session.create, plus project-wide session.execute-write for write mode. A supplied Task set is unique, at most 32 and verified against the Specification before storage. The association and Session row commit in one transaction. Project create and standalone create share an idempotency key space: a requestId cannot be reused with another association. Authorization runs before Engine verification so refused callers cannot infer Specification existence.',
         params: SpecificationWorkspaceParamsSchema,
         body: CreateContextSessionSchema,
         response: {

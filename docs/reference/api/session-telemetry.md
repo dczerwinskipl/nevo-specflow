@@ -20,51 +20,25 @@ related:
 
 # Session telemetry API
 
-The exact transport contracts are generated in [OpenAPI](openapi.md), operations
-`getSessionsBySessionIdTelemetry` and
-`postSessionsBySessionIdTelemetryRefresh` from
-`packages/specflow-contracts/src/sessions/telemetry.ts` and
-`packages/specflow-runtime/src/features/sessions/http/telemetry.ts`.
+Telemetry is available through two operations:
 
-The authoritative measurement semantics, provenance, availability/freshness,
-account-limit authorization, native refresh, persistence and SSE invalidation
-are in [Session telemetry accounting](../../architecture/ai/session-telemetry-observations.md).
-The provider contracts are in
-[Session provider driver](../protocols/session-provider-driver.md).
-This page preserves its stable documentation ID without copying the DTO schema.
+| Operation | Purpose |
+| --- | --- |
+| `GET /api/sessions/{sessionId}/telemetry` | Read stored usage, cost, limit and context observations |
+| `POST /api/sessions/{sessionId}/telemetry/refresh` | Request a supported native refresh without starting a Turn |
 
-## Resources and operations
+Each reading reports availability, freshness, provenance and coverage independently.
+Missing measurements are not zero. Refresh can report that a group is unavailable or
+unsupported; it does not grant access to provider account limits.
 
-See [Session telemetry accounting](../../architecture/ai/session-telemetry-observations.md#observation-semantics) and the generated OpenAPI operations.
-
-### Snapshot envelope and readings
-
-See [Session telemetry accounting](../../architecture/ai/session-telemetry-observations.md#observation-semantics) and the generated OpenAPI operations.
-
-### Usage and money
-
-See [Session telemetry accounting](../../architecture/ai/session-telemetry-observations.md#observation-semantics) and the generated OpenAPI operations.
-
-### Limits
-
-See [Session telemetry accounting](../../architecture/ai/session-telemetry-observations.md#observation-semantics) and the generated OpenAPI operations.
-
-### Current context
-
-See [Session telemetry accounting](../../architecture/ai/session-telemetry-observations.md#observation-semantics) and the generated OpenAPI operations.
+The request and response schemas, bounds, ETags, errors and authorization requirements
+are in [OpenAPI](openapi.md), tag `Session Telemetry`.
 
 ## Live updates and refresh
 
-See [Session telemetry accounting](../../architecture/ai/session-telemetry-observations.md#refresh-events-and-freshness) and the generated OpenAPI operations.
-
-### Explicit refresh
-
-See [Session telemetry accounting](../../architecture/ai/session-telemetry-observations.md#explicit-refresh-and-capabilities) and the generated OpenAPI operations.
-
-## Authorization, persistence and bounds
-
-See [Session telemetry accounting](../../architecture/ai/session-telemetry-observations.md#persistence-migration-and-supported-sources) and the generated OpenAPI operations.
-
-## Provider coverage
-
-See [Session telemetry accounting](../../architecture/ai/session-telemetry-observations.md#persistence-migration-and-supported-sources) and the generated OpenAPI operations.
+Telemetry updates are delivered through the existing
+[`GET /api/sessions/{sessionId}/events`](sessions.md#event-stream) stream.
+For refresh admission, aggregation, staleness, persistence and provider coverage,
+see [Session telemetry accounting](../../architecture/ai/session-telemetry-observations.md).
+For provider-specific capabilities see
+[Session provider driver](../protocols/session-provider-driver.md).

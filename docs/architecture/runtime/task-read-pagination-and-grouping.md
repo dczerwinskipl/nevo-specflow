@@ -179,12 +179,3 @@ HTTP methods, parameters, response and errors are generated from TypeBox in
   query keys contain them. Do not substitute a changed current Markdown
   body for the historical evidence.
 
-## Verification boundary
-
-- A production Task reader needs verified project/Specification/workspace
-  binding, no mutating read effects, pinned definition and attempt
-  identity, stable page continuation, current authorization, accurate
-  counts and exact-version bodies when claimed.
-- The in-memory demo exercises the same Engine application operations,
-  transport and intended UI. It is **not evidence** of a correct Git-backed
-  filesystem store, external provider session or crash recovery.

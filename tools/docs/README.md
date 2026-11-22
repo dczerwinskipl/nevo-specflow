@@ -16,6 +16,7 @@ excluded; `.nevo/config.yaml` holds only the semantic search opt-in). It adds on
 - the repository's ADR rules, run by `check` (and every corpus read) through
   `corpusRules.validate`: filename/id agreement, ISO `date`, gap-free numbering, resolvable
   `supersedes`/`superseded_by`, and no generated `TODO` placeholder in a `current` ADR;
+- Mermaid `block-beta` block/node identifier checks run against all documents in the corpus;
 - hints that name the repository scripts (`pnpm docs:check --write`, `pnpm docs:get`).
 
 ## Commands

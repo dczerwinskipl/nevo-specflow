@@ -488,7 +488,9 @@ question; a four-band architecture diagram is not a mandatory standard:
 for stacked bands. Inside a band, two columns fit pairs and three fit natural groups of
 three. Keep headings short and span the band's columns with `:2` or `:3`. Mermaid
 renderers can have span/label geometry issues; inspect the output rather than assuming
-the text fits. For direct package imports, prefer a compact list over a dense arrow graph.
+the text fits. Every block and node in a Mermaid `block-beta` diagram must have a distinct ID;
+`pnpm docs:check` validates this. For direct package imports, prefer a compact list over a dense
+arrow graph.
 
 **Naming.** Diagram labels use component names such as SpecFlow Engine, Runtime and Workflow
 Kernel. Package identities such as `@nevo/specflow-engine`, `@nevo/specflow-runtime` and

@@ -48,17 +48,22 @@ The Engine owns workflow definitions, pinned revisions, runs, transitions, gates
 
 ## Position, outline and next-step certainty
 
+
+### Run position and next-step certainty
+
 - A projection names the Specification or Task subject, the pinned workflow (or first-start
   candidate), run position (`not-started`, `ready`, `active`, `waiting`,
   `blocked`, `terminal`), the last handoff and allowed start/finish/return options.
   A terminal abandonment includes `abandonment` attribution where recorded.
-- For a Specification with a resolvable workflow, the outline's `stepCount` and each
-  step's **1-based position** reflect the definition's declared order, **not execution
-  progress**. A run can branch or loop. `current` is absent before start and after terminal
-  completion. `next` exists only when every transition certainly reaches the same step;
-  it is absent if any transition ends the run or several next steps are possible. Before
-  first start, it is the entry step. `tasksStep` is the first certain reachable
-  `produces:tasks` step along this chain with no branch or terminal edge.
+- For a Specification with a resolvable workflow, the outline's `stepCount` and each step's **1-based position** reflect the definition's declared order, **not execution progress**.
+  - A run can branch or loop.
+  - `current` is absent before start and after terminal completion.
+  - `next` exists only when every transition certainly reaches the same step; it is absent if any transition ends the run or several next steps are possible.
+  - Before first start, it is the entry step.
+  - `tasksStep` is the first certain reachable `produces:tasks` step along this chain with no branch or terminal edge.
+
+### Action availability and Task types
+
 - A Task's effective status/edit/remove/approval actions and a Specification's
   `createTask`/`exit` appear as typed `allowed` or `unavailable` results.
   After the Specification run ends, Task edits/removal and Create Task are unavailable
@@ -81,6 +86,9 @@ The Engine owns workflow definitions, pinned revisions, runs, transitions, gates
   now; a result is unavailable with `gate-unsatisfied` when any applicable exit gate
   fails. A next step's unsatisfied entry gates block start. The same gate check runs
   on the mutation, fail-closed.
+
+### Document relations
+
 - `documentRelations` is calculated only for the Specification or **one Task's own**
   projection with a resolved unchanged workflow, not for a multi-Task listing. It
   relates the active step's exit gates and the certainly next step's entry gates
@@ -93,6 +101,9 @@ The Engine owns workflow definitions, pinned revisions, runs, transitions, gates
   When several gates name one document, retain the strongest relation and prefer
   the active step's gate. Once the run ended, relations are empty. The UI uses these
   structured facts, not a reconstruction from transition text.
+
+### Terminal Task blockers
+
 - The terminal completed transition is `unavailable:tasks-open` while open Tasks
   remain. It includes stable `openTasks` causes. `resolvableByFinish:true` and
   `closableTasks` are supplied only when this finish's own `tasks` and
@@ -117,14 +128,23 @@ The Engine owns workflow definitions, pinned revisions, runs, transitions, gates
 
 ## Start, finish, return, wait and Abandon
 
+
+### Start and pinned revisions
+
 - First Task start should send the `expectedWorkflowRevision` confirmed by the
   projection. Changed definitions refuse `409 WORKFLOW_DEFINITION_CHANGED`.
   A pin preview shows all declared steps and their possible next steps so an
   owner can explain what changed after a stale confirmation.
+
+### Finish attempts and idempotency
+
 - Finish names **step and attempt**; a stale attempt refuses
   `409 WORKFLOW_ATTEMPT_MISMATCH`. Repeating the **same successful finish**
   returns the recorded result with `replayed:true`, without rerunning the
   transition. A different finish for that same attempt is a conflict.
+
+### Draft Task proposals and decisions
+
 - A step declaring `produces:tasks` receives the **complete set of draft Task
   proposals** that step owns, possibly empty. A retained draft is revised;
   an omitted one is cancelled. Manually created drafts or drafts from another
@@ -135,12 +155,18 @@ The Engine owns workflow definitions, pinned revisions, runs, transitions, gates
   **not** send them. One invalid decision fails the entire finish. A terminal
   completion is judged after those decisions, allowing the same finish to
   resolve previously open Tasks when the projection says so.
+
+### Post-action outcomes
+
 - `postActions` is a **separate effect outcome**, not part of whether finish
   succeeded. `commit-execution-state` can complete, skip or fail; a failure
   does not undo finish and may be retried on an identical finish request.
   `held` lists user-edited execution paths and every path that travels in the
   same atomic commit operation. The Engine does not commit user-edited files
   by surprise.
+
+### Wait, return and Abandon
+
 - `reevaluate-wait` carries the named `step/attempt` of a waiting
   Specification. It returns `settled` or `already-settled` for the same
   tasks-finished outcome; other stale outcomes conflict. Open/escalated/broken

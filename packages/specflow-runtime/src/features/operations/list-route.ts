@@ -99,12 +99,21 @@ export function registerOperationListRoute<RawServer extends RawServerBase>(
         // The Runtime serves HTTP/1 only; the generic RawServer is just the caller app type.
         await route.authorize(request as unknown as FastifyRequest);
       },
+      config: {
+        openApiParameters: {
+          header: {
+            'If-None-Match': 'Weak ETag of the authorized operation list; a match returns 304.',
+          },
+        },
+      },
       schema: {
         tags: ['Operations'],
         summary: route.summary,
+        ...(route.description ? { description: route.description } : {}),
         querystring: OperationListQueryStringSchema,
         response: {
           200: contractRef(OperationListResponseSchema),
+          304: Type.Null(),
           400: OperationListErrorSchema,
           401: contractRef(AuthenticationRequiredErrorResponseSchema),
           403: contractRef(AuthorizationForbiddenErrorResponseSchema),

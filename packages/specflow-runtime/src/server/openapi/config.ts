@@ -42,6 +42,11 @@ declare module 'fastify' {
      */
     readonly openApiResponses?: Readonly<Record<number, OpenApiDocumentedResponse>>;
     /**
+     * Permit a documentation-only 200 binary stream description to replace a Type.Any()
+     * response used solely for Fastify's reply typing. All other response/schema overlaps fail.
+     */
+    readonly openApiBinaryResponse?: true;
+    /**
      * The route answers without an authenticated principal: it does not use request authorization
      * (login, logout, the authentication state, the Runtime info). Every other documented route
      * requires access, so the document gives it the session cookie requirement under required

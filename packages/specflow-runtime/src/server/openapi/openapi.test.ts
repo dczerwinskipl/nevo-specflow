@@ -654,6 +654,16 @@ describe('Runtime OpenAPI document', () => {
       ).toThrow(/both with a response schema and in openApiResponses/);
       expect(() =>
         app.get(
+          '/api/incorrect-binary-overlap',
+          {
+            schema: { ...documented, response: { 200: Type.String() } },
+            config: { openApiResponses: { 200: { description: 'Bytes.', mediaType: '*/*' } } },
+          },
+          () => '',
+        ),
+      ).toThrow(/both with a response schema and in openApiResponses/);
+      expect(() =>
+        app.get(
           '/api/twice-header',
           {
             config: { openApiParameters: { header: { 'Last-Event-ID': 'Resume.' } } },

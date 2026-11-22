@@ -75,7 +75,27 @@ The Runtime already emits **OpenAPI 3.1** from Fastify TypeBox schemas at `GET /
 
 The checked-in OpenAPI JSON is approximately **2.26 MB**, so loading it wholesale into every agent context is counterproductive. Provide a deterministic local operation lookup that extracts `method + path` or `operationId`, only the referenced schemas (resolving `$ref` transitively with cycle protection), errors/headers, and the operation description. Initial implementation can be a small CLI/script over the committed JSON; measure retrieved tokens for representative requests before adding a new product command. A raw reference to the whole file is not an agent retrieval strategy.
 
+### Move useful HTTP knowledge into generated OpenAPI first
+
+Review each legacy HTTP Markdown section by **operation and claim**, not by file size. For each claim choose one destination:
+
+| Existing detail | Authoritative destination | Example |
+| --- | --- | --- |
+| Field meaning, constraints, accepted values, defaults | TypeBox field/schema annotation and validation | `operationId` replay identity, branch-reference syntax |
+| Endpoint purpose and observable preconditions | Route-level `summary`/`description`, kept short | Create requires authorization and a valid catalogue revision |
+| Status, refusal, header and its meaning | Route response schema/documentation and typed refusal codes | `409 CREATE_CONFLICT`, `503 CREATE_RECOVERY_REQUIRED`, `Retry-After` |
+| Valid request/response examples | TypeBox/OpenAPI examples, with tests that the examples validate | Create with an existing workspace vs new worktree |
+| SSE and non-schema protocol properties | Operation documentation-only parameters/responses and a linked protocol owner | `Last-Event-ID`, stream media type, replay semantics |
+| Cross-request business rule, domain invariant or recovery procedure | Existing Architecture/Product/Engineering owner; a short link/summary in the API operation | durable journal, CAS rebind, no-Git demo capability |
+| Historical rationale or PR implementation evidence | ADR/history/draft proposals, not current API | accepted review round, interim route choices |
+
+**Do not paste an entire Markdown section into an operation description.** Place field-level descriptions next to fields; describe only the observable condition of each route/refusal and link to the domain document for deeper lifecycle rationale. Add examples only when they clarify a real distinction; use realistic and non-sensitive sample values.
+
+**Concrete migration case: Create.** The existing [Create/Close HTTP reference](../reference/api/specflow-specification-operations.md) explains `operationId` idempotent replay, `catalogueRevision` validation, `201` vs asynchronous `202`, and `409`/`422`/`503` refusals. Preserve that client-visible behavior through schema/route descriptions and validated examples in generated OpenAPI. The transactional journal protocol, crash windows and physical Git guarantees belong in the [Specification lifecycle architecture](../architecture/runtime/specification-lifecycle.md), not duplicated on each Create endpoint.
+
 **Coverage gate before deleting any Markdown:** the schema must truly describe the relevant request/response/status/headers and documented failure codes; if a field or refusal is only in prose, annotate its TypeBox schema/route documentation or migrate the semantic rule to its single domain owner. OpenAPI describes transport, but does not replace concurrency, idempotency, crash recovery, security reasoning, state-machine invariants, operator steps or a user journey. Ensure generated project-mode OpenAPI correctly reflects enabled provider differences; do not treat a single configured server as a universal route inventory without checking its generation policy.
+
+For every eliminated Markdown reference, record `old section -> operationId/schema annotation or domain owner`. Verify `pnpm api:openapi --check`, inspect the committed JSON for the expected metadata, and add route/contract tests for previously prose-only edge cases. Never edit generated JSON directly.
 
 Retire each old reference document **only after** resolving incoming `related` IDs, Markdown links/fragments and agent skill references. The audit should distinguish a short navigation page from a copied endpoint catalogue; neither broken citations nor silently dropped edge cases are acceptable.
 

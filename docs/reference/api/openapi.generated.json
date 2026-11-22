@@ -22225,6 +22225,20 @@
           },
           "202": {
             "description": "Accepted: the operation continues asynchronously.",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Path of the accepted Create operation inspection resource."
+              },
+              "Preference-Applied": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "respond-async, when the asynchronous preference was honored."
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -29926,10 +29940,51 @@
         ],
         "responses": {
           "200": {
-            "description": "Success.",
+            "description": "Raw content bytes of the requested document revision. The actual Content-Type depends on the file; unsafe formats are forced to attachment. The bytes are streamed without JSON serialization.",
+            "headers": {
+              "Content-Type": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Validated MIME type of the document bytes."
+              },
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Safe inline/attachment disposition and sanitized filename."
+              },
+              "Content-Length": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Size of the streamed content in bytes."
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "nosniff; browser content-type protection."
+              },
+              "Content-Security-Policy": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Sandbox policy for inline content."
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Strong content revision validator."
+              }
+            },
             "content": {
-              "application/json": {
-                "schema": {}
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
               }
             }
           },

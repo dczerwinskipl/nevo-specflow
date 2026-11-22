@@ -52673,6 +52673,7 @@
       "get": {
         "operationId": "getWorkspaces",
         "summary": "List the registered workspaces of the project",
+        "description": "Lists the primary project checkout and registered linked worktrees in registry order. Read-only snapshot; no reservation is taken. Requires workspace.view at the server-derived {projectId} scope before the registry is read. Each workspace remains listed, but Specification titles are individually filtered by spec.view at {projectId, specId}; inaccessible Specifications never appear. A single unavailable linked checkout does not fail the list. 503 WORKSPACES_UNAVAILABLE means the project/source/registry cannot be read; details that could expose local paths are logged, not returned. Cache-Control: no-store. Demo mode uses the same route with an in-memory registry.",
         "tags": [
           "Workspaces"
         ],
@@ -52727,18 +52728,22 @@
                                   "linked"
                                 ]
                               }
-                            ]
+                            ],
+                            "description": "The primary project checkout or one registered linked worktree."
                           },
                           "name": {
                             "type": "string",
-                            "minLength": 1
+                            "minLength": 1,
+                            "description": "Checkout folder name (the repository folder for the primary checkout)."
                           },
                           "path": {
                             "type": "string",
-                            "minLength": 1
+                            "minLength": 1,
+                            "description": "Absolute registered checkout folder; clients should shorten it for display."
                           },
                           "available": {
-                            "type": "boolean"
+                            "type": "boolean",
+                            "description": "True only when the Engine verifies the checkout on disk and, with Git enabled, Git sees it as a live worktree."
                           },
                           "unavailableReason": {
                             "anyOf": [
@@ -52766,10 +52771,12 @@
                                   "git-membership-mismatch"
                                 ]
                               }
-                            ]
+                            ],
+                            "description": "Present exactly when available is false. checkout-unavailable: folder or git status verification failed; checkout-mismatch: moved, symlinked or redirected folder; git-unavailable: Git cannot be reached; git-membership-mismatch: Git does not list this live worktree. Internal Engine error descriptions and paths are never exposed."
                           },
                           "isRuntimeWorkspace": {
-                            "type": "boolean"
+                            "type": "boolean",
+                            "description": "True for the checkout in which this Runtime process runs."
                           },
                           "specifications": {
                             "type": "array",
@@ -52788,10 +52795,12 @@
                                 }
                               },
                               "additionalProperties": false
-                            }
+                            },
+                            "description": "Readable Specifications bound to this workspace; individually filtered by spec.view at the trusted {projectId, specId} scope. An unavailable workspace lists no Specifications."
                           },
                           "dirty": {
-                            "type": "boolean"
+                            "type": "boolean",
+                            "description": "Uncommitted Git changes, including untracked files. Present only when Git is enabled and checkout is available on a branch; absent otherwise."
                           }
                         },
                         "additionalProperties": false

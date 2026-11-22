@@ -65,6 +65,8 @@ export const workspaceListEndpoint: FastifyPluginCallback<WorkspaceListEndpointO
       schema: {
         tags: ['Workspaces'],
         summary: 'List the registered workspaces of the project',
+        description:
+          'Lists the primary project checkout and registered linked worktrees in registry order. Read-only snapshot; no reservation is taken. Requires workspace.view at the server-derived {projectId} scope before the registry is read. Each workspace remains listed, but Specification titles are individually filtered by spec.view at {projectId, specId}; inaccessible Specifications never appear. A single unavailable linked checkout does not fail the list. 503 WORKSPACES_UNAVAILABLE means the project/source/registry cannot be read; details that could expose local paths are logged, not returned. Cache-Control: no-store. Demo mode uses the same route with an in-memory registry.',
         response: {
           200: WorkspaceListSchema,
           401: contractRef(AuthenticationRequiredErrorResponseSchema),

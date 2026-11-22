@@ -120,6 +120,15 @@ describe('Runtime OpenAPI document', () => {
       expect(paths['/api/openapi.json']?.head).toBeUndefined();
       expect((paths['/api/authorization/capabilities']?.post as { description: string }).description)
         .toContain('lack of permission is a normal 200 response with false');
+      const workspaceOperation = paths['/api/workspaces']?.get as {
+        description: string;
+        responses: Record<string, { content?: Record<string, { schema: unknown }> }>;
+      };
+      expect(workspaceOperation.description).toContain('workspace.view at the server-derived');
+      const workspaceSchema = workspaceOperation.responses['200']?.content?.['application/json']
+        ?.schema as { properties: { workspaces: { items: { properties: Record<string, { description?: string }> } } } };
+      expect(workspaceSchema.properties.workspaces.items.properties.dirty.description)
+        .toContain('untracked files');
       const documentRead = paths['/api/specs/{specId}/documents/{documentId}']?.get as {
         parameters: readonly { in: string; name: string; required?: boolean }[];
       };

@@ -4,7 +4,7 @@ type: architecture
 title: Specification Create options and admission invariants
 status: current
 scope: specflow
-areas: [runtime, cli, security, git]
+areas: [runtime, cli, security]
 tags: [specification, create, worktree, authorization, git, admission]
 read_when:
   - implementing or reviewing Create options and validation

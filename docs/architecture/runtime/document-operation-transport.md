@@ -4,7 +4,7 @@ type: architecture
 title: Document operation transport, revision and commit projection
 status: current
 scope: specflow
-areas: [runtime, server, security, git]
+areas: [runtime, server, security]
 tags: [documents, operations, etag, revisions, commits]
 read_when:
   - implementing document API response and header semantics

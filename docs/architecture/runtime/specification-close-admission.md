@@ -4,7 +4,7 @@ type: architecture
 title: Specification and workspace Close admission and refusal semantics
 status: current
 scope: specflow
-areas: [runtime, cli, security, git]
+areas: [runtime, cli, security]
 tags: [specification, close, worktree, workspace, authorization, recovery]
 read_when:
   - reviewing Specification Close versus Worktree and Workspace Close

@@ -54,6 +54,14 @@ See [Managed Session commands and lifecycle](../../architecture/ai/session-comma
 
 See [Managed Session commands and lifecycle](../../architecture/ai/session-commands.md#routes-and-commands), and generated OpenAPI.
 
+## Session list
+
+See [filtered Session list semantics](../../architecture/ai/session-association-and-list.md#session-list).
+
+## Association read
+
+See [association read semantics](../../architecture/ai/session-association-and-list.md#association-read).
+
 ## Session list, association read and composed create
 
 See [Session association and filtered list semantics](../../architecture/ai/session-association-and-list.md#session-list-association-read-and-composed-create), and generated OpenAPI.
@@ -61,6 +69,10 @@ See [Session association and filtered list semantics](../../architecture/ai/sess
 ## Bounded history and Work
 
 See [Session history, content ranges, Work digest and live events](../../architecture/ai/session-history-and-events.md#bounded-history-and-work), and generated OpenAPI.
+
+## Work digest
+
+See [Work digest](../../architecture/ai/session-history-and-events.md#work-digest).
 
 ## Event stream
 

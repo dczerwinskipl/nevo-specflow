@@ -4,7 +4,7 @@ type: product
 title: Document editor save, commit and Close interaction behavior
 status: current
 scope: specflow
-areas: [ui, workflow, documents]
+areas: [ui, workflow]
 tags: [documents, editor, commits, recovery, close]
 read_when:
   - implementing document editor save and commit feedback

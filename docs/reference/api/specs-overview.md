@@ -16,22 +16,18 @@ related:
   - product.specflow.ui.specs-overview
 ---
 
-# Specs Overview HTTP API
+# Specifications Overview HTTP API
 
-The current HTTP contract is generated from TypeBox in
-[Runtime OpenAPI](openapi.md), operation `getSpecsOverview`
-(`GET /api/specs/overview`; [committed JSON](openapi.generated.json)).
-The route lives in `packages/specflow-runtime/src/features/specs/overview/endpoint.ts`;
-the typed response is in `packages/specflow-contracts/src/specs/overview/`.
+`GET /api/specs/overview` returns the authorized Current or Archive projection,
+including server-derived grouping, attention state and item visibility. The caller sees
+only Specifications allowed by `spec.view`.
 
-OpenAPI defines the Current/Archive discriminator, server-owned classification and section
-order, read scope, returned evidence, errors and query validation. The separate operation list
-(`GET /api/specs/operations`) is **not** embedded in the Overview response.
+The Overview response does not contain the separate operation list. Use
+[`GET /api/specs/operations`](specs-operations-list.md) for background Create operations.
 
-The authoritative presentation and classification requirements are in
-[Specifications list](../../product/specflow/ui/specs-overview.md).
-Authorization scope and per-row visibility are in
+The query, discriminator, response fields and errors are specified in
+[OpenAPI](openapi.md), operation `getSpecsOverview`.
+For grouping and presentation behavior, see
+[Specifications Overview](../../product/specflow/ui/specs-overview.md);
+for access rules, see
 [Runtime authorization](../../architecture/runtime/auth/authorization.md).
-
-This page preserves its stable discovery ID and does not duplicate route schemas or implementation
-snapshots. When a field or status changes, update TypeBox and regenerate OpenAPI, not this page.

@@ -1,6 +1,6 @@
 import { Type, type Static } from 'typebox';
 
-export const SpecsCollectionSchema = Type.Union([Type.Literal('current'), Type.Literal('archive')]);
+export const SpecsCollectionSchema = Type.Union([Type.Literal('current'), Type.Literal('archive')], { description: 'Select Current (default) or Archive; unknown and additional query parameters are rejected.' });
 export type SpecsCollection = Static<typeof SpecsCollectionSchema>;
 
 export const SpecOverviewItemSchema = Type.Object({
@@ -19,7 +19,7 @@ export const SpecOverviewItemSchema = Type.Object({
       total: Type.Integer({ minimum: 0 }),
     }),
     Type.Null(),
-  ]),
+  ], { description: 'Task progress: null means unavailable/unknown, not zero completed Tasks. A real empty Task set is completed=0 and total=0.' }),
 });
 export type SpecOverviewItem = Static<typeof SpecOverviewItemSchema>;
 

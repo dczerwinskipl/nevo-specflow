@@ -129,6 +129,15 @@ describe('Runtime OpenAPI document', () => {
         ?.schema as { properties: { workspaces: { items: { properties: Record<string, { description?: string }> } } } };
       expect(workspaceSchema.properties.workspaces.items.properties.dirty.description)
         .toContain('untracked files');
+      const overviewOperation = paths['/api/specs/overview']?.get as {
+        description: string;
+        responses: Record<string, { content?: Record<string, { schema: unknown }> }>;
+      };
+      expect(overviewOperation.description).toContain('filters each row');
+      const overviewSchema = overviewOperation.responses['200']?.content?.['application/json']
+        ?.schema as { anyOf: { properties: Record<string, { description?: string }> }[] };
+      expect(overviewSchema.anyOf[0]?.properties.sections.description).toContain('display order');
+      expect(overviewSchema.anyOf[1]?.properties.items.description).toContain('Historical');
       const documentRead = paths['/api/specs/{specId}/documents/{documentId}']?.get as {
         parameters: readonly { in: string; name: string; required?: boolean }[];
       };

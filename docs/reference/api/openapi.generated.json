@@ -24042,6 +24042,7 @@
       "get": {
         "operationId": "getSpecsOverview",
         "summary": "Read the Specifications overview",
+        "description": "Reads the Current or Archive Specifications collection. Omitted collection selects Current; unknown values or extra query keys are rejected. Requires spec.view in at least one scope before accessing the repository, then filters each row using the server-derived Specification scope; no visible rows is a valid 200 response. Classification and sections are Runtime-owned; clients must not derive a new classification from signals. Current and Archive are independent projections, and the separate operations list is never embedded in this response. An invalid project Git policy does not by itself block the read. Cache-Control: no-store.",
         "tags": [
           "Specifications"
         ],
@@ -24061,7 +24062,8 @@
                     "archive"
                   ]
                 }
-              ]
+              ],
+              "description": "Select Current (default) or Archive; unknown and additional query parameters are rejected."
             },
             "in": "query",
             "name": "collection",
@@ -24133,7 +24135,8 @@
                                 ]
                               }
                             ]
-                          }
+                          },
+                          "description": "Enabled Current section identifiers in server-defined display order; clients must not reorder or infer classification from raw signals."
                         },
                         "items": {
                           "type": "array",
@@ -24207,7 +24210,8 @@
                                   {
                                     "type": "null"
                                   }
-                                ]
+                                ],
+                                "description": "Task progress: null means unavailable/unknown, not zero completed Tasks. A real empty Task set is completed=0 and total=0."
                               },
                               "status": {
                                 "type": "string",
@@ -24323,7 +24327,8 @@
                                       }
                                     }
                                   }
-                                ]
+                                ],
+                                "description": "Single server-owned Current classification: requires-attention takes precedence over active, then ready, then draft. Unknown is used when classification cannot be established. Reason is optional for attention."
                               },
                               "signals": {
                                 "anyOf": [
@@ -24495,7 +24500,8 @@
                                   {
                                     "type": "null"
                                   }
-                                ]
+                                ],
+                                "description": "Bounded evidence for Current only; may be null when unavailable. Consumers must not reclassify a Specification from signals."
                               },
                               "currentExecutions": {
                                 "anyOf": [
@@ -24527,11 +24533,13 @@
                                   {
                                     "type": "null"
                                   }
-                                ]
+                                ],
+                                "description": "Current execution evidence only, or null when unavailable; never derived from historical Session associations."
                               }
                             },
                             "additionalProperties": false
-                          }
+                          },
+                          "description": "Current Specification records after per-item spec.view authorization filtering."
                         }
                       },
                       "additionalProperties": false
@@ -24622,17 +24630,21 @@
                                   {
                                     "type": "null"
                                   }
-                                ]
+                                ],
+                                "description": "Task progress: null means unavailable/unknown, not zero completed Tasks. A real empty Task set is completed=0 and total=0."
                               },
                               "completedAt": {
-                                "type": "string"
+                                "type": "string",
+                                "description": "Authoritative completion timestamp when known; never derive it from updatedAt."
                               },
                               "archivedAt": {
-                                "type": "string"
+                                "type": "string",
+                                "description": "Authoritative archive timestamp when known; never derive it from updatedAt."
                               }
                             },
                             "additionalProperties": false
-                          }
+                          },
+                          "description": "Historical Specification records after per-item spec.view filtering. Archive has no Current classification, signals, sections or current executions."
                         }
                       },
                       "additionalProperties": false

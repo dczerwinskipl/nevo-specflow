@@ -50,6 +50,8 @@ export const specsOverviewEndpoint: FastifyPluginCallback<SpecsOverviewEndpointO
       schema: {
         tags: ['Specifications'],
         summary: 'Read the Specifications overview',
+        description:
+          'Reads the Current or Archive Specifications collection. Omitted collection selects Current; unknown values or extra query keys are rejected. Requires spec.view in at least one scope before accessing the repository, then filters each row using the server-derived Specification scope; no visible rows is a valid 200 response. Classification and sections are Runtime-owned; clients must not derive a new classification from signals. Current and Archive are independent projections, and the separate operations list is never embedded in this response. An invalid project Git policy does not by itself block the read. Cache-Control: no-store.',
         querystring: SpecsOverviewQuerySchema,
         response: {
           200: SpecsOverviewSchema,

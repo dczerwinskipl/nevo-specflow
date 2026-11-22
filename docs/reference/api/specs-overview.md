@@ -18,180 +18,20 @@ related:
 
 # Specs Overview HTTP API
 
-`GET /api/specs/overview?collection=current|archive` reads one Specs Overview collection.
-Omitted `collection` defaults to `current`. Unsupported values and additional query fields
-return `400`.
+The current HTTP contract is generated from TypeBox in
+[Runtime OpenAPI](openapi.md), operation `getSpecsOverview`
+(`GET /api/specs/overview`; [committed JSON](openapi.generated.json)).
+The route lives in `packages/specflow-runtime/src/features/specs/overview/endpoint.ts`;
+the typed response is in `packages/specflow-contracts/src/specs/overview/`.
 
-The response schema is owned by `@nevo/specflow-contracts/specs/overview`.
+OpenAPI defines the Current/Archive discriminator, server-owned classification and section
+order, read scope, returned evidence, errors and query validation. The separate operation list
+(`GET /api/specs/operations`) is **not** embedded in the Overview response.
 
-## Current
+The authoritative presentation and classification requirements are in
+[Specifications list](../../product/specflow/ui/specs-overview.md).
+Authorization scope and per-row visibility are in
+[Runtime authorization](../../architecture/runtime/auth/authorization.md).
 
-Current is the operational read model:
-
-```ts
-{
-  revision: string;
-  collection: 'current';
-  sections: ('requires-attention' | 'active' | 'ready' | 'draft')[];
-  items: CurrentSpecOverviewItem[];
-}
-```
-
-Each item has one backend-owned `classification`:
-
-```ts
-{ section: 'requires-attention', reason?, count? }
-{ section: 'active' }
-{ section: 'ready' }
-{ section: 'draft' }
-```
-
-The section list is ordered, and `classification` is the single authoritative top-level
-classification for each Current item.
-
-Current classification precedence is:
-
-```text
-requires-attention > active > ready > draft
-```
-
-- **Requires attention**: an authoritative human-attention signal exists. A known semantic reason
-  such as input, decision, review, blocked, or approval is included when available; the reason is
-  not required for the signal to remain human-blocking.
-- **Active**: no higher-priority attention exists and at least one current execution exists.
-- **Ready**: no attention or execution exists and the Spec is ready for work.
-- **Draft**: the Spec is still being prepared.
-
-Signals and current executions remain available as bounded evidence. Consumers do not reclassify a
-Spec from raw signals.
-
-Project configuration may choose and order Current sections:
-
-```yaml
-specs:
-  overview:
-    current:
-      sections:
-        - requires-attention
-        - active
-        - ready
-        - draft
-```
-
-Omitted configuration uses the order above. Duplicate or unknown section ids are rejected.
-
-## Archive
-
-Archive is a separate historical read model:
-
-```ts
-{
-  revision: string;
-  collection: 'archive';
-  items: ArchivedSpecOverviewItem[];
-}
-```
-
-Archive has no Current sections, classification, signals, or current executions. Historical items
-may expose authoritative `completedAt` and `archivedAt` timestamps. Consumers must not invent
-Current state for archived Specs.
-
-## Operations above the list
-
-The operations panel above the list reads a separate route, `GET /api/specs/operations`
-(`reference.api.specs-operations-list`): it lists Specification Create operations from the Engine journals
-and the live progress registry, admitted per row by the same `spec.view` capability. It is not part of
-this response: the overview read model stays free of operation state, and a finished operation refreshes
-the overview through a normal refetch.
-
-## Reads do not depend on the Git policy
-
-Overview (both collections), the workspace read and the document reads never read the project Git policy,
-so an invalid `git` configuration section (for example an unknown key) does not fail them. Only the Create
-options and the mutations that need the policy report it (`reference.api.specflow-specification-operations`).
-
-## Repository boundary
-
-The `SpecsOverviewRepository` port is defined in
-`features/specs/overview/repository/read-repository.ts`. It does not return HTTP DTOs. Its
-`repository/model.ts` records are internal read facts and evidence used by Overview operations.
-For Current, facts such as `readyForWork`, attention signals, and current executions are mapped
-through `classifyCurrentSpec()`; the repository does not persist or return the final
-`classification`.
-
-Current and Archive are read independently:
-
-```ts
-readCurrent();
-readArchive();
-```
-
-The Overview use cases then apply authorization, Current classification where applicable, and
-mapping to the public transport contract. The fixed example catalogue is an explicit Runtime demonstration repository,
-available when the Runtime starts with `--demo`. Normal project mode never
-falls back silently to sample data. The response schema does not expose a
-`sample` property; the separate `GET /api/runtime/info` reports
-`dataMode: 'project' | 'demo'` for environment-level presentation.
-
-## Project mode: what a row is made of
-
-In project mode the Current facts come from the Engine-verified canonical manifest
-(`features/specs/overview/repository/manifest-facts.ts`) and the progress from the Tasks owner
-(`createEngineTaskProgress`, one inspection per Specification):
-
-| Field                          | Source and rule                                                                                                                                                                                                                                                                                                |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `status`                       | `draft` for every Specification until a workflow defines other values (the read-model constant `OVERVIEW_SPEC_STATUS`); the manifest's free `status` string is not interpreted. Optional in the contract (additive)                                                                                            |
-| `classification`               | **Draft** (follows from `status`)                                                                                                                                                                                                                                                                              |
-| `progress`                     | the Engine's `TaskProgress` (`readExecution`): `completed` Tasks whose run completed of `total` Tasks that are neither cancelled nor ended by an abandon (`{ completed: 0, total: 0 }` without Tasks: a muted "No tasks yet"); `null` when the Specification's execution cannot be read, never a guessed count |
-| `signals`, `currentExecutions` | `[]`: a managed Session is created without any Specification or Task association and project mode composes no Session reference owner, so no execution or attention can belong to a Specification. They become evidence once Sessions can be bound                                                             |
-| `key`                          | the manifest `key` Create gives every new Specification (`nevo-<number>`, one more than the highest of the project); absent for a Specification created before keys (no value is back-filled)                                                                                                                  |
-| `tags`, `pullRequests`         | absent: the manifest and the project configuration hold no source for them                                                                                                                                                                                                                                     |
-| `updatedAt`                    | the canonical source time                                                                                                                                                                                                                                                                                      |
-
-Requires attention, Active and Ready are therefore not reachable in project mode until such sources exist.
-
-## Access
-
-When authentication is required, a request without a valid browser session returns `401`:
-
-```json
-{ "error": "authentication_required" }
-```
-
-An authenticated subject with no `spec.view` capability in any assigned scope receives `403`:
-
-```json
-{ "error": "forbidden" }
-```
-
-A subject that possesses `spec.view` in at least one scope may enter the collection. Rows are then
-filtered independently using the server-owned target scope:
-
-```ts
-{
-  specId: item.id;
-}
-```
-
-Therefore a scoped subject may legitimately receive `200` with an empty `items` list when none of
-the Specs visible to that subject belong to the requested Current/Archive collection.
-
-The client does not provide authorization scope. Runtime derives the per-row scope from the
-authoritative Spec identifier.
-
-Trusted-local mode keeps the same authorization semantics. If access control is disabled, registered
-capabilities are available. If a local subject is configured, its assignments are evaluated normally.
-
-Successful and authorization-denied responses use `Cache-Control: no-store`.
-
-## UI handling
-
-The UI treats `current` and `archive` as distinct projections while sharing one collection
-switcher and one HTTP source.
-
-Current renders the ordered `sections`; Archive renders a flat historical list. Search filters the
-selected projection without changing backend classification or archive lifecycle facts.
-
-A `401` re-enters the existing authentication flow, `403` maps to the standalone access-denied
-surface, and network/server failures remain retryable Runtime-unavailable states.
+This page preserves its stable discovery ID and does not duplicate route schemas or implementation
+snapshots. When a field or status changes, update TypeBox and regenerate OpenAPI, not this page.

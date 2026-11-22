@@ -178,4 +178,3 @@ HTTP methods, parameters, response and errors are generated from TypeBox in
 - Task/historical document links retain their recorded revisions; UI
   query keys contain them. Do not substitute a changed current Markdown
   body for the historical evidence.
-

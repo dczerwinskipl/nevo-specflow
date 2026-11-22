@@ -36,20 +36,20 @@ are registered only in demo mode.
 
 ## Demo transport
 
-| Method | Route | Purpose |
-| --- | --- | --- |
-| GET | `/api/demo/specification-creation` | Archetypes, document templates, provider fixtures and preparation context |
-| GET | `/api/demo/specs/create-options` | Available workspace and branch targets |
-| POST | `/api/demo/specifications` | Create a Specification |
-| GET | `/api/demo/specifications/operations` | List Create operations |
-| GET | `/api/demo/specifications/operations/{operationId}` | Inspect a Create operation |
-| GET | `/api/demo/specifications/operations/{operationId}/events` | Stream Create progress (SSE) |
-| POST | `/api/demo/specs/{specId}/sessions` | Allocate an idle Session placeholder |
-| GET | `/api/demo/specs/{specId}/sessions/{sessionId}` | Read the allocated Session details |
-| POST | `/api/demo/specs/{specId}/documents` | Add a batch of documents and folders |
-| POST | `/api/demo/specs/{specId}/folders` | Create a folder |
-| POST | `/api/demo/specs/{specId}/document-operations` | Rename, move, classify or delete |
-| PUT | `/api/demo/specs/{specId}/documents/{documentId}` | Save text with a revision precondition |
+| Method | Route                                                      | Purpose                                                                   |
+| ------ | ---------------------------------------------------------- | ------------------------------------------------------------------------- |
+| GET    | `/api/demo/specification-creation`                         | Archetypes, document templates, provider fixtures and preparation context |
+| GET    | `/api/demo/specs/create-options`                           | Available workspace and branch targets                                    |
+| POST   | `/api/demo/specifications`                                 | Create a Specification                                                    |
+| GET    | `/api/demo/specifications/operations`                      | List Create operations                                                    |
+| GET    | `/api/demo/specifications/operations/{operationId}`        | Inspect a Create operation                                                |
+| GET    | `/api/demo/specifications/operations/{operationId}/events` | Stream Create progress (SSE)                                              |
+| POST   | `/api/demo/specs/{specId}/sessions`                        | Allocate an idle Session placeholder                                      |
+| GET    | `/api/demo/specs/{specId}/sessions/{sessionId}`            | Read the allocated Session details                                        |
+| POST   | `/api/demo/specs/{specId}/documents`                       | Add a batch of documents and folders                                      |
+| POST   | `/api/demo/specs/{specId}/folders`                         | Create a folder                                                           |
+| POST   | `/api/demo/specs/{specId}/document-operations`             | Rename, move, classify or delete                                          |
+| PUT    | `/api/demo/specs/{specId}/documents/{documentId}`          | Save text with a revision precondition                                    |
 
 Document tree, content and raw reads use the common
 `GET /api/specs/{specId}/document-tree` and

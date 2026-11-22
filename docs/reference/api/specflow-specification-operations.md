@@ -26,12 +26,12 @@ The HTTP requests, response schemas, error codes and admission headers are defin
 
 ## Create
 
-| Operation | Purpose |
-| --- | --- |
-| `GET /api/specs/archetypes` | Read available Specification archetypes |
-| `GET /api/specs/create-options` | Inspect workspace, branch and Git creation options |
-| `POST /api/specs` | Create a Specification or accept an asynchronous operation |
-| `GET /api/specs/create/operations/{operationId}` | Inspect the Create outcome |
+| Operation                                        | Purpose                                                    |
+| ------------------------------------------------ | ---------------------------------------------------------- |
+| `GET /api/specs/archetypes`                      | Read available Specification archetypes                    |
+| `GET /api/specs/create-options`                  | Inspect workspace, branch and Git creation options         |
+| `POST /api/specs`                                | Create a Specification or accept an asynchronous operation |
+| `GET /api/specs/create/operations/{operationId}` | Inspect the Create outcome                                 |
 
 Create options are advisory; the Engine validates the selected target and permissions again
 when creating. See [Create options and admission](../../architecture/runtime/specification-create-options.md),
@@ -43,10 +43,10 @@ Live progress is available through [SSE](operation-progress.md).
 
 Specification, worktree and workspace closure have distinct effects and authorization.
 
-| Operation family | Scope |
-| --- | --- |
-| `/api/specs/{specId}/close` | Archive one Specification, optionally integrate its branch |
-| `/api/specs/{specId}/worktree/close` | Close the linked worktree |
+| Operation family                      | Scope                                                          |
+| ------------------------------------- | -------------------------------------------------------------- |
+| `/api/specs/{specId}/close`           | Archive one Specification, optionally integrate its branch     |
+| `/api/specs/{specId}/worktree/close`  | Close the linked worktree                                      |
 | `/api/workspaces/{workspaceId}/close` | Close a complete workspace, including its bound Specifications |
 
 Each family has a `/preview` read and an operation-inspection route.

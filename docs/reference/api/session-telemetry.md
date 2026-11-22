@@ -22,9 +22,9 @@ related:
 
 Telemetry is available through two operations:
 
-| Operation | Purpose |
-| --- | --- |
-| `GET /api/sessions/{sessionId}/telemetry` | Read stored usage, cost, limit and context observations |
+| Operation                                          | Purpose                                                    |
+| -------------------------------------------------- | ---------------------------------------------------------- |
+| `GET /api/sessions/{sessionId}/telemetry`          | Read stored usage, cost, limit and context observations    |
 | `POST /api/sessions/{sessionId}/telemetry/refresh` | Request a supported native refresh without starting a Turn |
 
 Each reading reports availability, freshness, provenance and coverage independently.

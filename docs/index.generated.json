@@ -704,8 +704,7 @@
       "status": "current",
       "file": "docs/architecture/ai/session-admission-and-providers.md",
       "read_when": [
-        "reviewing session authorization, providers and demo boundaries",
-        "changing managed Session behavior previously described in the Session HTTP reference"
+        "reviewing session authorization, providers and demo boundaries"
       ],
       "summary": "Managed Session access scopes, provider capabilities, workspace execution admission, revoked streaming access and demo read-only semantics.",
       "related": [
@@ -737,8 +736,7 @@
       "status": "current",
       "file": "docs/architecture/ai/session-association-and-list.md",
       "read_when": [
-        "reviewing session association and filtered list semantics",
-        "changing managed Session behavior previously described in the Session HTTP reference"
+        "reviewing session association and filtered list semantics"
       ],
       "summary": "Atomic Specification Session creation, association projections, per-row authorization and signed bounded list cursors.",
       "related": [
@@ -768,8 +766,7 @@
       "status": "current",
       "file": "docs/architecture/ai/session-commands.md",
       "read_when": [
-        "reviewing managed session commands and lifecycle",
-        "changing managed Session behavior previously described in the Session HTTP reference"
+        "reviewing managed session commands and lifecycle"
       ],
       "summary": "Create/Turn command semantics, interactive approvals, managed Session archive/delete and idempotent recoverable operations.",
       "related": [
@@ -800,8 +797,7 @@
       "status": "current",
       "file": "docs/architecture/ai/session-history-and-events.md",
       "read_when": [
-        "reviewing session history, content ranges, work digest and live events",
-        "changing managed Session behavior previously described in the Session HTTP reference"
+        "reviewing session history, content ranges, work digest and live events"
       ],
       "summary": "Bounded Session history and Work pages, signed durable cursors, UTF-8 content ranges, native tool classification and SSE resync guarantees.",
       "related": [
@@ -3278,7 +3274,7 @@
         "planning a documentation refactor without losing domain invariants",
         "reviewing the cost and authority of documentation retrieved by agents"
       ],
-      "summary": "Proposed staged cleanup of oversized current documents, unstable implementation references, duplicated rules and inefficient section retrieval.",
+      "summary": "Proposed improvements to oversized architecture/product documents, API operation lookup and documentation quality checks.",
       "related": [
         "adr.0007-documentation-architecture-and-taxonomy",
         "architecture.principles.normative-language",
@@ -5901,7 +5897,7 @@
         "integrating the production Create Specification screen",
         "changing HTTP Create, Close and Workspace Close schemas"
       ],
-      "summary": "Implemented E2 endpoint routes, public payloads, response codes and authorization boundaries.",
+      "summary": "Create and Close operations for Specifications, linked worktrees and workspaces, including previews, admission and durable operation inspection.",
       "related": [
         "reference.api.specification-documents",
         "architecture.runtime.specflow-lifecycle",
@@ -5923,9 +5919,9 @@
       "status": "current",
       "file": "docs/reference/api/specification-creation-demo.md",
       "read_when": [
-        "implementing or testing the temporary Specification creation demo"
+        "integrating or testing demo-mode Specification creation, documents or Session allocation"
       ],
-      "summary": "Temporary Runtime-owned in-memory integration for creating demonstration Specifications, documents and allocated Session placeholders without real provider or worktree execution.",
+      "summary": "Demo-mode HTTP endpoints for in-memory Specification creation, document writes, workspace options, operation inspection and Session allocation.",
       "related": [
         "reference.api.specification-workspace",
         "product.specflow.ui.data-loading-and-integration",
@@ -5950,10 +5946,10 @@
       "file": "docs/reference/api/specification-documents.md",
       "read_when": [
         "implementing or consuming the archetype catalogue, document tree, document read or document operations",
-        "switching a client from the documents demo endpoints to the real backend",
+        "reading document revisions and raw content",
         "mapping document error codes in the UI"
       ],
-      "summary": "Contract of the Specification documents layer shared by the Runtime demo and the real backend: endpoints, schema outline, content kinds and raw-content headers, the write contract with asynchronous commit state, definition files and their problems, error codes and the explicit notes for clients. Exact schemas live in @nevo/specflow-contracts/documents.",
+      "summary": "Specification and Task document routes for tree browsing, exact-revision reads, document writes, asynchronous operations and Git commit status.",
       "related": [
         "architecture.runtime.specification-documents",
         "product.specflow.specification-documents",
@@ -6036,7 +6032,7 @@
         "adding a new operation kind or a new feature-owned operation list",
         "changing the operation list schema, retention or status derivation"
       ],
-      "summary": "GET /api/specs/operations lists Specification Create operations from the Engine journals and the live progress registry: schema, status table, retention, authorization, ETag, query, error codes and the demo mirror.",
+      "summary": "Read authorized Specification Create operations with status filtering, ETag, conditional responses, stable errors and operation inspection.",
       "related": [
         "reference.api.specification-documents",
         "reference.api.operation-progress",
@@ -6077,12 +6073,12 @@
       "status": "current",
       "file": "docs/reference/api/task-reads.md",
       "read_when": [
-        "implementing the Task read ownership refactor",
-        "migrating Task schemas out of Specification Workspace",
+        "listing Tasks and reading Task details or history",
+        "understanding Task resource and history responses",
         "implementing scoped Task page tokens and continuation",
         "creating, editing, removing or deciding the status of a Task over HTTP"
       ],
-      "summary": "Compatible Task and Document HTTP ownership, application outcomes, page lease semantics, the Engine-backed project-mode reads and the owner's Task commands (create, edit, remove, status) with their refusal statuses.",
+      "summary": "Task inventory, detail, history, pagination and mutation endpoints, with authorization, revision preconditions and workflow admission rules.",
       "related": [
         "architecture.runtime.task-read-composition",
         "reference.api.specification-workspace",
@@ -6115,7 +6111,7 @@
         "changing the docs.view capability or the Runtime start refresh of the docs index",
         "diagnosing why a Runtime documentation search answers lexically, 404, 409, 410 or 503"
       ],
-      "summary": "The Runtime serves the documentation of each registered workspace: GET /api/workspaces/:workspaceId/docs lists its documents (active, inactive, skipped), .../docs/documents/:documentId reads one article (body without frontmatter, sections, related states; 410 for an inactive one) and .../docs/search ranks documents in the result of nevo-specflow docs search --json, with the proposals left out and the index progress. Every answer carries a corpusRevision; docs.view at the project scope, errors, the read-time refresh, the background catch-up and the start refresh.",
+      "summary": "Workspace documentation tree, article reads and search with corpus revisions, authorization, lexical fallback and index freshness.",
       "related": [
         "adr.0022-workspace-scoped-documentation-reader",
         "adr.0020-documentation-discovery-is-a-product-capability",

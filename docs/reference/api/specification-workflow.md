@@ -26,10 +26,10 @@ related:
 The `Workflow` group in [OpenAPI](openapi.md) contains action projections and
 commands for Specification-level and Task-level workflows.
 
-| Scope | Operations |
-| --- | --- |
+| Scope         | Operations                                                                                                                     |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | Specification | `GET /api/specs/{specId}/workflow/actions`; `POST .../start`, `.../finish`, `.../return`, `.../reevaluate-wait`, `.../abandon` |
-| Task | `GET /api/specs/{specId}/tasks/{taskId}/workflow/actions`; `POST .../start`, `.../finish`, `.../return` |
+| Task          | `GET /api/specs/{specId}/tasks/{taskId}/workflow/actions`; `POST .../start`, `.../finish`, `.../return`                        |
 
 The action projection reports what the caller can do, with current blockers and transition
 requirements. Clients must not infer available actions from raw Task state or the workflow

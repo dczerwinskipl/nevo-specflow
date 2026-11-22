@@ -19,21 +19,21 @@ viewers and regeneration. Operations are grouped by resource in the schema.
 
 Choose the resource first:
 
-| What you need | API entry point |
-| --- | --- |
-| Authentication and permissions | [Authorization](api/authorization.md) |
+| What you need                                          | API entry point                                              |
+| ------------------------------------------------------ | ------------------------------------------------------------ |
+| Authentication and permissions                         | [Authorization](api/authorization.md)                        |
 | Create or close a Specification, worktree or workspace | [Create and Close](api/specflow-specification-operations.md) |
-| Browse active and archived Specifications | [Overview](api/specs-overview.md) |
-| Read one Specification's combined workspace view | [Specification Workspace](api/specification-workspace.md) |
-| List workspaces and availability | [Workspaces](api/workspaces.md) |
-| Read, write or commit Specification and Task documents | [Documents](api/specification-documents.md) |
-| List, inspect, create or edit Tasks | [Tasks](api/task-reads.md) |
-| Start, finish, return or abandon workflow steps | [Workflow](api/specification-workflow.md) |
-| Create, manage or stream Sessions and Turns | [Sessions](api/sessions.md) |
-| Read costs, tokens, limits or context telemetry | [Session telemetry](api/session-telemetry.md) |
-| Follow asynchronous Create progress | [Operation progress (SSE)](api/operation-progress.md) |
-| List recent Specification operations | [Specification operations](api/specs-operations-list.md) |
-| Read or search documentation from a workspace | [Workspace documentation](api/workspace-docs.md) |
+| Browse active and archived Specifications              | [Overview](api/specs-overview.md)                            |
+| Read one Specification's combined workspace view       | [Specification Workspace](api/specification-workspace.md)    |
+| List workspaces and availability                       | [Workspaces](api/workspaces.md)                              |
+| Read, write or commit Specification and Task documents | [Documents](api/specification-documents.md)                  |
+| List, inspect, create or edit Tasks                    | [Tasks](api/task-reads.md)                                   |
+| Start, finish, return or abandon workflow steps        | [Workflow](api/specification-workflow.md)                    |
+| Create, manage or stream Sessions and Turns            | [Sessions](api/sessions.md)                                  |
+| Read costs, tokens, limits or context telemetry        | [Session telemetry](api/session-telemetry.md)                |
+| Follow asynchronous Create progress                    | [Operation progress (SSE)](api/operation-progress.md)        |
+| List recent Specification operations                   | [Specification operations](api/specs-operations-list.md)     |
+| Read or search documentation from a workspace          | [Workspace documentation](api/workspace-docs.md)             |
 
 The demo Runtime exposes additional in-memory creation endpoints; their current
 behavior is documented in [Demo creation API](api/specification-creation-demo.md).

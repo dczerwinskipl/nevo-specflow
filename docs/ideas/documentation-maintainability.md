@@ -36,34 +36,34 @@ Runtime or domain contracts.
 
 These are candidates for targeted editing, not automatic failures based on file size.
 
-| Priority | Document | Review focus |
-| --- | --- | --- |
-| P1 | [Specification lifecycle](../architecture/runtime/specification-lifecycle.md) | Separate Create, Close and recovery rules into navigable sections without losing invariants |
-| P1 | [Specification documents](../architecture/runtime/specification-documents.md) | Clarify registry, path validation, commit queue and recovery ownership |
-| P1 | [Workflow kernel](../architecture/workflow/workflow-kernel.md) | Keep state-machine and gate rules findable without unrelated implementation logs |
-| P1 | [Task read composition](../architecture/runtime/task-read-composition.md) | Remove obsolete review and implementation chronology; cross-link the focused Task read reference |
-| P1 | [UI application architecture](../product/specflow/ui/application-architecture.md) | Keep current ownership and routing behavior separate from implementation history |
-| P1 | [Documentation reader](../product/specflow/ui/documentation-reader.md) | Separate navigation, document reading and semantic search concerns |
-| P1 | [Documents and archetypes UI](../product/specflow/ui/documents-archetypes-ui.md) | Divide independent editor and archetype journeys |
-| P2 | [Specification creation](../product/specflow/specification-creation.md) | Distinguish user journey, admission and recoverable errors |
-| P2 | [React component guidelines](../design-system/implementation/react/component-guidelines.md) | Keep general rules separate from component-specific examples |
-| P2 | [Secondary navigation](../design-system/implementation/react/secondary-navigation.md) | Separate component API, navigation rules and examples |
-| P2 | [Session storage lifecycle](../architecture/ai/session-storage-and-lifecycle.md) | Distinguish persistence, recovery and operator responsibilities |
+| Priority | Document                                                                                    | Review focus                                                                                     |
+| -------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| P1       | [Specification lifecycle](../architecture/runtime/specification-lifecycle.md)               | Separate Create, Close and recovery rules into navigable sections without losing invariants      |
+| P1       | [Specification documents](../architecture/runtime/specification-documents.md)               | Clarify registry, path validation, commit queue and recovery ownership                           |
+| P1       | [Workflow kernel](../architecture/workflow/workflow-kernel.md)                              | Keep state-machine and gate rules findable without unrelated implementation logs                 |
+| P1       | [Task read composition](../architecture/runtime/task-read-composition.md)                   | Remove obsolete review and implementation chronology; cross-link the focused Task read reference |
+| P1       | [UI application architecture](../product/specflow/ui/application-architecture.md)           | Keep current ownership and routing behavior separate from implementation history                 |
+| P1       | [Documentation reader](../product/specflow/ui/documentation-reader.md)                      | Separate navigation, document reading and semantic search concerns                               |
+| P1       | [Documents and archetypes UI](../product/specflow/ui/documents-archetypes-ui.md)            | Divide independent editor and archetype journeys                                                 |
+| P2       | [Specification creation](../product/specflow/specification-creation.md)                     | Distinguish user journey, admission and recoverable errors                                       |
+| P2       | [React component guidelines](../design-system/implementation/react/component-guidelines.md) | Keep general rules separate from component-specific examples                                     |
+| P2       | [Secondary navigation](../design-system/implementation/react/secondary-navigation.md)       | Separate component API, navigation rules and examples                                            |
+| P2       | [Session storage lifecycle](../architecture/ai/session-storage-and-lifecycle.md)            | Distinguish persistence, recovery and operator responsibilities                                  |
 
 ## Editing rules
 
 Keep one authoritative location for each fact. Link to the appropriate owner rather
 than copying entire contracts into new documents:
 
-| Information | Owner |
-| --- | --- |
-| User-facing behavior | Product |
-| Domain state, security and lifecycle invariants | Architecture |
-| HTTP paths, schemas, headers and statuses | TypeBox routes and generated OpenAPI |
-| Configuration and non-HTTP provider protocols | Reference |
-| Build, test, diagnostics and operator commands | Engineering |
-| Design rationale | Architecture decision records |
-| Unimplemented behavior | Ideas or tracked issues |
+| Information                                     | Owner                                |
+| ----------------------------------------------- | ------------------------------------ |
+| User-facing behavior                            | Product                              |
+| Domain state, security and lifecycle invariants | Architecture                         |
+| HTTP paths, schemas, headers and statuses       | TypeBox routes and generated OpenAPI |
+| Configuration and non-HTTP provider protocols   | Reference                            |
+| Build, test, diagnostics and operator commands  | Engineering                          |
+| Design rationale                                | Architecture decision records        |
+| Unimplemented behavior                          | Ideas or tracked issues              |
 
 A focused document should answer a concrete question and direct the reader to
 the related rules. Do not add empty placeholder sections, descriptions of a

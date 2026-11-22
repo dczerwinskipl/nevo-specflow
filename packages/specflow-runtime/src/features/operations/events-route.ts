@@ -122,7 +122,11 @@ export function registerOperationEventsRoute<RawServer extends RawServerBase>(
               error: Type.Literal(OPERATION_STREAMS_LIMIT_CODE),
               code: Type.Literal(OPERATION_STREAMS_LIMIT_CODE),
             },
-            { additionalProperties: false, 'x-response-description': 'Server stream capacity exceeded. Retry-After is sent; the JSON body uses the code OPERATION_STREAMS_LIMIT. The server caps concurrent streams globally, per principal and for unknown operation ids.' },
+            {
+              additionalProperties: false,
+              'x-response-description':
+                'Server stream capacity exceeded. Retry-After is sent; the JSON body uses the code OPERATION_STREAMS_LIMIT. The server caps concurrent streams globally, per principal and for unknown operation ids.',
+            },
           ),
         },
       },

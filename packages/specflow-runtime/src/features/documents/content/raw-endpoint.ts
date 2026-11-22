@@ -14,7 +14,14 @@ import {
 import { rawEtag, rawNotModifiedHeaders, rawResponseHeaders } from './raw-headers';
 
 const RawQuerySchema = Type.Object(
-  { download: Type.Optional(Type.Union([Type.Literal('0'), Type.Literal('1')], { description: '0 requests safe inline rendering of approved image formats; 1 forces attachment download. Other values are invalid.' })) },
+  {
+    download: Type.Optional(
+      Type.Union([Type.Literal('0'), Type.Literal('1')], {
+        description:
+          '0 requests safe inline rendering of approved image formats; 1 forces attachment download. Other values are invalid.',
+      }),
+    ),
+  },
   { additionalProperties: false },
 );
 

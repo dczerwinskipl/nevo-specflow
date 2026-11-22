@@ -45,7 +45,6 @@ policy and idempotency. [Specification lifecycle](../../architecture/runtime/spe
 owns durable effects/recovery. The [Create product contract](../../product/specflow/specification-creation.md)
 owns UI flow. [Progress SSE](operation-progress.md) is optional, not authoritative.
 
-
 ## Close
 
 The authoritative HTTP contracts and refusal responses for Specification, Worktree and

@@ -31,35 +31,35 @@ Some `current` documents mix authoritative rules, implementation chronology, ope
 
 Sizes are approximate and are triage signals, not automatic failures.
 
-| Priority | Current document | Approx. size | Proposed disposition |
-| --- | --- | ---: | --- |
-| P1 | [Specification lifecycle](../architecture/runtime/specification-lifecycle.md) | 31 KB | Small operation map; separate Create, Specification Close and Workspace Close; link to recovery procedures and exact API |
-| P1 | [Specification documents architecture](../architecture/runtime/specification-documents.md) | 93 KB | Split registry/schema invariants, document-write/commit lifecycle and validation/authority into cohesive documents |
-| P1 | [Workflow kernel](../architecture/workflow/workflow-kernel.md) | 73 KB | Split definitions/transitions, Tasks, gates, execution and recovery without duplicating normative rules |
-| P1 | [Task read composition](../architecture/runtime/task-read-composition.md) | 18 KB | Remove the specific pre-refactor commit/review baseline from `current` architecture; retain domain ownership and coherence contracts |
-| P1 | [UI application architecture](../product/specflow/ui/application-architecture.md) | 39 KB | Separate normative current ownership from obsolete routing and migration narrative |
-| P1 | [Documentation reader](../product/specflow/ui/documentation-reader.md) | 60 KB | Split navigation/presentation, search, accessibility and integration contracts |
-| P1 | [Documents and archetypes UI](../product/specflow/ui/documents-archetypes-ui.md) | 54 KB | Split by user surface; keep shared document semantics at their owning source |
-| P2 | [Specification creation](../product/specflow/specification-creation.md) | 42 KB | Separate journey/interaction from errors and exact transport behavior |
-| P2 | [React component guidelines](../design-system/implementation/react/component-guidelines.md) | 65 KB | Move component-specific contracts out of general React guidance |
-| P2 | [Secondary navigation](../design-system/implementation/react/secondary-navigation.md) | 48 KB | Separate component API, navigation invariants and worked examples |
-| P2 | [Session storage lifecycle](../architecture/ai/session-storage-and-lifecycle.md) | 28 KB | Split persistence and ownership from recovery/operator action |
-| P1 | [Specification documents API](../reference/api/specification-documents.md) | 120 KB | Retire duplicated HTTP schemas/routes after mapping domain-only rules to Architecture/Product and verifying OpenAPI coverage |
-| P1 | [Sessions API](../reference/api/sessions.md) | 56 KB | Replace HTTP field and route reference with generated OpenAPI; preserve non-schema lifecycle and protocol semantics in their actual owners |
-| P2 | [Demo creation API](../reference/api/specification-creation-demo.md) | 33 KB | Retire after demo/project HTTP convergence; do not promote the demo-only routes into a second public OpenAPI surface (see [demo API proposal](demo-api-convergence.md)) |
+| Priority | Current document                                                                            | Approx. size | Proposed disposition                                                                                                                                                    |
+| -------- | ------------------------------------------------------------------------------------------- | -----------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P1       | [Specification lifecycle](../architecture/runtime/specification-lifecycle.md)               |        31 KB | Small operation map; separate Create, Specification Close and Workspace Close; link to recovery procedures and exact API                                                |
+| P1       | [Specification documents architecture](../architecture/runtime/specification-documents.md)  |        93 KB | Split registry/schema invariants, document-write/commit lifecycle and validation/authority into cohesive documents                                                      |
+| P1       | [Workflow kernel](../architecture/workflow/workflow-kernel.md)                              |        73 KB | Split definitions/transitions, Tasks, gates, execution and recovery without duplicating normative rules                                                                 |
+| P1       | [Task read composition](../architecture/runtime/task-read-composition.md)                   |        18 KB | Remove the specific pre-refactor commit/review baseline from `current` architecture; retain domain ownership and coherence contracts                                    |
+| P1       | [UI application architecture](../product/specflow/ui/application-architecture.md)           |        39 KB | Separate normative current ownership from obsolete routing and migration narrative                                                                                      |
+| P1       | [Documentation reader](../product/specflow/ui/documentation-reader.md)                      |        60 KB | Split navigation/presentation, search, accessibility and integration contracts                                                                                          |
+| P1       | [Documents and archetypes UI](../product/specflow/ui/documents-archetypes-ui.md)            |        54 KB | Split by user surface; keep shared document semantics at their owning source                                                                                            |
+| P2       | [Specification creation](../product/specflow/specification-creation.md)                     |        42 KB | Separate journey/interaction from errors and exact transport behavior                                                                                                   |
+| P2       | [React component guidelines](../design-system/implementation/react/component-guidelines.md) |        65 KB | Move component-specific contracts out of general React guidance                                                                                                         |
+| P2       | [Secondary navigation](../design-system/implementation/react/secondary-navigation.md)       |        48 KB | Separate component API, navigation invariants and worked examples                                                                                                       |
+| P2       | [Session storage lifecycle](../architecture/ai/session-storage-and-lifecycle.md)            |        28 KB | Split persistence and ownership from recovery/operator action                                                                                                           |
+| P1       | [Specification documents API](../reference/api/specification-documents.md)                  |       120 KB | Retire duplicated HTTP schemas/routes after mapping domain-only rules to Architecture/Product and verifying OpenAPI coverage                                            |
+| P1       | [Sessions API](../reference/api/sessions.md)                                                |        56 KB | Replace HTTP field and route reference with generated OpenAPI; preserve non-schema lifecycle and protocol semantics in their actual owners                              |
+| P2       | [Demo creation API](../reference/api/specification-creation-demo.md)                        |        33 KB | Retire after demo/project HTTP convergence; do not promote the demo-only routes into a second public OpenAPI surface (see [demo API proposal](demo-api-convergence.md)) |
 
 ## Ownership and document shape
 
-| Information | One authoritative home |
-| --- | --- |
-| User-visible behavior and interaction | Product |
-| State ownership, lifecycle, security and invariants | Architecture |
-| HTTP paths, request/response, status and schema shapes | TypeBox and route schemas, exposed through generated OpenAPI 3.1; **not** manually duplicated in Markdown |
-| Configuration and non-HTTP protocols | Their existing configuration/protocol references (unless an equivalent generated contract exists) |
-| Operator procedures, debugging, tests and recovery commands | Engineering |
-| Rationale and rejected alternatives | ADR, where the decision has durable significance |
-| Implementation evidence, PR/commit/review IDs | GitHub history, linked historical record or a draft proposal; never the basis of a `current` contract |
-| Unimplemented behavior | `docs/ideas/` or issue; do not describe it as a currently supported feature |
+| Information                                                 | One authoritative home                                                                                    |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| User-visible behavior and interaction                       | Product                                                                                                   |
+| State ownership, lifecycle, security and invariants         | Architecture                                                                                              |
+| HTTP paths, request/response, status and schema shapes      | TypeBox and route schemas, exposed through generated OpenAPI 3.1; **not** manually duplicated in Markdown |
+| Configuration and non-HTTP protocols                        | Their existing configuration/protocol references (unless an equivalent generated contract exists)         |
+| Operator procedures, debugging, tests and recovery commands | Engineering                                                                                               |
+| Rationale and rejected alternatives                         | ADR, where the decision has durable significance                                                          |
+| Implementation evidence, PR/commit/review IDs               | GitHub history, linked historical record or a draft proposal; never the basis of a `current` contract     |
+| Unimplemented behavior                                      | `docs/ideas/` or issue; do not describe it as a currently supported feature                               |
 
 A normative section should have a short statement of responsibility, a small set of rules/invariants, failure/recovery implications where applicable, and links to exact contracts. Tables are useful for bounded choice sets; do not turn prose into giant multi-line table cells. Preserve concrete technical details when they constrain behavior.
 
@@ -79,15 +79,15 @@ The checked-in OpenAPI JSON is approximately **2.26 MB**, so loading it wholesal
 
 Review each legacy HTTP Markdown section by **operation and claim**, not by file size. For each claim choose one destination:
 
-| Existing detail | Authoritative destination | Example |
-| --- | --- | --- |
-| Field meaning, constraints, accepted values, defaults | TypeBox field/schema annotation and validation | `operationId` replay identity, branch-reference syntax |
-| Endpoint purpose and observable preconditions | Route-level `summary`/`description`, kept short | Create requires authorization and a valid catalogue revision |
-| Status, refusal, header and its meaning | Route response schema/documentation and typed refusal codes | `409 CREATE_CONFLICT`, `503 CREATE_RECOVERY_REQUIRED`, `Retry-After` |
-| Valid request/response examples | TypeBox/OpenAPI examples, with tests that the examples validate | Create with an existing workspace vs new worktree |
-| SSE and non-schema protocol properties | Operation documentation-only parameters/responses and a linked protocol owner | `Last-Event-ID`, stream media type, replay semantics |
-| Cross-request business rule, domain invariant or recovery procedure | Existing Architecture/Product/Engineering owner; a short link/summary in the API operation | durable journal, CAS rebind, no-Git demo capability |
-| Historical rationale or PR implementation evidence | ADR/history/draft proposals, not current API | accepted review round, interim route choices |
+| Existing detail                                                     | Authoritative destination                                                                  | Example                                                              |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| Field meaning, constraints, accepted values, defaults               | TypeBox field/schema annotation and validation                                             | `operationId` replay identity, branch-reference syntax               |
+| Endpoint purpose and observable preconditions                       | Route-level `summary`/`description`, kept short                                            | Create requires authorization and a valid catalogue revision         |
+| Status, refusal, header and its meaning                             | Route response schema/documentation and typed refusal codes                                | `409 CREATE_CONFLICT`, `503 CREATE_RECOVERY_REQUIRED`, `Retry-After` |
+| Valid request/response examples                                     | TypeBox/OpenAPI examples, with tests that the examples validate                            | Create with an existing workspace vs new worktree                    |
+| SSE and non-schema protocol properties                              | Operation documentation-only parameters/responses and a linked protocol owner              | `Last-Event-ID`, stream media type, replay semantics                 |
+| Cross-request business rule, domain invariant or recovery procedure | Existing Architecture/Product/Engineering owner; a short link/summary in the API operation | durable journal, CAS rebind, no-Git demo capability                  |
+| Historical rationale or PR implementation evidence                  | ADR/history/draft proposals, not current API                                               | accepted review round, interim route choices                         |
 
 **Do not paste an entire Markdown section into an operation description.** Place field-level descriptions next to fields; describe only the observable condition of each route/refusal and link to the domain document for deeper lifecycle rationale. Add examples only when they clarify a real distinction; use realistic and non-sensitive sample values.
 

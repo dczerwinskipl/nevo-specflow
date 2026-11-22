@@ -55,14 +55,20 @@ export const OPERATION_JOURNAL_CORRUPT_CODE = 'CREATE_JOURNAL_CORRUPT';
  */
 export const OperationListStepIdSchema = Type.String({ minLength: 1 });
 
-const StatusSchema = Type.Union([
-  Type.Literal('in-progress'),
-  Type.Literal('recovery-required'),
-  Type.Literal('failed'),
-  Type.Literal('completed'),
-  Type.Literal('queued'),
-  Type.Literal('scheduled'),
-], { description: 'Open operation status. queued means a document change awaiting commit; scheduled is reserved and not produced by the current backend. Unknown values should render generically.' });
+const StatusSchema = Type.Union(
+  [
+    Type.Literal('in-progress'),
+    Type.Literal('recovery-required'),
+    Type.Literal('failed'),
+    Type.Literal('completed'),
+    Type.Literal('queued'),
+    Type.Literal('scheduled'),
+  ],
+  {
+    description:
+      'Open operation status. queued means a document change awaiting commit; scheduled is reserved and not produced by the current backend. Unknown values should render generically.',
+  },
+);
 
 const StepStatusSchema = Type.Union([
   Type.Literal('pending'),
@@ -109,7 +115,13 @@ export const OperationSummarySchema = Type.Object(
     updatedAt: Type.String(),
     finishedAt: Type.Optional(Type.String()),
     /** Stable code, never server text. */
-    code: Type.Optional(Type.String({ minLength: 1, description: 'Stable public failure/recovery code only; never server exception text or a Git path.' })),
+    code: Type.Optional(
+      Type.String({
+        minLength: 1,
+        description:
+          'Stable public failure/recovery code only; never server exception text or a Git path.',
+      }),
+    ),
     /** `document-change` rows: the kind of change (the `DocumentOperationStatus` action vocabulary). */
     action: Type.Optional(Type.String({ minLength: 1 })),
     /** `document-change` rows: how many documents the change covers. */
@@ -137,10 +149,17 @@ export type OperationListCounts = Static<typeof OperationListCountsSchema>;
 /** Response of `GET <feature>/operations`. Counts are computed after authorization. */
 export const OperationListResponseSchema = Type.Object(
   {
-    items: Type.Array(OperationSummarySchema, { description: 'Operations visible to this caller after row authorization, status filtering, ordering and limit. Strict allowlist; no paths, journal reasons, instance identifiers, raw stages or server text.' }),
+    items: Type.Array(OperationSummarySchema, {
+      description:
+        'Operations visible to this caller after row authorization, status filtering, ordering and limit. Strict allowlist; no paths, journal reasons, instance identifiers, raw stages or server text.',
+    }),
     counts: OperationListCountsSchema,
-    truncated: Type.Boolean({ description: 'True when filtered rows exceeded the requested limit.' }),
-    generatedAt: Type.String({ description: 'ISO timestamp of this observation; ignored by the weak ETag.' }),
+    truncated: Type.Boolean({
+      description: 'True when filtered rows exceeded the requested limit.',
+    }),
+    generatedAt: Type.String({
+      description: 'ISO timestamp of this observation; ignored by the weak ETag.',
+    }),
   },
   { $id: 'OperationListResponse', additionalProperties: false },
 );

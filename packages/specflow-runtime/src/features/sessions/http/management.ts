@@ -67,11 +67,12 @@ export function registerSessionManagementRoutes(
         schema: {
           tags: ['Sessions'],
           summary,
-          description: path === 'rename'
-            ? 'Rename a Session without changing provider identity, Turn state or association. Requires session.manage; allowed even when archived. Nonblank title 1..256 characters. requestId replay is idempotent, changed title with same key conflicts.'
-            : path === 'archive'
-              ? 'Archive a Session after ensuring no Turn is nonterminal or unknown; never implicitly cancels a Turn. Archive is idempotent and retains original archivedAt. Archived Session is read-only except that history, telemetry and reads remain available.'
-              : 'Unarchive the Session, preserving history, identity and Specification association. No-op if already active. Replaying the same requestId is idempotent; changed input conflicts.',
+          description:
+            path === 'rename'
+              ? 'Rename a Session without changing provider identity, Turn state or association. Requires session.manage; allowed even when archived. Nonblank title 1..256 characters. requestId replay is idempotent, changed title with same key conflicts.'
+              : path === 'archive'
+                ? 'Archive a Session after ensuring no Turn is nonterminal or unknown; never implicitly cancels a Turn. Archive is idempotent and retains original archivedAt. Archived Session is read-only except that history, telemetry and reads remain available.'
+                : 'Unarchive the Session, preserving history, identity and Specification association. No-op if already active. Replaying the same requestId is idempotent; changed input conflicts.',
           params,
           body,
           response: { 200: contractRef(SessionCommandResultSchema), ...capabilityRefusal },
@@ -114,7 +115,7 @@ export function registerSessionManagementRoutes(
         tags: ['Sessions'],
         summary: 'Delete a Session',
         description:
-          'Hard-delete a Session and its Runtime-owned Turns, history, content, telemetry and associations as one transaction, without deleting provider-native or Engine execution records. Requires session.delete. Active or unknown Turn refuses 409 TURN_CONFLICT; detached unresolved write evidence is SESSION_DELETE_BLOCKED. Completed delete is 204; later reads and repeated delete give 404 SESSION_NOT_FOUND.' ,
+          'Hard-delete a Session and its Runtime-owned Turns, history, content, telemetry and associations as one transaction, without deleting provider-native or Engine execution records. Requires session.delete. Active or unknown Turn refuses 409 TURN_CONFLICT; detached unresolved write evidence is SESSION_DELETE_BLOCKED. Completed delete is 204; later reads and repeated delete give 404 SESSION_NOT_FOUND.',
         params,
         response: capabilityRefusal,
       },

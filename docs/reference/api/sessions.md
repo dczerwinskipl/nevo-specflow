@@ -30,6 +30,7 @@ are generated from the Runtime TypeBox schemas in [OpenAPI](openapi.md), under t
 `Sessions` and `Session Providers` tags. Avoid maintaining a second HTTP contract here.
 
 Domain behavior has moved into focused architecture owners:
+
 - [Session authorization, providers and demo](../../architecture/ai/session-admission-and-providers.md)
 - [Session commands and lifecycle](../../architecture/ai/session-commands.md)
 - [Session association and list](../../architecture/ai/session-association-and-list.md)

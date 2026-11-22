@@ -51,7 +51,8 @@ export const StartWorkflowRequestSchema = Type.Object(
       Type.String({
         minLength: 1,
         maxLength: 128,
-        description: 'Revision confirmed in the workflow projection before first Task start; a mismatch refuses WORKFLOW_DEFINITION_CHANGED.',
+        description:
+          'Revision confirmed in the workflow projection before first Task start; a mismatch refuses WORKFLOW_DEFINITION_CHANGED.',
       }),
     ),
   },
@@ -114,7 +115,8 @@ export const FinishWorkflowRequestSchema = Type.Object(
     tasks: Type.Optional(
       Type.Array(TaskProposalSchema, {
         maxItems: 100,
-        description: 'Complete list of draft Tasks owned by this producing step; omitted owned drafts are cancelled, unrelated drafts unaffected.',
+        description:
+          'Complete list of draft Tasks owned by this producing step; omitted owned drafts are cancelled, unrelated drafts unaffected.',
       }),
     ),
     /**
@@ -126,7 +128,8 @@ export const FinishWorkflowRequestSchema = Type.Object(
     taskDecisions: Type.Optional(
       Type.Array(TaskDecisionSchema, {
         maxItems: TASKS_PER_SPECIFICATION_MAX,
-        description: 'Specification-only Task status decisions, applied after tasks and before transition effects; a Task finish rejects this field.',
+        description:
+          'Specification-only Task status decisions, applied after tasks and before transition effects; a Task finish rejects this field.',
       }),
     ),
   },
@@ -230,12 +233,15 @@ export const FinishWorkflowResultSchema = Type.Object({
   specification: Type.Optional(WorkflowContinuationSchema),
   /** The request repeated the last finish: nothing changed, the result is the recorded one. */
   replayed: Type.Optional(
-    Type.Literal(true, { description: 'Same successful finish was replayed; no workflow state transition was rerun.' }),
+    Type.Literal(true, {
+      description: 'Same successful finish was replayed; no workflow state transition was rerun.',
+    }),
   ),
   /** The post actions that ran after the finish; absent when none ran. */
   postActions: Type.Optional(
     Type.Array(PostActionResultSchema, {
-      description: 'Effects attempted after the finish was recorded; their failure does not undo the successful finish.',
+      description:
+        'Effects attempted after the finish was recorded; their failure does not undo the successful finish.',
     }),
   ),
 });

@@ -46,9 +46,19 @@ export const WorkspaceDocsTreeSchema = Type.Object(
      * every `path` below is relative to it, so a client can name a repository path for a link that
      * leaves the documentation.
      */
-    docsRoot: Type.String({ minLength: 1, description: 'docs.root relative to the checkout; every document path is relative to this root, with forward slashes.' }),
+    docsRoot: Type.String({
+      minLength: 1,
+      description:
+        'docs.root relative to the checkout; every document path is relative to this root, with forward slashes.',
+    }),
     /** The id of `<docs.root>/README.md`, when it is an active, readable document. */
-    rootIndexDocumentId: Type.Optional(Type.String({ minLength: 1, description: 'Document id of active readable <docs.root>/README.md; absent when unavailable or inactive.' })),
+    rootIndexDocumentId: Type.Optional(
+      Type.String({
+        minLength: 1,
+        description:
+          'Document id of active readable <docs.root>/README.md; absent when unavailable or inactive.',
+      }),
+    ),
     documents: Type.Array(WorkspaceDocsTreeDocumentSchema),
     inactive: Type.Array(WorkspaceDocsInactiveDocumentSchema),
     skipped: WorkspaceDocsSkippedSchema,

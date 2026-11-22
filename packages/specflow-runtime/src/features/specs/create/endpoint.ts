@@ -187,7 +187,8 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
       config: {
         openApiParameters: {
           header: {
-            'If-None-Match': 'ETag from an earlier archetype catalogue response; when unchanged the server returns 304 without a body.',
+            'If-None-Match':
+              'ETag from an earlier archetype catalogue response; when unchanged the server returns 304 without a body.',
           },
         },
       },
@@ -345,7 +346,8 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
       config: {
         openApiParameters: {
           header: {
-            Prefer: 'RFC 7240 request preference; respond-async asks the Runtime to validate and reserve before returning 202. Clients must also handle synchronous 201.',
+            Prefer:
+              'RFC 7240 request preference; respond-async asks the Runtime to validate and reserve before returning 202. Clients must also handle synchronous 201.',
           },
         },
       },

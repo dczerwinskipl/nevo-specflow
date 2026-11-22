@@ -54,7 +54,6 @@ Importing external Nevo history remains outside this API. Writable execution use
 Engine-owned admission and settlement; it does not imply OS isolation. Disabling only the provider
 keeps stored reads available. Disabling the feature acquires no database owner.
 
-
 ## Authorization and transport
 
 Authentication/authorization, origin protection and shared rate limits use existing Runtime
@@ -116,7 +115,6 @@ idle, via an injected Auth-owned checker. On revoked access/expired authenticati
 stream without more payload. Sessions does not read Auth cookies or implement login renewal.
 The checker resolves current trusted access/policy through Auth's public boundary.
 
-
 ## Provider catalogue
 
 `GET /api/session-providers` is a starter's read. Its closed query names the start it is read for
@@ -177,7 +175,6 @@ fails the supported authentication/policy or protocol checks. Unlisted compatibl
 Provisional; a missing catalogue entry or unknown hash is not a refusal reason. Each Session is dispatched through its own selected provider;
 enabling the mock does not grant Claude availability. No real adapter is advertised from a demo list.
 
-
 ## Demo Runtime (read-only managed Sessions)
 
 The demo Runtime (`--demo`) has no Session coordinator, but the Full Session screen stays on the
@@ -210,7 +207,6 @@ answer 403 to a caller without it), then the identity from the demo association 
 Every mutation (`POST /api/sessions`, Turn start/cancel/reconcile/respond, rename, archive,
 unarchive, delete, telemetry refresh) stays `SESSION_DISABLED`. Without Manage the screen shows the
 view-only bar in the Composer's place and no error state ([Full Session — Session actions](../../product/specflow/ui/full-session.md#session-actions)).
-
 
 ## Error contract
 

@@ -276,8 +276,8 @@ export const workflowEndpoint: FastifyPluginCallback<WorkflowRoutesOptions> = (
       schema: {
         tags: ['Workflow'],
         summary: 'Re-evaluate a Specification wait attempt',
-          description:
-            'Re-evaluate a Specification\'s named waiting attempt when a Tasks-finished event may have been missed. Requires spec.manage. Input is step/attempt; results settled or already-settled. A different completed attempt conflicts; open/escalated/broken Tasks refuse WORKFLOW_TASK_BLOCKED. This is not an arbitrary transition or Task state mutation.',
+        description:
+          "Re-evaluate a Specification's named waiting attempt when a Tasks-finished event may have been missed. Requires spec.manage. Input is step/attempt; results settled or already-settled. A different completed attempt conflicts; open/escalated/broken Tasks refuse WORKFLOW_TASK_BLOCKED. This is not an arbitrary transition or Task state mutation.",
         params: WorkflowSpecParamsSchema,
         body: ReevaluateWaitRequestSchema,
         response: { 200: ReevaluateWaitResultSchema, ...errors },
@@ -302,8 +302,8 @@ export const workflowEndpoint: FastifyPluginCallback<WorkflowRoutesOptions> = (
       schema: {
         tags: ['Workflow'],
         summary: 'Abandon a Specification without realizing it',
-          description:
-            'Permanently abandon a Specification workflow without realizing it; this is not Git Close. Requires spec.close-specification. Runtime supplies the human actor; body requires reason. Same-reason retry is idempotent, but pending writes, broken Tasks and other operations still block. Result includes cancelled Task identities and abandoned Task runs. 64 KiB body limit.',
+        description:
+          'Permanently abandon a Specification workflow without realizing it; this is not Git Close. Requires spec.close-specification. Runtime supplies the human actor; body requires reason. Same-reason retry is idempotent, but pending writes, broken Tasks and other operations still block. Result includes cancelled Task identities and abandoned Task runs. 64 KiB body limit.',
         params: WorkflowSpecParamsSchema,
         body: AbandonSpecificationRequestSchema,
         response: { 200: AbandonSpecificationResultSchema, ...errors },

@@ -149,7 +149,8 @@ export const TaskListResponseSchema = Type.Object({
    * Engine's Task order); with a filter, only the matching Tasks.
    */
   groups: Type.Array(TaskListGroupSchema, {
-    description: 'Nonempty Runtime-defined presentation groups, in configured order. Rows ordered by attention, blocked dependents, in-progress then Engine identity. Group labels/order are not Engine-owned.',
+    description:
+      'Nonempty Runtime-defined presentation groups, in configured order. Rows ordered by attention, blocked dependents, in-progress then Engine identity. Group labels/order are not Engine-owned.',
   }),
   progress: TaskProgressSchema,
   /** The attention projection (broken Tasks, the Specification, then Tasks in id order). */

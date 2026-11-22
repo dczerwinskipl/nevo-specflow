@@ -69,7 +69,6 @@ Only an active, reconstructable interaction is included. Expired interactions re
 Question/permission content and options are immutable while answerable. Replacing a question
 allocates a new interactionId and expires the old one; a stale form cannot answer changed content.
 
-
 ## Routes and commands
 
 The route catalogue, request and response structures are generated under the OpenAPI `Sessions` tag.
@@ -154,4 +153,3 @@ Schemas: `RenameSessionSchema`, `ArchiveSessionSchema` (archive and unarchive) a
   then hide the reference. Clients treat 404 after their own delete as done.
 - Archive and unarchive leave the association untouched. An archived Session stays associated; it
   is excluded from the workspace Sessions section and from the default list (`archived=exclude`).
-

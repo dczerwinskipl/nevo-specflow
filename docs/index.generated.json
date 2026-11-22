@@ -1061,8 +1061,7 @@
       "areas": [
         "runtime",
         "server",
-        "security",
-        "git"
+        "security"
       ],
       "tags": [
         "documents",
@@ -1217,8 +1216,7 @@
       "areas": [
         "runtime",
         "cli",
-        "security",
-        "git"
+        "security"
       ],
       "tags": [
         "specification",
@@ -1252,8 +1250,7 @@
       "areas": [
         "runtime",
         "cli",
-        "security",
-        "git"
+        "security"
       ],
       "tags": [
         "specification",
@@ -5311,8 +5308,7 @@
       "scope": "specflow",
       "areas": [
         "ui",
-        "workflow",
-        "documents"
+        "workflow"
       ],
       "tags": [
         "documents",

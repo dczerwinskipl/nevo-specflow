@@ -34,8 +34,21 @@ export const OPERATION_LIST_QUERY_INVALID_CODE = 'OPERATION_LIST_QUERY_INVALID';
  */
 export const OperationListQueryStringSchema = Type.Object(
   {
-    status: Type.Optional(Type.String({ minLength: 1, maxLength: 200, description: 'Optional comma-separated list of statuses, from in-progress,recovery-required,failed,completed,queued,scheduled. Omitted means all. Unknown/empty filter returns 400 OPERATION_LIST_QUERY_INVALID.' })),
-    limit: Type.Optional(Type.String({ pattern: '^[0-9]{1,3}$', description: 'Maximum rows after status filtering: decimal digits 1 through 50, default 20. Invalid input returns 400 OPERATION_LIST_QUERY_INVALID.' })),
+    status: Type.Optional(
+      Type.String({
+        minLength: 1,
+        maxLength: 200,
+        description:
+          'Optional comma-separated list of statuses, from in-progress,recovery-required,failed,completed,queued,scheduled. Omitted means all. Unknown/empty filter returns 400 OPERATION_LIST_QUERY_INVALID.',
+      }),
+    ),
+    limit: Type.Optional(
+      Type.String({
+        pattern: '^[0-9]{1,3}$',
+        description:
+          'Maximum rows after status filtering: decimal digits 1 through 50, default 20. Invalid input returns 400 OPERATION_LIST_QUERY_INVALID.',
+      }),
+    ),
   },
   { additionalProperties: false },
 );

@@ -11425,10 +11425,10 @@
       "post": {
         "operationId": "postAuthorizationCapabilities",
         "summary": "Resolve the capabilities of the caller on a resource",
-        "description": "Returns the effective action booleans for the current authenticated or trusted-local caller and the requested resource/scope. The caller identity is resolved by Runtime; it is never accepted from the request. Omitted scope means the global `{}` target. Every registered action appears as true or false; lack of permission is a normal 200 response with false, not 403. A global assignment covers a narrower requested scope, but a narrower grant does not cover the global target. When access control is disabled, all registered actions return true. Results are advisory UI data, not authorization evidence for later operations: each mutation must enforce independently using trusted scope. Responses use Cache-Control: no-store.",
         "tags": [
           "Authorization"
         ],
+        "description": "Returns the effective action booleans for the current authenticated or trusted-local caller and the requested resource/scope. The caller identity is resolved by Runtime; it is never accepted from the request. Omitted scope means the global `{}` target. Every registered action appears as true or false; lack of permission is a normal 200 response with false, not 403. A global assignment covers a narrower requested scope, but a narrower grant does not cover the global target. When access control is disabled, all registered actions return true. Results are advisory UI data, not authorization evidence for later operations: each mutation must enforce independently using trusted scope. Responses use Cache-Control: no-store.",
         "requestBody": {
           "required": true,
           "content": {
@@ -12089,10 +12089,10 @@
       "get": {
         "operationId": "getSessionProviders",
         "summary": "List the agent providers and models",
-        "description": "Read provider/model/mode availability for a standalone Session, a Specification or an existing Session. Query selects authorization context: session.create project-wide, spec.start-session plus session.create for a Specification, or session.manage at store-derived Session scope. A provider whose model/CLI is unsupported remains unavailable with a typed reason; catalog is advisory, not a Turn-start grant. Explicit recheck reprobes installed executables. A worktree-bound provider is unavailable when it cannot run outside Runtime's checkout. Cold discovery may take up to 30 seconds.",
         "tags": [
           "Session Providers"
         ],
+        "description": "Read provider/model/mode availability for a standalone Session, a Specification or an existing Session. Query selects authorization context: session.create project-wide, spec.start-session plus session.create for a Specification, or session.manage at store-derived Session scope. A provider whose model/CLI is unsupported remains unavailable with a typed reason; catalog is advisory, not a Turn-start grant. Explicit recheck reprobes installed executables. A worktree-bound provider is unavailable when it cannot run outside Runtime's checkout. Cold discovery may take up to 30 seconds.",
         "parameters": [
           {
             "schema": {
@@ -12764,10 +12764,10 @@
       "get": {
         "operationId": "getSessions",
         "summary": "List Sessions",
-        "description": "List Sessions with keyset pagination in immutable creation order, newest first. Filters select but never grant: specId requires spec.view before association disclosure, each row requires session.view at store-derived scope. An unfiltered caller with only Specification-scoped grants must supply specId or standalone. At most 500 index rows scanned per request, default limit 50/max 100; a page can be empty with nextCursor present after authorization filtering. Cursor is HMAC-signed and bound to store generation, project and exact filter. Default archived=exclude.",
         "tags": [
           "Sessions"
         ],
+        "description": "List Sessions with keyset pagination in immutable creation order, newest first. Filters select but never grant: specId requires spec.view before association disclosure, each row requires session.view at store-derived scope. An unfiltered caller with only Specification-scoped grants must supply specId or standalone. At most 500 index rows scanned per request, default limit 50/max 100; a page can be empty with nextCursor present after authorization filtering. Cursor is HMAC-signed and bound to store generation, project and exact filter. Default archived=exclude.",
         "parameters": [
           {
             "schema": {
@@ -13165,10 +13165,10 @@
       "post": {
         "operationId": "postSessions",
         "summary": "Create a standalone Session",
-        "description": "Create a standalone managed Session under session.create at trusted project scope. A requestId deduplicates identical create attempts; changed body under the same actor/command/scope key is IDEMPOTENCY_CONFLICT. Allocation does not launch the provider. The provider is selected from current configuration and validated on admission; mock mode performs no native execution. This route never creates a Specification association.",
         "tags": [
           "Sessions"
         ],
+        "description": "Create a standalone managed Session under session.create at trusted project scope. A requestId deduplicates identical create attempts; changed body under the same actor/command/scope key is IDEMPOTENCY_CONFLICT. Allocation does not launch the provider. The provider is selected from current configuration and validated on admission; mock mode performs no native execution. This route never creates a Specification association.",
         "requestBody": {
           "required": true,
           "content": {
@@ -13386,10 +13386,10 @@
       "get": {
         "operationId": "getSessionsBySessionId",
         "summary": "Read a Session",
-        "description": "Read a bounded Session snapshot with up to 40 recent conversation entries, never a full transcript; revision and eventSeq establish the stream bootstrap boundary. Requires session.view at store-derived Session scope. Titles and provider/model labels are resolved at read time. Archived Sessions remain readable; mutations and Turn starts refuse where unsupported. User-facing capabilities reflect current authorization, not historical creator identity. Demo returns a read-only managed projection on the same route.",
         "tags": [
           "Sessions"
         ],
+        "description": "Read a bounded Session snapshot with up to 40 recent conversation entries, never a full transcript; revision and eventSeq establish the stream bootstrap boundary. Requires session.view at store-derived Session scope. Titles and provider/model labels are resolved at read time. Archived Sessions remain readable; mutations and Turn starts refuse where unsupported. User-facing capabilities reflect current authorization, not historical creator identity. Demo returns a read-only managed projection on the same route.",
         "parameters": [
           {
             "schema": {
@@ -14313,10 +14313,10 @@
       "delete": {
         "operationId": "deleteSessionsBySessionId",
         "summary": "Delete a Session",
-        "description": "Hard-delete a Session and its Runtime-owned Turns, history, content, telemetry and associations as one transaction, without deleting provider-native or Engine execution records. Requires session.delete. Active or unknown Turn refuses 409 TURN_CONFLICT; detached unresolved write evidence is SESSION_DELETE_BLOCKED. Completed delete is 204; later reads and repeated delete give 404 SESSION_NOT_FOUND.",
         "tags": [
           "Sessions"
         ],
+        "description": "Hard-delete a Session and its Runtime-owned Turns, history, content, telemetry and associations as one transaction, without deleting provider-native or Engine execution records. Requires session.delete. Active or unknown Turn refuses 409 TURN_CONFLICT; detached unresolved write evidence is SESSION_DELETE_BLOCKED. Completed delete is 204; later reads and repeated delete give 404 SESSION_NOT_FOUND.",
         "parameters": [
           {
             "schema": {
@@ -14439,10 +14439,10 @@
       "post": {
         "operationId": "postSessionsBySessionIdArchive",
         "summary": "Archive a Session",
-        "description": "Archive a Session after ensuring no Turn is nonterminal or unknown; never implicitly cancels a Turn. Archive is idempotent and retains original archivedAt. Archived Session is read-only except that history, telemetry and reads remain available.",
         "tags": [
           "Sessions"
         ],
+        "description": "Archive a Session after ensuring no Turn is nonterminal or unknown; never implicitly cancels a Turn. Archive is idempotent and retains original archivedAt. Archived Session is read-only except that history, telemetry and reads remain available.",
         "requestBody": {
           "required": true,
           "content": {
@@ -14619,10 +14619,10 @@
       "get": {
         "operationId": "getSessionsBySessionIdAssociation",
         "summary": "Read the Specification association of a Session",
-        "description": "Read the immutable Session association and current Specification/Task facts under session.view, then independently check spec.view before Engine lookup. Associated objects can be available, missing, forbidden (never exposing identity), or unavailable. The stored association contains ids only; titles and collection are resolved at read time. Removed/reused Task slugs are not immutable Engine identities.",
         "tags": [
           "Sessions"
         ],
+        "description": "Read the immutable Session association and current Specification/Task facts under session.view, then independently check spec.view before Engine lookup. Associated objects can be available, missing, forbidden (never exposing identity), or unavailable. The stored association contains ids only; titles and collection are resolved at read time. Removed/reused Task slugs are not immutable Engine identities.",
         "parameters": [
           {
             "schema": {
@@ -14990,10 +14990,10 @@
       "get": {
         "operationId": "getSessionsBySessionIdContentByContentId",
         "summary": "Read content of a Session",
-        "description": "Read one immutable referenced content revision as bounded UTF-8 bytes; revision is required, offset defaults 0 and limitBytes max/default 64 KiB. Offset and returned nextOffset are byte counts and must fall on character boundaries, not JavaScript string indices. Old referenced revisions survive until Session delete. A missing revision refuses CONTENT_REVISION_UNAVAILABLE rather than silently returning newer content. Requires Session membership and session.view.",
         "tags": [
           "Sessions"
         ],
+        "description": "Read one immutable referenced content revision as bounded UTF-8 bytes; revision is required, offset defaults 0 and limitBytes max/default 64 KiB. Offset and returned nextOffset are byte counts and must fall on character boundaries, not JavaScript string indices. Old referenced revisions survive until Session delete. A missing revision refuses CONTENT_REVISION_UNAVAILABLE rather than silently returning newer content. Requires Session membership and session.view.",
         "parameters": [
           {
             "schema": {
@@ -15195,10 +15195,10 @@
       "get": {
         "operationId": "getSessionsBySessionIdEvents",
         "summary": "Stream the events of a Session",
-        "description": "Stream committed Session changes as SSE after a snapshot eventSeq, or Last-Event-ID. Stream reauthorizes each replay/live batch and at least every 30 seconds idle; a revocation closes without leaking more events. Events carry bounded projections/invalidation, not full content. Each id is a committed monotonically increasing event sequence; replay gaps/queue overflow send resync-required and close rather than skipping events. Heartbeats about 15 seconds do not advance eventSeq. Clients fetch a new bounded snapshot on a gap.",
         "tags": [
           "Sessions"
         ],
+        "description": "Stream committed Session changes as SSE after a snapshot eventSeq, or Last-Event-ID. Stream reauthorizes each replay/live batch and at least every 30 seconds idle; a revocation closes without leaking more events. Events carry bounded projections/invalidation, not full content. Each id is a committed monotonically increasing event sequence; replay gaps/queue overflow send resync-required and close rather than skipping events. Heartbeats about 15 seconds do not advance eventSeq. Clients fetch a new bounded snapshot on a gap.",
         "parameters": [
           {
             "schema": {
@@ -15327,10 +15327,10 @@
       "get": {
         "operationId": "getSessionsBySessionIdHistory",
         "summary": "Read older conversation history of a Session",
-        "description": "Read a bounded older conversation page, keyed by signed before cursor from a Session snapshot or previous page. History cursors bind project, store generation, Session, actor and collection, expire after 24 hours and are not access grants. At most 40 entries and 256 KiB; a page may contain fewer due byte limits without skipping records. Cursor position is exclusive and includes an eventSeq observation boundary. Always reauthorize session.view. Empty with hasOlder false means end.",
         "tags": [
           "Sessions"
         ],
+        "description": "Read a bounded older conversation page, keyed by signed before cursor from a Session snapshot or previous page. History cursors bind project, store generation, Session, actor and collection, expire after 24 hours and are not access grants. At most 40 entries and 256 KiB; a page may contain fewer due byte limits without skipping records. Cursor position is exclusive and includes an eventSeq observation boundary. Always reauthorize session.view. Empty with hasOlder false means end.",
         "parameters": [
           {
             "schema": {
@@ -15808,10 +15808,10 @@
       "post": {
         "operationId": "postSessionsBySessionIdInteractionsByInteractionIdRespond",
         "summary": "Respond to an interaction of a Turn",
-        "description": "Respond to the current canonical answerable interaction under session.manage, with requestId replay. Question option IDs and optional free text must match the immutable interaction definition, and permission approval is for the exact command once, never blanket authorization. A stale/expired interaction conflicts; denying a permission does not automatically fail the Turn.",
         "tags": [
           "Sessions"
         ],
+        "description": "Respond to the current canonical answerable interaction under session.manage, with requestId replay. Question option IDs and optional free text must match the immutable interaction definition, and permission approval is for the exact command once, never blanket authorization. A stale/expired interaction conflicts; denying a permission does not automatically fail the Turn.",
         "requestBody": {
           "required": true,
           "content": {
@@ -16081,10 +16081,10 @@
       "post": {
         "operationId": "postSessionsBySessionIdRename",
         "summary": "Rename a Session",
-        "description": "Rename a Session without changing provider identity, Turn state or association. Requires session.manage; allowed even when archived. Nonblank title 1..256 characters. requestId replay is idempotent, changed title with same key conflicts.",
         "tags": [
           "Sessions"
         ],
+        "description": "Rename a Session without changing provider identity, Turn state or association. Requires session.manage; allowed even when archived. Nonblank title 1..256 characters. requestId replay is idempotent, changed title with same key conflicts.",
         "requestBody": {
           "required": true,
           "content": {
@@ -16268,10 +16268,10 @@
       "get": {
         "operationId": "getSessionsBySessionIdTelemetry",
         "summary": "Read the telemetry of a Session",
-        "description": "Read the authorized bounded Session telemetry snapshot (usage, cost, limits and current context) without spawning a provider or scanning transcripts. Each reading separately reports availability, freshness, provenance and coverage; missing values never become zeros. Requires session.view; account limit values additionally require session.view-provider-limits and are redacted without it. Strong ETag over the authorized snapshot and access generation, Cache-Control: private, no-cache; If-None-Match may return 304 only after authorization. Readings survive restart; refresh does not run on GET. Stream changes arrive via existing Session SSE telemetry invalidations.",
         "tags": [
           "Session Telemetry"
         ],
+        "description": "Read the authorized bounded Session telemetry snapshot (usage, cost, limits and current context) without spawning a provider or scanning transcripts. Each reading separately reports availability, freshness, provenance and coverage; missing values never become zeros. Requires session.view; account limit values additionally require session.view-provider-limits and are redacted without it. Strong ETag over the authorized snapshot and access generation, Cache-Control: private, no-cache; If-None-Match may return 304 only after authorization. Readings survive restart; refresh does not run on GET. Stream changes arrive via existing Session SSE telemetry invalidations.",
         "parameters": [
           {
             "schema": {
@@ -16312,20 +16312,17 @@
                     "revision": {
                       "type": "integer",
                       "minimum": 0,
-                      "maximum": 9007199254740991,
-                      "description": "Committed monotonic Session telemetry version; new data/freshness changes advance it independently of Session chat content."
+                      "maximum": 9007199254740991
                     },
                     "accessRevision": {
                       "type": "string",
                       "minLength": 1,
-                      "maxLength": 256,
-                      "description": "Opaque Auth-derived access generation; not an access grant. A changed value invalidates sensitive telemetry cache and 304 validators."
+                      "maxLength": 256
                     },
                     "eventSeq": {
                       "type": "integer",
                       "minimum": 0,
-                      "maximum": 9007199254740991,
-                      "description": "Committed Session event outbox cursor used to resume SSE after the telemetry snapshot."
+                      "maximum": 9007199254740991
                     },
                     "usage": {
                       "type": "object",
@@ -16620,8 +16617,7 @@
                                       ],
                                       "properties": {
                                         "complete": {
-                                          "type": "boolean",
-                                          "description": "True only when observedTurns equals totalTurns with all relevant provider counters; partial source coverage is not normal paging."
+                                          "type": "boolean"
                                         },
                                         "observedTurns": {
                                           "type": "integer",
@@ -17433,8 +17429,7 @@
                                             "unknown"
                                           ]
                                         }
-                                      ],
-                                      "description": "api-equivalent, billed or unknown provider monetary meaning. Never equate API-equivalent cost with subscription spend."
+                                      ]
                                     },
                                     "coverage": {
                                       "type": "object",
@@ -17742,7 +17737,8 @@
                                         },
                                         "amount": {
                                           "type": "string",
-                                          "pattern": "^(0|[1-9][0-9]{0,15})(\\.[0-9]{1,12})?$"
+                                          "pattern": "^(0|[1-9][0-9]{0,15})(\\.[0-9]{1,12})?$",
+                                          "description": "Exact nonnegative decimal text with up to 12 fractional digits; never silently convert via JS binary float or round unsupported native values."
                                         },
                                         "basis": {
                                           "anyOf": [
@@ -18114,15 +18110,18 @@
                                               },
                                               "used": {
                                                 "type": "string",
-                                                "pattern": "^(0|[1-9][0-9]{0,15})(\\.[0-9]{1,12})?$"
+                                                "pattern": "^(0|[1-9][0-9]{0,15})(\\.[0-9]{1,12})?$",
+                                                "description": "Exact nonnegative decimal text with up to 12 fractional digits; never silently convert via JS binary float or round unsupported native values."
                                               },
                                               "remaining": {
                                                 "type": "string",
-                                                "pattern": "^(0|[1-9][0-9]{0,15})(\\.[0-9]{1,12})?$"
+                                                "pattern": "^(0|[1-9][0-9]{0,15})(\\.[0-9]{1,12})?$",
+                                                "description": "Exact nonnegative decimal text with up to 12 fractional digits; never silently convert via JS binary float or round unsupported native values."
                                               },
                                               "limit": {
                                                 "type": "string",
-                                                "pattern": "^(0|[1-9][0-9]{0,15})(\\.[0-9]{1,12})?$"
+                                                "pattern": "^(0|[1-9][0-9]{0,15})(\\.[0-9]{1,12})?$",
+                                                "description": "Exact nonnegative decimal text with up to 12 fractional digits; never silently convert via JS binary float or round unsupported native values."
                                               },
                                               "windowSeconds": {
                                                 "type": "integer",
@@ -18194,15 +18193,18 @@
                                               },
                                               "used": {
                                                 "type": "string",
-                                                "pattern": "^(0|[1-9][0-9]{0,15})(\\.[0-9]{1,12})?$"
+                                                "pattern": "^(0|[1-9][0-9]{0,15})(\\.[0-9]{1,12})?$",
+                                                "description": "Exact nonnegative decimal text with up to 12 fractional digits; never silently convert via JS binary float or round unsupported native values."
                                               },
                                               "remaining": {
                                                 "type": "string",
-                                                "pattern": "^(0|[1-9][0-9]{0,15})(\\.[0-9]{1,12})?$"
+                                                "pattern": "^(0|[1-9][0-9]{0,15})(\\.[0-9]{1,12})?$",
+                                                "description": "Exact nonnegative decimal text with up to 12 fractional digits; never silently convert via JS binary float or round unsupported native values."
                                               },
                                               "limit": {
                                                 "type": "string",
-                                                "pattern": "^(0|[1-9][0-9]{0,15})(\\.[0-9]{1,12})?$"
+                                                "pattern": "^(0|[1-9][0-9]{0,15})(\\.[0-9]{1,12})?$",
+                                                "description": "Exact nonnegative decimal text with up to 12 fractional digits; never silently convert via JS binary float or round unsupported native values."
                                               },
                                               "windowSeconds": {
                                                 "type": "integer",
@@ -18274,15 +18276,18 @@
                                               },
                                               "used": {
                                                 "type": "string",
-                                                "pattern": "^(0|[1-9][0-9]{0,15})(\\.[0-9]{1,12})?$"
+                                                "pattern": "^(0|[1-9][0-9]{0,15})(\\.[0-9]{1,12})?$",
+                                                "description": "Exact nonnegative decimal text with up to 12 fractional digits; never silently convert via JS binary float or round unsupported native values."
                                               },
                                               "remaining": {
                                                 "type": "string",
-                                                "pattern": "^(0|[1-9][0-9]{0,15})(\\.[0-9]{1,12})?$"
+                                                "pattern": "^(0|[1-9][0-9]{0,15})(\\.[0-9]{1,12})?$",
+                                                "description": "Exact nonnegative decimal text with up to 12 fractional digits; never silently convert via JS binary float or round unsupported native values."
                                               },
                                               "limit": {
                                                 "type": "string",
-                                                "pattern": "^(0|[1-9][0-9]{0,15})(\\.[0-9]{1,12})?$"
+                                                "pattern": "^(0|[1-9][0-9]{0,15})(\\.[0-9]{1,12})?$",
+                                                "description": "Exact nonnegative decimal text with up to 12 fractional digits; never silently convert via JS binary float or round unsupported native values."
                                               },
                                               "windowSeconds": {
                                                 "type": "integer",
@@ -19239,10 +19244,10 @@
       "post": {
         "operationId": "postSessionsBySessionIdTelemetryRefresh",
         "summary": "Refresh the telemetry of a Session",
-        "description": "Schedule a bounded read-only native telemetry refresh for selected groups. Requires session.manage; limits additionally require session.view-provider-limits. Exactly the requested authorized, supported groups are admitted, otherwise 403 or 422 CAPABILITY_UNSUPPORTED (never silently omitted). A 202 receipt means queued/running, not a completed measurement. Deduplicate the same requestId/body per actor and Session for 24 hours; changed body gives 409 IDEMPOTENCY_CONFLICT. Current scheduler supports account-scoped limits only. Account cooldown 30 seconds yields 429 and Retry-After; at most 10 seconds native work and one read per binding. Refresh never sends prompts or resumes a Turn.",
         "tags": [
           "Session Telemetry"
         ],
+        "description": "Schedule a bounded read-only native telemetry refresh for selected groups. Requires session.manage; limits additionally require session.view-provider-limits. Exactly the requested authorized, supported groups are admitted, otherwise 403 or 422 CAPABILITY_UNSUPPORTED (never silently omitted). A 202 receipt means queued/running, not a completed measurement. Deduplicate the same requestId/body per actor and Session for 24 hours; changed body gives 409 IDEMPOTENCY_CONFLICT. Current scheduler supports account-scoped limits only. Account cooldown 30 seconds yields 429 and Retry-After; at most 10 seconds native work and one read per binding. Refresh never sends prompts or resumes a Turn.",
         "requestBody": {
           "required": true,
           "content": {
@@ -19256,8 +19261,7 @@
                 "properties": {
                   "requestId": {
                     "type": "string",
-                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-                    "description": "Idempotency UUID for this actor, Session and request body. Identical replay returns receipt; modified payload under same id is conflict."
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
                   },
                   "groups": {
                     "type": "array",
@@ -19291,8 +19295,7 @@
                     },
                     "minItems": 1,
                     "maxItems": 4,
-                    "uniqueItems": true,
-                    "description": "Nonempty unique groups selected for refresh. Every group must be authorized and supported when admitted; the current shared scheduler only permits account-scoped limits."
+                    "uniqueItems": true
                   }
                 },
                 "additionalProperties": false
@@ -19520,10 +19523,10 @@
       "post": {
         "operationId": "postSessionsBySessionIdTurns",
         "summary": "Start a Turn",
-        "description": "Start a Turn with a prompt and optional model/mode/effort overrides, without changing the Session's saved defaults. Requires session.manage at store-derived scope, plus project-wide session.execute-write for workspace-write. Runtime validates selected provider, compatible native mode and verified associated workspace before dispatch; a Turn does not fall back to the Runtime checkout. Accepted 202 is durable admission, not a promise the provider succeeded; resolve uncertain outcome by idempotent retry/reads.",
         "tags": [
           "Sessions"
         ],
+        "description": "Start a Turn with a prompt and optional model/mode/effort overrides, without changing the Session's saved defaults. Requires session.manage at store-derived scope, plus project-wide session.execute-write for workspace-write. Runtime validates selected provider, compatible native mode and verified associated workspace before dispatch; a Turn does not fall back to the Runtime checkout. Accepted 202 is durable admission, not a promise the provider succeeded; resolve uncertain outcome by idempotent retry/reads.",
         "requestBody": {
           "required": true,
           "content": {
@@ -19756,10 +19759,10 @@
       "post": {
         "operationId": "postSessionsBySessionIdTurnsByTurnIdCancel",
         "summary": "Cancel a Turn",
-        "description": "Cancel exactly the requested active Turn under session.manage. A replay with the same requestId cannot cancel a later Turn, and a terminal Turn may answer an idempotent no-op. Acknowledge the request, not proof that a native process immediately stopped.",
         "tags": [
           "Sessions"
         ],
+        "description": "Cancel exactly the requested active Turn under session.manage. A replay with the same requestId cannot cancel a later Turn, and a terminal Turn may answer an idempotent no-op. Acknowledge the request, not proof that a native process immediately stopped.",
         "requestBody": {
           "required": true,
           "content": {
@@ -19953,10 +19956,10 @@
       "post": {
         "operationId": "postSessionsBySessionIdTurnsByTurnIdReconcile",
         "summary": "Reconcile the outcome of a Turn",
-        "description": "Reconcile a Turn from positive Engine settlement or native-stop evidence only. Requires session.manage; no caller-supplied outcome, force flag or prompt replay. A live process remains SESSION_RECOVERY_REQUIRED; an absent recorded process can settle interrupted with PROCESS_STOPPED. Startup recovery follows the same evidence rules.",
         "tags": [
           "Sessions"
         ],
+        "description": "Reconcile a Turn from positive Engine settlement or native-stop evidence only. Requires session.manage; no caller-supplied outcome, force flag or prompt replay. A live process remains SESSION_RECOVERY_REQUIRED; an absent recorded process can settle interrupted with PROCESS_STOPPED. Startup recovery follows the same evidence rules.",
         "requestBody": {
           "required": true,
           "content": {
@@ -20183,10 +20186,10 @@
       "get": {
         "operationId": "getSessionsBySessionIdTurnsByTurnIdWork",
         "summary": "Read the work of a Turn",
-        "description": "Read a bounded Turn Work page with transactionally maintained counts and ToolAction digest. A missing counts aggregate for old Turns is unknown, not zero; never derive it from page length. Work identities are immutable, items are ordered by ordinal, not arrival timestamps. History cursors remain scoped to Turn, collection and current authorized Session. No provider raw payloads are exposed.",
         "tags": [
           "Sessions"
         ],
+        "description": "Read a bounded Turn Work page with transactionally maintained counts and ToolAction digest. A missing counts aggregate for old Turns is unknown, not zero; never derive it from page length. Work identities are immutable, items are ordered by ordinal, not arrival timestamps. History cursors remain scoped to Turn, collection and current authorized Session. No provider raw payloads are exposed.",
         "parameters": [
           {
             "schema": {
@@ -21309,10 +21312,10 @@
       "post": {
         "operationId": "postSessionsBySessionIdUnarchive",
         "summary": "Unarchive a Session",
-        "description": "Unarchive the Session, preserving history, identity and Specification association. No-op if already active. Replaying the same requestId is idempotent; changed input conflicts.",
         "tags": [
           "Sessions"
         ],
+        "description": "Unarchive the Session, preserving history, identity and Specification association. No-op if already active. Replaying the same requestId is idempotent; changed input conflicts.",
         "requestBody": {
           "required": true,
           "content": {
@@ -21489,10 +21492,10 @@
       "get": {
         "operationId": "getSessionsBySessionIdWorkByWorkIdActions",
         "summary": "Read the ToolActions of a work item",
-        "description": "Read a bounded page of ToolActions belonging to a tool Work item. Operation classification is recorded from trusted provider-native tool identities, never guessed from shell text or titles. A ToolAction without a known mapping is other. Requires session.view and membership in this Session. Signed pagination and retained revisions follow the Session history protocol.",
         "tags": [
           "Sessions"
         ],
+        "description": "Read a bounded page of ToolActions belonging to a tool Work item. Operation classification is recorded from trusted provider-native tool identities, never guessed from shell text or titles. A ToolAction without a known mapping is other. Requires session.view and membership in this Session. Signed pagination and retained revisions follow the Session history protocol.",
         "parameters": [
           {
             "schema": {
@@ -21991,10 +21994,10 @@
       "post": {
         "operationId": "postSpecs",
         "summary": "Create a Specification",
-        "description": "Create a Specification and its selected archetype documents atomically under Engine admission. Requires project-wide spec.create. Omitted target means primary checkout; explicit existing/new-worktree choices use registered workspaces and validated Git policy. Body limit is 2 MiB. A retry MUST reuse the same operationId and identical request; changed data yields 409 CREATE_CONFLICT. With Prefer: respond-async, the Runtime validates/reserves and returns 202 with Location and Preference-Applied while detached work continues, even after client disconnect. Without the preference, successful Create normally returns 201. The inspection route reports the outcome; SSE is optional and display-only. Git-off success may contain uncommitted:true. Invalid Git policy fails closed.",
         "tags": [
           "Specifications"
         ],
+        "description": "Create a Specification and its selected archetype documents atomically under Engine admission. Requires project-wide spec.create. Omitted target means primary checkout; explicit existing/new-worktree choices use registered workspaces and validated Git policy. Body limit is 2 MiB. A retry MUST reuse the same operationId and identical request; changed data yields 409 CREATE_CONFLICT. With Prefer: respond-async, the Runtime validates/reserves and returns 202 with Location and Preference-Applied while detached work continues, even after client disconnect. Without the preference, successful Create normally returns 201. The inspection route reports the outcome; SSE is optional and display-only. Git-off success may contain uncommitted:true. Invalid Git policy fails closed.",
         "requestBody": {
           "required": true,
           "content": {
@@ -22137,6 +22140,17 @@
             }
           }
         },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "Prefer",
+            "required": false,
+            "description": "RFC 7240 request preference; respond-async asks the Runtime to validate and reserve before returning 202. Clients must also handle synchronous 201."
+          }
+        ],
         "security": [
           {
             "sessionCookie": []
@@ -22198,10 +22212,10 @@
                     },
                     "uncommitted": {
                       "type": "boolean",
+                      "description": "Present and true when Git is disabled and the new scaffold remains uncommitted; later Git-enabled Close may refuse the dirty checkout.",
                       "enum": [
                         true
-                      ],
-                      "description": "Present and true when Git is disabled and the new scaffold remains uncommitted; later Git-enabled Close may refuse the dirty checkout."
+                      ]
                     }
                   },
                   "additionalProperties": false
@@ -22348,27 +22362,27 @@
               }
             }
           }
-        },
-        "parameters": [
-          {
-            "schema": {
-              "type": "string"
-            },
-            "in": "header",
-            "name": "Prefer",
-            "required": false,
-            "description": "RFC 7240 request preference; respond-async asks the Runtime to validate and reserve before returning 202. Clients must also handle synchronous 201."
-          }
-        ]
+        }
       }
     },
     "/api/specs/archetypes": {
       "get": {
         "operationId": "getSpecsArchetypes",
         "summary": "List the Specification archetypes",
-        "description": "List project archetype definitions for Create. Requires project-wide spec.create. ETag is the catalogue revision; If-None-Match may yield 304. Client must select archetype id, integer version and catalogue revision; there is no implicit default archetype for the request. Unreadable or missing definitions are not silently replaced by demo fixtures.",
         "tags": [
           "Specifications"
+        ],
+        "description": "List project archetype definitions for Create. Requires project-wide spec.create. ETag is the catalogue revision; If-None-Match may yield 304. Client must select archetype id, integer version and catalogue revision; there is no implicit default archetype for the request. Unreadable or missing definitions are not silently replaced by demo fixtures.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "If-None-Match",
+            "required": false,
+            "description": "ETag from an earlier archetype catalogue response; when unchanged the server returns 304 without a body."
+          }
         ],
         "security": [
           {
@@ -22822,28 +22836,17 @@
               }
             }
           }
-        },
-        "parameters": [
-          {
-            "schema": {
-              "type": "string"
-            },
-            "in": "header",
-            "name": "If-None-Match",
-            "required": false,
-            "description": "ETag from an earlier archetype catalogue response; when unchanged the server returns 304 without a body."
-          }
-        ]
+        }
       }
     },
     "/api/specs/create-options": {
       "get": {
         "operationId": "getSpecsCreateOptions",
         "summary": "Read the options of a Specification creation",
-        "description": "Read-only admission options for Specification Create, requiring project-wide spec.create. Snapshot only: not a branch/workspace reservation. Options contain Create facts keyed by workspaceId, joined to the separately authorized GET /api/workspaces; specCount counts all occupants, not only viewable ones. worktreesRoot.path is an absolute machine-local directory exposed to any Create-capable principal; clients needing workspace names/paths also require workspace.view. Invalid Git policy produces 200 with Git-dependent choices marked unavailable, while Create mutations fail closed. Inspect current policy and registry again on mutation.",
         "tags": [
           "Specifications"
         ],
+        "description": "Read-only admission options for Specification Create, requiring project-wide spec.create. Snapshot only: not a branch/workspace reservation. Options contain Create facts keyed by workspaceId, joined to the separately authorized GET /api/workspaces; specCount counts all occupants, not only viewable ones. worktreesRoot.path is an absolute machine-local directory exposed to any Create-capable principal; clients needing workspace names/paths also require workspace.view. Invalid Git policy produces 200 with Git-dependent choices marked unavailable, while Create mutations fail closed. Inspect current policy and registry again on mutation.",
         "security": [
           {
             "sessionCookie": []
@@ -23441,10 +23444,10 @@
       "get": {
         "operationId": "getSpecsCreateOperationsByOperationId",
         "summary": "Read the status of a Specification creation",
-        "description": "Read-only sanitized observation of one Specification Create operation, requiring project-wide spec.create. A running operation, remembered failure, recovery-required journal or completed result are distinguished by the response union. Does not run Git, initiate recovery, claim process liveness or disclose filesystem paths/internal journal stages. After an uncertain response poll this endpoint with the original operationId; never issue a fresh Create. An idle journal can be recovery-required with OPERATION_INTERRUPTED.",
         "tags": [
           "Operations"
         ],
+        "description": "Read-only sanitized observation of one Specification Create operation, requiring project-wide spec.create. A running operation, remembered failure, recovery-required journal or completed result are distinguished by the response union. Does not run Git, initiate recovery, claim process liveness or disclose filesystem paths/internal journal stages. After an uncertain response poll this endpoint with the original operationId; never issue a fresh Create. An idle journal can be recovery-required with OPERATION_INTERRUPTED.",
         "parameters": [
           {
             "schema": {
@@ -23575,7 +23578,8 @@
                           "$ref": "#/components/schemas/WorkspaceId"
                         },
                         "relativeManifestPath": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Path relative to project/workspace of the created canonical Specification manifest; no absolute host path."
                         },
                         "documentIds": {
                           "type": "array",
@@ -23586,6 +23590,7 @@
                         },
                         "uncommitted": {
                           "type": "boolean",
+                          "description": "Present and true when Git is disabled and the new scaffold remains uncommitted; later Git-enabled Close may refuse the dirty checkout.",
                           "enum": [
                             true
                           ]
@@ -23711,10 +23716,10 @@
       "get": {
         "operationId": "getSpecsCreateOperationsByOperationIdEvents",
         "summary": "Stream the progress of a Specification creation",
-        "description": "Best-effort progress stream for an operation owned by this feature. The stream is not the source of truth: use the operation request and inspection endpoint for outcomes. It starts with a snapshot, then step updates and a terminal completed, failed or recovery-required event; each frame is SSE with event, JSON data and an optional monotonic per-operation id. Reconnection with Last-Event-ID replays newer events, or produces a snapshot after retention/restart. Progress state is in memory; clients fall back to inspection if SSE is unavailable. An unknown id may wait briefly; closed streams do not imply the operation failed.",
         "tags": [
           "Operations"
         ],
+        "description": "Best-effort progress stream for an operation owned by this feature. The stream is not the source of truth: use the operation request and inspection endpoint for outcomes. It starts with a snapshot, then step updates and a terminal completed, failed or recovery-required event; each frame is SSE with event, JSON data and an optional monotonic per-operation id. Reconnection with Last-Event-ID replays newer events, or produces a snapshot after retention/restart. Progress state is in memory; clients fall back to inspection if SSE is unavailable. An unknown id may wait briefly; closed streams do not imply the operation failed.",
         "parameters": [
           {
             "schema": {
@@ -23741,7 +23746,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Server-Sent Events (SSE). Each frame has event: snapshot|step|completed|failed|recovery-required, a single JSON data line and id: <monotonic sequence> when available. snapshot contains status and applicable steps; step contains step id and running|done|skipped; completed carries the operation result; failed carries a stable public code only; recovery-required signals operator recovery. The first event is a snapshot, and terminal events close the stream. Unknown steps are ignored by clients. The stream is a display aid, not an authority. A heartbeat comment is sent about every 15 seconds. Runtime keeps terminal events for about 60 seconds, then forgets them. A subscription to an unknown id waits up to 30 seconds, then emits failed/OPERATION_NOT_FOUND (not evidence of a failed operation).",
+            "description": "Server-sent progress events of the operation: each event is named by the progress Server-Sent Events (SSE). Each frame has event: snapshot|step|completed|failed|recovery-required, a single JSON data line and id: <monotonic sequence> when available. snapshot contains status and applicable steps; step contains step id and running|done|skipped; completed carries the operation result; failed carries a stable public code only; recovery-required signals operator recovery. The first event is a snapshot, and terminal events close the stream. Unknown steps are ignored by clients. The stream is a display aid, not an authority. A heartbeat comment is sent about every 15 seconds. Runtime keeps terminal events for about 60 seconds, then forgets them. A subscription to an unknown id waits up to 30 seconds, then emits failed/OPERATION_NOT_FOUND (not evidence of a failed operation).",
             "headers": {
               "Cache-Control": {
                 "schema": {
@@ -23832,31 +23837,22 @@
             "schema": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 200,
-              "description": "Optional comma-separated list of statuses, from in-progress,recovery-required,failed,completed,queued,scheduled. Omitted means all. Unknown/empty filter returns 400 OPERATION_LIST_QUERY_INVALID."
+              "maxLength": 200
             },
             "in": "query",
             "name": "status",
-            "required": false
+            "required": false,
+            "description": "Optional comma-separated list of statuses, from in-progress,recovery-required,failed,completed,queued,scheduled. Omitted means all. Unknown/empty filter returns 400 OPERATION_LIST_QUERY_INVALID."
           },
           {
             "schema": {
               "type": "string",
-              "pattern": "^[0-9]{1,3}$",
-              "description": "Maximum rows after status filtering: decimal digits 1 through 50, default 20. Invalid input returns 400 OPERATION_LIST_QUERY_INVALID."
+              "pattern": "^[0-9]{1,3}$"
             },
             "in": "query",
             "name": "limit",
-            "required": false
-          },
-          {
-            "schema": {
-              "type": "string"
-            },
-            "in": "header",
-            "name": "If-None-Match",
             "required": false,
-            "description": "Optional weak ETag returned by this list; matching content returns 304 with no body. generatedAt is not part of the validator."
+            "description": "Maximum rows after status filtering: decimal digits 1 through 50, default 20. Invalid input returns 400 OPERATION_LIST_QUERY_INVALID."
           }
         ],
         "security": [
@@ -23872,17 +23868,6 @@
                 "schema": {
                   "$ref": "#/components/schemas/OperationListResponse"
                 }
-              }
-            }
-          },
-          "304": {
-            "description": "Not modified: the visible operation items, counts and truncation state match If-None-Match.",
-            "headers": {
-              "ETag": {
-                "schema": {
-                  "type": "string"
-                },
-                "description": "Weak validator of items, counts and truncated."
               }
             }
           },
@@ -23995,7 +23980,6 @@
       "get": {
         "operationId": "getSpecsOperations",
         "summary": "List Specification operations",
-        "description": "Read-only list of the feature's background operations; the request/inspection for each operation remains authoritative. Caller must have spec.view in some scope; each identified Specification row is independently filtered by spec.view at its trusted scope, and rows without a known Specification require spec.create. Counts are computed after authorization and before status/limit filters; no paths, journal internals or server text are exposed. The list does not run Git or acquire the Engine control lock. The weak ETag ignores generatedAt; an unchanged list answers 304. 400 OPERATION_LIST_QUERY_INVALID rejects invalid status or limit; 503 OPERATIONS_UNAVAILABLE means no Engine or failed source.",
         "tags": [
           "Operations"
         ],
@@ -24004,31 +23988,22 @@
             "schema": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 200,
-              "description": "Optional comma-separated list of statuses, from in-progress,recovery-required,failed,completed,queued,scheduled. Omitted means all. Unknown/empty filter returns 400 OPERATION_LIST_QUERY_INVALID."
+              "maxLength": 200
             },
             "in": "query",
             "name": "status",
-            "required": false
+            "required": false,
+            "description": "Optional comma-separated list of statuses, from in-progress,recovery-required,failed,completed,queued,scheduled. Omitted means all. Unknown/empty filter returns 400 OPERATION_LIST_QUERY_INVALID."
           },
           {
             "schema": {
               "type": "string",
-              "pattern": "^[0-9]{1,3}$",
-              "description": "Maximum rows after status filtering: decimal digits 1 through 50, default 20. Invalid input returns 400 OPERATION_LIST_QUERY_INVALID."
+              "pattern": "^[0-9]{1,3}$"
             },
             "in": "query",
             "name": "limit",
-            "required": false
-          },
-          {
-            "schema": {
-              "type": "string"
-            },
-            "in": "header",
-            "name": "If-None-Match",
             "required": false,
-            "description": "Optional weak ETag returned by this list; matching content returns 304 with no body. generatedAt is not part of the validator."
+            "description": "Maximum rows after status filtering: decimal digits 1 through 50, default 20. Invalid input returns 400 OPERATION_LIST_QUERY_INVALID."
           }
         ],
         "security": [
@@ -24044,17 +24019,6 @@
                 "schema": {
                   "$ref": "#/components/schemas/OperationListResponse"
                 }
-              }
-            }
-          },
-          "304": {
-            "description": "Not modified: the visible operation items, counts and truncation state match If-None-Match.",
-            "headers": {
-              "ETag": {
-                "schema": {
-                  "type": "string"
-                },
-                "description": "Weak validator of items, counts and truncated."
               }
             }
           },
@@ -24167,10 +24131,10 @@
       "get": {
         "operationId": "getSpecsOverview",
         "summary": "Read the Specifications overview",
-        "description": "Reads the Current or Archive Specifications collection. Omitted collection selects Current; unknown values or extra query keys are rejected. Requires spec.view in at least one scope before accessing the repository, then filters each row using the server-derived Specification scope; no visible rows is a valid 200 response. Classification and sections are Runtime-owned; clients must not derive a new classification from signals. Current and Archive are independent projections, and the separate operations list is never embedded in this response. An invalid project Git policy does not by itself block the read. Cache-Control: no-store.",
         "tags": [
           "Specifications"
         ],
+        "description": "Reads the Current or Archive Specifications collection. Omitted collection selects Current; unknown values or extra query keys are rejected. Requires spec.view in at least one scope before accessing the repository, then filters each row using the server-derived Specification scope; no visible rows is a valid 200 response. Classification and sections are Runtime-owned; clients must not derive a new classification from signals. Current and Archive are independent projections, and the separate operations list is never embedded in this response. An invalid project Git policy does not by itself block the read. Cache-Control: no-store.",
         "parameters": [
           {
             "schema": {
@@ -24187,12 +24151,12 @@
                     "archive"
                   ]
                 }
-              ],
-              "description": "Select Current (default) or Archive; unknown and additional query parameters are rejected."
+              ]
             },
             "in": "query",
             "name": "collection",
-            "required": false
+            "required": false,
+            "description": "Select Current (default) or Archive; unknown and additional query parameters are rejected."
           }
         ],
         "security": [
@@ -24907,10 +24871,10 @@
       "post": {
         "operationId": "postSpecsBySpecIdClose",
         "summary": "Close a Specification",
-        "description": "Close (archive) a single Specification under its workflow gate, using the project Git policy and durable Engine journal. Optional integrateToTargetBranch:false archives without integration; Git-off mode supports archive-only even in a linked checkout, without a Git commit. The request never accepts finishAfterExternalMerge. A successful settled result is 200, an unsettled operation 202. Workflow/Session blockers are 409 CLOSE_BLOCKED; document commits pending are 409 DOCUMENT_COMMITS_PENDING; ordinary repository blockers are 422 CLOSE_PREFLIGHT. Do not retry uncertain Git effects with a different operationId.",
         "tags": [
           "Specifications"
         ],
+        "description": "Close (archive) a single Specification under its workflow gate, using the project Git policy and durable Engine journal. Optional integrateToTargetBranch:false archives without integration; Git-off mode supports archive-only even in a linked checkout, without a Git commit. The request never accepts finishAfterExternalMerge. A successful settled result is 200, an unsettled operation 202. Workflow/Session blockers are 409 CLOSE_BLOCKED; document commits pending are 409 DOCUMENT_COMMITS_PENDING; ordinary repository blockers are 422 CLOSE_PREFLIGHT. Do not retry uncertain Git effects with a different operationId.",
         "requestBody": {
           "required": true,
           "content": {
@@ -25084,10 +25048,10 @@
       "get": {
         "operationId": "getSpecsBySpecIdCloseOccupancy",
         "summary": "Read the agent Session Turns that keep a Specification Close from removing its worktree",
-        "description": "Read agent Session Turns holding the linked checkout a Specification Close might remove, without planning Close or touching Git. Empty blockers for no active Turns or a Specification in the primary checkout. Useful alongside workflow Close blockers; removing an occupied linked checkout is refused.",
         "tags": [
           "Specifications"
         ],
+        "description": "Read agent Session Turns holding the linked checkout a Specification Close might remove, without planning Close or touching Git. Empty blockers for no active Turns or a Specification in the primary checkout. Useful alongside workflow Close blockers; removing an occupied linked checkout is refused.",
         "parameters": [
           {
             "schema": {
@@ -25265,10 +25229,10 @@
       "get": {
         "operationId": "getSpecsBySpecIdCloseOperationsByOperationId",
         "summary": "Read a Specification close operation",
-        "description": "Read the durable Close operation observation; it does not retry, replay uncertain Git effects or mutate repository state. Use the same operationId for recovery/retry, and refer to the operator recovery protocol when resolution is needed.",
         "tags": [
           "Specifications"
         ],
+        "description": "Read the durable Close operation observation; it does not retry, replay uncertain Git effects or mutate repository state. Use the same operationId for recovery/retry, and refer to the operator recovery protocol when resolution is needed.",
         "parameters": [
           {
             "schema": {
@@ -25417,10 +25381,10 @@
       "post": {
         "operationId": "postSpecsBySpecIdCloseOperationsByOperationIdReconcileScratch",
         "summary": "Reconcile the scratch checkout of a close operation",
-        "description": "Reconcile an interrupted Close scratch checkout after trusted operator acknowledgement that no Git process is still active. Requires confirmedNoActiveGitProcess:true; this is not an inference about process state, and the Engine additionally checks physical scratch evidence.",
         "tags": [
           "Specifications"
         ],
+        "description": "Reconcile an interrupted Close scratch checkout after trusted operator acknowledgement that no Git process is still active. Requires confirmedNoActiveGitProcess:true; this is not an inference about process state, and the Engine additionally checks physical scratch evidence.",
         "requestBody": {
           "required": true,
           "content": {
@@ -25433,10 +25397,10 @@
                 "properties": {
                   "confirmedNoActiveGitProcess": {
                     "type": "boolean",
+                    "description": "Operator acknowledgement only: no Git process is active. The Engine still verifies physical scratch evidence; server cannot derive liveness from this flag.",
                     "enum": [
                       true
-                    ],
-                    "description": "Operator acknowledgement only: no Git process is active. The Engine still verifies physical scratch evidence; server cannot derive liveness from this flag."
+                    ]
                   }
                 },
                 "additionalProperties": false
@@ -25592,10 +25556,10 @@
       "get": {
         "operationId": "getSpecsBySpecIdClosePreview",
         "summary": "Preview closing a Specification",
-        "description": "Read-only preview of Specification Close; shows integration intent, merge facts or blockers without mutating Git. Optional integrateToTargetBranch determines archive-only vs integrate; finishAfterExternalMerge is rejected at the schema boundary. Preview is advisory, not proof of future admission. Workflow blockers, running linked-checkout Sessions and pending document commits may prevent Close. No default integration branch is guessed.",
         "tags": [
           "Specifications"
         ],
+        "description": "Read-only preview of Specification Close; shows integration intent, merge facts or blockers without mutating Git. Optional integrateToTargetBranch determines archive-only vs integrate; finishAfterExternalMerge is rejected at the schema boundary. Preview is advisory, not proof of future admission. Workflow blockers, running linked-checkout Sessions and pending document commits may prevent Close. No default integration branch is guessed.",
         "parameters": [
           {
             "schema": {
@@ -25744,10 +25708,10 @@
       "post": {
         "operationId": "postSpecsBySpecIdCommit",
         "summary": "Commit document changes",
-        "description": "Commit an authorized set of currently uncommitted ledger paths under spec.manage, using operationId and the current ledger revision. Reject stale or non-closed subsets rather than committing unrelated documents/Task/definitions. The message and selected entries must obey server limits. Replay identical operationId without a second Git side effect. A 200 means the Git commit completed.",
         "tags": [
           "Documents"
         ],
+        "description": "Commit an authorized set of currently uncommitted ledger paths under spec.manage, using operationId and the current ledger revision. Reject stale or non-closed subsets rather than committing unrelated documents/Task/definitions. The message and selected entries must obey server limits. Replay identical operationId without a second Git side effect. A 200 means the Git commit completed.",
         "requestBody": {
           "required": true,
           "content": {
@@ -26079,10 +26043,10 @@
       "post": {
         "operationId": "postSpecsBySpecIdDocumentCommitsFlush",
         "summary": "Flush the queued document commits",
-        "description": "Flush pending document commit work for this Specification, under spec.manage. This is a commit-queue operation, not a document save; failed/held operations still need explicit recovery. Serializes with other commit jobs and respects Git protection.",
         "tags": [
           "Documents"
         ],
+        "description": "Flush pending document commit work for this Specification, under spec.manage. This is a commit-queue operation, not a document save; failed/held operations still need explicit recovery. Serializes with other commit jobs and respects Git protection.",
         "requestBody": {
           "required": true,
           "content": {
@@ -26284,10 +26248,10 @@
       "post": {
         "operationId": "postSpecsBySpecIdDocumentOperations",
         "summary": "Start a document operation",
-        "description": "Rename, move, delete or classify a registered/unclassified document or folder under spec.manage. OperationId is idempotency key; expectedRevision and path constraints are rechecked. A classified u- document receives a new registered id; clients follow the returned identity. Commit state is independent of whether disk write succeeded.",
         "tags": [
           "Documents"
         ],
+        "description": "Rename, move, delete or classify a registered/unclassified document or folder under spec.manage. OperationId is idempotency key; expectedRevision and path constraints are rechecked. A classified u- document receives a new registered id; clients follow the returned identity. Commit state is independent of whether disk write succeeded.",
         "requestBody": {
           "required": true,
           "content": {
@@ -26537,10 +26501,10 @@
       "get": {
         "operationId": "getSpecsBySpecIdDocumentOperationsByOperationId",
         "summary": "Read a document operation",
-        "description": "Read status of one document change and its asynchronous commit without mutating or flushing the queue. A strong operation ETag supports If-None-Match/304. Pending, failed, recovery-required, uncommitted, committed and not-applicable carry typed causes and retry/abandon capabilities. Not the same as the generic Specification Create operation status.",
         "tags": [
           "Documents"
         ],
+        "description": "Read status of one document change and its asynchronous commit without mutating or flushing the queue. A strong operation ETag supports If-None-Match/304. Pending, failed, recovery-required, uncommitted, committed and not-applicable carry typed causes and retry/abandon capabilities. Not the same as the generic Specification Create operation status.",
         "parameters": [
           {
             "schema": {
@@ -26713,10 +26677,10 @@
       "post": {
         "operationId": "postSpecsBySpecIdDocumentOperationsByOperationIdAbandon",
         "summary": "Abandon a document operation",
-        "description": "Abandon a failed document commit batch, not its already saved file content. Files remain in the worktree and are reported as uncommitted with reason abandoned; a later manual/Git commit or authorized recovery is needed for Close.",
         "tags": [
           "Documents"
         ],
+        "description": "Abandon a failed document commit batch, not its already saved file content. Files remain in the worktree and are reported as uncommitted with reason abandoned; a later manual/Git commit or authorized recovery is needed for Close.",
         "requestBody": {
           "required": true,
           "content": {
@@ -26898,10 +26862,10 @@
       "post": {
         "operationId": "postSpecsBySpecIdDocumentOperationsByOperationIdRetry",
         "summary": "Retry a document operation",
-        "description": "Explicitly retry the failed commit of a previously recorded document operation under spec.manage. Engine rechecks the checkout, current content and Git policy and may still refuse; retry does not rewrite the saved document or silently override newer external edits.",
         "tags": [
           "Documents"
         ],
+        "description": "Explicitly retry the failed commit of a previously recorded document operation under spec.manage. Engine rechecks the checkout, current content and Git policy and may still refuse; retry does not rewrite the saved document or silently override newer external edits.",
         "requestBody": {
           "required": true,
           "content": {
@@ -27083,10 +27047,10 @@
       "get": {
         "operationId": "getSpecsBySpecIdDocumentTree",
         "summary": "Read the document tree of a Specification",
-        "description": "Read the Engine-owned Specification document tree from its manifest, registered files and bounded unclassified discovery. Requires spec.view. Includes completeness, dangling/missing files, commit state and action availability computed from current policy. Tree ETag changes when document/commit projection changes; If-None-Match may return 304. A read does not invoke Git or attempt a commit. Paths are relative to the Specification folder; unavailable archive or checkout returns typed errors. Cache-Control: no-store.",
         "tags": [
           "Documents"
         ],
+        "description": "Read the Engine-owned Specification document tree from its manifest, registered files and bounded unclassified discovery. Requires spec.view. Includes completeness, dangling/missing files, commit state and action availability computed from current policy. Tree ETag changes when document/commit projection changes; If-None-Match may return 304. A read does not invoke Git or attempt a commit. Paths are relative to the Specification folder; unavailable archive or checkout returns typed errors. Cache-Control: no-store.",
         "parameters": [
           {
             "schema": {
@@ -28753,10 +28717,10 @@
       "post": {
         "operationId": "postSpecsBySpecIdDocuments",
         "summary": "Add a document",
-        "description": "Create registered documents from current project definitions/templates or caller text under spec.manage. The Engine owns path/type identity, template selection, title derivation and case-collision/size checks. A write result includes revision and commit status. Unknown template/type or path conflict is a typed refusal; action must not write a partial document set.",
         "tags": [
           "Documents"
         ],
+        "description": "Create registered documents from current project definitions/templates or caller text under spec.manage. The Engine owns path/type identity, template selection, title derivation and case-collision/size checks. A write result includes revision and commit status. Unknown template/type or path conflict is a typed refusal; action must not write a partial document set.",
         "requestBody": {
           "required": true,
           "content": {
@@ -28997,10 +28961,10 @@
       "post": {
         "operationId": "postSpecsBySpecIdDocumentsSave",
         "summary": "Save several documents",
-        "description": "Save 1..25 documents together under spec.manage; check every expectedRevision before any writes. Revision conflict returns details.conflicts and writes none. A successful 200 means all file writes are durable, with one queued commit (or uncommitted in manual mode), not a completed Git commit. Reuse operationId only for identical uncertain retry.",
         "tags": [
           "Documents"
         ],
+        "description": "Save 1..25 documents together under spec.manage; check every expectedRevision before any writes. Revision conflict returns details.conflicts and writes none. A successful 200 means all file writes are durable, with one queued commit (or uncommitted in manual mode), not a completed Git commit. Reuse operationId only for identical uncertain retry.",
         "requestBody": {
           "required": true,
           "content": {
@@ -29334,10 +29298,10 @@
       "get": {
         "operationId": "getSpecsBySpecIdDocumentsByDocumentId",
         "summary": "Read a document",
-        "description": "Read one registered or unclassified Specification document by id. Requires spec.view. Optional revision requests exactly that version; unavailable revision is 409 DOCUMENT_REVISION_UNAVAILABLE, never a fallback to latest. Text is returned as JSON; image/binary content has metadata only and is read through the raw route. Response ETag covers the revision; If-None-Match may answer 304. Client selection follows the returned id after classifying an unregistered file.",
         "tags": [
           "Documents"
         ],
+        "description": "Read one registered or unclassified Specification document by id. Requires spec.view. Optional revision requests exactly that version; unavailable revision is 409 DOCUMENT_REVISION_UNAVAILABLE, never a fallback to latest. Text is returned as JSON; image/binary content has metadata only and is read through the raw route. Response ETag covers the revision; If-None-Match may answer 304. Client selection follows the returned id after classifying an unregistered file.",
         "parameters": [
           {
             "schema": {
@@ -29583,10 +29547,10 @@
       "put": {
         "operationId": "putSpecsBySpecIdDocumentsByDocumentId",
         "summary": "Write a document",
-        "description": "Save a text document with operationId and expectedRevision under spec.manage. One successful 200 means disk write accepted and commit queued, NOT that Git commit finished. Revision conflict writes nothing and leaves draft unchanged. A fresh user action gets a fresh operationId; unchanged request replay retains the same id. Commit status may be pending/committed/failed/uncommitted/not-applicable. Autosave backs off on SPEC_BUSY and retryAfterMs.",
         "tags": [
           "Documents"
         ],
+        "description": "Save a text document with operationId and expectedRevision under spec.manage. One successful 200 means disk write accepted and commit queued, NOT that Git commit finished. Revision conflict writes nothing and leaves draft unchanged. A fresh user action gets a fresh operationId; unchanged request replay retains the same id. Commit status may be pending/committed/failed/uncommitted/not-applicable. Autosave backs off on SPEC_BUSY and retryAfterMs.",
         "requestBody": {
           "required": true,
           "content": {
@@ -29608,7 +29572,7 @@
                   "expectedRevision": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "Optimistic revision; a mismatch refuses DOCUMENT_REVISION_CONFLICT without modifying the saved file."
+                    "description": "Optimistic revision of the document/folder being changed; a mismatch writes nothing and refuses DOCUMENT_REVISION_CONFLICT."
                   }
                 },
                 "additionalProperties": false
@@ -29908,10 +29872,10 @@
       "get": {
         "operationId": "getSpecsBySpecIdDocumentsByDocumentIdRaw",
         "summary": "Read the raw content of a document",
-        "description": "Stream raw image or binary/text bytes for a document under spec.view, with validated safe Content-Type, Content-Disposition, Content-Length, X-Content-Type-Options and sandbox CSP. Query download accepts only 0 or 1; default safe inline for approved images, forced attachment for non-image or download=1. The stream is released on 304/abort/error, and all authorization/validation happens before sending bytes. A strong ETag permits If-None-Match/304. SVG has image media type to allow img rendering but sandbox CSP prevents script execution as a page.",
         "tags": [
           "Documents"
         ],
+        "description": "Stream raw image or binary/text bytes for a document under spec.view, with validated safe Content-Type, Content-Disposition, Content-Length, X-Content-Type-Options and sandbox CSP. Query download accepts only 0 or 1; default safe inline for approved images, forced attachment for non-image or download=1. The stream is released on 304/abort/error, and all authorization/validation happens before sending bytes. A strong ETag permits If-None-Match/304. SVG has image media type to allow img rendering but sandbox CSP prevents script execution as a page.",
         "parameters": [
           {
             "schema": {
@@ -29928,12 +29892,12 @@
                     "1"
                   ]
                 }
-              ],
-              "description": "0 requests safe inline rendering of approved image formats; 1 forces attachment download. Other values are invalid."
+              ]
             },
             "in": "query",
             "name": "download",
-            "required": false
+            "required": false,
+            "description": "0 requests safe inline rendering of approved image formats; 1 forces attachment download. Other values are invalid."
           },
           {
             "schema": {
@@ -30085,10 +30049,10 @@
       "post": {
         "operationId": "postSpecsBySpecIdFolders",
         "summary": "Add a document folder",
-        "description": "Create one folder in the Specification document tree under spec.manage. Engine validates rooted relative path, case collisions, protected root, folders/files and Windows host path length. Folder revision is a precondition for subsequent moves/renames. Returns structured operation result.",
         "tags": [
           "Documents"
         ],
+        "description": "Create one folder in the Specification document tree under spec.manage. Engine validates rooted relative path, case collisions, protected root, folders/files and Windows host path length. Folder revision is a precondition for subsequent moves/renames. Returns structured operation result.",
         "requestBody": {
           "required": true,
           "content": {
@@ -30272,10 +30236,10 @@
       "post": {
         "operationId": "postSpecsBySpecIdSessions",
         "summary": "Start a Session in a Specification",
-        "description": "Create a Session atomically associated with a Specification under spec.start-session and session.create, plus project-wide session.execute-write for write mode. A supplied Task set is unique, at most 32 and verified against the Specification before storage. The association and Session row commit in one transaction. Project create and standalone create share an idempotency key space: a requestId cannot be reused with another association. Authorization runs before Engine verification so refused callers cannot infer Specification existence.",
         "tags": [
           "Sessions"
         ],
+        "description": "Create a Session atomically associated with a Specification under spec.start-session and session.create, plus project-wide session.execute-write for write mode. A supplied Task set is unique, at most 32 and verified against the Specification before storage. The association and Session row commit in one transaction. Project create and standalone create share an idempotency key space: a requestId cannot be reused with another association. Authorization runs before Engine verification so refused callers cannot infer Specification existence.",
         "requestBody": {
           "required": true,
           "content": {
@@ -30550,10 +30514,10 @@
       "get": {
         "operationId": "getSpecsBySpecIdTasks",
         "summary": "Read the Tasks of a Specification, grouped",
-        "description": "Read the Specification's grouped Task inventory from one Engine readExecution under spec.view. Groups come from Runtime presentation policy (not Engine state); rows are ordered by attention, dependent blockers, in-progress, then Engine Task id. Task facts and attention remain distinct: a broken Task stays visible, and tasks-stuck is a Specification-level blocking fact, not a duplicate row attention item. Optional blocking=specification OR group filter, never both. Progress excludes cancelled/ended-without-completion from total, but includes broken and on-hold. No GET starts work. 503 specification_source_unavailable uses Retry-After:1 only for retryable control-lock contention.",
         "tags": [
           "Tasks"
         ],
+        "description": "Read the Specification's grouped Task inventory from one Engine readExecution under spec.view. Groups come from Runtime presentation policy (not Engine state); rows are ordered by attention, dependent blockers, in-progress, then Engine Task id. Task facts and attention remain distinct: a broken Task stays visible, and tasks-stuck is a Specification-level blocking fact, not a duplicate row attention item. Optional blocking=specification OR group filter, never both. Progress excludes cancelled/ended-without-completion from total, but includes broken and on-hold. No GET starts work. 503 specification_source_unavailable uses Retry-After:1 only for retryable control-lock contention.",
         "parameters": [
           {
             "schema": {
@@ -33324,8 +33288,7 @@
                           "type": "integer",
                           "minimum": 0
                         }
-                      },
-                      "description": "Engine Task counts: total excludes cancelled or ended-without-completion Tasks, includes broken and on-hold; cancelled, ended and onHold remain separate."
+                      }
                     },
                     "attention": {
                       "type": "array",
@@ -34039,10 +34002,10 @@
       "post": {
         "operationId": "postSpecsBySpecIdTasks",
         "summary": "Create a Task",
-        "description": "Create a new Task with status draft, a type from the Specification's effective catalogue and optional context and task.md content. Requires spec.manage at trusted Specification scope; the human actor comes from request.authz, never request body. A Task's type is immutable. The Engine checks Task id, dependency graph, active Specification lifecycle and context; required Task-owned output artifacts cannot be declared as required inputs. Successful 201 TaskChangeResult carries the resource revision. Body capped to 2 MiB.",
         "tags": [
           "Tasks"
         ],
+        "description": "Create a new Task with status draft, a type from the Specification's effective catalogue and optional context and task.md content. Requires spec.manage at trusted Specification scope; the human actor comes from request.authz, never request body. A Task's type is immutable. The Engine checks Task id, dependency graph, active Specification lifecycle and context; required Task-owned output artifacts cannot be declared as required inputs. Successful 201 TaskChangeResult carries the resource revision. Body capped to 2 MiB.",
         "requestBody": {
           "required": true,
           "content": {
@@ -34397,10 +34360,10 @@
       "get": {
         "operationId": "getSpecsBySpecIdTasksByTaskId",
         "summary": "Read a Task",
-        "description": "Read one Task's resource and bounded execution snapshot from one Engine readExecution, including workflow position and section availability but not whole Task history, full document text or Sessions. Requires spec.view at trusted Specification scope; Session references are independently filtered by session.view at their store-derived scopes. Empty available data is not unavailable/forbidden; no GET starts work. Missing Task 404 specification_task_not_found, unreadable/unavailable checkout 503 specification_source_unavailable (Retry-After:1 on busy control lock). Project mode cannot fall back to demo data. Cache-Control: no-store.",
         "tags": [
           "Tasks"
         ],
+        "description": "Read one Task's resource and bounded execution snapshot from one Engine readExecution, including workflow position and section availability but not whole Task history, full document text or Sessions. Requires spec.view at trusted Specification scope; Session references are independently filtered by session.view at their store-derived scopes. Empty available data is not unavailable/forbidden; no GET starts work. Missing Task 404 specification_task_not_found, unreadable/unavailable checkout 503 specification_source_unavailable (Retry-After:1 on busy control lock). Project mode cannot fall back to demo data. Cache-Control: no-store.",
         "parameters": [
           {
             "schema": {
@@ -38246,10 +38209,10 @@
       "patch": {
         "operationId": "patchSpecsBySpecIdTasksByTaskId",
         "summary": "Edit a Task",
-        "description": "Edit one Task using expectedRevision (compare-and-swap) under spec.manage. Type is immutable; only supplied fields change. context:null restores the Engine default, summary:null clears the summary; dependency/context edits may be refused after Task start. The actor is derived from request.authz, never the body. Conflict uses the shared WorkflowError; successful response returns the new revision.",
         "tags": [
           "Tasks"
         ],
+        "description": "Edit one Task using expectedRevision (compare-and-swap) under spec.manage. Type is immutable; only supplied fields change. context:null restores the Engine default, summary:null clears the summary; dependency/context edits may be refused after Task start. The actor is derived from request.authz, never the body. Conflict uses the shared WorkflowError; successful response returns the new revision.",
         "requestBody": {
           "required": true,
           "content": {
@@ -38618,17 +38581,16 @@
       "delete": {
         "operationId": "deleteSpecsBySpecIdTasksByTaskId",
         "summary": "Remove a Task",
-        "description": "Remove a Task with query expectedRevision under spec.manage. The Engine refuses removal when the Task has dependents, an active attempt or other protected state; the actor is the trusted caller, not an input. A stale revision yields WorkflowError. Success returns its Task id.",
         "tags": [
           "Tasks"
         ],
+        "description": "Remove a Task with query expectedRevision under spec.manage. The Engine refuses removal when the Task has dependents, an active attempt or other protected state; the actor is the trusted caller, not an input. A stale revision yields WorkflowError. Success returns its Task id.",
         "parameters": [
           {
             "schema": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 200,
-              "description": "Optimistic concurrency precondition: resource manifest revision returned by the last read or edit; a mismatch refuses the operation."
+              "maxLength": 200
             },
             "in": "query",
             "name": "expectedRevision",
@@ -38789,10 +38751,10 @@
       "post": {
         "operationId": "postSpecsBySpecIdTasksByTaskIdDocumentOperations",
         "summary": "Start a Task document operation",
-        "description": "Rename, move, delete or classify a Task document under spec.manage. Task registry, required path and revision checks remain authoritative; a successful operation returns typed result. Never change another Task or Specification document.",
         "tags": [
           "Documents"
         ],
+        "description": "Rename, move, delete or classify a Task document under spec.manage. Task registry, required path and revision checks remain authoritative; a successful operation returns typed result. Never change another Task or Specification document.",
         "requestBody": {
           "required": true,
           "content": {
@@ -39050,10 +39012,10 @@
       "get": {
         "operationId": "getSpecsBySpecIdTasksByTaskIdDocumentTree",
         "summary": "Read the documents of a Task",
-        "description": "Read Engine-owned Task document tree, scoped to its Specification and Task under spec.view. The Task folder and task.yaml registry determine required/registered/dangling paths, separate from Specification documents. Same document action vocabulary and safe content kinds.",
         "tags": [
           "Documents"
         ],
+        "description": "Read Engine-owned Task document tree, scoped to its Specification and Task under spec.view. The Task folder and task.yaml registry determine required/registered/dangling paths, separate from Specification documents. Same document action vocabulary and safe content kinds.",
         "parameters": [
           {
             "schema": {
@@ -39346,10 +39308,10 @@
       "post": {
         "operationId": "postSpecsBySpecIdTasksByTaskIdDocuments",
         "summary": "Add a Task document",
-        "description": "Add a Task document under the Task resource registry. Server enforces Task path, content/type and registration rules. Success returns documented operation result and revision; task-specific output artifact policy remains Engine-owned.",
         "tags": [
           "Documents"
         ],
+        "description": "Add a Task document under the Task resource registry. Server enforces Task path, content/type and registration rules. Success returns documented operation result and revision; task-specific output artifact policy remains Engine-owned.",
         "requestBody": {
           "required": true,
           "content": {
@@ -39598,10 +39560,10 @@
       "get": {
         "operationId": "getSpecsBySpecIdTasksByTaskIdDocumentsByDocumentId",
         "summary": "Read a Task document",
-        "description": "Read an individual Task document as JSON text/metadata, optionally at an exact recorded revision. Requires spec.view and current Task/source membership; unavailable revision never returns latest content. Task document reads do not reconstruct Workflow state or write files.",
         "tags": [
           "Documents"
         ],
+        "description": "Read an individual Task document as JSON text/metadata, optionally at an exact recorded revision. Requires spec.view and current Task/source membership; unavailable revision never returns latest content. Task document reads do not reconstruct Workflow state or write files.",
         "parameters": [
           {
             "schema": {
@@ -39855,10 +39817,10 @@
       "put": {
         "operationId": "putSpecsBySpecIdTasksByTaskIdDocumentsByDocumentId",
         "summary": "Write a Task document",
-        "description": "Save text content of a Task document with operationId and expectedRevision under spec.manage. Engine serializes the write with Task workflow state. Success acknowledges disk write/commit state, not unrelated workflow transitions.",
         "tags": [
           "Documents"
         ],
+        "description": "Save text content of a Task document with operationId and expectedRevision under spec.manage. Engine serializes the write with Task workflow state. Success acknowledges disk write/commit state, not unrelated workflow transitions.",
         "requestBody": {
           "required": true,
           "content": {
@@ -39879,7 +39841,8 @@
                   },
                   "expectedRevision": {
                     "type": "string",
-                    "minLength": 1
+                    "minLength": 1,
+                    "description": "Optimistic revision of the document/folder being changed; a mismatch writes nothing and refuses DOCUMENT_REVISION_CONFLICT."
                   }
                 },
                 "additionalProperties": false
@@ -40187,41 +40150,41 @@
       "get": {
         "operationId": "getSpecsBySpecIdTasksByTaskIdHistory",
         "summary": "Read the history of a Task",
-        "description": "Read a page of Task attempt history against the opaque lease issued by Task detail. Requires spec.view at trusted Specification scope on every request; token/cursor possession grants no access. Token is a bounded in-memory observation lease, not an offset, session or persistent authority. Expired/evicted/rebound leases, changed source/policy, mismatched cursor or page size return 409 task_snapshot_expired. coverage complete concerns source enumeration, not end of this page; continue while nextCursor is non-null even after an underfilled/empty page. History order is stable attempt order, not nullable timestamps. Cache-Control: no-store.",
         "tags": [
           "Tasks"
         ],
+        "description": "Read a page of Task attempt history against the opaque lease issued by Task detail. Requires spec.view at trusted Specification scope on every request; token/cursor possession grants no access. Token is a bounded in-memory observation lease, not an offset, session or persistent authority. Expired/evicted/rebound leases, changed source/policy, mismatched cursor or page size return 409 task_snapshot_expired. coverage complete concerns source enumeration, not end of this page; continue while nextCursor is non-null even after an underfilled/empty page. History order is stable attempt order, not nullable timestamps. Cache-Control: no-store.",
         "parameters": [
           {
             "schema": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 1000,
-              "description": "Opaque short-lived Task history lease from the matching Task detail; bound to caller, target, workspace, policy and source. Not a bearer grant or an offset. Expiry/eviction returns 409 task_snapshot_expired."
+              "maxLength": 1000
             },
             "in": "query",
             "name": "token",
-            "required": true
+            "required": true,
+            "description": "Opaque short-lived Task history lease from the matching Task detail; bound to caller, target, workspace, policy and source. Not a bearer grant or an offset. Expiry/eviction returns 409 task_snapshot_expired."
           },
           {
             "schema": {
               "type": "string",
-              "maxLength": 1000,
-              "description": "Opaque continuation for this token and original page size. A missing cursor begins at the first page. A mismatched/expired cursor or a cursor reused with another limit returns 409."
+              "maxLength": 1000
             },
             "in": "query",
             "name": "cursor",
-            "required": false
+            "required": false,
+            "description": "Opaque continuation for this token and original page size. A missing cursor begins at the first page. A mismatched/expired cursor or a cursor reused with another limit returns 409."
           },
           {
             "schema": {
               "type": "string",
-              "pattern": "^(?:[1-9]|[1-4][0-9]|50)$",
-              "description": "Decimal string 1..50. First request chooses default if omitted; continuation without limit reuses the stored page size. It is not a numeric JSON query parameter."
+              "pattern": "^(?:[1-9]|[1-4][0-9]|50)$"
             },
             "in": "query",
             "name": "limit",
-            "required": false
+            "required": false,
+            "description": "Decimal string 1..50. First request chooses default if omitted; continuation without limit reuses the stored page size. It is not a numeric JSON query parameter."
           },
           {
             "schema": {
@@ -41241,10 +41204,10 @@
       "put": {
         "operationId": "putSpecsBySpecIdTasksByTaskIdStatus",
         "summary": "Decide the status of a Task",
-        "description": "Set Task status to ready/on-hold/cancelled under spec.manage. Ready also resumes a held Task; reason is optional. Engine enforces dependency and lifecycle rules. The human actor is trusted request.authz and not a caller-supplied field. Structured WorkflowError refusals describe unavailable transitions.",
         "tags": [
           "Tasks"
         ],
+        "description": "Set Task status to ready/on-hold/cancelled under spec.manage. Ready also resumes a held Task; reason is optional. Engine enforces dependency and lifecycle rules. The human actor is trusted request.authz and not a caller-supplied field. Structured WorkflowError refusals describe unavailable transitions.",
         "requestBody": {
           "required": true,
           "content": {
@@ -41473,10 +41436,10 @@
       "get": {
         "operationId": "getSpecsBySpecIdTasksByTaskIdWorkflowActions",
         "summary": "Read the workflow actions of a Task",
-        "description": "Read the Engine-owned action projection for this subject: pinned workflow/first-start candidate, position, allowed owner actions, per-transition gates, Task authoring, document relations and Specification exit. Requires spec.view at trusted Specification scope. Client renders allowed actions only; reasons and codes are stable, messages and step purpose/instructions are display-only. An unresolved workflow or inaccessible source refuses with typed WorkflowError. Demo uses the same Engine logic over in-memory state. Cache-Control: no-store.",
         "tags": [
           "Workflow"
         ],
+        "description": "Read the Engine-owned action projection for this subject: pinned workflow/first-start candidate, position, allowed owner actions, per-transition gates, Task authoring, document relations and Specification exit. Requires spec.view at trusted Specification scope. Client renders allowed actions only; reasons and codes are stable, messages and step purpose/instructions are display-only. An unresolved workflow or inaccessible source refuses with typed WorkflowError. Demo uses the same Engine logic over in-memory state. Cache-Control: no-store.",
         "parameters": [
           {
             "schema": {
@@ -41624,10 +41587,10 @@
       "post": {
         "operationId": "postSpecsBySpecIdTasksByTaskIdWorkflowFinish",
         "summary": "Finish the active workflow step of a Task",
-        "description": "Finish an active owner workflow attempt, naming step and attempt so stale clients cannot complete a newer run. Requires spec.manage. A step that produces Tasks accepts the complete owned draft set; omitted owned drafts are cancelled, unrelated drafts untouched. Specification taskDecisions apply before terminal completion; Task finishes reject them. Replaying the same successful finish returns the recorded result with replayed:true; post-actions report separately and do not undo the workflow result. Gate, open-Task or attempt mismatch refusals are typed. Body limit 64 KiB.",
         "tags": [
           "Workflow"
         ],
+        "description": "Finish an active owner workflow attempt, naming step and attempt so stale clients cannot complete a newer run. Requires spec.manage. A step that produces Tasks accepts the complete owned draft set; omitted owned drafts are cancelled, unrelated drafts untouched. Specification taskDecisions apply before terminal completion; Task finishes reject them. Replaying the same successful finish returns the recorded result with replayed:true; post-actions report separately and do not undo the workflow result. Gate, open-Task or attempt mismatch refusals are typed. Body limit 64 KiB.",
         "requestBody": {
           "required": true,
           "content": {
@@ -42613,10 +42576,10 @@
                     },
                     "replayed": {
                       "type": "boolean",
+                      "description": "Same successful finish was replayed; no workflow state transition was rerun.",
                       "enum": [
                         true
-                      ],
-                      "description": "Same successful finish was replayed; no workflow state transition was rerun."
+                      ]
                     },
                     "postActions": {
                       "type": "array",
@@ -42857,10 +42820,10 @@
       "post": {
         "operationId": "postSpecsBySpecIdTasksByTaskIdWorkflowReturn",
         "summary": "Return a Task workflow to an earlier step",
-        "description": "Return the owner workflow run to a permitted earlier step, optionally carrying reason as feedback. Requires spec.manage; the target must be a declared return, never an arbitrary step. Actor is resolved by Runtime, not request. Typed refusal for return-not-allowed or stale execution. 64 KiB body limit.",
         "tags": [
           "Workflow"
         ],
+        "description": "Return the owner workflow run to a permitted earlier step, optionally carrying reason as feedback. Requires spec.manage; the target must be a declared return, never an arbitrary step. Actor is resolved by Runtime, not request. Typed refusal for return-not-allowed or stale execution. 64 KiB body limit.",
         "requestBody": {
           "required": true,
           "content": {
@@ -43514,10 +43477,10 @@
       "post": {
         "operationId": "postSpecsBySpecIdTasksByTaskIdWorkflowStart",
         "summary": "Start or resume the next workflow step of a Task",
-        "description": "Start or resume the next owner workflow step; Runtime derives human actor from trusted request.authz, never from request data. Requires spec.manage at Specification scope. For a Task first start, expectedWorkflowRevision pins the revision the owner previewed; changed definitions refuse WORKFLOW_DEFINITION_CHANGED. An agent attempt is not started here. 64 KiB body limit, Cache-Control: no-store.",
         "tags": [
           "Workflow"
         ],
+        "description": "Start or resume the next owner workflow step; Runtime derives human actor from trusted request.authz, never from request data. Requires spec.manage at Specification scope. For a Task first start, expectedWorkflowRevision pins the revision the owner previewed; changed definitions refuse WORKFLOW_DEFINITION_CHANGED. An agent attempt is not started here. 64 KiB body limit, Cache-Control: no-store.",
         "requestBody": {
           "required": true,
           "content": {
@@ -43845,10 +43808,10 @@
       "get": {
         "operationId": "getSpecsBySpecIdUncommitted",
         "summary": "Read the uncommitted document changes",
-        "description": "Read the Engine-owned uncommitted-change ledger and effective document commit policy for this Specification under spec.view. Includes owner/scopes, reasons and safe checkout-relative paths; no absolute machine paths. A missing or empty ledger is not proof that arbitrary Git changes are clean.",
         "tags": [
           "Documents"
         ],
+        "description": "Read the Engine-owned uncommitted-change ledger and effective document commit policy for this Specification under spec.view. Includes owner/scopes, reasons and safe checkout-relative paths; no absolute machine paths. A missing or empty ledger is not proof that arbitrary Git changes are clean.",
         "parameters": [
           {
             "schema": {
@@ -44144,10 +44107,10 @@
       "post": {
         "operationId": "postSpecsBySpecIdWorkflowAbandon",
         "summary": "Abandon a Specification without realizing it",
-        "description": "Permanently abandon a Specification workflow without realizing it; this is not Git Close. Requires spec.close-specification. Runtime supplies the human actor; body requires reason. Same-reason retry is idempotent, but pending writes, broken Tasks and other operations still block. Result includes cancelled Task identities and abandoned Task runs. 64 KiB body limit.",
         "tags": [
           "Workflow"
         ],
+        "description": "Permanently abandon a Specification workflow without realizing it; this is not Git Close. Requires spec.close-specification. Runtime supplies the human actor; body requires reason. Same-reason retry is idempotent, but pending writes, broken Tasks and other operations still block. Result includes cancelled Task identities and abandoned Task runs. 64 KiB body limit.",
         "requestBody": {
           "required": true,
           "content": {
@@ -44529,10 +44492,10 @@
       "get": {
         "operationId": "getSpecsBySpecIdWorkflowActions",
         "summary": "Read the workflow actions of a Specification",
-        "description": "Read the Engine-owned action projection for this subject: pinned workflow/first-start candidate, position, allowed owner actions, per-transition gates, Task authoring, document relations and Specification exit. Requires spec.view at trusted Specification scope. Client renders allowed actions only; reasons and codes are stable, messages and step purpose/instructions are display-only. An unresolved workflow or inaccessible source refuses with typed WorkflowError. Demo uses the same Engine logic over in-memory state. Cache-Control: no-store.",
         "tags": [
           "Workflow"
         ],
+        "description": "Read the Engine-owned action projection for this subject: pinned workflow/first-start candidate, position, allowed owner actions, per-transition gates, Task authoring, document relations and Specification exit. Requires spec.view at trusted Specification scope. Client renders allowed actions only; reasons and codes are stable, messages and step purpose/instructions are display-only. An unresolved workflow or inaccessible source refuses with typed WorkflowError. Demo uses the same Engine logic over in-memory state. Cache-Control: no-store.",
         "parameters": [
           {
             "schema": {
@@ -44672,10 +44635,10 @@
       "post": {
         "operationId": "postSpecsBySpecIdWorkflowFinish",
         "summary": "Finish the active workflow step of a Specification",
-        "description": "Finish an active owner workflow attempt, naming step and attempt so stale clients cannot complete a newer run. Requires spec.manage. A step that produces Tasks accepts the complete owned draft set; omitted owned drafts are cancelled, unrelated drafts untouched. Specification taskDecisions apply before terminal completion; Task finishes reject them. Replaying the same successful finish returns the recorded result with replayed:true; post-actions report separately and do not undo the workflow result. Gate, open-Task or attempt mismatch refusals are typed. Body limit 64 KiB.",
         "tags": [
           "Workflow"
         ],
+        "description": "Finish an active owner workflow attempt, naming step and attempt so stale clients cannot complete a newer run. Requires spec.manage. A step that produces Tasks accepts the complete owned draft set; omitted owned drafts are cancelled, unrelated drafts untouched. Specification taskDecisions apply before terminal completion; Task finishes reject them. Replaying the same successful finish returns the recorded result with replayed:true; post-actions report separately and do not undo the workflow result. Gate, open-Task or attempt mismatch refusals are typed. Body limit 64 KiB.",
         "requestBody": {
           "required": true,
           "content": {
@@ -45653,10 +45616,10 @@
                     },
                     "replayed": {
                       "type": "boolean",
+                      "description": "Same successful finish was replayed; no workflow state transition was rerun.",
                       "enum": [
                         true
-                      ],
-                      "description": "Same successful finish was replayed; no workflow state transition was rerun."
+                      ]
                     },
                     "postActions": {
                       "type": "array",
@@ -45897,10 +45860,10 @@
       "post": {
         "operationId": "postSpecsBySpecIdWorkflowReevaluateWait",
         "summary": "Re-evaluate a Specification wait attempt",
-        "description": "Re-evaluate a Specification's named waiting attempt when a Tasks-finished event may have been missed. Requires spec.manage. Input is step/attempt; results settled or already-settled. A different completed attempt conflicts; open/escalated/broken Tasks refuse WORKFLOW_TASK_BLOCKED. This is not an arbitrary transition or Task state mutation.",
         "tags": [
           "Workflow"
         ],
+        "description": "Re-evaluate a Specification's named waiting attempt when a Tasks-finished event may have been missed. Requires spec.manage. Input is step/attempt; results settled or already-settled. A different completed attempt conflicts; open/escalated/broken Tasks refuse WORKFLOW_TASK_BLOCKED. This is not an arbitrary transition or Task state mutation.",
         "requestBody": {
           "required": true,
           "content": {
@@ -46098,10 +46061,10 @@
       "post": {
         "operationId": "postSpecsBySpecIdWorkflowReturn",
         "summary": "Return a Specification workflow to an earlier step",
-        "description": "Return the owner workflow run to a permitted earlier step, optionally carrying reason as feedback. Requires spec.manage; the target must be a declared return, never an arbitrary step. Actor is resolved by Runtime, not request. Typed refusal for return-not-allowed or stale execution. 64 KiB body limit.",
         "tags": [
           "Workflow"
         ],
+        "description": "Return the owner workflow run to a permitted earlier step, optionally carrying reason as feedback. Requires spec.manage; the target must be a declared return, never an arbitrary step. Actor is resolved by Runtime, not request. Typed refusal for return-not-allowed or stale execution. 64 KiB body limit.",
         "requestBody": {
           "required": true,
           "content": {
@@ -46747,10 +46710,10 @@
       "post": {
         "operationId": "postSpecsBySpecIdWorkflowStart",
         "summary": "Start or resume the next workflow step of a Specification",
-        "description": "Start or resume the next owner workflow step; Runtime derives human actor from trusted request.authz, never from request data. Requires spec.manage at Specification scope. For a Task first start, expectedWorkflowRevision pins the revision the owner previewed; changed definitions refuse WORKFLOW_DEFINITION_CHANGED. An agent attempt is not started here. 64 KiB body limit, Cache-Control: no-store.",
         "tags": [
           "Workflow"
         ],
+        "description": "Start or resume the next owner workflow step; Runtime derives human actor from trusted request.authz, never from request data. Requires spec.manage at Specification scope. For a Task first start, expectedWorkflowRevision pins the revision the owner previewed; changed definitions refuse WORKFLOW_DEFINITION_CHANGED. An agent attempt is not started here. 64 KiB body limit, Cache-Control: no-store.",
         "requestBody": {
           "required": true,
           "content": {
@@ -47070,10 +47033,10 @@
       "get": {
         "operationId": "getSpecsBySpecIdWorkspace",
         "summary": "Read the workspace view of a Specification",
-        "description": "Read the bounded Specification Workspace composition. Requires spec.view at trusted {projectId,specId}; individual Session rows, attention and activity require session.view at a trusted Session scope. An available empty section is a successful read, not a missing adapter. Project mode never falls back to demo data. 404 specification_not_found is an unknown Specification; 503 specification_source_unavailable is a failed canonical source or composition. No full Task or document body is embedded. Cache-Control: no-store.",
         "tags": [
           "Specifications"
         ],
+        "description": "Read the bounded Specification Workspace composition. Requires spec.view at trusted {projectId,specId}; individual Session rows, attention and activity require session.view at a trusted Session scope. An available empty section is a successful read, not a missing adapter. Project mode never falls back to demo data. 404 specification_not_found is an unknown Specification; 503 specification_source_unavailable is a failed canonical source or composition. No full Task or document body is embedded. Cache-Control: no-store.",
         "parameters": [
           {
             "schema": {
@@ -52405,10 +52368,10 @@
       "post": {
         "operationId": "postSpecsBySpecIdWorktreeClose",
         "summary": "Close the linked worktree of a Specification",
-        "description": "Close the linked worktree associated with one Specification. Optional finishAfterExternalMerge:true is a person-initiated assertion of a previous external merge; the Engine proves whole-branch content equivalence before disposing without a second merge commit. The same flag is not accepted by Specification Close. Refusals include 409 CLOSE_EXTERNAL_MERGE_MISMATCH and 409 CLOSE_LOCAL_CONFIG_MODIFIED; a changed local config must be moved before replaying the same operation id. Git-off projects cannot close worktrees.",
         "tags": [
           "Workspaces"
         ],
+        "description": "Close the linked worktree associated with one Specification. Optional finishAfterExternalMerge:true is a person-initiated assertion of a previous external merge; the Engine proves whole-branch content equivalence before disposing without a second merge commit. The same flag is not accepted by Specification Close. Refusals include 409 CLOSE_EXTERNAL_MERGE_MISMATCH and 409 CLOSE_LOCAL_CONFIG_MODIFIED; a changed local config must be moved before replaying the same operation id. Git-off projects cannot close worktrees.",
         "requestBody": {
           "required": true,
           "content": {
@@ -52582,10 +52545,10 @@
       "get": {
         "operationId": "getSpecsBySpecIdWorktreeCloseOperationsByOperationId",
         "summary": "Read a worktree close operation",
-        "description": "Read the durable Close operation observation; it does not retry, replay uncertain Git effects or mutate repository state. Use the same operationId for recovery/retry, and refer to the operator recovery protocol when resolution is needed.",
         "tags": [
           "Workspaces"
         ],
+        "description": "Read the durable Close operation observation; it does not retry, replay uncertain Git effects or mutate repository state. Use the same operationId for recovery/retry, and refer to the operator recovery protocol when resolution is needed.",
         "parameters": [
           {
             "schema": {
@@ -52734,22 +52697,22 @@
       "get": {
         "operationId": "getSpecsBySpecIdWorktreeClosePreview",
         "summary": "Preview closing the linked worktree of a Specification",
-        "description": "Read-only preview of worktree disposal; optional finishAfterExternalMerge query value must be the literal string true. When selected, merge status already-merged-externally describes the chosen mode, not verified Git equivalence; actual Close proves it. Git-off worktrees cannot be closed.",
         "tags": [
           "Workspaces"
         ],
+        "description": "Read-only preview of worktree disposal; optional finishAfterExternalMerge query value must be the literal string true. When selected, merge status already-merged-externally describes the chosen mode, not verified Git equivalence; actual Close proves it. Git-off worktrees cannot be closed.",
         "parameters": [
           {
             "schema": {
               "type": "string",
               "enum": [
                 "true"
-              ],
-              "description": "Only the literal query value 'true'; preview describes selected already-merged-externally mode but does not prove equivalence."
+              ]
             },
             "in": "query",
             "name": "finishAfterExternalMerge",
-            "required": false
+            "required": false,
+            "description": "Only the literal query value 'true'; preview describes selected already-merged-externally mode but does not prove equivalence."
           },
           {
             "schema": {
@@ -52890,10 +52853,10 @@
       "get": {
         "operationId": "getWorkspaces",
         "summary": "List the registered workspaces of the project",
-        "description": "Lists the primary project checkout and registered linked worktrees in registry order. Read-only snapshot; no reservation is taken. Requires workspace.view at the server-derived {projectId} scope before the registry is read. Each workspace remains listed, but Specification titles are individually filtered by spec.view at {projectId, specId}; inaccessible Specifications never appear. A single unavailable linked checkout does not fail the list. 503 WORKSPACES_UNAVAILABLE means the project/source/registry cannot be read; details that could expose local paths are logged, not returned. Cache-Control: no-store. Demo mode uses the same route with an in-memory registry.",
         "tags": [
           "Workspaces"
         ],
+        "description": "Lists the primary project checkout and registered linked worktrees in registry order. Read-only snapshot; no reservation is taken. Requires workspace.view at the server-derived {projectId} scope before the registry is read. Each workspace remains listed, but Specification titles are individually filtered by spec.view at {projectId, specId}; inaccessible Specifications never appear. A single unavailable linked checkout does not fail the list. 503 WORKSPACES_UNAVAILABLE means the project/source/registry cannot be read; details that could expose local paths are logged, not returned. Cache-Control: no-store. Demo mode uses the same route with an in-memory registry.",
         "security": [
           {
             "sessionCookie": []
@@ -53121,10 +53084,10 @@
       "post": {
         "operationId": "postWorkspacesByWorkspaceIdClose",
         "summary": "Close a workspace",
-        "description": "Close and integrate an entire registered linked workspace including all its canonical Specifications. Requires project-wide Git close-workspace and integrate. Uses durable operationId, safe whole-branch integration, group rebind and disposal; 200 when completed, 202 while unsettled. Git off refuses 400 CLOSE_INVALID. Mutation never drops unrelated workspace contents or active Session Turns.",
         "tags": [
           "Workspaces"
         ],
+        "description": "Close and integrate an entire registered linked workspace including all its canonical Specifications. Requires project-wide Git close-workspace and integrate. Uses durable operationId, safe whole-branch integration, group rebind and disposal; 200 when completed, 202 while unsettled. Git off refuses 400 CLOSE_INVALID. Mutation never drops unrelated workspace contents or active Session Turns.",
         "requestBody": {
           "required": true,
           "content": {
@@ -53139,7 +53102,8 @@
                     "$ref": "#/components/schemas/OperationId"
                   },
                   "finishAfterExternalMerge": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Only Worktree Close: assert that the branch has already been externally integrated. The Engine still verifies full content equivalence before disposal; never inferred automatically."
                   }
                 },
                 "additionalProperties": false
@@ -53296,10 +53260,10 @@
       "get": {
         "operationId": "getWorkspacesByWorkspaceIdCloseOperationsByOperationId",
         "summary": "Read a workspace close operation",
-        "description": "Read the durable Close operation observation; it does not retry, replay uncertain Git effects or mutate repository state. Use the same operationId for recovery/retry, and refer to the operator recovery protocol when resolution is needed.",
         "tags": [
           "Workspaces"
         ],
+        "description": "Read the durable Close operation observation; it does not retry, replay uncertain Git effects or mutate repository state. Use the same operationId for recovery/retry, and refer to the operator recovery protocol when resolution is needed.",
         "parameters": [
           {
             "schema": {
@@ -53447,10 +53411,10 @@
       "get": {
         "operationId": "getWorkspacesByWorkspaceIdClosePreview",
         "summary": "Preview closing a workspace",
-        "description": "Read-only preview of closing one whole registered workspace: identifies all canonical Specification occupants and integration destination. Project-wide Git close-workspace and integrate are required before exposing occupants. It is not permission to close only one shared Specification; previews cannot promise future mutation success.",
         "tags": [
           "Workspaces"
         ],
+        "description": "Read-only preview of closing one whole registered workspace: identifies all canonical Specification occupants and integration destination. Project-wide Git close-workspace and integrate are required before exposing occupants. It is not permission to close only one shared Specification; previews cannot promise future mutation success.",
         "parameters": [
           {
             "schema": {
@@ -53676,10 +53640,10 @@
       "get": {
         "operationId": "getWorkspacesByWorkspaceIdDocs",
         "summary": "List a workspace's documentation",
-        "description": "List documentation from this registered, verified workspace's own docs.root and docs.yaml. Requires docs.view at trusted {projectId} before workspace lookup. Returns active, inactive and skipped documents, with corpusRevision: an opaque content/settings digest (not Git HEAD/ETag). All paths are relative to docs.root; no conditional HTTP ETag is supported. Unregistered workspace is 404 DOCS_WORKSPACE_NOT_FOUND, inaccessible/closing checkout 409 DOCS_WORKSPACE_UNAVAILABLE, invalid docs root/settings 503 DOCS_NOT_CONFIGURED or DOCS_UNAVAILABLE. Demo mode without project documentation is 503 DOCS_NOT_SERVED. Cache-Control: no-store.",
         "tags": [
           "Documentation"
         ],
+        "description": "List documentation from this registered, verified workspace's own docs.root and docs.yaml. Requires docs.view at trusted {projectId} before workspace lookup. Returns active, inactive and skipped documents, with corpusRevision: an opaque content/settings digest (not Git HEAD/ETag). All paths are relative to docs.root; no conditional HTTP ETag is supported. Unregistered workspace is 404 DOCS_WORKSPACE_NOT_FOUND, inaccessible/closing checkout 409 DOCS_WORKSPACE_UNAVAILABLE, invalid docs root/settings 503 DOCS_NOT_CONFIGURED or DOCS_UNAVAILABLE. Demo mode without project documentation is 503 DOCS_NOT_SERVED. Cache-Control: no-store.",
         "parameters": [
           {
             "schema": {
@@ -53928,10 +53892,10 @@
       "get": {
         "operationId": "getWorkspacesByWorkspaceIdDocsDocumentsByDocumentId",
         "summary": "Read a document of a workspace",
-        "description": "Read one workspace documentation article: metadata, Markdown body and heading sections from one file read, with corpusRevision and related document states. Requires docs.view at project scope before workspace lookup. A deprecated/superseded article is 410 DOCS_DOCUMENT_INACTIVE (with known successor); a skipped or duplicate id is 404 DOCS_DOCUMENT_SKIPPED; absent or concurrently changed file is 404 DOCS_DOCUMENT_NOT_FOUND. These refusals include workspaceId and corpusRevision. Section line numbers are relative to the returned body, unlike search-hit lines which include frontmatter. Cache-Control: no-store.",
         "tags": [
           "Documentation"
         ],
+        "description": "Read one workspace documentation article: metadata, Markdown body and heading sections from one file read, with corpusRevision and related document states. Requires docs.view at project scope before workspace lookup. A deprecated/superseded article is 410 DOCS_DOCUMENT_INACTIVE (with known successor); a skipped or duplicate id is 404 DOCS_DOCUMENT_SKIPPED; absent or concurrently changed file is 404 DOCS_DOCUMENT_NOT_FOUND. These refusals include workspaceId and corpusRevision. Section line numbers are relative to the returned body, unlike search-hit lines which include frontmatter. Cache-Control: no-store.",
         "parameters": [
           {
             "schema": {
@@ -54388,10 +54352,10 @@
       "get": {
         "operationId": "getWorkspacesByWorkspaceIdDocsSearch",
         "summary": "Search a workspace's documentation",
-        "description": "Search this verified workspace's documentation corpus with ranked section hits. Requires docs.view at project scope. Search may return hybrid or lexical mode: a lexical fallback is normal 200, not a service failure. Every request performs bounded read-time index refresh (up to 16 chunks, 7000 ms post-corpus budget), then schedules background catch-up if needed. Only trusted Runtime ai.embeddings config supplies the embedding endpoint. Proposals are excluded by default; snippets are on unless disabled. corpusRevision allows clients to detect tree/article/search mismatch. The background index state is reported as reason/indexProgress, with no separate status endpoint. Cache-Control: no-store.",
         "tags": [
           "Documentation"
         ],
+        "description": "Search this verified workspace's documentation corpus with ranked section hits. Requires docs.view at project scope. Search may return hybrid or lexical mode: a lexical fallback is normal 200, not a service failure. Every request performs bounded read-time index refresh (up to 16 chunks, 7000 ms post-corpus budget), then schedules background catch-up if needed. Only trusted Runtime ai.embeddings config supplies the embedding endpoint. Proposals are excluded by default; snippets are on unless disabled. corpusRevision allows clients to detect tree/article/search mismatch. The background index state is reported as reason/indexProgress, with no separate status endpoint. Cache-Control: no-store.",
         "parameters": [
           {
             "schema": {

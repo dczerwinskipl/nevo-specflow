@@ -99,7 +99,7 @@ export function registerSpecsOperationList<RawServer extends RawServerBase>(
     path: SPECS_OPERATIONS_PATH,
     summary: 'List Specification operations',
     description:
-      'Read-only list of the feature\'s background operations; the request/inspection for each operation remains authoritative. Caller must have spec.view in some scope; each identified Specification row is independently filtered by spec.view at its trusted scope, and rows without a known Specification require spec.create. Counts are computed after authorization and before status/limit filters; no paths, journal internals or server text are exposed. The list does not run Git or acquire the Engine control lock. The weak ETag ignores generatedAt; an unchanged list answers 304. 400 OPERATION_LIST_QUERY_INVALID rejects invalid status or limit; 503 OPERATIONS_UNAVAILABLE means no Engine or failed source.',
+      "Read-only list of the feature's background operations; the request/inspection for each operation remains authoritative. Caller must have spec.view in some scope; each identified Specification row is independently filtered by spec.view at its trusted scope, and rows without a known Specification require spec.create. Counts are computed after authorization and before status/limit filters; no paths, journal internals or server text are exposed. The list does not run Git or acquire the Engine control lock. The weak ETag ignores generatedAt; an unchanged list answers 304. 400 OPERATION_LIST_QUERY_INVALID rejects invalid status or limit; 503 OPERATIONS_UNAVAILABLE means no Engine or failed source.",
     sources: options.engine ? [createOperationSource(options.engine)] : undefined,
     registry: options.registry,
     authorize: requireCapabilityInAnyScope({

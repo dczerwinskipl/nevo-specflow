@@ -118,17 +118,23 @@ describe('Runtime OpenAPI document', () => {
       });
       expect(paths['/api/openapi.json']?.get).toBeDefined();
       expect(paths['/api/openapi.json']?.head).toBeUndefined();
-      expect((paths['/api/authorization/capabilities']?.post as { description: string }).description)
-        .toContain('lack of permission is a normal 200 response with false');
+      expect(
+        (paths['/api/authorization/capabilities']?.post as { description: string }).description,
+      ).toContain('lack of permission is a normal 200 response with false');
       const workspaceOperation = paths['/api/workspaces']?.get as {
         description: string;
         responses: Record<string, { content?: Record<string, { schema: unknown }> }>;
       };
       expect(workspaceOperation.description).toContain('workspace.view at the server-derived');
       const workspaceSchema = workspaceOperation.responses['200']?.content?.['application/json']
-        ?.schema as { properties: { workspaces: { items: { properties: Record<string, { description?: string }> } } } };
-      expect(workspaceSchema.properties.workspaces.items.properties.dirty.description)
-        .toContain('untracked files');
+        ?.schema as {
+        properties: {
+          workspaces: { items: { properties: Record<string, { description?: string }> } };
+        };
+      };
+      expect(workspaceSchema.properties.workspaces.items.properties.dirty.description).toContain(
+        'untracked files',
+      );
       const overviewOperation = paths['/api/specs/overview']?.get as {
         description: string;
         responses: Record<string, { content?: Record<string, { schema: unknown }> }>;
@@ -140,7 +146,10 @@ describe('Runtime OpenAPI document', () => {
       expect(overviewSchema.anyOf[1]?.properties.items.description).toContain('Historical');
       const streamOperation = paths['/api/specs/create/operations/{operationId}/events']?.get as {
         description: string;
-        responses: Record<string, { description?: string; content?: Record<string, { schema: unknown }> }>;
+        responses: Record<
+          string,
+          { description?: string; content?: Record<string, { schema: unknown }> }
+        >;
       };
       expect(streamOperation.description).toContain('not the source of truth');
       expect(streamOperation.responses['200']?.description).toContain('snapshot|step|completed');
@@ -151,7 +160,9 @@ describe('Runtime OpenAPI document', () => {
         responses: Record<string, { description?: string }>;
       };
       expect(listOperation.description).toContain('independently filtered by spec.view');
-      expect(listOperation.parameters.map((parameter) => parameter.name)).toContain('If-None-Match');
+      expect(listOperation.parameters.map((parameter) => parameter.name)).toContain(
+        'If-None-Match',
+      );
       expect(listOperation.responses['304']?.description).toContain('Not modified');
       const workspaceRead = paths['/api/specs/{specId}/workspace']?.get as {
         description: string;
@@ -166,13 +177,16 @@ describe('Runtime OpenAPI document', () => {
       expect(createOperation.description).toContain('Prefer: respond-async');
       const specClose = paths['/api/specs/{specId}/close']?.post as { description: string };
       expect(specClose.description).toContain('never accepts finishAfterExternalMerge');
-      const worktreeClose = paths['/api/specs/{specId}/worktree/close']?.post as { description: string };
+      const worktreeClose = paths['/api/specs/{specId}/worktree/close']?.post as {
+        description: string;
+      };
       expect(worktreeClose.description).toContain('whole-branch content equivalence');
       const docsSearch = paths['/api/workspaces/{workspaceId}/docs/search']?.get as {
         description: string;
       };
       expect(docsSearch.description).toContain('lexical fallback is normal 200');
-      const docsArticle = paths['/api/workspaces/{workspaceId}/docs/documents/{documentId}']?.get as {
+      const docsArticle = paths['/api/workspaces/{workspaceId}/docs/documents/{documentId}']
+        ?.get as {
         description: string;
       };
       expect(docsArticle.description).toContain('410 DOCS_DOCUMENT_INACTIVE');
@@ -195,9 +209,13 @@ describe('Runtime OpenAPI document', () => {
       expect(telemetryRefresh.description).toContain('24 hours');
       const sessionList = paths['/api/sessions']?.get as { description: string };
       expect(sessionList.description).toContain('500 index rows');
-      const sessionEvents = paths['/api/sessions/{sessionId}/events']?.get as { description: string };
+      const sessionEvents = paths['/api/sessions/{sessionId}/events']?.get as {
+        description: string;
+      };
       expect(sessionEvents.description).toContain('resync-required');
-      const sessionAssociation = paths['/api/sessions/{sessionId}/association']?.get as { description: string };
+      const sessionAssociation = paths['/api/sessions/{sessionId}/association']?.get as {
+        description: string;
+      };
       expect(sessionAssociation.description).toContain('independently check spec.view');
       const documentsSave = paths['/api/specs/{specId}/documents/{documentId}']?.put as {
         description: string;
@@ -207,8 +225,10 @@ describe('Runtime OpenAPI document', () => {
         description: string;
       };
       expect(documentsRaw.description).toContain('before sending bytes');
-      expect(historyOperation.parameters.find((parameter) => parameter.name === 'cursor')
-        ?.schema.description).toContain('page size');
+      expect(
+        historyOperation.parameters.find((parameter) => parameter.name === 'cursor')?.schema
+          .description,
+      ).toContain('page size');
       const taskListOperation = paths['/api/specs/{specId}/tasks']?.get as {
         description: string;
       };
@@ -217,18 +237,29 @@ describe('Runtime OpenAPI document', () => {
         description: string;
       };
       expect(workflowActions.description).toContain('document relations');
-      const workspaceClose = paths['/api/workspaces/{workspaceId}/close']?.post as { description: string };
+      const workspaceClose = paths['/api/workspaces/{workspaceId}/close']?.post as {
+        description: string;
+      };
       expect(workspaceClose.description).toContain('including all its canonical Specifications');
-      expect(createOperation.parameters.some((parameter) => parameter.name === 'Prefer')).toBe(true);
+      expect(createOperation.parameters.some((parameter) => parameter.name === 'Prefer')).toBe(
+        true,
+      );
       const createOptions = paths['/api/specs/create-options']?.get as { description: string };
       expect(createOptions.description).toContain('worktreesRoot.path');
-      expect((paths['/api/specs/archetypes']?.get as { parameters: Array<{ name: string }> }).parameters)
-        .toEqual(expect.arrayContaining([expect.objectContaining({ name: 'If-None-Match' })]));
-      const workspaceBody = workspaceRead.responses['200']?.content?.['application/json']?.schema as {
-        properties: { revision: { description?: string }; specification: { properties: { summary: { description?: string } } } };
+      expect(
+        (paths['/api/specs/archetypes']?.get as { parameters: Array<{ name: string }> }).parameters,
+      ).toEqual(expect.arrayContaining([expect.objectContaining({ name: 'If-None-Match' })]));
+      const workspaceBody = workspaceRead.responses['200']?.content?.['application/json']
+        ?.schema as {
+        properties: {
+          revision: { description?: string };
+          specification: { properties: { summary: { description?: string } } };
+        };
       };
       expect(workspaceBody.properties.revision.description).toContain('sourceRevision');
-      expect(workspaceBody.properties.specification.properties.summary.description).toContain('320 graphemes');
+      expect(workspaceBody.properties.specification.properties.summary.description).toContain(
+        '320 graphemes',
+      );
       const documentRead = paths['/api/specs/{specId}/documents/{documentId}']?.get as {
         parameters: readonly { in: string; name: string; required?: boolean }[];
       };

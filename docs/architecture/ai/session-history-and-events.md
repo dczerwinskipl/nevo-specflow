@@ -150,7 +150,6 @@ delta; edits/replacements allocate a new content generation while retaining refe
 No compression is required for these limits to hold. Expanding text reads only that content range.
 Auth verifies content/Turn/Work membership in the selected Session before returning any bytes.
 
-
 ## Event stream
 
 Initial sequence: first GET Snapshot, then GET events?after=Snapshot.eventSeq.
@@ -194,4 +193,3 @@ Committed outbox changes wake live subscribers. Idle streams revalidate authenti
 most one second apart without polling the outbox; no change is broadcast before its transaction commits.
 Close authorization/lifecycle resources on shutdown. Concurrent bootstrap/replay/broadcast must
 not lose the first event after the snapshot; test with an update in each handoff window.
-

@@ -48,17 +48,23 @@ export const CurrentSpecSectionIdSchema = Type.Union([
 ]);
 export type CurrentSpecSectionId = Static<typeof CurrentSpecSectionIdSchema>;
 
-export const CurrentSpecClassificationSchema = Type.Union([
-  Type.Object({
-    section: Type.Literal('requires-attention'),
-    reason: Type.Optional(CurrentSpecAttentionReasonSchema),
-    count: Type.Optional(Type.Integer({ minimum: 1 })),
-  }),
-  Type.Object({ section: Type.Literal('active') }),
-  Type.Object({ section: Type.Literal('ready') }),
-  Type.Object({ section: Type.Literal('draft') }),
-  Type.Object({ section: Type.Literal('unknown') }),
-], { description: 'Single server-owned Current classification: requires-attention takes precedence over active, then ready, then draft. Unknown is used when classification cannot be established. Reason is optional for attention.' });
+export const CurrentSpecClassificationSchema = Type.Union(
+  [
+    Type.Object({
+      section: Type.Literal('requires-attention'),
+      reason: Type.Optional(CurrentSpecAttentionReasonSchema),
+      count: Type.Optional(Type.Integer({ minimum: 1 })),
+    }),
+    Type.Object({ section: Type.Literal('active') }),
+    Type.Object({ section: Type.Literal('ready') }),
+    Type.Object({ section: Type.Literal('draft') }),
+    Type.Object({ section: Type.Literal('unknown') }),
+  ],
+  {
+    description:
+      'Single server-owned Current classification: requires-attention takes precedence over active, then ready, then draft. Unknown is used when classification cannot be established. Reason is optional for attention.',
+  },
+);
 export type CurrentSpecClassification = Static<typeof CurrentSpecClassificationSchema>;
 
 export const CurrentSpecOverviewItemSchema = Type.Object(
@@ -70,17 +76,26 @@ export const CurrentSpecOverviewItemSchema = Type.Object(
      */
     status: Type.Optional(Type.String({ minLength: 1 })),
     classification: CurrentSpecClassificationSchema,
-    signals: Type.Union([Type.Array(CurrentSpecSignalSchema), Type.Null()], { description: 'Bounded evidence for Current only; may be null when unavailable. Consumers must not reclassify a Specification from signals.' }),
-    currentExecutions: Type.Union([
-      Type.Array(
-        Type.Object({
-          sessionId: Type.String(),
-          agentRole: Type.String(),
-          taskIds: Type.Array(Type.String()),
-        }),
-      ),
-      Type.Null(),
-    ], { description: 'Current execution evidence only, or null when unavailable; never derived from historical Session associations.' }),
+    signals: Type.Union([Type.Array(CurrentSpecSignalSchema), Type.Null()], {
+      description:
+        'Bounded evidence for Current only; may be null when unavailable. Consumers must not reclassify a Specification from signals.',
+    }),
+    currentExecutions: Type.Union(
+      [
+        Type.Array(
+          Type.Object({
+            sessionId: Type.String(),
+            agentRole: Type.String(),
+            taskIds: Type.Array(Type.String()),
+          }),
+        ),
+        Type.Null(),
+      ],
+      {
+        description:
+          'Current execution evidence only, or null when unavailable; never derived from historical Session associations.',
+      },
+    ),
   },
   { additionalProperties: false },
 );
@@ -90,8 +105,14 @@ export const CurrentSpecsOverviewSchema = Type.Object(
   {
     revision: Type.String(),
     collection: Type.Literal('current'),
-    sections: Type.Array(CurrentSpecSectionIdSchema, { description: 'Enabled Current section identifiers in server-defined display order; clients must not reorder or infer classification from raw signals.' }),
-    items: Type.Array(CurrentSpecOverviewItemSchema, { description: 'Current Specification records after per-item spec.view authorization filtering.' }),
+    sections: Type.Array(CurrentSpecSectionIdSchema, {
+      description:
+        'Enabled Current section identifiers in server-defined display order; clients must not reorder or infer classification from raw signals.',
+    }),
+    items: Type.Array(CurrentSpecOverviewItemSchema, {
+      description:
+        'Current Specification records after per-item spec.view authorization filtering.',
+    }),
   },
   { additionalProperties: false },
 );

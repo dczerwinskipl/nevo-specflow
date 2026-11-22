@@ -31,16 +31,16 @@ The demo currently has genuine differences (no Git checkout or provider executio
 
 ## Observed code, not just documentation
 
-| Capability | Project mode | Demo mode | Gap |
-| --- | --- | --- | --- |
-| Workflow / Tasks | Shared Engine and resource routes | Same Engine workflow over in-memory store | Largely converged under ADR 0025 |
-| Document reads | `/api/specs/:specId/document-tree` and content/raw | Same paths with demo read source | Converged |
-| Document writes | `/api/specs/:specId/documents...`, folders, operations | Equivalent operations under `/api/demo/specs/:specId/...` | Different route registration and persistence/commit semantics |
-| Create options | `GET /api/specs/create-options` | `GET /api/demo/specs/create-options` | Mostly shared schemas; separate endpoints |
-| Archetypes | `GET /api/specs/archetypes` | Superset `GET /api/demo/specification-creation` | Separate response containing provider/location fixtures |
-| Create | `POST /api/specs` | `POST /api/demo/specifications` | Separate command implementation, id handling and inspection |
-| Create inspection/progress | `/api/specs/create/operations/:id` | `/api/demo/specifications/operations/:id` | Separate resource paths and outcomes |
-| Sessions | Managed Sessions API and composed create | `POST /api/demo/specs/:specId/sessions` plus placeholder detail | Different semantics, not just different records |
+| Capability                 | Project mode                                           | Demo mode                                                       | Gap                                                           |
+| -------------------------- | ------------------------------------------------------ | --------------------------------------------------------------- | ------------------------------------------------------------- |
+| Workflow / Tasks           | Shared Engine and resource routes                      | Same Engine workflow over in-memory store                       | Largely converged under ADR 0025                              |
+| Document reads             | `/api/specs/:specId/document-tree` and content/raw     | Same paths with demo read source                                | Converged                                                     |
+| Document writes            | `/api/specs/:specId/documents...`, folders, operations | Equivalent operations under `/api/demo/specs/:specId/...`       | Different route registration and persistence/commit semantics |
+| Create options             | `GET /api/specs/create-options`                        | `GET /api/demo/specs/create-options`                            | Mostly shared schemas; separate endpoints                     |
+| Archetypes                 | `GET /api/specs/archetypes`                            | Superset `GET /api/demo/specification-creation`                 | Separate response containing provider/location fixtures       |
+| Create                     | `POST /api/specs`                                      | `POST /api/demo/specifications`                                 | Separate command implementation, id handling and inspection   |
+| Create inspection/progress | `/api/specs/create/operations/:id`                     | `/api/demo/specifications/operations/:id`                       | Separate resource paths and outcomes                          |
+| Sessions                   | Managed Sessions API and composed create               | `POST /api/demo/specs/:specId/sessions` plus placeholder detail | Different semantics, not just different records               |
 
 Evidence: `packages/specflow-runtime/src/features/specs/create/endpoint.ts`, `features/specs/demo/endpoints.ts`, `features/documents/write/routes.ts`, `features/documents/demo/endpoints.ts`, `features/sessions/demo/endpoints.ts`, `packages/specflow-contracts/src/demo/index.ts` and `packages/specflow-ui/src/features/specs/creation/api/api.project.ts` / `api.demo.ts`.
 
@@ -59,13 +59,13 @@ No promise is made that every real operation is supported by demo. An unsupporte
 
 ## Migration batches
 
-| Batch | Change | Proof required |
-| --- | --- | --- |
-| A | Confirm parity map for all public demo and project routes; correct stale reference statements | Route + TypeBox matrix, no claims contradicted by source |
-| B | Route shared document reads and writes through one feature-owned registration with injected sources | Same HTTP status, request/response and auth tests for both modes; isolated storage |
-| C | Unify catalogue, Create options, Create command, operation inspection and progress | Canonical identity, concurrency/idempotency, 201/202 and error/recovery scenarios; no accidental Git operations in demo |
-| D | Replace placeholder allocation with the shared Session resource model, or clearly scoped unsupported capability | Real/mock Session semantics; correct access scopes and no fake native execution |
-| E | Remove `/api/demo/**` product routes, duplicate demo contracts and mode-specific UI API adapters; retire the 33 KB standalone [demo reference](../reference/api/specification-creation-demo.md) | No production client uses an old path; schema parity and documentation index/check pass |
+| Batch | Change                                                                                                                                                                                          | Proof required                                                                                                          |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| A     | Confirm parity map for all public demo and project routes; correct stale reference statements                                                                                                   | Route + TypeBox matrix, no claims contradicted by source                                                                |
+| B     | Route shared document reads and writes through one feature-owned registration with injected sources                                                                                             | Same HTTP status, request/response and auth tests for both modes; isolated storage                                      |
+| C     | Unify catalogue, Create options, Create command, operation inspection and progress                                                                                                              | Canonical identity, concurrency/idempotency, 201/202 and error/recovery scenarios; no accidental Git operations in demo |
+| D     | Replace placeholder allocation with the shared Session resource model, or clearly scoped unsupported capability                                                                                 | Real/mock Session semantics; correct access scopes and no fake native execution                                         |
+| E     | Remove `/api/demo/**` product routes, duplicate demo contracts and mode-specific UI API adapters; retire the 33 KB standalone [demo reference](../reference/api/specification-creation-demo.md) | No production client uses an old path; schema parity and documentation index/check pass                                 |
 
 Remove the dedicated demo API reference only when the last public demo-specific endpoint is gone. Before then, mark it as a **transitional current contract** that clearly states the actual behavior; do not delete the only documented behavior in advance.
 

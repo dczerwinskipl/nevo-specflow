@@ -77,7 +77,11 @@ export const CreateOptionsSchema = Type.Object(
            * Every Specification bound to the workspace (a Create-only fact for the shared-use
            * warning). Unlike `specifications[]` of the list it is not limited to viewable ones.
            */
-          specCount: Type.Integer({ minimum: 0, description: 'Number of ALL Specifications bound to the workspace, including those not visible through spec.view; used only for shared-use warnings.' }),
+          specCount: Type.Integer({
+            minimum: 0,
+            description:
+              'Number of ALL Specifications bound to the workspace, including those not visible through spec.view; used only for shared-use warnings.',
+          }),
           /** Nevo created and manages this linked worktree (always false for the primary one). */
           managed: Type.Boolean(),
           state: Type.Union([
@@ -122,15 +126,27 @@ export const CreateOptionsSchema = Type.Object(
      * `refs/heads/<name>`; a short tag name such as `v1.0` is therefore read as a branch). Not
      * necessarily one of `baseRefs`; {@link designatedBaseRef} gives the ref it designates.
      */
-    defaultBaseRef: Type.String({ minLength: 1, description: 'Configured ref as written: HEAD, full SHA, refs/heads/..., refs/tags/... or a local short branch name. A short name denotes a branch, not a tag.' }),
+    defaultBaseRef: Type.String({
+      minLength: 1,
+      description:
+        'Configured ref as written: HEAD, full SHA, refs/heads/..., refs/tags/... or a local short branch name. A short name denotes a branch, not a tag.',
+    }),
     /** Inspection of the configured ref, including HEAD, tags and commits. Absent without Git facts. */
     defaultBaseConfig: Type.Optional(DefaultBaseConfigSchema),
     /** Effective pattern; `{shortId}` is optional, so `feature/{slug}` previews as `feature/<slug>`. */
-    branchPattern: Type.String({ minLength: 1, description: 'Effective policy for generated branch names; normally feature/{slug}, optionally {shortId}.' }),
+    branchPattern: Type.String({
+      minLength: 1,
+      description:
+        'Effective policy for generated branch names; normally feature/{slug}, optionally {shortId}.',
+    }),
     /** Effective folder for new worktrees (machine-local `git.worktreesRoot` or the default). */
     worktreesRoot: Type.Object(
       { path: Type.String({ minLength: 1 }), exists: Type.Boolean() },
-      { additionalProperties: false, description: 'Absolute machine-local root for new worktrees (config or default), visible to project-wide spec.create callers. exists indicates whether the folder already exists; a new worktree may create it.' },
+      {
+        additionalProperties: false,
+        description:
+          'Absolute machine-local root for new worktrees (config or default), visible to project-wide spec.create callers. exists indicates whether the folder already exists; a new worktree may create it.',
+      },
     ),
     integrationTargetBranch: Type.Optional(Type.String({ minLength: 1 })),
     commits: Type.Optional(CreateCommitsSchema),
@@ -146,7 +162,11 @@ export const CreateOptionsSchema = Type.Object(
            * Always the full ref `refs/heads/<branch>`: the identity of the option and the value a
            * `target.baseRef` override sends. Its display name is `<branch>`.
            */
-          ref: Type.String({ pattern: '^refs/heads/.+$', description: 'Full local refs/heads/<branch> ref; not a short branch or remote ref. The same value is sent as explicit target.baseRef.' }),
+          ref: Type.String({
+            pattern: '^refs/heads/.+$',
+            description:
+              'Full local refs/heads/<branch> ref; not a short branch or remote ref. The same value is sent as explicit target.baseRef.',
+          }),
           projectConfig: BaseProjectConfigSchema,
           checkedOutWorkspaceId: Type.Optional(WorkspaceIdSchema),
         },

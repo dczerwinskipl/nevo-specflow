@@ -141,7 +141,8 @@ export const EditTaskInputSchema = Type.Object(
     expectedRevision: Type.String({
       minLength: 1,
       maxLength: 200,
-      description: 'Optimistic concurrency precondition: resource manifest revision returned by the last read or edit; a mismatch refuses the operation.',
+      description:
+        'Optimistic concurrency precondition: resource manifest revision returned by the last read or edit; a mismatch refuses the operation.',
     }),
     title: Type.Optional(Title),
     /** `null` removes the summary. */
@@ -150,7 +151,10 @@ export const EditTaskInputSchema = Type.Object(
     dependsOn: Type.Optional(Dependencies),
     /** The whole list; `null` restores the default context. */
     context: Type.Optional(
-      Type.Union([Context, Type.Null()], { description: 'Explicit full Task input context; null on edit restores the Engine default. A missing expected process artifact is awaited; Task\'s required own output artifact is invalid as input.' }),
+      Type.Union([Context, Type.Null()], {
+        description:
+          "Explicit full Task input context; null on edit restores the Engine default. A missing expected process artifact is awaited; Task's required own output artifact is invalid as input.",
+      }),
     ),
   },
   { additionalProperties: false },

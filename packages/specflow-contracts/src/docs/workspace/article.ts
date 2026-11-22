@@ -40,7 +40,11 @@ export const WorkspaceDocsArticleSectionSchema = Type.Object(
     sectionId: Type.String({ minLength: 1 }),
     headingPath: Type.Array(Type.String()),
     /** 1-based line of the heading in `body`; a search hit's `line` counts in the file instead. */
-    line: Type.Integer({ minimum: 1, description: '1-based heading line in the returned Markdown body (not the original file); search-hit line numbers include frontmatter.' }),
+    line: Type.Integer({
+      minimum: 1,
+      description:
+        '1-based heading line in the returned Markdown body (not the original file); search-hit line numbers include frontmatter.',
+    }),
   },
   { additionalProperties: false },
 );
@@ -72,7 +76,10 @@ export const WorkspaceDocsArticleSchema = Type.Object(
       { additionalProperties: false },
     ),
     /** The Markdown after the frontmatter. */
-    body: Type.String({ description: 'Markdown body after frontmatter, read coherently together with the document metadata.' }),
+    body: Type.String({
+      description:
+        'Markdown body after frontmatter, read coherently together with the document metadata.',
+    }),
     sections: Type.Array(WorkspaceDocsArticleSectionSchema),
     /** The documents left out of the workspace's documentation (as in the tree). */
     skipped: WorkspaceDocsSkippedSchema,

@@ -109,4 +109,3 @@ read as `unavailable`.
   `readiness` is the effective readiness of the single-Session read: when the provider (or the
   Session's provider mode) cannot run a Turn and none is active, it reads
   `authenticationRequired` if the provider needs a sign-in, otherwise `unavailable`.
-

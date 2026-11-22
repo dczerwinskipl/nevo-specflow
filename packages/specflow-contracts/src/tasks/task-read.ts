@@ -151,10 +151,12 @@ const page = <T extends TSchema>(item: T) =>
     token: Text,
     items: Type.Array(item),
     nextCursor: Type.Union([Text, Type.Null()], {
-      description: 'Opaque next-page cursor, possibly present after an empty or underfilled page; only null means no continuation.',
+      description:
+        'Opaque next-page cursor, possibly present after an empty or underfilled page; only null means no continuation.',
     }),
     coverage: Type.Union([Type.Literal('complete'), Type.Literal('partial')], {
-      description: 'complete means the owner can enumerate the entire authorized collection, NOT that this page is last. partial means incomplete source coverage.',
+      description:
+        'complete means the owner can enumerate the entire authorized collection, NOT that this page is last. partial means incomplete source coverage.',
     }),
   });
 export const TaskHistoryEntrySchema = Type.Object({
@@ -189,15 +191,21 @@ export const TaskPageQuerySchema = Type.Object(
     token: Type.String({
       minLength: 1,
       maxLength: 1000,
-      description: 'Opaque short-lived Task history lease from the matching Task detail; bound to caller, target, workspace, policy and source. Not a bearer grant or an offset. Expiry/eviction returns 409 task_snapshot_expired.',
+      description:
+        'Opaque short-lived Task history lease from the matching Task detail; bound to caller, target, workspace, policy and source. Not a bearer grant or an offset. Expiry/eviction returns 409 task_snapshot_expired.',
     }),
     cursor: Type.Optional(
-      Type.String({ maxLength: 1000, description: 'Opaque continuation for this token and original page size. A missing cursor begins at the first page. A mismatched/expired cursor or a cursor reused with another limit returns 409.' }),
+      Type.String({
+        maxLength: 1000,
+        description:
+          'Opaque continuation for this token and original page size. A missing cursor begins at the first page. A mismatched/expired cursor or a cursor reused with another limit returns 409.',
+      }),
     ),
     limit: Type.Optional(
       Type.String({
         pattern: '^(?:[1-9]|[1-4][0-9]|50)$',
-        description: 'Decimal string 1..50. First request chooses default if omitted; continuation without limit reuses the stored page size. It is not a numeric JSON query parameter.',
+        description:
+          'Decimal string 1..50. First request chooses default if omitted; continuation without limit reuses the stored page size. It is not a numeric JSON query parameter.',
       }),
     ),
   },

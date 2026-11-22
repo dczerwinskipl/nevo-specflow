@@ -11,7 +11,8 @@ const timestamp = Type.String({
 });
 export const TelemetryDecimalSchema = Type.String({
   pattern: '^(0|[1-9][0-9]{0,15})(\\.[0-9]{1,12})?$',
-  description: 'Exact nonnegative decimal text with up to 12 fractional digits; never silently convert via JS binary float or round unsupported native values.',
+  description:
+    'Exact nonnegative decimal text with up to 12 fractional digits; never silently convert via JS binary float or round unsupported native values.',
 });
 const percentage = Type.String({
   pattern: '^(?:(?:0|[1-9][0-9]?)(?:\\.[0-9]{1,12})?|100(?:\\.0{1,12})?)$',

@@ -32,46 +32,20 @@ related:
 
 # Workspace documentation HTTP API
 
-The transport contract is generated from `packages/specflow-contracts/src/docs/workspace/`
-and Fastify routes in `packages/specflow-runtime/src/features/docs/`. Its OpenAPI operations
-are `getWorkspacesByWorkspaceIdDocs`, `getWorkspacesByWorkspaceIdDocsDocumentsByDocumentId`,
-and `getWorkspacesByWorkspaceIdDocsSearch` in [Runtime OpenAPI](openapi.md).
+The `Documentation` operations in [OpenAPI](openapi.md) provide documentation
+for a registered workspace:
 
-The behavior behind authorization, corpus revision, index freshness, lexical fallback and
-workspace isolation is described in
+- `GET /api/workspaces/{workspaceId}/docs` lists documents and their active state.
+- `GET /api/workspaces/{workspaceId}/docs/documents/{documentId}` reads one document.
+- `GET /api/workspaces/{workspaceId}/docs/search` searches the workspace's corpus.
+
+All three use the trusted workspace binding. Access requires `docs.view` at project
+scope. Each response reports `corpusRevision` so clients can detect a changed
+documentation corpus. Search can return lexical results when semantic indexing is
+unavailable; this is not automatically an HTTP error.
+
+For corpus identity, index freshness, error interpretation, access isolation and
+search behavior, see
 [Workspace documentation corpus](../../architecture/runtime/workspace-documentation-corpus.md).
-The [product reader](../../product/specflow/ui/documentation-reader.md) owns UI behavior.
-This page retains the stable discovery ID, not a second manually maintained HTTP schema.
-
-## Common rules
-
-See [Workspace identity, access and corpus](../../architecture/runtime/workspace-documentation-corpus.md#workspace-identity-access-and-corpus).
-
-## GET /api/workspaces/:workspaceId/docs
-
-See OpenAPI `getWorkspacesByWorkspaceIdDocs` and
-[Documents and search projections](../../architecture/runtime/workspace-documentation-corpus.md#documents-and-search-projections).
-
-## GET /api/workspaces/:workspaceId/docs/documents/:documentId
-
-See OpenAPI `getWorkspacesByWorkspaceIdDocsDocumentsByDocumentId` and
-[Documents and search projections](../../architecture/runtime/workspace-documentation-corpus.md#documents-and-search-projections).
-
-## GET /api/workspaces/:workspaceId/docs/search
-
-See OpenAPI `getWorkspacesByWorkspaceIdDocsSearch` and
-[Semantic refresh](../../architecture/runtime/workspace-documentation-corpus.md#semantic-refresh-and-concurrency-policy).
-
-## Authorization
-
-See [Workspace identity, access and corpus](../../architecture/runtime/workspace-documentation-corpus.md#workspace-identity-access-and-corpus) and
-[Runtime authorization](../../architecture/runtime/auth/authorization.md).
-
-## Errors
-
-Codes and response shapes are generated in OpenAPI. Their domain meaning is explained in
-[Workspace identity, access and corpus](../../architecture/runtime/workspace-documentation-corpus.md#workspace-identity-access-and-corpus).
-
-## Index freshness
-
-See [Semantic refresh and concurrency policy](../../architecture/runtime/workspace-documentation-corpus.md#semantic-refresh-and-concurrency-policy).
+For the reader UI see
+[Documentation reader](../../product/specflow/ui/documentation-reader.md).

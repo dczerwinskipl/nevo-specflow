@@ -34,20 +34,16 @@ sessions:
       allowed: true
 ```
 
-Both flags default to false. An allowed provider is enabled on every workstation unless that
-workstation's `.nevo/local/config.yaml` sets `sessions.providers.<provider>.enabled: false`; the
-local file also holds a real provider's optional absolute `executable`. Local config cannot enable
-the feature, allow a provider or enable or configure one the project does not allow; such values, a project
-`executable`, project-level `providers.<provider>.enabled` and unknown keys are refused at
-load ([project versus local](../runtime/configuration.md#session-providers-project-and-workstation)).
-The [Specification Sessions UI](../../product/specflow/ui/specification-sessions.md)
-owns navigation and start-screen behavior.
-The explicitly labelled mock performs no external effects. The Claude, Codex and Antigravity
-adapters (project `sessions.providers.<provider>.allowed`, local `enabled` and `executable`) use this same API; their supported
-platforms, logins, modes and limits are in the [provider reference](../../reference/providers/README.md).
-Importing external Nevo history remains outside this API. Writable execution uses
-Engine-owned admission and settlement; it does not imply OS isolation. Disabling only the provider
-keeps stored reads available. Disabling the feature acquires no database owner.
+- Both flags default to false.
+- An allowed provider is enabled on every workstation unless that workstation's `.nevo/local/config.yaml` sets `sessions.providers.<provider>.enabled: false`; the local file also holds a real provider's optional absolute `executable`.
+- Local config cannot enable the feature, allow a provider or enable or configure one the project does not allow; such values, a project `executable`, project-level `providers.<provider>.enabled` and unknown keys are refused at load ([project versus local](../runtime/configuration.md#session-providers-project-and-workstation)).
+- The [Specification Sessions UI](../../product/specflow/ui/specification-sessions.md) owns navigation and start-screen behavior.
+- The explicitly labelled mock performs no external effects.
+- The Claude, Codex and Antigravity adapters (project `sessions.providers.<provider>.allowed`, local `enabled` and `executable`) use this same API; their supported platforms, logins, modes and limits are in the [provider reference](../../reference/providers/README.md).
+- Importing external Nevo history remains outside this API.
+- Writable execution uses Engine-owned admission and settlement; it does not imply OS isolation.
+- Disabling only the provider keeps stored reads available.
+- Disabling the feature acquires no database owner.
 
 ## Authorization and transport
 
@@ -78,32 +74,26 @@ Specification/Task projections of Session references:
 and a native agent is not contained to its `cwd`, so a Specification-scoped grant must not admit
 writes.
 
-**Execution workspace.** A Turn of a standalone Session runs in the Runtime's verified workspace. A
-Turn of a Session associated with Specification S runs in S's workspace, resolved through the Engine
-at Turn start (S's registry binding, else the primary checkout; time-of-check). When that workspace
-is not the Runtime's own, a Turn runs there when the provider supports it (Claude); a write Turn's
-Engine claim names that workspace and stays project-wide
-([Workspace execution claims](../runtime/workspace-execution-claims.md)). A provider
-bound to the Runtime's checkout (Codex, Antigravity), or an unregistered or unavailable workspace, is
-refused before admission with `422 CAPABILITY_UNSUPPORTED` and `details.reason`
-`specification-worktree-provider-unsupported` or `specification-workspace-unavailable`. The same
-provider is refused earlier, at the composed create in that Specification
-(`422 CAPABILITY_UNSUPPORTED`, `specification-worktree-provider-unsupported`), and the catalogue read
-for it (`?specId`) lists it `unavailable` with `reasonCode` `SPECIFICATION_WORKTREE_UNSUPPORTED`. A
-workspace that cannot be resolved at the create or the catalogue read refuses nothing there; the
-Turn start resolves it again. A Turn in a
-workspace a Close is removing, or of a Specification an unfinished Close names, is refused with
-`409 TURN_CONFLICT` and `details.reason` `specification-close-in-progress`. A Turn of a
-Specification's Session is registered in its workspace before the workspace is verified again
-(binding, checkout and Close journal), and stays registered until it ends: a workspace that changed in
-between refuses the start with `409 TURN_CONFLICT` (`specification-workspace-changed`), and Close
-refuses to remove a registered checkout ([Close](../../reference/api/specflow-specification-operations.md)). A write Turn's claim re-checks under the Engine lock
-that the Specification is still bound to the claimed workspace, and no write driver starts outside the
-root the claim names. A Session never falls back to the Runtime's folder. A Session's home Specification is immutable,
-so its scope never changes. See
-[Runtime authorization](../runtime/auth/authorization.md#session-scope). Missing auth -> existing 401 authentication_required; forbidden -> 403
-forbidden; unknown ID -> 404 SESSION_NOT_FOUND after access handling. Existing Auth conventions
-remain authoritative; no new per-creator ACL is introduced.
+
+### Execution workspace and provider admission
+
+- **Execution workspace.** A Turn of a standalone Session runs in the Runtime's verified workspace.
+- A Turn of a Session associated with Specification S runs in S's workspace, resolved through the Engine at Turn start (S's registry binding, else the primary checkout; time-of-check).
+- When that workspace is not the Runtime's own, a Turn runs there when the provider supports it (Claude); a write Turn's Engine claim names that workspace and stays project-wide ([Workspace execution claims](../runtime/workspace-execution-claims.md)).
+- A provider bound to the Runtime's checkout (Codex, Antigravity), or an unregistered or unavailable workspace, is refused before admission with `422 CAPABILITY_UNSUPPORTED` and `details.reason` `specification-worktree-provider-unsupported` or `specification-workspace-unavailable`.
+- The same provider is refused earlier, at the composed create in that Specification (`422 CAPABILITY_UNSUPPORTED`, `specification-worktree-provider-unsupported`), and the catalogue read for it (`?specId`) lists it `unavailable` with `reasonCode` `SPECIFICATION_WORKTREE_UNSUPPORTED`.
+- A workspace that cannot be resolved at the create or the catalogue read refuses nothing there; the Turn start resolves it again.
+- A Turn in a workspace a Close is removing, or of a Specification an unfinished Close names, is refused with `409 TURN_CONFLICT` and `details.reason` `specification-close-in-progress`.
+- A Turn of a Specification's Session is registered in its workspace before the workspace is verified again (binding, checkout and Close journal), and stays registered until it ends: a workspace that changed in between refuses the start with `409 TURN_CONFLICT` (`specification-workspace-changed`), and Close refuses to remove a registered checkout ([Close](../../reference/api/specflow-specification-operations.md)).
+- A write Turn's claim re-checks under the Engine lock that the Specification is still bound to the claimed workspace, and no write driver starts outside the root the claim names.
+- A Session never falls back to the Runtime's folder.
+- A Session's home Specification is immutable, so its scope never changes.
+- See [Runtime authorization](../runtime/auth/authorization.md#session-scope).
+- Missing auth -> existing 401 authentication_required; forbidden -> 403 forbidden; unknown ID -> 404 SESSION_NOT_FOUND after access handling.
+- Existing Auth conventions remain authoritative; no new per-creator ACL is introduced.
+
+
+### SSE access revocation
 
 SSE additionally reauthorizes before every replay/live batch and at least every 30 seconds while
 idle, via an injected Auth-owned checker. On revoked access/expired authentication close the
@@ -126,19 +116,15 @@ The read re-runs a provider's bounded discovery when its last check is older tha
 so it can take up to `PROVIDER_DISCOVERY_BUDGET_MS` (30 s) on a cold machine, even right after a
 startup probe; clients give it that budget plus a margin, not the default read deadline.
 
-Both parameters together are `400 SESSION_INPUT_INVALID`, as is any other parameter or a malformed
-id. `recheck=true` (with either parameter or none) is an explicit recheck: every enabled provider
-discovers its executable again from scratch and probes again instead of reusing its cache
-([executable discovery](../../reference/providers/executable-discovery.md#cache)). `?specId` is a pure authorization check: it does not verify that the Specification exists
-(the catalogue is not sensitive and names no Specification; the composed create verifies it). A `workspace-write` provider mode is `authorized` when the caller holds `session.execute-write`
-at `{projectId}` (no context, `?specId`) or at the Session's own execute-write scope
-(`?sessionId`); it never carries `specId`. The UI's New Session in a Specification reads `?specId`,
-the Full Session composer `?sessionId`, so a Specification-scoped developer can start and steer
-Sessions in its Specification without any project-level grant. Read with `?specId` for a
-Specification in a worktree other than the Runtime's checkout, a provider that runs only in the
-Runtime's checkout is `readiness: 'unavailable'` with `reasonCode`
-`SPECIFICATION_WORKTREE_UNSUPPORTED` ([Execution workspace](session-admission-and-providers.md#authorization-and-transport)); the UI explains it in
-its own words.
+
+### Catalogue request validation
+
+- Both parameters together are `400 SESSION_INPUT_INVALID`, as is any other parameter or a malformed id.
+- `recheck=true` (with either parameter or none) is an explicit recheck: every enabled provider discovers its executable again from scratch and probes again instead of reusing its cache ([executable discovery](../../reference/providers/executable-discovery.md#cache)).
+- `?specId` is a pure authorization check: it does not verify that the Specification exists (the catalogue is not sensitive and names no Specification; the composed create verifies it).
+- A `workspace-write` provider mode is `authorized` when the caller holds `session.execute-write` at `{projectId}` (no context, `?specId`) or at the Session's own execute-write scope (`?sessionId`); it never carries `specId`.
+- The UI's New Session in a Specification reads `?specId`, the Full Session composer `?sessionId`, so a Specification-scoped developer can start and steer Sessions in its Specification without any project-level grant.
+- Read with `?specId` for a Specification in a worktree other than the Runtime's checkout, a provider that runs only in the Runtime's checkout is `readiness: 'unavailable'` with `reasonCode` `SPECIFICATION_WORKTREE_UNSUPPORTED` ([Execution workspace](session-admission-and-providers.md#authorization-and-transport)); the UI explains it in its own words.
 
 Provider discovery reports readiness and reason codes, available capabilities and
 the selectable models and modes. An oversized catalogue refuses
@@ -147,23 +133,18 @@ The exact fields and size limits are in [OpenAPI](../../reference/api/openapi.md
 operation `getSessionProviders`. Provider selection is revalidated when a
 command is admitted.
 
-The catalogue lists the drivers the configuration enables, then every provider it withholds:
-unavailable, with no model, mode or capability, and reason code `NOT_ALLOWED_BY_PROJECT` (the project
-does not allow it; a maintainer sets `allowed: true` in `.nevo/config.yaml`) or
-`NOT_ENABLED_ON_WORKSTATION` (allowed, but this workstation's local config sets `enabled: false`).
-A mock the project does not allow is never listed. Starting a withheld provider is refused
-(`PROVIDER_UNAVAILABLE`). A withheld provider runs no driver, so its configuration reason is its
-only reason: read for a Specification in its own worktree it is not marked
-`SPECIFICATION_WORKTREE_UNSUPPORTED`, which applies only to enabled providers. While the project
-disables Sessions the catalogue answers `SESSION_DISABLED`, whatever the local file says, and the
-demo Runtime serves its own catalogue regardless of either file. The mock identifies itself as a test;
-An enabled provider that cannot start carries a readiness `reasonCode`: `EXECUTABLE_NOT_FOUND` (with
-`checkedLocations`, and `unresolvedLauncher` for an npm launcher without its package executable),
-`EXECUTABLE_NOT_WORKING`, `INSTALLATION_UNAVAILABLE`,
-`AUTHENTICATION_REQUIRED` (with `signInCommand`), `PROTOCOL_UNSUPPORTED`, `KNOWN_INCOMPATIBILITY`,
-`RESTRICTION_UNSUPPORTED`, `PROCESS_SETTLEMENT_UNVERIFIED` or `PROBE_FAILED`; `executable` says which
-executable the Runtime resolved and how it found it
-([executable discovery](../../reference/providers/executable-discovery.md)).
+
+### Provider eligibility and availability
+
+- The catalogue lists the drivers the configuration enables, then every provider it withholds: unavailable, with no model, mode or capability, and reason code `NOT_ALLOWED_BY_PROJECT` (the project does not allow it; a maintainer sets `allowed: true` in `.nevo/config.yaml`) or `NOT_ENABLED_ON_WORKSTATION` (allowed, but this workstation's local config sets `enabled: false`).
+- A mock the project does not allow is never listed.
+- Starting a withheld provider is refused (`PROVIDER_UNAVAILABLE`).
+- A withheld provider runs no driver, so its configuration reason is its only reason: read for a Specification in its own worktree it is not marked `SPECIFICATION_WORKTREE_UNSUPPORTED`, which applies only to enabled providers.
+- While the project disables Sessions the catalogue answers `SESSION_DISABLED`, whatever the local file says, and the demo Runtime serves its own catalogue regardless of either file.
+- The mock identifies itself as a test; An enabled provider that cannot start carries a readiness `reasonCode`: `EXECUTABLE_NOT_FOUND` (with `checkedLocations`, and `unresolvedLauncher` for an npm launcher without its package executable), `EXECUTABLE_NOT_WORKING`, `INSTALLATION_UNAVAILABLE`, `AUTHENTICATION_REQUIRED` (with `signInCommand`), `PROTOCOL_UNSUPPORTED`, `KNOWN_INCOMPATIBILITY`, `RESTRICTION_UNSUPPORTED`, `PROCESS_SETTLEMENT_UNVERIFIED` or `PROBE_FAILED`; `executable` says which executable the Runtime resolved and how it found it ([executable discovery](../../reference/providers/executable-discovery.md)).
+
+### Provider-specific discovery
+
 Claude discovers native model/effort metadata and reports unavailable when its installation/auth/policy
 fails the supported authentication/policy or protocol checks. Unlisted compatible versions run
 Provisional; a missing catalogue entry or unknown hash is not a refusal reason. Each Session is dispatched through its own selected provider;

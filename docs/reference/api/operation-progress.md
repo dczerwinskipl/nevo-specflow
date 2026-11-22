@@ -20,17 +20,19 @@ related:
 
 # Operation progress events
 
-The HTTP transport contract is generated in
-[OpenAPI](openapi.md), operation `getSpecsCreateOperationsByOperationIdEvents`
-(`GET /api/specs/create/operations/{operationId}/events`).
-The stream's response description includes framing, event names and payloads, replay,
-heartbeats, terminal events and limits. The route implementation is
-`packages/specflow-runtime/src/features/operations/events-route.ts`, with typed event
-unions in `packages/specflow-contracts/src/operations/progress.ts`.
+Create operations provide two complementary reads:
 
-Progress is display-only: a failure or missing stream never determines the operation outcome.
-Follow [the engineering integration guide](../../engineering/shared/operation-progress.md)
-for client fallback, polling and extension rules. The durable Create operation is described by
+- `GET /api/specs/create/operations/{operationId}` provides the operation outcome and
+  recovery state.
+- `GET /api/specs/create/operations/{operationId}/events` streams progress as Server-Sent
+  Events (SSE), including replay and terminal notifications.
+
+Use the inspection response to establish success or failure. SSE is optional and clients
+must still be able to inspect the operation when streaming is interrupted.
+
+For event names, payloads, headers, limits and refusals, see
+[OpenAPI](openapi.md), operation `getSpecsCreateOperationsByOperationIdEvents`.
+For reconnect and polling behavior, see
+[Operation progress integration](../../engineering/shared/operation-progress.md).
+For durable operation recovery, see
 [Specification lifecycle](../../architecture/runtime/specification-lifecycle.md).
-
-This stable ID is a discovery pointer, not a manually maintained second SSE schema.

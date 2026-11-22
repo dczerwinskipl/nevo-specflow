@@ -26,7 +26,7 @@ related:
 
 # Nevo SpecFlow Roadmap
 
-> **Snapshot: 2026-11-19.** Proposed release scope. Approved Specifications and architecture take precedence.
+> **Snapshot: 2026-11-20.** Proposed release scope. Updated Ideas inventory includes the three new proposals from PR #189; approved Specifications and architecture take precedence.
 
 ## Where the product stands
 
@@ -102,6 +102,29 @@ certification have separate release gates.
 
 **Relationships:** C004 Workflow kernel ✅ supports P101 Manual Workflow 🛠; C005/C006 Managed Sessions ✅ support P102 Step delegation ⬜; C003 Task reads ✅ support P100 Authoring 🛠. Each integrated outcome needs its own acceptance.
 
+### Legacy NEvo AI retirement is a separate cutover gate
+
+The installed **1.0** acceptance above proves manual Workflow plus one delegated
+agent step; it does **not** authorize deleting legacy AI tooling from
+`dczerwinskipl/nevo`. That repository may remove its own Node/TypeScript/JavaScript
+workflow implementation only after the
+[full-feature cutover DoD](specflow-engine/legacy-nevo-migration.md#project-cutover-definition-of-done)
+has passed **in the real .NET project**: agent prepares a complete Specification,
+owner makes required decisions, Tasks are implemented and independently reviewed,
+build/test/docs gates pass, GitHub PR reviews and CI are resolved, the PR is
+squash-merged, and Close/recovery/worktree cleanup succeeds. The final E2E must run
+**after** removing the legacy tools and demonstrate that current NEvo development
+instructions and documentation were honored. Record an explicit disposition for
+the old slash commands, audits, follow-ups, PR review handling and migration of
+historical Specifications.
+
+This cutover depends on **P102/I101, L131, P103, P104, P105, T101/T102**
+and NEvo-specific .NET definitions/documentation (with L148 as an optional
+starting point). Reuse those roadmap capabilities; the migration is a
+**project-specific acceptance milestone, not another workflow engine or
+a new mandatory product-release capability**. A passing E6 PR or a plan in
+#189 alone is insufficient.
+
 ## 1.1.0 and later 1.x · Compatible additions
 
 These are candidates, **not approved release requirements**. A compatible new feature normally goes to a new [SemVer minor](https://semver.org/spec/v2.0.0.html), such as `1.2.0`; compatible fixes use patches such as `1.1.1`.
@@ -147,9 +170,9 @@ Exploratory scope; not simply a project switcher. [Multi-project design](multi-p
 
 ## Later ideas and scope coverage
 
-The [roadmap coverage register](roadmap-coverage.md) records source-by-source dispositions and **48 untriaged L-series outcomes**. It does not set release scope or duplicate implementation status.
+The [roadmap coverage register](roadmap-coverage.md) records source-by-source dispositions and **49 untriaged L-series outcomes**. It does not set release scope or duplicate implementation status.
 
-**Known inventory: 92 stable capability IDs**: 22 proposed for 1.0, 5 candidates for 1.1, 10 other later 1.x, 7 exploratory 2.0 and 48 unscheduled. The 37 numbered Workflow/provider follow-ups are mapped individually; the other 80 Ideas source files (excluding these two roadmap documents) have an explicit source disposition. This measures **inventory coverage of the current repository**, not completeness of every possible product direction. Many outcomes are still untriaged by release horizon, and this count is not a work estimate or release percentage.
+**Known inventory: 93 stable capability IDs**: 22 proposed for 1.0, 5 candidates for 1.1, 10 other later 1.x, 7 exploratory 2.0 and 49 unscheduled. The 37 numbered Workflow/provider follow-ups are mapped individually; the other 88 Ideas source files (excluding these two roadmap documents) have an explicit source disposition. This measures **inventory coverage of the current repository**, not completeness of every possible product direction. Many outcomes are still untriaged by release horizon, and this count is not a work estimate or release percentage.
 
 ## Owner decisions and the next gate
 

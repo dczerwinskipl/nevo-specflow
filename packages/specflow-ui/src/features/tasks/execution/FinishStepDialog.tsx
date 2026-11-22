@@ -1,8 +1,10 @@
-import { useId, useRef, type FormEvent } from 'react';
+import { useId, useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Button,
   CheckboxField,
+  Combobox,
+  ComboboxItem,
   Dialog,
   DialogBody,
   DialogContent,
@@ -13,10 +15,6 @@ import {
   Field,
   IconButton,
   InlineNote,
-  Menu,
-  MenuContent,
-  MenuItem,
-  MenuTrigger,
   RadioGroup,
   RadioGroupOption,
   TextArea,
@@ -101,6 +99,9 @@ export function FinishStepDialog({
   const formId = useId();
   const resultLabelId = useId();
   const feedbackRef = useRef<HTMLTextAreaElement>(null);
+  const [artifactQuery, setArtifactQuery] = useState('');
+  const focusAttached = useRef<string | undefined>(undefined);
+  const focusArtifactPicker = useRef(false);
   const selected = finish.transitions.find((transition) => transition.id === draft.transitionId);
   const feedbackRequired = selected?.feedback === 'required';
   const feedbackMissing = feedbackRequired && draft.feedback.trim() === '';
@@ -118,15 +119,25 @@ export function FinishStepDialog({
     !gatesUnmet;
   const blocked = !selected || feedbackMissing || (unavailable !== undefined && !closedHere);
   // Why Finish is disabled, next to it: the detail stays where the form shows it.
-  const blockedReason = !selected
-    ? t('workflowExecution.finish.blocked.noResult')
-    : feedbackMissing
-      ? t('workflowExecution.finish.blocked.feedback')
-      : gatesUnmet
-        ? t('workflowExecution.finish.blocked.gates')
-        : blocked
-          ? t('workflowExecution.finish.blocked.unavailable')
-          : undefined;
+  const blockedReason = (() => {
+    if (!selected) {
+      return t('workflowExecution.finish.blocked.noResult');
+    }
+
+    if (feedbackMissing) {
+      return t('workflowExecution.finish.blocked.feedback');
+    }
+
+    if (gatesUnmet) {
+      return t('workflowExecution.finish.blocked.gates');
+    }
+
+    if (blocked) {
+      return t('workflowExecution.finish.blocked.unavailable');
+    }
+
+    return undefined;
+  })();
   const blockedReasonId = useId();
   const drafts = finish.drafts ?? [];
   // The Engine names each kept draft that depends on an unticked one; shown while it still holds.
@@ -161,8 +172,18 @@ export function FinishStepDialog({
       : target;
   };
 
+  const changeOpen = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      setArtifactQuery('');
+      focusAttached.current = undefined;
+      focusArtifactPicker.current = false;
+    }
+
+    onOpenChange(nextOpen);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={changeOpen}>
       <DialogContent
         closeLabel={t('common.close')}
         onOpenAutoFocus={(event) => {
@@ -262,20 +283,35 @@ export function FinishStepDialog({
                 <ul className="grid gap-1" aria-label={t('workflowExecution.finish.attached')}>
                   {draft.artifacts.map((artifact) => (
                     <li key={artifact} className="flex min-w-0 items-center gap-2 text-body-sm">
-                      <span className="min-w-0 flex-1 truncate">{labelOf(artifact)}</span>
+                      <span className="grid min-w-0 flex-1 gap-0.5">
+                        <span className="break-words">{labelOf(artifact)}</span>
+                        {labelOf(artifact) !== artifact ? (
+                          <span className="break-all text-content-muted">{artifact}</span>
+                        ) : null}
+                      </span>
                       <IconButton
+                        ref={(node) => {
+                          if (node && focusAttached.current === artifact) {
+                            focusAttached.current = undefined;
+                            node.focus();
+                          }
+                        }}
                         icon="close"
                         size="sm"
                         variant="ghost"
                         aria-label={t('workflowExecution.finish.removeArtifact', {
-                          name: labelOf(artifact),
+                          name:
+                            labelOf(artifact) === artifact
+                              ? artifact
+                              : `${labelOf(artifact)} (${artifact})`,
                         })}
-                        onClick={() =>
+                        onClick={() => {
+                          focusArtifactPicker.current = true;
                           onDraftChange({
                             ...draft,
                             artifacts: draft.artifacts.filter((value) => value !== artifact),
-                          })
-                        }
+                          });
+                        }}
                       />
                     </li>
                   ))}
@@ -286,31 +322,48 @@ export function FinishStepDialog({
                 </Typography>
               )}
               {remaining.length > 0 ? (
-                <div>
-                  <Menu modal={false}>
-                    <MenuTrigger asChild>
-                      <Button variant="secondary" size="sm">
-                        {t('workflowExecution.finish.attach')}
-                      </Button>
-                    </MenuTrigger>
-                    <MenuContent align="start">
-                      {remaining.map((option) => (
-                        <MenuItem
-                          key={option.value}
-                          leadingIcon="file"
-                          onSelect={() =>
-                            onDraftChange({
-                              ...draft,
-                              artifacts: [...draft.artifacts, option.value],
-                            })
-                          }
-                        >
-                          {option.label}
-                        </MenuItem>
-                      ))}
-                    </MenuContent>
-                  </Menu>
-                </div>
+                <Combobox
+                  inputRef={(node) => {
+                    if (node && focusArtifactPicker.current) {
+                      focusArtifactPicker.current = false;
+                      node.focus();
+                    }
+                  }}
+                  value={null}
+                  inputValue={artifactQuery}
+                  onInputChange={setArtifactQuery}
+                  aria-label={t('workflowExecution.finish.attach')}
+                  placeholder={t('workflowExecution.finish.findArtifact')}
+                  labels={{
+                    showOptions: t('common.options.show'),
+                    noResults: t('common.options.noResults'),
+                    loading: t('common.options.loading'),
+                  }}
+                  onValueChange={(value) => {
+                    // Both selection and Escape commit the controlled lookup text.
+                    setArtifactQuery('');
+                    if (value === null) {
+                      return;
+                    }
+
+                    if (remaining.length === 1) {
+                      focusAttached.current = value;
+                    }
+
+                    onDraftChange({ ...draft, artifacts: [...draft.artifacts, value] });
+                  }}
+                >
+                  {remaining.map((option) => (
+                    <ComboboxItem
+                      key={option.value}
+                      value={option.value}
+                      textValue={`${option.label} ${option.value}`}
+                      description={option.label !== option.value ? option.value : undefined}
+                    >
+                      {option.label}
+                    </ComboboxItem>
+                  ))}
+                </Combobox>
               ) : null}
             </div>
             {producesTasks && drafts.length > 0 ? (
@@ -366,7 +419,7 @@ export function FinishStepDialog({
               {blockedReason}
             </InlineNote>
           ) : null}
-          <Button variant="secondary" onClick={() => onOpenChange(false)}>
+          <Button variant="secondary" onClick={() => changeOpen(false)}>
             {t('common.cancel')}
           </Button>
           <Button

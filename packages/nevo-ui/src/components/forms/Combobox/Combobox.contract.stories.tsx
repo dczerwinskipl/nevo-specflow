@@ -6,6 +6,14 @@ import {
 } from '../shared/optionTextGeometry.stories-support';
 import { Field } from '../Field';
 import { Badge } from '../../feedback/Badge';
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '../../overlays/Dialog';
 import { Combobox, ComboboxItem } from './Combobox';
 
 const meta = {
@@ -88,6 +96,50 @@ function Picker({ unavailable = false }: { unavailable?: boolean }) {
 
 const selectedValue = (canvas: { getByTestId: (id: string) => HTMLElement }) =>
   canvas.getByTestId('picker').getAttribute('data-value');
+
+function DialogPicker() {
+  const [open, setOpen] = useState(true);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Choose workspace</DialogTitle>
+          <DialogDescription>Find a workspace and select it.</DialogDescription>
+        </DialogHeader>
+        <DialogBody>
+          <Picker />
+        </DialogBody>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Portalled React Aria options remain part of their enclosing Radix modal. */
+export const InsideDialog: Story = {
+  render: () => <DialogPicker />,
+  play: async ({ userEvent }) => {
+    const input = await until(() => document.querySelector<HTMLInputElement>('[role=combobox]'));
+    await userEvent.click(input);
+    await userEvent.type(input, 'wro');
+    const [option] = await waitForOptions();
+    assert(option?.textContent === 'Wrocław', 'Typing finds the workspace.');
+    await userEvent.click(option);
+    await until(
+      () =>
+        document.querySelector('[data-testid=picker]')?.getAttribute('data-value') === 'Wrocław',
+    );
+    assert(document.activeElement === input, 'Pointer selection keeps focus in the control.');
+    await userEvent.keyboard('{ArrowDown}');
+    await until(listbox);
+    await userEvent.keyboard('{Escape}');
+    await until(() => !listbox());
+    assert(!!document.querySelector('[role=dialog]'), 'Escape dismisses only the nested list.');
+    await userEvent.keyboard('{Escape}');
+    await until(() => !document.querySelector('[role=dialog]'));
+    await until(() => getComputedStyle(document.body).pointerEvents !== 'none');
+  },
+};
 
 export const FilteringAndKeyboard: Story = {
   render: () => <Picker />,

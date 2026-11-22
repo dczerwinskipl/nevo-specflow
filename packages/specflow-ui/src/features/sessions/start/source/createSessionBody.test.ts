@@ -3,7 +3,7 @@ import { providerDescriptor } from '../catalogue/startCatalogue.stories-support'
 import { createSessionBody } from './useManagedStartSource';
 
 const agent = { providerId: 'claude', modelId: '', effort: 'provider-default', mode: '' };
-const noName = { mode: 'agent', value: '' } as const;
+const noName = { mode: 'unnamed', value: '' } as const;
 const native = {
   modeId: 'agent',
   title: 'Agent',

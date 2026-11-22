@@ -648,6 +648,8 @@ export const NarrowDescriptionAndMetadata: Story = {
       await userEvent.keyboard('{Enter}');
       const list = await waitFor(openListbox, 'The source options must open.');
       await document.fonts.ready;
+      // Compare settled geometry, not different frames of the scale-in animation.
+      await Promise.all(list.getAnimations().map((animation) => animation.finished));
       const focused = await waitFor(
         () => list.querySelector<HTMLElement>('[data-highlighted]'),
         'Keyboard navigation must focus an option.',
@@ -679,6 +681,7 @@ export const NarrowDescriptionAndMetadata: Story = {
       trigger.focus();
       await userEvent.keyboard('{Enter}');
       const changedList = await waitFor(openListbox, 'The options reopen after selection.');
+      await Promise.all(changedList.getAnimations().map((animation) => animation.finished));
       const changedPair = changedList.querySelectorAll<HTMLElement>('.selection-contract-option');
       assertSelectionPreservesContent(changedPair[1]!, changedPair[0]!, 'select');
       const after = changedPair[0]!

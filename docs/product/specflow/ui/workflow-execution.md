@@ -121,7 +121,10 @@ opened by the header's history toggle.
 - **Finish step.** The result is a radio list of the projection's transitions, each with where it
   goes ("Goes to Implement · feedback required", "Ends the workflow"). Feedback is required when the
   chosen transition requires it (inline error, Finish disabled); artifacts are optional (attach a
-  document). A step that produces Tasks lists the drafts it proposed earlier, ticked: ticked drafts stay
+  document). The attachment lookup matches document titles and filenames/paths, showing the title
+  above its complete reference. Attached items retain both when they differ, so duplicate titles
+  remain distinguishable; removal restores the option and focus returns to the lookup. Selecting an
+  option never submits Finish. A step that produces Tasks lists the drafts it proposed earlier, ticked: ticked drafts stay
   drafts, unticked ones are cancelled, Tasks created by hand are not affected; keeping a draft that
   depends on an unticked one is refused in the dialog.
 - **Exit gates.** The selected result lists the gates it needs (met ones as satisfied checks, unmet

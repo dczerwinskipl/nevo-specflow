@@ -24,3 +24,5 @@ them instead of restating them.
 - [Operation progress](operation-progress.md)
 
 - [Architecture diagram authoring](code-organization.md#architecture-diagram-authoring)
+
+- [Interrupted Create recovery](specification-create-recovery.md)

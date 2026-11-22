@@ -6311,6 +6311,36 @@
       ]
     },
     {
+      "id": "reference.configuration.specification-definitions",
+      "type": "reference",
+      "title": "Project document types and Specification archetypes",
+      "status": "current",
+      "file": "docs/reference/configuration/specification-definitions.md",
+      "read_when": [
+        "defining a new document type for a project",
+        "creating a Specification archetype with required and optional documents",
+        "validating YAML definition files or template paths"
+      ],
+      "summary": "Project-scoped YAML definitions of document types and Specification archetypes, including validated examples, external template content and CLI validation.",
+      "related": [
+        "architecture.runtime.specification-documents",
+        "reference.api.specflow-specification-operations",
+        "reference.api.specification-documents"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "docs"
+      ],
+      "tags": [
+        "definitions",
+        "document-type",
+        "specification-archetype",
+        "yaml",
+        "templates"
+      ]
+    },
+    {
       "id": "reference.protocols.session-provider-driver",
       "type": "reference",
       "title": "Session provider driver and invocation protocol",

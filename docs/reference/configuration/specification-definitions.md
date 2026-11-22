@@ -119,4 +119,4 @@ The published schemas are
 and
 `packages/specflow-contracts/schema/definitions/specification-archetype.v1.schema.json`.
 For loading, catalogue revisions and validation guarantees, see
-[Definitions as project data](../../architecture/runtime/specification-documents.md#definitions-as-project-data).
+[Definitions as project data](../../architecture/runtime/document-definitions.md#definitions-as-project-data).

@@ -33,7 +33,7 @@ decision A of 2026-11-15 (completion requires closed Tasks), implemented. Amends
 registry) and [ADR 0019](0019-workflow-kernel-and-automatic-continuation.md) decision 9 (where Task
 state lives, and that it is committed). Builds on
 [ADR 0023](0023-neutral-workflow-coordinator-and-manual-execution.md). Behaviour:
-[Workflow kernel, Tasks](../workflow/workflow-kernel.md#tasks). Commands:
+[Workflow kernel, Tasks](../workflow/workflow-tasks.md#tasks). Commands:
 [Task reads](../../reference/api/task-reads.md#edit-tasks).
 
 ## Context
@@ -71,7 +71,7 @@ state lives, and that it is committed). Builds on
 11. **Workflow state is committed (2026-11-12).** Store writes follow the document commit policy
     ([ADR 0018](0018-engine-commit-policy-and-manual-commit.md)); with auto-commit off a finish commits
     them and Close and Abandon take the rest
-    ([Workflow kernel](../workflow/workflow-kernel.md#commits-of-the-execution-state)).
+    ([Workflow kernel](../workflow/workflow-storage-and-recovery.md#commits-of-the-execution-state)).
 12. **Completion requires closed Tasks (owner decision A, 2026-11-15).** A Specification run may not
     reach the terminal outcome `completed` while any Task is open: not cancelled and its run not
     terminal. A draft, a Task that never started, a running, waiting or held one and a broken one are
@@ -79,7 +79,7 @@ state lives, and that it is committed). Builds on
     Specification workflow, no step names) and prevents rather than recovers: the finish is refused
     before any write (`WORKFLOW_TASKS_OPEN`, naming each open Task and why), and the action projection
     shows that transition as `unavailable: tasks-open` from the same rule
-    ([Workflow kernel](../workflow/workflow-kernel.md#completion-requires-closed-tasks)). Abandon and
+    ([Workflow kernel](../workflow/workflow-tasks.md#completion-requires-closed-tasks)). Abandon and
     the replay of a recorded finish are not affected.
 
 ## Consequences

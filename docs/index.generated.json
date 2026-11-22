@@ -1036,6 +1036,100 @@
       ]
     },
     {
+      "id": "architecture.runtime.document-commit-policy",
+      "type": "architecture",
+      "title": "Document commit policy, ledger and workflow-state commits",
+      "status": "current",
+      "file": "docs/architecture/runtime/document-commit-policy.md",
+      "read_when": [
+        "changing git.commits.auto.documents, manual commit or the uncommitted ledger",
+        "reviewing workflow state commits and Close flush behavior"
+      ],
+      "summary": "Engine commit policy, manual commit selection, uncommitted ledger and workflow execution store commit boundaries.",
+      "related": [
+        "architecture.runtime.specification-documents",
+        "architecture.runtime.document-write-and-commit-queue",
+        "adr.0018-engine-commit-policy-and-manual-commit",
+        "architecture.workflow.workflow-kernel"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "workflow",
+        "server"
+      ]
+    },
+    {
+      "id": "architecture.runtime.document-definitions",
+      "type": "architecture",
+      "title": "Document definitions and archetype constraints",
+      "status": "current",
+      "file": "docs/architecture/runtime/document-definitions.md",
+      "read_when": [
+        "changing document type or archetype definitions",
+        "implementing the definitions loader or scaffolding requirements"
+      ],
+      "summary": "Compiled framework invariants for overview, project-owned archetype and document type YAML definitions, versioning and template resolution.",
+      "related": [
+        "architecture.runtime.specification-documents",
+        "architecture.runtime.document-manifest-and-registry",
+        "adr.0017-definitions-as-project-data"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "workflow",
+        "server"
+      ]
+    },
+    {
+      "id": "architecture.runtime.document-limits",
+      "type": "architecture",
+      "title": "Document limits and admission bounds",
+      "status": "current",
+      "file": "docs/architecture/runtime/document-limits.md",
+      "read_when": [
+        "validating document write/read limits",
+        "changing content size, path lengths or operation-queue capacity"
+      ],
+      "summary": "Single Engine-owned table of document byte, count, path and operation limits; admission enforces raw-byte bounds.",
+      "related": [
+        "architecture.runtime.specification-documents",
+        "architecture.runtime.document-write-and-commit-queue",
+        "architecture.runtime.document-manifest-and-registry"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "workflow",
+        "server"
+      ]
+    },
+    {
+      "id": "architecture.runtime.document-manifest-and-registry",
+      "type": "architecture",
+      "title": "Document manifest, registry, identity and validation",
+      "status": "current",
+      "file": "docs/architecture/runtime/document-manifest-and-registry.md",
+      "read_when": [
+        "changing specification.yaml, document IDs, registration, folders or path validation",
+        "reviewing Task document containers, content kinds or missing/unclassified files"
+      ],
+      "summary": "Engine-owned Specification/Task manifest identity, registration, path safety, content kinds, validation results and Windows path refusal.",
+      "related": [
+        "architecture.runtime.specification-documents",
+        "architecture.runtime.document-definitions",
+        "architecture.runtime.document-limits",
+        "adr.0015-specification-manifest-as-document-registry"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "workflow",
+        "server"
+      ]
+    },
+    {
       "id": "architecture.runtime.document-operation-transport",
       "type": "architecture",
       "title": "Document operation transport, revision and commit projection",
@@ -1065,6 +1159,30 @@
         "etag",
         "revisions",
         "commits"
+      ]
+    },
+    {
+      "id": "architecture.runtime.document-write-and-commit-queue",
+      "type": "architecture",
+      "title": "Document writes, durable journal and commit queue",
+      "status": "current",
+      "file": "docs/architecture/runtime/document-write-and-commit-queue.md",
+      "read_when": [
+        "changing document writes, claim leases, queue jobs or interruption recovery",
+        "investigating document commit failures, retries and refusal"
+      ],
+      "summary": "State-changing document writes, admission, queue claiming, crash/retry paths and scoped Git commit consolidation.",
+      "related": [
+        "architecture.runtime.specification-documents",
+        "architecture.runtime.document-limits",
+        "architecture.runtime.document-commit-policy",
+        "adr.0016-engine-owned-document-commits"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "workflow",
+        "server"
       ]
     },
     {
@@ -1308,37 +1426,28 @@
     {
       "id": "architecture.runtime.specification-documents",
       "type": "architecture",
-      "title": "Specification documents layer - registry, archetypes, ownership and invariants",
+      "title": "Specification documents: ownership and invariants",
       "status": "current",
       "file": "docs/architecture/runtime/specification-documents.md",
       "read_when": [
-        "changing the Specification manifest, archetypes or document types",
-        "implementing document reads or document write operations in the Engine or Runtime",
-        "deciding where document logic lives"
+        "selecting authoritative document model, validation and write contracts",
+        "reviewing document security and recovery invariants"
       ],
-      "summary": "Ownership, manifest schema, identity and path rules, content kinds, validation results and invariants of the backend documents layer, the asynchronous commit queue for document writes and definitions as project data. The Engine owns all logic; Runtime and CLI are adapters.",
+      "summary": "Entry point to Engine-owned Specification and Task documents: manifest/registry, project definitions, admission bounds, write journal, commit queue and commit policy.",
       "related": [
-        "adr.0015-specification-manifest-as-document-registry",
-        "adr.0016-engine-owned-document-commits",
-        "adr.0017-definitions-as-project-data",
-        "adr.0018-engine-commit-policy-and-manual-commit",
+        "architecture.runtime.document-manifest-and-registry",
+        "architecture.runtime.document-definitions",
+        "architecture.runtime.document-limits",
+        "architecture.runtime.document-write-and-commit-queue",
+        "architecture.runtime.document-commit-policy",
         "product.specflow.specification-documents",
-        "reference.api.specification-documents",
-        "architecture.runtime.specflow-engine",
-        "architecture.runtime.specflow-lifecycle",
-        "architecture.principles.enforceable-invariants"
+        "adr.0016-engine-owned-document-commits"
       ],
       "scope": "specflow",
       "areas": [
         "runtime",
         "workflow",
         "server"
-      ],
-      "tags": [
-        "specifications",
-        "documents",
-        "archetypes",
-        "manifest"
       ]
     },
     {
@@ -1601,27 +1710,144 @@
       ]
     },
     {
+      "id": "architecture.workflow.workflow-continuation-and-attention",
+      "type": "architecture",
+      "title": "Workflow continuation and owner attention",
+      "status": "current",
+      "file": "docs/architecture/workflow/workflow-continuation-and-attention.md",
+      "read_when": [
+        "changing automatic continuation and agent launch selection",
+        "reviewing Tasks-stuck, escalation, owner attention or no-continuation outcomes"
+      ],
+      "summary": "Pure continuation decisions, session reuse/fresh launch, Task attention and human handoff outcomes.",
+      "related": [
+        "architecture.workflow.workflow-kernel",
+        "architecture.workflow.workflow-definitions-and-gates",
+        "architecture.workflow.workflow-runs-and-handoffs",
+        "architecture.workflow.workflow-tasks"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime"
+      ]
+    },
+    {
+      "id": "architecture.workflow.workflow-definitions-and-gates",
+      "type": "architecture",
+      "title": "Workflow definitions, executors and gates",
+      "status": "current",
+      "file": "docs/architecture/workflow/workflow-definitions-and-gates.md",
+      "read_when": [
+        "editing workflow YAML, task types or agent archetypes",
+        "modifying entry/exit gates or actor attribution"
+      ],
+      "summary": "Versioned project workflow definitions, human/agent executor trust, entry/exit gates and refusal semantics.",
+      "related": [
+        "architecture.workflow.workflow-kernel",
+        "architecture.workflow.workflow-runs-and-handoffs",
+        "architecture.workflow.workflow-continuation-and-attention",
+        "adr.0017-definitions-as-project-data"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime"
+      ]
+    },
+    {
       "id": "architecture.workflow.workflow-kernel",
       "type": "architecture",
-      "title": "Workflow kernel — Specification and Task execution",
+      "title": "Workflow kernel: Specification and Task execution",
       "status": "current",
       "file": "docs/architecture/workflow/workflow-kernel.md",
       "read_when": [
-        "changing workflow, agent archetype or task type definitions",
-        "implementing start, finish, return, continuation or attention behaviour",
-        "wiring the Runtime, CLI or UI to Specification or Task execution",
-        "adding a step kind, an effect, an attention reason or a new subject"
+        "choosing the authoritative workflow contract for a Specification or Task",
+        "changing neutral workflow extension points or host integration"
       ],
-      "summary": "One deterministic workflow core (the neutral @nevo/workflow coordinator, with the SpecFlow adapter in the Engine) drives both a Specification and each of its Tasks. Entry points only select the subject. Workflows, agent archetypes (preferred provider and a model per provider) and task types are project definitions. A step declares which executor classes may do it, and every attempt records its actor. A Task is a resource (tasks/index.yaml, task.yaml, task.md) with its own type, workflow and preparation status (draft, ready, on-hold, cancelled), changed only by explicit decisions, a declared approval effect or its own escalation; its run is created at its first start. The Engine decides continuations; anything it cannot carry out is attention for the owner, derived from the state on every inspection and never stored. Runs live in the Specification's `.execution/` folder; only the change journal is local. The writes are committed like the Specification's documents (the document commit policy, queue and ledger); with auto-commit off a step's finish commits them, and a Close takes what is left.",
+      "summary": "Entry point to the neutral workflow coordinator and Engine-owned definitions, Runs, Task resources, continuation and durable storage.",
       "related": [
+        "architecture.workflow.workflow-definitions-and-gates",
+        "architecture.workflow.workflow-runs-and-handoffs",
+        "architecture.workflow.workflow-tasks",
+        "architecture.workflow.workflow-continuation-and-attention",
+        "architecture.workflow.workflow-storage-and-recovery",
         "architecture.workflow.deterministic-workflow",
-        "adr.0019-workflow-kernel-and-automatic-continuation",
-        "adr.0024-tasks-are-resources",
-        "adr.0023-neutral-workflow-coordinator-and-manual-execution",
-        "reference.api.specification-workflow",
-        "adr.0017-definitions-as-project-data",
-        "architecture.runtime.specflow-engine",
-        "ideas.specflow-engine.plan-06"
+        "adr.0023-neutral-workflow-coordinator-and-manual-execution"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime"
+      ]
+    },
+    {
+      "id": "architecture.workflow.workflow-runs-and-handoffs",
+      "type": "architecture",
+      "title": "Workflow attempts, returns and wait states",
+      "status": "current",
+      "file": "docs/architecture/workflow/workflow-runs-and-handoffs.md",
+      "read_when": [
+        "reviewing position and attempt transitions or handoffs",
+        "implementing owner return, wait or replay refusal"
+      ],
+      "summary": "Pinned Runs, step/attempt positions, handoff sequence, owner return and wait-step guard rules.",
+      "related": [
+        "architecture.workflow.workflow-kernel",
+        "architecture.workflow.workflow-definitions-and-gates",
+        "architecture.workflow.workflow-tasks",
+        "architecture.workflow.workflow-continuation-and-attention"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime"
+      ]
+    },
+    {
+      "id": "architecture.workflow.workflow-storage-and-recovery",
+      "type": "architecture",
+      "title": "Workflow storage, journal and recovery",
+      "status": "current",
+      "file": "docs/architecture/workflow/workflow-storage-and-recovery.md",
+      "read_when": [
+        "changing .execution persistence, workflow mutation journal or recovery",
+        "verifying Git commit and journal boundaries for workflow state"
+      ],
+      "summary": "Pinned execution store, Task-resource persistence, Engine operation journals, commit policy and crash replay guarantees.",
+      "related": [
+        "architecture.workflow.workflow-kernel",
+        "architecture.workflow.workflow-runs-and-handoffs",
+        "architecture.runtime.document-commit-policy",
+        "engineering.shared.specflow-git-recovery"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime"
+      ]
+    },
+    {
+      "id": "architecture.workflow.workflow-tasks",
+      "type": "architecture",
+      "title": "Task resources, preparation and completion",
+      "status": "current",
+      "file": "docs/architecture/workflow/workflow-tasks.md",
+      "read_when": [
+        "changing Task authoring, status, preparation, dependency or escalations",
+        "reviewing Task completion and Specification Task-set settlement"
+      ],
+      "summary": "Task index and manifests, creation, manual editing, start blockers, escalations and completion requirements.",
+      "related": [
+        "architecture.workflow.workflow-kernel",
+        "architecture.workflow.workflow-runs-and-handoffs",
+        "architecture.workflow.workflow-continuation-and-attention",
+        "adr.0024-tasks-are-resources"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime"
       ]
     },
     {

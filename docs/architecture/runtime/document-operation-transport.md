@@ -37,10 +37,16 @@ validation, write journals and commit policy.
 - Text JSON responses include `content`; image and binary metadata do not.
   An unclassified file gets a derived `u-` ID; classification registers it
   with a new id, so clients must navigate using the returned identity.
+
+### Exact revisions and authorization
+
 - A `revision` query requests **exactly** that version; missing revision
   returns 409 `DOCUMENT_REVISION_UNAVAILABLE`, not the latest body. Reads
   use `spec.view` at trusted scope. Tree and document observations may
   carry ETag; only an exact validator may answer 304.
+
+### Raw content security
+
 - Successful raw reads stream bytes with validated `Content-Type`,
   `Content-Disposition`, `Content-Length`, `X-Content-Type-Options`,
   sandbox CSP and a strong revision ETag. `download=1` forces attachment;
@@ -63,10 +69,16 @@ validation, write journals and commit policy.
   `failed`, `uncommitted` (manual/abandoned) or `not-applicable`.
   `CommitState` has no `abandoned` state: abandonment of a failed
   commit leaves saved files in `uncommitted` with reason `abandoned`.
+
+### Batch atomicity and conflicts
+
 - Batch save checks every expected revision and path before any write;
   either all 1..25 documents are saved or none. One commit batch is
   queued. `DOCUMENT_REVISION_CONFLICT` includes offending documents;
   the caller keeps **all** drafts and refreshes before retrying.
+
+### Commit settlement
+
 - The queue normally settles **250..500 ms** after the last save
   (default 300 ms) and not beyond five seconds; `settling` is a
   normal pending reason. If automatic commits are disabled, the
@@ -76,6 +88,9 @@ validation, write journals and commit policy.
   observation to become committed. Document operations list includes
   pending, failed and recovery-required changes and removes
   committed ones; operations reveal no absolute machine paths.
+
+### Retry, abandon and recovery
+
 - A status GET is **read-only** and reports one operation with a
   conditional ETag. Failed commit Retry/Abandon and flush require
   explicit Manage mutations. Retry rechecks current files and Git
@@ -85,11 +100,17 @@ validation, write journals and commit policy.
   optional `retryAfterMs` and owner/cause. Autosave backs off and
   retains the draft. `recoveryRequired:true` requires the operator,
   not a blind UI retry.
+
+### Manual commit admission
+
 - A manual commit selects currently uncommitted **ledger paths** of
   the requested owner/scope, not arbitrary files. It uses a stable
   `operationId`, expected ledger revision and closed subset selection;
   refusing a stale or non-closed subset prevents accidentally
   committing unrelated Task/definitions changes.
+
+### Close integration
+
 - Close preview reports pending/failed/uncommitted document blockers
   without flushing the queue. The Close mutation flushes relevant
   work first; the same blocker may remain and refuse integration.
@@ -106,6 +127,9 @@ validation, write journals and commit policy.
 - Document types and archetype rules are Engine definitions, not DTO
   defaults in the UI. Titles derive from a first H1 or filename stem;
   template instructions are suggestions, not stored document title.
+
+### Path admission and safe errors
+
 - Document and folder paths are constrained to a registered
   workspace tree with safe relative names. Path case collisions,
   escape/symlink attempts, protected overview/root, an invalid Git

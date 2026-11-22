@@ -43462,7 +43462,8 @@
                   "expectedWorkflowRevision": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 128
+                    "maxLength": 128,
+                    "description": "Revision confirmed in the workflow projection before first Task start; a mismatch refuses WORKFLOW_DEFINITION_CHANGED."
                   }
                 },
                 "additionalProperties": false
@@ -54132,7 +54133,8 @@
                         },
                         "corpusRevision": {
                           "type": "string",
-                          "minLength": 1
+                          "minLength": 1,
+                          "description": "Opaque digest of effective docs configuration and included document paths/content hashes; NOT Git HEAD, an index generation or an HTTP ETag. Compare across tree, article and search."
                         },
                         "code": {
                           "type": "string",
@@ -54161,7 +54163,8 @@
                         },
                         "corpusRevision": {
                           "type": "string",
-                          "minLength": 1
+                          "minLength": 1,
+                          "description": "Opaque digest of effective docs configuration and included document paths/content hashes; NOT Git HEAD, an index generation or an HTTP ETag. Compare across tree, article and search."
                         },
                         "code": {
                           "type": "string",
@@ -54230,7 +54233,8 @@
                     },
                     "corpusRevision": {
                       "type": "string",
-                      "minLength": 1
+                      "minLength": 1,
+                      "description": "Opaque digest of effective docs configuration and included document paths/content hashes; NOT Git HEAD, an index generation or an HTTP ETag. Compare across tree, article and search."
                     },
                     "code": {
                       "type": "string",

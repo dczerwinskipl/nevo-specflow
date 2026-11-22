@@ -36,6 +36,7 @@ import {
 } from '../../specflow-engine/src/testing';
 import crossSpawn from 'cross-spawn';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { createPackagingWorkspace } from './packaging/workspace.test-support';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
@@ -66,6 +67,7 @@ let version = '';
 let prefix = '';
 let binDir = '';
 let runEnv: NodeJS.ProcessEnv = {};
+let packagingWorkspace: ReturnType<typeof createPackagingWorkspace> | undefined;
 
 beforeAll(() => {
   const prebuiltDir = process.env.NEVO_SPECFLOW_ARTIFACT_DIR;
@@ -81,13 +83,16 @@ beforeAll(() => {
 
     tarball = candidates[0];
   } else {
-    // Local/default path: build the package before proving its installed boundary.
+    // Build in a separately installed source snapshot: packaging rebuilds dependency
+    // outputs that parallel package tests may still be importing in this checkout.
+    packagingWorkspace = createPackagingWorkspace(repoRoot);
     const out = execFileSync(
       process.execPath,
       ['packages/specflow/packaging/bin.ts', 'pack', '--json'],
       {
-        cwd: repoRoot,
+        cwd: packagingWorkspace.root,
         encoding: 'utf8',
+        timeout: 300_000,
       },
     );
     const parsed = JSON.parse(out.trim().split(/\r?\n/).filter(Boolean).pop() ?? '{}') as {
@@ -121,9 +126,10 @@ beforeAll(() => {
 
   binDir = join(prefix, 'node_modules', '.bin');
   runEnv = { ...process.env, PATH: `${binDir}${delimiter}${process.env.PATH ?? ''}` };
-}, 180_000);
+}, 600_000);
 
 afterAll(async () => {
+  packagingWorkspace?.dispose();
   if (prefix) {
     if (process.platform === 'win32') {
       // Give Windows a moment to release executable/file handles after the child exits.
@@ -132,7 +138,8 @@ afterAll(async () => {
 
     rmSync(prefix, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   }
-});
+  // This removes a complete independently installed workspace, not just the tiny smoke prefix.
+}, 60_000);
 
 interface Run {
   code: number;

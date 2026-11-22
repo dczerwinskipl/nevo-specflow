@@ -48,7 +48,7 @@
     "check:token-classes": "tsx scripts/token-classes.ts",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json && tsc -p tsconfig.tools.json",
     "lint": "eslint .",
-    "test": "pnpm build && vitest run"
+    "test": "vitest run"
   },
   "dependencies": {
     "@internationalized/date": "3.12.4",

@@ -179,6 +179,13 @@ failure in one package must not prevent unrelated package test jobs from complet
 Package tests must therefore be runnable through their package's Turbo target without
 depending on another package's test process or execution order.
 
+When tests need their own package's built artifacts, declare `build` alongside `^build` in that
+package's Turbo `test.dependsOn`. Do not rebuild shared workspace outputs inside the test script:
+consumer tests may already be importing them after their own dependency builds finish.
+Invoke the package's Turbo test target to prepare these prerequisites; direct Vitest commands
+assume the necessary builds already exist. Tests that intentionally rebuild from scratch must
+use an isolated workspace rather than mutate the invoking checkout's outputs.
+
 Storybook stories are the exception to "defer on PRs": a pull request that changes
 `packages/nevo-ui` runs the full Storybook corpus, and one that changes `packages/specflow-ui`
 runs all of its stories (see [CI](../repository/ci.md)). Do not rely on `main` to catch a

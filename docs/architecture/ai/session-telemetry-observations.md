@@ -37,11 +37,17 @@ The Runtime serves one bounded Session telemetry snapshot plus explicit refresh,
   (`fresh`, `stale`, `unknown`). An unavailable reading cannot contain `value`;
   an available or partial reading must. A failed refresh keeps previously observed values
   and times, marking `REFRESH_FAILED`. Safe reason codes never reveal native diagnostics.
+
+### Token coverage and overlap
+
 - Token usage and coverage are updated transactionally in the Session SQLite owner. Each
   group has `observedTurns/totalTurns` and a completion flag; missing native Turn counters
   make the aggregate partial. Relationship flags disclose whether cache-read/cache-write
   count within input, or reasoning within output; with `unknown` overlap there is no
   authoritative `totalTokens` sum. Lifetime usage never equals current context occupancy.
+
+### Cost provenance
+
 - Money is a **decimal string** in USD with up to 12 fractional digits, provenance
   (`provider-reported` or an explicitly supported `estimated`) and meaning
   (`api-equivalent`, `billed`, `unknown`). Arithmetic is decimal; never round
@@ -49,12 +55,18 @@ The Runtime serves one bounded Session telemetry snapshot plus explicit refresh,
   fees with API-equivalent spending. Estimates require a future versioned pricing
   contract. Incompatible currency, scope or billed/estimated meaning cannot combine
   into a complete total. Unqualified legacy numeric amounts do not become USD.
+
+### Account limits
+
 - Account/model limit windows identify an **opaque window**, unit (tokens/requests/credits/
   percent), safe numeric used/remaining/limit and optionally the native reset time.
   Different windows and percentages are not additive. Do not derive remaining,
   subscription balance or account identity from Session usage. Provider account-limit
   caches are shared across Sessions internally and fenced to account/credential generation;
   no secret account identifiers appear in public telemetry.
+
+### Context gauges
+
 - Current context is a gauge of the last native context generation, not a lifetime usage
   counter. At least one of occupied or capacity tokens must be observed. Percentage is
   meaningful only when both refer to the same model/context/instant. Breakdown components
@@ -72,6 +84,9 @@ The Runtime serves one bounded Session telemetry snapshot plus explicit refresh,
   `If-None-Match` or returning 304. A change in Session policy invalidates validators;
   the client discards sensitive cached groups when `accessRevision` changes. This is a
   deliberate exception to other Session endpoints' `no-store` policy.
+
+### SSE invalidation and outbox
+
 - The existing committed Session event stream carries `telemetry` as an
   **invalidation**, not raw account measurements. Bootstrap snapshot first, then
   replay after `eventSeq`; if a stream is already open, reuse it rather than opening
@@ -83,6 +98,9 @@ The Runtime serves one bounded Session telemetry snapshot plus explicit refresh,
   but terminal Turn publication and explicit refresh/credential fencing publish
   promptly. The outbox persists through restart. Opening an SSE subscriber does not
   invoke provider work.
+
+### Expiry and account fencing
+
 - Account observations are fresh for at most **60 seconds**; context observations
   also expire within 60 seconds, including after Turn terminal/restart. Historical
   settled usage/cost has no TTL, though its coverage remains explicit. A
@@ -102,6 +120,9 @@ The Runtime serves one bounded Session telemetry snapshot plus explicit refresh,
   is missing, return `limits` as unavailable `NOT_AUTHORIZED` with
   **no** amounts, timestamps or window IDs. A principal may read known limits
   while `refreshable:false`; reading does not require Manage.
+
+### Refresh admission and deduplication
+
 - A refresh request selects a nonempty distinct subset of the four groups,
   with a **4 KiB** body bound. Reject every unsupported/unauthorized selected
   group (422 `CAPABILITY_UNSUPPORTED` or 403), never silently omit it.
@@ -112,6 +133,9 @@ The Runtime serves one bounded Session telemetry snapshot plus explicit refresh,
   for **24 hours**. Changed body under that key refuses 409
   `IDEMPOTENCY_CONFLICT`. Native work coalesces across eligible concurrent
   callers but receipts never expose another user's request id.
+
+### Scheduler and cooldown
+
 - The current scheduler supports **account-scoped limits refresh**; a future
   context refresh needs native-context affinity and must not be falsely enabled
   merely by provider metadata. Provider/account cooldown is **30 seconds**
@@ -132,6 +156,9 @@ The Runtime serves one bounded Session telemetry snapshot plus explicit refresh,
   provider integration, not a second Session lifecycle/ledger writer.
   Reject overflows, invalid timestamps, impossible token breakdowns and
   unrepresentable native cost; a snapshot is limited to **32 KiB UTF-8**.
+
+### Migration and legacy records
+
 - A safe `migration.status` can report running/completed/failed; it cannot
   expose SQLite paths, messages or repair instructions. An interrupted
   migration restarts from the durable checkpoint and batches at most
@@ -140,6 +167,9 @@ The Runtime serves one bounded Session telemetry snapshot plus explicit refresh,
   `BASELINE_MISSING`. New/empty Sessions start with a complete baseline.
   Interrupted refresh becomes failed/idle, never automatically replays a
   provider operation.
+
+### Provider coverage
+
 - Supported observations remain provider-specific and **must be verified
   against current adapters and fixtures** before promising a field:
   Claude captures native Turn tokens/cache and native limit windows;

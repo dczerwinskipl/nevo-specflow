@@ -362,7 +362,7 @@ breaks this is `WORKFLOW_STATE_CORRUPT`.
 ### Authoring Tasks by hand
 
 The owner's Task use cases (`operations/task-resource.ts`, each with an `OwnerActor`; HTTP in
-[Task reads, Task commands](../../reference/api/task-reads.md#task-commands), CLI in
+[Task reads, Task commands](../../reference/api/task-reads.md#edit-tasks), CLI in
 [Specification commands](../../reference/cli/specflow-specification-commands.md)):
 
 - **`createTask`** writes the index entry, `task.yaml` (status `draft`, origin `{kind: manual,
@@ -783,7 +783,7 @@ approved Task that has not started and returns the derived items with those star
 blocker), `startBlockers`, `dependencyWait` (`waitingFor`, `unsatisfiable`), `definitionChanged`
 and `attention`. They hold no presentation concept (no group, label, order or lane): a dashboard
 grouping is a presentation of these facts owned by a surface (the Runtime's is described in
-[Task reads](../../reference/api/task-reads.md#dashboard-grouping)), and the CLI and MCP read them
+[Task reads](../runtime/task-read-pagination-and-grouping.md#task-list-and-runtime-grouping)), and the CLI and MCP read them
 without any grouping. A broken Task has `BrokenTaskFacts` (`broken`: its id, its manifest's title
 when readable, the broken reason). `TaskProgress` counts `completed` of `total` (cancelled Tasks
 and those ended without completing left out; broken and on hold ones counted) and names

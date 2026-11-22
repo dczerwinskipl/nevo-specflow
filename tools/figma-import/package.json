@@ -15,7 +15,7 @@
     "build:ui": "node build-ui.mjs",
     "typecheck": "tsc -p tsconfig.json && tsc -p ui/tsconfig.json",
     "lint": "eslint .",
-    "test": "pnpm build && vitest run"
+    "test": "vitest run"
   },
   "dependencies": {
     "@nevo/figma-core": "workspace:*"

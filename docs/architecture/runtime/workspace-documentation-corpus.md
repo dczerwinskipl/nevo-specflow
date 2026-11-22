@@ -28,8 +28,7 @@ The Runtime documentation endpoints operate on a **registered and verified works
 a caller-supplied file path, branch, checkout or arbitrary directory. The exact HTTP contract
 is generated in [OpenAPI](../../reference/api/openapi.md), operations
 `getWorkspacesByWorkspaceIdDocs`, `getWorkspacesByWorkspaceIdDocsDocumentsByDocumentId`
-and `getWorkspacesByWorkspaceIdDocsSearch`. This document owns corpus identity and
-search freshness, not a duplicate endpoint reference.
+and `getWorkspacesByWorkspaceIdDocsSearch`. Corpus identity, search freshness and workspace isolation follow the rules below.
 
 ## Workspace identity, access and corpus
 

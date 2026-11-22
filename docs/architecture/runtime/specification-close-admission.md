@@ -26,8 +26,7 @@ related:
 The Engine's [Specification lifecycle](specification-lifecycle.md) owns durable journal claims,
 proof of integration, compare-and-swap rebind and physical worktree disposal. The HTTP schemas
 and errors are generated in [OpenAPI](../../reference/api/openapi.md) from
-`@nevo/specflow-contracts/specs`. This page describes **which Close the caller requested and
-how admission/refusals are interpreted**; it is not an endpoint catalogue.
+`@nevo/specflow-contracts/specs`. The Close operations have distinct admission requirements, refusal conditions and effects.
 
 ## Three distinct intents
 

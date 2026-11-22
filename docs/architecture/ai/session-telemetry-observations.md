@@ -25,7 +25,7 @@ related:
 
 The Runtime serves one bounded Session telemetry snapshot plus explicit refresh, defined in
 [generated OpenAPI](../../reference/api/openapi.md), under `Session Telemetry`.
-This document owns measurement/accounting **semantics and security**, not the HTTP DTO shape.
+Telemetry observations and refreshes must preserve source provenance, coverage and authorization.
 
 ## Observation semantics
 

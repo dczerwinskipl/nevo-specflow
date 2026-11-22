@@ -26,9 +26,8 @@ related:
 
 The Engine owns workflow definitions, pinned revisions, runs, transitions, gates and Task effects
 (see [workflow kernel](workflow-kernel.md)). The HTTP transport is described in generated
-[OpenAPI](../../reference/api/openapi.md) under the `Workflow` tag. This document owns
-the **interpretation of an owner action projection** so clients do not reconstruct Engine
-decisions from raw Task data or attempt history.
+[OpenAPI](../../reference/api/openapi.md) under the `Workflow` tag. Clients rely on the action projection and must not reconstruct allowed actions from
+raw Task data or attempt history.
 
 ## Owner actor and read boundary
 

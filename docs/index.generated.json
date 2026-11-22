@@ -733,6 +733,42 @@
       ]
     },
     {
+      "id": "architecture.ai.session-telemetry-observations",
+      "type": "architecture",
+      "title": "Session telemetry observation, accounting and refresh",
+      "status": "current",
+      "file": "docs/architecture/ai/session-telemetry-observations.md",
+      "read_when": [
+        "implementing or reviewing native Session telemetry producers",
+        "changing telemetry accounting, limits, permissions or refresh",
+        "debugging stale counters and Session telemetry SSE invalidations"
+      ],
+      "summary": "Telemetry is measured and persisted by Session owners, with provenance, partial coverage, safe account fencing, authorized read-time projection and refresh that never executes a Turn.",
+      "related": [
+        "architecture.ai.session-storage-and-lifecycle",
+        "reference.api.session-telemetry",
+        "reference.api.sessions",
+        "reference.protocols.session-provider-driver",
+        "architecture.runtime.authorization"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "security",
+        "server"
+      ],
+      "tags": [
+        "sessions",
+        "telemetry",
+        "provider",
+        "cost",
+        "limits",
+        "freshness",
+        "refresh"
+      ]
+    },
+    {
       "id": "architecture.overview",
       "type": "architecture",
       "title": "Architecture overview",

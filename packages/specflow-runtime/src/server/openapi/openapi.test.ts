@@ -185,6 +185,14 @@ describe('Runtime OpenAPI document', () => {
         parameters: Array<{ name: string; schema: { description?: string } }>;
       };
       expect(historyOperation.description).toContain('not an offset');
+      const telemetrySnapshot = paths['/api/sessions/{sessionId}/telemetry']?.get as {
+        description: string;
+      };
+      expect(telemetrySnapshot.description).toContain('private, no-cache');
+      const telemetryRefresh = paths['/api/sessions/{sessionId}/telemetry/refresh']?.post as {
+        description: string;
+      };
+      expect(telemetryRefresh.description).toContain('24 hours');
       expect(historyOperation.parameters.find((parameter) => parameter.name === 'cursor')
         ?.schema.description).toContain('page size');
       const taskListOperation = paths['/api/specs/{specId}/tasks']?.get as {

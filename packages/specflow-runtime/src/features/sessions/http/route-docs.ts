@@ -239,7 +239,11 @@ export const sessionReadDocs = {
   work: { tags: ['Sessions'], summary: 'Read the work of a Turn' },
   actions: { tags: ['Sessions'], summary: 'Read the ToolActions of a work item' },
   content: { tags: ['Sessions'], summary: 'Read content of a Session' },
-  telemetry: { tags: ['Session Telemetry'], summary: 'Read the telemetry of a Session' },
+  telemetry: {
+    tags: ['Session Telemetry'],
+    summary: 'Read the telemetry of a Session',
+    description: 'Read the authorized bounded Session telemetry snapshot (usage, cost, limits and current context) without spawning a provider or scanning transcripts. Each reading separately reports availability, freshness, provenance and coverage; missing values never become zeros. Requires session.view; account limit values additionally require session.view-provider-limits and are redacted without it. Strong ETag over the authorized snapshot and access generation, Cache-Control: private, no-cache; If-None-Match may return 304 only after authorization. Readings survive restart; refresh does not run on GET. Stream changes arrive via existing Session SSE telemetry invalidations.',
+  },
   events: { tags: ['Sessions'], summary: 'Stream the events of a Session' },
 };
 

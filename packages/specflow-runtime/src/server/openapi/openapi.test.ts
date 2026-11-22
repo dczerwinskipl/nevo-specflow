@@ -193,6 +193,12 @@ describe('Runtime OpenAPI document', () => {
         description: string;
       };
       expect(telemetryRefresh.description).toContain('24 hours');
+      const sessionList = paths['/api/sessions']?.get as { description: string };
+      expect(sessionList.description).toContain('500 index rows');
+      const sessionEvents = paths['/api/sessions/{sessionId}/events']?.get as { description: string };
+      expect(sessionEvents.description).toContain('resync-required');
+      const sessionAssociation = paths['/api/sessions/{sessionId}/association']?.get as { description: string };
+      expect(sessionAssociation.description).toContain('independently check spec.view');
       expect(historyOperation.parameters.find((parameter) => parameter.name === 'cursor')
         ?.schema.description).toContain('page size');
       const taskListOperation = paths['/api/specs/{specId}/tasks']?.get as {

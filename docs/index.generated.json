@@ -698,6 +698,135 @@
       ]
     },
     {
+      "id": "architecture.ai.session-admission-and-providers",
+      "type": "architecture",
+      "title": "Session authorization, providers and demo boundaries",
+      "status": "current",
+      "file": "docs/architecture/ai/session-admission-and-providers.md",
+      "read_when": [
+        "reviewing session authorization, providers and demo boundaries",
+        "changing managed Session behavior previously described in the Session HTTP reference"
+      ],
+      "summary": "Managed Session access scopes, provider capabilities, workspace execution admission, revoked streaming access and demo read-only semantics.",
+      "related": [
+        "reference.api.sessions",
+        "architecture.ai.session-storage-and-lifecycle",
+        "reference.protocols.session-provider-driver",
+        "architecture.runtime.authorization"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "server",
+        "security"
+      ],
+      "tags": [
+        "sessions",
+        "security",
+        "authorization",
+        "provider",
+        "workspace",
+        "demo"
+      ]
+    },
+    {
+      "id": "architecture.ai.session-association-and-list",
+      "type": "architecture",
+      "title": "Session association and filtered list semantics",
+      "status": "current",
+      "file": "docs/architecture/ai/session-association-and-list.md",
+      "read_when": [
+        "reviewing session association and filtered list semantics",
+        "changing managed Session behavior previously described in the Session HTTP reference"
+      ],
+      "summary": "Atomic Specification Session creation, association projections, per-row authorization and signed bounded list cursors.",
+      "related": [
+        "reference.api.sessions",
+        "architecture.ai.session-storage-and-lifecycle",
+        "reference.protocols.session-provider-driver",
+        "architecture.runtime.authorization"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "server",
+        "security"
+      ],
+      "tags": [
+        "sessions",
+        "associations",
+        "authorization",
+        "pagination"
+      ]
+    },
+    {
+      "id": "architecture.ai.session-commands",
+      "type": "architecture",
+      "title": "Managed Session commands and lifecycle",
+      "status": "current",
+      "file": "docs/architecture/ai/session-commands.md",
+      "read_when": [
+        "reviewing managed session commands and lifecycle",
+        "changing managed Session behavior previously described in the Session HTTP reference"
+      ],
+      "summary": "Create/Turn command semantics, interactive approvals, managed Session archive/delete and idempotent recoverable operations.",
+      "related": [
+        "reference.api.sessions",
+        "architecture.ai.session-storage-and-lifecycle",
+        "reference.protocols.session-provider-driver",
+        "architecture.runtime.authorization"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "server",
+        "security"
+      ],
+      "tags": [
+        "sessions",
+        "commands",
+        "turns",
+        "interaction",
+        "idempotency"
+      ]
+    },
+    {
+      "id": "architecture.ai.session-history-and-events",
+      "type": "architecture",
+      "title": "Session history, content ranges, Work digest and live events",
+      "status": "current",
+      "file": "docs/architecture/ai/session-history-and-events.md",
+      "read_when": [
+        "reviewing session history, content ranges, work digest and live events",
+        "changing managed Session behavior previously described in the Session HTTP reference"
+      ],
+      "summary": "Bounded Session history and Work pages, signed durable cursors, UTF-8 content ranges, native tool classification and SSE resync guarantees.",
+      "related": [
+        "reference.api.sessions",
+        "architecture.ai.session-storage-and-lifecycle",
+        "reference.protocols.session-provider-driver",
+        "architecture.runtime.authorization"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "server",
+        "security"
+      ],
+      "tags": [
+        "sessions",
+        "history",
+        "cursor",
+        "work",
+        "sse",
+        "content"
+      ]
+    },
+    {
       "id": "architecture.ai.session-storage-and-lifecycle",
       "type": "architecture",
       "title": "Managed Session persistence and lifecycle design",

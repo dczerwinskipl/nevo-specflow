@@ -29,6 +29,8 @@ export function registerSessionAssociationReadRoute(
       schema: {
         tags: ['Sessions'],
         summary: 'Read the Specification association of a Session',
+        description:
+          'Read the immutable Session association and current Specification/Task facts under session.view, then independently check spec.view before Engine lookup. Associated objects can be available, missing, forbidden (never exposing identity), or unavailable. The stored association contains ids only; titles and collection are resolved at read time. Removed/reused Task slugs are not immutable Engine identities.',
         params,
         response: {
           200: SessionAssociationReadSchema,

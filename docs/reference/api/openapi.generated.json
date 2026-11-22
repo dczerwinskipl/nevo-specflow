@@ -12089,6 +12089,7 @@
       "get": {
         "operationId": "getSessionProviders",
         "summary": "List the agent providers and models",
+        "description": "Read provider/model/mode availability for a standalone Session, a Specification or an existing Session. Query selects authorization context: session.create project-wide, spec.start-session plus session.create for a Specification, or session.manage at store-derived Session scope. A provider whose model/CLI is unsupported remains unavailable with a typed reason; catalog is advisory, not a Turn-start grant. Explicit recheck reprobes installed executables. A worktree-bound provider is unavailable when it cannot run outside Runtime's checkout. Cold discovery may take up to 30 seconds.",
         "tags": [
           "Session Providers"
         ],
@@ -12763,6 +12764,7 @@
       "get": {
         "operationId": "getSessions",
         "summary": "List Sessions",
+        "description": "List Sessions with keyset pagination in immutable creation order, newest first. Filters select but never grant: specId requires spec.view before association disclosure, each row requires session.view at store-derived scope. An unfiltered caller with only Specification-scoped grants must supply specId or standalone. At most 500 index rows scanned per request, default limit 50/max 100; a page can be empty with nextCursor present after authorization filtering. Cursor is HMAC-signed and bound to store generation, project and exact filter. Default archived=exclude.",
         "tags": [
           "Sessions"
         ],
@@ -13163,6 +13165,7 @@
       "post": {
         "operationId": "postSessions",
         "summary": "Create a standalone Session",
+        "description": "Create a standalone managed Session under session.create at trusted project scope. A requestId deduplicates identical create attempts; changed body under the same actor/command/scope key is IDEMPOTENCY_CONFLICT. Allocation does not launch the provider. The provider is selected from current configuration and validated on admission; mock mode performs no native execution. This route never creates a Specification association.",
         "tags": [
           "Sessions"
         ],
@@ -13383,6 +13386,7 @@
       "get": {
         "operationId": "getSessionsBySessionId",
         "summary": "Read a Session",
+        "description": "Read a bounded Session snapshot with up to 40 recent conversation entries, never a full transcript; revision and eventSeq establish the stream bootstrap boundary. Requires session.view at store-derived Session scope. Titles and provider/model labels are resolved at read time. Archived Sessions remain readable; mutations and Turn starts refuse where unsupported. User-facing capabilities reflect current authorization, not historical creator identity. Demo returns a read-only managed projection on the same route.",
         "tags": [
           "Sessions"
         ],
@@ -14309,6 +14313,7 @@
       "delete": {
         "operationId": "deleteSessionsBySessionId",
         "summary": "Delete a Session",
+        "description": "Hard-delete a Session and its Runtime-owned Turns, history, content, telemetry and associations as one transaction, without deleting provider-native or Engine execution records. Requires session.delete. Active or unknown Turn refuses 409 TURN_CONFLICT; detached unresolved write evidence is SESSION_DELETE_BLOCKED. Completed delete is 204; later reads and repeated delete give 404 SESSION_NOT_FOUND.",
         "tags": [
           "Sessions"
         ],
@@ -14434,6 +14439,7 @@
       "post": {
         "operationId": "postSessionsBySessionIdArchive",
         "summary": "Archive a Session",
+        "description": "Archive a Session after ensuring no Turn is nonterminal or unknown; never implicitly cancels a Turn. Archive is idempotent and retains original archivedAt. Archived Session is read-only except that history, telemetry and reads remain available.",
         "tags": [
           "Sessions"
         ],
@@ -14613,6 +14619,7 @@
       "get": {
         "operationId": "getSessionsBySessionIdAssociation",
         "summary": "Read the Specification association of a Session",
+        "description": "Read the immutable Session association and current Specification/Task facts under session.view, then independently check spec.view before Engine lookup. Associated objects can be available, missing, forbidden (never exposing identity), or unavailable. The stored association contains ids only; titles and collection are resolved at read time. Removed/reused Task slugs are not immutable Engine identities.",
         "tags": [
           "Sessions"
         ],
@@ -14983,6 +14990,7 @@
       "get": {
         "operationId": "getSessionsBySessionIdContentByContentId",
         "summary": "Read content of a Session",
+        "description": "Read one immutable referenced content revision as bounded UTF-8 bytes; revision is required, offset defaults 0 and limitBytes max/default 64 KiB. Offset and returned nextOffset are byte counts and must fall on character boundaries, not JavaScript string indices. Old referenced revisions survive until Session delete. A missing revision refuses CONTENT_REVISION_UNAVAILABLE rather than silently returning newer content. Requires Session membership and session.view.",
         "tags": [
           "Sessions"
         ],
@@ -15187,6 +15195,7 @@
       "get": {
         "operationId": "getSessionsBySessionIdEvents",
         "summary": "Stream the events of a Session",
+        "description": "Stream committed Session changes as SSE after a snapshot eventSeq, or Last-Event-ID. Stream reauthorizes each replay/live batch and at least every 30 seconds idle; a revocation closes without leaking more events. Events carry bounded projections/invalidation, not full content. Each id is a committed monotonically increasing event sequence; replay gaps/queue overflow send resync-required and close rather than skipping events. Heartbeats about 15 seconds do not advance eventSeq. Clients fetch a new bounded snapshot on a gap.",
         "tags": [
           "Sessions"
         ],
@@ -15318,6 +15327,7 @@
       "get": {
         "operationId": "getSessionsBySessionIdHistory",
         "summary": "Read older conversation history of a Session",
+        "description": "Read a bounded older conversation page, keyed by signed before cursor from a Session snapshot or previous page. History cursors bind project, store generation, Session, actor and collection, expire after 24 hours and are not access grants. At most 40 entries and 256 KiB; a page may contain fewer due byte limits without skipping records. Cursor position is exclusive and includes an eventSeq observation boundary. Always reauthorize session.view. Empty with hasOlder false means end.",
         "tags": [
           "Sessions"
         ],
@@ -15798,6 +15808,7 @@
       "post": {
         "operationId": "postSessionsBySessionIdInteractionsByInteractionIdRespond",
         "summary": "Respond to an interaction of a Turn",
+        "description": "Respond to the current canonical answerable interaction under session.manage, with requestId replay. Question option IDs and optional free text must match the immutable interaction definition, and permission approval is for the exact command once, never blanket authorization. A stale/expired interaction conflicts; denying a permission does not automatically fail the Turn.",
         "tags": [
           "Sessions"
         ],
@@ -16070,6 +16081,7 @@
       "post": {
         "operationId": "postSessionsBySessionIdRename",
         "summary": "Rename a Session",
+        "description": "Rename a Session without changing provider identity, Turn state or association. Requires session.manage; allowed even when archived. Nonblank title 1..256 characters. requestId replay is idempotent, changed title with same key conflicts.",
         "tags": [
           "Sessions"
         ],
@@ -19508,6 +19520,7 @@
       "post": {
         "operationId": "postSessionsBySessionIdTurns",
         "summary": "Start a Turn",
+        "description": "Start a Turn with a prompt and optional model/mode/effort overrides, without changing the Session's saved defaults. Requires session.manage at store-derived scope, plus project-wide session.execute-write for workspace-write. Runtime validates selected provider, compatible native mode and verified associated workspace before dispatch; a Turn does not fall back to the Runtime checkout. Accepted 202 is durable admission, not a promise the provider succeeded; resolve uncertain outcome by idempotent retry/reads.",
         "tags": [
           "Sessions"
         ],
@@ -19743,6 +19756,7 @@
       "post": {
         "operationId": "postSessionsBySessionIdTurnsByTurnIdCancel",
         "summary": "Cancel a Turn",
+        "description": "Cancel exactly the requested active Turn under session.manage. A replay with the same requestId cannot cancel a later Turn, and a terminal Turn may answer an idempotent no-op. Acknowledge the request, not proof that a native process immediately stopped.",
         "tags": [
           "Sessions"
         ],
@@ -19939,6 +19953,7 @@
       "post": {
         "operationId": "postSessionsBySessionIdTurnsByTurnIdReconcile",
         "summary": "Reconcile the outcome of a Turn",
+        "description": "Reconcile a Turn from positive Engine settlement or native-stop evidence only. Requires session.manage; no caller-supplied outcome, force flag or prompt replay. A live process remains SESSION_RECOVERY_REQUIRED; an absent recorded process can settle interrupted with PROCESS_STOPPED. Startup recovery follows the same evidence rules.",
         "tags": [
           "Sessions"
         ],
@@ -20168,6 +20183,7 @@
       "get": {
         "operationId": "getSessionsBySessionIdTurnsByTurnIdWork",
         "summary": "Read the work of a Turn",
+        "description": "Read a bounded Turn Work page with transactionally maintained counts and ToolAction digest. A missing counts aggregate for old Turns is unknown, not zero; never derive it from page length. Work identities are immutable, items are ordered by ordinal, not arrival timestamps. History cursors remain scoped to Turn, collection and current authorized Session. No provider raw payloads are exposed.",
         "tags": [
           "Sessions"
         ],
@@ -21293,6 +21309,7 @@
       "post": {
         "operationId": "postSessionsBySessionIdUnarchive",
         "summary": "Unarchive a Session",
+        "description": "Unarchive the Session, preserving history, identity and Specification association. No-op if already active. Replaying the same requestId is idempotent; changed input conflicts.",
         "tags": [
           "Sessions"
         ],
@@ -21472,6 +21489,7 @@
       "get": {
         "operationId": "getSessionsBySessionIdWorkByWorkIdActions",
         "summary": "Read the ToolActions of a work item",
+        "description": "Read a bounded page of ToolActions belonging to a tool Work item. Operation classification is recorded from trusted provider-native tool identities, never guessed from shell text or titles. A ToolAction without a known mapping is other. Requires session.view and membership in this Session. Signed pagination and retained revisions follow the Session history protocol.",
         "tags": [
           "Sessions"
         ],
@@ -30239,6 +30257,7 @@
       "post": {
         "operationId": "postSpecsBySpecIdSessions",
         "summary": "Start a Session in a Specification",
+        "description": "Create a Session atomically associated with a Specification under spec.start-session and session.create, plus project-wide session.execute-write for write mode. A supplied Task set is unique, at most 32 and verified against the Specification before storage. The association and Session row commit in one transaction. Project create and standalone create share an idempotency key space: a requestId cannot be reused with another association. Authorization runs before Engine verification so refused callers cannot infer Specification existence.",
         "tags": [
           "Sessions"
         ],

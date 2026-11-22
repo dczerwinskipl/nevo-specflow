@@ -171,7 +171,7 @@ describe('Runtime OpenAPI document', () => {
       expect(workspaceRead.description).toContain('individual Session rows');
       const createOperation = paths['/api/specs']?.post as {
         description: string;
-        parameters: Array<{ name: string; description?: string }>;
+        parameters: { name: string; description?: string }[];
         responses: Record<string, { description?: string }>;
       };
       expect(createOperation.description).toContain('Prefer: respond-async');
@@ -196,7 +196,7 @@ describe('Runtime OpenAPI document', () => {
       expect(workflowFinish.description).toContain('replayed:true');
       const historyOperation = paths['/api/specs/{specId}/tasks/{taskId}/history']?.get as {
         description: string;
-        parameters: Array<{ name: string; schema: { description?: string } }>;
+        parameters: { name: string; schema: { description?: string } }[];
       };
       expect(historyOperation.description).toContain('not an offset');
       const telemetrySnapshot = paths['/api/sessions/{sessionId}/telemetry']?.get as {
@@ -247,7 +247,7 @@ describe('Runtime OpenAPI document', () => {
       const createOptions = paths['/api/specs/create-options']?.get as { description: string };
       expect(createOptions.description).toContain('worktreesRoot.path');
       expect(
-        (paths['/api/specs/archetypes']?.get as { parameters: Array<{ name: string }> }).parameters,
+        (paths['/api/specs/archetypes']?.get as { parameters: { name: string }[] }).parameters,
       ).toEqual(expect.arrayContaining([expect.objectContaining({ name: 'If-None-Match' })]));
       const workspaceBody = workspaceRead.responses['200']?.content?.['application/json']
         ?.schema as {

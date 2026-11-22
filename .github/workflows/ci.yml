@@ -323,6 +323,7 @@ jobs:
           test/specs/create.http.test.ts
           test/specs/close.http.test.ts
           test/specs/engine-overview.http.test.ts
+          src/server/openapi/openapi.test.ts
           --maxWorkers=1 --no-file-parallelism --testTimeout=20000
       - name: Offline CLI and cross-transport smoke
         if: steps.affected.outputs.run == 'true'

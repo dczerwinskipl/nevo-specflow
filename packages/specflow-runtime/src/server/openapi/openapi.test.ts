@@ -138,6 +138,13 @@ describe('Runtime OpenAPI document', () => {
         ?.schema as { anyOf: { properties: Record<string, { description?: string }> }[] };
       expect(overviewSchema.anyOf[0]?.properties.sections.description).toContain('display order');
       expect(overviewSchema.anyOf[1]?.properties.items.description).toContain('Historical');
+      const streamOperation = paths['/api/specs/create/operations/{operationId}/events']?.get as {
+        description: string;
+        responses: Record<string, { description?: string; content?: Record<string, { schema: unknown }> }>;
+      };
+      expect(streamOperation.description).toContain('not the source of truth');
+      expect(streamOperation.responses['200']?.description).toContain('snapshot|step|completed');
+      expect(streamOperation.responses['429']?.description).toContain('OPERATION_STREAMS_LIMIT');
       const documentRead = paths['/api/specs/{specId}/documents/{documentId}']?.get as {
         parameters: readonly { in: string; name: string; required?: boolean }[];
       };

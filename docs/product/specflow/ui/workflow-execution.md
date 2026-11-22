@@ -121,10 +121,7 @@ opened by the header's history toggle.
 - **Finish step.** The result is a radio list of the projection's transitions, each with where it
   goes ("Goes to Implement · feedback required", "Ends the workflow"). Feedback is required when the
   chosen transition requires it (inline error, Finish disabled); artifacts are optional (attach a
-  document). The attachment lookup matches document titles and filenames/paths, showing the title
-  above its complete reference. Attached items retain both when they differ, so duplicate titles
-  remain distinguishable; removal restores the option and focus returns to the lookup. Selecting an
-  option never submits Finish. A step that produces Tasks lists the drafts it proposed earlier, ticked: ticked drafts stay
+  document). A step that produces Tasks lists the drafts it proposed earlier, ticked: ticked drafts stay
   drafts, unticked ones are cancelled, Tasks created by hand are not affected; keeping a draft that
   depends on an unticked one is refused in the dialog.
 - **Exit gates.** The selected result lists the gates it needs (met ones as satisfied checks, unmet
@@ -185,7 +182,7 @@ cancelled), **Documents**, **Context** and **Depends on**. Task history is the S
 - **Documents.** `task.md` first, then the Task's other documents, on the shared document row of
   Context and the Overview Documents (glyph, file name, a trailing state label; the role in the
   tooltip). The trailing label is the shared document state label
-  ([document state](documents-archetypes-ui.md#document-state-label)): the content state from the
+  ([document state](documents-tree.md#document-state-label)): the content state from the
   Task document listing (**Initial content only**, also for a generated `task.md` nobody edited yet)
   and the relation from the Task's own projection, with "this step" for the Task's active step
   (**Needed to finish this step** while `task.md` lacks a section its finish needs). A file that is

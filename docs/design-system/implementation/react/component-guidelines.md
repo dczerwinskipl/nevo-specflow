@@ -565,7 +565,7 @@ focusable but not chosen), `ContextSwitcherStatus` (a `StatusIndicator` dot and 
 `attention` or `danger`; never a segment), `useListboxKeys` (ArrowUp/ArrowDown wrapping, Home, End)
 and `contextSwitcherPopoverClassName` with `motion="navigation"` and `inert`/`aria-hidden` while
 closed. Each switcher passes only the facts of its kind (see
-[Documentation reader](../../../product/specflow/ui/documentation-reader.md#workspace-picker-and-specification-switcher)).
+[Documentation reader](../../../product/specflow/ui/documentation-reader-navigation.md#workspace-picker-and-specification-switcher)).
 The screens differ only in what they add around the list (the switcher's search, states and footer).
 
 ## Dialog footers

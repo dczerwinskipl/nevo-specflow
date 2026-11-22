@@ -1,0 +1,106 @@
+---
+id: ideas.audits.documentation-maintainability-2026-11-22
+type: engineering
+title: Current-document maintainability audit and refactor ledger
+status: draft
+scope: repo
+areas: [docs, testing]
+read_when:
+  - reviewing the documentation maintainability refactor PR stack
+  - planning follow-up audits of long current documents and retrieval benchmarking
+summary: >-
+  Evidence and disposition ledger for the Create, Task, document-engine, workflow and UI documentation split, with deferred review candidates and unverified retrieval requirements.
+related:
+  - ideas.documentation-maintainability
+  - architecture.runtime.specflow-lifecycle
+  - architecture.runtime.specification-documents
+  - architecture.workflow.workflow-kernel
+  - reference.cli.nevo-specflow-docs
+---
+
+# Documentation maintainability audit
+
+**Status:** implementation audit for the proposed PR stack (#203, #204, #205), based on
+the HTTP/OpenAPI migration head of #201. This is a **draft audit record**, not
+an authoritative system contract. GitHub issues [#206](https://github.com/dczerwinskipl/nevo-specflow/issues/206)
+and [#207](https://github.com/dczerwinskipl/nevo-specflow/issues/207)
+own remaining investigation and the measured retrieval benchmark, respectively.
+[#202](https://github.com/dczerwinskipl/nevo-specflow/issues/202) already owns demo API convergence.
+
+## Confirmed defects and corrections
+
+| Source `current` document            | Confirmed problem                                                                                                                  | Disposition and preserved contract                                                                                                                                                                           |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `runtime/specification-lifecycle.md` | Create/Close/integration and manual Create recovery intertwined; headings include owner dates and PR chronology                    | #203: short stable-ID entry; Create, Specification Close, Worktree integration and Engineering operator recovery; immutable intent, verified Git effects, journal, CAS rebind and explicit refusals retained |
+| `runtime/task-read-composition.md`   | Obsolete `#60`/`#53` commit snapshot and a separate migration readiness section compete with implemented behavior                  | #203: remove historical baseline; retain Task/Engine/Runtime ownership, authorization, source ports and coherence; link to existing paging/grouping owner                                                    |
+| `runtime/specification-documents.md` | ~93 KB mixes manifest, catalogue, validation, byte limits, queue claims and manual commit/recovery; limit table has padded columns | #204: focused manifest/registry, definitions, single limits table, durable writes/queue, commit policy/ledger; leave explicit invariants on hub                                                              |
+| `workflow/workflow-kernel.md`        | ~73 KB puts Task resources, gates, attempts, continuation, attention and storage in one retrieval unit                             | #204: five topic owners plus short stable-ID hub; retain state transitions, actors, Task guards, attention, Run journal and recovery                                                                         |
+| `ui/documentation-reader.md`         | ~60 KB combines product navigation, ranking and result UI, rendering, state tables, implementation notes and historical decisions  | #205: navigation, search, layout/states, short hub; unimplemented device/ranking considerations moved to Ideas                                                                                               |
+| `ui/documents-archetypes-ui.md`      | ~54 KB combines document tree, Create archetypes, tab states, state matrix and discussions of terminology                          | #205: tree, archetypes, cross-screen states; existing editor mode owns tab states                                                                                                                            |
+| `ui/application-architecture.md`     | ~39 KB mixes React application composition/Runtime ports with product routes, authentication, localization and feature detail      | #205: architecture composition and product navigation/auth owners; the old ID is a useful route map                                                                                                          |
+
+Sizes are from the #201 snapshot or rounded source observations, not a token benchmark. The original
+sections were reassigned as whole blocks wherever possible to minimize accidental deletion of
+refusal and recovery guarantees. Moving text does **not** itself prove agreement with implementation.
+Source-code comparisons and CI are separate validation gates.
+
+## Documentation authority map
+
+| Contract                                                | Primary owner                                                                                                     |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Public HTTP methods, DTOs and response status           | TypeBox / generated OpenAPI from #201, never expanded back into Markdown                                          |
+| Specification Create/Close, Git integration, CAS        | `architecture/runtime/specification-{create,close,worktree}*.md`                                                  |
+| Interrupted Create operator recovery                    | `engineering/shared/specification-create-recovery.md`                                                             |
+| Registry, archetypes, identity and validation           | `architecture/runtime/document-{manifest-and-registry,definitions}.md`                                            |
+| Byte and queue limits                                   | `architecture/runtime/document-limits.md`                                                                         |
+| Durable document writes and commit queue                | `architecture/runtime/document-write-and-commit-queue.md`                                                         |
+| Commit policy, manual ledger and workflow-state commits | `architecture/runtime/document-commit-policy.md`                                                                  |
+| Workflow Tasks, gates, continuation and journal         | `architecture/workflow/workflow-{tasks,definitions-and-gates,continuation-and-attention,storage-and-recovery}.md` |
+| Reader routes, search and rendering                     | `product/specflow/ui/documentation-reader-{navigation,search,layout-and-states}.md`                               |
+| Document tree, Create and editing                       | `product/specflow/ui/documents-tree.md`, `create-archetypes.md`, `documents-editor-mode.md`                       |
+
+## P2 and non-size-only follow-ups
+
+The corpus inventory identified these additional large `current` documents for review in #206.
+They are **not confirmed defects merely by size**, and the absence of changes is not approval:
+
+| Candidate                                               | Approx. bytes before refactor | Audit question                                                                |
+| ------------------------------------------------------- | ----------------------------: | ----------------------------------------------------------------------------- |
+| Design system React component guidelines                |                        66,651 | Are individual component recipes independent retrieval owners?                |
+| Design system Secondary navigation                      |                        49,388 | Can API, sizing and product-specific examples be separated?                   |
+| Specification creation Product                          |                        42,056 | Is error handling duplicated with Engine and OpenAPI?                         |
+| Design system dynamic workspace split                   |                        40,034 | Can API/transition rules be found without reading implementation history?     |
+| Session storage/lifecycle Architecture                  |                        28,180 | Are operator recovery and immutable history rules independently discoverable? |
+| Workflow execution Product                              |                        28,611 | Is future Ask agent (E6) presented separately from current UX?                |
+| Specification Overview Product                          |                        28,213 | Are row/group rules duplicated with Task read/grouping Architecture?          |
+| Workflow workbench decisions Product                    |                        15,623 | Does a date-stamped `current` decision ledger duplicate canonical UI docs?    |
+| Full Session Product, Engineering code organization, CI |                 25–29 KB each | Are these cohesive enough to leave intact?                                    |
+| Long CLI / Configuration references                     |                      26–35 KB | Does section retrieval already make a split unnecessary?                      |
+
+The #201 migration removes many oversized API Markdown references from the current source of truth.
+Separate Demo transport remains accurate until #202 completes. History is appropriate in ADRs
+and draft audit records, but not in authoritative behavior descriptions.
+
+## Verification ledger
+
+| Check                                               | Evidence / status                                                                                                                   |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| PR #201 baseline and related issues                 | Checked: base head `e5adca56cfbb6c4b0839e6ee2a80c1f772174796`; #202 exists                                                          |
+| Unique stable IDs and `related` references          | New documentation IDs added to both generated indexes; programmatic metadata scan reported no missing `related` IDs                 |
+| Targeted moved Markdown link paths                  | Connector-based checks of newly split architecture and UI documents; does not substitute for full `docs:check`                      |
+| Recovery and refusal text                           | Original Create, Close, Engine document and workflow sections retained in topic owners; code-level parity remains owner-review work |
+| `pnpm docs:check`, generated index/fragments, CI    | Must pass on the **final reviewed SHA**; not claimed by this audit                                                                  |
+| Retrieval relevance, fetched UTF-8 bytes and tokens | **Not measured**. #207 requires actual `docs:search` and `docs:get` runs on both worktrees, with invariant coverage per question    |
+
+## Five retrieval acceptance questions
+
+1. How to resume interrupted Create? Expect the lifecycle entry and operator recovery.
+2. Specification Close versus Workspace/Worktree Close? Expect distinct archive and disposal contracts.
+3. What prevents Task completion? Expect Task readiness, gates, wait/attention and explicit refusal rules.
+4. How does the document commit queue recover? Expect leases, journal checkpoints, claims, retry/takeover and Git proof.
+5. What bounds Session lifecycle? Expect Session storage and state/turn authority, not workflow task state.
+
+`docs:search` returns ranked documents and up to three matching sections per hit; `docs:get --content`
+reads whole non-reference documents and selective sections of reference documents. Ranking may be
+lexical or hybrid and corpus/index freshness matters. A count of Markdown lines or the size
+of an entry-point file is **not** equivalent to measured token savings.

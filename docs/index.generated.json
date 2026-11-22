@@ -1653,6 +1653,31 @@
       ]
     },
     {
+      "id": "architecture.ui.specflow-application-composition",
+      "type": "architecture",
+      "title": "SpecFlow UI application composition",
+      "status": "current",
+      "file": "docs/architecture/ui-application-composition.md",
+      "read_when": [
+        "changing SpecFlow UI routing, application service injection or feature ownership",
+        "modifying Task workbench and Specification Workspace read composition"
+      ],
+      "summary": "Router, feature ownership, service injection, TanStack Query state and Engine/Runtime-facing UI ownership boundaries.",
+      "related": [
+        "product.specflow.ui.application-architecture",
+        "product.specflow.ui.application-navigation-and-auth",
+        "architecture.runtime.specification-workspace-composition",
+        "architecture.runtime.task-read-composition",
+        "product.specflow.ui.data-loading-and-integration"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "runtime",
+        "server"
+      ]
+    },
+    {
       "id": "architecture.workflow.action-projections",
       "type": "architecture",
       "title": "Owner workflow actions and projection semantics",
@@ -2479,29 +2504,6 @@
         "session-list",
         "workspace",
         "planning"
-      ]
-    },
-    {
-      "id": "product.specflow.ui.application-architecture",
-      "type": "architecture",
-      "title": "SpecFlow UI application architecture",
-      "status": "current",
-      "file": "docs/product/specflow/ui/application-architecture.md",
-      "read_when": [
-        "adding a SpecFlow UI screen or route",
-        "adding or changing remote data access, server-state, mutations, or application services",
-        "deciding how product navigation or route state is represented",
-        "deciding whether UI code belongs in the product app or Nevo UI",
-        "changing the product shell, localization, account menu, or brand composition"
-      ],
-      "summary": "The SpecFlow UI composition root, routing, remote-data and authentication boundaries, reusable Nevo UI boundary, navigation/account composition, and application-level framework decisions.",
-      "related": [
-        "design-system.principles.system-boundary",
-        "design-system.implementation.ownership-and-tooling",
-        "product.specflow.ui.interaction-model",
-        "product.specflow.ui.data-loading-and-integration",
-        "product.specflow.ui.specs-overview",
-        "product.shared.localization"
       ]
     },
     {
@@ -3558,6 +3560,30 @@
         "engineering.shared.code-organization",
         "engineering.shared.effects-and-io",
         "engineering.cli.testing"
+      ]
+    },
+    {
+      "id": "ideas.audits.documentation-maintainability-2026-11-22",
+      "type": "engineering",
+      "title": "Current-document maintainability audit and refactor ledger",
+      "status": "draft",
+      "file": "docs/ideas/audits/2026-11-22-documentation-maintainability.md",
+      "read_when": [
+        "reviewing the documentation maintainability refactor PR stack",
+        "planning follow-up audits of long current documents and retrieval benchmarking"
+      ],
+      "summary": "Evidence and disposition ledger for the Create, Task, document-engine, workflow and UI documentation split, with deferred review candidates and unverified retrieval requirements.",
+      "related": [
+        "ideas.documentation-maintainability",
+        "architecture.runtime.specflow-lifecycle",
+        "architecture.runtime.specification-documents",
+        "architecture.workflow.workflow-kernel",
+        "reference.cli.nevo-specflow-docs"
+      ],
+      "scope": "repo",
+      "areas": [
+        "docs",
+        "testing"
       ]
     },
     {
@@ -4942,6 +4968,27 @@
       ]
     },
     {
+      "id": "ideas.semantic-docs.reader-followups",
+      "type": "product",
+      "title": "Documentation reader pending verification and search follow-ups",
+      "status": "draft",
+      "file": "docs/ideas/semantic-docs/reader-followups.md",
+      "read_when": [
+        "planning reader mobile verification or relevance calibration",
+        "tracking unimplemented reader improvements"
+      ],
+      "summary": "Unfinished device verification, relevance cutoff default, light theme and embedding endpoint concurrency considerations.",
+      "related": [
+        "product.specflow.ui.documentation-reader",
+        "reference.configuration.documentation-and-embeddings"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "docs"
+      ]
+    },
+    {
       "id": "ideas.specflow-engine.reusable-workflow.ux-contract",
       "type": "product",
       "title": "Manual Specification and Task workflow execution — UX contract (superseded)",
@@ -5627,6 +5674,74 @@
       ]
     },
     {
+      "id": "product.specflow.ui.application-architecture",
+      "type": "product",
+      "title": "SpecFlow UI application architecture",
+      "status": "current",
+      "file": "docs/product/specflow/ui/application-architecture.md",
+      "read_when": [
+        "choosing UI module ownership or route responsibilities",
+        "locating application service, navigation or account behavior"
+      ],
+      "summary": "Guide to the SpecFlow UI composition root, ownership, routing, server state, product navigation, authentication and localization.",
+      "related": [
+        "architecture.ui.specflow-application-composition",
+        "product.specflow.ui.application-navigation-and-auth",
+        "design-system.principles.system-boundary",
+        "product.specflow.ui.data-loading-and-integration"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.application-navigation-and-auth",
+      "type": "product",
+      "title": "SpecFlow UI navigation, authentication and localization",
+      "status": "current",
+      "file": "docs/product/specflow/ui/application-navigation-and-auth.md",
+      "read_when": [
+        "changing login and guarded UI navigation",
+        "reviewing product menu, localization, account and accessibility"
+      ],
+      "summary": "Product routes, navigation shell, account/login recovery, localization, branding and keyboard-accessible product transitions.",
+      "related": [
+        "product.specflow.ui.application-architecture",
+        "architecture.ui.specflow-application-composition",
+        "product.specflow.ui.specs-overview",
+        "product.specflow.ui.interaction-model",
+        "product.shared.localization"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "security"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.create-archetypes",
+      "type": "product",
+      "title": "Create Specification archetype selection",
+      "status": "current",
+      "file": "docs/product/specflow/ui/create-archetypes.md",
+      "read_when": [
+        "changing Create archetype selection or catalogue presentation",
+        "implementing Create method and progress interactions"
+      ],
+      "summary": "Archetype selector behavior, catalogue text, selection/defaults, Create submit and creation progress navigation.",
+      "related": [
+        "product.specflow.ui.documents-archetypes",
+        "product.specflow.ui.documents-tree",
+        "product.specflow.specification-creation"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "workflow"
+      ]
+    },
+    {
       "id": "product.specflow.ui.document-editor-client-behavior",
       "type": "product",
       "title": "Document editor save, commit and Close interaction behavior",
@@ -5659,68 +5774,139 @@
     {
       "id": "product.specflow.ui.documentation-reader",
       "type": "product",
-      "title": "Documentation reader (UI)",
+      "title": "Documentation reader UI",
       "status": "current",
       "file": "docs/product/specflow/ui/documentation-reader.md",
       "read_when": [
-        "designing or implementing the read-only reader of the project documentation in the UI",
-        "choosing how a workspace is chosen or switched for documentation",
-        "presenting documentation search results, proposals or blocked links"
+        "choosing the reader UI contract for search, navigation or layout",
+        "locating documentation access and rendering behavior"
       ],
-      "summary": "Screen contract of the read-only reader of the project documentation (docs.root) of one registered workspace: entry points, current workspace and picker, tree, search results, the article with contents, links and images, states and recovery, Wide/Compact/Narrow, and the facts the reader reads from the Runtime. Implemented in features/docs (Storybook SpecFlow/Screens/Documentation reader).",
+      "summary": "Entry point for workspace-scoped documentation reading, search, navigation, article rendering and failure states.",
       "related": [
-        "reference.api.workspace-docs",
-        "product.specflow.ui.interaction-model",
-        "product.specflow.ui.documents-editor-mode",
-        "product.shared.vocabulary",
-        "design-system.principles.layout-and-containment",
-        "design-system.principles.information-hierarchy"
+        "product.specflow.ui.documentation-reader-navigation",
+        "product.specflow.ui.documentation-reader-search",
+        "product.specflow.ui.documentation-reader-layout-and-states",
+        "architecture.runtime.workspace-documentation-corpus"
       ],
       "scope": "specflow",
       "areas": [
         "ui",
         "docs"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.documentation-reader-layout-and-states",
+      "type": "product",
+      "title": "Documentation reader layout, rendering and failure states",
+      "status": "current",
+      "file": "docs/product/specflow/ui/documentation-reader-layout-and-states.md",
+      "read_when": [
+        "changing reader responsive layout or article rendering",
+        "handling unavailable documents, corpus changes or keyboard accessibility"
       ],
-      "tags": [
-        "documentation",
-        "reader",
-        "workspace",
-        "worktree",
-        "search"
+      "summary": "Reader two-pane composition, article rendering, loading/error states, Runtime availability and accessibility requirements.",
+      "related": [
+        "product.specflow.ui.documentation-reader",
+        "product.specflow.ui.documentation-reader-navigation",
+        "product.specflow.ui.documentation-reader-search",
+        "architecture.runtime.workspace-documentation-corpus"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "docs"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.documentation-reader-navigation",
+      "type": "product",
+      "title": "Documentation reader navigation and workspace selection",
+      "status": "current",
+      "file": "docs/product/specflow/ui/documentation-reader-navigation.md",
+      "read_when": [
+        "implementing reader routes, Back or workspace switcher",
+        "reviewing navigation from Specification or Session into Documentation"
+      ],
+      "summary": "Route/Back semantics, workspace and Specification picker, links and image navigation, cross-screen entry intent and history behavior.",
+      "related": [
+        "product.specflow.ui.documentation-reader",
+        "product.specflow.ui.documentation-reader-search",
+        "product.specflow.ui.documentation-reader-layout-and-states",
+        "architecture.runtime.workspace-documentation-corpus"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "docs"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.documentation-reader-search",
+      "type": "product",
+      "title": "Documentation reader search experience",
+      "status": "current",
+      "file": "docs/product/specflow/ui/documentation-reader-search.md",
+      "read_when": [
+        "changing documentation search UI, query URL or proposal filter",
+        "reviewing result ranking explanations, empty states and mobile search field"
+      ],
+      "summary": "Workspace-scoped search query, ranking presentation, proposal filtering, no-word-match disclosure, empty and loading states and accessibility.",
+      "related": [
+        "product.specflow.ui.documentation-reader",
+        "product.specflow.ui.documentation-reader-navigation",
+        "product.specflow.ui.documentation-reader-layout-and-states",
+        "reference.cli.nevo-specflow-docs"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "docs"
       ]
     },
     {
       "id": "product.specflow.ui.documents-archetypes",
       "type": "product",
-      "title": "Documents and Create with archetypes (UI)",
+      "title": "Documents, archetypes and Create UI",
       "status": "current",
       "file": "docs/product/specflow/ui/documents-archetypes-ui.md",
       "read_when": [
-        "changing how the UI presents the archetype catalogue, document tree, document read or document operations",
-        "changing the Documents tree, its overview state, the New document or Assign type flows",
-        "changing the Archetype part of Create Specification or its progress page",
-        "changing read-only, save, conflict, image or binary states of a document tab"
+        "locating Documents tree, archetype selection or editor UI rules",
+        "reviewing cross-screen state and accessibility requirements"
       ],
-      "summary": "Product behaviour of the UI for Specification archetypes and documents on the existing screens: the Documents tree (registered, unclassified, dangling, protected overview, unmet requirements, Close-refusing issues), New document from a type and Assign type, the Archetype section of Create and its progress rows, and the document tab states (read-only reason on open, save, revision conflict, image, binary, missing file; tab labels stay file names).",
+      "summary": "Entry point for Documents tree, archetype Create, document tab states and cross-screen interaction contracts.",
       "related": [
-        "product.specflow.specification-documents",
-        "reference.api.specification-documents",
-        "product.specflow.ui.documents-editor-mode",
-        "product.specflow.specification-creation",
-        "product.specflow.ui.interaction-model",
-        "design-system.principles.layout-and-containment",
-        "design-system.principles.information-hierarchy"
+        "product.specflow.ui.documents-tree",
+        "product.specflow.ui.create-archetypes",
+        "product.specflow.ui.documents-cross-screen",
+        "product.specflow.ui.documents-editor-mode"
       ],
       "scope": "specflow",
       "areas": [
-        "ui"
+        "ui",
+        "workflow"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.documents-cross-screen",
+      "type": "product",
+      "title": "Documents UI cross-screen states and accessibility",
+      "status": "current",
+      "file": "docs/product/specflow/ui/documents-cross-screen-states.md",
+      "read_when": [
+        "reviewing Documents and Create consistency",
+        "changing Documents screen error/loading states or accessibility"
       ],
-      "tags": [
-        "documents",
-        "archetypes",
-        "requirements",
-        "create",
-        "editor"
+      "summary": "Shared document and archetype state matrix, transitions between Create, tree and editor, and screen accessibility guarantees.",
+      "related": [
+        "product.specflow.ui.documents-archetypes",
+        "product.specflow.ui.documents-tree",
+        "product.specflow.ui.create-archetypes",
+        "product.specflow.ui.documents-editor-mode"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "workflow"
       ]
     },
     {
@@ -5740,6 +5926,28 @@
         "design-system.implementation.react.item-tabs",
         "design-system.implementation.react.secondary-navigation",
         "product.specflow.ui.ai-session-ux"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.documents-tree",
+      "type": "product",
+      "title": "Documents tree, classification and expected files",
+      "status": "current",
+      "file": "docs/product/specflow/ui/documents-tree.md",
+      "read_when": [
+        "changing Specification Documents tree or its visual hierarchy",
+        "reviewing expected, missing, unclassified or skipped document rendering"
+      ],
+      "summary": "Tree scan, registry and unclassified/missing states, type/registration actions, close-refusing issues and required documents.",
+      "related": [
+        "product.specflow.ui.documents-archetypes",
+        "product.specflow.ui.documents-cross-screen",
+        "architecture.runtime.document-manifest-and-registry"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "workflow"
       ]
     },
     {

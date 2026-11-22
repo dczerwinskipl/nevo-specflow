@@ -118,6 +118,8 @@ describe('Runtime OpenAPI document', () => {
       });
       expect(paths['/api/openapi.json']?.get).toBeDefined();
       expect(paths['/api/openapi.json']?.head).toBeUndefined();
+      expect((paths['/api/authorization/capabilities']?.post as { description: string }).description)
+        .toContain('lack of permission is a normal 200 response with false');
       const documentRead = paths['/api/specs/{specId}/documents/{documentId}']?.get as {
         parameters: readonly { in: string; name: string; required?: boolean }[];
       };

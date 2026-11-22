@@ -22,112 +22,18 @@ related:
 
 # Authorization HTTP API
 
-## Resolve effective capabilities
+The wire contract is generated from the Runtime's TypeBox route schemas. See
+[Runtime OpenAPI](openapi.md) and the operation
+`postAuthorizationCapabilities` (`POST /api/authorization/capabilities`) in
+[the committed OpenAPI 3.1 document](openapi.generated.json).
 
-```http
-POST /api/authorization/capabilities
-```
+The generated operation documents identity resolution, optional scope, returned action booleans,
+authorization responses and the difference between a denied action and a denied HTTP request.
+The current resource catalogue comes from the feature-owned schemas, not this page.
 
-The request does not contain a subject. Runtime derives the effective subject from the current
-authentication mode and session.
+For domain rules on scopes, role assignments, disabled access control and trusted enforcement,
+read [Runtime authorization](../../architecture/runtime/auth/authorization.md). For role and
+assignment configuration, see [Authorization configuration](../configuration/authorization.md).
 
-### Request
-
-```json
-{
-  "resource": {
-    "name": "spec",
-    "scope": {
-      "specId": "S1"
-    }
-  }
-}
-```
-
-Current resource names are:
-
-```text
-spec
-session
-settings
-docs
-workspace
-```
-
-`scope` is optional. Omitting it means `{}`, the global required scope.
-
-Scope is a domain-neutral object whose keys are safe identifier segments and whose values contain
-at least one non-whitespace character. The current API does not require a `projectId` or any other parent chain.
-
-### Success response
-
-```json
-{
-  "resource": {
-    "name": "spec",
-    "scope": {
-      "specId": "S1"
-    }
-  },
-  "capabilities": {
-    "view": true,
-    "create": false,
-    "manage": true
-  }
-}
-```
-
-The endpoint always returns every registered action for the requested resource as a boolean.
-Runtime builds request/response validation from the feature resources supplied by the composition
-root, so Auth does not maintain a second hard-coded resource catalogue. Consumers that know a
-feature resource definition can use `CapabilityDiscoveryResponseFor<typeof ResourceCapabilities>`
-to retain that resource's exact action keys.
-
-A capability is `true` when at least one assignment granting it has a possessed scope that covers
-the requested scope.
-
-For example, a global assignment (`scope: {}` or omitted scope) can satisfy a request for
-`{ "specId": "S1" }`. The reverse is intentionally false: an assignment limited to
-`{ "specId": "S1" }` does not satisfy a request with omitted/global scope.
-
-A missing capability is a normal `200` result with `false`; capability discovery itself does not
-return `403` for denied actions.
-
-### Authentication required
-
-When `authentication.mode=required` has no authenticated session:
-
-```http
-401
-```
-
-```json
-{
-  "error": "authentication_required"
-}
-```
-
-The endpoint sets `Cache-Control: no-store`.
-
-### Disabled access control
-
-When `authentication.mode=none` has no `localUserId`, Runtime access control is disabled.
-
-Every registered action for the requested resource is returned as `true`:
-
-```json
-{
-  "capabilities": {
-    "view": true,
-    "create": true,
-    "manage": true
-  }
-}
-```
-
-## Trust boundary
-
-This endpoint is a UI capability helper.
-
-Its client-supplied scope is not an enforcement authority. A backend operation builds its required
-scope independently, using trusted domain data when relationships between identifiers matter.
+This page preserves the stable documentation ID for discovery and links; it is not a second,
+hand-maintained HTTP contract.

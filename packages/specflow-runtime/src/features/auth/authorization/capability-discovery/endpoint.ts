@@ -36,6 +36,8 @@ export const capabilityDiscoveryEndpoint: FastifyPluginCallback<
       schema: {
         tags: ['Authorization'],
         summary: 'Resolve the capabilities of the caller on a resource',
+        description:
+          'Returns the effective action booleans for the current authenticated or trusted-local caller and the requested resource/scope. The caller identity is resolved by Runtime; it is never accepted from the request. Omitted scope means the global `{}` target. Every registered action appears as true or false; lack of permission is a normal 200 response with false, not 403. A global assignment covers a narrower requested scope, but a narrower grant does not cover the global target. When access control is disabled, all registered actions return true. Results are advisory UI data, not authorization evidence for later operations: each mutation must enforce independently using trusted scope. Responses use Cache-Control: no-store.',
         body: requestSchema,
         response: {
           200: responseSchema,

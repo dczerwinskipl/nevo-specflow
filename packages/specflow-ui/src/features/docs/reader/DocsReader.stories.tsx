@@ -254,8 +254,11 @@ export const SkippedOne: Story = {
     await settleViewport(390, 844);
     const body = screen();
     const skipped = await body.findByRole('button', { name: /^1 document is skipped/ });
+    const panelHeight = () =>
+      document.getElementById(skipped.getAttribute('aria-controls') ?? '')?.getBoundingClientRect()
+        .height ?? 0;
     await expect(skipped).toHaveAttribute('aria-expanded', 'false');
-    await expect(body.queryByText(/Frontmatter:.*found "wip"/)).not.toBeInTheDocument();
+    await waitFor(() => expect(panelHeight()).toBe(0));
 
     const field = body.getByRole('searchbox', { name: 'Search documentation' });
     await userEvent.type(field, 'back narrow');
@@ -264,9 +267,11 @@ export const SkippedOne: Story = {
 
     skipped.focus();
     await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(panelHeight()).toBeGreaterThan(0));
     await expect(body.getByText(/Frontmatter:.*found "wip"/)).toBeVisible();
     await userEvent.keyboard('{Enter}');
     await expect(skipped).toHaveAttribute('aria-expanded', 'false');
+    await waitFor(() => expect(panelHeight()).toBe(0));
   },
 };
 export const SkippedMany: Story = { args: { scenario: 'skipped-many' } };

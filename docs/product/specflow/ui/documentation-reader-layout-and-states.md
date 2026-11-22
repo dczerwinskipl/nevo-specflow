@@ -33,45 +33,40 @@ Wide / Compact                                   Narrow
 [tree | results          ][  from 840 px panel) ]  [tree | results        ]   [ Related       ]
 ```
 
-- **Tree pane:** workspace picker (more than one workspace), the sticky search field (the shared
-  tree pane search bar and geometry of Documents, see
-  [Tree pane](../../../design-system/implementation/react/component-guidelines.md#tree-pane) and
-  [Sticky field and the software keyboard](documentation-reader-search.md#sticky-field-and-the-software-keyboard)), then the
-  tree or the results. Folders first, then documents; a folder's hub (README) leads its documents,
-  the rest by title. A document row shows its **title** (wrapping, not truncated; full path in the tooltip and in
-  Properties); folders show their folder name. The opened document is `aria-current`; its ancestors
-  open on entry. A proposals prefix is labelled once, on the folder that owns it
-  ("Proposals", tree state label), not on every row. Draft status is not shown in the tree.
-- **Search results** replace the tree while the field has text (debounced as you type; Escape or
-  the clear button returns to the tree with its selection). A status row (the count and the
-  proposals checkbox) and its quiet lines lead the list; each row is one document (title, at most
-  `parent › leaf` of its best section, a plain excerpt with the matched words marked). Choosing a
-  row opens the article at that section. Every registered workspace has hybrid search (a new
-  worktree starts from a copy of the project folder's index and re-embeds only what changed). The
-  search mode stays quiet: no mode, model or endpoint diagnostics. The exact rules are in
-  [Search](documentation-reader-search.md#search).
+
+### Tree and search pane
+
+- **Tree pane:** workspace picker (more than one workspace), the sticky search field (the shared tree pane search bar and geometry of Documents, see [Tree pane](../../../design-system/implementation/react/component-guidelines.md#tree-pane) and [Sticky field and the software keyboard](documentation-reader-search.md#sticky-field-and-the-software-keyboard)), then the tree or the results.
+   - Folders first, then documents; a folder's hub (README) leads its documents, the rest by title.
+   - A document row shows its **title** (wrapping, not truncated; full path in the tooltip and in Properties); folders show their folder name.
+   - The opened document is `aria-current`; its ancestors open on entry.
+   - A proposals prefix is labelled once, on the folder that owns it ("Proposals", tree state label), not on every row.
+   - Draft status is not shown in the tree.
+- **Search results** replace the tree while the field has text (debounced as you type; Escape or the clear button returns to the tree with its selection).
+   - A status row (the count and the proposals checkbox) and its quiet lines lead the list; each row is one document (title, at most `parent › leaf` of its best section, a plain excerpt with the matched words marked).
+   - Choosing a row opens the article at that section.
+   - Every registered workspace has hybrid search (a new worktree starts from a copy of the project folder's index and re-embeds only what changed).
+   - The search mode stays quiet: no mode, model or endpoint diagnostics.
+   - The exact rules are in [Search](documentation-reader-search.md#search).
 - **Skipped documents:** a document that fails validation is skipped, never the whole workspace.
-  The tree and search show the valid documents; under the workspace picker one quiet attention line
-  says "1 document is skipped: it has errors" with its path and error, or "N documents are skipped"
-  as a collapsed disclosure listing each path (full, wrapping) and its error. A link to a skipped
-  document is inert and gives the error. When every document is skipped, the workspace is not
-  shown as empty: the article area (Narrow: under the picker) says that documentation files exist
-  but none passed validation, above the same disclosure of the skipped files.
+   - The tree and search show the valid documents; under the workspace picker one quiet attention line says "1 document is skipped: it has errors" with its path and error, or "N documents are skipped" as a collapsed disclosure listing each path (full, wrapping) and its error.
+   - A link to a skipped document is inert and gives the error.
+   - When every document is skipped, the workspace is not shown as empty: the article area (Narrow: under the picker) says that documentation files exist but none passed validation, above the same disclosure of the skipped files.
 - **Proposals in search:** left out by default; the status row's "Include proposals (N)" checkbox
   includes them, and included rows carry the "Proposal" badge
   ([Proposals filter](documentation-reader-search.md#proposals-filter)).
-- **Article** (the Documents preview): Properties row (path, type, status, summary, id), the
-  Markdown body (`MarkdownDocument`, frontmatter never rendered), and **Related** (frontmatter
-  `related` as links, at the end). From a 840 px panel the Properties and the **Contents** sit in the
-  sticky column beside the text; narrower panels show Properties above the text and a Contents icon
-  at the right of the header, just before the `···` menu (as in the Documents preview), that opens
-  the Contents sheet. Fenced `mermaid` blocks are drawn as diagrams, as in the Documents preview:
-  fitted to the column down to 10 px text (a small one at its natural size), with zoom, pan and full
-  screen; full screen keeps the same 10 px minimum and one finger pans the diagram there (see the
-  design-system note "MarkdownDocument diagrams"). Header: the document title; overflow **Copy link**
-  (workstation-local, it contains the workspace id) and **Copy path** (portable). A proposal starts
-  with a quiet note: "This is a proposal, not a current rule. Search leaves proposals out unless
-  you include them."
+
+### Article and reading pane
+
+- **Article** (the Documents preview): Properties row (path, type, status, summary, id), the Markdown body (`MarkdownDocument`, frontmatter never rendered), and **Related** (frontmatter `related` as links, at the end).
+   - From a 840 px panel the Properties and the **Contents** sit in the sticky column beside the text; narrower panels show Properties above the text and a Contents icon at the right of the header, just before the `···` menu (as in the Documents preview), that opens the Contents sheet.
+   - Fenced `mermaid` blocks are drawn as diagrams, as in the Documents preview: fitted to the column down to 10 px text (a small one at its natural size), with zoom, pan and full screen; full screen keeps the same 10 px minimum and one finger pans the diagram there (see the design-system note "MarkdownDocument diagrams").
+   - Header: the document title; overflow **Copy link** (workstation-local, it contains the workspace id) and **Copy path** (portable).
+   - A proposal starts with a quiet note: "This is a proposal, not a current rule.
+   - Search leaves proposals out unless you include them."
+
+### Default index and initial article
+
 - **First article (split layouts).** When the route names no document, the article area shows the
   documentation's **root index** (`<docs.root>/README.md`) as an ordinary article, and the tree marks
   it current. The route stays `/workspaces/:workspaceId/docs`: the address means "this workspace's
@@ -127,6 +122,9 @@ corpus and a corpus whose files all failed validation keep their distinct states
   keeps focus in the field and returns to the tree. Enter in the field closes the software keyboard
   on a touch-primary (coarse) pointer only, never while an IME composition is being confirmed; with
   a hardware keyboard it does nothing.
+
+### Keyboard and focus
+
 - The tree is **one Tab stop** (roving tabindex): the open document when it is visible, otherwise the
   first row. Up/Down move between visible rows; Home/End go to the first/last; Right expands a
   collapsed folder, or on an expanded folder moves to its first child; Left collapses an expanded
@@ -139,6 +137,9 @@ corpus and a corpus whose files all failed validation keep their distinct states
   design system's hit area (`--target-size`: 24 px on fine pointers, 44 px on coarse); a result
   row and the status row are at least one target tall, so no hit area reaches into the field.
 - Opening a section moves focus to its heading; the Contents sheet returns focus to its opener.
+
+### Picker interaction
+
 - The workspace picker is a button opening a listbox; Up/Down/Home/End move between options,
   Enter picks, Escape closes and returns focus to the picker (the Specification switcher's keyboard).
   Its tooltip opens on mouse hover and keyboard focus, never on focus moved there by a drawer or
@@ -173,6 +174,9 @@ Integration readiness: **ready** — the shared workspace list (`GET /api/worksp
 
 ## Design-system dependencies
 
+
+### Markdown rendering
+
 - `MarkdownDocument.renderImage` renders every image as inert alt text; `renderLink` decides every
   link by the reader's link policy.
 - Section jumps use the existing `sourceLines` and the article's section lines; no heading ids are
@@ -184,6 +188,9 @@ Integration readiness: **ready** — the shared workspace list (`GET /api/worksp
 - The article body and the Documents preview share one content edge
   (`documentPanelPaddingClassName`); the Properties disclosure hangs its padding outside it, so its
   chevron starts where the text starts.
+
+### Shared reading components
+
 - The Properties row and the Contents column/sheet are the shared `shared/document-reading`
   components that the Documents preview also uses.
 - The workspace picker and the Specification switcher share `shared/context-switcher`

@@ -57,7 +57,7 @@ const choice: AgentChoice = {
   effort: 'provider-default',
   mode: 'plan',
 };
-const name: SessionNameChoice = { mode: 'agent', value: '' };
+const name: SessionNameChoice = { mode: 'unnamed', value: '' };
 const completed = { kind: 'completed' } as CreateSubmitOutcome;
 
 beforeEach(() => submit.mockReset());

@@ -1951,7 +1951,7 @@
       "noProvider": "No agent is available right now."
     },
     "footer": {
-      "agentNames": "The session opens without a message and the agent names it after the first one.",
+      "nameLater": "The session opens without a message. You can name it later.",
       "ready": "The session opens without a message, with your name."
     },
     "submit": {
@@ -1975,7 +1975,7 @@
       "workspaceWrite": "Workspace write"
     },
     "composer": {
-      "placeholder": "Choose the agent and start the session"
+      "placeholder": "Start the session to send a message"
     },
     "executor": {
       "notChosen": "not chosen",
@@ -2461,6 +2461,7 @@
       "attached": "Attached artifacts",
       "removeArtifact": "Remove {{name}}",
       "attach": "Attach document",
+      "findArtifact": "Find by title or filename",
       "keepsTasks": "This step has no drafts of its own; tasks created by hand stay as they are.",
       "submit": "Finish step",
       "finishing": "Finishing…",

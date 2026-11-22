@@ -1,4 +1,5 @@
 import { useContext, useMemo, type AriaAttributes, type ReactNode, type Ref } from 'react';
+import { Root as DismissableLayer } from '@radix-ui/react-dismissable-layer';
 import {
   Button as AriaButton,
   ComboBox as AriaComboBox,
@@ -161,37 +162,44 @@ export function Combobox({
           <Icon name="chevron-down" size="sm" />
         </AriaButton>
       </div>
-      <AriaPopover
-        className={cn(floatingContentClassName, 'flex w-max max-w-[calc(100vw-1rem)] flex-col')}
-        containerPadding={8}
-        offset={8}
-        placement="bottom start"
-      >
-        <AriaListBox
-          // The popover (`p-1`) sizes to its content; the list keeps it at least as wide as the input.
-          className="scroll-area-viewport max-h-72 min-h-0 min-w-[calc(var(--trigger-width)-var(--spacing)*2)] flex-1 overflow-y-auto outline-none"
-          renderEmptyState={() =>
-            loading ? (
-              <div
-                className="flex items-center gap-2 px-control-padding-compact py-2 text-body-sm text-content-muted"
-                role="status"
-              >
-                <Spinner size="sm" />
-                {labels.loading}
-              </div>
-            ) : (
-              <div
-                className="px-control-padding-compact py-2 text-body-sm text-content-muted"
-                role="status"
-              >
-                {labels.noResults}
-              </div>
-            )
-          }
+      {/* Register the React Aria portal with Radix too: it stays interactive inside a
+          modal, and Escape belongs to this list before the enclosing Dialog. */}
+      <DismissableLayer asChild>
+        <AriaPopover
+          className={cn(
+            floatingContentClassName,
+            'pointer-events-auto flex w-max max-w-[calc(100vw-1rem)] flex-col',
+          )}
+          containerPadding={8}
+          offset={8}
+          placement="bottom start"
         >
-          {children}
-        </AriaListBox>
-      </AriaPopover>
+          <AriaListBox
+            // The popover (`p-1`) sizes to its content; the list keeps it at least as wide as the input.
+            className="scroll-area-viewport max-h-72 min-h-0 min-w-[calc(var(--trigger-width)-var(--spacing)*2)] flex-1 overflow-y-auto outline-none"
+            renderEmptyState={() =>
+              loading ? (
+                <div
+                  className="flex items-center gap-2 px-control-padding-compact py-2 text-body-sm text-content-muted"
+                  role="status"
+                >
+                  <Spinner size="sm" />
+                  {labels.loading}
+                </div>
+              ) : (
+                <div
+                  className="px-control-padding-compact py-2 text-body-sm text-content-muted"
+                  role="status"
+                >
+                  {labels.noResults}
+                </div>
+              )
+            }
+          >
+            {children}
+          </AriaListBox>
+        </AriaPopover>
+      </DismissableLayer>
     </AriaComboBox>
   );
 }

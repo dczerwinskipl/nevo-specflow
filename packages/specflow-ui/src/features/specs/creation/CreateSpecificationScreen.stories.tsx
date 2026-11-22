@@ -754,9 +754,9 @@ async function changeRow(
   name: 'Zacznij od' | 'Scal do' | 'Nazwa gałęzi',
   label: 'Zmień' | 'Przywróć domyślne' = 'Zmień',
 ) {
-  await userEvent.click(
-    within(canvas.getByRole('group', { name })).getByRole('button', { name: `${label}: ${name}` }),
-  );
+  // Workspace choices render before the asynchronous Git options finish loading.
+  const row = await canvas.findByRole('group', { name });
+  await userEvent.click(within(row).getByRole('button', { name: `${label}: ${name}` }));
 }
 
 export const DefaultCreateSendsOnlyTheNewWorktreeKind: Story = {

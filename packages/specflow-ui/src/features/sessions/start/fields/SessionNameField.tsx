@@ -7,8 +7,8 @@ import {
 } from '../choice/sessionName';
 
 /**
- * The Session's own name, optional: left empty, the agent names the Session from the first message
- * (the note next to Start says so). The remaining characters show only near the limit.
+ * The Session's own name, optional: left empty, it keeps the unnamed title until the owner
+ * names it. The remaining characters show only near the limit.
  */
 export function SessionNameField({
   choice,

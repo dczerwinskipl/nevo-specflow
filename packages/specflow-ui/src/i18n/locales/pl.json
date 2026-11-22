@@ -1951,7 +1951,7 @@
       "noProvider": "Żaden agent nie jest teraz dostępny."
     },
     "footer": {
-      "agentNames": "Sesja otworzy się bez wiadomości, a agent nada jej nazwę po pierwszej.",
+      "nameLater": "Sesja otworzy się bez wiadomości. Nazwę możesz nadać później.",
       "ready": "Sesja otworzy się bez wiadomości, z Twoją nazwą."
     },
     "submit": {
@@ -1975,7 +1975,7 @@
       "workspaceWrite": "Zapis w obszarze roboczym"
     },
     "composer": {
-      "placeholder": "Wybierz agenta i rozpocznij sesję"
+      "placeholder": "Rozpocznij sesję, aby wysłać wiadomość"
     },
     "executor": {
       "notChosen": "nie wybrano",
@@ -2461,6 +2461,7 @@
       "attached": "Dołączone artefakty",
       "removeArtifact": "Usuń {{name}}",
       "attach": "Dołącz dokument",
+      "findArtifact": "Znajdź po tytule lub nazwie pliku",
       "keepsTasks": "Ten krok nie ma własnych szkiców; zadania utworzone ręcznie pozostają bez zmian.",
       "submit": "Zakończ krok",
       "finishing": "Kończenie…",

@@ -222,7 +222,7 @@ answers its Engine verification failures with the Specification read envelope
 | 503    | SESSION_DISABLED, SESSION_STORE_BUSY, SESSION_STORE_UNAVAILABLE, PROVIDER_UNAVAILABLE, PROVIDER_AUTH_REQUIRED, PROVIDER_CATALOGUE_UNAVAILABLE                                                                           |
 
 The body is the shared `SessionError` contract (`SessionErrorSchema`). The
-[OpenAPI document](../../reference/api/openapi.md#session-error-responses) lists, per operation, the statuses and codes
+[OpenAPI document](../../reference/api/openapi.md#schemas-and-security) lists, per operation, the statuses and codes
 that operation can answer.
 
 Missing/replaced/corrupt store never returns an invented ready/empty snapshot. Store ownership

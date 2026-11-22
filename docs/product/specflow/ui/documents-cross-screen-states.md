@@ -29,7 +29,13 @@ These rules apply consistently wherever the same document or archetype is presen
 - **Document actions:** **New document** selects a type and editable file name; **Assign type** uses the same type chooser without the file name or untyped choice. The selected archetype can suggest types.
 - **Create:** Archetypes appear as a radio list with `useWhen`; selected instructions are disclosed on demand and optional document templates use preselected checkboxes.
 - **Read-only:** The document header explains why editing is unavailable. The tree shows any Specification-wide reason once.
+
+### Save state across screens
+
 - **Saving:** Save is the primary action; while saving it reads `Saving…` and is unavailable. The editor stays editable, the dirty marker clears only after acknowledgement, and a refusal preserves the draft.
+
+### Non-text document states
+
 - **Non-text files:** Images and binary documents open in tabs, with an image viewer or file information and **Download**. They never enter Edit or Save.
 
 ## Cross-screen transitions
@@ -79,6 +85,9 @@ the Create form order.
   (menu item → the row's menu trigger; Add → the Add button; header menu → the tree, as today). Arrow
   keys move within the radio group (Radix); the type description is the radio's `aria-describedby`.
   Enter in the File name submits.
+
+### Focus after mutation
+
 - **After create / classify / remove:** focus moves to the new tab panel (create), stays on the row
   under its new id (classify) or moves to the next row (remove registration); the live region announces
   the result (keys `created`, `done`).

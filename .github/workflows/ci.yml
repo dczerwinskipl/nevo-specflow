@@ -391,3 +391,37 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Build
         run: pnpm exec turbo run build ${{ env.AFFECTED }}
+
+  # Temporary PR #201 markdown format correction; remove after successful use.
+  pr-201-format-fix:
+    name: format reviewed architecture docs (temporary PR 201)
+    if: github.event_name == 'pull_request' && github.event.pull_request.number == 201 && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Format changed architecture docs
+        shell: bash
+        run: |
+          set -euo pipefail
+          paths=(
+            docs/architecture/runtime/document-operation-transport.md
+            docs/architecture/runtime/specification-close-admission.md
+            docs/architecture/runtime/specification-create-options.md
+            docs/architecture/runtime/workspace-documentation-corpus.md
+            docs/architecture/workflow/workflow-action-projections.md
+          )
+          pnpm exec prettier --write "${paths[@]}"
+          pnpm exec prettier --check "${paths[@]}"
+          if ! git diff --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add "${paths[@]}"
+            git commit -m "style(docs): format architecture after self-review"
+            git push origin HEAD:"${{ github.event.pull_request.head.ref }}"
+          fi

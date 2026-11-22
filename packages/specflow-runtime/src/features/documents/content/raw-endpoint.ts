@@ -63,7 +63,6 @@ export const rawDocumentEndpoint: FastifyPluginCallback<DocumentReadEndpointOpti
           'Stream raw image or binary/text bytes for a document under spec.view, with validated safe Content-Type, Content-Disposition, Content-Length, X-Content-Type-Options and sandbox CSP. Query download accepts only 0 or 1; default safe inline for approved images, forced attachment for non-image or download=1. The stream is released on 304/abort/error, and all authorization/validation happens before sending bytes. A strong ETag permits If-None-Match/304. SVG has image media type to allow img rendering but sandbox CSP prevents script execution as a page.',
         params: SpecificationDocumentParamsSchema,
         querystring: RawQuerySchema,
-        // The 200 payload is a byte stream: it is sent as is and never serialized.
         response: { 304: Type.Null(), ...documentReadErrorResponses },
       },
     },

@@ -8,13 +8,11 @@ areas: [runtime, server, ui]
 tags: [specifications, documents, archetypes, contracts]
 read_when:
   - implementing or consuming the archetype catalogue, document tree, document read or document operations
-  - switching a client from the documents demo endpoints to the real backend
+  - reading document revisions and raw content
   - mapping document error codes in the UI
 summary: >
-  Contract of the Specification documents layer shared by the Runtime demo and the real backend:
-  endpoints, schema outline, content kinds and raw-content headers, the write contract with asynchronous commit state,
-  definition files and their problems, error codes and the explicit
-  notes for clients. Exact schemas live in @nevo/specflow-contracts/documents.
+  Specification and Task document routes for tree browsing, exact-revision reads,
+  document writes, asynchronous operations and Git commit status.
 related:
   - architecture.runtime.specification-documents
   - product.specflow.specification-documents

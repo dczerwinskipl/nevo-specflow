@@ -28,7 +28,8 @@ The Runtime documentation endpoints operate on a **registered and verified works
 a caller-supplied file path, branch, checkout or arbitrary directory. The exact HTTP contract
 is generated in [OpenAPI](../../reference/api/openapi.md), operations
 `getWorkspacesByWorkspaceIdDocs`, `getWorkspacesByWorkspaceIdDocsDocumentsByDocumentId`
-and `getWorkspacesByWorkspaceIdDocsSearch`. 
+and `getWorkspacesByWorkspaceIdDocsSearch`.
+
 ## Workspace identity, access and corpus
 
 - `docs.view` is required at trusted `{projectId}` scope. A global/project grant covers

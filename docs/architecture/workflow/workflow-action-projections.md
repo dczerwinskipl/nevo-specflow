@@ -26,7 +26,8 @@ related:
 
 The Engine owns workflow definitions, pinned revisions, runs, transitions, gates and Task effects
 (see [workflow kernel](workflow-kernel.md)). The HTTP transport is described in generated
-[OpenAPI](../../reference/api/openapi.md) under the `Workflow` tag. 
+[OpenAPI](../../reference/api/openapi.md) under the `Workflow` tag.
+
 ## Owner actor and read boundary
 
 - Every HTTP action is a **human owner** action. The Runtime derives actor identity and

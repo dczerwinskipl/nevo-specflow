@@ -26,7 +26,8 @@ related:
 The exact HTTP shape is the generated OpenAPI operations `getSpecsCreateOptions`,
 `getSpecsArchetypes`, `postSpecs` and `getSpecsCreateOperationsByOperationId`.
 [Specification lifecycle](specification-lifecycle.md) owns durable Create journals, effects and
-recovery. 
+recovery.
+
 ## Trusted choice and authorization
 
 - `GET /api/specs/create-options` is a read-only **snapshot**, not a branch/workspace

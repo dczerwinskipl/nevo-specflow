@@ -26,7 +26,8 @@ related:
 The Engine's [Specification lifecycle](specification-lifecycle.md) owns durable journal claims,
 proof of integration, compare-and-swap rebind and physical worktree disposal. The HTTP schemas
 and errors are generated in [OpenAPI](../../reference/api/openapi.md) from
-`@nevo/specflow-contracts/specs`. 
+`@nevo/specflow-contracts/specs`.
+
 ## Three distinct intents
 
 1. **Specification Close** archives one Specification; it may integrate a linked branch into

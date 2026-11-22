@@ -23867,6 +23867,15 @@
             "name": "limit",
             "required": false,
             "description": "Maximum rows after status filtering: decimal digits 1 through 50, default 20. Invalid input returns 400 OPERATION_LIST_QUERY_INVALID."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "If-None-Match",
+            "required": false,
+            "description": "Weak ETag of the authorized operation list; a match returns 304."
           }
         ],
         "security": [
@@ -23884,6 +23893,9 @@
                 }
               }
             }
+          },
+          "304": {
+            "description": "Not modified: the representation identified by the request `If-None-Match` is current."
           },
           "400": {
             "description": "The request is invalid. A request that fails its schema validation is answered in this shape too, with `error` `Bad Request` and `code` `FST_ERR_VALIDATION`.",
@@ -23997,6 +24009,7 @@
         "tags": [
           "Operations"
         ],
+        "description": "Read-only list of the feature's background operations; the request/inspection for each operation remains authoritative. Caller must have spec.view in some scope; each identified Specification row is independently filtered by spec.view at its trusted scope, and rows without a known Specification require spec.create. Counts are computed after authorization and before status/limit filters; no paths, journal internals or server text are exposed. The list does not run Git or acquire the Engine control lock. The weak ETag ignores generatedAt; an unchanged list answers 304. 400 OPERATION_LIST_QUERY_INVALID rejects invalid status or limit; 503 OPERATIONS_UNAVAILABLE means no Engine or failed source.",
         "parameters": [
           {
             "schema": {
@@ -24018,6 +24031,15 @@
             "name": "limit",
             "required": false,
             "description": "Maximum rows after status filtering: decimal digits 1 through 50, default 20. Invalid input returns 400 OPERATION_LIST_QUERY_INVALID."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "If-None-Match",
+            "required": false,
+            "description": "Weak ETag of the authorized operation list; a match returns 304."
           }
         ],
         "security": [
@@ -24035,6 +24057,9 @@
                 }
               }
             }
+          },
+          "304": {
+            "description": "Not modified: the representation identified by the request `If-None-Match` is current."
           },
           "400": {
             "description": "The request is invalid. A request that fails its schema validation is answered in this shape too, with `error` `Bad Request` and `code` `FST_ERR_VALIDATION`.",

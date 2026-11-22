@@ -23,6 +23,9 @@ related:
 
 Governing decision: [ADR 0018](../decisions/0018-engine-commit-policy-and-manual-commit.md). Push and publishing remain out of scope ("Future: push" in the ADR).
 
+
+### Policy configuration
+
 **Policy.** `git.commits.auto.documents` (committed `.nevo/config.yaml`, overridable in `.nevo/local/config.yaml`, default
 `false`: nothing is committed automatically unless the configuration enables it, and there is no per-request override; the closed key set grows with each capability that adopts it). The Create scaffold commit and the commits of
 `init` and `definitions install` are never governed by it. The effective mode is pinned in each operation's journal at
@@ -39,9 +42,15 @@ the first, the queue the second. The reservation counts the ledger's paths plus 
 flight and refuses the 201st distinct path with `DOCUMENT_UNCOMMITTED_LIMIT` before anything is written. The journal stage
 `abandoned` does not exist as a stage or a commit state (`completed` with outcome `uncommitted`, state `uncommitted`).
 
+
+### Auto-commit disabled
+
 **Auto-commit off.** The write is the Git-disabled path with Git present: admission without the commit `preflight`, files
 written at once, no queue, the operation completes `uncommitted` (reason `auto-commit-off`) in the same control-lock
 section that upserts the ledger; its claim is released and its journal moves to `settled/`.
+
+
+### Uncommitted ledger
 
 **The ledger** (generic, `specs/durable/ledger/`): one durable record per checkout and owner (`specification`,
 `definitions`, later `task`, `review`) of the paths the Engine changed and did not commit, each with the post-image
@@ -52,6 +61,9 @@ recordedAt, reason }` and the record pins `branch`, `head` and `workspaceRoot`. 
 (after a queued batch commits, a flush, a hand commit seen by the 30-second sweep, a manual commit or the Close flush): the
 read-only effective-set read runs outside the lock and an entry is removed only if it is still the one judged. It is the only source of what a manual commit may include. Its revision is
 the sha256 of the sorted `path:postSha256` list.
+
+
+### Manual commit admission
 
 **Manual commit** (`manual-commit` operation): same commit port, lease, `checkout-scoped` claim and journal store as a
 queued batch. Scope `specification | definitions | all`; an optional path subset closed under shared operation ids; the
@@ -78,6 +90,9 @@ and HEAD holds it, and never commits twice; a failure that does not prove the co
 `reserved` to `committing` or `failed`; `committing` to itself (a new executor, the start of the commit), `completed`, `failed` or
 `recovery-required`; `recovery-required` to `committing` (resume), `completed` (adopt) or `failed` (abandon).
 
+
+### Close and queued operations
+
 **Interaction.** Close refuses while the ledger of any checkout of its plan is non-empty after the flush and prune
 (`DOCUMENT_COMMITS_PENDING`, cause `commit-uncommitted`), except for the execution state of the Specification a
 Specification Close archives ([Commits of workflow state](#commits-of-workflow-state)). `SPEC_MANIFEST_DIRTY` is judged against the post-image of the
@@ -97,11 +112,17 @@ published change is ONE document operation of action `workflow` (contract
 `DOCUMENT_OPERATION_STATUS_ACTIONS`) in the document journal store
 (`specs/documents/write/execution-state.ts`):
 
+
+### Workflow-state admission
+
 - **Admission** (under the project control lock, before the store writes its journal): the same Git
   policy and preflight as a document write (`admitGitCommit`, pinned `commitMode`), no Create or
   Close holding the checkout, queue capacity, no claimed batch or manual commit holding a path
   (`SPEC_BUSY`, `commit-in-progress`), at most 200 paths, and with auto-commit off the ledger bound.
   A refusal writes nothing; it is a document error.
+
+### Ledger record and Git effect
+
 - **Record** (same lock section, after the files are published): the plan lists the paths with their
   `pre`/`post` and `source: written` (the store wrote them) or `none` (removed), plus the `summary`
   the operation gave (`create task api`). Auto-commit on: the journal is published `queued` (its
@@ -111,6 +132,9 @@ published change is ONE document operation of action `workflow` (contract
   `spec(workflow): <summary> in <slug>`, `spec(documents): change documents and workflow state in
 <slug>` in a mixed batch). Auto-commit off: the ledger entries (owner `specification`, reason
   `auto-commit-off`) then a settled `completed`/`uncommitted` journal. Git disabled: nothing.
+
+### Task and auto-commit policy
+
 - **Task documents (D03).** A `workflow` operation names no Task, so it is not a pending Task
   document change; the store's own D03 guard still refuses while a Task document change is not final,
   and a Task document change still refuses while the store's local journal is pending.
@@ -138,6 +162,9 @@ published change is ONE document operation of action `workflow` (contract
   summary and `Specification: <slug>`.
 - **Close.** A Specification Close does not wait for ledger entries of the execution state of the
   Specification it archives: its archive commit takes them along, and the next prune removes them.
+
+### Crash recovery
+
 - **Crash safety.** The store's journal fixes the operation id, the summary and each target's `pre`
   before any file is written, and the record is made BEFORE the journal is removed. A stop anywhere
   leaves the journal; the next change of the store publishes it again and records it with the same

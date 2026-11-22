@@ -50,11 +50,17 @@ and `getWorkspacesByWorkspaceIdDocsSearch`.
 - Returned paths and search hit `file` values are relative to the checkout's
   `docs.root`, with forward slashes. The CLI's search file paths are relative to its
   checkout, so don't equate these directly.
+
+### Corpus revision
+
 - `corpusRevision` is an opaque digest of the **effective documentation settings and included
   paths/content hashes**. It is shared by tree, article and search for an unchanged corpus,
   but is **not Git HEAD, not an embedding-index revision and not an ETag**. No
   `If-Match`/`If-None-Match`/412 protocol is supported here; clients compare revisions
   and reload the relevant reads after a difference.
+
+### Corpus validity and skipped entries
+
 - Invalid frontmatter and **all documents of a duplicated ID** are skipped with reason and
   path (visible in every 200 result). An unresolved `related` or `superseded_by` reference
   does not skip an otherwise readable document. Strict `docs check` still fails those
@@ -65,6 +71,9 @@ and `getWorkspacesByWorkspaceIdDocsSearch`.
 
 - Tree lists active documents, inactive deprecated/superseded documents and skipped ones;
   `rootIndexDocumentId` exists only for an active readable `<docs.root>/README.md`.
+
+### Article reads and refusals
+
 - Article metadata and Markdown body come from **one file read**; sections are ordered body
   headings with a stable `sectionId`, `headingPath` and **1-based body line**. `_top`
   represents text before the first heading. Search hit line numbers include frontmatter,
@@ -74,6 +83,9 @@ and `getWorkspacesByWorkspaceIdDocsSearch`.
   A missing ID or file disappearing/changing during its read is
   `404 DOCS_DOCUMENT_NOT_FOUND`; the refusal carries this workspace's corpus revision
   but tells nothing about documents of other workspaces.
+
+### Search results and snippets
+
 - Search ranks documents and best sections with the existing CLI docs-search semantics.
   `q` is nonempty (up to 500 characters), `limit` is 1..50 (default 10),
   `includeProposals` is off by default, and snippets are on by default. A search hit's
@@ -84,6 +96,9 @@ and `getWorkspacesByWorkspaceIdDocsSearch`.
   first occurrences of distinct query words; absent with an omitted snippet, empty when
   no match or `wordMatch:false`. `wordMatch` signals actual lexical words rather
   than a hit found by semantic similarity only.
+
+### Lexical fallback and omitted proposals
+
 - `proposalsLeftOut` counts matching proposals omitted from a normal search with the
   same limit/cutoff. It is zero when proposals are included. Semantic search may return
   `mode:hybrid`; a lexical answer with a typed reason is **normal success**, never
@@ -96,6 +111,9 @@ and `getWorkspacesByWorkspaceIdDocsSearch`.
   **trusted** config supplies `ai.embeddings`; a workspace cannot supply its own embedding
   endpoint. An index belongs to that checkout at `.nevo/local/cache/docs-index/`, shared
   with the CLI run in that checkout.
+
+### Refresh deadlines and fallback
+
 - On every HTTP search, read-time refresh checks changed chunks and can embed up to **16**,
   with a **7000 ms** post-corpus answer budget. Probe/embedding has a **4000 ms** deadline,
   leaving at most **3000 ms** for query embedding. Unfinished work is aborted and does not
@@ -108,6 +126,9 @@ and `getWorkspacesByWorkspaceIdDocsSearch`.
   wait for a full re-embedding. When a CLI process owns the index, report that state
   rather than racing writes. After a failed background update, retry no sooner than
   **60 seconds**.
+
+### Indexing concurrency and disposal
+
 - The Runtime permits **one background indexing job globally** across its workspaces.
   While any such job occupies its embedding endpoint, another semantic-enabled
   search does not query/embed concurrently and returns an appropriate
@@ -118,10 +139,16 @@ and `getWorkspacesByWorkspaceIdDocsSearch`.
   Before worktree disposal, release that workspace's corpus and wait for its refresh.
   Closing Runtime cancels running refreshes and waits for the index to be released;
   completed persisted chunks remain.
+
+### Cache seeding and write admission
+
 - A new linked worktree without index can seed from Project Home's cache **only** if
   settings and embedding identity match; subsequent refresh embeds the difference.
   Before every write, a fresh `git check-ignore` proves the index path is ignored.
   Failed write admission is fail-closed with **no index write** and a lexical result.
+
+### Startup and configuration errors
+
 - At Runtime startup, a configured semantic-enabled primary checkout starts a
   background refresh without delaying readiness; other checkouts refresh on search.
   A slow/unreachable indexing endpoint under a running job is reported as

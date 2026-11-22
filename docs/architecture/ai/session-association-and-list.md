@@ -69,8 +69,7 @@ Specification and Task facts additionally need `spec.view` at `specScope(project
 checked before any Engine lookup, so `forbidden` never reveals existence. Titles, keys and the
 archive collection are read from the Engine at request time; the registry stores only ids. A
 removed Specification or Task reads as `missing` (no cascade); a later object reusing the same id
-reads as the associated one. Without an Engine Task source (project mode today) associated Tasks
-read as `unavailable`.
+reads as the associated one. If the Engine Task source is unavailable, associated Tasks read as `unavailable`.
 
 ### Session list
 

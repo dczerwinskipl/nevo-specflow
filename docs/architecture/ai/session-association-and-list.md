@@ -41,6 +41,9 @@ Associations therefore cannot distinguish an older removed Task from a new Task 
 `POST /api/specs/:specId/sessions` (body limit 256 KiB) starts a Session associated with the
 Specification, atomically:
 
+
+#### Composed Create refusal order
+
 - Refusal precedence: schema validation (400), authentication, `503 SESSION_DISABLED`, then `spec.start-session` at
   `specScope(projectId, specId)`, `session.create` at `{projectId, specId}` and, for
   `mode: 'workspace-write'`, `session.execute-write` at `{projectId}` (403 `forbidden`); only then
@@ -78,6 +81,9 @@ reads as the associated one. If the Engine Task source is unavailable, associate
 
 - Filters select, they never grant. `specId` and `standalone` are exclusive and `taskId` requires
   `specId` (otherwise `400 SESSION_INPUT_INVALID` with `field`). `archived` defaults to `exclude`.
+
+#### List authorization
+
 - Authorization: `session.view` in any scope, then each scanned row at
   `sessionScope(row, 'view')`; rows the caller may not view are skipped. With `specId` the request
   also requires `spec.view` at `specScope(projectId, specId)` (403 otherwise): selecting by a
@@ -85,6 +91,9 @@ reads as the associated one. If the Engine Task source is unavailable, associate
   whose `session.view` comes only from Specification-scoped grants gets
   `400 SESSION_LIST_SCOPE_REQUIRED` (`field: 'specId'`); `standalone=true` answers such a caller an
   empty page.
+
+#### Ordering and pagination
+
 - Order: newest created first, keyset-paged on the immutable creation sequence. `limit` 1..100,
   default 50. One request scans at most 500 index rows and stops when `limit` rows are filled or
   the budget is spent; `nextCursor` points after the last **scanned** row, so a page may hold
@@ -94,6 +103,9 @@ reads as the associated one. If the Engine Task source is unavailable, associate
   `409 SESSION_CURSOR_EXPIRED`.
 - A page decodes only the rows it returns; a Session deleted between scan and decode is omitted.
   The demo Runtime serves the same route from its catalogue.
+
+#### Provider labels
+
 - `providerTitle` and `modelTitle` are resolved from the Runtime's provider catalogue at read time,
   so a caller who may not read `GET /api/session-providers` (a viewer) can still name the agent.
   `readiness` is the effective readiness of the single-Session read: when the provider (or the

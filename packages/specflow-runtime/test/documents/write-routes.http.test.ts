@@ -33,8 +33,22 @@ import { createRuntimeApp } from '../../src/server/app';
 import { passwordConfig } from '../auth/support/config';
 
 const apps: FastifyInstance[] = [];
+// These cases change requests, not server configuration. Reuse the finite set of
+// auth/source configurations instead of recompiling every Runtime schema per case.
+// Explicit source/call overrides still get a fresh app owned by that test.
+const fixtures = new Map<string, Awaited<ReturnType<typeof createFixture>>>();
+beforeEach(() => {
+  for (const fixture of fixtures.values()) {
+    fixture.calls.names.length = 0;
+    delete fixture.calls.fail;
+  }
+});
 afterEach(async () => {
   await Promise.all(apps.splice(0).map((app) => app.close()));
+});
+afterAll(async () => {
+  await Promise.all([...fixtures.values()].map(({ app }) => app.close()));
+  fixtures.clear();
 });
 
 const SPEC = 'spec-1';
@@ -158,9 +172,22 @@ async function createFixture(
   return { app, headers, calls };
 }
 
-async function listen(options?: Parameters<typeof createFixture>[0]) {
-  const fixture = await createFixture(options);
-  apps.push(fixture.app);
+async function listen(options: Parameters<typeof createFixture>[0] = {}) {
+  if (options.calls || options.source) {
+    const fixture = await createFixture(options);
+    apps.push(fixture.app);
+
+    return fixture;
+  }
+
+  // JSON drops undefined: a deliberately unavailable source must remain distinct
+  // from the default fake source, including when test execution is shuffled.
+  const key = JSON.stringify({ ...options, sourceUnavailable: 'source' in options });
+  let fixture = fixtures.get(key);
+  if (!fixture) {
+    fixture = await createFixture(options);
+    fixtures.set(key, fixture);
+  }
 
   return fixture;
 }

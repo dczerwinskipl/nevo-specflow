@@ -27,25 +27,17 @@ related:
 
 # Workspaces HTTP API
 
-The exact wire contract for `GET /api/workspaces` is the generated
-[Runtime OpenAPI](openapi.md), operation `getWorkspaces`
-([committed schema](openapi.generated.json)). The TypeBox source is
-`packages/specflow-contracts/src/workspaces/list.ts`; the route source is
-`packages/specflow-runtime/src/features/workspaces/list/endpoint.ts`.
+`GET /api/workspaces` lists registered workspaces visible to a caller with
+`workspace.view` at project scope. A workspace may be the primary checkout or a linked
+worktree; availability, dirty state and visible Specification associations are reported
+separately. An unavailable workspace can remain in the list so the client can explain
+why it cannot be selected.
 
-The generated operation describes the availability reasons, `dirty` presence,
-`workspace.view` admission, per-Specification visibility, `401`/`403`/`503` responses,
-and the demo's in-memory data source.
-
-Workspace identity, access-scope invariants and filtering are owned by
-[Runtime authorization](../../architecture/runtime/auth/authorization.md). The
-product's workspace picker and fallback behavior belong to
-[the documentation-reader UX contract](../../product/specflow/ui/documentation-reader.md).
-The Git Create/Close lifecycle belongs to
+The full response and refusal schemas are in [OpenAPI](openapi.md), operation
+`getWorkspaces`. The identity and authorization rules are described in
+[Runtime authorization](../../architecture/runtime/auth/authorization.md), and
+Git/Create/Close behavior in
 [Specification lifecycle](../../architecture/runtime/specification-lifecycle.md).
 
-This page preserves a stable discovery ID. It must not duplicate an endpoint or field catalogue.
-
-## Demo Runtime
-
-The demo Runtime exposes the same GET route, backed by its in-memory workspace registry. Its seeded and simulated worktree data does not represent physical Git execution. See [demo and project API convergence](../../ideas/demo-api-convergence.md) for the planned removal of remaining demo-only routes and [Workspace list source](../../architecture/runtime/auth/authorization.md) for scope enforcement.
+In demo mode this route reads the in-memory workspace registry. Demo workspace records
+do not imply that corresponding physical Git worktrees exist.

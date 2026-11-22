@@ -24,19 +24,18 @@ related:
 
 # Specification operation list API
 
-The exact public response, query schema, ETag behavior and authorization are generated in
-[Runtime OpenAPI](openapi.md), operation `getSpecsOperations`
-(`GET /api/specs/operations`). The shared TypeBox contract is
-`packages/specflow-contracts/src/operations/list.ts`; registration lives in
-`packages/specflow-runtime/src/features/specs/create/operation-list.ts` and
-`packages/specflow-runtime/src/features/operations/list-route.ts`.
+`GET /api/specs/operations` lists visible Specification Create operations. The
+`status` filter selects operation states and `limit` bounds the result. Authorization
+applies to each row before counts and result filtering.
 
-This endpoint is a **display aid**, not a source of operation truth. See the
-[Operation progress engineering guide](../../engineering/shared/operation-progress.md)
-for polling, fallback and presentation, and
+Responses include a weak ETag; `If-None-Match` can return `304` when the visible
+list is unchanged. Listing an operation never starts or retries it.
+
+For the query, response, conditional requests and refusal codes, use
+[OpenAPI](openapi.md), operation `getSpecsOperations`. For an individual Create outcome,
+use `GET /api/specs/create/operations/{operationId}`.
+
+The list is a UI projection; the operation inspection and
 [Specification lifecycle](../../architecture/runtime/specification-lifecycle.md)
-for journal recovery, retention and idempotency invariants.
-
-The demo Runtime still exposes a temporary counterpart under `/api/demo/**`;
-see the [demo API convergence proposal](../../ideas/demo-api-convergence.md).
-This page keeps its stable ID while no longer duplicating the wire contract.
+define durable state. See [operation progress](operation-progress.md) for streaming and
+polling guidance.

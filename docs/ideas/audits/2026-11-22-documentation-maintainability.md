@@ -123,3 +123,17 @@ tracked by #206/#207 until evidenced on the final PR HEAD.
 
 | Current document and primary owner | Disposition | Evidence or follow-up | Check |
 | --- | --- | --- | --- |
+| `architecture/README.md` | Keep | no overlong paragraph/bullet found | code check pending |
+| `architecture/ai/README.md` | Keep | no overlong paragraph/bullet found | code check pending |
+| `architecture/ai/canonical-session-turn-work.md` | Keep | no overlong paragraph/bullet found | code check pending |
+| `architecture/ai/provider-boundary.md` | Keep | no overlong paragraph/bullet found | code check pending |
+| `architecture/ai/provider-process-ownership.md` | Reformat | 0 long paragraphs; 1 long bullets; max section 289 words | code check pending |
+| `architecture/ai/session-admission-and-providers.md` | Reformat | 4 long paragraphs; 1 long bullets; max section 537 words | text parity #209 |
+| `architecture/ai/session-association-and-list.md` | Reformat | 0 long paragraphs; 2 long bullets; max section 299 words | text parity #209 |
+| `architecture/ai/session-commands.md` | Reformat | 2 long paragraphs; 1 long bullets; max section 446 words | text parity #209 |
+| `architecture/ai/session-history-and-events.md` | Reformat | 5 long paragraphs; 0 long bullets; max section 426 words | text parity #209 |
+| `architecture/ai/session-storage-and-lifecycle.md` | Reformat | 11 long paragraphs; 2 long bullets; max section 545 words | code check pending |
+| `architecture/ai/session-telemetry-observations.md` | Reformat | 0 long paragraphs; 4 long bullets; max section 409 words | text parity #209 |
+| `architecture/decisions/0001-record-architecture-decisions.md` | Keep | no overlong paragraph/bullet found | code check pending |
+| `architecture/decisions/0003-branch-and-release-model.md` | Reformat | 0 long paragraphs; 2 long bullets; max section 377 words | code check pending |
+| `architecture/decisions/0004-mit-license.md` | Keep | no overlong paragraph/bullet found | code check pending |

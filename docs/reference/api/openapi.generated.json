@@ -21960,6 +21960,7 @@
       "post": {
         "operationId": "postSpecs",
         "summary": "Create a Specification",
+        "description": "Create a Specification and its selected archetype documents atomically under Engine admission. Requires project-wide spec.create. Omitted target means primary checkout; explicit existing/new-worktree choices use registered workspaces and validated Git policy. Body limit is 2 MiB. A retry MUST reuse the same operationId and identical request; changed data yields 409 CREATE_CONFLICT. With Prefer: respond-async, the Runtime validates/reserves and returns 202 with Location and Preference-Applied while detached work continues, even after client disconnect. Without the preference, successful Create normally returns 201. The inspection route reports the outcome; SSE is optional and display-only. Git-off success may contain uncommitted:true. Invalid Git policy fails closed.",
         "tags": [
           "Specifications"
         ],
@@ -21989,7 +21990,8 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 80,
-                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                    "description": "Lowercase kebab-case Spec/worktree folder and branch token override. Omitted is derived from the title; conflicting explicit slug is refused, never silently renamed."
                   },
                   "operationId": {
                     "$ref": "#/components/schemas/OperationId"
@@ -22029,11 +22031,13 @@
                           },
                           "baseRef": {
                             "type": "string",
-                            "minLength": 1
+                            "minLength": 1,
+                            "description": "Starting Git ref for the new managed branch; independent of the optional integration target. Omitted uses the configured default."
                           },
                           "branch": {
                             "type": "string",
-                            "minLength": 1
+                            "minLength": 1,
+                            "description": "Optional explicit branch name instead of branchPattern-generated name. Protected branches are rejected on admission."
                           },
                           "integrationTargetWorkspaceId": {
                             "$ref": "#/components/schemas/WorkspaceId"
@@ -22041,7 +22045,8 @@
                         },
                         "additionalProperties": false
                       }
-                    ]
+                    ],
+                    "description": "Omitted targets the primary checkout. existing selects a registered checkout; new-worktree creates a managed worktree. baseRef selects the source commit, not the merge destination."
                   },
                   "archetypeId": {
                     "type": "string",
@@ -22150,7 +22155,8 @@
                       "$ref": "#/components/schemas/WorkspaceId"
                     },
                     "relativeManifestPath": {
-                      "type": "string"
+                      "type": "string",
+                      "description": "Path relative to project/workspace of the created canonical Specification manifest; no absolute host path."
                     },
                     "documentIds": {
                       "type": "array",
@@ -22163,7 +22169,8 @@
                       "type": "boolean",
                       "enum": [
                         true
-                      ]
+                      ],
+                      "description": "Present and true when Git is disabled and the new scaffold remains uncommitted; later Git-enabled Close may refuse the dirty checkout."
                     }
                   },
                   "additionalProperties": false
@@ -22310,13 +22317,25 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "Prefer",
+            "required": false,
+            "description": "RFC 7240 request preference; respond-async asks the Runtime to validate and reserve before returning 202. Clients must also handle synchronous 201."
+          }
+        ]
       }
     },
     "/api/specs/archetypes": {
       "get": {
         "operationId": "getSpecsArchetypes",
         "summary": "List the Specification archetypes",
+        "description": "List project archetype definitions for Create. Requires project-wide spec.create. ETag is the catalogue revision; If-None-Match may yield 304. Client must select archetype id, integer version and catalogue revision; there is no implicit default archetype for the request. Unreadable or missing definitions are not silently replaced by demo fixtures.",
         "tags": [
           "Specifications"
         ],
@@ -22772,13 +22791,25 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "If-None-Match",
+            "required": false,
+            "description": "ETag from an earlier archetype catalogue response; when unchanged the server returns 304 without a body."
+          }
+        ]
       }
     },
     "/api/specs/create-options": {
       "get": {
         "operationId": "getSpecsCreateOptions",
         "summary": "Read the options of a Specification creation",
+        "description": "Read-only admission options for Specification Create, requiring project-wide spec.create. Snapshot only: not a branch/workspace reservation. Options contain Create facts keyed by workspaceId, joined to the separately authorized GET /api/workspaces; specCount counts all occupants, not only viewable ones. worktreesRoot.path is an absolute machine-local directory exposed to any Create-capable principal; clients needing workspace names/paths also require workspace.view. Invalid Git policy produces 200 with Git-dependent choices marked unavailable, while Create mutations fail closed. Inspect current policy and registry again on mutation.",
         "tags": [
           "Specifications"
         ],
@@ -22824,7 +22855,8 @@
                           },
                           "specCount": {
                             "type": "integer",
-                            "minimum": 0
+                            "minimum": 0,
+                            "description": "Number of ALL Specifications bound to the workspace, including those not visible through spec.view; used only for shared-use warnings."
                           },
                           "managed": {
                             "type": "boolean"
@@ -23043,7 +23075,8 @@
                     },
                     "defaultBaseRef": {
                       "type": "string",
-                      "minLength": 1
+                      "minLength": 1,
+                      "description": "Configured ref as written: HEAD, full SHA, refs/heads/..., refs/tags/... or a local short branch name. A short name denotes a branch, not a tag."
                     },
                     "defaultBaseConfig": {
                       "anyOf": [
@@ -23136,7 +23169,8 @@
                     },
                     "branchPattern": {
                       "type": "string",
-                      "minLength": 1
+                      "minLength": 1,
+                      "description": "Effective policy for generated branch names; normally feature/{slug}, optionally {shortId}."
                     },
                     "worktreesRoot": {
                       "type": "object",
@@ -23153,7 +23187,8 @@
                           "type": "boolean"
                         }
                       },
-                      "additionalProperties": false
+                      "additionalProperties": false,
+                      "description": "Absolute machine-local root for new worktrees (config or default), visible to project-wide spec.create callers. exists indicates whether the folder already exists; a new worktree may create it."
                     },
                     "integrationTargetBranch": {
                       "type": "string",
@@ -23193,7 +23228,8 @@
                         "properties": {
                           "ref": {
                             "type": "string",
-                            "pattern": "^refs/heads/.+$"
+                            "pattern": "^refs/heads/.+$",
+                            "description": "Full local refs/heads/<branch> ref; not a short branch or remote ref. The same value is sent as explicit target.baseRef."
                           },
                           "projectConfig": {
                             "anyOf": [
@@ -23374,6 +23410,7 @@
       "get": {
         "operationId": "getSpecsCreateOperationsByOperationId",
         "summary": "Read the status of a Specification creation",
+        "description": "Read-only sanitized observation of one Specification Create operation, requiring project-wide spec.create. A running operation, remembered failure, recovery-required journal or completed result are distinguished by the response union. Does not run Git, initiate recovery, claim process liveness or disclose filesystem paths/internal journal stages. After an uncertain response poll this endpoint with the original operationId; never issue a fresh Create. An idle journal can be recovery-required with OPERATION_INTERRUPTED.",
         "tags": [
           "Operations"
         ],

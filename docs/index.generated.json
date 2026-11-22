@@ -997,6 +997,41 @@
       ]
     },
     {
+      "id": "architecture.runtime.specification-create-options",
+      "type": "architecture",
+      "title": "Specification Create options and admission invariants",
+      "status": "current",
+      "file": "docs/architecture/runtime/specification-create-options.md",
+      "read_when": [
+        "implementing or reviewing Create options and validation",
+        "reviewing Git-off, branch protection or invalid Git policy behavior",
+        "checking Create UI authorization and workspace consistency"
+      ],
+      "summary": "Create options are advisory snapshots, not reservations. Their workspace, branch and base-config facts, permission boundaries and Git policy behavior are revalidated on admission.",
+      "related": [
+        "architecture.runtime.specflow-lifecycle",
+        "reference.api.specflow-specification-operations",
+        "reference.api.workspaces",
+        "architecture.runtime.authorization",
+        "reference.configuration.specflow-git-worktrees"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "cli",
+        "security",
+        "git"
+      ],
+      "tags": [
+        "specification",
+        "create",
+        "worktree",
+        "authorization",
+        "git",
+        "admission"
+      ]
+    },
+    {
       "id": "architecture.runtime.specification-documents",
       "type": "architecture",
       "title": "Specification documents layer - registry, archetypes, ownership and invariants",

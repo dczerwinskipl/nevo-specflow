@@ -77,7 +77,7 @@ export const CreateOptionsSchema = Type.Object(
            * Every Specification bound to the workspace (a Create-only fact for the shared-use
            * warning). Unlike `specifications[]` of the list it is not limited to viewable ones.
            */
-          specCount: Type.Integer({ minimum: 0 }),
+          specCount: Type.Integer({ minimum: 0, description: 'Number of ALL Specifications bound to the workspace, including those not visible through spec.view; used only for shared-use warnings.' }),
           /** Nevo created and manages this linked worktree (always false for the primary one). */
           managed: Type.Boolean(),
           state: Type.Union([
@@ -122,15 +122,15 @@ export const CreateOptionsSchema = Type.Object(
      * `refs/heads/<name>`; a short tag name such as `v1.0` is therefore read as a branch). Not
      * necessarily one of `baseRefs`; {@link designatedBaseRef} gives the ref it designates.
      */
-    defaultBaseRef: Type.String({ minLength: 1 }),
+    defaultBaseRef: Type.String({ minLength: 1, description: 'Configured ref as written: HEAD, full SHA, refs/heads/..., refs/tags/... or a local short branch name. A short name denotes a branch, not a tag.' }),
     /** Inspection of the configured ref, including HEAD, tags and commits. Absent without Git facts. */
     defaultBaseConfig: Type.Optional(DefaultBaseConfigSchema),
     /** Effective pattern; `{shortId}` is optional, so `feature/{slug}` previews as `feature/<slug>`. */
-    branchPattern: Type.String({ minLength: 1 }),
+    branchPattern: Type.String({ minLength: 1, description: 'Effective policy for generated branch names; normally feature/{slug}, optionally {shortId}.' }),
     /** Effective folder for new worktrees (machine-local `git.worktreesRoot` or the default). */
     worktreesRoot: Type.Object(
       { path: Type.String({ minLength: 1 }), exists: Type.Boolean() },
-      { additionalProperties: false },
+      { additionalProperties: false, description: 'Absolute machine-local root for new worktrees (config or default), visible to project-wide spec.create callers. exists indicates whether the folder already exists; a new worktree may create it.' },
     ),
     integrationTargetBranch: Type.Optional(Type.String({ minLength: 1 })),
     commits: Type.Optional(CreateCommitsSchema),
@@ -146,7 +146,45 @@ export const CreateOptionsSchema = Type.Object(
            * Always the full ref `refs/heads/<branch>`: the identity of the option and the value a
            * `target.baseRef` override sends. Its display name is `<branch>`.
            */
-          ref: Type.String({ pattern: '^refs/heads/.+$' }),
+          ref: Type.String({ pattern: '^refs/heads/.+
+          projectConfig: BaseProjectConfigSchema,
+          checkedOutWorkspaceId: Type.Optional(WorkspaceIdSchema),
+        },
+        { additionalProperties: false },
+      ),
+    ),
+  },
+  { additionalProperties: false },
+);
+
+export type CreateOptions = Static<typeof CreateOptionsSchema>;
+
+const LOCAL_BRANCH_REF_PREFIX = 'refs/heads/';
+
+/** The full ref of the local branch with this short name, written like `baseRefs[].ref`. */
+export function localBranchRef(branch: string): string {
+  return LOCAL_BRANCH_REF_PREFIX + branch;
+}
+
+const COMMIT = /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/iu;
+
+/**
+ * The ref a configured base ref (`defaultBaseRef`) designates, in the same order as the Engine's
+ * `normalizeBaseRef` (`version-control/git/refs.ts`): `HEAD`, a full commit SHA and a `refs/...`
+ * name as written, anything else as the local branch of that name. It does not validate: the
+ * value comes from a policy the Engine has already validated.
+ */
+export function designatedBaseRef(value: string): string {
+  return value === 'HEAD' || COMMIT.test(value) || value.startsWith('refs/')
+    ? value
+    : localBranchRef(value);
+}
+
+/** How a ref is shown: a local branch by its short name, any other ref (`HEAD`, a tag) as is. */
+export function refDisplayName(ref: string): string {
+  return ref.startsWith(LOCAL_BRANCH_REF_PREFIX) ? ref.slice(LOCAL_BRANCH_REF_PREFIX.length) : ref;
+}
+, description: 'Full local refs/heads/<branch> ref; not a short branch or remote ref. The same value is sent as explicit target.baseRef.' }),
           projectConfig: BaseProjectConfigSchema,
           checkedOutWorkspaceId: Type.Optional(WorkspaceIdSchema),
         },

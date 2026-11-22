@@ -158,6 +158,17 @@ describe('Runtime OpenAPI document', () => {
         responses: Record<string, { content?: Record<string, { schema: unknown }> }>;
       };
       expect(workspaceRead.description).toContain('individual Session rows');
+      const createOperation = paths['/api/specs']?.post as {
+        description: string;
+        parameters: Array<{ name: string; description?: string }>;
+        responses: Record<string, { description?: string }>;
+      };
+      expect(createOperation.description).toContain('Prefer: respond-async');
+      expect(createOperation.parameters.some((parameter) => parameter.name === 'Prefer')).toBe(true);
+      const createOptions = paths['/api/specs/create-options']?.get as { description: string };
+      expect(createOptions.description).toContain('worktreesRoot.path');
+      expect((paths['/api/specs/archetypes']?.get as { parameters: Array<{ name: string }> }).parameters)
+        .toEqual(expect.arrayContaining([expect.objectContaining({ name: 'If-None-Match' })]));
       const workspaceBody = workspaceRead.responses['200']?.content?.['application/json']?.schema as {
         properties: { revision: { description?: string }; specification: { properties: { summary: { description?: string } } } };
       };

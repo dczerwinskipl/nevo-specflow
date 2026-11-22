@@ -22,8 +22,8 @@ export const ExistingSpecTargetSchema = Type.Object(
 export const NewSpecWorktreeTargetSchema = Type.Object(
   {
     kind: Type.Literal('new-worktree'),
-    baseRef: Type.Optional(Type.String({ minLength: 1 })),
-    branch: Type.Optional(Type.String({ minLength: 1 })),
+    baseRef: Type.Optional(Type.String({ minLength: 1, description: 'Starting Git ref for the new managed branch; independent of the optional integration target. Omitted uses the configured default.' })),
+    branch: Type.Optional(Type.String({ minLength: 1, description: 'Optional explicit branch name instead of branchPattern-generated name. Protected branches are rejected on admission.' })),
     integrationTargetWorkspaceId: Type.Optional(WorkspaceIdSchema),
   },
   { additionalProperties: false },
@@ -38,10 +38,10 @@ export const CreateSpecRequestSchema = Type.Object(
      * `feature/<slug>` branch and the worktree folder. Omitted: derived from the title.
      */
     slug: Type.Optional(
-      Type.String({ minLength: 1, maxLength: SPEC_SLUG_MAX_LENGTH, pattern: SPEC_SLUG_PATTERN }),
+      Type.String({ minLength: 1, maxLength: SPEC_SLUG_MAX_LENGTH, pattern: SPEC_SLUG_PATTERN, description: 'Lowercase kebab-case Spec/worktree folder and branch token override. Omitted is derived from the title; conflicting explicit slug is refused, never silently renamed.' }),
     ),
     operationId: Type.Optional(OperationIdSchema),
-    target: Type.Optional(Type.Union([ExistingSpecTargetSchema, NewSpecWorktreeTargetSchema])),
+    target: Type.Optional(Type.Union([ExistingSpecTargetSchema, NewSpecWorktreeTargetSchema], { description: 'Omitted targets the primary checkout. existing selects a registered checkout; new-worktree creates a managed worktree. baseRef selects the source commit, not the merge destination.' })),
     /**
      * Archetype selection (`archetypeId`, `archetypeVersion`, `catalogueRevision` required;
      * `optionalDocumentIds`, `addedDocuments`, `folders` optional). There is no default archetype
@@ -61,7 +61,7 @@ export const CreatedSpecSchema = Type.Object(
     status: Type.Literal('completed'),
     slug: Type.String(),
     workspaceId: WorkspaceIdSchema,
-    relativeManifestPath: Type.String(),
+    relativeManifestPath: Type.String({ description: 'Path relative to project/workspace of the created canonical Specification manifest; no absolute host path.' }),
     /** Ids of the registered documents of the new Specification, in manifest order. */
     documentIds: Type.Array(RegisteredDocumentIdSchema),
     /**
@@ -70,7 +70,7 @@ export const CreatedSpecSchema = Type.Object(
      * place without Git; once Git is on, a Close refuses (`uncommitted-changes`) until they are
      * committed.
      */
-    uncommitted: Type.Optional(Type.Literal(true)),
+    uncommitted: Type.Optional(Type.Literal(true, { description: 'Present and true when Git is disabled and the new scaffold remains uncommitted; later Git-enabled Close may refuse the dirty checkout.' })),
   },
   { additionalProperties: false },
 );

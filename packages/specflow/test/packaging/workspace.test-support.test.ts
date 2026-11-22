@@ -47,6 +47,8 @@ it('isolates generated outputs and workspace links while testing current source 
     run('git', ['add', '.'], { cwd: source });
     put('packages/provider/source.ts', 'edited');
     put('untracked.ts', 'new source');
+    put('nested/source.ts', 'unrelated embedded repository');
+    run('git', ['init', '-q'], { cwd: join(source, 'nested') });
     rmSync(join(source, 'deleted.ts'));
     put('packages/provider/dist/index.js', 'shared build');
     put('.artifacts/keep.tgz', 'shared artifact');
@@ -54,6 +56,7 @@ it('isolates generated outputs and workspace links while testing current source 
     snapshot = createPackagingWorkspace(source);
     expect(readFileSync(join(snapshot.root, 'packages/provider/source.ts'), 'utf8')).toBe('edited');
     expect(readFileSync(join(snapshot.root, 'untracked.ts'), 'utf8')).toBe('new source');
+    expect(existsSync(join(snapshot.root, 'nested'))).toBe(false);
     expect(existsSync(join(snapshot.root, 'deleted.ts'))).toBe(false);
     expect(existsSync(join(snapshot.root, 'packages/provider/dist'))).toBe(false);
     expect(existsSync(join(snapshot.root, '.artifacts'))).toBe(false);
@@ -68,6 +71,9 @@ it('isolates generated outputs and workspace links while testing current source 
       'concurrent build',
     );
     expect(readFileSync(join(source, '.artifacts/keep.tgz'), 'utf8')).toBe('shared artifact');
+    expect(readFileSync(join(source, 'nested/source.ts'), 'utf8')).toBe(
+      'unrelated embedded repository',
+    );
   } finally {
     snapshot?.dispose();
     rmSync(source, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });

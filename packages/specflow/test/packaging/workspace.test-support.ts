@@ -17,7 +17,8 @@ export function createPackagingWorkspace(sourceRoot: string): {
     const files = run('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], {
       cwd: sourceRoot,
     }).split('\0');
-    for (const file of new Set(files.filter(Boolean))) {
+    // Git reports opaque embedded repositories as directory entries; never recurse into their state.
+    for (const file of new Set(files.filter((file) => file && !file.endsWith('/')))) {
       const source = join(sourceRoot, file);
       // Locally deleted tracked source is absent in the snapshot too.
       if (!existsSync(source)) {

@@ -25,68 +25,67 @@ related:
 
 # Managed Sessions API
 
-Exact routes, parameters, response schemas, refusal codes, HTTP headers and operation descriptions
-are generated from the Runtime TypeBox schemas in [OpenAPI](openapi.md), under the
-`Sessions` and `Session Providers` tags. Avoid maintaining a second HTTP contract here.
-
-Domain behavior has moved into focused architecture owners:
-
-- [Session authorization, providers and demo](../../architecture/ai/session-admission-and-providers.md)
-- [Session commands and lifecycle](../../architecture/ai/session-commands.md)
-- [Session association and list](../../architecture/ai/session-association-and-list.md)
-- [Session history, Work, content and events](../../architecture/ai/session-history-and-events.md)
-- [Session telemetry accounting](../../architecture/ai/session-telemetry-observations.md)
-
-This file retains its stable discovery ID and original section anchors during migration.
-
-## Enable Sessions
-
-See [Session authorization, providers and demo boundaries](../../architecture/ai/session-admission-and-providers.md#enable-sessions), and generated OpenAPI.
-
-## Authorization and transport
-
-See [Session authorization, providers and demo boundaries](../../architecture/ai/session-admission-and-providers.md#authorization-and-transport), and generated OpenAPI.
-
-## Common shapes
-
-See [Managed Session commands and lifecycle](../../architecture/ai/session-commands.md#common-shapes), and generated OpenAPI.
-
-## Routes and commands
-
-See [Managed Session commands and lifecycle](../../architecture/ai/session-commands.md#routes-and-commands), and generated OpenAPI.
+Use the [OpenAPI Session operations](openapi.md) for exact parameters, request bodies,
+responses and refusal codes. Session resources have their own lifecycle; a Session
+can optionally be associated with a Specification.
 
 ## Session list
 
-See [filtered Session list semantics](../../architecture/ai/session-association-and-list.md#session-list).
+`GET /api/sessions` returns an authorized, bounded list, with signed cursors and optional
+scope filters. Use `POST /api/sessions` to create a standalone Session and
+`POST /api/specs/{specId}/sessions` to create one associated with a Specification.
+
+See [Session association and list rules](../../architecture/ai/session-association-and-list.md)
+for visibility, association and list pagination.
 
 ## Association read
 
-See [association read semantics](../../architecture/ai/session-association-and-list.md#association-read).
+`GET /api/sessions/{sessionId}/association` returns the Session's Specification and
+Task association, subject to independent authorization for the referenced resources.
+Associations are not reassigned through this endpoint.
 
-## Session list, association read and composed create
+## Commands and lifecycle
 
-See [Session association and filtered list semantics](../../architecture/ai/session-association-and-list.md#session-list-association-read-and-composed-create), and generated OpenAPI.
+`GET /api/sessions/{sessionId}` reads the bounded snapshot. The same resource has
+`rename`, `archive`, `unarchive` and `DELETE` operations.
+`POST /api/sessions/{sessionId}/turns` starts a Turn;
+`.../turns/{turnId}/cancel` and `.../turns/{turnId}/reconcile` handle cancellation
+and uncertain outcomes. Interactive approvals use
+`POST /api/sessions/{sessionId}/interactions/{interactionId}/respond`.
+
+See [Session commands and lifecycle](../../architecture/ai/session-commands.md)
+for idempotency, recovery, ownership and allowed state changes.
 
 ## Bounded history and Work
 
-See [Session history, content ranges, Work digest and live events](../../architecture/ai/session-history-and-events.md#bounded-history-and-work), and generated OpenAPI.
+`GET /api/sessions/{sessionId}/history` pages older conversation entries.
+`GET /api/sessions/{sessionId}/content/{contentId}` returns bounded content ranges,
+and `GET /api/sessions/{sessionId}/turns/{turnId}/work` pages Turn work items.
+Cursors are scoped and expiring; they are not authorization grants.
 
 ## Work digest
 
-See [Work digest](../../architecture/ai/session-history-and-events.md#work-digest).
+`GET /api/sessions/{sessionId}/work/{workId}/actions` pages recorded ToolActions.
+Work aggregates and counts are not inferred from a single page. For cursor, content and
+ToolAction semantics, see
+[Session history, Work and content](../../architecture/ai/session-history-and-events.md).
 
 ## Event stream
 
-See [Session history, content ranges, Work digest and live events](../../architecture/ai/session-history-and-events.md#event-stream), and generated OpenAPI.
+`GET /api/sessions/{sessionId}/events` streams committed Session updates and
+invalidation signals as SSE. Clients must resynchronize from a snapshot after a replay gap.
+See [event stream rules](../../architecture/ai/session-history-and-events.md#event-stream).
 
 ## Provider catalogue
 
-See [Session authorization, providers and demo boundaries](../../architecture/ai/session-admission-and-providers.md#provider-catalogue), and generated OpenAPI.
+`GET /api/session-providers` describes currently available providers, models and modes.
+Selection remains subject to admission checks when starting execution.
+For capability scopes and provider discovery, see
+[Session authorization and providers](../../architecture/ai/session-admission-and-providers.md).
 
 ## Demo Runtime (read-only managed Sessions)
 
-See [Session authorization, providers and demo boundaries](../../architecture/ai/session-admission-and-providers.md#demo-runtime-read-only-managed-sessions), and generated OpenAPI.
+Demo Sessions are in-memory and do not execute native provider Turns. The shared read routes
+expose their managed projections; unavailable mutations must not simulate successful execution.
 
-## Error contract
-
-See [Session authorization, providers and demo boundaries](../../architecture/ai/session-admission-and-providers.md#error-contract), and generated OpenAPI.
+Session telemetry uses [two additional operations](session-telemetry.md).

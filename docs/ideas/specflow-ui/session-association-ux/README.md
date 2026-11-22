@@ -41,7 +41,7 @@ does not define behaviour. On any difference the current documents win:
 | U4: Sessions list rows, collections, paging, states                 | [Specification Sessions list](../../../product/specflow/ui/specification-sessions.md)                                                                                                        |
 | Continue session, preparation block                                 | [Specification Overview](../../../product/specflow/ui/specification-overview.md#sections-and-order)                                                                                          |
 | U5: Context Specification and Related Tasks                         | [Full Session, Context](../../../product/specflow/ui/full-session.md#context)                                                                                                                |
-| U6: `actions.startSession` reasons, start-route refusal states      | [Specification Workspace API](../../../reference/api/specification-workspace.md#project-sessions-section), [Full Session](../../../product/specflow/ui/full-session.md#starting-a-session)   |
+| U6: `actions.startSession` reasons, start-route refusal states      | [Specification Workspace API](../../../architecture/runtime/specification-workspace-composition.md#sessions-capability-and-attention), [Full Session](../../../product/specflow/ui/full-session.md#starting-a-session)   |
 | Session status ownership                                            | [AI Session UX](../../../product/specflow/ui/ai-session-ux.md#session-status-ownership-accepted-2026-11-08)                                                                                  |
 
 ## Owner decisions (2026-11-08)

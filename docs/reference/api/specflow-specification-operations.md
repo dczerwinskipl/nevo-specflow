@@ -9,8 +9,8 @@ read_when:
   - integrating the production Create Specification screen
   - changing HTTP Create, Close and Workspace Close schemas
 summary: >
-  Implemented E2 endpoint routes, public payloads, response codes and authorization
-  boundaries.
+  Create and Close operations for Specifications, linked worktrees and workspaces,
+  including previews, admission and durable operation inspection.
 related:
   - reference.api.specification-documents
   - architecture.runtime.specflow-lifecycle

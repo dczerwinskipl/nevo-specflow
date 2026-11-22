@@ -391,3 +391,38 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Build
         run: pnpm exec turbo run build ${{ env.AFFECTED }}
+
+  # Temporary, strictly PR #201-scoped maintenance runner.
+  # Remove this job after it has committed the canonical generated/Prettier files.
+  pr-201-migration-normalize:
+    name: normalize API migration (temporary PR #201)
+    if: github.event_name == 'pull_request' && github.event.pull_request.number == 201 && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Regenerate OpenAPI, docs index and Prettier formatting
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm api:openapi
+          pnpm docs:check --write
+          mapfile -d '' files < <(git diff --name-only -z "${{ github.event.pull_request.base.sha }}" HEAD -- '*.ts' '*.md' '*.json')
+          if (( ${#files[@]} > 0 )); then
+            pnpm exec prettier --write "${files[@]}"
+          fi
+          pnpm api:openapi --check
+          pnpm docs:check
+          git status --short
+          if ! git diff --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add -u
+            git commit -m "chore(docs): regenerate OpenAPI and format migration"
+            git push origin HEAD:"${{ github.event.pull_request.head.ref }}"
+          fi

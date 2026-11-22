@@ -21,39 +21,22 @@ related:
   - reference.cli.specflow-specification-commands
 ---
 
-# Specification and Task workflow action HTTP API
+# Specification and Task workflow API
 
-The exact HTTP contract, errors, body shapes and paths are generated from
-`packages/specflow-contracts/src/workflow/` and
-`packages/specflow-runtime/src/features/workflow/routes.ts`.
-See [OpenAPI](openapi.md), operations with tag `Workflow`. Both Specification and
-Task routes use these schemas; the demo Runtime executes the same Engine rules in memory.
+The `Workflow` group in [OpenAPI](openapi.md) contains action projections and
+commands for Specification-level and Task-level workflows.
 
-The interpretation of owner actions, projections, gates, draft Tasks, replay and refusals
-is now owned by [Owner workflow action projections](../../architecture/workflow/workflow-action-projections.md).
-The underlying deterministic workflow invariants remain with
-[Workflow kernel](../../architecture/workflow/workflow-kernel.md). Rendering is
-a [product behavior](../../product/specflow/ui/workflow-execution.md), not a second HTTP contract.
+| Scope | Operations |
+| --- | --- |
+| Specification | `GET /api/specs/{specId}/workflow/actions`; `POST .../start`, `.../finish`, `.../return`, `.../reevaluate-wait`, `.../abandon` |
+| Task | `GET /api/specs/{specId}/tasks/{taskId}/workflow/actions`; `POST .../start`, `.../finish`, `.../return` |
 
-## Routes
+The action projection reports what the caller can do, with current blockers and transition
+requirements. Clients must not infer available actions from raw Task state or the workflow
+definition. Commands recheck authorization and the current workflow position.
 
-Use generated OpenAPI's `Workflow` tag to retrieve the ten Specification/Task workflow routes.
-
-## Actor
-
-See [Owner actor and read boundary](../../architecture/workflow/workflow-action-projections.md#owner-actor-and-read-boundary).
-
-## Projection
-
-See [Position and outline](../../architecture/workflow/workflow-action-projections.md#position-outline-and-next-step-certainty),
-[Gates and relations](../../architecture/workflow/workflow-action-projections.md#gates-and-document-relations),
-and [Task authoring](../../architecture/workflow/workflow-action-projections.md#task-context-and-dependency-authoring).
-
-## Commands
-
-See [Start, finish, return, wait and Abandon](../../architecture/workflow/workflow-action-projections.md#start-finish-return-wait-and-abandon).
-
-## Refusals
-
-See [Refusals and authoritative sources](../../architecture/workflow/workflow-action-projections.md#refusals-and-authoritative-sources)
-and the generated OpenAPI response schemas.
+For gate evaluation, Task dependencies, replay and refusal semantics, see
+[Workflow action projections](../../architecture/workflow/workflow-action-projections.md)
+and the [workflow kernel](../../architecture/workflow/workflow-kernel.md).
+The [workflow UI contract](../../product/specflow/ui/workflow-execution.md)
+describes presentation and owner interactions.

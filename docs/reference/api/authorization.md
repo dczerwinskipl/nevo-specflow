@@ -22,18 +22,14 @@ related:
 
 # Authorization HTTP API
 
-The wire contract is generated from the Runtime's TypeBox route schemas. See
-[Runtime OpenAPI](openapi.md) and the operation
-`postAuthorizationCapabilities` (`POST /api/authorization/capabilities`) in
-[the committed OpenAPI 3.1 document](openapi.generated.json).
+Use `POST /api/authorization/capabilities` to determine which actions the caller can
+perform for a resource and an optional scope. The response contains action booleans;
+an unavailable capability is not automatically an HTTP authorization error.
 
-The generated operation documents identity resolution, optional scope, returned action booleans,
-authorization responses and the difference between a denied action and a denied HTTP request.
-The current resource catalogue comes from the feature-owned schemas, not this page.
+The request, response, error codes and security scheme are specified by
+[OpenAPI](openapi.md), operation `postAuthorizationCapabilities`.
 
-For domain rules on scopes, role assignments, disabled access control and trusted enforcement,
-read [Runtime authorization](../../architecture/runtime/auth/authorization.md). For role and
-assignment configuration, see [Authorization configuration](../configuration/authorization.md).
-
-This page preserves the stable documentation ID for discovery and links; it is not a second,
-hand-maintained HTTP contract.
+For scope resolution, trusted identities and enforcement, see
+[Runtime authorization](../../architecture/runtime/auth/authorization.md).
+Role and assignment settings are in
+[Authorization configuration](../configuration/authorization.md).

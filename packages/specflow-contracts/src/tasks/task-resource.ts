@@ -150,7 +150,7 @@ export const EditTaskInputSchema = Type.Object(
     dependsOn: Type.Optional(Dependencies),
     /** The whole list; `null` restores the default context. */
     context: Type.Optional(
-      Type.Union([Context, Type.Null()], { description: 'Explicit full Task input context; null on edit restores the Engine default. A missing expected process artifact is awaited; Task's required own output artifact is invalid as input.' }),
+      Type.Union([Context, Type.Null()], { description: 'Explicit full Task input context; null on edit restores the Engine default. A missing expected process artifact is awaited; Task\'s required own output artifact is invalid as input.' }),
     ),
   },
   { additionalProperties: false },

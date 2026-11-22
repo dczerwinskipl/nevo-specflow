@@ -196,69 +196,7 @@ export const TaskPageQuerySchema = Type.Object(
     ),
     limit: Type.Optional(
       Type.String({
-        pattern: '^(?:[1-9]|[1-4][0-9]|50)
-  },
-  { additionalProperties: false },
-);
-export const TaskSnapshotExpiredSchema = Type.Object(
-  {
-    error: Type.Literal('task_snapshot_expired'),
-  },
-  { $id: 'TaskSnapshotExpired' },
-);
-const Descriptor = Type.Object({ id: Id, label: Text });
-/** Additive Task detail. Project adapters may omit this until they implement the reader. */
-export const TaskSnapshotSchema = Type.Object({
-  revision: Text,
-  specification: Type.Object({ id: Id, title: Text }),
-  taskType: Type.Union([Descriptor, Type.Null()]),
-  group: Type.Union([Descriptor, Type.Null()]),
-  summary: NullableText,
-  sections: Type.Object({
-    work: section(
-      Type.Object({
-        definition: Type.Object({
-          id: Id,
-          title: Text,
-          description: NullableText,
-          revision: Text,
-          steps: Type.Array(Type.Object({ step: Step, transitions: Type.Array(Transition) })),
-        }),
-        position: Position,
-        transitions: Type.Array(Transition),
-        blockers: Type.Array(
-          Type.Object({
-            code: Text,
-            message: Text,
-            operation: Type.Union([Type.Literal('start'), Type.Literal('finish')]),
-          }),
-        ),
-        previousFeedback: Type.Union([
-          Type.Object({ key: AttemptKey, result: NullableText, text: Text }),
-          Type.Null(),
-        ]),
-      }),
-    ),
-    document: section(
-      Type.Union([
-        Type.Object({ id: Id, revision: Text, hasMore: Type.Optional(Type.Boolean()) }),
-        Type.Null(),
-      ]),
-    ),
-    dependencies: section(
-      Type.Object({
-        items: Type.Array(Type.Object({ taskId: TaskIdSchema, title: Text, link: Link })),
-      }),
-    ),
-    history: section(PageRef),
-  }),
-});
-export type TaskSnapshot = Static<typeof TaskSnapshotSchema>;
-export type TaskResource = Static<typeof TaskResourceSchema>;
-export type TaskHistoryPage = Static<typeof TaskHistoryPageSchema>;
-export type TaskTarget = Static<typeof Target>;
-export type TaskLink = Static<typeof Link>;
-,
+        pattern: '^(?:[1-9]|[1-4][0-9]|50)$',
         description: 'Decimal string 1..50. First request chooses default if omitted; continuation without limit reuses the stored page size. It is not a numeric JSON query parameter.',
       }),
     ),

@@ -8,7 +8,6 @@ areas: [ai, runtime, server, security]
 tags: [sessions, commands, turns, interaction, idempotency]
 read_when:
   - reviewing managed session commands and lifecycle
-  - changing managed Session behavior previously described in the Session HTTP reference
 summary: >-
   Create/Turn command semantics, interactive approvals, managed Session archive/delete and idempotent recoverable operations.
 related:
@@ -20,15 +19,11 @@ related:
 
 # Managed Session commands and lifecycle
 
-The exact Session HTTP request/response shapes, errors and headers are generated in
-[Runtime OpenAPI](../../reference/api/openapi.md) from
-`@nevo/specflow-contracts/sessions` and the owning Runtime routes.
-This document preserves the **domain behavior and safety guarantees** needed
-to interpret those operations; it is not a duplicate wire contract.
+Session commands use idempotent admission, immutable execution identity and explicit
+recovery semantics. See [Session OpenAPI](../../reference/api/openapi.md) for request
+and response schemas.
 
 ## Common shapes
-
-**Wire types:** consult the generated OpenAPI schemas; domain rules below remain authoritative.
 
 `SessionInfo.providerTitle` and `modelTitle` are presentational and resolved on every Session read
 (the snapshot, the management answers and every `LiveProjection.session` on the event stream)
@@ -78,8 +73,6 @@ list-all count, force-recovery or workflow finish endpoint. The last three route
 [Session list, association read and composed create](session-association-and-list.md#session-list-association-read-and-composed-create).
 Disabled Session capability gives 503 SESSION_DISABLED for these routes.
 
-**Wire types:** consult the generated OpenAPI schemas; domain rules below remain authoritative.
-
 Respond answer text <=16 KiB, option IDs must be declared, duplicate option IDs invalid;
 text only when allowText; an optional maxSelections (1 to 20) limits selected option IDs (absent means 1, single-select) and is checked
 before durable response admission. Empty answer invalid unless the question explicitly offers an empty
@@ -92,7 +85,7 @@ rejected with MODEL_UNSUPPORTED or CAPABILITY_UNSUPPORTED, never silently ignore
 Snapshot `capabilities.start` and default-mode readiness describe the Session defaults,
 not every possible override. A selection-aware Composer needs Session-scoped admission
 capabilities; project-scoped catalogue authorization alone is not authoritative for an
-existing Session. See [the V10 backend readiness audit](../../ideas/specflow-runtime/session-v10-backend-readiness.md).
+existing Session.
 
 Reconcile uses session.manage and the existing positive-evidence recovery path. It accepts no
 caller-supplied outcome, native receipt or force flag, and never resends a possibly executed prompt.

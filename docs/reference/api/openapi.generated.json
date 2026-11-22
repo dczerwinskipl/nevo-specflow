@@ -30506,6 +30506,7 @@
       "get": {
         "operationId": "getSpecsBySpecIdTasks",
         "summary": "Read the Tasks of a Specification, grouped",
+        "description": "Read the Specification's grouped Task inventory from one Engine readExecution under spec.view. Groups come from Runtime presentation policy (not Engine state); rows are ordered by attention, dependent blockers, in-progress, then Engine Task id. Task facts and attention remain distinct: a broken Task stays visible, and tasks-stuck is a Specification-level blocking fact, not a duplicate row attention item. Optional blocking=specification OR group filter, never both. Progress excludes cancelled/ended-without-completion from total, but includes broken and on-hold. No GET starts work. 503 specification_source_unavailable uses Retry-After:1 only for retryable control-lock contention.",
         "tags": [
           "Tasks"
         ],
@@ -33246,7 +33247,8 @@
                             }
                           }
                         }
-                      }
+                      },
+                      "description": "Nonempty Runtime-defined presentation groups, in configured order. Rows ordered by attention, blocked dependents, in-progress then Engine identity. Group labels/order are not Engine-owned."
                     },
                     "progress": {
                       "type": "object",
@@ -33278,7 +33280,8 @@
                           "type": "integer",
                           "minimum": 0
                         }
-                      }
+                      },
+                      "description": "Engine Task counts: total excludes cancelled or ended-without-completion Tasks, includes broken and on-hold; cancelled, ended and onHold remain separate."
                     },
                     "attention": {
                       "type": "array",
@@ -33992,6 +33995,7 @@
       "post": {
         "operationId": "postSpecsBySpecIdTasks",
         "summary": "Create a Task",
+        "description": "Create a new Task with status draft, a type from the Specification's effective catalogue and optional context and task.md content. Requires spec.manage at trusted Specification scope; the human actor comes from request.authz, never request body. A Task's type is immutable. The Engine checks Task id, dependency graph, active Specification lifecycle and context; required Task-owned output artifacts cannot be declared as required inputs. Successful 201 TaskChangeResult carries the resource revision. Body capped to 2 MiB.",
         "tags": [
           "Tasks"
         ],
@@ -34349,6 +34353,7 @@
       "get": {
         "operationId": "getSpecsBySpecIdTasksByTaskId",
         "summary": "Read a Task",
+        "description": "Read one Task's resource and bounded execution snapshot from one Engine readExecution, including workflow position and section availability but not whole Task history, full document text or Sessions. Requires spec.view at trusted Specification scope; Session references are independently filtered by session.view at their store-derived scopes. Empty available data is not unavailable/forbidden; no GET starts work. Missing Task 404 specification_task_not_found, unreadable/unavailable checkout 503 specification_source_unavailable (Retry-After:1 on busy control lock). Project mode cannot fall back to demo data. Cache-Control: no-store.",
         "tags": [
           "Tasks"
         ],
@@ -38197,6 +38202,7 @@
       "patch": {
         "operationId": "patchSpecsBySpecIdTasksByTaskId",
         "summary": "Edit a Task",
+        "description": "Edit one Task using expectedRevision (compare-and-swap) under spec.manage. Type is immutable; only supplied fields change. context:null restores the Engine default, summary:null clears the summary; dependency/context edits may be refused after Task start. The actor is derived from request.authz, never the body. Conflict uses the shared WorkflowError; successful response returns the new revision.",
         "tags": [
           "Tasks"
         ],
@@ -38213,7 +38219,8 @@
                   "expectedRevision": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 200
+                    "maxLength": 200,
+                    "description": "Optimistic concurrency precondition: resource manifest revision returned by the last read or edit; a mismatch refuses the operation."
                   },
                   "title": {
                     "type": "string",
@@ -38413,7 +38420,8 @@
                       {
                         "type": "null"
                       }
-                    ]
+                    ],
+                    "description": "Explicit full Task input context; null on edit restores the Engine default. A missing expected process artifact is awaited; Task's required own output artifact is invalid as input."
                   }
                 },
                 "additionalProperties": false
@@ -38566,6 +38574,7 @@
       "delete": {
         "operationId": "deleteSpecsBySpecIdTasksByTaskId",
         "summary": "Remove a Task",
+        "description": "Remove a Task with query expectedRevision under spec.manage. The Engine refuses removal when the Task has dependents, an active attempt or other protected state; the actor is the trusted caller, not an input. A stale revision yields WorkflowError. Success returns its Task id.",
         "tags": [
           "Tasks"
         ],
@@ -38574,7 +38583,8 @@
             "schema": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 200
+              "maxLength": 200,
+              "description": "Optimistic concurrency precondition: resource manifest revision returned by the last read or edit; a mismatch refuses the operation."
             },
             "in": "query",
             "name": "expectedRevision",
@@ -40128,6 +40138,7 @@
       "get": {
         "operationId": "getSpecsBySpecIdTasksByTaskIdHistory",
         "summary": "Read the history of a Task",
+        "description": "Read a page of Task attempt history against the opaque lease issued by Task detail. Requires spec.view at trusted Specification scope on every request; token/cursor possession grants no access. Token is a bounded in-memory observation lease, not an offset, session or persistent authority. Expired/evicted/rebound leases, changed source/policy, mismatched cursor or page size return 409 task_snapshot_expired. coverage complete concerns source enumeration, not end of this page; continue while nextCursor is non-null even after an underfilled/empty page. History order is stable attempt order, not nullable timestamps. Cache-Control: no-store.",
         "tags": [
           "Tasks"
         ],
@@ -40136,7 +40147,8 @@
             "schema": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 1000
+              "maxLength": 1000,
+              "description": "Opaque short-lived Task history lease from the matching Task detail; bound to caller, target, workspace, policy and source. Not a bearer grant or an offset. Expiry/eviction returns 409 task_snapshot_expired."
             },
             "in": "query",
             "name": "token",
@@ -40145,7 +40157,8 @@
           {
             "schema": {
               "type": "string",
-              "maxLength": 1000
+              "maxLength": 1000,
+              "description": "Opaque continuation for this token and original page size. A missing cursor begins at the first page. A mismatched/expired cursor or a cursor reused with another limit returns 409."
             },
             "in": "query",
             "name": "cursor",
@@ -40154,7 +40167,8 @@
           {
             "schema": {
               "type": "string",
-              "pattern": "^(?:[1-9]|[1-4][0-9]|50)$"
+              "pattern": "^(?:[1-9]|[1-4][0-9]|50)$",
+              "description": "Decimal string 1..50. First request chooses default if omitted; continuation without limit reuses the stored page size. It is not a numeric JSON query parameter."
             },
             "in": "query",
             "name": "limit",
@@ -41050,7 +41064,8 @@
                         {
                           "type": "null"
                         }
-                      ]
+                      ],
+                      "description": "Opaque next-page cursor, possibly present after an empty or underfilled page; only null means no continuation."
                     },
                     "coverage": {
                       "anyOf": [
@@ -41066,7 +41081,8 @@
                             "partial"
                           ]
                         }
-                      ]
+                      ],
+                      "description": "complete means the owner can enumerate the entire authorized collection, NOT that this page is last. partial means incomplete source coverage."
                     }
                   }
                 }
@@ -41176,6 +41192,7 @@
       "put": {
         "operationId": "putSpecsBySpecIdTasksByTaskIdStatus",
         "summary": "Decide the status of a Task",
+        "description": "Set Task status to ready/on-hold/cancelled under spec.manage. Ready also resumes a held Task; reason is optional. Engine enforces dependency and lifecycle rules. The human actor is trusted request.authz and not a caller-supplied field. Structured WorkflowError refusals describe unavailable transitions.",
         "tags": [
           "Tasks"
         ],

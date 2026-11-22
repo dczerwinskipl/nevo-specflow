@@ -150,8 +150,12 @@ const page = <T extends TSchema>(item: T) =>
   Type.Object({
     token: Text,
     items: Type.Array(item),
-    nextCursor: NullableText,
-    coverage: Type.Union([Type.Literal('complete'), Type.Literal('partial')]),
+    nextCursor: Type.Union([Text, Type.Null()], {
+      description: 'Opaque next-page cursor, possibly present after an empty or underfilled page; only null means no continuation.',
+    }),
+    coverage: Type.Union([Type.Literal('complete'), Type.Literal('partial')], {
+      description: 'complete means the owner can enumerate the entire authorized collection, NOT that this page is last. partial means incomplete source coverage.',
+    }),
   });
 export const TaskHistoryEntrySchema = Type.Object({
   id: Id,
@@ -182,9 +186,82 @@ export const TaskHistoryEntrySchema = Type.Object({
 export const TaskHistoryPageSchema = page(TaskHistoryEntrySchema);
 export const TaskPageQuerySchema = Type.Object(
   {
-    token: Type.String({ minLength: 1, maxLength: 1000 }),
-    cursor: Type.Optional(Type.String({ maxLength: 1000 })),
-    limit: Type.Optional(Type.String({ pattern: '^(?:[1-9]|[1-4][0-9]|50)$' })),
+    token: Type.String({
+      minLength: 1,
+      maxLength: 1000,
+      description: 'Opaque short-lived Task history lease from the matching Task detail; bound to caller, target, workspace, policy and source. Not a bearer grant or an offset. Expiry/eviction returns 409 task_snapshot_expired.',
+    }),
+    cursor: Type.Optional(
+      Type.String({ maxLength: 1000, description: 'Opaque continuation for this token and original page size. A missing cursor begins at the first page. A mismatched/expired cursor or a cursor reused with another limit returns 409.' }),
+    ),
+    limit: Type.Optional(
+      Type.String({
+        pattern: '^(?:[1-9]|[1-4][0-9]|50)
+  },
+  { additionalProperties: false },
+);
+export const TaskSnapshotExpiredSchema = Type.Object(
+  {
+    error: Type.Literal('task_snapshot_expired'),
+  },
+  { $id: 'TaskSnapshotExpired' },
+);
+const Descriptor = Type.Object({ id: Id, label: Text });
+/** Additive Task detail. Project adapters may omit this until they implement the reader. */
+export const TaskSnapshotSchema = Type.Object({
+  revision: Text,
+  specification: Type.Object({ id: Id, title: Text }),
+  taskType: Type.Union([Descriptor, Type.Null()]),
+  group: Type.Union([Descriptor, Type.Null()]),
+  summary: NullableText,
+  sections: Type.Object({
+    work: section(
+      Type.Object({
+        definition: Type.Object({
+          id: Id,
+          title: Text,
+          description: NullableText,
+          revision: Text,
+          steps: Type.Array(Type.Object({ step: Step, transitions: Type.Array(Transition) })),
+        }),
+        position: Position,
+        transitions: Type.Array(Transition),
+        blockers: Type.Array(
+          Type.Object({
+            code: Text,
+            message: Text,
+            operation: Type.Union([Type.Literal('start'), Type.Literal('finish')]),
+          }),
+        ),
+        previousFeedback: Type.Union([
+          Type.Object({ key: AttemptKey, result: NullableText, text: Text }),
+          Type.Null(),
+        ]),
+      }),
+    ),
+    document: section(
+      Type.Union([
+        Type.Object({ id: Id, revision: Text, hasMore: Type.Optional(Type.Boolean()) }),
+        Type.Null(),
+      ]),
+    ),
+    dependencies: section(
+      Type.Object({
+        items: Type.Array(Type.Object({ taskId: TaskIdSchema, title: Text, link: Link })),
+      }),
+    ),
+    history: section(PageRef),
+  }),
+});
+export type TaskSnapshot = Static<typeof TaskSnapshotSchema>;
+export type TaskResource = Static<typeof TaskResourceSchema>;
+export type TaskHistoryPage = Static<typeof TaskHistoryPageSchema>;
+export type TaskTarget = Static<typeof Target>;
+export type TaskLink = Static<typeof Link>;
+,
+        description: 'Decimal string 1..50. First request chooses default if omitted; continuation without limit reuses the stored page size. It is not a numeric JSON query parameter.',
+      }),
+    ),
   },
   { additionalProperties: false },
 );

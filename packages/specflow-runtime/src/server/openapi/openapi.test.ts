@@ -180,6 +180,17 @@ describe('Runtime OpenAPI document', () => {
         description: string;
       };
       expect(workflowFinish.description).toContain('replayed:true');
+      const historyOperation = paths['/api/specs/{specId}/tasks/{taskId}/history']?.get as {
+        description: string;
+        parameters: Array<{ name: string; schema: { description?: string } }>;
+      };
+      expect(historyOperation.description).toContain('not an offset');
+      expect(historyOperation.parameters.find((parameter) => parameter.name === 'cursor')
+        ?.schema.description).toContain('page size');
+      const taskListOperation = paths['/api/specs/{specId}/tasks']?.get as {
+        description: string;
+      };
+      expect(taskListOperation.description).toContain('Runtime presentation policy');
       const workflowActions = paths['/api/specs/{specId}/tasks/{taskId}/workflow/actions']?.get as {
         description: string;
       };

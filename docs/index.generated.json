@@ -1174,6 +1174,42 @@
       ]
     },
     {
+      "id": "architecture.runtime.task-read-pagination-and-grouping",
+      "type": "architecture",
+      "title": "Task reads, history leases and Runtime grouping",
+      "status": "current",
+      "file": "docs/architecture/runtime/task-read-pagination-and-grouping.md",
+      "read_when": [
+        "implementing or reviewing Task detail and history paging",
+        "changing Task visibility, dashboard groups or attention overlays",
+        "changing Task commands or exact revision reads of documents"
+      ],
+      "summary": "Task detail and list read from Engine execution state, with scoped bounded history leases, authorized Session references, Runtime-owned grouping, optimistic writes and exact-version reads.",
+      "related": [
+        "architecture.runtime.task-read-composition",
+        "architecture.workflow.action-projections",
+        "reference.api.task-reads",
+        "reference.api.specification-documents",
+        "architecture.runtime.authorization"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "security",
+        "workflow",
+        "ui"
+      ],
+      "tags": [
+        "task",
+        "history",
+        "cursor",
+        "pagination",
+        "authorization",
+        "grouping"
+      ]
+    },
+    {
       "id": "architecture.runtime.workspace-documentation-corpus",
       "type": "architecture",
       "title": "Workspace-scoped documentation corpus, freshness and search",

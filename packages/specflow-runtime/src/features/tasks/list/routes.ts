@@ -47,6 +47,8 @@ export const taskListRoutes: FastifyPluginCallback<TaskListRoutesOptions> = (
       schema: {
         tags: ['Tasks'],
         summary: 'Read the Tasks of a Specification, grouped',
+        description:
+          'Read the Specification's grouped Task inventory from one Engine readExecution under spec.view. Groups come from Runtime presentation policy (not Engine state); rows are ordered by attention, dependent blockers, in-progress, then Engine Task id. Task facts and attention remain distinct: a broken Task stays visible, and tasks-stuck is a Specification-level blocking fact, not a duplicate row attention item. Optional blocking=specification OR group filter, never both. Progress excludes cancelled/ended-without-completion from total, but includes broken and on-hold. No GET starts work. 503 specification_source_unavailable uses Retry-After:1 only for retryable control-lock contention.',
         params: SpecificationWorkspaceParamsSchema,
         querystring: TaskListQuerySchema,
         response: {

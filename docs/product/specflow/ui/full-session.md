@@ -266,8 +266,7 @@ the person renames it. The note next to Start says which applies.
 
 Agent naming is not implemented: the Runtime reports no naming signal, so the header **Naming…**
 status is never shown. The note next to Start says **The session opens without a message. You can
-name it later.** It does not promise automatic naming. Automatic naming remains planned behaviour
-([open idea](../../../ideas/specflow-ui/full-session-screen-structure.md#6-still-deferred)).
+name it later.** It does not promise automatic naming.
 
 ## Secondary tabs
 

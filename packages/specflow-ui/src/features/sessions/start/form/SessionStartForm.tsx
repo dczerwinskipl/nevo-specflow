@@ -81,7 +81,7 @@ export function SessionStartForm({
     ? t('create.footer.operationKept')
     : prerequisite
       ? text(prerequisite)
-      : name.mode === 'agent'
+      : name.mode === 'unnamed'
         ? t('sessionStart.footer.nameLater')
         : t('sessionStart.footer.ready');
   const label =

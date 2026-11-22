@@ -604,7 +604,9 @@ export function WorkflowNow({
         />
       ) : null}
       {finish && step ? (
+        // Lookup and focus bookkeeping belong to one opening; the draft is owned above.
         <FinishStepDialog
+          key={`${attemptKey}:${finishOpen}`}
           open={finishOpen}
           onOpenChange={(open) => {
             if (!open) {

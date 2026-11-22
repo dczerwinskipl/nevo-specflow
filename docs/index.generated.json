@@ -1145,18 +1145,20 @@
     {
       "id": "architecture.runtime.specflow-lifecycle",
       "type": "architecture",
-      "title": "Specification Create, archive and shared-workspace lifecycle",
+      "title": "Specification Create and Close lifecycle",
       "status": "current",
       "file": "docs/architecture/runtime/specification-lifecycle.md",
       "read_when": [
-        "modifying Create, Close, Git integration or registry rebind",
-        "reviewing whole-workspace disposal and recovery invariants"
+        "distinguishing Specification Create, Specification Close and Worktree Close",
+        "locating Create recovery, Git integration and workspace disposal contracts"
       ],
-      "summary": "Implemented E2 Create and explicit Specification/workspace Close invariants, Git publication proof and CAS rebind.",
+      "summary": "Entry point to durable Specification Create, Specification Close, Worktree Close, Git integration, CAS rebind and interruption recovery.",
       "related": [
+        "architecture.runtime.specification-create-lifecycle",
+        "architecture.runtime.specification-close-lifecycle",
+        "architecture.runtime.specification-worktree-integration",
+        "engineering.shared.specification-create-recovery",
         "architecture.runtime.specification-documents",
-        "adr.0016-engine-owned-document-commits",
-        "architecture.runtime.specflow-project-home",
         "engineering.shared.specflow-git-recovery",
         "reference.api.specflow-specification-operations"
       ],
@@ -1221,6 +1223,52 @@
         "workspace",
         "authorization",
         "recovery"
+      ]
+    },
+    {
+      "id": "architecture.runtime.specification-close-lifecycle",
+      "type": "architecture",
+      "title": "Specification Close archive and refusal rules",
+      "status": "current",
+      "file": "docs/architecture/runtime/specification-close-lifecycle.md",
+      "read_when": [
+        "implementing or reviewing Specification Close and Abandon",
+        "distinguishing Specification Close from Workspace or Worktree Close"
+      ],
+      "summary": "Specification Close intents, exit gates, Abandon and archive-only operation when Git is disabled.",
+      "related": [
+        "architecture.runtime.specflow-lifecycle",
+        "architecture.runtime.specification-close-admission",
+        "architecture.workflow.workflow-kernel"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "cli",
+        "security"
+      ]
+    },
+    {
+      "id": "architecture.runtime.specification-create-lifecycle",
+      "type": "architecture",
+      "title": "Specification Create admission and Git selection",
+      "status": "current",
+      "file": "docs/architecture/runtime/specification-create-lifecycle.md",
+      "read_when": [
+        "implementing Specification Create with a new or existing workspace",
+        "reviewing Create journal, Git selection and admission invariants"
+      ],
+      "summary": "Create intent, baseRef, workspace selection, journal retention, scaffold commit, Git-off behaviour and refusal boundaries.",
+      "related": [
+        "architecture.runtime.specflow-lifecycle",
+        "architecture.runtime.specification-create-options",
+        "engineering.shared.specflow-git-recovery"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "cli",
+        "security"
       ]
     },
     {
@@ -1327,6 +1375,29 @@
         "documents",
         "sessions",
         "read-model"
+      ]
+    },
+    {
+      "id": "architecture.runtime.specification-worktree-integration",
+      "type": "architecture",
+      "title": "Worktree Close Git integration and rebind",
+      "status": "current",
+      "file": "docs/architecture/runtime/specification-worktree-integration.md",
+      "read_when": [
+        "changing worktree integration, publication proof, CAS rebind or disposal",
+        "reviewing external merge, conflict and recovery scenarios"
+      ],
+      "summary": "Physical Git proof, integration, CAS registry rebind, shared-worktree safety and disposal refusal rules.",
+      "related": [
+        "architecture.runtime.specflow-lifecycle",
+        "architecture.runtime.specification-close-admission",
+        "engineering.shared.specflow-git-recovery"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "cli",
+        "security"
       ]
     },
     {
@@ -3219,6 +3290,29 @@
         "runtime",
         "testing",
         "cli"
+      ]
+    },
+    {
+      "id": "engineering.shared.specification-create-recovery",
+      "type": "engineering",
+      "title": "Interrupted Specification Create recovery",
+      "status": "current",
+      "file": "docs/engineering/shared/specification-create-recovery.md",
+      "read_when": [
+        "an Engine Create reports OPERATION_INTERRUPTED or recovery-required",
+        "inspecting or clearing stale Create journal resources"
+      ],
+      "summary": "Operator steps for resuming or safely clearing an interrupted Create without orphaning workspace or Git effects.",
+      "related": [
+        "architecture.runtime.specflow-lifecycle",
+        "architecture.runtime.specification-create-lifecycle",
+        "engineering.shared.specflow-git-recovery"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "cli",
+        "testing"
       ]
     },
     {

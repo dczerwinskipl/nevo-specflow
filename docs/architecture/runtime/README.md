@@ -24,6 +24,9 @@ semantics live under [workflow architecture](../workflow/).
 - [Engine ownership and transport boundaries](specflow-engine.md)
 - [Project Home and registered workspaces](project-home-and-workspaces.md)
 - [Specification Create/Close lifecycle](specification-lifecycle.md)
+  - [Create admission and Git selection](specification-create-lifecycle.md)
+  - [Specification Close archive](specification-close-lifecycle.md)
+  - [Worktree integration and rebind](specification-worktree-integration.md)
 - [Specification documents](specification-documents.md)
 - [Workspace execution claims](workspace-execution-claims.md)
 

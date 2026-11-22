@@ -31,7 +31,7 @@ workflow facts; Runtime Sessions owns managed conversations and live execution. 
 document-content access. Specification Workspace consumes summaries and contributions from those
 owners. A route containing `specId` does not transfer ownership to Specs.
 
-The Runtime ownership/application refactor is implemented with bounded source ports. The
+Runtime Task reads use bounded source ports. The
 definition, execution and history sources are Engine adapters (`features/tasks/engine`) over one
 `inspectExecution` per read, in a project Runtime over its Project Home and in the demo Runtime over
 in-memory state ([ADR 0025](../decisions/0025-demo-runs-the-engine-in-memory.md)); a read happens
@@ -39,21 +39,7 @@ under the workflow's serialization (the project control lock in a project; never
 version the detail saw, so a newer read is not spliced in. Runtime does not implement or persist
 another workflow engine.
 
-## Migration evidence baseline (before refactor)
-
-- Inspected #60 HEAD `94ae91cb5b73f3180a330a88bf2b7cb842301ed0` and local working changes on top.
-  `features/specs/workspace/repository.ts` owns workspace, document, task, resource and history reads.
-  Task handlers perform authorization, collection slicing and revision rereads.
-- Inspected Engine [#53](https://github.com/dczerwinskipl/nevo-specflow/pull/53) at
-  `1404966cca4daf230afc29def0188ae5d3c1e3b4`. Its
-  [public exports](https://github.com/dczerwinskipl/nevo-specflow/blob/1404966cca4daf230afc29def0188ae5d3c1e3b4/packages/specflow-engine/src/index.ts)
-  implement Project Home, workspace registry/identity and coordination. They do not expose Task
-  workflow/history reads. The Engine now has the [workflow kernel](../workflow/workflow-kernel.md)
-  (`inspectExecution`); the Runtime projects it into the Task reads (`reference.api.task-reads`, "Project mode").
-- Sessions in #60 registers capability declarations only. A complete managed Session reader is not
-  implemented there. The Engine plan also explicitly identifies that gap.
-- Legacy Nevo is migration evidence, not a dependency to import into Runtime. In particular its
-  `compileStepContext` may activate a step. It cannot serve an innocuous GET/disclosure.
+For history paging, revision coherence, visibility and dashboard grouping, see [Task reads, history leases and Runtime grouping](task-read-pagination-and-grouping.md). This document owns application composition and cross-feature authority rather than historical migration evidence.
 
 ## Authority and composition
 
@@ -189,14 +175,14 @@ An inspection can report recovery required; a separate explicit operation perfor
 
 ## Policy and content boundaries
 
-Retain existing `spec.view` at `{ specId }` for Task/document reads during this migration. New
+Task and document reads require `spec.view` at the server-resolved `{ specId }`. New
 feature modules do not automatically create new permission resources. Session data additionally
 requires `session.view` in its actual owning scope. Resolve membership before authorizing a
 reference; a URL's `specId` or a reference string is not proof of membership.
 The Session owner MUST return the exact requested `sessionId`. A mismatched identity is rejected
 before checking capabilities; a grant for another Session cannot authorize the original reference.
 
-Do not weaken the working authorization fixes on top of #60. Apply one reference-visibility policy
+Apply one reference-visibility policy
 to page results, history materials and dependencies. Counts are computed after visibility. Denied titles, IDs, paths and
 provenance do not leak through alternative sections.
 The Task projection revision includes the actual authorized view, including ordered evidence
@@ -230,27 +216,6 @@ Start and finish/decision commands are not introduced by this read refactor. Fut
 adapters call Engine's trusted operations, using execution identity and command preconditions;
 they cannot execute a branch just because a stale read response lists it. Ending a Turn does not
 finish a Task, and finishing one step does not implicitly start its successor.
-
-## Independent delivery and readiness
-
-**Implemented:** Runtime feature ownership; application use cases; port and
-HTTP adapter separation; owner-specific contract exports; history page leases; Engine-backed
-definition, execution and history sources and the workspace `tasks` section in both Runtimes (the
-demo's Engine in memory); focused boundary tests. The earlier Task snapshot sections for human
-requirements, related resources and recovery, and their synthetic demo sources, are removed (owner
-decision 2026-11-16).
-
-**Dependent on Engine's existing program:** public Task/definition/context/execution/history read
-contracts, immutable/versioned read guarantees and verified workspace binding. Build them on the
-[workflow kernel](../workflow/workflow-kernel.md) rather than creating a competing Engine API from
-this document.
-
-**Dependent on content/Sessions owners:** real versioned readers and authorized association/status
-queries. Engine cannot fabricate Runtime Sessions for an offline external agent. Absence of a
-managed Session is a valid case, not a reason to hide real workflow progress.
-
-No new microservice, deployment boundary, event bus, universal resource repository or new durable
-Task projection store is needed for the immediate refactor.
 
 ## Acceptance at architecture boundaries
 

@@ -48,20 +48,12 @@ to ascending display order. Tokens pin older membership/order; item content may 
 than the initial snapshot. revision comparison prevents stale pages overwriting live state.
 A page boundary may split a Turn; clients group by turnId without inventing another Turn.
 
-WorkPage = {sessionId, turn: TurnSummary, eventSeq, items: WorkSummary[], history}.
-WorkSummary = {workId, ordinal, revision, kind:WorkKind, state:'queued'|'active'|'waiting'|
-'completed'|'failed'|'cancelled'|'interrupted'|'expired', title:TextPreview, content?:ContentRef,
-actionCount?:number, createdAt, updatedAt}. Interaction status maps to this bounded Work view,
-but answerability is only the canonical Interaction projection. actionCount, when present,
-is transactionally maintained, never a scan at read time.
-ActionPage = {sessionId, workId, eventSeq, items: ToolActionSummary[], history}.
-ToolActionSummary = {actionId, ordinal, revision, state, title:TextPreview, operation?:ToolOperation,
-input?:ContentRef, output?:ContentRef, error?:{code,message}, createdAt, updatedAt}.
-ToolOperation = 'read'|'edit'|'write'|'list'|'search'|'command'|'test'|'web'|'other', immutable,
-recorded at action open from the provider's own tool identity only (see "Work digest");
-omitted for actions recorded before Runtime classified them.
-state uses the Work state vocabulary. Error message <=2 KiB. Only tool Work owns actions.
-Work/action limits match HistoryPage. Exact Work identity/kind is immutable; no raw SDK objects.
+Work and ToolAction pages use the same bounded, authorized continuation model.
+Work identity, kind and revision come from canonical Session state. Interaction status
+is visible in Work, but only the current Interaction projection determines whether an
+answer can be submitted. Work/action counts, when present, are maintained on writes,
+not reconstructed by reading a page. A ToolAction belongs to a tool Work item,
+and raw provider SDK objects are never exposed in the page.
 
 ### Work aggregate counts
 
@@ -126,7 +118,6 @@ on its next snapshot/resync or `conversation` change; it MUST NOT add its own co
 | Antigravity | `run_command`                                                                         | command      |
 | any         | anything else (`call_mcp_tool`, undeclared names, mock scenarios without `operation`) | other        |
 
-ContentPage = {contentId, revision, offset, text, nextOffset?, complete}.
 revision is required and immutable. offset defaults 0; limitBytes defaults/max 64 KiB.
 Offsets count UTF-8 bytes and must be valid character boundaries; invalid/out-of-range -> 400.
 A conversation `TextPreview.text` is the UTF-8 byte prefix of its content (at most 2048 bytes, cut on a
@@ -161,9 +152,9 @@ The changes object is discriminated by kind:
 - work: {turnId, items: WorkSummary[], projection?: LiveProjection}, at most 8 items;
 - interaction: {projection: LiveProjection}.
 
-LiveProjection = {session: SessionInfo, activeTurn: ActiveTurn|null,
-currentActivity: CurrentActivity|null, interaction: Interaction|null}.
-It is a full replacement of the small current projection at this eventSeq, not a partial merge.
+A live projection replaces the current small Session projection at its event sequence;
+it is not merged partially with an older snapshot. Exact event bodies and fields
+are described in [OpenAPI](../../reference/api/openapi.md).
 ToolAction changes emit work invalidation as a WorkSummary with its incremented revision;
 an open action inspector refreshes the affected bounded page. No raw action output in events.
 Terminal Turn update supplies its summary/outcome and a cleared activeTurn projection.

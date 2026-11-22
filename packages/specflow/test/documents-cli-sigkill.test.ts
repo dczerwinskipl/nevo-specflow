@@ -11,20 +11,30 @@ import { dirname, join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
-import { bootstrapProjectHome, installDefinitionsForTesting } from '@nevo/specflow-engine/testing';
+import {
+  bootstrapProjectHome,
+  flushAllDocumentCommits,
+  installDefinitionsForTesting,
+} from '@nevo/specflow-engine/testing';
 import { CommanderError } from 'commander';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { ReportedFailure, commanderExitCode } from '../src/exit-code';
 import { createProgram } from '../src/program';
+import { engineDocumentsApi } from '../src/documents/api';
 import { onLinux } from './support/platform';
 
 const roots: string[] = [];
 const children: { kill: (signal: NodeJS.Signals) => boolean }[] = [];
+const pendingFlushes: Promise<void>[] = [];
 afterEach(async () => {
   for (const child of children.splice(0)) {
     child.kill('SIGKILL');
   }
+
+  // A bounded in-process command can return while its flush still runs. Keep Project Home intact
+  // until that work (including Git and its post-commit bookkeeping) has actually ended.
+  await Promise.all(pendingFlushes.splice(0));
 
   await Promise.all(
     roots
@@ -93,6 +103,14 @@ async function cli(cwd: string, args: string[]): Promise<Outcome> {
     cwd,
     stdout: (line) => out.push(line),
     stderr: (line) => err.push(line),
+    documentsApi: {
+      ...engineDocumentsApi,
+      flushAll: (engine, deadlineMs) =>
+        flushAllDocumentCommits(engine, {
+          deadlineMs,
+          onOverrun: (work) => pendingFlushes.push(work),
+        }),
+    },
   });
   try {
     await program.parseAsync(['node', 'nevo-specflow', ...args]);

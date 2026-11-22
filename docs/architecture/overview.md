@@ -66,13 +66,13 @@ block-beta
   block:engine
     columns 2
     engineTitle["3. SpecFlow application core"]:2
-    engine["SpecFlow Engine"]
+    engineComponent["SpecFlow Engine"]
     engineParts["Specs, Tasks, Documents, Git, Workflow adapter"]
   end
   block:kernel
     columns 2
     kernelTitle["4. Product-neutral core"]:2
-    kernel["Workflow Kernel"]
+    kernelComponent["Workflow Kernel"]
     kernelParts["Definitions, Runs, Coordinator, Replay"]
   end
 ```

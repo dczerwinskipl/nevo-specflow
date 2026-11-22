@@ -65,6 +65,30 @@ describe('nevo-docs launcher', () => {
     expect(result.stderr).toContain('ADR numbering has a gap or duplicate near 0003');
   });
 
+  it('check rejects duplicate Mermaid block and node identifiers', async () => {
+    const file = join(project.root, 'docs', 'broken-diagram.md');
+    writeFileSync(
+      file,
+      fm(
+        { id: 'broken-diagram', type: 'architecture', title: 'Diagram', status: 'current' },
+        [
+          '# Diagram',
+          '~~~mermaid',
+          'block-beta',
+          '  block:engine',
+          '    engine["Engine"]',
+          '  end',
+          '~~~',
+        ].join('\n'),
+      ),
+    );
+
+    const result = await run(['check']);
+    rmSync(file);
+    expect(result.code).toBe(1);
+    expect(result.stderr.join('\n')).toContain("identifier 'engine' is reused");
+  });
+
   it('search answers lexically and points at pnpm docs:get', async () => {
     const { code, stdout } = await run(['search', 'which decision is about widgets']);
     expect(code).toBe(0);

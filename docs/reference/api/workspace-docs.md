@@ -12,13 +12,8 @@ read_when:
   - changing the docs.view capability or the Runtime start refresh of the docs index
   - diagnosing why a Runtime documentation search answers lexically, 404, 409, 410 or 503
 summary: >
-  The Runtime serves the documentation of each registered workspace: GET
-  /api/workspaces/:workspaceId/docs lists its documents (active, inactive, skipped),
-  .../docs/documents/:documentId reads one article (body without frontmatter, sections, related
-  states; 410 for an inactive one) and .../docs/search ranks documents in the result of
-  nevo-specflow docs search --json, with the proposals left out and the index
-  progress. Every answer carries a corpusRevision; docs.view at the project scope, errors, the
-  read-time refresh, the background catch-up and the start refresh.
+  Workspace documentation tree, article reads and search with corpus revisions,
+  authorization, lexical fallback and index freshness.
 related:
   - adr.0022-workspace-scoped-documentation-reader
   - adr.0020-documentation-discovery-is-a-product-capability

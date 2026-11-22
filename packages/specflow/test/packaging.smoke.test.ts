@@ -138,7 +138,8 @@ afterAll(async () => {
 
     rmSync(prefix, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   }
-});
+  // This removes a complete independently installed workspace, not just the tiny smoke prefix.
+}, 60_000);
 
 interface Run {
   code: number;

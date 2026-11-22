@@ -137,3 +137,17 @@ tracked by #206/#207 until evidenced on the final PR HEAD.
 | `architecture/decisions/0001-record-architecture-decisions.md` | Keep | no overlong paragraph/bullet found | code check pending |
 | `architecture/decisions/0003-branch-and-release-model.md` | Reformat | 0 long paragraphs; 2 long bullets; max section 377 words | code check pending |
 | `architecture/decisions/0004-mit-license.md` | Keep | no overlong paragraph/bullet found | code check pending |
+| `architecture/decisions/0005-repository-tooling-is-separate-from-the-product-api.md` | Reformat | 0 long paragraphs; 1 long bullets; max section 135 words | code check pending |
+| `architecture/decisions/0007-documentation-architecture-and-taxonomy.md` | Reformat | 1 long paragraphs; 0 long bullets; max section 277 words | code check pending |
+| `architecture/decisions/0008-product-naming-and-surfaces.md` | Keep | no overlong paragraph/bullet found | code check pending |
+| `architecture/decisions/0009-product-package-build-model.md` | Reformat | 0 long paragraphs; 1 long bullets; max section 470 words | code check pending |
+| `architecture/decisions/0010-toolchain-policy-and-version-sources.md` | Reformat | 0 long paragraphs; 1 long bullets; max section 194 words | code check pending |
+| `architecture/decisions/0011-product-artifact-packaging-and-pnpm-compatibility.md` | Reformat | 0 long paragraphs; 1 long bullets; max section 187 words | code check pending |
+| `architecture/decisions/0012-product-package-topology-and-dependency-direction.md` | Reformat | 0 long paragraphs; 2 long bullets; max section 501 words | code check pending |
+| `architecture/decisions/0013-engine-owned-commits-and-protected-branches.md` | Reformat | 0 long paragraphs; 3 long bullets; max section 939 words | code check pending |
+| `architecture/decisions/0014-feature-owned-operation-lists.md` | Reformat | 0 long paragraphs; 2 long bullets; max section 286 words | code check pending |
+| `architecture/decisions/0015-specification-manifest-as-document-registry.md` | Reformat | 0 long paragraphs; 2 long bullets; max section 582 words | code check pending |
+| `architecture/decisions/0016-engine-owned-document-commits.md` | Reformat | 1 long paragraphs; 5 long bullets; max section 2830 words | code check pending |
+| `architecture/decisions/0017-definitions-as-project-data.md` | Reformat | 1 long paragraphs; 2 long bullets; max section 850 words | code check pending |
+| `architecture/decisions/0018-engine-commit-policy-and-manual-commit.md` | Reformat | 1 long paragraphs; 3 long bullets; max section 2089 words | code check pending |
+| `architecture/decisions/0019-workflow-kernel-and-automatic-continuation.md` | Reformat | 0 long paragraphs; 2 long bullets; max section 604 words | code check pending |

@@ -196,7 +196,7 @@ describe('Runtime OpenAPI document', () => {
       expect(workflowFinish.description).toContain('replayed:true');
       const historyOperation = paths['/api/specs/{specId}/tasks/{taskId}/history']?.get as {
         description: string;
-        parameters: { name: string; schema: { description?: string } }[];
+        parameters: { name: string; description?: string }[];
       };
       expect(historyOperation.description).toContain('not an offset');
       const telemetrySnapshot = paths['/api/sessions/{sessionId}/telemetry']?.get as {
@@ -226,8 +226,7 @@ describe('Runtime OpenAPI document', () => {
       };
       expect(documentsRaw.description).toContain('before sending bytes');
       expect(
-        historyOperation.parameters.find((parameter) => parameter.name === 'cursor')?.schema
-          .description,
+        historyOperation.parameters.find((parameter) => parameter.name === 'cursor')?.description,
       ).toContain('page size');
       const taskListOperation = paths['/api/specs/{specId}/tasks']?.get as {
         description: string;

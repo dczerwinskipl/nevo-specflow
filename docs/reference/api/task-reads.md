@@ -21,69 +21,34 @@ related:
   - reference.api.authorization
 ---
 
-# Task and document read API
+# Tasks HTTP API
 
-Task HTTP contracts are generated from TypeBox in `packages/specflow-contracts/src/tasks/`
-and feature routes in `packages/specflow-runtime/src/features/tasks/`. See
-[Runtime OpenAPI](openapi.md), tag `Tasks`, for Task detail/history, grouped inventory,
-Task create/edit/delete/status and typed responses.
+Use the `Tasks` group in [OpenAPI](openapi.md) for exact query parameters,
+request bodies, response schemas and refusal codes.
 
-Ownership, scope, page-lease security, task presentation grouping, exact-version document reads,
-and command constraints are described in
-[Task read composition, pagination and grouping](../../architecture/runtime/task-read-pagination-and-grouping.md).
-The workflow projection is a separate source:
-[Owner workflow action projections](../../architecture/workflow/workflow-action-projections.md).
+## Read Tasks
 
-This reference retains its discovery ID and historic section anchors, not a duplicate wire schema.
+- `GET /api/specs/{specId}/tasks` lists Tasks with Runtime-defined grouping and
+  attention information.
+- `GET /api/specs/{specId}/tasks/{taskId}` returns a bounded Task detail with
+  independent section availability.
+- `GET /api/specs/{specId}/tasks/{taskId}/history` returns a bounded history page.
 
-## Status and compatibility
+History tokens and cursors are scoped to the caller, Task, data source and read
+snapshot. A missing or expired lease requires a new detail read, not an invented
+offset or a retry with a different scope. A list or detail read never starts work.
 
-See [Task read composition](../../architecture/runtime/task-read-pagination-and-grouping.md#task-source-and-authority) and the generated OpenAPI `Tasks` operations.
+## Edit Tasks
 
-## Shared contract ownership
+- `POST /api/specs/{specId}/tasks` creates a draft Task.
+- `PATCH /api/specs/{specId}/tasks/{taskId}` edits supported fields.
+- `PUT /api/specs/{specId}/tasks/{taskId}/status` changes the administrative status.
+- `DELETE /api/specs/{specId}/tasks/{taskId}` removes an eligible Task.
 
-See [Task read composition](../../architecture/runtime/task-read-pagination-and-grouping.md#task-source-and-authority) and the generated OpenAPI `Tasks` operations.
+Edits and deletes require an expected resource revision. The Engine checks Task
+dependencies, workflow admission and authorization at the time of mutation.
 
-## Detail success and availability
-
-See [Task read composition](../../architecture/runtime/task-read-pagination-and-grouping.md#task-source-and-authority) and the generated OpenAPI `Tasks` operations.
-
-## Page wire format
-
-See [Task read composition](../../architecture/runtime/task-read-pagination-and-grouping.md#history-leases-and-continuation) and the generated OpenAPI `Tasks` operations.
-
-## Token and cursor semantics
-
-See [Task read composition](../../architecture/runtime/task-read-pagination-and-grouping.md#history-leases-and-continuation) and the generated OpenAPI `Tasks` operations.
-
-## Authorization and typed application outcomes
-
-See [Task read composition](../../architecture/runtime/task-read-pagination-and-grouping.md#visibility-and-errors) and the generated OpenAPI `Tasks` operations.
-
-## Project mode: Engine reads
-
-See [Task read composition](../../architecture/runtime/task-read-pagination-and-grouping.md#task-source-and-authority) and the generated OpenAPI `Tasks` operations.
-
-## Tasks page
-
-See [Task read composition](../../architecture/runtime/task-read-pagination-and-grouping.md#task-list-and-runtime-grouping) and the generated OpenAPI `Tasks` operations.
-
-### Dashboard grouping
-
-See [Task read composition](../../architecture/runtime/task-read-pagination-and-grouping.md#task-list-and-runtime-grouping) and the generated OpenAPI `Tasks` operations.
-
-### Attention items
-
-See [Task read composition](../../architecture/runtime/task-read-pagination-and-grouping.md#task-list-and-runtime-grouping) and the generated OpenAPI `Tasks` operations.
-
-## Task commands
-
-See [Task read composition](../../architecture/runtime/task-read-pagination-and-grouping.md#task-commands-and-inputs) and the generated OpenAPI `Tasks` operations.
-
-## Versioned document read
-
-See [Task read composition](../../architecture/runtime/task-read-pagination-and-grouping.md#versioned-document-reads) and the generated OpenAPI `Tasks` operations.
-
-## Production admission evidence
-
-See [Task read composition](../../architecture/runtime/task-read-pagination-and-grouping.md#verification-boundary) and the generated OpenAPI `Tasks` operations.
+The domain rules for pagination, grouping, visibility, blockers and mutations are in
+[Task read, history and grouping](../../architecture/runtime/task-read-pagination-and-grouping.md).
+For exact document revisions see [Documents API](specification-documents.md);
+for start/finish/return use the [Workflow API](specification-workflow.md).

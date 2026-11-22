@@ -16,28 +16,20 @@ related:
   - product.specflow.ui.data-loading-and-integration
 ---
 
-# Specification Workspace HTTP API
+# Specification Workspace API
 
-The exact HTTP contract is generated in [Runtime OpenAPI](openapi.md), operation
-`getSpecsBySpecIdWorkspace` (`GET /api/specs/{specId}/workspace`).
-TypeBox schemas live in `packages/specflow-contracts/src/specs/workspace/index.ts`.
+`GET /api/specs/{specId}/workspace` returns the bounded workspace view of one
+Specification. Its sections can include a summary, Documents, Tasks, Session references,
+activity and available actions. Section availability is independent: an empty result,
+a forbidden result and an unavailable source are different states.
 
-The authoritative composition, per-section degradation, partial history, Session filtering,
-Task and Document source boundaries, and cache freshness are now documented in
-[Specification Workspace read composition](../../architecture/runtime/specification-workspace-composition.md).
-The UI's independent query lifetimes are described in
+The request, DTO and errors are defined in [OpenAPI](openapi.md), operation
+`getSpecsBySpecIdWorkspace`. Detailed Task and Document reads have their own endpoints
+and do not require first fetching this composite view.
+
+For identity, source selection, partial failures, authorization and freshness, see
+[Specification Workspace composition](../../architecture/runtime/specification-workspace-composition.md).
+For individual resources use [Task API](task-reads.md),
+[Documents API](specification-documents.md) or [Sessions API](sessions.md).
+For UI loading behavior, see
 [UI data loading](../../product/specflow/ui/data-loading-and-integration.md).
-
-This page preserves its stable discovery ID and must not copy route fields or error tables.
-
-## Data source
-
-See [Identity, source and failure](../../architecture/runtime/specification-workspace-composition.md#identity-source-and-failure) for the Engine registry binding, source choice and section degradation.
-
-### Project summary, Tasks and activity
-
-See [Summary and Documents](../../architecture/runtime/specification-workspace-composition.md#summary-and-documents), [Tasks and preparation](../../architecture/runtime/specification-workspace-composition.md#tasks-and-preparation) and [Activity, authorization and freshness](../../architecture/runtime/specification-workspace-composition.md#activity-authorization-and-freshness).
-
-### Project Sessions section
-
-See [Sessions, capability and attention](../../architecture/runtime/specification-workspace-composition.md#sessions-capability-and-attention) for Session associations, capability projection, recommendations and caching.

@@ -997,6 +997,41 @@
       ]
     },
     {
+      "id": "architecture.runtime.specification-close-admission",
+      "type": "architecture",
+      "title": "Specification and workspace Close admission and refusal semantics",
+      "status": "current",
+      "file": "docs/architecture/runtime/specification-close-admission.md",
+      "read_when": [
+        "reviewing Specification Close versus Worktree and Workspace Close",
+        "explaining Close preview blockers or external merge outcomes",
+        "changing Git-off Close, local config protection or Session occupancy"
+      ],
+      "summary": "Scope-specific Close admission, Git-off archive-only mode, preview and refusal semantics, integration branch candidates, Session occupancy and externally merged worktree disposal.",
+      "related": [
+        "architecture.runtime.specflow-lifecycle",
+        "reference.api.specflow-specification-operations",
+        "architecture.runtime.specification-documents",
+        "reference.api.sessions",
+        "reference.configuration.specflow-git-worktrees"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "cli",
+        "security",
+        "git"
+      ],
+      "tags": [
+        "specification",
+        "close",
+        "worktree",
+        "workspace",
+        "authorization",
+        "recovery"
+      ]
+    },
+    {
       "id": "architecture.runtime.specification-create-options",
       "type": "architecture",
       "title": "Specification Create options and admission invariants",

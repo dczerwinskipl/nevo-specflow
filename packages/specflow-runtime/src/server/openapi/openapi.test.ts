@@ -164,6 +164,12 @@ describe('Runtime OpenAPI document', () => {
         responses: Record<string, { description?: string }>;
       };
       expect(createOperation.description).toContain('Prefer: respond-async');
+      const specClose = paths['/api/specs/{specId}/close']?.post as { description: string };
+      expect(specClose.description).toContain('never accepts finishAfterExternalMerge');
+      const worktreeClose = paths['/api/specs/{specId}/worktree/close']?.post as { description: string };
+      expect(worktreeClose.description).toContain('whole-branch content equivalence');
+      const workspaceClose = paths['/api/workspaces/{workspaceId}/close']?.post as { description: string };
+      expect(workspaceClose.description).toContain('including all its canonical Specifications');
       expect(createOperation.parameters.some((parameter) => parameter.name === 'Prefer')).toBe(true);
       const createOptions = paths['/api/specs/create-options']?.get as { description: string };
       expect(createOptions.description).toContain('worktreesRoot.path');

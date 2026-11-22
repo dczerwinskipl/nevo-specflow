@@ -31,7 +31,7 @@ export const CloseWorkspaceOperationParamsSchema = Type.Object(
  * proving the destination already has every path the source branch changed, by content rather than
  * ancestry; a mismatch refuses `CLOSE_EXTERNAL_MERGE_MISMATCH` naming every differing path.
  */
-export const FinishAfterExternalMergeSchema = Type.Optional(Type.Boolean());
+export const FinishAfterExternalMergeSchema = Type.Optional(Type.Boolean({ description: 'Only Worktree Close: assert that the branch has already been externally integrated. The Engine still verifies full content equivalence before disposal; never inferred automatically.' }));
 export const CloseWorktreeRequestSchema = Type.Object(
   { operationId: OperationIdSchema, finishAfterExternalMerge: FinishAfterExternalMergeSchema },
   { additionalProperties: false },
@@ -47,7 +47,7 @@ export const CloseWorktreeRequestSchema = Type.Object(
 export const CloseSpecificationRequestSchema = Type.Object(
   {
     operationId: OperationIdSchema,
-    integrateToTargetBranch: Type.Optional(Type.Boolean()),
+    integrateToTargetBranch: Type.Optional(Type.Boolean({ description: 'When false, archive only without integrating. Git-off mode requires false or omitted; true is 400 CLOSE_INVALID. A replay must not flip this value.' })),
   },
   { additionalProperties: false },
 );
@@ -62,7 +62,7 @@ export type CloseSpecificationRequest = Static<typeof CloseSpecificationRequestS
  * already used for `recheck` on the provider catalogue query.
  */
 export const CloseWorktreePreviewQuerySchema = Type.Object(
-  { finishAfterExternalMerge: Type.Optional(Type.Literal('true')) },
+  { finishAfterExternalMerge: Type.Optional(Type.Literal('true', { description: "Only the literal query value 'true'; preview describes selected already-merged-externally mode but does not prove equivalence." })) },
   { additionalProperties: false },
 );
 /**
@@ -79,7 +79,7 @@ export const CloseSpecificationPreviewQuerySchema = Type.Object(
 // independently established Git-process quiescence. The server cannot derive
 // process liveness from this boolean and still verifies physical scratch absence.
 export const CloseScratchReconciliationRequestSchema = Type.Object(
-  { confirmedNoActiveGitProcess: Type.Literal(true) },
+  { confirmedNoActiveGitProcess: Type.Literal(true, { description: 'Operator acknowledgement only: no Git process is active. The Engine still verifies physical scratch evidence; server cannot derive liveness from this flag.' }) },
   { additionalProperties: false },
 );
 /**
@@ -132,7 +132,7 @@ export const CloseMergeSchema = Type.Union([
     },
     { additionalProperties: false },
   ),
-]);
+], { description: 'Preview interpretation: integrates is branch merge with commitsAhead; not-integrated means archive-only, primary checkout, asserted external merge or Git-off archive. A preview is not a proof of future success.' });
 export type CloseMerge = Static<typeof CloseMergeSchema>;
 export const ClosePreviewSchema = Type.Object(
   {
@@ -156,7 +156,7 @@ export const CloseResultSchema = Type.Object(
       Type.Literal('requires-resolution'),
       Type.Literal('in-progress'),
       Type.Literal('recovery-required'),
-    ]),
+    ], { description: 'Close operation outcome: completed, requires-resolution, in-progress or recovery-required. Inspect/retry by unchanged operation id; do not infer Git outcome from an interrupted response.' }),
     outcome: Type.Optional(
       Type.Union([
         Type.Literal('integrated-and-removed'),

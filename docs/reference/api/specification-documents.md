@@ -25,69 +25,42 @@ related:
   - reference.api.specification-creation-demo
 ---
 
-# Specification documents HTTP contract
+# Specification documents API
 
-**Authoritative transport:** [Runtime OpenAPI](openapi.md) (tag `Documents`), generated
-from `packages/specflow-contracts/src/documents/` and the Runtime feature routes.
-The generated specification owns endpoints, DTO fields, preconditions, status/error
-responses, cache headers, revision conditions and examples.
+The `Documents` group in [OpenAPI](openapi.md) defines Specification and Task
+document operations, request schemas, conditional reads, errors and commit results.
 
-**Authoritative behavior:** [Document architecture](../../architecture/runtime/specification-documents.md)
-for registry, archetypes, path safety, commit queue, Git policy, Task documents and
-invariants; [Document API and transport behavior](../../architecture/runtime/document-operation-transport.md)
-for HTTP-visible result semantics and safe raw streams; and
-[Document editor client behavior](../../product/specflow/ui/document-editor-client-behavior.md)
-for the editor, recovery and Close UX.
+## Browse and read
 
-**Demo:** temporary `/api/demo/**` writes still exist and are excluded from the
-committed OpenAPI; see [demo convergence proposal](../../ideas/demo-api-convergence.md).
-They are not a second target contract. This reference retains its stable ID and
-historic headings while the demo routes converge.
+- `GET /api/specs/{specId}/document-tree` lists registered and unclassified files.
+- `GET /api/specs/{specId}/documents/{documentId}` reads document metadata and text.
+- `GET /api/specs/{specId}/documents/{documentId}/raw` streams the content revision.
+- Task documents use the corresponding
+  `/api/specs/{specId}/tasks/{taskId}/document-tree` and `.../documents/{documentId}`
+  paths.
 
-## Principle: one contract for demo and real
+A requested `revision` identifies exact content, not the most recent file if the
+requested revision is unavailable. Raw reads have explicit content and download
+headers. See [document read and revision semantics](../../architecture/runtime/document-operation-transport.md).
 
-Refer to generated OpenAPI and the domain owners linked above; this section no longer duplicates the HTTP contract.
+## Write and observe commits
 
-## Endpoints
+- `POST /api/specs/{specId}/documents` creates a file;
+  `PUT /api/specs/{specId}/documents/{documentId}` updates one.
+- `POST /api/specs/{specId}/documents/save` saves a batch;
+  `POST /api/specs/{specId}/folders` creates a folder.
+- `POST /api/specs/{specId}/document-operations` submits a document operation;
+  `GET /api/specs/{specId}/document-operations/{operationId}` inspects its outcome.
+- `POST /api/specs/{specId}/document-commits/flush` settles pending commits;
+  `GET /api/specs/{specId}/uncommitted` inspects outstanding changes;
+  `POST /api/specs/{specId}/commit` requests an explicit commit.
 
-Refer to generated OpenAPI and the domain owners linked above; this section no longer duplicates the HTTP contract.
+Task document writes use the Task-scoped `.../documents` and
+`.../document-operations` routes. Saving content and committing it to Git are
+separate states; callers must not treat an accepted save as a completed commit.
 
-## Shared vocabulary
-
-Refer to generated OpenAPI and the domain owners linked above; this section no longer duplicates the HTTP contract.
-
-## Archetype catalogue and Create request
-
-Refer to generated OpenAPI and the domain owners linked above; this section no longer duplicates the HTTP contract.
-
-### Definition files (project data, one per definition)
-
-Refer to generated OpenAPI and the domain owners linked above; this section no longer duplicates the HTTP contract.
-
-## Tree, read, raw
-
-Refer to generated OpenAPI and the domain owners linked above; this section no longer duplicates the HTTP contract.
-
-### Raw content
-
-Refer to generated OpenAPI and the domain owners linked above; this section no longer duplicates the HTTP contract.
-
-## Write operations and commit state
-
-Refer to generated OpenAPI and the domain owners linked above; this section no longer duplicates the HTTP contract.
-
-## Commit policy, uncommitted changes and manual commit
-
-Refer to generated OpenAPI and the domain owners linked above; this section no longer duplicates the HTTP contract.
-
-## Task documents
-
-Refer to generated OpenAPI and the domain owners linked above; this section no longer duplicates the HTTP contract.
-
-## Errors
-
-Refer to generated OpenAPI and the domain owners linked above; this section no longer duplicates the HTTP contract.
-
-## Notes for clients
-
-Refer to generated OpenAPI and the domain owners linked above; this section no longer duplicates the HTTP contract.
+For write ownership, path safety, definitions, Git policy and recovery, see
+[Specification document architecture](../../architecture/runtime/specification-documents.md)
+and [document operation behavior](../../architecture/runtime/document-operation-transport.md).
+The [editor interaction contract](../../product/specflow/ui/document-editor-client-behavior.md)
+covers user feedback, conflicts and Close warnings.

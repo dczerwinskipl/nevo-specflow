@@ -38,7 +38,7 @@ Both flags default to false. An allowed provider is enabled on every workstation
 workstation's `.nevo/local/config.yaml` sets `sessions.providers.<provider>.enabled: false`; the
 local file also holds a real provider's optional absolute `executable`. Local config cannot enable
 the feature, allow a provider or enable or configure one the project does not allow; such values, a project
-`executable`, the former project `providers.<provider>.enabled` and unknown keys are refused at
+`executable`, project-level `providers.<provider>.enabled` and unknown keys are refused at
 load ([project versus local](../runtime/configuration.md#session-providers-project-and-workstation)).
 Start the existing product server and open a Specification's **Sessions** list; a Session started
 there (`/specs/:specId/sessions/new`) opens at `/sessions/:sessionId`. Every UI start is from a

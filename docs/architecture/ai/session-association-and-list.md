@@ -8,7 +8,6 @@ areas: [ai, runtime, server, security]
 tags: [sessions, associations, authorization, pagination]
 read_when:
   - reviewing session association and filtered list semantics
-  - changing managed Session behavior previously described in the Session HTTP reference
 summary: >-
   Atomic Specification Session creation, association projections, per-row authorization and signed bounded list cursors.
 related:
@@ -20,11 +19,9 @@ related:
 
 # Session association and filtered list semantics
 
-The exact Session HTTP request/response shapes, errors and headers are generated in
-[Runtime OpenAPI](../../reference/api/openapi.md) from
-`@nevo/specflow-contracts/sessions` and the owning Runtime routes.
-This document preserves the **domain behavior and safety guarantees** needed
-to interpret those operations; it is not a duplicate wire contract.
+Session association, authorization and list pagination rules apply to both standalone
+and Specification-scoped Sessions. See [Session OpenAPI](../../reference/api/openapi.md)
+for request and response schemas.
 
 ## Session list, association read and composed create
 
@@ -37,15 +34,12 @@ written only by the composed create. There is no route to reassign, unlink or ap
 
 Known limit: the record stores Task ids as they were at create. A Task id is a slug, not an
 immutable identity, so an id reused after its Task was removed reads as the associated Task.
-Pinning an immutable Engine identity is open (follow-up D13 in the
-[association decision record](../../ideas/specflow-runtime/session-association/README.md)).
+Associations therefore cannot distinguish an older removed Task from a new Task using the same id.
 
 ### Composed create
 
 `POST /api/specs/:specId/sessions` (body limit 256 KiB) starts a Session associated with the
 Specification, atomically:
-
-**Wire types:** consult the generated OpenAPI schemas; domain rules below remain authoritative.
 
 - Refusal precedence: schema validation (400), authentication, `503 SESSION_DISABLED`, then `spec.start-session` at
   `specScope(projectId, specId)`, `session.create` at `{projectId, specId}` and, for
@@ -70,8 +64,6 @@ Specification, atomically:
 `GET /api/sessions/:sessionId/association` (project and demo mode) serves the Session Context and
 the navigator:
 
-**Wire types:** consult the generated OpenAPI schemas; domain rules below remain authoritative.
-
 `session.view` at the Session's scope admits the read (unknown ID: 404 SESSION_NOT_FOUND).
 Specification and Task facts additionally need `spec.view` at `specScope(projectId, specId)`,
 checked before any Engine lookup, so `forbidden` never reveals existence. Titles, keys and the
@@ -83,8 +75,6 @@ read as `unavailable`.
 ### Session list
 
 `GET /api/sessions?specId=&taskId=&standalone=true&archived=exclude|include|only&limit=&cursor=`
-
-**Wire types:** consult the generated OpenAPI schemas; domain rules below remain authoritative.
 
 - Filters select, they never grant. `specId` and `standalone` are exclusive and `taskId` requires
   `specId` (otherwise `400 SESSION_INPUT_INVALID` with `field`). `archived` defaults to `exclude`.

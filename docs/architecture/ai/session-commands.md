@@ -70,7 +70,6 @@ list-all count, force-recovery or workflow finish endpoint. The last three route
 [Session list, association read and composed create](session-association-and-list.md#session-list-association-read-and-composed-create).
 Disabled Session capability gives 503 SESSION_DISABLED for these routes.
 
-
 ### Interaction answers and Turn overrides
 
 - Respond answer text <=16 KiB, option IDs must be declared, duplicate option IDs invalid; text only when allowText; an optional maxSelections (1 to 20) limits selected option IDs (absent means 1, single-select) and is checked before durable response admission.
@@ -83,7 +82,6 @@ Disabled Session capability gives 503 SESSION_DISABLED for these routes.
 - Snapshot `capabilities.start` and default-mode readiness describe the Session defaults, not every possible override.
 - A selection-aware Composer needs Session-scoped admission capabilities; project-scoped catalogue authorization alone is not authoritative for an existing Session.
 
-
 ### Reconciliation and positive evidence
 
 Reconcile uses session.manage and the existing positive-evidence recovery path. It accepts no
@@ -94,7 +92,6 @@ identity recorded before dispatch remains, which settles the Turn `interrupted` 
 `PROCESS_STOPPED` (architecture.ai.session-storage-and-lifecycle). Startup recovery applies the same
 evidence without a request. A live process answers 409 SESSION_RECOVERY_REQUIRED.
 
-
 ### Command acknowledgements and compatibility
 
 Every command acknowledgement is a closed contract schema (`CreateSessionResult`,
@@ -104,7 +101,6 @@ Every command acknowledgement is a closed contract schema (`CreateSessionResult`
 a Start command stays retained for replay with the same `requestId`. Because the schemas are
 closed, adding a field to a 2xx acknowledgement is a breaking change for deployed clients: it needs
 a coordinated UI release that accepts the field first.
-
 
 ### Request bounds and idempotency
 

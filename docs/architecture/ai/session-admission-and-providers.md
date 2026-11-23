@@ -86,7 +86,7 @@ writes.
 
 ### SSE access revocation
 
-Auth rechecks access before each replay/live batch and at least every 30 seconds when idle. On expiry or revocation, close without sending more data. Sessions uses an Auth-owned checker for current trusted policy, not cookies or its own login renewal.
+SSE refreshes current Auth policy before replay/live batches and at intervals no longer than one second while idle. Expired/revoked access closes the stream without another payload. Sessions uses Auth's checker, not cookies or a separate renewal mechanism. See [Event stream](session-history-and-events.md#event-stream).
 
 ## Provider catalogue
 

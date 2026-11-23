@@ -29,7 +29,7 @@ related:
 **A proposal, not a current rule.** The behaviour is owned by the
 [Specification Overview](../../../product/specflow/ui/specification-overview.md) (sections, the
 preparation block, empty Tasks, Activity history, what project mode shows today) and the
-[Specification Workspace API](../../../reference/api/specification-workspace.md#project-summary-tasks-and-activity)
+[Specification Workspace API](../../../reference/api/specification-workspace.md)
 (summary, temporary Tasks contribution, activity events). They win on any difference.
 
 **Problem it solved.** Before PR #126 every project Specification read as `preparationState: empty`

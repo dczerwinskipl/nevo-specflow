@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="UTF-8" /><meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  /><title>Nevo first run</title
+  ><style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      background: #16171b;
+      color: #e9e9ef;
+      font:
+        14px/1.5 system-ui,
+        sans-serif;
+    }
+    button,
+    select {
+      font: inherit;
+      color: inherit;
+      background: #26272e;
+      border: 1px solid #41434e;
+      border-radius: 6px;
+      min-height: 44px;
+      padding: 8px 14px;
+    }
+    button {
+      cursor: pointer;
+    }
+    button:focus-visible,
+    select:focus-visible {
+      outline: 2px solid #a9a1ff;
+      outline-offset: 3px;
+    }
+    header {
+      height: 64px;
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #33343c;
+    }
+    nav {
+      width: 240px;
+      padding: 24px;
+      border-right: 1px solid #33343c;
+      min-height: calc(100vh - 64px);
+      float: left;
+      color: #b9bac6;
+    }
+    main {
+      margin-left: 240px;
+      padding: 24px;
+      max-width: 1100px;
+    }
+    h1 {
+      font-size: 24px;
+      margin: 0 0 24px;
+      line-height: 1.3;
+    }
+    h2 {
+      font-size: 16px;
+      margin: 0;
+    }
+    p {
+      margin: 4px 0;
+      color: #b9bac6;
+    }
+    code {
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+    .workspace {
+      margin: 0 0 24px;
+      color: #b9bac6;
+    }
+    .empty {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 8px;
+    }
+    .glyph {
+      font-size: 20px;
+      color: #9295a5;
+    }
+    .content {
+      max-width: 720px;
+    }
+    .band {
+      border-left: 2px solid #9690f7;
+      padding: 16px;
+      border-radius: 6px;
+    }
+    .small {
+      font-size: 13px;
+    }
+    .sep {
+      border-top: 1px solid #33343c;
+      padding-top: 20px;
+      margin-top: 24px;
+    }
+    .primary {
+      background: #a29af4;
+      color: #17171c;
+      border: none;
+    }
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 14px 20px;
+      background: #282931;
+      border: 1px solid #555762;
+      border-radius: 8px;
+    }
+    .check {
+      color: #a2d0ad;
+    }
+    .muted {
+      color: #8b8e9f;
+    }
+    article {
+      max-width: 760px;
+    }
+    label {
+      margin-right: 12px;
+    }
+    .bar {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .group {
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .row {
+      padding: 12px 0;
+      border-bottom: 1px solid #33343c;
+    }
+    .hidden {
+      display: none;
+    }
+    @media (max-width: 700px) {
+      nav {
+        display: none;
+      }
+      main {
+        margin-left: 0;
+        padding: 16px;
+      }
+      header {
+        padding: 10px 16px;
+      }
+      h1 {
+        font-size: 22px;
+      }
+      .toast {
+        left: 16px;
+        right: 16px;
+        bottom: 16px;
+      }
+    }
+  </style>
+  <header>
+    <b>Nevo SpecFlow</b
+    ><select aria-label="Screen" id="screen">
+      <option value="docs">Documentation</option>
+      <option value="overview">Overview</option>
+      <option value="completed">Create completed</option>
+      <option value="groups">Specifications</option>
+      <option value="create">New specification</option>
+      <option value="invalid">New specification Â· definition repair</option>
+      <option value="empty">Empty specifications</option>
+      <option value="pending">Starting workflow</option>
+    </select>
+  </header>
+  <nav>Specifications<br /><br />Documentation</nav>
+  <main id="main"></main>
+  <script>
+    const before = new URLSearchParams(location.search).get('version') === 'before';
+    const missingCopy =
+      'No usable archetypes are installed. In the Project Home, run <code>nevo-specflow definitions install --add-missing</code>, then refresh.';
+    const invalidCopy =
+      'The installed definitions have errors. In the Project Home, run <code>nevo-specflow definitions validate</code>, repair the reported files in <code>.nevo/definitions</code>, then refresh.';
+    function create(invalid) {
+      return `<h1>New specification</h1><div class="content"><label for="name">Specification name</label><br><input id="name" style="width:100%;min-height:44px;background:#26272e;border:1px solid #41434e;border-radius:6px;color:#eee;margin:8px 0 24px;padding:8px" placeholder="e.g. Payment limits"><h2>Archetype</h2><p>${invalid ? invalidCopy : missingCopy}</p><button style="margin-top:12px">Refresh archetypes</button><div class="sep"><h2>Workspace</h2><div class="bar" style="margin-top:12px"><button class="primary">Current directory</button><button>Existing workspace</button><button aria-disabled="true">New workspace</button></div><p class="small">New workspace requires Git. A project maintainer can set <code>git.enabled: true</code> in the Project Homeâ€™s <code>.nevo/config.yaml</code>, commit the configuration, then refresh the options.</p></div><div class="sep"><p>${invalid ? 'No usable archetypes. Run <code>nevo-specflow definitions validate</code> in the Project Home and repair the reported files, then refresh.' : 'No usable archetypes. Run <code>nevo-specflow definitions install --add-missing</code> in the Project Home, then refresh.'}</p><button aria-disabled="true" style="margin-top:12px;color:#9295a5">Create specification</button></div></div>`;
+    }
+    const views = {
+      pending: () =>
+        `<h1>Payment limits</h1><div class="band"><h2>Now</h2><p style="color:#e9e9ef;font-size:18px">Not started</p><p>First step · Prepare specification</p><p role="status">Starting…</p><button aria-disabled="true" aria-busy="true" style="margin-top:16px">Starting…</button></div><div class="sep"><h2>Tasks</h2><p>No tasks yet</p></div><div class="sep"><h2>Documents</h2><p>Overview</p></div>`,
+      create: () => create(false),
+      invalid: () => create(true),
+      empty: () =>
+        `<h1>Specifications</h1><div class="empty"><span class="glyph" aria-hidden="true">â–¤</span><div class="content"><h2>No specifications yet</h2><p>${missingCopy}</p><button style="margin-top:12px">Refresh</button><button style="margin-left:8px">New specification</button></div></div>`,
+      docs: () =>
+        `<h1>Documentation</h1><div class="workspace">Project folder Â· New project</div><div class="empty"><span class="glyph" aria-hidden="true">â–¤</span><div class="content"><h2>No project documentation</h2><p>${before ? 'New project has no documentation folder. The reader shows the Markdown documents under the folder set as <code>docs.root</code> in .nevo/config.yaml (docs/ by default).' : 'Create <code>docs/</code> in this workspace and add Markdown documents with Nevo documentation metadata, then refresh. To use an existing folder, set <code>docs.root</code> in <code>.nevo/config.yaml</code>.'}</p>${before ? '' : '<button style="margin-top:12px" onclick="this.textContent=\'Refreshed\'">Refresh</button>'}</div></div>`,
+      overview: () =>
+        `<h1>Payment limits</h1><div class="band"><h2>Prepare the specification</h2><p>${before ? 'An agent prepares the tasks in a session. Sessions are turned off on this server.' : 'Sessions are turned off in this project. A project maintainer can set <code>sessions.enabled: true</code> in <code>.nevo/config.yaml</code> and restart Nevo SpecFlow; starting a session also requires an allowed, ready provider.'}</p></div><div class="sep"><h2>Tasks</h2><p>No tasks yet</p></div><div class="sep"><h2>Documents</h2><div class="row">Overview <span class="muted">overview.md</span></div></div>`,
+      completed: () =>
+        `<h1>Specification created: Payment limits</h1><p class="check">Specification created. Opening it shortly.</p><div class="sep"><p>âś“ Prepare workspace</p><p>âś“ Create documents</p><p>âś“ Commit specification</p></div><button class="primary" style="margin-top:24px" onclick="document.getElementById('screen').value='overview';render()">Open specification</button>${before ? '<div class="toast" role="status">Specification created</div>' : ''}`,
+      groups: () =>
+        `<h1>Specifications</h1><div class="bar"><button class="primary">New specification</button><button>Current</button><button>Archive</button></div><button class="group" aria-expanded="true" onclick="const r=document.getElementById('spec');r.hidden=!r.hidden;this.setAttribute('aria-expanded',!r.hidden)">âŚ„ Draft Â· 1</button><div id="spec" class="row"><b>Payment limits</b><p>SPEC-1 Â· In preparation Â· No tasks yet</p></div>`,
+    };
+    function render() {
+      document.getElementById('main').innerHTML = views[document.getElementById('screen').value]();
+    }
+    document.getElementById('screen').onchange = render;
+    const v = new URLSearchParams(location.search).get('screen');
+    if (v) document.getElementById('screen').value = v;
+    render();
+  </script>
+</html>

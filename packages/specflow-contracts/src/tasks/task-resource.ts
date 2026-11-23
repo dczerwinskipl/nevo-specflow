@@ -144,14 +144,24 @@ export type CreateTaskInput = Static<typeof CreateTaskInputSchema>;
 /** `PATCH /api/specs/:specId/tasks/:taskId`: only the fields given change. The type is immutable. */
 export const EditTaskInputSchema = Type.Object(
   {
-    expectedRevision: Revision,
+    expectedRevision: Type.String({
+      minLength: 1,
+      maxLength: 200,
+      description:
+        'Optimistic concurrency precondition: resource manifest revision returned by the last read or edit; a mismatch refuses the operation.',
+    }),
     title: Type.Optional(Title),
     /** `null` removes the summary. */
     summary: Type.Optional(Type.Union([Summary, Type.Null()])),
     /** The whole list; only before the Task's first start. */
     dependsOn: Type.Optional(Dependencies),
     /** The whole list; `null` restores the default context. */
-    context: Type.Optional(Type.Union([Context, Type.Null()])),
+    context: Type.Optional(
+      Type.Union([Context, Type.Null()], {
+        description:
+          "Explicit full Task input context; null on edit restores the Engine default. A missing expected process artifact is awaited; Task's required own output artifact is invalid as input.",
+      }),
+    ),
   },
   { additionalProperties: false },
 );

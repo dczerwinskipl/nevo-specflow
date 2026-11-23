@@ -171,7 +171,7 @@ A decision only the owner takes (an owner-authority effect such as approving dra
 transition the definition marks `confirmation: owner`, Task status decisions) MUST NOT be applied
 from an agent's result: the agent's finish ends its attempt and the run waits at that transition
 (`awaiting-confirmation`) until the owner confirms or rejects it
-([workflow kernel](workflow-kernel.md#owner-confirmation)). An agent's finish is a proposal, and a
+([owner confirmation](workflow-agent-attempts.md#owner-confirmation)). An agent's finish is a proposal, and a
 Turn's end, a submission or a message never advances a run by itself.
 
 ## Fail closed on contradictory state

@@ -97,6 +97,8 @@ export const taskCommandRoutes: FastifyPluginCallback<TaskCommandRoutesOptions> 
       schema: {
         tags: ['Tasks'],
         summary: 'Create a Task',
+        description:
+          "Create a new Task with status draft, a type from the Specification's effective catalogue and optional context and task.md content. Requires spec.manage at trusted Specification scope; the human actor comes from request.authz, never request body. A Task's type is immutable. The Engine checks Task id, dependency graph, active Specification lifecycle and context; required Task-owned output artifacts cannot be declared as required inputs. Successful 201 TaskChangeResult carries the resource revision. Body capped to 2 MiB.",
         params: SpecParamsSchema,
         body: CreateTaskInputSchema,
         response: { 201: contractRef(TaskChangeResultSchema), ...errors },
@@ -121,6 +123,8 @@ export const taskCommandRoutes: FastifyPluginCallback<TaskCommandRoutesOptions> 
       schema: {
         tags: ['Tasks'],
         summary: 'Edit a Task',
+        description:
+          'Edit one Task using expectedRevision (compare-and-swap) under spec.manage. Type is immutable; only supplied fields change. context:null restores the Engine default, summary:null clears the summary; dependency/context edits may be refused after Task start. The actor is derived from request.authz, never the body. Conflict uses the shared WorkflowError; successful response returns the new revision.',
         params: SpecificationTaskParamsSchema,
         body: EditTaskInputSchema,
         response: { 200: contractRef(TaskChangeResultSchema), ...errors },
@@ -147,6 +151,8 @@ export const taskCommandRoutes: FastifyPluginCallback<TaskCommandRoutesOptions> 
       schema: {
         tags: ['Tasks'],
         summary: 'Remove a Task',
+        description:
+          'Remove a Task with query expectedRevision under spec.manage. The Engine refuses removal when the Task has dependents, an active attempt or other protected state; the actor is the trusted caller, not an input. A stale revision yields WorkflowError. Success returns its Task id.',
         params: SpecificationTaskParamsSchema,
         querystring: RemoveTaskQuerySchema,
         response: { 200: TaskRemoveResultSchema, ...errors },
@@ -173,6 +179,8 @@ export const taskCommandRoutes: FastifyPluginCallback<TaskCommandRoutesOptions> 
       schema: {
         tags: ['Tasks'],
         summary: 'Decide the status of a Task',
+        description:
+          'Set Task status to ready/on-hold/cancelled under spec.manage. Ready also resumes a held Task; reason is optional. Engine enforces dependency and lifecycle rules. The human actor is trusted request.authz and not a caller-supplied field. Structured WorkflowError refusals describe unavailable transitions.',
         params: SpecificationTaskParamsSchema,
         body: SetTaskStatusInputSchema,
         response: { 200: TaskStatusResultSchema, ...errors },

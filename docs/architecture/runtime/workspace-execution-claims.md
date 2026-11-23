@@ -138,7 +138,7 @@ execution (below) they are refused until the Turn ends.
 A mode without workspace write (a read-only Turn) takes no claim. Close still MUST NOT remove the
 checkout such a Turn works in; it asks the host's checkout quiescence instead (the owning Runtime's
 Turns, or the Session store's owner record from any other process), see
-[Specification lifecycle](specification-lifecycle.md#safe-integration-rebind-and-disposal).
+[Specification lifecycle](specification-worktree-integration.md#safe-integration-rebind-and-disposal).
 
 Claiming a Specification's worktree changes only where the agent runs (`cwd`), not this resource:
 the claim still excludes every other writer of the project. At most one native agent execution

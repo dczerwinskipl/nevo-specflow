@@ -188,6 +188,10 @@ export function WorkflowNow({
   };
 
   const startNow = () => {
+    if (busy) {
+      return;
+    }
+
     commands.start.reset();
     if (actions.start?.firstStart && firstStart && preview) {
       setConfirmed(undefined);
@@ -200,7 +204,7 @@ export function WorkflowNow({
   };
 
   const confirmStart = () => {
-    if (!preview) {
+    if (!preview || busy) {
       return;
     }
 
@@ -643,7 +647,9 @@ export function WorkflowNow({
         />
       ) : null}
       {finish && step ? (
+        // Lookup and focus bookkeeping belong to one opening; the draft is owned above.
         <FinishStepDialog
+          key={`${attemptKey}:${finishOpen}`}
           open={finishOpen}
           onOpenChange={(open) => {
             if (!open) {

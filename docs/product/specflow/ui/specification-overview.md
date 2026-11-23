@@ -37,7 +37,7 @@ waiting for, act on what requires them now, see the Tasks at a glance, and conti
 open a document. The full Task inventory is the Tasks page (`/specs/:specId/tasks`). Sections are
 contributions of their owning features ([application architecture](application-architecture.md));
 the read is the [Specification Workspace API](../../../reference/api/specification-workspace.md),
-the Tasks page reads [Task reads, Tasks page](../../../reference/api/task-reads.md#tasks-page).
+the Tasks page reads [Task reads, Tasks page](../../../reference/api/task-reads.md#read-tasks).
 
 The Now block, its dialogs, Task authoring, Close and Abandon are described in
 [Manual workflow execution](workflow-execution.md); the separation of workflow state, attention and
@@ -77,7 +77,10 @@ dashboard configuration). The Overview renders what the reads deliver.
   T-05 is on hold and no other task is open."). Now offers the workflow's **main** action: Start
   workflow, Finish step, or Close specification once it ended; none while the workflow waits by
   itself. While a start is being recorded the Start button reads "Starting…" (busy) and the quiet
-  line says the same until the new position is read, never a stale "Ready to start". Under the
+  line says the same until the new position is read, never a stale "Ready to start". This
+  pending state follows the workflow subject across responsive remounts and leaving/reopening its
+  Overview in the same application session; changing layout cannot re-enable Start for a request
+  still being recorded. Other Specifications keep their independent availability. Under the
   step's purpose, **Done when** lists the active step's exit gates as a neutral checklist (an unmet
   gate is an open circle with "not yet"; the list is shared with the Task Now, see
   [Now block](workflow-execution.md#now-block); a step without document gates has no Done when
@@ -105,6 +108,9 @@ dashboard configuration). The Overview renders what the reads deliver.
   available (or its reason is `no_provider`) it offers **Start session**, which opens
   `/specs/:specId/sessions/new`; otherwise it explains the preparation path without a button
   (`sessions_disabled`, `forbidden`, any other reason).
+  The `sessions_disabled` case uses the shared [Sessions-off guidance](specification-sessions.md#states)
+  naming project policy and how a project maintainer enables it; it remains distinct from a
+  forbidden action or failed read.
 - **Requires attention** — the attention items only, at most five, then **Show N more**, in the
   projection's priority order. Each item names what it is about (`T-07 · Backend`, Specification,
   `Session · Claude`), its reason (the attention tone, danger for a broken Task; an icon on the
@@ -124,7 +130,7 @@ dashboard configuration). The Overview renders what the reads deliver.
   without a confirmation, like the Task page's Resume; a refusal is a notification; a repeated
   click while it runs sends nothing more, and the same holds for Start step), its alternative
   Cancel task. A hold that nothing waits on is not listed; its row shows
-  "On hold" with the reason as its supporting line ([workflow kernel, Held Tasks](../../../architecture/workflow/workflow-kernel.md#continuation-and-attention)).
+  "On hold" with the reason as its supporting line ([workflow kernel, Held Tasks](../../../architecture/workflow/workflow-continuation-and-attention.md#continuation-and-attention)).
 - **Tasks** — the Runtime's preview of the configured grouping, rendered as delivered, always as
   Task rows (no mode switch by Task count). Each group the configuration marks `row` shows its first
   Tasks (at most two, `TaskOverview.rows[].tasks`, chosen by the Runtime in importance order:
@@ -161,7 +167,7 @@ dashboard configuration). The Overview renders what the reads deliver.
 - **Documents** — the Documents page's own row (type glyph and file name, the type in the tooltip
   and read with the name) in a flat list, every row the same height, at most eight before **Show
   all**. Each row carries the shared document state label
-  ([document state](documents-archetypes-ui.md#document-state-label)): **Initial content only**
+  ([document state](documents-tree.md#document-state-label)): **Initial content only**
   while the file is still the initial content the Engine wrote (the workspace read's
   `contentState: baseline`), and how the workflow uses the document now, from the Specification
   projection's `documentRelations`, with "this step" for the active step that Now shows (**Needed to
@@ -169,7 +175,10 @@ dashboard configuration). The Overview renders what the reads deliver.
   together only when both apply (**Initial content only · needed to finish this step**). When every
   listed document would carry the same content-only label, the header says it once ("4 · initial
   content only") and the rows carry none. The overflow menu opens all documents. A document opened from
-  the Overview takes half of the workspace (50/50), and the Overview reads in one column beside it.
+  the Overview takes half of the split workspace, with the Overview in one column beside it. Narrow
+  opens a stacked preview with Back to Overview. The header shows the file path when available.
+  The document body keeps its
+  own headings and uses the shared reading width. **Open full document** opens the Documents editor.
 
 ## Tasks page
 
@@ -280,7 +289,7 @@ The Overview shows what the Engine and the Session store hold. The demo Runtime 
 screens from the same reads: its Engine runs in memory over seeded state (Now, Requires attention,
 Tasks and Full Task are a project's; Start, Finish and Task commands change that state until the
 Runtime stops), and its documents, Sessions and history are the demo data
-([Specification Workspace API, Data source](../../../reference/api/specification-workspace.md#data-source)):
+([Specification Workspace API, Data source](../../../architecture/runtime/specification-workspace-composition.md#identity-source-and-failure)):
 
 - **Description** — the first paragraph of the overview document's **Goal** section (else its
   first paragraph) as plain text (at most 320 graphemes),

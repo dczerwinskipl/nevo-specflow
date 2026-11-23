@@ -266,7 +266,8 @@ describe('SpecificationWorkspace', () => {
     // No Tasks: the Tasks section keeps its place with its empty line and All tasks.
     expect(markup).toContain('Nie ma jeszcze zadań');
     expect(markup).not.toContain('data-row-task');
-    expect(markup).toContain('Sesje są wyłączone na tym serwerze.');
+    expect(markup).toContain('Sesje są wyłączone w tym projekcie.');
+    expect(markup).toContain('sessions.enabled: true');
     expect(markup).not.toContain('Rozpocznij sesję');
     expect(markup).not.toContain('Niedostępne na tym serwerze');
     expect(markup).not.toContain('Specyfikacja jest niedostępna');

@@ -1,6 +1,19 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useRef, useState } from 'react';
+import {
+  assertStackedOptionText,
+  assertSelectionPreservesContent,
+} from '../shared/optionTextGeometry.stories-support';
 import { Field } from '../Field';
+import { Badge } from '../../feedback/Badge';
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '../../overlays/Dialog';
 import { Combobox, ComboboxItem } from './Combobox';
 
 const meta = {
@@ -83,6 +96,50 @@ function Picker({ unavailable = false }: { unavailable?: boolean }) {
 
 const selectedValue = (canvas: { getByTestId: (id: string) => HTMLElement }) =>
   canvas.getByTestId('picker').getAttribute('data-value');
+
+function DialogPicker() {
+  const [open, setOpen] = useState(true);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Choose workspace</DialogTitle>
+          <DialogDescription>Find a workspace and select it.</DialogDescription>
+        </DialogHeader>
+        <DialogBody>
+          <Picker />
+        </DialogBody>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Portalled React Aria options remain part of their enclosing Radix modal. */
+export const InsideDialog: Story = {
+  render: () => <DialogPicker />,
+  play: async ({ userEvent }) => {
+    const input = await until(() => document.querySelector<HTMLInputElement>('[role=combobox]'));
+    await userEvent.click(input);
+    await userEvent.type(input, 'wro');
+    const [option] = await waitForOptions();
+    assert(option?.textContent === 'Wrocław', 'Typing finds the workspace.');
+    await userEvent.click(option);
+    await until(
+      () =>
+        document.querySelector('[data-testid=picker]')?.getAttribute('data-value') === 'Wrocław',
+    );
+    assert(document.activeElement === input, 'Pointer selection keeps focus in the control.');
+    await userEvent.keyboard('{ArrowDown}');
+    await until(listbox);
+    await userEvent.keyboard('{Escape}');
+    await until(() => !listbox());
+    assert(!!document.querySelector('[role=dialog]'), 'Escape dismisses only the nested list.');
+    await userEvent.keyboard('{Escape}');
+    await until(() => !document.querySelector('[role=dialog]'));
+    await until(() => getComputedStyle(document.body).pointerEvents !== 'none');
+  },
+};
 
 export const FilteringAndKeyboard: Story = {
   render: () => <Picker />,
@@ -293,5 +350,107 @@ export const TabDoesNotCommitPartialText: Story = {
     await userEvent.tab();
     assert(selectedValue(canvas) === '', 'Tab leaves the value untouched.');
     assert((input as HTMLInputElement).value === '', 'Partial text is discarded.');
+  },
+};
+
+export const NarrowDescriptionAndMetadata: Story = {
+  render: () => (
+    <div className="w-72">
+      <Combobox defaultValue="chosen" aria-label="Starting branch" placeholder="Choose a branch">
+        <ComboboxItem
+          value="chosen"
+          className="selection-contract-option"
+          description="Configuration ready"
+          meta={<Badge>Ready</Badge>}
+        >
+          feature/a-long-starting-branch-name-that-must-wrap-and-remain-fully-readable
+        </ComboboxItem>
+        <ComboboxItem
+          value="other"
+          className="selection-contract-option"
+          description="Configuration ready"
+          meta={<Badge>Ready</Badge>}
+        >
+          feature/a-long-starting-branch-name-that-must-wrap-and-remain-fully-readable
+        </ComboboxItem>
+        <ComboboxItem value="available">main</ComboboxItem>
+        <ComboboxItem
+          value="invalid"
+          unavailable
+          description="Niepoprawny YAML"
+          meta="ma środowisko pracy · zmiany"
+        >
+          feature/setup
+        </ComboboxItem>
+        <ComboboxItem
+          value="long"
+          unavailable
+          description="NiepoprawnaKonfiguracjaProjektuSpecFlow"
+          meta="ma środowisko pracy · zmiany"
+        >
+          feature/long
+        </ComboboxItem>
+      </Combobox>
+    </div>
+  ),
+  play: async ({ canvas, userEvent }) => {
+    const { page } = await import('vitest/browser');
+    const previous = { width: window.innerWidth, height: window.innerHeight };
+    try {
+      await page.viewport(320, 640);
+      await until(() => window.innerWidth === 320);
+      const input = canvas.getByRole('combobox', { name: 'Starting branch' });
+      assert(input.getBoundingClientRect().width <= 288, 'The source control must stay narrow.');
+      input.focus();
+      await userEvent.keyboard('{ArrowDown}');
+      const list = await until(listbox);
+      await document.fonts.ready;
+      const focused = await until(() => list.querySelector<HTMLElement>('[data-focused]'));
+      assert(
+        getComputedStyle(focused).outlineStyle === 'solid' &&
+          parseFloat(getComputedStyle(focused).outlineWidth) > 0,
+        'Keyboard focus has a visible outline independent of the selected background.',
+      );
+      const options = list.querySelectorAll<HTMLElement>('[data-unavailable]');
+      assert(options.length === 2, 'Both unavailable reasons must be listed.');
+      for (const option of options) {
+        assertStackedOptionText(option, 'combobox');
+      }
+
+      const pair = list.querySelectorAll<HTMLElement>('.selection-contract-option');
+      assert(pair.length === 2, 'Selected and unselected twins must be listed.');
+      assertSelectionPreservesContent(pair[0]!, pair[1]!, 'combobox');
+      assertStackedOptionText(pair[0]!, 'combobox');
+      const metadata = pair[0]!.querySelector<HTMLElement>('[data-combobox-item-part=meta]')!;
+      assert(
+        metadata.getBoundingClientRect().width < pair[0]!.getBoundingClientRect().width / 2,
+        'A Badge keeps its natural width.',
+      );
+      const labelSelector = '[data-combobox-item-part=label]';
+      const before = pair[0]!.querySelector<HTMLElement>(labelSelector)!.getBoundingClientRect();
+      await userEvent.click(pair[1]!);
+      await until(() => !listbox());
+      input.focus();
+      await userEvent.keyboard('{ArrowDown}');
+      const changedList = await until(listbox);
+      const changedPair = changedList.querySelectorAll<HTMLElement>('.selection-contract-option');
+      assertSelectionPreservesContent(changedPair[1]!, changedPair[0]!, 'combobox');
+      const after = changedPair[0]!
+        .querySelector<HTMLElement>(labelSelector)!
+        .getBoundingClientRect();
+      assert(
+        Math.abs(after.width - before.width) < 1 && Math.abs(after.height - before.height) < 1,
+        `Changing selection keeps the name geometry stable: before ${before.width}x${before.height}, after ${after.width}x${after.height}.`,
+      );
+    } finally {
+      if (listbox()) {
+        await userEvent.keyboard('{Escape}');
+        await until(() => !listbox());
+      }
+
+      await page.viewport(previous.width, previous.height);
+      await until(() => window.innerWidth === previous.width);
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    }
   },
 };

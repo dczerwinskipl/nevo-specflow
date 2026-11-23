@@ -1,0 +1,13 @@
+{
+  "refreshFailureAlert": "Could not refresh archetypes. The previous catalogue may be out of date. Retry loading it.\nRetry",
+  "retainedDraft": true,
+  "keyboardRetry": true,
+  "focusedRetryTransfersToAvailableRadio": {
+    "role": "radio",
+    "value": "architecture"
+  },
+  "userMovedFocusRetained": {
+    "tag": "INPUT",
+    "id": "field-_r_6_"
+  }
+}

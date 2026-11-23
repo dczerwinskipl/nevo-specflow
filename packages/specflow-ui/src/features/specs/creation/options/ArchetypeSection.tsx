@@ -1,12 +1,17 @@
+import { ArchetypeAvailabilityHelp } from '../../ArchetypeAvailabilityHelp';
 import type { ArchetypeCatalogue } from '@nevo/specflow-contracts/documents';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useMessage } from '../../../../i18n/message';
+import { archetypeAvailabilityProblem } from '../../archetypeAvailability';
 import {
   Alert,
   Button,
   CheckboxField,
   Collapsible,
   InlineNote,
+  IconButton,
+  TextInput,
   RadioGroup,
   RadioGroupOption,
   Typography,
@@ -40,6 +45,9 @@ export function ArchetypeSection({
   locked,
   onChange,
   error,
+  onRefresh,
+  refreshing = false,
+  unavailableReasonId,
 }: {
   state: ArchetypeCatalogueState;
   choice: ArchetypeChoice;
@@ -47,12 +55,17 @@ export function ArchetypeSection({
   onChange: (choice: ArchetypeChoice) => void;
   /** Why the choice blocks Create (none chosen once Create was tried), shown under the options. */
   error?: string;
+  onRefresh?: () => void;
+  refreshing?: boolean;
+  unavailableReasonId?: string;
 }) {
   const { t } = useTranslation();
+  const text = useMessage();
   const headingId = useId();
   const errorId = useId();
   const catalogue = state.status === 'ready' ? state.catalogue : undefined;
   const archetype = selectedArchetype(catalogue, choice);
+  const unavailable = archetypeAvailabilityProblem(catalogue);
   const typeTitle = (typeId: string) =>
     catalogue?.documentTypes.find((type) => type.id === typeId)?.title ?? typeId;
   const typeUseWhen = (typeId: string) =>
@@ -65,9 +78,11 @@ export function ArchetypeSection({
         <Typography as="h2" id={headingId} variant="title-md">
           {t('create.archetype.title')}
         </Typography>
-        <Typography as="p" variant="body-md" className="text-content-secondary">
-          {t('create.archetype.intro')}
-        </Typography>
+        {!unavailable && (
+          <Typography as="p" variant="body-md" className="text-content-secondary">
+            {t('create.archetype.intro')}
+          </Typography>
+        )}
       </header>
       {state.status === 'loading' && (
         <p role="status" className="text-body-sm text-content-muted">
@@ -85,15 +100,35 @@ export function ArchetypeSection({
           </Button>
         </Alert>
       )}
-      {catalogue?.archetypes.length === 0 && (
-        // The project has no definitions yet: a neutral state with the command that installs them.
-        <InlineNote className="max-w-content-narrow">
-          {t('create.archetype.none')} <code>{t('create.archetype.installCommand')}</code>
-        </InlineNote>
+      {unavailable && (
+        <div className="grid gap-2">
+          <TextInput
+            aria-labelledby={headingId}
+            aria-describedby={unavailableReasonId}
+            value={t('create.archetype.unavailable')}
+            disabled
+          />
+          <div className="grid gap-1">
+            <InlineNote id={unavailableReasonId}>{text(unavailable)}</InlineNote>
+            <div className="flex items-center justify-between gap-3">
+              <ArchetypeAvailabilityHelp problem={unavailable} />
+              {onRefresh && (
+                <IconButton
+                  icon="refresh"
+                  aria-label={t('create.archetype.refresh')}
+                  size="sm"
+                  variant="ghost"
+                  disabled={refreshing}
+                  onClick={onRefresh}
+                />
+              )}
+            </div>
+          </div>
+        </div>
       )}
       {catalogue && catalogue.archetypes.length > 0 && (
         <>
-          {/* Nothing selected until the user chooses (no default): the first radio is the tab stop. */}
+          {/* Catalogue default or sole option is selected; otherwise the first radio is the Tab stop. */}
           <RadioGroup
             value={archetype?.id ?? ''}
             onValueChange={(id) => onChange(chooseArchetype(choice, id))}

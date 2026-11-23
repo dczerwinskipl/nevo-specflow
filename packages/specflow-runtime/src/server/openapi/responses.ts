@@ -222,7 +222,16 @@ export function withDocumentedResponses(
           : response.contract
             ? contractRef(response.contract as TSchema)
             : response.mediaType
-              ? { content: { [response.mediaType]: { schema: { type: 'string' } } } }
+              ? {
+                  content: {
+                    [response.mediaType]: {
+                      schema:
+                        response.mediaType === '*/*'
+                          ? { type: 'string', format: 'binary' }
+                          : { type: 'string' },
+                    },
+                  },
+                }
               : { type: 'null' }),
       },
     ]),

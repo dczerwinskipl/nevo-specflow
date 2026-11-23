@@ -25,14 +25,14 @@ const columnGap = 32;
  * with a pointer drops its focus ring (`useHeadingNavigation`).
  */
 export function DocumentReadingColumns({
-  panelWidth,
+  panelWidth = 0,
   lead,
   text,
   aside,
   extraColumn,
 }: {
-  /** The width of the scroll panel (px, measured): it sizes the columns. */
-  panelWidth: number;
+  /** Measured scroll panel width, used when there are columns beside the text. */
+  panelWidth?: number;
   lead?: ReactNode;
   text: ReactNode;
   /** The sticky column beside the text (Properties and Contents); none on a narrow panel. */

@@ -36,7 +36,7 @@ jobs:
       contents: read
     steps:
       - name: Review dependency changes
-        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        uses: actions/dependency-review-action@bbc44d14a204704ccc493733616cd1e93a0321ec # v5.0.1
         with:
           fail-on-severity: moderate
 
@@ -49,6 +49,13 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup
+
+      # Fast controlled-boundary tests only; no historical worktrees or live search/model.
+      - name: Documentation retrieval benchmark tests
+        run: |
+          python3 -m venv "$RUNNER_TEMP/docs-benchmark-venv"
+          "$RUNNER_TEMP/docs-benchmark-venv/bin/python" -m pip install -r tools/docs/eval/retrieval-cost/requirements.txt
+          "$RUNNER_TEMP/docs-benchmark-venv/bin/python" -B -m unittest discover -s tools/docs/eval/retrieval-cost -p 'test_*.py'
 
       # The same canonical script contributors run locally: format:check, lint,
       # docs validation/index freshness, and the version.json transition gate.
@@ -323,6 +330,10 @@ jobs:
           test/specs/create.http.test.ts
           test/specs/close.http.test.ts
           test/specs/engine-overview.http.test.ts
+          src/server/openapi/openapi.test.ts
+          test/sessions/context-create.http.test.ts
+          test/sessions/association.engine.http.test.ts
+          test/documents/raw.http.test.ts
           --maxWorkers=1 --no-file-parallelism --testTimeout=20000
       - name: Offline CLI and cross-transport smoke
         if: steps.affected.outputs.run == 'true'

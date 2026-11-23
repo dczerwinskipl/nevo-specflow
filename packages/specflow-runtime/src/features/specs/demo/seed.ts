@@ -185,6 +185,7 @@ export function seedCreateOptions(): DemoRegistry {
     ],
     newWorktree: { status: 'available' },
     defaultBaseRef: 'develop',
+    defaultBaseConfig: { status: 'usable' },
     branchPattern: 'feature/{slug}',
     worktreesRoot: { path: demoWorktreesRoot, exists: true },
     integrationTargetBranch: 'develop',
@@ -192,13 +193,29 @@ export function seedCreateOptions(): DemoRegistry {
     commits: { protectedBranches: ['main'] },
     baseRefs: [
       // Full refs, like the Engine; workspace branches and the default stay short names.
-      { ref: localBranchRef('develop'), checkedOutWorkspaceId: ids.main },
-      { ref: localBranchRef('feature/platform'), checkedOutWorkspaceId: ids.platform },
-      { ref: localBranchRef('feature/payments'), checkedOutWorkspaceId: ids.payments },
-      { ref: localBranchRef('spec/architecture'), checkedOutWorkspaceId: ids.architecture },
-      { ref: localBranchRef('release/1.4') },
-      { ref: localBranchRef('main') },
-      { ref: localBranchRef('feature/legacy') },
+      {
+        ref: localBranchRef('develop'),
+        projectConfig: { status: 'usable' },
+        checkedOutWorkspaceId: ids.main,
+      },
+      {
+        ref: localBranchRef('feature/platform'),
+        projectConfig: { status: 'usable' },
+        checkedOutWorkspaceId: ids.platform,
+      },
+      {
+        ref: localBranchRef('feature/payments'),
+        projectConfig: { status: 'usable' },
+        checkedOutWorkspaceId: ids.payments,
+      },
+      {
+        ref: localBranchRef('spec/architecture'),
+        projectConfig: { status: 'usable' },
+        checkedOutWorkspaceId: ids.architecture,
+      },
+      { ref: localBranchRef('release/1.4'), projectConfig: { status: 'usable' } },
+      { ref: localBranchRef('main'), projectConfig: { status: 'usable' } },
+      { ref: localBranchRef('feature/legacy'), projectConfig: { status: 'usable' } },
     ],
   };
 }

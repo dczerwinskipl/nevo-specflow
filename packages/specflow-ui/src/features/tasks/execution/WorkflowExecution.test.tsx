@@ -226,6 +226,91 @@ const finishButton = () =>
   });
 
 describe('manual workflow execution', () => {
+  it.each(['gate action', 'next attempt'] as const)(
+    'resets the attachment lookup after a parent-controlled %s',
+    async (reason) => {
+      const gateAction = vi.fn();
+      function Harness() {
+        const [attempt, setAttempt] = useState(1);
+        const base = taskWorkflowProjection('spike-gate');
+        const projection: WorkflowActionProjection = {
+          ...base,
+          position:
+            base.position.kind === 'active'
+              ? { ...base.position, attempt: { ...base.position.attempt, number: attempt } }
+              : base.position,
+          actions: {
+            ...base.actions,
+            finish: { ...base.actions.finish!, attempt },
+          },
+        };
+
+        return (
+          <>
+            <button onClick={() => setAttempt(2)}>Publish next attempt</button>
+            <WorkflowNow
+              subject={{ specId: SPEC, taskId: TASK }}
+              projection={projection}
+              headingId="now"
+              links={{}}
+              artifactOptions={[
+                { value: 'overview.md', label: 'Overview' },
+                { value: 'notes.md', label: 'Notes' },
+              ]}
+              gateAction={() => ({ label: 'Create findings', onSelect: gateAction })}
+            />
+          </>
+        );
+      }
+
+      renderWith(<Harness />);
+      fireEvent.click(screen.getByRole('button', { name: 'Finish step' }));
+      fireEvent.click(screen.getByRole('radio', { name: /^Done/ }));
+      fireEvent.change(screen.getByRole('textbox', { name: 'Feedback (optional)' }), {
+        target: { value: 'Keep this evidence.' },
+      });
+      const lookup = screen.getByRole('combobox', { name: 'Attach document' });
+      act(() => lookup.focus());
+      fireEvent.change(lookup, { target: { value: 'overview' } });
+      fireEvent.keyDown(lookup, { key: 'ArrowDown', code: 'ArrowDown' });
+      fireEvent.click(await screen.findByRole('option', { name: /overview.md/ }));
+      fireEvent.change(lookup, { target: { value: 'notes' } });
+      await screen.findByRole('option', { name: /notes.md/ });
+      expect((lookup as HTMLInputElement).value).toBe('notes');
+
+      if (reason === 'gate action') {
+        // Dispatch the parent's gate action while the lookup is still open: closing via
+        // Escape first would clear its query independently and hide the regression.
+        fireEvent.click(
+          within(screen.getByRole('dialog', { hidden: true })).getByText('Create findings'),
+        );
+        expect(gateAction).toHaveBeenCalledOnce();
+      } else {
+        // External projection publication can occur while the modal owns interaction.
+        fireEvent.click(screen.getByText('Publish next attempt'));
+      }
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      fireEvent.click(screen.getByRole('button', { name: 'Finish step' }));
+      expect(
+        screen.getByRole<HTMLInputElement>('combobox', { name: 'Attach document' }).value,
+      ).toBe('');
+      if (reason === 'gate action') {
+        const feedback = screen.getByRole<HTMLTextAreaElement>('textbox', {
+          name: 'Feedback (optional)',
+        });
+        expect(feedback.value).toBe('Keep this evidence.');
+        await waitFor(() => expect(document.activeElement).toBe(feedback));
+        expect(screen.getByRole('list', { name: 'Attached artifacts' }).textContent).toContain(
+          'overview.md',
+        );
+      } else {
+        expect(screen.queryByRole('list', { name: 'Attached artifacts' })).toBeNull();
+        expect(screen.queryByDisplayValue('Keep this evidence.')).toBeNull();
+      }
+    },
+  );
+
   it('finishes with a result that demands feedback only once feedback is given', async () => {
     const finish = vi.fn(() => never());
     renderWith(<TaskNowHarness />, {

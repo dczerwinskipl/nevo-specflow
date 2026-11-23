@@ -10,27 +10,43 @@ summary: >
 
 # Reference documentation
 
-Exact contracts and factual lookup material live here.
+## Runtime HTTP API
 
-- [SpecFlow CLI contract](cli/nevo-specflow-contract.md)
-- [Authorization configuration](configuration/authorization.md)
-- [Authorization HTTP API](api/authorization.md)
-- [Runtime OpenAPI document](api/openapi.md)
+The complete, machine-readable Runtime contract is
+[OpenAPI 3.1](api/openapi.generated.json). The
+[OpenAPI guide](api/openapi.md) explains the served document, authentication,
+viewers and regeneration. Operations are grouped by resource in the schema.
 
-- [Specification Create/Close HTTP API](api/specflow-specification-operations.md)
+Choose the resource first:
+
+| What you need                                          | API entry point                                                   |
+| ------------------------------------------------------ | ----------------------------------------------------------------- |
+| Login, session cookie and OIDC                         | [OpenAPI authentication operations](api/openapi.md)               |
+| Check caller capabilities and access scopes            | [Authorization](api/authorization.md)                             |
+| Create or close a Specification, worktree or workspace | [Create and Close](api/specflow-specification-operations.md)      |
+| Browse active and archived Specifications              | [Overview](api/specs-overview.md)                                 |
+| Read one Specification's combined workspace view       | [Specification Workspace](api/specification-workspace.md)         |
+| List workspaces and availability                       | [Workspaces](api/workspaces.md)                                   |
+| Define document types and Specification archetypes     | [Project definitions](configuration/specification-definitions.md) |
+| Read, write or commit Specification and Task documents | [Documents](api/specification-documents.md)                       |
+| List, inspect, create or edit Tasks                    | [Tasks](api/task-reads.md)                                        |
+| Start, finish, return or abandon workflow steps        | [Workflow](api/specification-workflow.md)                         |
+| Create, manage or stream Sessions and Turns            | [Sessions](api/sessions.md)                                       |
+| Read costs, tokens, limits or context telemetry        | [Session telemetry](api/session-telemetry.md)                     |
+| Follow asynchronous Create progress                    | [Operation progress (SSE)](api/operation-progress.md)             |
+| List recent Specification operations                   | [Specification operations](api/specs-operations-list.md)          |
+| Read or search documentation from a workspace          | [Workspace documentation](api/workspace-docs.md)                  |
+
+The demo Runtime exposes additional in-memory creation endpoints; their current
+behavior is documented in [Demo creation API](api/specification-creation-demo.md).
+It does not imply that a physical Git checkout or native provider was started.
+
+## Other contracts
+
+- [SpecFlow CLI](cli/nevo-specflow-contract.md)
 - [Offline Specification CLI commands](cli/specflow-specification-commands.md)
-- [SpecFlow Git/worktree configuration](configuration/specflow-git-worktrees.md)
+- [Authorization configuration](configuration/authorization.md)
+- [Git and worktree configuration](configuration/specflow-git-worktrees.md)
 - [Documentation and embeddings configuration](configuration/documentation-and-embeddings.md)
-- [Specification documents HTTP API](api/specification-documents.md)
-- [Specs Overview HTTP API](api/specs-overview.md)
-- [Specs operations list HTTP API](api/specs-operations-list.md)
-- [Specification workspace HTTP API](api/specification-workspace.md)
-- [Workspaces HTTP API](api/workspaces.md)
-- [Task reads HTTP API](api/task-reads.md)
-- [Operation progress HTTP API](api/operation-progress.md)
-- [Specification creation demo HTTP API](api/specification-creation-demo.md)
-
-- [Managed Sessions HTTP API](api/sessions.md)
-- [Session telemetry HTTP API](api/session-telemetry.md)
 - [Session provider driver protocol](protocols/session-provider-driver.md)
-- [Session providers](providers/README.md)
+- [Session provider compatibility](providers/README.md)

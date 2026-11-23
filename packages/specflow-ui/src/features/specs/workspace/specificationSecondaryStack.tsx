@@ -15,6 +15,7 @@ import type { ActivityEvent, SpecificationWorkspaceData } from '../read-model/mo
 
 import { ActivityHistory } from './ActivityHistory';
 import { DocumentContent } from '../../documents';
+import { DocumentReadingColumns } from '../../../shared/document-reading/DocumentReadingColumns';
 import { SpecificationAgentAttempts } from '../../tasks';
 
 export interface SpecificationSecondaryContextValue {
@@ -36,8 +37,6 @@ export interface DocumentPreviewData {
   readonly specId: string;
   readonly documentId: string;
   readonly title: string;
-  /** Human file path when known; the internal document id is never shown. */
-  readonly filename?: string;
   readonly openFullDocument?: (documentId: string) => void;
 }
 export interface DocumentPreviewPages {
@@ -60,7 +59,7 @@ function useDocumentPreviewData({
   }
 
   const document = context.data.documents.find((item) => item.id === documentId);
-  const title = document?.title ?? document?.filename ?? t('specification.documentPreviewTitle');
+  const title = document?.filename ?? document?.title ?? t('specification.documentPreviewTitle');
 
   return {
     status: 'ready',
@@ -68,7 +67,6 @@ function useDocumentPreviewData({
       specId,
       documentId,
       title,
-      ...(document?.filename && document.filename !== title ? { filename: document.filename } : {}),
       fullDocumentLabel: t('specification.openFullDocument'),
       openFullDocument: context.openFullDocument,
     },
@@ -78,16 +76,18 @@ function useDocumentPreviewData({
 function DocumentPreviewHeader({
   data,
 }: SecondaryScreenProps<DocumentPreviewData, DocumentPreviewPages['preview']>) {
-  return <WorkspaceHeaderIdentity headingLevel={2} title={data.title} subtitle={data.filename} />;
+  return <WorkspaceHeaderIdentity headingLevel={2} title={data.title} />;
 }
 
 function DocumentPreviewScreen({
   data,
 }: SecondaryScreenProps<DocumentPreviewData, DocumentPreviewPages['preview']>) {
   return (
-    <AppContent className="w-content-standard max-w-full">
+    <AppContent className="w-full">
       <AppWorkspaceBody scroll="area">
-        <DocumentContent specId={data.specId} documentId={data.documentId} />
+        <DocumentReadingColumns
+          text={<DocumentContent specId={data.specId} documentId={data.documentId} />}
+        />
       </AppWorkspaceBody>
     </AppContent>
   );

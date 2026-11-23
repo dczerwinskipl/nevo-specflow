@@ -43,6 +43,8 @@ export const specificationWorkspaceEndpoint: FastifyPluginCallback<
       schema: {
         tags: ['Specifications'],
         summary: 'Read the workspace view of a Specification',
+        description:
+          'Read the bounded Specification Workspace composition. Requires spec.view at trusted {projectId,specId}; individual Session rows, attention and activity require session.view at a trusted Session scope. An available empty section is a successful read, not a missing adapter. Project mode never falls back to demo data. 404 specification_not_found is an unknown Specification; 503 specification_source_unavailable is a failed canonical source or composition. No full Task or document body is embedded. Cache-Control: no-store.',
         params: SpecificationWorkspaceParamsSchema,
         response: {
           200: SpecificationWorkspaceResponseSchema,

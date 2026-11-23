@@ -60,7 +60,9 @@ export type OptionsVariant =
   /** Git enabled, the generated branch (`release/<slug>`) is protected. */
   | 'new-branch-protected'
   /** Git enabled, but the project's Git configuration is invalid. */
-  | 'git-policy-invalid';
+  | 'git-policy-invalid'
+  | 'base-config-unusable'
+  | 'base-config-fallback';
 
 function seedRegistry(): Registry {
   const ids = workspaceIds;
@@ -146,18 +148,35 @@ function seedRegistry(): Registry {
     ],
     newWorktree: { status: 'available' },
     defaultBaseRef: 'develop',
+    defaultBaseConfig: { status: 'usable' },
     branchPattern: 'feature/{slug}',
     worktreesRoot: { path: '/work/acme-app-worktrees', exists: true },
     integrationTargetBranch: 'develop',
     baseRefs: [
       // Full refs, like the Runtime; workspace branches and the default stay short names.
-      { ref: localBranchRef('develop'), checkedOutWorkspaceId: ids.main },
-      { ref: localBranchRef('feature/platform'), checkedOutWorkspaceId: ids.platform },
-      { ref: localBranchRef('feature/payments'), checkedOutWorkspaceId: ids.payments },
-      { ref: localBranchRef('spec/architecture'), checkedOutWorkspaceId: ids.architecture },
-      { ref: localBranchRef('release/1.4') },
-      { ref: localBranchRef('main') },
-      { ref: localBranchRef('feature/legacy') },
+      {
+        ref: localBranchRef('develop'),
+        projectConfig: { status: 'usable' },
+        checkedOutWorkspaceId: ids.main,
+      },
+      {
+        ref: localBranchRef('feature/platform'),
+        projectConfig: { status: 'usable' },
+        checkedOutWorkspaceId: ids.platform,
+      },
+      {
+        ref: localBranchRef('feature/payments'),
+        projectConfig: { status: 'usable' },
+        checkedOutWorkspaceId: ids.payments,
+      },
+      {
+        ref: localBranchRef('spec/architecture'),
+        projectConfig: { status: 'usable' },
+        checkedOutWorkspaceId: ids.architecture,
+      },
+      { ref: localBranchRef('release/1.4'), projectConfig: { status: 'usable' } },
+      { ref: localBranchRef('main'), projectConfig: { status: 'usable' } },
+      { ref: localBranchRef('feature/legacy'), projectConfig: { status: 'usable' } },
     ],
   };
 }
@@ -217,7 +236,7 @@ function registryFixture(variant: OptionsVariant): Registry {
       );
       next.baseRefs = next.baseRefs.map((b) =>
         b.ref === localBranchRef('develop')
-          ? { ref: b.ref }
+          ? { ref: b.ref, projectConfig: { status: 'usable' } }
           : b.ref === localBranchRef('main')
             ? { ...b, checkedOutWorkspaceId: workspaceIds.main }
             : b,
@@ -298,8 +317,16 @@ function registryFixture(variant: OptionsVariant): Registry {
         (w) => w.workspaceId === workspaceIds.platform,
       );
       next.baseRefs = [
-        { ref: localBranchRef('develop'), checkedOutWorkspaceId: workspaceIds.platform },
-        { ref: localBranchRef('release/1.4'), checkedOutWorkspaceId: workspaceIds.main },
+        {
+          ref: localBranchRef('develop'),
+          projectConfig: { status: 'usable' },
+          checkedOutWorkspaceId: workspaceIds.platform,
+        },
+        {
+          ref: localBranchRef('release/1.4'),
+          projectConfig: { status: 'usable' },
+          checkedOutWorkspaceId: workspaceIds.main,
+        },
         ...next.baseRefs.filter(
           (b) =>
             !['develop', 'feature/platform', 'release/1.4'].map(localBranchRef).includes(b.ref),
@@ -328,6 +355,34 @@ function registryFixture(variant: OptionsVariant): Registry {
       );
       next.defaultBaseRef = 'HEAD';
       break;
+    case 'base-config-unusable':
+      next.defaultBaseRef = 'HEAD';
+      next.defaultBaseConfig = { status: 'unusable', reason: 'runtime-missing' };
+      next.baseRefs = next.baseRefs.map((item, index) => ({
+        ...item,
+        projectConfig: {
+          status: 'unusable',
+          reason: (['runtime-missing', 'missing', 'invalid-yaml', 'not-regular-file'] as const)[
+            index % 4
+          ]!,
+        },
+      }));
+      break;
+    case 'base-config-fallback':
+      next.defaultBaseRef = 'HEAD';
+      next.defaultBaseConfig = { status: 'unusable', reason: 'missing' };
+      next.workspaces = next.workspaces.map((item) =>
+        item.kind === 'primary' ? { ...item, branch: 'feature/unconfigured' } : item,
+      );
+      next.baseRefs = [
+        {
+          ref: 'refs/heads/feature/unconfigured',
+          checkedOutWorkspaceId: next.primaryWorkspaceId,
+          projectConfig: { status: 'unusable', reason: 'missing' },
+        },
+        ...next.baseRefs,
+      ];
+      break;
     case 'head-base':
       next.defaultBaseRef = 'HEAD';
       break;
@@ -355,7 +410,11 @@ function registryFixture(variant: OptionsVariant): Registry {
           integrationSelectable: true,
           branch,
         });
-        next.baseRefs.push({ ref: localBranchRef(branch), checkedOutWorkspaceId: workspaceId });
+        next.baseRefs.push({
+          ref: localBranchRef(branch),
+          projectConfig: { status: 'usable' },
+          checkedOutWorkspaceId: workspaceId,
+        });
       }
 
       break;

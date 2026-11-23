@@ -540,9 +540,12 @@ function formatTokenBreakdown(
 
   const value = reading.value;
   const parts: string[] = [];
-  // `key` varies per call, so it can't stay inside the typed `TFunction` key union; cast at this
-  // one dynamic-key call site only (same pattern as `translateMessage` in `i18n/message.ts`).
-  const translateDynamic = t as (key: string, options?: Record<string, string>) => string;
+  // All callers below use catalogue keys; i18next's typed overloads cannot prove this
+  // for a variable key and reject a direct cast in v27. Keep the assertion local.
+  const translateDynamic = t as unknown as (
+    key: string,
+    options?: Record<string, string>,
+  ) => string;
   const push = (amount: number | undefined, key: string) => {
     if (amount !== undefined) {
       parts.push(translateDynamic(key, { value: new Intl.NumberFormat(locale).format(amount) }));

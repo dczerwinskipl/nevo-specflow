@@ -105,7 +105,7 @@ The journal-first design (stage `commit-writing`, no rolled-back stage) leaves a
 is no HTTP or UI action to resume or abandon it; the operator uses `nevo-specflow specs recover <operation-id>
 --confirmed-stopped` (Engine `resumeInterruptedCreateOperation`) or removes a journal without effects by hand. The
 journal holds slug, branch and workspace capacity until then. See
-[Recovering a stuck Create](../runtime/specification-lifecycle.md#recovering-a-stuck-create-operator-procedure-and-known-gap).
+[Recovering a stuck Create](../../engineering/shared/specification-create-recovery.md#recovering-a-stuck-create-operator-procedure-and-known-gap).
 
 ## Consequences
 

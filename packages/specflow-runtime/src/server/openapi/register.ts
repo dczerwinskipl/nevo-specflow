@@ -43,7 +43,14 @@ export async function registerOpenApi<RawServer extends RawServerBase>(
     const documented = route.config?.openApiResponses;
     const schemaStatuses = Object.keys(route.schema?.response ?? {});
     for (const status of Object.keys(documented ?? {})) {
-      if (schemaStatuses.includes(status)) {
+      if (
+        schemaStatuses.includes(status) &&
+        !(
+          status === '200' &&
+          route.config?.openApiBinaryResponse === true &&
+          documented?.[200]?.mediaType === '*/*'
+        )
+      ) {
         throw new Error(
           `Route ${route.url} documents status ${status} both with a response schema and in openApiResponses.`,
         );

@@ -462,3 +462,42 @@ Do not leave temporary specification IDs, task IDs, line numbers, review referen
 breadcrumbs in production comments unless they are a durable public identifier such as an ADR or
 authoritative documentation ID. Historical implementation context belongs in Git/PR/spec history,
 not in code comments.
+
+## Architecture diagram authoring
+
+Architecture diagrams explain one concern at a time: logical component ownership, process
+boundaries, package dependencies, state location or execution order. The
+[architecture overview](../../architecture/overview.md) gives orientation; the subsystem
+owner document remains authoritative.
+
+**Choose the view, not a template.** Use the representation that answers the current
+question; a four-band architecture diagram is not a mandatory standard:
+
+- **What belongs where?** Use containment or responsibility groups. Stacked layers fit
+  Runtime or SpecFlow Engine ownership, but must not imply an invented call hierarchy.
+- **How do components collaborate?** Show only real dependencies, ports and messages.
+  For example, the SpecFlow workflow adapter invokes the neutral Workflow Kernel and
+  owns persistence and effects; an interaction diagram may explain that better than
+  another layered map.
+- **What happens during an operation?** Use sequence or state diagrams for Create,
+  Close, agent step execution and recovery, including ordering and failure paths.
+- **How is the UI organized?** Show peer vertical slices and their shared services,
+  not a mandatory layered call chain or a reusable design system as a product feature.
+
+**Layout.** For a layered view, use an outer single-column Mermaid `block-beta` layout
+for stacked bands. Inside a band, two columns fit pairs and three fit natural groups of
+three. Keep headings short and span the band's columns with `:2` or `:3`. Mermaid
+renderers can have span/label geometry issues; inspect the output rather than assuming
+the text fits. Every block and node in a Mermaid `block-beta` diagram must have a distinct ID;
+`pnpm docs:check` validates this. For direct package imports, prefer a compact list over a dense
+arrow graph.
+
+**Naming.** Diagram labels use component names such as SpecFlow Engine, Runtime and Workflow
+Kernel. Package identities such as `@nevo/specflow-engine`, `@nevo/specflow-runtime` and
+`@nevo/workflow` appear in surrounding dependency and code references. The diagrams describe
+responsibilities, not mandatory source folders or an additional domain contract.
+
+**Verification.** Keep the Mermaid source free of decorative styling and HTML labels.
+Run `pnpm docs:check` and `pnpm format:check`. Inspect the actual rendered diagrams in the Nevo
+documentation reader at narrow and desktop widths, including pan and fullscreen. A valid
+Mermaid parser result does not prove that labels fit inside the boxes.

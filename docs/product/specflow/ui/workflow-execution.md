@@ -186,7 +186,7 @@ cancelled), **Documents**, **Context** and **Depends on**. Task history is the S
 - **Documents.** `task.md` first, then the Task's other documents, on the shared document row of
   Context and the Overview Documents (glyph, file name, a trailing state label; the role in the
   tooltip). The trailing label is the shared document state label
-  ([document state](documents-archetypes-ui.md#document-state-label)): the content state from the
+  ([document state](documents-tree.md#document-state-label)): the content state from the
   Task document listing (**Initial content only**, also for a generated `task.md` nobody edited yet)
   and the relation from the Task's own projection, with "this step" for the Task's active step
   (**Needed to finish this step** while `task.md` lacks a section its finish needs). A file that is

@@ -127,14 +127,20 @@ Infinite scroll is not used: the end of the list stays reachable for keyboard us
 
 ## States
 
-| State          | Content                                                                                                                                                                           |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| loading        | list skeleton under the toolbar                                                                                                                                                   |
-| empty, Current | **This specification has no sessions yet.** plus **New session** when offered                                                                                                     |
-| empty, Archive | **No archived sessions**, no action                                                                                                                                               |
-| failed         | attention alert **Couldn’t load sessions.** with **Retry**                                                                                                                        |
-| 403            | attention status **You don’t have access to this specification’s sessions.**                                                                                                      |
-| Sessions off   | the workspace reports `sessions_disabled` (or the list answers `SESSION_DISABLED`): **Sessions are turned off in this project.** alone, without collections; the list is not read |
+| State          | Content                                                                                                                                                                                            |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| loading        | list skeleton under the toolbar                                                                                                                                                                    |
+| empty, Current | **This specification has no sessions yet.** plus **New session** when offered                                                                                                                      |
+| empty, Archive | **No archived sessions**, no action                                                                                                                                                                |
+| failed         | attention alert **Couldn’t load sessions.** with **Retry**                                                                                                                                         |
+| 403            | attention status **You don’t have access to this specification’s sessions.**                                                                                                                       |
+| Sessions off   | the workspace reports `sessions_disabled` (or the list answers `SESSION_DISABLED`): **Sessions are turned off in this project.** with enabling guidance, without collections; the list is not read |
+
+The Sessions-off explanation MUST name `sessions.enabled: true` in the project's
+`.nevo/config.yaml`, a project maintainer as the policy owner, and restarting Nevo SpecFlow.
+It also makes clear that a permitted, ready provider is still needed. This is an unavailable
+feature, not empty content or a failed read; authorization refusals keep their separate explanation.
+Provider setup and other Session interaction work remain outside this first-run guidance.
 
 A transient failure of a refetch keeps the rows already shown; a 403 or 404 drops them, since the
 caller may no longer see them.

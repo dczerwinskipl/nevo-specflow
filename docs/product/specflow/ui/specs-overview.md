@@ -120,6 +120,9 @@ another field. Archive has no sections and no disclosure.
   selected collection.
 - One filtered view feeds the rows, the section counts and the empty state. A count is the number
   of matching rows in that section; collapsing never changes it. Sections without a match disappear.
+- A one-Specification section keeps the same heading, count and disclosure as a larger section.
+  The heading communicates the Runtime classification; keeping its interaction stable avoids a
+  different control as rows are added, removed or filtered. No special singleton layout is used.
 - Every section starts expanded. Without a search term the chevron toggles its section
   (`aria-expanded`, "Collapse/Expand {section} section"). Collapse state is local to the mounted
   screen, not in the URL or settings.
@@ -148,7 +151,16 @@ so the page title under it is kept for assistive technology and focus only and i
 ## States
 
 - **Loading:** header and controls keep their geometry; restrained row skeletons.
-- **Empty Current:** empty state with New specification. **Empty Archive:** concise empty state.
+- **Empty Current:** empty state with New specification. In project mode, a successful empty
+  collection also reads the existing archetype catalogue. If it has no usable archetypes, replace
+  the generic prose with the same short missing/invalid-definition blocker and **How to fix it?**
+  details action used by
+  [Create](../specification-creation.md#user-choices). Pending, failed and forbidden catalogue reads
+  keep their distinct explanations; they never claim definitions are missing. New specification
+  stays reachable for the full form. The empty state's Refresh re-reads creation availability after
+  external repairs; the header Refresh retains its collection scope. Archive, search results and
+  nonempty lists do not gain this first-run catalogue read.
+  **Empty Archive:** concise empty state.
 - **Read failed:** a notice with Retry; with rows already shown they stay (a transient refresh
   failure keeps the last permitted projection). A collection switch hides the previous collection.
   401 enters session recovery; 403 opens the standalone access-denied screen.

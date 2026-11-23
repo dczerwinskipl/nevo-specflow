@@ -148,7 +148,10 @@ export const TaskListResponseSchema = Type.Object({
    * attention, then held or unable to start with a Task waiting on it, then in progress, then the
    * Engine's Task order); with a filter, only the matching Tasks.
    */
-  groups: Type.Array(TaskListGroupSchema),
+  groups: Type.Array(TaskListGroupSchema, {
+    description:
+      'Nonempty Runtime-defined presentation groups, in configured order. Rows ordered by attention, blocked dependents, in-progress then Engine identity. Group labels/order are not Engine-owned.',
+  }),
   progress: TaskProgressSchema,
   /** The attention projection (broken Tasks, the Specification, then Tasks in id order). */
   attention: Type.Array(WorkflowAttentionItemSchema),

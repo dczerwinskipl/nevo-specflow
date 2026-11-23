@@ -699,6 +699,131 @@
       ]
     },
     {
+      "id": "architecture.ai.session-admission-and-providers",
+      "type": "architecture",
+      "title": "Session authorization, providers and demo boundaries",
+      "status": "current",
+      "file": "docs/architecture/ai/session-admission-and-providers.md",
+      "read_when": [
+        "reviewing session authorization, providers and demo boundaries"
+      ],
+      "summary": "Managed Session access scopes, provider capabilities, workspace execution admission, revoked streaming access and demo read-only semantics.",
+      "related": [
+        "reference.api.sessions",
+        "architecture.ai.session-storage-and-lifecycle",
+        "reference.protocols.session-provider-driver",
+        "architecture.runtime.authorization"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "server",
+        "security"
+      ],
+      "tags": [
+        "sessions",
+        "security",
+        "authorization",
+        "provider",
+        "workspace",
+        "demo"
+      ]
+    },
+    {
+      "id": "architecture.ai.session-association-and-list",
+      "type": "architecture",
+      "title": "Session association and filtered list semantics",
+      "status": "current",
+      "file": "docs/architecture/ai/session-association-and-list.md",
+      "read_when": [
+        "reviewing session association and filtered list semantics"
+      ],
+      "summary": "Atomic Specification Session creation, association projections, per-row authorization and signed bounded list cursors.",
+      "related": [
+        "reference.api.sessions",
+        "architecture.ai.session-storage-and-lifecycle",
+        "reference.protocols.session-provider-driver",
+        "architecture.runtime.authorization"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "server",
+        "security"
+      ],
+      "tags": [
+        "sessions",
+        "associations",
+        "authorization",
+        "pagination"
+      ]
+    },
+    {
+      "id": "architecture.ai.session-commands",
+      "type": "architecture",
+      "title": "Managed Session commands and lifecycle",
+      "status": "current",
+      "file": "docs/architecture/ai/session-commands.md",
+      "read_when": [
+        "reviewing managed session commands and lifecycle"
+      ],
+      "summary": "Create/Turn command semantics, interactive approvals, managed Session archive/delete and idempotent recoverable operations.",
+      "related": [
+        "reference.api.sessions",
+        "architecture.ai.session-storage-and-lifecycle",
+        "reference.protocols.session-provider-driver",
+        "architecture.runtime.authorization"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "server",
+        "security"
+      ],
+      "tags": [
+        "sessions",
+        "commands",
+        "turns",
+        "interaction",
+        "idempotency"
+      ]
+    },
+    {
+      "id": "architecture.ai.session-history-and-events",
+      "type": "architecture",
+      "title": "Session history, content ranges, Work digest and live events",
+      "status": "current",
+      "file": "docs/architecture/ai/session-history-and-events.md",
+      "read_when": [
+        "reviewing session history, content ranges, work digest and live events"
+      ],
+      "summary": "Bounded Session history and Work pages, signed durable cursors, UTF-8 content ranges, native tool classification and SSE resync guarantees.",
+      "related": [
+        "reference.api.sessions",
+        "architecture.ai.session-storage-and-lifecycle",
+        "reference.protocols.session-provider-driver",
+        "architecture.runtime.authorization"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "server",
+        "security"
+      ],
+      "tags": [
+        "sessions",
+        "history",
+        "cursor",
+        "work",
+        "sse",
+        "content"
+      ]
+    },
+    {
       "id": "architecture.ai.session-storage-and-lifecycle",
       "type": "architecture",
       "title": "Managed Session persistence and lifecycle design",
@@ -731,6 +856,42 @@
         "durability",
         "recovery",
         "pagination"
+      ]
+    },
+    {
+      "id": "architecture.ai.session-telemetry-observations",
+      "type": "architecture",
+      "title": "Session telemetry observation, accounting and refresh",
+      "status": "current",
+      "file": "docs/architecture/ai/session-telemetry-observations.md",
+      "read_when": [
+        "implementing or reviewing native Session telemetry producers",
+        "changing telemetry accounting, limits, permissions or refresh",
+        "debugging stale counters and Session telemetry SSE invalidations"
+      ],
+      "summary": "Telemetry is measured and persisted by Session owners, with provenance, partial coverage, safe account fencing, authorized read-time projection and refresh that never executes a Turn.",
+      "related": [
+        "architecture.ai.session-storage-and-lifecycle",
+        "reference.api.session-telemetry",
+        "reference.api.sessions",
+        "reference.protocols.session-provider-driver",
+        "architecture.runtime.authorization"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "security",
+        "server"
+      ],
+      "tags": [
+        "sessions",
+        "telemetry",
+        "provider",
+        "cost",
+        "limits",
+        "freshness",
+        "refresh"
       ]
     },
     {
@@ -842,6 +1003,7 @@
       "related": [
         "adr.0026-agent-step-execution",
         "architecture.workflow.workflow-kernel",
+        "architecture.workflow.workflow-agent-attempts",
         "architecture.runtime.workspace-execution-claims",
         "architecture.runtime.specification-documents",
         "architecture.ai.session-storage-and-lifecycle",
@@ -916,6 +1078,157 @@
         "architecture.runtime.ownership-and-lifecycle",
         "reference.cli.nevo-specflow-contract",
         "architecture.runtime.endpoint-policy"
+      ]
+    },
+    {
+      "id": "architecture.runtime.document-commit-policy",
+      "type": "architecture",
+      "title": "Document commit policy, ledger and workflow-state commits",
+      "status": "current",
+      "file": "docs/architecture/runtime/document-commit-policy.md",
+      "read_when": [
+        "changing git.commits.auto.documents, manual commit or the uncommitted ledger",
+        "reviewing workflow state commits and Close flush behavior"
+      ],
+      "summary": "Engine commit policy, manual commit selection, uncommitted ledger and workflow execution store commit boundaries.",
+      "related": [
+        "architecture.runtime.specification-documents",
+        "architecture.runtime.document-write-and-commit-queue",
+        "adr.0018-engine-commit-policy-and-manual-commit",
+        "adr.0026-agent-step-execution",
+        "architecture.workflow.workflow-kernel"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "workflow",
+        "server"
+      ]
+    },
+    {
+      "id": "architecture.runtime.document-definitions",
+      "type": "architecture",
+      "title": "Document definitions and archetype constraints",
+      "status": "current",
+      "file": "docs/architecture/runtime/document-definitions.md",
+      "read_when": [
+        "changing document type or archetype definitions",
+        "implementing the definitions loader or scaffolding requirements"
+      ],
+      "summary": "Compiled framework invariants for overview, project-owned archetype and document type YAML definitions, versioning and template resolution.",
+      "related": [
+        "architecture.runtime.specification-documents",
+        "architecture.runtime.document-manifest-and-registry",
+        "adr.0017-definitions-as-project-data"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "workflow",
+        "server"
+      ]
+    },
+    {
+      "id": "architecture.runtime.document-limits",
+      "type": "architecture",
+      "title": "Document limits and admission bounds",
+      "status": "current",
+      "file": "docs/architecture/runtime/document-limits.md",
+      "read_when": [
+        "validating document write/read limits",
+        "changing content size, path lengths or operation-queue capacity"
+      ],
+      "summary": "Single Engine-owned table of document byte, count, path and operation limits; admission enforces raw-byte bounds.",
+      "related": [
+        "architecture.runtime.specification-documents",
+        "architecture.runtime.document-write-and-commit-queue",
+        "architecture.runtime.document-manifest-and-registry"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "workflow",
+        "server"
+      ]
+    },
+    {
+      "id": "architecture.runtime.document-manifest-and-registry",
+      "type": "architecture",
+      "title": "Document manifest, registry, identity and validation",
+      "status": "current",
+      "file": "docs/architecture/runtime/document-manifest-and-registry.md",
+      "read_when": [
+        "changing specification.yaml, document IDs, registration, folders or path validation",
+        "reviewing Task document containers, content kinds or missing/unclassified files"
+      ],
+      "summary": "Engine-owned Specification/Task manifest identity, registration, path safety, content kinds, validation results and Windows path refusal.",
+      "related": [
+        "architecture.runtime.specification-documents",
+        "architecture.runtime.document-definitions",
+        "architecture.runtime.document-limits",
+        "adr.0015-specification-manifest-as-document-registry"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "workflow",
+        "server"
+      ]
+    },
+    {
+      "id": "architecture.runtime.document-operation-transport",
+      "type": "architecture",
+      "title": "Document operation transport, revision and commit projection",
+      "status": "current",
+      "file": "docs/architecture/runtime/document-operation-transport.md",
+      "read_when": [
+        "implementing document API response and header semantics",
+        "changing revisioned reads, raw downloads or document operations",
+        "verifying pending/failed/uncommitted commit state propagation"
+      ],
+      "summary": "HTTP-visible semantics of Specification and Task document reads and writes, exact revision requests, safe raw content, conditional caching and independent commit state.",
+      "related": [
+        "architecture.runtime.specification-documents",
+        "reference.api.specification-documents",
+        "reference.api.specflow-specification-operations",
+        "architecture.runtime.specflow-lifecycle"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "security"
+      ],
+      "tags": [
+        "documents",
+        "operations",
+        "etag",
+        "revisions",
+        "commits"
+      ]
+    },
+    {
+      "id": "architecture.runtime.document-write-and-commit-queue",
+      "type": "architecture",
+      "title": "Document writes, durable journal and commit queue",
+      "status": "current",
+      "file": "docs/architecture/runtime/document-write-and-commit-queue.md",
+      "read_when": [
+        "changing document writes, claim leases, queue jobs or interruption recovery",
+        "investigating document commit failures, retries and refusal"
+      ],
+      "summary": "State-changing document writes, admission, queue claiming, crash/retry paths and scoped Git commit consolidation.",
+      "related": [
+        "architecture.runtime.specification-documents",
+        "architecture.runtime.document-limits",
+        "architecture.runtime.document-commit-policy",
+        "adr.0016-engine-owned-document-commits"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "workflow",
+        "server"
       ]
     },
     {
@@ -996,18 +1309,20 @@
     {
       "id": "architecture.runtime.specflow-lifecycle",
       "type": "architecture",
-      "title": "Specification Create, archive and shared-workspace lifecycle",
+      "title": "Specification Create and Close lifecycle",
       "status": "current",
       "file": "docs/architecture/runtime/specification-lifecycle.md",
       "read_when": [
-        "modifying Create, Close, Git integration or registry rebind",
-        "reviewing whole-workspace disposal and recovery invariants"
+        "distinguishing Specification Create, Specification Close and Worktree Close",
+        "locating Create recovery, Git integration and workspace disposal contracts"
       ],
-      "summary": "Implemented E2 Create and explicit Specification/workspace Close invariants, Git publication proof and CAS rebind.",
+      "summary": "Entry point to durable Specification Create, Specification Close, Worktree Close, Git integration, CAS rebind and interruption recovery.",
       "related": [
+        "architecture.runtime.specification-create-lifecycle",
+        "architecture.runtime.specification-close-lifecycle",
+        "architecture.runtime.specification-worktree-integration",
+        "engineering.shared.specification-create-recovery",
         "architecture.runtime.specification-documents",
-        "adr.0016-engine-owned-document-commits",
-        "architecture.runtime.specflow-project-home",
         "engineering.shared.specflow-git-recovery",
         "reference.api.specflow-specification-operations"
       ],
@@ -1041,39 +1356,203 @@
       ]
     },
     {
+      "id": "architecture.runtime.specification-close-admission",
+      "type": "architecture",
+      "title": "Specification and workspace Close admission and refusal semantics",
+      "status": "current",
+      "file": "docs/architecture/runtime/specification-close-admission.md",
+      "read_when": [
+        "reviewing Specification Close versus Worktree and Workspace Close",
+        "explaining Close preview blockers or external merge outcomes",
+        "changing Git-off Close, local config protection or Session occupancy"
+      ],
+      "summary": "Scope-specific Close admission, Git-off archive-only mode, preview and refusal semantics, integration branch candidates, Session occupancy and externally merged worktree disposal.",
+      "related": [
+        "architecture.runtime.specflow-lifecycle",
+        "reference.api.specflow-specification-operations",
+        "architecture.runtime.specification-documents",
+        "reference.api.sessions",
+        "reference.configuration.specflow-git-worktrees"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "cli",
+        "security"
+      ],
+      "tags": [
+        "specification",
+        "close",
+        "worktree",
+        "workspace",
+        "authorization",
+        "recovery"
+      ]
+    },
+    {
+      "id": "architecture.runtime.specification-close-lifecycle",
+      "type": "architecture",
+      "title": "Specification Close archive and refusal rules",
+      "status": "current",
+      "file": "docs/architecture/runtime/specification-close-lifecycle.md",
+      "read_when": [
+        "implementing or reviewing Specification Close and Abandon",
+        "distinguishing Specification Close from Workspace or Worktree Close"
+      ],
+      "summary": "Specification Close intents, exit gates, Abandon and archive-only operation when Git is disabled.",
+      "related": [
+        "architecture.runtime.specflow-lifecycle",
+        "architecture.runtime.specification-close-admission",
+        "architecture.workflow.workflow-kernel"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "cli",
+        "security"
+      ]
+    },
+    {
+      "id": "architecture.runtime.specification-create-lifecycle",
+      "type": "architecture",
+      "title": "Specification Create admission and Git selection",
+      "status": "current",
+      "file": "docs/architecture/runtime/specification-create-lifecycle.md",
+      "read_when": [
+        "implementing Specification Create with a new or existing workspace",
+        "reviewing Create journal, Git selection and admission invariants"
+      ],
+      "summary": "Create intent, baseRef, workspace selection, journal retention, scaffold commit, Git-off behaviour and refusal boundaries.",
+      "related": [
+        "architecture.runtime.specflow-lifecycle",
+        "architecture.runtime.specification-create-options",
+        "engineering.shared.specflow-git-recovery"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "cli",
+        "security"
+      ]
+    },
+    {
+      "id": "architecture.runtime.specification-create-options",
+      "type": "architecture",
+      "title": "Specification Create options and admission invariants",
+      "status": "current",
+      "file": "docs/architecture/runtime/specification-create-options.md",
+      "read_when": [
+        "implementing or reviewing Create options and validation",
+        "reviewing Git-off, branch protection or invalid Git policy behavior",
+        "checking Create UI authorization and workspace consistency"
+      ],
+      "summary": "Create options are advisory snapshots, not reservations. Their workspace, branch and base-config facts, permission boundaries and Git policy behavior are revalidated on admission.",
+      "related": [
+        "architecture.runtime.specflow-lifecycle",
+        "reference.api.specflow-specification-operations",
+        "reference.api.workspaces",
+        "architecture.runtime.authorization",
+        "reference.configuration.specflow-git-worktrees"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "cli",
+        "security"
+      ],
+      "tags": [
+        "specification",
+        "create",
+        "worktree",
+        "authorization",
+        "git",
+        "admission"
+      ]
+    },
+    {
       "id": "architecture.runtime.specification-documents",
       "type": "architecture",
-      "title": "Specification documents layer - registry, archetypes, ownership and invariants",
+      "title": "Specification documents: ownership and invariants",
       "status": "current",
       "file": "docs/architecture/runtime/specification-documents.md",
       "read_when": [
-        "changing the Specification manifest, archetypes or document types",
-        "implementing document reads or document write operations in the Engine or Runtime",
-        "deciding where document logic lives"
+        "selecting authoritative document model, validation and write contracts",
+        "reviewing document security and recovery invariants"
       ],
-      "summary": "Ownership, manifest schema, identity and path rules, content kinds, validation results and invariants of the backend documents layer, the asynchronous commit queue for document writes and definitions as project data. The Engine owns all logic; Runtime and CLI are adapters.",
+      "summary": "Entry point to Engine-owned Specification and Task documents: manifest/registry, project definitions, admission bounds, write journal, commit queue and commit policy.",
       "related": [
-        "adr.0015-specification-manifest-as-document-registry",
-        "adr.0016-engine-owned-document-commits",
-        "adr.0017-definitions-as-project-data",
-        "adr.0018-engine-commit-policy-and-manual-commit",
+        "architecture.runtime.document-manifest-and-registry",
+        "architecture.runtime.document-definitions",
+        "architecture.runtime.document-limits",
+        "architecture.runtime.document-write-and-commit-queue",
+        "architecture.runtime.document-commit-policy",
         "product.specflow.specification-documents",
-        "reference.api.specification-documents",
-        "architecture.runtime.specflow-engine",
-        "architecture.runtime.specflow-lifecycle",
-        "architecture.principles.enforceable-invariants"
+        "adr.0016-engine-owned-document-commits"
       ],
       "scope": "specflow",
       "areas": [
         "runtime",
         "workflow",
         "server"
+      ]
+    },
+    {
+      "id": "architecture.runtime.specification-workspace-composition",
+      "type": "architecture",
+      "title": "Specification Workspace read composition",
+      "status": "current",
+      "file": "docs/architecture/runtime/specification-workspace-composition.md",
+      "read_when": [
+        "changing the Specification Workspace read composition",
+        "altering Workspace section availability, bounded projections or freshness",
+        "changing the visibility of Sessions or Tasks inside a Workspace"
+      ],
+      "summary": "Composition and degradation invariants for Specification Workspace: authoritative Engine identity, Task/Document sections, per-Session authorization, bounded activity and freshness.",
+      "related": [
+        "reference.api.specification-workspace",
+        "architecture.runtime.authorization",
+        "architecture.runtime.specification-documents",
+        "architecture.runtime.task-read-composition",
+        "product.specflow.ui.data-loading-and-integration"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "security",
+        "workflow",
+        "ui"
       ],
       "tags": [
         "specifications",
+        "workspace",
+        "tasks",
         "documents",
-        "archetypes",
-        "manifest"
+        "sessions",
+        "read-model"
+      ]
+    },
+    {
+      "id": "architecture.runtime.specification-worktree-integration",
+      "type": "architecture",
+      "title": "Worktree Close Git integration and rebind",
+      "status": "current",
+      "file": "docs/architecture/runtime/specification-worktree-integration.md",
+      "read_when": [
+        "changing worktree integration, publication proof, CAS rebind or disposal",
+        "reviewing external merge, conflict and recovery scenarios"
+      ],
+      "summary": "Physical Git proof, integration, CAS registry rebind, shared-worktree safety and disposal refusal rules.",
+      "related": [
+        "architecture.runtime.specflow-lifecycle",
+        "architecture.runtime.specification-close-admission",
+        "engineering.shared.specflow-git-recovery"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "cli",
+        "security"
       ]
     },
     {
@@ -1109,6 +1588,78 @@
         "engine",
         "pagination",
         "ownership"
+      ]
+    },
+    {
+      "id": "architecture.runtime.task-read-pagination-and-grouping",
+      "type": "architecture",
+      "title": "Task reads, history leases and Runtime grouping",
+      "status": "current",
+      "file": "docs/architecture/runtime/task-read-pagination-and-grouping.md",
+      "read_when": [
+        "implementing or reviewing Task detail and history paging",
+        "changing Task visibility, dashboard groups or attention overlays",
+        "changing Task commands or exact revision reads of documents"
+      ],
+      "summary": "Task detail and list read from Engine execution state, with scoped bounded history leases, authorized Session references, Runtime-owned grouping, optimistic writes and exact-version reads.",
+      "related": [
+        "architecture.runtime.task-read-composition",
+        "architecture.workflow.action-projections",
+        "reference.api.task-reads",
+        "reference.api.specification-documents",
+        "architecture.runtime.authorization"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "security",
+        "workflow",
+        "ui"
+      ],
+      "tags": [
+        "task",
+        "history",
+        "cursor",
+        "pagination",
+        "authorization",
+        "grouping"
+      ]
+    },
+    {
+      "id": "architecture.runtime.workspace-documentation-corpus",
+      "type": "architecture",
+      "title": "Workspace-scoped documentation corpus, freshness and search",
+      "status": "current",
+      "file": "docs/architecture/runtime/workspace-documentation-corpus.md",
+      "read_when": [
+        "implementing a workspace-scoped documentation reader",
+        "debugging lexical fallback, embedding refresh or stale corpus content",
+        "changing index storage, secure workspace isolation or read-time budget"
+      ],
+      "summary": "Runtime documentation reads use verified workspace checkouts and stable corpus revisions, with bounded search refresh, lexical fallback, isolated index ownership and scoped authorization.",
+      "related": [
+        "adr.0022-workspace-scoped-documentation-reader",
+        "reference.api.workspace-docs",
+        "reference.cli.nevo-specflow-docs",
+        "reference.configuration.documentation-and-embeddings",
+        "product.specflow.ui.documentation-reader",
+        "architecture.runtime.authorization"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "docs",
+        "security",
+        "ai"
+      ],
+      "tags": [
+        "docs",
+        "workspace",
+        "corpus",
+        "semantic-search",
+        "refresh",
+        "authorization"
       ]
     },
     {
@@ -1150,6 +1701,67 @@
       ]
     },
     {
+      "id": "architecture.ui.specflow-application-composition",
+      "type": "architecture",
+      "title": "SpecFlow UI application composition",
+      "status": "current",
+      "file": "docs/architecture/ui-application-composition.md",
+      "read_when": [
+        "changing SpecFlow UI routing, application service injection or feature ownership",
+        "modifying Task workbench and Specification Workspace read composition"
+      ],
+      "summary": "Router, feature ownership, service injection, TanStack Query state and Engine/Runtime-facing UI ownership boundaries.",
+      "related": [
+        "product.specflow.ui.application-architecture",
+        "product.specflow.ui.application-navigation-and-auth",
+        "architecture.runtime.specification-workspace-composition",
+        "architecture.runtime.task-read-composition",
+        "product.specflow.ui.data-loading-and-integration"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "runtime",
+        "server"
+      ]
+    },
+    {
+      "id": "architecture.workflow.action-projections",
+      "type": "architecture",
+      "title": "Owner workflow actions and projection semantics",
+      "status": "current",
+      "file": "docs/architecture/workflow/workflow-action-projections.md",
+      "read_when": [
+        "changing manual owner workflow actions or projections",
+        "implementing gated Task/Specification completion and replay",
+        "rendering workflow documents, steps, Tasks and exit blockers in UI"
+      ],
+      "summary": "Workflow action projections are Engine-owned decisions over pinned definitions, gates and Task state. Owner commands carry trusted actor identity, deterministic attempts, idempotent finish and typed refusals.",
+      "related": [
+        "architecture.workflow.workflow-kernel",
+        "reference.api.specification-workflow",
+        "reference.api.specflow-specification-operations",
+        "architecture.runtime.task-read-composition",
+        "product.specflow.ui.workflow-execution",
+        "architecture.workflow.workflow-agent-attempts"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime",
+        "ui",
+        "security"
+      ],
+      "tags": [
+        "workflow",
+        "task",
+        "transitions",
+        "gates",
+        "projection",
+        "authorization"
+      ]
+    },
+    {
       "id": "architecture.workflow.deterministic-workflow",
       "type": "architecture",
       "title": "Deterministic workflow",
@@ -1172,29 +1784,176 @@
       ]
     },
     {
+      "id": "architecture.workflow.workflow-agent-attempts",
+      "type": "architecture",
+      "title": "Workflow agent attempts, owner confirmation and the attempt commit",
+      "status": "current",
+      "file": "docs/architecture/workflow/workflow-agent-attempts.md",
+      "read_when": [
+        "changing how an agent attempt starts, proposes, finalizes or commits (Run with agent)",
+        "implementing owner Confirm, Reject, Stop, Return or Take over of an agent attempt",
+        "reviewing attempt attribution, the attempt journal or the workflow history"
+      ],
+      "summary": "Engine side of agent step execution: attempt binding and journal, the finish proposal, attribution checks, finalize after the agent's process stopped, owner confirmation of owner-only decisions, Stop/Return/Take over, the workflow history and the attempt commit.",
+      "related": [
+        "architecture.workflow.workflow-kernel",
+        "architecture.workflow.workflow-definitions-and-gates",
+        "architecture.workflow.workflow-storage-and-recovery",
+        "architecture.runtime.agent-step-execution",
+        "architecture.runtime.document-commit-policy",
+        "adr.0026-agent-step-execution"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime"
+      ]
+    },
+    {
+      "id": "architecture.workflow.workflow-continuation-and-attention",
+      "type": "architecture",
+      "title": "Workflow continuation and owner attention",
+      "status": "current",
+      "file": "docs/architecture/workflow/workflow-continuation-and-attention.md",
+      "read_when": [
+        "changing automatic continuation and agent launch selection",
+        "reviewing Tasks-stuck, escalation, owner attention or no-continuation outcomes"
+      ],
+      "summary": "Pure continuation decisions, session reuse/fresh launch, Task attention and human handoff outcomes.",
+      "related": [
+        "architecture.workflow.workflow-kernel",
+        "architecture.workflow.workflow-definitions-and-gates",
+        "architecture.workflow.workflow-runs-and-handoffs",
+        "architecture.workflow.workflow-tasks"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime"
+      ]
+    },
+    {
+      "id": "architecture.workflow.workflow-definitions-and-gates",
+      "type": "architecture",
+      "title": "Workflow definitions, executors and gates",
+      "status": "current",
+      "file": "docs/architecture/workflow/workflow-definitions-and-gates.md",
+      "read_when": [
+        "editing workflow YAML, task types or agent archetypes",
+        "modifying entry/exit gates or actor attribution",
+        "investigating Task completion blockers, exit-gate refusal or finish retries"
+      ],
+      "summary": "Task completion blockers from exit gates and executor admission, authoritative finish checks and idempotent retries; versioned project workflow definitions and entry-gate refusal semantics.",
+      "related": [
+        "architecture.workflow.workflow-kernel",
+        "architecture.workflow.workflow-runs-and-handoffs",
+        "architecture.workflow.workflow-tasks",
+        "architecture.workflow.workflow-continuation-and-attention",
+        "adr.0017-definitions-as-project-data",
+        "architecture.workflow.workflow-agent-attempts"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime"
+      ]
+    },
+    {
       "id": "architecture.workflow.workflow-kernel",
       "type": "architecture",
-      "title": "Workflow kernel — Specification and Task execution",
+      "title": "Workflow kernel: Specification and Task execution",
       "status": "current",
       "file": "docs/architecture/workflow/workflow-kernel.md",
       "read_when": [
-        "changing workflow, agent archetype or task type definitions",
-        "implementing start, finish, return, continuation or attention behaviour",
-        "wiring the Runtime, CLI or UI to Specification or Task execution",
-        "adding a step kind, an effect, an attention reason or a new subject"
+        "choosing the authoritative workflow contract for a Specification or Task",
+        "changing neutral workflow extension points or host integration"
       ],
-      "summary": "One deterministic workflow core (the neutral @nevo/workflow coordinator, with the SpecFlow adapter in the Engine) drives both a Specification and each of its Tasks. Entry points only select the subject. Workflows, agent archetypes (preferred provider and a model per provider) and task types are project definitions. A step declares which executor classes may do it, and every attempt records its actor; an agent attempt (agent step execution) finishes through a proposal the Engine finalizes after the agent's process stopped, and a decision only the owner takes waits for the owner's Confirm. A Task is a resource (tasks/index.yaml, task.yaml, task.md) with its own type, workflow and preparation status (draft, ready, on-hold, cancelled), changed only by explicit decisions, a declared approval effect or its own escalation; its run is created at its first start. The Engine decides continuations; anything it cannot carry out is attention for the owner, derived from the state on every inspection and never stored. Runs live in the Specification's `.execution/` folder; only the change journal is local. The writes are committed like the Specification's documents (the document commit policy, queue and ledger); with auto-commit off a step's finish commits them, and a Close takes what is left.",
+      "summary": "Entry point to the neutral workflow coordinator and Engine-owned definitions, Runs, Task resources, agent attempts, continuation and durable storage.",
       "related": [
+        "architecture.workflow.workflow-definitions-and-gates",
+        "architecture.workflow.workflow-runs-and-handoffs",
+        "architecture.workflow.workflow-tasks",
+        "architecture.workflow.workflow-continuation-and-attention",
+        "architecture.workflow.workflow-storage-and-recovery",
+        "architecture.workflow.workflow-agent-attempts",
         "architecture.workflow.deterministic-workflow",
-        "adr.0019-workflow-kernel-and-automatic-continuation",
-        "adr.0024-tasks-are-resources",
-        "adr.0023-neutral-workflow-coordinator-and-manual-execution",
-        "adr.0026-agent-step-execution",
-        "architecture.runtime.agent-step-execution",
-        "reference.api.specification-workflow",
-        "adr.0017-definitions-as-project-data",
-        "architecture.runtime.specflow-engine",
-        "ideas.specflow-engine.plan-06"
+        "adr.0023-neutral-workflow-coordinator-and-manual-execution"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime"
+      ]
+    },
+    {
+      "id": "architecture.workflow.workflow-runs-and-handoffs",
+      "type": "architecture",
+      "title": "Workflow attempts, returns and wait states",
+      "status": "current",
+      "file": "docs/architecture/workflow/workflow-runs-and-handoffs.md",
+      "read_when": [
+        "reviewing position and attempt transitions or handoffs",
+        "implementing owner return, wait or replay refusal"
+      ],
+      "summary": "Pinned Runs, step/attempt positions, handoff sequence, owner return and wait-step guard rules.",
+      "related": [
+        "architecture.workflow.workflow-kernel",
+        "architecture.workflow.workflow-definitions-and-gates",
+        "architecture.workflow.workflow-tasks",
+        "architecture.workflow.workflow-continuation-and-attention"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime"
+      ]
+    },
+    {
+      "id": "architecture.workflow.workflow-storage-and-recovery",
+      "type": "architecture",
+      "title": "Workflow storage, journal and recovery",
+      "status": "current",
+      "file": "docs/architecture/workflow/workflow-storage-and-recovery.md",
+      "read_when": [
+        "changing .execution persistence, workflow mutation journal or recovery",
+        "verifying Git commit and journal boundaries for workflow state"
+      ],
+      "summary": "Pinned execution store, Task-resource persistence, Engine operation journals, commit policy and crash replay guarantees.",
+      "related": [
+        "architecture.workflow.workflow-kernel",
+        "architecture.workflow.workflow-runs-and-handoffs",
+        "architecture.runtime.document-commit-policy",
+        "architecture.workflow.workflow-agent-attempts",
+        "engineering.shared.specflow-git-recovery"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime"
+      ]
+    },
+    {
+      "id": "architecture.workflow.workflow-tasks",
+      "type": "architecture",
+      "title": "Task resources, preparation and completion",
+      "status": "current",
+      "file": "docs/architecture/workflow/workflow-tasks.md",
+      "read_when": [
+        "changing Task authoring, status, preparation, dependency or escalations",
+        "reviewing Task completion and Specification Task-set settlement"
+      ],
+      "summary": "Task index and manifests, creation, manual editing, start blockers, escalations and completion requirements.",
+      "related": [
+        "architecture.workflow.workflow-kernel",
+        "architecture.workflow.workflow-runs-and-handoffs",
+        "architecture.workflow.workflow-definitions-and-gates",
+        "architecture.workflow.workflow-continuation-and-attention",
+        "adr.0024-tasks-are-resources"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime"
       ]
     },
     {
@@ -1253,6 +2012,40 @@
         "design-system.implementation.react.component-guidelines",
         "product.specflow.ui.interaction-model",
         "architecture.principles.normative-language"
+      ]
+    },
+    {
+      "id": "ideas.demo-api-convergence",
+      "type": "architecture",
+      "title": "Unify demo and project Runtime HTTP contracts proposal",
+      "status": "draft",
+      "file": "docs/ideas/demo-api-convergence.md",
+      "read_when": [
+        "deciding whether demo needs a separate API surface",
+        "replacing demo creation, document writes or Session allocation with shared routes"
+      ],
+      "summary": "Proposed single HTTP and TypeBox contract for demo and project Runtime, with mode-specific in-memory ports, realistic capability reporting and isolated test scenarios.",
+      "related": [
+        "adr.0025-demo-runs-the-engine-in-memory",
+        "reference.api.specflow-specification-operations",
+        "reference.api.specification-documents",
+        "reference.api.sessions",
+        "reference.api.specification-creation-demo",
+        "ideas.documentation-maintainability"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "ui",
+        "testing"
+      ],
+      "tags": [
+        "demo",
+        "api",
+        "contracts",
+        "adapters",
+        "in-memory"
       ]
     },
     {
@@ -1792,29 +2585,6 @@
         "session-list",
         "workspace",
         "planning"
-      ]
-    },
-    {
-      "id": "product.specflow.ui.application-architecture",
-      "type": "architecture",
-      "title": "SpecFlow UI application architecture",
-      "status": "current",
-      "file": "docs/product/specflow/ui/application-architecture.md",
-      "read_when": [
-        "adding a SpecFlow UI screen or route",
-        "adding or changing remote data access, server-state, mutations, or application services",
-        "deciding how product navigation or route state is represented",
-        "deciding whether UI code belongs in the product app or Nevo UI",
-        "changing the product shell, localization, account menu, or brand composition"
-      ],
-      "summary": "The SpecFlow UI composition root, routing, remote-data and authentication boundaries, reusable Nevo UI boundary, navigation/account composition, and application-level framework decisions.",
-      "related": [
-        "design-system.principles.system-boundary",
-        "design-system.implementation.ownership-and-tooling",
-        "product.specflow.ui.interaction-model",
-        "product.specflow.ui.data-loading-and-integration",
-        "product.specflow.ui.specs-overview",
-        "product.shared.localization"
       ]
     },
     {
@@ -2870,6 +3640,29 @@
       ]
     },
     {
+      "id": "engineering.shared.specification-create-recovery",
+      "type": "engineering",
+      "title": "Interrupted Specification Create recovery",
+      "status": "current",
+      "file": "docs/engineering/shared/specification-create-recovery.md",
+      "read_when": [
+        "an Engine Create reports OPERATION_INTERRUPTED or recovery-required",
+        "inspecting or clearing stale Create journal resources"
+      ],
+      "summary": "Operator steps for resuming or safely clearing an interrupted Create without orphaning workspace or Git effects.",
+      "related": [
+        "architecture.runtime.specflow-lifecycle",
+        "architecture.runtime.specification-create-lifecycle",
+        "engineering.shared.specflow-git-recovery"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "cli",
+        "testing"
+      ]
+    },
+    {
       "id": "engineering.shared.testing",
       "type": "engineering",
       "title": "Testing",
@@ -2886,6 +3679,30 @@
         "engineering.shared.code-organization",
         "engineering.shared.effects-and-io",
         "engineering.cli.testing"
+      ]
+    },
+    {
+      "id": "ideas.audits.documentation-maintainability-2026-11-22",
+      "type": "engineering",
+      "title": "Current-document maintainability audit and refactor ledger",
+      "status": "draft",
+      "file": "docs/ideas/audits/2026-11-22-documentation-maintainability.md",
+      "read_when": [
+        "reviewing the documentation maintainability refactor PR stack",
+        "planning follow-up audits of long current documents and retrieval benchmarking"
+      ],
+      "summary": "Evidence and disposition ledger for the Create, Task, document-engine, workflow and UI documentation split, with deferred review candidates and unverified retrieval requirements.",
+      "related": [
+        "ideas.documentation-maintainability",
+        "architecture.runtime.specflow-lifecycle",
+        "architecture.runtime.specification-documents",
+        "architecture.workflow.workflow-kernel",
+        "reference.cli.nevo-specflow-docs"
+      ],
+      "scope": "repo",
+      "areas": [
+        "docs",
+        "testing"
       ]
     },
     {
@@ -2910,6 +3727,36 @@
         "server",
         "ui",
         "security"
+      ]
+    },
+    {
+      "id": "ideas.documentation-maintainability",
+      "type": "engineering",
+      "title": "Documentation maintainability and context-budget refactor proposal",
+      "status": "draft",
+      "file": "docs/ideas/documentation-maintainability.md",
+      "read_when": [
+        "planning a documentation refactor without losing domain invariants",
+        "reviewing the cost and authority of documentation retrieved by agents"
+      ],
+      "summary": "Proposed improvements to oversized architecture/product documents, API operation lookup and documentation quality checks.",
+      "related": [
+        "adr.0007-documentation-architecture-and-taxonomy",
+        "architecture.principles.normative-language",
+        "reference.cli.nevo-specflow-docs",
+        "ideas.demo-api-convergence"
+      ],
+      "scope": "repo",
+      "areas": [
+        "docs",
+        "testing"
+      ],
+      "tags": [
+        "documentation",
+        "maintainability",
+        "authority",
+        "discovery",
+        "token-budget"
       ]
     },
     {
@@ -4206,6 +5053,49 @@
       ]
     },
     {
+      "id": "ideas.audits.2026-11-22-sessions-workflow",
+      "type": "product",
+      "title": "Sessions and workflow follow-ups — issue 184",
+      "status": "draft",
+      "file": "docs/ideas/audits/2026-11-22-sessions-workflow.md",
+      "read_when": [
+        "reviewing the disposition and verification of issue 184"
+      ],
+      "summary": "Current-main verification of the Sessions and workflow observations from audit 168.",
+      "related": [],
+      "scope": "specflow",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "audit",
+        "ux",
+        "sessions",
+        "workflow"
+      ]
+    },
+    {
+      "id": "ideas.semantic-docs.reader-followups",
+      "type": "product",
+      "title": "Documentation reader pending verification and search follow-ups",
+      "status": "draft",
+      "file": "docs/ideas/semantic-docs/reader-followups.md",
+      "read_when": [
+        "planning reader mobile verification or relevance calibration",
+        "tracking unimplemented reader improvements"
+      ],
+      "summary": "Unfinished device verification, relevance cutoff default, light theme and embedding endpoint concurrency considerations.",
+      "related": [
+        "product.specflow.ui.documentation-reader",
+        "reference.configuration.documentation-and-embeddings"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "docs"
+      ]
+    },
+    {
       "id": "ideas.specflow-engine.reusable-workflow.ux-contract",
       "type": "product",
       "title": "Manual Specification and Task workflow execution — UX contract (superseded)",
@@ -4891,70 +5781,239 @@
       ]
     },
     {
+      "id": "product.specflow.ui.application-architecture",
+      "type": "product",
+      "title": "SpecFlow UI application architecture",
+      "status": "current",
+      "file": "docs/product/specflow/ui/application-architecture.md",
+      "read_when": [
+        "choosing UI module ownership or route responsibilities",
+        "locating application service, navigation or account behavior"
+      ],
+      "summary": "Guide to the SpecFlow UI composition root, ownership, routing, server state, product navigation, authentication and localization.",
+      "related": [
+        "architecture.ui.specflow-application-composition",
+        "product.specflow.ui.application-navigation-and-auth",
+        "design-system.principles.system-boundary",
+        "product.specflow.ui.data-loading-and-integration"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.application-navigation-and-auth",
+      "type": "product",
+      "title": "SpecFlow UI navigation, authentication and localization",
+      "status": "current",
+      "file": "docs/product/specflow/ui/application-navigation-and-auth.md",
+      "read_when": [
+        "changing login and guarded UI navigation",
+        "reviewing product menu, localization, account and accessibility"
+      ],
+      "summary": "Product routes, navigation shell, account/login recovery, localization, branding and keyboard-accessible product transitions.",
+      "related": [
+        "product.specflow.ui.application-architecture",
+        "architecture.ui.specflow-application-composition",
+        "product.specflow.ui.specs-overview",
+        "product.specflow.ui.interaction-model",
+        "product.shared.localization"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "security"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.create-archetypes",
+      "type": "product",
+      "title": "Create Specification archetype selection",
+      "status": "current",
+      "file": "docs/product/specflow/ui/create-archetypes.md",
+      "read_when": [
+        "changing Create archetype selection or catalogue presentation",
+        "implementing Create method and progress interactions"
+      ],
+      "summary": "Archetype selector behavior, catalogue text, selection/defaults, Create submit and creation progress navigation.",
+      "related": [
+        "product.specflow.ui.documents-archetypes",
+        "product.specflow.ui.documents-tree",
+        "product.specflow.specification-creation"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "workflow"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.document-editor-client-behavior",
+      "type": "product",
+      "title": "Document editor save, commit and Close interaction behavior",
+      "status": "current",
+      "file": "docs/product/specflow/ui/document-editor-client-behavior.md",
+      "read_when": [
+        "implementing document editor save and commit feedback",
+        "mapping document errors into user-visible recovery steps"
+      ],
+      "summary": "Editor feedback, commit queue and manual-commit affordances, conflict draft retention and Close blocker presentation for Specification documents.",
+      "related": [
+        "product.specflow.specification-documents",
+        "product.specflow.ui.documents-editor-mode",
+        "architecture.runtime.document-operation-transport",
+        "reference.api.specification-documents"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "workflow"
+      ],
+      "tags": [
+        "documents",
+        "editor",
+        "commits",
+        "recovery",
+        "close"
+      ]
+    },
+    {
       "id": "product.specflow.ui.documentation-reader",
       "type": "product",
-      "title": "Documentation reader (UI)",
+      "title": "Documentation reader UI",
       "status": "current",
       "file": "docs/product/specflow/ui/documentation-reader.md",
       "read_when": [
-        "designing or implementing the read-only reader of the project documentation in the UI",
-        "choosing how a workspace is chosen or switched for documentation",
-        "presenting documentation search results, proposals or blocked links"
+        "choosing the reader UI contract for search, navigation or layout",
+        "locating documentation access and rendering behavior"
       ],
-      "summary": "Screen contract of the read-only reader of the project documentation (docs.root) of one registered workspace: entry points, current workspace and picker, tree, search results, the article with contents, links and images, states and recovery, Wide/Compact/Narrow, and the facts the reader reads from the Runtime. Implemented in features/docs (Storybook SpecFlow/Screens/Documentation reader).",
+      "summary": "Entry point for workspace-scoped documentation reading, search, navigation, article rendering and failure states.",
       "related": [
-        "reference.api.workspace-docs",
-        "product.specflow.ui.interaction-model",
-        "product.specflow.ui.documents-editor-mode",
-        "product.shared.vocabulary",
-        "design-system.principles.layout-and-containment",
-        "design-system.principles.information-hierarchy"
+        "product.specflow.ui.documentation-reader-navigation",
+        "product.specflow.ui.documentation-reader-search",
+        "product.specflow.ui.documentation-reader-layout-and-states",
+        "architecture.runtime.workspace-documentation-corpus"
       ],
       "scope": "specflow",
       "areas": [
         "ui",
         "docs"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.documentation-reader-layout-and-states",
+      "type": "product",
+      "title": "Documentation reader layout, rendering and failure states",
+      "status": "current",
+      "file": "docs/product/specflow/ui/documentation-reader-layout-and-states.md",
+      "read_when": [
+        "changing reader responsive layout or article rendering",
+        "handling unavailable documents, corpus changes or keyboard accessibility"
       ],
-      "tags": [
-        "documentation",
-        "reader",
-        "workspace",
-        "worktree",
-        "search"
+      "summary": "Reader two-pane composition, article rendering, loading/error states, Runtime availability and accessibility requirements.",
+      "related": [
+        "product.specflow.ui.documentation-reader",
+        "product.specflow.ui.documentation-reader-navigation",
+        "product.specflow.ui.documentation-reader-search",
+        "architecture.runtime.workspace-documentation-corpus"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "docs"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.documentation-reader-navigation",
+      "type": "product",
+      "title": "Documentation reader navigation and workspace selection",
+      "status": "current",
+      "file": "docs/product/specflow/ui/documentation-reader-navigation.md",
+      "read_when": [
+        "implementing reader routes, Back or workspace switcher",
+        "reviewing navigation from Specification or Session into Documentation"
+      ],
+      "summary": "Route/Back semantics, workspace and Specification picker, links and image navigation, cross-screen entry intent and history behavior.",
+      "related": [
+        "product.specflow.ui.documentation-reader",
+        "product.specflow.ui.documentation-reader-search",
+        "product.specflow.ui.documentation-reader-layout-and-states",
+        "architecture.runtime.workspace-documentation-corpus"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "docs"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.documentation-reader-search",
+      "type": "product",
+      "title": "Documentation reader search experience",
+      "status": "current",
+      "file": "docs/product/specflow/ui/documentation-reader-search.md",
+      "read_when": [
+        "changing documentation search UI, query URL or proposal filter",
+        "reviewing result ranking explanations, empty states and mobile search field"
+      ],
+      "summary": "Workspace-scoped search query, ranking presentation, proposal filtering, no-word-match disclosure, empty and loading states and accessibility.",
+      "related": [
+        "product.specflow.ui.documentation-reader",
+        "product.specflow.ui.documentation-reader-navigation",
+        "product.specflow.ui.documentation-reader-layout-and-states",
+        "reference.cli.nevo-specflow-docs"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "docs"
       ]
     },
     {
       "id": "product.specflow.ui.documents-archetypes",
       "type": "product",
-      "title": "Documents and Create with archetypes (UI)",
+      "title": "Documents, archetypes and Create UI",
       "status": "current",
       "file": "docs/product/specflow/ui/documents-archetypes-ui.md",
       "read_when": [
-        "changing how the UI presents the archetype catalogue, document tree, document read or document operations",
-        "changing the Documents tree, its overview state, the New document or Assign type flows",
-        "changing the Archetype part of Create Specification or its progress page",
-        "changing read-only, save, conflict, image or binary states of a document tab"
+        "locating Documents tree, archetype selection or editor UI rules",
+        "reviewing cross-screen state and accessibility requirements"
       ],
-      "summary": "Product behaviour of the UI for Specification archetypes and documents on the existing screens: the Documents tree (registered, unclassified, dangling, protected overview, unmet requirements, Close-refusing issues), New document from a type and Assign type, the Archetype section of Create and its progress rows, and the document tab states (read-only reason on open, save, revision conflict, image, binary, missing file; tab labels stay file names).",
+      "summary": "Entry point for Documents tree, archetype Create, document tab states and cross-screen interaction contracts.",
       "related": [
-        "product.specflow.specification-documents",
-        "reference.api.specification-documents",
-        "product.specflow.ui.documents-editor-mode",
-        "product.specflow.specification-creation",
-        "product.specflow.ui.interaction-model",
-        "design-system.principles.layout-and-containment",
-        "design-system.principles.information-hierarchy"
+        "product.specflow.ui.documents-tree",
+        "product.specflow.ui.create-archetypes",
+        "product.specflow.ui.documents-cross-screen",
+        "product.specflow.ui.documents-editor-mode"
       ],
       "scope": "specflow",
       "areas": [
-        "ui"
+        "ui",
+        "workflow"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.documents-cross-screen",
+      "type": "product",
+      "title": "Documents UI cross-screen states and accessibility",
+      "status": "current",
+      "file": "docs/product/specflow/ui/documents-cross-screen-states.md",
+      "read_when": [
+        "reviewing Documents and Create consistency",
+        "changing Documents screen error/loading states or accessibility"
       ],
-      "tags": [
-        "documents",
-        "archetypes",
-        "requirements",
-        "create",
-        "editor"
+      "summary": "Shared document and archetype state matrix, transitions between Create, tree and editor, and screen accessibility guarantees.",
+      "related": [
+        "product.specflow.ui.documents-archetypes",
+        "product.specflow.ui.documents-tree",
+        "product.specflow.ui.create-archetypes",
+        "product.specflow.ui.documents-editor-mode"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "workflow"
       ]
     },
     {
@@ -4974,6 +6033,28 @@
         "design-system.implementation.react.item-tabs",
         "design-system.implementation.react.secondary-navigation",
         "product.specflow.ui.ai-session-ux"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.documents-tree",
+      "type": "product",
+      "title": "Documents tree, classification and expected files",
+      "status": "current",
+      "file": "docs/product/specflow/ui/documents-tree.md",
+      "read_when": [
+        "changing Specification Documents tree or its visual hierarchy",
+        "reviewing expected, missing, unclassified or skipped document rendering"
+      ],
+      "summary": "Tree scan, registry and unclassified/missing states, type/registration actions, close-refusing issues and required documents.",
+      "related": [
+        "product.specflow.ui.documents-archetypes",
+        "product.specflow.ui.documents-cross-screen",
+        "architecture.runtime.document-manifest-and-registry"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "workflow"
       ]
     },
     {
@@ -5261,6 +6342,32 @@
       ]
     },
     {
+      "id": "ideas.audits.2026-11-21-create-first-run",
+      "type": "reference",
+      "title": "Create and first-run verification for UX package B",
+      "status": "draft",
+      "file": "docs/ideas/audits/2026-11-21-create-first-run.md",
+      "read_when": [
+        "reviewing UX package B issue 182 and its reproduction evidence"
+      ],
+      "summary": "Current-main reproduction, before/after decisions and verification evidence for the Create and first-run follow-ups from the November 16 audit. Evidence, not a second UX contract.",
+      "related": [
+        "product.specflow.specification-creation",
+        "product.specflow.ui.specs-overview",
+        "product.specflow.ui.documentation-reader"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "testing"
+      ],
+      "tags": [
+        "audit",
+        "first-run",
+        "create"
+      ]
+    },
+    {
       "id": "ideas.specflow-engine.acceptance",
       "type": "reference",
       "title": "Open Engine workflow and managed execution acceptance criteria",
@@ -5450,7 +6557,7 @@
         "integrating the production Create Specification screen",
         "changing HTTP Create, Close and Workspace Close schemas"
       ],
-      "summary": "Implemented E2 endpoint routes, public payloads, response codes and authorization boundaries.",
+      "summary": "Create and Close operations for Specifications, linked worktrees and workspaces, including previews, admission and durable operation inspection.",
       "related": [
         "reference.api.specification-documents",
         "architecture.runtime.specflow-lifecycle",
@@ -5472,9 +6579,9 @@
       "status": "current",
       "file": "docs/reference/api/specification-creation-demo.md",
       "read_when": [
-        "implementing or testing the temporary Specification creation demo"
+        "integrating or testing demo-mode Specification creation, documents or Session allocation"
       ],
-      "summary": "Temporary Runtime-owned in-memory integration for creating demonstration Specifications, documents and allocated Session placeholders without real provider or worktree execution.",
+      "summary": "Demo-mode HTTP endpoints for in-memory Specification creation, document writes, workspace options, operation inspection and Session allocation.",
       "related": [
         "reference.api.specification-workspace",
         "product.specflow.ui.data-loading-and-integration",
@@ -5499,10 +6606,10 @@
       "file": "docs/reference/api/specification-documents.md",
       "read_when": [
         "implementing or consuming the archetype catalogue, document tree, document read or document operations",
-        "switching a client from the documents demo endpoints to the real backend",
+        "reading document revisions and raw content",
         "mapping document error codes in the UI"
       ],
-      "summary": "Contract of the Specification documents layer shared by the Runtime demo and the real backend: endpoints, schema outline, content kinds and raw-content headers, the write contract with asynchronous commit state, definition files and their problems, error codes and the explicit notes for clients. Exact schemas live in @nevo/specflow-contracts/documents.",
+      "summary": "Specification and Task document routes for tree browsing, exact-revision reads, document writes, asynchronous operations and Git commit status.",
       "related": [
         "architecture.runtime.specification-documents",
         "product.specflow.specification-documents",
@@ -5587,7 +6694,7 @@
         "adding a new operation kind or a new feature-owned operation list",
         "changing the operation list schema, retention or status derivation"
       ],
-      "summary": "GET /api/specs/operations lists Specification Create operations from the Engine journals and the live progress registry: schema, status table, retention, authorization, ETag, query, error codes and the demo mirror.",
+      "summary": "Read authorized Specification Create operations with status filtering, ETag, conditional responses, stable errors and operation inspection.",
       "related": [
         "reference.api.specification-documents",
         "reference.api.operation-progress",
@@ -5628,12 +6735,12 @@
       "status": "current",
       "file": "docs/reference/api/task-reads.md",
       "read_when": [
-        "implementing the Task read ownership refactor",
-        "migrating Task schemas out of Specification Workspace",
+        "listing Tasks and reading Task details or history",
+        "understanding Task resource and history responses",
         "implementing scoped Task page tokens and continuation",
         "creating, editing, removing or deciding the status of a Task over HTTP"
       ],
-      "summary": "Compatible Task and Document HTTP ownership, application outcomes, page lease semantics, the Engine-backed project-mode reads and the owner's Task commands (create, edit, remove, status) with their refusal statuses.",
+      "summary": "Task inventory, detail, history, pagination and mutation endpoints, with authorization, revision preconditions and workflow admission rules.",
       "related": [
         "architecture.runtime.task-read-composition",
         "reference.api.specification-workspace",
@@ -5666,7 +6773,7 @@
         "changing the docs.view capability or the Runtime start refresh of the docs index",
         "diagnosing why a Runtime documentation search answers lexically, 404, 409, 410 or 503"
       ],
-      "summary": "The Runtime serves the documentation of each registered workspace: GET /api/workspaces/:workspaceId/docs lists its documents (active, inactive, skipped), .../docs/documents/:documentId reads one article (body without frontmatter, sections, related states; 410 for an inactive one) and .../docs/search ranks documents in the result of nevo-specflow docs search --json, with the proposals left out and the index progress. Every answer carries a corpusRevision; docs.view at the project scope, errors, the read-time refresh, the background catch-up and the start refresh.",
+      "summary": "Workspace documentation tree, article reads and search with corpus revisions, authorization, lexical fallback and index freshness.",
       "related": [
         "adr.0022-workspace-scoped-documentation-reader",
         "adr.0020-documentation-discovery-is-a-product-capability",
@@ -5863,6 +6970,36 @@
       "areas": [
         "configuration",
         "cli"
+      ]
+    },
+    {
+      "id": "reference.configuration.specification-definitions",
+      "type": "reference",
+      "title": "Project document types and Specification archetypes",
+      "status": "current",
+      "file": "docs/reference/configuration/specification-definitions.md",
+      "read_when": [
+        "defining a new document type for a project",
+        "creating a Specification archetype with required and optional documents",
+        "validating YAML definition files or template paths"
+      ],
+      "summary": "Project-scoped YAML definitions of document types and Specification archetypes, including validated examples, external template content and CLI validation.",
+      "related": [
+        "architecture.runtime.specification-documents",
+        "reference.api.specflow-specification-operations",
+        "reference.api.specification-documents"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "docs"
+      ],
+      "tags": [
+        "definitions",
+        "document-type",
+        "specification-archetype",
+        "yaml",
+        "templates"
       ]
     },
     {

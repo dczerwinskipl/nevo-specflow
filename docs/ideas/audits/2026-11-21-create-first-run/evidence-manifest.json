@@ -1,0 +1,171 @@
+{
+  "source_head": "cb396e8f91f47b425aaee1ed1b9cdafa9419a5f7",
+  "selection": "Final screenshots attached to PR #192; no screenshots stored in Git. Original series archived outside Git.",
+  "original_png_count": 213,
+  "original_png_bytes": 20474236,
+  "retained_png_count": 0,
+  "retained_png_bytes": 0,
+  "external_archive": {
+    "filename": "nevo-182-audit-full-cb396e8f.zip",
+    "bytes": 19890826,
+    "sha256": "ace8cfdfc3a24994c513cb7d6cba0df77968d7a588b11f1f8037591305bb71dd",
+    "contents": "Complete original audit directory plus per-file SHA-256 manifest."
+  },
+  "screenshots": [
+    {
+      "bytes": 102198,
+      "sha256": "16c866aa2bffced9ef65478f81b41284495e4df0943e96b011b7e81dd0fa5f1f",
+      "archived_path": "after/create-current-completion-390.png",
+      "attachment_url": "https://github.com/user-attachments/assets/99469433-f805-404d-b424-52e93c3910eb",
+      "storage": "GitHub PR attachment and external archive"
+    },
+    {
+      "bytes": 124394,
+      "sha256": "a8b9f172f48444d231f144600234196cb093fc6edbd266e4ef570d431f399cb8",
+      "archived_path": "after/create-managed-completion-1440.png",
+      "attachment_url": "https://github.com/user-attachments/assets/edf4d105-8c28-4c09-9ac0-0abc958b578e",
+      "storage": "GitHub PR attachment and external archive"
+    },
+    {
+      "bytes": 53455,
+      "sha256": "596687de575a798b68bca1302bf943527ba1fe241467b2fe1aa5e297d8a6f50f",
+      "archived_path": "after/docs-absent-en-390.png",
+      "attachment_url": "https://github.com/user-attachments/assets/3f878323-e158-470f-b223-368788cc1713",
+      "storage": "GitHub PR attachment and external archive"
+    },
+    {
+      "bytes": 48262,
+      "sha256": "743620d15f4785e084998ef98b2744d650d8105c4413c5b91a10c6f6f75d68b9",
+      "archived_path": "after/docs-custom-absent-en-320.png",
+      "storage": "External archive only"
+    },
+    {
+      "bytes": 42843,
+      "sha256": "0e5e36501ff6778f1dcceed45aa35d8a0024540e532d4d5f749b1c6dd7e33b85",
+      "archived_path": "after/docs-custom-refreshed-390.png",
+      "storage": "External archive only"
+    },
+    {
+      "bytes": 53626,
+      "sha256": "c5120f7c685c9e3515bb5bac004d36ef6882d8fe102ba5f1c584dd3bb89a8fb8",
+      "archived_path": "after/empty-no-definitions-en-390.png",
+      "storage": "External archive only"
+    },
+    {
+      "bytes": 92852,
+      "sha256": "54cf922a59b34c978625897b84d37d06fc10553c430499a1956129a0ae13bd04",
+      "archived_path": "after/inline-invalid-en-1440-help.png",
+      "storage": "External archive only"
+    },
+    {
+      "bytes": 80181,
+      "sha256": "5e70b818f67f4ed96a3f3806d038799555276e3a445704d9eacfbeb607dc13b4",
+      "archived_path": "after/inline-invalid-pl-390-field.png",
+      "attachment_url": "https://github.com/user-attachments/assets/52a5fda6-7fad-4b43-aef2-820a59ce4010",
+      "storage": "GitHub PR attachment and external archive"
+    },
+    {
+      "bytes": 76777,
+      "sha256": "7e6b13b2b8dabc6bc16d9069f738b4a8560990acb685c2f40dfddab31d568e0e",
+      "archived_path": "after/inline-missing-en-390-field.png",
+      "storage": "External archive only"
+    },
+    {
+      "bytes": 157346,
+      "sha256": "803b14ac2851a65ea0d4bf188ff10b07bdb6ae4015a0392b5d9d0ff75a673f4b",
+      "archived_path": "after/inline-missing-pl-1440-field.png",
+      "attachment_url": "https://github.com/user-attachments/assets/a15835d4-c9bd-4498-a9c7-3f9dff4d0d42",
+      "storage": "GitHub PR attachment and external archive"
+    },
+    {
+      "bytes": 74654,
+      "sha256": "5f7bcfa73388119acfa4189dd48ffa2816c7a5e22731370171a187ba5bb62d62",
+      "archived_path": "after/inline-missing-pl-320-field.png",
+      "attachment_url": "https://github.com/user-attachments/assets/c1f37c3e-9147-42d5-be40-1b1dec1f16e8",
+      "storage": "GitHub PR attachment and external archive"
+    },
+    {
+      "bytes": 63174,
+      "sha256": "1e3477d31e8bc33210fe21b30c0802ed63792e47d34513caf739ce1a590481f0",
+      "archived_path": "after/inline-missing-pl-320-help.png",
+      "attachment_url": "https://github.com/user-attachments/assets/274d981b-b724-468e-b70a-b0d2238b8726",
+      "storage": "GitHub PR attachment and external archive"
+    },
+    {
+      "bytes": 80613,
+      "sha256": "10e20939211621fa92a6d17dc7f52c510200bd734bc9dee172d9d7a676aa4595",
+      "archived_path": "after/inline-missing-pl-390-field.png",
+      "attachment_url": "https://github.com/user-attachments/assets/b9acbd1e-b955-4926-8364-023cb2741fb6",
+      "storage": "GitHub PR attachment and external archive"
+    },
+    {
+      "bytes": 178901,
+      "sha256": "f8b3ea142c28a6a90723e3c380ded21b4595519f5c4af9d50dddc3fcef3278c2",
+      "archived_path": "after/inline-missing-pl-834-field.png",
+      "attachment_url": "https://github.com/user-attachments/assets/b5b7d257-4a6b-40a3-ba28-703c353e2d32",
+      "storage": "GitHub PR attachment and external archive"
+    },
+    {
+      "bytes": 67319,
+      "sha256": "bc1b095af1d0134e5fd707226fbeb18d99ceded2844f1a14ba47fbeef26fb219",
+      "archived_path": "after/overview-no-goal-en-390.png",
+      "storage": "External archive only"
+    },
+    {
+      "bytes": 54476,
+      "sha256": "53ac4cabe79f27938fa38b3c90b1332a23831c280346bd19afdd9d0440b06501",
+      "archived_path": "after/sessions-disabled-en-390.png",
+      "attachment_url": "https://github.com/user-attachments/assets/7f73872e-17a2-41ab-8993-c144e1987d4d",
+      "storage": "GitHub PR attachment and external archive"
+    },
+    {
+      "bytes": 126090,
+      "sha256": "4a91c3dfa065fcaf57c292208fc27eb037552b057b42b9d54fd59ebdc941346b",
+      "archived_path": "after/workflow-failure-settled.png",
+      "storage": "External archive only"
+    },
+    {
+      "bytes": 68061,
+      "sha256": "6949d04a4415217ff453dc895ff1b264016c675aee8ccfbd806e18828816c7b5",
+      "archived_path": "after/workflow-pending-success-390.png",
+      "attachment_url": "https://github.com/user-attachments/assets/a88d5b75-e690-4a31-b7f3-f3eaa25ed5bb",
+      "storage": "GitHub PR attachment and external archive"
+    },
+    {
+      "bytes": 121677,
+      "sha256": "1f8aa69be37877326b9f92057b55aaf67e439d1dc27d54b155eb226a0193edc9",
+      "archived_path": "before/create-completed-1440.png",
+      "storage": "External archive only"
+    },
+    {
+      "bytes": 90156,
+      "sha256": "ac5e5096e49ac75757b7de9d3788df77c57f0866a2248091fb46562947e4bdc7",
+      "archived_path": "before/create-no-definitions-390.png",
+      "storage": "External archive only"
+    },
+    {
+      "bytes": 51554,
+      "sha256": "a9f5ded9c542f8856244d34615d556a8a6ee7cd7bcb55159e119797e734ffe4a",
+      "archived_path": "before/docs-absent-390.png",
+      "storage": "External archive only"
+    },
+    {
+      "bytes": 55346,
+      "sha256": "4bf48440b27322c28fd9e1ad3d284b09e945109149384320f98b654ab5da0d6c",
+      "archived_path": "before/empty-390.png",
+      "storage": "External archive only"
+    },
+    {
+      "bytes": 42938,
+      "sha256": "20ba45cae56b57d9e054bd702036368b03d9fdbd153eb05572118456e864f475",
+      "archived_path": "before/sessions-disabled-390.png",
+      "storage": "External archive only"
+    },
+    {
+      "bytes": 67441,
+      "sha256": "7b1102fae52555cb65399bf5e5f27c8d496a253bc2ca74ed1d8723b104c70c8a",
+      "archived_path": "before/workflow-pending-390.png",
+      "storage": "External archive only"
+    }
+  ]
+}

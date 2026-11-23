@@ -22,6 +22,52 @@ related:
 
 # SpecFlow Engine ownership and transport boundaries
 
+## Engine component layers
+
+The Engine is the **offline-capable application boundary** shared by Runtime and short-lived
+CLI commands. These bands group owned capabilities; they are not mandatory directories or a
+strict import chain.
+
+```mermaid
+block-beta
+  columns 1
+  block:api
+    columns 2
+    apiTitle["1. Engine operations"]:2
+    apiCommand["Commands and write admission"]
+    apiReads["Verified reads and projections"]
+  end
+  block:capabilities
+    columns 3
+    capabilityTitle["2. Feature capabilities"]:3
+    capabilitySpecs["Specifications and workspaces"]
+    capabilityDocs["Documents, definitions and commits"]
+    capabilityTasks["Tasks and workflow adapter"]
+  end
+  block:coordination
+    columns 2
+    coordinationTitle["3. Coordination and invariants"]:2
+    coordinationClaims["Project lock and workspace claims"]
+    coordinationRecovery["Durable journals and recovery"]
+  end
+  block:dependencies
+    columns 3
+    dependenciesTitle["4. Dependencies"]:3
+    dependencyWorkflow["Workflow Kernel"]
+    dependencyGit["Git and filesystem adapters"]
+    dependencySchemas["Documents contracts"]
+  end
+```
+
+Runtime is **not** contained in this diagram: it is a separate caller and lifetime owner.
+The neutral workflow coordinator does not perform Git, filesystem or network I/O; the Engine's
+adapter interprets host annotations and applies effects. Engine's contracts import is restricted to
+`@nevo/specflow-contracts/documents`. Detailed rules belong to
+[Workflow kernel](../workflow/workflow-kernel.md),
+[Project Home](project-home-and-workspaces.md),
+[Workspace execution claims](workspace-execution-claims.md) and
+[ADR 0012](../decisions/0012-product-package-topology-and-dependency-direction.md).
+
 ## Engine boundary
 
 `@nevo/specflow-engine` owns verified Project Home discovery, physical workspace identity,
@@ -57,10 +103,13 @@ Engine-local operation records are **not** provider Session/Turn execution recor
 every native agent execution through an Engine workspace execution claim before it starts the
 process, and settles it only with proof that the process stopped.
 
-The workflow kernel exists in the Engine but is not yet called by the Runtime or the CLI: there is no
-workflow command, HTTP endpoint or continuation orchestrator, and Task reads still report
-`not_implemented`. Starting Sessions from continuation decisions, the agent completion signal and
-the Runtime projection are follow-ups (plan 06 F01, F02, F09). See
+The Runtime and offline CLI already expose Engine workflow operations, and the UI consumes Runtime
+workflow and Task projections. The neutral coordinator remains independent of transport and provider
+processes. Managed **agent step execution** is a separate integration with its own
+Runtime/Engine admission and finalize contract; the presence of manual workflow commands alone
+does not imply that a managed agent can execute a step.
+See [Workflow kernel](../workflow/workflow-kernel.md), [Specification workflow HTTP API](../../reference/api/specification-workflow.md),
+[CLI contract](../../reference/cli/nevo-specflow-contract.md) and
 [Runtime ownership](ownership-and-lifecycle.md).
 
 ## Sources of authority

@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Field, Separator, TextArea, TextInput, cn } from '@nevo/ui';
+import { Alert, Button, Field, Separator, TextArea, TextInput, cn } from '@nevo/ui';
 import { isApiError } from '../../../../api';
 import { FlowParentBack } from '../../../../app/navigation/ApplicationLocation';
 import { useAppServices } from '../../../../app/useAppServices';
@@ -27,6 +27,7 @@ import { startCreate } from '../operation/startCreate';
 import { useCreateLeaveGuard } from './useCreateLeaveGuard';
 import { useCreateOptions } from '../options/useCreateOptions';
 import { ArchetypeSection, type ArchetypeCatalogueState } from '../options/ArchetypeSection';
+import { archetypeAvailabilityProblem } from '../../archetypeAvailability';
 import {
   archetypeSelection,
   documentsToCreate,
@@ -112,7 +113,7 @@ export function CreateProjectForm({
   const archetypeState: ArchetypeCatalogueState = catalogue
     ? { status: 'ready', catalogue }
     : archetypes.isError
-      ? { status: 'error', retry: () => void archetypes.refetch() }
+      ? { status: 'error', retry: () => refreshArchetypes() }
       : { status: 'loading' };
 
   const createOptions = useCreateOptions({
@@ -162,6 +163,8 @@ export function CreateProjectForm({
   });
 
   const locked = createOptions.forbidden;
+  const unavailableArchetypes = archetypeAvailabilityProblem(catalogue);
+  const unavailableArchetypesId = useId();
   const { prerequisite, problemField, canSubmit } = projectCreateReadiness({
     title,
     goal,
@@ -169,15 +172,41 @@ export function CreateProjectForm({
     choice: place.choice,
     forbidden: createOptions.forbidden,
     archetypesLoading: archetypes.isPending,
-    archetypesFailed: archetypes.isError && !catalogue,
+    archetypesFailed: archetypes.isError,
     archetype,
-    noArchetypes: catalogue?.archetypes.length === 0,
+    archetypeUnavailable: unavailableArchetypes,
   });
 
   // Back from a name the Engine refused (invalid or too long path): the name says so until edited.
   const [nameRefused, setNameRefused] = useState(draft?.failure?.kind === 'name-invalid');
   const nameRef = useRef<HTMLInputElement>(null);
   const archetypeRef = useRef<HTMLDivElement>(null);
+  const catalogueRefreshFocus = useRef<HTMLElement | null>(null);
+
+  function refreshArchetypes() {
+    const active = document.activeElement;
+    catalogueRefreshFocus.current =
+      active instanceof HTMLElement && archetypeRef.current?.contains(active) ? active : null;
+    void archetypes.refetch();
+  }
+
+  useEffect(() => {
+    if (archetypes.isFetching) {
+      return;
+    }
+
+    const origin = catalogueRefreshFocus.current;
+    catalogueRefreshFocus.current = null;
+    if (
+      origin &&
+      !archetypes.isError &&
+      catalogue?.archetypes.length &&
+      (document.activeElement === origin ||
+        (!origin.isConnected && document.activeElement === document.body))
+    ) {
+      firstChoiceControl(archetypeRef.current)?.focus();
+    }
+  }, [archetypes.isFetching, archetypes.isError, catalogue]);
   const reason = prerequisite ? text(prerequisite) : undefined;
   const { tried, guide } = useCreateGuide({
     problemField,
@@ -273,8 +302,10 @@ export function CreateProjectForm({
           if (!canSubmit) {
             // Blocked by the form's values (a click, Enter or Space on Create, Enter in a field):
             // nothing is prepared or sent; lead to the first faulty field instead.
-            if (!locked) {
+            if (!locked && !unavailableArchetypes) {
               guide();
+            } else if (reason) {
+              announce(reason);
             }
 
             return;
@@ -286,8 +317,9 @@ export function CreateProjectForm({
       footer={
         <CreateFooter
           submitRef={submitRef}
-          prerequisite={reason}
-          note={t('create.project.footNote')}
+          prerequisite={unavailableArchetypes ? undefined : reason}
+          blockedDescriptionId={unavailableArchetypes ? unavailableArchetypesId : undefined}
+          note={unavailableArchetypes ? '' : t('create.project.footNote')}
           submitLabel={t('create.submit.create')}
           submitDisabled={locked}
           submitBlocked={!canSubmit}
@@ -345,13 +377,35 @@ export function CreateProjectForm({
             <div ref={archetypeRef} className="min-w-0">
               <ArchetypeSection
                 state={archetypeState}
+                unavailableReasonId={unavailableArchetypesId}
                 choice={archetypeChoice}
                 locked={locked}
                 onChange={setArchetypeChoice}
+                onRefresh={refreshArchetypes}
+                refreshing={archetypes.isFetching}
                 error={
-                  tried && catalogue && !archetype ? t('create.prerequisite.archetype') : undefined
+                  tried && catalogue && catalogue.archetypes.length > 0 && !archetype
+                    ? t('create.prerequisite.archetype')
+                    : undefined
                 }
               />
+              {archetypes.isError && catalogue && (
+                <Alert
+                  tone="attention"
+                  role="alert"
+                  title={t('create.archetype.refreshFailed')}
+                  className="mt-3 max-w-content-narrow"
+                >
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={archetypes.isFetching}
+                    onClick={refreshArchetypes}
+                  >
+                    {t('common.retry')}
+                  </Button>
+                </Alert>
+              )}
             </div>
           </div>
           {/* Between the stacked columns only: side by side, the gap separates them. */}

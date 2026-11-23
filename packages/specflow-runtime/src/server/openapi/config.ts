@@ -13,7 +13,7 @@ export type OpenApiDocumentedResponse = {
 } & (
   | {
       /** The media type of the body; absent for a response without a body. */
-      readonly mediaType?: 'text/event-stream';
+      readonly mediaType?: 'text/event-stream' | '*/*';
       readonly contract?: never;
     }
   | {
@@ -41,6 +41,11 @@ declare module 'fastify' {
      * schema: a JSON body is documented by its schema.
      */
     readonly openApiResponses?: Readonly<Record<number, OpenApiDocumentedResponse>>;
+    /**
+     * Permit a documentation-only 200 binary stream description to replace a Type.Any()
+     * response used solely for Fastify's reply typing. All other response/schema overlaps fail.
+     */
+    readonly openApiBinaryResponse?: true;
     /**
      * The route answers without an authenticated principal: it does not use request authorization
      * (login, logout, the authentication state, the Runtime info). Every other documented route

@@ -54,7 +54,14 @@ export const StartWorkflowRequestSchema = Type.Object(
      * of the projection). When the live workflow is another revision the start is refused with
      * `WORKFLOW_DEFINITION_CHANGED`.
      */
-    expectedWorkflowRevision: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
+    expectedWorkflowRevision: Type.Optional(
+      Type.String({
+        minLength: 1,
+        maxLength: 128,
+        description:
+          'Revision confirmed in the workflow projection before first Task start; a mismatch refuses WORKFLOW_DEFINITION_CHANGED.',
+      }),
+    ),
   },
   { additionalProperties: false },
 );
@@ -112,7 +119,13 @@ export const FinishWorkflowRequestSchema = Type.Object(
      * projection): the complete list of the Specification's draft Tasks after the finish, possibly
      * empty. A listed draft is revised, an unlisted one cancelled.
      */
-    tasks: Type.Optional(Type.Array(TaskProposalSchema, { maxItems: 100 })),
+    tasks: Type.Optional(
+      Type.Array(TaskProposalSchema, {
+        maxItems: 100,
+        description:
+          'Complete list of draft Tasks owned by this producing step; omitted owned drafts are cancelled, unrelated drafts unaffected.',
+      }),
+    ),
     /**
      * Only for a Specification step: status decisions on its Tasks, applied after `tasks` and
      * before the transition's effects; one decision that is not allowed rejects the whole finish. A
@@ -120,7 +133,11 @@ export const FinishWorkflowRequestSchema = Type.Object(
      * (`resolvableByFinish` in the projection).
      */
     taskDecisions: Type.Optional(
-      Type.Array(TaskDecisionSchema, { maxItems: TASKS_PER_SPECIFICATION_MAX }),
+      Type.Array(TaskDecisionSchema, {
+        maxItems: TASKS_PER_SPECIFICATION_MAX,
+        description:
+          'Specification-only Task status decisions, applied after tasks and before transition effects; a Task finish rejects this field.',
+      }),
     ),
   },
   { additionalProperties: false },
@@ -260,9 +277,18 @@ export const FinishWorkflowResultSchema = Type.Object({
   createdTasks: Type.Array(TaskIdSchema),
   specification: Type.Optional(WorkflowContinuationSchema),
   /** The request repeated the last finish: nothing changed, the result is the recorded one. */
-  replayed: Type.Optional(Type.Literal(true)),
+  replayed: Type.Optional(
+    Type.Literal(true, {
+      description: 'Same successful finish was replayed; no workflow state transition was rerun.',
+    }),
+  ),
   /** The post actions that ran after the finish; absent when none ran. */
-  postActions: Type.Optional(Type.Array(PostActionResultSchema)),
+  postActions: Type.Optional(
+    Type.Array(PostActionResultSchema, {
+      description:
+        'Effects attempted after the finish was recorded; their failure does not undo the successful finish.',
+    }),
+  ),
 });
 export type FinishWorkflowResult = Static<typeof FinishWorkflowResultSchema>;
 

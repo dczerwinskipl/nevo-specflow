@@ -694,7 +694,7 @@ export const UnavailableNewWorkspaceWithReason: Story = {
     const tile = await canvas.findByRole('radio', { name: 'Nowe środowisko pracy' });
     await expect(tile).toHaveAttribute('aria-disabled', 'true');
     await expect(tile).not.toBeChecked();
-    await expect(canvas.getByText('Wyłączone w konfiguracji projektu.')).toBeVisible();
+    await expect(canvas.getByText('Git jest wyłączony w konfiguracji projektu.')).toBeVisible();
     await expect(canvas.getByRole('radio', { name: 'Bieżący katalog' })).toBeChecked();
     for (const width of [390, 1440]) {
       await expectNoOverflow(width);
@@ -754,9 +754,9 @@ async function changeRow(
   name: 'Zacznij od' | 'Scal do' | 'Nazwa gałęzi',
   label: 'Zmień' | 'Przywróć domyślne' = 'Zmień',
 ) {
-  await userEvent.click(
-    within(canvas.getByRole('group', { name })).getByRole('button', { name: `${label}: ${name}` }),
-  );
+  // Workspace choices render before the asynchronous Git options finish loading.
+  const row = await canvas.findByRole('group', { name });
+  await userEvent.click(within(row).getByRole('button', { name: `${label}: ${name}` }));
 }
 
 export const DefaultCreateSendsOnlyTheNewWorktreeKind: Story = {
@@ -1722,5 +1722,41 @@ export const LedFieldStaysClearOfThePinnedFooterOnMobile: Story = {
       await expect(error.getBoundingClientRect().bottom).toBeLessThanOrEqual(viewport.bottom + 1);
     });
     await settleViewport();
+  },
+};
+
+/** An unusable starting commit is a form prerequisite, so it never reaches the Create API. */
+export const UnusableStartingConfigurationBlocksClickAndEnter: Story = {
+  render: () => <Fixture optionsVariants={['base-config-unusable']} />,
+  play: async ({ canvas, userEvent }) => {
+    await openManualForm(canvas, userEvent);
+    const name = canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' });
+    await expect(name).toHaveValue('Nowa obsługa płatności');
+    await expect(
+      within(canvas.getByRole('radiogroup', { name: 'Archetyp' })).getByRole('radio', {
+        name: /Feature/,
+      }),
+    ).toBeChecked();
+    await expect(submit(canvas)).toHaveAttribute('aria-disabled', 'true');
+    await expect(submit(canvas)).not.toBeDisabled();
+
+    await userEvent.click(submit(canvas));
+    const base = await canvas.findByRole('combobox', { name: 'Zacznij od' });
+    await waitFor(() => expect(base).toHaveFocus());
+    await expect(base).toHaveAttribute('aria-invalid', 'true');
+    await expect(canvas.getByRole('group', { name: 'Zacznij od' })).toHaveTextContent(
+      'Nie można utworzyć nowego środowiska. Żadna gałąź nie ma poprawnych ustawień SpecFlow.',
+    );
+    await expect(canvas.getByRole('group', { name: 'Zacznij od' })).not.toHaveTextContent(
+      'Wybierz inną',
+    );
+    await expect(createRequests).toHaveLength(0);
+
+    name.focus();
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(base).toHaveFocus());
+    await expect(base).toHaveAttribute('aria-invalid', 'true');
+    await expect(submit(canvas)).toHaveAttribute('aria-disabled', 'true');
+    await expect(createRequests).toHaveLength(0);
   },
 };

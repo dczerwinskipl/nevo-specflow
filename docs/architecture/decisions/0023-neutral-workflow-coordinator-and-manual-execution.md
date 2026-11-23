@@ -72,14 +72,14 @@ Behaviour: [Workflow kernel](../workflow/workflow-kernel.md). HTTP:
    owner: being on hold alone is still not attention, but a Task on hold that the user must resume or
    cancel is: escalated with no Specification step deciding it, waited on directly by an open Task,
    or keeping the active step from finishing to `completed`; see "Held Tasks" in the kernel.) The
-   rules are in [Workflow kernel](../workflow/workflow-kernel.md#continuation-and-attention).
+   rules are in [Workflow kernel](../workflow/workflow-continuation-and-attention.md#continuation-and-attention).
 10. **Three concerns stay apart.** The Engine owns workflow state and exposes neutral Task facts; the
     attention projection owns attention; grouping is declarative presentation data of the Runtime. The
     CLI and MCP read facts without groups, and the UI renders what it receives.
 11. **Gates.** A work step may declare entry and exit gates (first type `document`; `command` and
     `human` later, F03). They are SpecFlow annotations, covered by the pin, inspected read-only by the
     projection and enforced inside the lock before any write
-    ([Workflow kernel, Gates](../workflow/workflow-kernel.md#gates)).
+    ([Workflow kernel, Gates](../workflow/workflow-definitions-and-gates.md#gates)).
 12. **Step titles.** Every workflow, step, transition and return has a one-line title; surfaces show it
     and keep the id as the reference.
 

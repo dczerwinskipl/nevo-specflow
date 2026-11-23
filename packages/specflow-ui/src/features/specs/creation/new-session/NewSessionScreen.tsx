@@ -113,6 +113,11 @@ function StartRefused({
               : 'sessionStart.sessionsDisabled',
           )}
         </Typography>
+        {refusal === 'sessions_disabled' ? (
+          <Typography as="p" variant="body-sm" className="wrap-anywhere text-content-secondary">
+            {t('sessionStart.sessionsDisabledHelp')}
+          </Typography>
+        ) : null}
       </div>
     </CreateFallback>
   );

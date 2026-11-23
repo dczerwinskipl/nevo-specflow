@@ -32,7 +32,7 @@ reused path or branch name is not an equivalent workspace. Primary is not a mana
 
 ## Verification trust model: Git on mutations, disk on reads
 
-Reads must be fast and must not spawn Git. Verification is split by what an operation does.
+Read verification must be fast and must not spawn Git. Verification is split by what an operation does.
 
 | Moment                                                                                                                                   | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                    | Git |
 | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- |
@@ -40,6 +40,17 @@ Reads must be fast and must not spawn Git. Verification is split by what an oper
 | Each read request (overview, workspace, documents, tasks, create-options, registry)                                                      | Cached identity plus disk checks: home marker still carries the same project/instance/common-dir identity, the Git instance sentinel is intact, `realpath(root) === root`, the checkout's `.git` link resolves to the verified common directory (a linked `.git` file must be mirrored by the admin directory's `gitdir` back-link), the linked identity marker matches the registered incarnation, registry revision and primary identity. | no  |
 | Each mutation (create with a new-worktree target or with Git enabled, close/integrate, archive, registry writes, control-lock admission) | Full resolution again, ignore-rule audit of the linked identity marker, and the REGISTRY_CONFLICT revision checks.                                                                                                                                                                                                                                                                                                                          | yes |
 | Create into an existing workspace of a project with `git.enabled: false`                                                                 | The disk checks of a read, re-run at every admission step (not memoised); no Git is involved in the operation.                                                                                                                                                                                                                                                                                                                              | no  |
+
+Git-enabled reads whose result includes Git facts may run the bounded queries inherent in those
+facts, without repeating identity or ignore-rule verification. The workspace list reads one
+`worktree list` and one `status` per attached, available checkout. Create options also read one
+`for-each-ref`, resolve each offered base and the configured default with `rev-parse`, and inspect
+committed `.nevo/config.yaml` with `ls-tree` plus `show` for regular files. Configuration inspection
+is shared by refs naming the same commit within one request; the next request inspects again.
+For healthy attached workspaces and regular configuration files this is
+`2 + workspace count + base-ref count + 1 + 2 × unique base/default commit count` processes.
+Registry-only, canonical overview, workspace and document reads still start no Git processes,
+and Git-disabled reads never run these inherent fact queries either.
 
 A workflow mutation (a step start, finish, return or abandon, a Task change, together with the
 post actions of a finish) proves the Project Home **once per operation**: its first control-lock
@@ -61,6 +72,14 @@ next mutation or by reopening the Engine. Reads in a Git-disabled project answer
 and the filesystem alone, report no branch or dirty state, and `create-options` reports
 `newWorktree` as disabled with reason `git-disabled`. The Engine still needs Git once at open to
 establish Project Home; a project that is not a Git repository is not supported.
+
+## Project dependencies in a new worktree
+
+A managed linked worktree starts from the tracked Git base. It does not copy ignored directories
+such as `node_modules` from another checkout. Create does not run a package installer or a project's
+setup/build scripts. Before running tests there, run that project's documented dependency and build
+setup inside the new checkout. Automatic environment provisioning is a separate workspace-lifecycle
+capability, not an implicit effect of creating a Specification or starting a Session.
 
 ## Canonical discovery
 

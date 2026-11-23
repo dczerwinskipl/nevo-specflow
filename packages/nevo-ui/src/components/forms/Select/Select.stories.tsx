@@ -1,4 +1,8 @@
 import { useState } from 'react';
+import {
+  assertStackedOptionText,
+  assertSelectionPreservesContent,
+} from '../shared/optionTextGeometry.stories-support';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { DesignCaptureProvider } from '@nevo/figma-capture/metadata';
 import { Badge } from '../../feedback/Badge';
@@ -166,9 +170,9 @@ function SelectItemMatrix() {
 
 function BranchLabel({ name }: { name: string }) {
   return (
-    <span className="inline-flex min-w-0 items-center gap-1">
+    <span className="inline-flex w-full min-w-0 items-start gap-1">
       <Icon name="branch" size="sm" />
-      <Typography as="span" className="min-w-0 truncate" variant="code-md">
+      <Typography as="span" className="min-w-0 whitespace-normal wrap-anywhere" variant="code-md">
         {name}
       </Typography>
     </span>
@@ -179,7 +183,7 @@ const longBranch = 'feature/platform-wide-integration-of-the-new-workspace-lifec
 const longReason =
   'Has unsaved changes in the working tree. Save or discard them before using this branch as a merge target.';
 
-/** Branch option contract: icon + code-md name, wrapping description, trailing meta badge. */
+/** Branch option contract: icon + code-md name, wrapping name, metadata and reason. */
 function BranchSelect({
   defaultValue = 'develop',
   open,
@@ -400,7 +404,7 @@ export const ItemStateCapture: Story = {
     designCapture: {
       component: 'SelectItem',
       title: 'Select item',
-      description: 'Listbox option states with a selected check indicator',
+      description: 'Listbox option states with a non-layout selected accent',
       kind: 'component',
       order: 38,
     },
@@ -442,8 +446,8 @@ export const DescribedItems: Story = {
     const label = develop.querySelector<HTMLElement>('[data-design-slot="label"]');
     assert(meta && label, 'Meta and label should render.');
     assert(
-      meta.getBoundingClientRect().left >= label.getBoundingClientRect().right,
-      'Meta should sit to the right of the label.',
+      meta.getBoundingClientRect().top >= label.getBoundingClientRect().bottom,
+      'Metadata follows the label on its own line.',
     );
     const plain = optionByText('Plain single-line option');
     assert(plain.getAttribute('aria-describedby') === null, 'Plain items stay unchanged.');
@@ -520,7 +524,14 @@ export const LongTextAt320: Story = {
     );
     const label = option.querySelector<HTMLElement>('[data-design-slot="label"]');
     assert(label, 'The label should render.');
-    assert(label.scrollWidth >= label.clientWidth, 'The main label stays single-line.');
+    assert(
+      label.scrollWidth <= label.clientWidth + 1,
+      'The full main label wraps inside its slot.',
+    );
+    assert(
+      label.getBoundingClientRect().height > parseFloat(getComputedStyle(label).lineHeight) * 1.5,
+      'A long name uses several lines.',
+    );
     assert(
       listbox.scrollWidth <= listbox.clientWidth + 1,
       'Long text must not overflow the listbox horizontally.',
@@ -568,5 +579,130 @@ export const KeyboardNavigation: Story = {
       trigger.getBoundingClientRect().height === initialHeight,
       'The trigger stays a single line.',
     );
+  },
+};
+
+export const NarrowDescriptionAndMetadata: Story = {
+  tags: ['contract', '!autodocs'],
+  render: () => (
+    <Field className="w-64">
+      <Field.Label>Starting branch</Field.Label>
+      <Select defaultValue="chosen">
+        <SelectTrigger>
+          <SelectValue placeholder="Choose a branch" />
+        </SelectTrigger>
+        <SelectContent aria-label="Starting branches">
+          <SelectItem
+            value="chosen"
+            className="selection-contract-option"
+            description="Configuration ready"
+            meta={<Badge>Ready</Badge>}
+          >
+            <BranchLabel name="feature/a-long-starting-branch-name-that-must-wrap-and-remain-fully-readable" />
+          </SelectItem>
+          <SelectItem
+            value="other"
+            className="selection-contract-option"
+            description="Configuration ready"
+            meta={<Badge>Ready</Badge>}
+          >
+            <BranchLabel name="feature/a-long-starting-branch-name-that-must-wrap-and-remain-fully-readable" />
+          </SelectItem>
+          <SelectItem value="available">main</SelectItem>
+          <SelectItem
+            value="invalid"
+            unavailable
+            description="Niepoprawny YAML"
+            meta="ma środowisko pracy · zmiany"
+          >
+            feature/setup
+          </SelectItem>
+          <SelectItem
+            value="long"
+            unavailable
+            description="NiepoprawnaKonfiguracjaProjektuSpecFlow"
+            meta="ma środowisko pracy · zmiany"
+          >
+            feature/long
+          </SelectItem>
+        </SelectContent>
+      </Select>
+    </Field>
+  ),
+  play: async ({ canvas, userEvent }) => {
+    const { page } = await import('vitest/browser');
+    const previous = { width: window.innerWidth, height: window.innerHeight };
+    try {
+      await page.viewport(320, 640);
+      await waitFor(() => window.innerWidth === 320, 'The viewport must reach 320 px.');
+      // Radix closes its content on resize; let that browser event finish before opening it.
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const trigger = canvas.getByRole('combobox', { name: 'Starting branch' });
+      assert(trigger.getBoundingClientRect().width <= 256, 'The source control must stay narrow.');
+      const closedName = trigger.querySelector<HTMLElement>('.font-mono');
+      assert(
+        closedName && getComputedStyle(closedName).whiteSpace === 'nowrap',
+        'A nested closed value stays single-line while its open option wraps.',
+      );
+      trigger.focus();
+      await userEvent.keyboard('{Enter}');
+      const list = await waitFor(openListbox, 'The source options must open.');
+      await document.fonts.ready;
+      // Compare settled geometry, not different frames of the scale-in animation.
+      await Promise.all(list.getAnimations().map((animation) => animation.finished));
+      const focused = await waitFor(
+        () => list.querySelector<HTMLElement>('[data-highlighted]'),
+        'Keyboard navigation must focus an option.',
+      );
+      assert(
+        getComputedStyle(focused).outlineStyle === 'solid' &&
+          parseFloat(getComputedStyle(focused).outlineWidth) > 0,
+        'Keyboard focus has a visible outline independent of the selected background.',
+      );
+      const options = list.querySelectorAll<HTMLElement>('[data-unavailable]');
+      assert(options.length === 2, 'Both unavailable reasons must be listed.');
+      for (const option of options) {
+        assertStackedOptionText(option, 'select');
+      }
+
+      const pair = list.querySelectorAll<HTMLElement>('.selection-contract-option');
+      assert(pair.length === 2, 'Selected and unselected twins must be listed.');
+      assertSelectionPreservesContent(pair[0]!, pair[1]!, 'select');
+      assertStackedOptionText(pair[0]!, 'select');
+      const metadata = pair[0]!.querySelector<HTMLElement>('[data-select-item-part=meta]')!;
+      assert(
+        metadata.getBoundingClientRect().width < pair[0]!.getBoundingClientRect().width / 2,
+        'A Badge keeps its natural width.',
+      );
+      const labelSelector = '[data-design-slot=label]';
+      const before = pair[0]!.querySelector<HTMLElement>(labelSelector)!.getBoundingClientRect();
+      await userEvent.click(pair[1]!);
+      await waitFor(() => !openListbox(), 'Choosing another source closes the list.');
+      trigger.focus();
+      await userEvent.keyboard('{Enter}');
+      const changedList = await waitFor(openListbox, 'The options reopen after selection.');
+      await Promise.all(changedList.getAnimations().map((animation) => animation.finished));
+      const changedPair = changedList.querySelectorAll<HTMLElement>('.selection-contract-option');
+      assertSelectionPreservesContent(changedPair[1]!, changedPair[0]!, 'select');
+      const after = changedPair[0]!
+        .querySelector<HTMLElement>(labelSelector)!
+        .getBoundingClientRect();
+      assert(
+        Math.abs(after.width - before.width) < 1 && Math.abs(after.height - before.height) < 1,
+        `Changing selection keeps the name geometry stable: before ${before.width}x${before.height}, after ${after.width}x${after.height}.`,
+      );
+    } finally {
+      if (openListbox()) {
+        await userEvent.keyboard('{Escape}');
+        await waitFor(() => !openListbox(), 'The source options must close.');
+      }
+
+      await page.viewport(previous.width, previous.height);
+      await waitFor(
+        () => window.innerWidth === previous.width,
+        'The previous viewport must be restored.',
+      );
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    }
   },
 };

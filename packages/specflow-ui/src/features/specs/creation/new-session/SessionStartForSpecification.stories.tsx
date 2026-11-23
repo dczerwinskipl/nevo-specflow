@@ -148,7 +148,7 @@ export const Open: Story = {
     await expect(composer(canvas)).toBeDisabled();
     await expect(composer(canvas)).toHaveAttribute(
       'placeholder',
-      'Wybierz agenta i rozpocznij sesję',
+      'Rozpocznij sesję, aby wysłać wiadomość',
     );
     await expect(canvas.queryByRole('button', { name: /Wybierz tryb pracy/ })).toBeNull();
     await expect(canvas.getByRole('button', { name: 'Wyślij' })).toBeDisabled();
@@ -171,7 +171,7 @@ export const ClaudeModelChosen: Story = {
     await expect(canvas.getByRole('radio', { name: 'Accept edits' })).toBeChecked();
     await expect(startButton(canvas)).toBeEnabled();
     await expect(
-      canvas.getByText('Sesja otworzy się bez wiadomości, a agent nada jej nazwę po pierwszej.'),
+      canvas.getByText('Sesja otworzy się bez wiadomości. Nazwę możesz nadać później.'),
     ).toBeVisible();
     // Context mirrors the choice (field value and executor row); the Composer stays inactive.
     await expect(inContext(canvas, 'claude model A')).toBe(true);
@@ -364,18 +364,18 @@ export const StartSessionsDisabled: Story = {
 };
 
 /**
- * The whole flow by interaction, with the allocation it sends: the agent names the Session, so the
+ * The whole flow by interaction, with the allocation it sends: no name is supplied, so the
  * Session opens as "New session" with the ready empty state and a focused Composer, and no effort
  * is sent at the provider default.
  */
-export const AgentNamesSession: Story = {
+export const UnnamedSession: Story = {
   play: async ({ canvas }) => {
     await settle();
     // (a) The Specification is the pinned, read-only context: no first message, no workspace section.
     await expect(await canvas.findByText('Logowanie SSO')).toBeVisible();
     await expect(canvas.queryByRole('textbox', { name: 'Pierwsza wiadomość' })).toBeNull();
     await expect(canvas.queryByText('Miejsce pracy')).toBeNull();
-    // (c) The default is legible before starting: the name is optional, empty means the agent names it.
+    // (c) The name is optional: an empty field starts an unnamed Session.
     await expect(canvas.getByRole('textbox', { name: /Nazwa sesji/ })).toHaveValue('');
     // (b) Tiles, then the labelled fields.
     await expect(provider(canvas, /Codex/)).toBeChecked();
@@ -397,9 +397,8 @@ export const AgentNamesSession: Story = {
     await expect(canvas.queryByRole('button', { name: 'Rozpocznij sesję' })).toBeNull();
     await expect(canvas.getByRole('heading', { level: 1, name: 'Nowa sesja' })).toBeVisible();
     await waitFor(() => expect(composer(canvas)).toHaveFocus());
-    // The first message is written in the Session itself and reaches the Runtime. (Naming the
-    // Session from it is not part of this composition: the Session screen has no naming state yet,
-    // see the contract's section 10; `Session Naming Status` stories cover that flow.)
+    // The first message is written in the Session itself and reaches the Runtime.
+    // Sending it does not promise automatic naming.
     await userEvent.type(composer(canvas), firstMessage);
     await userEvent.click(canvas.getByRole('button', { name: 'Wyślij' }));
     await waitFor(() =>
@@ -409,7 +408,7 @@ export const AgentNamesSession: Story = {
   },
 };
 
-/** Scenario (c) alternative: an own name in the optional field; cleared, the agent names it again. */
+/** Scenario (c) alternative: an own name in the optional field; blank means unnamed. */
 export const OwnName: Story = {
   play: async ({ canvas }) => {
     await settle();
@@ -418,11 +417,11 @@ export const OwnName: Story = {
     const field = canvas.getByRole('textbox', { name: /Nazwa sesji/ });
     await expect(field).toHaveAttribute('maxlength', '256');
     await expect(field).toHaveAttribute('placeholder', 'Nowa sesja');
-    await expect(canvas.getByText(/agent nada jej nazwę/)).toBeVisible();
-    // Blank is not an own name: Start stays possible and the agent names the Session.
+    await expect(canvas.getByText(/Nazwę możesz nadać później/)).toBeVisible();
+    // Whitespace is not an own name: Start stays possible and the Session stays unnamed.
     await userEvent.type(field, '   ');
     await expect(startButton(canvas)).toBeEnabled();
-    await expect(canvas.getByText(/agent nada jej nazwę/)).toBeVisible();
+    await expect(canvas.getByText(/Nazwę możesz nadać później/)).toBeVisible();
     await userEvent.clear(field);
     await userEvent.type(field, 'Przegląd SSO — błędy');
     await expect(

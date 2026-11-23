@@ -108,6 +108,8 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
       schema: {
         tags: ['Specifications'],
         summary: 'Read the options of a Specification creation',
+        description:
+          'Read-only admission options for Specification Create, requiring project-wide spec.create. Snapshot only: not a branch/workspace reservation. Options contain Create facts keyed by workspaceId, joined to the separately authorized GET /api/workspaces; specCount counts all occupants, not only viewable ones. worktreesRoot.path is an absolute machine-local directory exposed to any Create-capable principal; clients needing workspace names/paths also require workspace.view. Invalid Git policy produces 200 with Git-dependent choices marked unavailable, while Create mutations fail closed. Inspect current policy and registry again on mutation.',
         response: {
           200: CreateOptionsSchema,
           400: contractRef(CreateSpecErrorSchema),
@@ -182,9 +184,19 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
         capability: SpecCapabilities.capabilities.Create,
         scope: {},
       }),
+      config: {
+        openApiParameters: {
+          header: {
+            'If-None-Match':
+              'ETag from an earlier archetype catalogue response; when unchanged the server returns 304 without a body.',
+          },
+        },
+      },
       schema: {
         tags: ['Specifications'],
         summary: 'List the Specification archetypes',
+        description:
+          'List project archetype definitions for Create. Requires project-wide spec.create. ETag is the catalogue revision; If-None-Match may yield 304. Client must select archetype id, integer version and catalogue revision; there is no implicit default archetype for the request. Unreadable or missing definitions are not silently replaced by demo fixtures.',
         response: {
           200: ArchetypeCatalogueSchema,
           304: Type.Null(),
@@ -222,6 +234,8 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
       schema: {
         tags: ['Operations'],
         summary: 'Read the status of a Specification creation',
+        description:
+          'Read-only sanitized observation of one Specification Create operation, requiring project-wide spec.create. A running operation, remembered failure, recovery-required journal or completed result are distinguished by the response union. Does not run Git, initiate recovery, claim process liveness or disclose filesystem paths/internal journal stages. After an uncertain response poll this endpoint with the original operationId; never issue a fresh Create. An idle journal can be recovery-required with OPERATION_INTERRUPTED.',
         params: CreateOperationParamsSchema,
         response: {
           200: CreateOperationInspectionSchema,
@@ -329,13 +343,35 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
         capability: SpecCapabilities.capabilities.Create,
         scope: {},
       }),
+      config: {
+        openApiParameters: {
+          header: {
+            Prefer:
+              'RFC 7240 request preference; respond-async asks the Runtime to validate and reserve before returning 202. Clients must also handle synchronous 201.',
+          },
+        },
+      },
       schema: {
         tags: ['Specifications'],
         summary: 'Create a Specification',
+        description:
+          'Create a Specification and its selected archetype documents atomically under Engine admission. Requires project-wide spec.create. Omitted target means primary checkout; explicit existing/new-worktree choices use registered workspaces and validated Git policy. Body limit is 2 MiB. A retry MUST reuse the same operationId and identical request; changed data yields 409 CREATE_CONFLICT. With Prefer: respond-async, the Runtime validates/reserves and returns 202 with Location and Preference-Applied while detached work continues, even after client disconnect. Without the preference, successful Create normally returns 201. The inspection route reports the outcome; SSE is optional and display-only. Git-off success may contain uncommitted:true. Invalid Git policy fails closed.',
         body: CreateSpecRequestSchema,
         response: {
           201: CreatedSpecSchema,
-          202: CreateOperationAcceptedSchema,
+          202: {
+            ...CreateOperationAcceptedSchema,
+            headers: {
+              Location: {
+                type: 'string',
+                description: 'Path of the accepted Create operation inspection resource.',
+              },
+              'Preference-Applied': {
+                type: 'string',
+                description: 'respond-async, when the asynchronous preference was honored.',
+              },
+            },
+          },
           400: contractRef(CreateSpecErrorSchema),
           401: contractRef(AuthenticationRequiredErrorResponseSchema),
           403: contractRef(AuthorizationForbiddenErrorResponseSchema),

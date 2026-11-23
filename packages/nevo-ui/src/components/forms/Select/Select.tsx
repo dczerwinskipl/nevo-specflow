@@ -20,10 +20,11 @@ import { Icon } from '../../foundations/Icon';
 import { Typography } from '../../foundations/Typography';
 import { useFieldControl } from '../Field';
 import {
-  optionDescriptionClassName,
+  dropdownOptionDescriptionClassName,
   optionItemClassName,
-  optionLabelClassName,
+  dropdownOptionLabelClassName,
   optionMetaClassName,
+  optionSelectionAccentClassName,
 } from '../shared/optionRecipes';
 import { isAriaInvalid } from '../shared/textControlState';
 
@@ -56,7 +57,7 @@ export const SelectGroup = SelectPrimitive.Group;
 export const selectTriggerDefaults = { state: 'default' } as const;
 
 export const selectTriggerVariants = tv({
-  base: 'select-trigger inline-flex h-control-height-default w-full min-w-0 cursor-pointer items-center justify-between gap-2 overflow-hidden rounded-control border border-solid bg-surface-control px-control-padding-default text-left text-body-md text-content-primary transition-colors data-[placeholder]:text-content-placeholder disabled:cursor-not-allowed [&>[data-design-slot=value]]:min-w-0 [&>[data-design-slot=value]]:flex-1 [&>[data-design-slot=value]]:overflow-hidden [&>[data-design-slot=value]]:text-ellipsis [&>[data-design-slot=value]]:whitespace-nowrap [&>[data-design-slot=value]>*]:block [&>[data-design-slot=value]>*]:overflow-hidden [&>[data-design-slot=value]>*]:text-ellipsis [&>[data-design-slot=value]>*]:whitespace-nowrap',
+  base: 'select-trigger inline-flex h-control-height-default w-full min-w-0 cursor-pointer items-center justify-between gap-2 overflow-hidden rounded-control border border-solid bg-surface-control px-control-padding-default text-left text-body-md text-content-primary transition-colors data-[placeholder]:text-content-placeholder disabled:cursor-not-allowed [&>[data-design-slot=value]]:min-w-0 [&>[data-design-slot=value]]:flex-1 [&>[data-design-slot=value]]:overflow-hidden [&>[data-design-slot=value]]:text-ellipsis [&>[data-design-slot=value]]:whitespace-nowrap [&>[data-design-slot=value]>*]:block [&>[data-design-slot=value]>*]:overflow-hidden [&>[data-design-slot=value]>*]:text-ellipsis [&>[data-design-slot=value]>*]:whitespace-nowrap [&>[data-design-slot=value]_*]:whitespace-nowrap [&>[data-design-slot=value]_*]:text-ellipsis [&>[data-design-slot=value]_*]:overflow-hidden',
   variants: {
     state: {
       default: 'border-border-default',
@@ -68,7 +69,10 @@ export const selectTriggerVariants = tv({
   defaultVariants: selectTriggerDefaults,
 });
 
-export type SelectTriggerProps = ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>;
+export type SelectTriggerProps = ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger> & {
+  /** Use message only with a persistent visible error; invalid semantics and focus stay intact. */
+  invalidAppearance?: 'border' | 'message';
+};
 
 export const SelectTrigger = forwardRef<
   ComponentRef<typeof SelectPrimitive.Trigger>,
@@ -82,6 +86,7 @@ export const SelectTrigger = forwardRef<
     className,
     disabled: disabledProp,
     id,
+    invalidAppearance = 'border',
     ...props
   },
   ref,
@@ -102,6 +107,7 @@ export const SelectTrigger = forwardRef<
       ref={ref}
       aria-describedby={field.ariaDescribedBy}
       aria-invalid={field.ariaInvalid}
+      data-invalid-appearance={invalidAppearance}
       autoFocus={autoFocus}
       className={cn(selectTriggerVariants({ state }), className)}
       disabled={field.disabled}
@@ -180,7 +186,7 @@ export const SelectContent = forwardRef<
 export type SelectItemProps = ComponentPropsWithoutRef<typeof SelectPrimitive.Item> & {
   /** Secondary line under the label. Wraps, stays readable when the item is disabled/unavailable. */
   description?: ReactNode;
-  /** Trailing right-aligned slot (text or Badge). Never shown in the trigger value. */
+  /** Metadata below the label (text or Badge), before the reason. Never shown in the trigger value. */
   meta?: ReactNode;
   /**
    * Keeps the item reachable (focus, arrow keys, screen readers) but blocks selection.
@@ -190,7 +196,7 @@ export type SelectItemProps = ComponentPropsWithoutRef<typeof SelectPrimitive.It
   unavailable?: boolean;
 };
 
-const selectItemLabelClassName = optionLabelClassName;
+const selectItemLabelClassName = dropdownOptionLabelClassName;
 
 /** Root class contract for an item; shared with `Combobox` through `optionRecipes`. */
 export const selectItemClassName = optionItemClassName;
@@ -225,7 +231,7 @@ export const SelectItem = forwardRef<ComponentRef<typeof SelectPrimitive.Item>, 
       state: blocked ? 'disabled' : autoFocus ? 'highlighted' : 'default',
     });
     const describedBy =
-      [hasDescription ? descriptionId : null, hasMeta ? metaId : null].filter(Boolean).join(' ') ||
+      [hasMeta ? metaId : null, hasDescription ? descriptionId : null].filter(Boolean).join(' ') ||
       undefined;
     const block = (event: { preventDefault: () => void }) => event.preventDefault();
 
@@ -255,7 +261,6 @@ export const SelectItem = forwardRef<ComponentRef<typeof SelectPrimitive.Item>, 
         {...(unavailable ? { 'aria-disabled': true } : {})}
         autoFocus={autoFocus}
         className={cn(selectItemClassName({ keepsReasonReadable, unavailable }), className)}
-        data-design-token-background={autoFocus ? 'Color/surface-hover' : undefined}
         data-unavailable={unavailable ? '' : undefined}
         disabled={disabled}
         onClick={(event) => {
@@ -280,21 +285,9 @@ export const SelectItem = forwardRef<ComponentRef<typeof SelectPrimitive.Item>, 
         {...capture}
       >
         {structured ? (
-          <>
-            <span className="flex min-w-0 flex-1 flex-col">
-              <span className={cn('flex min-w-0', keepsReasonReadable && 'opacity-50')}>
-                {label}
-              </span>
-              {hasDescription ? (
-                <Typography
-                  className={optionDescriptionClassName}
-                  id={descriptionId}
-                  data-select-item-part="description"
-                  variant="body-sm"
-                >
-                  {description}
-                </Typography>
-              ) : null}
+          <span className="flex w-full min-w-0 flex-col items-start gap-0.5">
+            <span className={cn('flex w-full min-w-0', keepsReasonReadable && 'opacity-50')}>
+              {label}
             </span>
             {hasMeta ? (
               <span
@@ -305,17 +298,26 @@ export const SelectItem = forwardRef<ComponentRef<typeof SelectPrimitive.Item>, 
                 {meta}
               </span>
             ) : null}
-          </>
+            {hasDescription ? (
+              <Typography
+                className={dropdownOptionDescriptionClassName}
+                id={descriptionId}
+                data-select-item-part="description"
+                variant="body-sm"
+              >
+                {description}
+              </Typography>
+            ) : null}
+          </span>
         ) : (
           label
         )}
         <SelectPrimitive.ItemIndicator asChild>
           <span
-            className="absolute right-control-padding-compact inline-flex text-content-primary"
+            aria-hidden="true"
+            className={optionSelectionAccentClassName}
             {...designSlot('SelectItem', 'indicator')}
-          >
-            <Icon name="check" size="sm" />
-          </span>
+          />
         </SelectPrimitive.ItemIndicator>
       </SelectPrimitive.Item>
     );

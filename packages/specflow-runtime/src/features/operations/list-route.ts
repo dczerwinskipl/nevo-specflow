@@ -34,8 +34,21 @@ export const OPERATION_LIST_QUERY_INVALID_CODE = 'OPERATION_LIST_QUERY_INVALID';
  */
 export const OperationListQueryStringSchema = Type.Object(
   {
-    status: Type.Optional(Type.String({ minLength: 1, maxLength: 200 })),
-    limit: Type.Optional(Type.String({ pattern: '^[0-9]{1,3}$' })),
+    status: Type.Optional(
+      Type.String({
+        minLength: 1,
+        maxLength: 200,
+        description:
+          'Optional comma-separated list of statuses, from in-progress,recovery-required,failed,completed,queued,scheduled. Omitted means all. Unknown/empty filter returns 400 OPERATION_LIST_QUERY_INVALID.',
+      }),
+    ),
+    limit: Type.Optional(
+      Type.String({
+        pattern: '^[0-9]{1,3}$',
+        description:
+          'Maximum rows after status filtering: decimal digits 1 through 50, default 20. Invalid input returns 400 OPERATION_LIST_QUERY_INVALID.',
+      }),
+    ),
   },
   { additionalProperties: false },
 );
@@ -50,6 +63,8 @@ export interface OperationListRoute {
   readonly path: string;
   /** The OpenAPI summary of the list (its group is `Operations`). */
   readonly summary: string;
+  /** Describes capability admission, visibility and the operational semantics of this feature. */
+  readonly description?: string;
   /** The feature kinds. `undefined` = the backing source is unavailable (answers 503). */
   readonly sources: readonly OperationListSource[] | undefined;
   readonly registry: OperationProgressRegistry;
@@ -84,12 +99,21 @@ export function registerOperationListRoute<RawServer extends RawServerBase>(
         // The Runtime serves HTTP/1 only; the generic RawServer is just the caller app type.
         await route.authorize(request as unknown as FastifyRequest);
       },
+      config: {
+        openApiParameters: {
+          header: {
+            'If-None-Match': 'Weak ETag of the authorized operation list; a match returns 304.',
+          },
+        },
+      },
       schema: {
         tags: ['Operations'],
         summary: route.summary,
+        ...(route.description ? { description: route.description } : {}),
         querystring: OperationListQueryStringSchema,
         response: {
           200: contractRef(OperationListResponseSchema),
+          304: Type.Null(),
           400: OperationListErrorSchema,
           401: contractRef(AuthenticationRequiredErrorResponseSchema),
           403: contractRef(AuthorizationForbiddenErrorResponseSchema),

@@ -83,7 +83,7 @@ writer) but offers no action: neither the Runtime nor the UI can resume or aband
 the slug, the branch/worktree path and workspace capacity (only `completed` journals are garbage collected). The
 operator resumes it with `nevo-specflow specs recover <operation-id> --confirmed-stopped` or removes a journal that
 has no effects by hand; see
-[Recovering a stuck Create](../runtime/specification-lifecycle.md#recovering-a-stuck-create-operator-procedure-and-known-gap).
+[Recovering a stuck Create](../../engineering/shared/specification-create-recovery.md#recovering-a-stuck-create-operator-procedure-and-known-gap).
 The reserved `resumable` status and a runner stay out of scope.
 
 ## Rejected

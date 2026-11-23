@@ -24,7 +24,7 @@ related:
 Dispositions of the F20 decisions:
 
 - **Implemented** ([ADR 0024](../../architecture/decisions/0024-tasks-are-resources.md),
-  [Workflow kernel](../../architecture/workflow/workflow-kernel.md#tasks)): Q1 the Task index as
+  [Workflow kernel](../../architecture/workflow/workflow-tasks.md#tasks)): Q1 the Task index as
   registry, Q2 Task-only preparation status, Q3 `summary` in `task.yaml`, Q8 the default Task context,
   Q10 broken-Task isolation, the slim run record, typed context authoring and process artifacts.
 - **Superseded:** the creation-time `expectedBinding` and rebind (replaced by first-start validation

@@ -83,6 +83,8 @@ rationale whose premise no longer holds is marked superseded or removed.
 - [Developer workspace / code inspection and IDE integration](developer-workspace/README.md)
 - [SpecFlow UI / open screen and component ideas](specflow-ui/README.md)
 - [Semantic documentation search follow-ups](semantic-docs/README.md)
+- [Documentation maintainability and context budget](documentation-maintainability.md)
+- [Demo and project API convergence](demo-api-convergence.md)
 
 Decision records (proposals) with open follow-ups:
 [Session association registry](specflow-runtime/session-association/README.md),

@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import type { CreatedSpec, CreateSpecRequest } from '@nevo/specflow-contracts/specs';
 import { isApiError } from '../../../../api';
 import { useAppServices } from '../../../../app/useAppServices';
-import { useNotify } from '../../../../shared/notifications/notifications';
 import { useUnmountSignal } from '../../../../shared/operations/progress/useUnmountSignal';
 import { retainRequest } from '../../../../shared/operations/retainedRequest';
 import { specsOverviewKeys } from '../../overview/data/queries';
@@ -169,7 +168,6 @@ export function useCreateProjectSpecification(
   const { projectCreationApi: api } = useAppServices();
   const storage = useCreateOperationStorage();
   const cache = useQueryClient();
-  const notify = useNotify();
   const [raw, dispatch] = useReducer(
     createOperationReducer,
     { stored, operationId },
@@ -211,7 +209,6 @@ export function useCreateProjectSpecification(
         void cache.invalidateQueries({ queryKey: specsOverviewKeys.all });
         void cache.invalidateQueries({ queryKey: projectCreationKeys.createOptions });
         void cache.invalidateQueries({ queryKey: workspaceKeys.list });
-        notify(t('create.specificationCreated'));
         dispatch({ type: 'submit-succeeded' });
         onCreated(outcome.created);
 
@@ -241,7 +238,7 @@ export function useCreateProjectSpecification(
         retained: !outcome.releaseStorage,
       });
     },
-    [announce, cache, ledger, lifetime, notify, onCreated, operationId, storage, t],
+    [announce, cache, ledger, lifetime, onCreated, operationId, storage, t],
   );
 
   const hooksOf = useCallback(

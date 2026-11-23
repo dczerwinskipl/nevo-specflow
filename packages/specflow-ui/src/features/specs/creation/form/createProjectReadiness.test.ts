@@ -48,7 +48,10 @@ describe('projectCreateReadiness', () => {
     ['no archetype', { archetype: undefined }, 'create.prerequisite.archetype'],
     [
       'no archetypes installed',
-      { archetype: undefined, noArchetypes: true },
+      {
+        archetype: undefined,
+        archetypeUnavailable: { key: 'create.prerequisite.noArchetypes' } as const,
+      },
       'create.prerequisite.noArchetypes',
     ],
   ])('is blocked by %s with its reason', (_name, change, key) => {
@@ -95,4 +98,35 @@ describe('projectCreateReadiness: the field of the first problem', () => {
       projectCreateReadiness({ ...base, workspaceState: { status: 'loading' } }).problemField,
     ).toBeUndefined();
   });
+});
+
+it('a base without committed configuration blocks submit and leads to Start from', () => {
+  const result = projectCreateReadiness({
+    ...base,
+    workspaceState: { status: 'ready', options: createOptionsFixture('base-config-unusable') },
+  });
+  expect(result).toMatchObject({
+    canSubmit: false,
+    problemField: 'base',
+    prerequisite: { key: 'create.workspace.baseConfigNone' },
+  });
+});
+
+// Availability is actionable before input: entering a name cannot repair the project.
+it.each([
+  [{ archetypesLoading: true }, 'create.archetype.loading'],
+  [{ archetypesFailed: true }, 'create.archetype.loadFailed'],
+  [
+    { archetypeUnavailable: { key: 'create.prerequisite.noArchetypes' } as const },
+    'create.prerequisite.noArchetypes',
+  ],
+  [
+    { archetypeUnavailable: { key: 'create.prerequisite.invalidArchetypes' } as const },
+    'create.prerequisite.invalidArchetypes',
+  ],
+])('shows unavailable project state before a blank name: %s', (change, key) => {
+  const result = projectCreateReadiness({ ...base, title: '', archetype: undefined, ...change });
+  expect(result.prerequisite).toEqual({ key });
+  expect(result.problemField).toBeUndefined();
+  expect(result.canSubmit).toBe(false);
 });

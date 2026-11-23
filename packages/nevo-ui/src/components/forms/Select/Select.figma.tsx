@@ -49,7 +49,8 @@ export const designSpecs = [
   }),
   defineDesignComponent({
     component: 'SelectItem',
-    description: 'Listbox option row with highlighted and disabled states.',
+    description:
+      'Listbox option with stacked label, metadata and reason; selection uses a background and left accent.',
     order: 38,
     variants: {
       state: ['default', 'highlighted', 'disabled'],

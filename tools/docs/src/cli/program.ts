@@ -19,6 +19,7 @@ import {
 } from '../app/run-eval.js';
 import { validateAdrs } from '../domain/adr.js';
 import { validateRoadmapTables } from '../domain/markdown-tables.js';
+import { validateMermaidBlockIds } from '../domain/mermaid-block-ids.js';
 import { generateRandomQueries, RANDOM_QUERY_SEED } from '../domain/random-queries.js';
 import { createAdrFiles } from '../infra/adr-files.js';
 import { readEvalQuestions } from '../infra/eval-questions.js';
@@ -36,7 +37,11 @@ export type LauncherContext = Pick<
 
 /** Repository-only checks on top of the product contract (ADR 0020). */
 export const REPOSITORY_CORPUS_RULES: DocsCorpusRules = {
-  validate: (docs) => [...validateAdrs(docs), ...validateRoadmapTables(docs)],
+  validate: (docs) => [
+    ...validateAdrs(docs),
+    ...validateRoadmapTables(docs),
+    ...validateMermaidBlockIds(docs),
+  ],
 };
 
 /** Build the `nevo-docs` program. Pure wiring — no argv parsing here. */

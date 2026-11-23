@@ -89,7 +89,7 @@ stopped Runtime left an unsettled native Turn in that worktree, or when the stor
 read. `specs close --preview` and `specs worktree close --preview` ask the same check and refuse the
 same way, listing the `session-turn-running` blocker next to any workflow blockers, so the preview
 names everything Close would refuse on. Close from the SpecFlow UI instead, or stop the Runtime and rerun with the same `--operation-id`
-([Specification lifecycle](../../architecture/runtime/specification-lifecycle.md#safe-integration-rebind-and-disposal)).
+([Specification lifecycle](../../architecture/runtime/specification-worktree-integration.md#safe-integration-rebind-and-disposal)).
 
 `specs close --preview` prints the plan as JSON, with its merge facts (`merge`: the source branch
 merged into the target branch with the commits ahead, or why nothing is merged). When Git is off for
@@ -103,7 +103,7 @@ prints `Outcome: archived-without-git` followed by the first line. `specs worktr
 `specs workspace close` refuse with `CLOSE_INVALID` while Git is off. A Close with Git off that
 stopped after its archive intent is finished with `specs close-recover` (`--preview` reports the
 proven state read-only; `--confirmed-stopped` finishes the move and completes the Close), see
-[Specification lifecycle](../../architecture/runtime/specification-lifecycle.md#close-with-git-off-owner-decision-2026-11-17).
+[Specification lifecycle](../../architecture/runtime/specification-close-lifecycle.md#close-with-git-off).
 When a project that uses Git
 names no `git.integrationTargetBranch`, the preview (and `specs worktree close --preview`, `specs
 workspace close --preview`) refuses with `CLOSE_PREFLIGHT` and lists the local branches that could
@@ -350,7 +350,7 @@ run. Every command accepts `--project-root <path>` and `--json`.
 after `abandon`) the Engine leaves its edits uncommitted and records them in a ledger. `nevo-specflow commit` commits
 exactly those paths with your message, through the same commit port, lease and claims as the commit queue, and never
 anything else (it is not `git commit -a`). The HTTP route is `POST /api/specs/:specId/commit`
-([documents reference](../api/specification-documents.md#commit-policy-uncommitted-changes-and-manual-commit)); the
+([documents reference](../api/specification-documents.md#write-and-observe-commits)); the
 `definitions` scope is the command line's alone.
 
 ```sh

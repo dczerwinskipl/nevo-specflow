@@ -140,6 +140,8 @@ export function registerSessionListRoute(
       schema: {
         tags: ['Sessions'],
         summary: 'List Sessions',
+        description:
+          'List Sessions with keyset pagination in immutable creation order, newest first. Filters select but never grant: specId requires spec.view before association disclosure, each row requires session.view at store-derived scope. An unfiltered caller with only Specification-scoped grants must supply specId or standalone. At most 500 index rows scanned per request, default limit 50/max 100; a page can be empty with nextCursor present after authorization filtering. Cursor is HMAC-signed and bound to store generation, project and exact filter. Default archived=exclude.',
         querystring,
         response: { 200: SessionListPageSchema, ...capabilityRefusal },
       },

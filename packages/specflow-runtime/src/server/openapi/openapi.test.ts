@@ -118,6 +118,147 @@ describe('Runtime OpenAPI document', () => {
       });
       expect(paths['/api/openapi.json']?.get).toBeDefined();
       expect(paths['/api/openapi.json']?.head).toBeUndefined();
+      expect(
+        (paths['/api/authorization/capabilities']?.post as { description: string }).description,
+      ).toContain('lack of permission is a normal 200 response with false');
+      const workspaceOperation = paths['/api/workspaces']?.get as {
+        description: string;
+        responses: Record<string, { content?: Record<string, { schema: unknown }> }>;
+      };
+      expect(workspaceOperation.description).toContain('workspace.view at the server-derived');
+      const workspaceSchema = workspaceOperation.responses['200']?.content?.['application/json']
+        ?.schema as {
+        properties: {
+          workspaces: { items: { properties: Record<string, { description?: string }> } };
+        };
+      };
+      expect(workspaceSchema.properties.workspaces.items.properties.dirty?.description).toContain(
+        'untracked files',
+      );
+      const overviewOperation = paths['/api/specs/overview']?.get as {
+        description: string;
+        responses: Record<string, { content?: Record<string, { schema: unknown }> }>;
+      };
+      expect(overviewOperation.description).toContain('filters each row');
+      const overviewSchema = overviewOperation.responses['200']?.content?.['application/json']
+        ?.schema as { anyOf: { properties: Record<string, { description?: string }> }[] };
+      expect(overviewSchema.anyOf[0]?.properties.sections?.description).toContain('display order');
+      expect(overviewSchema.anyOf[1]?.properties.items?.description).toContain('Historical');
+      const streamOperation = paths['/api/specs/create/operations/{operationId}/events']?.get as {
+        description: string;
+        responses: Record<
+          string,
+          { description?: string; content?: Record<string, { schema: unknown }> }
+        >;
+      };
+      expect(streamOperation.description).toContain('not the source of truth');
+      expect(streamOperation.responses['200']?.description).toContain('snapshot|step|completed');
+      expect(streamOperation.responses['429']?.description).toContain('OPERATION_STREAMS_LIMIT');
+      const listOperation = paths['/api/specs/operations']?.get as {
+        description: string;
+        parameters: { name: string }[];
+        responses: Record<string, { description?: string }>;
+      };
+      expect(listOperation.description).toContain('independently filtered by spec.view');
+      expect(listOperation.parameters.map((parameter) => parameter.name)).toContain(
+        'If-None-Match',
+      );
+      expect(listOperation.responses['304']?.description).toContain('Not modified');
+      const workspaceRead = paths['/api/specs/{specId}/workspace']?.get as {
+        description: string;
+        responses: Record<string, { content?: Record<string, { schema: unknown }> }>;
+      };
+      expect(workspaceRead.description).toContain('individual Session rows');
+      const createOperation = paths['/api/specs']?.post as {
+        description: string;
+        parameters: { name: string; description?: string }[];
+        responses: Record<string, { description?: string }>;
+      };
+      expect(createOperation.description).toContain('Prefer: respond-async');
+      const specClose = paths['/api/specs/{specId}/close']?.post as { description: string };
+      expect(specClose.description).toContain('never accepts finishAfterExternalMerge');
+      const worktreeClose = paths['/api/specs/{specId}/worktree/close']?.post as {
+        description: string;
+      };
+      expect(worktreeClose.description).toContain('whole-branch content equivalence');
+      const docsSearch = paths['/api/workspaces/{workspaceId}/docs/search']?.get as {
+        description: string;
+      };
+      expect(docsSearch.description).toContain('lexical fallback is normal 200');
+      const docsArticle = paths['/api/workspaces/{workspaceId}/docs/documents/{documentId}']
+        ?.get as {
+        description: string;
+      };
+      expect(docsArticle.description).toContain('410 DOCS_DOCUMENT_INACTIVE');
+      const workflowFinish = paths['/api/specs/{specId}/workflow/finish']?.post as {
+        description: string;
+      };
+      expect(workflowFinish.description).toContain('replayed:true');
+      const historyOperation = paths['/api/specs/{specId}/tasks/{taskId}/history']?.get as {
+        description: string;
+        parameters: { name: string; description?: string }[];
+      };
+      expect(historyOperation.description).toContain('not an offset');
+      const telemetrySnapshot = paths['/api/sessions/{sessionId}/telemetry']?.get as {
+        description: string;
+      };
+      expect(telemetrySnapshot.description).toContain('private, no-cache');
+      const telemetryRefresh = paths['/api/sessions/{sessionId}/telemetry/refresh']?.post as {
+        description: string;
+      };
+      expect(telemetryRefresh.description).toContain('24 hours');
+      const sessionList = paths['/api/sessions']?.get as { description: string };
+      expect(sessionList.description).toContain('500 index rows');
+      const sessionEvents = paths['/api/sessions/{sessionId}/events']?.get as {
+        description: string;
+      };
+      expect(sessionEvents.description).toContain('resync-required');
+      const sessionAssociation = paths['/api/sessions/{sessionId}/association']?.get as {
+        description: string;
+      };
+      expect(sessionAssociation.description).toContain('independently check spec.view');
+      const documentsSave = paths['/api/specs/{specId}/documents/{documentId}']?.put as {
+        description: string;
+      };
+      expect(documentsSave.description).toContain('NOT that Git commit finished');
+      const documentsRaw = paths['/api/specs/{specId}/documents/{documentId}/raw']?.get as {
+        description: string;
+      };
+      expect(documentsRaw.description).toContain('before sending bytes');
+      expect(
+        historyOperation.parameters.find((parameter) => parameter.name === 'cursor')?.description,
+      ).toContain('page size');
+      const taskListOperation = paths['/api/specs/{specId}/tasks']?.get as {
+        description: string;
+      };
+      expect(taskListOperation.description).toContain('Runtime presentation policy');
+      const workflowActions = paths['/api/specs/{specId}/tasks/{taskId}/workflow/actions']?.get as {
+        description: string;
+      };
+      expect(workflowActions.description).toContain('document relations');
+      const workspaceClose = paths['/api/workspaces/{workspaceId}/close']?.post as {
+        description: string;
+      };
+      expect(workspaceClose.description).toContain('including all its canonical Specifications');
+      expect(createOperation.parameters.some((parameter) => parameter.name === 'Prefer')).toBe(
+        true,
+      );
+      const createOptions = paths['/api/specs/create-options']?.get as { description: string };
+      expect(createOptions.description).toContain('worktreesRoot.path');
+      expect(
+        (paths['/api/specs/archetypes']?.get as { parameters: { name: string }[] }).parameters,
+      ).toEqual(expect.arrayContaining([expect.objectContaining({ name: 'If-None-Match' })]));
+      const workspaceBody = workspaceRead.responses['200']?.content?.['application/json']
+        ?.schema as {
+        properties: {
+          revision: { description?: string };
+          specification: { properties: { summary: { description?: string } } };
+        };
+      };
+      expect(workspaceBody.properties.revision.description).toContain('sourceRevision');
+      expect(workspaceBody.properties.specification.properties.summary.description).toContain(
+        '320 graphemes',
+      );
       const documentRead = paths['/api/specs/{specId}/documents/{documentId}']?.get as {
         parameters: readonly { in: string; name: string; required?: boolean }[];
       };
@@ -430,6 +571,24 @@ describe('Runtime OpenAPI document', () => {
         'text/event-stream',
       ]);
 
+      const raw = operation(document, '/api/specs/{specId}/documents/{documentId}/raw', 'get');
+      expect(raw.responses[200]?.content).toEqual({
+        '*/*': { schema: { type: 'string', format: 'binary' } },
+      });
+      expect(Object.keys(raw.responses[200]?.headers ?? {})).toEqual([
+        'Content-Type',
+        'Content-Disposition',
+        'Content-Length',
+        'X-Content-Type-Options',
+        'Content-Security-Policy',
+        'ETag',
+      ]);
+      const create = operation(document, '/api/specs', 'post');
+      expect(Object.keys(create.responses[202]?.headers ?? {})).toEqual([
+        'Location',
+        'Preference-Applied',
+      ]);
+
       // The route itself is unchanged: logout still answers 204 without a body.
       const reply = await app.inject({ method: 'POST', url: '/api/auth/logout' });
       expect(reply.statusCode).toBe(204);
@@ -488,6 +647,16 @@ describe('Runtime OpenAPI document', () => {
           {
             config: { openApiResponses: { 204: { description: 'No body.' } } },
             schema: { ...documented, response: { 204: { type: 'null' } } },
+          },
+          () => '',
+        ),
+      ).toThrow(/both with a response schema and in openApiResponses/);
+      expect(() =>
+        app.get(
+          '/api/incorrect-binary-overlap',
+          {
+            schema: { ...documented, response: { 200: Type.String() } },
+            config: { openApiResponses: { 200: { description: 'Bytes.', mediaType: '*/*' } } },
           },
           () => '',
         ),

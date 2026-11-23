@@ -1,0 +1,7 @@
+{
+  "reloadBeforeRetry": true,
+  "touchStart": true,
+  "status": 200,
+  "finishAvailable": true,
+  "noStaleAlert": true
+}

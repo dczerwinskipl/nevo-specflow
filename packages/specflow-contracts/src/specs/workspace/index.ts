@@ -49,7 +49,9 @@ export const WorkspaceDocumentSchema = Type.Object({
    * The document TYPE id of the archetype vocabulary (for example `behaviour`), not the content kind
    * (`text`, `image`, `binary`) of the document tree. The name is kept for wire compatibility.
    */
-  kind: Type.String(),
+  kind: Type.String({
+    description: 'Archetype document type id, not the document content kind text/image/binary.',
+  }),
   summary: Type.Optional(Type.String()),
   /** `DocumentContentState`; absent when the source cannot tell (the demo Runtime). */
   contentState: Type.Optional(DocumentContentStateSchema),
@@ -61,14 +63,20 @@ export const WorkspaceSessionSchema = Type.Object(
     title: Type.Optional(Type.String()),
     taskIds: Type.Array(TaskIdSchema),
     /** Effective Session readiness only (the single-Session read's provider projection). */
-    status: Type.Union([
-      Type.Literal('active'),
-      Type.Literal('attention'),
-      Type.Literal('quiet'),
-      /** The provider needs a sign-in and no Turn is active. */
-      Type.Literal('authenticationRequired'),
-      Type.Literal('unknown'),
-    ]),
+    status: Type.Union(
+      [
+        Type.Literal('active'),
+        Type.Literal('attention'),
+        Type.Literal('quiet'),
+        /** The provider needs a sign-in and no Turn is active. */
+        Type.Literal('authenticationRequired'),
+        Type.Literal('unknown'),
+      ],
+      {
+        description:
+          'Effective Session provider readiness, not Task run status: active, attention, quiet, authenticationRequired or unknown.',
+      },
+    ),
     providerId: Type.String({ minLength: 1, maxLength: 128 }),
     /** Display titles from the Runtime's provider catalogue; absent when not listed. */
     providerTitle: Type.Optional(Type.String({ minLength: 1, maxLength: 512 })),
@@ -135,7 +143,10 @@ const ActivitySchema = Type.Object({
    * then carry English fallback text. Absent for a source-written event shown as delivered.
    */
   event: Type.Optional(
-    Type.Union([Type.Literal('specification_created'), Type.Literal('session_started')]),
+    Type.Union([Type.Literal('specification_created'), Type.Literal('session_started')], {
+      description:
+        'Known Runtime event for client localization (specification_created or session_started); title and description are fallbacks.',
+    }),
   ),
   title: Type.String(),
   description: Type.String(),
@@ -182,7 +193,11 @@ const DocumentCollectionSchema = Type.Object({
 const SessionCollectionSchema = Type.Object({
   items: Type.Array(WorkspaceSessionSchema),
   /** More associated Sessions exist than the bounded section returns. */
-  hasMore: Type.Optional(Type.Boolean()),
+  hasMore: Type.Optional(
+    Type.Boolean({
+      description: 'True when more than the bounded 100 non-archived associated Sessions exist.',
+    }),
+  ),
   attention: Type.Array(WorkspaceAttentionSchema),
 });
 const ActivityCollectionSchema = Type.Object({ items: Type.Array(ActivitySchema) });
@@ -196,10 +211,18 @@ const StartSessionActionSchema = Type.Object({
    * The start route when it is not the composed `POST /api/specs/:specId/sessions`: the demo
    * Runtime starts Sessions at `/api/demo/specs/:specId/sessions`.
    */
-  path: Type.Optional(Type.String()),
+  path: Type.Optional(
+    Type.String({
+      description:
+        'Temporary route override in demo; absent when the normal composed Specification Session route is used.',
+    }),
+  ),
 });
 export const SpecificationWorkspaceResponseSchema = Type.Object({
-  revision: Type.String(),
+  revision: Type.String({
+    description:
+      'Manifest sourceRevision only; it does not change when Session details, Task progress or overview text change.',
+  }),
   /** The registered workspace (UUID) the Specification is bound to; its documentation corpus is read there. */
   workspaceId: WorkspaceIdSchema,
   recommendedSessionId: Type.Optional(SessionIdSchema),
@@ -208,12 +231,17 @@ export const SpecificationWorkspaceResponseSchema = Type.Object({
     /** Optional human-facing Specification key (for example `UI-1234`). */
     key: Type.Optional(Type.String()),
     title: Type.String(),
-    summary: Type.String(),
-    preparationState: Type.Union([
-      Type.Literal('empty'),
-      Type.Literal('preparing'),
-      Type.Literal('prepared'),
-    ]),
+    summary: Type.String({
+      description:
+        'Plain text from the overview Goal paragraph, else the first body paragraph. Read bounded to 32 KiB and output to 320 graphemes; empty when unavailable.',
+    }),
+    preparationState: Type.Union(
+      [Type.Literal('empty'), Type.Literal('preparing'), Type.Literal('prepared')],
+      {
+        description:
+          'Engine Task preparation: empty with no readable Tasks, preparing while a Task is draft, otherwise prepared.',
+      },
+    ),
     attention: Type.Array(WorkspaceAttentionSchema),
   }),
   sections: Type.Object({

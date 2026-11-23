@@ -502,6 +502,37 @@ async function wide() {
   await (await browserPage()).viewport(1440, 900);
 }
 
+export const NarrowTreeEntry: Story = {
+  args: { scenario: 'plain' },
+  globals: { viewport: { value: 'phone390', isRotated: false } },
+  beforeEach: async () => {
+    await (await browserPage()).viewport(390, 844);
+  },
+  play: async ({ userEvent }) => {
+    await settleViewport(390, 844);
+    const screen = body();
+    const filter = await screen.findByRole('button', { name: 'Filter by type' });
+    await expect(filter).toBeVisible();
+    await expect(screen.queryByRole('button', { name: 'Back to Documents' })).toBeNull();
+
+    await userEvent.click(filter);
+    await userEvent.click(screen.getByRole('checkbox', { name: /^UX$/ }));
+    await userEvent.keyboard('{Escape}');
+    const row = () => screen.getByRole('button', { name: /^ux\.md\s*UX$/ });
+    row().focus();
+    await userEvent.keyboard('{Enter}');
+
+    const back = await screen.findByRole('button', { name: 'Back to Documents' });
+    back.focus();
+    await userEvent.keyboard('{Enter}');
+    await expect(
+      await screen.findByRole('button', { name: 'Filter by type: 1 chosen' }),
+    ).toBeVisible();
+    await waitFor(() => expect(row()).toHaveFocus());
+    await expect(screen.queryByRole('button', { name: /^overview\.md/ })).toBeNull();
+  },
+};
+
 /** The tree grammar and the top region: only what needs the reader, no completeness summary. */
 export const TreeStates: Story = {
   play: async () => {

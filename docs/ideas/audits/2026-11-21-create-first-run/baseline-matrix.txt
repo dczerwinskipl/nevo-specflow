@@ -1,0 +1,18 @@
+# UX package B baseline findings
+
+Baseline: origin/main fdc77086eb444a14d22ddb154b73c810e8dc2f75 (includes #190).
+Isolated worktree: D:/repos/git/nevo-specflow-182.
+No product edits made before this matrix. Actual-product evidence is being captured under before/.
+
+| Audit | Current behavior | Reproduction evidence | Proposed resolution | Status |
+|---|---|---|---|---|
+| #2 | Empty current list offers Create with no catalogue guidance | Real CLI :4382 empty project; before/empty-*.png (capture settling under verification); SpecsOverviewEmpty | Read existing catalogue only for empty project list; explain unavailable definitions and remedy | Confirmed; proposal |
+| #3 | Blank title outranks catalogue unavailable state near submit | Real Create screenshots before/create-no-definitions-*.png; createProjectReadiness checks title first | Prioritize availability over input, distinguish missing/invalid/read failure, actionable footer | Confirmed; proposal |
+| #4 | New workspace says only disabled in project config | Same real Create; workspaceTiles newDisabled; Engine git-disabled | Name git.enabled: true in Project Home .nevo/config.yaml; commit/refresh; preserve cards/policy | Confirmed; proposal |
+| #12 | No docs folder explains docs.root but gives no next action | before/docs-absent-*.png; ReaderStates/i18n | Valid concise creation/configuration remedy + Refresh | Confirmed; proposal |
+| #14 | Existing Sessions-disabled story has a nonempty goal | SpecificationWorkspace.stories.tsx fixture | Cover real no-goal + Sessions-off first run in Storybook and app | Coverage gap; real run pending |
+| #16 | Button already says Starting… with aria-busy/live pending | WorkflowNow/NowBlock/useWorkflowCommands source | Verify delayed real request; preserve if effective | Actual latency run pending |
+| #25 | Sessions-off says server/project but lacks enabling location | PreparationSection/Session list/locales; sessions.enabled contract | Project-owner guidance with actual setting/file, bounded first-run scope | Confirmed; proposal |
+| #32 | Current status groups collapse even with one item; no-status projects use flat list | SpecsOverviewCollection, product specs-overview contract | Explicit decision after real-app evidence; avoid new branching complexity | Decision pending |
+| #34 | Project success notification accompanies completion page before redirect | useCreateProjectSpecification notify + CreateOperationPage success | Remove only redundant project toast if real run confirms | Real success run pending |
+| #36 | Configured default, else sole archetype, else deliberate choice | archetypeChoice.ts/tests; documents-archetypes Q1 settled decision | Retain established behavior, correct stale source comment only | Already resolved; runtime verification pending |

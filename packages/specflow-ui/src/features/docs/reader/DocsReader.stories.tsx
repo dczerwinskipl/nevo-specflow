@@ -247,7 +247,33 @@ export const ProposalDocument: Story = {
 export const FeatureWorktree: Story = {
   args: { path: '/workspaces/ws-sso/docs/product.specflow.ui.authentication-recovery' },
 };
-export const SkippedOne: Story = { args: { scenario: 'skipped-one' } };
+export const SkippedOne: Story = {
+  args: { scenario: 'skipped-one', path: main },
+  globals: { viewport: { value: 'phone390', isRotated: false } },
+  play: async ({ userEvent }) => {
+    await settleViewport(390, 844);
+    const body = screen();
+    const skipped = await body.findByRole('button', { name: /^1 document is skipped/ });
+    const panelHeight = () =>
+      document.getElementById(skipped.getAttribute('aria-controls') ?? '')?.getBoundingClientRect()
+        .height ?? 0;
+    await expect(skipped).toHaveAttribute('aria-expanded', 'false');
+    await waitFor(() => expect(panelHeight()).toBe(0));
+
+    const field = body.getByRole('searchbox', { name: 'Search documentation' });
+    await userEvent.type(field, 'back narrow');
+    await expect(await body.findByRole('button', { name: /^UI interaction model/ })).toBeVisible();
+    await expect(skipped).toHaveAttribute('aria-expanded', 'false');
+
+    skipped.focus();
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(panelHeight()).toBeGreaterThan(0));
+    await expect(body.getByText(/Frontmatter:.*found "wip"/)).toBeVisible();
+    await userEvent.keyboard('{Enter}');
+    await expect(skipped).toHaveAttribute('aria-expanded', 'false');
+    await waitFor(() => expect(panelHeight()).toBe(0));
+  },
+};
 export const SkippedMany: Story = { args: { scenario: 'skipped-many' } };
 export const IndexBuilding: Story = { args: { scenario: 'index-building' } };
 export const NoRootIndex: Story = { args: { scenario: 'no-root-index' } };
@@ -257,6 +283,15 @@ export const Loading: Story = {
 };
 export const NotConfigured: Story = {
   args: { scenario: 'not-configured', path: '/workspaces/ws-reader/docs' },
+  play: async ({ userEvent }) => {
+    await settleViewport(390, 844);
+    const body = screen();
+    await expect(await body.findByText('No project documentation')).toBeVisible();
+    await expect(body.getByText(/Nevo documentation metadata/)).toBeVisible();
+    const refresh = body.getByRole('button', { name: 'Refresh' });
+    await userEvent.click(refresh);
+    await expect(await body.findByText('No project documentation')).toBeVisible();
+  },
 };
 export const EmptyCorpus: Story = {
   args: { scenario: 'empty-corpus', path: '/workspaces/ws-reader/docs' },

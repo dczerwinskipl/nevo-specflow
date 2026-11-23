@@ -21,7 +21,7 @@ import {
   createSpecificationForTesting,
   installDefinitionsForTesting,
 } from '../src/testing';
-import { createGitTestProject } from './support/git-project';
+import { createGitTestProject, git } from './support/git-project';
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -146,28 +146,56 @@ describe('git-disabled project end to end', () => {
 });
 
 describe('git-enabled create-options Git budget', () => {
-  it('uses at most 8 Git processes for three workspaces and none for registry-only facts', async () => {
-    const { engine } = await project(true);
+  it('bounds inherent reads by workspaces, refs and unique commits, with no verification processes', async () => {
+    const { root, engine } = await project(true);
+    const commits: string[] = [];
     for (const title of ['Linked one', 'Linked two']) {
-      await createSpecificationForTesting(engine, {
+      const created = await createSpecificationForTesting(engine, {
         operationId: randomUUID(),
         title,
         created: '2026-10-20',
         archetype: { id: 'minimal', version: 1 },
         target: { kind: 'new-worktree', baseRef: 'HEAD' },
       });
+      commits.push(git(created.workspaceRoot, 'rev-parse', 'HEAD'));
     }
+
+    commits.push(git(root, 'rev-parse', 'HEAD'));
+
+    // The alias and configured HEAD share the primary commit: each adds a resolution, not
+    // another ls-tree/show inspection. Different linked scaffold commits still need their own.
+    git(root, 'branch', 'same-commit-alias');
 
     const { spawns, result } = await countGit(() => inspectCreateOptions(engine));
     expect(result.workspaces).toHaveLength(3);
-    expect(spawns.length).toBeLessThanOrEqual(8);
-    const verbs = spawns.map((args) =>
-      args.find((a) => a !== '-c' && a !== 'core.optionalLocks=false'),
+    expect(result.baseRefs).toHaveLength(4);
+    expect(new Set(commits).size).toBe(3);
+    const commands = spawns.map((args) => (args[0] === '-c' ? args.slice(2) : args));
+    const expected = [
+      ['worktree', 'list', '--porcelain', '-z'],
+      ['for-each-ref', '--format=%(refname)', 'refs/heads'],
+      ...result.workspaces.map(() => ['status', '--porcelain=v1', '--untracked-files=all']),
+      ...[...result.baseRefs.map((base) => base.ref), 'HEAD'].map((ref) => [
+        'rev-parse',
+        '--verify',
+        '--end-of-options',
+        ref + '^{commit}',
+      ]),
+      ...commits.flatMap((commit) => [
+        ['ls-tree', '-z', commit, '--', '.nevo/config.yaml'],
+        ['show', commit + ':.nevo/config.yaml'],
+      ]),
+    ];
+    // Exact allowlist excludes identity/ignore verification and mutations. The process bound
+    // is 2 listing reads + W statuses + R refs + 1 configured default + 2 unique config reads.
+    expect(spawns).toHaveLength(
+      2 + result.workspaces.length + result.baseRefs.length + 1 + 2 * commits.length,
     );
-    expect(verbs.filter((v) => v === 'worktree')).toHaveLength(1);
-    expect(verbs.filter((v) => v === 'for-each-ref')).toHaveLength(1);
-    expect(verbs).not.toContain('check-ignore');
-    expect(verbs).not.toContain('rev-parse');
+    expect(commands.map((args) => JSON.stringify(args)).sort()).toEqual(
+      expected.map((args) => JSON.stringify(args)).sort(),
+    );
+    const registry = await countGit(() => readRegistrySnapshot(engine));
+    expect(registry.spawns).toEqual([]);
   }, 240000);
 });
 

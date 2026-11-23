@@ -24,7 +24,15 @@ semantics live under [workflow architecture](../workflow/).
 - [Engine ownership and transport boundaries](specflow-engine.md)
 - [Project Home and registered workspaces](project-home-and-workspaces.md)
 - [Specification Create/Close lifecycle](specification-lifecycle.md)
+  - [Create admission and Git selection](specification-create-lifecycle.md)
+  - [Specification Close archive](specification-close-lifecycle.md)
+  - [Worktree integration and rebind](specification-worktree-integration.md)
 - [Specification documents](specification-documents.md)
+  - [Manifest, registry and validation](document-manifest-and-registry.md)
+  - [Archetypes and definitions](document-definitions.md)
+  - [Document limits](document-limits.md)
+  - [Write journal and commit queue](document-write-and-commit-queue.md)
+  - [Commit policy and workflow-state writes](document-commit-policy.md)
 - [Workspace execution claims](workspace-execution-claims.md)
 - [Agent step execution](agent-step-execution.md): broker, invocation capability, agent attempt lifecycle
 

@@ -34,6 +34,53 @@ are distinct from Runtime's long-lived provider resources; see
 A Runtime instance composes application capabilities and owns the lifetime of resources
 that survive longer than one CLI operation.
 
+## Runtime component layers
+
+This groups **responsibilities inside one long-lived Runtime host**, rather than imposing
+technical folders or an N-layer call chain. Feature modules are peers composed by the
+Runtime root; CLI, HTTP and SSE are adapters rather than independent mutation engines.
+
+```mermaid
+block-beta
+  columns 1
+  block:hostBoundaries
+    columns 2
+    hostTitle["1. Runtime host boundaries"]:2
+    hostHttp["HTTP API, SSE and UI assets"]
+    hostCli["Start and auth CLI adapters"]
+  end
+  block:composition
+    columns 2
+    compositionTitle["2. Composition and lifecycle"]:2
+    compositionRoot["Startup, shutdown and configuration"]
+    compositionPolicy["Product authorization policy"]
+  end
+  block:features
+    columns 3
+    featuresTitle["3. Runtime features"]:3
+    featureSpecs["Specs, Documents, Tasks, Workflow"]
+    featureSessions["Sessions, providers and interactions"]
+    featureDocs["Documentation reader and search"]
+  end
+  block:resources
+    columns 2
+    resourcesTitle["4. Owned resources and ports"]:2
+    resourceEngine["SpecFlow Engine API"]
+    resourceDb["Session SQLite worker"]
+    resourceProvider["Managed provider processes"]
+    resourceDocs["Documentation search"]
+  end
+```
+
+The diagram shows **ownership**, not an assertion that every feature calls each port or
+that SQLite belongs to Engine. Runtime calls Engine in-process for Specifications, Tasks, documents,
+workflow and workspace claims. Session storage and provider process lifetimes stay Runtime-owned.
+Source boundaries: `packages/specflow-runtime/src/runtime.ts`,
+`src/server/` and `src/features/*/index.ts`.
+See [Engine boundaries](specflow-engine.md),
+[Managed Session lifecycle](../ai/session-storage-and-lifecycle.md) and
+[UI application architecture](../../product/specflow/ui/application-architecture.md).
+
 ## Responsibility boundary
 
 Runtime may own resources such as:

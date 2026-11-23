@@ -378,6 +378,8 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
         schema: {
           tags: ['Sessions'],
           summary: 'Create a standalone Session',
+          description:
+            'Create a standalone managed Session under session.create at trusted project scope. A requestId deduplicates identical create attempts; changed body under the same actor/command/scope key is IDEMPOTENCY_CONFLICT. Allocation does not launch the provider. The provider is selected from current configuration and validated on admission; mock mode performs no native execution. This route never creates a Specification association.',
           body: CreateSessionSchema,
           response: { 201: CreateSessionResultSchema, ...capabilityRefusal },
         },
@@ -398,6 +400,8 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
         schema: {
           tags: ['Sessions'],
           summary: 'Start a Turn',
+          description:
+            "Start a Turn with a prompt and optional model/mode/effort overrides, without changing the Session's saved defaults. Requires session.manage at store-derived scope, plus project-wide session.execute-write for workspace-write. Runtime validates selected provider, compatible native mode and verified associated workspace before dispatch; a Turn does not fall back to the Runtime checkout. Accepted 202 is durable admission, not a promise the provider succeeded; resolve uncertain outcome by idempotent retry/reads.",
           params: params(),
           body: StartTurnSchema,
           response: { 202: StartTurnResultSchema, ...capabilityRefusal },
@@ -424,6 +428,8 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
         schema: {
           tags: ['Sessions'],
           summary: 'Cancel a Turn',
+          description:
+            'Cancel exactly the requested active Turn under session.manage. A replay with the same requestId cannot cancel a later Turn, and a terminal Turn may answer an idempotent no-op. Acknowledge the request, not proof that a native process immediately stopped.',
           params: params({ turnId: TurnIdSchema }),
           body: CancelTurnSchema,
           response: { 202: CancelTurnResultSchema, ...capabilityRefusal },
@@ -450,6 +456,8 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
         schema: {
           tags: ['Sessions'],
           summary: 'Reconcile the outcome of a Turn',
+          description:
+            'Reconcile a Turn from positive Engine settlement or native-stop evidence only. Requires session.manage; no caller-supplied outcome, force flag or prompt replay. A live process remains SESSION_RECOVERY_REQUIRED; an absent recorded process can settle interrupted with PROCESS_STOPPED. Startup recovery follows the same evidence rules.',
           params: params({ turnId: TurnIdSchema }),
           body: CancelTurnSchema,
           response: { 200: ReconcileTurnResultSchema, ...capabilityRefusal },
@@ -476,6 +484,8 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
         schema: {
           tags: ['Sessions'],
           summary: 'Respond to an interaction of a Turn',
+          description:
+            'Respond to the current canonical answerable interaction under session.manage, with requestId replay. Question option IDs and optional free text must match the immutable interaction definition, and permission approval is for the exact command once, never blanket authorization. A stale/expired interaction conflicts; denying a permission does not automatically fail the Turn.',
           params: params({ interactionId: InteractionIdSchema }),
           body: RespondInteractionSchema,
           response: { 202: RespondInteractionResultSchema, ...capabilityRefusal },

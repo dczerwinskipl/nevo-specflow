@@ -1,20 +1,16 @@
 // Fresh-clone acceptance for the package-owned artifact builder.
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
 import { run } from '../../packaging/exec';
+import { createPackagingWorkspace } from './workspace.test-support';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
-const artifacts = join(repoRoot, '.artifacts');
-const productDependencies = [
-  join(repoRoot, 'packages', 'authorization'),
-  join(repoRoot, 'packages', 'specflow-contracts'),
-  join(repoRoot, 'packages', 'specflow-runtime'),
-] as const;
+const productDependencies = ['authorization', 'specflow-contracts', 'specflow-runtime'] as const;
 
 const pinnedPnpm = (
   JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')) as { packageManager: string }
@@ -27,34 +23,29 @@ describe('pnpm product:pack — self-bootstrapping from a fresh install', () => 
     expect(pinnedPnpm.startsWith('10.')).toBe(true);
   });
 
-  it('produces a tarball after generated dependency outputs and artifacts are cleared', () => {
-    const remove = (path: string): void =>
-      rmSync(path, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+  it('produces a tarball from an independently installed workspace without generated outputs', () => {
+    const workspace = createPackagingWorkspace(repoRoot);
+    try {
+      const artifacts = join(workspace.root, '.artifacts');
+      for (const name of productDependencies) {
+        expect(existsSync(join(workspace.root, 'packages', name, 'dist'))).toBe(false);
+        expect(existsSync(join(workspace.root, 'packages', name, '.tsbuild'))).toBe(false);
+      }
 
-    for (const packageDir of productDependencies) {
-      remove(join(packageDir, 'dist'));
-      remove(join(packageDir, '.tsbuild'));
+      expect(existsSync(artifacts)).toBe(false);
+
+      // This workspace has no warm build outputs while the rest of pnpm check may be running.
+      run('pnpm', ['product:pack'], { cwd: workspace.root, timeout: 300_000 });
+
+      for (const name of productDependencies) {
+        expect(existsSync(join(workspace.root, 'packages', name, 'dist'))).toBe(true);
+      }
+
+      expect(readdirSync(artifacts).filter((file) => file.endsWith('.tgz')).length).toBeGreaterThan(
+        0,
+      );
+    } finally {
+      workspace.dispose();
     }
-
-    mkdirSync(artifacts, { recursive: true });
-    for (const artifact of readdirSync(artifacts)) {
-      remove(join(artifacts, artifact));
-    }
-
-    for (const packageDir of productDependencies) {
-      expect(existsSync(join(packageDir, 'dist'))).toBe(false);
-    }
-
-    expect(readdirSync(artifacts)).toEqual([]);
-
-    run('pnpm', ['product:pack'], { cwd: repoRoot, timeout: 180_000 });
-
-    for (const packageDir of productDependencies) {
-      expect(existsSync(join(packageDir, 'dist'))).toBe(true);
-    }
-
-    expect(readdirSync(artifacts).filter((file) => file.endsWith('.tgz')).length).toBeGreaterThan(
-      0,
-    );
-  }, 200_000);
+  }, 600_000);
 });

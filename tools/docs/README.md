@@ -16,6 +16,7 @@ excluded; `.nevo/config.yaml` holds only the semantic search opt-in). It adds on
 - the repository's ADR rules, run by `check` (and every corpus read) through
   `corpusRules.validate`: filename/id agreement, ISO `date`, gap-free numbering, resolvable
   `supersedes`/`superseded_by`, and no generated `TODO` placeholder in a `current` ADR;
+- Mermaid `block-beta` block/node identifier checks run against all documents in the corpus;
 - hints that name the repository scripts (`pnpm docs:check --write`, `pnpm docs:get`).
 
 ## Commands
@@ -102,6 +103,12 @@ commands live in [`eval/reports/`](eval/reports/), for example the
 
 It is a manual measurement for chunking, ranking and cutoff changes, not a CI check: results depend
 on the local embedding model.
+
+## Retrieval cost benchmark
+
+For before/after refactors, the [retrieval-cost benchmark](eval/retrieval-cost/README.md)
+records real search/get payloads, token counts and an evidence checklist against clean historical
+worktrees. Its lexical baseline is separate from model-specific relevance calibration.
 
 ## Layout
 

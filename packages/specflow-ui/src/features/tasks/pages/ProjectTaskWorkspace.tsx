@@ -147,7 +147,7 @@ function Workspace({
                   title={t('specification.viewTasks')}
                   view="task"
                   specId={specId}
-                  detailLabel={task.id}
+                  detailLabel={task.title}
                 />
               }
               icon="list-checks"

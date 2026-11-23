@@ -15,7 +15,7 @@ const reason = (input: Parameters<typeof newSessionReadiness>[0]) =>
   newSessionReadiness(input).prerequisite?.key;
 
 describe('newSessionReadiness', () => {
-  it('starts with an agent, a model, a supported mode and effort; the agent names it', () => {
+  it('starts with an agent, a model, a supported mode and effort', () => {
     expect(newSessionReadiness(ready)).toEqual({ prerequisite: undefined, canStart: true });
   });
 

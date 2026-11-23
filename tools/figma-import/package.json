@@ -15,16 +15,16 @@
     "build:ui": "node build-ui.mjs",
     "typecheck": "tsc -p tsconfig.json && tsc -p ui/tsconfig.json",
     "lint": "eslint .",
-    "test": "pnpm build && vitest run"
+    "test": "vitest run"
   },
   "dependencies": {
     "@nevo/figma-core": "workspace:*"
   },
   "devDependencies": {
-    "@figma/plugin-typings": "1.142.0",
+    "@figma/plugin-typings": "1.143.0",
     "@types/node": "24.19.2",
     "esbuild": "0.28.2",
-    "playwright": "1.65.0",
-    "vitest": "5.1.0"
+    "playwright": "1.65.1",
+    "vitest": "5.1.1"
   }
 }

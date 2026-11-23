@@ -140,6 +140,7 @@ export function applyOptionsScenario(
     case 'default':
       break;
     case 'git-disabled':
+      delete next.defaultBaseConfig;
       next.newWorktree = { status: 'disabled', reason: 'git-disabled' };
       next.workspaces = [
         strip({
@@ -156,9 +157,11 @@ export function applyOptionsScenario(
       delete next.commits;
       break;
     case 'git-unavailable':
+      delete next.defaultBaseConfig;
       next.newWorktree = { status: 'unavailable', reason: 'git-unavailable' };
       break;
     case 'git-policy-invalid':
+      delete next.defaultBaseConfig;
       next.newWorktree = { status: 'unavailable', reason: 'git-policy-invalid' };
       next.workspaces = next.workspaces.map((w) =>
         strip({
@@ -214,8 +217,16 @@ export function applyOptionsScenario(
         ),
       );
       next.baseRefs = [
-        { ref: localBranchRef('develop'), checkedOutWorkspaceId: demoWorkspaceIds.platform },
-        { ref: localBranchRef('release/1.4'), checkedOutWorkspaceId: demoWorkspaceIds.main },
+        {
+          ref: localBranchRef('develop'),
+          projectConfig: { status: 'usable' },
+          checkedOutWorkspaceId: demoWorkspaceIds.platform,
+        },
+        {
+          ref: localBranchRef('release/1.4'),
+          projectConfig: { status: 'usable' },
+          checkedOutWorkspaceId: demoWorkspaceIds.main,
+        },
         ...next.baseRefs.filter(
           (b) =>
             !['develop', 'feature/platform', 'release/1.4'].map(localBranchRef).includes(b.ref),
@@ -276,7 +287,11 @@ export function applyOptionsScenario(
           integrationSelectable: true,
           branch,
         });
-        next.baseRefs.push({ ref: localBranchRef(branch), checkedOutWorkspaceId: workspaceId });
+        next.baseRefs.push({
+          ref: localBranchRef(branch),
+          projectConfig: { status: 'usable' },
+          checkedOutWorkspaceId: workspaceId,
+        });
       }
 
       break;
@@ -296,7 +311,7 @@ export function applyOptionsScenario(
       );
       next.baseRefs = next.baseRefs.map((b) =>
         b.ref === localBranchRef('develop')
-          ? { ref: b.ref }
+          ? { ref: b.ref, projectConfig: { status: 'usable' } }
           : b.ref === localBranchRef('main')
             ? { ...b, checkedOutWorkspaceId: demoWorkspaceIds.main }
             : b,

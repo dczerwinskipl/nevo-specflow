@@ -96,7 +96,7 @@ describe('tileAvailability', () => {
     });
   });
   it.each([
-    ['git-disabled', 'Wyłączone w konfiguracji projektu.'],
+    ['git-disabled', 'Git jest wyłączony w konfiguracji projektu.'],
     ['git-unavailable', 'Git jest teraz niedostępny.'],
     ['membership-mismatch', 'Ten katalog nie należy do repozytorium projektu.'],
   ] as const)('new worktree %s explains itself', (variant, reason) => {
@@ -408,7 +408,10 @@ describe('revalidate keeps values and flags them', () => {
   });
   it('flags a custom name that has become taken', () => {
     const taken = options();
-    taken.baseRefs.push({ ref: 'refs/heads/feature/payments-v2' });
+    taken.baseRefs.push({
+      ref: 'refs/heads/feature/payments-v2',
+      projectConfig: { status: 'usable' },
+    });
     expect(revalidate(remembered, taken).branch).toContain('już istnieje');
   });
   it('inactive tile values never block Create', () => {
@@ -575,8 +578,12 @@ describe('base refs in the project Runtime format (full refs, short workspace br
       w.kind === 'primary' ? { ...w, branch: 'main' } : w,
     );
     value.baseRefs = [
-      { ref: 'refs/heads/main', checkedOutWorkspaceId: ids.main },
-      { ref: 'refs/heads/feature/x' },
+      {
+        ref: 'refs/heads/main',
+        projectConfig: { status: 'usable' },
+        checkedOutWorkspaceId: ids.main,
+      },
+      { ref: 'refs/heads/feature/x', projectConfig: { status: 'usable' } },
     ];
 
     return value;
@@ -594,7 +601,7 @@ describe('base refs in the project Runtime format (full refs, short workspace br
     // A commit default is a commit, as for the Engine, even if a branch has the same name.
     const sha = '0123456789abcdef0123456789abcdef01234567';
     const commit = runtime(sha);
-    commit.baseRefs.push({ ref: `refs/heads/${sha}` });
+    commit.baseRefs.push({ ref: `refs/heads/${sha}`, projectConfig: { status: 'usable' } });
     expect(defaultBaseValue(commit)).toBe('');
   });
   it('turning the switch on does not block Create and sends no override', () => {

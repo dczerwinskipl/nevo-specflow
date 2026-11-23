@@ -27,6 +27,10 @@ the application capability correctly.
 
 Do not duplicate Commander's own parser test suite.
 
+An in-process document flush can return at its deadline while work continues. Track that work with
+`flushAllDocumentCommits`'s `onOverrun` callback and await it before removing the temporary Project
+Home. Returning from the bounded command does not prove that its Git work and bookkeeping ended.
+
 ## Executable smoke tests
 
 Keep a small subprocess suite against the built executable:

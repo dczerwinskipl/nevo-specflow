@@ -374,6 +374,9 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
           summary: worktree
             ? 'Close the linked worktree of a Specification'
             : 'Close a Specification',
+          description: worktree
+            ? 'Close the linked worktree associated with one Specification. Optional finishAfterExternalMerge:true is a person-initiated assertion of a previous external merge; the Engine proves whole-branch content equivalence before disposing without a second merge commit. The same flag is not accepted by Specification Close. Refusals include 409 CLOSE_EXTERNAL_MERGE_MISMATCH and 409 CLOSE_LOCAL_CONFIG_MODIFIED; a changed local config must be moved before replaying the same operation id. Git-off projects cannot close worktrees.'
+            : 'Close (archive) a single Specification under its workflow gate, using the project Git policy and durable Engine journal. Optional integrateToTargetBranch:false archives without integration; Git-off mode supports archive-only even in a linked checkout, without a Git commit. The request never accepts finishAfterExternalMerge. A successful settled result is 200, an unsettled operation 202. Workflow/Session blockers are 409 CLOSE_BLOCKED; document commits pending are 409 DOCUMENT_COMMITS_PENDING; ordinary repository blockers are 422 CLOSE_PREFLIGHT. Do not retry uncertain Git effects with a different operationId.',
           params: CloseSpecParamsSchema,
           body:
             kind === 'worktree-close'
@@ -468,6 +471,9 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
           summary: worktree
             ? 'Preview closing the linked worktree of a Specification'
             : 'Preview closing a Specification',
+          description: worktree
+            ? 'Read-only preview of worktree disposal; optional finishAfterExternalMerge query value must be the literal string true. When selected, merge status already-merged-externally describes the chosen mode, not verified Git equivalence; actual Close proves it. Git-off worktrees cannot be closed.'
+            : 'Read-only preview of Specification Close; shows integration intent, merge facts or blockers without mutating Git. Optional integrateToTargetBranch determines archive-only vs integrate; finishAfterExternalMerge is rejected at the schema boundary. Preview is advisory, not proof of future admission. Workflow blockers, running linked-checkout Sessions and pending document commits may prevent Close. No default integration branch is guessed.',
           params: CloseSpecParamsSchema,
           querystring: worktree
             ? CloseWorktreePreviewQuerySchema
@@ -558,6 +564,8 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
         tags: ['Specifications'],
         summary:
           'Read the agent Session Turns that keep a Specification Close from removing its worktree',
+        description:
+          'Read agent Session Turns holding the linked checkout a Specification Close might remove, without planning Close or touching Git. Empty blockers for no active Turns or a Specification in the primary checkout. Useful alongside workflow Close blockers; removing an occupied linked checkout is refused.',
         params: CloseSpecParamsSchema,
         response: { 200: CloseOccupancySchema, ...errors },
       },
@@ -598,6 +606,8 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
       schema: {
         tags: ['Workspaces'],
         summary: 'Preview closing a workspace',
+        description:
+          'Read-only preview of closing one whole registered workspace: identifies all canonical Specification occupants and integration destination. Project-wide Git close-workspace and integrate are required before exposing occupants. It is not permission to close only one shared Specification; previews cannot promise future mutation success.',
         params: CloseWorkspaceParamsSchema,
         response: { 200: CloseWorkspacePreviewSchema, ...errors },
       },
@@ -648,6 +658,8 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
       schema: {
         tags: ['Workspaces'],
         summary: 'Close a workspace',
+        description:
+          'Close and integrate an entire registered linked workspace including all its canonical Specifications. Requires project-wide Git close-workspace and integrate. Uses durable operationId, safe whole-branch integration, group rebind and disposal; 200 when completed, 202 while unsettled. Git off refuses 400 CLOSE_INVALID. Mutation never drops unrelated workspace contents or active Session Turns.',
         params: CloseWorkspaceParamsSchema,
         body: CloseWorktreeRequestSchema,
         response: {
@@ -707,6 +719,8 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
       schema: {
         tags: ['Workspaces'],
         summary: 'Read a workspace close operation',
+        description:
+          'Read the durable Close operation observation; it does not retry, replay uncertain Git effects or mutate repository state. Use the same operationId for recovery/retry, and refer to the operator recovery protocol when resolution is needed.',
         params: CloseWorkspaceOperationParamsSchema,
         response: { 200: contractRef(CloseWorkspaceResultSchema), ...errors },
       },
@@ -749,6 +763,8 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
       schema: {
         tags: ['Specifications'],
         summary: 'Read a Specification close operation',
+        description:
+          'Read the durable Close operation observation; it does not retry, replay uncertain Git effects or mutate repository state. Use the same operationId for recovery/retry, and refer to the operator recovery protocol when resolution is needed.',
         params: CloseOperationParamsSchema,
         response: { 200: contractRef(CloseResultSchema), ...errors },
       },
@@ -780,6 +796,8 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
       schema: {
         tags: ['Specifications'],
         summary: 'Reconcile the scratch checkout of a close operation',
+        description:
+          'Reconcile an interrupted Close scratch checkout after trusted operator acknowledgement that no Git process is still active. Requires confirmedNoActiveGitProcess:true; this is not an inference about process state, and the Engine additionally checks physical scratch evidence.',
         params: CloseOperationParamsSchema,
         body: CloseScratchReconciliationRequestSchema,
         response: { 200: contractRef(CloseResultSchema), ...errors },
@@ -830,6 +848,8 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
       schema: {
         tags: ['Workspaces'],
         summary: 'Read a worktree close operation',
+        description:
+          'Read the durable Close operation observation; it does not retry, replay uncertain Git effects or mutate repository state. Use the same operationId for recovery/retry, and refer to the operator recovery protocol when resolution is needed.',
         params: CloseOperationParamsSchema,
         response: { 200: contractRef(CloseResultSchema), ...errors },
       },

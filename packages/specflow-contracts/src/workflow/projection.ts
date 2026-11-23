@@ -1064,6 +1064,10 @@ export const WorkflowActionProjectionSchema = Type.Object(
     /** An agent working on another subject holds the project ({@link ProjectHoldSchema}). */
     projectHold: Type.Optional(ProjectHoldSchema),
   },
-  { $id: 'WorkflowActionProjection' },
+  {
+    $id: 'WorkflowActionProjection',
+    description:
+      'The Engine-owned subject-specific workflow and available human actions. Stable codes and reasons are machine-readable; labels/messages are display-only. No client-side derivation of permissions or gates.',
+  },
 );
 export type WorkflowActionProjection = Static<typeof WorkflowActionProjectionSchema>;

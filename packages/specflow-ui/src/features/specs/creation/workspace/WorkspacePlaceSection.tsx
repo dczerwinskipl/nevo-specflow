@@ -34,7 +34,9 @@ import { BranchRef } from './BranchRef';
 import { ExistingSummary, MainSummary, NewSummary } from './WorkspaceTileSummaries';
 import { activeTile, primaryWorkspace, tileAvailability } from './model/workspaceTiles';
 import { availableCountLabel } from './model/workspaceCopy';
-import { branchNameOverride } from './model/workspaceOverrides';
+import { baseOverride, branchNameOverride } from './model/workspaceOverrides';
+import { noUsableBaseConfig } from './model/baseConfig';
+import type { CreateOptionsView } from './model/createOptionsView';
 import {
   requiredMessages,
   revalidate,
@@ -72,13 +74,17 @@ type FocusRequest =
  * The missing-value errors of opened pickers (a changed Start from or Merge into, an Existing
  * workspace without a pick). Shown only once Create was tried, never while the owner is choosing.
  */
-function requiredErrors(choice: WorkspaceChoice, active: Tile | null): WorkspaceErrors {
+function requiredErrors(
+  choice: WorkspaceChoice,
+  active: Tile | null,
+  options: CreateOptionsView,
+): WorkspaceErrors {
   const errors: WorkspaceErrors = {};
   if (active === 'existing' && !choice.existingWorkspaceId) {
     errors.existing = requiredMessages.existing;
   }
 
-  if (active === 'new' && choice.base.on && !choice.base.ref) {
+  if (active === 'new' && choice.base.on && !choice.base.ref && !noUsableBaseConfig(options)) {
     errors.base = requiredMessages.base;
   }
 
@@ -180,7 +186,10 @@ export function WorkspacePlaceSection({
   const availability = options ? tileAvailability(options) : undefined;
   const active = options ? activeTile(choice, options) : null;
   const errors: WorkspaceErrors = options
-    ? { ...revalidate(choice, options), ...(showRequired ? requiredErrors(choice, active) : {}) }
+    ? {
+        ...revalidate(choice, options),
+        ...(showRequired ? requiredErrors(choice, active, options) : {}),
+      }
     : {};
   const sectionRef = useRef<HTMLElement>(null);
   const nothing = Boolean(options) && active === null;
@@ -228,6 +237,13 @@ export function WorkspacePlaceSection({
     focusProblem: (field) => {
       if (field === 'slug' || field === 'branch') {
         update((current) => ({ ...current, ...branchNameOverride(current, true) }));
+      }
+
+      if (field === 'base' && options) {
+        update((current) => ({
+          ...current,
+          ...(current.base.on ? {} : baseOverride(options, current, true)),
+        }));
       }
 
       requestFocus({ problem: field });
@@ -365,6 +381,11 @@ export function WorkspacePlaceSection({
             );
           })}
         </ChoiceTileGroup>
+        {ready.newWorktree.status === 'disabled' && ready.newWorktree.reason === 'git-disabled' && (
+          <InlineNote className="max-w-content-narrow">
+            {t('create.workspace.enableGit')}
+          </InlineNote>
+        )}
         {available.new.ok &&
           active !== 'new' &&
           (available.main.protected === true || available.existing.protected === true) && (

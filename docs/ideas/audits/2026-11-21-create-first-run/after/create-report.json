@@ -1,0 +1,68 @@
+[
+  {
+    "mode": "current",
+    "width": 390,
+    "interaction": "touch tap",
+    "archetypeArrowDown": true,
+    "operationUrl": "http://127.0.0.1:4383/specs/new/creating/3609d22b-c360-441d-97d4-064d34b4e159?collection=current",
+    "destination": "http://127.0.0.1:4383/specs/5e837319-4028-42ca-802b-1b1885e45fb9?collection=current",
+    "completionText": "Creating specification\nBack to Specifications\nSpecification created: Final current 1795283979525\n\nDone, but the files are not committed yet.\n\nReserving the name\ndone\nName reserved\nCreating the specification\ndone\nSpecification files written\nFinishing setup\ndone\nSpecification registered\nThe specification files are not committed\n\nGit is disabled in this project (git.enabled in .nevo/config.yaml), so Nevo wrote the files without committing them. Commit them with Git yourself: Close refuses while they are uncommitted.\n\nConfiguration\nSpecification name\nFinal current 1795283979525\nArchetype\nMinimal\nDocuments\noverview.md\nWhere\nAdded to the current folder\nTechnical details\nOpen specification\n\nDone, but the files are not committed yet.",
+    "noToast": true,
+    "browserErrors": []
+  },
+  {
+    "mode": "current",
+    "width": 834,
+    "interaction": "keyboard Enter",
+    "archetypeArrowDown": true,
+    "operationUrl": "http://127.0.0.1:4383/specs/new/creating/21b053b1-5bdb-416b-8ce6-9a50a4a40eab?collection=current",
+    "destination": "http://127.0.0.1:4383/specs/8aa85068-7a54-41c7-9cbb-2a43a10244b6?collection=current",
+    "completionText": "Creating specification\nBack to Specifications\nSpecification created: Final current 1795283980648\n\nDone, but the files are not committed yet.\n\nReserving the name\ndone\nName reserved\nCreating the specification\ndone\nSpecification files written\nFinishing setup\ndone\nSpecification registered\nThe specification files are not committed\n\nGit is disabled in this project (git.enabled in .nevo/config.yaml), so Nevo wrote the files without committing them. Commit them with Git yourself: Close refuses while they are uncommitted.\n\nConfiguration\nSpecification name\nFinal current 1795283980648\nArchetype\nMinimal\nDocuments\noverview.md\nWhere\nAdded to the current folder\nTechnical details\nOpen specification\n\nDone, but the files are not committed yet.",
+    "noToast": true,
+    "browserErrors": []
+  },
+  {
+    "mode": "current",
+    "width": 1440,
+    "interaction": "keyboard Enter",
+    "archetypeArrowDown": true,
+    "operationUrl": "http://127.0.0.1:4383/specs/new/creating/240d380d-4212-4db5-8be8-84060719145b?collection=current",
+    "destination": "http://127.0.0.1:4383/specs/6e93a442-3454-466b-8b5c-89b581dd2d01?collection=current",
+    "completionText": "nevo SpecFlow\nSpecifications\nDocumentation\nUR\nUX reviewer\nSpecifications\nCreating specification\nSpecification created: Final current 1795283981592\n\nDone, but the files are not committed yet.\n\nReserving the name\ndone\nName reserved\nCreating the specification\ndone\nSpecification files written\nFinishing setup\ndone\nSpecification registered\nThe specification files are not committed\n\nGit is disabled in this project (git.enabled in .nevo/config.yaml), so Nevo wrote the files without committing them. Commit them with Git yourself: Close refuses while they are uncommitted.\n\nConfiguration\nSpecification name\nFinal current 1795283981592\nArchetype\nMinimal\nDocuments\noverview.md\nWhere\nAdded to the current folder\nTechnical details\nOpen specification\n\nDone, but the files are not committed yet.",
+    "noToast": true,
+    "browserErrors": []
+  },
+  {
+    "mode": "managed",
+    "width": 390,
+    "interaction": "touch tap",
+    "archetypeArrowDown": true,
+    "operationUrl": "http://127.0.0.1:4384/specs/new/creating/6059026c-7685-4cd2-817f-488097787e77?collection=current",
+    "destination": "http://127.0.0.1:4384/specs/f61cf074-e78d-4dc9-afb9-f6e1ecd86379?collection=current",
+    "completionText": "Creating specification\nBack to Specifications\nSpecification created: Final managed 1795283982646\n\nDone. Opening the specification…\n\nReserving the name\ndone\nName and branch reserved\nPreparing the workspace\ndone\nWorkspace ready\nCreating the specification\ndone\nSpecification files written\nSaving the specification in Git\ndone\nSpecification files saved in Git\nFinishing setup\ndone\nSpecification registered\nConfiguration\nSpecification name\nFinal managed 1795283982646\nArchetype\nMinimal\nDocuments\noverview.md\nWhere\nIn a new workspace\nBranch name\nfeature/key-final-managed-1795283982646\nStart from\nmain\nMerge into\nmanaged\nmain\nTechnical details\nOpen specification\n\nDone. Opening the specification…",
+    "noToast": true,
+    "browserErrors": []
+  },
+  {
+    "mode": "managed",
+    "width": 834,
+    "interaction": "keyboard Enter",
+    "archetypeArrowDown": true,
+    "operationUrl": "http://127.0.0.1:4384/specs/new/creating/e097bbb7-59fb-4912-905e-a8ac7a5892ce?collection=current",
+    "destination": "http://127.0.0.1:4384/specs/45ef6d4b-b665-4e81-9dc8-e16cbdf417f2?collection=current",
+    "completionText": "Creating specification\nBack to Specifications\nSpecification created: Final managed 1795284006042\n\nDone. Opening the specification…\n\nReserving the name\ndone\nName and branch reserved\nPreparing the workspace\ndone\nWorkspace ready\nCreating the specification\ndone\nSpecification files written\nSaving the specification in Git\ndone\nSpecification files saved in Git\nFinishing setup\ndone\nSpecification registered\nConfiguration\nSpecification name\nFinal managed 1795284006042\nArchetype\nMinimal\nDocuments\noverview.md\nWhere\nIn a new workspace\nBranch name\nfeature/key-final-managed-1795284006042\nStart from\nmain\nMerge into\nmanaged\nmain\nTechnical details\nOpen specification\n\nDone. Opening the specification…",
+    "noToast": true,
+    "browserErrors": []
+  },
+  {
+    "mode": "managed",
+    "width": 1440,
+    "interaction": "keyboard Enter",
+    "archetypeArrowDown": true,
+    "operationUrl": "http://127.0.0.1:4384/specs/new/creating/6339c22d-cef9-4a37-89ea-1515914b301b?collection=current",
+    "destination": "http://127.0.0.1:4384/specs/1630a915-428d-4d28-ae15-72ac8ff91f00?collection=current",
+    "completionText": "nevo SpecFlow\nSpecifications\nDocumentation\nUR\nUX reviewer\nSpecifications\nCreating specification\nSpecification created: Final managed 1795284037717\n\nDone. Opening the specification…\n\nReserving the name\ndone\nName and branch reserved\nPreparing the workspace\ndone\nWorkspace ready\nCreating the specification\ndone\nSpecification files written\nSaving the specification in Git\ndone\nSpecification files saved in Git\nFinishing setup\ndone\nSpecification registered\nConfiguration\nSpecification name\nFinal managed 1795284037717\nArchetype\nMinimal\nDocuments\noverview.md\nWhere\nIn a new workspace\nBranch name\nfeature/key-final-managed-1795284037717\nStart from\nmain\nMerge into\nmanaged\nmain\nTechnical details\nOpen specification\n\nDone. Opening the specification…",
+    "noToast": true,
+    "browserErrors": []
+  }
+]

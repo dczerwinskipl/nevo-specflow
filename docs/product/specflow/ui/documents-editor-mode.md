@@ -34,15 +34,15 @@ document owns only what they mean in the product. Approved mock: Storybook
 ### Contents and properties
 
 - **Contents and properties (preview only).** A markdown preview with at least two headings (h1-h4) offers its contents.
-   - When the document panel is at least 840 px wide (a 1400 px window and wider) (measured on the panel, so the text keeps at least 528 px, about 62 characters or more) the text keeps its 760 px measure at most and a sticky column beside it holds the properties and the contents, the current heading marked while reading; the column is 27% of the panel between 232 and 320 px and its rows are one line with the full title on hover.
-   - The contents are a compact tree of the headings in the file tree's family: one row height, one indent step per real heading level (a flat list when all headings share a level), normal weight, no icons or numbering; the current section is a quiet tint with an accent bar and follows the reading position; choosing a heading scrolls to it smoothly (at once with reduced motion).
-   - In a narrower panel there is no column and no box in the text: a contents icon (`list`) follows the tab strip or the narrow switcher in the header, always right after them and not beside the actions, and opens the contents as a bottom sheet, and the same entry is the first item of the Display group of the `...` menu.
-   - The icon is region navigation, not a header action, so it costs no direct slot.
-   - The sheet is titled Contents only (the tab already names the document).
-   - Choosing a heading closes the sheet, scrolls to the heading and focuses it; closing without a choice returns focus to the icon.
-   - The properties are one collapsed plain row (a thin rule, no frame) in the text and in the column, with a 44 px hit area on touch.
-   - Editing, plain text and documents with fewer than two headings have no contents.
-   - A permanent contents bar was considered and rejected in review.
+  - When the document panel is at least 840 px wide (a 1400 px window and wider) (measured on the panel, so the text keeps at least 528 px, about 62 characters or more) the text keeps its 760 px measure at most and a sticky column beside it holds the properties and the contents, the current heading marked while reading; the column is 27% of the panel between 232 and 320 px and its rows are one line with the full title on hover.
+  - The contents are a compact tree of the headings in the file tree's family: one row height, one indent step per real heading level (a flat list when all headings share a level), normal weight, no icons or numbering; the current section is a quiet tint with an accent bar and follows the reading position; choosing a heading scrolls to it smoothly (at once with reduced motion).
+  - In a narrower panel there is no column and no box in the text: a contents icon (`list`) follows the tab strip or the narrow switcher in the header, always right after them and not beside the actions, and opens the contents as a bottom sheet, and the same entry is the first item of the Display group of the `...` menu.
+  - The icon is region navigation, not a header action, so it costs no direct slot.
+  - The sheet is titled Contents only (the tab already names the document).
+  - Choosing a heading closes the sheet, scrolls to the heading and focuses it; closing without a choice returns focus to the icon.
+  - The properties are one collapsed plain row (a thin rule, no frame) in the text and in the column, with a 44 px hit area on touch.
+  - Editing, plain text and documents with fewer than two headings have no contents.
+  - A permanent contents bar was considered and rejected in review.
 
 ### Source editor
 
@@ -66,17 +66,17 @@ document owns only what they mean in the product. Approved mock: Storybook
 ### URL and tab identity
 
 - **URL.** The active tab is the route `documents/$documentId`; the set of other open tabs is not in the URL.
-   - The route is the single source of the active tab: a document in the URL (a deep link, a reload) opens exactly one tab.
-   - Switching to an open tab replaces the history entry; opening a new tab (from the tree, a new file, an import) pushes one.
-   - Both keep the location state, so the return link to a Session or the Specification overview survives tab changes.
-   - Closing the active tab moves to its right neighbour, else the left one, by replacing the entry; closing the last tab shows the document list.
-   - The browser Back button may return to the address of a tab that was closed: the route is the source of the active tab, so that address opens its tab again.
+  - The route is the single source of the active tab: a document in the URL (a deep link, a reload) opens exactly one tab.
+  - Switching to an open tab replaces the history entry; opening a new tab (from the tree, a new file, an import) pushes one.
+  - Both keep the location state, so the return link to a Session or the Specification overview survives tab changes.
+  - Closing the active tab moves to its right neighbour, else the left one, by replacing the entry; closing the last tab shows the document list.
+  - The browser Back button may return to the address of a tab that was closed: the route is the source of the active tab, so that address opens its tab again.
 
 ### Preserving drafts
 
 - **Unsaved changes.** Closing a tab with edits asks (Save / Discard / Cancel) for that tab, also for a tab that is not on screen; Discard removes its draft, so reopening shows the saved document.
-   - Leaving the screen, switching specification, a tree operation, closing every tab (_Close all documents_ in the document's `...` menu — the split tab rail has no region-level close) or unloading the page asks once, listing the unsaved documents (Save all / Discard all / Cancel).
-   - When Save all cannot save everything the dialog stays open and lists the documents that are still unsaved.
+  - Leaving the screen, switching specification, a tree operation, closing every tab (_Close all documents_ in the document's `...` menu — the split tab rail has no region-level close) or unloading the page asks once, listing the unsaved documents (Save all / Discard all / Cancel).
+  - When Save all cannot save everything the dialog stays open and lists the documents that are still unsaved.
 - **Switching tabs is not leaving.** Moving between open tabs changes the route
   `documents/$documentId` but stays on the Documents screen, so it MUST NOT trigger the leave guard
   or its Save / Discard / Cancel dialog. Drafts of the other tabs are kept. Only closing a tab, leaving

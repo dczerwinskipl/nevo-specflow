@@ -135,14 +135,12 @@ Check content, Turn and Work membership in the selected Session **before returni
 
 Each `session-change` frame has `id: <eventSeq>` and JSON `{sessionId, eventSeq, kind, changes}`. `changes` is discriminated by `kind`:
 
-| `kind` | `changes` |
-| --- | --- |
-| `session` | `{projection: LiveProjection}`, including current `activeTurn` after rename/archive/unarchive |
-| `turn` | `{turn: TurnSummary, projection: LiveProjection}` |
-| `conversation` | `{entries: ConversationEntry[], projection?: LiveProjection}`; up to 8 entries |
-| `work` | `{turnId, items: WorkSummary[], projection?: LiveProjection}`; up to 8 items |
-| `interaction` | `{projection: LiveProjection}` |
-| `telemetry` | `{telemetryRevision: SessionSequence}`; invalidates the separately authorized telemetry read, **not** its contents |
+- `session`: `{projection: LiveProjection}`, including current `activeTurn` after rename/archive/unarchive.
+- `turn`: `{turn: TurnSummary, projection: LiveProjection}`.
+- `conversation`: `{entries: ConversationEntry[], projection?: LiveProjection}`, at most 8 entries.
+- `work`: `{turnId, items: WorkSummary[], projection?: LiveProjection}`, at most 8 items.
+- `interaction`: `{projection: LiveProjection}`.
+- `telemetry`: `{telemetryRevision: SessionSequence}`, invalidating the separately authorized telemetry read; no account values in the event.
 
 Only the current Session/Turn/activity/Interaction projection is sent where applicable. The authoritative union is `SessionChangeSchema` in `packages/specflow-contracts/src/sessions/model.ts`; the HTTP contract is generated in [OpenAPI](../../reference/api/openapi.md).
 

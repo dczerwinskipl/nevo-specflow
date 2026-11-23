@@ -8305,6 +8305,34 @@
                   "attempt": {
                     "type": "integer",
                     "minimum": 1
+                  },
+                  "unavailable": {
+                    "type": "object",
+                    "required": [
+                      "reason"
+                    ],
+                    "properties": {
+                      "reason": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "attempt-commit-pending"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "attempt-commit-failed"
+                            ]
+                          }
+                        ]
+                      },
+                      "code": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
                   }
                 },
                 "additionalProperties": false

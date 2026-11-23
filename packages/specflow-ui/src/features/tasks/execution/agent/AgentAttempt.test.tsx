@@ -26,6 +26,8 @@ import { POLL_MS, usePolling } from './usePolling';
 import {
   ATTEMPT_ID,
   agentAttemptProjection,
+  confirmationAttemptHistory,
+  confirmationWithCommit,
   finishedAttemptHistory,
   finishedAttemptProjection,
   type AttemptCase,
@@ -65,7 +67,9 @@ function renderNow(
       retryAttemptCommit: vi.fn(never),
       confirmResult: vi.fn(never),
       takeOverAgentExecution: vi.fn(never),
-      history: vi.fn(never),
+      history: vi.fn(() =>
+        Promise.resolve({ subject: { kind: 'specification' as const, specId: SPEC }, items: [] }),
+      ),
       rejectResult: vi.fn(never),
       closePreview: vi.fn(never),
       closeOccupancy: vi.fn(never),
@@ -240,6 +244,39 @@ describe('a result that waits for the owner', () => {
     expect(screen.getByRole('button', { name: 'Confirm' }).hasAttribute('disabled')).toBe(false);
   });
 
+  it('waits for a failed commit of the agent’s work: Confirm disabled, Retry commit in the note', async () => {
+    const retryAttemptCommit = vi.fn(never);
+    renderNow(
+      'confirmation',
+      { retryAttemptCommit, history: () => Promise.resolve(confirmationAttemptHistory('failed')) },
+      { projection: confirmationWithCommit('failed') },
+    );
+
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain('the branch is protected');
+    expect(screen.getByRole('button', { name: 'Confirm' }).hasAttribute('disabled')).toBe(true);
+    fireEvent.click(within(alert).getByRole('button', { name: 'Retry commit' }));
+    await waitFor(() =>
+      expect(retryAttemptCommit).toHaveBeenCalledWith(
+        { specId: SPEC },
+        { step: 'breakdown', attempt: 1 },
+      ),
+    );
+  });
+
+  it('answers a Confirm refused for the commit by reading again, not with an alert', async () => {
+    const confirmResult = vi.fn(() => Promise.reject(refusal('WORKFLOW_ATTEMPT_COMMIT_REQUIRED')));
+    const history = vi.fn(() => Promise.resolve(confirmationAttemptHistory('committed')));
+    renderNow('confirmation', { confirmResult, history });
+    await screen.findByText(/Its work is committed/);
+    const reads = history.mock.calls.length;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+
+    await waitFor(() => expect(history.mock.calls.length).toBeGreaterThan(reads));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('rejects only with the owner’s feedback', async () => {
     const rejectResult = vi.fn(() => Promise.resolve(settled as never));
     renderNow('confirmation', { rejectResult });
@@ -352,6 +389,9 @@ describe('polling the attempt', () => {
     }
 
     expect(needsPolling({})).toBe(false);
+    // The commit of a result that waits for Confirm changes by itself until it settles.
+    expect(needsPolling(confirmationWithCommit('pending'))).toBe(true);
+    expect(needsPolling(confirmationWithCommit('failed'))).toBe(false);
   });
 
   it('ticks only while active, and stops when the state no longer needs it', () => {

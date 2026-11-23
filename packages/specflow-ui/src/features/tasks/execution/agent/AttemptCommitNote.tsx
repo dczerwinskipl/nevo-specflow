@@ -11,16 +11,25 @@ const PATHS_SHOWN = 5;
 
 /**
  * What became of the work of an agent attempt that finished (the commit it makes when the agent
- * finishes, D15), as the Now block of the step that follows says it.
+ * finishes, D15), as the Now block of the step that follows, or of the result waiting for the
+ * owner's confirmation, says it. `waits: 'confirm'`: the owner's Confirm waits for the commit.
  */
 export type AttemptCommitView =
   | {
       readonly state: 'committed';
       readonly stepTitle: string;
       readonly branch?: string;
+      /** The commit, when one was made, and how many files it holds. */
+      readonly sha?: string;
+      readonly count?: number;
+    }
+  | {
+      readonly state: 'pending';
+      readonly stepTitle: string;
     }
   | {
       readonly state: 'failed';
+      readonly waits?: 'confirm';
       /** The attempt whose commit Retry commit makes again. */
       readonly step: string;
       readonly attempt: number;
@@ -55,6 +64,36 @@ function Committed({
         values={{ step: commit.stepTitle, branch: commit.branch }}
         components={{ code: CODE }}
       />
+      {commit.sha ? (
+        <>
+          {' '}
+          <Trans
+            i18nKey="workflowExecution.attemptCommit.commitHolds"
+            count={commit.count ?? 0}
+            values={{ sha: commit.sha.slice(0, 7) }}
+            components={{ code: CODE }}
+          />
+        </>
+      ) : null}
+    </InlineNote>
+  );
+}
+
+function Pending({
+  commit,
+}: {
+  readonly commit: Extract<AttemptCommitView, { state: 'pending' }>;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <InlineNote
+      tone="info"
+      icon={GitCommitHorizontal}
+      role="status"
+      data-now-attempt-commit="pending"
+    >
+      {t('workflowExecution.attemptCommit.pending', { step: commit.stepTitle })}
     </InlineNote>
   );
 }
@@ -94,9 +133,11 @@ function Failed({
           values={{ branch: commit.branch }}
           components={{ code: CODE }}
         />{' '}
-        {commit.nextTitle
-          ? t('workflowExecution.attemptCommit.blocksNext', { next: commit.nextTitle })
-          : t('workflowExecution.attemptCommit.blocksAgent')}
+        {commit.waits === 'confirm'
+          ? t('workflowExecution.attemptCommit.blocksConfirm')
+          : commit.nextTitle
+            ? t('workflowExecution.attemptCommit.blocksNext', { next: commit.nextTitle })
+            : t('workflowExecution.attemptCommit.blocksAgent')}
         <ul className="mt-1 grid list-disc gap-0.5 pl-5 text-body-sm marker:text-content-muted">
           {shown.map((path) => (
             <li key={path} className={MONO}>
@@ -129,7 +170,10 @@ function Failed({
   );
 }
 
-/** The commit of a finished agent attempt: where it landed, or why it did not and the way on. */
+/**
+ * The commit of a finished agent attempt: where it landed, that it is being made, or why it was not
+ * and the way on.
+ */
 export function AttemptCommitNote({
   commit,
   retrying,
@@ -143,6 +187,8 @@ export function AttemptCommitNote({
 }) {
   return commit.state === 'committed' ? (
     <Committed commit={commit} />
+  ) : commit.state === 'pending' ? (
+    <Pending commit={commit} />
   ) : (
     <Failed commit={commit} retrying={retrying} error={error} onRetry={onRetry} />
   );

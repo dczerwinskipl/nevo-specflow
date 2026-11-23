@@ -14,13 +14,14 @@ import type { WorkflowSubjectRef } from '../api';
 import { formatWhen, humanizeId, transitionLabel } from '../presentation';
 import type { NowLinks } from '../StartBlockerLines';
 import { WorkflowRefusalAlert } from '../WorkflowRefusalAlert';
+import { workflowRefusalOf } from '../refusal';
 import { AgentBlocker, Paths } from './AgentBlocker';
 import { SessionLink } from './AgentSession';
 import { agentStageOf, continueRefusal, needsPolling, ownRefusal } from './agentAttempt';
 import { usePolling } from './usePolling';
 import { AttemptCommitNote } from './AttemptCommitNote';
 import { TakeOverDialog } from './TakeOverDialog';
-import { useFinishedAttemptCommit } from './useAttemptCommit';
+import { useConfirmationAttemptCommit, useFinishedAttemptCommit } from './useAttemptCommit';
 import { ConfirmApplies, ProposalQuote, RejectResultDialog } from './ConfirmationParts';
 import { useAgentAttemptCommands } from './useAgentAttemptCommands';
 
@@ -246,6 +247,7 @@ export function useAgentAttemptNow({
   readonly links: NowLinks;
 }): AgentNow | undefined {
   const attemptCommit = useFinishedAttemptCommit(subject, projection);
+  const confirmationCommit = useConfirmationAttemptCommit(subject, projection);
   const { t, i18n } = useTranslation();
   const commands = useAgentAttemptCommands(subject, headingId);
   usePolling(needsPolling(projection), commands.refresh);
@@ -273,11 +275,15 @@ export function useAgentAttemptNow({
     const finished = when(attempt.endedAt ?? attempt.startedAt);
     const result = transitionLabel(proposal.transition);
     const text = t('workflowExecution.confirmation.line', { at: finished });
-    const failed = commands.confirm.isError
-      ? commands.confirm.error
-      : commands.reject.isError
-        ? commands.reject.error
+    // Confirm waits while the commit of the agent's work runs or failed; the note says why. A Confirm
+    // refused for it (the projection had not said so yet) is answered by the re-read, not an alert.
+    const commitWaits = actions.confirm?.unavailable !== undefined;
+    const confirmError =
+      commands.confirm.isError &&
+      workflowRefusalOf(commands.confirm.error).code !== 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED'
+        ? commands.confirm.error
         : undefined;
+    const failed = confirmError ?? (commands.reject.isError ? commands.reject.error : undefined);
 
     return {
       positionLine:
@@ -293,6 +299,16 @@ export function useAgentAttemptNow({
         <div className="grid gap-3">
           <ProposalQuote proposal={proposal} agent={agentName(attempt.actor)} />
           <ConfirmApplies confirmation={position} links={links} />
+          {confirmationCommit ? (
+            <AttemptCommitNote
+              commit={confirmationCommit}
+              retrying={commands.retryCommit.isPending}
+              error={commands.retryCommit.error}
+              onRetry={() =>
+                commands.retryCommit.mutate({ step: position.step.id, attempt: attempt.number })
+              }
+            />
+          ) : null}
           {failed && !rejecting ? <WorkflowRefusalAlert error={failed} /> : null}
         </div>
       ),
@@ -307,7 +323,7 @@ export function useAgentAttemptNow({
                   confirmsDigest: position.confirmsDigest,
                 })
               }
-              disabled={commands.confirm.isPending}
+              disabled={commands.confirm.isPending || commitWaits}
               aria-busy={commands.confirm.isPending}
             >
               {commands.confirm.isPending

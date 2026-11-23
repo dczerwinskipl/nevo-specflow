@@ -2873,6 +2873,9 @@
     "attemptCommit": {
       "committed": "The agent finished {{step}}. Its work is committed.",
       "committedOn": "The agent finished {{step}}. Its work is committed on <code>{{branch}}</code>.",
+      "commitHolds_one": "Commit <code>{{sha}}</code> holds {{count}} file.",
+      "commitHolds_other": "Commit <code>{{sha}}</code> holds {{count}} files.",
+      "pending": "The agent finished {{step}}. SpecFlow is committing its work…",
       "failed": "<strong>{{step}} is finished, but its commit failed: {{reason}} (<code>{{code}}</code>).</strong>",
       "reason": {
         "branchProtected": "the branch is protected",
@@ -2889,6 +2892,7 @@
       "stays_other": "These {{count}} files stay uncommitted, and Close lists them until they are committed.",
       "blocksNext": "Until then Run with agent cannot start {{next}}: an agent starts only from a committed checkout.",
       "blocksAgent": "Until then Run with agent cannot start the next step: an agent starts only from a committed checkout.",
+      "blocksConfirm": "Confirm becomes possible once the agent’s work is committed: Retry commit makes the commit again after you fix the cause.",
       "retry": "Retry commit",
       "retrying": "Retrying…"
     }

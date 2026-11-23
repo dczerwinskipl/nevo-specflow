@@ -287,3 +287,78 @@ export function finishedAttemptHistory(commit: {
     ],
   };
 }
+
+/** The commit of the agent's Breakdown result that waits for the owner, as a story names it. */
+export type ConfirmationCommit = 'committed' | 'pending' | 'failed';
+
+/**
+ * The Breakdown result waiting for the owner with its attempt commit: Confirm waits (the projection's
+ * `actions.confirm.unavailable`) while the commit runs or after it failed.
+ */
+export function confirmationWithCommit(commit: ConfirmationCommit): WorkflowActionProjection {
+  const projection = specificationConfirmation();
+  if (commit === 'committed') {
+    return projection;
+  }
+
+  return {
+    ...projection,
+    actions: {
+      ...projection.actions,
+      confirm: {
+        step: 'breakdown',
+        attempt: 1,
+        unavailable:
+          commit === 'pending'
+            ? { reason: 'attempt-commit-pending' }
+            : { reason: 'attempt-commit-failed', code: 'BRANCH_PROTECTED' },
+      },
+    },
+  };
+}
+
+/** The Specification's history whose newest attempt is the agent's Breakdown, with its commit. */
+export function confirmationAttemptHistory(commit: ConfirmationCommit) {
+  return {
+    subject: { kind: 'specification' as const, specId: 'sso' },
+    items: [
+      {
+        kind: 'attempt' as const,
+        sequence: 4,
+        step: 'breakdown',
+        stepTitle: 'Breakdown',
+        attempt: 1,
+        startedAt: '2026-11-12T13:20:00Z',
+        actor: agentActor,
+        agent: {
+          attemptId: ATTEMPT_ID,
+          provider: 'claude',
+          sessionId: PLAN_SESSION_ID,
+          turns: 1,
+          ended: 'finished' as const,
+          events: [],
+          work: {
+            documents: [
+              'specs/active/single-sign-on/tasks/t-01/task.md',
+              'specs/active/single-sign-on/tasks/t-02/task.md',
+            ],
+            mixed: [],
+            tasks: ['t-01', 't-02', 't-03', 't-04', 't-05'],
+            declared: [],
+            commit:
+              commit === 'committed'
+                ? {
+                    state: 'committed' as const,
+                    sha: '3f9c2a1b7d4e5f60718293a4b5c6d7e8f9012345',
+                    documents: 7,
+                    files: 0,
+                  }
+                : commit === 'pending'
+                  ? { state: 'pending' as const }
+                  : { state: 'failed' as const, code: 'BRANCH_PROTECTED' },
+          },
+        },
+      },
+    ],
+  };
+}

@@ -1,4 +1,8 @@
-import type { AgentAttemptView, AgentOption } from '@nevo/specflow-contracts/workflow';
+import type {
+  AgentAttemptView,
+  AgentOption,
+  WorkflowActionProjection,
+} from '@nevo/specflow-contracts/workflow';
 import type { UnavailableAgent } from './agentOption';
 
 /**
@@ -60,12 +64,18 @@ export function ownRefusal(
 
 /**
  * Whether the Now block must keep reading the projection by itself: the agent's Turn works, is
- * stopping or may still run, a return waits for it, or its proposal is being applied. Every other
- * state changes only when the owner acts.
+ * stopping or may still run, a return waits for it, its proposal is being applied, or the commit of
+ * its result is still running while the result waits for the owner's Confirm. Every other state
+ * changes only when the owner acts.
  */
 export function needsPolling(projection: {
   readonly agentAttempt?: AgentAttemptView | undefined;
+  readonly actions?: Pick<WorkflowActionProjection['actions'], 'confirm'>;
 }): boolean {
+  if (projection.actions?.confirm?.unavailable?.reason === 'attempt-commit-pending') {
+    return true;
+  }
+
   const view = projection.agentAttempt;
   if (!view) {
     return false;

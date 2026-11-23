@@ -28,9 +28,12 @@ import {
   PLAN_SESSION_ID,
   PLAN_SESSION_TITLE,
   agentAttemptProjection,
+  confirmationAttemptHistory,
+  confirmationWithCommit,
   finishedAttemptHistory,
   finishedAttemptProjection,
   type AttemptCase,
+  type ConfirmationCommit,
 } from './agent/agentAttempt.stories-support';
 import {
   SESSION_ID,
@@ -386,7 +389,7 @@ function agentCaseOf(scenario: WorkflowStoryScenario): AgentCase | undefined {
 const projectedAgent = (agentCase: AgentCase) =>
   agentOptions[agentCase === 'dirty' ? 'fresh' : agentCase];
 
-function services(scenario: WorkflowStoryScenario) {
+function services(scenario: WorkflowStoryScenario, confirmationCommit?: ConfirmationCommit) {
   const state = { version: 4, findings: false };
   const agentCase = agentCaseOf(scenario);
   const taskScenario = (): TaskWorkflowScenario =>
@@ -448,15 +451,17 @@ function services(scenario: WorkflowStoryScenario) {
     confirmResult: never,
     takeOverAgentExecution: never,
     history: () =>
-      finished
-        ? Promise.resolve(
-            finishedAttemptHistory(
-              scenario === 'finished-committed'
-                ? { state: 'committed' }
-                : { state: 'failed', code: 'COMMIT_BLOCKED' },
-            ) as never,
-          )
-        : never(),
+      scenario === 'attempt-confirmation' && confirmationCommit
+        ? Promise.resolve(confirmationAttemptHistory(confirmationCommit) as never)
+        : finished
+          ? Promise.resolve(
+              finishedAttemptHistory(
+                scenario === 'finished-committed'
+                  ? { state: 'committed' }
+                  : { state: 'failed', code: 'COMMIT_BLOCKED' },
+              ) as never,
+            )
+          : never(),
     rejectResult: never,
     closePreview: () => closePreviewOf(scenario),
     // An agent Session still works in the worktree of the blocked Specification.
@@ -518,7 +523,9 @@ function services(scenario: WorkflowStoryScenario) {
       specificationActions: () =>
         Promise.resolve(
           scenario === 'attempt-confirmation'
-            ? agentAttemptProjection('confirmation')
+            ? confirmationCommit
+              ? confirmationWithCommit(confirmationCommit)
+              : agentAttemptProjection('confirmation')
             : { ...specificationWorkflowProjection(specificationScenario(scenario)) },
         ),
       taskActions: () => Promise.resolve(taskProjection()),
@@ -795,8 +802,11 @@ async function specificationWorkspace(
 /** The routed application on a Task page or the Specification Overview. */
 export function WorkflowExecutionFixture({
   scenario,
+  confirmationCommit,
 }: {
   readonly scenario: WorkflowStoryScenario;
+  /** `attempt-confirmation`: the commit of the agent's result, read from the history. */
+  readonly confirmationCommit?: ConfirmationCommit;
 }) {
   const setup = useMemo(() => {
     const query = createSpecFlowQueryClient();
@@ -806,11 +816,11 @@ export function WorkflowExecutionFixture({
       : `/specs/${SPEC}/tasks/${TASK}`;
     const router = createSpecFlowRouter(
       createMemoryHistory({ initialEntries: [path] }),
-      services(scenario),
+      services(scenario, confirmationCommit),
     );
 
     return { query, router };
-  }, [scenario]);
+  }, [scenario, confirmationCommit]);
 
   return (
     <QueryClientProvider client={setup.query}>

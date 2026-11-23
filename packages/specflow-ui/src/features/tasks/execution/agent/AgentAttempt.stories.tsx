@@ -237,3 +237,45 @@ export const FinishedCommitFailed: Story = {
     await expect(within(alert).getByRole('button', { name: 'Retry commit' })).toBeVisible();
   },
 };
+
+/*
+ * The agent's result waiting for the owner, with the commit of its work (made when it finished):
+ * committed (its short id and files), still running (Confirm waits, the block keeps reading), or
+ * failed (why, and Retry commit inside the note; Confirm waits).
+ */
+export const ConfirmationCommitted: Story = {
+  args: { scenario: 'attempt-confirmation', confirmationCommit: 'committed' },
+  play: async ({ canvasElement }) => {
+    const now = await findNow(canvasElement);
+    await expect(await within(now).findByText(/Its work is committed/, {}, wait)).toBeVisible();
+    await expect(within(now).getByText('3f9c2a1')).toBeVisible();
+    await expect(within(now).getByText(/holds 7 files/)).toBeVisible();
+    await expect(within(now).getByRole('button', { name: 'Confirm' })).toBeEnabled();
+  },
+};
+
+export const ConfirmationCommitPending: Story = {
+  args: { scenario: 'attempt-confirmation', confirmationCommit: 'pending' },
+  play: async ({ canvasElement }) => {
+    const now = await findNow(canvasElement);
+    await expect(
+      await within(now).findByText(/SpecFlow is committing its work/, {}, wait),
+    ).toBeVisible();
+    await expect(within(now).getByRole('button', { name: 'Confirm' })).toBeDisabled();
+    await expect(actionsOf(now)).toEqual(['Confirm', 'Reject']);
+  },
+};
+
+export const ConfirmationCommitFailed: Story = {
+  args: { scenario: 'attempt-confirmation', confirmationCommit: 'failed' },
+  play: async ({ canvasElement }) => {
+    const now = await findNow(canvasElement);
+    const alert = await within(now).findByRole('alert', {}, wait);
+    await expect(within(alert).getByText(/the branch is protected/)).toBeVisible();
+    await expect(
+      within(alert).getByText(/Confirm becomes possible once the agent’s work is committed/),
+    ).toBeVisible();
+    await expect(within(alert).getByRole('button', { name: 'Retry commit' })).toBeVisible();
+    await expect(within(now).getByRole('button', { name: 'Confirm' })).toBeDisabled();
+  },
+};

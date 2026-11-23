@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
+import type { AgentAttemptWork, WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { useAppServices } from '../../../../app/useAppServices';
 import { useSpecificationWorkspace } from '../../../specs/read-model';
 import type { WorkflowSubjectRef } from '../api';
@@ -63,27 +63,120 @@ export function useFinishedAttemptCommit(
     return undefined;
   }
 
-  const { work } = item.agent;
-  const stepTitle = from.title || from.step;
-  if (work.commit.state === 'committed') {
-    return { state: 'committed', stepTitle, ...(branch ? { branch } : {}) };
+  const next = position.kind === 'ready' ? position.next.step : undefined;
+  const view = commitViewOf(item.agent.work, {
+    step: from.step,
+    attempt: from.attempt,
+    stepTitle: from.title || from.step,
+    ...(branch ? { branch } : {}),
+    ...(next ? { nextTitle: next.title || next.id } : {}),
+  });
+
+  // Nothing is said here while the commit is pending.
+  return view?.state === 'pending' ? undefined : view;
+}
+
+interface CommitOf {
+  readonly step: string;
+  readonly attempt: number;
+  readonly stepTitle: string;
+  readonly branch?: string;
+  readonly nextTitle?: string;
+  readonly waits?: 'confirm';
+  /** The code the projection names for a failed commit, before the history read has it. */
+  readonly code?: string;
+}
+
+/** The attempt commit of an agent's work as the note says it; `undefined` when it has none. */
+function commitViewOf(
+  work: AgentAttemptWork | undefined,
+  of: CommitOf,
+): AttemptCommitView | undefined {
+  const { stepTitle, branch } = of;
+  const commit = work?.commit;
+  if (commit?.state === 'committed') {
+    return {
+      state: 'committed',
+      stepTitle,
+      ...(branch ? { branch } : {}),
+      ...(commit.sha
+        ? { sha: commit.sha, count: (commit.documents ?? 0) + (commit.files ?? 0) }
+        : {}),
+    };
   }
 
-  if (work.commit.state !== 'failed') {
+  if (commit?.state === 'pending') {
+    return { state: 'pending', stepTitle };
+  }
+
+  if (commit?.state !== 'failed' && of.code === undefined) {
     return undefined;
   }
 
-  const paths = [...new Set([...work.documents, ...work.mixed, ...work.declared])];
-  const next = position.kind === 'ready' ? position.next.step : undefined;
+  const paths = work ? [...new Set([...work.documents, ...work.mixed, ...work.declared])] : [];
 
   return {
     state: 'failed',
-    step: from.step,
-    attempt: from.attempt,
+    step: of.step,
+    attempt: of.attempt,
     stepTitle,
-    ...(next ? { nextTitle: next.title || next.id } : {}),
-    code: work.commit.code ?? 'COMMIT_FAILED',
+    ...(of.nextTitle ? { nextTitle: of.nextTitle } : {}),
+    ...(of.waits ? { waits: of.waits } : {}),
+    code: commit?.code ?? of.code ?? 'COMMIT_FAILED',
     ...(branch ? { branch } : {}),
     paths,
   };
+}
+
+/**
+ * The attempt commit of the agent's result that waits for the owner's confirmation (the commit ran
+ * when the agent finished): committed, still running, or failed with Retry commit. The projection's
+ * `actions.confirm.unavailable` says whether Confirm waits for it; the history read adds the commit
+ * and the files it holds. The projection is polled while the commit runs (`needsPolling`).
+ */
+export function useConfirmationAttemptCommit(
+  subject: WorkflowSubjectRef,
+  projection: WorkflowActionProjection,
+): AttemptCommitView | undefined {
+  const { workflowExecutionApi, specificationApi } = useAppServices();
+  const { position, actions } = projection;
+  const confirmation = position.kind === 'awaiting-confirmation' ? position : undefined;
+  const history = useQuery({
+    queryKey: workflowHistoryKey(subject.specId, subject.taskId),
+    queryFn: ({ signal }) => workflowExecutionApi.history(subject, signal),
+    enabled: confirmation?.attempt.actor.class === 'agent',
+    retry: false,
+  });
+  const branch = useSpecificationWorkspace(subject.specId, specificationApi).data?.repoContext
+    ?.branch;
+  if (!confirmation) {
+    return undefined;
+  }
+
+  const step = confirmation.step.id;
+  const attempt = confirmation.attempt.number;
+  const stepTitle = confirmation.step.title || step;
+  const item = history.data?.items.find(
+    (candidate) =>
+      candidate.kind === 'attempt' && candidate.step === step && candidate.attempt === attempt,
+  );
+  const work = item?.kind === 'attempt' ? item.agent?.work : undefined;
+  const unavailable = actions.confirm?.unavailable;
+  // The projection decides whether Confirm waits; the history read may lag behind it.
+  if (unavailable?.reason === 'attempt-commit-pending') {
+    return { state: 'pending', stepTitle };
+  }
+
+  const of = { step, attempt, stepTitle, ...(branch ? { branch } : {}) };
+  if (unavailable?.reason === 'attempt-commit-failed') {
+    return commitViewOf(work?.commit.state === 'failed' ? work : undefined, {
+      ...of,
+      waits: 'confirm',
+      code: unavailable.code ?? 'COMMIT_FAILED',
+    });
+  }
+
+  const view = commitViewOf(work, of);
+
+  return view?.state === 'committed' ? view : undefined;
 }

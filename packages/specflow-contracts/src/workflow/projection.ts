@@ -820,8 +820,30 @@ export const WorkflowActionsSchema = Type.Object({
       ),
     }),
   ),
-  /** The agent's result that waits for the owner (`awaiting-confirmation`): Confirm applies it. */
-  confirm: Type.Optional(WorkflowAttemptRefSchema),
+  /**
+   * The agent's result that waits for the owner (`awaiting-confirmation`): Confirm applies it.
+   * `unavailable`: Confirm is refused now (`WORKFLOW_ATTEMPT_COMMIT_REQUIRED`) because the attempt
+   * commit of the agent's work is still running (`attempt-commit-pending`) or failed
+   * (`attempt-commit-failed`, with the commit's `code`; Retry commit makes it again).
+   */
+  confirm: Type.Optional(
+    Type.Object(
+      {
+        step: StepIdSchema,
+        attempt: Type.Integer({ minimum: 1 }),
+        unavailable: Type.Optional(
+          Type.Object(
+            {
+              reason: literals(['attempt-commit-pending', 'attempt-commit-failed'] as const),
+              code: Type.Optional(Type.String()),
+            },
+            { additionalProperties: false },
+          ),
+        ),
+      },
+      { additionalProperties: false },
+    ),
+  ),
   /** Reject returns the run to that step with the owner's feedback as its handoff. */
   reject: Type.Optional(WorkflowAttemptRefSchema),
   return: Type.Optional(

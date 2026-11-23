@@ -207,7 +207,7 @@ The Engine computes, as a pure function of the registry, the persisted requireme
 
 ## Windows-hosted paths
 
-- Observed on Windows CI: Create accepted a document at the segment limits (a 200-byte folder segment plus a 200-byte file name), then the Engine's `git add --intent-to-add` failed (`COMMIT_FAILED`, reason `intent-to-add`) because the absolute path exceeded the Windows limit, leaving a stuck journal. **Decision: the Engine MUST refuse such a path at admission instead of enabling long paths.** Reason: Git for Windows long-path support (`core.longpaths`) and the Windows long-path opt-in are per-user or per-repository settings the Engine does not own and cannot verify; a refusal is deterministic and testable.
+- **Admission, not Git retry:** reject paths exceeding the Windows host bound before journal creation or any write. Do not assume Git for Windows `core.longpaths` or OS long-path opt-in; these external settings are not owned or verifiable by Engine.
 - Rule: on `win32`, if `length(workspaceRoot) + 1 + length(relative path)` exceeds 240 characters, reservation fails with `DOCUMENT_PATH_INVALID` (`details.cause: 'path-too-long'`) before any journal or file exists.
 - The same rule applies to Create (scaffold and added documents) and to every write target path (create, rename, move, classify of a file whose new path is longer, folder expansion).
 - Engine temporary files use a fixed short name (at most 16 characters) in the target directory so they never exceed the bound.

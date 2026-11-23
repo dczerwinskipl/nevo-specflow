@@ -91,6 +91,6 @@
     "typebox": "1.4.7"
   },
   "devDependencies": {
-    "vitest": "5.1.0"
+    "vitest": "5.1.1"
   }
 }

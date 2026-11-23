@@ -7,6 +7,7 @@ import {
   startSpecificationInSection,
   startTaskInSection,
   type ExpectedPosition,
+  type StartOptions,
   type StartResult,
 } from '../operations/start';
 import type { AgentStepContext } from '../operations/agent-step-context';
@@ -71,6 +72,9 @@ export interface StartAgentAttemptResult {
   readonly binding: AgentAttemptBinding;
 }
 
+/** The start's own checks passed (the probe before the owner's commit): nothing was written. */
+class StartChecked extends Error {}
+
 function invalidInput(message: string): never {
   throw new WorkflowError('WORKFLOW_INPUT_INVALID', message);
 }
@@ -104,8 +108,8 @@ function assertBindingInput(input: StartAgentAttemptInput): void {
  * written, and so does a checkout whose baseline the Engine cannot attribute (`admitAgentTurn`:
  * `WORKFLOW_DIRTY_BASELINE` for a new attempt, `WORKFLOW_BASELINE_CHANGED` for Continue). A new
  * attempt is refused `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` while an attempt of the Specification waits
- * for its commit, and commits the owner's uncommitted workflow state of the Specification first
- * (`afterOwnerChange`); what that commit left (held, failed) refuses `WORKFLOW_DIRTY_BASELINE`. In one `serialize` section the ordinary start records the attempt with its binding
+ * for its commit; once the start's own checks passed (with nothing written) it commits the owner's
+ * uncommitted workflow state of the Specification (`afterOwnerChange`); what that commit left (held, failed) refuses `WORKFLOW_DIRTY_BASELINE`. In one `serialize` section the ordinary start records the attempt with its binding
  * (`AgentAttemptBinding`, committed with the run), then the attempt's local journal records the
  * Turn's binding. A crash between the two leaves an active attempt with no process and no Turn; the
  * same Session continues it, which records the journal then.
@@ -128,12 +132,49 @@ export async function startAgentAttempt(
   };
 
   const fresh = input.expected.attempt === undefined;
+  const runStart = (options: Omit<StartOptions, 'actor' | 'expected'>) => {
+    const common = { actor: input.actor, expected: input.expected, ...options };
+    if (subject.kind === 'task') {
+      return startTaskInSection(workflow, {
+        ...common,
+        specId: subject.specId,
+        taskId: subject.taskId,
+        ...(input.expectedWorkflowRevision !== undefined
+          ? { expectedWorkflowRevision: input.expectedWorkflowRevision }
+          : {}),
+      });
+    }
+
+    if (input.archetype === undefined) {
+      invalidInput('The first start of a Specification run names its archetype.');
+    }
+
+    return startSpecificationInSection(workflow, {
+      ...common,
+      specId: subject.specId,
+      archetype: input.archetype,
+    });
+  };
+
   if (fresh) {
     // A new attempt starts from a checkout where SpecFlow's workflow state of the Specification is
     // committed (D15): never while another attempt's commit waits (the store refuses it too), and
     // the owner's uncommitted changes (a Task edited, a step started or returned) are committed by
-    // the owner's commit first, so the agent's start and work never write into them.
+    // the owner's commit first, so the agent's start and work never write into them. That commit is
+    // made only for a start that would be admitted: the start's own checks (expected position,
+    // actor, Task readiness, context, entry gates) run first, in their section, with nothing written.
     await assertNoAttemptCommitWait(dependencies.workflow.holds, subject.specId);
+    await workflow
+      .serialize(() =>
+        runStart({
+          admit: () => Promise.reject(new StartChecked()),
+        }),
+      )
+      .catch((error: unknown) => {
+        if (!(error instanceof StartChecked)) {
+          throw error;
+        }
+      });
     await dependencies.workflow.postActions?.afterOwnerChange?.({
       subject,
       phrase: `save the workflow state before an agent runs ${input.expected.step}${ofSubject(subject)}`,
@@ -142,9 +183,7 @@ export async function startAgentAttempt(
 
   return workflow.serialize(async () => {
     let agent: AgentStepContext | undefined;
-    const options = {
-      actor: input.actor,
-      expected: input.expected,
+    const started: StartResult = await runStart({
       // Once the start's own checks passed and before anything is written: the Turn must start from
       // a baseline the Engine can attribute (B3), with the owner's workflow state committed, and the
       // agent context is read, once. The brief is rendered from it and its digest is recorded, so
@@ -181,28 +220,7 @@ export async function startAgentAttempt(
 
         return { attemptData };
       },
-    };
-    let started: StartResult;
-    if (subject.kind === 'task') {
-      started = await startTaskInSection(workflow, {
-        ...options,
-        specId: subject.specId,
-        taskId: subject.taskId,
-        ...(input.expectedWorkflowRevision !== undefined
-          ? { expectedWorkflowRevision: input.expectedWorkflowRevision }
-          : {}),
-      });
-    } else {
-      if (input.archetype === undefined) {
-        invalidInput('The first start of a Specification run names its archetype.');
-      }
-
-      started = await startSpecificationInSection(workflow, {
-        ...options,
-        specId: subject.specId,
-        archetype: input.archetype,
-      });
-    }
+    });
 
     // `expected` refuses a terminal run before the start, so this start activated or resumed one.
     if (started.kind === 'terminal' || !agent) {

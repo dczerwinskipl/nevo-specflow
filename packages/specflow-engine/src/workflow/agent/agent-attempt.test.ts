@@ -150,10 +150,13 @@ describe('agent attempt start', () => {
     const before = structuredClone([...journal.journals.values()]);
     const position = await positionOf(workflow, specification);
     const reads = state.contextReads;
+    const ownerChanges = state.ownerChanges.length;
     await expect(startAgentAttempt(dependencies, startInput(overrides))).rejects.toMatchObject({
       code,
     });
     expect([...journal.journals.values()]).toEqual(before);
+    // The owner's state is committed only for a start that would be admitted.
+    expect(state.ownerChanges).toHaveLength(ownerChanges);
     // The start's own checks refuse before the context is read (and hashed); only the checkout of
     // a Continue is judged once its Turn is bound.
     if (!overrides.workspaceId) {

@@ -7,6 +7,8 @@ import { getHttpErrorStatus } from '../../shared/http/httpErrorStatus';
 import type { SpecsCollection } from '../../features/specs/overview/model';
 import { useNavigationTransition } from './NavigationTransition';
 import { pickerEntries } from './pickerEntries';
+import { specificationParentTarget } from './backParent';
+import { productNavigationItems } from './productNavigationModel';
 export interface SpecificationSwitcherIdentity {
   specId: string;
   title: string;
@@ -53,12 +55,13 @@ export function useSpecificationSwitcher({
 
     setFailure(false);
     try {
-      await router.navigate({
-        to: '/specs/$specId',
-        params: { specId: id },
-        search: { collection },
-      });
-      if (router.state.location.pathname === `/specs/${encodeURIComponent(id)}`) {
+      const view = productNavigationItems(specId, router.state.location.pathname).find(
+        ({ active }) => active,
+      )?.id;
+      const area =
+        view === 'tasks' || view === 'documents' || view === 'sessions' ? view : 'overview';
+      await router.navigate(specificationParentTarget(area, id, collection));
+      if (router.state.matches.some(({ params }) => 'specId' in params && params.specId === id)) {
         committed.current = true;
         setOpen(false);
       }

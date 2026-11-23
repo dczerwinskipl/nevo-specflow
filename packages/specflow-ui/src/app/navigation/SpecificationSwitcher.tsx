@@ -47,6 +47,18 @@ export function SpecificationSwitcher({
   const listId = useId();
   const [layer, setLayer] = useState<HTMLElement | null>(null);
   const { focusOption, onOptionKeyDown } = useListboxKeys(panel);
+  const select = async (id: string) => {
+    await choose(id);
+    // A leave confirmation can dismiss the picker before the route settles. Recover focus when
+    // neither the picker nor the confirmation has a remaining focus target.
+    requestAnimationFrame(() => {
+      if (committed.current && document.activeElement === document.body) {
+        document
+          .querySelector<HTMLElement>('[data-workspace-active="true"] h1')
+          ?.focus({ preventScroll: true });
+      }
+    });
+  };
 
   return (
     <Popover
@@ -65,6 +77,7 @@ export function SpecificationSwitcher({
           aria-description={t('applicationNavigation.changeSpecification')}
           label={t('applicationNavigation.currentSpecification')}
           name={title}
+          wrapName
           segments={displayKey ? [displayKey] : []}
           loading={loading}
         />
@@ -145,7 +158,7 @@ export function SpecificationSwitcher({
                 selected={item.id === specId}
                 disabled={pending}
                 tabIndex={index === 0 ? 0 : -1}
-                onClick={() => void choose(item.id)}
+                onClick={() => void select(item.id)}
                 onKeyDown={onOptionKeyDown}
               />
             ))}

@@ -9,7 +9,7 @@ read_when:
   - implementing reader routes, Back or workspace switcher
   - reviewing navigation from Specification or Session into Documentation
 summary: >-
-  Route/Back semantics, workspace and Specification picker, links and image navigation, cross-screen entry intent and history behavior.
+    Route/Back semantics, workspace and Specification picker, links and image navigation, cross-screen entry intent and history behavior.
 related:
   - product.specflow.ui.documentation-reader
   - product.specflow.ui.documentation-reader-search

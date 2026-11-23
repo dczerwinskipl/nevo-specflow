@@ -26,85 +26,44 @@ document owns only what they mean in the product. Approved mock: Storybook
 
 ## Documents
 
-- **Layout.** The document tree is Primary and the document area is Secondary of the existing
-  workspace (`fit="available"`): Wide 25 / 75, Compact 1/3 / 2/3, with the tree capped at 360 px
-  (`primaryMaxPx`) so the document gets the rest on wide screens. The tree MUST be permanently
-  visible whenever the workspace splits (>= 840 px); it MUST NOT be a drawer or toggle there.
+- **Layout:** tree is Primary, document Secondary (`AppWorkspace fit="available"`). Wide 25/75, Compact 1/3–2/3; tree max 360 px. At workspace width 840 px or more it is permanently visible, never a drawer.
 
 ### Contents and properties
 
-- **Contents and properties (preview only).** A markdown preview with at least two headings (h1-h4) offers its contents.
-  - When the document panel is at least 840 px wide (a 1400 px window and wider) (measured on the panel, so the text keeps at least 528 px, about 62 characters or more) the text keeps its 760 px measure at most and a sticky column beside it holds the properties and the contents, the current heading marked while reading; the column is 27% of the panel between 232 and 320 px and its rows are one line with the full title on hover.
-  - The contents are a compact tree of the headings in the file tree's family: one row height, one indent step per real heading level (a flat list when all headings share a level), normal weight, no icons or numbering; the current section is a quiet tint with an accent bar and follows the reading position; choosing a heading scrolls to it smoothly (at once with reduced motion).
-  - In a narrower panel there is no column and no box in the text: a contents icon (`list`) follows the tab strip or the narrow switcher in the header, always right after them and not beside the actions, and opens the contents as a bottom sheet, and the same entry is the first item of the Display group of the `...` menu.
-  - The icon is region navigation, not a header action, so it costs no direct slot.
-  - The sheet is titled Contents only (the tab already names the document).
-  - Choosing a heading closes the sheet, scrolls to the heading and focuses it; closing without a choice returns focus to the icon.
-  - The properties are one collapsed plain row (a thin rule, no frame) in the text and in the column, with a 44 px hit area on touch.
-  - Editing, plain text and documents with fewer than two headings have no contents.
-  - A permanent contents bar was considered and rejected in review.
+Only Markdown **preview** with at least two H1–H4 headings has Contents.
+
+- **Wide panel (≥840 px):** text max 760 px; reserve at least 528 px for prose. Sticky Properties/Contents column uses 27% (232–320 px), one-line items with full-title tooltip.
+- **Contents navigation:** one indentation level per actual heading depth; no icons/numbers. Indicate current heading by tint/accent bar and follow reading position. Click scrolls smoothly, or instantly with reduced-motion preference.
+- **Narrower panel:** Contents icon next to tab/switcher opens a bottom sheet, also available first in Display menu. It is navigation, not a direct action slot. Choosing focuses the heading; dismissing restores icon focus.
+- **Properties:** collapsed, unframed row with touch target 44 px. No Contents while editing, in plain text or with fewer than two headings.
 
 ### Source editor
 
-- **Source editor.** Line numbers are a quiet band of their own beside the text, and the current line is marked
-  from that band to the end of the line. While the source editor is shown, the Display group of the `...`
-  menu has a checked **Wrap lines**: on unless the reader turned it off, kept in this browser separately for a
-  narrow panel (below 840 px) and a wide one; turning it off lets long lines scroll sideways.
-- **Narrow.** The workspace stacks: tree, then the document with Back to the tree. Tabs are not
-  shown; the document header carries the `name (N)` switcher. Back only returns to the tree and
-  MUST NOT close tabs or change the route. The region has no close of its own while stacked (it would repeat
-  Back); the split layouts keep it as "close every tab". The stacked screen follows the active tab, so a tab switch
-  while it is open does not close and reopen it.
+- Show separate line-number gutter and current-line highlight. Display menu offers **Wrap lines**, persisted per browser separately for narrow (<840 px) and wide layouts; disabling permits horizontal scroll.
+- **Narrow:** stack tree → document. Header Back returns to tree **without closing tabs or changing route**. Replace tab strip with `name (N)` switcher; switching active tab does not recreate the stacked screen. No redundant region Close.
+- **Split:** region Close means close all tabs.
 
 ### Tab lifecycle
 
-- **Open rule.** Opening a file from the tree opens a new tab; opening an open file activates its
-  tab. There is no preview tab.
-- **Scope.** Open tabs live for the visit to one specification and are not persisted. Unsaved drafts
-  stay in the visit-scoped draft store, so switching tabs MUST NOT lose edits.
+- Opening a new file adds a tab; opening an existing file activates it. No preview tabs.
+- Tabs belong to one Specification visit and are not persisted. Drafts remain in the visit-scoped store while switching tabs.
 
 ### URL and tab identity
 
-- **URL.** The active tab is the route `documents/$documentId`; the set of other open tabs is not in the URL.
-  - The route is the single source of the active tab: a document in the URL (a deep link, a reload) opens exactly one tab.
-  - Switching to an open tab replaces the history entry; opening a new tab (from the tree, a new file, an import) pushes one.
-  - Both keep the location state, so the return link to a Session or the Specification overview survives tab changes.
-  - Closing the active tab moves to its right neighbour, else the left one, by replacing the entry; closing the last tab shows the document list.
-  - The browser Back button may return to the address of a tab that was closed: the route is the source of the active tab, so that address opens its tab again.
+- Active document is `documents/$documentId`; other tabs are not encoded in the URL. Deep link/reload opens exactly its one tab.
+- Opening a new tab pushes history; switching tabs or closing active tab replaces it. After close, select right neighbor, else left; closing last shows tree. Back to a closed tab's URL reopens that tab.
+- Preserve route state needed to return to Session or Specification Overview.
 
 ### Preserving drafts
 
-- **Unsaved changes.** Closing a tab with edits asks (Save / Discard / Cancel) for that tab, also for a tab that is not on screen; Discard removes its draft, so reopening shows the saved document.
-  - Leaving the screen, switching specification, a tree operation, closing every tab (_Close all documents_ in the document's `...` menu — the split tab rail has no region-level close) or unloading the page asks once, listing the unsaved documents (Save all / Discard all / Cancel).
-  - When Save all cannot save everything the dialog stays open and lists the documents that are still unsaved.
-- **Switching tabs is not leaving.** Moving between open tabs changes the route
-  `documents/$documentId` but stays on the Documents screen, so it MUST NOT trigger the leave guard
-  or its Save / Discard / Cancel dialog. Drafts of the other tabs are kept. Only closing a tab, leaving
-  the screen or switching specification asks.
-- **Missing document.** A tab whose document disappeared stays open, marked missing, with its last known
-  name; a draft is not discarded silently.
-- **Tree operations.** Rename and move keep the tab (the document id is stable) and its draft; the tab name
-  follows the tree. Deleting documents closes their tabs without a second question (the user confirmed
-  the delete) and drops their drafts. A new empty file opens as a new tab in edit; an import opens its
-  first file as a new tab in preview; a new folder opens nothing.
+- Switching tabs **never** triggers leave confirmation or loses drafts.
+- Closing a dirty tab asks **Save / Discard / Cancel**; closing all/leaving/switching Specification/unloading asks once for all drafts (**Save all / Discard all / Cancel**). Failed Save all lists remaining unsaved documents.
+- Missing document tabs retain last known name and any draft. Rename/move retains ID, tab and draft; confirmed deletion closes tabs/drops drafts without a second prompt.
+- New empty file opens in Edit, import's first file in Preview, new folder opens no tab.
 
 ## Session (target, not implemented)
 
-Today a Session reaches documents only through Context's Documents row, which opens the
-Specification's Documents screen with the Session as the way back (a flow Back, "Back to <Session>").
-On Narrow the open document is a stacked screen: its header Back is "Back to Documents" (the tree
-under it) or, for a document promoted from the Overview, "Back to Overview", with no Close beside
-it. The type line, the Properties disclosure and the text share the preview's one content edge. The
-following is the intended
-behavior once a Session can preview files in its own Secondary:
-
-- The same tabs host read-only previews in the Session's Secondary region, next to the
-  conversation. There is no tree and no editing.
-- A tab opens only from an explicit user action on a link. The agent MUST NOT open, activate or
-  replace a tab, change the scroll position or move focus. When a shown file changes, the tab shows
-  a quiet "updated" marker and keeps the reading position.
-- Closing the last tab, or closing Secondary, returns to the Context panel.
-- "Open in Documents" is the only promotion to the full Documents screen (a Primary route).
+Sessions currently open the Specification's Documents screen from Context, preserving a way back. Session-local file preview tabs are **not implemented**; see [open Full Session work](../../../ideas/specflow-ui/full-session-screen-structure.md#4-file-detail-tabs).
 
 ## Content kinds
 
@@ -147,26 +106,13 @@ matches a document wins, plain text being the fallback.
 
 ## Tablet and fold
 
-Estimate, not measured in the final mock: with a tree of 240 px the split keeps at least 60
-characters per line down to a workspace of about 770 px.
-
-**Decision.** The split threshold of this screen stays the shell's global 840 px; below it the
-screen stacks as Narrow. A lower threshold (about 770 px) is deferred and would require changing
-the shell (`supportsWorkspaceSplit`). The mock's `Split770` and `Split800` frames are comparison
-frames only.
+Use the shell's 840 px split threshold; smaller workspaces stack. The screen does not independently alter `AppWorkspace` breakpoints.
 
 ## Decisions and deferrals
 
-- Tab width follows [Item tabs](../../../design-system/implementation/react/item-tabs.md): content
-  width clamped to 64-240 px, compressed to no less than 120 px before tabs overflow.
-- The 44 px close hit area on coarse pointers applies to the `header` density; the split rail's
-  close is always visible.
-- Deferred: split view (editor beside preview, any kind); a code kind (editable source by
-  property); image zoom (zoom steps, pinch, `+`/`-`); a transient preview tab; a separate editor
-  layout (tree and tabbed area as peers, outside Primary/Secondary); Session file previews (above),
-  including Back behavior in a Session with open tabs.
-- Verify the tree/document geometry on the real `AppWorkspace` at tablet widths: the Storybook mock
-  composes the layout by hand, so it does not prove scroll, borders, region widths or breakpoints.
+- Tab width follows [Item tabs](../../../design-system/implementation/react/item-tabs.md): 64–240 px, compressed to at least 120 px before overflow.
+- Coarse-pointer close targets are 44 px in header density; split-rail Close remains visible.
+- Unimplemented split-editor, zoom, code-kind and transient preview concepts belong in [UI open areas](../../../ideas/specflow-ui/full-session-screen-structure.md), not this current interaction contract.
 
 ## Document tab behavior and refusal states
 

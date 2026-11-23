@@ -678,43 +678,6 @@ export const ClosingADirtyDocumentAsksFirst: Story = {
     await expect(document.querySelector('[role="alertdialog"]')).toBeNull();
   },
 };
-export const CancelledSpecificationSwitchRestoresDrawerFocus: Story = {
-  args: { path: '/specs/api-integration/documents?collection=archive' },
-  beforeEach: async () => {
-    await viewport(390, 844);
-  },
-  play: async ({ canvas, userEvent }) => {
-    await settleViewport(390, 844);
-    const documentRow = () => canvas.findByRole('button', { name: /^specification\.md/ });
-    await userEvent.click(await documentRow());
-    await settleViewport(390, 844);
-    await invokeDocumentAction(canvas, userEvent, 'Edytuj dokument');
-    const input = await canvas.findByRole('textbox', { name: 'Treść specification.md' });
-    await userEvent.click(input);
-    await userEvent.keyboard('{Control>}{End}{/Control}{Enter}Drawer draft');
-    await userEvent.click(await canvas.findByRole('button', { name: 'Wróć do: Dokumenty' }));
-    await documentRow();
-
-    const page = within(document.body);
-    await userEvent.click(await canvas.findByRole('button', { name: 'Otwórz nawigację' }));
-    const trigger = await page.findByRole('button', { name: /^Bieżąca specyfikacja/ });
-    await userEvent.click(trigger);
-    await userEvent.click(
-      await page.findByRole('option', { name: /^Repository authentication.*RT-1201/ }),
-    );
-    const dialog = await page.findByRole('alertdialog');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Kontynuuj edycję' }));
-    await waitFor(() => expect(trigger).toHaveFocus());
-    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
-
-    await userEvent.click(page.getByRole('button', { name: 'Zamknij nawigację' }));
-    await userEvent.click(await documentRow());
-    await expect(
-      await canvas.findByRole('textbox', { name: 'Treść specification.md' }),
-    ).toHaveTextContent('Drawer draft');
-  },
-};
-
 /** Opens a document from the tree by its name (wide: the tree is always there). */
 const openFromTree = async (
   canvas: StoryContext['canvas'],

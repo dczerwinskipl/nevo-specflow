@@ -48,7 +48,7 @@ export function DocumentRouteGuard({
   // Documents the user chose to discard, removed once the departure has really happened.
   const discarded = useRef<string[]>([]);
   const promptOpener = useRef<HTMLElement | null>(null);
-  const promptDisclosure = useRef<HTMLButtonElement | null>(null);
+  const promptDisclosure = useRef<HTMLButtonElement | undefined>(undefined);
   const stayed = useRef(false);
   const mounted = useRef(false);
   const [open, setOpen] = useState(false);
@@ -65,11 +65,13 @@ export function DocumentRouteGuard({
           promptOpener.current = active instanceof HTMLElement ? active : null;
           // A popover option can disappear when the modal takes over. Keep its disclosure button.
           const panelId = active?.closest('[role="dialog"][id]')?.id;
-          promptDisclosure.current = panelId
-            ? document.querySelector<HTMLButtonElement>(
-                `button[aria-controls="${CSS.escape(panelId)}"]`,
-              )
-            : null;
+          promptDisclosure.current = undefined;
+          if (panelId) {
+            const buttons = document.querySelectorAll<HTMLButtonElement>('button[aria-controls]');
+            promptDisclosure.current = Array.from(buttons).find(
+              (button) => button.getAttribute('aria-controls') === panelId,
+            );
+          }
         }
 
         waiting.current.push(resolve);

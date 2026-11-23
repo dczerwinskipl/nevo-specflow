@@ -50,24 +50,41 @@ function setup() {
   return { store, leave, take, view };
 }
 
-it('focuses the tree heading when a cancelled prompt outlives its opener and has no editor', async () => {
-  const { store, leave } = setup();
+it.each([
+  { fromPicker: false, description: 'tree heading' },
+  { fromPicker: true, description: 'picker trigger' },
+])('restores focus to the $description when the opener is removed', async ({ fromPicker }) => {
+  const { store, leave, view } = setup();
+  const trigger = document.createElement('button');
+  const popover = document.createElement('div');
   const opener = document.createElement('button');
-  document.body.append(opener);
-  opener.focus();
 
+  if (fromPicker) {
+    popover.id = 'specification-picker';
+    popover.setAttribute('role', 'dialog');
+    trigger.setAttribute('aria-controls', popover.id);
+    view.container.append(trigger, popover);
+    popover.append(opener);
+  } else {
+    view.container.append(opener);
+  }
+
+  opener.focus();
   let answer: Promise<boolean> | undefined;
   act(() => {
     answer = leave.current!();
   });
   opener.remove();
+  popover.remove();
 
   await act(async () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Keep editing' }));
   });
   await expect(answer).resolves.toBe(false);
   await waitFor(() => {
-    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Documents' }));
+    expect(document.activeElement).toBe(
+      fromPicker ? trigger : screen.getByRole('heading', { name: 'Documents' }),
+    );
   });
   expect(store.get(SPEC, 'a')?.content).toBe('mine');
 });

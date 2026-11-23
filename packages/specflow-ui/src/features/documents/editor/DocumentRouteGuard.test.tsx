@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { QueryClientProvider } from '@tanstack/react-query';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createRef, type RefObject } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createSpecFlowQueryClient } from '../../../app/queryClient';
@@ -22,6 +22,7 @@ function setup() {
   store.set(SPEC, 'a', { content: 'mine', baseline: 'disk', revision: 'a1', editing: true });
   const leave: RefObject<(() => Promise<boolean>) | null> = createRef();
   const take: RefObject<(() => string[]) | null> = createRef();
+  const heading = createRef<HTMLHeadingElement>();
   const view = render(
     <QueryClientProvider client={createSpecFlowQueryClient()}>
       <TestServicesRouterContext services={createSpecFlowAppServices()}>
@@ -29,7 +30,15 @@ function setup() {
           <DocumentDraftProvider store={store}>
             <DocumentEditorProvider specId={SPEC}>
               <DocumentTabsProvider specId={SPEC}>
-                <DocumentRouteGuard specId={SPEC} requestRef={leave} takeDiscardedRef={take} />
+                <h1 ref={heading} tabIndex={-1}>
+                  Documents
+                </h1>
+                <DocumentRouteGuard
+                  specId={SPEC}
+                  requestRef={leave}
+                  takeDiscardedRef={take}
+                  fallbackFocusRef={heading}
+                />
               </DocumentTabsProvider>
             </DocumentEditorProvider>
           </DocumentDraftProvider>
@@ -40,6 +49,45 @@ function setup() {
 
   return { store, leave, take, view };
 }
+
+it.each([
+  { fromPicker: false, description: 'tree heading' },
+  { fromPicker: true, description: 'picker trigger' },
+])('restores focus to the $description when the opener is removed', async ({ fromPicker }) => {
+  const { store, leave, view } = setup();
+  const trigger = document.createElement('button');
+  const popover = document.createElement('div');
+  const opener = document.createElement('button');
+
+  if (fromPicker) {
+    popover.id = 'specification-picker';
+    popover.setAttribute('role', 'dialog');
+    trigger.setAttribute('aria-controls', popover.id);
+    view.container.append(trigger, popover);
+    popover.append(opener);
+  } else {
+    view.container.append(opener);
+  }
+
+  opener.focus();
+  let answer: Promise<boolean> | undefined;
+  act(() => {
+    answer = leave.current!();
+  });
+  opener.remove();
+  popover.remove();
+
+  await act(async () => {
+    fireEvent.click(await screen.findByRole('button', { name: 'Keep editing' }));
+  });
+  await expect(answer).resolves.toBe(false);
+  await waitFor(() => {
+    expect(document.activeElement).toBe(
+      fromPicker ? trigger : screen.getByRole('heading', { name: 'Documents' }),
+    );
+  });
+  expect(store.get(SPEC, 'a')?.content).toBe('mine');
+});
 
 describe('agreeing to discard for a tree operation', () => {
   it('only hands the drafts over: nothing is removed until the asker removes it', async () => {

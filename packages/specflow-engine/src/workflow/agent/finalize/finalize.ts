@@ -383,12 +383,15 @@ async function publishStep(
     );
     // The checkout as the ended Turn left it must still be attributable as declared (B3, B6); the
     // declared paths' hashes as judged now are what the attempt commit takes (D15). They are
-    // recorded in the attempt's journal BEFORE the step state is published, in this section: a
-    // replay (a crash after the publication, which is final) takes exactly those, never the
-    // checkout as it is by then, so an edit made since is never attributed to the agent.
+    // recorded in the attempt's journal BEFORE the step state is published, in this section, and a
+    // recorded judgement is final: a finalize run again (a crash after the record, whether or not
+    // the step state was published by then) takes exactly those hashes, never the checkout as it is
+    // by then, so an edit made since is never attributed to the agent (the commit refuses it).
     let judged = journal;
     let declared: readonly AgentDeclaredPath[];
-    if (plan.kind !== 'replayed') {
+    if (proposal.judged !== undefined) {
+      declared = proposal.judged.declared;
+    } else if (plan.kind !== 'replayed') {
       const facts = await assertAgentFinishAttribution(
         dependencies,
         journal.workspaceId,
@@ -397,8 +400,9 @@ async function publishStep(
       declared = declaredPathsOf(proposal.changes?.paths ?? [], facts);
       judged = { ...journal, proposal: { ...proposal, judged: { declared } } };
       await dependencies.journal.publish(judged);
+      await dependencies.finalize.faults?.('judged-recorded');
     } else {
-      declared = proposal.judged?.declared ?? unjudged(proposal.changes?.paths ?? []);
+      declared = unjudged(proposal.changes?.paths ?? []);
     }
 
     // A replay publishes the pending store journal a crash left, if any (as a repeated finish does).

@@ -8359,6 +8359,34 @@
                   "attempt": {
                     "type": "integer",
                     "minimum": 1
+                  },
+                  "unavailable": {
+                    "type": "object",
+                    "required": [
+                      "reason"
+                    ],
+                    "properties": {
+                      "reason": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "attempt-commit-pending"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "attempt-commit-failed"
+                            ]
+                          }
+                        ]
+                      },
+                      "code": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
                   }
                 },
                 "additionalProperties": false
@@ -46723,7 +46751,7 @@
     "/api/specs/{specId}/tasks/{taskId}/workflow/attempt-commit/retry": {
       "post": {
         "operationId": "postSpecsBySpecIdTasksByTaskIdWorkflowAttemptCommitRetry",
-        "summary": "Retry the failed commit of a finished agent attempt of a Task",
+        "summary": "Retry the failed or pending commit of a finished agent attempt of a Task",
         "tags": [
           "Workflow"
         ],
@@ -53640,7 +53668,7 @@
     "/api/specs/{specId}/workflow/attempt-commit/retry": {
       "post": {
         "operationId": "postSpecsBySpecIdWorkflowAttemptCommitRetry",
-        "summary": "Retry the failed commit of a finished agent attempt of a Specification",
+        "summary": "Retry the failed or pending commit of a finished agent attempt of a Specification",
         "tags": [
           "Workflow"
         ],

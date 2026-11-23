@@ -304,7 +304,7 @@ export const workflowEndpoint: FastifyPluginCallback<WorkflowRoutesOptions> = (
         bodyLimit: BODY_LIMIT_BYTES,
         schema: {
           tags,
-          summary: `Retry the failed commit of a finished agent attempt of a ${label}`,
+          summary: `Retry the failed or pending commit of a finished agent attempt of a ${label}`,
           params,
           body: RetryAttemptCommitRequestSchema,
           response: { 200: RetryAttemptCommitResultSchema, ...errors },

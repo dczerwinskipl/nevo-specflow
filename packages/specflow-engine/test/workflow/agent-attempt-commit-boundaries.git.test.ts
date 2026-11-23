@@ -24,9 +24,11 @@ import {
   openAgentAttempts,
   openWorkflow,
   proposeAgentFinish,
+  rejectAgentResult,
   retryAgentAttemptCommit,
   startAgentAttempt,
   startSpecificationExecution,
+  takeOverAgentAttempt,
   type AgentActor,
   type AgentAttemptDependencies,
   type FinalizeBoundary,
@@ -54,7 +56,8 @@ const dirty = () =>
   git(root, 'status', '--porcelain', '--untracked-files=all')
     .split('\n')
     .filter(Boolean)
-    .map((line) => line.slice(3))
+    // `git` trims its output: the first line may have lost the blank of its status.
+    .map((line) => line.trimStart().replace(/^\S+\s+/u, ''))
     .sort();
 
 const filesOf = (sha: string) =>
@@ -115,6 +118,8 @@ interface AgentTurnOptions {
   readonly input?: FinishStepInput['input'];
   readonly declared?: readonly string[];
   readonly faults?: (boundary: FinalizeBoundary) => void | Promise<void>;
+  /** The Turn ends without a proposal (`false`); it proposes by default. */
+  readonly propose?: false;
 }
 
 /** One agent attempt of one Turn on the Specification's ready step, up to its finalize. */
@@ -142,18 +147,21 @@ async function agentAttempt(spec: Spec, options: AgentTurnOptions) {
   await admitWorkspaceExecution(engine, intent);
   await markWorkspaceExecutionDispatched(engine, intent);
   await options.work({ ownedExecution: { operationId: invocationId } });
-  await proposeAgentFinish(agent, {
-    turn: {
-      attemptId: binding.attemptId,
-      invocationId,
-      actor,
-      subject: spec.subject,
-      step: options.step,
-      attempt: 1,
-    },
-    input: options.input ?? {},
-    ...(options.declared ? { changes: { paths: [...options.declared] } } : {}),
-  });
+  if (options.propose !== false) {
+    await proposeAgentFinish(agent, {
+      turn: {
+        attemptId: binding.attemptId,
+        invocationId,
+        actor,
+        subject: spec.subject,
+        step: options.step,
+        attempt: 1,
+      },
+      input: options.input ?? {},
+      ...(options.declared ? { changes: { paths: [...options.declared] } } : {}),
+    });
+  }
+
   const receipt = { invocationId, process: 'stopped' as const, outcome: 'completed' as const };
   const finalize = (dependencies: AgentAttemptDependencies) =>
     finalizeAgentAttempt(dependencies, { attemptId: binding.attemptId, intent, receipt });
@@ -182,6 +190,20 @@ async function saveDocument(
   );
 }
 
+/** The owner's steps up to the breakdown review, the breakdown drafting two Tasks. */
+async function toBreakdownReview(spec: Spec): Promise<void> {
+  for (let step = 0; step < 3; step += 1) {
+    await ownerStep(spec);
+  }
+
+  await ownerStep(spec, {
+    tasks: [
+      { id: 'api', title: 'API', type: 'implementation' },
+      { id: 'screen', title: 'Screen', type: 'ui-implementation', dependsOn: ['api'] },
+    ],
+  });
+}
+
 beforeAll(async () => {
   root = await createGitTestProject(
     'specflow-attempt-boundaries-',
@@ -201,16 +223,7 @@ afterAll(async () => {
 
 it('refuses Confirm until the attempt commit ran; then one attempt commit holds the agent’s work and the owner’s holds none of it', async () => {
   const spec = await newSpecification('Confirm after commit');
-  for (let step = 0; step < 3; step += 1) {
-    await ownerStep(spec);
-  }
-
-  await ownerStep(spec, {
-    tasks: [
-      { id: 'api', title: 'API', type: 'implementation' },
-      { id: 'screen', title: 'Screen', type: 'ui-implementation', dependsOn: ['api'] },
-    ],
-  });
+  await toBreakdownReview(spec);
   expect(dirty()).toEqual([]);
   const head = git(root, 'rev-parse', 'HEAD');
   const overview = `${spec.directory}/overview.md`;
@@ -245,7 +258,11 @@ it('refuses Confirm until the attempt commit ran; then one attempt commit holds 
       throw new Error(`Nothing awaits the owner (${projection.position.kind}).`);
     }
 
-    return { confirm: projection.actions.confirm, digest: projection.position.confirmsDigest };
+    return {
+      confirm: projection.actions.confirm,
+      reject: projection.actions.reject,
+      digest: projection.position.confirmsDigest,
+    };
   };
 
   expect((await shown()).confirm).toEqual({
@@ -264,7 +281,21 @@ it('refuses Confirm until the attempt commit ran; then one attempt commit holds 
   await expect(confirmAgentResult(attempt.agent, confirm)).rejects.toMatchObject({
     code: 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED',
   });
-  // Nothing was committed or applied for the refused Confirm.
+  // Reject waits for the attempt commit too: its run write would join the agent's uncommitted entry.
+  expect((await shown()).reject).toEqual({
+    step: 'breakdown-review',
+    attempt: 1,
+    unavailable: { reason: 'attempt-commit-failed', code: 'MANUAL_COMMIT_CONFLICT' },
+  });
+  const { confirmsDigest: _digest, ...decision } = confirm;
+  await expect(
+    rejectAgentResult(attempt.agent, {
+      ...decision,
+      requestId: randomUUID(),
+      feedback: 'Split the API Task.',
+    }),
+  ).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED' });
+  // Nothing was committed or applied for the refused Confirm and Reject.
   expect(git(root, 'rev-parse', 'HEAD')).toBe(head);
   expect((await shown()).confirm?.unavailable?.reason).toBe('attempt-commit-failed');
 
@@ -298,6 +329,161 @@ it('refuses Confirm until the attempt commit ran; then one attempt commit holds 
   expect(ownerFiles).not.toContain('src/app.ts');
   expect(ownerFiles).not.toContain(overview);
   expect(ownerFiles.every((path) => path.startsWith(`${spec.directory}/`))).toBe(true);
+  expect(dirty()).toEqual([]);
+}, 600_000);
+
+it('commits the execution state an attempt left without its own commit (taken over) with the owner’s next commit', async () => {
+  const spec = await newSpecification('Taken over');
+  const head = git(root, 'rev-parse', 'HEAD');
+  const overview = `${spec.directory}/overview.md`;
+
+  // The agent's Turn writes a document and ends without a proposal; the owner takes the step over.
+  const attempt = await agentAttempt(spec, {
+    step: 'requirements',
+    archetype: 'spec-writer',
+    propose: false,
+    work: (owned) => saveDocument(spec, 'overview', overview, '# Started by the agent\n', owned),
+  });
+  expect(await attempt.finalize(attempt.agent)).toEqual({ kind: 'turn-ended' });
+  const taken = await takeOverAgentAttempt(attempt.agent, {
+    subject: spec.subject,
+    step: 'requirements',
+    attempt: 1,
+    actor: owner,
+  });
+  expect(taken.context.attempt).toBe(2);
+
+  // No attempt commit runs for a taken-over attempt: the owner's commit takes its execution state.
+  const workflow = await openWorkflow(engine);
+  const finished = await finishStep(workflow, {
+    subject: spec.subject,
+    step: 'requirements',
+    attempt: 2,
+    input: {},
+    actor: owner,
+  });
+  expect(finished.postActions).toEqual([
+    {
+      action: 'commit-execution-state',
+      status: 'completed',
+      commit: expect.objectContaining({ sha: expect.any(String) as string }) as object,
+    },
+  ]);
+  await ownerStep(spec);
+  expect(attemptCommits(attempt.attemptId)).toEqual([]);
+  expect(commitsSince(head)).toHaveLength(2);
+  // Only the agent's document stays for the owner to commit (documents are committed by hand).
+  expect(dirty()).toEqual([overview]);
+
+  git(root, 'add', '-A');
+  commitStaged(root, 'the agent’s overview');
+}, 600_000);
+
+it('never judges a proposal again once its judgement is recorded: a later edit is not the agent’s', async () => {
+  const spec = await newSpecification('Crash after the judgement');
+  const head = git(root, 'rev-parse', 'HEAD');
+  const attempt = await agentAttempt(spec, {
+    step: 'requirements',
+    archetype: 'spec-writer',
+    declared: ['src/app.ts'],
+    work: () => put('src/app.ts', 'export const app = 6;\n'),
+    faults: (boundary) => {
+      if (boundary === 'judged-recorded') {
+        throw new Error('Crash at judged-recorded.');
+      }
+    },
+  });
+  await expect(attempt.finalize(attempt.faulty)).rejects.toThrow('Crash at judged-recorded.');
+
+  // Someone edits the declared file before the finalize runs again, the step not published yet.
+  await put('src/app.ts', 'export const app = "foreign";\n');
+  expect(await attempt.finalize(attempt.agent)).toMatchObject({
+    kind: 'finished',
+    postActions: [
+      {
+        action: 'attempt-commit',
+        status: 'failed',
+        code: 'MANUAL_COMMIT_CONFLICT',
+        message: expect.stringContaining('src/app.ts') as string,
+      },
+    ],
+  });
+  expect(git(root, 'rev-parse', 'HEAD')).toBe(head);
+
+  // The agent's content again: Retry commit takes it, as the agent wrote it.
+  await put('src/app.ts', 'export const app = 6;\n');
+  const [retried] = (
+    await retryAgentAttemptCommit(attempt.agent, {
+      subject: spec.subject,
+      step: 'requirements',
+      attempt: 1,
+      actor: owner,
+    })
+  ).postActions;
+  expect(retried).toMatchObject({ action: 'attempt-commit', status: 'completed' });
+  expect(git(root, 'show', 'HEAD:src/app.ts')).toBe('export const app = 6;');
+  expect(dirty()).toEqual([]);
+}, 600_000);
+
+it('retries an attempt commit a crash left pending without a restart, and Reject waits for it', async () => {
+  const spec = await newSpecification('Pending commit');
+  await toBreakdownReview(spec);
+  expect(dirty()).toEqual([]);
+  const head = git(root, 'rev-parse', 'HEAD');
+  const attempt = await agentAttempt(spec, {
+    step: 'breakdown-review',
+    archetype: 'reviewer',
+    input: { result: 'pass', feedback: 'Ready.' },
+    declared: ['src/app.ts'],
+    work: () => put('src/app.ts', 'export const app = 7;\n'),
+    faults: (boundary) => {
+      if (boundary === 'post-actions-pending') {
+        throw new Error('Crash at post-actions-pending.');
+      }
+    },
+  });
+  await expect(attempt.finalize(attempt.faulty)).rejects.toThrow('Crash at post-actions-pending.');
+
+  const workflow = await openWorkflow(engine);
+  const projection = async () => {
+    const shown = await inspectActions(workflow, spec.subject);
+    if (shown.position.kind !== 'awaiting-confirmation') {
+      throw new Error(`Nothing awaits the owner (${shown.position.kind}).`);
+    }
+
+    return { actions: shown.actions, digest: shown.position.confirmsDigest };
+  };
+
+  const pending = { reason: 'attempt-commit-pending' };
+  const ref = { step: 'breakdown-review', attempt: 1 };
+  expect((await projection()).actions).toMatchObject({
+    confirm: { ...ref, unavailable: pending },
+    reject: { ...ref, unavailable: pending },
+  });
+  const decision = { subject: spec.subject, ...ref, actor: owner };
+  await expect(
+    rejectAgentResult(attempt.agent, {
+      ...decision,
+      requestId: randomUUID(),
+      feedback: 'Not yet.',
+    }),
+  ).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED' });
+  expect(git(root, 'rev-parse', 'HEAD')).toBe(head);
+
+  // Retry commit runs the pending attempt commit now, without a restart; Confirm then applies.
+  const [retried] = (await retryAgentAttemptCommit(attempt.agent, decision)).postActions;
+  expect(retried).toMatchObject({ action: 'attempt-commit', status: 'completed' });
+  expect(attemptCommits(attempt.attemptId)).toHaveLength(1);
+  const after = await projection();
+  expect(after.actions.confirm).toEqual(ref);
+  expect(after.actions.reject).toEqual(ref);
+  expect(
+    await confirmAgentResult(attempt.agent, {
+      ...decision,
+      requestId: randomUUID(),
+      confirmsDigest: after.digest,
+    }),
+  ).toMatchObject({ transition: 'approved' });
   expect(dirty()).toEqual([]);
 }, 600_000);
 

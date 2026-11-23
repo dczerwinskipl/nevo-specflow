@@ -35,10 +35,19 @@ export interface SpecFlowEngine {
   readonly failedAttemptCommits?: (workspaceId: string) => Promise<readonly FailedAttemptCommit[]>;
   /**
    * With Git on, why the commit of the agent attempt `attemptId` still waits (D15): the owner's
-   * Confirm is refused meanwhile. `undefined` once it ran, with Git off or for an unknown attempt.
+   * Confirm and Reject are refused meanwhile. `undefined` once it ran, with Git off or for an unknown attempt.
    * Absent where no workflow is composed.
    */
   readonly attemptCommitWait?: (attemptId: string) => Promise<AttemptCommitWait | undefined>;
+  /**
+   * The agent executions of the checkout whose uncommitted entries an attempt commit (D15) still
+   * takes (an attempt in progress, or finished with its commit pending or failed): the owner's commit
+   * of the execution state leaves those out. `undefined` when it cannot be told. Absent where no
+   * workflow is composed.
+   */
+  readonly attemptCommitExecutions?: (
+    workspaceId: string,
+  ) => Promise<ReadonlySet<string> | undefined>;
   /**
    * Whether an agent can work in a checkout Close would remove, from the host process (the Runtime
    * or the CLI) through `withCheckoutQuiescence`. Absent, Close does not remove a checkout.
@@ -61,6 +70,9 @@ export interface EnginePorts {
   readonly attemptCommitWait?: (
     engine: SpecFlowEngine,
   ) => (attemptId: string) => Promise<AttemptCommitWait | undefined>;
+  readonly attemptCommitExecutions?: (
+    engine: SpecFlowEngine,
+  ) => (workspaceId: string) => Promise<ReadonlySet<string> | undefined>;
 }
 
 /**
@@ -100,6 +112,12 @@ export async function openEngineBoundary(
     ...(ports.attemptCommitWait
       ? {
           attemptCommitWait: (attemptId: string) => ports.attemptCommitWait!(engine)(attemptId),
+        }
+      : {}),
+    ...(ports.attemptCommitExecutions
+      ? {
+          attemptCommitExecutions: (workspaceId: string) =>
+            ports.attemptCommitExecutions!(engine)(workspaceId),
         }
       : {}),
     async readRegistry() {

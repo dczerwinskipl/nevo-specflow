@@ -42,7 +42,7 @@ export interface WorkflowPort {
   history(subject: WorkflowSubject): Promise<WorkflowHistory>;
   reevaluateWait(input: ReevaluateWaitInput): Promise<ReevaluateWaitResult>;
   abandon(input: AbandonSpecificationInput): Promise<AbandonSpecificationResult>;
-  /** The owner's Retry commit of a finished agent attempt whose commit failed (D15). */
+  /** The owner's Retry commit of a finished agent attempt whose commit failed or is pending (D15). */
   retryAttemptCommit(input: RetryAgentAttemptCommitInput): Promise<RetryAgentAttemptCommitResult>;
   /** The owner's Confirm of an agent's result that waits for them (D17). */
   confirm(input: ConfirmAgentResultInput): Promise<ConfirmAgentResultResult>;

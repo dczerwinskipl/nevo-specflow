@@ -258,7 +258,7 @@ describe('an agent result that waits for the owner (D17)', () => {
     ]);
   });
 
-  it('is not confirmed, with Git on, until the attempt commit ran; Reject stays possible', async () => {
+  it('is neither confirmed nor rejected, with Git on, until the attempt commit ran', async () => {
     const fixture = await reviewAwaitingOwner(undefined, catalogue, ({ state }) => {
       state.postActionResults = [
         {
@@ -270,26 +270,107 @@ describe('an agent result that waits for the owner (D17)', () => {
       ];
     });
     const confirm = await confirmShown(fixture);
+    const reject = { ...REVIEW, actor: owner, requestId: REQUEST_2, feedback: 'Not yet.' };
     const projected = async () =>
-      (await inspectActions(fixture.dependencies.workflow, specification)).actions.confirm;
-    expect(await projected()).toEqual({
+      (await inspectActions(fixture.dependencies.workflow, specification)).actions;
+    const waiting = {
       ...{ step: 'breakdown-review', attempt: 1 },
       unavailable: { reason: 'attempt-commit-failed', code: 'MANUAL_COMMIT_CONFLICT' },
-    });
+    };
+    expect(await projected()).toMatchObject({ confirm: waiting, reject: waiting });
 
     await expect(confirmAgentResult(fixture.dependencies, confirm)).rejects.toMatchObject({
       code: 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED',
     });
+    await expect(rejectAgentResult(fixture.dependencies, reject)).rejects.toMatchObject({
+      code: 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED',
+      message: expect.stringContaining('retry the commit, then reject') as string,
+    });
     expect(await positionOf(fixture.workflow, specification)).toEqual(AWAITING);
     expect(fixture.state.ownerPostActions).toEqual([]);
 
-    // Retry commit commits the agent's work; then Confirm applies.
+    // Retry commit commits the agent's work; then both are available again and Confirm applies.
     fixture.state.postActionResults = [{ action: 'attempt-commit', status: 'completed' }];
     await retryAgentAttemptCommit(fixture.dependencies, { ...REVIEW, actor: owner });
-    expect(await projected()).toEqual({ step: 'breakdown-review', attempt: 1 });
+    const ref = { step: 'breakdown-review', attempt: 1 };
+    expect(await projected()).toMatchObject({ confirm: ref, reject: ref });
+    expect((await projected()).reject).toEqual(ref);
     expect(await confirmAgentResult(fixture.dependencies, confirm)).toMatchObject({
       transition: 'approved',
     });
+  });
+
+  it('shows and refuses the decision of a Task’s agent result while its attempt commit waits', async () => {
+    const files = await seedDefinitionFiles();
+    files['workflow/task-standard.yaml'] = (files['workflow/task-standard.yaml'] ?? '').replace(
+      '        to: { step: review }\n        continuation: auto\n',
+      '        to: { step: review }\n        continuation: auto\n        confirmation: owner\n',
+    );
+    const loaded = await loadDefinitions(
+      new MemoryDefinitionSource(files),
+      createDefaultDefinitionRegistry(),
+    );
+    expect([...(loaded.invalid.get('workflow') ?? [])]).toEqual([]);
+    const fixture = memoryAgentDependencies(resolveExecutionCatalogue(loaded), ATTEMPT_ID);
+    const { dependencies, workflow, claims, state } = fixture;
+    await specificationWithTasks(workflow);
+    const subject = task('api');
+    const implementer: AgentActor = {
+      class: 'agent',
+      details: { archetype: 'implementer', provider: 'codex', sessionId: 'session-r' },
+    };
+    claims.set(INVOCATION, { phase: 'dispatched' });
+    state.postActionResults = [
+      { action: 'attempt-commit', status: 'failed', code: 'MANUAL_COMMIT_CONFLICT', message: 'X.' },
+    ];
+    await startAgentAttempt(dependencies, {
+      subject,
+      archetype: 'feature',
+      actor: implementer,
+      expected: { step: 'implement' },
+      workspaceId: WORKSPACE,
+      turn: { invocationId: INVOCATION, turnId: 'turn-1' },
+    });
+    const turn = { subject, step: 'implement', attempt: 1 } as const;
+    await proposeAgentFinish(dependencies, {
+      turn: { attemptId: ATTEMPT_ID, invocationId: INVOCATION, actor: implementer, ...turn },
+      input: {},
+    });
+    state.claimDispatched = false;
+    expect(
+      await finalizeAgentAttempt(dependencies, {
+        attemptId: ATTEMPT_ID,
+        intent: { operationId: INVOCATION, ownerId: 'session-r', binding: 'c'.repeat(64) },
+        receipt: { invocationId: INVOCATION, process: 'stopped', outcome: 'completed' },
+      }),
+    ).toMatchObject({ kind: 'awaiting-confirmation' });
+
+    const projection = await inspectActions(dependencies.workflow, subject);
+    if (projection.position.kind !== 'awaiting-confirmation') {
+      throw new Error(`Nothing awaits the owner (${projection.position.kind}).`);
+    }
+
+    const waiting = {
+      step: 'implement',
+      attempt: 1,
+      unavailable: { reason: 'attempt-commit-failed', code: 'MANUAL_COMMIT_CONFLICT' },
+    };
+    expect(projection.actions.confirm).toEqual(waiting);
+    expect(projection.actions.reject).toEqual(waiting);
+    // The Specification's own projection names no decision of the Task's attempt.
+    expect(
+      (await inspectActions(dependencies.workflow, specification)).actions.confirm,
+    ).toBeUndefined();
+    const decision = { ...turn, actor: owner, requestId: REQUEST_1 };
+    await expect(
+      confirmAgentResult(dependencies, {
+        ...decision,
+        confirmsDigest: projection.position.confirmsDigest,
+      }),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED' });
+    await expect(
+      rejectAgentResult(dependencies, { ...decision, requestId: REQUEST_2, feedback: 'Not yet.' }),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED' });
   });
 
   it('is confirmed with Git off whatever the attempt commit reported', async () => {

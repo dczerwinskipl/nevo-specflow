@@ -753,6 +753,32 @@ export const HandoffSchema = Type.Union([
   Type.Object({ kind: Type.Literal('return'), at: Type.String(), feedback: Type.Optional(text()) }),
 ]);
 
+/**
+ * Confirm or Reject of an agent's result waiting for the owner, naming the attempt. `unavailable`
+ * (Git on): the attempt's own commit has not run yet (`attempt-commit-pending`) or failed
+ * (`attempt-commit-failed`, with its `code`); the decision is refused
+ * `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` until it ran.
+ */
+const AgentResultDecisionSchema = Type.Object(
+  {
+    step: StepIdSchema,
+    attempt: Type.Integer({ minimum: 1 }),
+    unavailable: Type.Optional(
+      Type.Object(
+        {
+          reason: Type.Union([
+            Type.Literal('attempt-commit-pending'),
+            Type.Literal('attempt-commit-failed'),
+          ]),
+          code: Type.Optional(Type.String()),
+        },
+        { additionalProperties: false },
+      ),
+    ),
+  },
+  { additionalProperties: false },
+);
+
 export const WorkflowActionsSchema = Type.Object({
   start: Type.Optional(
     Type.Object({
@@ -823,32 +849,15 @@ export const WorkflowActionsSchema = Type.Object({
   /**
    * The agent's result that waits for the owner (`awaiting-confirmation`): Confirm applies it.
    * `unavailable` (Git on): the attempt's own commit has not run yet (`attempt-commit-pending`) or
-   * failed (`attempt-commit-failed`, with its `code`; Retry commit first); Confirm is refused
-   * `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` until it ran. Reject stays available.
+   * failed (`attempt-commit-failed`, with its `code`; retry the commit first); Confirm is refused
+   * `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` until it ran.
    */
-  confirm: Type.Optional(
-    Type.Object(
-      {
-        step: StepIdSchema,
-        attempt: Type.Integer({ minimum: 1 }),
-        unavailable: Type.Optional(
-          Type.Object(
-            {
-              reason: Type.Union([
-                Type.Literal('attempt-commit-pending'),
-                Type.Literal('attempt-commit-failed'),
-              ]),
-              code: Type.Optional(Type.String()),
-            },
-            { additionalProperties: false },
-          ),
-        ),
-      },
-      { additionalProperties: false },
-    ),
-  ),
-  /** Reject returns the run to that step with the owner's feedback as its handoff. */
-  reject: Type.Optional(WorkflowAttemptRefSchema),
+  confirm: Type.Optional(AgentResultDecisionSchema),
+  /**
+   * Reject returns the run to that step with the owner's feedback as its handoff; `unavailable`
+   * exactly as for `confirm` (Reject is refused `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` meanwhile).
+   */
+  reject: Type.Optional(AgentResultDecisionSchema),
   return: Type.Optional(
     Type.Object({
       targets: array(

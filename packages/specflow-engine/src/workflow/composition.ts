@@ -328,11 +328,30 @@ function enginePostActions(engine: SpecFlowEngine): WorkflowPostActions {
     async afterStepFinished(event): Promise<readonly PostActionResult[]> {
       const action = 'commit-execution-state';
       try {
+        const attemptExecutions = await engine.attemptCommitExecutions?.(
+          engine.workspace.workspaceId,
+        );
         const outcome = await commitExecutionState(engine, event.subject.specId, {
           phrase: `finish "${event.stepTitle}"${ofSubject(event.subject)}`,
           details: [`Step ${event.step}, attempt ${event.attempt}.`],
+          ...(attemptExecutions !== undefined ? { attemptExecutions } : {}),
         });
-        const held = 'held' in outcome && outcome.held ? { held: outcome.held } : {};
+        if ('held' in outcome && outcome.held?.attempt) {
+          // Never reported done while the owner's own change waits for an agent's attempt commit.
+          return [
+            {
+              action,
+              status: 'failed',
+              code: 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED',
+              message: `Some of the workflow state (${outcome.held.paths.join(', ')}) was changed together with an agent attempt's work whose commit has not run; it stays uncommitted until that commit ran (retry the commit), then the next commit of the workflow state takes it.`,
+            },
+          ];
+        }
+
+        const held =
+          'held' in outcome && outcome.held
+            ? { held: { edited: outcome.held.edited, paths: outcome.held.paths } }
+            : {};
         switch (outcome.kind) {
           case 'committed':
             return [

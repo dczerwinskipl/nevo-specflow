@@ -24,7 +24,8 @@ import { workflowCommitMessage } from './queue/commit-summary';
 
 /**
  * Execution state the commit left out because someone edited part of it since the Engine wrote it,
- * or because an agent Turn wrote it (the agent's attempt commit takes that, D15): `edited` are the
+ * or because an agent attempt's Turn wrote it and that attempt's own commit still takes it (D15):
+ * `edited` are the
  * edited paths, `paths` everything held, with everything that travels with them (closed under shared operation
  * ids, the Task index joining none, `edited` included; the index itself when it waits for a held Task). They stay uncommitted until the person commits them (with Git; the ledger
  * then forgets them) or a Close takes them into its archive commit.
@@ -32,6 +33,11 @@ import { workflowCommitMessage } from './queue/commit-summary';
 export interface HeldExecutionState {
   readonly edited: readonly string[];
   readonly paths: readonly string[];
+  /**
+   * Some of `paths` are an owner's changes made into the uncommitted work of an agent attempt whose
+   * own commit has not run (D15): they wait for it. The caller never reports such a commit as done.
+   */
+  readonly attempt?: true;
 }
 
 /** What committing a Specification's execution state did. */
@@ -56,6 +62,15 @@ export interface ExecutionStateCommitChange {
   readonly phrase: string;
   /** Body lines, for example the step id and attempt. */
   readonly details?: readonly string[];
+  /**
+   * The agent executions (Runtime invocations) whose entries an attempt commit still takes: the
+   * Turns of an attempt in progress, or of a finished one whose attempt commit is pending or failed
+   * (the workflow supplies them). Their entries are held, never committed here. An entry of any
+   * other execution (an attempt that ended without an attempt commit: taken over, returned) is
+   * committed like the owner's own. Absent: they cannot be told, and every entry an execution wrote
+   * is held.
+   */
+  readonly attemptExecutions?: ReadonlySet<string>;
 }
 
 const messageText = (message: { subject: string; body: string }): string =>
@@ -81,9 +96,13 @@ const messageText = (message: { subject: string; body: string }): string =>
  * too, and the next commit after the held Task is released takes it. Other refusals are the manual
  * commit's (`MANUAL_COMMIT_CONFLICT` still, when a path is edited between this check and the commit).
  *
- * An entry an agent Turn wrote (its durable authors name an execution: the Task drafts and execution
- * state of an agent attempt) is never taken, nor anything that travels with it: it belongs to that
- * attempt's own commit alone (D15), so this owner's commit can never split the agent's work.
+ * An entry an agent attempt's Turn wrote whose attempt commit still takes it (its durable authors
+ * name one of `change.attemptExecutions`: the Task drafts and execution state of that attempt) is
+ * never taken, nor anything that travels with it: it belongs to that attempt's own commit alone
+ * (D15), so this owner's commit can never split the agent's work. An owner's change tied to it is
+ * reported `held` with `attempt`, so the commit is never reported done while it stays behind. An
+ * entry of an attempt that ended without its own commit (the owner took it over, or returned it) is
+ * committed here, so no execution state is left uncommitted that no commit will ever take.
  */
 export async function commitExecutionState(
   engine: SpecFlowEngine,
@@ -115,18 +134,25 @@ export async function commitExecutionState(
       id: specId,
     });
     const entries = scopeEntriesOf(record === undefined ? [] : [record]);
-    // An entry an agent Turn wrote (its durable authors name an execution) is the agent's work: only
-    // its attempt commit takes it (D15), never this owner's commit, so it is held with everything
-    // that travels with it.
+    // An entry an attempt's commit still takes (D15) is the agent's work, never this owner's
+    // commit's: it is left out with everything that travels with it.
+    const pending = change.attemptExecutions;
     const authored = new Set(
       (record?.entries ?? [])
-        .filter((entry) => ledgerAuthorsOf(entry).executions.length > 0)
+        .filter((entry) => {
+          const { executions } = ledgerAuthorsOf(entry);
+
+          return pending === undefined
+            ? executions.length > 0
+            : executions.some((id) => pending.has(id));
+        })
         .map((entry) => entry.path),
     );
     const seed = entries
       .map((entry) => entry.path)
       .filter((path) => isExecutionStatePathOf(directory, path) && !authored.has(path));
     const closure = seed.length === 0 ? [] : closureOf(entries, seed, unlinked);
+    // Only what an owner's operation ties to the agent's work: the rest is the attempt's alone.
     const agents = closure.filter((path) => authored.has(path));
     const edited = await heldOf(found.workspaceRoot, entries, closure, unlinked);
 
@@ -187,7 +213,8 @@ export async function commitExecutionState(
 
 /**
  * `held` widened by the agents' entries of `closure` and what travels with them (`travelling`): never
- * committed here; `edited` stays what someone edited.
+ * committed here; `edited` stays what someone edited, and `attempt` says an owner's change waits for
+ * an attempt commit.
  */
 function withAgentWork(
   held: HeldExecutionState | undefined,
@@ -196,7 +223,11 @@ function withAgentWork(
 ): HeldExecutionState {
   const paths = new Set([...(held?.paths ?? []), ...travelling]);
 
-  return { edited: held?.edited ?? [], paths: closure.filter((path) => paths.has(path)) };
+  return {
+    edited: held?.edited ?? [],
+    paths: closure.filter((path) => paths.has(path)),
+    attempt: true,
+  };
 }
 
 /** The paths of `closure` edited since their post-image, and everything that travels with them. */
@@ -294,5 +325,6 @@ async function withIndex(
   return {
     edited: held.edited,
     paths: [...new Set([...closure.filter((path) => travelling.has(path)), index])].sort(),
+    ...(held.attempt ? { attempt: true as const } : {}),
   };
 }

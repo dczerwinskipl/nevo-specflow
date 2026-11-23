@@ -333,7 +333,7 @@ async function planConfirm(
     };
   }
 
-  await assertAttemptCommitted(dependencies, record);
+  await assertAttemptCommitted(dependencies, record, 'confirm');
   const [taken] = decision.declaredEffects;
   const step = findStep(loaded.definition, input.step);
   if (taken?.source !== 'transition' || step?.kind !== 'work') {
@@ -382,15 +382,17 @@ async function planConfirm(
 }
 
 /**
- * With Git on, Confirm applies only once the attempt's own commit (D15) ran: while it is pending or
- * failed, the agent's documents, Task drafts and execution state are still uncommitted, and the
- * owner's commit of the transition would come first or take them. Refused
- * `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` then (the projection shows the same as `actions.confirm`
- * `unavailable`); Retry commit runs it.
+ * With Git on, Confirm and Reject apply only once the attempt's own commit (D15) ran: while it is
+ * pending or failed, the agent's documents, Task drafts and execution state are still uncommitted,
+ * and the owner's decision would write the run into the same uncommitted entries (the attempt commit
+ * would then refuse them as mixed) or its commit would come first or take them. Refused
+ * `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` then (the projection shows the same as `actions.confirm` and
+ * `actions.reject` `unavailable`); retrying the attempt commit runs it.
  */
 async function assertAttemptCommitted(
   dependencies: AgentAttemptDependencies,
   record: AttemptRecord,
+  kind: 'confirm' | 'reject',
 ): Promise<void> {
   const attemptId = agentAttemptBindingOf(record)?.attemptId;
   const waiting =
@@ -406,8 +408,8 @@ async function assertAttemptCommitted(
   throw new WorkflowError(
     'WORKFLOW_ATTEMPT_COMMIT_REQUIRED',
     waiting.reason === 'attempt-commit-failed'
-      ? `The commit of the agent's work in ${named} failed${waiting.code !== undefined ? ` (${waiting.code})` : ''}; retry it (Retry commit), then confirm.`
-      : `The commit of the agent's work in ${named} has not run yet; confirm once it has.`,
+      ? `The commit of the agent's work in ${named} failed${waiting.code !== undefined ? ` (${waiting.code})` : ''}; retry the commit, then ${kind}.`
+      : `The commit of the agent's work in ${named} has not run yet; ${kind} once it has (or retry the commit).`,
   );
 }
 
@@ -417,7 +419,8 @@ async function assertAttemptCommitted(
  * its handoff (whether the owner then starts it or runs it with an agent). Nothing the agent wrote is
  * undone: its drafts, documents and files were committed with its attempt (owner decision
  * 2026-11-21), so the next attempt starts from a clean checkout. Refusals and replay as
- * {@link confirmAgentResult}; empty feedback is `WORKFLOW_INPUT_INVALID`.
+ * {@link confirmAgentResult} (with Git on, `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` too while the
+ * attempt's own commit has not run or failed); empty feedback is `WORKFLOW_INPUT_INVALID`.
  */
 export async function rejectAgentResult(
   dependencies: AgentAttemptDependencies,
@@ -429,19 +432,19 @@ export async function rejectAgentResult(
 
   return operation(async () => {
     const { result } = await decideInSection(dependencies, input, (snapshot, record) =>
-      Promise.resolve(planReject(dependencies, snapshot, record, input)),
+      planReject(dependencies, snapshot, record, input),
     );
 
     return result;
   });
 }
 
-function planReject(
+async function planReject(
   dependencies: AgentAttemptDependencies,
   snapshot: ExecutionSnapshot,
   record: AttemptRecord,
   input: RejectAgentResultInput,
-): DecisionPlan<RejectAgentResultResult> {
+): Promise<DecisionPlan<RejectAgentResultResult>> {
   const { workflow } = dependencies;
   const { subject } = input;
   const digest = requestDigest('reject', input);
@@ -462,6 +465,7 @@ function planReject(
     requestDigest: digest,
   });
   if (!decision.replayed) {
+    await assertAttemptCommitted(dependencies, record, 'reject');
     context.set.setRun(subject, decision.nextRun);
   }
 

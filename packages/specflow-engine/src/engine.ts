@@ -2,6 +2,7 @@ import { openEngineBoundary, type SpecFlowEngine } from './application';
 import type { ResolveProjectHomeOptions } from './project/home/home';
 import {
   agentAttemptCommitWait,
+  attemptCommitExecutions,
   failedAgentAttemptCommits,
 } from './workflow/agent/finalize/attempt-commit/close';
 import { specificationCloseBlockers, specificationStepInProgress } from './workflow/composition';
@@ -17,5 +18,7 @@ export function openSpecFlowEngine(options: ResolveProjectHomeOptions): Promise<
     failedAttemptCommits: (engine) => (workspaceId) =>
       failedAgentAttemptCommits(engine, workspaceId),
     attemptCommitWait: (engine) => (attemptId) => agentAttemptCommitWait(engine, attemptId),
+    attemptCommitExecutions: (engine) => (workspaceId) =>
+      attemptCommitExecutions(engine, workspaceId),
   });
 }

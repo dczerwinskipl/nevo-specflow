@@ -1,6 +1,6 @@
 import { findStep } from '@nevo/workflow';
 
-import { WorkflowError } from '../../errors';
+import { SpecificationBusyError, WorkflowError } from '../../errors';
 import { isoNow, loadSubject } from '../../operations/loaded-execution';
 import { NO_POST_ACTIONS, type PostActionResult } from '../../operations/post-actions';
 import { agentAttemptBindingOf, type OwnerActor, type WorkflowSubject } from '../../state/model';
@@ -254,13 +254,16 @@ export interface RetryAgentAttemptCommitResult {
 
 /**
  * The owner's **Retry commit** of a finished agent attempt `step#attempt` of `subject` (D15): runs
- * its failed attempt commit again, once (`retryAgentPostActions`: a retry while another runs waits
- * for it and then finds nothing left to run). For an attempt whose result the owner confirmed (D17)
- * and whose attempt commit did not fail, it runs the owner's post actions of that confirmation again
- * instead (the commit an interruption after the Confirm left undone; nothing to commit otherwise).
- * Refused `WORKFLOW_ATTEMPT_MISMATCH` when the attempt is not a finished agent attempt, and
- * `WORKFLOW_POSITION_INVALID` when its commit did not fail (it committed, or it has not run yet:
- * recovery runs it).
+ * its attempt commit that failed, or that is still pending and not running (a crash after the
+ * finalize section left it so; without this, only a restart's recovery would run it), once
+ * (`retryAgentPostActions`: the same operation id, the same locks as every run, and a retry while
+ * another runs waits for it and then finds nothing left to run). For an attempt whose result the
+ * owner confirmed (D17) and whose attempt commit ran, it runs the owner's post actions of that
+ * confirmation again instead (the commit an interruption after the Confirm left undone; nothing to
+ * commit otherwise). Refused `WORKFLOW_ATTEMPT_MISMATCH` when the attempt is not a finished agent
+ * attempt, `WORKFLOW_SPECIFICATION_BUSY` (`commit-in-progress`) while its commit is running in this
+ * process, (`agent-turn`) while its last Turn is still being finalized, and
+ * `WORKFLOW_POSITION_INVALID` when its commit ran (there is nothing to retry).
  */
 export async function retryAgentAttemptCommit(
   dependencies: AgentAttemptDependencies,
@@ -284,7 +287,27 @@ export async function retryAgentAttemptCommit(
     );
   }
 
-  if (!(journal.postActions ?? []).some((action) => action.state === 'failed')) {
+  const waiting = (journal.postActions ?? []).some((action) => action.state !== 'done');
+  if (waiting) {
+    if (inFlight.has(attemptId)) {
+      throw new SpecificationBusyError(
+        `The commit of ${input.step}#${String(input.attempt)} is in progress; wait for it to end.`,
+        { cause: 'commit-in-progress' },
+      );
+    }
+
+    // The commit runs only once the finalize section settled the last Turn's claim.
+    if (
+      (await dependencies.finalize.claim(journal.turns.at(-1)!.invocationId))?.phase !== 'settled'
+    ) {
+      throw new SpecificationBusyError(
+        `The agent's Turn of ${input.step}#${String(input.attempt)} is still being finalized; its commit runs once it is.`,
+        { cause: 'agent-turn' },
+      );
+    }
+  }
+
+  if (!waiting) {
     if (record?.confirmation?.state === 'confirmed') {
       const definition = loadSubject(workflow.catalogue, snapshot, input.subject).definition;
 
@@ -302,7 +325,7 @@ export async function retryAgentAttemptCommit(
 
     throw new WorkflowError(
       'WORKFLOW_POSITION_INVALID',
-      `The commit of ${input.step}#${String(input.attempt)} did not fail; there is nothing to retry.`,
+      `The commit of ${input.step}#${String(input.attempt)} ran; there is nothing to retry.`,
     );
   }
 

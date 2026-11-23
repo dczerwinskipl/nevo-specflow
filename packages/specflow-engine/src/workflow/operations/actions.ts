@@ -454,11 +454,16 @@ export interface WorkflowActions {
     readonly attempt: number;
     /**
      * With Git on, the attempt's own commit (D15) still waits: not run yet, or failed (`code`;
-     * Retry commit first). Confirm is refused `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` meanwhile.
+     * retry the commit first). Confirm is refused `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` meanwhile.
      */
     readonly unavailable?: AttemptCommitWait;
   };
-  readonly reject?: { readonly step: string; readonly attempt: number };
+  /** As `confirm`: Reject is refused `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` while the commit waits. */
+  readonly reject?: {
+    readonly step: string;
+    readonly attempt: number;
+    readonly unavailable?: AttemptCommitWait;
+  };
   /** Declared returns to steps the run reached. */
   readonly return?: {
     readonly targets: readonly {
@@ -1206,7 +1211,10 @@ async function awaitingProjection(
       },
       confirmsDigest: confirmsDigestOf(confirms),
     },
-    actions: { confirm: { ...ref, ...(waiting ? { unavailable: waiting } : {}) }, reject: ref },
+    actions: {
+      confirm: { ...ref, ...(waiting ? { unavailable: waiting } : {}) },
+      reject: { ...ref, ...(waiting ? { unavailable: waiting } : {}) },
+    },
   };
 }
 

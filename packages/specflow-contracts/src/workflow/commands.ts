@@ -452,8 +452,9 @@ export const WORKFLOW_ERROR_CODES = [
    */
   'WORKFLOW_CONFIRMATION_CHANGED',
   /**
-   * With Git on, the owner's Confirm of an agent's result while its attempt commit has not run or
-   * failed: the agent's work is committed on its own first (Retry commit), then Confirm applies.
+   * With Git on, the owner's Confirm or Reject of an agent's result while its attempt commit has not
+   * run or failed: the agent's work is committed on its own first (retry the attempt commit), then
+   * Confirm or Reject applies.
    */
   'WORKFLOW_ATTEMPT_COMMIT_REQUIRED',
   /**

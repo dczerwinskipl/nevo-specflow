@@ -64,7 +64,7 @@ export async function failedAgentAttemptCommits(
 
 /**
  * With Git on, why the commit of the agent attempt `attemptId` still waits (not run yet, or failed):
- * the owner's Confirm waits for it. `undefined` once it ran, with Git off, or for an attempt without
+ * the owner's Confirm and Reject wait for it. `undefined` once it ran, with Git off, or for an attempt without
  * a journal. Lock-free and Git-free.
  */
 export async function agentAttemptCommitWait(
@@ -78,4 +78,36 @@ export async function agentAttemptCommitWait(
   const journal = await filesystemAgentAttemptJournal(engine.context).read(attemptId);
 
   return journal !== undefined ? attemptCommitWaitOf(journal) : undefined;
+}
+
+/**
+ * The agent executions (the Runtime invocations of their Turns) whose uncommitted entries an attempt
+ * commit (D15) of the checkout still takes: every Turn of an attempt in progress, or of a finished
+ * attempt whose commit is pending or failed. An attempt that ended without one (taken over, returned)
+ * is not among them: nothing but the owner's commit takes its entries. `undefined` when the journals
+ * cannot all be read: the owner's commit then takes no entry any execution wrote. Lock-free and
+ * Git-free.
+ */
+export async function attemptCommitExecutions(
+  engine: SpecFlowEngine,
+  workspaceId: string,
+): Promise<ReadonlySet<string> | undefined> {
+  const listing = await filesystemAgentAttemptJournal(engine.context).listActive();
+  if (listing.unreadable.length > 0 || listing.truncated) {
+    return undefined;
+  }
+
+  const executions = new Set<string>();
+  for (const journal of listing.journals) {
+    const waits =
+      !isAttemptResolved(journal) ||
+      (journal.proposal?.state === 'finalized' && attemptCommitWaitOf(journal) !== undefined);
+    if (journal.workspaceId === workspaceId && waits) {
+      for (const invocation of attemptInvocations(journal)) {
+        executions.add(invocation);
+      }
+    }
+  }
+
+  return executions;
 }

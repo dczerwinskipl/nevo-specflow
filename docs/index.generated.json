@@ -5194,7 +5194,7 @@
         "changing Run with agent (its Now block states, dialog, Stop, Continue, Take over, owner confirmation)",
         "changing what Close lists as uncommitted changes"
       ],
-      "summary": "How a person runs a Specification and its Tasks entirely in the UI, without any Session: the projection-driven Now block with one main action, the Finish, Return and first-start dialogs, exit gates, Task authoring on the Full Task page (documents in the Secondary, context, dependencies, details), the lifecycle actions, and Close and Abandon with grouped blockers.",
+      "summary": "How a person runs a Specification and its Tasks entirely in the UI, without any Session: the projection-driven Now block with one main action, the Finish, Return and first-start dialogs, exit gates, Task authoring on the Full Task page (documents in the Secondary, context, dependencies, details), the lifecycle actions, Close and Abandon with grouped blockers, and Run with agent (the start dialog, attempt states, the attempt commit, owner confirmation, take over and history).",
       "related": [
         "product.specflow.ui.specification-overview",
         "product.specflow.ui.interaction-model",
@@ -5202,7 +5202,9 @@
         "reference.api.specification-workflow",
         "reference.api.task-reads",
         "adr.0024-tasks-are-resources",
-        "adr.0023-neutral-workflow-coordinator-and-manual-execution"
+        "adr.0023-neutral-workflow-coordinator-and-manual-execution",
+        "adr.0026-agent-step-execution",
+        "architecture.runtime.agent-step-execution"
       ],
       "scope": "specflow",
       "areas": [

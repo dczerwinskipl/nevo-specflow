@@ -34,7 +34,7 @@
     "commander": "15.1.0",
     "cross-spawn": "7.0.6",
     "esbuild": "0.28.2",
-    "vitest": "5.1.0",
+    "vitest": "5.1.1",
     "@nevo/specflow-ui": "workspace:*"
   }
 }

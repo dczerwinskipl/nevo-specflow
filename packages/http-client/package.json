@@ -25,6 +25,6 @@
     "eventsource-parser": "4.1.3"
   },
   "devDependencies": {
-    "vitest": "5.1.0"
+    "vitest": "5.1.1"
   }
 }

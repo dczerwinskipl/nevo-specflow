@@ -32,13 +32,13 @@
     "@nevo/http-client": "workspace:*",
     "@nevo/specflow-contracts": "workspace:*",
     "@nevo/ui": "workspace:*",
-    "@tanstack/react-query": "5.107.1",
+    "@tanstack/react-query": "5.108.2",
     "@tanstack/react-router": "1.170.46",
     "i18next": "27.2.2",
-    "lucide-react": "1.72.0",
+    "lucide-react": "1.77.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
-    "react-i18next": "18.0.1",
+    "react-i18next": "18.0.3",
     "remark-gfm": "4.0.1",
     "remark-parse": "11.0.0",
     "tailwind-variants": "4.0.2",
@@ -46,7 +46,7 @@
     "yaml": "2.9.1"
   },
   "devDependencies": {
-    "@storybook/react-vite": "10.6.7",
+    "@storybook/react-vite": "10.6.8",
     "@tailwindcss/vite": "4.3.5",
     "@testing-library/dom": "10.4.2",
     "@testing-library/react": "16.3.3",
@@ -54,9 +54,9 @@
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.3.0",
     "jsdom": "31.0.1",
-    "storybook": "10.6.7",
+    "storybook": "10.6.8",
     "tailwindcss": "4.3.5",
     "vite": "8.3.8",
-    "vitest": "5.1.0"
+    "vitest": "5.1.1"
   }
 }

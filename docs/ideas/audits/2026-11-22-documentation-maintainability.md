@@ -223,3 +223,18 @@ tracked by #206/#207 until evidenced on the final PR HEAD.
 | `engineering/repository/ci.md` | Reformat | 2 long paragraphs, 1 long bullets; longest section 406 words | code check pending |
 | `engineering/repository/commit-conventions.md` | Keep | no long paragraph/bullet detected | code check pending |
 | `engineering/repository/dependencies-and-security.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `engineering/repository/dogfooding.md` | Reformat | 0 long paragraphs, 1 long bullets; longest section 349 words | code check pending |
+| `engineering/repository/git-workflow.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `engineering/repository/local-setup.md` | Reformat | 2 long paragraphs, 1 long bullets; longest section 1008 words | code check pending |
+| `engineering/repository/product-packaging.md` | Reformat | 0 long paragraphs, 1 long bullets; longest section 213 words | code check pending |
+| `engineering/repository/pull-requests.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `engineering/repository/releasing.md` | Reformat | 1 long paragraphs, 4 long bullets; longest section 425 words | code check pending |
+| `engineering/shared/README.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `engineering/shared/async-and-lifecycle.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `engineering/shared/code-organization.md` | Reformat | 1 long paragraphs, 3 long bullets; longest section 671 words | code check pending |
+| `engineering/shared/effects-and-io.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `engineering/shared/operation-progress.md` | Reformat | 0 long paragraphs, 4 long bullets; longest section 445 words | code check pending |
+| `engineering/shared/specflow-git-recovery.md` | Reformat | 0 long paragraphs, 1 long bullets; longest section 270 words | code check pending |
+| `engineering/shared/specification-create-recovery.md` | Reformat | 0 long paragraphs, 1 long bullets; longest section 282 words | code check pending |
+| `engineering/shared/testing.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `product/README.md` | Keep | no long paragraph/bullet detected | code check pending |

@@ -38,6 +38,41 @@ describe('availabilityOf', () => {
     }
   });
 
+  describe('a waiting agent attempt commit', () => {
+    const context: AvailabilityContext = {
+      archived: false,
+      commits: commits({ holds: holdsOf({ 'notes/a.md': WAIT }) }),
+      attemptHeld: new Set(['notes/a.md']),
+    };
+
+    it('refuses the paths it takes and the folders above them, before busy', () => {
+      expect(availabilityOf(context, FILE)).toEqual({ available: false, reason: 'attempt-commit' });
+      expect(availabilityOf(context, { kind: 'folder', path: 'notes' })).toEqual({
+        available: false,
+        reason: 'attempt-commit',
+      });
+    });
+
+    it('leaves the other documents and, without the registry file, the capabilities available', () => {
+      expect(availabilityOf(context, { kind: 'file', path: 'overview.md' })).toEqual({
+        available: true,
+      });
+      expect(availabilityOf(context, { kind: 'capability' })).toEqual({ available: true });
+      expect(
+        availabilityOf(
+          { ...context, attemptHeld: new Set(['specification.yaml']) },
+          { kind: 'capability' },
+        ),
+      ).toEqual({ available: false, reason: 'attempt-commit' });
+    });
+
+    it('refuses everything as commit-blocked when the holds cannot be read', () => {
+      expect(
+        availabilityOf({ ...context, attemptHeld: 'unreadable' }, { kind: 'capability' }),
+      ).toEqual({ available: false, reason: 'commit-blocked' });
+    });
+  });
+
   describe('precedence', () => {
     // Every reason that can apply at once, strongest first.
     const everything: AvailabilityContext = {

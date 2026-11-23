@@ -51,8 +51,9 @@ export type AttemptCommitOptions = Pick<ManualCommitCommandOptions, 'deps' | 'co
  *
  * An entry the attempt never touched stays out, another author's included. An entry the attempt
  * changed together with someone else (`ATTEMPT_COMMIT_MIXED_AUTHORS`; unreachable through SpecFlow's
- * own actions: an agent's write never builds on another author's uncommitted change, and every
- * workflow write of the Specification is refused while the attempt's commit waits), a declared path that was
+ * own actions: an agent's write never builds on another author's uncommitted change, and while the
+ * attempt's commit waits every workflow write of the Specification and every other document write to
+ * a path the commit takes are refused), a declared path that was
  * never hashed (`ATTEMPT_COMMIT_UNATTRIBUTABLE`) or a path whose content changed since
  * (`MANUAL_COMMIT_CONFLICT`) refuses the whole commit, naming it: nothing is committed. With
  * automatic commits on, the document queue of the Specification is drained first (the manual
@@ -110,8 +111,8 @@ export async function commitAgentAttempt(
         'ATTEMPT_COMMIT_MIXED_AUTHORS',
         `The agent's uncommitted work shares files with someone else's uncommitted change: ` +
           `${named(ledger.mixed)}. SpecFlow cannot commit one without the other, so nothing was ` +
-          'committed. SpecFlow refuses every workflow change that could cause this while an ' +
-          "attempt's commit waits, so these files were changed some other way.",
+          "committed. While an attempt's commit waits SpecFlow refuses every change of its " +
+          "files but the agent's own, so these files were changed some other way.",
       );
     }
 

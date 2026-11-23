@@ -20,10 +20,12 @@ import {
   finishStep,
   inspectActions,
   installProjectDefinitions,
+  manualCommit,
   markWorkspaceExecutionDispatched,
   openAgentAttempts,
   openWorkflow,
   proposeAgentFinish,
+  readSpecificationDocumentTree,
   rejectAgentResult,
   retryAgentAttemptCommit,
   returnDuringAgentAttempt,
@@ -698,7 +700,7 @@ it('commits the owner’s Return during an attempt, so the next attempt commits 
   expect(dirty()).toEqual([]);
 }, 600_000);
 
-it('reports the owner’s commit failed, never done, while an attempt journal cannot be read', async () => {
+it('refuses every workflow write while an attempt journal cannot be read, then the owner’s commit takes the state', async () => {
   const spec = await newSpecification('Unreadable journal');
   const head = git(root, 'rev-parse', 'HEAD');
   const attempt = await agentAttempt(spec, {
@@ -715,41 +717,199 @@ it('reports the owner’s commit failed, never done, while an attempt journal ca
     actor: owner,
   });
 
-  // Another attempt's journal cannot be read: who wrote the taken-over attempt's state is unknown.
+  // Another attempt's journal cannot be read: it may be one whose commit waits, so the wait fails
+  // closed and the owner's finish is refused before anything is written.
   const journals = join(engine.context.project.stateRoot, 'engine', 'operations', 'agent-attempt');
   const corrupt = join(journals, `${randomUUID()}.json`);
   await writeFile(corrupt, '{ not json');
   const workflow = await openWorkflow(engine);
-  const finished = await finishStep(workflow, {
-    subject: spec.subject,
-    step: 'requirements',
-    attempt: 2,
-    input: {},
-    actor: owner,
-  });
-  expect(finished.postActions).toMatchObject([
-    {
-      action: 'commit-execution-state',
-      status: 'failed',
-      code: 'WORKFLOW_STATE_CORRUPT',
-      held: {
-        paths: expect.arrayContaining([
-          `${spec.directory}/.execution/specification.yaml`,
-        ]) as string[],
-      },
-    },
-  ]);
+  const finish = () =>
+    finishStep(workflow, {
+      subject: spec.subject,
+      step: 'requirements',
+      attempt: 2,
+      input: {},
+      actor: owner,
+    });
+  const run = join(root, spec.directory, '.execution', 'specification.yaml');
+  const before = { dirty: dirty(), run: await readFile(run, 'utf8') };
+  await expect(finish()).rejects.toMatchObject({ code: 'WORKFLOW_STATE_CORRUPT' });
+  expect({ dirty: dirty(), run: await readFile(run, 'utf8') }).toEqual(before);
   expect(git(root, 'rev-parse', 'HEAD')).toBe(head);
 
-  // Once it is repaired, the owner's next commit takes the state.
+  // Once it is repaired, the finish applies and the owner's commit takes the state.
   await rm(corrupt);
-  expect((await ownerStep(spec)).postActions).toMatchObject([
+  expect((await finish()).postActions).toMatchObject([
     {
       action: 'commit-execution-state',
       status: 'completed',
       commit: { sha: expect.any(String) as string },
     },
   ]);
+  expect(dirty()).toEqual([]);
+}, 600_000);
+
+/** The tree's document at `path` (Specification-relative). */
+async function treeDocument(spec: Spec, path: string) {
+  const tree = await readSpecificationDocumentTree(engine, spec.specId);
+  const document = tree.documents.find((entry) => entry.path === path);
+  if (!document) {
+    throw new Error(`No document at ${path}.`);
+  }
+
+  return { tree, document };
+}
+
+/** The owner's save of the document at `path` (no execution: the owner's write). */
+async function ownerSave(spec: Spec, path: string, content: string) {
+  const { document } = await treeDocument(spec, path);
+
+  return applyDocumentChange(engine, spec.specId, randomUUID(), {
+    action: 'save',
+    documentId: document.id,
+    content,
+    expectedRevision: document.revision,
+  });
+}
+
+/**
+ * An agent attempt of the requirements step whose commit failed (an outside edit of its declared
+ * file before the commit ran): it saved the overview, created `notes.md` and changed `src/app.ts`.
+ */
+async function failedAttemptWithDocuments(spec: Spec, agentContent: string) {
+  const overview = `${spec.directory}/overview.md`;
+  const attempt = await agentAttempt(spec, {
+    step: 'requirements',
+    archetype: 'spec-writer',
+    declared: ['src/app.ts'],
+    work: async (owned) => {
+      await saveDocument(spec, 'overview', overview, '# Requirements by the agent\n', owned);
+      await applyDocumentChange(
+        engine,
+        spec.specId,
+        randomUUID(),
+        {
+          action: 'create',
+          documents: [{ path: 'notes.md', content: 'Notes by the agent.\n' }],
+          folders: [],
+        },
+        owned,
+      );
+      await put('src/app.ts', agentContent);
+    },
+    faults: async (boundary) => {
+      if (boundary === 'post-actions-pending') {
+        await put('src/app.ts', 'export const app = "outside";\n');
+      }
+    },
+  });
+  expect(await attempt.finalize(attempt.faulty)).toMatchObject({
+    kind: 'finished',
+    postActions: [{ action: 'attempt-commit', status: 'failed', code: 'MANUAL_COMMIT_CONFLICT' }],
+  });
+
+  return attempt;
+}
+
+/** Every owner write to a document the failed attempt commit holds is refused, nothing written. */
+async function ownerWritesOfHeldDocumentsRefused(spec: Spec, attemptId: string) {
+  const ledger = () =>
+    readLedgerRecord(engine.context, engine.workspace.workspaceId, {
+      kind: 'specification',
+      id: spec.specId,
+    });
+  const files = async () => ({
+    overview: await readFile(join(root, spec.directory, 'overview.md'), 'utf8'),
+    notes: await readFile(join(root, spec.directory, 'notes.md'), 'utf8'),
+  });
+  const before = { dirty: dirty(), files: await files(), ledger: await ledger() };
+  const head = git(root, 'rev-parse', 'HEAD');
+  const held = { code: 'DOCUMENT_COMMITS_PENDING', details: { cause: 'attempt-commit' } };
+
+  // The tree says it before the click: the held documents cannot change, the others can.
+  const { tree, document } = await treeDocument(spec, 'overview.md');
+  expect(tree.attemptCommit).toMatchObject({
+    attemptId,
+    reason: 'attempt-commit-failed',
+    code: 'MANUAL_COMMIT_CONFLICT',
+    step: 'requirements',
+    attempt: 1,
+    paths: expect.arrayContaining(['overview.md', 'notes.md']) as string[],
+  });
+  expect(document.actions.save).toEqual({ available: false, reason: 'attempt-commit' });
+
+  await expect(ownerSave(spec, 'overview.md', '# The owner’s edit\n')).rejects.toMatchObject({
+    ...held,
+    message: expect.stringContaining('requirements#1') as string,
+  });
+  const notes = (await treeDocument(spec, 'notes.md')).document;
+  await expect(
+    applyDocumentChange(engine, spec.specId, randomUUID(), {
+      action: 'rename',
+      target: { kind: 'document', documentId: notes.id },
+      name: 'renamed.md',
+      expectedRevision: notes.revision,
+    }),
+  ).rejects.toMatchObject(held);
+  await expect(
+    applyDocumentChange(engine, spec.specId, randomUUID(), {
+      action: 'delete',
+      target: { kind: 'document', documentId: notes.id },
+      expectedRevision: notes.revision,
+    }),
+  ).rejects.toMatchObject(held);
+  // Nothing was written, recorded or committed for the refused writes.
+  expect({ dirty: dirty(), files: await files(), ledger: await ledger() }).toEqual(before);
+  expect(git(root, 'rev-parse', 'HEAD')).toBe(head);
+}
+
+it('refuses the owner’s writes to the documents a failed attempt commit holds, not to the others, until Retry commit', async () => {
+  const spec = await newSpecification('Owner waits to edit');
+  await put(`${spec.directory}/other.md`, 'Owner notes.\n');
+  git(root, 'add', '-A');
+  commitStaged(root, 'other document');
+  const agentContent = 'export const app = "agent";\n';
+  const attempt = await failedAttemptWithDocuments(spec, agentContent);
+
+  await ownerWritesOfHeldDocumentsRefused(spec, attempt.attemptId);
+  // Another document of the Specification stays editable.
+  expect((await treeDocument(spec, 'other.md')).document.actions.save).toEqual({
+    available: true,
+  });
+  await ownerSave(spec, 'other.md', 'Owner notes, edited.\n');
+
+  // The agent's content again: one Retry commit makes the one attempt commit, without the owner's file.
+  await put('src/app.ts', agentContent);
+  const [retried] = (
+    await retryAgentAttemptCommit(attempt.agent, {
+      subject: spec.subject,
+      step: 'requirements',
+      attempt: 1,
+      actor: owner,
+    })
+  ).postActions;
+  expect(retried).toMatchObject({ action: 'attempt-commit', status: 'completed' });
+  const [sha, ...others] = attemptCommits(attempt.attemptId);
+  expect(others).toEqual([]);
+  const files = filesOf(sha!);
+  expect(files).toEqual(
+    expect.arrayContaining([
+      'src/app.ts',
+      `${spec.directory}/overview.md`,
+      `${spec.directory}/notes.md`,
+    ]),
+  );
+  expect(files).not.toContain(`${spec.directory}/other.md`);
+
+  // Now the owner's save of the agent's document is admitted; the owner commits both edits.
+  expect((await readSpecificationDocumentTree(engine, spec.specId)).attemptCommit).toBeUndefined();
+  await ownerSave(spec, 'overview.md', '# The owner’s edit\n');
+  await manualCommit(engine, {
+    operationId: randomUUID(),
+    scope: 'specification',
+    specId: spec.specId,
+    message: 'docs: owner edits',
+  });
   expect(dirty()).toEqual([]);
 }, 600_000);
 
@@ -814,6 +974,34 @@ it('with automatic commits on, commits a documents-only attempt as its one attem
   const [sha] = attemptCommits(attempt.attemptId);
   expect(commitsSince(head)).toEqual([sha]);
   expect(filesOf(sha!)).toContain(overview);
+  expect(dirty()).toEqual([]);
+}, 600_000);
+
+it('with automatic commits on, queues no owner commit of a document a failed attempt commit holds, so the first Retry commits it', async () => {
+  const spec = await newSpecification('Auto waits to edit');
+  const head = git(root, 'rev-parse', 'HEAD');
+  const agentContent = 'export const app = "auto agent";\n';
+  const attempt = await failedAttemptWithDocuments(spec, agentContent);
+
+  await ownerWritesOfHeldDocumentsRefused(spec, attempt.attemptId);
+  expect(commitsSince(head)).toEqual([]);
+
+  await put('src/app.ts', agentContent);
+  const [retried] = (
+    await retryAgentAttemptCommit(attempt.agent, {
+      subject: spec.subject,
+      step: 'requirements',
+      attempt: 1,
+      actor: owner,
+    })
+  ).postActions;
+  expect(retried).toMatchObject({ action: 'attempt-commit', status: 'completed' });
+  const [sha] = attemptCommits(attempt.attemptId);
+  // No commit of the owner took the agent's document: the attempt commit is the only one.
+  expect(commitsSince(head)).toEqual([sha]);
+  expect(filesOf(sha!)).toEqual(
+    expect.arrayContaining([`${spec.directory}/overview.md`, `${spec.directory}/notes.md`]),
+  );
   expect(dirty()).toEqual([]);
 }, 600_000);
 

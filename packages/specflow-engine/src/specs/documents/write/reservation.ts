@@ -33,6 +33,7 @@ import {
   listDocumentChangeJournals,
   sweepSettledDocumentChanges,
 } from './journal-store';
+import { attemptCommitHeld } from './attempt-commit-hold';
 import { foreignUncommitted } from './foreign-ledger';
 import type { WriteRuntime } from './writer-types';
 
@@ -153,6 +154,15 @@ export async function reserveOnce(
       if (foreign !== undefined) {
         return { kind: 'busy', error: foreign, waitable: false };
       }
+    }
+
+    // D15: a path a waiting agent attempt commit takes is written by that attempt's Turns only
+    // (the owner's write included is refused), so its commit never meets another author's change.
+    // Before the attempt finished, its execution claim refused this write already (above).
+    const holds = await rt.engine.attemptCommitHolds?.(loaded.workspaceId);
+    const held = holds !== undefined ? attemptCommitHeld(holds, plan, owned) : undefined;
+    if (held !== undefined) {
+      return { kind: 'busy', error: held, waitable: false };
     }
 
     const journals = (await listDocumentChangeJournals(rt.context)).filter(

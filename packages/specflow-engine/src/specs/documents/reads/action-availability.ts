@@ -18,12 +18,15 @@ import type { DocumentCommitView, PathHold } from './commit-model';
  *  4. `commit-blocked`: a failed commit of this Specification names a blocker of the checkout
  *     (a detached HEAD, no commits, an unreadable index) or of the very paths (a changed branch, an
  *     ignored path), or a journal cannot be read.
- *  5. `busy`: the queue of the checkout is full (a wait helps) or holds too many operations that wait
+ *  5. `attempt-commit`: a finished agent attempt whose own commit (D15) waits takes the path (or a
+ *     path below the folder; `specification.yaml` for a capability): only that commit changes it.
+ *     An attempt journal that cannot be read refuses every write as `commit-blocked` (fail closed).
+ *  6. `busy`: the queue of the checkout is full (a wait helps) or holds too many operations that wait
  *     for a person (it does not), or a write or a claimed commit batch holds the path (a wait
  *     helps), or a batch awaits operator recovery (it does not).
  *
- * Reasons 1 to 3 never change without the files or the configuration changing; 4 and 5 are
- * evidence of the queue and carry the same causes the reservation refuses with (`SPEC_BUSY`,
+ * Reasons 1 to 3 never change without the files or the configuration changing; 5 is the evidence
+ * of the agent attempt journals and the ledger, the writer's own refusal; 4 and 6 are evidence of the queue and carry the same causes the reservation refuses with (`SPEC_BUSY`,
  * `COMMIT_BLOCKED`). Pure.
  */
 
@@ -37,7 +40,15 @@ export interface AvailabilityContext {
   readonly archived: boolean;
   readonly policyReason?: PolicyReason;
   readonly commits: DocumentCommitView;
+  /**
+   * The folded Specification-relative paths a waiting agent attempt commit takes, or `unreadable`
+   * when an attempt journal or the ledger cannot be read. Absent: none waits (or Git is off).
+   */
+  readonly attemptHeld?: ReadonlySet<string> | 'unreadable';
 }
+
+/** The registry file a capability (create, import, classify) always writes. */
+const MANIFEST_KEY = foldPathKey('specification.yaml');
 
 /** What the subject itself says before any policy or queue evidence is consulted. */
 export type SubjectRefusal =
@@ -81,6 +92,18 @@ export function availabilityOf(
   const { commits } = context;
   if (commits.checkoutBlocked || isBlockedPath(commits.blockedPaths, target)) {
     return { available: false, reason: 'commit-blocked' };
+  }
+
+  const held = context.attemptHeld;
+  if (held === 'unreadable') {
+    return { available: false, reason: 'commit-blocked' };
+  }
+
+  if (
+    held !== undefined &&
+    (target.kind === 'capability' ? held.has(MANIFEST_KEY) : isBlockedPath(held, target))
+  ) {
+    return { available: false, reason: 'attempt-commit' };
   }
 
   // A full queue refuses every write; one that only holds decisions refuses without a retry.

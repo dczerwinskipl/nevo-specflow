@@ -11,6 +11,7 @@ import { loadSpecification, type LoadedSpecification } from './loaded-specificat
 import { observe } from './observation';
 import { projectDocumentTree, type ObservedFile, type PolicyReason } from './projection';
 import { resolveReadOptions, type DocumentReadOptions } from './read-options';
+import { treeAttemptCommitOf } from './reads/attempt-commit';
 import {
   commitSubjectOf,
   readDocumentCommitView,
@@ -86,11 +87,20 @@ async function buildDocumentTree(
 
   // The open commits are read last: a write that settled while the files were read is then seen as
   // settled, and the marker never outlives the commit it describes. Lock-free, no Git.
+  const subject = commitSubjectOf(loaded);
   const commits = await readDocumentCommitView(
     engine.context,
-    commitSubjectOf(loaded),
+    subject,
     commitReadOptions(options, resolved.now, await readCommitPolicyMode(engine.context)),
   );
+  // An archived Specification is read-only whatever waits.
+  const attemptCommit =
+    loaded.location === 'active'
+      ? treeAttemptCommitOf(
+          await engine.attemptCommitHolds?.(loaded.workspaceId),
+          subject.directory,
+        )
+      : undefined;
 
   return projectDocumentTree({
     manifest,
@@ -109,6 +119,7 @@ async function buildDocumentTree(
     },
     ...(policyReason !== undefined ? { policyReason } : {}),
     commits,
+    ...(attemptCommit !== undefined ? { attemptCommit } : {}),
   });
 }
 

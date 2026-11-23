@@ -33,6 +33,43 @@ export interface SpecificationAttemptCommitWait extends AttemptCommitWait {
   readonly stepTitle: string;
 }
 
+/** The attempt as a refusal names it: `Requirements (requirements#1 of Task api)`. */
+export function namedAttempt(wait: SpecificationAttemptCommitWait): string {
+  return `${wait.stepTitle || wait.step} (${wait.step}#${String(wait.attempt)}${
+    wait.subject.taskId !== undefined ? ` of Task ${wait.subject.taskId}` : ''
+  })`;
+}
+
+/** Where the commit of a waiting attempt stands, as a refusal says it. */
+export function attemptCommitState(wait: SpecificationAttemptCommitWait): string {
+  return wait.reason === 'attempt-commit-failed'
+    ? `failed${wait.code !== undefined ? ` (${wait.code})` : ''}`
+    : 'has not run yet';
+}
+
+/**
+ * A finished agent attempt whose own commit (D15) waits (pending or failed), with the checkout paths
+ * that commit takes: while it waits, no write but the attempt's own changes them (the document
+ * writer refuses the others, `DOCUMENT_COMMITS_PENDING` with `cause: attempt-commit`), so the
+ * attempt commit never meets another author's change in them.
+ */
+export interface AttemptCommitPathHold {
+  readonly wait: SpecificationAttemptCommitWait;
+  /** The Runtime invocations of the attempt's Turns: their writes are the attempt's own. */
+  readonly invocations: ReadonlySet<string>;
+  /** Checkout-relative, sorted: its ledger entries (the mixed ones included) and declared files. */
+  readonly paths: readonly string[];
+}
+
+/**
+ * The waiting attempt commits of a checkout (none with Git off), or `readable: false` when an
+ * attempt journal or a ledger record cannot be read: what such a journal holds is unknown, so every
+ * caller fails closed.
+ */
+export type AttemptCommitPathHolds =
+  | { readonly readable: true; readonly holds: readonly AttemptCommitPathHold[] }
+  | { readonly readable: false };
+
 /** A finished agent attempt whose commit failed, with every path that commit would hold. */
 export interface FailedAttemptCommit {
   readonly attemptId: string;

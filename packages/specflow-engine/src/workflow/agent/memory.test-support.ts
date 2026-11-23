@@ -106,7 +106,7 @@ export function memoryAgentDependencies(catalogue: ExecutionCatalogue, attemptId
       // Git on unless a test turns it off: the attempt commits as the memory journal records them.
       async attemptCommit(specId: string) {
         return state.gitEnabled
-          ? specificationAttemptCommitWaitOf((await journal.listActive()).journals, specId)
+          ? specificationAttemptCommitWaitOf(await journal.listActive(), specId)
           : undefined;
       },
     },

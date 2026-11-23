@@ -346,6 +346,12 @@
                     "enum": [
                       "dangling"
                     ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "attempt-commit"
+                    ]
                   }
                 ]
               },
@@ -1624,6 +1630,12 @@
                     "enum": [
                       "dangling"
                     ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "attempt-commit"
+                    ]
                   }
                 ]
               },
@@ -2440,6 +2452,12 @@
                     "enum": [
                       "dangling"
                     ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "attempt-commit"
+                    ]
                   }
                 ]
               },
@@ -3229,6 +3247,12 @@
                         "enum": [
                           "dangling"
                         ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "attempt-commit"
+                        ]
                       }
                     ]
                   },
@@ -3309,6 +3333,12 @@
                         "enum": [
                           "dangling"
                         ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "attempt-commit"
+                        ]
                       }
                     ]
                   },
@@ -3388,6 +3418,12 @@
                         "type": "string",
                         "enum": [
                           "dangling"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "attempt-commit"
                         ]
                       }
                     ]
@@ -31026,6 +31062,12 @@
                                         "enum": [
                                           "dangling"
                                         ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "attempt-commit"
+                                        ]
                                       }
                                     ]
                                   },
@@ -31106,6 +31148,12 @@
                                         "enum": [
                                           "dangling"
                                         ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "attempt-commit"
+                                        ]
                                       }
                                     ]
                                   },
@@ -31185,6 +31233,12 @@
                                         "type": "string",
                                         "enum": [
                                           "dangling"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "attempt-commit"
                                         ]
                                       }
                                     ]
@@ -31445,6 +31499,12 @@
                                         "enum": [
                                           "dangling"
                                         ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "attempt-commit"
+                                        ]
                                       }
                                     ]
                                   },
@@ -31524,6 +31584,12 @@
                                         "type": "string",
                                         "enum": [
                                           "dangling"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "attempt-commit"
                                         ]
                                       }
                                     ]
@@ -31605,6 +31671,12 @@
                                         "enum": [
                                           "dangling"
                                         ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "attempt-commit"
+                                        ]
                                       }
                                     ]
                                   },
@@ -31685,6 +31757,12 @@
                                         "enum": [
                                           "dangling"
                                         ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "attempt-commit"
+                                        ]
                                       }
                                     ]
                                   },
@@ -31764,6 +31842,12 @@
                                         "type": "string",
                                         "enum": [
                                           "dangling"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "attempt-commit"
                                         ]
                                       }
                                     ]
@@ -31882,6 +31966,12 @@
                                         "type": "string",
                                         "enum": [
                                           "dangling"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "attempt-commit"
                                         ]
                                       }
                                     ]
@@ -32023,6 +32113,12 @@
                                   "enum": [
                                     "dangling"
                                   ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "attempt-commit"
+                                  ]
                                 }
                               ]
                             },
@@ -32102,6 +32198,12 @@
                                   "type": "string",
                                   "enum": [
                                     "dangling"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "attempt-commit"
                                   ]
                                 }
                               ]
@@ -32183,6 +32285,12 @@
                                   "enum": [
                                     "dangling"
                                   ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "attempt-commit"
+                                  ]
                                 }
                               ]
                             },
@@ -32262,6 +32370,12 @@
                                   "type": "string",
                                   "enum": [
                                     "dangling"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "attempt-commit"
                                   ]
                                 }
                               ]
@@ -32383,6 +32497,90 @@
                         },
                         "oldestPendingAt": {
                           "type": "string"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "attemptCommit": {
+                      "type": "object",
+                      "required": [
+                        "reason",
+                        "attemptId",
+                        "subject",
+                        "step",
+                        "attempt",
+                        "stepTitle",
+                        "count",
+                        "paths"
+                      ],
+                      "properties": {
+                        "reason": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "attempt-commit-pending"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "attempt-commit-failed"
+                              ]
+                            }
+                          ]
+                        },
+                        "code": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "attemptId": {
+                          "type": "string",
+                          "minLength": 36,
+                          "maxLength": 36
+                        },
+                        "subject": {
+                          "type": "object",
+                          "required": [
+                            "specId"
+                          ],
+                          "properties": {
+                            "specId": {
+                              "$ref": "#/components/schemas/SpecId"
+                            },
+                            "taskId": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "step": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "attempt": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "stepTitle": {
+                          "type": "string",
+                          "maxLength": 1000
+                        },
+                        "count": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "paths": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "maxItems": 25
                         }
                       },
                       "additionalProperties": false

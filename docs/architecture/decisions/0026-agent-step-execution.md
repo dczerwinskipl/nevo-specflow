@@ -194,6 +194,25 @@ before the click: `attemptCommit` names the attempt, `start`, `finish`, `return`
 the next step's agent option is unavailable with the same reason and the Task actions and New task
 are `attempt-commit`. The owner retries the commit first.
 
+**Document writes while an attempt commit waits (owner decision 2026-11-23).** The same wait guards
+the agent's files outside the workflow store: the document writer's reservation (where it already
+refuses an agent building on another author's uncommitted change) refuses every write not made
+under one of the waiting attempt's own Turns to a path that commit takes (its ledger entries, mixed
+ones included, and its declared paths): save, create, rename (both paths), move, delete and Task
+document edits alike, the owner's included, with `DOCUMENT_COMMITS_PENDING` (`cause:
+attempt-commit`, `paths`, the message naming the attempt), before anything is written or queued.
+It is path-level: the other documents of the Specification stay editable (a create, which writes
+`specification.yaml`, waits only when the attempt changed that file). The document tree says it
+before the click: `attemptCommit` names the attempt and the held paths, their actions are
+unavailable with reason `attempt-commit`, and the editor shows the note with Retry commit. So
+neither a refused owner save nor, with automatic commits on, a queued owner commit takes the agent's
+file, and the first Retry commits the attempt.
+
+**The wait fails closed.** An attempt journal that cannot be read, or a listing cut short, may be
+the one that waits: the workflow admission refuses `WORKFLOW_STATE_CORRUPT`, and the document writer
+refuses every write `COMMIT_BLOCKED` (`blockedBy: attempt-record-unreadable`; the tree reports
+`commit-blocked`), until the record is repaired.
+
 **Every owner change is the owner's commit.** Reject and a Return that applies now run
 `commit-execution-state` like Confirm; a new agent attempt first commits the owner's uncommitted
 workflow state of the Specification the same way, and is refused `WORKFLOW_DIRTY_BASELINE`, naming
@@ -201,8 +220,10 @@ the files, if any of it stays uncommitted (held by a hand edit, or a failed comm
 `commit-execution-state` is never `completed` while it left an owner change uncommitted because of
 agent work: `failed` `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` (tied to a waiting attempt) or
 `WORKFLOW_STATE_CORRUPT` (an attempt journal cannot be read, so the authors cannot be told), with
-the held paths. So `ATTEMPT_COMMIT_MIXED_AUTHORS` is unreachable through SpecFlow's own actions; it
-stays as the fail-closed refusal of a change made some other way.
+the held paths. A new agent attempt makes that commit only once its own start checks (expected
+position, actor, readiness, context, entry gates) passed with nothing written. So
+`ATTEMPT_COMMIT_MIXED_AUTHORS` is unreachable through SpecFlow's own actions; it stays as the
+fail-closed refusal of a change made some other way.
 
 ### D16 — Close lists, never discards
 

@@ -123,6 +123,18 @@ that is neither a Turn of the same agent attempt nor, for a Turn without an atte
 Session), and when the checkout's ledgers or the claims they name cannot be read in full. So no path
 mixes two authors' uncommitted changes, and the attempt commit never has to take another author's.
 
+The reverse holds too. While a finished agent attempt's own commit is pending or failed (Git on), a
+document write not made under one of that attempt's Turns to a path its commit takes (the
+attempt's ledger entries, mixed ones included, and its declared paths) is refused in the same
+reservation, before anything is written or queued: `DOCUMENT_COMMITS_PENDING`, `cause:
+attempt-commit`, with `paths` and the attempt named in the message. That covers the owner's save,
+create (when the attempt changed `specification.yaml`), rename (either path), move, delete and Task
+document edits. Other paths stay writable. The tree reports the attempt (`attemptCommit`) and marks
+the held paths' actions unavailable (`attempt-commit`). When the attempt journals or the ledger
+cannot be read, every write is refused `COMMIT_BLOCKED` (`blockedBy: attempt-record-unreadable`).
+So with automatic commits on, no owner commit queued meanwhile takes the agent's file, and the
+attempt commit's retry is never raced by one.
+
 ### Close and queued operations
 
 **Interaction.** Close refuses while the ledger of any checkout of its plan is non-empty after the flush and prune

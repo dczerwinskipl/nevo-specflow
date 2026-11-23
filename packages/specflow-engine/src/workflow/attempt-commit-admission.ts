@@ -1,4 +1,8 @@
-import type { SpecificationAttemptCommitWait } from '../specs/uncommitted/attempts';
+import {
+  attemptCommitState,
+  namedAttempt,
+  type SpecificationAttemptCommitWait,
+} from '../specs/uncommitted/attempts';
 import { WorkflowError } from './errors';
 import type { ExecutionHolds } from './operations/loaded-execution';
 import type { ExecutionChange, WorkflowStore } from './state/store';
@@ -21,13 +25,8 @@ import type { ExecutionChange, WorkflowStore } from './state/store';
 
 /** The refusal of a workflow write while `wait` holds the Specification. */
 export function attemptCommitRequired(wait: SpecificationAttemptCommitWait): WorkflowError {
-  const named = `${wait.stepTitle || wait.step} (${wait.step}#${String(wait.attempt)}${
-    wait.subject.taskId !== undefined ? ` of Task ${wait.subject.taskId}` : ''
-  })`;
-  const state =
-    wait.reason === 'attempt-commit-failed'
-      ? `failed${wait.code !== undefined ? ` (${wait.code})` : ''}`
-      : 'has not run yet';
+  const named = namedAttempt(wait);
+  const state = attemptCommitState(wait);
 
   return new WorkflowError(
     'WORKFLOW_ATTEMPT_COMMIT_REQUIRED',

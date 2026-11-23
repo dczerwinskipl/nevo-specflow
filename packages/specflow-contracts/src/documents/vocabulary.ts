@@ -71,6 +71,7 @@ export const ACTION_REASONS = [
   'busy',
   'not-editable',
   'dangling',
+  'attempt-commit',
 ] as const;
 export const ActionReasonSchema = closedUnion(ACTION_REASONS);
 export type ActionReason = (typeof ACTION_REASONS)[number];

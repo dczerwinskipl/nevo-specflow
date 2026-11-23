@@ -205,7 +205,10 @@ Derived by the Engine (`workflow/agent/scope/`), enforced by the broker:
 A Task drafted in an attempt is recorded with origin `produced` by that step and attempt; an agent
 edits only drafts its step produced. An agent write that would build on another author's
 uncommitted change of the same path is refused (`foreign-uncommitted`, "commit it first"); two Turns
-of one attempt, or two ad-hoc Turns of one Session, are the same author.
+of one attempt, or two ad-hoc Turns of one Session, are the same author. Conversely, while a finished
+attempt's own commit waits, any other write to a path that commit takes (the owner's included) is
+refused (`DOCUMENT_COMMITS_PENDING`, `cause: attempt-commit`; see
+[document commit policy](document-commit-policy.md#agent-writes)).
 
 **CLI routing** (`packages/specflow/src/agent-broker/routing.ts`). When `NEVO_AGENT_CAPABILITY` is
 set, every command is placed before its action runs:

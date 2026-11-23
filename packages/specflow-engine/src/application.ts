@@ -2,6 +2,7 @@ import { runReadRequest } from './project/request-verification-memo';
 import type { CheckoutQuiescence } from './specs/lifecycle/checkout-quiescence-port';
 import type { SpecificationExitGuard } from './specs/lifecycle/exit-guard';
 import type {
+  AttemptCommitPathHolds,
   FailedAttemptCommit,
   SpecificationAttemptCommitWait,
 } from './specs/uncommitted/attempts';
@@ -54,6 +55,12 @@ export interface SpecFlowEngine {
     workspaceId: string,
   ) => Promise<ReadonlySet<string> | undefined>;
   /**
+   * With Git on, the finished agent attempts of the checkout whose own commit (D15) waits, with the
+   * paths that commit takes: the document writer refuses every other write to them and the document
+   * tree reports them. Absent where no workflow is composed.
+   */
+  readonly attemptCommitHolds?: (workspaceId: string) => Promise<AttemptCommitPathHolds>;
+  /**
    * Whether an agent can work in a checkout Close would remove, from the host process (the Runtime
    * or the CLI) through `withCheckoutQuiescence`. Absent, Close does not remove a checkout.
    */
@@ -78,6 +85,9 @@ export interface EnginePorts {
   readonly attemptCommitExecutions?: (
     engine: SpecFlowEngine,
   ) => (workspaceId: string) => Promise<ReadonlySet<string> | undefined>;
+  readonly attemptCommitHolds?: (
+    engine: SpecFlowEngine,
+  ) => (workspaceId: string) => Promise<AttemptCommitPathHolds>;
 }
 
 /**
@@ -123,6 +133,12 @@ export async function openEngineBoundary(
       ? {
           attemptCommitExecutions: (workspaceId: string) =>
             ports.attemptCommitExecutions!(engine)(workspaceId),
+        }
+      : {}),
+    ...(ports.attemptCommitHolds
+      ? {
+          attemptCommitHolds: (workspaceId: string) =>
+            ports.attemptCommitHolds!(engine)(workspaceId),
         }
       : {}),
     async readRegistry() {

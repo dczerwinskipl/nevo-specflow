@@ -63,6 +63,7 @@ export const DOCUMENT_CHANGE_CAUSES = [
   'close-commit-uncommitted',
   'uncommitted-limit',
   'foreign-uncommitted',
+  'attempt-commit',
 ] as const;
 
 export type DocumentChangeCause = (typeof DOCUMENT_CHANGE_CAUSES)[number];
@@ -142,6 +143,7 @@ export const DOCUMENT_CHANGE_ERROR_MAP = {
   'close-commit-uncommitted': { code: 'DOCUMENT_COMMITS_PENDING', detail: 'commit-uncommitted' },
   'uncommitted-limit': { code: 'DOCUMENT_UNCOMMITTED_LIMIT' },
   'foreign-uncommitted': { code: 'DOCUMENT_COMMITS_PENDING', detail: 'foreign-uncommitted' },
+  'attempt-commit': { code: 'DOCUMENT_COMMITS_PENDING', detail: 'attempt-commit' },
 } as const satisfies Record<DocumentChangeCause, DocumentChangeErrorMapping>;
 
 /** The message of `case-only-rename`, the same from the planner and from the file-system check. */

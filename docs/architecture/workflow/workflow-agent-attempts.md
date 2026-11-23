@@ -157,8 +157,19 @@ change not made under a Turn's own claim, so start, finish, return, wait re-eval
 Confirm, Reject, the Task commands and an agent's start are refused alike; Confirm and Reject ask
 it before they plan. A Turn's own writes and its finalize are not guarded: one claim at a time, so
 a running Turn was admitted before the attempt finished; refusing its finalize would hold its claim,
-which the waiting commit's retry needs settled. A journal that cannot be read names no Specification
-and holds none. Other Specifications are unaffected.
+which the waiting commit's retry needs settled. The wait fails closed: a journal that cannot be read
+(or a listing cut short) may be the one that waits, so every workflow write is refused
+`WORKFLOW_STATE_CORRUPT` until it is repaired. Other Specifications are unaffected.
+
+The agent's files are guarded at the document writer too (`attemptCommitPathHolds`, the engine port
+`attemptCommitHolds`): while the commit waits, a document write not made under one of the attempt's
+own Turns to a path that commit takes (its ledger entries, mixed ones included, and its declared
+paths) is refused under the reservation lock before anything is written or queued
+(`DOCUMENT_COMMITS_PENDING`, `cause: attempt-commit`, naming the attempt and the paths; the owner's
+save, create, rename, move, delete and Task document edits alike). The other paths stay writable.
+The document tree reports the same holds (`attemptCommit`, actions `attempt-commit`); holds that
+cannot be read refuse every write `COMMIT_BLOCKED` and show `commit-blocked`. See
+[document commit policy](../runtime/document-commit-policy.md#agent-writes).
 
 The projection (`withAttemptCommitWait`) shows it for every affected action: `attemptCommit` names
 the attempt and its subject (Retry commit), `start`, `finish`, `return`, `confirm` and `reject`
@@ -168,7 +179,8 @@ task are `attempt-commit`.
 
 **Owner commits around an attempt.** Reject and a Return that applies now commit the owner's
 change at once (`afterOwnerChange`, the ordinary `commit-execution-state`, results in
-`postActions`). A new agent attempt runs the same commit first, so it starts where SpecFlow's own
+`postActions`). A new agent attempt runs the same commit first, once the start's own checks passed
+in a section that writes nothing, so it starts where SpecFlow's own
 workflow state of the Specification is committed (an owner's Task edit, start or deferred return
 included), and is refused `WORKFLOW_DIRTY_BASELINE`, naming the files, if any of that state is
 still uncommitted and dirty (`ownerWorkflowState`: held by a hand edit, or a failed commit). A Take

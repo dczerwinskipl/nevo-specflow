@@ -31,7 +31,6 @@ of:
 
 Readiness, Task facts and statuses are derived from these, never stored.
 
-
 ### Attempts and ordering
 
 - **Attempts.** Every activation of a step creates the next attempt number for that step. Finish must
@@ -90,7 +89,6 @@ declares effects. Only a `ready` Task can return (`WORKFLOW_TASK_BLOCKED` otherw
 
 A wait step has no work and no executor, so entering it is part of the transition that leads to it.
 
-
 ### Wait admission
 
 - **Draft and escalation guard.** A wait step is never entered while a Task is `draft` or on hold by its own escalation (`statusChange.source: escalation`): every Task must be approved or cancelled, and every escalation resolved (the Task resumed or cancelled), before implementation is handed over.
@@ -98,7 +96,6 @@ A wait step has no work and no executor, so entering it is part of the transitio
 - A change that would enter a wait step with a draft or escalated Task is refused with `WORKFLOW_INPUT_INVALID` naming them (`Cannot enter the wait step "implementation": Tasks still draft: a; Tasks escalated: b.`) before anything is written, so the attempt stays active and can finish again with other decisions.
 - The rule belongs to the kernel (`advance` in `operations/advance.ts`), so every workflow gets it.
 - Only a Specification finish enters a wait step: the entry step is not a wait step, a return never targets one, and no wait-step transition leads to another.
-
 
 ### Wait outcomes
 
@@ -119,7 +116,6 @@ The Engine completes the wait step itself, with the transition of the Task event
 resumes a wait step: a start whose next step is a wait step is refused with
 `WORKFLOW_POSITION_INVALID` before anything changes, so its attention (for example `tasks-stuck`)
 still shows.
-
 
 ### Wait settlement and recovery
 

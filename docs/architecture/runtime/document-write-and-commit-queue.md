@@ -84,7 +84,7 @@ operation (`reserved`/`files-writing`) delays claiming a batch that overlaps it.
 ### Failures, retry and abandon
 
 - **Failures, retry, abandon and recover.** A transient blocker (index lock, busy Git, timed-out or hung Git, an effective set that changed under the attempt) dissolves the batch: its members are `queued` again with the attempt counted, `reason` and `blockedBy` visible and `nextAttemptAt` after the backoff (1 s doubling to 60 s, then every 60 s; the attempt counter saturates at 10).
-- A transient blocker never ends the retries, a Git that is missing or cannot be started included: the operation stays `pending` and is committed once Git works again (the startup pass and the sweep arm it after a restart), and `abandon` is allowed meanwhile.
+- Transient blockers leave operations `pending`; the scheduler resumes retries after restart and still permits `abandon`.
 - A permanent failure makes the batch `failed` and its members `commit-failed`; when only some paths are at fault (a path edited by someone else, an ignored path, a directory where a document belongs) the batch is split: the original is dissolved, the members that touch a failing path (and, transitively, every member that shares a path with them) become one new `failed` batch named by its own first member, and the rest is queued to be committed as a new batch.
 - Two live records never share an id.
 - A failed batch is dissolved, its members queued again with the counter reset, when a new operation on the same branch overlaps its paths (the new write is folded in), or by `retry`; a failed batch holds only its own paths and never delays other paths or Specifications.
@@ -98,7 +98,7 @@ operation (`reserved`/`files-writing`) delays claiming a batch that overlaps it.
 ### Failure classification
 
 - **Classification summary and ownership rules.** Permanent (a person decides): a detached HEAD, a changed branch, a repository without commits, an ignored path, an unreadable index (`index-unreadable`), a protected or not-allowed branch, a foreign edit (`content-changed`), an invalid Git policy.
-- Transient (waits, then catches up): an index lock, a busy Git, a timeout, a Git program that is missing or cannot be started, an unmerged index.
+- **Transient (retry with backoff):** index lock, busy Git, timeout, unmerged index, or Git missing/unstartable. `GIT_UNAVAILABLE`, `GIT_OPERATION_FAILED` and `GIT_OPERATION_UNCERTAIN` with `executable-unavailable` are transient, **not** permanent/uncertain: none proves that a commit ran.
 - Git turned off by policy is not an outage: a queued operation completes `not-applicable` and nothing is retained, no ledger entry.
 - A started commit is never completed `not-applicable` without decisive evidence: it is resolved by the trailer look-up or goes to `recovery-required`.
 - The durable batch record decides the fate of its members: the Git-disabled and workspace gates leave a `queued` member of a `formed` or `committing` batch to the batch, and `abandon` of a waiting operation is refused while it belongs to such a batch.
@@ -111,7 +111,6 @@ operation (`reserved`/`files-writing`) delays claiming a batch that overlaps it.
 - Only a failure that comes before any commit (the port's own blockers) or one with proof that nothing was committed is retried; a repository that cannot be asked, or a Git process that may still run (`not-terminated`), leaves the batch for recovery.
 - Attempts are counted per member and a batch counts as many as its freshest member, so a new save that joins members that failed before keeps its full set of attempts.
 - A failure is recorded only while the batch still belongs to the executor that reports it, and a lease is released only by the batch it names.
-- **Unavailable Git:** missing executable, launch failure, resource exhaustion or timeout (`GIT_UNAVAILABLE`; `GIT_OPERATION_UNCERTAIN` with `executable-unavailable`) is **transient**. Keep the operation pending with bounded backoff; after a commit may have started, require positive effect evidence before retrying.
 - A queued operation whose plan cannot be read is failed alone (`plan-invalid`, abandon or retry it); a write in progress whose plan cannot be read holds back the queue without throwing.
 - Operations that wait for a person do not count against the 200 of the queue; 1000 of them end new saves with `SPEC_BUSY` (`held-limit`), which is not retryable.
 - A repeat of the same action on an operation that is already where the action would put it (`retry` on a queued or finished operation, `abandon` on an abandoned one, `recover` on a recovered one) answers with that state; every other mismatch stays `DOCUMENT_OPERATION_STATE_INVALID`.

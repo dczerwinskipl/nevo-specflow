@@ -9,7 +9,7 @@ read_when:
   - changing specification.yaml, document IDs, registration, folders or path validation
   - reviewing Task document containers, content kinds or missing/unclassified files
 summary: >-
-  Engine-owned Specification/Task manifest identity, registration, path safety, content kinds, validation results and Windows path refusal.
+    Engine-owned Specification/Task manifest identity, registration, path safety, content kinds, validation results and Windows path refusal.
 related:
   - architecture.runtime.specification-documents
   - architecture.runtime.document-definitions

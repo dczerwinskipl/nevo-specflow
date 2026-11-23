@@ -34,7 +34,12 @@ import {
 } from '../changes/plan/model';
 import { queueCapacityOf } from '../changes/queue-capacity';
 import { claimConflictOf } from './claim-source';
-import { admitGitCommit, type GitAdmission, type GitPreflightOptions } from './git-preflight';
+import {
+  admitGitCommit,
+  isAgentAttemptExecution,
+  type GitAdmission,
+  type GitPreflightOptions,
+} from './git-preflight';
 import { findDocumentChangeJournal, listDocumentChangeJournals } from './journal-store';
 import { assertNoClaimedBatchOverlap } from './reservation-guard';
 import { UNCOMMITTED_AUTO_COMMIT_OFF } from './uncommitted-write';
@@ -52,7 +57,8 @@ import type { BatchViewProvider, DocumentWriteDependencies } from './writer-type
  * is about to write (before its own journal exists: a change the policy refuses writes nothing, as for
  * a document), then `record` in the same lock section with what it wrote:
  *
- * - auto-commit on: the journal is published `queued` (its `checkout-scoped` claim held; the
+ * - auto-commit on: (except for an agent attempt's change, recorded as with auto-commit off for
+ *   its attempt commit, D15) the journal is published `queued` (its `checkout-scoped` claim held; the
  *   composition `documents/api.ts` wakes the scheduler); the queue commits it with the next batch,
  *   `pre`/`post` checked like any member;
  * - auto-commit off: the ledger entries are upserted and the journal ends `completed` (`uncommitted`,
@@ -153,7 +159,19 @@ export async function admitExecutionStateCommit(
   const directory = containerDirectory(slug, { kind: 'specification' });
   const checkoutPaths = paths.map((path) => directory + '/' + path);
   const commits = options.commits ?? openVersionControl(engine).commits;
-  const git = await admitGitCommit(engine, commits, workspaceRoot, checkoutPaths, options.git);
+  // A change made under an agent attempt's Turn, or for it (the attempt's start), is the attempt's
+  // work: recorded in the ledger for its attempt commit whatever the commit policy (D15).
+  const attemptWrite =
+    options.attributedExecution !== undefined ||
+    (await isAgentAttemptExecution(context, options.ownedExecution?.operationId));
+  const git = await admitGitCommit(
+    engine,
+    commits,
+    workspaceRoot,
+    checkoutPaths,
+    options.git,
+    attemptWrite,
+  );
   if (!git.enabled) {
     return NOTHING_TO_RECORD;
   }

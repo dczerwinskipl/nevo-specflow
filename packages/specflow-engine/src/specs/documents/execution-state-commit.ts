@@ -8,6 +8,7 @@ import { readProjectGitPolicy } from '../../version-control/worktrees/config';
 import { effectiveAutoCommit } from '../../version-control/worktrees/policy';
 import { resolveSpecification } from '../discovery';
 import { readLedgerRecord } from '../durable';
+import { ledgerAuthorsOf } from '../durable/ledger/model';
 import { EXECUTION_DIRECTORY, isExecutionStatePathOf } from '../execution-paths';
 import { pruneUncommitted } from '../uncommitted';
 import {
@@ -22,8 +23,9 @@ import { manualCommit, type ManualCommitCommandOptions } from './manual-commit';
 import { workflowCommitMessage } from './queue/commit-summary';
 
 /**
- * Execution state the commit left out because someone edited part of it since the Engine wrote it:
- * `edited` are those paths, `paths` everything that travels with them (closed under shared operation
+ * Execution state the commit left out because someone edited part of it since the Engine wrote it,
+ * or because an agent Turn wrote it (the agent's attempt commit takes that, D15): `edited` are the
+ * edited paths, `paths` everything held, with everything that travels with them (closed under shared operation
  * ids, the Task index joining none, `edited` included; the index itself when it waits for a held Task). They stay uncommitted until the person commits them (with Git; the ledger
  * then forgets them) or a Close takes them into its archive commit.
  */
@@ -78,6 +80,10 @@ const messageText = (message: { subject: string; body: string }): string =>
  * it would register a held Task that HEAD does not have, or drop one HEAD still has; then it is held
  * too, and the next commit after the held Task is released takes it. Other refusals are the manual
  * commit's (`MANUAL_COMMIT_CONFLICT` still, when a path is edited between this check and the commit).
+ *
+ * An entry an agent Turn wrote (its durable authors name an execution: the Task drafts and execution
+ * state of an agent attempt) is never taken, nor anything that travels with it: it belongs to that
+ * attempt's own commit alone (D15), so this owner's commit can never split the agent's work.
  */
 export async function commitExecutionState(
   engine: SpecFlowEngine,
@@ -109,20 +115,33 @@ export async function commitExecutionState(
       id: specId,
     });
     const entries = scopeEntriesOf(record === undefined ? [] : [record]);
+    // An entry an agent Turn wrote (its durable authors name an execution) is the agent's work: only
+    // its attempt commit takes it (D15), never this owner's commit, so it is held with everything
+    // that travels with it.
+    const authored = new Set(
+      (record?.entries ?? [])
+        .filter((entry) => ledgerAuthorsOf(entry).executions.length > 0)
+        .map((entry) => entry.path),
+    );
     const seed = entries
       .map((entry) => entry.path)
-      .filter((path) => isExecutionStatePathOf(directory, path));
+      .filter((path) => isExecutionStatePathOf(directory, path) && !authored.has(path));
     const closure = seed.length === 0 ? [] : closureOf(entries, seed, unlinked);
+    const agents = closure.filter((path) => authored.has(path));
+    const edited = await heldOf(found.workspaceRoot, entries, closure, unlinked);
 
     return {
       entries,
       closure,
-      held: await heldOf(found.workspaceRoot, entries, closure, unlinked),
+      held:
+        agents.length > 0
+          ? withAgentWork(edited, closureOf(entries, agents, unlinked), closure)
+          : edited,
     };
   };
 
   let planned = await plan();
-  if (planned.held) {
+  if (planned.held && planned.held.edited.length > 0) {
     // An edit a person already committed with Git is no edit any more: the prune drops the entries
     // HEAD holds (the sweep would, later), and only what is still edited is held.
     await pruneUncommitted(engine, { workspaceId: found.workspaceId });
@@ -164,6 +183,20 @@ export async function commitExecutionState(
     paths: result.paths,
     ...(held ? { held } : {}),
   };
+}
+
+/**
+ * `held` widened by the agents' entries of `closure` and what travels with them (`travelling`): never
+ * committed here; `edited` stays what someone edited.
+ */
+function withAgentWork(
+  held: HeldExecutionState | undefined,
+  travelling: readonly string[],
+  closure: readonly string[],
+): HeldExecutionState {
+  const paths = new Set([...(held?.paths ?? []), ...travelling]);
+
+  return { edited: held?.edited ?? [], paths: closure.filter((path) => paths.has(path)) };
 }
 
 /** The paths of `closure` edited since their post-image, and everything that travels with them. */

@@ -13,7 +13,7 @@ import type { AgentContextSource } from './context/gather';
 import type { AgentAttemptDependencies } from './dependencies';
 import type { FinalizeBoundary } from './finalize/finalize';
 import { memoryAgentAttemptJournal } from './journal/memory.test-support';
-import { agentPostActionRunId } from './journal/model';
+import { agentPostActionRunId, attemptCommitWaitOf } from './journal/model';
 
 /** One execution claim of the fake claim journal. */
 export interface FakeClaim {
@@ -65,6 +65,8 @@ export function memoryAgentDependencies(catalogue: ExecutionCatalogue, attemptId
     documentSha: 'c'.repeat(64),
     /** How many times the agent context was read (`context.documents`). */
     contextReads: 0,
+    /** Git on for the owner's Confirm (`holds.attemptCommit`). */
+    gitEnabled: true,
   };
   /** The agent context: one overview, no document types; every document file hashes `documentSha`. */
   const context: AgentContextSource = {
@@ -90,6 +92,15 @@ export function memoryAgentDependencies(catalogue: ExecutionCatalogue, attemptId
   const serialize = workflow.serialize;
   const lockedWorkflow = {
     ...workflow,
+    holds: {
+      ...workflow.holds,
+      // Git on unless a test turns it off: the attempt commit as the memory journal records it.
+      async attemptCommit(id: string) {
+        const recorded = state.gitEnabled ? await journal.read(id) : undefined;
+
+        return recorded !== undefined ? attemptCommitWaitOf(recorded) : undefined;
+      },
+    },
     postActions: {
       afterStepFinished(event: StepFinishedEvent): Promise<readonly PostActionResult[]> {
         events.push(state.held ? 'owner-post-action-in-lock' : 'owner-post-action');

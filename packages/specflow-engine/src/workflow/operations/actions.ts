@@ -21,6 +21,7 @@ import { WorkflowError } from '../errors';
 import type { TaskProposal } from '../tasks/tasks';
 import type { TaskResourceIssue } from '../../tasks/resource/validate';
 import {
+  agentAttemptBindingOf,
   type ExecutionTask,
   type PendingOwnerDecisions,
   type WorkflowActor,
@@ -49,9 +50,11 @@ import {
   executionTasks,
   loadTask,
   pinnedDefinitionIfUnchanged,
+  type ExecutionHolds,
   type ExecutionTasks,
   type WorkflowDependencies,
 } from './loaded-execution';
+import type { AttemptCommitWait } from '../../specs/uncommitted/attempts';
 import {
   describeStep,
   describeTransitions,
@@ -446,7 +449,15 @@ export interface WorkflowActions {
    * An agent's result waits for the owner (`awaiting-confirmation`): Confirm applies it, Reject
    * returns to its step with the owner's feedback. Both name the attempt.
    */
-  readonly confirm?: { readonly step: string; readonly attempt: number };
+  readonly confirm?: {
+    readonly step: string;
+    readonly attempt: number;
+    /**
+     * With Git on, the attempt's own commit (D15) still waits: not run yet, or failed (`code`;
+     * Retry commit first). Confirm is refused `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` meanwhile.
+     */
+    readonly unavailable?: AttemptCommitWait;
+  };
   readonly reject?: { readonly step: string; readonly attempt: number };
   /** Declared returns to steps the run reached. */
   readonly return?: {
@@ -555,7 +566,17 @@ export type ActionDependencies = Pick<
   'store' | 'serialize' | 'catalogue' | 'references'
 > & {
   readonly specificationExit?: SpecificationExitPort;
+  /** Where an agent attempt's commit stands (`attemptCommit`); absent: none waits. */
+  readonly holds?: Pick<ExecutionHolds, 'attemptCommit'>;
 };
+
+function attemptCommitOf(dependencies: ActionDependencies): Pick<RunInput, 'attemptCommit'> {
+  const attemptCommit = dependencies.holds?.attemptCommit;
+
+  return attemptCommit !== undefined
+    ? { attemptCommit: (attemptId) => attemptCommit.call(dependencies.holds, attemptId) }
+    : {};
+}
 
 /**
  * The action projection of a subject. Strictly read-only: it reads one snapshot inside `serialize`,
@@ -876,6 +897,8 @@ interface RunInput {
   /** The document files of a draft a Confirm approves (`confirmsDigest`). */
   readonly references: Pick<TaskReferences, 'taskDocumentRevisions'>;
   readonly gates: GateReading;
+  /** Why an agent attempt's commit still waits (`ExecutionHolds.attemptCommit`). */
+  readonly attemptCommit?: ExecutionHolds['attemptCommit'];
 }
 
 /**
@@ -1157,6 +1180,8 @@ async function awaitingProjection(
     input.references,
   );
   const ref = { step: record.step, attempt: record.attempt };
+  const attemptId = agentAttemptBindingOf(record)?.attemptId;
+  const waiting = attemptId !== undefined ? await input.attemptCommit?.(attemptId) : undefined;
 
   return {
     position: {
@@ -1181,7 +1206,7 @@ async function awaitingProjection(
       },
       confirmsDigest: confirmsDigestOf(confirms),
     },
-    actions: { confirm: ref, reject: ref },
+    actions: { confirm: { ...ref, ...(waiting ? { unavailable: waiting } : {}) }, reject: ref },
   };
 }
 
@@ -1318,6 +1343,7 @@ async function specificationPosition(
         snapshot,
         references: dependencies.references,
         gates,
+        ...attemptCommitOf(dependencies),
       }),
     )),
     specification,
@@ -1515,6 +1541,7 @@ export async function taskProjection(
     snapshot,
     references: dependencies.references,
     gates,
+    ...attemptCommitOf(dependencies),
   });
 
   return {

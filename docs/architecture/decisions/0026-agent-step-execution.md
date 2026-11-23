@@ -123,12 +123,14 @@ changes during the Turn. Same proposal again is a replay; a different one replac
 finalized; a proposal of an earlier or stopped Turn is refused.
 
 Once the Turn ended and its process is proven stopped, `finalizeAgentAttempt` takes the project
-control lock **once** and, through lock-held forms, publishes the step state (the proposal
-re-validated, or the owner's recorded return), records the attempt's journal (outcome, the Turn's
-dirty set, the pending post actions) and settles the claim with the native-result receipt, in that
-order. These are separate durable publications, not one transaction; while the claim is unsettled
-no other writer is admitted, and recovery runs the same operation again (the finish replays by its
-request digest). A re-validation refusal is recorded on the proposal, the claim settles and the
+control lock **once** and, through lock-held forms, journals what the finish is judged on (the
+declared paths' content hashes as the attribution check read them), publishes the step state (the
+proposal re-validated, or the owner's recorded return), records the attempt's journal (outcome, the
+Turn's dirty set, the pending post actions) and settles the claim with the native-result receipt, in
+that order. These are separate durable publications, not one transaction; while the claim is
+unsettled no other writer is admitted, and recovery runs the same operation again (the finish
+replays by its request digest, with the journaled hashes only: an edit made after a crash is never
+attributed to the agent, and the attempt commit refuses it as changed). A re-validation refusal is recorded on the proposal, the claim settles and the
 attempt stays active. Post actions run after the lock is released. A Turn's end never advances a
 run; only a finalized proposal does.
 
@@ -165,15 +167,22 @@ and prune). It holds the Specification's ledger entries only the attempt's Turns
 entry's durable author set (never truncated like the kept operation ids), and the declared paths
 whose content still has the hash recorded at publication. An entry the attempt changed together with
 someone else (`ATTEMPT_COMMIT_MIXED_AUTHORS`), a declared path that could not be hashed
-(`ATTEMPT_COMMIT_UNATTRIBUTABLE`) or a path changed since (`MANUAL_COMMIT_CONFLICT`) refuses the whole
-commit. The subject is `spec(<subject>): <step title> (attempt n) by agent in <slug>` with the
+(`ATTEMPT_COMMIT_UNATTRIBUTABLE`) or a path changed since (`MANUAL_COMMIT_CONFLICT`, naming it)
+refuses the whole commit. Every write made under an attempt's Turn, or for it (its start), goes to
+the ledger with its execution author whatever the commit policy, never to the automatic-commit
+queue; the queue's other changes may be committed before it, never the attempt's. The owner's
+`commit-execution-state` never takes an entry an agent Turn wrote (it holds it, with what travels
+with it), so the agent's work is only ever in its attempt commit. The subject is `spec(<subject>): <step title> (attempt n) by agent in <slug>` with the
 trailers `Nevo-Action: attempt-commit`, `Nevo-Attempt`, `Nevo-Step` (and `Nevo-Task`). It replaces
 `commit-execution-state` for agent attempts. A failed commit fails nothing already published: the
 owner retries it (`.../workflow/attempt-commit/retry`, `workflow retry-commit`). Running with an
 agent is the owner's authorization to execute the step and to make that commit; there is no Accept
 step. **Owner decision 2026-11-21:** the attempt commit also runs when the result then waits for
 the owner's confirmation, so the owner decides on committed work and no agent work is left
-uncommitted by a Reject.
+uncommitted by a Reject. With Git on, Confirm is refused (`WORKFLOW_ATTEMPT_COMMIT_REQUIRED`) while
+that commit has not run or failed, and the projection's `actions.confirm` says so (`unavailable`:
+`attempt-commit-pending` or `attempt-commit-failed` with its `code`): the owner retries the commit
+first, so the transition is never committed before, or together with, the agent's work.
 
 ### D16 — Close lists, never discards
 

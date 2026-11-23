@@ -368,8 +368,12 @@ on committed work.
   every finish rule on the state as it is now (a refusal leaves the result waiting). It applies
   exactly what the projection showed: the request names `confirmsDigest` (the drafts it approves
   with the content revisions of their manifests and documents, and the Task decisions); another
-  digest is `WORKFLOW_CONFIRMATION_CHANGED`. The change is an ordinary owner write, committed by the
-  owner's `commit-execution-state` post action, never attributed to the agent's Turns.
+  digest is `WORKFLOW_CONFIRMATION_CHANGED`. With Git on, it applies only once the attempt commit
+  ran: while that commit is pending or failed, Confirm is `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` and the
+  projection's `actions.confirm` carries `unavailable {reason: attempt-commit-pending |
+attempt-commit-failed, code?}` (Retry commit first). The change is an ordinary owner write,
+  committed by the owner's `commit-execution-state` post action, never attributed to the agent's
+  Turns; that commit never takes a ledger entry an agent Turn wrote.
 - **Reject** (`rejectAgentResult`, core `reject`): the transition is not taken; the run is `ready` at
   the attempt's step with the owner's feedback (required) as its handoff (`kind: return`). Nothing the
   agent wrote is undone; it was committed with its attempt.

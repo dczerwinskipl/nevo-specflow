@@ -241,7 +241,9 @@ async function decideInSection<TResult>(
  *
  * Refused `WORKFLOW_ATTEMPT_MISMATCH` for an attempt that is not an agent attempt waiting for the
  * owner or was decided by another request (saying so, and how to finish an interrupted commit),
- * `WORKFLOW_POSITION_INVALID` when nothing waits. The same request (`requestId`) again is replayed:
+ * `WORKFLOW_POSITION_INVALID` when nothing waits, and, with Git on, `WORKFLOW_ATTEMPT_COMMIT_REQUIRED`
+ * while the attempt's own commit has not run or failed (the agent's work is committed on its own
+ * first, never by the owner's commit). The same request (`requestId`) again is replayed:
  * nothing changes, and the post actions run again (an interruption before its commit is completed).
  */
 export async function confirmAgentResult(
@@ -263,8 +265,9 @@ export async function confirmAgentResult(
     const { result, attemptId } = await decideInSection(dependencies, input, (snapshot, record) =>
       planConfirm(dependencies, snapshot, record, input),
     );
-    // An attempt commit a crash left pending runs first, so the owner's commit never takes the
-    // agent's work; then the owner's own post actions, as after an owner's finish.
+    // With Git on, Confirm applied only after the attempt commit ran (`assertAttemptCommitted`).
+    // With Git off an attempt commit a crash left pending is run first all the same (it records
+    // nothing); then the owner's own post actions, as after an owner's finish.
     await runAgentPostActions(dependencies, attemptId);
     const { stepTitle, ...confirmed } = result;
     const postActions = await (workflow.postActions ?? NO_POST_ACTIONS).afterStepFinished({
@@ -330,6 +333,7 @@ async function planConfirm(
     };
   }
 
+  await assertAttemptCommitted(dependencies, record);
   const [taken] = decision.declaredEffects;
   const step = findStep(loaded.definition, input.step);
   if (taken?.source !== 'transition' || step?.kind !== 'work') {
@@ -375,6 +379,36 @@ async function planConfirm(
       stepTitle,
     },
   };
+}
+
+/**
+ * With Git on, Confirm applies only once the attempt's own commit (D15) ran: while it is pending or
+ * failed, the agent's documents, Task drafts and execution state are still uncommitted, and the
+ * owner's commit of the transition would come first or take them. Refused
+ * `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` then (the projection shows the same as `actions.confirm`
+ * `unavailable`); Retry commit runs it.
+ */
+async function assertAttemptCommitted(
+  dependencies: AgentAttemptDependencies,
+  record: AttemptRecord,
+): Promise<void> {
+  const attemptId = agentAttemptBindingOf(record)?.attemptId;
+  const waiting =
+    attemptId !== undefined
+      ? await dependencies.workflow.holds.attemptCommit?.(attemptId)
+      : undefined;
+  if (waiting === undefined) {
+    return;
+  }
+
+  const named = `${record.step}#${String(record.attempt)}`;
+
+  throw new WorkflowError(
+    'WORKFLOW_ATTEMPT_COMMIT_REQUIRED',
+    waiting.reason === 'attempt-commit-failed'
+      ? `The commit of the agent's work in ${named} failed${waiting.code !== undefined ? ` (${waiting.code})` : ''}; retry it (Retry commit), then confirm.`
+      : `The commit of the agent's work in ${named} has not run yet; confirm once it has.`,
+  );
 }
 
 /**

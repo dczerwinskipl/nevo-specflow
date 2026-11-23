@@ -1,7 +1,11 @@
 import type { SpecFlowEngine } from '../../../../application';
 import { listLedgerRecords } from '../../../../specs/durable';
-import type { FailedAttemptCommit } from '../../../../specs/uncommitted/attempts';
-import { isAttemptResolved } from '../../journal/model';
+import type {
+  AttemptCommitWait,
+  FailedAttemptCommit,
+} from '../../../../specs/uncommitted/attempts';
+import { readProjectGitPolicy } from '../../../../version-control/worktrees/config';
+import { attemptCommitWaitOf, isAttemptResolved } from '../../journal/model';
 import { filesystemAgentAttemptJournal } from '../../journal/store';
 import { attemptInvocations, selectAttemptLedgerEntries } from './selection';
 
@@ -56,4 +60,22 @@ export async function failedAgentAttemptCommits(
   }
 
   return attempts;
+}
+
+/**
+ * With Git on, why the commit of the agent attempt `attemptId` still waits (not run yet, or failed):
+ * the owner's Confirm waits for it. `undefined` once it ran, with Git off, or for an attempt without
+ * a journal. Lock-free and Git-free.
+ */
+export async function agentAttemptCommitWait(
+  engine: SpecFlowEngine,
+  attemptId: string,
+): Promise<AttemptCommitWait | undefined> {
+  if (!(await readProjectGitPolicy(engine.context)).policy.enabled) {
+    return undefined;
+  }
+
+  const journal = await filesystemAgentAttemptJournal(engine.context).read(attemptId);
+
+  return journal !== undefined ? attemptCommitWaitOf(journal) : undefined;
 }

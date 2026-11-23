@@ -57,6 +57,12 @@ export const WORKFLOW_ERROR_CODES = [
    */
   'WORKFLOW_CONFIRMATION_CHANGED',
   /**
+   * With Git on, the owner's Confirm of an agent's result while the attempt's own commit (D15) has
+   * not run (`pending`) or failed: Confirm would commit the owner's transition before, or together
+   * with, the agent's work. Retry the attempt commit first (Retry commit).
+   */
+  'WORKFLOW_ATTEMPT_COMMIT_REQUIRED',
+  /**
    * Agent step execution attribution (B3, B6), thrown as `AttributionRefusalError` naming the paths: the
    * checkout has changes the Engine cannot attribute at an agent attempt's start
    * (`WORKFLOW_DIRTY_BASELINE`), files changed since the attempt's last Turn ended at Continue

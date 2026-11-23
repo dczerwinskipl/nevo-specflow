@@ -14,7 +14,12 @@ import type { PlanningSnapshot } from '../changes/plan/snapshot';
 import { isLoadedSpecification, type DocumentContainerRef } from '../loaded-specification';
 import type { DocumentReadOptions } from '../read-options';
 import { folderRevisionOf } from './folder-revision';
-import { admitGitCommit, type GitAdmission, type GitPreflightOptions } from './git-preflight';
+import {
+  admitGitCommit,
+  isAgentAttemptExecution,
+  type GitAdmission,
+  type GitPreflightOptions,
+} from './git-preflight';
 import { findManifestBaseline, assertManifestNotDirty } from './manifest-dirty';
 import { nodeDocumentFileOps } from './file-effects';
 import { assertPlanFitsWindows, type WindowsPathBoundOptions } from './path-bound';
@@ -42,6 +47,11 @@ export interface DocumentAdmissionOptions {
   /** The commit port (defaults to the Engine's own). */
   readonly commits?: CommitPort;
   readonly git?: GitPreflightOptions;
+  /**
+   * The agent execution whose Turn makes the write (the writer's own option): a Turn of an agent
+   * attempt records its write uncommitted for the attempt commit, whatever the commit policy (D15).
+   */
+  readonly ownedExecution?: { readonly operationId: string };
 }
 
 /**
@@ -127,7 +137,14 @@ export async function admitDocumentChange(
   const changesManifest = result.plan.paths.some((path) => path.path === manifestPath);
   const paths = result.plan.paths.map((path) => path.path);
 
-  const git = await admitGitCommit(engine, commits, loaded.workspaceRoot, paths, options.git);
+  const git = await admitGitCommit(
+    engine,
+    commits,
+    loaded.workspaceRoot,
+    paths,
+    options.git,
+    await isAgentAttemptExecution(engine.context, options.ownedExecution?.operationId),
+  );
   // A Task's `task.yaml` is also written by the Specification execution store, whose writes are
   // committed as `workflow` operations (`./execution-state.ts`) and may be uncommitted (auto-commit
   // off, or a stop before they were recorded): it is not judged dirty. The whole-file revision checked

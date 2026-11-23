@@ -278,7 +278,8 @@ run. Every command accepts `--project-root <path>` and `--json`.
   attempt; repeating the same finish returns the recorded result (`replayed`).
 - **Confirm and Reject.** `workflow actions` shows a waiting agent result with its
   `--confirms-digest`; `workflow confirm` applies exactly that (`WORKFLOW_CONFIRMATION_CHANGED` when a
-  draft changed since: read the actions again). Both print their request id on stderr before they run;
+  draft changed since: read the actions again; with Git on, `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` while the
+  agent's attempt commit has not run or failed: run `workflow retry-commit` first). Both print their request id on stderr before they run;
   after an interruption, repeat with `--request-id <uuid>` to replay (a confirm's commit runs again), or
   run `workflow retry-commit --step <id> --attempt <n>` for a confirmed attempt.
 - **Agent attempts.** An agent step is started, continued and stopped from the UI or HTTP

@@ -104,6 +104,12 @@ commands live in [`eval/reports/`](eval/reports/), for example the
 It is a manual measurement for chunking, ranking and cutoff changes, not a CI check: results depend
 on the local embedding model.
 
+## Retrieval cost benchmark
+
+For before/after refactors, the [retrieval-cost benchmark](eval/retrieval-cost/README.md)
+records real search/get payloads, token counts and an evidence checklist against clean historical
+worktrees. Its lexical baseline is separate from model-specific relevance calibration.
+
 ## Layout
 
 ```

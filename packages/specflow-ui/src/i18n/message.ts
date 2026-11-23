@@ -39,10 +39,7 @@ export function translateMessage(
     return value;
   }
 
-  return (t as (key: string, options?: Record<string, string | number>) => string)(
-    value.key,
-    messageValues(t, value, locale),
-  );
+  return String(t(value.key, messageValues(t, value, locale)));
 }
 
 /**

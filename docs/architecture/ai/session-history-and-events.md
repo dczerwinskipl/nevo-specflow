@@ -75,7 +75,7 @@ continuation. Their HTTP routes and schemas are in
 
 - The digest counts only ToolActions Runtime admitted; it is not a full count of every native tool a provider has.
 - Claude web tools (`WebFetch`, `WebSearch`) are unreachable only because the adapter restricts Claude with `--tools` to the inventory above; widening that list requires a mapping in the same change.
-- Codex `mcpToolCall` and `webSearch` ThreadItems each open one tool Work with one ToolAction classified `other` (owner decision; `web` is not inferred for a native web search), so the digest counts them and the Turn keeps running.
+- Codex `mcpToolCall` and `webSearch` ThreadItems each open one tool Work with one ToolAction classified `other` (native web search does not imply the `web` operation), so the digest counts them and the Turn keeps running.
 - An MCP call's state follows its native status (`completed` or `failed`); a web search carries no native status and is `completed` when its item completes; either one still open when the Turn ends takes the Turn's terminal state (failed, cancelled or interrupted).
 - Codex ThreadItem types outside the adapter's accepted inventory still fail the protocol.
 - The Codex adapter configures no MCP servers and disables web search, and no approval or sandbox path changes for these items.

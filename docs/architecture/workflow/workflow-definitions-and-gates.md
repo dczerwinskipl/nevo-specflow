@@ -57,35 +57,14 @@ A task type still requires its workflow to load, because a Task cannot exist wit
 
 ### Whole-workflow validation
 
-Whole-workflow rules are checked at load time (`definitions/workflow-rules.ts`), so a broken workflow
-never loads:
+Validate each workflow at load. Reject the complete invalid workflow, not the rest of the catalogue.
 
-- ids are unique and every target exists;
-- a step has either one unconditional transition or transitions with distinct results only;
-- a step an agent may do (`executors` includes `agent`) names an archetype, and a human-only step
-  names none;
-- only a Specification workflow can produce Tasks, wait for Tasks or have Task effects;
-- only a Task workflow escalates, and an escalating transition has `feedback: required` and a step
-  target;
-- `session: reuse` can only lead to a step an agent may do;
-- a wait step's transitions are selected by a Task event `on: tasks-finished | task-escalated`
-  instead of a result (see "Wait step"). `on` exists only on wait-step transitions; a wait-step
-  transition without `on` counts as `tasks-finished`, so older files stay valid. A wait step has
-  exactly one `tasks-finished` transition (without `feedback: required`) and at most one
-  `task-escalated` transition, which needs `feedback: required` and a step target. No wait-step
-  transition has a result, reuses the Session (the Engine settles a wait without one) or leads to
-  another wait step;
-- the entry step is not a wait step: starting a run enters its entry step;
-- a return never targets a wait step: a return waits for the owner, and nobody can start a wait step;
-- every step has a `title`, a single line with a non-whitespace character (as do workflow titles and
-  transition and return labels); surfaces show it with the id as the stable reference: the projection
-  carries `title` on every step, `firstStepTitle` on the pin preview, `targetTitle` on a transition to a
-  step, `title` on each return target and `stepTitle` on a gate refusal, and the Task reads carry the
-  step `title`;
-- only a work step has gates; gate ids are unique within the step, an exit gate's `when` names results
-  the step's transitions declare (an entry gate has no `when`), only the gate type `document` exists, and
-  its `documentType` is a defined document type (a missing one is `reference-missing`; an invalid
-  document-type file does not take the workflow down).
+- **Graph:** unique IDs, all targets present; each step has one unconditional transition or distinct result labels.
+- **Executors:** agent-capable steps name an archetype; human-only steps do not. `session: reuse` must target an agent-capable step.
+- **Kind:** only Specification workflows produce or wait for Tasks or apply Task effects. Only Task workflows may escalate; escalation requires `feedback: required` and a step target.
+- **Wait steps:** entered only by Engine, never as an entry/return target. Transitions select Task events (`on: tasks-finished | task-escalated`), not results. Missing `on` means `tasks-finished` for legacy definitions. Require exactly one `tasks-finished` without required feedback; allow at most one `task-escalated`, with required feedback and a work-step target. No Session reuse, result or wait-to-wait transition.
+- **Titles:** nonblank single-line titles for workflows, steps, transitions and returns. Projection carries stable ID plus `title`, `firstStepTitle`, `targetTitle` or `stepTitle` as appropriate; Task reads also display titles.
+- **Gates:** only work steps have them. IDs unique per step; `when` exists only for exit gates and names a declared result. Only `document` gates are supported; referenced `documentType` must be defined. A missing type is `reference-missing`; an invalid type definition does not invalidate an otherwise valid workflow.
 
 ## Executors and actors
 

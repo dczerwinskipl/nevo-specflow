@@ -736,9 +736,10 @@
       "status": "current",
       "file": "docs/architecture/ai/session-association-and-list.md",
       "read_when": [
-        "reviewing session association and filtered list semantics"
+        "reviewing session association and filtered list semantics",
+        "changing Session association persistence, access scopes or deletion ownership"
       ],
-      "summary": "Atomic Specification Session creation, association projections, per-row authorization and signed bounded list cursors.",
+      "summary": "Atomic Specification Session creation, persisted association schema and lifetime, store-derived authorization and signed bounded list cursors.",
       "related": [
         "reference.api.sessions",
         "architecture.ai.session-storage-and-lifecycle",
@@ -840,6 +841,8 @@
         "architecture.ai.provider-boundary",
         "architecture.runtime.ownership-and-lifecycle",
         "reference.api.sessions",
+        "architecture.ai.session-association-and-list",
+        "engineering.shared.session-recovery",
         "reference.protocols.session-provider-driver"
       ],
       "scope": "specflow",
@@ -2995,6 +2998,23 @@
       ]
     },
     {
+      "id": "design-system.implementation.react.component-feedback-and-content",
+      "type": "engineering",
+      "title": "Feedback and document content components",
+      "status": "current",
+      "file": "docs/design-system/implementation/react/component-feedback-and-content.md",
+      "read_when": [
+        "implementing or reviewing initial content appearance, status glyphs, progress position, notices, empty states and Markdown document rendering"
+      ],
+      "summary": "Component contracts for initial content appearance, status glyphs, progress position, notices, empty states and Markdown document rendering.",
+      "related": [
+        "design-system.implementation.react.component-guidelines",
+        "design-system.implementation.react.component-authoring-contract",
+        "design-system.principles.system-boundary"
+      ],
+      "scope": "nevo-ui"
+    },
+    {
       "id": "design-system.implementation.react.component-guidelines",
       "type": "engineering",
       "title": "React component guidelines",
@@ -3012,8 +3032,45 @@
         "design-system.principles.ui-ux-guidelines",
         "design-system.implementation.tailwind.styling-guidelines",
         "design-system.principles.system-boundary",
-        "engineering.shared.testing"
+        "engineering.shared.testing",
+        "design-system.implementation.react.component-feedback-and-content",
+        "design-system.implementation.react.component-input-and-overlay-patterns",
+        "design-system.implementation.react.component-tree-and-scrolling"
       ]
+    },
+    {
+      "id": "design-system.implementation.react.component-input-and-overlay-patterns",
+      "type": "engineering",
+      "title": "Input selection and overlay patterns",
+      "status": "current",
+      "file": "docs/design-system/implementation/react/component-input-and-overlay-patterns.md",
+      "read_when": [
+        "implementing or reviewing choice surfaces, Select and Combobox, option pickers, context switchers, menu notes, Dialog footers, keyboard avoidance and Drawer sheets"
+      ],
+      "summary": "Component contracts for choice surfaces, Select and Combobox, option pickers, context switchers, menu notes, Dialog footers, keyboard avoidance and Drawer sheets.",
+      "related": [
+        "design-system.implementation.react.component-guidelines",
+        "design-system.implementation.react.component-authoring-contract",
+        "design-system.principles.system-boundary"
+      ],
+      "scope": "nevo-ui"
+    },
+    {
+      "id": "design-system.implementation.react.component-tree-and-scrolling",
+      "type": "engineering",
+      "title": "Tree panes and scrolling regions",
+      "status": "current",
+      "file": "docs/design-system/implementation/react/component-tree-and-scrolling.md",
+      "read_when": [
+        "implementing or reviewing tree recipes, shared document-tree panes, docked search, empty search results and scrolling-region semantics"
+      ],
+      "summary": "Component contracts for tree recipes, shared document-tree panes, docked search, empty search results and scrolling-region semantics.",
+      "related": [
+        "design-system.implementation.react.component-guidelines",
+        "design-system.implementation.react.component-authoring-contract",
+        "design-system.principles.system-boundary"
+      ],
+      "scope": "nevo-ui"
     },
     {
       "id": "design-system.implementation.react.item-tabs",
@@ -3501,6 +3558,29 @@
       ]
     },
     {
+      "id": "engineering.shared.session-recovery",
+      "type": "engineering",
+      "title": "Managed Session operator recovery",
+      "status": "current",
+      "file": "docs/engineering/shared/session-recovery.md",
+      "read_when": [
+        "containing an unknown Session Turn whose native process cannot be proven stopped",
+        "recovering an old Session record without native process identity"
+      ],
+      "summary": "Read-only evidence collection, provider-process containment and offline backup for unknown managed Session Turns; no forced settlement, dispatch replay or database-row edits.",
+      "related": [
+        "architecture.ai.session-storage-and-lifecycle",
+        "architecture.ai.provider-process-ownership",
+        "architecture.runtime.workspace-execution-claims"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "testing"
+      ]
+    },
+    {
       "id": "engineering.shared.specflow-git-recovery",
       "type": "engineering",
       "title": "Durable Engine Git mutations, process coordination and recovery",
@@ -3575,7 +3655,7 @@
         "reviewing the documentation maintainability refactor PR stack",
         "planning follow-up audits of long current documents and retrieval benchmarking"
       ],
-      "summary": "Evidence and disposition ledger for the Create, Task, document-engine, workflow and UI documentation split, with deferred review candidates and unverified retrieval requirements.",
+      "summary": "Evidence and disposition ledger for the Create, Task, document-engine, workflow and UI documentation split, with reviewed P2 ownership changes, retained cohesive contracts, and explicit remaining audit coverage.",
       "related": [
         "ideas.documentation-maintainability",
         "architecture.runtime.specflow-lifecycle",
@@ -4971,6 +5051,68 @@
       ]
     },
     {
+      "id": "ideas.audits.shell-geometry-2026-11",
+      "type": "product",
+      "title": "App Shell geometry decisions",
+      "status": "draft",
+      "file": "docs/ideas/audits/2026-11-shell-geometry.md",
+      "read_when": [
+        "changing the width or position of the Specifications list, Create Specification or a Specification screen",
+        "changing AppWorkspace fit, the Focused frame or the Bounded workspace rule",
+        "adding a section to Specification Overview or changing its columns",
+        "picking up an open UX finding about the shell, the navigator or mobile"
+      ],
+      "summary": "Owner decisions of November 2026 on SpecFlow screen geometry: one Focused frame that grows to 1440 px for the Specifications list and Create, full width inside a Specification, a two-column Create and Specification Overview, the alternatives that were rejected and why, and the UX findings left open for later work.",
+      "related": [
+        "design-system.principles.layout-and-containment",
+        "design-system.implementation.react.secondary-navigation",
+        "product.specflow.specification-creation",
+        "product.specflow.ui.interaction-model",
+        "product.specflow.ui.specification-overview",
+        "product.specflow.ui.specs-overview"
+      ]
+    },
+    {
+      "id": "ideas.audits.workflow-workbench-decisions-2026-11",
+      "type": "product",
+      "title": "Workflow and Task workbench decisions (November 2026)",
+      "status": "draft",
+      "file": "docs/ideas/audits/2026-11-workflow-workbench-decisions.md",
+      "read_when": [
+        "changing how a Task status, Requires attention or a document state is presented",
+        "changing the Overview Now, the Overview Tasks section, the Tasks page or the Full Task sections",
+        "changing the Close dialog, Close with Git off or the demo Runtime's workflow",
+        "looking for why one of these behaves the way it does"
+      ],
+      "summary": "Owner and coordinator decisions of the November 2026 UX round on the workflow and Task workbench: one status presentation model, Requires attention as \"the user must act\", the Now block, Task rows on the Overview and the Tasks page, Full Task sections, one document content state model, the Close dialog, Close with Git off as archive only, and the demo running the Engine. Each entry names the document that owns the rule.",
+      "related": [
+        "product.specflow.ui.specification-overview",
+        "product.specflow.ui.workflow-execution",
+        "product.specflow.ui.documents-archetypes",
+        "product.specflow.ui.shell-geometry",
+        "architecture.workflow.workflow-kernel",
+        "architecture.runtime.specification-documents",
+        "architecture.runtime.specflow-lifecycle",
+        "adr.0023-neutral-workflow-coordinator-and-manual-execution",
+        "adr.0025-demo-runs-the-engine-in-memory"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "workflow"
+      ],
+      "tags": [
+        "decisions",
+        "status",
+        "attention",
+        "now-block",
+        "tasks",
+        "documents",
+        "close",
+        "demo"
+      ]
+    },
+    {
       "id": "ideas.semantic-docs.reader-followups",
       "type": "product",
       "title": "Documentation reader pending verification and search follow-ups",
@@ -5599,6 +5741,52 @@
       ]
     },
     {
+      "id": "product.specflow.specification-create-admission-and-errors",
+      "type": "product",
+      "title": "Specification Create Git admission and error feedback",
+      "status": "current",
+      "file": "docs/product/specflow/specification-create-admission-and-errors.md",
+      "read_when": [
+        "reviewing Create branch protection, blocked submission or uncertain failure copy"
+      ],
+      "summary": "User-visible specification Create Git admission and error feedback with immutable operation identity, authoritative inspection and explicit refusal/unknown-outcome boundaries.",
+      "related": [
+        "product.specflow.specification-creation",
+        "architecture.runtime.specification-create-options",
+        "engineering.shared.specification-create-recovery",
+        "reference.api.specflow-specification-operations",
+        "reference.api.operation-progress"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "workflow"
+      ]
+    },
+    {
+      "id": "product.specflow.specification-create-progress",
+      "type": "product",
+      "title": "Specification Create progress, retry and return paths",
+      "status": "current",
+      "file": "docs/product/specflow/specification-create-progress.md",
+      "read_when": [
+        "reviewing Create submission, progress, operation monitoring or return-to-form behavior"
+      ],
+      "summary": "User-visible specification Create progress, retry and return paths with immutable operation identity, authoritative inspection and explicit refusal/unknown-outcome boundaries.",
+      "related": [
+        "product.specflow.specification-creation",
+        "architecture.runtime.specification-create-options",
+        "engineering.shared.specification-create-recovery",
+        "reference.api.specflow-specification-operations",
+        "reference.api.operation-progress"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "workflow"
+      ]
+    },
+    {
       "id": "product.specflow.specification-creation",
       "type": "product",
       "title": "Create Specification and select its workspace",
@@ -5606,13 +5794,15 @@
       "file": "docs/product/specflow/specification-creation.md",
       "read_when": [
         "designing the Create Specification screen",
-        "describing branch defaults, target selection or uncertain responses"
+        "describing branch defaults, target selection or workspace placement"
       ],
-      "summary": "User-facing E2 Create choices and recovery wording without inferred future Git or workflow behavior.",
+      "summary": "Create form choices, accessible blocked submission and workspace/branch defaults; links to the separate Git refusal and progress/retry owners.",
       "related": [
         "reference.api.specflow-specification-operations",
         "reference.api.operation-progress",
-        "architecture.runtime.specflow-lifecycle"
+        "architecture.runtime.specflow-lifecycle",
+        "product.specflow.specification-create-admission-and-errors",
+        "product.specflow.specification-create-progress"
       ],
       "scope": "specflow",
       "areas": [
@@ -6034,23 +6224,22 @@
     {
       "id": "product.specflow.ui.shell-geometry",
       "type": "product",
-      "title": "App Shell geometry decisions",
+      "title": "SpecFlow screen geometry contract map",
       "status": "current",
       "file": "docs/product/specflow/ui/shell-geometry.md",
       "read_when": [
-        "changing the width or position of the Specifications list, Create Specification or a Specification screen",
-        "changing AppWorkspace fit, the Focused frame or the Bounded workspace rule",
-        "adding a section to Specification Overview or changing its columns",
-        "picking up an open UX finding about the shell, the navigator or mobile"
+        "locating the geometry owner for Specifications, Create, Overview or Full Session",
+        "changing the Focused frame or a screen's workspace sizing"
       ],
-      "summary": "Owner decisions of November 2026 on SpecFlow screen geometry: one Focused frame that grows to 1440 px for the Specifications list and Create, full width inside a Specification, a two-column Create and Specification Overview, the alternatives that were rejected and why, and the UX findings left open for later work.",
+      "summary": "Current geometry owners for the Focused frame, Create, Specification Overview, document workspaces and Session inspectors; historical alternatives are separate audit evidence.",
       "related": [
         "design-system.principles.layout-and-containment",
         "design-system.implementation.react.secondary-navigation",
         "product.specflow.specification-creation",
         "product.specflow.ui.interaction-model",
         "product.specflow.ui.specification-overview",
-        "product.specflow.ui.specs-overview"
+        "product.specflow.ui.specs-overview",
+        "product.specflow.ui.full-session"
       ]
     },
     {
@@ -6063,10 +6252,10 @@
         "changing the Specification Overview at /specs/:specId, its sections or their order",
         "changing the one/two-column arrangement, its threshold or focus behaviour",
         "changing Activity history placement or its open/closed default",
-        "changing the Overview Tasks summary or the Tasks page (/specs/:specId/tasks)",
+        "changing the Overview Tasks summary and its links to the full Task inventory",
         "changing what the Overview shows on a project Runtime (Now, Requires attention, Activity events, description)"
       ],
-      "summary": "Specification Overview as the control center of one Specification: summary, Now, Requires attention, the Tasks summary of the configured grouping, Sessions and Documents; the measured two-column arrangement from 1408 px of content width with 16 px hysteresis, focus restore across a crossing, Activity history as an on-demand Secondary, the preparation block, and the Tasks page (/specs/:specId/tasks) with its validated blocking and group filters.",
+      "summary": "Specification Overview as the control center of one Specification: summary, Now, Requires attention, the Tasks summary of the configured grouping, Sessions and Documents; the measured two-column arrangement from 1408 px of content width with 16 px hysteresis, focus restore across a crossing, Activity history as an on-demand Secondary and the preparation block. The separate Task inventory contract owns full-page filters and shared row status presentation.",
       "related": [
         "product.specflow.ui.shell-geometry",
         "product.specflow.ui.interaction-model",
@@ -6075,6 +6264,7 @@
         "reference.api.specification-workspace",
         "reference.api.task-reads",
         "product.specflow.ui.specification-sessions",
+        "product.specflow.ui.specification-tasks",
         "product.specflow.ui.workflow-execution"
       ],
       "scope": "specflow",
@@ -6123,6 +6313,29 @@
         "archive",
         "associations",
         "continue-session"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.specification-tasks",
+      "type": "product",
+      "title": "Specification Tasks page and Task row presentation",
+      "status": "current",
+      "file": "docs/product/specflow/ui/specification-tasks.md",
+      "read_when": [
+        "changing the Specification Tasks page, its URL filters or Task rows",
+        "changing Task status marks, supporting text or attention overlays"
+      ],
+      "summary": "Full Specification Task inventory, Runtime-owned groups, blocking/group and text filters, reusable Task rows, empty states and presented status/attention semantics.",
+      "related": [
+        "product.specflow.ui.specification-overview",
+        "product.specflow.ui.workflow-execution",
+        "architecture.runtime.task-read-pagination-and-grouping",
+        "reference.api.task-reads"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "workflow"
       ]
     },
     {
@@ -6197,16 +6410,13 @@
     {
       "id": "product.specflow.ui.workflow-workbench-decisions",
       "type": "product",
-      "title": "Workflow and Task workbench decisions (November 2026)",
+      "title": "Workflow and Task workbench contract map",
       "status": "current",
       "file": "docs/product/specflow/ui/workflow-workbench-decisions.md",
       "read_when": [
-        "changing how a Task status, Requires attention or a document state is presented",
-        "changing the Overview Now, the Overview Tasks section, the Tasks page or the Full Task sections",
-        "changing the Close dialog, Close with Git off or the demo Runtime's workflow",
-        "looking for why one of these behaves the way it does"
+        "locating the product owner for Task status, attention, Now, document state or Close behavior"
       ],
-      "summary": "Owner and coordinator decisions of the November 2026 UX round on the workflow and Task workbench: one status presentation model, Requires attention as \"the user must act\", the Now block, Task rows on the Overview and the Tasks page, Full Task sections, one document content state model, the Close dialog, Close with Git off as archive only, and the demo running the Engine. Each entry names the document that owns the rule.",
+      "summary": "Topic-to-owner map for the workflow and Task workbench: Task status, attention, Now, Task rows, document content and Close. Current contracts are linked without repeating their rules.",
       "related": [
         "product.specflow.ui.specification-overview",
         "product.specflow.ui.workflow-execution",

@@ -35,7 +35,7 @@ Wide / Compact                                   Narrow
 
 ### Tree and search pane
 
-- **Composition:** optional workspace picker, sticky shared search field, then tree or results ([tree recipe](../../../design-system/implementation/react/component-guidelines.md#tree-pane)).
+- **Composition:** optional workspace picker, sticky shared search field, then tree or results ([tree recipe](../../../design-system/implementation/react/component-tree-and-scrolling.md#tree-pane)).
 - **Tree order:** folders before documents; folder README hub first, then document titles. Titles wrap; full path in tooltip/Properties. Current document is `aria-current` and its ancestor folders expand.
 - **Labels:** mark a proposal prefix once on its folder, not on every file. Do not show Draft status in tree.
 - **Search:** debounced text replaces tree with results; Escape/Clear restores tree selection. Status/count/filter precede one row per matching document, with best section and excerpt. Hide model/endpoint diagnostics; behavior is in [Search](documentation-reader-search.md#search).

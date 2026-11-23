@@ -103,7 +103,7 @@ boundary was never crossed, or the process owner proved the process stopped with
 process exit codes, a missing record or an operator assertion are not proof. There is no HTTP or CLI
 operation that forces a claim to succeed or fail; `settleWorkspaceExecution` is a trusted Runtime
 boundary. A claim neither receipt can settle (no recorded process evidence) is left to the
-[administrative recovery procedure](../ai/session-storage-and-lifecycle.md#administrative-recovery).
+[administrative recovery procedure](../../engineering/shared/session-recovery.md#administrative-recovery).
 
 ## The project-wide resource
 

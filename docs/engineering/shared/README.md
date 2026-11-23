@@ -26,3 +26,5 @@ them instead of restating them.
 - [Architecture diagram authoring](code-organization.md#architecture-diagram-authoring)
 
 - [Interrupted Create recovery](specification-create-recovery.md)
+
+- [Session administrative recovery](session-recovery.md)

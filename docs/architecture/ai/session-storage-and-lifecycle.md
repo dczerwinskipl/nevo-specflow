@@ -20,6 +20,8 @@ related:
   - architecture.ai.provider-boundary
   - architecture.runtime.ownership-and-lifecycle
   - reference.api.sessions
+  - architecture.ai.session-association-and-list
+  - engineering.shared.session-recovery
   - reference.protocols.session-provider-driver
 ---
 
@@ -32,7 +34,7 @@ The independent Session boundary is an owner decision recorded in the canonical 
 Session owns identity, configuration, Turn/Work/ToolAction, interactions, history, semantic
 projections and provider invocation. Core records and operations do not require spec/task/workflow
 identifiers. Associations live outside the core aggregates: an association module owns sidecar
-tables in the same database (see [Authorization and associations](#authorization-and-associations)),
+tables in the same database (see [Association persistence](session-association-and-list.md#authorization-and-associations)),
 and the core writes the association payload verbatim in the create transaction without reading it
 for lifecycle decisions. A product-local storage namespace and verified execution environment do not
 constitute Specification ownership.
@@ -118,7 +120,7 @@ same statement as the JSON snapshot, so a list never decodes a snapshot per row:
 `sessions_archived(project, archived_at, created_seq)`. The title stays in the snapshot: a list page
 decodes only the rows it returns. The 2 -> 3 migration runs in one transaction and backfills the
 four columns by decoding each existing snapshot once (`created_seq` in `createdAt` order, ties by
-rowid). Version 3 also creates the association tables (below), empty: Sessions created before it
+rowid). Version 3 also creates the association tables ([association persistence](session-association-and-list.md#authorization-and-associations)), empty: Sessions created before it
 are standalone. Versions 0-3 are accepted; a later version is refused.
 
 Session create allocates an ID and configuration before provider execution. Native correlation
@@ -252,7 +254,7 @@ once.
 
 Turns recorded before Runtime kept this evidence (pre-production stores) carry no identity and stay
 unknown; there is no migration or backfill. They, and a live POSIX group whose start time cannot be
-compared (macOS), follow the administrative recovery below.
+compared (macOS), follow the [operator recovery procedure](../../engineering/shared/session-recovery.md#administrative-recovery).
 
 Unknown Turns carry safe reasons distinguishing missing context, unavailable provider evidence and
 missing settlement. There is no force-success or force-failure endpoint. Operators MUST NOT edit
@@ -262,34 +264,6 @@ provider tree have stopped. The authenticated reconcile command consumes an exac
 receipt or native-stop evidence; a dispatched Turn with neither stays blocked. A separate new
 Session is a new conversation, not recovery of the old one, and must wait until any possibly
 surviving process affecting the workspace is contained.
-
-### Administrative recovery
-
-For a Turn the evidence cannot settle: no recorded identity (an old record), an identity the OS
-cannot answer for (a live POSIX group without a start time on macOS, a query refused), or a process
-that keeps running. There is deliberately no product action ("Mark as stopped") for it: an operator
-with access to the machine establishes the facts first.
-
-1. **Find the Turn and its evidence.** The UI's unknown-Turn alert names the Session; with the
-   Runtime running, Check outcome states whether the process still runs or cannot be established.
-   The recorded identity can be read without changing anything:
-   `sqlite3 -readonly .nevo/local/state/sessions/sessions.sqlite "SELECT id, json_extract(data,'$.invocationId'), json_extract(data,'$.nativeProcess') FROM turns WHERE state!='terminal'"`.
-   The invocation id is also the Engine claim's file name in
-   `.nevo/local/state/engine/operations/external-execution/`.
-2. **Establish whether an agent still runs in the project.** POSIX: `ps -eo pid,pgid,lstart,args`
-   for the recorded group id (and any provider CLI whose working directory is the project or its
-   worktrees, since a descendant may have left the group). Windows: `Get-CimInstance Win32_Process`
-   filtered by the provider executable, with `CreationDate` and `CommandLine`.
-3. **Contain it.** Stop a surviving provider process tree (POSIX: signal the group; Windows: end the
-   process tree). Then run Check outcome, or restart the Runtime: with a recorded identity the
-   evidence now settles the Turn and the claim, macOS included (an empty group is evidence).
-4. **No identity at all (old records).** Nothing in the product can settle it. Only once step 2 shows
-   no agent process remains: stop the Runtime, copy `.nevo/local/state/` aside as a dated backup,
-   then move the Turn's claim record out of `external-execution/` into the backup (this releases
-   the project writer lock; the Turn stays unknown). If the Session itself must go, move the whole
-   `sessions/` directory aside the same way, which retires every Session of the project. Never edit
-   rows, the dispatch barrier or a native context, and review the workspace with Git for the
-   agent's uncommitted changes before writing again.
 
 ## Archive and delete
 
@@ -325,63 +299,6 @@ Outbox retention is 24 hours or the latest 10,000 events per Session, whichever 
 Expiry is independent of persisted conversation history. Replay reads indexed bounded batches;
 if the next required sequence was pruned, send resync-required and obtain a new bounded snapshot.
 Never synthesize complete history from an incomplete event log.
-
-## Authorization and associations
-
-Reuse existing session.create/view/manage and flat-role coverage; deletion uses the separate
-session.delete capability (developer and admin roles). Standalone create requires session.create
-at trusted {projectId}; existing Sessions use the scope `sessionScope(identity, capability)` builds
-from the store-derived identity: {projectId, sessionId} for a standalone Session and
-{projectId, specId, sessionId} for an associated one, except `session.execute-write`, which never
-carries `specId` (the provider `cwd` is the whole verified workspace). There is no creator ACL or
-automatic creator grant: configured project/global roles determine sharing; creator is audit
-metadata only. A sessionId-scoped grant can allow one existing Session but cannot create another.
-A specId-only assignment does not cover a standalone Session; its role's Session capabilities apply
-to Sessions associated with that Specification, except execute-write. Access-disabled mode follows
-existing Auth policy; use its stable internal audit/idempotency key, not a client-supplied user ID.
-Exact rules: [Runtime authorization](../runtime/auth/authorization.md#session-scope) and
-[Sessions API](../../reference/api/sessions.md).
-
-**Association registry.** A Session has at most one home Specification, fixed at create and never
-changed, plus an append-only set of that Specification's Tasks. Absent means standalone.
-
-```sql
-CREATE TABLE session_associations(
-  session TEXT PRIMARY KEY REFERENCES sessions(id),
-  spec TEXT NOT NULL,             -- home Specification, immutable
-  created_seq INTEGER NOT NULL,   -- copy of sessions.created_seq for the spec-ordered index
-  origin TEXT NOT NULL CHECK(origin IN ('user','workflow')),
-  actor TEXT NOT NULL,            -- audit only, never an ACL
-  created INTEGER NOT NULL);
-CREATE INDEX session_associations_spec ON session_associations(spec, created_seq);
-CREATE TABLE session_association_tasks(
-  session TEXT NOT NULL REFERENCES session_associations(session),
-  task TEXT NOT NULL,
-  origin TEXT NOT NULL CHECK(origin IN ('user','workflow')),
-  added INTEGER NOT NULL,
-  PRIMARY KEY(session, task));
-```
-
-- The composed create (`POST /api/specs/:specId/sessions`) verifies the Specification and Tasks
-  through the Engine first (time-of-check only), then writes the Session, association and Task rows
-  in one Worker transaction under the project-scoped create key, whose fingerprint covers
-  `{input, association}`. A crash leaves both or neither. The registry never infers an association
-  from a URL, title, path or message, and stores the Engine's canonical ids, not titles.
-- The store operations `identity`/`identities` (batch, at most 500) join the association row, so a
-  Session's scope comes from one indexed lookup; `association`, `list` (keyset on `created_seq`,
-  bounded scan budget, signed filter-bound cursor) and `associate-tasks` complete the protocol.
-  `associate-tasks` has no HTTP route: only the future in-process workflow orchestrator appends
-  Tasks, and it is refused for another home Specification or a standalone Session.
-- Both tables are Session-owned in `SESSION_TABLE_OWNERSHIP`: delete removes them in the delete
-  transaction; archive leaves them untouched. No cascade on Specification or Task removal: the
-  association stays and reads as `missing`. There is no reassign, unlink or grant inheritance.
-- An association is context, never current execution: the Engine attempt executor stays the only
-  authority for what a Turn executes. Origin (`user`, `workflow`) is provenance, not authority.
-- `SessionReferenceOwner` (`resolve`, `resolveMany`) and its extension `SessionAssociations`
-  (`identity`, `association`) are implemented by the store in project mode and by the demo
-  catalogue in demo mode; the list reads through a separate `SessionListSource` with the same two
-  implementations. The port must not become the required identity type for the core. A Specification's workspace binding is resolved at read
-  time, not stored. Rebinding a workspace cannot silently relocate a provider-native Session.
 
 ## Schema migration
 

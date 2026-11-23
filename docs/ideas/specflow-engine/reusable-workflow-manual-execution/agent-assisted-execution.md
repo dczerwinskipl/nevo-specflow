@@ -31,7 +31,7 @@ related:
 the Ask agent attachment point are implemented
 ([ADR 0024](../../../architecture/decisions/0024-tasks-are-resources.md),
 [ADR 0023](../../../architecture/decisions/0023-neutral-workflow-coordinator-and-manual-execution.md),
-[Manual workflow execution](../../../product/specflow/ui/workflow-execution.md#later-ask-agent-e6-not-implemented)).
+[Manual workflow execution](../../../product/specflow/ui/workflow-execution.md#agent-assistance)).
 What follows is still open. Decided already: `session: reuse` after a manual step is
 `session-unavailable`, with no fresh-Session override (D10); the post action that commits a step's
 execution state is the seam for the agent push (ADR 0024, decision 11).
@@ -220,3 +220,10 @@ contract but is **not technically impossible** without sandboxing.
 **Deferred:** unattended continuation, automatic Task batching, scheduler, generic plugins,
 parallel Task worktrees, non-existent automated F03 evidence and claims of unimplemented
 filesystem containment.
+
+## Proposed Now block attachment
+
+Proposed behavior: the Now block's action row is the single attachment point. For a step an agent may do, Start becomes a
+split choice: the main part stays **Start step** (do it myself) and its menu adds **Ask agent**; an
+active agent attempt shows its Session and Stop in the position line. See the
+[E6 idea](../../../ideas/specflow-engine/reusable-workflow-manual-execution/agent-assisted-execution.md).

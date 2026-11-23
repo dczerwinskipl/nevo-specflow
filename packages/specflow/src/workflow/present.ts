@@ -192,7 +192,7 @@ export function actionLines(projection: ActionProjection): string[] {
   }
 
   const { start, finish, return: back } = projection.actions;
-  if (start) {
+  if (start && !start.unavailable) {
     lines.push(
       `Action: start "${start.step}"` +
         (start.expectedWorkflowRevision
@@ -201,7 +201,7 @@ export function actionLines(projection: ActionProjection): string[] {
     );
   }
 
-  if (finish) {
+  if (finish && !finish.unavailable) {
     for (const transition of finish.transitions) {
       lines.push(
         `Action: finish "${finish.step}" attempt ${finish.attempt}` +
@@ -225,17 +225,20 @@ export function actionLines(projection: ActionProjection): string[] {
   }
 
   const { confirm, reject } = projection.actions;
-  // Confirm and Reject wait alike for the agent's own commit: one line says so, for both.
-  const waiting = confirm?.unavailable ?? reject?.unavailable;
-  const decided = confirm ?? reject;
-  if (waiting && decided) {
+  // Every workflow write of the Specification waits for an agent attempt's own commit: one line
+  // says so, naming the attempt and its Retry commit; no action that writes is listed meanwhile.
+  const waiting = projection.attemptCommit;
+  if (waiting) {
+    const { subject, step, attempt } = waiting;
     lines.push(
-      `Confirm and Reject wait for the commit of the agent's work (${waiting.reason}` +
-        `${waiting.code !== undefined ? `, ${waiting.code}` : ''}): ` +
+      `Nothing of this Specification's workflow changes until the commit of the agent's work in ` +
+        `${step}#${String(attempt)}${subject.taskId !== undefined ? ` of Task ${subject.taskId}` : ''} ` +
+        `ran (${waiting.reason}${waiting.code !== undefined ? `, ${waiting.code}` : ''}): ` +
         (waiting.reason === 'attempt-commit-failed'
           ? 'it failed; fix the cause, then retry it. '
           : 'it has not run (an interruption); retry it if it does not end by itself. ') +
-        `Action: retry-commit --step ${decided.step} --attempt ${String(decided.attempt)}`,
+        `Action: retry-commit ${subject.specId}${subject.taskId !== undefined ? ` --task ${subject.taskId}` : ''} ` +
+        `--step ${step} --attempt ${String(attempt)}`,
     );
   }
 
@@ -252,7 +255,7 @@ export function actionLines(projection: ActionProjection): string[] {
     lines.push(`Action: reject "${reject.step}" attempt ${reject.attempt} --feedback <text>`);
   }
 
-  for (const target of back?.targets ?? []) {
+  for (const target of back?.unavailable ? [] : (back?.targets ?? [])) {
     lines.push(
       `Action: return to ${named({ id: target.step, title: target.title })}${target.feedback === 'required' ? ' (reason required)' : ''}`,
     );
@@ -447,6 +450,7 @@ export function rejectLines(result: RejectAgentResultResult): string[] {
     `${result.replayed ? 'Already rejected' : 'Rejected'}: ${subjectLabel(result.subject)}; the agent's work was committed with its attempt`,
     `Position: ${positionLine(result.position)}`,
     `Next: ${continuationLine(result.continuation)}`,
+    ...postActionLines(result.postActions),
   ];
 }
 
@@ -463,6 +467,7 @@ export function returnLines(result: OwnerReturnResult): string[] {
     `Returned: ${subjectLabel(result.subject)}`,
     `Position: ${positionLine(result.position)}`,
     `Next: ${continuationLine(result.continuation)}`,
+    ...postActionLines(result.postActions ?? []),
   ];
 }
 

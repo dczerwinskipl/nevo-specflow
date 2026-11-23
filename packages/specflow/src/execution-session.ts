@@ -153,7 +153,7 @@ const HINTS: Readonly<Record<string, string>> = {
   WORKFLOW_GATE_UNSATISFIED:
     'Create or complete the documents the gates name (see "nevo-specflow workflow actions"), then repeat.',
   WORKFLOW_ATTEMPT_COMMIT_REQUIRED:
-    'The commit of the agent’s work has not run or failed. Retry it with "nevo-specflow workflow retry-commit <spec-id> --step <step-id> --attempt <n>" (see "nevo-specflow workflow actions"), then confirm or reject.',
+    'The commit of an agent attempt of this Specification has not run or failed, and nothing of its workflow changes until it is committed. Retry it with "nevo-specflow workflow retry-commit <spec-id> [--task <task-id>] --step <step-id> --attempt <n>" (the message and "nevo-specflow workflow actions" name the attempt), then repeat.',
   WORKFLOW_TASKS_OPEN:
     'Finish or cancel the open Tasks (see "nevo-specflow tasks list"), or abandon the Specification, then repeat.',
 };

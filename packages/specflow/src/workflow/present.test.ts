@@ -437,39 +437,45 @@ describe('an agent result that waits for the owner (D17)', () => {
     ]);
   });
 
-  it('says once that Confirm and Reject wait for the agent’s commit, and how to retry it', () => {
-    const waiting = (reason: string, code?: string) =>
-      ({
+  it('says once that the workflow waits for an agent attempt’s commit, and how to retry it', () => {
+    const waiting = (reason: string, code?: string) => {
+      const unavailable = { reason, ...(code ? { code } : {}) };
+
+      return {
         subject: spec,
         position: {
-          kind: 'awaiting-confirmation',
-          step: { id: 'breakdown-review', title: 'Review the breakdown' },
-          attempt: { number: 1, startedAt: 'then', endedAt: 'now', actor: { class: 'agent' } },
-          proposal: { transition: { id: 'approved', feedback: 'optional' }, artifacts: [] },
-          confirms: {},
-          confirmsDigest: 'd'.repeat(64),
+          kind: 'ready',
+          next: {
+            step: { id: 'specification', title: 'Write the Specification' },
+            human: true,
+            agent: { kind: 'unavailable', reason },
+          },
         },
         actions: {
-          confirm: {
-            step: 'breakdown-review',
-            attempt: 1,
-            unavailable: { reason, ...(code ? { code } : {}) },
-          },
-          reject: {
-            step: 'breakdown-review',
-            attempt: 1,
-            unavailable: { reason, ...(code ? { code } : {}) },
+          start: { step: 'specification', firstStart: false, unavailable },
+          return: {
+            targets: [{ step: 'requirements', title: 'Requirements', feedback: 'optional' }],
+            unavailable,
           },
         },
-      }) as unknown as ActionProjection;
+        attemptCommit: {
+          ...unavailable,
+          attemptId: 'attempt-1',
+          subject: { specId: spec.specId, taskId: 'api' },
+          step: 'implement',
+          attempt: 2,
+          stepTitle: 'Implement',
+        },
+      } as unknown as ActionProjection;
+    };
 
     const failed = actionLines(waiting('attempt-commit-failed', 'MANUAL_COMMIT_CONFLICT'));
     expect(failed.filter((line) => line.startsWith('Action:'))).toEqual([]);
     expect(failed.at(-1)).toBe(
-      "Confirm and Reject wait for the commit of the agent's work (attempt-commit-failed, MANUAL_COMMIT_CONFLICT): it failed; fix the cause, then retry it. Action: retry-commit --step breakdown-review --attempt 1",
+      `Nothing of this Specification's workflow changes until the commit of the agent's work in implement#2 of Task api ran (attempt-commit-failed, MANUAL_COMMIT_CONFLICT): it failed; fix the cause, then retry it. Action: retry-commit ${spec.specId} --task api --step implement --attempt 2`,
     );
     expect(actionLines(waiting('attempt-commit-pending')).at(-1)).toBe(
-      "Confirm and Reject wait for the commit of the agent's work (attempt-commit-pending): it has not run (an interruption); retry it if it does not end by itself. Action: retry-commit --step breakdown-review --attempt 1",
+      `Nothing of this Specification's workflow changes until the commit of the agent's work in implement#2 of Task api ran (attempt-commit-pending): it has not run (an interruption); retry it if it does not end by itself. Action: retry-commit ${spec.specId} --task api --step implement --attempt 2`,
     );
   });
 
@@ -499,6 +505,7 @@ describe('an agent result that waits for the owner (D17)', () => {
         position: { state: 'ready', step: 'breakdown-review' },
         continuation: { kind: 'attention', step: 'breakdown-review', reason: 'owner-action' },
         replayed: true,
+        postActions: [],
       }),
     ).toEqual([
       "Already rejected: Specification; the agent's work was committed with its attempt",

@@ -13,6 +13,7 @@ summary: >-
 related:
   - architecture.workflow.workflow-kernel
   - architecture.workflow.workflow-runs-and-handoffs
+  - architecture.workflow.workflow-definitions-and-gates
   - architecture.workflow.workflow-continuation-and-attention
   - adr.0024-tasks-are-resources
 ---
@@ -153,6 +154,11 @@ last explicit change in `statusChange {source: decision | escalation, at, reason
 | `cancelled` | Will not be done. Final: a cancelled Task is replaced by a new Task if needed. |
 
 #### Task status versus completion
+
+For Task completion and step-finish refusals, read the
+[exit-gate and executor contract](workflow-definitions-and-gates.md#gate-projection-and-evaluation)
+and the [active attempt and finish-input contract](workflow-runs-and-handoffs.md#positions-attempts-and-the-handoff).
+The Specification's separate completion guard is described under [Completion requires closed Tasks](#completion-requires-closed-tasks).
 
 There is no `completed` status: completion is the run reaching `terminal {completed}`. The status
 changes only by:

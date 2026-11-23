@@ -29,93 +29,49 @@ validation, write journals and commit policy.
 
 ## Read authority and conditional retrieval
 
-- Document tree is an Engine projection of the manifest, its registered files
-  and a bounded scan of unclassified content. It distinguishes registered,
-  unclassified, dangling and skipped/error entries, reports completeness,
-  document content kind and capability-based actions. A read never runs Git,
-  guesses a missing file or mutates a journal.
-- Text JSON responses include `content`; image and binary metadata do not.
-  An unclassified file gets a derived `u-` ID; classification registers it
-  with a new id, so clients must navigate using the returned identity.
+- **Tree:** Engine projects manifest, registered files and a bounded scan of unclassified files. It distinguishes registered, unclassified, dangling and skipped entries, completeness, content kind and available actions. Reads never run Git, invent missing files or mutate journals.
+- **Content:** JSON includes text only; images/binary return metadata. Unclassified files use derived `u-` IDs; classification returns a **new registered ID** that clients must follow.
 
 ### Exact revisions and authorization
 
-- A `revision` query requests **exactly** that version; missing revision
-  returns 409 `DOCUMENT_REVISION_UNAVAILABLE`, not the latest body. Reads
-  use `spec.view` at trusted scope. Tree and document observations may
-  carry ETag; only an exact validator may answer 304.
+`spec.view` at trusted scope is required. A `revision` query requires that exact version; missing versions return `409 DOCUMENT_REVISION_UNAVAILABLE`, never latest content. ETag/`304` applies only when the validator exactly matches the tree or document.
 
 ### Raw content security
 
-- Successful raw reads stream bytes with validated `Content-Type`,
-  `Content-Disposition`, `Content-Length`, `X-Content-Type-Options`,
-  sandbox CSP and a strong revision ETag. `download=1` forces attachment;
-  `download=0` permits safe inline images. Untrusted/binary bytes are
-  never served as active HTML; SVG has image media type solely to work
-  in `img` while sandbox CSP prevents page script execution.
-  Reject query values other than literal 0/1. All auth/refusals happen
-  **before the first byte**; aborts and 304 destroy the file stream.
+- Stream with validated `Content-Type`, `Content-Disposition`, `Content-Length`, `X-Content-Type-Options`, sandbox CSP and strong revision ETag.
+- `download=1` forces attachment; `download=0` allows safe inline images. Reject other values. Never serve untrusted/binary data as active HTML; sandbox SVG scripts.
+- Complete authorization/refusals before sending the first byte. On abort or `304`, destroy the stream.
 
 ## Write acknowledgment and commit state
 
-- Save, batch save, create, folder and other document mutations require
-  `spec.manage`. Every operation has an idempotency `operationId` and
-  optimistic `expectedRevision` where relevant. Use a fresh id per new
-  user action; reuse it only for the identical uncertain retry. Changed
-  body with the same identity conflicts.
-- A successful 200/operation result means **file write admitted to disk**,
-  **not** that the Git commit finished. Commit follows asynchronously
-  through the Engine queue and can be `pending`, `committed`,
-  `failed`, `uncommitted` (manual/abandoned) or `not-applicable`.
-  `CommitState` has no `abandoned` state: abandonment of a failed
-  commit leaves saved files in `uncommitted` with reason `abandoned`.
+- **Authority:** every mutation requires `spec.manage`, an `operationId`, and `expectedRevision` when applicable. Reuse the ID only for an identical uncertain retry; changing the payload conflicts.
+- **Acknowledgment:** `200` means bytes saved to disk, **not** Git committed. The asynchronous state is `pending`, `committed`, `failed`, `uncommitted` or `not-applicable`.
+- **Abandonment:** no `CommitState.abandoned`. Abandon leaves saved bytes `uncommitted` with reason `abandoned`.
 
 ### Batch atomicity and conflicts
 
-- Batch save checks every expected revision and path before any write;
-  either all 1..25 documents are saved or none. One commit batch is
-  queued. `DOCUMENT_REVISION_CONFLICT` includes offending documents;
-  the caller keeps **all** drafts and refreshes before retrying.
+Batch save admits 1–25 documents. Verify all paths/revisions before any write; save all or none, then queue one commit batch. `DOCUMENT_REVISION_CONFLICT` identifies conflicting documents; retain all drafts until refreshed.
 
 ### Commit settlement
 
-- The queue normally settles **250..500 ms** after the last save
-  (default 300 ms) and not beyond five seconds; `settling` is a
-  normal pending reason. If automatic commits are disabled, the
-  response reports `uncommitted` immediately, not a fake pending.
-- Tree `revision` and commit markers expose pending/failed/uncommitted
-  changes without running Git. `If-None-Match` and ETag allow
-  observation to become committed. Document operations list includes
-  pending, failed and recovery-required changes and removes
-  committed ones; operations reveal no absolute machine paths.
+- **Timing:** normal settle delay 250–500 ms (default 300 ms), at most five seconds. `settling` is pending. Auto-commit disabled yields immediate `uncommitted`.
+- **Projection:** tree revisions and commit markers show pending/failed/uncommitted work without Git. Conditional ETag/`If-None-Match` reflects settlement.
+- **Visibility:** operations list includes pending, failed and recovery-required operations, excluding committed ones. Never reveal absolute paths.
 
 ### Retry, abandon and recovery
 
-- A status GET is **read-only** and reports one operation with a
-  conditional ETag. Failed commit Retry/Abandon and flush require
-  explicit Manage mutations. Retry rechecks current files and Git
-  policy. Abandon leaves file bytes for later user/manual commit;
-  it does not roll back the save.
-- A busy queue/refusal `SPEC_BUSY` carries a typed reason,
-  optional `retryAfterMs` and owner/cause. Autosave backs off and
-  retains the draft. `recoveryRequired:true` requires the operator,
-  not a blind UI retry.
+- Status GET is read-only with conditional ETag. Retry, Abandon and Flush require explicit Manage actions.
+- Retry checks current bytes and Git policy; Abandon keeps files for manual commit, never rolls back Save.
+- `SPEC_BUSY` includes typed cause/owner and optional `retryAfterMs`; autosave backs off, preserving drafts.
+- `recoveryRequired:true` requires operator recovery, not blind UI retries.
 
 ### Manual commit admission
 
-- A manual commit selects currently uncommitted **ledger paths** of
-  the requested owner/scope, not arbitrary files. It uses a stable
-  `operationId`, expected ledger revision and closed subset selection;
-  refusing a stale or non-closed subset prevents accidentally
-  committing unrelated Task/definitions changes.
+Manual commit selects only uncommitted ledger paths in scope, using stable `operationId`, expected ledger revision and an operation-closed subset. Reject stale/non-closed selections; never include unrelated Task/definition files.
 
 ### Close integration
 
-- Close preview reports pending/failed/uncommitted document blockers
-  without flushing the queue. The Close mutation flushes relevant
-  work first; the same blocker may remain and refuse integration.
-  A foreign dirty checkout never becomes part of a Spec archive
-  commit without explicit authorization.
+Preview exposes pending/failed/uncommitted blockers **without flushing**. Close mutation flushes relevant queues, then may still refuse integration. Foreign dirty files never enter an archive commit implicitly.
 
 ## Archetypes, paths and errors
 

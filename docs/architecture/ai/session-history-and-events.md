@@ -34,7 +34,7 @@ continuation. Their HTTP routes and schemas are in
 ### Signed cursors and authorization
 
 - **Start:** use `Snapshot.history.before`; continue with each page's `before`, present exactly when `hasOlder`. An empty result without continuation confirms the end.
-- **Signature:** HMAC token binds `version`, `storeGeneration`, `projectId`, `sessionId`, `actorKey`, `collection`, exclusive `upperOrdinal` and 24-hour `expiresAt`. Work/action cursors also bind parent ID and collection order.
+- **Signature:** HMAC cursor binds store generation, project, Session, actor, collection, exclusive pagination boundary and 24-hour expiry. Work/action cursors also bind their parent. Exact serialized field names are private storage details.
 - **Durability:** the HMAC key persists in ignored local state; a restart does not invalidate an otherwise valid cursor.
 - **Access:** verify token and current authorization on every request. Tokens grant no access; policy changes apply through Auth.
 

@@ -319,10 +319,14 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
     workflow
       .command('retry-commit')
       .description(
-        "Retry the failed commit of a finished agent attempt (one commit of the attempt's own files), or the commit of a confirmation an interruption left undone",
+        "Retry the commit of a finished agent attempt that failed or an interruption left pending (one commit of the attempt's own files), or the commit of a confirmation an interruption left undone",
       )
       .requiredOption('--step <step-id>', 'The step the agent finished (see "workflow actions")')
-      .requiredOption('--attempt <number>', 'The attempt whose commit failed', parsePositiveInt),
+      .requiredOption(
+        '--attempt <number>',
+        'The attempt whose commit failed or is pending',
+        parsePositiveInt,
+      ),
   ).action(async (specId: string, options: CommonOptions & { step: string; attempt: number }) => {
     await run(options, 'change', async ({ engine }) => {
       const subject = subjectOf(specId, options);

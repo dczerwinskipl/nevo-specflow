@@ -225,22 +225,30 @@ export function actionLines(projection: ActionProjection): string[] {
   }
 
   const { confirm, reject } = projection.actions;
-  if (confirm) {
+  // Confirm and Reject wait alike for the agent's own commit: one line says so, for both.
+  const waiting = confirm?.unavailable ?? reject?.unavailable;
+  const decided = confirm ?? reject;
+  if (waiting && decided) {
+    lines.push(
+      `Confirm and Reject wait for the commit of the agent's work (${waiting.reason}` +
+        `${waiting.code !== undefined ? `, ${waiting.code}` : ''}): ` +
+        (waiting.reason === 'attempt-commit-failed'
+          ? 'it failed; fix the cause, then retry it. '
+          : 'it has not run (an interruption); retry it if it does not end by itself. ') +
+        `Action: retry-commit --step ${decided.step} --attempt ${String(decided.attempt)}`,
+    );
+  }
+
+  if (confirm && !confirm.unavailable) {
     // Confirm applies exactly what these lines show: the digest of it goes with the command.
     const digest =
       projection.position.kind === 'awaiting-confirmation'
         ? ` --confirms-digest ${projection.position.confirmsDigest}`
         : '';
-    lines.push(
-      confirm.unavailable
-        ? `Confirm waits for the agent's commit (${confirm.unavailable.reason}` +
-            `${confirm.unavailable.code !== undefined ? `, ${confirm.unavailable.code}` : ''}); ` +
-            `Action: retry-commit --step ${confirm.step} --attempt ${String(confirm.attempt)}`
-        : `Action: confirm "${confirm.step}" attempt ${confirm.attempt}${digest}`,
-    );
+    lines.push(`Action: confirm "${confirm.step}" attempt ${confirm.attempt}${digest}`);
   }
 
-  if (reject) {
+  if (reject && !reject.unavailable) {
     lines.push(`Action: reject "${reject.step}" attempt ${reject.attempt} --feedback <text>`);
   }
 

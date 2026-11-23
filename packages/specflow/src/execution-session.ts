@@ -152,6 +152,8 @@ const HINTS: Readonly<Record<string, string>> = {
     'The step is not allowed for the owner, or an agent attempt is still active.',
   WORKFLOW_GATE_UNSATISFIED:
     'Create or complete the documents the gates name (see "nevo-specflow workflow actions"), then repeat.',
+  WORKFLOW_ATTEMPT_COMMIT_REQUIRED:
+    'The commit of the agent’s work has not run or failed. Retry it with "nevo-specflow workflow retry-commit <spec-id> --step <step-id> --attempt <n>" (see "nevo-specflow workflow actions"), then confirm or reject.',
   WORKFLOW_TASKS_OPEN:
     'Finish or cancel the open Tasks (see "nevo-specflow tasks list"), or abandon the Specification, then repeat.',
 };

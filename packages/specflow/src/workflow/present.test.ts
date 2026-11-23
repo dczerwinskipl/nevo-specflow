@@ -437,6 +437,42 @@ describe('an agent result that waits for the owner (D17)', () => {
     ]);
   });
 
+  it('says once that Confirm and Reject wait for the agent’s commit, and how to retry it', () => {
+    const waiting = (reason: string, code?: string) =>
+      ({
+        subject: spec,
+        position: {
+          kind: 'awaiting-confirmation',
+          step: { id: 'breakdown-review', title: 'Review the breakdown' },
+          attempt: { number: 1, startedAt: 'then', endedAt: 'now', actor: { class: 'agent' } },
+          proposal: { transition: { id: 'approved', feedback: 'optional' }, artifacts: [] },
+          confirms: {},
+          confirmsDigest: 'd'.repeat(64),
+        },
+        actions: {
+          confirm: {
+            step: 'breakdown-review',
+            attempt: 1,
+            unavailable: { reason, ...(code ? { code } : {}) },
+          },
+          reject: {
+            step: 'breakdown-review',
+            attempt: 1,
+            unavailable: { reason, ...(code ? { code } : {}) },
+          },
+        },
+      }) as unknown as ActionProjection;
+
+    const failed = actionLines(waiting('attempt-commit-failed', 'MANUAL_COMMIT_CONFLICT'));
+    expect(failed.filter((line) => line.startsWith('Action:'))).toEqual([]);
+    expect(failed.at(-1)).toBe(
+      "Confirm and Reject wait for the commit of the agent's work (attempt-commit-failed, MANUAL_COMMIT_CONFLICT): it failed; fix the cause, then retry it. Action: retry-commit --step breakdown-review --attempt 1",
+    );
+    expect(actionLines(waiting('attempt-commit-pending')).at(-1)).toBe(
+      "Confirm and Reject wait for the commit of the agent's work (attempt-commit-pending): it has not run (an interruption); retry it if it does not end by itself. Action: retry-commit --step breakdown-review --attempt 1",
+    );
+  });
+
   it('reports a Confirm with the owner’s commit and a Reject of committed work', () => {
     expect(
       confirmLines({

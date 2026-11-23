@@ -249,3 +249,15 @@ tracked by #206/#207 until evidenced on the final PR HEAD.
 | `product/specflow/ui/application-architecture.md` | Keep | no long paragraph/bullet detected | code check pending |
 | `product/specflow/ui/application-navigation-and-auth.md` | Reformat | 1 long paragraphs, 0 long bullets; longest section 450 words | code check pending |
 | `product/specflow/ui/authentication-recovery.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `product/specflow/ui/create-archetypes.md` | Reformat | 1 long paragraphs, 2 long bullets; longest section 392 words | code check pending |
+| `product/specflow/ui/data-loading-and-integration.md` | Reformat | 0 long paragraphs, 1 long bullets; longest section 359 words | code check pending |
+| `product/specflow/ui/document-editor-client-behavior.md` | Reformat | 0 long paragraphs, 3 long bullets; longest section 222 words | code check pending |
+| `product/specflow/ui/documentation-reader-layout-and-states.md` | Reformat | 0 long paragraphs, 4 long bullets; longest section 834 words | text parity #210 |
+| `product/specflow/ui/documentation-reader-navigation.md` | Reformat | 0 long paragraphs, 3 long bullets; longest section 1067 words | text parity #210 |
+| `product/specflow/ui/documentation-reader-search.md` | Reformat | 1 long paragraphs, 3 long bullets; longest section 512 words | text parity #210 |
+| `product/specflow/ui/documentation-reader.md` | Reformat | 0 long paragraphs, 1 long bullets; longest section 190 words | code check pending |
+| `product/specflow/ui/documents-archetypes-ui.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `product/specflow/ui/documents-cross-screen-states.md` | Deduplicate | same rule repeated in tree and editor | text parity #210 |
+| `product/specflow/ui/documents-tree.md` | Reformat | 7 long paragraphs, 4 long bullets; longest section 642 words | text parity #210 |
+| `product/specflow/ui/full-session.md` | Reformat | 3 long paragraphs, 9 long bullets; longest section 1022 words | code check pending |
+| `product/specflow/ui/shell-geometry.md` | Reformat | 0 long paragraphs, 1 long bullets; longest section 390 words | code check pending |

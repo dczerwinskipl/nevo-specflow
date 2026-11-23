@@ -80,17 +80,11 @@ Order: the specification's main file (the protected `overview`) first, then fold
 (its tooltip and its `...` say why: the specification's main document, always first, not deletable);
 state never reorders. Dangling entries are placed at their registered path.
 
-**Search and type filter.** Above the tree: a search by file name or path and, when the tree has at least
-two types, a multiple choice of types (with **No type** for unclassified files) behind one small filter
-button that shows how many are chosen (**No type** last, apart). While a filter is on, the folders holding
-a match are open, a status line says how much is shown ("Showing 1 of 7 files") beside **Clear filters
-(n)**, the rows keep their indentation, and a missing file the filters hide is announced ("The filters hide
-1 missing file.") so a problem is never hidden silently. Nothing matching: the tree pane's shared empty
-search result (`TreeSearchEmpty`, the same as the documentation reader's) with Clear filters. Expected
-documents and the Close issues above the tree are never filtered. The search bar, the empty result and
-the order and tones of the tree's messages (status, attention notes, the list or the empty result, quiet
-notes) follow
-[Tree pane](../../../design-system/implementation/react/component-guidelines.md#tree-pane).
+- **Search and type filter.** Above the tree: a search by file name or path and, when the tree has at least two types, a multiple choice of types (with **No type** for unclassified files) behind one small filter button that shows how many are chosen (**No type** last, apart).
+- While a filter is on, the folders holding a match are open, a status line says how much is shown ("Showing 1 of 7 files") beside **Clear filters (n)**, the rows keep their indentation, and a missing file the filters hide is announced ("The filters hide 1 missing file.") so a problem is never hidden silently.
+- Nothing matching: the tree pane's shared empty search result (`TreeSearchEmpty`, the same as the documentation reader's) with Clear filters.
+- Expected documents and the Close issues above the tree are never filtered.
+- The search bar, the empty result and the order and tones of the tree's messages (status, attention notes, the list or the empty result, quiet notes) follow [Tree pane](../../../design-system/implementation/react/component-guidelines.md#tree-pane).
 
 **Rename refusal.** A refused name is shown at the field, over the rows below (the list does not shift),
 with the full text; the field keeps focus and the typed name.
@@ -118,15 +112,23 @@ documents), from one pure function (`documentStateLabel`, `features/documents/wo
 the shared tree row. It composes two separate facts; neither implies the other, and the label names
 both only when both apply.
 
+#### Document content state
+
 - **Content state.** `baseline`: the file is still the initial content the Engine wrote (from an
   archetype template or generated, for example a new `task.md`) → **Initial content only**. It
   describes the current content relative to that baseline, not whether an edit happened.
   `authored` → nothing. Unknown (no `contentState`) → nothing.
+
+#### Workflow relations
+
 - **Relation.** How the workflow's gates use the document now: **Needed to finish <step>**,
   **Needed to start <step>**, **Used in <step>**. Where the active step is on screen (Overview, Task
   detail) its gates read "this step"; this tree names the step. "Needed to start" is the next step's
   gate and always names that step. A row shows the relations of its own registry only (`scope`): a
   Task step's gate on a Specification document is not shown on the Specification's rows.
+
+#### Combined row label
+
 - **Together.** "Initial content only · needed to finish Write the specification": the content state
   first, then the relation.
 
@@ -137,35 +139,26 @@ both only when both apply.
 | any           | needed to finish / needed to start, blocking now (`blocksNow`) | [Initial content only · n]eeded to finish / start <step>  | attention, with its warning icon |
 | any           | needed to start, not blocking now; used                        | [Initial content only · n]eeded to start / used in <step> | secondary (the work at hand)     |
 
-The attention tone is only for a relation whose gate refuses the action the run waits for now
-(`blocksNow`); the content state never adds attention. The tooltip adds the full label, the gate and
-the sections it still lacks ("Needs the Acceptance section"). In a narrow row (under `28rem`) the
-Overview and Task detail shorten the label: the relation drops its step ("Needed to finish",
-"Initial content · needed to finish"; "Used in this step" stays as it is), since Now beside it names
-the step. This tree keeps the step: only a label that does not fit beside the name takes its own
-line under it, right-aligned, and wraps there over more lines when it needs them (never cut); the
-name is not cut for it.
+- The attention tone is only for a relation whose gate refuses the action the run waits for now (`blocksNow`); the content state never adds attention.
+- The tooltip adds the full label, the gate and the sections it still lacks ("Needs the Acceptance section").
+- In a narrow row (under `28rem`) the Overview and Task detail shorten the label: the relation drops its step ("Needed to finish", "Initial content · needed to finish"; "Used in this step" stays as it is), since Now beside it names the step.
+- This tree keeps the step: only a label that does not fit beside the name takes its own line under it, right-aligned, and wraps there over more lines when it needs them (never cut); the name is not cut for it.
 
-While the workflow projection loads, the rows show their content state only (no layout change when
-the relations arrive). When it cannot be read, the rows keep their content state and a quiet note
-after the list says that the workflow's requirements could not be loaded, so no row silently reads as
-"not needed". (The Overview shows no label until the projection has answered, then the final ones:
-its header never flips between "N · initial content only" and per-row labels.) A save or a tree
-operation refreshes the projection, so a gate the change satisfies stops saying "needed". Once the run ended no gate relates a document, so a closed Specification shows only
-**Initial content only**. Rows are never reordered by their label. The archetype's expected types
-(3.4) are a separate, type-level fact and never say "needed".
+- While the workflow projection loads, the rows show their content state only (no layout change when the relations arrive).
+- When it cannot be read, the rows keep their content state and a quiet note after the list says that the workflow's requirements could not be loaded, so no row silently reads as "not needed". (The Overview shows no label until the projection has answered, then the final ones: its header never flips between "N · initial content only" and per-row labels.) A save or a tree operation refreshes the projection, so a gate the change satisfies stops saying "needed".
+- Once the run ended no gate relates a document, so a closed Specification shows only **Initial content only**.
+- Rows are never reordered by their label.
+- The archetype's expected types (3.4) are a separate, type-level fact and never say "needed".
 
 Every item of a row menu has its icon (New document, New folder, Upload files, Assign type, Rename, Move,
 Delete, Remove registration). Other disabled items keep today's pattern: the menu note carries at most two
 distinct reasons of the ActionReason set.
 
-The tree starts with a root section header, **Specification documents**, that never collapses. Files of a main
-folder without subfolders start at the row edge: they are not indented as if they were in a folder. A tree
-operation that takes longer than a moment shows a small spinner in that header (never a text line under the
-tree); its result is a toast, its failure stays where it was started. A rename the file system refuses because
-only the letter case changes ("Renaming only the letter case is not supported on this file system. Rename it to a different name first, then to the one you want.") is shown in
-the rename field with the typed name kept; the UI does not block it in advance. After a refusal the message
-never suggests refreshing when a refresh cannot help.
+- The tree starts with a root section header, **Specification documents**, that never collapses.
+- Files of a main folder without subfolders start at the row edge: they are not indented as if they were in a folder.
+- A tree operation that takes longer than a moment shows a small spinner in that header (never a text line under the tree); its result is a toast, its failure stays where it was started.
+- A rename the file system refuses because only the letter case changes ("Renaming only the letter case is not supported on this file system. Rename it to a different name first, then to the one you want.") is shown in the rename field with the typed name kept; the UI does not block it in advance.
+- After a refusal the message never suggests refreshing when a refresh cannot help.
 
 ### 3.4 Unmet requirements (Expected documents)
 
@@ -198,45 +191,32 @@ never suggests refreshing when a refresh cannot help.
 
 ### 3.6 New document, Assign type, Remove registration
 
-**New document** (header menu `New document`, folder menu `New document`, Expected documents **Add**):
+**New document** opens from header/folder menu or Expected documents **Add**.
 
-- Title `New document`; description `In <folder>` or `In the main folder of <specification>`.
-- Type chooser: `RadioGroup` of `RadioGroupOption` (label = type title, description = type `useWhen`).
-  Groups (label-sm text, not headings): **Suggested by <archetype title>** = optional templates of the
-  Specification's archetype; **Other types** = remaining catalogue types; **No type** last (creates an
-  empty file without a type). `overview` is never offered. After the title, a muted fact when it helps
-  the choice: `Expected · <count> of <min>` only while that requirement is unmet, else
-  `<n> in this specification` when n > 0.
-- Initial selection: the type passed by Add; else the first suggested type that is not present yet;
-  else the first suggested type.
-- **File name**: pre-filled with the template `filename`, else the type `defaultFilename`, else
-  `<type id>.md`; editable; `.md` appended when no extension (today's rule); only the extensions in
-  `capabilities.formats` (`md`, `txt`) are accepted; the existing name validation and collision check
-  apply. Changing the type replaces the name only while the user has not edited it.
-  Helper: "The type decides what the document counts as; the name is free."
-- Guidance: a `Collapsible` "How to write a <type> document" with the type `instructions` and, when a
-  template is used, the template `instructions` as a second paragraph. Closed by default; never stored.
-- Footer: Cancel / **Create**. Create sends one document (`type`, `templateId` when the archetype has a
-  template for the type, path) and, on success, opens the new document as a new tab **in edit**
-  (today's rule for a new empty file) and announces it.
-- One `Dialog` at every width; the body must scroll while header and footer stay. Measured in the mock
-  at 390 × 844: the dialog is 810 px high with 934 px of content, `overflow: hidden` and no scrolling
-  region, so **Create is cut off** until the shared `Dialog` lets its body scroll between a fixed header and footer.
+- **Dialog:** title `New document`; context `In <folder>` or `In the main folder of <specification>`.
+- **Types:** radio list with type title/`useWhen`. Group archetype templates under `Suggested by <archetype title>`, remaining types under `Other types`, then **No type** for an unclassified empty file. Never offer `overview`.
+- **Counts:** show unmet `Expected · <count> of <min>`; otherwise `<n> in this specification` only when nonzero.
+- **Default:** Add's type, otherwise first suggested type not yet used, otherwise first suggested type.
 
-**Assign type** (unclassified row menu; also the tab `...` menu of an unclassified document): same
-chooser without No type and without File name. Description: "<path> stays where it is. Its type decides what it
-counts as in this specification." Primary: **Assign type**. On success the document id
-changes (`u-…` → registered id): an open tab keeps its draft, scroll and position, the route
-`documents/$documentId` is **replaced** (not pushed) with the new id, and focus returns to the tree row
-under its new state.
+#### New document name
 
-**Remove registration** (dangling row menu and the missing tab): a confirmation dialog in the existing
-delete-dialog pattern: "Remove the registration of backend.md? The specification will no longer list it.
-No file is deleted." Confirm closes the missing tab.
+- Prefill from template `filename`, type `defaultFilename` or `<type id>.md`. Allow editing; append `.md` when no extension. Accept only `capabilities.formats` (`md`, `txt`) and reject collisions/invalid names.
+- Changing type updates the suggested filename only before the user edits it. Explain that type controls classification, not the chosen filename.
 
-**Failures of these three operations** use the existing tree-error pattern: the dialog stays
-open, the chosen type and the typed file name are kept, the message is an attention Alert inside the
-dialog above the footer, and the primary button is available again.
+#### Instructions and actions
+
+- Optional `How to write a <type> document` disclosure contains type/template `instructions`, closed by default, never stored.
+- **Create:** send type, applicable archetype `templateId` and path. On success announce the document and open it in a new **edit** tab.
+
+#### Dialog layout and focus
+
+Use one dialog at every width, with scrollable body and fixed header/footer. Create must remain reachable at 390 × 844; the 810 px-high mock with 934 px of content otherwise cuts it off.
+
+**Assign type** uses the chooser without No type or filename. It never moves the file. On success the `u-` ID becomes a registered ID; preserve an open tab's draft/scroll, **replace** its URL, then return focus to the updated tree row.
+
+**Remove registration** confirms removal of the dangling entry without deleting a file; close its missing tab.
+
+**Refusals:** keep dialog, selected type and filename; show an attention Alert above the footer and reenable the action. Existing error-specific behavior:
 
 | Error                                                                       | Extra                                                 |
 | --------------------------------------------------------------------------- | ----------------------------------------------------- |
@@ -256,16 +236,9 @@ operation returns it, it is shown as the protected-document reason.
 
 ### 3.7 Opening the main file, idle document area
 
-**Entering Documents.** On Narrow, the bare Documents route shows the tree with its search and type
-filter. Choosing a file opens the stacked reader; Back returns to the same tree. On split layouts
-a bare entry opens the protected overview beside the tree, replacing the navigation entry. The
-initial choice is made once per visit. Closing a tab or resizing the workspace does not repeat it.
-A route naming a document opens that document.
+- **Entering Documents.** On Narrow, the bare Documents route shows the tree with its search and type filter. Choosing a file opens the stacked reader; Back returns to the same tree.
+- On split layouts a bare entry opens the protected overview beside the tree, replacing the navigation entry. The initial choice is made once per visit. Closing a tab or resizing the workspace does not repeat it.
+- A route naming a document opens that document; drafts are not touched.
 
-**Idle document area.** `DocumentsEmptyState` is the shared empty screen (the design-system `EmptyState`, centred in the
-area, the same one as the empty Specifications list): the title "No document open", the line "Choose a
-document from the tree or create a new one." and, when the capabilities allow them, the start actions
-**New document** (the one primary action) and **Upload files** (secondary, also when it is the only
-one); when neither is available the line is only "Choose a document from the tree." It does not list
-documents: the tree beside it already does, and Expected documents in the tree names what is missing. No
-completeness, no issues here: they belong to the tree, which is also what Narrow shows first.
+- **Idle document area.** `DocumentsEmptyState` is the shared empty screen (the design-system `EmptyState`, centred in the area, the same one as the empty Specifications list): the title "No document open", the line "Choose a document from the tree or create a new one." and, when the capabilities allow them, the start actions **New document** (the one primary action) and **Upload files** (secondary, also when it is the only one); when neither is available the line is only "Choose a document from the tree." It does not list documents: the tree beside it already does, and Expected documents in the tree names what is missing.
+- No completeness, no issues here: they belong to the tree, which is also what Narrow shows first.

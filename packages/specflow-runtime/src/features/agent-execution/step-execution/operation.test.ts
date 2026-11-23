@@ -249,6 +249,24 @@ describe('agent step execution', () => {
     expect(messages).toEqual(['started', `retried ${derivedId(id, 'invocation')}`]);
   });
 
+  it('refuses the same request id with another payload instead of finishing the earlier choice', async () => {
+    const { calls, execution } = fakes({ failFirstTurnStart: true });
+    const id = '00000000-0000-4000-8000-00000000000b';
+    await expect(execution.startAgentStepExecution({ ...request(id), model: 'm' })).rejects.toThrow(
+      'lost',
+    );
+
+    await expect(
+      execution.startAgentStepExecution({ ...request(id), model: 'other' }),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_STATE_CONFLICT' });
+    expect(calls.filter((call) => call.startsWith('session.start'))).toHaveLength(1);
+
+    // The identical payload is the retry: it completes the Turn the first request bound.
+    await expect(
+      execution.startAgentStepExecution({ ...request(id), model: 'm' }),
+    ).resolves.toMatchObject({ kind: 'started', turnId: derivedId(id, 'turn') });
+  });
+
   it('replays a dispatched Turn without briefing it again, after its agent changed files', async () => {
     const { execution, context } = fakes();
     const id = '00000000-0000-4000-8000-00000000000a';

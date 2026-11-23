@@ -13,6 +13,7 @@ import { fakeTaskAuthoringApi } from '../../authoring/authoring.test-support';
 import type { WorkflowExecutionApi } from '../api';
 import { SPEC, TASK, taskWorkflowProjection } from '../projections.stories-support';
 import { refusal } from '../ProjectWorkflowExecution.stories-support';
+import { ApiError } from '../../../../api';
 import { agentOptions } from './agentStart.stories-support';
 import { WorkflowNow } from '../WorkflowNow';
 
@@ -307,6 +308,75 @@ describe('Run with agent dialog', () => {
         within(alert).getByRole('button', { name: 'Check again' }),
       ),
     );
+  });
+
+  it('retries a lost answer with the same request, and resolves it before another choice', async () => {
+    const lostAnswer = new ApiError({
+      kind: 'network',
+      operation: 'workflow.agent-execution',
+      outcome: 'unknown',
+      retryable: true,
+    });
+    let attemptStarted = false;
+    const check = vi.fn(() =>
+      Promise.resolve(
+        attemptStarted
+          ? { position: { step: 'implement', attempt: 2 }, agent: agentOptions.fresh }
+          : checkOf(agentOptions.fresh),
+      ),
+    );
+    const startAgent = vi.fn<WorkflowExecutionApi['startAgentExecution']>(() =>
+      Promise.reject(lostAnswer),
+    );
+    renderNow(agentOptions.fresh, { checkAgentExecution: check, startAgentExecution: startAgent });
+    const bodies = () => startAgent.mock.calls.map(([, body]) => body);
+
+    const dialog = await openDialog();
+    await within(dialog).findByRole('radio', { name: /Claude/ });
+    fireEvent.click(footerOf(dialog)[1]!);
+    await within(dialog).findByText(/The answer was lost/);
+
+    // The same choice resends exactly the first request.
+    fireEvent.click(footerOf(dialog)[1]!);
+    await waitFor(() => expect(startAgent).toHaveBeenCalledTimes(2));
+    expect(bodies()[1]).toEqual(bodies()[0]);
+    await within(dialog).findByText(/The answer was lost/);
+
+    // Another model: the earlier request is resolved first; it started the attempt, so that one is
+    // shown and nothing else is sent, never the old id with the new model.
+    attemptStarted = true;
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Codex/ }));
+    fireEvent.click(footerOf(dialog)[1]!);
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(startAgent).toHaveBeenCalledTimes(2);
+  });
+
+  it('starts a new request for another choice when the lost one started nothing', async () => {
+    const lostAnswer = new ApiError({
+      kind: 'network',
+      operation: 'workflow.agent-execution',
+      outcome: 'unknown',
+      retryable: true,
+    });
+    const startAgent = vi.fn<WorkflowExecutionApi['startAgentExecution']>(() =>
+      Promise.reject(lostAnswer),
+    );
+    renderNow(agentOptions.fresh, {
+      checkAgentExecution: () => Promise.resolve(checkOf(agentOptions.fresh)),
+      startAgentExecution: startAgent,
+    });
+
+    const dialog = await openDialog();
+    await within(dialog).findByRole('radio', { name: /Claude/ });
+    fireEvent.click(footerOf(dialog)[1]!);
+    await within(dialog).findByText(/The answer was lost/);
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Codex/ }));
+    fireEvent.click(footerOf(dialog)[1]!);
+    await waitFor(() => expect(startAgent).toHaveBeenCalledTimes(2));
+
+    const [first, second] = startAgent.mock.calls.map(([, body]) => body);
+    expect(second?.provider).toBe('codex');
+    expect(second?.requestId).not.toBe(first?.requestId);
   });
 
   it('explains a check that failed, with Check again inside the alert', async () => {

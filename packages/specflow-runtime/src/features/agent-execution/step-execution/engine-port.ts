@@ -81,7 +81,11 @@ export interface AgentStepEngine {
     readonly actor: AgentActor;
     readonly expected: ExpectedPosition;
     readonly workspaceId: string;
-    readonly turn: { readonly invocationId: string; readonly turnId: string };
+    readonly turn: {
+      readonly invocationId: string;
+      readonly turnId: string;
+      readonly requestDigest: string;
+    };
     readonly launch?: { readonly session: 'fresh' | 'reuse'; readonly effort?: string };
   }): Promise<{ readonly attemptId: string; readonly brief: AgentBrief }>;
   /** What the attempt left so far (Git-free: its journal, the ledger and the Task manifests). */

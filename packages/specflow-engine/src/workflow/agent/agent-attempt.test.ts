@@ -185,6 +185,26 @@ describe('agent attempt start', () => {
     ).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_MISMATCH' });
   });
 
+  it('refuses a retried Turn whose request digest is not the one it was bound with', async () => {
+    const { dependencies } = agentDependencies();
+    await startAgentAttempt(dependencies, startInput());
+    const next = startInput({
+      expected: { step: 'requirements', attempt: 1 },
+      turn: { invocationId: INVOCATION_2, turnId: 'turn-2', requestDigest: 'a'.repeat(64) },
+    });
+    await startAgentAttempt(dependencies, next);
+
+    await expect(
+      startAgentAttempt(dependencies, {
+        ...next,
+        turn: { ...next.turn, requestDigest: 'b'.repeat(64) },
+      }),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_STATE_CONFLICT' });
+    await expect(startAgentAttempt(dependencies, next)).resolves.toMatchObject({
+      kind: 'resumed',
+    });
+  });
+
   it('refuses a start from a checkout with changes the Engine cannot attribute, writing nothing', async () => {
     const { dependencies, workflow, journal, state } = agentDependencies();
     state.attribution = {

@@ -110,7 +110,10 @@ sequenceDiagram
    with the current context. A retried request whose Turn was dispatched already is answered from
    the attempt without a new brief.
 3. **Session and Turn.** Session, Turn and invocation ids are derived from the request id, so a
-   retried request finds what the first one made. A fresh Session is created with the id the actor
+   retried request finds what the first one made. The Turn records the digest of the request's
+   payload (subject, expected position, provider, model, effort, note): the same request id with
+   another payload is refused `WORKFLOW_STATE_CONFLICT` before anything is dispatched, so a resend
+   never finishes the earlier choice under a new one. A fresh Session is created with the id the actor
    already names (origin `workflow`, title "Agent step execution"); a continued Session that moves
    into a Task's step is associated with that Task (`associate-tasks`). The Turn starts in
    `workspace-write` mode with the brief, the owner's optional note (fenced as untrusted) and the

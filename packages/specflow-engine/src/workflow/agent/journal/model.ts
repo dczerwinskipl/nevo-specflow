@@ -52,6 +52,12 @@ export interface AgentTurnBinding {
    */
   readonly contextDigest?: string;
   /**
+   * The digest of the request that bound the Turn (sha256 hex, computed by the Runtime over what the
+   * owner asked for): a repeat of the same request id with another payload is refused, never read as
+   * a retry of this Turn.
+   */
+  readonly requestDigest?: string;
+  /**
    * When the attempt's finalize section ran for this Turn (it records the Turn's outcome and dirty
    * set and, in the same section, settles the Turn's execution claim).
    */
@@ -347,6 +353,7 @@ const JournalSchema = Type.Object(
           turnId: text(200),
           boundAt: timestamp,
           contextDigest: Type.Optional(sha256),
+          requestDigest: Type.Optional(sha256),
           finalizedAt: Type.Optional(timestamp),
         },
         closed,

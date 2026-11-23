@@ -1,6 +1,9 @@
 import { useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { AgentStepExecutionRequest } from '@nevo/specflow-contracts/workflow';
+import type {
+  AgentStepExecutionRequest,
+  AgentStepExecutionResult,
+} from '@nevo/specflow-contracts/workflow';
 import { useAppServices } from '../../../../app/useAppServices';
 import { invalidateAfterTaskChange } from '../../authoring/queries';
 import type { WorkflowSubjectRef } from '../api';
@@ -8,6 +11,20 @@ import { workflowRefusalOf } from '../refusal';
 
 /** What the owner chose for a fresh Session; a continued Session names nothing. */
 export type AgentChoice = Pick<AgentStepExecutionRequest, 'provider' | 'model' | 'effort'>;
+
+/**
+ * What a start answered: the Runtime's result, or `earlier-attempt` when a request whose answer was
+ * lost turned out to have started the attempt (the owner is shown that one instead).
+ */
+export type AgentStartOutcome = AgentStepExecutionResult | { readonly kind: 'earlier-attempt' };
+
+function sameChoice(request: AgentStepExecutionRequest, choice: AgentChoice): boolean {
+  return (
+    request.provider === choice.provider &&
+    request.model === choice.model &&
+    request.effort === choice.effort
+  );
+}
 
 /**
  * Run with agent for one subject: the check the dialog reads when it opens (the Runtime's answer
@@ -19,9 +36,8 @@ export function useAgentStart(subject: WorkflowSubjectRef, stepId: string, open:
   const queryClient = useQueryClient();
   const { specId, taskId } = subject;
   const target: WorkflowSubjectRef = taskId === undefined ? { specId } : { specId, taskId };
-  // One idempotency key per request; a lost answer is retried under the same key.
-  const requestId = useRef<string>(undefined);
-  const lostAnswer = useRef(false);
+  // The request whose answer was lost: its retry resends exactly it, under the same idempotency key.
+  const lost = useRef<AgentStepExecutionRequest>(undefined);
 
   const check = useQuery({
     queryKey: ['workflow', 'agent-check', specId, taskId ?? null],
@@ -33,14 +49,45 @@ export function useAgentStart(subject: WorkflowSubjectRef, stepId: string, open:
     refetchOnWindowFocus: false,
   });
 
-  const start = useMutation({
-    mutationFn: (choice: AgentChoice) => {
-      requestId.current =
-        lostAnswer.current && requestId.current ? requestId.current : crypto.randomUUID();
-      const position = check.data?.position;
+  // A refusal was not applied, so the next request is a new one; a lost answer keeps the request.
+  const send = async (request: AgentStepExecutionRequest) => {
+    try {
+      const result = await workflowExecutionApi.startAgentExecution(target, request);
+      lost.current = undefined;
 
-      return workflowExecutionApi.startAgentExecution(target, {
-        requestId: requestId.current,
+      return result;
+    } catch (error) {
+      lost.current = workflowRefusalOf(error).outcomeUnknown ? request : undefined;
+
+      throw error;
+    }
+  };
+
+  const start = useMutation({
+    mutationFn: async (choice: AgentChoice): Promise<AgentStartOutcome> => {
+      const earlier = lost.current;
+      if (earlier && sameChoice(earlier, choice)) {
+        return send(earlier);
+      }
+
+      let position = check.data?.position;
+      if (earlier) {
+        // Another choice than the request whose answer was lost: that request is resolved first.
+        // If it started an attempt, the attempt is shown; another one is never started beside it.
+        const reread = await check.refetch({ throwOnError: true });
+        lost.current = undefined;
+        position = reread.data?.position;
+        if (
+          earlier.expected.attempt === undefined &&
+          position?.step === stepId &&
+          position.attempt !== undefined
+        ) {
+          return { kind: 'earlier-attempt' };
+        }
+      }
+
+      const request: AgentStepExecutionRequest = {
+        requestId: crypto.randomUUID(),
         expected: {
           step: stepId,
           ...(position?.step === stepId && position.attempt !== undefined
@@ -48,10 +95,9 @@ export function useAgentStart(subject: WorkflowSubjectRef, stepId: string, open:
             : {}),
         },
         ...choice,
-      });
-    },
-    onError: (error) => {
-      lostAnswer.current = workflowRefusalOf(error).outcomeUnknown;
+      };
+
+      return send(request);
     },
     onSettled: () => invalidateAfterTaskChange(queryClient, specId),
   });

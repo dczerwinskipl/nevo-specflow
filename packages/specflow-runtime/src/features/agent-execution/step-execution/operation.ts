@@ -72,6 +72,26 @@ export function derivedId(requestId: string, purpose: string): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
 }
 
+/**
+ * The digest of what a start or Continue asks for, recorded on the Turn it binds: the same request id
+ * with another payload (another model, another note) is a different request, never its retry.
+ */
+export function requestDigestOf(request: AgentStepExecutionRequest): string {
+  const { subject, expected } = request;
+  const payload = [
+    subject.specId,
+    subject.kind === 'task' ? subject.taskId : null,
+    expected.step,
+    expected.attempt ?? null,
+    request.provider ?? null,
+    request.model ?? null,
+    request.effort ?? null,
+    request.message ?? null,
+  ];
+
+  return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+}
+
 function invalid(message: string): never {
   throw new WorkflowError('WORKFLOW_INPUT_INVALID', message);
 }
@@ -565,10 +585,20 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
     const sessions = dependencies.sessions();
     const invocationId = derivedId(request.requestId, 'invocation');
     const turnId = derivedId(request.requestId, 'turn');
+    const requestDigest = requestDigestOf(request);
     const continuing = expected.attempt !== undefined;
     const active = await engine.activeAttempt(subject);
-    const retry = active?.journal.turns.some((turn) => turn.invocationId === invocationId);
-    if (active && retry) {
+    const bound = active?.journal.turns.find((turn) => turn.invocationId === invocationId);
+    if (active && bound) {
+      if (bound.requestDigest !== requestDigest) {
+        // The id names a Turn bound for another payload: finishing it would run the earlier choice.
+        throw new WorkflowError(
+          'WORKFLOW_STATE_CONFLICT',
+          'This request id was used for another request, which is still being resolved; read the ' +
+            'attempt again before asking with a new request.',
+        );
+      }
+
       if (!sessions) {
         unavailable(
           { kind: 'unavailable', reason: 'provider-not-ready' },
@@ -686,7 +716,7 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
       actor,
       expected,
       workspaceId,
-      turn: { invocationId, turnId },
+      turn: { invocationId, turnId, requestDigest },
       ...(continuing
         ? {}
         : {

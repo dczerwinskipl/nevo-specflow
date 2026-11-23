@@ -28,6 +28,7 @@ import {
 } from './journal/model';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
+const SHA256 = /^[0-9a-f]{64}$/u;
 
 export interface StartAgentAttemptInput {
   readonly subject: WorkflowSubject;
@@ -44,8 +45,15 @@ export interface StartAgentAttemptInput {
   readonly expected: ExpectedPosition;
   /** The registered checkout the attempt works in. */
   readonly workspaceId: string;
-  /** The Turn about to be dispatched: its Runtime invocation and Session Turn ids. */
-  readonly turn: { readonly invocationId: string; readonly turnId: string };
+  /**
+   * The Turn about to be dispatched: its Runtime invocation and Session Turn ids, and the digest of
+   * the request that binds it (sha256 hex), recorded on the Turn.
+   */
+  readonly turn: {
+    readonly invocationId: string;
+    readonly turnId: string;
+    readonly requestDigest?: string;
+  };
   /** The launch of a new attempt (D18): fresh or continued Session, and the chosen effort. */
   readonly launch?: { readonly session: 'fresh' | 'reuse'; readonly effort?: string };
 }
@@ -81,6 +89,10 @@ function assertBindingInput(input: StartAgentAttemptInput): void {
 
   if (!input.turn.turnId || input.turn.turnId.length > 200) {
     invalidInput('The Turn of an agent attempt has an id of at most 200 characters.');
+  }
+
+  if (input.turn.requestDigest !== undefined && !SHA256.test(input.turn.requestDigest)) {
+    invalidInput('The request digest of an agent Turn is a sha256 hex digest.');
   }
 }
 
@@ -238,6 +250,14 @@ async function bindTurn(
       throw new WorkflowError(
         'WORKFLOW_ATTEMPT_MISMATCH',
         'This invocation was bound to another Turn of the attempt already.',
+      );
+    }
+
+    if (known.requestDigest !== turn.requestDigest) {
+      throw new WorkflowError(
+        'WORKFLOW_STATE_CONFLICT',
+        'This request id was used for another request, which is still being resolved; read the ' +
+          'attempt again before asking with a new request.',
       );
     }
 

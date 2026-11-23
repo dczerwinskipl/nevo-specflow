@@ -64,19 +64,17 @@ continuation. Their HTTP routes and schemas are in
 
 ### Work aggregate counts
 
-- `WorkPage.counts` is the Turn-wide Work aggregate, independent of the current page.
-- Runtime keeps the aggregate in the Turn record and updates it in the same transaction as every Work open and Work state change (provider facts, interaction admission and delivery, Turn settlement, restart recovery), like `actionCount`; the `work` read projects it and never scans Work at read time.
-- `counts` is omitted for Turns recorded before Runtime maintained the aggregate; they are not backfilled.
-- The UI MUST hide its summary row when `counts` is absent and MUST NOT derive it from `items.length`, which is only a bounded page.
-- Among pages of the same Turn, the one with the higher `eventSeq` carries the newer counts.
+- **Scope:** `WorkPage.counts` covers the whole Turn, independent of the page.
+- **Updates:** Runtime maintains the Turn aggregate transactionally on Work open/state changes, including provider facts, interaction admission/delivery, Turn settlement and restart recovery. `actionCount` follows the same rule. Reads never scan Work.
+- **Legacy:** omit `counts` for older Turns; do not backfill. UI hides the summary if absent and never derives it from `items.length`.
+- **Ordering:** the highest `eventSeq` of a Turn's pages supplies the newest counts.
 
 ### Work digest
 
-- The Work digest counts the Turn's ToolActions by operation.
-- Runtime maintains it in the Turn record in the same transaction as each ToolAction open and state change, including actions that Turn settlement marks failed.
-- The Turn's latest `work-summary` entry carries the current digest: a new tool Work's entry starts with the digest at that moment, and each later change revises that entry (`revision` increments) and emits one `conversation` change with that single entry.
-- An earlier `work-summary` entry keeps the digest it had while it was the latest; clients use the Turn's latest entry that carries one.
-- No digest is attached before the Turn's first ToolAction, and none for Turns recorded before Runtime maintained it.
+- **Scope:** count admitted ToolActions by operation, including actions failed during Turn settlement. Update the Turn digest transactionally on every ToolAction open/state change.
+- **Publication:** the latest `work-summary` entry carries the digest. New tool Work starts with the current value; further changes increment its `revision` and emit one `conversation` change containing that entry.
+- **History:** earlier summaries retain their recorded digest. No digest exists before the first ToolAction or for legacy Turns without it.
+- **Readers:** use the latest digest-bearing summary. Detached readers refresh through snapshot, resync or `conversation` changes and must not add counts themselves.
 
 #### Provider classification
 
@@ -94,8 +92,7 @@ continuation. Their HTTP routes and schemas are in
 
 #### Detached readers
 
-- A reader that is not following the live stream (a detached tab, or one that has loaded only history pages) holds the digest from the last `work-summary` revision it received, which can be behind the current one: for example, a new tool Work's entry is created with the digest before that Work's first ToolAction and is revised only when that action opens.
-- Such a reader catches up on its next snapshot/resync or `conversation` change; it MUST NOT add its own counts to the digest.
+A reader outside the live stream may hold a stale digest: a new Work's first summary predates its first ToolAction. Only a revised `work-summary`, snapshot or resync updates it. Never increment the digest client-side.
 
 #### Native identity mapping
 
@@ -117,26 +114,25 @@ continuation. Their HTTP routes and schemas are in
 
 ### Request and offsets
 
-- `GET /api/sessions/{sessionId}/content/{contentId}` reads a bounded UTF-8 range from a specific content revision.
-- The revision is required and immutable; `offset` defaults to 0 and `limitBytes` defaults to and is capped at 64 KiB.
-- Offsets count UTF-8 bytes and must be valid character boundaries; invalid/out-of-range -> 400.
+- **Read:** `GET /api/sessions/{sessionId}/content/{contentId}` requires an immutable content `revision`.
+- **Bounds:** `offset` defaults to 0; `limitBytes` defaults to and is capped at 64 KiB.
+- **Unit:** offsets count UTF-8 bytes; out-of-range offsets and invalid character boundaries return `400`.
 
 ### Preview pagination
 
-- A conversation `TextPreview.text` is the UTF-8 byte prefix of its content (at most 2048 bytes, cut on a character boundary), so a client continues with `offset` = the UTF-8 byte length of the preview text, not 0, and appends the pages to the preview.
-- Return the longest valid UTF-8 prefix within the byte budget, nextOffset iff more remains.
+- `TextPreview.text` contains at most the first 2048 UTF-8 bytes, cut on a character boundary.
+- Continue at the preview's UTF-8 byte length, **not 0**; append subsequent ranges.
+- Return the longest complete UTF-8 prefix within the limit. Include `nextOffset` only while content remains.
 
 ### Revision retention and storage
 
-- Old referenced revisions are retained for the Session lifetime (until Session delete), including for actively growing text; use immutable chunk references/prefix manifests rather than copying all prior text per delta.
-- Append-only text revisions can identify immutable published prefixes by length/generation with constant-size revision metadata.
-- Do not copy a growing chunk list or rehash the whole text on each delta; edits/replacements allocate a new content generation while retaining referenced prefixes.
-- No compression is required for these limits to hold.
-- Expanding text reads only that content range.
+- Keep referenced revisions for the entire Session lifetime, including growing text, until Session deletion.
+- Store immutable chunks/prefixes and constant-size length/generation metadata for append-only revisions. Never recopy the growing chunk list or rehash all text per delta.
+- Replacements allocate a new content generation, retaining referenced prefixes. Read only the requested range; compression is not required.
 
 ### Authorization
 
-- Auth verifies content/Turn/Work membership in the selected Session before returning any bytes.
+Check content, Turn and Work membership in the selected Session **before returning bytes**.
 
 ## Event stream
 

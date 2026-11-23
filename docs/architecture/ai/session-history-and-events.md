@@ -27,32 +27,22 @@ continuation. Their HTTP routes and schemas are in
 
 ### Snapshot bounds
 
-- Snapshot limit is fixed: up to the latest 40 conversation entries, <=256 KiB UTF-8 JSON overall, no full content chunks or complete Turn hydration.
-- Entry previews include references when shortened.
-- One indexed lookahead establishes hasOlder, not an exact count.
-
-- The byte budget includes JSON escapes, metadata and the signed cursor.
-- If the indexed count-bounded window exceeds it, return a smaller contiguous newest window and set the cursor immediately before its oldest returned item.
-- Do not skip excluded entries or scan older rows to fill the page.
-- Work and ToolAction pages use the same count-and-byte policy.
+- **Limit:** newest 40 conversation entries, at most 256 KiB of serialized UTF-8 JSON, including escapes, metadata and signed cursor. Never hydrate full Turns or content chunks.
+- **Oversize:** return the newest contiguous subset, with a cursor before its oldest entry. Shortened previews reference content. Never scan or skip older entries to fill the page.
+- **Continuation:** one indexed lookahead sets `hasOlder`, not a total count. Work and ToolAction pages follow the same bounded read policy.
 
 ### Signed cursors and authorization
 
-- Start history with Snapshot.history.before; subsequent pages use returned before. before is present iff hasOlder.
-- A normal empty result means confirmed end.
-- No unbounded scan to fill a page.
-- History tokens encode signed {version, storeGeneration, projectId, sessionId, actorKey, collection, upperOrdinal, expiresAt}, with 24-hour expiry.
-- Work/actions add parent ID and use their own collection order.
-- The HMAC key persists in ignored local state; restart does not expire otherwise valid tokens.
-- Verify the token and current authorization every request.
-- Tokens are not access grants.
-- Changing policy is enforced by current Auth, not a policy object identity stored in the token.
+- **Start:** use `Snapshot.history.before`; continue with each page's `before`, present exactly when `hasOlder`. An empty result without continuation confirms the end.
+- **Signature:** HMAC token binds `version`, `storeGeneration`, `projectId`, `sessionId`, `actorKey`, `collection`, exclusive `upperOrdinal` and 24-hour `expiresAt`. Work/action cursors also bind parent ID and collection order.
+- **Durability:** the HMAC key persists in ignored local state; a restart does not invalidate an otherwise valid cursor.
+- **Access:** verify token and current authorization on every request. Tokens grant no access; policy changes apply through Auth.
 
 ### Page order and consistency
 
-- upperOrdinal is exclusive: query earlier entries by indexed range, return up to limit then reverse to ascending display order.
-- Tokens pin older membership/order; item content may be more recent than the initial snapshot. revision comparison prevents stale pages overwriting live state.
-- A page boundary may split a Turn; clients group by turnId without inventing another Turn.
+- Read indexed entries earlier than exclusive `upperOrdinal`, then reverse to ascending display order.
+- Cursor membership and ordering are pinned; item content can advance. Compare `revision` to prevent stale history overwriting live state.
+- Pages may split Turns. Group by `turnId` without creating synthetic Turns.
 
 ### Work and ToolAction page authority
 
@@ -138,10 +128,9 @@ Check content, Turn and Work membership in the selected Session **before returni
 
 ### Bootstrap and replay cursor
 
-- Initial sequence: first GET Snapshot, then GET events?after=Snapshot.eventSeq.
-- Event IDs equal canonical eventSeq.
-- Use Last-Event-ID when query after is absent; conflicting values are 400 SESSION_CURSOR_INVALID. after in the future is invalid.
-- No after/header means start after a current transaction boundary, never full replay from the beginning.
+- **Start:** GET Snapshot, then subscribe with `events?after=Snapshot.eventSeq`. Frame IDs equal canonical `eventSeq`.
+- **Resume:** absent query `after` uses `Last-Event-ID`. Conflicting values or an `after` in the future return `400 SESSION_CURSOR_INVALID`.
+- **Without cursor:** begin at the current transaction boundary, never at the start of history.
 
 ### Event envelope
 
@@ -157,36 +146,25 @@ Check content, Turn and Work membership in the selected Session **before returni
 
 ### Projection and invalidation updates
 
-- A live projection replaces the current small Session projection at its event sequence; it is not merged partially with an older snapshot.
-- Exact event bodies and fields are described in [OpenAPI](../../reference/api/openapi.md).
-- ToolAction changes emit work invalidation as a WorkSummary with its incremented revision; an open action inspector refreshes the affected bounded page.
-- No raw action output in events.
-- Terminal Turn update supplies its summary/outcome and a cleared activeTurn projection.
+- Replace the small Session `LiveProjection` at its sequence; never partially merge an older snapshot. Exact shapes: [OpenAPI](../../reference/api/openapi.md).
+- ToolAction changes invalidate Work through an incremented `WorkSummary.revision`. An open inspector rereads its bounded page. Events contain no raw action output.
+- Terminal Turn events include summary/outcome and clear `activeTurn`.
 
 ### Revision, presence and payload bounds
 
-- Each upsert has canonical ID/revision.
-- Removal of the current interaction is explicit {interaction:null}; omission means unchanged in events.
-- Ordinary JSON read optionality is unchanged.
-- An event frame is <=64 KiB.
-- Large text updates reference content; clients read the visible portion on demand.
-- Event segmentation is done before committing each canonical update, never by emitting two different frames with the same eventSeq.
+- Upserts have canonical IDs/revisions. `{interaction:null}` removes the interaction; omission means unchanged. Optional fields in ordinary JSON reads are unaffected.
+- One frame is at most 64 KiB. Large text changes reference on-demand content ranges.
+- Segment updates **before committing** canonical state; never emit two frames with the same `eventSeq`.
 
 ### Durable replay and backpressure
 
-- Persist event before broadcast.
-- Replay batches <=100 frames and <=256 KiB, yield between batches.
-- Subscriber queue <=256 KiB; on overflow emit unnumbered resync-required if possible, then close.
-- A pruned gap emits unnumbered resync-required and closes.
-- Never jump an event ID silently.
-- Client deduplicates eventSeq, detects gaps and fetches a new bounded Snapshot.
-- It merges already loaded older pages by ID/revision, keeping history; it does not reload the transcript.
+- **Publish:** persist before broadcast. Replay up to 100 frames and 256 KiB per batch, yielding between batches.
+- **Overflow/gaps:** subscriber queues hold up to 256 KiB. On overflow or pruned replay gaps, send unnumbered `resync-required` if possible, then close. Never skip event IDs silently.
+- **Client:** deduplicate `eventSeq`. On gaps fetch a bounded Snapshot, merging already loaded pages by ID/revision without reloading the whole transcript.
 
 ### Heartbeats, authentication and lifecycle
 
-- Heartbeat comments every 15 seconds do not advance eventSeq.
-- Disconnect cleans the subscriber only.
-- Committed outbox changes wake live subscribers.
-- Idle streams revalidate authentication/policy at most one second apart without polling the outbox; no change is broadcast before its transaction commits.
-- Close authorization/lifecycle resources on shutdown.
-- Concurrent bootstrap/replay/broadcast must not lose the first event after the snapshot; test with an update in each handoff window.
+- **Heartbeat:** comments every 15 seconds do not advance `eventSeq`. Disconnect releases only the subscriber.
+- **Outbox:** committed changes wake subscribers; never broadcast before transaction commit.
+- **Authorization:** idle streams revalidate authentication/policy at intervals no longer than one second, without polling the outbox.
+- **Shutdown and races:** close authorization/lifecycle resources. Bootstrap, replay and broadcast must not lose the first event after Snapshot; test every handoff window.

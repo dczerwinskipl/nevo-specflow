@@ -64,7 +64,6 @@ continuation. Their HTTP routes and schemas are in
 - **Scope:** count admitted ToolActions by operation, including actions failed during Turn settlement. Update the Turn digest transactionally on every ToolAction open/state change.
 - **Publication:** the latest `work-summary` entry carries the digest. New tool Work starts with the current value; further changes increment its `revision` and emit one `conversation` change containing that entry.
 - **History:** earlier summaries retain their recorded digest. No digest exists before the first ToolAction or for legacy Turns without it.
-- **Readers:** use the latest digest-bearing summary. Detached readers refresh through snapshot, resync or `conversation` changes and must not add counts themselves.
 
 #### Provider classification
 
@@ -134,15 +133,18 @@ Check content, Turn and Work membership in the selected Session **before returni
 
 ### Event envelope
 
-- Each frame: id: <eventSeq>, event: session-change, data: JSON envelope: {sessionId, eventSeq, kind, changes}. kind is one of session, turn, conversation, work, interaction. changes carries bounded upserts/references for that kind, using the shapes above, and the current Session/activeTurn/currentActivity/interaction projection as needed.
-- The changes object is discriminated by kind:
+Each `session-change` frame has `id: <eventSeq>` and JSON `{sessionId, eventSeq, kind, changes}`. `changes` is discriminated by `kind`:
 
-- session: {projection: LiveProjection} (a rename/archive/unarchive carries the current activeTurn,
-  so Turn-dependent capabilities such as Cancel stay correct);
-- turn: {turn: TurnSummary, projection: LiveProjection};
-- conversation: {entries: ConversationEntry[], projection?: LiveProjection}, at most 8 entries;
-- work: {turnId, items: WorkSummary[], projection?: LiveProjection}, at most 8 items;
-- interaction: {projection: LiveProjection}.
+| `kind` | `changes` |
+| --- | --- |
+| `session` | `{projection: LiveProjection}`, including current `activeTurn` after rename/archive/unarchive |
+| `turn` | `{turn: TurnSummary, projection: LiveProjection}` |
+| `conversation` | `{entries: ConversationEntry[], projection?: LiveProjection}`; up to 8 entries |
+| `work` | `{turnId, items: WorkSummary[], projection?: LiveProjection}`; up to 8 items |
+| `interaction` | `{projection: LiveProjection}` |
+| `telemetry` | `{telemetryRevision: SessionSequence}`; invalidates the separately authorized telemetry read, **not** its contents |
+
+Only the current Session/Turn/activity/Interaction projection is sent where applicable. The authoritative union is `SessionChangeSchema` in `packages/specflow-contracts/src/sessions/model.ts`; the HTTP contract is generated in [OpenAPI](../../reference/api/openapi.md).
 
 ### Projection and invalidation updates
 

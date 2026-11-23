@@ -2510,6 +2510,45 @@
       ]
     },
     {
+      "id": "ideas.specflow-runtime.session-recovery-continuation",
+      "type": "architecture",
+      "title": "Session recovery and work continuation",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/session-recovery-and-continuation.md",
+      "read_when": [
+        "designing safe work continuation after a Runtime, host or provider interruption",
+        "comparing native provider resume with fresh-session context recovery or cross-provider handover",
+        "planning recovery UX, checkpoint evidence and restart fault-injection tests"
+      ],
+      "summary": "Proposal for provider-neutral recovery assessments and durable work continuation across native resume, new Sessions and providers; reuses existing Session and Engine evidence, keeps uncertain effects blocked and separates context recovery from replaying execution.",
+      "related": [
+        "ideas.readme",
+        "ideas.specflow-engine.managed-session-integration",
+        "ideas.specflow-engine.execution-scopes",
+        "architecture.ai.canonical-session-turn-work",
+        "architecture.ai.session-storage-and-lifecycle",
+        "architecture.runtime.workspace-execution-claims",
+        "reference.protocols.session-provider-driver"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "workflow",
+        "security",
+        "testing",
+        "ui"
+      ],
+      "tags": [
+        "sessions",
+        "crash-recovery",
+        "continuation",
+        "handover",
+        "provider-neutral",
+        "durability"
+      ]
+    },
+    {
       "id": "product.specflow.ui.authentication-recovery",
       "type": "architecture",
       "title": "SpecFlow UI authentication recovery",

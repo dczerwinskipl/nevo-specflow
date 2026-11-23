@@ -79,6 +79,7 @@ rationale whose premise no longer holds is marked superseded or removed.
 - [SpecFlow Runtime / AI adapter hardening](specflow-runtime/ai-adapters/README.md)
 - [SpecFlow Runtime / provider capability backlog](specflow-runtime/provider-migration-plan.md)
 - [SpecFlow Runtime / Session backend gaps](specflow-runtime/session-v10-backend-readiness.md)
+- [Session recovery and work continuation](specflow-runtime/session-recovery-and-continuation.md)
 - [SpecFlow Runtime / server-side Work history filter](specflow-runtime/work-history-server-filter.md)
 - [Developer workspace / code inspection and IDE integration](developer-workspace/README.md)
 - [SpecFlow UI / open screen and component ideas](specflow-ui/README.md)

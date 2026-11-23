@@ -3646,6 +3646,25 @@
       ]
     },
     {
+      "id": "ideas.audits.current-document-dispositions-2026-11-23",
+      "type": "engineering",
+      "title": "Current documentation disposition coverage after the P2 split",
+      "status": "draft",
+      "file": "docs/ideas/audits/2026-11-23-current-document-dispositions.md",
+      "read_when": [
+        "continuing the per-document maintainability audit in issue 206"
+      ],
+      "summary": "Complete current-document coverage inventory with bounded P2 decisions, navigation/ADR structure acceptance, and explicit source-review work still tracked in issue 206; not a claim that the whole audit is complete.",
+      "related": [
+        "ideas.audits.documentation-maintainability-2026-11-22"
+      ],
+      "scope": "repo",
+      "areas": [
+        "docs",
+        "testing"
+      ]
+    },
+    {
       "id": "ideas.audits.documentation-maintainability-2026-11-22",
       "type": "engineering",
       "title": "Current-document maintainability audit and refactor ledger",

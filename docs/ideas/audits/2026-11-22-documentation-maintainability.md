@@ -33,7 +33,8 @@ own remaining investigation and the measured retrieval benchmark, respectively.
 Base: `6f112660edb93295a6214d2b16874a9619b426f1`. This pass implements the
 remaining named P2 candidates within #206; it does not open another tracking issue.
 The inventory below remains historical screening evidence, not a completed current
-corpus audit. In particular, its length-based `Reformat` rows are not automatic
+corpus audit. The [current coverage matrix](2026-11-23-current-document-dispositions.md)
+accounts explicitly for every current in-scope document, including unfinished reviews. In particular, its length-based `Reformat` rows are not automatic
 instructions to edit a contract. #206 stays open until each remaining document has
 an evidence-backed disposition and the reviewed final HEAD passes the required checks.
 

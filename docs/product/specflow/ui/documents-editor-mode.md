@@ -8,8 +8,8 @@ read_when:
   - opening a document or file preview from a Session
   - deciding how several documents are open at once
 summary: >
-    Behavior of the Documents screen with several open documents (tree plus tabbed document area), the
-    content kinds, the target read-only previews in a Session, and the deferred layout decisions.
+  Behavior of the Documents screen with several open documents (tree plus tabbed document area), the
+  content kinds, the target read-only previews in a Session, and the deferred layout decisions.
 related:
   - product.specflow.ui.interaction-model
   - design-system.implementation.react.item-tabs

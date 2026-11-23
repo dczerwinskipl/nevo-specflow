@@ -542,7 +542,10 @@ function formatTokenBreakdown(
   const parts: string[] = [];
   // All callers below use catalogue keys; i18next's typed overloads cannot prove this
   // for a variable key and reject a direct cast in v27. Keep the assertion local.
-  const translateDynamic = t as unknown as (key: string, options?: Record<string, string>) => string;
+  const translateDynamic = t as unknown as (
+    key: string,
+    options?: Record<string, string>,
+  ) => string;
   const push = (amount: number | undefined, key: string) => {
     if (amount !== undefined) {
       parts.push(translateDynamic(key, { value: new Intl.NumberFormat(locale).format(amount) }));

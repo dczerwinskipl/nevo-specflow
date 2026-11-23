@@ -84,7 +84,6 @@ refuse with `WORKFLOW_SPECIFICATION_ENDED`: the Tasks stay as they are, readable
 reports the same (`createTask` and the Task's edit and `remove` actions `unavailable` with reason
 `specification-ended`). `setTaskStatus` does not consult the Specification run.
 
-
 #### Task type admission
 
 **Effective policy.** The task types a Specification allows now are its run's `taskTypes` snapshot once
@@ -116,7 +115,6 @@ dependsOn?}`. Every Task:
   the id pattern excludes Windows device names (`con`, `prn`, `aux`, `nul`, `com1` to `com9`, `lpt1` to
   `lpt9`);
 - has a title of at most 200 characters, a summary of at most 4 000 and at most 100 dependencies.
-
 
 #### Draft replacement semantics
 
@@ -154,7 +152,6 @@ last explicit change in `statusChange {source: decision | escalation, at, reason
 | `on-hold`   | Kept, but no step of it starts until a decision makes it `ready` again.        |
 | `cancelled` | Will not be done. Final: a cancelled Task is replaced by a new Task if needed. |
 
-
 #### Task status versus completion
 
 There is no `completed` status: completion is the run reaching `terminal {completed}`. The status
@@ -188,14 +185,12 @@ Task whose direct dependency ended `abandoned` or was cancelled fails with
 be returned. A Task that is not `ready` after its own finish gets the continuation `none {on-hold}`
 and no attention.
 
-
 #### Context admission
 
 - The entry gate of every Task step is its own context: a required context entry that does not resolve refuses the start (`WORKFLOW_TASK_CONTEXT_UNRESOLVED`).
 - A reference entry may be marked as a **process artifact** (`artifact: true` in `task.yaml`; not for `instructions`): something another step or Task produces.
 - While it is missing it is `awaited`, not stale: create and edit accept it, the projection reports it as the blocker `context-awaited` (apart from `context-unresolved`, so a surface shows no warning on Approve), and a required one still refuses the start, listed apart in the refusal (`awaited`).
 - There is no producer link; the artifact simply has to exist when the step starts.
-
 
 #### Context and gates
 
@@ -242,7 +237,6 @@ the handoff.
 
 ### Completion requires closed Tasks
 
-
 #### Completion guards
 
 Rule ([ADR 0024](../decisions/0024-tasks-are-resources.md), decision 12): a
@@ -252,7 +246,6 @@ is not terminal and it is not `cancelled`): a draft, an approved Task that never
 waiting or held one, and a broken one (its work is not known). A Task whose own workflow ended it,
 completed or abandoned, is closed. The rule is `tasksOpenAtCompletion` (with `openTasks`) in
 `tasks/tasks.ts`; it never looks at step ids or names.
-
 
 #### Finish refusal
 

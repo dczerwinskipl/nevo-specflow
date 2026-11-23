@@ -74,7 +74,6 @@ Specification/Task projections of Session references:
 and a native agent is not contained to its `cwd`, so a Specification-scoped grant must not admit
 writes.
 
-
 ### Execution workspace and provider admission
 
 - **Execution workspace.** A Turn of a standalone Session runs in the Runtime's verified workspace.
@@ -91,7 +90,6 @@ writes.
 - See [Runtime authorization](../runtime/auth/authorization.md#session-scope).
 - Missing auth -> existing 401 authentication_required; forbidden -> 403 forbidden; unknown ID -> 404 SESSION_NOT_FOUND after access handling.
 - Existing Auth conventions remain authoritative; no new per-creator ACL is introduced.
-
 
 ### SSE access revocation
 
@@ -116,7 +114,6 @@ The read re-runs a provider's bounded discovery when its last check is older tha
 so it can take up to `PROVIDER_DISCOVERY_BUDGET_MS` (30 s) on a cold machine, even right after a
 startup probe; clients give it that budget plus a margin, not the default read deadline.
 
-
 ### Catalogue request validation
 
 - Both parameters together are `400 SESSION_INPUT_INVALID`, as is any other parameter or a malformed id.
@@ -132,7 +129,6 @@ the selectable models and modes. An oversized catalogue refuses
 The exact fields and size limits are in [OpenAPI](../../reference/api/openapi.md),
 operation `getSessionProviders`. Provider selection is revalidated when a
 command is admitted.
-
 
 ### Provider eligibility and availability
 

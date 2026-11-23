@@ -210,3 +210,16 @@ tracked by #206/#207 until evidenced on the final PR HEAD.
 | `design-system/implementation/react/workspace-dynamic-split.md` | Reformat | 0 long paragraphs, 11 long bullets; longest section 1181 words | code check pending |
 | `design-system/implementation/storybook/README.md` | Keep | no long paragraph/bullet detected | code check pending |
 | `design-system/implementation/storybook/guidelines.md` | Reformat | 1 long paragraphs, 1 long bullets; longest section 303 words | code check pending |
+| `design-system/implementation/tailwind/README.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `design-system/implementation/tailwind/styling-guidelines.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `design-system/principles/information-hierarchy.md` | Reformat | 0 long paragraphs, 1 long bullets; longest section 231 words | code check pending |
+| `design-system/principles/information-row-hierarchy.md` | Reformat | 0 long paragraphs, 1 long bullets; longest section 300 words | code check pending |
+| `design-system/principles/system-boundary.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `engineering/README.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `engineering/cli/README.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `engineering/cli/architecture.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `engineering/cli/testing.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `engineering/repository/README.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `engineering/repository/ci.md` | Reformat | 2 long paragraphs, 1 long bullets; longest section 406 words | code check pending |
+| `engineering/repository/commit-conventions.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `engineering/repository/dependencies-and-security.md` | Keep | no long paragraph/bullet detected | code check pending |

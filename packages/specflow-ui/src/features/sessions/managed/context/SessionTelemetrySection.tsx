@@ -1,4 +1,4 @@
-import type { TFunction } from 'i18next';
+import type { ParseKeys, TFunction } from 'i18next';
 import { useCallback, useId, useRef, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -540,9 +540,10 @@ function formatTokenBreakdown(
 
   const value = reading.value;
   const parts: string[] = [];
-  // `key` varies per call, so it can't stay inside the typed `TFunction` key union; cast at this
-  // one dynamic-key call site only (same pattern as `translateMessage` in `i18n/message.ts`).
-  const translateDynamic = t as (key: string, options?: Record<string, string>) => string;
+  // Only the translation key is dynamic. Each call below uses a catalogue-defined key;
+  // preserve typed interpolation and normalise i18next 27's wider return type to text.
+  const translateDynamic = (key: string, options?: Record<string, string>): string =>
+    String(t(key as ParseKeys, options));
   const push = (amount: number | undefined, key: string) => {
     if (amount !== undefined) {
       parts.push(translateDynamic(key, { value: new Intl.NumberFormat(locale).format(amount) }));

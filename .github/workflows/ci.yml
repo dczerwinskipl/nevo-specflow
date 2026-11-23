@@ -50,6 +50,13 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/setup
 
+      # Fast controlled-boundary tests only; no historical worktrees or live search/model.
+      - name: Documentation retrieval benchmark tests
+        run: |
+          python3 -m venv "$RUNNER_TEMP/docs-benchmark-venv"
+          "$RUNNER_TEMP/docs-benchmark-venv/bin/python" -m pip install -r tools/docs/eval/retrieval-cost/requirements.txt
+          "$RUNNER_TEMP/docs-benchmark-venv/bin/python" -B -m unittest discover -s tools/docs/eval/retrieval-cost -p 'test_*.py'
+
       # The same canonical script contributors run locally: format:check, lint,
       # docs validation/index freshness, and the version.json transition gate.
       - name: Quality gate

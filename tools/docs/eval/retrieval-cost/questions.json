@@ -1,0 +1,186 @@
+{
+  "questions": [
+    {
+      "id": "create",
+      "question": "How to resume an interrupted Specification Create?",
+      "owners": {
+        "baseline": ["architecture.runtime.specflow-lifecycle"],
+        "after": [
+          "engineering.shared.specification-create-recovery",
+          "architecture.runtime.specification-create-lifecycle"
+        ]
+      },
+      "invariants": [
+        {
+          "id": "operator-confirmation",
+          "all": ["--confirmed-stopped", "--confirmed-git-stopped"]
+        },
+        {
+          "id": "no-timeout-takeover",
+          "all": ["elapsed time proves nothing"]
+        },
+        {
+          "id": "preserve-effects",
+          "all": ["effects exist must be resumed"]
+        },
+        {
+          "id": "pinned-payload",
+          "all": ["recovery reads and verifies that payload", "never regenerates"]
+        },
+        {
+          "id": "verify-before-resume",
+          "all": ["verifies refs, paths, HEAD and committed bytes", "fails closed"]
+        }
+      ]
+    },
+    {
+      "id": "close",
+      "question": "What differs between Specification Close and Workspace / Worktree Close?",
+      "owners": {
+        "baseline": ["architecture.runtime.specflow-lifecycle"],
+        "after": [
+          "architecture.runtime.specification-close-lifecycle",
+          "architecture.runtime.specification-worktree-integration"
+        ]
+      },
+      "invariants": [
+        {
+          "id": "archive-only",
+          "all": ["integrateToTargetBranch:false", "selected Spec"]
+        },
+        {
+          "id": "exclusive-source",
+          "all": ["exclusive", "CLOSE_SHARED_WORKTREE"]
+        },
+        {
+          "id": "all-occupants",
+          "all": ["entire source branch", "all occupants", "registry revision"]
+        },
+        {
+          "id": "external-merge-refusal",
+          "all": ["CLOSE_EXTERNAL_MERGE_UNSUPPORTED", "before any Git"]
+        },
+        {
+          "id": "checkout-quiescence",
+          "all": [
+            "without the port Close does not remove a checkout",
+            "session-turn-running",
+            "unknown",
+            "A store that cannot be read refuses"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tasks",
+      "question": "What blocks Task completion?",
+      "owners": {
+        "baseline": ["architecture.workflow.workflow-kernel"],
+        "after": [
+          "architecture.workflow.workflow-tasks",
+          "architecture.workflow.workflow-definitions-and-gates",
+          "architecture.workflow.workflow-runs-and-handoffs"
+        ]
+      },
+      "invariants": [
+        {
+          "id": "completion-is-run-state",
+          "all": ["There is no `completed` status", "terminal {completed}"]
+        },
+        {
+          "id": "authoritative-exit-gates",
+          "all": [
+            "`finishStep` evaluates the exit gates",
+            "inside the lock",
+            "WORKFLOW_GATE_UNSATISFIED"
+          ]
+        },
+        {
+          "id": "broken-task-refusal",
+          "all": ["WORKFLOW_STATE_CORRUPT", "before anything is written"]
+        },
+        {
+          "id": "pending-document-changes",
+          "all": ["WORKFLOW_TASK_BUSY", "documentChangePending"]
+        },
+        {
+          "id": "finish-attempt-and-input",
+          "all": ["WORKFLOW_ATTEMPT_MISMATCH", "feedback", "pinned definition"]
+        }
+      ]
+    },
+    {
+      "id": "queue",
+      "question": "How does the document commit queue recover after a crash?",
+      "owners": {
+        "baseline": [
+          "architecture.runtime.specification-documents",
+          "adr.0016-engine-owned-document-commits"
+        ],
+        "after": [
+          "architecture.runtime.document-write-and-commit-queue",
+          "adr.0016-engine-owned-document-commits"
+        ]
+      },
+      "invariants": [
+        {
+          "id": "durable-storage",
+          "all": ["persisted journals", "per-checkout lease"]
+        },
+        {
+          "id": "positive-takeover-evidence",
+          "all": ["automatic takeover needs a dead proof", "operator assertion"]
+        },
+        {
+          "id": "verify-commit-content",
+          "all": ["trailer alone is never trusted", "recorded content of every path"]
+        },
+        {
+          "id": "uncertainty-retained",
+          "all": ["not-terminated", "recovery"]
+        },
+        {
+          "id": "restart-publication",
+          "all": ["startup pass rolls interrupted writes", "resumeDocumentChange"]
+        }
+      ]
+    },
+    {
+      "id": "sessions",
+      "question": "What are Managed Session lifecycle boundaries?",
+      "owners": {
+        "baseline": ["architecture.ai.session-storage-and-lifecycle"],
+        "after": ["architecture.ai.session-storage-and-lifecycle"]
+      },
+      "invariants": [
+        {
+          "id": "independent-session",
+          "all": [
+            "Core records and operations do not require spec/task/workflow",
+            "Associations live outside"
+          ]
+        },
+        {
+          "id": "singleton-positive-evidence",
+          "all": [
+            "SESSION_STORE_BUSY",
+            "Never steal based on elapsed time",
+            "positively establishes"
+          ]
+        },
+        {
+          "id": "unknown-blocks-dispatch",
+          "all": ["New dispatch is forbidden", "nonterminal/unknown", "not redispatched"]
+        },
+        {
+          "id": "cancel-not-proof",
+          "all": ["Cancel is a durable request, not proof", "no invented success"]
+        },
+        {
+          "id": "archive-delete-refusals",
+          "all": ["SESSION_DELETE_BLOCKED", "TURN_CONFLICT", "no Turn is nonterminal or unknown"]
+        }
+      ]
+    }
+  ]
+}

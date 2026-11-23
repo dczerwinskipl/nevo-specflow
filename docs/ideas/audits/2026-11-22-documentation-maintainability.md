@@ -238,3 +238,14 @@ tracked by #206/#207 until evidenced on the final PR HEAD.
 | `engineering/shared/specification-create-recovery.md` | Reformat | 0 long paragraphs, 1 long bullets; longest section 282 words | code check pending |
 | `engineering/shared/testing.md` | Keep | no long paragraph/bullet detected | code check pending |
 | `product/README.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `product/shared/README.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `product/shared/localization.md` | Reformat | 0 long paragraphs, 2 long bullets; longest section 319 words | code check pending |
+| `product/shared/vocabulary.md` | Reformat | 0 long paragraphs, 1 long bullets; longest section 175 words | code check pending |
+| `product/specflow/README.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `product/specflow/cli/README.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `product/specflow/specification-creation.md` | Reformat | 12 long paragraphs, 5 long bullets; longest section 2390 words | code check pending |
+| `product/specflow/specification-documents.md` | Reformat | 0 long paragraphs, 6 long bullets; longest section 750 words | code check pending |
+| `product/specflow/ui/README.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `product/specflow/ui/application-architecture.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `product/specflow/ui/application-navigation-and-auth.md` | Reformat | 1 long paragraphs, 0 long bullets; longest section 450 words | code check pending |
+| `product/specflow/ui/authentication-recovery.md` | Keep | no long paragraph/bullet detected | code check pending |

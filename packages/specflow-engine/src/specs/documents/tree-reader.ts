@@ -93,9 +93,10 @@ async function buildDocumentTree(
     subject,
     commitReadOptions(options, resolved.now, await readCommitPolicyMode(engine.context)),
   );
-  // An archived Specification is read-only whatever waits.
+  // An archived Specification is read-only whatever waits; an invalid Git policy already makes
+  // every write unavailable, and reading the holds would throw on that policy.
   const attemptCommit =
-    loaded.location === 'active'
+    loaded.location === 'active' && policyReason !== 'git-policy-invalid'
       ? treeAttemptCommitOf(
           await engine.attemptCommitHolds?.(loaded.workspaceId),
           subject.directory,

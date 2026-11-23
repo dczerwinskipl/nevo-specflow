@@ -79,8 +79,7 @@ related:
 
 - **Serialization.** All mutations, `inspectExecution` and `rememberArchetypeModel` run inside
   `withProjectControlLock`.
-- **Per-Task files.** Each Task has its own file, so parallel Task worktrees can later merge without
-  conflicts (follow-up F08).
+- **Per-Task files.** Each Task has its own file. This reduces Git merge conflicts between Task changes; concurrent worktree merges are not guaranteed.
 
 ### Commits of the execution state
 

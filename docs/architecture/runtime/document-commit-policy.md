@@ -31,13 +31,19 @@ Governing decision: [ADR 0018](../decisions/0018-engine-commit-policy-and-manual
 admission; a change affects new operations only (a non-empty queue drains normally; a non-empty ledger is never
 committed silently).
 
+#### Parsing, admission and journal mode
+
 `parseCommitsPolicy` accepts `auto` (a closed set of boolean capability keys, `documents`);
 `parseGitWorktreePolicy` reads the local `git.commits.auto` (the only local `git.commits` key) and `effectiveAutoCommit`
 returns the value with its source (`project`, `local`, `default`); an invalid value or an unknown key is
 `GIT_POLICY_INVALID`, also while Git is disabled (the setting is then inert: nothing is committed, writes complete
-`not-applicable`). The mode is pinned in the journal as `commitMode` (`auto` with the pinned `commit.branch`, or `manual`
+`not-applicable`).
+
+The mode is pinned in the journal as `commitMode` (`auto` with the pinned `commit.branch`, or `manual`
 without a commit; absent while Git is disabled). Manual-mode and queued operations never share a path state: the ledger holds
-the first, the queue the second. The reservation counts the ledger's paths plus the ones of manual writers still in
+the first, the queue the second.
+
+The reservation counts the ledger's paths plus the ones of manual writers still in
 flight and refuses the 201st distinct path with `DOCUMENT_UNCOMMITTED_LIMIT` before anything is written. The journal stage
 `abandoned` does not exist as a stage or a commit state (`completed` with outcome `uncommitted`, state `uncommitted`).
 
@@ -52,11 +58,17 @@ section that upserts the ledger; its claim is released and its journal moves to 
 **The ledger** (generic, `specs/durable/ledger/`): one durable record per checkout and owner (`specification`,
 `definitions`, later `task`, `review`) of the paths the Engine changed and did not commit, each with the post-image
 sha256 (or `absent`), the producing operation ids (at most 50 kept) and the pinned branch. `abandon` writes the same
-entries. It holds no claim. A record is `engine/operations/ledger/<workspaceId>/<owner>.json`, published by atomic rename
+entries. It holds no claim.
+
+A record is `engine/operations/ledger/<workspaceId>/<owner>.json`, published by atomic rename
 under the control lock and read lock-free; entries are `{ path, postSha256 | null, operationIds, operationCount,
-recordedAt, reason }` and the record pins `branch`, `head` and `workspaceRoot`. It is pruned when entries equal `HEAD`
+recordedAt, reason }` and the record pins `branch`, `head` and `workspaceRoot`.
+
+It is pruned when entries equal `HEAD`
 (after a queued batch commits, a flush, a hand commit seen by the 30-second sweep, a manual commit or the Close flush): the
-read-only effective-set read runs outside the lock and an entry is removed only if it is still the one judged. It is the only source of what a manual commit may include. Its revision is
+read-only effective-set read runs outside the lock and an entry is removed only if it is still the one judged.
+
+It is the only source of what a manual commit may include. Its revision is
 the sha256 of the sorted `path:postSha256` list.
 
 ### Manual commit admission
@@ -66,22 +78,44 @@ queued batch. Scope `specification | definitions | all`; an optional path subset
 effective set is the ledger paths of the scope that differ from `HEAD`; any ledger path edited since its post-image, or a
 changed branch, refuses the whole request (`MANUAL_COMMIT_CONFLICT`); the message is user text, validated and neutralised,
 plus the Engine trailers; author per ADR 0013. **It is not `git commit -a`**: no path outside the ledger is ever
-committed. States: `reserved` -> `committing` -> `completed` (`committed` or `nothing-to-commit`), `failed` (no effect),
+committed.
+
+States: `reserved` -> `committing` -> `completed` (`committed` or `nothing-to-commit`), `failed` (no effect),
 `recovery-required`; order commit, verify, prune, complete; each step idempotent, resumed by the trailer lookup.
+
+#### Manual commit journal and lease
 
 `specs/manual-commit/` is a journal kind of the durable core (`engine/operations/manual-commit/`,
 `settled/`, a payload holding the ledger snapshot and the message, 16 KiB) with the stages `reserved`, `committing`,
-`completed`, `failed` and `recovery-required` of its own. The checkout lease moved to `specs/durable/lease.ts` (the record, the
+`completed`, `failed` and `recovery-required` of its own.
+
+The checkout lease moved to `specs/durable/lease.ts` (the record, the
 in-process mark and the dead proof; the queue binds it to its error vocabulary), so the queue and the manual commit exclude each
-other through one file. The module imports no other Specification slice: the composition `documents/manual-commit.ts` resolves the
+other through one file.
+
+The module imports no other Specification slice: the composition `documents/manual-commit.ts` resolves the
 target (a Specification, the definitions, or a checkout) and supplies the ports (the claim check, the flush of the queue,
-the quiet check of the paths). Admission order: Git enabled, queue at rest after a flush, ledger not empty, `ledgerRevision`, subset
+the quiet check of the paths).
+
+#### Admission and reservation
+
+Admission order: Git enabled, queue at rest after a flush, ledger not empty, `ledgerRevision`, subset
 closure, pinned branch, port preflight, no path edited since its post-image; the reservation re-reads the ledger under the control
-lock and starts over when it moved. The reservation holds the checkout claim and the paths (a write of them is `SPEC_BUSY`) until
-the journal ends. Execution takes the lease, records `parentHead` and the executor, records the start of the commit before Git
+lock and starts over when it moved.
+
+The reservation holds the checkout claim and the paths (a write of them is `SPEC_BUSY`) until
+the journal ends.
+
+#### Execution and verification
+
+Execution takes the lease, records `parentHead` and the executor, records the start of the commit before Git
 runs, commits the effective set through the port (kind `manual-commit`, a multi-line sanitised body, the paths in a pathspec
 file), proves the commit holds every post-image, prunes the ledger entries as judged at the reservation, completes the journal and
-releases the lease. A repeat finds its own commit by the `Nevo-Operation` trailer, accepts it only when it is the whole snapshot
+releases the lease.
+
+#### Replay and recovery
+
+A repeat finds its own commit by the `Nevo-Operation` trailer, accepts it only when it is the whole snapshot
 and HEAD holds it, and never commits twice; a failure that does not prove the commit never ran waits for `recover`. Journal edges:
 `reserved` to `committing` or `failed`; `committing` to itself (a new executor, the start of the commit), `completed`, `failed` or
 `recovery-required`; `recovery-required` to `committing` (resume), `completed` (adopt) or `failed` (abandon).
@@ -92,10 +126,16 @@ and HEAD holds it, and never commits twice; a failure that does not prove the co
 (`DOCUMENT_COMMITS_PENDING`, cause `commit-uncommitted`), except for the execution state of the Specification a
 Specification Close archives ([Commits of workflow state](#commits-of-workflow-state)). `SPEC_MANIFEST_DIRTY` is judged against the post-image of the
 latest operation in flight, else the ledger post-image, else `HEAD` (a manifest that equals `HEAD` also passes a ledger
-entry that no prune removed yet); a foreign edit is a hash mismatch. Policy flips: `on -> off` lets queued work drain with its
+entry that no prune removed yet); a foreign edit is a hash mismatch.
+
+Policy flips: `on -> off` lets queued work drain with its
 pinned mode and makes later writes `uncommitted`; `off -> on` commits nothing, the entries stay until a later `auto` write
-of the path commits it (and prunes) or a manual commit. `init` and `definitions install` register the paths they commit
-in the `definitions` owner before the commit and prune after it, so what an interrupted install leaves is known. With the policy on, a manual commit needs an empty queue for the scope (after a flush);
+of the path commits it (and prunes) or a manual commit.
+
+`init` and `definitions install` register the paths they commit
+in the `definitions` owner before the commit and prune after it, so what an interrupted install leaves is known.
+
+With the policy on, a manual commit needs an empty queue for the scope (after a flush);
 with it off it is always available once queued work has drained.
 
 ## Commits of workflow state
@@ -137,19 +177,25 @@ published change is ONE document operation of action `workflow` (contract
   and `tasks/`, closed under shared operation ids, subject `spec(workflow): finish "<step title>"[ of task <id>] in <slug>`
   and the step id and attempt in the body (`Step solution, attempt 1.`). A path edited since the Engine
   wrote it (an agent writing `tasks/<id>/task.md` directly) would refuse the manual commit, and every
-  later one, since each takes all the execution state. So before the commit the post action prunes the
+  later one, since each takes all the execution state.
+  - So before the commit the post action prunes the
   ledger once (an edit already committed with Git is no edit), then leaves out the edited paths with
-  every path of their operations (`held` in the result) and commits the rest. The Task index
+  every path of their operations (`held` in the result) and commits the rest.
+  - The Task index
   (`tasks/index.yaml`) joins no operations here: every Task create, edit and removal rewrites it, so
-  it would tie all Tasks into one and hold them all. Only the edited Task's own files are held; the
+  it would tie all Tasks into one and hold them all.
+  - Only the edited Task's own files are held; the
   other Tasks commit. The index commits with them unless it would register a held Task that HEAD does
   not have (its creation is held) or drop one HEAD still has (its removal is held); then the index is
-  held too. While the index waits, every Task of the commit whose `task.yaml` exists in only one of
+  held too.
+  - While the index waits, every Task of the commit whose `task.yaml` exists in only one of
   the working tree and HEAD (created or removed since) waits with it, with all paths of its
   operations, so HEAD never holds a Task folder or run record its index does not list, nor an index
   entry without its Task (no `unregistered`, `broken` or `dangling` Task read from HEAD). Edits of
-  Tasks HEAD already registers still commit. The next finish after the held Task is committed takes
-  the index and the waiting Tasks. The held paths stay uncommitted
+  Tasks HEAD already registers still commit.
+  - The next finish after the held Task is committed takes
+  the index and the waiting Tasks.
+  - The held paths stay uncommitted
   until a person commits them with Git or a Close archives them.
 - **Workflow subjects** follow the same rule as document subjects: at most 72 characters and never cut. When
   `<summary> in <slug>` does not fit, the summary goes alone, then `change the workflow state`; the body then holds the

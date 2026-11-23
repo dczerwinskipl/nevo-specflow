@@ -181,3 +181,18 @@ tracked by #206/#207 until evidenced on the final PR HEAD.
 | `architecture/runtime/specification-close-lifecycle.md` | Reformat | 5 long paragraphs, 1 long bullets; longest section 731 words | code check pending |
 | `architecture/runtime/specification-create-lifecycle.md` | Reformat | 5 long paragraphs, 1 long bullets; longest section 412 words | code check pending |
 | `architecture/runtime/specification-create-options.md` | Reformat | 0 long paragraphs, 4 long bullets; longest section 265 words | code check pending |
+| `architecture/runtime/specification-documents.md` | Reformat | 0 long paragraphs, 1 long bullets; longest section 555 words | code check pending |
+| `architecture/runtime/specification-lifecycle.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `architecture/runtime/specification-workspace-composition.md` | Reformat | 0 long paragraphs, 5 long bullets; longest section 213 words | code check pending |
+| `architecture/runtime/specification-worktree-integration.md` | Reformat | 2 long paragraphs, 1 long bullets; longest section 1076 words | code check pending |
+| `architecture/runtime/task-read-composition.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `architecture/runtime/task-read-pagination-and-grouping.md` | Reformat | 0 long paragraphs, 5 long bullets; longest section 296 words | code check pending |
+| `architecture/runtime/workspace-documentation-corpus.md` | Reformat | 0 long paragraphs, 3 long bullets; longest section 426 words | text parity #209 |
+| `architecture/runtime/workspace-execution-claims.md` | Reformat | 1 long paragraphs, 1 long bullets; longest section 484 words | code check pending |
+| `architecture/ui-application-composition.md` | Reformat | 2 long paragraphs, 3 long bullets; longest section 552 words | code check pending |
+| `architecture/workflow/README.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `architecture/workflow/deterministic-workflow.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `architecture/workflow/workflow-action-projections.md` | Reformat | 0 long paragraphs, 4 long bullets; longest section 325 words | text parity #209 |
+| `architecture/workflow/workflow-continuation-and-attention.md` | Reformat | 3 long paragraphs, 2 long bullets; longest section 1372 words | code check pending |
+| `architecture/workflow/workflow-definitions-and-gates.md` | Reformat | 0 long paragraphs, 2 long bullets; longest section 600 words | text parity #210 |
+| `architecture/workflow/workflow-kernel.md` | Keep | no long paragraph/bullet detected | code check pending |

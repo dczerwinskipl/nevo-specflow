@@ -276,3 +276,18 @@ tracked by #206/#207 until evidenced on the final PR HEAD.
 | `reference/api/specification-creation-demo.md` | Keep | no long paragraph/bullet detected | code check pending |
 | `reference/api/specification-documents.md` | Keep | no long paragraph/bullet detected | code check pending |
 | `reference/api/specification-workflow.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `reference/api/specification-workspace.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `reference/api/specs-operations-list.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `reference/api/specs-overview.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `reference/api/task-reads.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `reference/api/workspace-docs.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `reference/api/workspaces.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `reference/cli/nevo-specflow-contract.md` | Reformat | 1 long paragraphs, 1 long bullets; longest section 868 words | code check pending |
+| `reference/cli/nevo-specflow-docs.md` | Reformat | 12 long paragraphs, 2 long bullets; longest section 2164 words | code check pending |
+| `reference/cli/specflow-specification-commands.md` | Reformat | 5 long paragraphs, 5 long bullets; longest section 1030 words | code check pending |
+| `reference/configuration/authorization.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `reference/configuration/documentation-and-embeddings.md` | Reformat | 10 long paragraphs, 0 long bullets; longest section 421 words | code check pending |
+| `reference/configuration/specflow-git-worktrees.md` | Reformat | 1 long paragraphs, 0 long bullets; longest section 397 words | code check pending |
+| `reference/configuration/specification-definitions.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `reference/protocols/session-provider-driver.md` | Reformat | 2 long paragraphs, 2 long bullets; longest section 441 words | code check pending |
+| `reference/providers/README.md` | Keep | no long paragraph/bullet detected | code check pending |

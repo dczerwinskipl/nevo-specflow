@@ -239,49 +239,22 @@ the handoff.
 
 #### Completion guards
 
-Rule ([ADR 0024](../decisions/0024-tasks-are-resources.md), decision 12): a
-Specification run never reaches the terminal outcome `completed` while a Task is **open**, in any
-Specification workflow, with or without a wait step. Open is every Task that is not closed (its run
-is not terminal and it is not `cancelled`): a draft, an approved Task that never started, a running,
-waiting or held one, and a broken one (its work is not known). A Task whose own workflow ended it,
-completed or abandoned, is closed. The rule is `tasksOpenAtCompletion` (with `openTasks`) in
-`tasks/tasks.ts`; it never looks at step ids or names.
+A Specification cannot reach `terminal {completed}` with **any open Task**, regardless of workflow or wait step ([ADR 0024](../decisions/0024-tasks-are-resources.md)). Open includes draft, approved-not-started, active, waiting, held and broken. Closed means cancelled or a terminal Task run (completed or abandoned). The Engine's `tasksOpenAtCompletion` checks Task state, not step names.
 
 #### Finish refusal
 
-- **Finish.** `advance` (`operations/advance.ts`) refuses a Specification decision whose intent is `terminal {completed}` while Tasks are open, with `WORKFLOW_TASKS_OPEN` (`TasksOpenError`, `openTasks: [{taskId, cause}]` in id order).
-  - Like the draft and escalation guard it judges the state the change would produce, after the finish's `tasks`, its `taskDecisions` and the transition's effects, so a finish that cancels the last open Tasks itself completes; and it runs before anything is written, so the attempt stays active.
-  - A wait step's `tasks-finished` completes only with every Task closed and `task-escalated` always leads to a step, so both pass.
-  - A repeated finish (F16 replay) returns the recorded result without asking the rule again.
-  - Abandon is not affected.
-  - The finish asks the rule before its exit gates, so a finish with both problems is refused for its open Tasks; once they are closed, an unmet gate still refuses it.
+- `advance` evaluates the **post-finish** Task set, after `tasks`, `taskDecisions` and transition effects, but before writing. If any remain open, return `WORKFLOW_TASKS_OPEN` (`TasksOpenError`) with ordered `openTasks: [{taskId, cause}]`; keep the attempt active.
+- A finish that closes the final open Tasks may complete immediately. `tasks-finished` waits require all Tasks closed; `task-escalated` leads to a step.
+- Idempotent successful finish replay (F16) uses the recorded result; Abandon is not subject to this guard.
+- Check open Tasks **before** exit gates, so an operation blocked by both reports Tasks first.
 
 #### Blocker classification
 
-- **Causes.** `cause` is one of `BLOCKING_TASK_CAUSES` (`draft`, `on-hold`, `broken`,
-  `dependency-unsatisfiable`, which only a person resolves) or `active` (an attempt runs), `waiting`
-  (`ready`, waiting for open dependencies) and `ready` (can start, or continue with its next step).
-  `blockingTasks` (the `tasks-stuck` explanation) is `openTasks` restricted to the blocking causes, so
-  both explanations use one model and one vocabulary.
+`BLOCKING_TASK_CAUSES` are `draft`, `on-hold`, `broken` and `dependency-unsatisfiable` (require human action). Other open causes: `active`, `waiting` (ready but blocked by dependencies), `ready`. `blockingTasks`/`tasks-stuck` is the blocking subset of `openTasks`, with the same vocabulary.
 
 #### Projected refusals
 
-- **Projection.** The action projection asks the same rule on the current Tasks: such a transition is
-  `unavailable: tasks-open` with `openTasks` (it wins over `gate-unsatisfied`; meeting a gate would
-  not help). Because the finish judges the state after its own input, the projection also plans the
-  finish that closes the most (`finishClosingOpenTasks` in `tasks/tasks.ts`, with the rules the
-  finish applies): every draft the producing step owns left out, every Task a `taskDecisions` entry
-  may cancel cancelled, then the transition's effects. When that closes every open Task, the
-  transition carries `resolvableByFinish: true` and `closableTasks [{taskId, by: left-out |
-decision}]`, so a surface lets the person submit it and names what has to close; the finish
-  still decides. No declared effect closes a Task (`approve-draft-tasks` only approves drafts), so
-  every open Task must close by its own draft being left out or by a decision. Otherwise (an active
-  attempt, a broken Task, or a Task with a pending document change, which a finish cannot write:
-  `WORKFLOW_TASK_BUSY`) it is plainly unavailable; the Tasks with a pending document change are
-  named in `documentChangePending`. A test finishes with exactly the input `closableTasks` names
-  (`actions.test.ts`), so the projection and the finish cannot drift apart.
-- **No attention item for open Tasks.** Open Tasks are the Tasks' normal progress, not something
-  to fix: the Specification gets no attention item for them. The Now block names them (see
-  [Workflow execution](../../product/specflow/ui/workflow-execution.md#dialogs)). The one exception
-  is a Task **on hold** among them: it gets `on-hold-blocking` with `blocks.finish` (see "Held
-  Tasks" under "Continuation and attention"), because only the user moves it.
+- Action projections report `unavailable: tasks-open` and `openTasks` before `gate-unsatisfied`. They simulate the finish's post-state, not merely today's Task list.
+- `resolvableByFinish:true` and `closableTasks [{taskId, by: left-out | decision}]` appear only if omitting owned drafts and permitted `taskDecisions` can close **all** remaining Tasks. `approve-draft-tasks` never closes Tasks.
+- Active/broken Tasks or pending document changes (`WORKFLOW_TASK_BUSY`) cannot be silently resolved; pending ones appear in `documentChangePending`. Mutation still performs authoritative checks, using the same rules as projection.
+- Normally open Tasks do **not** produce Specification attention: they are progress. Only a blocking on-hold Task produces `on-hold-blocking` with `blocks.finish`; see [Continuation and attention](workflow-continuation-and-attention.md) and [Now UI](../../product/specflow/ui/workflow-execution.md#dialogs).

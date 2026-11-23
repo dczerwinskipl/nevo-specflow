@@ -208,8 +208,8 @@ The Engine computes, as a pure function of the registry, the persisted requireme
 ## Windows-hosted paths
 
 - **Admission, not Git retry:** reject paths exceeding the Windows host bound before journal creation or any write. Do not assume Git for Windows `core.longpaths` or OS long-path opt-in; these external settings are not owned or verifiable by Engine.
-- Rule: on `win32`, if `length(workspaceRoot) + 1 + length(relative path)` exceeds 240 characters, reservation fails with `DOCUMENT_PATH_INVALID` (`details.cause: 'path-too-long'`) before any journal or file exists.
+- **Bound (`win32` only):** before reservation, check every planned **write** target and its temporary sibling. Refuse with `DOCUMENT_PATH_INVALID` (`details.cause: 'path-too-long'`) when `workspaceRoot.length + 1 + max(relativeTarget.length, directoryPrefix.length + 16)` exceeds 240 characters. `directoryPrefix` includes its trailing separator (or is empty at root). Pure removals are exempt; no journal or bytes are written.
 - The same rule applies to Create (scaffold and added documents) and to every write target path (create, rename, move, classify of a file whose new path is longer, folder expansion).
-- Engine temporary files use a fixed short name (at most 16 characters) in the target directory so they never exceed the bound.
+- Temporary files use a fixed 16-character name in the target directory. Their full path is included in the admission bound.
 - The bound is in the [document limits table](document-limits.md).
 - Other platforms do not apply the rule.

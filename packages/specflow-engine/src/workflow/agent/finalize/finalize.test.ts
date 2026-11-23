@@ -173,6 +173,8 @@ describe('finalizeAgentAttempt', () => {
     });
     expect(events).toEqual([
       'lock',
+      // What the finish was judged on, before the step state is published.
+      'journal',
       'store',
       'journal',
       'settle',
@@ -578,6 +580,40 @@ describe('finalizeAgentAttempt', () => {
       documents: 2,
       files: 1,
     });
+  });
+
+  it('replays a crash after the publication with the hashes it was judged on, not the checkout now', async () => {
+    const fixture = await agentTurn({ proposal: false });
+    const { dependencies, state, journal } = fixture;
+    const code = (sha: string) => ({
+      path: 'src/a.ts',
+      sha256: sha.repeat(64),
+      added: false,
+      area: { kind: 'code' as const },
+    });
+    state.attribution = { paths: [code('b')], incomplete: false };
+    state.claimDispatched = true;
+    await proposeAgentFinish(dependencies, {
+      turn: turn(),
+      input: {},
+      changes: { paths: ['src/a.ts'] },
+    });
+    state.claimDispatched = false;
+    state.fault = 'step-published';
+    await expect(finalizeAgentAttempt(dependencies, finalizeInput())).rejects.toThrow('Crash');
+    expect(journal.journals.get(ATTEMPT_ID)?.proposal).toMatchObject({
+      state: 'pending',
+      judged: { declared: [{ path: 'src/a.ts', sha256: 'b'.repeat(64) }] },
+    });
+
+    // Someone edits the declared file before the finalize runs again.
+    state.fault = undefined;
+    state.attribution = { paths: [code('e')], incomplete: false };
+    expect((await finalizeAgentAttempt(dependencies, finalizeInput())).kind).toBe('finished');
+    expect(finishes(fixture)).toBe(1);
+    expect(journal.settled.get(ATTEMPT_ID)?.postActions?.[0]?.declared).toEqual([
+      { path: 'src/a.ts', sha256: 'b'.repeat(64) },
+    ]);
   });
 
   it('refuses another Turn, a Turn never dispatched, or another receipt before anything changes', async () => {

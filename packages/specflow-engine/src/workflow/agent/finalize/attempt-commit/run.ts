@@ -146,15 +146,36 @@ export async function commitAgentAttempt(
         ? error.code
         : 'POST_ACTION_FAILED';
 
+    const message =
+      error instanceof Error ? error.message : 'The commit of the agent attempt failed.';
+    const paths = pathsOf(error);
+
     return [
       {
         action: ACTION,
         status: 'failed',
         code,
-        message: error instanceof Error ? error.message : 'The commit of the agent attempt failed.',
+        // The paths a refusal names (an edit since the step was published, for example).
+        message: paths.length > 0 ? `${message} (${named(paths)})` : message,
       },
     ];
   }
+}
+
+/** The paths a refusal names in its details, if any. */
+function pathsOf(error: unknown): readonly string[] {
+  const details =
+    error instanceof Error && 'details' in error
+      ? (error as { details?: unknown }).details
+      : undefined;
+  const paths =
+    typeof details === 'object' && details !== null && 'paths' in details
+      ? (details as { paths?: unknown }).paths
+      : undefined;
+
+  return Array.isArray(paths)
+    ? paths.filter((path): path is string => typeof path === 'string')
+    : [];
 }
 
 function completed(result: ManualCommitCommandResult): readonly PostActionResult[] {

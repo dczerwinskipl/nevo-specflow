@@ -231,7 +231,13 @@ export function actionLines(projection: ActionProjection): string[] {
       projection.position.kind === 'awaiting-confirmation'
         ? ` --confirms-digest ${projection.position.confirmsDigest}`
         : '';
-    lines.push(`Action: confirm "${confirm.step}" attempt ${confirm.attempt}${digest}`);
+    lines.push(
+      confirm.unavailable
+        ? `Confirm waits for the agent's commit (${confirm.unavailable.reason}` +
+            `${confirm.unavailable.code !== undefined ? `, ${confirm.unavailable.code}` : ''}); ` +
+            `Action: retry-commit --step ${confirm.step} --attempt ${String(confirm.attempt)}`
+        : `Action: confirm "${confirm.step}" attempt ${confirm.attempt}${digest}`,
+    );
   }
 
   if (reject) {

@@ -5,6 +5,19 @@
  * (`SpecFlowEngine.failedAttemptCommits`); this module only shapes them for a refusal.
  */
 
+/**
+ * Why an agent attempt's own commit (D15) still waits, while it does: `attempt-commit-pending` (it
+ * has not run yet, or a crash interrupted it), `attempt-commit-failed` (its last run failed, `code`;
+ * the owner retries it). With Git on, the owner's Confirm of the attempt's result is refused while
+ * it waits (`WORKFLOW_ATTEMPT_COMMIT_REQUIRED`), so the owner's commit of the transition never comes
+ * before the agent's work, nor takes it. The workflow supplies it through the opened Engine
+ * (`SpecFlowEngine.attemptCommitWait`).
+ */
+export interface AttemptCommitWait {
+  readonly reason: 'attempt-commit-pending' | 'attempt-commit-failed';
+  readonly code?: string;
+}
+
 /** A finished agent attempt whose commit failed, with every path that commit would hold. */
 export interface FailedAttemptCommit {
   readonly attemptId: string;

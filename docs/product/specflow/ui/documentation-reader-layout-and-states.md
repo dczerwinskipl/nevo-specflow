@@ -9,7 +9,7 @@ read_when:
   - changing reader responsive layout or article rendering
   - handling unavailable documents, corpus changes or keyboard accessibility
 summary: >-
-    Reader two-pane composition, article rendering, loading/error states, Runtime availability and accessibility requirements.
+  Reader two-pane composition, article rendering, loading/error states, Runtime availability and accessibility requirements.
 related:
   - product.specflow.ui.documentation-reader
   - product.specflow.ui.documentation-reader-navigation

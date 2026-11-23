@@ -92,3 +92,9 @@ Corpus Git trees and search implementation Git trees, commit SHAs, effective pro
 configuration, Node version, fixture hash, output hashes and measurement policy are in JSON.
 There are no timestamps or absolute checkout paths. Run twice and compare output bytes to
 check reproducibility. The benchmark never edits measured checkouts.
+
+The `quality` CI job runs the lightweight Python tests, including controlled CLI responses
+through search parsing, content fetches, coverage and JSON/Markdown generation. It does not
+build historical worktrees or run the full benchmark. Empty search results are recorded as
+zero initial reads, a failed top-1 match and zero initial coverage; supplementary owner reads
+remain separate, so they cannot hide the discovery failure.

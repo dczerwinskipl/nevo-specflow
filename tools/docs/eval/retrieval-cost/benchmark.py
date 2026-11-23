@@ -109,9 +109,11 @@ def run(root, label, fixture):
         if search["skipped"]:
             raise ValueError(search["skipped"])
         search_text = command(root, "node", "tools/docs/dist/bin.js", *args)
-        read_all = next(line for line in search_text.splitlines() if line.startswith("read all: "))
         # Consume the CLI's own reference selection; never reimplement its section policy.
-        refs = shlex.split(read_all.split(" --content ", 1)[1])
+        refs = []
+        if search["results"]:
+            read_all = next(line for line in search_text.splitlines() if line.startswith("read all: "))
+            refs = shlex.split(read_all.split(" --content ", 1)[1])
         initial, initial_docs = fetch(root, refs)
         owners = question["owners"]["baseline" if label == "baseline" else "after"]
         extra_refs = [owner for owner in owners if owner not in refs]
@@ -128,7 +130,7 @@ def run(root, label, fixture):
             "search": search,
             "searchText": measure(search_text),
             "owners": owners,
-            "top1Owner": search["results"][0]["id"] in owners,
+            "top1Owner": bool(search["results"]) and search["results"][0]["id"] in owners,
             "ownersInTop10": [h["id"] for h in search["results"] if h["id"] in owners],
             "unexpectedDocuments": [h["id"] for h in search["results"] if h["id"] not in owners],
             "returnedSections": sum(len(h["sections"]) for h in search["results"]),

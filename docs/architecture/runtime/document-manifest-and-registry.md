@@ -85,7 +85,6 @@ preserved (accepted limitation).
 
 ## Identity, paths and the registry
 
-
 ### Document identity
 
 - `documentId` is stable for the life of the document; rename and move keep it. The first document of a type
@@ -147,7 +146,6 @@ Specification's other documents.
 | `specification` | `specs/active/<slug>`   | `specification.yaml`      | `overview` (`overview.md`)                     |
 | `task`          | `<spec>/tasks/<taskId>` | `task.yaml` `documents[]` | `task` (`task.md`)                             |
 
-
 #### Task container and mutation scope
 
 - A Task container has no folders: save, batch save, create (typed documents, directly in the Task folder, never
@@ -190,7 +188,6 @@ from their first 8 KiB only.
 ## Validation results (never stored)
 
 The Engine computes, as a pure function of the registry, the persisted requirements and the observed files:
-
 
 ### Requirement results
 

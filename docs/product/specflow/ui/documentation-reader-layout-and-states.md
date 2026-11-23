@@ -35,50 +35,28 @@ Wide / Compact                                   Narrow
 
 ### Tree and search pane
 
-- **Tree pane:** workspace picker (more than one workspace), the sticky search field (the shared tree pane search bar and geometry of Documents, see [Tree pane](../../../design-system/implementation/react/component-guidelines.md#tree-pane) and [Sticky field and the software keyboard](documentation-reader-search.md#sticky-field-and-the-software-keyboard)), then the tree or the results.
-  - Folders first, then documents; a folder's hub (README) leads its documents, the rest by title.
-  - A document row shows its **title** (wrapping, not truncated; full path in the tooltip and in Properties); folders show their folder name.
-  - The opened document is `aria-current`; its ancestors open on entry.
-  - A proposals prefix is labelled once, on the folder that owns it ("Proposals", tree state label), not on every row.
-  - Draft status is not shown in the tree.
-- **Search results** replace the tree while the field has text (debounced as you type; Escape or the clear button returns to the tree with its selection).
-  - A status row (the count and the proposals checkbox) and its quiet lines lead the list; each row is one document (title, at most `parent › leaf` of its best section, a plain excerpt with the matched words marked).
-  - Choosing a row opens the article at that section.
-  - Every registered workspace has hybrid search (a new worktree starts from a copy of the project folder's index and re-embeds only what changed).
-  - The search mode stays quiet: no mode, model or endpoint diagnostics.
-  - The exact rules are in [Search](documentation-reader-search.md#search).
-- **Skipped documents:** a document that fails validation is skipped, never the whole workspace.
-  - The tree and search show the valid documents; under the workspace picker one quiet attention line says "1 document is skipped: it has errors" with its path and error, or "N documents are skipped" as a collapsed disclosure listing each path (full, wrapping) and its error.
-  - A link to a skipped document is inert and gives the error.
-  - When every document is skipped, the workspace is not shown as empty: the article area (Narrow: under the picker) says that documentation files exist but none passed validation, above the same disclosure of the skipped files.
-- **Proposals in search:** left out by default; the status row's "Include proposals (N)" checkbox
-  includes them, and included rows carry the "Proposal" badge
-  ([Proposals filter](documentation-reader-search.md#proposals-filter)).
+- **Composition:** optional workspace picker, sticky shared search field, then tree or results ([tree recipe](../../../design-system/implementation/react/component-guidelines.md#tree-pane)).
+- **Tree order:** folders before documents; folder README hub first, then document titles. Titles wrap; full path in tooltip/Properties. Current document is `aria-current` and its ancestor folders expand.
+- **Labels:** mark a proposal prefix once on its folder, not on every file. Do not show Draft status in tree.
+- **Search:** debounced text replaces tree with results; Escape/Clear restores tree selection. Status/count/filter precede one row per matching document, with best section and excerpt. Hide model/endpoint diagnostics; behavior is in [Search](documentation-reader-search.md#search).
+- **Index:** every registered workspace supports hybrid search; new worktrees seed Project Home's index and refresh changed chunks.
+- **Skipped documents:** invalid files do not hide valid ones. Show a quiet count under the picker, with each path/error in a disclosure. A skipped link is inert and explains why. When all are skipped, state that files exist but none passed validation, rather than showing an empty corpus.
+- **Proposals:** excluded by default; `Include proposals (N)` reveals them with Proposal badges.
 
 ### Article and reading pane
 
-- **Article** (the Documents preview): Properties row (path, type, status, summary, id), the Markdown body (`MarkdownDocument`, frontmatter never rendered), and **Related** (frontmatter `related` as links, at the end).
-  - From a 840 px panel the Properties and the **Contents** sit in the sticky column beside the text; narrower panels show Properties above the text and a Contents icon at the right of the header, just before the `···` menu (as in the Documents preview), that opens the Contents sheet.
-  - Fenced `mermaid` blocks are drawn as diagrams, as in the Documents preview: fitted to the column down to 10 px text (a small one at its natural size), with zoom, pan and full screen; full screen keeps the same 10 px minimum and one finger pans the diagram there (see the design-system note "MarkdownDocument diagrams").
-  - Header: the document title; overflow **Copy link** (workstation-local, it contains the workspace id) and **Copy path** (portable).
-  - A proposal starts with a quiet note: "This is a proposal, not a current rule.
-  - Search leaves proposals out unless you include them."
+- **Content:** shared Documents preview: Properties (path, type, status, summary, ID), `MarkdownDocument` body without frontmatter, then Related links.
+- **Contents:** at panel width 840 px or more, sticky Contents/Properties column beside text. Below that, Properties precede text and a Contents sheet opens from the header.
+- **Diagrams:** Mermaid fences use the shared renderer with zoom/pan/full screen and minimum 10 px readable text; one-finger pan in full screen.
+- **Actions:** document title in header; menu has **Copy link** (workspace-specific URL) and **Copy path** (portable).
+- **Proposals:** quiet notice identifies non-current guidance and reminds readers that search excludes proposals by default.
 
 ### Default index and initial article
 
-- **First article (split layouts).** When the route names no document, the article area shows the
-  documentation's **root index** (`<docs.root>/README.md`) as an ordinary article, and the tree marks
-  it current. The route stays `/workspaces/:workspaceId/docs`: the address means "this workspace's
-  documentation" and stays the same when the index file is renamed or later gains another title;
-  choosing the index in the tree, a link or Copy link uses its document route as for any document.
-  There is no "choose a document" state and no list of starting points to choose from.
-- **No root index (split layouts).** One plain sentence in the article area: "This is the project
-  documentation of <workspace>; open a document in the list or search it." Nothing else.
-- **Narrow:** the tree stays the first screen; the root index is not pushed over it (it is the first
-  document of the tree's root level, one tap away). A route with a document still opens that article.
-- **No Close on split layouts.** The article area always holds a document (the index by default), so
-  a Close would only return to the index; leaving a document is choosing another one or browser Back.
-  Narrow keeps its header Back.
+- **Split view:** route without document shows `<docs.root>/README.md` as an ordinary article and marks it selected. Keep the workspace URL; opening/copying the README's own link uses its document route.
+- **No index:** show only an instruction to browse/search that workspace.
+- **Narrow:** begin at tree; index remains one tap away. A document URL opens the article directly.
+- **Back:** split view has no Close for the article; choose another or use browser Back. Narrow uses header Back.
 
 ## States
 

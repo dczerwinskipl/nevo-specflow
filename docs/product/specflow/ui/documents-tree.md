@@ -112,7 +112,6 @@ documents), from one pure function (`documentStateLabel`, `features/documents/wo
 the shared tree row. It composes two separate facts; neither implies the other, and the label names
 both only when both apply.
 
-
 #### Document content state
 
 - **Content state.** `baseline`: the file is still the initial content the Engine wrote (from an

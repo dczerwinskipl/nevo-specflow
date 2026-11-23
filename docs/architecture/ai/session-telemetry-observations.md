@@ -28,40 +28,32 @@ The Runtime serves one bounded Session telemetry snapshot plus explicit refresh,
 
 ## Observation semantics
 
-- A Session telemetry GET projects stored/aggregated values. It never starts a provider, scans
-  a transcript or replays Session Work to sum usage. It returns the four named groups
-  (usage, cost, limits and context) even when unavailable, without needing an active Turn.
-  Session totals and the selected active/latest Turn observation are independently timestamped.
-  Unknown numeric values are **omitted**, never manufactured as zero/null/NaN.
-- `available`, `partial` and `unavailable` describe coverage independently of freshness
-  (`fresh`, `stale`, `unknown`). An unavailable reading cannot contain `value`;
-  an available or partial reading must. A failed refresh keeps previously observed values
-  and times, marking `REFRESH_FAILED`. Safe reason codes never reveal native diagnostics.
-- Token usage and coverage are updated transactionally in the Session SQLite owner. Each
-  group has `observedTurns/totalTurns` and a completion flag; missing native Turn counters
-  make the aggregate partial. Relationship flags disclose whether cache-read/cache-write
-  count within input, or reasoning within output; with `unknown` overlap there is no
-  authoritative `totalTokens` sum. Lifetime usage never equals current context occupancy.
-- Money is a **decimal string** in USD with up to 12 fractional digits, provenance
-  (`provider-reported` or an explicitly supported `estimated`) and meaning
-  (`api-equivalent`, `billed`, `unknown`). Arithmetic is decimal; never round
-  unsupported native precision into a fabricated ledger amount or equate subscription
-  fees with API-equivalent spending. Estimates require a future versioned pricing
-  contract. Incompatible currency, scope or billed/estimated meaning cannot combine
-  into a complete total. Unqualified legacy numeric amounts do not become USD.
-- Account/model limit windows identify an **opaque window**, unit (tokens/requests/credits/
-  percent), safe numeric used/remaining/limit and optionally the native reset time.
-  Different windows and percentages are not additive. Do not derive remaining,
-  subscription balance or account identity from Session usage. Provider account-limit
-  caches are shared across Sessions internally and fenced to account/credential generation;
-  no secret account identifiers appear in public telemetry.
-- Current context is a gauge of the last native context generation, not a lifetime usage
-  counter. At least one of occupied or capacity tokens must be observed. Percentage is
-  meaningful only when both refer to the same model/context/instant. Breakdown components
-  are disjoint, distinct kinds whose sum cannot exceed occupancy; unclassified remainder
-  exists only when native measures are compatible. Compaction, model and account changes
-  retire an old gauge without erasing the Session's historical totals. Never infer
-  prompt/tool context from transcript bytes or fabricate an absent category.
+A telemetry GET projects stored Session/Turn observations without starting providers, scanning transcripts or replaying Work. It always returns usage, cost, limits and context groups; Session totals and active/latest Turn have separate timestamps.
+
+- **Missing data:** omit unknown numbers; never invent 0, null or NaN.
+- **Coverage:** `available`/`partial`/`unavailable` is independent of `fresh`/`stale`/`unknown`. Unavailable has no `value`; available/partial requires one.
+- **Failure:** preserve previous observations/timestamps and mark `REFRESH_FAILED`; public reason codes contain no native diagnostics.
+
+### Token coverage and overlap
+
+- Update usage and coverage transactionally in the Session SQLite owner. Each group records `observedTurns/totalTurns` and a completion flag; missing native counters mean partial coverage.
+- Cache-read/write may overlap input and reasoning may overlap output. If overlap is `unknown`, do not compute an authoritative `totalTokens`. Lifetime usage is not current context occupancy.
+
+### Cost provenance
+
+- USD amounts are decimal strings (up to 12 fractional digits), with `provider-reported` or supported `estimated` provenance and `api-equivalent`/`billed`/`unknown` meaning.
+- Never fabricate precision, treat subscription fees as API spending, combine incompatible currency/scope/meaning or reinterpret unqualified legacy numbers as USD. Estimation requires a versioned pricing contract.
+
+### Account limits
+
+- Each account/model window has an opaque ID, unit (tokens/requests/credits/percent), optional native reset time and measured used/remaining/limit values.
+- Do not sum unrelated windows or percentages, derive remaining/subscription balance from Session usage, or expose secret account identity. Share the provider cache internally, fenced by account/credential generation.
+
+### Context gauges
+
+- Current context describes the last native generation, not lifetime tokens. Observe occupied or capacity (at least one); percentage requires both for the same model, context and instant.
+- Breakdown kinds must be distinct/disjoint, with sum no greater than occupancy; remainder requires compatible native measurements.
+- Compaction/model/account changes retire the gauge but preserve Session totals. Never infer content from transcript bytes or invent missing categories.
 
 ## Refresh, events and freshness
 
@@ -72,27 +64,19 @@ The Runtime serves one bounded Session telemetry snapshot plus explicit refresh,
   `If-None-Match` or returning 304. A change in Session policy invalidates validators;
   the client discards sensitive cached groups when `accessRevision` changes. This is a
   deliberate exception to other Session endpoints' `no-store` policy.
-- The existing committed Session event stream carries `telemetry` as an
-  **invalidation**, not raw account measurements. Bootstrap snapshot first, then
-  replay after `eventSeq`; if a stream is already open, reuse it rather than opening
-  another per UI panel. Coalesce invalidations to at most **two GETs/second** per mounted
-  Session; discard responses of older revisions/access generations. Gaps or
-  `resync-required` trigger a fresh bootstrap.
-- Native telemetry writes publish invalidations via the committed SQLite outbox
-  after commit. The Worker coalesces updates into a **500 ms** per-Session window,
-  but terminal Turn publication and explicit refresh/credential fencing publish
-  promptly. The outbox persists through restart. Opening an SSE subscriber does not
-  invoke provider work.
-- Account observations are fresh for at most **60 seconds**; context observations
-  also expire within 60 seconds, including after Turn terminal/restart. Historical
-  settled usage/cost has no TTL, though its coverage remains explicit. A
-  `staleAt` deadline projects stale on a GET without a write and publishes
-  invalidation for subscribers. With no subscribers the GET remains accurate
-  without an expiry write.
-- An account change outside Runtime is discovered on the next identity check, not
-  from GET; until then the old observation ages into stale and is not claimed
-  to describe the new account. All native producer samples are fenced by
-  invocation, native context, account and credential generation.
+
+### SSE invalidation and outbox
+
+- **Events:** Session SSE carries `telemetry` invalidations, never raw account data. Bootstrap Snapshot, replay after `eventSeq` and reuse the existing stream per Session.
+- **UI:** coalesce to at most two GETs/second per mounted Session; discard stale revisions/access generations. Gaps and `resync-required` require a fresh bootstrap.
+- **Durability:** publish through committed SQLite outbox. Worker batches updates within 500 ms per Session; terminal Turns, explicit refresh and credential fencing publish promptly. Outbox survives restart. SSE subscription never invokes providers.
+
+### Expiry and account fencing
+
+- Account and context observations expire within 60 seconds, including after terminal Turn/restart. Settled usage/cost has no TTL but retains coverage status.
+- `staleAt` marks stale on GET without writes and invalidates subscribers; reads stay correct even without subscribers.
+- An account changed outside Runtime is detected at the next identity check, not by GET. Old data ages to stale, never claims the new identity.
+- Fence native producer samples by invocation, native context, account and credential generation.
 
 ## Explicit refresh and capabilities
 
@@ -102,28 +86,19 @@ The Runtime serves one bounded Session telemetry snapshot plus explicit refresh,
   is missing, return `limits` as unavailable `NOT_AUTHORIZED` with
   **no** amounts, timestamps or window IDs. A principal may read known limits
   while `refreshable:false`; reading does not require Manage.
-- A refresh request selects a nonempty distinct subset of the four groups,
-  with a **4 KiB** body bound. Reject every unsupported/unauthorized selected
-  group (422 `CAPABILITY_UNSUPPORTED` or 403), never silently omit it.
-  Advertised `refreshable` is advisory; execution checks again. A 202
-  receipt acknowledges **scheduling**, not a new measurement or a successful
-  provider response. No separate refresh-polling resource exists.
-- Replay of `requestId` with identical actor/Session/body deduplicates
-  for **24 hours**. Changed body under that key refuses 409
-  `IDEMPOTENCY_CONFLICT`. Native work coalesces across eligible concurrent
-  callers but receipts never expose another user's request id.
-- The current scheduler supports **account-scoped limits refresh**; a future
-  context refresh needs native-context affinity and must not be falsely enabled
-  merely by provider metadata. Provider/account cooldown is **30 seconds**
-  across credential renewals: new attempts above it return **429 with
-  `Retry-After`**. At most one native read per binding runs for up to
-  **10 seconds**. A cached GET never waits for it. Refresh never sends a
-  prompt, replays/resumes a Turn, edits a workspace, changes a model or
-  repairs authentication.
-- Refreshable readings and group visibility are independently projected.
-  Permission changes trigger re-projection and SSE revocation; opening
-  a stream without the limits capability must not leak that account's
-  numeric windows through another group.
+
+### Refresh admission and deduplication
+
+- **Request:** a distinct, nonempty subset of four groups, maximum body 4 KiB. Unsupported groups return `422 CAPABILITY_UNSUPPORTED`; unauthorized return 403. Never silently drop a selection.
+- **Admission:** `refreshable` is advisory; recheck at execution. `202` confirms scheduling, not a new observation. No polling resource exists.
+- **Idempotency:** equal actor/Session/body/`requestId` replays for 24 hours; changed body returns `409 IDEMPOTENCY_CONFLICT`. Coalesce native reads across callers without exposing their IDs.
+
+### Scheduler and cooldown
+
+- Only **account-scoped limits refresh** currently runs. Do not advertise context refresh without native-context affinity.
+- Provider/account cooldown is 30 seconds across credential renewal; exceeding it returns `429` with `Retry-After`. At most one native read per binding runs, for up to 10 seconds. Cached GET never waits.
+- Refresh must not send prompts, replay/resume Turns, edit workspaces, change models or repair authentication.
+- Project visibility and refreshability independently. Permission changes re-project data and revoke SSE access; absent limits permission must not leak account windows through other groups.
 
 ## Persistence, migration and supported sources
 
@@ -132,6 +107,9 @@ The Runtime serves one bounded Session telemetry snapshot plus explicit refresh,
   provider integration, not a second Session lifecycle/ledger writer.
   Reject overflows, invalid timestamps, impossible token breakdowns and
   unrepresentable native cost; a snapshot is limited to **32 KiB UTF-8**.
+
+### Migration and legacy records
+
 - A safe `migration.status` can report running/completed/failed; it cannot
   expose SQLite paths, messages or repair instructions. An interrupted
   migration restarts from the durable checkpoint and batches at most
@@ -140,6 +118,9 @@ The Runtime serves one bounded Session telemetry snapshot plus explicit refresh,
   `BASELINE_MISSING`. New/empty Sessions start with a complete baseline.
   Interrupted refresh becomes failed/idle, never automatically replays a
   provider operation.
+
+### Provider coverage
+
 - Supported observations remain provider-specific and **must be verified
   against current adapters and fixtures** before promising a field:
   Claude captures native Turn tokens/cache and native limit windows;

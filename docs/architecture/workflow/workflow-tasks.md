@@ -250,11 +250,11 @@ completed or abandoned, is closed. The rule is `tasksOpenAtCompletion` (with `op
 #### Finish refusal
 
 - **Finish.** `advance` (`operations/advance.ts`) refuses a Specification decision whose intent is `terminal {completed}` while Tasks are open, with `WORKFLOW_TASKS_OPEN` (`TasksOpenError`, `openTasks: [{taskId, cause}]` in id order).
-   - Like the draft and escalation guard it judges the state the change would produce, after the finish's `tasks`, its `taskDecisions` and the transition's effects, so a finish that cancels the last open Tasks itself completes; and it runs before anything is written, so the attempt stays active.
-   - A wait step's `tasks-finished` completes only with every Task closed and `task-escalated` always leads to a step, so both pass.
-   - A repeated finish (F16 replay) returns the recorded result without asking the rule again.
-   - Abandon is not affected.
-   - The finish asks the rule before its exit gates, so a finish with both problems is refused for its open Tasks; once they are closed, an unmet gate still refuses it.
+  - Like the draft and escalation guard it judges the state the change would produce, after the finish's `tasks`, its `taskDecisions` and the transition's effects, so a finish that cancels the last open Tasks itself completes; and it runs before anything is written, so the attempt stays active.
+  - A wait step's `tasks-finished` completes only with every Task closed and `task-escalated` always leads to a step, so both pass.
+  - A repeated finish (F16 replay) returns the recorded result without asking the rule again.
+  - Abandon is not affected.
+  - The finish asks the rule before its exit gates, so a finish with both problems is refused for its open Tasks; once they are closed, an unmet gate still refuses it.
 
 #### Blocker classification
 

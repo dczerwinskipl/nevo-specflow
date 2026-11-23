@@ -40,7 +40,7 @@
     "@fastify/compress": "9.3.0",
     "@fastify/cookie": "11.1.5",
     "@fastify/rate-limit": "11.2.2",
-    "@fastify/swagger": "9.9.3",
+    "@fastify/swagger": "9.9.5",
     "@fastify/type-provider-typebox": "6.3.0",
     "@modelcontextprotocol/sdk": "1.32.2",
     "@nevo/authorization": "workspace:*",
@@ -48,17 +48,17 @@
     "@nevo/specflow-docs": "workspace:*",
     "@nevo/specflow-engine": "workspace:*",
     "commander": "15.1.0",
-    "fast-json-stringify": "7.3.5",
+    "fast-json-stringify": "7.3.6",
     "fastify": "5.12.8",
     "koffi": "3.3.8",
-    "openid-client": "6.8.9",
+    "openid-client": "6.9.0",
     "typebox": "1.4.7",
     "yaml": "2.9.1"
   },
   "devDependencies": {
     "@nevo/ai-semantic-search": "workspace:*",
-    "@seriousme/openapi-schema-validator": "2.11.0",
-    "vitest": "5.1.0"
+    "@seriousme/openapi-schema-validator": "2.12.0",
+    "vitest": "5.1.1"
   },
   "engines": {
     "node": ">=24.20.0 <25"

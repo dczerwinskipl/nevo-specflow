@@ -179,10 +179,30 @@ owner retries it (`.../workflow/attempt-commit/retry`, `workflow retry-commit`).
 agent is the owner's authorization to execute the step and to make that commit; there is no Accept
 step. **Owner decision 2026-11-21:** the attempt commit also runs when the result then waits for
 the owner's confirmation, so the owner decides on committed work and no agent work is left
-uncommitted by a Reject. With Git on, Confirm is refused (`WORKFLOW_ATTEMPT_COMMIT_REQUIRED`) while
-that commit has not run or failed, and the projection's `actions.confirm` says so (`unavailable`:
-`attempt-commit-pending` or `attempt-commit-failed` with its `code`): the owner retries the commit
-first, so the transition is never committed before, or together with, the agent's work.
+uncommitted by a Reject.
+
+**Admission while an attempt commit waits (owner decision 2026-11-23).** With Git on, while a
+finished attempt's commit is pending or failed, every workflow write of its Specification (and its
+Tasks) is refused before anything is written with `WORKFLOW_ATTEMPT_COMMIT_REQUIRED`, naming the
+attempt: start, finish, return, wait re-evaluation, abandon, Confirm, Reject, Task create, edit,
+removal and status, and a new agent start. It is one rule of the execution store's admission
+(`attempt-commit-admission.ts`), not a check per command; writes under a running Turn's own claim
+are not guarded (one claim at a time: such a Turn was admitted before the attempt finished, and it
+writes only its own attempt's entries). Other Specifications are unaffected. The projection says it
+before the click: `attemptCommit` names the attempt, `start`, `finish`, `return`, `confirm` and
+`reject` carry `unavailable` (`attempt-commit-pending`, or `attempt-commit-failed` with its `code`),
+the next step's agent option is unavailable with the same reason and the Task actions and New task
+are `attempt-commit`. The owner retries the commit first.
+
+**Every owner change is the owner's commit.** Reject and a Return that applies now run
+`commit-execution-state` like Confirm; a new agent attempt first commits the owner's uncommitted
+workflow state of the Specification the same way, and is refused `WORKFLOW_DIRTY_BASELINE`, naming
+the files, if any of it stays uncommitted (held by a hand edit, or a failed commit). The owner's
+`commit-execution-state` is never `completed` while it left an owner change uncommitted because of
+agent work: `failed` `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` (tied to a waiting attempt) or
+`WORKFLOW_STATE_CORRUPT` (an attempt journal cannot be read, so the authors cannot be told), with
+the held paths. So `ATTEMPT_COMMIT_MIXED_AUTHORS` is unreachable through SpecFlow's own actions; it
+stays as the fail-closed refusal of a change made some other way.
 
 ### D16 — Close lists, never discards
 

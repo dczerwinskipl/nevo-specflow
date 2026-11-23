@@ -7,6 +7,7 @@ import type { AgentAttemptDependencies } from '../dependencies';
 import {
   assertBaselineUnchanged,
   assertCleanBaseline,
+  ownerStateUncommitted,
   assertDeclaredPathsShape,
   assertFinishAttribution,
   type AttributionFacts,
@@ -47,16 +48,16 @@ export interface AgentTurnAdmissionInput {
 export async function admitAgentTurn(
   dependencies: Pick<AgentAttemptDependencies, 'boundary' | 'journal' | 'workflow'>,
   input: AgentTurnAdmissionInput,
-): Promise<void> {
+): Promise<AttributionFacts | undefined> {
   const facts = await dependencies.boundary.facts(input.workspaceId);
   if (facts === undefined) {
-    return;
+    return undefined;
   }
 
   if (input.expected.attempt === undefined) {
     assertCleanBaseline(facts);
 
-    return;
+    return facts;
   }
 
   const { workflow } = dependencies;
@@ -74,24 +75,48 @@ export async function admitAgentTurn(
   } catch (error) {
     // The start judges a subject or position it cannot load, with its own refusal.
     if (error instanceof CoreWorkflowError) {
-      return;
+      return facts;
     }
 
     throw error;
   }
 
   if (attemptId === undefined) {
-    return;
+    return facts;
   }
 
   const journal = await dependencies.journal.read(attemptId);
   if (!journal?.turns.some((turn) => turn.finalizedAt !== undefined)) {
     assertCleanBaseline(facts);
 
-    return;
+    return facts;
   }
 
   assertBaselineUnchanged(facts, journal.dirtySet);
+
+  return facts;
+}
+
+/**
+ * A new agent attempt starts from a checkout where SpecFlow's own workflow state of the
+ * Specification is committed (D15): the start commits the owner's uncommitted execution state first
+ * (`afterOwnerChange`); what is still uncommitted and dirty then (`pending`: an owner's change the
+ * owner's commit held or failed to commit) would be written into by the agent's start and finish,
+ * and its attempt commit would refuse it as mixed. Refused `WORKFLOW_DIRTY_BASELINE`, naming it.
+ */
+export function assertOwnerStateCommitted(
+  facts: AttributionFacts | undefined,
+  pending: readonly string[],
+): void {
+  if (facts === undefined || pending.length === 0) {
+    return;
+  }
+
+  const dirty = new Set(facts.paths.map((fact) => fact.path));
+  const uncommitted = facts.incomplete ? [...pending] : pending.filter((path) => dirty.has(path));
+  if (uncommitted.length > 0) {
+    throw ownerStateUncommitted(uncommitted);
+  }
 }
 
 /**

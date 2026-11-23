@@ -81,6 +81,7 @@ export {
   type ActionPosition,
   type ActionProjection,
   RUNTIME_AGENT_UNAVAILABLE_REASONS,
+  ATTEMPT_COMMIT_AGENT_UNAVAILABLE_REASONS,
   type AgentAttemptView,
   type ProjectHold,
   type AgentOption,

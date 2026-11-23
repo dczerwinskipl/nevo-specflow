@@ -15,6 +15,21 @@ import type { WorkflowActor, WorkflowSubject } from '../state/model';
  */
 export interface WorkflowPostActions {
   afterStepFinished(event: StepFinishedEvent): Promise<readonly PostActionResult[]>;
+  /**
+   * After an owner's change that finishes no step (Reject, Return) and before an agent's new
+   * attempt: the same commit of the Specification's execution state, with `phrase` in its subject,
+   * so every owner change is committed by an owner's commit and an agent starts from a checkout
+   * where SpecFlow's own workflow state is committed. Absent: nothing runs.
+   */
+  afterOwnerChange?(event: OwnerChangeEvent): Promise<readonly PostActionResult[]>;
+}
+
+export interface OwnerChangeEvent {
+  readonly subject: WorkflowSubject;
+  /** What happened, for the commit subject (`reject the result of "Review"`). */
+  readonly phrase: string;
+  /** Body lines of the commit. */
+  readonly details?: readonly string[];
 }
 
 export interface StepFinishedEvent {
@@ -58,6 +73,11 @@ export type PostActionResult =
       readonly status: 'failed';
       readonly code: string;
       readonly message: string;
+      /**
+       * `commit-execution-state`: what it left uncommitted (`paths`, with the hand-edited ones in
+       * `edited`) and why it failed (`code`); absent when it committed nothing because of an error.
+       */
+      readonly held?: { readonly edited: readonly string[]; readonly paths: readonly string[] };
     };
 
 /** A host without post actions (tests, tools). */

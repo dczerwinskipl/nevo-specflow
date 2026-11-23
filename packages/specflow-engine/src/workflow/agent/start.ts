@@ -2,7 +2,7 @@ import { activeAttempt } from '@nevo/workflow';
 
 import { WorkflowError } from '../errors';
 import { assertActorShape } from '../input-schema';
-import { isoNow, loadSubject } from '../operations/loaded-execution';
+import { isoNow, loadSubject, ofSubject } from '../operations/loaded-execution';
 import {
   startSpecificationInSection,
   startTaskInSection,
@@ -17,7 +17,8 @@ import {
   type AgentAttemptBinding,
   type WorkflowSubject,
 } from '../state/model';
-import { admitAgentTurn } from './boundary';
+import { assertNoAttemptCommitWait } from '../attempt-commit-admission';
+import { admitAgentTurn, assertOwnerStateCommitted } from './boundary';
 import { agentContextInSection, stepContextInSection } from './context/read';
 import type { AgentAttemptDependencies } from './dependencies';
 import {
@@ -101,7 +102,10 @@ function assertBindingInput(input: StartAgentAttemptInput): void {
  * it). Runs before any Session, claim or provider process exists: a subject that is not ready, a
  * stale expected position or a step whose executors do not include `agent` refuses with nothing
  * written, and so does a checkout whose baseline the Engine cannot attribute (`admitAgentTurn`:
- * `WORKFLOW_DIRTY_BASELINE` for a new attempt, `WORKFLOW_BASELINE_CHANGED` for Continue). In one `serialize` section the ordinary start records the attempt with its binding
+ * `WORKFLOW_DIRTY_BASELINE` for a new attempt, `WORKFLOW_BASELINE_CHANGED` for Continue). A new
+ * attempt is refused `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` while an attempt of the Specification waits
+ * for its commit, and commits the owner's uncommitted workflow state of the Specification first
+ * (`afterOwnerChange`); what that commit left (held, failed) refuses `WORKFLOW_DIRTY_BASELINE`. In one `serialize` section the ordinary start records the attempt with its binding
  * (`AgentAttemptBinding`, committed with the run), then the attempt's local journal records the
  * Turn's binding. A crash between the two leaves an active attempt with no process and no Turn; the
  * same Session continues it, which records the journal then.
@@ -123,21 +127,41 @@ export async function startAgentAttempt(
     store: dependencies.attributedStore(input.turn.invocationId),
   };
 
+  const fresh = input.expected.attempt === undefined;
+  if (fresh) {
+    // A new attempt starts from a checkout where SpecFlow's workflow state of the Specification is
+    // committed (D15): never while another attempt's commit waits (the store refuses it too), and
+    // the owner's uncommitted changes (a Task edited, a step started or returned) are committed by
+    // the owner's commit first, so the agent's start and work never write into them.
+    await assertNoAttemptCommitWait(dependencies.workflow.holds, subject.specId);
+    await dependencies.workflow.postActions?.afterOwnerChange?.({
+      subject,
+      phrase: `save the workflow state before an agent runs ${input.expected.step}${ofSubject(subject)}`,
+    });
+  }
+
   return workflow.serialize(async () => {
     let agent: AgentStepContext | undefined;
     const options = {
       actor: input.actor,
       expected: input.expected,
       // Once the start's own checks passed and before anything is written: the Turn must start from
-      // a baseline the Engine can attribute (B3), and the agent context is read, once. The brief is
-      // rendered from it and its digest is recorded, so what the attempt and its Turn record is
-      // what the agent is briefed with.
+      // a baseline the Engine can attribute (B3), with the owner's workflow state committed, and the
+      // agent context is read, once. The brief is rendered from it and its digest is recorded, so
+      // what the attempt and its Turn record is what the agent is briefed with.
       async admit() {
-        await admitAgentTurn(dependencies, {
+        const facts = await admitAgentTurn(dependencies, {
           subject,
           workspaceId: input.workspaceId,
           expected: input.expected,
         });
+        if (fresh) {
+          assertOwnerStateCommitted(
+            facts,
+            await dependencies.ownerWorkflowState(input.workspaceId, subject.specId),
+          );
+        }
+
         agent = await agentContextInSection(workflow, dependencies.context, subject);
         const contextDigest = agent.taskContext?.digest;
         const attemptData: AgentAttemptBinding = {

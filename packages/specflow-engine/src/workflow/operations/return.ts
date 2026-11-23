@@ -13,6 +13,7 @@ import {
   ofSubject,
   type WorkflowDependencies,
 } from './loaded-execution';
+import type { PostActionResult } from './post-actions';
 import { ExecutionWorkingSet } from './working-set';
 
 export interface ReturnToStepInput {
@@ -29,6 +30,28 @@ export interface ReturnToStepResult {
   readonly subject: WorkflowSubject;
   readonly position: RunPosition;
   readonly continuation: ContinuationDecision;
+  /**
+   * What the owner's commit of the return reported (`commit-execution-state` with automatic commits
+   * off); absent where the host runs no post actions.
+   */
+  readonly postActions?: readonly PostActionResult[];
+}
+
+/**
+ * The owner's commit of a return just applied (`afterOwnerChange`): an owner change is committed by
+ * an owner's commit, so a later agent attempt never builds on it uncommitted.
+ */
+export async function withReturnCommitted<R extends ReturnToStepResult>(
+  dependencies: Pick<WorkflowDependencies, 'postActions'>,
+  request: ReturnToStepInput,
+  result: R,
+): Promise<R> {
+  const postActions = await dependencies.postActions?.afterOwnerChange?.({
+    subject: request.subject,
+    phrase: `return to step ${request.step}${ofSubject(request.subject)}`,
+  });
+
+  return postActions !== undefined ? { ...result, postActions } : result;
 }
 
 /**
@@ -42,22 +65,29 @@ export interface ReturnToStepResult {
  * waiting for an owner start that is refused.
  *
  * An attempt that was active ends as `returned`; stopping a Session still working on it is the
- * Runtime's responsibility.
+ * Runtime's responsibility. The return is committed by the owner's commit once it applied
+ * (`postActions`).
  */
 export function returnToStep(
   dependencies: WorkflowDependencies,
   request: ReturnToStepInput,
 ): Promise<ReturnToStepResult> {
-  return dependencies.serialize(async () => {
-    assertOwner(request.actor, 'returns a run to an earlier step');
-    const plan = planReturn(
-      dependencies,
-      await dependencies.store.read(request.subject.specId),
-      request,
-    );
-    await dependencies.store.apply(request.subject.specId, plan.change);
+  const operation = dependencies.operation ?? ((work) => work());
 
-    return plan.result;
+  return operation(async () => {
+    const result = await dependencies.serialize(async () => {
+      assertOwner(request.actor, 'returns a run to an earlier step');
+      const plan = planReturn(
+        dependencies,
+        await dependencies.store.read(request.subject.specId),
+        request,
+      );
+      await dependencies.store.apply(request.subject.specId, plan.change);
+
+      return plan.result;
+    });
+
+    return withReturnCommitted(dependencies, request, result);
   });
 }
 

@@ -1,7 +1,10 @@
 import { runReadRequest } from './project/request-verification-memo';
 import type { CheckoutQuiescence } from './specs/lifecycle/checkout-quiescence-port';
 import type { SpecificationExitGuard } from './specs/lifecycle/exit-guard';
-import type { AttemptCommitWait, FailedAttemptCommit } from './specs/uncommitted/attempts';
+import type {
+  FailedAttemptCommit,
+  SpecificationAttemptCommitWait,
+} from './specs/uncommitted/attempts';
 import {
   resolveProjectHome,
   type ResolveProjectHomeOptions,
@@ -34,11 +37,13 @@ export interface SpecFlowEngine {
    */
   readonly failedAttemptCommits?: (workspaceId: string) => Promise<readonly FailedAttemptCommit[]>;
   /**
-   * With Git on, why the commit of the agent attempt `attemptId` still waits (D15): the owner's
-   * Confirm and Reject are refused meanwhile. `undefined` once it ran, with Git off or for an unknown attempt.
-   * Absent where no workflow is composed.
+   * With Git on, the finished agent attempt of the Specification whose own commit (D15) still waits:
+   * every workflow write of the Specification is refused meanwhile. `undefined` when none waits or
+   * with Git off. Absent where no workflow is composed.
    */
-  readonly attemptCommitWait?: (attemptId: string) => Promise<AttemptCommitWait | undefined>;
+  readonly attemptCommitWait?: (
+    specId: string,
+  ) => Promise<SpecificationAttemptCommitWait | undefined>;
   /**
    * The agent executions of the checkout whose uncommitted entries an attempt commit (D15) still
    * takes (an attempt in progress, or finished with its commit pending or failed): the owner's commit
@@ -69,7 +74,7 @@ export interface EnginePorts {
   ) => (workspaceId: string) => Promise<readonly FailedAttemptCommit[]>;
   readonly attemptCommitWait?: (
     engine: SpecFlowEngine,
-  ) => (attemptId: string) => Promise<AttemptCommitWait | undefined>;
+  ) => (specId: string) => Promise<SpecificationAttemptCommitWait | undefined>;
   readonly attemptCommitExecutions?: (
     engine: SpecFlowEngine,
   ) => (workspaceId: string) => Promise<ReadonlySet<string> | undefined>;
@@ -111,7 +116,7 @@ export async function openEngineBoundary(
       : {}),
     ...(ports.attemptCommitWait
       ? {
-          attemptCommitWait: (attemptId: string) => ports.attemptCommitWait!(engine)(attemptId),
+          attemptCommitWait: (specId: string) => ports.attemptCommitWait!(engine)(specId),
         }
       : {}),
     ...(ports.attemptCommitExecutions

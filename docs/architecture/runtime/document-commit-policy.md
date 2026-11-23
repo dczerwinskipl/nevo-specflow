@@ -204,8 +204,15 @@ published change is ONE document operation of action `workflow` (contract
   `attempt-commit` commits the attempt's own ledger entries (documents, Tasks and execution state its
   Turns made, the attempt's start included) with its declared code paths, as one commit
   ([agent attempts](../workflow/workflow-agent-attempts.md#attempt-commit)). The owner's
-  Confirm of a result that waited for them is an owner write and commits through
-  `commit-execution-state` as after an owner's finish.
+  Confirm of a result that waited for them, a Reject and a Return that applies now are owner writes
+  and commit through `commit-execution-state` as after an owner's finish (`afterOwnerChange`); a
+  new agent attempt runs it first, so it starts with SpecFlow's own workflow state committed. While
+  an attempt's commit waits, no workflow write of its Specification is admitted
+  (`WORKFLOW_ATTEMPT_COMMIT_REQUIRED`, [agent attempts](../workflow/workflow-agent-attempts.md#while-an-attempt-commit-waits)),
+  so no owner change joins the agent's entries. `commit-execution-state` is never `completed` while
+  it left an owner change uncommitted because of agent work: `failed`
+  `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` or `WORKFLOW_STATE_CORRUPT` (an attempt journal cannot be
+  read), with `held`. Paths a person edited by hand stay `held` on a `completed` result.
 - **Workflow subjects** follow the same rule as document subjects: at most 72 characters and never cut. When
   `<summary> in <slug>` does not fit, the summary goes alone, then `change the workflow state`; the body then holds the
   summary and `Specification: <slug>`.

@@ -4,6 +4,7 @@ import { assertOwner } from '../../operations/actors';
 import { isoNow, loadSubject } from '../../operations/loaded-execution';
 import {
   planReturn,
+  withReturnCommitted,
   type ReturnToStepInput,
   type ReturnToStepResult,
 } from '../../operations/return';
@@ -51,13 +52,28 @@ export type OwnerReturnResult =
  * state, so a return the finalize would refuse is refused at once. Then:
  *
  * - no agent attempt is active, or its last Turn's claim is settled (or was never admitted): the
- *   return applies now, as `returnToStep` does; an agent attempt it ends records the return as
- *   applied in its journal;
+ *   return applies now, as `returnToStep` does (committed by the owner's commit after the section);
+ *   an agent attempt it ends records the return as applied in its journal;
  * - the agent's Turn may still run: the return is recorded on the attempt (`returnRequest`,
  *   `requested`), admitted under that Turn's own claim only; the step state is not written. A
  *   repeated request replaces the recorded one while it is not applied.
  */
 export function returnDuringAgentAttempt(
+  dependencies: AgentAttemptDependencies,
+  request: ReturnToStepInput,
+): Promise<OwnerReturnResult> {
+  const { workflow } = dependencies;
+  const operation = workflow.operation ?? ((work) => work());
+
+  return operation(async () => {
+    const result = await returnInSection(dependencies, request);
+
+    // A return that applied now is the owner's change: committed by the owner's commit.
+    return result.kind === 'returned' ? withReturnCommitted(workflow, request, result) : result;
+  });
+}
+
+function returnInSection(
   dependencies: AgentAttemptDependencies,
   request: ReturnToStepInput,
 ): Promise<OwnerReturnResult> {

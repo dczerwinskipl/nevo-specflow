@@ -8,14 +8,29 @@
 /**
  * Why an agent attempt's own commit (D15) still waits, while it does: `attempt-commit-pending` (it
  * has not run yet, or a crash interrupted it), `attempt-commit-failed` (its last run failed, `code`;
- * the owner retries it). With Git on, the owner's Confirm and Reject of the attempt's result are
- * refused while it waits (`WORKFLOW_ATTEMPT_COMMIT_REQUIRED`), so the owner's commit of the decision
- * never comes before the agent's work, nor takes it. The workflow supplies it through the opened Engine
- * (`SpecFlowEngine.attemptCommitWait`).
+ * the owner retries it). With Git on, every workflow write of the attempt's Specification (the
+ * owner's Confirm and Reject included) is refused while it waits (`WORKFLOW_ATTEMPT_COMMIT_REQUIRED`),
+ * so no owner change joins the agent's uncommitted work and the owner's commit never comes before it.
+ * The workflow supplies it through the opened Engine (`SpecFlowEngine.attemptCommitWait`).
  */
 export interface AttemptCommitWait {
   readonly reason: 'attempt-commit-pending' | 'attempt-commit-failed';
   readonly code?: string;
+}
+
+/**
+ * The finished agent attempt of a Specification (or of one of its Tasks) whose own commit (D15)
+ * still waits, named: while it waits, every workflow write of that Specification is refused
+ * `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` before anything is written, so no owner change joins the
+ * agent's uncommitted work. Retry commit (`step#attempt` of `subject`) runs it.
+ */
+export interface SpecificationAttemptCommitWait extends AttemptCommitWait {
+  readonly attemptId: string;
+  readonly subject: { readonly specId: string; readonly taskId?: string };
+  readonly step: string;
+  readonly attempt: number;
+  /** The title of the attempt's step when it finished. */
+  readonly stepTitle: string;
 }
 
 /** A finished agent attempt whose commit failed, with every path that commit would hold. */

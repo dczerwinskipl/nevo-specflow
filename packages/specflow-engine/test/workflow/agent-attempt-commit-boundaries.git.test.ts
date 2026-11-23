@@ -26,6 +26,7 @@ import {
   proposeAgentFinish,
   rejectAgentResult,
   retryAgentAttemptCommit,
+  returnDuringAgentAttempt,
   startAgentAttempt,
   startSpecificationExecution,
   takeOverAgentAttempt,
@@ -68,6 +69,8 @@ const attemptCommits = (attemptId: string) =>
 
 const commitsSince = (head: string) =>
   git(root, 'rev-list', `${head}..HEAD`).split('\n').filter(Boolean);
+
+const subjectOf = (sha: string) => git(root, 'log', '-1', '--format=%s', sha);
 
 async function newSpecification(title: string) {
   const spec = await createSpecificationForTesting(engine, {
@@ -120,6 +123,8 @@ interface AgentTurnOptions {
   readonly faults?: (boundary: FinalizeBoundary) => void | Promise<void>;
   /** The Turn ends without a proposal (`false`); it proposes by default. */
   readonly propose?: false;
+  /** The attempt the Turn works on (the step's first by default). */
+  readonly attempt?: number;
 }
 
 /** One agent attempt of one Turn on the Specification's ready step, up to its finalize. */
@@ -155,7 +160,7 @@ async function agentAttempt(spec: Spec, options: AgentTurnOptions) {
         actor,
         subject: spec.subject,
         step: options.step,
-        attempt: 1,
+        attempt: options.attempt ?? 1,
       },
       input: options.input ?? {},
       ...(options.declared ? { changes: { paths: [...options.declared] } } : {}),
@@ -487,6 +492,267 @@ it('retries an attempt commit a crash left pending without a restart, and Reject
   expect(dirty()).toEqual([]);
 }, 600_000);
 
+/**
+ * The agent finished the requirements step without a confirmation and its attempt commit waits
+ * (`fault` makes it fail or leaves it pending): no owner or agent write of the Specification is
+ * admitted until Retry commit ran it, then the owner goes on and the history is one attempt commit
+ * and the owner's commit, with nothing left uncommitted.
+ */
+async function refusedUntilRetried(
+  title: string,
+  fault: 'failed' | 'pending',
+  value: number,
+): Promise<void> {
+  const spec = await newSpecification(title);
+  const head = git(root, 'rev-parse', 'HEAD');
+  const agentContent = `export const app = ${String(value)};\n`;
+  const attempt = await agentAttempt(spec, {
+    step: 'requirements',
+    archetype: 'spec-writer',
+    declared: ['src/app.ts'],
+    work: () => put('src/app.ts', agentContent),
+    faults: async (boundary) => {
+      if (boundary !== 'post-actions-pending') {
+        return;
+      }
+
+      if (fault === 'pending') {
+        throw new Error('Crash at post-actions-pending.');
+      }
+
+      await put('src/app.ts', 'export const app = "outside";\n');
+    },
+  });
+  if (fault === 'pending') {
+    await expect(attempt.finalize(attempt.faulty)).rejects.toThrow(
+      'Crash at post-actions-pending.',
+    );
+  } else {
+    expect(await attempt.finalize(attempt.faulty)).toMatchObject({
+      kind: 'finished',
+      postActions: [{ action: 'attempt-commit', status: 'failed', code: 'MANUAL_COMMIT_CONFLICT' }],
+    });
+  }
+
+  const reason = fault === 'pending' ? 'attempt-commit-pending' : 'attempt-commit-failed';
+  const workflow = await openWorkflow(engine);
+  const projection = await inspectActions(workflow, spec.subject);
+  expect(projection.attemptCommit).toMatchObject({
+    attemptId: attempt.attemptId,
+    reason,
+    subject: { specId: spec.specId },
+    step: 'requirements',
+    attempt: 1,
+  });
+  expect(projection.actions.start?.unavailable).toMatchObject({ reason });
+  expect(projection.position).toMatchObject({
+    kind: 'ready',
+    next: { agent: { kind: 'unavailable', reason } },
+  });
+
+  // The owner's start of the next step and a new agent attempt are refused before anything is written.
+  const run = join(root, spec.directory, '.execution', 'specification.yaml');
+  const before = { dirty: dirty(), run: await readFile(run, 'utf8') };
+  await expect(ownerStep(spec)).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED' });
+  await expect(
+    startAgentAttempt(attempt.agent, {
+      subject: spec.subject,
+      archetype: 'feature',
+      actor: {
+        class: 'agent',
+        details: { archetype: 'spec-writer', provider: 'claude', sessionId: 'session-b' },
+      },
+      expected: { step: 'specification' },
+      workspaceId: engine.workspace.workspaceId,
+      turn: { invocationId: randomUUID(), turnId: 'turn-1' },
+    }),
+  ).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED' });
+  expect({ dirty: dirty(), run: await readFile(run, 'utf8') }).toEqual(before);
+  expect(git(root, 'rev-parse', 'HEAD')).toBe(head);
+
+  // The agent's content again: Retry commit makes the attempt commit, then the owner goes on.
+  await put('src/app.ts', agentContent);
+  const [retried] = (
+    await retryAgentAttemptCommit(attempt.agent, {
+      subject: spec.subject,
+      step: 'requirements',
+      attempt: 1,
+      actor: owner,
+    })
+  ).postActions;
+  expect(retried).toMatchObject({ action: 'attempt-commit', status: 'completed' });
+  expect((await inspectActions(workflow, spec.subject)).attemptCommit).toBeUndefined();
+  const finished = await ownerStep(spec);
+  expect(finished.postActions).toMatchObject([
+    {
+      action: 'commit-execution-state',
+      status: 'completed',
+      commit: { sha: expect.any(String) as string },
+    },
+  ]);
+
+  const [attemptCommit, ...others] = attemptCommits(attempt.attemptId);
+  expect(others).toEqual([]);
+  expect(commitsSince(head)).toEqual([git(root, 'rev-parse', 'HEAD'), attemptCommit]);
+  expect(dirty()).toEqual([]);
+}
+
+it('refuses every workflow write of the Specification while a finished attempt’s commit failed, until Retry commit', async () => {
+  await refusedUntilRetried('Owner waits for a failed commit', 'failed', 8);
+}, 600_000);
+
+it('refuses every workflow write of the Specification while a crash left the attempt commit pending, until Retry commit', async () => {
+  await refusedUntilRetried('Owner waits for a pending commit', 'pending', 9);
+}, 600_000);
+
+it('commits the owner’s Reject, so the next attempt commits on its own', async () => {
+  const spec = await newSpecification('Reject then again');
+  await toBreakdownReview(spec);
+  const review = (archetypeSession: string) =>
+    agentAttempt(spec, {
+      step: 'breakdown-review',
+      archetype: 'reviewer',
+      input: { result: 'pass', feedback: `Ready (${archetypeSession}).` },
+      work: () => Promise.resolve(),
+      ...(archetypeSession === 'second' ? { attempt: 2 } : {}),
+    });
+  const first = await review('first');
+  expect(await first.finalize(first.agent)).toMatchObject({
+    kind: 'awaiting-confirmation',
+    postActions: [{ action: 'attempt-commit', status: 'completed' }],
+  });
+  const head = git(root, 'rev-parse', 'HEAD');
+
+  const rejected = await rejectAgentResult(first.agent, {
+    subject: spec.subject,
+    step: 'breakdown-review',
+    attempt: 1,
+    actor: owner,
+    requestId: randomUUID(),
+    feedback: 'Split the API Task.',
+  });
+  expect(rejected.postActions).toMatchObject([
+    {
+      action: 'commit-execution-state',
+      status: 'completed',
+      commit: { sha: expect.any(String) as string },
+    },
+  ]);
+  const [rejectCommit] = commitsSince(head);
+  expect(subjectOf(rejectCommit!)).toContain('reject the result');
+  expect(dirty()).toEqual([]);
+
+  // The next attempt starts from a clean checkout: its commit holds only its own work.
+  const second = await review('second');
+  expect(await second.finalize(second.agent)).toMatchObject({
+    kind: 'awaiting-confirmation',
+    postActions: [{ action: 'attempt-commit', status: 'completed' }],
+  });
+  expect(commitsSince(head)).toEqual([...attemptCommits(second.attemptId), rejectCommit]);
+  expect(dirty()).toEqual([]);
+}, 600_000);
+
+it('commits the owner’s Return during an attempt, so the next attempt commits on its own', async () => {
+  const spec = await newSpecification('Return then again');
+  const head = git(root, 'rev-parse', 'HEAD');
+  const first = await agentAttempt(spec, {
+    step: 'requirements',
+    archetype: 'spec-writer',
+    propose: false,
+    work: () => Promise.resolve(),
+  });
+  expect(await first.finalize(first.agent)).toEqual({ kind: 'turn-ended' });
+
+  const returned = await returnDuringAgentAttempt(first.agent, {
+    subject: spec.subject,
+    step: 'requirements',
+    feedback: 'Start again.',
+    actor: owner,
+  });
+  expect(returned).toMatchObject({
+    kind: 'returned',
+    postActions: [
+      {
+        action: 'commit-execution-state',
+        status: 'completed',
+        commit: { sha: expect.any(String) as string },
+      },
+    ],
+  });
+  const [returnCommit, ...beforeReturn] = commitsSince(head);
+  expect(beforeReturn).toEqual([]);
+  expect(dirty()).toEqual([]);
+
+  const second = await agentAttempt(spec, {
+    step: 'requirements',
+    archetype: 'spec-writer',
+    declared: ['src/app.ts'],
+    work: () => put('src/app.ts', 'export const app = 10;\n'),
+    attempt: 2,
+  });
+  expect(await second.finalize(second.agent)).toMatchObject({
+    kind: 'finished',
+    postActions: [{ action: 'attempt-commit', status: 'completed' }],
+  });
+  expect(commitsSince(head)).toEqual([...attemptCommits(second.attemptId), returnCommit]);
+  expect(dirty()).toEqual([]);
+}, 600_000);
+
+it('reports the owner’s commit failed, never done, while an attempt journal cannot be read', async () => {
+  const spec = await newSpecification('Unreadable journal');
+  const head = git(root, 'rev-parse', 'HEAD');
+  const attempt = await agentAttempt(spec, {
+    step: 'requirements',
+    archetype: 'spec-writer',
+    propose: false,
+    work: () => Promise.resolve(),
+  });
+  expect(await attempt.finalize(attempt.agent)).toEqual({ kind: 'turn-ended' });
+  await takeOverAgentAttempt(attempt.agent, {
+    subject: spec.subject,
+    step: 'requirements',
+    attempt: 1,
+    actor: owner,
+  });
+
+  // Another attempt's journal cannot be read: who wrote the taken-over attempt's state is unknown.
+  const journals = join(engine.context.project.stateRoot, 'engine', 'operations', 'agent-attempt');
+  const corrupt = join(journals, `${randomUUID()}.json`);
+  await writeFile(corrupt, '{ not json');
+  const workflow = await openWorkflow(engine);
+  const finished = await finishStep(workflow, {
+    subject: spec.subject,
+    step: 'requirements',
+    attempt: 2,
+    input: {},
+    actor: owner,
+  });
+  expect(finished.postActions).toMatchObject([
+    {
+      action: 'commit-execution-state',
+      status: 'failed',
+      code: 'WORKFLOW_STATE_CORRUPT',
+      held: {
+        paths: expect.arrayContaining([
+          `${spec.directory}/.execution/specification.yaml`,
+        ]) as string[],
+      },
+    },
+  ]);
+  expect(git(root, 'rev-parse', 'HEAD')).toBe(head);
+
+  // Once it is repaired, the owner's next commit takes the state.
+  await rm(corrupt);
+  expect((await ownerStep(spec)).postActions).toMatchObject([
+    {
+      action: 'commit-execution-state',
+      status: 'completed',
+      commit: { sha: expect.any(String) as string },
+    },
+  ]);
+  expect(dirty()).toEqual([]);
+}, 600_000);
+
 it('with automatic commits on, commits an attempt’s documents and code as its one attempt commit', async () => {
   await enableAutoCommitForTesting(root);
   const spec = await newSpecification('Auto commits');
@@ -586,15 +852,17 @@ it('never commits an edit made after a crash at the step publication as the agen
   expect(attemptCommits(attempt.attemptId)).toEqual([]);
   expect(git(root, 'show', 'HEAD:src/app.ts')).not.toContain('foreign');
 
-  // The owner's commit of the workflow state never takes what the agent's Turns wrote: that waits
-  // for the attempt commit (Retry commit), only the owner's own Task is committed.
-  await createTask(await openWorkflow(engine), {
-    specId: spec.specId,
-    taskId: 'later',
-    title: 'Later',
-    type: 'implementation',
-    actor: owner,
-  });
+  // No owner write joins the agent's uncommitted work while its commit waits (a new Task included),
+  // and the owner's commit of the workflow state never takes what the agent's Turns wrote.
+  await expect(
+    createTask(await openWorkflow(engine), {
+      specId: spec.specId,
+      taskId: 'later',
+      title: 'Later',
+      type: 'implementation',
+      actor: owner,
+    }),
+  ).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED' });
   const record = await readLedgerRecord(engine.context, engine.workspace.workspaceId, {
     kind: 'specification',
     id: spec.specId,
@@ -603,10 +871,12 @@ it('never commits an edit made after a crash at the step publication as the agen
     .filter((entry) => ledgerAuthorsOf(entry).executions.length > 0)
     .map((entry) => entry.path);
   expect(agents.some((path) => path.startsWith(`${spec.directory}/.execution/`))).toBe(true);
-  const outcome = await commitExecutionState(engine, spec.specId, { phrase: 'add a Task' });
-  expect(outcome).toMatchObject({ kind: 'committed' });
-  const committed = filesOf('HEAD');
-  expect(committed).toContain(`${spec.directory}/tasks/later/task.yaml`);
-  expect(committed.filter((path) => agents.includes(path))).toEqual([]);
+  const attemptExecutions = await engine.attemptCommitExecutions?.(engine.workspace.workspaceId);
+  const outcome = await commitExecutionState(engine, spec.specId, {
+    phrase: 'add a Task',
+    ...(attemptExecutions ? { attemptExecutions } : {}),
+  });
+  expect(outcome).toEqual({ kind: 'nothing-to-commit' });
+  expect(git(root, 'rev-parse', 'HEAD')).toBe(head);
   expect(dirty()).toEqual(expect.arrayContaining(agents));
 }, 600_000);

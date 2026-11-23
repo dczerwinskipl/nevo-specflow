@@ -127,10 +127,12 @@ Specification's document queue drains first.
 - Subject `spec(<task id | specification>): <step title> (attempt n) by agent in <slug>` (a shorter
   form is taken whole when it does not fit), trailers `Nevo-Action: attempt-commit`, `Nevo-Attempt`,
   `Nevo-Step` and, for a Task, `Nevo-Task`.
-- An entry the attempt changed together with someone else (`ATTEMPT_COMMIT_MIXED_AUTHORS`; the Task
-  index is such an entry when the owner left Task changes uncommitted before the agent changed
-  Tasks), a declared path that could not be hashed (`ATTEMPT_COMMIT_UNATTRIBUTABLE`) or a path
-  changed since (`MANUAL_COMMIT_CONFLICT`) refuses the whole commit; the step stays published, the
+- An entry the attempt changed together with someone else (`ATTEMPT_COMMIT_MIXED_AUTHORS`), a
+  declared path that could not be hashed (`ATTEMPT_COMMIT_UNATTRIBUTABLE`) or a path changed since
+  (`MANUAL_COMMIT_CONFLICT`, a genuine foreign edit: restore it or commit it by hand) refuses the
+  whole commit. A mixed entry is unreachable through SpecFlow's actions (see
+  [While an attempt commit waits](#while-an-attempt-commit-waits)): its refusal names the files and
+  suggests no Git remedy; the step stays published, the
   result reports `postActions: [{action: attempt-commit, status: failed, code}]`, and the owner
   retries it (`.../workflow/attempt-commit/retry`, `workflow retry-commit`).
 - It runs also for a result that then waits for the owner's confirmation; the owner's later Confirm
@@ -138,11 +140,41 @@ Specification's document queue drains first.
   (ADR 0018).
 - The owner's `commit-execution-state` leaves out only what an attempt commit still takes: the
   entries of the Turns of an attempt in progress, or of a finished one whose attempt commit is
-  pending or failed (`attemptCommitExecutions`; every execution's entries when the attempt journals
-  cannot all be read). The execution state of an attempt that ended without its own commit (taken
-  over, returned) has no other commit: the owner's next one takes it. An owner's change tied to
-  waiting agent work is never reported done: the post action fails `WORKFLOW_ATTEMPT_COMMIT_REQUIRED`
-  and the state is committed after the attempt commit ran.
+  pending or failed (`attemptCommitExecutions`). The execution state of an attempt that ended
+  without its own commit (taken over, returned) has no other commit: the owner's next one takes it.
+  It is never `completed` while it left an owner change uncommitted because of agent work: an
+  owner's change tied to waiting agent work (closed under operations, or inside the same entry)
+  fails `WORKFLOW_ATTEMPT_COMMIT_REQUIRED`, and agent-written execution state while the attempt
+  journals cannot all be read fails `WORKFLOW_STATE_CORRUPT`; both name the held paths (`held`).
+
+### While an attempt commit waits
+
+With Git on, while a finished attempt's commit is pending or failed
+(`specificationAttemptCommitWait`), every workflow write of its Specification is refused before
+anything is written (`WORKFLOW_ATTEMPT_COMMIT_REQUIRED`, naming the attempt): the execution store's
+admission (`attempt-commit-admission.ts`, beside the claim and Close guards) refuses every non-empty
+change not made under a Turn's own claim, so start, finish, return, wait re-evaluation, abandon,
+Confirm, Reject, the Task commands and an agent's start are refused alike; Confirm and Reject ask
+it before they plan. A Turn's own writes and its finalize are not guarded: one claim at a time, so
+a running Turn was admitted before the attempt finished; refusing its finalize would hold its claim,
+which the waiting commit's retry needs settled. A journal that cannot be read names no Specification
+and holds none. Other Specifications are unaffected.
+
+The projection (`withAttemptCommitWait`) shows it for every affected action: `attemptCommit` names
+the attempt and its subject (Retry commit), `start`, `finish`, `return`, `confirm` and `reject`
+carry `unavailable {reason: attempt-commit-pending | attempt-commit-failed, code?}`, the next
+step's agent option is unavailable with that reason (`detail`: the code), the Task actions and New
+task are `attempt-commit`.
+
+**Owner commits around an attempt.** Reject and a Return that applies now commit the owner's
+change at once (`afterOwnerChange`, the ordinary `commit-execution-state`, results in
+`postActions`). A new agent attempt runs the same commit first, so it starts where SpecFlow's own
+workflow state of the Specification is committed (an owner's Task edit, start or deferred return
+included), and is refused `WORKFLOW_DIRTY_BASELINE`, naming the files, if any of that state is
+still uncommitted and dirty (`ownerWorkflowState`: held by a hand edit, or a failed commit). A Take
+over commits nothing: the owner's attempt it starts is committed by its finish, and no agent can
+start meanwhile. So no agent entry ever shares a ledger entry with another author through SpecFlow's
+actions.
 
 ### Owner confirmation
 
@@ -160,17 +192,15 @@ written; nothing else applies. The attempt commit runs now, as for a finished at
   exactly what the projection showed: the request names `confirmsDigest` (the drafts it approves
   with the content revisions of their manifests and documents, and the Task decisions); another
   digest is `WORKFLOW_CONFIRMATION_CHANGED`. With Git on, it applies only once the attempt commit
-  ran: while that commit is pending or failed, Confirm is `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` and the
-  projection's `actions.confirm` carries `unavailable {reason: attempt-commit-pending |
-attempt-commit-failed, code?}` (Retry commit first). The change is an ordinary owner write,
+  ran ([while an attempt commit waits](#while-an-attempt-commit-waits): `actions.confirm.unavailable`,
+  Retry commit first). The change is an ordinary owner write,
   committed by the owner's `commit-execution-state` post action, never attributed to the agent's
   Turns; that commit never takes a ledger entry an agent Turn wrote.
 - **Reject** (`rejectAgentResult`, core `reject`): the transition is not taken; the run is `ready` at
   the attempt's step with the owner's feedback (required) as its handoff (`kind: return`). Nothing the
   agent wrote is undone; it was committed with its attempt. With Git on it waits for the attempt
-  commit exactly like Confirm (`WORKFLOW_ATTEMPT_COMMIT_REQUIRED`, `actions.reject.unavailable`):
-  its run write would otherwise join the agent's uncommitted ledger entry, and the attempt commit
-  would then refuse it as mixed.
+  commit exactly like Confirm (`actions.reject.unavailable`), and its run write is committed by the
+  owner's `commit-execution-state` at once (`postActions`), so the next attempt starts clean.
 - Both take a request id: the same request again is replayed; a confirm or reject of an attempt
   another request decided is `WORKFLOW_ATTEMPT_MISMATCH` (for a confirmed one: repeat that request,
   or Retry commit for its owner commit); with nothing waiting `WORKFLOW_POSITION_INVALID`. While a

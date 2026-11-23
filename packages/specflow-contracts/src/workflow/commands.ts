@@ -265,6 +265,14 @@ export const PostActionResultSchema = Type.Union([
     status: Type.Literal('failed'),
     code: Type.String(),
     message: Type.String(),
+    /**
+     * `commit-execution-state`: the workflow state it left uncommitted (`WORKFLOW_ATTEMPT_COMMIT_REQUIRED`:
+     * tied to an agent attempt whose commit waits; `WORKFLOW_STATE_CORRUPT`: an agent attempt's
+     * record cannot be read), with the hand-edited ones in `edited`.
+     */
+    held: Type.Optional(
+      Type.Object({ edited: Type.Array(Type.String()), paths: Type.Array(Type.String()) }),
+    ),
   }),
 ]);
 export type PostActionResult = Static<typeof PostActionResultSchema>;
@@ -366,6 +374,8 @@ export const RejectWorkflowResultSchema = Type.Object({
   position: WorkflowRunPositionSchema,
   continuation: WorkflowContinuationSchema,
   replayed: Type.Optional(Type.Literal(true)),
+  /** The owner's commit of the Reject (`commit-execution-state`), as after Confirm. */
+  postActions: Type.Array(PostActionResultSchema),
 });
 export type RejectWorkflowResult = Static<typeof RejectWorkflowResultSchema>;
 
@@ -381,6 +391,8 @@ export const ReturnWorkflowResultSchema = Type.Union([
     subject: WorkflowSubjectSchema,
     position: WorkflowRunPositionSchema,
     continuation: WorkflowContinuationSchema,
+    /** The owner's commit of the return (`commit-execution-state`); absent where none runs. */
+    postActions: Type.Optional(Type.Array(PostActionResultSchema)),
   }),
   Type.Object({
     kind: Type.Literal('return-requested'),

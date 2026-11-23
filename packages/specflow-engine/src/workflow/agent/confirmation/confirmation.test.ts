@@ -284,7 +284,7 @@ describe('an agent result that waits for the owner (D17)', () => {
     });
     await expect(rejectAgentResult(fixture.dependencies, reject)).rejects.toMatchObject({
       code: 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED',
-      message: expect.stringContaining('retry the commit, then reject') as string,
+      message: expect.stringContaining('retry the commit of that attempt') as string,
     });
     expect(await positionOf(fixture.workflow, specification)).toEqual(AWAITING);
     expect(fixture.state.ownerPostActions).toEqual([]);
@@ -298,6 +298,73 @@ describe('an agent result that waits for the owner (D17)', () => {
     expect(await confirmAgentResult(fixture.dependencies, confirm)).toMatchObject({
       transition: 'approved',
     });
+  });
+
+  it('shows every write of the Specification unavailable while a finished attempt’s commit failed', async () => {
+    // The reviewer asks for changes (no owner decision): the run is ready at the breakdown again.
+    const fixture = await reviewAwaitingOwner(
+      { result: 'fail', feedback: 'Split the API Task.' },
+      catalogue,
+      ({ state }) => {
+        state.postActionResults = [
+          {
+            action: 'attempt-commit',
+            status: 'failed',
+            code: 'MANUAL_COMMIT_CONFLICT',
+            message: 'A path changed.',
+          },
+        ];
+      },
+    );
+    const failed = { reason: 'attempt-commit-failed', code: 'MANUAL_COMMIT_CONFLICT' } as const;
+    const projected = () => inspectActions(fixture.dependencies.workflow, specification);
+    const ready = await projected();
+    expect(ready.attemptCommit).toEqual({
+      ...failed,
+      attemptId: ATTEMPT_ID,
+      subject: { specId: SPEC },
+      step: 'breakdown-review',
+      attempt: 1,
+      stepTitle: expect.any(String) as string,
+    });
+    expect(ready.actions.start).toMatchObject({ step: 'breakdown', unavailable: failed });
+    expect(ready.actions.return).toMatchObject({ unavailable: failed });
+    expect(ready.position).toMatchObject({
+      kind: 'ready',
+      next: { agent: { kind: 'unavailable', reason: 'attempt-commit-failed' } },
+    });
+    expect(ready.specification?.createTask).toEqual({
+      kind: 'unavailable',
+      reason: 'attempt-commit',
+    });
+    // A new agent attempt is refused before anything is written or committed.
+    const owners = fixture.state.ownerChanges.length;
+    await expect(
+      startAgentAttempt(fixture.dependencies, {
+        subject: specification,
+        archetype: 'feature',
+        actor: reviewer,
+        expected: { step: 'breakdown' },
+        workspaceId: WORKSPACE,
+        turn: { invocationId: INVOCATION_2, turnId: 'turn-2' },
+      }),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED' });
+    expect(fixture.state.ownerChanges).toHaveLength(owners);
+
+    // The memory store admits what the Engine's store refuses: an owner's attempt, whose Finish
+    // and the Task actions are shown unavailable too.
+    await startSpecification(fixture.workflow, owner);
+    const active = await projected();
+    expect(active.actions.finish).toMatchObject({ step: 'breakdown', unavailable: failed });
+    const taskActions = (await inspectActions(fixture.dependencies.workflow, task('api'))).task;
+    expect(taskActions?.editDetails).toEqual({ kind: 'unavailable', reason: 'attempt-commit' });
+
+    // Once the commit ran nothing is held.
+    fixture.state.postActionResults = [{ action: 'attempt-commit', status: 'completed' }];
+    await retryAgentAttemptCommit(fixture.dependencies, { ...REVIEW, actor: owner });
+    const released = await projected();
+    expect(released.attemptCommit).toBeUndefined();
+    expect(released.actions.finish?.unavailable).toBeUndefined();
   });
 
   it('shows and refuses the decision of a Task’s agent result while its attempt commit waits', async () => {

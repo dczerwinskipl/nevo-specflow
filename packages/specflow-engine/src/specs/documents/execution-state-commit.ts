@@ -38,6 +38,12 @@ export interface HeldExecutionState {
    * own commit has not run (D15): they wait for it. The caller never reports such a commit as done.
    */
   readonly attempt?: true;
+  /**
+   * Some of `paths` were written by agent executions and the attempt journals cannot all be read, so
+   * SpecFlow cannot tell whether an attempt commit still takes them or they are the owner's to
+   * commit. The caller never reports such a commit as done.
+   */
+  readonly unattributable?: true;
 }
 
 /** What committing a Specification's execution state did. */
@@ -102,7 +108,10 @@ const messageText = (message: { subject: string; body: string }): string =>
  * (D15), so this owner's commit can never split the agent's work. An owner's change tied to it is
  * reported `held` with `attempt`, so the commit is never reported done while it stays behind. An
  * entry of an attempt that ended without its own commit (the owner took it over, or returned it) is
- * committed here, so no execution state is left uncommitted that no commit will ever take.
+ * committed here, so no execution state is left uncommitted that no commit will ever take. An entry
+ * an agent of such an attempt changed together with someone else is held with `attempt` too; without
+ * `attemptExecutions` (the journals cannot all be read) the execution state agents wrote is held
+ * `unattributable`. The caller reports neither as done.
  */
 export async function commitExecutionState(
   engine: SpecFlowEngine,
@@ -137,17 +146,29 @@ export async function commitExecutionState(
     // An entry an attempt's commit still takes (D15) is the agent's work, never this owner's
     // commit's: it is left out with everything that travels with it.
     const pending = change.attemptExecutions;
-    const authored = new Set(
-      (record?.entries ?? [])
-        .filter((entry) => {
-          const { executions } = ledgerAuthorsOf(entry);
-
-          return pending === undefined
-            ? executions.length > 0
-            : executions.some((id) => pending.has(id));
-        })
-        .map((entry) => entry.path),
+    const state = (record?.entries ?? []).filter((entry) =>
+      isExecutionStatePathOf(directory, entry.path),
     );
+    const authoredEntries = state.filter((entry) => {
+      const { executions } = ledgerAuthorsOf(entry);
+
+      return pending === undefined
+        ? executions.length > 0
+        : executions.some((id) => pending.has(id));
+    });
+    const authored = new Set(authoredEntries.map((entry) => entry.path));
+    // Someone else's change inside such an entry (an owner's, or an execution no attempt commit
+    // takes): it cannot be committed here, nor by the attempt commit. Never reported done.
+    const shared = authoredEntries
+      .filter((entry) => {
+        const authors = ledgerAuthorsOf(entry);
+
+        return (
+          pending !== undefined &&
+          (authors.unattributed === true || authors.executions.some((id) => !pending.has(id)))
+        );
+      })
+      .map((entry) => entry.path);
     const seed = entries
       .map((entry) => entry.path)
       .filter((path) => isExecutionStatePathOf(directory, path) && !authored.has(path));
@@ -155,14 +176,23 @@ export async function commitExecutionState(
     // Only what an owner's operation ties to the agent's work: the rest is the attempt's alone.
     const agents = closure.filter((path) => authored.has(path));
     const edited = await heldOf(found.workspaceRoot, entries, closure, unlinked);
+    const withAgents =
+      agents.length > 0 || shared.length > 0
+        ? withAgentWork(edited, closureOf(entries, agents, unlinked), closure, shared)
+        : edited;
 
     return {
       entries,
       closure,
+      // Execution state agents wrote while the journals cannot all be read: whose it is is unknown.
       held:
-        agents.length > 0
-          ? withAgentWork(edited, closureOf(entries, agents, unlinked), closure)
-          : edited,
+        pending === undefined && authored.size > 0
+          ? {
+              edited: withAgents?.edited ?? [],
+              paths: [...new Set([...(withAgents?.paths ?? []), ...authored])].sort(),
+              unattributable: true as const,
+            }
+          : withAgents,
     };
   };
 
@@ -220,12 +250,13 @@ function withAgentWork(
   held: HeldExecutionState | undefined,
   travelling: readonly string[],
   closure: readonly string[],
+  shared: readonly string[],
 ): HeldExecutionState {
   const paths = new Set([...(held?.paths ?? []), ...travelling]);
 
   return {
     edited: held?.edited ?? [],
-    paths: closure.filter((path) => paths.has(path)),
+    paths: [...new Set([...closure.filter((path) => paths.has(path)), ...shared])].sort(),
     attempt: true,
   };
 }
@@ -326,5 +357,6 @@ async function withIndex(
     edited: held.edited,
     paths: [...new Set([...closure.filter((path) => travelling.has(path)), index])].sort(),
     ...(held.attempt ? { attempt: true as const } : {}),
+    ...(held.unattributable ? { unattributable: true as const } : {}),
   };
 }

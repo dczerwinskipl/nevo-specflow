@@ -20,13 +20,12 @@ import type { TaskTypes, WorkflowDefinition, WorkflowStep } from '../definitions
 import { WorkflowError } from '../errors';
 import type { TaskProposal } from '../tasks/tasks';
 import type { TaskResourceIssue } from '../../tasks/resource/validate';
-import {
-  agentAttemptBindingOf,
-  type ExecutionTask,
-  type PendingOwnerDecisions,
-  type WorkflowActor,
-  type WorkflowRun,
-  type WorkflowSubject,
+import type {
+  ExecutionTask,
+  PendingOwnerDecisions,
+  WorkflowActor,
+  WorkflowRun,
+  WorkflowSubject,
 } from '../state/model';
 import type { ExecutionSnapshot } from '../state/store';
 import {
@@ -54,7 +53,10 @@ import {
   type ExecutionTasks,
   type WorkflowDependencies,
 } from './loaded-execution';
-import type { AttemptCommitWait } from '../../specs/uncommitted/attempts';
+import type {
+  AttemptCommitWait,
+  SpecificationAttemptCommitWait,
+} from '../../specs/uncommitted/attempts';
 import {
   describeStep,
   describeTransitions,
@@ -148,8 +150,18 @@ export const RUNTIME_AGENT_UNAVAILABLE_REASONS = [
   'project-busy',
   'demo',
 ] as const;
+/**
+ * With Git on, an agent attempt of the Specification waits for its own commit (D15): a new agent
+ * start is refused `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` meanwhile (`detail`: the failure's code).
+ */
+export const ATTEMPT_COMMIT_AGENT_UNAVAILABLE_REASONS = [
+  'attempt-commit-pending',
+  'attempt-commit-failed',
+] as const;
 export type AgentUnavailableReason =
-  (typeof AGENT_UNAVAILABLE_REASONS)[number] | (typeof RUNTIME_AGENT_UNAVAILABLE_REASONS)[number];
+  | (typeof AGENT_UNAVAILABLE_REASONS)[number]
+  | (typeof RUNTIME_AGENT_UNAVAILABLE_REASONS)[number]
+  | (typeof ATTEMPT_COMMIT_AGENT_UNAVAILABLE_REASONS)[number];
 
 /**
  * Whether an agent could do the step, and how agent step execution would launch it: the agent role, provider,
@@ -406,6 +418,13 @@ export interface WorkflowActions {
     readonly firstStart: boolean;
     /** First Task start: send it with the start (`StartTaskInput.expectedWorkflowRevision`). */
     readonly expectedWorkflowRevision?: string;
+    /**
+     * With Git on, an agent attempt of the Specification waits for its own commit (D15): every
+     * workflow write of the Specification is refused `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` until it
+     * ran (`ActionProjection.attemptCommit` names the attempt). The same on `finish`, `return`,
+     * `confirm` and `reject`.
+     */
+    readonly unavailable?: AttemptCommitWait;
   };
   /** The active attempt is the owner's: finish it with one of these results. */
   readonly finish?: {
@@ -444,6 +463,8 @@ export interface WorkflowActions {
      * unchanged proposals. A finish lists those to keep; an owned draft it leaves out is cancelled.
      */
     readonly drafts?: readonly TaskProposal[];
+    /** As `start.unavailable`. */
+    readonly unavailable?: AttemptCommitWait;
   };
   /**
    * An agent's result waits for the owner (`awaiting-confirmation`): Confirm applies it, Reject
@@ -474,6 +495,8 @@ export interface WorkflowActions {
       /** Whether the return needs a reason (its feedback). */
       readonly feedback: 'required' | 'optional';
     }[];
+    /** As `start.unavailable`. */
+    readonly unavailable?: AttemptCommitWait;
   };
 }
 
@@ -504,7 +527,7 @@ export interface TaskTypeOption {
 
 export interface SpecificationLevelActions {
   /** `specification-ended`: the Specification's workflow completed or was abandoned. */
-  readonly createTask: Availability<'task-limit' | 'specification-ended'>;
+  readonly createTask: Availability<'task-limit' | 'specification-ended' | 'attempt-commit'>;
   /**
    * The task types a new Task may have, in catalogue order; empty when none is allowed or defined.
    * A type whose workflow is not a defined Task workflow is left out (its creation is refused).
@@ -548,6 +571,12 @@ export interface ActionProjection {
   /** The agent attempt of the active step; only the Runtime adds it (agent step execution). */
   readonly agentAttempt?: AgentAttemptView;
   /**
+   * With Git on, the finished agent attempt of the Specification (of the subject or of another
+   * subject of it) whose own commit (D15) still waits: every action that writes is `unavailable`
+   * until it ran (`withAttemptCommitWait`); Retry commit names its `subject` and `step#attempt`.
+   */
+  readonly attemptCommit?: SpecificationAttemptCommitWait;
+  /**
    * An agent working on another subject holds the project (its Turn runs, or SpecFlow cannot tell
    * whether its process still runs); only the Runtime adds it.
    */
@@ -571,16 +600,89 @@ export type ActionDependencies = Pick<
   'store' | 'serialize' | 'catalogue' | 'references'
 > & {
   readonly specificationExit?: SpecificationExitPort;
-  /** Where an agent attempt's commit stands (`attemptCommit`); absent: none waits. */
+  /** Whether an agent attempt of the Specification waits for its commit; absent: none waits. */
   readonly holds?: Pick<ExecutionHolds, 'attemptCommit'>;
 };
 
-function attemptCommitOf(dependencies: ActionDependencies): Pick<RunInput, 'attemptCommit'> {
-  const attemptCommit = dependencies.holds?.attemptCommit;
+/**
+ * The projection while an agent attempt of the Specification waits for its own commit (D15, Git
+ * on): every workflow write of the Specification is refused `WORKFLOW_ATTEMPT_COMMIT_REQUIRED`
+ * (`attempt-commit-admission.ts`), so each action that writes says so before the click: `start`,
+ * `finish`, `return`, `confirm` and `reject` carry `unavailable` (the wait's reason and code), the
+ * next step's agent option is unavailable with that reason, the Task actions and New task are
+ * unavailable (`attempt-commit`), and `attemptCommit` names the attempt (Retry commit).
+ */
+export function withAttemptCommitWait<P extends ActionProjection>(
+  projection: P,
+  wait: SpecificationAttemptCommitWait | undefined,
+): P {
+  if (wait === undefined) {
+    return projection;
+  }
 
-  return attemptCommit !== undefined
-    ? { attemptCommit: (attemptId) => attemptCommit.call(dependencies.holds, attemptId) }
-    : {};
+  const waiting: AttemptCommitWait = {
+    reason: wait.reason,
+    ...(wait.code !== undefined ? { code: wait.code } : {}),
+  };
+  const { actions, position } = projection;
+  const held = <T extends object>(action: T): T => ({ ...action, unavailable: waiting });
+  const heldActions: WorkflowActions = {
+    ...(actions.start ? { start: held(actions.start) } : {}),
+    ...(actions.finish ? { finish: held(actions.finish) } : {}),
+    ...(actions.confirm ? { confirm: held(actions.confirm) } : {}),
+    ...(actions.reject ? { reject: held(actions.reject) } : {}),
+    ...(actions.return ? { return: held(actions.return) } : {}),
+  };
+  const heldAgent = (next: StartableStep): StartableStep =>
+    next.agent.kind === 'available'
+      ? {
+          ...next,
+          agent: {
+            kind: 'unavailable',
+            reason: wait.reason,
+            ...(wait.code !== undefined ? { detail: wait.code } : {}),
+            launch: next.agent.launch,
+            ...(next.agent.independent ? { independent: true as const } : {}),
+          },
+        }
+      : next;
+  const heldPosition: ActionPosition =
+    position.kind === 'not-started' || position.kind === 'ready'
+      ? { ...position, next: heldAgent(position.next) }
+      : position.kind === 'blocked' && position.next
+        ? { ...position, next: heldAgent(position.next) }
+        : position;
+  const blocked = unavailable('attempt-commit' as const);
+  const task = projection.task;
+  const heldTask: TaskLifecycleActions | undefined = task && {
+    ...task,
+    approve: task.approve.kind === 'allowed' ? blocked : task.approve,
+    hold: task.hold.kind === 'allowed' ? blocked : task.hold,
+    resume: task.resume.kind === 'allowed' ? blocked : task.resume,
+    cancel: task.cancel.kind === 'allowed' ? blocked : task.cancel,
+    remove: task.remove.kind === 'allowed' ? blocked : task.remove,
+    editDetails: task.editDetails.kind === 'allowed' ? blocked : task.editDetails,
+    editContext: task.editContext.kind === 'allowed' ? blocked : task.editContext,
+    editDependencies: task.editDependencies.kind === 'allowed' ? blocked : task.editDependencies,
+  };
+  const specification = projection.specification;
+
+  return {
+    ...projection,
+    position: heldPosition,
+    actions: heldActions,
+    ...(heldTask ? { task: heldTask } : {}),
+    ...(specification
+      ? {
+          specification: {
+            ...specification,
+            createTask:
+              specification.createTask.kind === 'allowed' ? blocked : specification.createTask,
+          },
+        }
+      : {}),
+    attemptCommit: wait,
+  };
 }
 
 /**
@@ -599,8 +701,12 @@ export function inspectActions(
     const snapshot = await dependencies.store.read(subject.specId);
     const derived = deriveAttention(dependencies.catalogue, snapshot);
 
+    const wait = await outer.holds?.attemptCommit?.(subject.specId);
     if (subject.kind === 'specification') {
-      return specificationProjection(dependencies, snapshot, subject, derived);
+      return withAttemptCommitWait(
+        await specificationProjection(dependencies, snapshot, subject, derived),
+        wait,
+      );
     }
 
     // The Task detail: the projection every read makes, plus the authoring facts of this Task.
@@ -608,19 +714,22 @@ export function inspectActions(
     const projection = await taskProjection(dependencies, snapshot, subject, derived, read);
     const task = read.tasks.tasks.find((candidate) => candidate.taskId === subject.taskId);
     if (!task) {
-      return projection;
+      return withAttemptCommitWait(projection, wait);
     }
 
-    return {
-      ...projection,
-      taskAuthoring: await taskAuthoringOf(
-        dependencies,
-        snapshot,
-        read.tasks,
-        task,
-        projection.task?.editDependencies.kind === 'allowed',
-      ),
-    };
+    return withAttemptCommitWait(
+      {
+        ...projection,
+        taskAuthoring: await taskAuthoringOf(
+          dependencies,
+          snapshot,
+          read.tasks,
+          task,
+          projection.task?.editDependencies.kind === 'allowed',
+        ),
+      },
+      wait,
+    );
   });
 }
 
@@ -902,8 +1011,6 @@ interface RunInput {
   /** The document files of a draft a Confirm approves (`confirmsDigest`). */
   readonly references: Pick<TaskReferences, 'taskDocumentRevisions'>;
   readonly gates: GateReading;
-  /** Why an agent attempt's commit still waits (`ExecutionHolds.attemptCommit`). */
-  readonly attemptCommit?: ExecutionHolds['attemptCommit'];
 }
 
 /**
@@ -1185,8 +1292,6 @@ async function awaitingProjection(
     input.references,
   );
   const ref = { step: record.step, attempt: record.attempt };
-  const attemptId = agentAttemptBindingOf(record)?.attemptId;
-  const waiting = attemptId !== undefined ? await input.attemptCommit?.(attemptId) : undefined;
 
   return {
     position: {
@@ -1211,10 +1316,8 @@ async function awaitingProjection(
       },
       confirmsDigest: confirmsDigestOf(confirms),
     },
-    actions: {
-      confirm: { ...ref, ...(waiting ? { unavailable: waiting } : {}) },
-      reject: { ...ref, ...(waiting ? { unavailable: waiting } : {}) },
-    },
+    // While an attempt commit waits, both are `unavailable` (`withAttemptCommitWait`).
+    actions: { confirm: ref, reject: ref },
   };
 }
 
@@ -1351,7 +1454,6 @@ async function specificationPosition(
         snapshot,
         references: dependencies.references,
         gates,
-        ...attemptCommitOf(dependencies),
       }),
     )),
     specification,
@@ -1549,7 +1651,6 @@ export async function taskProjection(
     snapshot,
     references: dependencies.references,
     gates,
-    ...attemptCommitOf(dependencies),
   });
 
   return {

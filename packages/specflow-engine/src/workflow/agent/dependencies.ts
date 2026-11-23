@@ -23,7 +23,11 @@ import { engineAgentContextSource } from './context/engine-source';
 import type { AgentContextSource } from './context/gather';
 import { dirtySetOf, type DirtySetFacts } from './boundary/dirty-set';
 import { engineAttributionFacts } from './boundary/engine-facts';
+import { attemptCommitExecutions } from './finalize/attempt-commit/close';
 import { attemptCommitRunner } from './finalize/attempt-commit/run';
+import { ownerStatePaths } from './boundary/owner-state';
+import { resolveSpecification } from '../../specs/discovery';
+import { containerDirectory } from '../../specs/documents/changes/plan/container';
 import type { AgentPostActionRunner, FinalizeBoundary } from './finalize/ports';
 import { openDocumentWritesOf } from './finalize/open-writes';
 import { filesystemAgentAttemptJournal, type AgentAttemptJournalStore } from './journal/store';
@@ -56,6 +60,12 @@ export interface AgentAttemptDependencies {
    * attempt's history lists as the work SpecFlow wrote for it and has not committed.
    */
   ledger(workspaceId: string, specId: string): Promise<readonly LedgerEntry[]>;
+  /**
+   * The Specification's uncommitted execution state that is the owner's to commit
+   * (`boundary/owner-state.ts`), checkout-relative: a new agent attempt starts only once it is
+   * committed (lock-free).
+   */
+  ownerWorkflowState(workspaceId: string, specId: string): Promise<readonly string[]>;
 }
 
 /** The facts the attribution boundary judges, read from the attempt's checkout. */
@@ -147,6 +157,23 @@ export async function openAgentAttempts(
       });
 
       return record?.entries ?? [];
+    },
+    async ownerWorkflowState(workspaceId, specId) {
+      const found = await resolveSpecification(engine, specId);
+      if (found.status !== 'available' || found.workspaceId !== workspaceId) {
+        return [];
+      }
+
+      const record = await readLedgerRecord(engine.context, workspaceId, {
+        kind: 'specification',
+        id: specId,
+      });
+
+      return ownerStatePaths(
+        record?.entries ?? [],
+        containerDirectory(found.specification.slug, { kind: 'specification' }),
+        await attemptCommitExecutions(engine, workspaceId),
+      );
     },
     finalize: {
       store: (owned) => engineExecutionStore(engine, owned),

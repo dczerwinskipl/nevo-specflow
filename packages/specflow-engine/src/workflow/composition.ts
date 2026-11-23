@@ -32,6 +32,7 @@ import {
 } from '../specs/durable';
 import { guardExecutionClaims } from './state/claim-guard';
 import { executionClaimAdmission } from './write-admission';
+import { guardAttemptCommits } from './attempt-commit-admission';
 import type { RememberModelDependencies } from './definitions/remember-model';
 import type { TaskReferences } from './operations/task-references';
 import { readTaskDocuments } from '../specs/documents/task-document-reader';
@@ -221,8 +222,7 @@ function engineHolds(engine: SpecFlowEngine): ExecutionHolds {
         throw error;
       }
     },
-    attemptCommit: (attemptId) =>
-      engine.attemptCommitWait?.(attemptId) ?? Promise.resolve(undefined),
+    attemptCommit: (specId) => engine.attemptCommitWait?.(specId) ?? Promise.resolve(undefined),
   };
 }
 
@@ -239,25 +239,29 @@ export function engineExecutionStore(
   owned: OwnedExecutionClaim | undefined,
   attributedExecution?: string,
 ): WorkflowStore {
-  // The claim admission first: an agent Turn's claim is the holder a refusal names.
-  return guardExecutionClaims(
-    guardCloseReservations(
-      guardTaskDocumentChanges(
-        createFilesystemWorkflowStore({
-          stateRoot: engine.context.project.stateRoot,
-          specificationDirectory: (specId) => specificationDirectory(engine, specId),
-          commits: {
-            admit: (specId, paths, operationId) =>
-              admitExecutionStateChange(engine, specId, paths, operationId, {
-                ...(owned !== undefined ? { ownedExecution: owned } : {}),
-                ...(attributedExecution !== undefined ? { attributedExecution } : {}),
-              }),
-          },
-        }),
-        pendingTaskDocuments(engine),
-      ),
-      (specId) => closeInProgress(engine, specId),
+  // The claim admission first: an agent Turn's claim is the holder a refusal names. Then, for every
+  // write not made under an agent Turn's own claim, none while an agent attempt of the Specification
+  // waits for its commit (`attempt-commit-admission.ts`).
+  const store = guardCloseReservations(
+    guardTaskDocumentChanges(
+      createFilesystemWorkflowStore({
+        stateRoot: engine.context.project.stateRoot,
+        specificationDirectory: (specId) => specificationDirectory(engine, specId),
+        commits: {
+          admit: (specId, paths, operationId) =>
+            admitExecutionStateChange(engine, specId, paths, operationId, {
+              ...(owned !== undefined ? { ownedExecution: owned } : {}),
+              ...(attributedExecution !== undefined ? { attributedExecution } : {}),
+            }),
+        },
+      }),
+      pendingTaskDocuments(engine),
     ),
+    (specId) => closeInProgress(engine, specId),
+  );
+
+  return guardExecutionClaims(
+    owned === undefined ? guardAttemptCommits(store, engineHolds(engine)) : store,
     executionClaimAdmission(engine, owned),
   );
 }
@@ -319,76 +323,114 @@ export const readTaskProgressForRead = asReadRequest(readTaskProgress);
 export const inspectActionsForRead = asReadRequest(inspectActions);
 
 /**
- * The post actions of an opened Engine (`operations/post-actions.ts`): after a step's finish, commit
- * the Specification's execution state when auto-commit is off (with it on, the document queue commits
- * each change by itself). Seam for E6: the push of an agent step joins here.
+ * The post actions of an opened Engine (`operations/post-actions.ts`): after a step's finish, and
+ * after an owner's change that finishes no step (Reject, Return) or before an agent's new attempt,
+ * commit the Specification's execution state when auto-commit is off (with it on, the document queue
+ * commits each change by itself). Seam for E6: the push of an agent step joins here.
  */
 function enginePostActions(engine: SpecFlowEngine): WorkflowPostActions {
   return {
-    async afterStepFinished(event): Promise<readonly PostActionResult[]> {
-      const action = 'commit-execution-state';
-      try {
-        const attemptExecutions = await engine.attemptCommitExecutions?.(
-          engine.workspace.workspaceId,
-        );
-        const outcome = await commitExecutionState(engine, event.subject.specId, {
-          phrase: `finish "${event.stepTitle}"${ofSubject(event.subject)}`,
-          details: [`Step ${event.step}, attempt ${event.attempt}.`],
-          ...(attemptExecutions !== undefined ? { attemptExecutions } : {}),
-        });
-        if ('held' in outcome && outcome.held?.attempt) {
-          // Never reported done while the owner's own change waits for an agent's attempt commit.
-          return [
-            {
-              action,
-              status: 'failed',
-              code: 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED',
-              message: `Some of the workflow state (${outcome.held.paths.join(', ')}) was changed together with an agent attempt's work whose commit has not run; it stays uncommitted until that commit ran (retry the commit), then the next commit of the workflow state takes it.`,
-            },
-          ];
-        }
+    afterStepFinished: (event) =>
+      commitOwnerState(engine, event.subject.specId, {
+        phrase: `finish "${event.stepTitle}"${ofSubject(event.subject)}`,
+        details: [`Step ${event.step}, attempt ${event.attempt}.`],
+      }),
+    afterOwnerChange: (event) =>
+      commitOwnerState(engine, event.subject.specId, {
+        phrase: event.phrase,
+        ...(event.details !== undefined ? { details: event.details } : {}),
+      }),
+  };
+}
 
-        const held =
-          'held' in outcome && outcome.held
-            ? { held: { edited: outcome.held.edited, paths: outcome.held.paths } }
-            : {};
-        switch (outcome.kind) {
-          case 'committed':
-            return [
-              {
-                action,
-                status: 'completed',
-                commit: {
-                  ...(outcome.sha !== undefined ? { sha: outcome.sha } : {}),
-                  paths: outcome.paths,
-                },
-                ...held,
-              },
-            ];
-          case 'nothing-to-commit':
-            return [{ action, status: 'completed', ...held }];
-          case 'not-applicable':
-            return [{ action, status: 'skipped', reason: outcome.reason }];
-        }
-      } catch (error) {
-        // The finish is recorded; the state stays uncommitted (a Close takes it with its archive commit).
-        const code =
-          error instanceof Error && 'code' in error && typeof error.code === 'string'
-            ? error.code
-            : 'POST_ACTION_FAILED';
+const listed = (paths: readonly string[]): string =>
+  paths.slice(0, 10).join(', ') +
+  (paths.length > 10 ? ` and ${String(paths.length - 10)} more` : '');
 
+/**
+ * `commit-execution-state`: the owner's commit of the Specification's execution state. It is never
+ * reported `completed` while it left any of the owner's own changes uncommitted because of an agent's
+ * work: an owner's change tied to an attempt whose commit waits is `failed`
+ * `WORKFLOW_ATTEMPT_COMMIT_REQUIRED`, execution state no journal can attribute `failed`
+ * `WORKFLOW_STATE_CORRUPT`, both with the paths held. Only paths a person edited by hand are held
+ * on a `completed` result (they stay theirs to commit).
+ */
+async function commitOwnerState(
+  engine: SpecFlowEngine,
+  specId: string,
+  change: { readonly phrase: string; readonly details?: readonly string[] },
+): Promise<readonly PostActionResult[]> {
+  const action = 'commit-execution-state';
+  try {
+    const attemptExecutions = await engine.attemptCommitExecutions?.(engine.workspace.workspaceId);
+    const outcome = await commitExecutionState(engine, specId, {
+      ...change,
+      ...(attemptExecutions !== undefined ? { attemptExecutions } : {}),
+    });
+    const held =
+      'held' in outcome && outcome.held
+        ? { held: { edited: outcome.held.edited, paths: outcome.held.paths } }
+        : {};
+    if ('held' in outcome && outcome.held?.unattributable) {
+      return [
+        {
+          action,
+          status: 'failed',
+          code: 'WORKFLOW_STATE_CORRUPT',
+          message: `An agent attempt's record cannot be read, so SpecFlow cannot tell who wrote some of the workflow state (${listed(outcome.held.paths)}); it stays uncommitted. Repair or remove the unreadable record under the project's local state, then finish again or commit with Git.`,
+          ...held,
+        },
+      ];
+    }
+
+    if ('held' in outcome && outcome.held?.attempt) {
+      // Never reported done while the owner's own change waits for an agent's attempt commit.
+      return [
+        {
+          action,
+          status: 'failed',
+          code: 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED',
+          message: `Some of the workflow state (${listed(outcome.held.paths)}) was changed together with an agent attempt's work whose commit has not run; it stays uncommitted until that commit ran (retry the commit), then the next commit of the workflow state takes it.`,
+          ...held,
+        },
+      ];
+    }
+
+    switch (outcome.kind) {
+      case 'committed':
         return [
           {
             action,
-            status: 'failed',
-            code,
-            message:
-              error instanceof Error ? error.message : 'The commit of the workflow state failed.',
+            status: 'completed',
+            commit: {
+              ...(outcome.sha !== undefined ? { sha: outcome.sha } : {}),
+              paths: outcome.paths,
+            },
+            ...held,
           },
         ];
-      }
-    },
-  };
+      case 'nothing-to-commit':
+        return [{ action, status: 'completed', ...held }];
+      case 'not-applicable':
+        return [{ action, status: 'skipped', reason: outcome.reason }];
+    }
+  } catch (error) {
+    // The change is recorded; the state stays uncommitted (a Close takes it with its archive commit).
+    const code =
+      error instanceof Error && 'code' in error && typeof error.code === 'string'
+        ? error.code
+        : 'POST_ACTION_FAILED';
+
+    return [
+      {
+        action,
+        status: 'failed',
+        code,
+        message:
+          error instanceof Error ? error.message : 'The commit of the workflow state failed.',
+      },
+    ];
+  }
 }
 
 /**

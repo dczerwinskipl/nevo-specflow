@@ -148,6 +148,21 @@ export function assertCleanBaseline(facts: AttributionFacts): void {
 }
 
 /**
+ * The refusal of a new agent attempt while SpecFlow's own workflow state of the Specification is
+ * uncommitted after the start's owner commit (it held or failed): the agent's start and finish would
+ * write into those files, and its attempt commit would refuse them as mixed.
+ */
+export function ownerStateUncommitted(paths: readonly string[]): AttributionRefusalError {
+  return new AttributionRefusalError(
+    'WORKFLOW_DIRTY_BASELINE',
+    `SpecFlow could not commit its own workflow state of this Specification: ${listed(paths)}. ` +
+      'The agent must not start on top of uncommitted workflow changes. Commit these files with ' +
+      'Git (or undo the edits made to them by hand), then ask the agent again.',
+    details(paths),
+  );
+}
+
+/**
  * The baseline at a Turn's dispatch (Continue, B3 rule 2): refused while a dirty path the Engine does
  * not attribute to itself differs from the dirty set recorded when the attempt's previous Turn
  * settled, naming the paths changed since. A recorded path that is clean now was committed or

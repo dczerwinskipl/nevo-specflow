@@ -151,6 +151,7 @@ function fakePort(overrides: Partial<WorkflowPort> = {}): { port: WorkflowPort; 
       subject: subjectSpec,
       position: { state: 'ready', step: 'review' },
       continuation: { kind: 'attention', step: 'review', reason: 'owner-action' },
+      postActions: [{ action: 'commit-execution-state', status: 'completed' }],
     }),
     ...overrides,
   };

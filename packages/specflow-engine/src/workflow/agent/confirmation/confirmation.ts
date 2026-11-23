@@ -2,6 +2,7 @@ import { canonicalJson, decide, findStep, type RunPosition } from '@nevo/workflo
 
 import { sha256Hex } from '../../../hash';
 import type { ContinuationDecision } from '../../continuation/resolve';
+import { assertNoAttemptCommitWait } from '../../attempt-commit-admission';
 import { WorkflowError } from '../../errors';
 import { assertOwner } from '../../operations/actors';
 import type { AdvanceContext } from '../../operations/advance';
@@ -32,7 +33,8 @@ import { isAttemptJournalSettled, type AgentAttemptJournal } from '../journal/mo
  * effects, the gates and what follows): an ordinary owner write, committed by the owner's post
  * action like an owner's finish (never attributed to the agent's Turns). **Reject** does not take
  * it: the step is ready to start again with the owner's feedback as its handoff; the agent's work
- * was committed with its attempt, so the next attempt starts from a clean checkout.
+ * was committed with its attempt and the Reject is committed by the owner's commit, so the next
+ * attempt starts from a clean checkout.
  */
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
@@ -81,6 +83,12 @@ export interface RejectAgentResultResult {
   readonly position: RunPosition;
   readonly continuation: ContinuationDecision;
   readonly replayed?: true;
+  /**
+   * What the owner's commit of the Reject reported (`commit-execution-state` with automatic commits
+   * off), so the next attempt starts from a checkout where the owner's run write is committed; a
+   * replay runs it again.
+   */
+  readonly postActions: readonly PostActionResult[];
 }
 
 function mismatch(message: string): never {
@@ -265,7 +273,7 @@ export async function confirmAgentResult(
     const { result, attemptId } = await decideInSection(dependencies, input, (snapshot, record) =>
       planConfirm(dependencies, snapshot, record, input),
     );
-    // With Git on, Confirm applied only after the attempt commit ran (`assertAttemptCommitted`).
+    // With Git on, Confirm applied only after the attempt commit ran (`assertNoAttemptCommitWait`).
     // With Git off an attempt commit a crash left pending is run first all the same (it records
     // nothing); then the owner's own post actions, as after an owner's finish.
     await runAgentPostActions(dependencies, attemptId);
@@ -333,7 +341,9 @@ async function planConfirm(
     };
   }
 
-  await assertAttemptCommitted(dependencies, record, 'confirm');
+  // With Git on, only once the attempt's own commit ran (D15): the shared admission of every
+  // workflow write (`attempt-commit-admission.ts`), asked before the decision is planned.
+  await assertNoAttemptCommitWait(workflow.holds, subject.specId);
   const [taken] = decision.declaredEffects;
   const step = findStep(loaded.definition, input.step);
   if (taken?.source !== 'transition' || step?.kind !== 'work') {
@@ -382,43 +392,12 @@ async function planConfirm(
 }
 
 /**
- * With Git on, Confirm and Reject apply only once the attempt's own commit (D15) ran: while it is
- * pending or failed, the agent's documents, Task drafts and execution state are still uncommitted,
- * and the owner's decision would write the run into the same uncommitted entries (the attempt commit
- * would then refuse them as mixed) or its commit would come first or take them. Refused
- * `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` then (the projection shows the same as `actions.confirm` and
- * `actions.reject` `unavailable`); retrying the attempt commit runs it.
- */
-async function assertAttemptCommitted(
-  dependencies: AgentAttemptDependencies,
-  record: AttemptRecord,
-  kind: 'confirm' | 'reject',
-): Promise<void> {
-  const attemptId = agentAttemptBindingOf(record)?.attemptId;
-  const waiting =
-    attemptId !== undefined
-      ? await dependencies.workflow.holds.attemptCommit?.(attemptId)
-      : undefined;
-  if (waiting === undefined) {
-    return;
-  }
-
-  const named = `${record.step}#${String(record.attempt)}`;
-
-  throw new WorkflowError(
-    'WORKFLOW_ATTEMPT_COMMIT_REQUIRED',
-    waiting.reason === 'attempt-commit-failed'
-      ? `The commit of the agent's work in ${named} failed${waiting.code !== undefined ? ` (${waiting.code})` : ''}; retry the commit, then ${kind}.`
-      : `The commit of the agent's work in ${named} has not run yet; ${kind} once it has (or retry the commit).`,
-  );
-}
-
-/**
  * The owner's **Reject** of an agent's result that waits for them (D17, owner decision 2026-11-20):
  * the transition is not taken, and the step is ready to start again with the owner's `feedback` as
  * its handoff (whether the owner then starts it or runs it with an agent). Nothing the agent wrote is
  * undone: its drafts, documents and files were committed with its attempt (owner decision
- * 2026-11-21), so the next attempt starts from a clean checkout. Refusals and replay as
+ * 2026-11-21), and the owner's commit (`afterOwnerChange`, `commit-execution-state`) commits the
+ * Reject itself, so the next attempt starts from a clean checkout. Refusals and replay as
  * {@link confirmAgentResult} (with Git on, `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` too while the
  * attempt's own commit has not run or failed); empty feedback is `WORKFLOW_INPUT_INVALID`.
  */
@@ -431,11 +410,21 @@ export async function rejectAgentResult(
   const operation = workflow.operation ?? ((work) => work());
 
   return operation(async () => {
-    const { result } = await decideInSection(dependencies, input, (snapshot, record) =>
-      planReject(dependencies, snapshot, record, input),
-    );
+    const { result, stepTitle } = (
+      await decideInSection(dependencies, input, (snapshot, record) =>
+        planReject(dependencies, snapshot, record, input),
+      )
+    ).result;
+    // The owner's run write is an owner change: committed by the owner's commit at once, never left
+    // for the next attempt to build on (its commit would then refuse it as mixed).
+    const postActions =
+      (await workflow.postActions?.afterOwnerChange?.({
+        subject: input.subject,
+        phrase: `reject the result of "${stepTitle}"${ofSubject(input.subject)}`,
+        details: [`Step ${input.step}, attempt ${input.attempt}.`],
+      })) ?? [];
 
-    return result;
+    return { ...result, postActions };
   });
 }
 
@@ -444,7 +433,12 @@ async function planReject(
   snapshot: ExecutionSnapshot,
   record: AttemptRecord,
   input: RejectAgentResultInput,
-): Promise<DecisionPlan<RejectAgentResultResult>> {
+): Promise<
+  DecisionPlan<{
+    readonly result: Omit<RejectAgentResultResult, 'postActions'>;
+    readonly stepTitle: string;
+  }>
+> {
   const { workflow } = dependencies;
   const { subject } = input;
   const digest = requestDigest('reject', input);
@@ -465,7 +459,7 @@ async function planReject(
     requestDigest: digest,
   });
   if (!decision.replayed) {
-    await assertAttemptCommitted(dependencies, record, 'reject');
+    await assertNoAttemptCommitWait(workflow.holds, subject.specId);
     context.set.setRun(subject, decision.nextRun);
   }
 
@@ -477,10 +471,13 @@ async function planReject(
           summary: `reject the result of step ${input.step}${ofSubject(subject)} (attempt ${input.attempt})`,
         },
     result: {
-      subject,
-      position: decision.nextRun.position,
-      continuation: recordedContinuation(context, loaded, decision),
-      ...(decision.replayed ? { replayed: true as const } : {}),
+      result: {
+        subject,
+        position: decision.nextRun.position,
+        continuation: recordedContinuation(context, loaded, decision),
+        ...(decision.replayed ? { replayed: true as const } : {}),
+      },
+      stepTitle: findStep(loaded.definition, input.step)?.title ?? input.step,
     },
   };
 }

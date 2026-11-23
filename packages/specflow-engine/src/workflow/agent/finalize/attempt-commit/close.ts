@@ -1,11 +1,15 @@
 import type { SpecFlowEngine } from '../../../../application';
 import { listLedgerRecords } from '../../../../specs/durable';
 import type {
-  AttemptCommitWait,
   FailedAttemptCommit,
+  SpecificationAttemptCommitWait,
 } from '../../../../specs/uncommitted/attempts';
 import { readProjectGitPolicy } from '../../../../version-control/worktrees/config';
-import { attemptCommitWaitOf, isAttemptResolved } from '../../journal/model';
+import {
+  attemptCommitWaitOf,
+  isAttemptResolved,
+  type AgentAttemptJournal,
+} from '../../journal/model';
 import { filesystemAgentAttemptJournal } from '../../journal/store';
 import { attemptInvocations, selectAttemptLedgerEntries } from './selection';
 
@@ -63,21 +67,58 @@ export async function failedAgentAttemptCommits(
 }
 
 /**
- * With Git on, why the commit of the agent attempt `attemptId` still waits (not run yet, or failed):
- * the owner's Confirm and Reject wait for it. `undefined` once it ran, with Git off, or for an attempt without
- * a journal. Lock-free and Git-free.
+ * With Git on, the finished agent attempt of the Specification `specId` (of the Specification itself
+ * or of one of its Tasks) whose own commit (D15) still waits: not run yet, or failed. While one
+ * waits, every workflow write of the Specification is refused (`WORKFLOW_ATTEMPT_COMMIT_REQUIRED`),
+ * the owner's Confirm and Reject included. `undefined` with Git off or when none waits; a journal that cannot be read names
+ * no Specification and holds none (its commit cannot run either until it is repaired). Lock-free and
+ * Git-free.
  */
-export async function agentAttemptCommitWait(
+export async function specificationAttemptCommitWait(
   engine: SpecFlowEngine,
-  attemptId: string,
-): Promise<AttemptCommitWait | undefined> {
+  specId: string,
+): Promise<SpecificationAttemptCommitWait | undefined> {
   if (!(await readProjectGitPolicy(engine.context)).policy.enabled) {
     return undefined;
   }
 
-  const journal = await filesystemAgentAttemptJournal(engine.context).read(attemptId);
+  const listing = await filesystemAgentAttemptJournal(engine.context).listActive();
 
-  return journal !== undefined ? attemptCommitWaitOf(journal) : undefined;
+  return specificationAttemptCommitWaitOf(listing.journals, specId);
+}
+
+/** {@link specificationAttemptCommitWait} over listed journals (pure; the oldest attempt first). */
+export function specificationAttemptCommitWaitOf(
+  journals: readonly AgentAttemptJournal[],
+  specId: string,
+): SpecificationAttemptCommitWait | undefined {
+  const waiting = journals
+    .filter((journal) => journal.subject.specId === specId)
+    .flatMap((journal) => {
+      const wait = attemptCommitWaitOf(journal);
+      const action = journal.postActions?.find((entry) => entry.kind === 'attempt-commit');
+
+      return wait !== undefined && action !== undefined ? [{ journal, wait, action }] : [];
+    })
+    .sort((left, right) => left.journal.operationId.localeCompare(right.journal.operationId));
+  const [first] = waiting;
+  if (first === undefined) {
+    return undefined;
+  }
+
+  const { journal, wait, action } = first;
+
+  return {
+    ...wait,
+    attemptId: journal.operationId,
+    subject: {
+      specId: journal.subject.specId,
+      ...(journal.subject.kind === 'task' ? { taskId: journal.subject.taskId } : {}),
+    },
+    step: journal.step,
+    attempt: journal.attempt,
+    stepTitle: action.stepTitle,
+  };
 }
 
 /**

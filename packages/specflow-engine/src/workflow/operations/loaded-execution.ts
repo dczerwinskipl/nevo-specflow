@@ -19,7 +19,7 @@ import type { TaskManifest } from '../../tasks/resource/model';
 import type { TaskRunRecord } from '../state/model';
 import type { ExecutionSnapshot, Versioned, WorkflowStore } from '../state/store';
 import type { SpecificationExitPort } from './actions';
-import type { AttemptCommitWait } from '../../specs/uncommitted/attempts';
+import type { SpecificationAttemptCommitWait } from '../../specs/uncommitted/attempts';
 import type { TaskReferences } from './task-references';
 import type { WorkflowPostActions } from './post-actions';
 
@@ -63,11 +63,13 @@ export interface ExecutionHolds {
    */
   operationInProgress(specId: string): Promise<boolean>;
   /**
-   * With Git on, why the commit of the agent attempt `attemptId` (D15) still waits (not run yet, or
-   * failed); `undefined` once it ran, with Git off, or for an attempt without a journal. Lock-free
-   * and Git-free. Absent: the host runs no agent attempts.
+   * With Git on, the finished agent attempt of the Specification `specId` (or of one of its Tasks)
+   * whose own commit (D15) still waits (not run yet, or failed): every workflow write of the
+   * Specification is refused meanwhile (`attempt-commit-admission.ts`). `undefined` when none waits
+   * or with Git off.
+   * Lock-free and Git-free. Absent: the host runs no agent attempts.
    */
-  attemptCommit?(attemptId: string): Promise<AttemptCommitWait | undefined>;
+  attemptCommit?(specId: string): Promise<SpecificationAttemptCommitWait | undefined>;
 }
 
 /** One subject of a snapshot with the definition its run is pinned to. */

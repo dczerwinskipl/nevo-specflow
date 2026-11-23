@@ -533,10 +533,24 @@ id>` on `<branch>`: N documents and N files." Without an id (every path already 
   plain words with the code after it ("<step> is finished, but its commit failed: a Git hook or rule
   in this repository refused it (`COMMIT_BLOCKED`)"; or "the branch is protected"; or "Git could not
   complete it"), that the files stay uncommitted on `<branch>` and Close lists them until
-  committed, and, before any click, that Run with agent cannot start the next step until then (an
-  agent starts only from a committed checkout). Then the attempt's files (five, then "and N more")
-  and **Retry commit** inside the note (a dedicated owner action; the same button in Close and in
-  the history). A refused retry shows its reason under the note.
+  committed, and, before any click, that until it is committed nothing in the specification's
+  workflow can change: Start, Finish step, Return and Run with agent wait for it (fix the cause,
+  then Retry commit). Then the attempt's files (five, then "and N more") and **Retry commit**
+  inside the note (a dedicated owner action; the same button in Close and in the history). A
+  refused retry shows its reason under the note.
+- **Commit still being made**: an info note "The agent finished <step>. SpecFlow is committing its
+  work…" with the same sentence on what waits for it; when it stays pending past a few reads it adds
+  "The commit has not finished. If it does not finish by itself, Retry commit makes it now." and
+  **Retry commit**.
+- This is **one notice for the whole workflow block** of every subject of the specification while
+  the commit waits (the projection's `attemptCommit`): on another subject it names the step with its
+  task ("Implementation of task t-04"), and its Retry commit retries that attempt. Start, Finish
+  step, Return (menu) and Run with agent are disabled meanwhile, and the task actions and New task
+  are not offered. A change refused for it after all ("The agent’s work in this specification is not
+  committed yet, so nothing in its workflow can change. Retry its commit (shown above), then try
+  again.") and a finish whose own commit waits for it ("The change is saved, but its commit waits
+  for the agent’s work in this specification to be committed first…") use their own words, never
+  the generic failure.
 
 ### Pending owner confirmation
 

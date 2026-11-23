@@ -131,6 +131,10 @@ export const PinPreviewSchema = Type.Object({
  * - `baseline-changed`: Continue only: files changed since the agent's last Turn ended (`paths`);
  * - `project-busy`: another writer (an agent Turn, a Create or Close) holds the project (`detail`);
  * - `demo`: the demo Runtime runs no agent.
+ *
+ * And, from the Engine with Git on: `attempt-commit-pending` / `attempt-commit-failed`, an agent
+ * attempt of the Specification waits for its own commit (`detail`: the failure's code; the
+ * projection's `attemptCommit` names it). No agent starts until it is committed.
  */
 export const AGENT_UNAVAILABLE_REASONS = [
   'not-an-executor',
@@ -143,6 +147,8 @@ export const AGENT_UNAVAILABLE_REASONS = [
   'baseline-changed',
   'project-busy',
   'demo',
+  'attempt-commit-pending',
+  'attempt-commit-failed',
 ] as const;
 export type AgentUnavailableReason = (typeof AGENT_UNAVAILABLE_REASONS)[number];
 
@@ -753,28 +759,52 @@ export const HandoffSchema = Type.Union([
   Type.Object({ kind: Type.Literal('return'), at: Type.String(), feedback: Type.Optional(text()) }),
 ]);
 
+const ATTEMPT_COMMIT_WAIT_REASON = Type.Union([
+  Type.Literal('attempt-commit-pending'),
+  Type.Literal('attempt-commit-failed'),
+]);
+
+/**
+ * With Git on, an agent attempt of the Specification waits for its own commit: it has not run yet
+ * (`attempt-commit-pending`) or failed (`attempt-commit-failed`, with its `code`). Every workflow
+ * write of the Specification is refused `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` until it ran, so every
+ * action that writes carries it as `unavailable`; the projection's `attemptCommit` names the attempt.
+ */
+const AttemptCommitWaitSchema = Type.Object(
+  { reason: ATTEMPT_COMMIT_WAIT_REASON, code: Type.Optional(Type.String()) },
+  { additionalProperties: false },
+);
+
+/** The attempt whose commit waits, for the subject's notice and Retry commit. */
+export const AttemptCommitHoldSchema = Type.Object(
+  {
+    reason: ATTEMPT_COMMIT_WAIT_REASON,
+    code: Type.Optional(Type.String()),
+    attemptId: Type.String(),
+    /** The attempt's subject: Retry commit is its `.../workflow/attempt-commit/retry`. */
+    subject: Type.Object(
+      { specId: SpecIdSchema, taskId: Type.Optional(TaskIdSchema) },
+      { additionalProperties: false },
+    ),
+    step: StepIdSchema,
+    attempt: Type.Integer({ minimum: 1 }),
+    /** The step's title when the attempt finished (display text). */
+    stepTitle: Type.String(),
+  },
+  { additionalProperties: false },
+);
+export type AttemptCommitHold = Static<typeof AttemptCommitHoldSchema>;
+
 /**
  * Confirm or Reject of an agent's result waiting for the owner, naming the attempt. `unavailable`
- * (Git on): the attempt's own commit has not run yet (`attempt-commit-pending`) or failed
- * (`attempt-commit-failed`, with its `code`); the decision is refused
- * `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` until it ran.
+ * (Git on): an agent attempt's commit waits (the decision is refused
+ * `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` until it ran).
  */
 const AgentResultDecisionSchema = Type.Object(
   {
     step: StepIdSchema,
     attempt: Type.Integer({ minimum: 1 }),
-    unavailable: Type.Optional(
-      Type.Object(
-        {
-          reason: Type.Union([
-            Type.Literal('attempt-commit-pending'),
-            Type.Literal('attempt-commit-failed'),
-          ]),
-          code: Type.Optional(Type.String()),
-        },
-        { additionalProperties: false },
-      ),
-    ),
+    unavailable: Type.Optional(AttemptCommitWaitSchema),
   },
   { additionalProperties: false },
 );
@@ -786,6 +816,8 @@ export const WorkflowActionsSchema = Type.Object({
       firstStart: Type.Boolean(),
       /** First Task start: send it back with the start so a changed workflow is refused. */
       expectedWorkflowRevision: Type.Optional(Type.String()),
+      /** An agent attempt's commit waits: refused `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` until it ran. */
+      unavailable: Type.Optional(AttemptCommitWaitSchema),
     }),
   ),
   finish: Type.Optional(
@@ -844,6 +876,8 @@ export const WorkflowActionsSchema = Type.Object({
           }),
         ),
       ),
+      /** As `start.unavailable`. */
+      unavailable: Type.Optional(AttemptCommitWaitSchema),
     }),
   ),
   /**
@@ -868,6 +902,8 @@ export const WorkflowActionsSchema = Type.Object({
           feedback: Type.Union([Type.Literal('required'), Type.Literal('optional')]),
         }),
       ),
+      /** As `start.unavailable`. */
+      unavailable: Type.Optional(AttemptCommitWaitSchema),
     }),
   ),
 });
@@ -883,6 +919,8 @@ export const TASK_ACTION_UNAVAILABLE_REASONS = [
   'unregistered-files',
   'broken',
   'specification-ended',
+  /** An agent attempt of the Specification waits for its own commit (`attemptCommit`). */
+  'attempt-commit',
 ] as const;
 
 const availability = <Reason extends TSchema>(reason: Reason) =>
@@ -1052,7 +1090,11 @@ export const WorkflowActionProjectionSchema = Type.Object(
     specification: Type.Optional(
       Type.Object({
         createTask: availability(
-          Type.Union([Type.Literal('task-limit'), Type.Literal('specification-ended')]),
+          Type.Union([
+            Type.Literal('task-limit'),
+            Type.Literal('specification-ended'),
+            Type.Literal('attempt-commit'),
+          ]),
         ),
         /** The task types a new Task may have now (the effective policy), in catalogue order. */
         taskTypes: array(TaskTypeOptionSchema),
@@ -1072,6 +1114,11 @@ export const WorkflowActionProjectionSchema = Type.Object(
     agentAttempt: Type.Optional(AgentAttemptViewSchema),
     /** An agent working on another subject holds the project ({@link ProjectHoldSchema}). */
     projectHold: Type.Optional(ProjectHoldSchema),
+    /**
+     * With Git on, the finished agent attempt of the Specification (of this subject or another of
+     * its subjects) whose own commit waits: every action that writes is `unavailable` until it ran.
+     */
+    attemptCommit: Type.Optional(AttemptCommitHoldSchema),
   },
   {
     $id: 'WorkflowActionProjection',

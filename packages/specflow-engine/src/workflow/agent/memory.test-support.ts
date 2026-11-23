@@ -6,14 +6,19 @@ import type { LedgerEntry } from '../../specs/durable/ledger/model';
 import type { ExecutionCatalogue } from '../definitions/catalogue';
 import { SpecificationBusyError } from '../errors';
 import { memoryDependencies } from '../operations/operations.test-support';
-import type { PostActionResult, StepFinishedEvent } from '../operations/post-actions';
+import type {
+  OwnerChangeEvent,
+  PostActionResult,
+  StepFinishedEvent,
+} from '../operations/post-actions';
 import type { WorkflowStore } from '../state/store';
 import type { AttributionFacts } from './boundary/attribution';
 import type { AgentContextSource } from './context/gather';
 import type { AgentAttemptDependencies } from './dependencies';
 import type { FinalizeBoundary } from './finalize/finalize';
 import { memoryAgentAttemptJournal } from './journal/memory.test-support';
-import { agentPostActionRunId, attemptCommitWaitOf } from './journal/model';
+import { specificationAttemptCommitWaitOf } from './finalize/attempt-commit/close';
+import { agentPostActionRunId } from './journal/model';
 
 /** One execution claim of the fake claim journal. */
 export interface FakeClaim {
@@ -65,8 +70,12 @@ export function memoryAgentDependencies(catalogue: ExecutionCatalogue, attemptId
     documentSha: 'c'.repeat(64),
     /** How many times the agent context was read (`context.documents`). */
     contextReads: 0,
-    /** Git on for the owner's Confirm (`holds.attemptCommit`). */
+    /** Git on for the attempt-commit admission (`holds.attemptCommit`). */
     gitEnabled: true,
+    /** The owner's changes committed by `afterOwnerChange` (Reject, Return, a new agent start). */
+    ownerChanges: [] as OwnerChangeEvent[],
+    /** The owner's execution state still uncommitted (`ownerWorkflowState`). */
+    ownerWorkflowState: [] as string[],
   };
   /** The agent context: one overview, no document types; every document file hashes `documentSha`. */
   const context: AgentContextSource = {
@@ -94,17 +103,23 @@ export function memoryAgentDependencies(catalogue: ExecutionCatalogue, attemptId
     ...workflow,
     holds: {
       ...workflow.holds,
-      // Git on unless a test turns it off: the attempt commit as the memory journal records it.
-      async attemptCommit(id: string) {
-        const recorded = state.gitEnabled ? await journal.read(id) : undefined;
-
-        return recorded !== undefined ? attemptCommitWaitOf(recorded) : undefined;
+      // Git on unless a test turns it off: the attempt commits as the memory journal records them.
+      async attemptCommit(specId: string) {
+        return state.gitEnabled
+          ? specificationAttemptCommitWaitOf((await journal.listActive()).journals, specId)
+          : undefined;
       },
     },
     postActions: {
       afterStepFinished(event: StepFinishedEvent): Promise<readonly PostActionResult[]> {
         events.push(state.held ? 'owner-post-action-in-lock' : 'owner-post-action');
         state.ownerPostActions.push(event);
+
+        return Promise.resolve([{ action: 'commit-execution-state', status: 'completed' }]);
+      },
+      afterOwnerChange(event: OwnerChangeEvent): Promise<readonly PostActionResult[]> {
+        events.push(state.held ? 'owner-commit-in-lock' : 'owner-commit');
+        state.ownerChanges.push(event);
 
         return Promise.resolve([{ action: 'commit-execution-state', status: 'completed' }]);
       },
@@ -179,6 +194,7 @@ export function memoryAgentDependencies(catalogue: ExecutionCatalogue, attemptId
     newId: () => attemptId,
     boundary: { facts: () => Promise.resolve(state.attribution) },
     ledger: () => Promise.resolve([...state.ledger]),
+    ownerWorkflowState: () => Promise.resolve([...state.ownerWorkflowState]),
     finalize: {
       store: () => finalizeStore,
       settleClaim(intent, receipt) {

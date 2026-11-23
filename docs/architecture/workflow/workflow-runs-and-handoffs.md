@@ -9,7 +9,7 @@ read_when:
   - reviewing position and attempt transitions or handoffs
   - implementing owner return, wait or replay refusal
 summary: >-
-  Pinned Runs, step/attempt positions, handoff sequence, owner return and wait-step guard rules.
+    Pinned Runs, step/attempt positions, handoff sequence, owner return and wait-step guard rules.
 related:
   - architecture.workflow.workflow-kernel
   - architecture.workflow.workflow-definitions-and-gates

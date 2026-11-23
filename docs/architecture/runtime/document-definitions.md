@@ -138,7 +138,7 @@ type that an archetype requires or templates invalidates that archetype (reporte
 ### Seed installation
 
 - **Install (`definitions install`).** The product ships seed files in the Engine package (same layout and format; the packaging step copies the folder next to the CLI bundle).
-- **No migration metadata:** definition files contain no version stamp or content hash beyond their declared definition fields. Installation does not implement an upgrade/migration path.
+- **Seed upgrades:** installation does not stamp seed files with an installer version or content hash, nor migrate existing definitions. Declared archetype `version` and `catalogueRevision` still follow the rules above.
 - `init` installs all seeds into a new project.
 - `install` is idempotent and never overwrites an existing file without `--force`.
 - A bare `install` is **bootstrap only** (it works when the project has no definitions yet); otherwise the owner names what to add (`install <kind>/<id>` or `--add-missing`), so a deleted definition is never silently resurrected.

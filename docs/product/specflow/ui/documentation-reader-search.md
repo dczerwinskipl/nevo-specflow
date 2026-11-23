@@ -48,7 +48,6 @@ status shows for it, although reading and search still use its working tree.
 
 ### Result anatomy
 
-
 #### Result row structure
 
 - **One row per document.** The row is a button that opens the document at its best section; the
@@ -117,7 +116,6 @@ The status row (at least one target tall) holds the count and the proposals chec
   | `index-unavailable`    | "Word matches only: the search index is unavailable." ("Tylko dopasowania słów: indeks wyszukiwania jest niedostępny.")                                                                              |
   | `semantic-disabled`    | silent (configuration)                                                                                                                                                                               |
   | `no-endpoint`          | silent (configuration)                                                                                                                                                                               |
-
 
 #### Semantic-only matches
 

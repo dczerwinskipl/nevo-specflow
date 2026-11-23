@@ -48,45 +48,23 @@ status shows for it, although reading and search still use its working tree.
 
 ### Result anatomy
 
-- **One row per document.** The row is a button that opens the document at its best section; the
-  open document's row is `aria-current` (`surface-selected`).
-- **Title:** primary information (`title-sm`), at most two lines.
-- **Proposal badge:** a neutral compact `Badge` reading "Proposal" ("Propozycja"), at the end of the
-  title's first line. It is text, never colour alone.
-- **Section path:** secondary information (`body-sm`, muted), on one line, and MUST be **at most
-  `parent › leaf`**.
-  - A leading heading equal to the title (compared without case or extra spaces) is dropped first.
-    Only that duplicate is dropped: a proposal titled "Provider error and limit evidence" keeps
-    "Claude-family errors › Captured: seven-day rate-limit rejection".
-  - The parent is shown only when it fits whole beside the leaf (measured in the row's font), never
-    with an ellipsis. Only the leaf may end in an ellipsis. Until the row is measured only the leaf
-    shows.
-  - The full path is in the row's title attribute, and the open article shows the section.
-  - When nothing is left after dropping the duplicate, the row has no path line.
-- **Excerpt:** supporting text (`body-sm`, muted), at most two lines: the answer's `snippet`, which
-  the Runtime makes (exact rules: [`search` Excerpts](../../../reference/cli/nevo-specflow-docs.md#search)):
-  - **one contiguous fragment** around the best match: a run of sentences from one paragraph, one
-    list item, or one table row in readable form (`first cell — cell; cell`, the header row
-    dropped). It MUST NOT glue together unrelated cells, list items or paragraphs. With no matched
-    word it is the section's longest prose fragment;
-  - **prose first:** when a prose sentence and a code sentence (mainly code spans, paths or
-    identifiers, or a code line) both match, the prose sentence wins; a code fragment is used only
-    when no prose sentence matches;
-  - **plain text:** no Markdown syntax;
-  - **window:** the excerpt starts at the matching sentence's start when that is at most 40
-    characters before the first match, otherwise at "… " (an ellipsis and a space) followed by a
-    whole word, at most 40 characters before it, so the match is on the first line at 390 px; never
-    a glued "…Engine". A sentence end needs no trailing ellipsis; a trailing "…" marks only text
-    cut inside a sentence. At most 280 characters;
-  - **marks:** the answer's `snippetMatches` (the first occurrence of each query word, at most
-    three), in `content-primary` at medium weight, with no background and no accent colour. Titles
-    and paths are never marked. A malformed range loses its mark, never text. A result without
-    `wordMatch` has no marks (the API answers no ranges for it), so the "no word match" line is
-    never contradicted by a marked word: the marks' prefix rule (`taski` / `taskami`) is looser
-    than the word ranking's exact words.
-- **Containment:** rows are separated by a `divider` line. There is no card and no permanent
-  background. Hover, focus and the open document keep the row's interaction background. No row has
-  an icon. Accent colour is used only for the focus ring and the checked checkbox.
+#### Result row structure
+
+Each document appears once as a button opening its best section. The selected document uses `aria-current` / `surface-selected`.
+
+- **Title:** `title-sm`, up to two lines; neutral, textual Proposal badge at the end of line one.
+- **Section path:** muted `body-sm`, at most `parent › leaf` on one line. Drop only a leading heading identical to the title (ignoring case/extra spaces). Show the parent only if it fits in full; only the leaf may truncate. Before measurement show leaf alone. Hide the line when no path remains; expose the complete path in the row title.
+
+#### Excerpts and matching
+
+- **Source:** Runtime `snippet`, one contiguous plain-text fragment from a paragraph, list item or table row, up to two `body-sm` lines. Never join unrelated fragments. For table rows omit header and render cell names readably.
+- **Selection:** prefer prose over code when both match; otherwise the matching sentence, or longest section prose without word matches.
+- **Window:** up to 280 characters, start at sentence boundary if within 40 characters before the match; otherwise begin `… ` at a whole word no more than 40 characters before it. Trailing ellipsis only for truncation mid-sentence.
+- **Marks:** at most three `snippetMatches` (first query-word occurrences), medium `content-primary` weight without background. Never mark titles/paths. Ignore malformed ranges, not text. No `wordMatch` means no marks, even for prefix-like forms (ranking requires exact words).
+
+#### Row containment
+
+Use dividers, not cards/icons/permanent row backgrounds. Hover, focus and current selection use interaction backgrounds; accent only for focus and checkbox.
 
 ### Status row and quiet lines
 
@@ -96,6 +74,9 @@ The status row (at least one target tall) holds the count and the proposals chec
 - **Count:** the rows in the list: **"10 results" ("10 wyników")**, with i18n plural keys ("1
   wynik", "3 wyniki", "5 wyników"). It never implies a total, which the API does not know, so the
   API needs no "truncated" flag. No count shows with no results or while the answer is delayed.
+
+#### Lexical fallback
+
 - **Word-only answers by reason:**
 
   | Reason                 | Line                                                                                                                                                                                                 |
@@ -105,6 +86,8 @@ The status row (at least one target tall) holds the count and the proposals chec
   | `index-unavailable`    | "Word matches only: the search index is unavailable." ("Tylko dopasowania słów: indeks wyszukiwania jest niedostępny.")                                                                              |
   | `semantic-disabled`    | silent (configuration)                                                                                                                                                                               |
   | `no-endpoint`          | silent (configuration)                                                                                                                                                                               |
+
+#### Semantic-only matches
 
 - **When no result contains the query's words:** hybrid search always returns its best candidates,
   so a query that matches nothing (`zzzqqq`) still lists documents. The UI tells this case apart
@@ -175,16 +158,11 @@ announces per keystroke. While the answer loads it says nothing for the first 2 
 
 ### Sticky field and the software keyboard
 
-**The sticky set is the search field only** :
-the shared `TreeSearchBar` across the pane's full width, transparent at rest and, once docked, on
-the opaque docked material of the workspace with the `divider` line under it (so nothing scrolled
-underneath shows through), no shadow, at every width. The scroll position itself switches it at the
-dock point (a scroll-driven animation); browsers without scroll-driven animations keep the material
-at all times and show the divider from `useStuck` (see
-[Tree pane](../../../design-system/implementation/react/component-guidelines.md#tree-pane)). The app header is already fixed. The picker, the status row and the
-quiet lines scroll with the results. At 390x844 (app header 57 px, sticky bar 45 px) this leaves
-about 742 px for results with the keyboard closed, and about 406 px with a 336 px keyboard open; a
-sticky status row would take about 44 px more.
+- **The sticky set is the search field only** : the shared `TreeSearchBar` across the pane's full width, transparent at rest and, once docked, on the opaque docked material of the workspace with the `divider` line under it (so nothing scrolled underneath shows through), no shadow, at every width.
+- The scroll position itself switches it at the dock point (a scroll-driven animation); browsers without scroll-driven animations keep the material at all times and show the divider from `useStuck` (see [Tree pane](../../../design-system/implementation/react/component-guidelines.md#tree-pane)).
+- The app header is already fixed.
+- The picker, the status row and the quiet lines scroll with the results.
+- At 390x844 (app header 57 px, sticky bar 45 px) this leaves about 742 px for results with the keyboard closed, and about 406 px with a 336 px keyboard open; a sticky status row would take about 44 px more.
 
 - Focusing the field on Narrow scrolls the pane so that the field is at the top, so the picker
   leaves the view while typing. This is intended: typing needs the results, not the workspace.

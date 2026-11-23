@@ -59,7 +59,16 @@ to another issue. Its recorded five-question lexical scenario covers 25/25 evide
 anchors and costs 132,681 estimated tokens including owner follow-ups, compared
 with 242,726 at #201. This is a bounded `read all` scenario, not average agent usage.
 See [the measured analysis](../../../tools/docs/eval/retrieval-cost/results/2026-11-23-analysis.md).
-This P2 patch requires a fresh measurement; baseline results are not attributed to it.
+A [fresh P2 measurement](../../../tools/docs/eval/retrieval-cost/results/2026-11-23-p2.generated.md)
+at `a8507a87d5a19a8eddeb9db8b49925dd34f4405a` preserves 25/25 initial and
+owner evidence checks and 3/5 strict top-1 owners. The same bounded lexical scenario
+costs 131,102 estimated tokens including follow-ups (1.2% less than #215; 46.0%
+less than #201). Search implementation trees and fixture are unchanged. It does not
+measure hybrid ranking or prove every UI/Session contract; moved text was separately
+compared against the base, including refusals and recovery steps. The only removed
+transport paragraph was duplicated; its 404/403 presentation rule remains in the
+progress owner. Historical audit metadata changes after this measured checkpoint do
+not change the default current-only search corpus.
 
 ## Confirmed defects and corrections
 

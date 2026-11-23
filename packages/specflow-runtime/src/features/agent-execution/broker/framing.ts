@@ -11,8 +11,15 @@ export class FrameError extends Error {
 }
 
 /**
+ * Strict decoder: `Buffer.toString('utf8')` replaces invalid bytes with U+FFFD and would accept
+ * the frame, so an ill-formed byte sequence is refused here instead.
+ */
+const utf8 = new TextDecoder('utf-8', { fatal: true });
+
+/**
  * Reads one frame: UTF-8 text up to the first `\n`, at most `maxBytes`. Stops reading at the
- * newline; a peer that closes first, or sends more than `maxBytes` without one, is refused.
+ * newline; a peer that closes first, sends more than `maxBytes` without one, or sends bytes that
+ * are not well-formed UTF-8, is refused.
  */
 export function readFrame(socket: Socket, maxBytes: number): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -43,8 +50,16 @@ export function readFrame(socket: Socket, maxBytes: number): Promise<string> {
       chunks.push(part);
       if (newline !== -1) {
         socket.pause();
-        const text = Buffer.concat(chunks).toString('utf8');
-        finish(text.isWellFormed() ? undefined : new FrameError('invalid'), text);
+        let text: string;
+        try {
+          text = utf8.decode(Buffer.concat(chunks));
+        } catch {
+          finish(new FrameError('invalid'));
+
+          return;
+        }
+
+        finish(undefined, text);
       }
     };
 

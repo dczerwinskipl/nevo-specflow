@@ -41,7 +41,6 @@ Associations therefore cannot distinguish an older removed Task from a new Task 
 `POST /api/specs/:specId/sessions` (body limit 256 KiB) starts a Session associated with the
 Specification, atomically:
 
-
 #### Composed Create refusal order
 
 - Refusal precedence: schema validation (400), authentication, `503 SESSION_DISABLED`, then `spec.start-session` at

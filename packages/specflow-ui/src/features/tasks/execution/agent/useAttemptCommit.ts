@@ -141,9 +141,10 @@ function commitViewOf(
 
 /**
  * The attempt commit of the agent's result that waits for the owner's confirmation (the commit ran
- * when the agent finished): committed, still running, or failed with Retry commit. The projection's
- * `actions.confirm.unavailable` says whether Confirm waits for it; the history read adds the commit
- * and the files it holds. The projection is polled while the commit runs (`needsPolling`).
+ * when the agent finished): committed, still running (Retry commit once it stays so), or failed with
+ * Retry commit. The projection's `actions.confirm.unavailable` (the same as `actions.reject`'s) says
+ * whether Confirm and Reject wait for it; the history read adds the commit and the files it holds.
+ * The projection is polled while the commit runs (`needsPolling`).
  */
 export function useConfirmationAttemptCommit(
   subject: WorkflowSubjectRef,
@@ -173,7 +174,7 @@ export function useConfirmationAttemptCommit(
   );
   const work = item?.kind === 'attempt' ? item.agent?.work : undefined;
   const unavailable = actions.confirm?.unavailable;
-  // The projection decides whether Confirm waits; the history read may lag behind it.
+  // The projection decides whether Confirm and Reject wait; the history read may lag behind it.
   if (unavailable?.reason === 'attempt-commit-pending') {
     return { state: 'pending', stepTitle };
   }

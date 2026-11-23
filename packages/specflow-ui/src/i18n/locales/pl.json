@@ -2811,6 +2811,7 @@
       "draftConflict": "Zachowany szkic zależy od szkicu, który odznaczono. Zachowaj oba albo odznacz oba.",
       "tasksOpen": "Specyfikacja nie może się zakończyć, dopóki zadania są otwarte: {{tasks}}. Najpierw je ukończ lub anuluj.",
       "confirmationChanged": "To, co zastosowałoby potwierdzenie, zmieniło się od otwarcia tego widoku. Przeczytaj podsumowanie jeszcze raz i potwierdź.",
+      "attemptCommitRequired": "Praca agenta nie jest jeszcze zatwierdzona. Potwierdzenie i odrzucenie będą możliwe, gdy będzie: ponów commit, jeśli się nie udał albo się nie kończy.",
       "agentUnavailable": "Agent nie może teraz kontynuować. Powód jest pokazany wyżej."
     },
     "time": {
@@ -2964,7 +2965,8 @@
       "stays_other": "Te {{count}} pliku pozostaje niezatwierdzonych, a Zamknięcie wymienia je, dopóki nie zostaną zatwierdzone.",
       "blocksNext": "Do tego czasu „Uruchom z agentem” nie może rozpocząć kroku {{next}}: agent startuje tylko z zatwierdzonego katalogu roboczego.",
       "blocksAgent": "Do tego czasu „Uruchom z agentem” nie może rozpocząć następnego kroku: agent startuje tylko z zatwierdzonego katalogu roboczego.",
-      "blocksConfirm": "Potwierdzenie będzie możliwe, gdy praca agenta zostanie zatwierdzona: po usunięciu przyczyny „Ponów commit” wykona commit jeszcze raz.",
+      "blocksConfirm": "Potwierdzenie i odrzucenie będą możliwe, gdy praca agenta zostanie zatwierdzona: po usunięciu przyczyny „Ponów commit” wykona commit jeszcze raz.",
+      "stalled": "Commit się nie zakończył. Jeśli nie zakończy się sam, „Ponów commit” wykona go teraz; potwierdzenie i odrzucenie czekają na niego.",
       "retry": "Ponów commit",
       "retrying": "Ponawianie…"
     },

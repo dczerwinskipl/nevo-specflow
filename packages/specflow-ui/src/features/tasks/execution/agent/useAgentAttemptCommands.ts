@@ -6,18 +6,25 @@ import type { WorkflowSubjectRef } from '../api';
 import { workflowRefusalOf } from '../refusal';
 
 /**
- * One idempotency key per request. A request whose answer was lost is sent again under the same key
- * (the Runtime returns the recorded answer); any other outcome ends it.
+ * One idempotency key per request, tied to its payload. A request whose answer was lost is sent
+ * again with the same payload under the same key (the Runtime returns the recorded answer); another
+ * payload is another request with a key of its own (a key is never reused for a different request).
+ * Any other outcome ends it.
  */
-function useRequestKey() {
-  const key = useRef<string>(undefined);
+export function useRequestKey() {
+  const sent = useRef<{ readonly key: string; readonly payload: string }>(undefined);
   const lost = useRef(false);
 
   return {
-    next: () => {
-      key.current = lost.current && key.current ? key.current : crypto.randomUUID();
+    next: (payload: unknown) => {
+      const shape = JSON.stringify(payload);
+      const earlier = sent.current;
+      sent.current =
+        lost.current && earlier?.payload === shape
+          ? earlier
+          : { key: crypto.randomUUID(), payload: shape };
 
-      return key.current;
+      return sent.current.key;
     },
     settled: (error: unknown) => {
       lost.current = error !== undefined && workflowRefusalOf(error).outcomeUnknown;
@@ -68,7 +75,10 @@ export function useAgentAttemptCommands(subject: WorkflowSubjectRef, headingId?:
 
   const stop = useMutation({
     mutationFn: (attemptId: string) =>
-      workflowExecutionApi.stopAgentExecution(target, { requestId: stopKey.next(), attemptId }),
+      workflowExecutionApi.stopAgentExecution(target, {
+        requestId: stopKey.next(attemptId),
+        attemptId,
+      }),
     onSettled: (_result, error) => {
       stopKey.settled(error ?? undefined);
 
@@ -78,7 +88,7 @@ export function useAgentAttemptCommands(subject: WorkflowSubjectRef, headingId?:
   const continueAttempt = useMutation({
     mutationFn: (expected: { readonly step: string; readonly attempt: number }) =>
       workflowExecutionApi.startAgentExecution(target, {
-        requestId: continueKey.next(),
+        requestId: continueKey.next(expected),
         expected,
       }),
     onSettled: (_result, error) => {
@@ -89,7 +99,7 @@ export function useAgentAttemptCommands(subject: WorkflowSubjectRef, headingId?:
   });
   const checkOutcome = useMutation({
     mutationFn: (turn: { readonly sessionId: string; readonly turnId: string }) =>
-      managedSessionsApi.reconcile(turn.sessionId, turn.turnId, outcomeKey.next()),
+      managedSessionsApi.reconcile(turn.sessionId, turn.turnId, outcomeKey.next(turn)),
     onSettled: (_result, error) => {
       outcomeKey.settled(error ?? undefined);
 
@@ -103,7 +113,10 @@ export function useAgentAttemptCommands(subject: WorkflowSubjectRef, headingId?:
   });
   const confirm = useMutation({
     mutationFn: (request: ConfirmRequest) =>
-      workflowExecutionApi.confirmResult(target, { requestId: confirmKey.next(), ...request }),
+      workflowExecutionApi.confirmResult(target, {
+        requestId: confirmKey.next(request),
+        ...request,
+      }),
     onSettled: (_result, error) => {
       confirmKey.settled(error ?? undefined);
 
@@ -112,7 +125,7 @@ export function useAgentAttemptCommands(subject: WorkflowSubjectRef, headingId?:
   });
   const reject = useMutation({
     mutationFn: (request: RejectRequest) =>
-      workflowExecutionApi.rejectResult(target, { requestId: rejectKey.next(), ...request }),
+      workflowExecutionApi.rejectResult(target, { requestId: rejectKey.next(request), ...request }),
     onSettled: (_result, error) => {
       rejectKey.settled(error ?? undefined);
 

@@ -349,8 +349,8 @@ export function finishedAttemptHistory(commit: {
 export type ConfirmationCommit = 'committed' | 'pending' | 'failed';
 
 /**
- * The Breakdown result waiting for the owner with its attempt commit: Confirm waits (the projection's
- * `actions.confirm.unavailable`) while the commit runs or after it failed.
+ * The Breakdown result waiting for the owner with its attempt commit: Confirm and Reject wait (the
+ * projection's `actions.confirm/reject.unavailable`) while the commit runs or after it failed.
  */
 export function confirmationWithCommit(commit: ConfirmationCommit): WorkflowActionProjection {
   const projection = specificationConfirmation();
@@ -358,20 +358,16 @@ export function confirmationWithCommit(commit: ConfirmationCommit): WorkflowActi
     return projection;
   }
 
-  return {
-    ...projection,
-    actions: {
-      ...projection.actions,
-      confirm: {
-        step: 'breakdown',
-        attempt: 1,
-        unavailable:
-          commit === 'pending'
-            ? { reason: 'attempt-commit-pending' }
-            : { reason: 'attempt-commit-failed', code: 'BRANCH_PROTECTED' },
-      },
-    },
+  const waiting = {
+    step: 'breakdown',
+    attempt: 1,
+    unavailable:
+      commit === 'pending'
+        ? { reason: 'attempt-commit-pending' as const }
+        : { reason: 'attempt-commit-failed' as const, code: 'BRANCH_PROTECTED' },
   };
+
+  return { ...projection, actions: { ...projection.actions, confirm: waiting, reject: waiting } };
 }
 
 /** The Specification's history whose newest attempt is the agent's Breakdown, with its commit. */

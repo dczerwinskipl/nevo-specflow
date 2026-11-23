@@ -1,19 +1,63 @@
+import { useEffect, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { Trans, useTranslation } from 'react-i18next';
 import { GitCommitHorizontal } from 'lucide-react';
 import { Button, InlineNote } from '@nevo/ui';
 import { WorkflowRefusalAlert } from '../WorkflowRefusalAlert';
+import { POLL_MS } from './usePolling';
 
 const CODE = <span className="font-mono whitespace-nowrap text-content-primary" />;
 const STRONG = <span className="font-medium text-content-primary" />;
 const MONO = 'font-mono text-content-primary [overflow-wrap:anywhere]';
 /** At most this many files are named, as the Close dialog lists them; the rest are counted. */
 const PATHS_SHOWN = 5;
+/**
+ * A commit still pending after this many reads of the projection made no progress (an interruption
+ * left it pending): the note offers Retry commit, the same action as after a failure.
+ */
+const COMMIT_STALLED_MS = 3 * POLL_MS;
+
+/** Whether `afterMs` passed since the caller mounted (a note shown while a state lasts). */
+function useStalled(afterMs: number): boolean {
+  const [stalled, setStalled] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setStalled(true), afterMs);
+
+    return () => window.clearTimeout(timer);
+  }, [afterMs]);
+
+  return stalled;
+}
+
+function RetryButton({
+  retrying,
+  onRetry,
+}: {
+  readonly retrying: boolean;
+  readonly onRetry: () => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <Button
+      size="sm"
+      variant="secondary"
+      leadingIcon={GitCommitHorizontal}
+      onClick={onRetry}
+      disabled={retrying}
+      aria-busy={retrying}
+    >
+      {retrying
+        ? t('workflowExecution.attemptCommit.retrying')
+        : t('workflowExecution.attemptCommit.retry')}
+    </Button>
+  );
+}
 
 /**
  * What became of the work of an agent attempt that finished (the commit it makes when the agent
  * finishes, D15), as the Now block of the step that follows, or of the result waiting for the
- * owner's confirmation, says it. `waits: 'confirm'`: the owner's Confirm waits for the commit.
+ * owner's confirmation, says it. `waits: 'confirm'`: the owner's Confirm and Reject wait for the commit.
  */
 export type AttemptCommitView =
   | {
@@ -97,20 +141,35 @@ function Committed({
 
 function Pending({
   commit,
+  retrying,
+  error,
+  onRetry,
 }: {
   readonly commit: Extract<AttemptCommitView, { state: 'pending' }>;
+  readonly retrying: boolean;
+  readonly error: unknown;
+  readonly onRetry: () => void;
 }) {
   const { t } = useTranslation();
+  // The reads keep showing it pending: it may never end by itself, so Retry commit is offered.
+  const stalled = useStalled(COMMIT_STALLED_MS);
 
   return (
-    <InlineNote
-      tone="info"
-      icon={GitCommitHorizontal}
-      role="status"
-      data-now-attempt-commit="pending"
-    >
-      {t('workflowExecution.attemptCommit.pending', { step: commit.stepTitle })}
-    </InlineNote>
+    <div className="grid gap-2" data-now-attempt-commit="pending">
+      <InlineNote tone="info" icon={GitCommitHorizontal} role="status">
+        {t('workflowExecution.attemptCommit.pending', { step: commit.stepTitle })}
+        {stalled || retrying ? (
+          <>
+            {' '}
+            {t('workflowExecution.attemptCommit.stalled')}
+            <div className="mt-2">
+              <RetryButton retrying={retrying} onRetry={onRetry} />
+            </div>
+          </>
+        ) : null}
+      </InlineNote>
+      {error ? <WorkflowRefusalAlert error={error} /> : null}
+    </div>
   );
 }
 
@@ -167,18 +226,7 @@ function Failed({
           ) : null}
         </ul>
         <div className="mt-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            leadingIcon={GitCommitHorizontal}
-            onClick={onRetry}
-            disabled={retrying}
-            aria-busy={retrying}
-          >
-            {retrying
-              ? t('workflowExecution.attemptCommit.retrying')
-              : t('workflowExecution.attemptCommit.retry')}
-          </Button>
+          <RetryButton retrying={retrying} onRetry={onRetry} />
         </div>
       </InlineNote>
       {error ? <WorkflowRefusalAlert error={error} /> : null}
@@ -187,8 +235,8 @@ function Failed({
 }
 
 /**
- * The commit of a finished agent attempt: where it landed, that it is being made, or why it was not
- * and the way on.
+ * The commit of a finished agent attempt: where it landed, that it is being made (with Retry commit
+ * once it stays pending past {@link COMMIT_STALLED_MS}), or why it was not and the way on.
  */
 export function AttemptCommitNote({
   commit,
@@ -204,7 +252,7 @@ export function AttemptCommitNote({
   return commit.state === 'committed' ? (
     <Committed commit={commit} />
   ) : commit.state === 'pending' ? (
-    <Pending commit={commit} />
+    <Pending commit={commit} retrying={retrying} error={error} onRetry={onRetry} />
   ) : (
     <Failed commit={commit} retrying={retrying} error={error} onRetry={onRetry} />
   );

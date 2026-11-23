@@ -99,6 +99,8 @@ export function workflowRefusalKey(refusal: WorkflowRefusal) {
       return 'workflowExecution.refusal.stateChanged';
     case 'WORKFLOW_CONFIRMATION_CHANGED':
       return 'workflowExecution.refusal.confirmationChanged';
+    case 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED':
+      return 'workflowExecution.refusal.attemptCommitRequired';
     case 'WORKFLOW_AGENT_UNAVAILABLE':
     case 'WORKFLOW_BASELINE_CHANGED':
       return 'workflowExecution.refusal.agentUnavailable';

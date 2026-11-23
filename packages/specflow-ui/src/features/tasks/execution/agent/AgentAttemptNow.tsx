@@ -275,9 +275,11 @@ export function useAgentAttemptNow({
     const finished = when(attempt.endedAt ?? attempt.startedAt);
     const result = transitionLabel(proposal.transition);
     const text = t('workflowExecution.confirmation.line', { at: finished });
-    // Confirm waits while the commit of the agent's work runs or failed; the note says why. A Confirm
-    // refused for it (the projection had not said so yet) is answered by the re-read, not an alert.
-    const commitWaits = actions.confirm?.unavailable !== undefined;
+    // Confirm and Reject wait while the commit of the agent's work runs or failed; the one note says
+    // why for both. A Confirm refused for it (the projection had not said so yet) is answered by the
+    // re-read, not an alert.
+    const commitWaits =
+      actions.confirm?.unavailable !== undefined || actions.reject?.unavailable !== undefined;
     const confirmError =
       commands.confirm.isError &&
       workflowRefusalOf(commands.confirm.error).code !== 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED'
@@ -338,7 +340,7 @@ export function useAgentAttemptNow({
                 commands.reject.reset();
                 setRejecting(true);
               }}
-              disabled={commands.confirm.isPending}
+              disabled={commands.confirm.isPending || commitWaits}
             >
               {t('workflowExecution.confirmation.reject')}
             </Button>

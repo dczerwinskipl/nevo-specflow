@@ -9,7 +9,7 @@ read_when:
   - changing .execution persistence, workflow mutation journal or recovery
   - verifying Git commit and journal boundaries for workflow state
 summary: >-
-    Pinned execution store, Task-resource persistence, Engine operation journals, commit policy and crash replay guarantees.
+  Pinned execution store, Task-resource persistence, Engine operation journals, commit policy and crash replay guarantees.
 related:
   - architecture.workflow.workflow-kernel
   - architecture.workflow.workflow-runs-and-handoffs

@@ -8,11 +8,14 @@ areas: [workflow, runtime]
 read_when:
   - editing workflow YAML, task types or agent archetypes
   - modifying entry/exit gates or actor attribution
+  - investigating Task completion blockers, exit-gate refusal or finish retries
 summary: >-
-  Versioned project workflow definitions, human/agent executor trust, entry/exit gates and refusal semantics.
+  Task completion blockers from exit gates and executor admission, authoritative finish checks and
+  idempotent retries; versioned project workflow definitions and entry-gate refusal semantics.
 related:
   - architecture.workflow.workflow-kernel
   - architecture.workflow.workflow-runs-and-handoffs
+  - architecture.workflow.workflow-tasks
   - architecture.workflow.workflow-continuation-and-attention
   - adr.0017-definitions-as-project-data
 ---

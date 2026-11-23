@@ -36,6 +36,10 @@ related:
 Turbo test graph into independent package jobs; `verify tests` is their stable aggregate status.
 `build` runs affected builds.
 
+The quality job also runs the lightweight Python tests for the documentation retrieval-cost
+benchmark, using its pinned tokenizer dependency in a temporary virtual environment. These tests
+use controlled CLI responses; they never build historical worktrees or query a model endpoint.
+
 On pull requests, Turbo compares the PR base/head and selects changed packages plus downstream
 dependents. On pushes to `main` and `release/v*`, package tasks run across the full graph.
 

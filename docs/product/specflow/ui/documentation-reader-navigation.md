@@ -21,92 +21,44 @@ related:
 
 ## Entry and navigation
 
-- Access is the project-scoped `docs.view` capability, checked by the Runtime on every read; the
-  navigation row is not an access boundary.
-- Routes: `/docs` opens the reader on the **current workspace** (below) and replaces itself with
-  `/workspaces/:workspaceId/docs`; `/workspaces/:workspaceId/docs/:documentId` adds an article, with
-  an optional `#sectionId` (the section ids of
-  [`docs search`](../../../reference/cli/nevo-specflow-docs.md)). `documentId` is the document's
-  frontmatter `id`, so the same document keeps its id in every workspace. There is no chooser page.
+Access requires project-scoped `docs.view`, checked by Runtime on every read; navigation visibility is not authorization.
+
+- `/docs` redirects to `/workspaces/:workspaceId/docs` using the tab's current workspace. Article URL: `/workspaces/:workspaceId/docs/:documentId#sectionId`. `documentId` is the document frontmatter `id`, not a checkout-local path. No chooser screen.
 
 ### Reader entry points
 
-- **Contextual entries (always):** the Specification Overview's compact **Documentation** row (the
-  workspace bound to the Specification as its second line, after Tasks and Documents, never above
-  Tasks: the Overview has no workspace facts section to join), the Session Context's Documentation row,
-  and internal links between documents.
-- **Global entry:** a permanent **Documentation** row under Specifications in the navigation,
-  opening `/docs`. It is not a new navigation level and shows no Specification section.
+- **Global:** Documentation under Specifications in primary navigation opens `/docs` without selecting a Specification.
+- **Specification:** Overview shows Documentation after Tasks and Documents, with the bound workspace as subtitle.
+- **Session:** Context's Documentation entry opens its workspace, with a named Back link. Inside a Specification it sits below Documents; standalone Sessions show it first in Work.
+- Internal document links also open the reader.
 
 ### Current workspace
 
-- **Current workspace (tab context).** One value per browser tab, the default of the reader:
-  - **set by** entering a Specification (its bound workspace), an explicit pick in the picker, and
-    opening a `/workspaces/:workspaceId/docs…` link (an explicit address is an explicit choice);
-  - **kept** when leaving the Specification: the usual path is Specification → Documentation, and a
-    reset would make the navigation's Documentation row always open the project folder, the opposite
-    of what the user was just working on. It changes only with the next Specification or pick;
-  - **starts** as the project folder in a new tab;
-  - **remembered** for the tab across reloads (session storage), not across tabs: two tabs may work
-    in two worktrees, and a value shared between them would switch one under the other;
-  - **falls back** to the project folder with a quiet line under the picker when the remembered or
-    linked workspace is no longer registered ("The workspace you were reading is no longer registered,
-    so this is the documentation of <project folder>") or its folder is unavailable ("<name> is
-    unavailable right now, so this is the documentation of <project folder>");
-  - **not shown** outside the reader : inside a Specification the navigation already
-    names the Specification, whose workspace this is; elsewhere the value matters only to the
-    reader, where the picker shows it.
-- **Workspace picker** (tree pane, only with more than one workspace): the Specification switcher's
-  anatomy from the navigation (the shared context switcher, see
-  [Workspace picker and Specification switcher](#workspace-picker-and-specification-switcher)) — a
-  subtle surface with the quiet label "Workspace", the name on one line with its status, the kind ·
-  bound Specification line and the chevrons; a popover listbox of every workspace from the shared
-  workspace list (the same source as Create Specification's worktree choice). No search field and
-  no "browse all": a project has a handful of workspaces.
-- **Session entry:** a Session's Context entry opens the reader on the Session's workspace, the
-  Runtime's own checkout (the project folder) where every Session runs, and so sets the
-  tab's current workspace. The tree pane starts with a way back that names the Session ("Back to
-  <Session title>"), and the picker says "this Session's workspace". In the Session Context the entry
-  is one row ("Documentation", "This Session's workspace") of the Specification section, under
-  Documents; a Session without a Specification shows it as the first row of Work.
+Store one workspace selection per **browser tab** (session storage, survives reload). New tabs start in Project Home.
+
+- **Set by:** entering a Specification (bound workspace), explicit picker choice or workspace-qualified document link.
+- **Retain:** leaving a Specification does not reset it; another Specification or explicit selection changes it.
+- **Unavailable:** fall back to Project Home and show a quiet explanation under the picker, identifying an unregistered or temporarily unavailable workspace.
+- **Display:** selection appears only in the reader's workspace picker, not the global navigation.
+
+A Session entry selects that Session's workspace and provides a contextual Back label; the picker says `this Session's workspace`.
 
 ### Switching workspaces
 
-- **Picking another workspace** navigates to the same `documentId` and keeps the search text; both
-  are looked up again in the new workspace. If the document is not there, the pane says
-  "<title> is not in <workspace>" and the article area shows that workspace's root index (or the
-  no-index sentence). Nothing from the previous workspace is shown under the
-  new one.
+Keep search text and requested `documentId`, then resolve both in the destination corpus. If absent, show a missing-document message and that workspace's root index (or no-index state). Never display content cached from the previous workspace under the new one.
 
 ### Document route
 
-- **The address always names the document being read.** Every opened document (tree, result, link, Related, a successor), at every width, is a route push, so the same link behaves the same on Wide and Narrow, browser Back and Forward follow the history, a reload or a resize opens the document the address names, and Copy link copies it.
-  - Choosing the document and section already shown (on split layouts the root index of the workspace's own address too) opens nothing and adds no history entry.
-  - Back and Forward return to each article at its reading position, kept in memory per history entry for the browser tab, also after leaving the reader and coming back.
-- **The address holds the search .** The reader's address MUST hold the
-  search as `?q=<text>&proposals=1`:
-  - written with replace once typing pauses (the checkbox at once), so typing adds no history
-    entries;
-  - opening a result is a push that keeps `q` on the entry it leaves, so Back and Forward restore
-    the text, the filter, the results and the tree pane's scroll position (kept in memory per
-    history entry);
-  - a reload, Copy link or a resize keeps the search;
-  - `q` does not depend on the workspace: picking another workspace keeps it and searches again
-    there.
+- **History:** opening a different document/section pushes a route at every width. Opening the current address does nothing. Copy link, reload, Back/Forward and resize all resolve from URL.
+- **Reading position:** remember scroll per history entry in the tab, including after leaving and returning.
+- **Search URL:** `?q=<text>&proposals=1`. Debounced typing and checkbox changes **replace**, not push. Result navigation pushes while preserving search on its previous history entry. Back restores query, filter, results and tree scroll; switching workspace reruns the same query.
 
 ### Browser and stack Back
 
-- **Back on Wide and Compact:** browser Back returns to the previous document; there is no
-  in-reader Back control, because the tree and the results stay visible beside the article.
-- **Back on Narrow:** the article is a pushed Secondary stack screen over the tree.
-  - Opening from the tree or the results starts a new stack.
-  - A link of an article changes the address and **pushes another article screen**; its header Back is browser Back, named for the previous article ("Back to <title>"), and returns to it at its reading position.
-  - The first screen's Back returns to the documentation: it steps back to the tree's entry when that is the previous entry, and otherwise (an address opened directly, a reload or a resize after a hop) replaces the address with the tree's, so it never adds a history entry; after a reload on a hop, browser Back from the documentation then reaches the previous article.
-  - Browser Back and Forward move the stack the same way.
-  - After a reload or a resize the stack is rebuilt minimally: the tree, then the address's article.
-  - Back keeps the route, the search text and results, the tree expansion, the selection and the pane's scroll (the Documents rule).
-  - The stack exists only while the layout is stacked: it closes when the workspace becomes wide enough to split, and it closes when the reader is left or the workspace is switched (the same document reopens in the new workspace when it exists).
-  - Each stacked header names its own document.
+- **Wide/Compact:** use browser Back; tree/results remain beside article, so no internal Back.
+- **Narrow:** documents form a pushed Secondary stack over the tree. Article links push another article; Back names the previous title and restores scroll. The first article's Back returns to tree.
+- **Direct link/reload/resize:** reconstruct the minimal tree + article stack. Returning to tree may replace URL instead of adding history; browser Back still reaches earlier articles.
+- Keep search, expansion, selection and scroll. Close the stack on split layout, reader exit or workspace switch; reopen the addressed document in its new workspace when present.
 
 ## Workspace picker and Specification switcher
 

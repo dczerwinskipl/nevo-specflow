@@ -109,32 +109,15 @@ namespace and is unrelated; `.nevo/definitions/` does not collide with it.
 
 ### Loader validation
 
-**Loading (Engine, read-only).** `loadDefinitions` and the catalogue resolution take no lock and start no process.
+`loadDefinitions` resolves project definitions without locks or subprocesses. Invalid entries are isolated; never repair source files.
 
-- Safety: `.nevo/definitions` and every kind directory MUST be real directories inside the Project Home
-  (`lstat`, `realpath` equality); every entry is `lstat`ed; symlinks, special files and entries not matching
-  `^[a-z][a-z0-9-]{0,31}.yaml$` (or the template area) are not read and are reported (`directory-unsafe`,
-  `unexpected-entry`). A `contentFile` is a relative path `templates/<segments>` of portable characters
-  (`[A-Za-z0-9._-]`), no `..`, at most 8 segments, resolved only inside the kind directory, regular file, valid UTF-8
-  without NUL, at most the template limit. Reading uses bounded reads (`limit + 1` bytes), like the manifest.
-- YAML: parsed with aliases and merge keys rejected and unique keys required, stricter than the manifest parser
-  (which relies on the 256 KiB cap and the library default alias limit); only the YAML core schema.
-- Isolation: a file that is unreadable, too large, invalid YAML, fails its schema, has a mismatching `kind` or `id`,
-  duplicates an id, or references something missing is rejected **as a whole**; every other file loads. Cascade by
-  reference: an archetype whose requirement or template names a document type that is missing or invalid is invalid.
-  Nothing is repaired. The result is the resolved catalogue of valid definitions plus `problems[]`
-  (`{ source, code, severity, message, location? }`; `source` is the path relative to `.nevo/definitions`, messages
-  never contain absolute paths; codes are a closed list in the reference).
-- Required by the framework: the `overview` document type, and in every archetype a requirement `overview >= 1`
-  and exactly one `always` template with id `overview`, type `overview` and filename `overview.md`. A violation
-  invalidates the archetype (`overview-template-invalid` / `requirement-overview-missing`); a missing `overview`
-  type invalidates all archetypes.
-- Limits (in "Limits"): bytes per file, files per kind, total bytes per load; beyond them extra files (in
-  name order) are rejected with `limit-exceeded`, never partially read.
-- Caching: the resolved catalogue is cached per Project Home in the process and revalidated on every use by a stat
-  signature of the definitions tree (names, size, mtime, ctime, inode); there is no file watcher. A file modified in
-  the last 2 seconds is never trusted from the cache (same rule as the revision memo). `catalogueRevision` is the
-  sha256 of the canonical JSON of the valid catalogue; the catalogue route's ETag also covers `problems`.
+- **Filesystem:** `.nevo/definitions` and kind directories must be real paths inside Project Home (`lstat` and `realpath`). Skip symlinks, special files and unexpected names (definition files: `^[a-z][a-z0-9-]{0,31}.yaml$`). Report `directory-unsafe` / `unexpected-entry`.
+- **Template files:** `contentFile` is a portable `templates/<segments>` relative path (up to 8 segments, no `..`), pointing to a regular UTF-8 file without NUL within template limits. Reads are bounded to limit + 1 bytes.
+- **YAML:** core schema, unique keys, no aliases or merge keys. Unlike manifest parsing, no alias allowance.
+- **Validation:** reject an entire unreadable, oversized, malformed, duplicate or inconsistent definition; continue loading independent files. Invalid dependencies invalidate referring archetypes. Return the valid catalogue plus bounded `problems[]` (`source` relative to definitions, `code`, `severity`, `message`, optional `location`), never absolute paths.
+- **Required overview:** type `overview` must exist. Every archetype needs `overview >= 1` and exactly one `always` template (`id/type: overview`, `filename: overview.md`), or `overview-template-invalid` / `requirement-overview-missing`. Missing overview type invalidates all archetypes.
+- **Limits:** use [document limits](document-limits.md). Reject excess files in name order with `limit-exceeded`; never partially read.
+- **Cache:** per Project Home, check directory stat signature (names, size, mtime, ctime, inode) on every use; never reuse entries changed in the last 2 seconds. No file watcher. `catalogueRevision` hashes canonical valid catalogue JSON; route ETag also reflects `problems`.
 
 ### Catalogue consumers
 

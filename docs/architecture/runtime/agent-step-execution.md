@@ -123,7 +123,10 @@ sequenceDiagram
    nor taken over (`assertAgentTurnAdmissible`). The capability is minted with the scope the Engine
    derives from the journal; the baseline is admitted again now, under the claim, before the
    provider process exists. A write Turn of an attempt is never dispatched without a capability.
-5. **During the Turn**, writes go through the broker (below). A Turn ending finishes nothing.
+5. **During the Turn**, writes go through the broker (below). Each one (documents, Task drafts,
+   execution state) is recorded in the uncommitted-changes ledger with the Turn as its author,
+   whatever `git.commits.auto.documents` says: only the attempt commit commits it. A Turn ending
+   finishes nothing.
 6. **End of the Turn.** The capability is revoked; the Runtime waits up to 30 s for broker calls
    still running. If one still runs then, the Turn is recorded `unknown` instead of settled. With
    positive native-stop evidence the settlement of an attempt-bound claim calls
@@ -250,15 +253,15 @@ same manual commit from its journal; an owner's retry is a new run id. With Git 
 All are owner routes (`spec.manage`) or the offline CLI's `local:<os-user>`; an agent Turn cannot
 call them (the CLI refuses them inside a Turn, and the broker has no such operation).
 
-| Action                   | Route / CLI                                                                  | Effect                                                                                                                                                              |
-| ------------------------ | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Run with agent, Continue | `POST .../workflow/agent-execution` (no CLI)                                 | A new attempt of `expected.step`, or a new Turn of the active agent attempt (`expected.attempt`) in its own Session.                                                |
-| Check                    | `GET .../workflow/agent-execution/check`                                     | The agent option with every reason a start would refuse with, baseline included.                                                                                    |
-| Stop                     | `POST .../workflow/agent-execution/stop`                                     | Cancels the Turn; the claim stays held until the process is proven stopped, then the finalize records `turn-ended`.                                                 |
-| Return                   | `POST .../workflow/return`, `workflow return`                                | No Turn may run: returns now. A Turn may still run: records the request (`return-requested`) and stops the Turn; the finalize applies it.                           |
-| Take over                | `POST .../workflow/agent-execution/take-over`, `workflow take-over`          | Once the last Turn's claim is settled: the attempt ends `taken-over`, the owner's attempt starts. Commits nothing. While it may run: `WORKFLOW_SPECIFICATION_BUSY`. |
-| Confirm, Reject          | `POST .../workflow/confirmation/confirm\|reject`, `workflow confirm\|reject` | Decide a result that waits (`awaiting-confirmation`); see the [workflow kernel](../workflow/workflow-kernel.md#owner-confirmation).                                 |
-| Retry commit             | `POST .../workflow/attempt-commit/retry`, `workflow retry-commit`            | Runs the failed attempt commit again; for a confirmed attempt whose commit did not fail, the confirmation's owner commit.                                           |
+| Action                   | Route / CLI                                                                  | Effect                                                                                                                                                                                     |
+| ------------------------ | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Run with agent, Continue | `POST .../workflow/agent-execution` (no CLI)                                 | A new attempt of `expected.step`, or a new Turn of the active agent attempt (`expected.attempt`) in its own Session.                                                                       |
+| Check                    | `GET .../workflow/agent-execution/check`                                     | The agent option with every reason a start would refuse with, baseline included.                                                                                                           |
+| Stop                     | `POST .../workflow/agent-execution/stop`                                     | Cancels the Turn; the claim stays held until the process is proven stopped, then the finalize records `turn-ended`.                                                                        |
+| Return                   | `POST .../workflow/return`, `workflow return`                                | No Turn may run: returns now. A Turn may still run: records the request (`return-requested`) and stops the Turn; the finalize applies it.                                                  |
+| Take over                | `POST .../workflow/agent-execution/take-over`, `workflow take-over`          | Once the last Turn's claim is settled: the attempt ends `taken-over`, the owner's attempt starts. Commits nothing. While it may run: `WORKFLOW_SPECIFICATION_BUSY`.                        |
+| Confirm, Reject          | `POST .../workflow/confirmation/confirm\|reject`, `workflow confirm\|reject` | Decide a result that waits (`awaiting-confirmation`); with Git on, Confirm only once the attempt commit ran; see the [workflow kernel](../workflow/workflow-kernel.md#owner-confirmation). |
+| Retry commit             | `POST .../workflow/attempt-commit/retry`, `workflow retry-commit`            | Runs the failed attempt commit again; for a confirmed attempt whose commit did not fail, the confirmation's owner commit.                                                                  |
 
 The projection's `agentAttempt` (Session, Turn state `working|stopping|unknown|ended|session-missing`,
 proposal, `continue`, `returnRequest`, `takeOver`, `work`) and `GET .../workflow/history` (each agent
@@ -301,16 +304,16 @@ The capability is a secret of the Turn:
 
 ## Recovery
 
-| Crash or failure                                          | State left                                      | Resolution                                                                                                                 |
-| --------------------------------------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| After the Engine start, before the Session or Turn exists | Active attempt with a bound Turn and no process | The same request again completes it; Continue creates a missing fresh Session (`session-missing`).                         |
-| Turn bound, claim never dispatched                        | Claim `admitted`                                | Abandoned as `not-dispatched`; an owner Return or Take over recorded meanwhile is applied (`settleAbandonedAgentTurn`).    |
-| Runtime restart during a Turn                             | Claim `dispatched`, capability lost             | Native-stop evidence settles it through `finalizeAgentAttempt`; without evidence the Turn is `unknown` and blocks writers. |
-| Broker call still running when the Turn ended             | Turn `unknown`                                  | Check outcome or recovery; the finalize refuses while a document write of the Turn is still open (`write-in-progress`).    |
-| Between step publication, journal record and settlement   | Step published, claim held                      | The same finalize again: the finish replays by digest, the journal is not written twice, the settlement repeats.           |
-| After the section, before the post action                 | Post action `pending`                           | `recoverAgentAttempts` at Runtime start, or the next finalize, runs it with the same operation id.                         |
-| Attempt commit failed                                     | Step published, paths uncommitted               | Retry commit; Close lists the paths under `attempts` until committed. Recovery never retries a failed action by itself.    |
-| Crash between Confirm's store change and its journal      | Run decided, journal not                        | Repaired by the next Confirm or Reject of the attempt (the same request id replays it).                                    |
+| Crash or failure                                          | State left                                      | Resolution                                                                                                                                                                                                                              |
+| --------------------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| After the Engine start, before the Session or Turn exists | Active attempt with a bound Turn and no process | The same request again completes it; Continue creates a missing fresh Session (`session-missing`).                                                                                                                                      |
+| Turn bound, claim never dispatched                        | Claim `admitted`                                | Abandoned as `not-dispatched`; an owner Return or Take over recorded meanwhile is applied (`settleAbandonedAgentTurn`).                                                                                                                 |
+| Runtime restart during a Turn                             | Claim `dispatched`, capability lost             | Native-stop evidence settles it through `finalizeAgentAttempt`; without evidence the Turn is `unknown` and blocks writers.                                                                                                              |
+| Broker call still running when the Turn ended             | Turn `unknown`                                  | Check outcome or recovery; the finalize refuses while a document write of the Turn is still open (`write-in-progress`).                                                                                                                 |
+| Between step publication, journal record and settlement   | Step published, claim held                      | The same finalize again: the finish replays by digest with the declared hashes journaled before the publication (a later edit is refused by the attempt commit, never taken), the journal is not written twice, the settlement repeats. |
+| After the section, before the post action                 | Post action `pending`                           | `recoverAgentAttempts` at Runtime start, or the next finalize, runs it with the same operation id.                                                                                                                                      |
+| Attempt commit failed                                     | Step published, paths uncommitted               | Retry commit; Close lists the paths under `attempts` until committed; a waiting result cannot be confirmed meanwhile (`WORKFLOW_ATTEMPT_COMMIT_REQUIRED`). Recovery never retries a failed action by itself.                            |
+| Crash between Confirm's store change and its journal      | Run decided, journal not                        | Repaired by the next Confirm or Reject of the attempt (the same request id replays it).                                                                                                                                                 |
 
 An attempt journal moves to `settled/` once the attempt ended and nothing of it is left to run.
 

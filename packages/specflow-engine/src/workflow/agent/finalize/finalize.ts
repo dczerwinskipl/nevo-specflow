@@ -149,6 +149,8 @@ function refusalMessage(error: unknown): string {
  * 1. the step state: the owner's recorded return request ends the attempt `returned` (A2), else the
  *    pending proposal is re-validated with exactly its recorded actor and input and published as the
  *    attempt's finish (a re-validation refusal publishes nothing and is recorded on the proposal);
+ *    what the finish was judged on (the declared paths' hashes) is journaled before that
+ *    publication, so a replay takes the judgement, never the checkout as it is by then;
  * 2. the attempt's journal: the outcome, the Turn's settlement time and dirty set, and the pending
  *    post actions (A6);
  * 3. the claim settlement with the native-result receipt.
@@ -379,19 +381,30 @@ async function publishStep(
       },
       { agentProposal: true },
     );
-    // The checkout as the ended Turn left it must still be attributable as declared (B3, B6). A
-    // replay was judged before its publication, which is final: it is never refused afterwards.
-    // The declared paths' hashes as judged now are what the attempt commit takes (D15). A replay
-    // was judged before its publication: the checkout as it is now is read for the record only.
-    const facts =
-      plan.kind !== 'replayed'
-        ? await assertAgentFinishAttribution(dependencies, journal.workspaceId, proposal.changes)
-        : await dependencies.boundary.facts(journal.workspaceId);
+    // The checkout as the ended Turn left it must still be attributable as declared (B3, B6); the
+    // declared paths' hashes as judged now are what the attempt commit takes (D15). They are
+    // recorded in the attempt's journal BEFORE the step state is published, in this section: a
+    // replay (a crash after the publication, which is final) takes exactly those, never the
+    // checkout as it is by then, so an edit made since is never attributed to the agent.
+    let judged = journal;
+    let declared: readonly AgentDeclaredPath[];
+    if (plan.kind !== 'replayed') {
+      const facts = await assertAgentFinishAttribution(
+        dependencies,
+        journal.workspaceId,
+        proposal.changes,
+      );
+      declared = declaredPathsOf(proposal.changes?.paths ?? [], facts);
+      judged = { ...journal, proposal: { ...proposal, judged: { declared } } };
+      await dependencies.journal.publish(judged);
+    } else {
+      declared = proposal.judged?.declared ?? unjudged(proposal.changes?.paths ?? []);
+    }
 
     // A replay publishes the pending store journal a crash left, if any (as a repeated finish does).
     await store.apply(journal.subject.specId, plan.kind === 'replayed' ? {} : plan.change);
     await dependencies.finalize.faults?.('step-published');
-    const declared = declaredPathsOf(proposal.changes?.paths ?? [], facts);
+    const finalized = judged.proposal!;
     // D17: a decision only the owner takes waits for the owner. The attempt commit runs now all the
     // same (owner decision 2026-11-21: commit at finish), so whatever the owner decides, nothing of
     // the agent's work is left uncommitted; Confirm only applies the transition, as the owner.
@@ -399,8 +412,8 @@ async function publishStep(
 
     return {
       journal: {
-        ...journal,
-        proposal: { ...proposal, state: 'finalized' },
+        ...judged,
+        proposal: { ...finalized, state: 'finalized' },
         ...(awaiting ? { confirmation: { state: 'pending' as const } } : {}),
         postActions: [
           {
@@ -432,10 +445,17 @@ async function publishStep(
 }
 
 /**
+ * A replay whose judgement was never recorded (it cannot be: the record precedes the publication):
+ * every declared path `oversize`, so the attempt commit refuses them rather than guess.
+ */
+function unjudged(paths: readonly string[]): readonly AgentDeclaredPath[] {
+  return paths.map((path) => ({ path, sha256: null, oversize: true as const }));
+}
+
+/**
  * The declared paths with their content hashes in `facts` (the checkout as the finish was judged);
- * none with Git off (nothing is committed then). A declared path the facts do not name (a replay
- * after the checkout changed) or cannot hash is recorded `oversize`: the attempt commit refuses it
- * rather than guess what the agent wrote.
+ * none with Git off (nothing is committed then). A declared path the facts do not name or cannot
+ * hash is recorded `oversize`: the attempt commit refuses it rather than guess what the agent wrote.
  */
 function declaredPathsOf(
   paths: readonly string[],

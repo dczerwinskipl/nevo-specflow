@@ -426,6 +426,11 @@ export const WORKFLOW_ERROR_CODES = [
    */
   'WORKFLOW_CONFIRMATION_CHANGED',
   /**
+   * With Git on, the owner's Confirm of an agent's result while its attempt commit has not run or
+   * failed: the agent's work is committed on its own first (Retry commit), then Confirm applies.
+   */
+  'WORKFLOW_ATTEMPT_COMMIT_REQUIRED',
+  /**
    * Agent step execution attribution (B3, B6): the checkout has uncommitted changes SpecFlow cannot attribute
    * (`WORKFLOW_DIRTY_BASELINE`, at the start), files changed since the agent's last Turn ended
    * (`WORKFLOW_BASELINE_CHANGED`, at Continue), new files in a Specification directory without a

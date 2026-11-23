@@ -10,6 +10,19 @@ import { POLL_MS } from './usePolling';
 export const workflowHistoryKey = (specId: string, taskId: string | undefined) =>
   ['workflow', 'history', specId, taskId ?? null] as const;
 
+/** The commit the attempt made: its id and how many documents and files it holds, when reported. */
+export function committedFacts(commit: {
+  readonly sha?: string | undefined;
+  readonly documents?: number | undefined;
+  readonly files?: number | undefined;
+}) {
+  return {
+    ...(commit.sha ? { sha: commit.sha } : {}),
+    ...(commit.documents !== undefined ? { documents: commit.documents } : {}),
+    ...(commit.files !== undefined ? { files: commit.files } : {}),
+  };
+}
+
 /**
  * What became of the work of the agent attempt that finished the step before: read from the
  * workflow history only when the last hand-off is an agent's (the Now block of a person's step reads
@@ -99,9 +112,7 @@ function commitViewOf(
       state: 'committed',
       stepTitle,
       ...(branch ? { branch } : {}),
-      ...(commit.sha
-        ? { sha: commit.sha, count: (commit.documents ?? 0) + (commit.files ?? 0) }
-        : {}),
+      ...committedFacts(commit),
     };
   }
 

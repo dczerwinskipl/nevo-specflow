@@ -23,6 +23,7 @@ import type { GateAction } from './GateList';
 import { NowBlock } from './NowBlock';
 import { AgentStartDialog } from './agent/AgentStartDialog';
 import { useAgentAttemptNow } from './agent/AgentAttemptNow';
+import { ProjectHoldNote } from './agent/ProjectHoldNote';
 import { offersAgent } from './agent/agentOption';
 import { ReturnStepDialog } from './ReturnStepDialog';
 import { StartTaskDialog, type PinPreview } from './StartTaskDialog';
@@ -365,7 +366,7 @@ export function WorkflowNow({
     ) : undefined;
   const finishIsSecondary = secondary?.kind === 'finish';
 
-  const workflowActions =
+  const offeredActions =
     (waitAttempt ? (
       <Button
         key="reevaluate-wait"
@@ -513,8 +514,16 @@ export function WorkflowNow({
     });
   }, [overviewSpecId, canReturn, resetReturn]);
 
+  // Another subject's agent holds the project: while its outcome is unknown nothing here can be
+  // saved, so no action is offered and the note says where to check it.
+  const projectHold = projection.projectHold;
+  const workflowActions =
+    projectHold?.kind === 'agent-outcome-unknown' ? undefined : offeredActions;
   const note = (
     <>
+      {projectHold ? (
+        <ProjectHoldNote hold={projectHold} hasAction={offeredActions !== undefined} />
+      ) : null}
       {agentNow?.note}
       {attemptedWait && commands.reevaluateWait.isError ? (
         <WorkflowRefusalAlert error={commands.reevaluateWait.error} />

@@ -140,6 +140,16 @@ export function TaskNow({
         links={{
           context: () => goToHeading('task-context-heading'),
           dependencies: () => goToHeading('task-dependencies-heading'),
+          ...(onOpenHistory ? { attempt: onOpenHistory } : {}),
+          // The agent's paths are checkout-relative; the Task's documents are its folder's.
+          document: (path) => {
+            const document = resource.documents.find((item) => path.endsWith(`/${item.path}`));
+            if (document) {
+              onOpenDocument(document.id);
+            }
+
+            return document !== undefined;
+          },
         }}
         primaryAction={
           primary ? (

@@ -71,8 +71,14 @@ export function ownRefusal(
 export function needsPolling(projection: {
   readonly agentAttempt?: AgentAttemptView | undefined;
   readonly actions?: Pick<WorkflowActionProjection['actions'], 'confirm'>;
+  readonly projectHold?: unknown;
 }): boolean {
-  if (projection.actions?.confirm?.unavailable?.reason === 'attempt-commit-pending') {
+  // Another subject's agent holds the project: the hold ends by itself, so the block keeps reading.
+  // The commit of a result that waits for Confirm runs by itself too.
+  if (
+    projection.projectHold !== undefined ||
+    projection.actions?.confirm?.unavailable?.reason === 'attempt-commit-pending'
+  ) {
     return true;
   }
 

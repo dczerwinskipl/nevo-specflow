@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next';
 import { Trans, useTranslation } from 'react-i18next';
 import { GitCommitHorizontal } from 'lucide-react';
 import { Button, InlineNote } from '@nevo/ui';
@@ -19,9 +20,10 @@ export type AttemptCommitView =
       readonly state: 'committed';
       readonly stepTitle: string;
       readonly branch?: string;
-      /** The commit, when one was made, and how many files it holds. */
+      /** The commit the attempt made, with how many of its paths are documents and files. */
       readonly sha?: string;
-      readonly count?: number;
+      readonly documents?: number;
+      readonly files?: number;
     }
   | {
       readonly state: 'pending';
@@ -48,33 +50,47 @@ const REASONS: Readonly<Record<string, 'branchProtected' | 'blocked'>> = {
   COMMIT_BLOCKED: 'blocked',
 };
 
+/** Why a commit failed, in plain words (the Close dialog and the history say it the same way). */
+export function commitReason(t: TFunction, code: string): string {
+  return t(`workflowExecution.attemptCommit.reason.${REASONS[code] ?? 'other'}`);
+}
+
 function Committed({
   commit,
 }: {
   readonly commit: Extract<AttemptCommitView, { state: 'committed' }>;
 }) {
+  const { t } = useTranslation();
+  const counts = [
+    commit.documents
+      ? t('workflowExecution.attemptCommit.countDocuments', { count: commit.documents })
+      : undefined,
+    commit.files
+      ? t('workflowExecution.attemptCommit.countFiles', { count: commit.files })
+      : undefined,
+  ].filter(Boolean);
+  const list =
+    counts.length > 0 ? `: ${counts.join(t('workflowExecution.attemptCommit.and'))}` : '';
+  const key = commit.sha
+    ? commit.branch
+      ? 'workflowExecution.attemptCommit.committedShaOn'
+      : 'workflowExecution.attemptCommit.committedSha'
+    : commit.branch
+      ? 'workflowExecution.attemptCommit.committedOn'
+      : 'workflowExecution.attemptCommit.committed';
+
   return (
     <InlineNote tone="info" icon={GitCommitHorizontal} data-now-attempt-commit="committed">
       <Trans
-        i18nKey={
-          commit.branch
-            ? 'workflowExecution.attemptCommit.committedOn'
-            : 'workflowExecution.attemptCommit.committed'
-        }
-        values={{ step: commit.stepTitle, branch: commit.branch }}
+        i18nKey={key}
+        values={{
+          step: commit.stepTitle,
+          branch: commit.branch,
+          sha: commit.sha?.slice(0, 7),
+          list,
+        }}
         components={{ code: CODE }}
       />
-      {commit.sha ? (
-        <>
-          {' '}
-          <Trans
-            i18nKey="workflowExecution.attemptCommit.commitHolds"
-            count={commit.count ?? 0}
-            values={{ sha: commit.sha.slice(0, 7) }}
-            components={{ code: CODE }}
-          />
-        </>
-      ) : null}
     </InlineNote>
   );
 }
@@ -113,7 +129,7 @@ function Failed({
   const shown = commit.paths.slice(0, PATHS_SHOWN);
   const count = commit.count ?? commit.paths.length;
   const more = count - shown.length;
-  const reason = t(`workflowExecution.attemptCommit.reason.${REASONS[commit.code] ?? 'other'}`);
+  const reason = commitReason(t, commit.code);
 
   return (
     <div className="grid gap-2" data-now-attempt-commit="failed">

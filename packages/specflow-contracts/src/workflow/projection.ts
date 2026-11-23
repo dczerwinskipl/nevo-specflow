@@ -822,9 +822,9 @@ export const WorkflowActionsSchema = Type.Object({
   ),
   /**
    * The agent's result that waits for the owner (`awaiting-confirmation`): Confirm applies it.
-   * `unavailable`: Confirm is refused now (`WORKFLOW_ATTEMPT_COMMIT_REQUIRED`) because the attempt
-   * commit of the agent's work is still running (`attempt-commit-pending`) or failed
-   * (`attempt-commit-failed`, with the commit's `code`; Retry commit makes it again).
+   * `unavailable` (Git on): the attempt's own commit has not run yet (`attempt-commit-pending`) or
+   * failed (`attempt-commit-failed`, with its `code`; Retry commit first); Confirm is refused
+   * `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` until it ran. Reject stays available.
    */
   confirm: Type.Optional(
     Type.Object(
@@ -834,7 +834,10 @@ export const WorkflowActionsSchema = Type.Object({
         unavailable: Type.Optional(
           Type.Object(
             {
-              reason: literals(['attempt-commit-pending', 'attempt-commit-failed'] as const),
+              reason: Type.Union([
+                Type.Literal('attempt-commit-pending'),
+                Type.Literal('attempt-commit-failed'),
+              ]),
               code: Type.Optional(Type.String()),
             },
             { additionalProperties: false },

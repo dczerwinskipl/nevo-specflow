@@ -17,7 +17,8 @@ summary: >
   How a person runs a Specification and its Tasks entirely in the UI, without any Session: the
   projection-driven Now block with one main action, the Finish, Return and first-start dialogs, exit
   gates, Task authoring on the Full Task page (documents in the Secondary, context, dependencies,
-  details), the lifecycle actions, and Close and Abandon with grouped blockers.
+  details), the lifecycle actions, Close and Abandon with grouped blockers, and Run with agent (the
+  start dialog, attempt states, the attempt commit, owner confirmation, take over and history).
 related:
   - product.specflow.ui.specification-overview
   - product.specflow.ui.interaction-model
@@ -26,6 +27,8 @@ related:
   - reference.api.task-reads
   - adr.0024-tasks-are-resources
   - adr.0023-neutral-workflow-coordinator-and-manual-execution
+  - adr.0026-agent-step-execution
+  - architecture.runtime.agent-step-execution
 ---
 
 # Manual workflow execution and Task authoring
@@ -296,6 +299,8 @@ or after a refusal.
   (primary, last in the footer, on top when stacked), which reads the preview anew (Checking, then
   the new outcome).
 
+- **Agent work whose commit failed:** its own group in the blocked Close, with **Retry commit**
+  inside it (see [Close: agent work whose commit failed](#close-agent-work-whose-commit-failed)).
 - **Held by uncommitted files SpecFlow wrote** (`DOCUMENT_COMMITS_PENDING`, `commit-uncommitted`,
   from the preview or the Close): a blocking state, never a failed check. "<title> cannot close
   yet: another specification has uncommitted changes in this checkout." (or "it has uncommitted
@@ -355,185 +360,247 @@ Dialogs keep one column. Blocker and Task rows keep id → title → state order
 
 ## Run with agent
 
-**Status: UX contract. Implemented (stories: SpecFlow/Screens/Run with agent and SpecFlow/Screens/Agent attempt): the entry, the start dialog and every Now block state while an agent works, after it stops and while its result waits for the owner (Stop, Check outcome, Continue or Retry start, a Return that waits for the agent to stop with Stop again, Take over with its dialog, refused results, Continue refused, Confirm, Reject, the commit note with Retry commit read from the workflow history). The Now block reads the attempt again every few seconds while the agent works, is stopping, may still run, a return waits or a proposal is applied. Not implemented yet: the notice on other subjects while an outcome is unknown (needs a project-wide hold in the projection), the commit id and counts in the commit note (the history does not report them), the document links, "See the attempt" and the attempt history (U4).** It follows [ADR 0026](../../../architecture/decisions/0026-agent-step-execution.md)
-(D11 to D20; D21 superseded) and
+**Status: implemented.** Storybook (production stories): **SpecFlow/Screens/Run with agent** (`Entry`,
+`NewSession`, `ContinuesSession`, `IndependentStep`, `UncommittedChanges`, `NoAgentChosen`,
+`ProviderNotReady`, `SessionUnavailable`, `RefusedOnSubmit`), **SpecFlow/Screens/Agent attempt**
+(`Running`, `Stopping`, `ReturnRequested`, `ReturnStopFailed`, `TakeOver`, `OutcomeUnknown`,
+`SessionMissing`, `EndedWithoutResult`, `ProposalRefused`, `ContinueRefusedFilesChanged`,
+`SessionGone`, `ConfirmationPending`, `ConfirmationReject`, `TakenOverWithHistory`,
+`FinishedCommitted`, `FinishedCommitFailed`, `HoldOutcomeUnknownOnOtherSubject`,
+`HoldWorkingOnOtherSubject`) and **SpecFlow/Screens/Close specification**
+(`BlockedByAgentWorkWhoseCommitFailed`, `BlockedRepositoryWithAgentWork`). It follows
+[ADR 0026](../../../architecture/decisions/0026-agent-step-execution.md) and
 [agent step execution](../../../architecture/runtime/agent-step-execution.md).
-The mock is the Storybook set **SpecFlow/Screens/Ask agent (mock)**: the real routed screens with
-the mock's Now block, dialogs and the regions a state changes. Run with agent adds no new surface: it lives in the Now block, its
-dialogs, the Close dialog and the Task history. User copy says "the agent stopped", never "turn",
-"claim" or "invocation".
 
-**Data dependency (planned, not in the projection yet).** Per subject the UI needs: the agent
-option of the startable step (already `next.agent`, available or unavailable with its reason); the
-Session resolution of a start (fresh or continued, the agent role's provider and model, an
-independent step); the paths that refuse a start; the agent attempt's Session id and title; its
-state (running, stop requested, return requested, outcome unknown, stopped without a result, result
-refused with its reasons, Continue refused with the changed paths); the attempt commit result
-(`postActions`); a pending owner confirmation with the proposal's result and feedback; the
-attempt's partial work; and, on every subject, that project writes are blocked by an unknown agent
-outcome and on which subject. The exact read model belongs to slices 6 to 9.
+A person can let an agent do a step instead of doing it themselves. Run with agent adds no new
+surface: it lives in the Now block, its dialogs, the Close dialog and the histories. The UI renders
+the Engine's projection only (the step's agent option, the attempt, the position, the project hold);
+it never decides from a step id which agent runs. User copy says "the agent stopped", never "turn",
+"claim" or "invocation", and the explanations of states are plain Engine data, never written by an
+AI.
 
 ### Start step and Run with agent
 
-- On a ready step whose `executors` include `agent`, the action row holds **Start step** (main) and
-  **Run with agent** (the one button-styled secondary, `bot` icon). A step without `agent` shows Start
-  step alone, with no disabled Run with agent. Run with agent only starts an attempt; it is never offered
-  during a person's active attempt.
-- Run with agent stays enabled when the projection says the agent is unavailable: its dialog explains
-  the precondition before anything is sent. It is omitted only for `not-an-executor`.
-- Owner decision (2026-11-20): two buttons. Rejected: a split button (Start step with a menu of Do it
-  myself and Run with agent), which hides the agent behind a second click and needs a component the
-  design system does not have.
+- On a ready step whose executors include an agent, the action row holds **Start step** (main) and
+  **Run with agent** (the one button-styled secondary, `bot` icon). A step the agent does not do
+  shows **Start step** alone, with no disabled Run with agent. Run with agent only starts an
+  attempt: it is never offered during a person's active attempt.
+- Run with agent stays enabled when the agent is unavailable (no agent chosen, not ready, a dirty
+  checkout): its dialog explains the precondition before anything is sent. It is omitted only when
+  the step is not an agent's step.
+- Two buttons, not a split button: the agent is one visible click away, and the design system has no
+  split button.
 
-**Action placement rule (owner decision 2026-11-20).** In every Run with agent dialog and Now block
-state, an action that resolves a blocker lives inside that blocker's alert or note (Check again,
-Retry commit). A dialog footer holds only Cancel and the one primary
-action, disabled while blocked; a Now action row holds the main action and at most one secondary.
-Never three buttons in one row.
+**Action placement rule.** In every Run with agent dialog and Now block state, an action that
+resolves a blocker lives inside that blocker's alert or note (**Check again**, **Retry commit**). A
+dialog footer holds only Cancel and the one primary action, disabled while blocked; a Now action row
+holds the main action and at most one secondary. Never three buttons in one row.
 
 ### Run with agent dialog
 
 Title "Run with agent: <step title>". The description says what happens: the agent does this step of
-<subject> on its own (reads the step, its documents and context, writes what the step needs and
-proposes a result); decisions that need a person stay with the person. Then, in order:
+<the Task, or this specification> on its own (it reads the step, its documents and context, writes
+what the step needs and proposes a result); decisions that need you stay with you. The dialog checks
+the start when it opens ("Checking whether an agent can run this step…"); a check that did not
+finish says so ("SpecFlow could not check the agent. The check did not finish, so nothing was
+started.") with **Check again** inside the alert. Then, in order:
 
-1. **What blocks the start**, only when something does: one attention `Alert` per precondition with
-   what, why and what to do, and the action that resolves it at the bottom of that alert (a
-   secondary **Check again**). The footer stays
-   **Cancel** and **Run with agent** (primary, disabled while anything blocks):
-   - **Uncommitted changes** (clean baseline): "Commit or undo these changes first": these files
-     changed outside SpecFlow and are not committed; the agent starts from a committed checkout so
-     that everything that changes afterwards is its own work; documents and tasks SpecFlow saved
-     itself do not block it. The paths as the Close dialog lists them, the folder with **Copy
-     path**, "Commit them, or undo the ones you do not need, then check again." No discard action.
-   - **No agent chosen** (`archetype-missing`, `provider-not-chosen`, `model-missing`): which agent
-     role does the step and that the project names no agent and model for it (no agent settings
-     screen exists yet, so there is no link). The Session section then shows "Agent and model not chosen", never a preselected
-     picker.
-   - **The agent is not ready** (`provider-not-ready`): the Runtime's own words. For a new session
-     the picker marks the agent that is not ready and picking a ready one enables **Run with
-     agent** (the start checks again); a continued session has no picker and stays blocked.
-   - **The session to continue is gone** (`session-unavailable`): the workflow continues the session
-     that did the step before and it no longer exists; SpecFlow does not start a new one in its
-     place (D10); do the step with its Start button, or have the workflow changed. The Session section
-     shows the gone title struck through.
-2. **Session** (D18). The workflow decides fresh or continued; the dialog does not offer that choice:
-   - **New session**: the start screen's agent tiles (`AgentPicker`) and the Composer's model picker
-     (`ModelEffortPicker`), both preselected from the agent role's settings; the choice applies to
-     this attempt and is recorded on it.
+1. **What blocks the start**, only when something does: one attention alert per precondition with
+   what, why and what to do, and **Check again** at the bottom of the alert. The footer stays
+   **Cancel** and **Run with agent** (primary, disabled while anything blocks; "Starting…" while it
+   is sent). A refusal of the start that names the agent or the dirty checkout is shown as the same
+   blocker (announced as an alert); any other refusal is explained in its own words and code.
+   - **Commit or undo these changes first** (uncommitted changes): the files changed outside
+     SpecFlow and are not committed; the agent starts from a committed checkout so that everything
+     that changes afterwards is its own work; documents and tasks SpecFlow saved itself do not
+     block it. The paths as the Close dialog lists them (five, then "and N more"), the checkout's
+     folder with **Copy path** where the workspace is registered, "Commit them, or undo the ones you
+     do not need, then check again." There is no discard action.
+   - **No agent is chosen for <step>**: which agent role does the step and that the project names
+     no agent and model for it yet; the fix is the project's agent settings (there is no link). The
+     Session section then shows "Agent and model not chosen", never a preselected picker.
+   - **The agent is not ready**: the Runtime's own words about which agent and why. For a new
+     session the picker marks it and choosing a ready agent enables **Run with agent**; a continued
+     session has no picker and stays blocked.
+   - **The session to continue is gone**: the workflow continues the session that did the step
+     before and it no longer exists; SpecFlow does not start another in its place. Do the step with
+     **Start step**, or have the workflow changed. The Session section shows the gone title struck
+     through.
+   - **The project is busy**: another change is being saved; wait, then check again.
+   - **Agents do not run in the demo**: do the step yourself with **Start step** (no Check again).
+   - **An agent cannot run this step now**: the step changed since it was opened, or no agent does
+     it; check again to read it once more.
+2. **Session.** The workflow decides new or continued; the dialog never offers that choice:
+   - **New session**: the start screen's agent tiles and the model picker, preselected from the
+     agent role's settings ("Your choice applies to this attempt only"). While the agents load it
+     says so; when they cannot be listed it says the attempt starts with the preselected agent.
    - **Continues <Session title>** (a link): read-only, with its model and why ("the workflow
-     continues the session that did <step> before"); "Its agent and model stay as they are."
+     continues the session that did <step> before, so the agent keeps what it learned there. Its
+     agent and model stay as they are.").
    - **Independent step** (a review facet): a new session as above and "<step> is done
      independently: it always starts in a new session, never in the one that wrote the change."
-3. **Commit disclosure** (D15), always: an info note with the commit icon, "When the agent finishes,
-   SpecFlow commits its work on `<branch>` as one commit; changes of others are never included."
-   A branch name is never broken inside.
+3. **Commit disclosure**, always once the check is read: an info note with the commit icon, "When
+   the agent finishes, SpecFlow commits its work on `<branch>` as one commit; changes of others are
+   never included." (the specification's branch when its name is not known). A branch name is never
+   broken inside.
 
 ### While the agent works
+
+The Now block reads the attempt again every few seconds while the agent works, is stopping, may still
+run, a return waits or its result is being applied.
 
 - **Working**: the position line names the attempt and its Session: "Attempt 2 · agent working since
   <time> · <provider mark> <Session title>"; the title opens the Session. Goal, "Done when" and the
   hand-off stay as for a person's attempt; the viewer has no Finish step. The action row holds
-  **Stop agent** (secondary, stop icon).
-- **Stopping**: "Attempt 2 · stopping the agent · <Session>", **Stopping…** (disabled, `aria-busy`)
-  and an info note with a spinning icon: the step stays locked until SpecFlow sees the agent's
-  process has ended. It never says stopped before that proof; then it becomes "stopped without a
-  result".
-- **Return requested** (owner decision A2): Return in ⋯ during an agent attempt is a request. The
-  Runtime stops the agent; the attempt becomes returned only once its process is proven ended. Until
-  then: "Attempt 2 · return requested · waiting for the agent to stop · <Session>", **Returning…**
-  (disabled) and an info note: the step goes back to <target> only once the agent's process has
-  ended, so nothing it still writes is lost or mixed into the next attempt. The ⋯ menu is gone.
+  **Stop agent** (secondary, stop icon). The ⋯ menu stays.
+- **Stopping**: "Attempt 2 · stopping the agent · <Session>", **Stopping…** (disabled, busy) and an
+  info note with a spinning icon: the step stays locked until SpecFlow sees the agent's process has
+  ended; then you can continue or return. It never says stopped before that proof. The ⋯ menu is
+  gone.
+- **Return requested**: Return in ⋯ during an agent attempt is a request. The Runtime stops the
+  agent and the step goes back only once its process is proven ended. Until then: "Attempt 2 ·
+  return requested · waiting for the agent to stop · <Session>", **Returning…** (disabled) and an
+  info note: the step goes back to <target step> only once the agent's process has ended, so nothing
+  it still writes is lost or mixed into the next attempt. The ⋯ menu is gone. If stopping failed, an
+  attention note says the agent may still be working and the return waits, with **Stop again**. Once
+  the agent has stopped, the line reads "return requested · the agent has stopped" and the note
+  says the return applies when you next act on this step (choose Return in the menu, which stays).
+  A refused return shows "The return to <target> was not applied: <reason> (<code>). The attempt
+  stays as it is."
 - **Outcome unknown** (the agent's process may still run): "Attempt 2 · the agent's outcome is
-  unknown · <Session>", a danger note (`role="alert"`): SpecFlow cannot tell whether the agent is
-  still working; nothing can be saved anywhere in the project until that is known; **Check outcome**
-  (main) asks again; if it still cannot tell, end the agent's process on the machine running
-  SpecFlow, then check again. Distinct from Stopping: nobody asked it to stop, and it blocks the
-  whole project, not one step.
-- **Every other subject** while an outcome is unknown: its Now block adds an attention note
-  "Nothing can be saved in this project right now. SpecFlow cannot tell whether the agent working on
-  <subject> is still running." with a link to that subject; its own actions are not offered. The
-  Overview's Sessions section shows that Session with **Session state unknown**.
+  unknown · <Session>", a danger note (alert): SpecFlow cannot tell whether the agent is still
+  working; nothing can be saved anywhere in the project until that is known; **Check outcome**
+  (main) asks the machine running SpecFlow again; if it still cannot tell, end the agent's process
+  there, then check again. Distinct from Stopping: nobody asked it to stop, and it blocks the whole
+  project, not one step. The ⋯ menu is gone.
+
+### Other subjects while an agent holds the project
+
+Every other subject's Now block shows one note above its own content:
+
+- **Outcome unknown**: an attention alert "Nothing can be saved in this project right now. SpecFlow
+  cannot tell whether an agent is still running. Check its outcome in <subject>. Session: <title>",
+  the subject as a link to its page. The block offers none of its own actions.
+- **The agent works** (running normally): an info note, shown only where the block has an action
+  the hold would refuse ("An agent is working in this project. Until it stops, starting, finishing
+  or returning a step here is refused; this page updates by itself when it stops. It works on
+  <subject>. Session: <title>").
 
 ### After the agent stops
 
-- Deviation (until the history reports them): the commit note has no **Show commit**, no commit id and no counts; it says "Its work is committed on `<branch>`". The kept-work line names documents and counts files without links, and the Take over dialog names the Session as a link (struck through when it no longer exists).
-- **Finished and committed**: Now moves on to the next step; the hand-off is the agent's (result,
-  feedback, "<provider> · <model>"); an info note with the commit icon, "The agent finished <step>.
-  Committed `<sha>` on `<branch>`: N documents and N files." and **Show commit**.
-- **Finished, commit failed**: the step is published, so Now moves on; an attention note
-  (`role="alert"`) says it in plain words with the code after it ("its commit failed: a Git hook in
-  this repository refused it (`COMMIT_HOOK_FAILED`)"), that the files stay uncommitted on `<branch>`
-  and Close lists them until committed, and, before any click, that Run with agent cannot start the next
-  step until then (an agent starts only from a committed checkout). Then the attempt's paths (the
-  same list Close shows) and a **Retry commit** button (a dedicated owner action, the same button as
-  in Close).
 - **Stopped without a result**: "Attempt 2 · the agent stopped without a result at <time> ·
   <Session>"; an attention note "The agent stopped without proposing a result." with what Continue
   and Take over do; a quiet line "Kept so far: <documents as links> and N changed files. **See the
-  attempt**". Actions **Continue** (main) and **Take over** (secondary); Return in ⋯.
-- **Result refused when it was applied**: "… the agent's result was not accepted …"; a danger note
-  (`role="alert"`) "The agent proposed <result>, and SpecFlow did not accept it:" with one bullet
-  per reason in plain words (a changed file the agent did not list; a file without a document type,
-  "Give it a type or delete it"; a document edited past SpecFlow; a gate; an open Task), then what
-  Continue and Take over do. Same actions.
+  attempt**". Actions **Continue** (main) and **Take over** (secondary); Return stays in ⋯.
+- **Did not start** (its Session could not be created): "Attempt 2 · the agent did not start"; an
+  attention note says it has done nothing yet. The main action reads **Retry start** instead of
+  Continue.
+- **Result refused when it was applied**: "… the agent's result was not accepted"; a danger note
+  (alert) "The agent proposed <result>, and SpecFlow did not accept it:" with one bullet per reason
+  in plain words (a changed file the agent did not list; a file without a document type, "Give it a
+  type or delete it"; a file SpecFlow wrote that was edited outside it; a Git repository inside the
+  checkout; a condition not met; Tasks still open; otherwise the code), then what Continue and Take
+  over do. Same actions.
+- **Being applied**: "Attempt 2 · the agent proposed a result"; an info note with a spinning icon
+  ("The agent proposed <result>. SpecFlow is applying it."); Continue is disabled.
 - **Continue refused, files changed since the agent stopped**: shown before the click: an attention
   note "The agent cannot continue: N files changed since it stopped." with the paths and "SpecFlow
-  never counts someone else's edits as the agent's work. Undo these changes, or commit them yourself
-  (they become your commit, not the agent's), then continue. Or take over and finish the step
-  yourself." **Continue** is disabled; **Take over** stays. (Owner decision 2026-11-20: Continue then
-  re-checks against the recorded set minus paths that are now committed; there is no "keep as the
-  agent's" action.)
+  never counts someone else's edits as the agent's work. Undo these changes, or commit them
+  yourself (they become your commit, not the agent's), then continue. Or take over and finish the
+  step yourself." with **Check again** inside the note. **Continue** is disabled; **Take over**
+  stays. There is no "keep as the agent's" action.
+- **Continue refused, its session is gone**: "The agent cannot continue: its session no longer
+  exists." SpecFlow does not start another in its place: take over, or return from the ⋯ menu. The
+  Session title is struck through. Any other reason Continue is refused shows the same blocker
+  alert as the dialog.
+- **Kept work**: nothing is undone or discarded. The kept-work line links the Task's documents (the
+  Specification's own documents are named, not linked) and counts the other changed files; **See the
+  attempt** opens the Task or Specification history and does not scroll to the attempt.
 
-### Pending owner confirmation (D17)
+### The attempt commit
+
+When an agent attempt finishes, SpecFlow commits its work as one commit on the specification's
+branch, also when the result then waits for confirmation: confirmation decides only the transition,
+never whether the work is committed. Changes of others are never in it. The Now block of the step
+that follows reports it, read from the workflow history (nothing is said while the commit is still
+being made; the block reads it again until it settles):
+
+- **Committed**: an info note with the commit icon, "The agent finished <step>. Committed `<short
+id>` on `<branch>`: N documents and N files." Without an id (every path already equalled HEAD) it
+  says "Its work is committed on `<branch>`". There is no "Show commit" action. Now moves on and the
+  hand-off is the agent's (result, feedback, "<provider> · <model>").
+- **Commit failed**: the step is finished, so Now moves on. An attention note (alert) says it in
+  plain words with the code after it ("<step> is finished, but its commit failed: a Git hook or rule
+  in this repository refused it (`COMMIT_BLOCKED`)"; or "the branch is protected"; or "Git could not
+  complete it"), that the files stay uncommitted on `<branch>` and Close lists them until
+  committed, and, before any click, that Run with agent cannot start the next step until then (an
+  agent starts only from a committed checkout). Then the attempt's files (five, then "and N more")
+  and **Retry commit** inside the note (a dedicated owner action; the same button in Close and in
+  the history). A refused retry shows its reason under the note.
+
+### Pending owner confirmation
+
+The attempt is finished and committed before the owner decides.
 
 - "Waiting for your confirmation · the agent finished <time> · <Session>"; under the step's purpose
   the proposal as a labelled quote ("The agent proposes → <result> · <provider> · <model>", then
   its feedback) and an info note with what Confirm applies ("Confirming approves the 5 draft tasks
-  (t-01 to t-05) and moves to <next>", **See Tasks**). Actions **Confirm** (main), **Reject**. The
-  rest of the Overview agrees: Tasks counts the same drafts, Sessions lists the agent's Session.
-- Under it, the commit of the agent's work (made when it finished, the same note the next step
-  shows): committed ("Its work is committed on <branch>. Commit <short id> holds N files."), still
-  running ("SpecFlow is committing its work…", the block reads again until it settles), or failed
-  (why in plain words, the files that stay uncommitted, "Confirm becomes possible once the agent's
-  work is committed" and **Retry commit** inside the note). While it runs or failed, **Confirm** is
-  disabled; a Confirm refused for it reads the block again instead of showing an error.
-- **Reject** opens "Reject the agent's result": the step goes back to ready to start with the
-  owner's feedback as its hand-off (owner decision 2026-11-20); the proposal is not applied; the drafts
-  and documents it wrote stay. A required **What should change** field ("The next attempt reads it
-  first, whether you start it yourself or ask an agent"). **Cancel**, **Reject** (disabled until the
-  field has text).
+  (t-01 to t-05) and moves to <next>.", **See Tasks**; "records the agent's decisions on N tasks"
+  when it proposes decisions on Tasks; "completes the workflow" or "ends the workflow as abandoned"
+  when it ends the run). Actions **Confirm** (main) and **Reject**.
+- **Confirm** applies the transition and its effects as the owner, an ordinary owner write. While the
+  attempt commit is pending or has failed, **Confirm is disabled** and the note explains why in plain
+  words: confirming waits until the agent's work is committed; when the commit failed the note holds
+  the failure with **Retry commit** (the same wording and button as above). Confirm becomes
+  available once the commit is made. **Reject** stays available. The same note shows the commit
+  when it is made ("Committed <short id> on <branch>: N documents and N files") and, while it runs,
+  "SpecFlow is committing its work…" (the block reads again until it settles). A Confirm refused
+  because the commit is not made yet reads the block again instead of showing an error; any other
+  refused Confirm shows its reason.
+- **Reject** opens "Reject the agent's result": the step goes back to ready to start with the owner's
+  feedback as its hand-off; the proposal is not applied; the drafts and documents it wrote stay (the
+  description says so when it wrote drafts). The attempt's work is already committed, so Reject
+  leaves no uncommitted agent work. A required field **What should change (required)** ("The next
+  attempt reads it first, whether you start it yourself or run it with an agent"). **Cancel** and
+  **Reject** (disabled until the field has text).
 
-### Take over (F17) and the attempt's history
+### Take over and the attempt's history
 
-- **Take over**, allowed once the agent's process is proven ended, confirms: "The agent's attempt
-  ends as taken over, and your own attempt N starts", **The agent's work stays** with its paths:
-  nothing is undone; the files stay uncommitted until you commit them, finishing the step does not
-  commit them, and Close lists them until they are committed (owner decision 2026-11-20: nobody commits
-  them automatically). The Session stays readable but no longer works on the step.
-- Then Now is a person's attempt: "Attempt 3 · in progress since <time> · started by you · taken over
-  from the agent", with Finish step.
-- **Task history and Activity history**: the agent attempt is an ordinary entry (step, result line,
-  "<start> – <end> · <provider> · <model> · Attempt N", Attempt details). Its result line says how it
-  ended ("Taken over by you", "Returned", or its result) and why ("The agent stopped without a result
-  at <time>"), then the work kept and not committed: Documents (links, saved or created), Tasks
-  (drafts, or none), Files (the declared paths), and its Session.
+- **Take over** is offered once the agent's process is proven ended. Its dialog "Take over <step>":
+  "The agent's attempt ends as taken over, and your own attempt N starts. You then finish the step
+  yourself." **The agent's work stays** lists its paths: nothing is undone; the files stay as the
+  agent left them, uncommitted until you commit them; finishing the step does not commit them, and
+  Close lists them until they are committed ("The agent left no uncommitted files." when there are
+  none). The Session stays open to read but no longer works on the step (or, when it is gone, "no
+  longer exists").
+- Then Now is a person's attempt: "Attempt 3 · in progress since <time> · started by you · taken
+  over from the agent", with Finish step.
+- **Task history** and the Specification's **Activity history** show the agent's attempt as an
+  ordinary entry (step, result line) with the quiet line "<start> – <end> · <provider> · <model> ·
+  Attempt N" and, above it, the agent's detail: how it ended when the entry's own result does not
+  say it ("Taken over by <person>", "Returned to <step>", "Abandoned", "The agent is working on
+  it"; "The agent stopped without a result at <time>" when it never proposed one), then its work
+  ("Its work:", or "Its work, kept and not committed:" for an attempt that did not finish):
+  Documents (links), Tasks (drafts as links, or none), Files (the changed paths), the commit note
+  (committed, or failed with **Retry commit**) and its Session as a link. **Show what happened** /
+  **Hide what happened** lists the attempt's events oldest first in plain words (started, the agent
+  started working, the agent stopped, result not accepted, return requested, finished with a result,
+  work committed, commit failed with its reason and code, taken over, abandoned, waiting for
+  confirmation, result confirmed, result rejected).
+- The Specification's own steps (Breakdown and the like) appear in the Activity history under an
+  **Agent attempts** heading above its events, newest first, with the same detail; when older
+  attempts are cut off it says "Older attempts are not shown." Nothing is shown while the
+  Specification has no agent attempt.
 
-### Close: one Uncommitted changes group (D16)
+### Close: agent work whose commit failed
 
-Owner decision (2026-11-20): the Close preview shows every path Close would refuse as **one**
-group, **Uncommitted changes · N**, replacing the separate "Uncommitted specification files" group
-and the "Held by uncommitted files SpecFlow wrote" outcome above once slice 1 lands. Explanation:
-"Closing starts from a committed checkout, and SpecFlow never discards work." Then one sub-group per
-kind, each with its paths (five, then "and N more") and its remedy; a kind without paths is omitted:
-
-1. **Agent work whose commit failed · N**: which step of which Task, the reason in plain words with
-   its code, the same paths as that Task's Now block, **Retry commit**.
-2. **Saved in SpecFlow, not committed yet · N**: per owner, as the shipped state names them: this
-   specification ("(this specification)", **Open Documents**) and another specification (its title
-   as a link to its Overview), with the remedy "Commit them from that specification's Documents or
-   with Git, or finish its step in progress there (finishing commits them)."
-3. **Changed outside SpecFlow · N**: commit them with Git in the checkout or move them, the folder
-   with **Copy path**, and the discard warning.
-
-There is no discard action. Footer **Dismiss** and **Check again**.
+An attempt whose commit failed holds the Close until it is committed. The Close dialog shows it as
+its own group, **Agent work whose commit failed · N** (N counts its files), above the other
+uncommitted files, alone or beside another specification's files or the repository's own problems.
+The group explains "An agent finished its step, but Git did not accept its commit. The files stay
+uncommitted until the commit is made." and lists per attempt which step of which Task (or "of this
+specification") and which attempt, why in plain words with its code, its files (five, then "and N
+more") and **Retry commit** (named for its step) inside the group. A successful retry checks the
+Close again. The sentence above the groups says "An agent finished its work, but its commit failed.
+Retry the commit below, then check again." (beside other files, each group says how to commit its
+own files). The footer keeps only Dismiss and Check again; the dialog never offers to discard.

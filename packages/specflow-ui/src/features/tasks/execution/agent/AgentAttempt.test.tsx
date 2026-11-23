@@ -268,7 +268,7 @@ describe('a result that waits for the owner', () => {
     const confirmResult = vi.fn(() => Promise.reject(refusal('WORKFLOW_ATTEMPT_COMMIT_REQUIRED')));
     const history = vi.fn(() => Promise.resolve(confirmationAttemptHistory('committed')));
     renderNow('confirmation', { confirmResult, history });
-    await screen.findByText(/Its work is committed/);
+    await screen.findByText('3f9c2a1');
     const reads = history.mock.calls.length;
 
     fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
@@ -340,6 +340,28 @@ describe('the commit of a finished attempt', () => {
 
     expect(await screen.findByText(/Its work is committed/)).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Retry commit' })).toBeNull();
+  });
+
+  it('names the commit by its short id with the counts when the history reports them', async () => {
+    renderNow(
+      'working',
+      {
+        history: vi.fn(() =>
+          Promise.resolve(
+            finishedAttemptHistory({
+              state: 'committed',
+              sha: '3f9a1c7e5b2d4a6c8e0f1b3d5a7c9e2f4b6d8a0c',
+              documents: 1,
+              files: 3,
+            }) as never,
+          ),
+        ),
+      },
+      { projection: finishedAttemptProjection() },
+    );
+
+    expect(await screen.findByText('3f9a1c7')).toBeTruthy();
+    expect(document.body.textContent).toContain('1 document and 3 files');
   });
 
   it('reads nothing when a person finished the step before', () => {
@@ -447,7 +469,9 @@ describe('taking over an agent that stopped', () => {
   it('shows what the agent kept, and Continue with Take over beside it', () => {
     const { container } = renderNow('stopped');
 
-    expect(screen.getByText(/Kept so far: task.md, screens.md and 3 changed files/)).toBeTruthy();
+    expect(document.body.textContent).toContain(
+      'Kept so far: task.md, screens.md and 3 changed files',
+    );
     expect(screen.getByText(/Take over to finish the step yourself/)).toBeTruthy();
     expect(actions(container)).toEqual(['Continue', 'Take over']);
   });

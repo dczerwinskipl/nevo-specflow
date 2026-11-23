@@ -212,6 +212,10 @@ export function NowBlock({
         since: formatWhen(t, position.attempt.startedAt, i18n.language, { timeOnlyToday: true }),
         actor: actorLabel(t, position.attempt.actor, viewer),
       });
+      if (position.attempt.takenOverFrom) {
+        facts += ` · ${t('workflowExecution.now.takenOverFrom')}`;
+      }
+
       break;
     case 'awaiting-confirmation':
       // The agent's result waits for the owner: the line names who finished it and when.

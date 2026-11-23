@@ -1,7 +1,7 @@
 import { runReadRequest } from './project/request-verification-memo';
 import type { CheckoutQuiescence } from './specs/lifecycle/checkout-quiescence-port';
 import type { SpecificationExitGuard } from './specs/lifecycle/exit-guard';
-import type { FailedAttemptCommit } from './specs/uncommitted/attempts';
+import type { AttemptCommitWait, FailedAttemptCommit } from './specs/uncommitted/attempts';
 import {
   resolveProjectHome,
   type ResolveProjectHomeOptions,
@@ -34,6 +34,12 @@ export interface SpecFlowEngine {
    */
   readonly failedAttemptCommits?: (workspaceId: string) => Promise<readonly FailedAttemptCommit[]>;
   /**
+   * With Git on, why the commit of the agent attempt `attemptId` still waits (D15): the owner's
+   * Confirm is refused meanwhile. `undefined` once it ran, with Git off or for an unknown attempt.
+   * Absent where no workflow is composed.
+   */
+  readonly attemptCommitWait?: (attemptId: string) => Promise<AttemptCommitWait | undefined>;
+  /**
    * Whether an agent can work in a checkout Close would remove, from the host process (the Runtime
    * or the CLI) through `withCheckoutQuiescence`. Absent, Close does not remove a checkout.
    */
@@ -52,6 +58,9 @@ export interface EnginePorts {
   readonly failedAttemptCommits?: (
     engine: SpecFlowEngine,
   ) => (workspaceId: string) => Promise<readonly FailedAttemptCommit[]>;
+  readonly attemptCommitWait?: (
+    engine: SpecFlowEngine,
+  ) => (attemptId: string) => Promise<AttemptCommitWait | undefined>;
 }
 
 /**
@@ -86,6 +95,11 @@ export async function openEngineBoundary(
       ? {
           failedAttemptCommits: (workspaceId: string) =>
             ports.failedAttemptCommits!(engine)(workspaceId),
+        }
+      : {}),
+    ...(ports.attemptCommitWait
+      ? {
+          attemptCommitWait: (attemptId: string) => ports.attemptCommitWait!(engine)(attemptId),
         }
       : {}),
     async readRegistry() {

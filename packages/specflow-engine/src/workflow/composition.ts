@@ -221,6 +221,8 @@ function engineHolds(engine: SpecFlowEngine): ExecutionHolds {
         throw error;
       }
     },
+    attemptCommit: (attemptId) =>
+      engine.attemptCommitWait?.(attemptId) ?? Promise.resolve(undefined),
   };
 }
 

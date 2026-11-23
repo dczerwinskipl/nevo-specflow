@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type { SpecFlowEngine } from '../../../application';
+import { readExecutionJournal } from '../../../execution/journal';
 import { GitCapabilityError } from '../../../git/errors';
 import type { CommitPort } from '../../../version-control/commits/port';
 import { readProjectGitPolicy } from '../../../version-control/worktrees/config';
@@ -15,7 +16,7 @@ import {
 
 /**
  * Whether a write needs a commit, and on which branch it is made. `manual`: Git is enabled but
- * auto-commit is off for the documents (ADR 0018), so no commit will be made by the queue, no
+ * auto-commit is off for the documents (ADR 0018), or the write is an agent attempt's (D15), so no commit will be made by the queue, no
  * preflight ran, and the branch is only what HEAD names now (`null` on a detached HEAD).
  */
 export type GitAdmission =
@@ -45,6 +46,7 @@ export async function admitGitCommit(
   root: string,
   paths: readonly string[],
   options: GitPreflightOptions = {},
+  attemptWrite = false,
 ): Promise<GitAdmission> {
   const cache = options.cache ?? processCache;
   let policy;
@@ -59,7 +61,9 @@ export async function admitGitCommit(
   }
 
   const signature = await (options.signature ?? readPreflightSignature)(engine.context, root);
-  if (!effectiveAutoCommit(policy, 'documents').auto) {
+  // A write of an agent attempt's Turn is the attempt's work, committed only by its attempt commit
+  // (D15), whatever the documents commit policy says: recorded in the ledger, never queued.
+  if (attemptWrite || !effectiveAutoCommit(policy, 'documents').auto) {
     return { enabled: true, mode: 'manual', branch: signature.branchRef ?? null };
   }
 
@@ -88,6 +92,21 @@ export async function admitGitCommit(
   } catch (error) {
     throw gitRefusal(error);
   }
+}
+
+/**
+ * Whether the execution claim `executionId` is a Turn of an agent attempt (its durable intent names
+ * the attempt): its writes go to the uncommitted-changes ledger for the attempt commit (D15).
+ */
+export async function isAgentAttemptExecution(
+  context: SpecFlowEngine['context'],
+  executionId: string | undefined,
+): Promise<boolean> {
+  if (executionId === undefined) {
+    return false;
+  }
+
+  return (await readExecutionJournal(context, executionId))?.intent.attempt !== undefined;
 }
 
 /** Maps what the Git layer refuses with onto the document error vocabulary. */

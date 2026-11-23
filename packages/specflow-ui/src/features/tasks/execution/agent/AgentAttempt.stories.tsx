@@ -215,6 +215,37 @@ export const ConfirmationReject: Story = {
 };
 
 /*
+ * The Task's history after the owner took Implementation over: the agent's attempt says how it
+ * ended, lists what it kept (documents linked, files) and its Session; its events open on request.
+ */
+export const TakenOverWithHistory: Story = {
+  args: { scenario: 'history-taken-over' },
+  play: async ({ canvasElement }) => {
+    await findNow(canvasElement);
+    const [history] = await within(canvasElement).findAllByRole(
+      'button',
+      { name: /history/i },
+      wait,
+    );
+    await userEvent.click(history!);
+    const attempt = await waitFor(() => {
+      const found = canvasElement.querySelector<HTMLElement>('[data-agent-attempt="taken-over"]');
+      if (!found) {
+        throw new Error('The agent attempt is not shown yet');
+      }
+
+      return within(found);
+    }, wait);
+    await expect(attempt.getByText(/^Taken over by /)).toBeVisible();
+    await expect(attempt.getByText(/The agent stopped without a result at/)).toBeVisible();
+    await expect(attempt.getByRole('button', { name: 'task.md' })).toBeVisible();
+    await expect(attempt.getByText('src/auth/refresh.ts')).toBeVisible();
+    await userEvent.click(attempt.getByRole('button', { name: 'Show what happened' }));
+    await expect(attempt.getByText('The agent stopped')).toBeVisible();
+  },
+};
+
+/*
  * The step after an agent finished: the commit it made when it finished (read from the workflow
  * history), or why it failed and Retry commit inside the note.
  */
@@ -222,8 +253,44 @@ export const FinishedCommitted: Story = {
   args: { scenario: 'finished-committed' },
   play: async ({ canvasElement }) => {
     const now = await findNow(canvasElement);
-    await expect(await within(now).findByText(/Its work is committed/, {}, wait)).toBeVisible();
+    await expect(await within(now).findByText('3f9a1c7', {}, wait)).toBeVisible();
+    await expect(within(now).getByText(/2 documents and 3 files/)).toBeVisible();
     await expect(within(now).getByText('nevo-1/single-sign-on')).toBeVisible();
+  },
+};
+
+/*
+ * Another subject's agent holds the project. Its outcome unknown: the Overview says nothing can be
+ * saved, links the holding Task and its Session, and offers no action of its own.
+ */
+export const HoldOutcomeUnknownOnOtherSubject: Story = {
+  args: { scenario: 'hold-outcome-unknown' },
+  play: async ({ canvasElement }) => {
+    const now = await findNow(canvasElement);
+    const alert = await within(now).findByRole('alert', {}, wait);
+    await expect(
+      within(alert).getByText('Nothing can be saved in this project right now.'),
+    ).toBeVisible();
+    await expect(
+      within(alert).getByRole('link', { name: 'Token exchange endpoint and session cookie' }),
+    ).toBeVisible();
+    await expect(
+      within(alert).getByRole('link', { name: 'Implement token exchange' }),
+    ).toBeVisible();
+    await expect(actionsOf(now)).toEqual([]);
+  },
+};
+
+/** While the agent merely works, a lighter note where this block has an action that would wait. */
+export const HoldWorkingOnOtherSubject: Story = {
+  args: { scenario: 'hold-working' },
+  play: async ({ canvasElement }) => {
+    const now = await findNow(canvasElement);
+    await expect(
+      await within(now).findByText(/An agent is working in this project/, {}, wait),
+    ).toBeVisible();
+    await expect(within(now).queryByRole('alert')).toBeNull();
+    await expect(within(now).getByRole('button', { name: 'Finish step' })).toBeEnabled();
   },
 };
 
@@ -247,9 +314,8 @@ export const ConfirmationCommitted: Story = {
   args: { scenario: 'attempt-confirmation', confirmationCommit: 'committed' },
   play: async ({ canvasElement }) => {
     const now = await findNow(canvasElement);
-    await expect(await within(now).findByText(/Its work is committed/, {}, wait)).toBeVisible();
-    await expect(within(now).getByText('3f9c2a1')).toBeVisible();
-    await expect(within(now).getByText(/holds 7 files/)).toBeVisible();
+    await expect(await within(now).findByText('3f9c2a1', {}, wait)).toBeVisible();
+    await expect(within(now).getByText(/: 7 documents\./)).toBeVisible();
     await expect(within(now).getByRole('button', { name: 'Confirm' })).toBeEnabled();
   },
 };

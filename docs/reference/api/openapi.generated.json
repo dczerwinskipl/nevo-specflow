@@ -12247,6 +12247,12 @@
               {
                 "type": "string",
                 "enum": [
+                  "WORKFLOW_ATTEMPT_COMMIT_REQUIRED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
                   "WORKFLOW_DIRTY_BASELINE"
                 ]
               },
@@ -12492,6 +12498,12 @@
                 "type": "string",
                 "enum": [
                   "WORKFLOW_CONFIRMATION_CHANGED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_ATTEMPT_COMMIT_REQUIRED"
                 ]
               },
               {

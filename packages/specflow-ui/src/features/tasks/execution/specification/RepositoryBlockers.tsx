@@ -1,5 +1,7 @@
+import { Fragment } from 'react';
 import type { TFunction } from 'i18next';
-import type { ReactNode } from 'react';
+import { AgentCommitFailedGroup } from './AgentCommitFailedGroup';
+import { Group, MONO, UNCOMMITTED_PATHS_SHOWN } from './CloseGroup';
 import { useTranslation } from 'react-i18next';
 import { InlineNote, Typography } from '@nevo/ui';
 import type { UncommittedHoldDetails } from '@nevo/specflow-contracts/documents';
@@ -16,37 +18,6 @@ const checkoutName = (t: TFunction, checkout: Checkout) =>
   checkout === 'specification'
     ? t('workflowExecution.close.repository.checkout.specification')
     : t('workflowExecution.close.repository.checkout.integrationTarget');
-
-function Group({
-  heading,
-  headingContent,
-  explanation,
-  children,
-}: {
-  readonly heading: string;
-  /** The heading's content when it holds more than text (a link); `heading` still names it. */
-  readonly headingContent?: ReactNode;
-  readonly explanation?: ReactNode;
-  readonly children?: ReactNode;
-}) {
-  return (
-    <section className="grid min-w-0 gap-2" aria-label={heading}>
-      <div className="grid gap-0.5">
-        <Typography as="h3" variant="label-sm">
-          {headingContent ?? heading}
-        </Typography>
-        {explanation ? (
-          <Typography as="p" variant="body-sm" className="text-content-secondary">
-            {explanation}
-          </Typography>
-        ) : null}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-const MONO = 'font-mono text-content-primary [overflow-wrap:anywhere]';
 
 /**
  * Files not committed in a checkout the Close needs clean: the files (at most five, the
@@ -139,15 +110,21 @@ export function UncommittedOwners({
   hold,
   specId,
   onOpenSpecification,
+  onRetried,
+  ownerLead,
 }: {
+  /** The sentence that says how to commit the owners' files, shown in each owner's group. */
+  readonly ownerLead?: string;
   readonly hold: UncommittedHoldDetails;
   /** The Specification being closed. */
   readonly specId: string;
   /** Opens another owner Specification's Overview: its name is then a link. */
   readonly onOpenSpecification?: (specId: string) => void;
+  /** An agent attempt's failed commit was made: the Close is checked again. */
+  readonly onRetried: () => void;
 }) {
   const { t } = useTranslation();
-  if (hold.owners.length === 0) {
+  if (hold.owners.length === 0 && (hold.attempts?.length ?? 0) === 0) {
     return null;
   }
 
@@ -166,6 +143,9 @@ export function UncommittedOwners({
 
   return (
     <div className="grid min-w-0 gap-4">
+      {hold.attempts && hold.attempts.length > 0 ? (
+        <AgentCommitFailedGroup attempts={hold.attempts} onRetried={onRetried} />
+      ) : null}
       {hold.owners.map((owner, index) => {
         const more = owner.count - owner.paths.length;
 
@@ -176,6 +156,7 @@ export function UncommittedOwners({
               title: ownerName(owner),
               count: owner.count,
             })}
+            {...(ownerLead ? { explanation: ownerLead } : {})}
             {...(owner.kind === 'specification' && owner.specId !== specId && onOpenSpecification
               ? {
                   headingContent: (
@@ -204,7 +185,7 @@ export function UncommittedOwners({
           </Group>
         );
       })}
-      <DiscardWarning />
+      {hold.owners.length > 0 ? <DiscardWarning /> : null}
     </div>
   );
 }
@@ -230,9 +211,6 @@ function CheckoutPath({ workspaceId }: { readonly workspaceId: string }) {
     </div>
   );
 }
-
-/** At most this many uncommitted files are named; the rest are counted. */
-export const UNCOMMITTED_PATHS_SHOWN = 5;
 
 function SimpleBlocker({ blocker }: { readonly blocker: RepositoryBlocker }) {
   const { t } = useTranslation();
@@ -278,9 +256,12 @@ function SimpleBlocker({ blocker }: { readonly blocker: RepositoryBlocker }) {
 export function RepositoryBlockers({
   repository,
   specTitle,
+  onRetried,
 }: {
   readonly repository: readonly RepositoryBlocker[];
   readonly specTitle: string;
+  /** An agent attempt's failed commit was made: the Close is checked again. */
+  readonly onRetried: () => void;
 }) {
   return (
     <div className="grid min-w-0 gap-5">
@@ -288,7 +269,17 @@ export function RepositoryBlockers({
         const key = `${blocker.kind}-${index}`;
         switch (blocker.kind) {
           case 'uncommitted-changes':
-            return <UncommittedFiles key={key} blocker={blocker} specTitle={specTitle} />;
+            return (
+              <Fragment key={key}>
+                {blocker.attempts && blocker.attempts.length > 0 ? (
+                  <AgentCommitFailedGroup attempts={blocker.attempts} onRetried={onRetried} />
+                ) : null}
+                {/* The attempts' own files are not counted here: nothing else may be left. */}
+                {blocker.count > 0 ? (
+                  <UncommittedFiles blocker={blocker} specTitle={specTitle} />
+                ) : null}
+              </Fragment>
+            );
           case 'integration-target-missing':
             return <IntegrationBranchChoice key={key} blocker={blocker} specTitle={specTitle} />;
           default:

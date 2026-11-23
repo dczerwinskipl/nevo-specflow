@@ -296,7 +296,11 @@ Runtime stops), and its documents, Sessions and history are the demo data
   the manifest's creation date) and **Session started** (one per associated, non-archived Session the
   caller may view, bounded by the workspace Sessions section's 100 rows), at most 50 events. A
   date-only event shows as a calendar date without time-zone conversion; other events show a
-  relative time.
+  relative time. Above those events the history lists **Agent attempts**: the agent's attempts at
+  the Specification's own steps, newest first, each with how it ended, the work it kept, its commit
+  (with **Retry commit** when it failed), its Session and its events on request (see
+  [Run with agent](workflow-execution.md#take-over-and-the-attempts-history)); the section is absent
+  while there is no agent attempt. Task attempts of an agent are in each Task's history, not here.
 - **Documents** and **Sessions** come from the Engine's document registry and the Session
   association registry, independently of Tasks.
 - Repository and Changes are not implemented in project mode and are hidden.

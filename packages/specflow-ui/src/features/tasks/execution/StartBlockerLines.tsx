@@ -12,6 +12,10 @@ export interface NowLinks {
   readonly tasks?: () => void;
   readonly context?: () => void;
   readonly dependencies?: () => void;
+  /** Opens the subject's workflow history: the agent's attempts ("See the attempt"). */
+  readonly attempt?: () => void;
+  /** Opens a document by its checkout-relative path (the agent's kept work); false: not found here. */
+  readonly document?: (path: string) => boolean;
 }
 
 /**

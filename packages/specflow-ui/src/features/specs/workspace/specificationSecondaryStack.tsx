@@ -15,6 +15,7 @@ import type { ActivityEvent, SpecificationWorkspaceData } from '../read-model/mo
 
 import { ActivityHistory } from './ActivityHistory';
 import { DocumentContent } from '../../documents';
+import { SpecificationAgentAttempts } from '../../tasks';
 
 export interface SpecificationSecondaryContextValue {
   readonly specId: string;
@@ -180,6 +181,7 @@ export function ActivityHistoryScreen({
   return (
     <AppContent className="w-content-standard max-w-full">
       <AppWorkspaceBody padding="none" scroll="area">
+        <SpecificationAgentAttempts specId={data.specId} />
         <ActivityHistory
           showHeading={false}
           events={data.events}

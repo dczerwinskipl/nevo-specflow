@@ -2351,6 +2351,7 @@
       "ready": "Gotowe do rozpoczęcia",
       "active": "W toku od {{since}} · rozpoczęta przez {{actor}}",
       "activeAttempt": "Próba {{attempt}} · w toku od {{since}} · rozpoczęta przez {{actor}}",
+      "takenOverFrom": "przejęta od agenta",
       "starting": "Rozpoczynanie…",
       "track": {
         "current": "Krok {{position}} z {{total}}: {{title}}",
@@ -2614,6 +2615,8 @@
         "workflowStateUncommittedStep": "Zmiany zadań i kroków innej specyfikacji w tym katalogu roboczym nie mają jeszcze commita. Zrób ich commit w Git albo zakończ trwający tam krok (zakończenie robi ich commit) i sprawdź ponownie.",
         "uncommittedAbandoned": "Zmiany w tym katalogu roboczym, których commit porzucono, nie mają commita. Zrób ich commit w Git i sprawdź ponownie.",
         "uncommittedGit": "Pliki zapisane przez SpecFlow w tym katalogu roboczym nie mają commita. Zrób ich commit w Git i sprawdź ponownie.",
+        "agentCommitFailed": "Agent skończył pracę, ale jej commit się nie udał. Ponów commit poniżej i sprawdź ponownie.",
+        "agentAndOthers": "Część plików w tym katalogu roboczym nie ma commita: praca agenta, której commit się nie udał, i pliki innych specyfikacji. Każda grupa poniżej mówi, jak zrobić commit jej plików; potem sprawdź ponownie.",
         "documentsFailed": "Commit dokumentu się nie powiódł. Ponów go lub rozwiąż w Dokumentach, a potem sprawdź ponownie."
       },
       "repository": {
@@ -2706,9 +2709,21 @@
       "archiveNote": "Zamknięcie archiwizuje specyfikację; nie można jej ponownie otworzyć.",
       "submitting": "Zamykanie…",
       "heldBy": {
+        "mixed": "pliki w jego katalogu roboczym nie mają commita",
         "other": "inna specyfikacja ma zmiany bez commita w tym katalogu roboczym",
         "own": "ma zmiany bez commita w swoim katalogu roboczym",
         "checkout": "pliki zapisane przez SpecFlow w tym katalogu roboczym nie mają commita"
+      },
+      "agentCommit": {
+        "title": "Praca agenta, której commit się nie udał",
+        "lead": "Agent skończył krok, ale Git nie przyjął jego commita. Pliki zostają bez commita, dopóki commit nie zostanie wykonany.",
+        "stepTask": "{{step}} zadania {{task}}, podejście {{attempt}}",
+        "stepSpecification": "{{step}} tej specyfikacji, podejście {{attempt}}",
+        "reason_one": "commit się nie udał: {{reason}} ({{code}}). {{count}} plik.",
+        "reason_few": "commit się nie udał: {{reason}} ({{code}}). {{count}} pliki.",
+        "reason_many": "commit się nie udał: {{reason}} ({{code}}). {{count}} plików.",
+        "reason_other": "commit się nie udał: {{reason}} ({{code}}). {{count}} pliku.",
+        "retryLabel": "Ponów commit: {{step}}"
       }
     },
     "abandon": {
@@ -2818,7 +2833,8 @@
       },
       "takeOver": "Przejmij",
       "takingOver": "Przejmowanie…",
-      "kept": "Zachowano do tej pory: {{documents}}{{files}}",
+      "keptLead": "Zachowano do tej pory:",
+      "seeAttempt": "Zobacz podejście",
       "keptFiles_one": " i {{count}} zmieniony plik",
       "keptFiles_few": " i {{count}} zmienione pliki",
       "keptFiles_many": " i {{count}} zmienionych plików",
@@ -2873,10 +2889,17 @@
     "attemptCommit": {
       "committed": "Agent skończył krok {{step}}. Jego praca jest zatwierdzona.",
       "committedOn": "Agent skończył krok {{step}}. Jego praca jest zatwierdzona na <code>{{branch}}</code>.",
-      "commitHolds_one": "Commit <code>{{sha}}</code> zawiera {{count}} plik.",
-      "commitHolds_few": "Commit <code>{{sha}}</code> zawiera {{count}} pliki.",
-      "commitHolds_many": "Commit <code>{{sha}}</code> zawiera {{count}} plików.",
-      "commitHolds_other": "Commit <code>{{sha}}</code> zawiera {{count}} pliku.",
+      "committedSha": "Agent skończył krok {{step}}. Commit <code>{{sha}}</code>{{list}}.",
+      "committedShaOn": "Agent skończył krok {{step}}. Commit <code>{{sha}}</code> na <code>{{branch}}</code>{{list}}.",
+      "countDocuments_one": "{{count}} dokument",
+      "countDocuments_few": "{{count}} dokumenty",
+      "countDocuments_many": "{{count}} dokumentów",
+      "countDocuments_other": "{{count}} dokumentu",
+      "countFiles_one": "{{count}} plik",
+      "countFiles_few": "{{count}} pliki",
+      "countFiles_many": "{{count}} plików",
+      "countFiles_other": "{{count}} pliku",
+      "and": " i ",
       "pending": "Agent skończył krok {{step}}. SpecFlow zatwierdza jego pracę…",
       "failed": "<strong>Krok {{step}} jest skończony, ale jego commit się nie udał: {{reason}} (<code>{{code}}</code>).</strong>",
       "reason": {
@@ -2897,6 +2920,55 @@
       "blocksConfirm": "Potwierdzenie będzie możliwe, gdy praca agenta zostanie zatwierdzona: po usunięciu przyczyny „Ponów commit” wykona commit jeszcze raz.",
       "retry": "Ponów commit",
       "retrying": "Ponawianie…"
+    },
+    "projectHold": {
+      "session": "Sesja:",
+      "unknown": {
+        "title": "Nic nie może się teraz zapisać w tym projekcie.",
+        "body": "SpecFlow nie wie, czy agent nadal działa. Sprawdź jego wynik w:"
+      },
+      "working": {
+        "body": "Agent pracuje w tym projekcie. Dopóki się nie zatrzyma, rozpoczęcie, zakończenie i cofnięcie kroku tutaj jest odrzucane; ta strona odświeży się sama, gdy agent się zatrzyma. Pracuje nad:"
+      }
+    },
+    "attemptHistory": {
+      "title": "Podejścia agenta",
+      "truncated": "Starsze podejścia nie są pokazane.",
+      "session": "Sesja",
+      "showEvents": "Pokaż, co się działo",
+      "hideEvents": "Ukryj, co się działo",
+      "stopped": "Agent zatrzymał się bez wyniku o {{at}}.",
+      "outcome": {
+        "takenOverBy": "Przejęte przez: {{who}}",
+        "takenOver": "Przejęte",
+        "abandoned": "Porzucone",
+        "returned": "Cofnięte do kroku {{step}}",
+        "active": "Agent nad tym pracuje"
+      },
+      "work": {
+        "lead": "Jego praca:",
+        "leadKept": "Jego praca, zachowana i bez commita:",
+        "documents": "Dokumenty:",
+        "tasks": "Zadania:",
+        "files": "Pliki:",
+        "none": "brak"
+      },
+      "event": {
+        "started": "Start",
+        "turn-started": "Agent zaczął pracować",
+        "turn-ended": "Agent się zatrzymał",
+        "proposal-refused": "Wynik nie został przyjęty",
+        "return-requested": "Zlecono cofnięcie",
+        "returned": "Cofnięto do wcześniejszego kroku",
+        "finished": "Skończył z wynikiem",
+        "committed": "Praca zacommitowana",
+        "commit-failed": "Commit się nie udał: {{reason}} ({{code}})",
+        "taken-over": "Przejęte",
+        "abandoned": "Porzucone",
+        "awaiting-confirmation": "Czeka na potwierdzenie",
+        "confirmed": "Wynik potwierdzony",
+        "rejected": "Wynik odrzucony"
+      }
     }
   },
   "taskOverview": {

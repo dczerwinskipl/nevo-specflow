@@ -6,6 +6,7 @@ import { Value } from 'typebox/value';
 import { ERROR_DETAIL_PATHS_MAX } from '@nevo/specflow-contracts/documents';
 
 import type { JournalKind } from '../../../specs/durable';
+import type { AttemptCommitWait } from '../../../specs/uncommitted/attempts';
 import { WorkflowError } from '../../errors';
 import { assertFinishInputShape } from '../../input-schema';
 import { RECORD_BYTES_MAX } from '../../limits';
@@ -218,6 +219,14 @@ export interface AgentFinishProposal {
   /** The transition the input takes, as validated at submission. */
   readonly transition: string;
   readonly submittedAt: string;
+  /**
+   * What the finalize judged the proposal on, recorded durably before it publishes the step state:
+   * each declared path with its content hash as the attribution check read it (none with Git off).
+   * A finalize run again after a crash past that publication (a replay) takes exactly these hashes
+   * for the attempt commit, never the checkout as it is then, so a later edit by someone else is
+   * never attributed to the agent (the commit refuses a path whose content no longer matches).
+   */
+  readonly judged?: { readonly declared: readonly AgentDeclaredPath[] };
   readonly state: AgentProposalState;
   /** Why the finalize re-validation refused it (`state: refused` only). */
   readonly refusal?: AgentRefusal;
@@ -272,6 +281,25 @@ export interface AgentOwnerConfirmation {
 }
 
 /**
+ * Why the attempt's own commit (D15) still waits ({@link AttemptCommitWait}); `undefined` once it
+ * ran (or it has none).
+ */
+export function attemptCommitWaitOf(journal: AgentAttemptJournal): AttemptCommitWait | undefined {
+  const action = journal.postActions?.find((entry) => entry.kind === 'attempt-commit');
+  if (action === undefined || action.state === 'done') {
+    return undefined;
+  }
+
+  if (action.state === 'pending') {
+    return { reason: 'attempt-commit-pending' };
+  }
+
+  const code = action.outcomes?.find((outcome) => outcome.status === 'failed')?.code;
+
+  return { reason: 'attempt-commit-failed', ...(code !== undefined ? { code } : {}) };
+}
+
+/**
  * The attempt ended: its proposal was published, the owner's return was applied, or the owner took
  * it over.
  */
@@ -302,6 +330,17 @@ const sha256 = Type.String({ pattern: '^[0-9a-f]{64}$' });
 const pathList = Type.Array(text(AGENT_DIRTY_PATH_LENGTH_MAX), {
   maxItems: ERROR_DETAIL_PATHS_MAX,
 });
+const declaredPaths = Type.Array(
+  Type.Object(
+    {
+      path: text(AGENT_DIRTY_PATH_LENGTH_MAX),
+      sha256: Type.Union([sha256, Type.Null()]),
+      oversize: Type.Optional(Type.Literal(true)),
+    },
+    closed,
+  ),
+  { maxItems: AGENT_DIRTY_PATHS_MAX },
+);
 const refusal = Type.Object(
   {
     code: text(100),
@@ -380,6 +419,7 @@ const JournalSchema = Type.Object(
           ),
           transition: text(200),
           submittedAt: timestamp,
+          judged: Type.Optional(Type.Object({ declared: declaredPaths }, closed)),
           state: Type.Union([
             Type.Literal('pending'),
             Type.Literal('refused'),
@@ -449,19 +489,7 @@ const JournalSchema = Type.Object(
             stepTitle: text(1000),
             runs: Type.Optional(Type.Integer({ minimum: 1 })),
             ranAt: Type.Optional(timestamp),
-            declared: Type.Optional(
-              Type.Array(
-                Type.Object(
-                  {
-                    path: text(AGENT_DIRTY_PATH_LENGTH_MAX),
-                    sha256: Type.Union([sha256, Type.Null()]),
-                    oversize: Type.Optional(Type.Literal(true)),
-                  },
-                  closed,
-                ),
-                { maxItems: AGENT_DIRTY_PATHS_MAX },
-              ),
-            ),
+            declared: Type.Optional(declaredPaths),
             state: Type.Union([
               Type.Literal('pending'),
               Type.Literal('done'),

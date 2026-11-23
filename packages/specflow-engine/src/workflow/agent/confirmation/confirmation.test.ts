@@ -258,6 +258,56 @@ describe('an agent result that waits for the owner (D17)', () => {
     ]);
   });
 
+  it('is not confirmed, with Git on, until the attempt commit ran; Reject stays possible', async () => {
+    const fixture = await reviewAwaitingOwner(undefined, catalogue, ({ state }) => {
+      state.postActionResults = [
+        {
+          action: 'attempt-commit',
+          status: 'failed',
+          code: 'MANUAL_COMMIT_CONFLICT',
+          message: 'A path changed.',
+        },
+      ];
+    });
+    const confirm = await confirmShown(fixture);
+    const projected = async () =>
+      (await inspectActions(fixture.dependencies.workflow, specification)).actions.confirm;
+    expect(await projected()).toEqual({
+      ...{ step: 'breakdown-review', attempt: 1 },
+      unavailable: { reason: 'attempt-commit-failed', code: 'MANUAL_COMMIT_CONFLICT' },
+    });
+
+    await expect(confirmAgentResult(fixture.dependencies, confirm)).rejects.toMatchObject({
+      code: 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED',
+    });
+    expect(await positionOf(fixture.workflow, specification)).toEqual(AWAITING);
+    expect(fixture.state.ownerPostActions).toEqual([]);
+
+    // Retry commit commits the agent's work; then Confirm applies.
+    fixture.state.postActionResults = [{ action: 'attempt-commit', status: 'completed' }];
+    await retryAgentAttemptCommit(fixture.dependencies, { ...REVIEW, actor: owner });
+    expect(await projected()).toEqual({ step: 'breakdown-review', attempt: 1 });
+    expect(await confirmAgentResult(fixture.dependencies, confirm)).toMatchObject({
+      transition: 'approved',
+    });
+  });
+
+  it('is confirmed with Git off whatever the attempt commit reported', async () => {
+    const fixture = await reviewAwaitingOwner(undefined, catalogue, ({ state }) => {
+      state.gitEnabled = false;
+      state.postActionResults = [
+        { action: 'attempt-commit', status: 'failed', code: 'X', message: 'Failed.' },
+      ];
+    });
+
+    expect(
+      (await inspectActions(fixture.dependencies.workflow, specification)).actions.confirm,
+    ).toEqual({ step: 'breakdown-review', attempt: 1 });
+    expect(
+      await confirmAgentResult(fixture.dependencies, await confirmShown(fixture)),
+    ).toMatchObject({ transition: 'approved' });
+  });
+
   it('is refused when a draft or its task.md changed since the owner was shown it', async () => {
     const fixture = await reviewAwaitingOwner();
     const documents = fixture.workflow.references.taskDocuments;

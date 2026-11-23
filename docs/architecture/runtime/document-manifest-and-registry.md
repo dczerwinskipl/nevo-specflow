@@ -94,34 +94,34 @@ preserved (accepted limitation).
   unique. The allocation is therefore deterministic (replay of Create produces the same ids) and, for later
   write operations, the allocated ids are persisted in the operation journal. Ids are never reused by the Engine.
 - Unclassified files have a **derived** id `u-<first 32 hex of sha256(exact path, case preserved)>` (128 bits; a residual collision between two listed files is detected and fails closed as `SPEC_SOURCE_UNAVAILABLE`).
-   - It is stable while the path is stable, resolved by recomputation over the listed files, and is replaced by a registered id on classification.
-   - On a case-sensitive filesystem `A.md` and `a.md` are two files with two different ids; both are listed and readable, the tree reports an issue `path-case-collision`, and the Engine refuses any operation that would create, rename or move onto a path equal to another ignoring case.
-   - A rename or move that changes only the letter case of a path (`bb.md` to `Bb.md`, a folder `docs` to `Docs`) is applied as a write of the new path followed by the removal of the old one; where the file system ignores case both name one file and the removal would delete it.
-   - The Engine therefore refuses it wherever the file system ignores case (`DOCUMENT_OPERATION_INVALID`, `details.cause: 'case-only-rename'`, nothing reserved or written) and accepts it on case-sensitive volumes.
-   - The file system decides, not the platform: before the reservation (and again before a journaled operation touches a file) every planned path that exists is `lstat`ed, and a removed path with the device and inode of a path the plan keeps (writes, or the manifest) is one entry under two names when both sit in one directory and that directory does not list both names (this also covers the default APFS volume of macOS, a Windows drive under WSL, SMB and NTFS mounts, 8.3 short names and Unicode case pairs).
-   - Two hard links are two listed entries of one inode and are not refused (moving a folder that holds them is accepted).
-   - On a volume that reports no inode (`ino` 0) two paths equal ignoring case are one entry when the removed name, `lstat`ed with its letter case swapped, is found.
-   - On Windows the planner also refuses it at once without I/O.
-   - A journaled operation refused this way after its reservation is `DOCUMENT_RECOVERY_REQUIRED` (`plan-invalid`), its files untouched.
+  - It is stable while the path is stable, resolved by recomputation over the listed files, and is replaced by a registered id on classification.
+  - On a case-sensitive filesystem `A.md` and `a.md` are two files with two different ids; both are listed and readable, the tree reports an issue `path-case-collision`, and the Engine refuses any operation that would create, rename or move onto a path equal to another ignoring case.
+  - A rename or move that changes only the letter case of a path (`bb.md` to `Bb.md`, a folder `docs` to `Docs`) is applied as a write of the new path followed by the removal of the old one; where the file system ignores case both name one file and the removal would delete it.
+  - The Engine therefore refuses it wherever the file system ignores case (`DOCUMENT_OPERATION_INVALID`, `details.cause: 'case-only-rename'`, nothing reserved or written) and accepts it on case-sensitive volumes.
+  - The file system decides, not the platform: before the reservation (and again before a journaled operation touches a file) every planned path that exists is `lstat`ed, and a removed path with the device and inode of a path the plan keeps (writes, or the manifest) is one entry under two names when both sit in one directory and that directory does not list both names (this also covers the default APFS volume of macOS, a Windows drive under WSL, SMB and NTFS mounts, 8.3 short names and Unicode case pairs).
+  - Two hard links are two listed entries of one inode and are not refused (moving a folder that holds them is accepted).
+  - On a volume that reports no inode (`ino` 0) two paths equal ignoring case are one entry when the removed name, `lstat`ed with its letter case swapped, is found.
+  - On Windows the planner also refuses it at once without I/O.
+  - A journaled operation refused this way after its reservation is `DOCUMENT_RECOVERY_REQUIRED` (`plan-invalid`), its files untouched.
 
 ### Path validation
 
 - **Paths**: POSIX `/`, relative to the Specification directory, at most 500 characters, every segment at most 200 UTF-8 bytes, no leading `/`, no `..`, no empty segment, no segment starting with `.` or ending with `.` or space, none of `\ : * ? " < > |` or control characters, no Windows reserved device name in any segment (with or without extension); folder depth at most 8; uniqueness is case-insensitive.
-   - At the Specification root the names `specification.yaml` and `change.yaml` are reserved **ignoring case**: they are never documents and cannot be created, renamed to, or overwritten through the documents layer (`DOCUMENT_PATH_INVALID`).
-   - `specification.yaml` is never in the tree.
-   - A hand-dropped root entry whose name equals `specification.yaml` or `change.yaml` ignoring case but is not the canonical manifest is not a document problem: the existing Specification listing already fails closed for it (`repository.ts` requires exactly one manifest-named entry, spelled `specification.yaml`), so the tree is never reached; this is documented behaviour, not new.
-   - The root folder `tasks/` (ignoring case) is reserved for the Specification's Task resources (`tasks/index.yaml`, `tasks/<id>/`): no document or folder path lies in it (`DOCUMENT_PATH_INVALID`) and the tree never lists it.
+  - At the Specification root the names `specification.yaml` and `change.yaml` are reserved **ignoring case**: they are never documents and cannot be created, renamed to, or overwritten through the documents layer (`DOCUMENT_PATH_INVALID`).
+  - `specification.yaml` is never in the tree.
+  - A hand-dropped root entry whose name equals `specification.yaml` or `change.yaml` ignoring case but is not the canonical manifest is not a document problem: the existing Specification listing already fails closed for it (`repository.ts` requires exactly one manifest-named entry, spelled `specification.yaml`), so the tree is never reached; this is documented behaviour, not new.
+  - The root folder `tasks/` (ignoring case) is reserved for the Specification's Task resources (`tasks/index.yaml`, `tasks/<id>/`): no document or folder path lies in it (`DOCUMENT_PATH_INVALID`) and the tree never lists it.
 
 ### Symlinks and special files
 
 - **Symlinks and special files** are never followed and never listed; such an entry is skipped, counted in `skippedEntries` and reported as the issue `skipped-entry`.
-   - The count is a lower bound once the archive count traversal reached its own bound (entries beyond it were not visited; `archive-limit` is reported then).
-   - Names with control, format, line or paragraph separator characters (Cc, Cf, Zl, Zp: bidi overrides, C1 controls, zero-width, U+2028), a backslash or bytes that are not UTF-8 are skipped the same way.
-   - Close archive refuses a directory that contains a symlink or special file, so this issue means "Close will refuse until it is removed" (see Limits).
-   - Opening a file re-verifies the physical path (lstat, `realpath` equality, regular file) before and after open and compares `fstat` identity; `O_NOFOLLOW` (and `O_NONBLOCK`, so a swapped-in FIFO cannot block the open) is used where the platform has it (not on Windows, where the re-verification is the only guard and a swap between the last check and the first read cannot be excluded by the platform; this is a best-effort statement).
-   - The descriptor's device and inode must equal those of the checked entry, and the checks are repeated after the open.
-   - A regular file with more than one hard link is readable, including a file hard-linked into the directory from outside it: the boundary is the directory entry, not the inode (accepted and tested; a hard link cannot be told apart from the original).
-   - Writes use temp file plus rename, which replaces the directory entry and never writes through the link.
+  - The count is a lower bound once the archive count traversal reached its own bound (entries beyond it were not visited; `archive-limit` is reported then).
+  - Names with control, format, line or paragraph separator characters (Cc, Cf, Zl, Zp: bidi overrides, C1 controls, zero-width, U+2028), a backslash or bytes that are not UTF-8 are skipped the same way.
+  - Close archive refuses a directory that contains a symlink or special file, so this issue means "Close will refuse until it is removed" (see Limits).
+  - Opening a file re-verifies the physical path (lstat, `realpath` equality, regular file) before and after open and compares `fstat` identity; `O_NOFOLLOW` (and `O_NONBLOCK`, so a swapped-in FIFO cannot block the open) is used where the platform has it (not on Windows, where the re-verification is the only guard and a swap between the last check and the first read cannot be excluded by the platform; this is a best-effort statement).
+  - The descriptor's device and inode must equal those of the checked entry, and the checks are repeated after the open.
+  - A regular file with more than one hard link is readable, including a file hard-linked into the directory from outside it: the boundary is the directory entry, not the inode (accepted and tested; a hard link cannot be told apart from the original).
+  - Writes use temp file plus rename, which replaces the directory entry and never writes through the link.
 
 ### Folder semantics
 
@@ -158,9 +158,9 @@ Specification's other documents.
   `SPEC_MANIFEST_DIRTY`: the Specification execution store writes it too, and its writes may be
   uncommitted (auto-commit off, see [Commits of workflow state](document-commit-policy.md#commits-of-workflow-state)).
 - Mutual exclusion with the Specification execution store (D03, under the project control lock): a Task document change is refused with `SPEC_BUSY` (`details.cause: task-resource-change`) while that store holds a pending journal that writes the Task's `task.yaml` or documents.
-   - The reverse check is `hasPendingTaskDocumentChange(context, specId, taskId)`: true while a document change of the Task is not final (being written, waiting for or in its commit, failed to commit, needing recovery).
-   - The store applies it to every change that writes a Task's `task.yaml` or documents (Task edit and removal, status decisions, Breakdown revising a draft, finish effects, a first start): `openWorkflow` wraps the store (`workflow/state/task-document-guard.ts`), which refuses such a change with `WORKFLOW_TASK_BUSY` (`task-document-change`) inside `serialize`, before anything is written.
-   - Close's Specification exit gate and Abandon report it as the blocker `pending-task-documents` ([lifecycle](specification-lifecycle.md)).
+  - The reverse check is `hasPendingTaskDocumentChange(context, specId, taskId)`: true while a document change of the Task is not final (being written, waiting for or in its commit, failed to commit, needing recovery).
+  - The store applies it to every change that writes a Task's `task.yaml` or documents (Task edit and removal, status decisions, Breakdown revising a draft, finish effects, a first start): `openWorkflow` wraps the store (`workflow/state/task-document-guard.ts`), which refuses such a change with `WORKFLOW_TASK_BUSY` (`task-document-change`) inside `serialize`, before anything is written.
+  - Close's Specification exit gate and Abandon report it as the blocker `pending-task-documents` ([lifecycle](specification-lifecycle.md)).
 - The execution store's writes of `task.yaml` are `workflow` operations of the same queue
   ([Commits of workflow state](document-commit-policy.md#commits-of-workflow-state)). A Task registry change queued after one
   plans from the file the store wrote; the batch keeps the first `pre` and the last `post` of the path.

@@ -166,3 +166,18 @@ tracked by #206/#207 until evidenced on the final PR HEAD.
 | `architecture/runtime/README.md` | Keep | no long paragraph/bullet detected | code check pending |
 | `architecture/runtime/auth/README.md` | Keep | no long paragraph/bullet detected | code check pending |
 | `architecture/runtime/auth/authorization.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `architecture/runtime/configuration.md` | Reformat | 2 long paragraphs, 1 long bullets; longest section 648 words | code check pending |
+| `architecture/runtime/document-commit-policy.md` | Reformat | 5 long paragraphs, 2 long bullets; longest section 1044 words | text parity #210 |
+| `architecture/runtime/document-definitions.md` | Reformat | 5 long paragraphs, 2 long bullets; longest section 1135 words | text parity #210 |
+| `architecture/runtime/document-limits.md` | Reformat | one authoritative table, keep in place | code check pending |
+| `architecture/runtime/document-manifest-and-registry.md` | Reformat | 1 long paragraphs, 4 long bullets; longest section 949 words | text parity #210 |
+| `architecture/runtime/document-operation-transport.md` | Reformat | 0 long paragraphs, 3 long bullets; longest section 369 words | text parity #209 |
+| `architecture/runtime/document-write-and-commit-queue.md` | Reformat | 7 long paragraphs, 4 long bullets; longest section 3782 words | text parity #210 |
+| `architecture/runtime/endpoint-policy.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `architecture/runtime/ownership-and-lifecycle.md` | Reformat | 1 long paragraphs, 0 long bullets; longest section 252 words | code check pending |
+| `architecture/runtime/project-home-and-workspaces.md` | Reformat | 3 long paragraphs, 0 long bullets; longest section 440 words | code check pending |
+| `architecture/runtime/specflow-engine.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `architecture/runtime/specification-close-admission.md` | Reformat | 0 long paragraphs, 5 long bullets; longest section 224 words | code check pending |
+| `architecture/runtime/specification-close-lifecycle.md` | Reformat | 5 long paragraphs, 1 long bullets; longest section 731 words | code check pending |
+| `architecture/runtime/specification-create-lifecycle.md` | Reformat | 5 long paragraphs, 1 long bullets; longest section 412 words | code check pending |
+| `architecture/runtime/specification-create-options.md` | Reformat | 0 long paragraphs, 4 long bullets; longest section 265 words | code check pending |

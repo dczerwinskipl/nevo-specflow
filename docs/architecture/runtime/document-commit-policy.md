@@ -21,7 +21,7 @@ related:
 
 ## Commit policy, the uncommitted-changes ledger and manual commit
 
-Governing decision: [ADR 0018](../decisions/0018-engine-commit-policy-and-manual-commit.md). Push and publishing remain out of scope ("Future: push" in the ADR).
+Governing decision: [ADR 0018](../decisions/0018-engine-commit-policy-and-manual-commit.md). Git push/publishing is outside this commit policy.
 
 ### Policy configuration
 

@@ -87,22 +87,12 @@ preserved (accepted limitation).
 
 ### Document identity
 
-- `documentId` is stable for the life of the document; rename and move keep it. The first document of a type
-  gets the id `<type>` (`overview`, `behaviour`, ...). Further ones get `<type>-<suffix>`, where `suffix` is
-  the first 6 characters of the lowercase base32 of `sha256(<specId>:<position>)` and `position` is the entry's
-  index in the registry at allocation; a collision with an existing id extends the suffix by one character until
-  unique. The allocation is therefore deterministic (replay of Create produces the same ids) and, for later
-  write operations, the allocated ids are persisted in the operation journal. Ids are never reused by the Engine.
-- Unclassified files have a **derived** id `u-<first 32 hex of sha256(exact path, case preserved)>` (128 bits; a residual collision between two listed files is detected and fails closed as `SPEC_SOURCE_UNAVAILABLE`).
-  - It is stable while the path is stable, resolved by recomputation over the listed files, and is replaced by a registered id on classification.
-  - On a case-sensitive filesystem `A.md` and `a.md` are two files with two different ids; both are listed and readable, the tree reports an issue `path-case-collision`, and the Engine refuses any operation that would create, rename or move onto a path equal to another ignoring case.
-  - A rename or move that changes only the letter case of a path (`bb.md` to `Bb.md`, a folder `docs` to `Docs`) is applied as a write of the new path followed by the removal of the old one; where the file system ignores case both name one file and the removal would delete it.
-  - The Engine therefore refuses it wherever the file system ignores case (`DOCUMENT_OPERATION_INVALID`, `details.cause: 'case-only-rename'`, nothing reserved or written) and accepts it on case-sensitive volumes.
-  - The file system decides, not the platform: before the reservation (and again before a journaled operation touches a file) every planned path that exists is `lstat`ed, and a removed path with the device and inode of a path the plan keeps (writes, or the manifest) is one entry under two names when both sit in one directory and that directory does not list both names (this also covers the default APFS volume of macOS, a Windows drive under WSL, SMB and NTFS mounts, 8.3 short names and Unicode case pairs).
-  - Two hard links are two listed entries of one inode and are not refused (moving a folder that holds them is accepted).
-  - On a volume that reports no inode (`ino` 0) two paths equal ignoring case are one entry when the removed name, `lstat`ed with its letter case swapped, is found.
-  - On Windows the planner also refuses it at once without I/O.
-  - A journaled operation refused this way after its reservation is `DOCUMENT_RECOVERY_REQUIRED` (`plan-invalid`), its files untouched.
+- **Registered:** `documentId` survives move/rename and is never reused. First ID of a type is `<type>`; later IDs append a lowercase-base32 SHA-256 suffix from `<specId>:<registry position>` (6 characters, extended on collision). Create replay is deterministic; later operations journal allocated IDs.
+- **Unclassified:** derive `u-<first 32 hex sha256(exact case-sensitive path)>`. Stable until rename/classification, which returns a registered ID. A residual 128-bit collision fails closed (`SPEC_SOURCE_UNAVAILABLE`).
+- **Case collisions:** list `A.md` and `a.md` as distinct on case-sensitive volumes but flag `path-case-collision`; refuse create/rename/move onto case-insensitively duplicate paths.
+- **Case-only rename:** accepted on case-sensitive filesystems. On case-insensitive filesystems, write-then-remove would delete the same entry; refuse with `DOCUMENT_OPERATION_INVALID` / `case-only-rename` before writing. Windows also refuses at planning.
+- **Detection:** determine aliasing by filesystem, not OS. At reservation and before journaled writes, `lstat` planned existing paths; identical device/inode for a removed and retained path in one directory that does not list both names proves an alias (APFS, NTFS, WSL, SMB, 8.3 and Unicode variants). If `ino=0`, probe a swapped-case path. Two genuinely listed hard links remain valid.
+- **After reservation:** case-alias detection yields `DOCUMENT_RECOVERY_REQUIRED` / `plan-invalid` with files untouched.
 
 ### Path validation
 

@@ -159,7 +159,7 @@ announces per keystroke. While the answer loads it says nothing for the first 2 
 ### Sticky field and the software keyboard
 
 - **The sticky set is the search field only** : the shared `TreeSearchBar` across the pane's full width, transparent at rest and, once docked, on the opaque docked material of the workspace with the `divider` line under it (so nothing scrolled underneath shows through), no shadow, at every width.
-- The scroll position itself switches it at the dock point (a scroll-driven animation); browsers without scroll-driven animations keep the material at all times and show the divider from `useStuck` (see [Tree pane](../../../design-system/implementation/react/component-guidelines.md#tree-pane)).
+- The scroll position itself switches it at the dock point (a scroll-driven animation); browsers without scroll-driven animations keep the material at all times and show the divider from `useStuck` (see [Tree pane](../../../design-system/implementation/react/component-tree-and-scrolling.md#tree-pane)).
 - The app header is already fixed.
 - The picker, the status row and the quiet lines scroll with the results.
 - At 390x844 (app header 57 px, sticky bar 45 px) this leaves about 742 px for results with the keyboard closed, and about 406 px with a 336 px keyboard open; a sticky status row would take about 44 px more.

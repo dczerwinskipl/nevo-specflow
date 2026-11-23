@@ -9,7 +9,7 @@ read_when:
   - reviewing the documentation maintainability refactor PR stack
   - planning follow-up audits of long current documents and retrieval benchmarking
 summary: >-
-  Evidence and disposition ledger for the Create, Task, document-engine, workflow and UI documentation split, with deferred review candidates and unverified retrieval requirements.
+  Evidence and disposition ledger for the Create, Task, document-engine, workflow and UI documentation split, with reviewed P2 ownership changes, retained cohesive contracts, and explicit remaining audit coverage.
 related:
   - ideas.documentation-maintainability
   - architecture.runtime.specflow-lifecycle
@@ -27,6 +27,49 @@ an authoritative system contract. GitHub issues [#206](https://github.com/dczerw
 and [#207](https://github.com/dczerwinskipl/nevo-specflow/issues/207)
 own remaining investigation and the measured retrieval benchmark, respectively.
 [#202](https://github.com/dczerwinskipl/nevo-specflow/issues/202) already owns demo API convergence.
+
+## P2 review against main after #215
+
+Base: `6f112660edb93295a6214d2b16874a9619b426f1`. This pass implements the
+remaining named P2 candidates within #206; it does not open another tracking issue.
+The inventory below remains historical screening evidence, not a completed current
+corpus audit. The [current coverage matrix](2026-11-23-current-document-dispositions.md)
+accounts explicitly for every current in-scope document, including unfinished reviews. In particular, its length-based `Reformat` rows are not automatic
+instructions to edit a contract. #206 stays open until each remaining document has
+an evidence-backed disposition and the reviewed final HEAD passes the required checks.
+
+| Reviewed source                   | Disposition and reason                                                                                                                                                                                               | Contract evidence and boundary                                                                                                                                                                                                                         |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| React component guidelines        | Split independently discoverable feedback/content, input/overlay, and tree/scrolling recipes; retain general authoring rules under the original ID.                                                                  | Existing recipe sections moved with their constraints and examples. `packages/nevo-ui/src/components/` owns the primitives; no component behavior changed. This is source-text preservation, not a claim that every recipe was independently retested. |
+| Secondary navigation              | Keep the lifecycle/consumer API together. Guards, live-data disposal, root navigation, focus and scroll share one provider lifetime; a size-only split would scatter its invariants. Remove dated owner attribution. | `WorkspaceContext`, `secondaryNavigationModel` and their tests own flow transitions. Dynamic sizing already has its own linked owner.                                                                                                                  |
+| Workspace dynamic split           | Keep API, owned state, sizing transitions and splitter accessibility together; the transition table interprets the API rather than defining another capability. Remove old P1/revision narration and owner date.     | `workspaceSizing.ts`, `WorkspaceContext.test.tsx`, `AppWorkspaceDynamicSplit.contract.stories.tsx`; the shell capability hint remains distinct from resolved layout.                                                                                   |
+| Specification creation            | Split form choices from admission/errors and submission/progress. Remove the repeated progress HTTP contract in favor of its existing transport owner.                                                               | Product refusal and uncertainty branches retained. Architecture Create owners, Engineering recovery, and typed/OpenAPI transport remain authoritative at their layers.                                                                                 |
+| Session storage and lifecycle     | Move the operator recovery procedure to Engineering; move association authorization/schema rules to the existing association owner. Keep automatic settlement and native-stop safety in lifecycle.                   | `packages/specflow-runtime/src/features/sessions/persistence/{schema,associations,reconciliation,session-management}.ts`, lifecycle coordinator and native-stop recovery tests. No new force-settlement, replay, or row-edit path.                     |
+| Workflow execution                | Move unimplemented Ask agent attachment to the existing draft agent-assistance proposal; current Product links it as a proposal.                                                                                     | Existing manual workflow actions, gates and refusal behavior remain in Product/Architecture. No action was implemented.                                                                                                                                |
+| Specification Overview            | Move independent Tasks-page URL/filter/paging/status presentation to a dedicated Product owner; retain Overview layout, summary and history.                                                                         | `features/tasks/read-model/statusPresentation.ts`, its test, and `SpecificationOverviewColumns.contract.stories.tsx`. Architecture still owns grouping and paging semantics.                                                                           |
+| Workflow workbench decisions      | Preserve the dated full ledger in Ideas; retain the stable current ID as a topic-to-contract map.                                                                                                                    | Current workflow, Task, attention, document content and Close owners linked explicitly; no duplicate normative decision table.                                                                                                                         |
+| Shell geometry                    | Preserve historical observations in Ideas and use the current ID for a geometry contract map. Correct the stale claim that Session has no durable Specification association.                                         | `features/sessions/associations/useSessionHomeSpecification.ts` and managed Session routes already resolve association context. Association is not execution ownership.                                                                                |
+| Full Session                      | Keep the routed screen contract together: Primary conversation/composer and Secondary Context/Tasks share responsive behavior and visit state.                                                                       | `SessionTasksInspector.tsx` still defines the limited Tasks inspector; do not promote it to an unimplemented full inventory by editing prose.                                                                                                          |
+| Engineering code organization     | Keep shared mandatory ownership and React state/effect policy together with package-specific examples.                                                                                                               | Agent profiles load the entire stable ID. ESLint enforces only the documented subset; a green lint is not proof of all architectural rules.                                                                                                            |
+| CI                                | Keep the operator reference together: triggers, job matrix, cache, timeouts and required gates describe one workflow system.                                                                                         | `.github/workflows/ci.yml` and repository policy own execution. Existing #215 checks provide baseline evidence, not final-HEAD verification of this PR.                                                                                                |
+| Long CLI/configuration references | Keep section-addressable references. A whole-document split solely by bytes would duplicate command/config ownership.                                                                                                | `reference.cli.nevo-specflow-docs` already supports section retrieval; changes to search ranking belong to #156, not this documentation-only patch.                                                                                                    |
+
+The #207 benchmark and Task completion discovery correction were completed in
+[#215](https://github.com/dczerwinskipl/nevo-specflow/pull/215), rather than deferred
+to another issue. Its recorded five-question lexical scenario covers 25/25 evidence
+anchors and costs 132,681 estimated tokens including owner follow-ups, compared
+with 242,726 at #201. This is a bounded `read all` scenario, not average agent usage.
+See [the measured analysis](../../../tools/docs/eval/retrieval-cost/results/2026-11-23-analysis.md).
+A [fresh P2 measurement](../../../tools/docs/eval/retrieval-cost/results/2026-11-23-p2.generated.md)
+at `a8507a87d5a19a8eddeb9db8b49925dd34f4405a` preserves 25/25 initial and
+owner evidence checks and 3/5 strict top-1 owners. The same bounded lexical scenario
+costs 131,102 estimated tokens including follow-ups (1.2% less than #215; 46.0%
+less than #201). Search implementation trees and fixture are unchanged. It does not
+measure hybrid ranking or prove every UI/Session contract; moved text was separately
+compared against the base, including refusals and recovery steps. The only removed
+transport paragraph was duplicated; its 404/403 presentation rule remains in the
+progress owner. Historical audit metadata changes after this measured checkpoint do
+not change the default current-only search corpus.
 
 ## Confirmed defects and corrections
 
@@ -106,12 +149,11 @@ reads whole non-reference documents and selective sections of reference document
 lexical or hybrid and corpus/index freshness matters. A count of Markdown lines or the size
 of an entry-point file is **not** equivalent to measured token savings.
 
-## Current-document readability inventory (2026-11-23)
+## Historical screening inventory (2026-11-23)
 
 Scope: every Markdown file under Architecture, Product, Engineering, Design System and Reference
 with `status: current` at the pinned `main` revision above. Current ADRs and README
-navigation files are included; decision chronology belongs in ADRs by design. The audit is based on **full text**, not file
-size alone. A >100-word paragraph or >120-word bullet is a **review signal**, not a policy failure.
+navigation files are included; decision chronology belongs in ADRs by design. This inventory records paragraph-length screening and prior review notes; it does not prove semantic review of every document. A >100-word paragraph or >120-word bullet is a **review signal**, not a policy failure.
 
 Disposition: **Keep** means no structural readability finding in this pass; **Reformat**
 means a long or mixed rule needs clearer presentation; **Deduplicate** requires an authority

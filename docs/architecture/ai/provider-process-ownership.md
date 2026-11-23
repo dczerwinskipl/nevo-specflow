@@ -99,7 +99,7 @@ Limits, the same as for live termination ([POSIX](#posix)): on POSIX a descendan
 group (`setsid`, `setpgid`, a daemonizing double fork) is not covered, so an empty group proves only
 that the owned group stopped, and hostile PID or PGID reuse is not certified. A Windows Job Object
 has no such escape (no breakaway). Cases the evidence cannot settle follow the
-[administrative recovery procedure](session-storage-and-lifecycle.md#administrative-recovery).
+[administrative recovery procedure](../../engineering/shared/session-recovery.md#administrative-recovery).
 
 ## Launch
 

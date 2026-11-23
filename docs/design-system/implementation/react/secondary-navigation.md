@@ -178,7 +178,7 @@ runtime page stack.
 
 ### Root tabs and local navigation (split layout)
 
-Decided by the owner (2026-11-03): the split Secondary's tabs are IDE-style **editor tabs** on a constant 36 px rail, and local depth is a
+The split Secondary's tabs are IDE-style **editor tabs** on a constant 36 px rail, and local depth is a
 detail header row in the content instead of a bar under the rail.
 
 On a split layout the Secondary has no 56 px header while the root-tab strip is shown: its

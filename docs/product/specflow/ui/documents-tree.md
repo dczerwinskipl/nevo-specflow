@@ -84,7 +84,7 @@ state never reorders. Dangling entries are placed at their registered path.
 - While a filter is on, the folders holding a match are open, a status line says how much is shown ("Showing 1 of 7 files") beside **Clear filters (n)**, the rows keep their indentation, and a missing file the filters hide is announced ("The filters hide 1 missing file.") so a problem is never hidden silently.
 - Nothing matching: the tree pane's shared empty search result (`TreeSearchEmpty`, the same as the documentation reader's) with Clear filters.
 - Expected documents and the Close issues above the tree are never filtered.
-- The search bar, the empty result and the order and tones of the tree's messages (status, attention notes, the list or the empty result, quiet notes) follow [Tree pane](../../../design-system/implementation/react/component-guidelines.md#tree-pane).
+- The search bar, the empty result and the order and tones of the tree's messages (status, attention notes, the list or the empty result, quiet notes) follow [Tree pane](../../../design-system/implementation/react/component-tree-and-scrolling.md#tree-pane).
 
 **Rename refusal.** A refused name is shown at the field, over the rows below (the list does not shift),
 with the full text; the field keeps focus and the typed name.

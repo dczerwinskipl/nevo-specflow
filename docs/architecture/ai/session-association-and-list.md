@@ -8,8 +8,9 @@ areas: [ai, runtime, server, security]
 tags: [sessions, associations, authorization, pagination]
 read_when:
   - reviewing session association and filtered list semantics
+  - changing Session association persistence, access scopes or deletion ownership
 summary: >-
-  Atomic Specification Session creation, association projections, per-row authorization and signed bounded list cursors.
+  Atomic Specification Session creation, persisted association schema and lifetime, store-derived authorization and signed bounded list cursors.
 related:
   - reference.api.sessions
   - architecture.ai.session-storage-and-lifecycle
@@ -29,7 +30,7 @@ Schemas: `SessionListQuerySchema`, `SessionListFilterSchema`, `SessionListPageSc
 `SessionAssociationReadSchema`, `CreateContextSessionSchema` and `CreateContextSessionResultSchema`
 in `@nevo/specflow-contracts/sessions`. Sessions stay independent: the association is a separate,
 Session-owned sidecar record
-([storage](session-storage-and-lifecycle.md#authorization-and-associations)),
+([association persistence](#authorization-and-associations)),
 written only by the composed create. There is no route to reassign, unlink or append Tasks.
 
 Known limit: the record stores Task ids as they were at create. A Task id is a slug, not an
@@ -87,3 +88,60 @@ Admission for `POST /api/specs/:specId/sessions` (256 KiB body), in order:
   `readiness` is the effective readiness of the single-Session read: when the provider (or the
   Session's provider mode) cannot run a Turn and none is active, it reads
   `authenticationRequired` if the provider needs a sign-in, otherwise `unavailable`.
+
+## Authorization and associations
+
+Reuse existing session.create/view/manage and flat-role coverage; deletion uses the separate
+session.delete capability (developer and admin roles). Standalone create requires session.create
+at trusted {projectId}; existing Sessions use the scope `sessionScope(identity, capability)` builds
+from the store-derived identity: {projectId, sessionId} for a standalone Session and
+{projectId, specId, sessionId} for an associated one, except `session.execute-write`, which never
+carries `specId` (the provider `cwd` is the whole verified workspace). There is no creator ACL or
+automatic creator grant: configured project/global roles determine sharing; creator is audit
+metadata only. A sessionId-scoped grant can allow one existing Session but cannot create another.
+A specId-only assignment does not cover a standalone Session; its role's Session capabilities apply
+to Sessions associated with that Specification, except execute-write. Access-disabled mode follows
+existing Auth policy; use its stable internal audit/idempotency key, not a client-supplied user ID.
+Exact rules: [Runtime authorization](../runtime/auth/authorization.md#session-scope) and
+[Sessions API](../../reference/api/sessions.md).
+
+**Association registry.** A Session has at most one home Specification, fixed at create and never
+changed, plus an append-only set of that Specification's Tasks. Absent means standalone.
+
+```sql
+CREATE TABLE session_associations(
+  session TEXT PRIMARY KEY REFERENCES sessions(id),
+  spec TEXT NOT NULL,             -- home Specification, immutable
+  created_seq INTEGER NOT NULL,   -- copy of sessions.created_seq for the spec-ordered index
+  origin TEXT NOT NULL CHECK(origin IN ('user','workflow')),
+  actor TEXT NOT NULL,            -- audit only, never an ACL
+  created INTEGER NOT NULL);
+CREATE INDEX session_associations_spec ON session_associations(spec, created_seq);
+CREATE TABLE session_association_tasks(
+  session TEXT NOT NULL REFERENCES session_associations(session),
+  task TEXT NOT NULL,
+  origin TEXT NOT NULL CHECK(origin IN ('user','workflow')),
+  added INTEGER NOT NULL,
+  PRIMARY KEY(session, task));
+```
+
+- The composed create (`POST /api/specs/:specId/sessions`) verifies the Specification and Tasks
+  through the Engine first (time-of-check only), then writes the Session, association and Task rows
+  in one Worker transaction under the project-scoped create key, whose fingerprint covers
+  `{input, association}`. A crash leaves both or neither. The registry never infers an association
+  from a URL, title, path or message, and stores the Engine's canonical ids, not titles.
+- The store operations `identity`/`identities` (batch, at most 500) join the association row, so a
+  Session's scope comes from one indexed lookup; `association`, `list` (keyset on `created_seq`,
+  bounded scan budget, signed filter-bound cursor) and `associate-tasks` complete the protocol.
+  `associate-tasks` has no HTTP route: only the future in-process workflow orchestrator appends
+  Tasks, and it is refused for another home Specification or a standalone Session.
+- Both tables are Session-owned in `SESSION_TABLE_OWNERSHIP`: delete removes them in the delete
+  transaction; archive leaves them untouched. No cascade on Specification or Task removal: the
+  association stays and reads as `missing`. There is no reassign, unlink or grant inheritance.
+- An association is context, never current execution: the Engine attempt executor stays the only
+  authority for what a Turn executes. Origin (`user`, `workflow`) is provenance, not authority.
+- `SessionReferenceOwner` (`resolve`, `resolveMany`) and its extension `SessionAssociations`
+  (`identity`, `association`) are implemented by the store in project mode and by the demo
+  catalogue in demo mode; the list reads through a separate `SessionListSource` with the same two
+  implementations. The port must not become the required identity type for the core. A Specification's workspace binding is resolved at read
+  time, not stored. Rebinding a workspace cannot silently relocate a provider-native Session.

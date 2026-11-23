@@ -102,7 +102,7 @@ changes, independent of route/URL.
    - a stable **tab instance id** (`id`), distinct from its **definition id**
      (`SecondaryStackDefinition.id`, which stack/root _kind_ this is — used for display/debugging
      and, for `openTab()`, as part of deriving the instance id; never used alone as the tab's
-     identity — see §4.1 for why conflating the two was the P1 bug this revision fixes);
+     identity — see §4.1 for the distinct replacement and instance-activation rules);
    - `closable: boolean` (`false` only for the pinned entry; the legacy slot and every `openTab()`
      entry are closable);
    - its own local navigation flow: current page, local back/forward stack, scroll, focus —
@@ -334,7 +334,7 @@ Two different questions have two different answers between 730px and 839px:
 - The hint is for the shell-level decisions that exist _before_ and _outside_ the workspace: whether
   to register the pinned Context tab (`useRegisterPinnedSecondaryTab`) and whether the header offers
   the side-panel toggle or a "Context" button. Between 730 and 839 it is `false` and Context is
-  opened as a runtime flow (option A). Owner decision, 2026-11-04: this stays. Below 840 px the
+  opened as a runtime flow (option A). Below 840 px the
   Session uses the mobile navigation scheme (a "Context" button opening a runtime flow); root tabs
   and the pinned Context tab start at 840 px. Narrowing below 840 px hides the side panel even when
   runtime tabs wait in the background; nothing opens over the conversation without the user.

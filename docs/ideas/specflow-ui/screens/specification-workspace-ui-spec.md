@@ -66,7 +66,7 @@ schemas are deferred.
 4. **Choosing the relevant Session.** How the product picks the one recommended Session when several
    are plausible resume targets (today the Runtime's `recommendedSessionId`), and the information
    model for the same Session appearing in the navigator, Requires attention and Continue session
-   ([App Shell geometry open findings](../../../product/specflow/ui/shell-geometry.md#open-findings-for-later-work)).
+   ([App Shell geometry open findings](../../audits/2026-11-shell-geometry.md#findings-recorded-during-the-review)).
 5. **Floating Session.** Wide may use Floating Session; Compact/Narrow open Full Session. Validate
    with rendered compositions (long conversation, Composer, Work, reading width, viewport height,
    several widths near the boundary) whether Floating Session is also useful on some Compact

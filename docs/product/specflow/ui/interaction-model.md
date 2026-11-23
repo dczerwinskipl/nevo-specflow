@@ -98,12 +98,12 @@ Project
     └── Secondary local inspector         Context (default on split entry) and user-selected detail
 ```
 
-A Session is owned by its Specification in the product (every UI start is from a Specification),
-but its route is top-level: `/sessions/:sessionId`, with the owning Specification resolved from the
-Session's association read (see below; the nested `/specs/:specId/sessions/:sessionId` only
-redirects there). Sessions are not a global sidebar area. That the navigator recovers the
-Specification only from the association, and has none for a standalone Session, is an
-[open finding](shell-geometry.md#open-findings-for-later-work).
+Every UI Session start is from a Specification, but the Session remains an independent resource
+and its route is top-level: `/sessions/:sessionId`. The Specification context is resolved from the
+Session's association read (see below; the nested `/specs/:specId/sessions/:sessionId` only redirects
+there). Sessions are not a global sidebar area. The navigator uses that association for its
+Specification context; a standalone Session has none. An association supplies navigation context,
+not ownership or execution authority.
 
 Global navigation is deliberately small: the Specification switcher (with **Browse all
 specifications**) and, inside a Specification, its views (Overview, Sessions, Tasks, Documents,

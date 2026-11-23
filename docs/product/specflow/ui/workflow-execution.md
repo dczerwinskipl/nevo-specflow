@@ -352,9 +352,7 @@ band across the body padding below it (`AccentBlock bleed="narrow"`); the action
 action first.
 Dialogs keep one column. Blocker and Task rows keep id → title → state order.
 
-## Later: Ask agent (E6, not implemented)
+## Agent assistance
 
-The Now block's action row is the single attachment point. For a step an agent may do, Start becomes a
-split choice: the main part stays **Start step** (do it myself) and its menu adds **Ask agent**; an
-active agent attempt shows its Session and Stop in the position line. See the
-[E6 idea](../../../ideas/specflow-engine/reusable-workflow-manual-execution/agent-assisted-execution.md).
+This contract describes manual execution. Agent-assisted execution is an
+[unimplemented proposal](../../../ideas/specflow-engine/reusable-workflow-manual-execution/agent-assisted-execution.md#proposed-now-block-attachment), not a current action.

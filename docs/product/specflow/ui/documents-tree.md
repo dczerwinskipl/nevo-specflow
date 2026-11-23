@@ -192,54 +192,32 @@ distinct reasons of the ActionReason set.
 
 ### 3.6 New document, Assign type, Remove registration
 
-**New document** (header menu `New document`, folder menu `New document`, Expected documents **Add**):
+**New document** opens from header/folder menu or Expected documents **Add**.
 
-- Title `New document`; description `In <folder>` or `In the main folder of <specification>`.
-- Type chooser: `RadioGroup` of `RadioGroupOption` (label = type title, description = type `useWhen`).
-  Groups (label-sm text, not headings): **Suggested by <archetype title>** = optional templates of the
-  Specification's archetype; **Other types** = remaining catalogue types; **No type** last (creates an
-  empty file without a type). `overview` is never offered. After the title, a muted fact when it helps
-  the choice: `Expected · <count> of <min>` only while that requirement is unmet, else
-  `<n> in this specification` when n > 0.
-- Initial selection: the type passed by Add; else the first suggested type that is not present yet;
-  else the first suggested type.
+- **Dialog:** title `New document`; context `In <folder>` or `In the main folder of <specification>`.
+- **Types:** radio list with type title/`useWhen`. Group archetype templates under `Suggested by <archetype title>`, remaining types under `Other types`, then **No type** for an unclassified empty file. Never offer `overview`.
+- **Counts:** show unmet `Expected · <count> of <min>`; otherwise `<n> in this specification` only when nonzero.
+- **Default:** Add's type, otherwise first suggested type not yet used, otherwise first suggested type.
 
 #### New document name
 
-- **File name**: pre-filled with the template `filename`, else the type `defaultFilename`, else
-  `<type id>.md`; editable; `.md` appended when no extension (today's rule); only the extensions in
-  `capabilities.formats` (`md`, `txt`) are accepted; the existing name validation and collision check
-  apply. Changing the type replaces the name only while the user has not edited it.
-  Helper: "The type decides what the document counts as; the name is free."
+- Prefill from template `filename`, type `defaultFilename` or `<type id>.md`. Allow editing; append `.md` when no extension. Accept only `capabilities.formats` (`md`, `txt`) and reject collisions/invalid names.
+- Changing type updates the suggested filename only before the user edits it. Explain that type controls classification, not the chosen filename.
 
 #### Instructions and actions
 
-- Guidance: a `Collapsible` "How to write a <type> document" with the type `instructions` and, when a
-  template is used, the template `instructions` as a second paragraph. Closed by default; never stored.
-- Footer: Cancel / **Create**. Create sends one document (`type`, `templateId` when the archetype has a
-  template for the type, path) and, on success, opens the new document as a new tab **in edit**
-  (today's rule for a new empty file) and announces it.
+- Optional `How to write a <type> document` disclosure contains type/template `instructions`, closed by default, never stored.
+- **Create:** send type, applicable archetype `templateId` and path. On success announce the document and open it in a new **edit** tab.
 
 #### Dialog layout and focus
 
-- One `Dialog` at every width; the body must scroll while header and footer stay. Measured in the mock
-  at 390 × 844: the dialog is 810 px high with 934 px of content, `overflow: hidden` and no scrolling
-  region, so **Create is cut off** until the shared `Dialog` lets its body scroll between a fixed header and footer.
+Use one dialog at every width, with scrollable body and fixed header/footer. Create must remain reachable at 390 × 844; the 810 px-high mock with 934 px of content otherwise cuts it off.
 
-**Assign type** (unclassified row menu; also the tab `...` menu of an unclassified document): same
-chooser without No type and without File name. Description: "<path> stays where it is. Its type decides what it
-counts as in this specification." Primary: **Assign type**. On success the document id
-changes (`u-…` → registered id): an open tab keeps its draft, scroll and position, the route
-`documents/$documentId` is **replaced** (not pushed) with the new id, and focus returns to the tree row
-under its new state.
+**Assign type** uses the chooser without No type or filename. It never moves the file. On success the `u-` ID becomes a registered ID; preserve an open tab's draft/scroll, **replace** its URL, then return focus to the updated tree row.
 
-**Remove registration** (dangling row menu and the missing tab): a confirmation dialog in the existing
-delete-dialog pattern: "Remove the registration of backend.md? The specification will no longer list it.
-No file is deleted." Confirm closes the missing tab.
+**Remove registration** confirms removal of the dangling entry without deleting a file; close its missing tab.
 
-**Failures of these three operations** use the existing tree-error pattern: the dialog stays
-open, the chosen type and the typed file name are kept, the message is an attention Alert inside the
-dialog above the footer, and the primary button is available again.
+**Refusals:** keep dialog, selected type and filename; show an attention Alert above the footer and reenable the action. Existing error-specific behavior:
 
 | Error                                                                       | Extra                                                 |
 | --------------------------------------------------------------------------- | ----------------------------------------------------- |

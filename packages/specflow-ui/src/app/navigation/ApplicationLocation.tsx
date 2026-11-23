@@ -183,8 +183,12 @@ function RoutedIdentity({
             : []),
           ...(specId || view === 'new-specification'
             ? [
-                <BreadcrumbItem key="view" current>
-                  {detailLabel ?? title}
+                <BreadcrumbItem key="view" current title={detailLabel}>
+                  {detailLabel ? (
+                    <span className="block max-w-40 truncate">{detailLabel}</span>
+                  ) : (
+                    title
+                  )}
                 </BreadcrumbItem>,
               ]
             : []),

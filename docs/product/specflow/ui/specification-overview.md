@@ -175,7 +175,10 @@ dashboard configuration). The Overview renders what the reads deliver.
   together only when both apply (**Initial content only · needed to finish this step**). When every
   listed document would carry the same content-only label, the header says it once ("4 · initial
   content only") and the rows carry none. The overflow menu opens all documents. A document opened from
-  the Overview takes half of the workspace (50/50), and the Overview reads in one column beside it.
+  the Overview takes half of the split workspace, with the Overview in one column beside it. Narrow
+  opens a stacked preview with Back to Overview. The header shows the file path when available.
+  The document body keeps its
+  own headings and uses the shared reading width. **Open full document** opens the Documents editor.
 
 ## Tasks page
 

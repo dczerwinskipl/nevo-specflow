@@ -43,6 +43,10 @@ import {
   createDocumentIntegrationApi,
 } from '../../test-support/specs/workspace/api';
 import { taskResourceFixture } from '../../test-support/tasks/resource';
+import { settleViewport } from '../test-support/viewportSettle.stories-support';
+
+const longTaskTitle =
+  'Verify workflow routing between Specifications, including application navigation and project evidence before readiness confirmation';
 
 export function RoutedApplication({
   authMode = 'local',
@@ -130,7 +134,7 @@ export function RoutedApplication({
           ...(navigationScenario === 'long'
             ? {
                 title:
-                  'Very long specification identity describing orchestration across independently continuing agent sessions and repository boundaries',
+                  'Very long specification identity describing orchestration across independently continuing agent sessions, document updates, review handovers, workspace transitions and repository boundaries',
                 intro: undefined,
               }
             : {}),
@@ -195,7 +199,7 @@ export function RoutedApplication({
           query.setQueryData(taskKeys.detail(id, task.id), {
             task: {
               id: task.id,
-              title: task.title,
+              title: navigationScenario === 'long' ? longTaskTitle : task.title,
               status: {
                 id: task.lifecycle ?? 'pending',
                 label: task.status,
@@ -747,6 +751,29 @@ export const NavigationFullTaskAncestor: Story = {
   },
 };
 
+export const NavigationLongTaskBreadcrumb: Story = {
+  args: { path: '/specs/admission/tasks/TASK-03?collection=current', navigationScenario: 'long' },
+  tags: ['integration'],
+  play: async ({ canvas, userEvent }) => {
+    await settleViewport(900, 900);
+    await canvas.findByRole('heading', { name: longTaskTitle, level: 1 });
+    const location = await canvas.findByRole('navigation', { name: 'Application location' });
+    if (location.querySelector('[aria-current="page"]')?.textContent !== longTaskTitle) {
+      throw new Error('The current breadcrumb must expose the full Task title.');
+    }
+
+    const back = Array.from(location.querySelectorAll('a')).find(
+      (link) => link.textContent === 'Tasks',
+    );
+    if (!back) {
+      throw new Error('A long Task title must keep the parent Tasks breadcrumb.');
+    }
+
+    await userEvent.click(back);
+    await canvas.findByRole('heading', { name: 'Tasks', level: 1 });
+  },
+};
+
 export const NavigationSessionsActive: Story = {
   args: { path: '/specs/admission/sessions?collection=current' },
   tags: ['integration'],
@@ -803,19 +830,55 @@ export const NavigationLongNames: Story = {
   args: { path: '/specs/admission?collection=current', navigationScenario: 'long' },
   tags: ['integration'],
   play: async ({ canvas }) => {
-    // A long Specification title stays on one line, cut at the end, and is announced in full.
+    // The accessible name keeps the complete title when the visible label is clamped.
     const trigger = await canvas.findByRole('button', {
-      name: /Current specification Very long specification identity/,
+      name: /Current specification Very long specification identity.*repository boundaries/,
     });
-    const name = trigger.querySelector<HTMLElement>('[data-context-switcher-name="end"]');
-    await waitFor(
-      () => (name && name.scrollWidth > name.clientWidth ? name : null),
-      'Long title must be cut on one line',
+    const name = trigger.querySelector<HTMLElement>('[data-context-switcher-name="wrap"]');
+    await waitFor(() => {
+      if (!name || name.scrollWidth > name.clientWidth) {
+        return null;
+      }
+
+      const lineHeight = Number.parseFloat(getComputedStyle(name).lineHeight);
+
+      return name.clientHeight > lineHeight &&
+        name.clientHeight <= 3 * lineHeight + 1 &&
+        name.scrollHeight > name.clientHeight
+        ? name
+        : null;
+    }, 'Long title must use at most three lines and clip only vertically');
+  },
+};
+export const NavigationLongNamesNarrow: Story = {
+  args: NavigationLongNames.args,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  tags: ['integration'],
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('button', { name: 'Open navigation' }));
+    const doc = canvasElement.ownerDocument;
+    const trigger = await waitFor(
+      () =>
+        doc.querySelector<HTMLButtonElement>(
+          '.drawer-panel[data-state="open"] button:has([data-context-switcher-name="wrap"])',
+        ),
+      'The Specification switcher must be available in the drawer',
     );
-    const height = trigger.getBoundingClientRect().height;
-    if (height !== 56 && height !== 72) {
-      throw new Error(`Switcher must be 56 or 72 px high, got ${height}`);
+    const name = trigger.querySelector<HTMLElement>('[data-context-switcher-name="wrap"]')!;
+    const lineHeight = Number.parseFloat(getComputedStyle(name).lineHeight);
+    if (name.clientHeight > 3 * lineHeight + 1 || name.scrollHeight <= name.clientHeight) {
+      throw new Error('The drawer title must fit in three visible lines');
     }
+
+    await userEvent.click(trigger);
+    await waitFor(
+      () =>
+        Array.from(doc.querySelectorAll('[role="option"][aria-selected="true"]')).find((option) =>
+          option.textContent?.includes('repository boundaries'),
+        ),
+      'The selected option must retain the full title',
+    );
+    await userEvent.keyboard('{Escape}{Escape}');
   },
 };
 export const NavigationIdentity: Story = {
@@ -886,12 +949,12 @@ export const NavigationSwitcherInteractions: Story = {
     );
     await userEvent.type(titleSearch, 'runtime');
     await userEvent.keyboard('{ArrowDown}{Enter}');
-    await canvas.findByRole('heading', {
-      name: 'Runtime authorization and project access policy',
-      level: 1,
+    await canvas.findByRole('button', {
+      name: /Current specification Runtime authorization and project access policy/,
     });
+    await canvas.findByRole('heading', { name: 'Documents', level: 1 });
     const nav = canvas.getByRole('navigation', { name: 'Product navigation' });
-    assertSpecificationNavigation(nav, 'security', '/specs/security');
+    assertSpecificationNavigation(nav, 'security', '/specs/security/documents');
   },
 };
 export const NavigationUnknownContext: Story = {
@@ -1192,10 +1255,9 @@ export const MobileNavigation: Story = {
  * has no Back (interaction-model.md "Back and Close").
  */
 const peerAreaHasNoBodyBack: Story['play'] = async ({ canvas, canvasElement }) => {
-  // Documents opens its main file over the tree on a phone: the tree's header stays underneath.
-  await canvas.findAllByRole('button', { name: 'Open navigation', hidden: true });
+  await canvas.findByRole('button', { name: 'Open navigation' });
   // The screen has settled once its level-1 title is there (the Back would render with it).
-  await canvas.findByRole('heading', { level: 1, hidden: true });
+  await canvas.findByRole('heading', { level: 1 });
   if (canvasElement.querySelector('[data-flow-back]')) {
     throw new Error('A peer area must not show a Back in its body.');
   }

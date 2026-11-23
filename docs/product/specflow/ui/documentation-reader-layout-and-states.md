@@ -50,13 +50,11 @@ Wide / Compact                                   Narrow
   worktree starts from a copy of the project folder's index and re-embeds only what changed). The
   search mode stays quiet: no mode, model or endpoint diagnostics. The exact rules are in
   [Search](documentation-reader-search.md#search).
-- **Skipped documents:** a document that fails validation is skipped, never the whole workspace.
-  The tree and search show the valid documents; under the workspace picker one quiet attention line
-  says "1 document is skipped: it has errors" with its path and error, or "N documents are skipped"
-  as a collapsed disclosure listing each path (full, wrapping) and its error. A link to a skipped
-  document is inert and gives the error. When every document is skipped, the workspace is not
-  shown as empty: the article area (Narrow: under the picker) says that documentation files exist
-  but none passed validation, above the same disclosure of the skipped files.
+- **Skipped documents:** the tree and search show valid documents. A collapsed disclosure under
+  the workspace picker names the number of skipped documents and reveals each path and validation
+  error on demand. A link to a skipped document is inert and gives the error. When every file is
+  skipped, the article area (Narrow: below the picker) explains that none passed validation and
+  provides the diagnostics. A single file's error is visible immediately in that state.
 - **Proposals in search:** left out by default; the status row's "Include proposals (N)" checkbox
   includes them, and included rows carry the "Proposal" badge
   ([Proposals filter](documentation-reader-search.md#proposals-filter)).
@@ -88,19 +86,19 @@ Wide / Compact                                   Narrow
 
 ## States
 
-| State                                 | Tree pane                                                     | Article area                                                                                                    |
-| ------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Loading                               | workspace row, field, skeleton rows                           | document skeleton when a document is requested                                                                  |
-| Documentation not configured          | workspace picker only                                         | "No project documentation": where documents are read from (`docs.root`)                                         |
-| Not served (demo data, no project)    | workspace picker only                                         | "Project documentation is not available in the demo": why, and no Try again (asking again cannot change it)     |
-| No documents                          | workspace picker only                                         | "No documents yet"                                                                                              |
-| Every document skipped                | workspace picker only                                         | attention Alert "Documentation files exist, but none passed validation" and the skipped files with their errors |
-| Linked or remembered workspace gone   | quiet fallback line under the picker                          | normal (the project folder's documentation)                                                                     |
-| Workspace unavailable (explicit pick) | workspace picker only                                         | attention Alert with the folder: choose another workspace or Try again                                          |
-| Document not available                | normal (refreshed when the corpus changed)                    | "This document is no longer available in this workspace" and the document id                                    |
-| Superseded document link              | normal                                                        | "This document was superseded" and Open <successor> when known                                                  |
-| Some documents skipped                | the skipped line under the workspace row, then field and tree | normal                                                                                                          |
-| No access (`docs.view` missing)       | whole surface                                                 | "No access to the project documentation"; ask a project administrator                                           |
+| State                                 | Tree pane                                                | Article area                                                                                                    |
+| ------------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Loading                               | workspace row, field, skeleton rows                      | document skeleton when a document is requested                                                                  |
+| Documentation not configured          | workspace picker only                                    | "No project documentation": where documents are read from (`docs.root`)                                         |
+| Not served (demo data, no project)    | workspace picker only                                    | "Project documentation is not available in the demo": why, and no Try again (asking again cannot change it)     |
+| No documents                          | workspace picker only                                    | "No documents yet"                                                                                              |
+| Every document skipped                | workspace picker only                                    | attention Alert "Documentation files exist, but none passed validation" and the skipped files with their errors |
+| Linked or remembered workspace gone   | quiet fallback line under the picker                     | normal (the project folder's documentation)                                                                     |
+| Workspace unavailable (explicit pick) | workspace picker only                                    | attention Alert with the folder: choose another workspace or Try again                                          |
+| Document not available                | normal (refreshed when the corpus changed)               | "This document is no longer available in this workspace" and the document id                                    |
+| Superseded document link              | normal                                                   | "This document was superseded" and Open <successor> when known                                                  |
+| Some documents skipped                | collapsed skipped-files disclosure, then search and tree | normal                                                                                                          |
+| No access (`docs.view` missing)       | whole surface                                            | "No access to the project documentation"; ask a project administrator                                           |
 
 On Narrow the tree-pane-only states show their message under the workspace picker. Freshness: the
 reader compares the corpus revision of the tree, article and search; on a difference it refreshes all

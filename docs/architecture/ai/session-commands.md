@@ -46,16 +46,13 @@ Interaction is a discriminated union:
   allowText:boolean, maxSelections?:integer};
 - {interactionId, turnId, workId, revision, kind:'permission', prompt, actionSummary, action?}.
 
-Command approvals may include an `action` with `operation: 'command'`, the exact
-`command`, workspace-relative `cwd` using slash separators (`.` for the root),
-`authority: 'workspace-write' | 'host-execution'`, and `approval: 'once'`.
-`workspace-write` represents execution confined to the workspace. `host-execution`
-delegates the exact command to the user's account permissions and can affect
-files outside the workspace. Clients must show this distinction together with
-the exact command and directory before approval. It never authorizes a subsequent
-command, a native persistent permission or automatic replay. `actionSummary`
-remains a human-readable fallback. The command text can itself contain paths as
-part of what the user is asked to approve.
+- Command approvals may include an `action` with `operation: 'command'`, the exact `command`, workspace-relative `cwd` using slash separators (`.` for the root), `authority: 'workspace-write' | 'host-execution'`, and `approval: 'once'`.
+- `workspace-write` represents execution confined to the workspace.
+- `host-execution` delegates the exact command to the user's account permissions and can affect files outside the workspace.
+- Clients must show this distinction together with the exact command and directory before approval.
+- It never authorizes a subsequent command, a native persistent permission or automatic replay.
+- `actionSummary` remains a human-readable fallback.
+- The command text can itself contain paths as part of what the user is asked to approve.
 
 At most one answerable interaction per Turn. prompt/actionSummary <=8 KiB each, <=20 options,
 each ID <=128 characters and label <=512 bytes; entire Interaction <=24 KiB. The driver must
@@ -73,42 +70,32 @@ list-all count, force-recovery or workflow finish endpoint. The last three route
 [Session list, association read and composed create](session-association-and-list.md#session-list-association-read-and-composed-create).
 Disabled Session capability gives 503 SESSION_DISABLED for these routes.
 
-Respond answer text <=16 KiB, option IDs must be declared, duplicate option IDs invalid;
-text only when allowText; an optional maxSelections (1 to 20) limits selected option IDs (absent means 1, single-select) and is checked
-before durable response admission. Empty answer invalid unless the question explicitly offers an empty
-option (through its ID). Denied permission resolves the interaction; it does not automatically
-fail the Turn. Start may override mode, native providerModeId, model and effort for that Turn;
-the Session's provider remains fixed and its defaults are not rewritten. Unspecified selections
-inherit the Session defaults. Runtime validates the effective native combination and write
-authorization before admission; a running Turn is never reconfigured. Unsupported choices are
-rejected with MODEL_UNSUPPORTED or CAPABILITY_UNSUPPORTED, never silently ignored.
-Snapshot `capabilities.start` and default-mode readiness describe the Session defaults,
-not every possible override. A selection-aware Composer needs Session-scoped admission
-capabilities; project-scoped catalogue authorization alone is not authoritative for an
-existing Session.
+### Interaction answers and Turn overrides
 
-Reconcile uses session.manage and the existing positive-evidence recovery path. It accepts no
-caller-supplied outcome, native receipt or force flag, and never resends a possibly executed prompt.
-Unavailable evidence leaves the operation unknown rather than manufacturing a terminal result.
-Positive evidence is an exact Engine settlement receipt or native-stop evidence: no process of the
-identity recorded before dispatch remains, which settles the Turn `interrupted` with error
-`PROCESS_STOPPED` (architecture.ai.session-storage-and-lifecycle). Startup recovery applies the same
-evidence without a request. A live process answers 409 SESSION_RECOVERY_REQUIRED.
+- **Answer:** text up to 16 KiB; only declared, unique option IDs. Text requires `allowText`. `maxSelections` is 1–20, default 1. Reject an empty answer unless an explicit empty option was offered.
+- **Permission:** denial resolves the interaction without automatically failing the Turn.
+- **Start override:** mode, native `providerModeId`, model and effort may override Session defaults for **this Turn only**. Provider identity is fixed; unspecified values inherit defaults.
+- **Admission:** validate the effective combination and write authorization before starting. Reject unsupported choices as `MODEL_UNSUPPORTED` / `CAPABILITY_UNSUPPORTED`; never reconfigure a running Turn.
+- **Projection:** `capabilities.start` and default-mode readiness describe defaults, not every override. The composer needs Session-scoped admission capability; a project catalogue alone is insufficient.
 
-Every command acknowledgement is a closed contract schema (`CreateSessionResult`,
-`StartTurnResult`, `CancelTurnResult`, `RespondInteractionResult`, `ReconcileTurnResult`, with
-`sessionValidators.createResult` ... `reconcileResult`); the Reconcile `outcome` is a
-`TurnOutcome`. A client treats a 2xx body of another shape as an unknown outcome, never as success:
-a Start command stays retained for replay with the same `requestId`. Because the schemas are
-closed, adding a field to a 2xx acknowledgement is a breaking change for deployed clients: it needs
-a coordinated UI release that accepts the field first.
+### Reconciliation and positive evidence
 
-Route bodyLimit: 256 KiB Create/Start, 64 KiB respond/cancel/reconcile/rename/archive/unarchive.
-Exceed -> 413 SESSION_PAYLOAD_TOO_LARGE.
-Session allocate does not launch the provider. Enforce requestId semantics from the storage design
-for every command with a requestId, including create, cancel, rename, archive and unarchive.
-Duplicate cancel after terminal is accepted as no-op for that Turn; it must never cancel a later Turn. Respond duplicate with same accepted
-requestId returns its original response; a fresh response to an already resolved interaction conflicts.
+- **Authority:** `session.manage`; no caller-supplied outcome, receipt or force switch. Never resend a potentially executed prompt.
+- **Proof:** settle only from an exact Engine receipt or proof that the pre-dispatch process identity is no longer running. The latter yields `interrupted` / `PROCESS_STOPPED`.
+- **Unknown:** absent evidence stays unknown. A live process returns `409 SESSION_RECOVERY_REQUIRED`. Startup uses the same evidence checks.
+
+### Command acknowledgements and compatibility
+
+Acknowledgements use closed `CreateSessionResult`, `StartTurnResult`, `CancelTurnResult`, `RespondInteractionResult` and `ReconcileTurnResult` schemas (`sessionValidators.createResult` through `reconcileResult`); reconcile `outcome` is a `TurnOutcome`.
+
+- **Unexpected 2xx:** treat as unknown, not success; retain Start for replay with its `requestId`.
+- **Schema evolution:** adding acknowledgement fields breaks existing clients. Release an accepting UI first.
+
+### Request bounds and idempotency
+
+- **Bodies:** Create/Start up to 256 KiB; respond/cancel/reconcile/rename/archive/unarchive up to 64 KiB. Exceeding the route limit returns `413 SESSION_PAYLOAD_TOO_LARGE`.
+- **Allocation:** creating a Session never launches its provider.
+- **Retry:** honor `requestId` on Create, Cancel, Rename, Archive and Unarchive. A repeated Cancel of an already terminal Turn is a no-op **for that Turn only**. A duplicate accepted response replays its result; a new answer to a resolved interaction conflicts.
 
 ### Rename, archive, unarchive and delete
 
@@ -116,8 +103,7 @@ Schemas: `RenameSessionSchema`, `ArchiveSessionSchema` (archive and unarchive) a
 `SessionCommandResultSchema` in `@nevo/specflow-contracts/sessions`.
 
 - Rename `{requestId, title}`: title is trimmed and must stay 1..256 characters with a
-  non-whitespace character; there is no "clear title". Allowed on an archived Session (owner
-  decision 2026-11-08: metadata, not conversation).
+  non-whitespace character; there is no "clear title". Allowed on an archived Session (metadata, not conversation).
 - Archive `{requestId}` sets `SessionInfo.archivedAt`. It is rejected with 409 TURN_CONFLICT
   (details.turnId) while the Session has a nonterminal Turn, including `unknown`; it never
   cancels implicitly. The check and the write share one transaction, so no Turn can be admitted
@@ -129,20 +115,15 @@ Schemas: `RenameSessionSchema`, `ArchiveSessionSchema` (archive and unarchive) a
 - Rename/archive/unarchive replay a matching `(actor, command, sessionId, requestId)` without a
   second effect and answer with the current effective `SessionInfo`; a changed payload under the
   same requestId is 409 IDEMPOTENCY_CONFLICT. A change emits one `session` event.
-- `DELETE /api/sessions/:sessionId` (no body) hard-deletes every Session-owned Runtime row in
-  one transaction: Session, provider correlation, Turns, conversation, Work, actions, content,
-  interactions, Session-scoped idempotency records, fact/usage deduplication, telemetry, the
-  association and its Task rows, and the event outbox. The project-scoped create record is kept, so a late create retry with the old
-  requestId replays the deleted sessionId, whose use answers 404.
-  It is rejected with 409 TURN_CONFLICT (details.turnId) while any Turn is nonterminal or
-  `unknown` or a live invocation of the Session is still attached, so a running write Turn gets
-  TURN_CONFLICT. 409 SESSION_DELETE_BLOCKED (details.turnId) occurs only for an `unknown` or
-  recovering write Turn whose invocation has detached while its Engine effect evidence is
-  unsettled; that Turn is visible as `activeTurn`. Engine workspace-execution records and
-  provider-native transcripts are not touched (only the Runtime's locator is removed); Engine
-  attempt records keep the `sessionId` as audit. Open SSE streams of the deleted Session close
-  without further payload. There is no tombstone: a repeated delete, and any later read or stream
-  request, including the association read, is 404 SESSION_NOT_FOUND; Specification and Task reads
-  then hide the reference. Clients treat 404 after their own delete as done.
+
+#### Delete, recovery and visibility
+
+`DELETE /api/sessions/:sessionId` takes no body and atomically removes all Session-owned Runtime rows: Session, provider correlation, Turns, conversation, Work, actions, content, interactions, idempotency, usage/fact deduplication, telemetry, association/Task rows and event outbox.
+
+- **Retained:** project-scoped Create idempotency record. Late retry replays the deleted Session ID, which returns `404`. Engine execution records, attempt audit (`sessionId`) and provider-native transcripts are untouched.
+- **Active work:** a nonterminal/`unknown` Turn or attached invocation blocks deletion with `409 TURN_CONFLICT` (`details.turnId`).
+- **Detached unknown write:** unsettled Engine evidence after invocation detach returns `409 SESSION_DELETE_BLOCKED` (`details.turnId`), with the Turn visible as `activeTurn`.
+- **After deletion:** SSE closes without more data; reads/streams and repeated Delete return `404 SESSION_NOT_FOUND`. Specification/Task reads hide references; clients may treat `404` after their own Delete as completion. No tombstone.
+
 - Archive and unarchive leave the association untouched. An archived Session stays associated; it
   is excluded from the workspace Sessions section and from the default list (`archived=exclude`).

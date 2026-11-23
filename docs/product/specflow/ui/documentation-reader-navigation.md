@@ -122,7 +122,6 @@ geometry, and each passes only the facts of its own kind:
 
 **Name:** one line.
 
-
 ### Name truncation
 
 - **Identifier-like names** (no whitespace: workspace and branch names) truncate **in the middle**
@@ -209,7 +208,6 @@ Markdown renderer may already have emptied it, and showing it would only invite 
 element with that id in the article, if there is one.
 
 ## Routing and runtime behavior
-
 
 ### Navigation intent
 

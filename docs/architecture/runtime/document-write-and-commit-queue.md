@@ -111,7 +111,7 @@ operation (`reserved`/`files-writing`) delays claiming a batch that overlaps it.
 - Only a failure that comes before any commit (the port's own blockers) or one with proof that nothing was committed is retried; a repository that cannot be asked, or a Git process that may still run (`not-terminated`), leaves the batch for recovery.
 - Attempts are counted per member and a batch counts as many as its freshest member, so a new save that joins members that failed before keeps its full set of attempts.
 - A failure is recorded only while the batch still belongs to the executor that reports it, and a lease is released only by the batch it names.
-- A Git that cannot be found is permanent; one that could not be started for want of descriptors, processes or memory passes.
+- **Unavailable Git:** missing executable, launch failure, resource exhaustion or timeout (`GIT_UNAVAILABLE`; `GIT_OPERATION_UNCERTAIN` with `executable-unavailable`) is **transient**. Keep the operation pending with bounded backoff; after a commit may have started, require positive effect evidence before retrying.
 - A queued operation whose plan cannot be read is failed alone (`plan-invalid`, abandon or retry it); a write in progress whose plan cannot be read holds back the queue without throwing.
 - Operations that wait for a person do not count against the 200 of the queue; 1000 of them end new saves with `SPEC_BUSY` (`held-limit`), which is not retryable.
 - A repeat of the same action on an operation that is already where the action would put it (`retry` on a queued or finished operation, `abandon` on an abandoned one, `recover` on a recovered one) answers with that state; every other mismatch stays `DOCUMENT_OPERATION_STATE_INVALID`.

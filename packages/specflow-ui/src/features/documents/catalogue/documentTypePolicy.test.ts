@@ -181,12 +181,31 @@ describe('read-only reason', () => {
   });
 
   it('adds not-editable for a file that can only be viewed, after the Specification reasons', () => {
-    expect(documentReadOnlyReason(tree, { editable: true })).toBeUndefined();
-    expect(documentReadOnlyReason(tree, { editable: false })).toBe('not-editable');
+    expect(documentReadOnlyReason(tree, { id: 'overview', editable: true })).toBeUndefined();
+    expect(documentReadOnlyReason(tree, { id: 'overview', editable: false })).toBe('not-editable');
     const protectedBranch = documentTreeFixture({
       capabilities: { ...tree.capabilities, createFile: unavailable('branch-protected') },
     });
-    expect(documentReadOnlyReason(protectedBranch, { editable: false })).toBe('branch-protected');
+    expect(documentReadOnlyReason(protectedBranch, { id: 'overview', editable: false })).toBe(
+      'branch-protected',
+    );
+  });
+
+  it('makes only the document an agent attempt commit holds read-only', () => {
+    const [first, ...rest] = tree.documents;
+    const held = documentTreeFixture({
+      documents: [
+        {
+          ...first!,
+          actions: { ...first!.actions, save: { available: false, reason: 'attempt-commit' } },
+        },
+        ...rest,
+      ],
+    });
+    expect(documentReadOnlyReason(held, { id: first!.id, editable: true })).toBe('attempt-commit');
+    for (const other of rest) {
+      expect(documentReadOnlyReason(held, { id: other.id, editable: true })).toBeUndefined();
+    }
   });
 
   it('never makes an open document read-only while another write commits (busy)', () => {
@@ -200,7 +219,7 @@ describe('read-only reason', () => {
         classify: busy,
       },
     });
-    expect(documentReadOnlyReason(committing, { editable: true })).toBeUndefined();
+    expect(documentReadOnlyReason(committing, { id: 'overview', editable: true })).toBeUndefined();
     expect(specificationReadOnlyReason(committing)).toBeUndefined();
   });
 

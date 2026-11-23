@@ -1384,13 +1384,15 @@
       "gitPolicyInvalid": "the project's Git settings are invalid.",
       "busy": "another change to this specification is in progress.",
       "notEditable": "this file type can be viewed but not edited here.",
-      "dangling": "The file is missing; only its registration can be removed."
+      "dangling": "The file is missing; only its registration can be removed.",
+      "attemptCommit": "an agent's work here is not committed yet."
     },
     "remedy": {
       "branch": "To edit, open the specification in a workspace on an allowed branch.",
       "commitBlocked": "Finish or abort the merge or rebase in this workspace, then try again.",
       "gitPolicy": "Fix the Git settings in the project configuration.",
-      "notEditable": "Download the file to edit it elsewhere."
+      "notEditable": "Download the file to edit it elsewhere.",
+      "attemptCommit": "Retry the commit of the agent's work, then try again."
     },
     "save": {
       "saving": "Saving…",
@@ -1404,7 +1406,8 @@
       "tryAgain": "Try again",
       "recoveryTitle": "The save did not finish",
       "recoveryBody": "Finish the save before editing further.",
-      "resume": "Resume"
+      "resume": "Resume",
+      "attemptCommit": "Not saved: the agent's work on this document is not committed yet"
     },
     "conflict": {
       "title": "Not saved: {{name}} changed on disk",
@@ -1429,6 +1432,12 @@
     },
     "image": {
       "actualSize": "Actual size"
+    },
+    "attemptCommit": {
+      "held": "The agent's work on this document in {{step}} is not committed yet, so it cannot be edited until it is: the agent and you never share an uncommitted file.",
+      "pending": "SpecFlow is committing it; if that does not finish, Retry commit makes it now.",
+      "failed": "Its commit failed (<code>{{code}}</code>): fix the cause, then Retry commit.",
+      "retryFailed": "The commit did not run; see why in the workflow of the specification."
     }
   },
   "sessions": {

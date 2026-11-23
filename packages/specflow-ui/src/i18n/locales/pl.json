@@ -1384,13 +1384,15 @@
       "gitPolicyInvalid": "ustawienia Git projektu są nieprawidłowe.",
       "busy": "trwa inna zmiana tej specyfikacji.",
       "notEditable": "ten typ pliku można tu oglądać, ale nie edytować.",
-      "dangling": "Brak pliku; można tylko usunąć jego rejestrację."
+      "dangling": "Brak pliku; można tylko usunąć jego rejestrację.",
+      "attemptCommit": "praca agenta tutaj nie jest jeszcze zatwierdzona."
     },
     "remedy": {
       "branch": "Aby edytować, otwórz specyfikację w środowisku pracy na dozwolonej gałęzi.",
       "commitBlocked": "Dokończ lub przerwij merge albo rebase w tym środowisku pracy i spróbuj ponownie.",
       "gitPolicy": "Popraw ustawienia Git w konfiguracji projektu.",
-      "notEditable": "Pobierz plik, aby edytować go gdzie indziej."
+      "notEditable": "Pobierz plik, aby edytować go gdzie indziej.",
+      "attemptCommit": "Ponów commit pracy agenta, a potem spróbuj ponownie."
     },
     "save": {
       "saving": "Zapisywanie…",
@@ -1404,7 +1406,8 @@
       "tryAgain": "Spróbuj ponownie",
       "recoveryTitle": "Zapis nie został dokończony",
       "recoveryBody": "Dokończ zapis, zanim będziesz dalej edytować.",
-      "resume": "Wznów"
+      "resume": "Wznów",
+      "attemptCommit": "Nie zapisano: praca agenta nad tym dokumentem nie jest jeszcze zatwierdzona"
     },
     "conflict": {
       "title": "Nie zapisano: plik {{name}} zmienił się na dysku",
@@ -1429,6 +1432,12 @@
     },
     "image": {
       "actualSize": "Rzeczywisty rozmiar"
+    },
+    "attemptCommit": {
+      "held": "Praca agenta nad tym dokumentem w kroku {{step}} nie jest jeszcze zatwierdzona, więc do tego czasu nie można go edytować: agent i Ty nigdy nie dzielicie niezatwierdzonego pliku.",
+      "pending": "SpecFlow ją zatwierdza; jeśli to się nie zakończy, „Ponów commit” zrobi to teraz.",
+      "failed": "Jej commit się nie udał (<code>{{code}}</code>): usuń przyczynę, a potem użyj „Ponów commit”.",
+      "retryFailed": "Commit się nie wykonał; przyczynę pokazuje przebieg pracy specyfikacji."
     }
   },
   "sessions": {

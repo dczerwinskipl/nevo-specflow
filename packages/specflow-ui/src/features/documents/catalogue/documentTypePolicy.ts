@@ -222,6 +222,7 @@ const readOnlyOrder: readonly ActionReason[] = [
   'branch-protected',
   'branch-not-allowed',
   'commit-blocked',
+  'attempt-commit',
   'not-editable',
 ];
 
@@ -248,12 +249,13 @@ export function specificationReadOnlyReason(
 }
 
 /**
- * Why one document opens read-only: the file is not editable, or a Specification-wide write
- * capability is unavailable (the contract has no per-document write action yet).
+ * Why one document opens read-only: the file is not editable, a Specification-wide write capability
+ * is unavailable, or the tree's Save of this very document is (`attempt-commit`: an agent attempt's
+ * commit still takes it).
  */
 export function documentReadOnlyReason(
-  tree: Pick<DocumentTree, 'capabilities'> | undefined,
-  document: { editable: boolean },
+  tree: Pick<DocumentTree, 'capabilities' | 'documents'> | undefined,
+  document: { id: string; editable: boolean },
 ): ActionReason | undefined {
   const capabilities = tree?.capabilities;
   const reasons: (ActionReason | undefined)[] = capabilities
@@ -261,6 +263,11 @@ export function documentReadOnlyReason(
         .filter((action) => !action.available)
         .map((action) => action.reason)
     : [];
+  const save = tree?.documents.find((entry) => entry.id === document.id)?.actions.save;
+  if (save?.reason === 'attempt-commit') {
+    reasons.push('attempt-commit');
+  }
+
   if (!document.editable) {
     reasons.push('not-editable');
   }
@@ -291,6 +298,8 @@ export function reasonFragment(reason: ActionReason): Message {
       return message('documents.reason.root');
     case 'dangling':
       return message('documents.reason.dangling');
+    case 'attempt-commit':
+      return message('documents.reason.attemptCommit');
   }
 }
 
@@ -306,6 +315,8 @@ export function reasonRemedy(reason: ActionReason): Message | undefined {
       return message('documents.remedy.gitPolicy');
     case 'not-editable':
       return message('documents.remedy.notEditable');
+    case 'attempt-commit':
+      return message('documents.remedy.attemptCommit');
     default:
       return undefined;
   }

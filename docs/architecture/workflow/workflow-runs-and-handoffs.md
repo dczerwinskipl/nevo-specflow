@@ -33,16 +33,13 @@ Readiness, Task facts and statuses are derived from these, never stored.
 
 ### Attempts and ordering
 
-- **Attempts.** Every activation of a step creates the next attempt number for that step. Finish must
-  name the exact active attempt (`WORKFLOW_ATTEMPT_MISMATCH` otherwise).
-- **Sequence.** Every attempt and return record carries a `sequence` (1, 2, ...) in the order the
-  records were made. The handoff takes the latest record by sequence, never by timestamp.
-- **Position follows from the history.** The stored position must be where the history leads, read with the pinned definition (`assertPositionJustified` in `@nevo/workflow` `execution/replay.ts`, checked whenever a run is loaded with its definition, by every operation and by `inspectExecution`).
-  - The attempts and returns are replayed in sequence order from `not-started`: the first attempt is of the entry step, and every later attempt is of the step the previous record led to (an Engine-entered wait step included); an open attempt makes the run `active` on it, so it can only be the last record; an attempt of a work step carries an `actor` whose class the step's `executors` allow, and an attempt of a wait step, which the Engine starts, carries none, so the Session check of a finish or resume always has the starting actor; a finished attempt leads where its recorded transition (from that attempt's step) targets, and it records the transition's `result` (none when the transition declares none) and non-empty feedback when the transition requires feedback, as `planFinish` enforces; an attempt ended by a return, and a return record (whose `from` must be the replayed position), lead to the return's step.
-  - A replayed return follows the rules of `returnToStep`: its step is one the definition declares in `returns[]`, an attempt replayed so far (the returned attempt included) was of that step, and it carries non-empty feedback when the return requires feedback.
-  - The replay must end at the stored position, whatever its state.
-  - A hand-edited position or history that does not follow (for example `ready: acceptance` with an empty history, `active` on `acceptance` right after `requirements`, an attempt of a step nothing led to, or a return from `specification` to the undeclared `acceptance` or to the not yet reached `breakdown`) fails with `WORKFLOW_STATE_CORRUPT` for the Specification, and makes a Task broken (see "The Task set").
-  - A run whose pinned definition is missing or changed is not checked; `inspectExecution` marks it `definitionChanged: true`, and its next operation fails with `WORKFLOW_DEFINITION_CHANGED`.
+- **Attempt:** each step activation receives the next number for that step. Finish must name the current attempt or refuse `WORKFLOW_ATTEMPT_MISMATCH`.
+- **Order:** attempts and returns share increasing `sequence` values; handoff uses the highest sequence, never timestamps.
+- **Replay:** from `not-started`, the first attempt enters the entry step; every later attempt follows the previous transition/return, including Engine-entered wait steps. The replayed final position must match stored position.
+- **Active:** only the last record may be an open attempt. Work steps record an allowed `actor` (`executors`); wait steps, entered by Engine, record none. Session resume/finish checks the original actor.
+- **Finish:** store transition's declared result (or none) and required nonempty feedback; target must follow the pinned definition. Return records have a valid `from`, a declared `returns[]` target previously attempted, and required feedback.
+- **Corruption:** impossible position/history (unreachable steps, undeclared or premature return, missing attempt) yields `WORKFLOW_STATE_CORRUPT` for Specifications and a broken Task.
+- **Pinned definition:** if missing/changed, mark `definitionChanged:true` on inspect rather than replay against another definition; the next mutation refuses `WORKFLOW_DEFINITION_CHANGED`.
 
 ### Pinned definition and handoff
 

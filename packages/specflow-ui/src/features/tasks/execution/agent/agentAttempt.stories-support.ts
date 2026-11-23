@@ -5,6 +5,8 @@ import type {
   WorkflowActor,
 } from '@nevo/specflow-contracts/workflow';
 import {
+  SPEC,
+  TASK,
   specificationWorkflowProjection,
   taskWorkflowProjection,
 } from '../projections.stories-support';
@@ -228,11 +230,47 @@ export function agentAttemptProjection(c: AttemptCase): WorkflowActionProjection
 }
 
 /** Review is ready after the agent finished Implementation: its hand-off is the agent's. */
-export function finishedAttemptProjection(): WorkflowActionProjection {
+export function finishedAttemptProjection(
+  hold?:
+    | { readonly reason: 'attempt-commit-pending' }
+    | { readonly reason: 'attempt-commit-failed'; readonly code: string },
+): WorkflowActionProjection {
   const base = taskWorkflowProjection('ready-agent', { agent: agentOptions.independent });
+  // While the commit waits, the Engine shows every action that writes unavailable and names the
+  // attempt (`attemptCommit`), as the projection of a held Specification does.
+  const held = hold
+    ? {
+        attemptCommit: {
+          ...hold,
+          attemptId: ATTEMPT_ID,
+          subject: { specId: SPEC, taskId: TASK },
+          step: 'implement',
+          attempt: 2,
+          stepTitle: 'Implementation',
+        },
+        actions: Object.fromEntries(
+          Object.entries(base.actions).map(([name, action]) => [
+            name,
+            { ...action, unavailable: hold },
+          ]),
+        ) as WorkflowActionProjection['actions'],
+        ...(base.position.kind === 'ready'
+          ? {
+              position: {
+                ...base.position,
+                next: {
+                  ...base.position.next,
+                  agent: { kind: 'unavailable' as const, reason: hold.reason },
+                },
+              },
+            }
+          : {}),
+      }
+    : {};
 
   return {
     ...base,
+    ...held,
     handoff: {
       kind: 'transition',
       from: {

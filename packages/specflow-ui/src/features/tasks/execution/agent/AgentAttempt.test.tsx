@@ -308,19 +308,29 @@ describe('the commit of a finished attempt', () => {
   const history = (commit: { state: 'committed' | 'failed' | 'pending'; code?: string }) =>
     vi.fn(() => Promise.resolve(finishedAttemptHistory(commit) as never));
 
-  it('keeps Retry commit inside the note, and says the next agent step waits for it', async () => {
+  it('keeps Retry commit inside the one notice, and disables every workflow action until it ran', async () => {
     const retry = vi.fn(never);
-    renderNow(
+    const { container } = renderNow(
       'working',
       { retryAttemptCommit: retry, history: history({ state: 'failed', code: 'COMMIT_BLOCKED' }) },
-      { projection: finishedAttemptProjection() },
+      {
+        projection: finishedAttemptProjection({
+          reason: 'attempt-commit-failed',
+          code: 'COMMIT_BLOCKED',
+        }),
+      },
     );
 
     const note = await screen.findByRole('alert');
     expect(note.textContent).toContain('Implementation is finished, but its commit failed');
     expect(note.textContent).toContain('COMMIT_BLOCKED');
-    expect(note.textContent).toContain('Run with agent cannot start Review');
-    expect(within(note).getByText('src/auth/state.ts')).toBeTruthy();
+    expect(note.textContent).toContain('nothing in this specification’s workflow can change');
+    const row = container.querySelector('[data-slot="workflow-actions"]');
+    for (const button of Array.from(row?.querySelectorAll('button') ?? [])) {
+      expect(button.disabled).toBe(true);
+    }
+
+    expect(await within(note).findByText('src/auth/state.ts')).toBeTruthy();
     fireEvent.click(within(note).getByRole('button', { name: 'Retry commit' }));
 
     await waitFor(() =>
@@ -329,6 +339,34 @@ describe('the commit of a finished attempt', () => {
         { step: 'implement', attempt: 2 },
       ),
     );
+  });
+
+  it('says the commit is being made, and offers Retry commit once it stalls', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const retry = vi.fn(never);
+      renderNow(
+        'working',
+        { retryAttemptCommit: retry, history: history({ state: 'pending' }) },
+        { projection: finishedAttemptProjection({ reason: 'attempt-commit-pending' }) },
+      );
+
+      expect(await screen.findByText(/SpecFlow is committing its work/)).toBeTruthy();
+      expect(document.body.textContent).toContain(
+        'nothing in this specification’s workflow can change',
+      );
+      expect(screen.queryByRole('button', { name: 'Retry commit' })).toBeNull();
+      await vi.advanceTimersByTimeAsync(POLL_MS * 3 + 100);
+      fireEvent.click(await screen.findByRole('button', { name: 'Retry commit' }));
+      await waitFor(() =>
+        expect(retry).toHaveBeenCalledWith(
+          { specId: SPEC, taskId: TASK },
+          { step: 'implement', attempt: 2 },
+        ),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('says the work is committed', async () => {

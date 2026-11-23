@@ -24,7 +24,12 @@ import { usePolling } from './usePolling';
 import { useSessionFacts } from './useSessionFacts';
 import { AttemptCommitNote } from './AttemptCommitNote';
 import { TakeOverDialog } from './TakeOverDialog';
-import { useConfirmationAttemptCommit, useFinishedAttemptCommit } from './useAttemptCommit';
+import {
+  useConfirmationAttemptCommit,
+  useFinishedAttemptCommit,
+  useHeldAttemptCommit,
+  type AttemptCommitHold,
+} from './useAttemptCommit';
 import { ConfirmApplies, ProposalQuote, RejectResultDialog } from './ConfirmationParts';
 import { useAgentAttemptCommands } from './useAgentAttemptCommands';
 
@@ -246,14 +251,49 @@ export function useAgentAttemptNow({
   readonly projection: WorkflowActionProjection;
   readonly links: NowLinks;
 }): AgentNow | undefined {
+  const { position, agentAttempt: view, actions } = projection;
   const attemptCommit = useFinishedAttemptCommit(subject, projection);
   const confirmationCommit = useConfirmationAttemptCommit(subject, projection);
   const { t, i18n } = useTranslation();
   const commands = useAgentAttemptCommands(subject, headingId);
+  // The attempt whose commit holds the specification's workflow: this subject's or another's.
+  const heldStepTitle = (hold: AttemptCommitHold) =>
+    hold.subject.taskId !== undefined && hold.subject.taskId !== subject.taskId
+      ? t('workflowExecution.attemptCommit.stepOfTask', {
+          step: hold.stepTitle || hold.step,
+          task: hold.subject.taskId,
+        })
+      : hold.stepTitle || hold.step;
+  const held = useHeldAttemptCommit(projection, heldStepTitle);
+  const holdTarget: WorkflowSubjectRef = held
+    ? {
+        specId: held.hold.subject.specId,
+        ...(held.hold.subject.taskId !== undefined ? { taskId: held.hold.subject.taskId } : {}),
+      }
+    : subject;
+  const holdCommands = useAgentAttemptCommands(holdTarget, headingId);
+  const heldNote = held ? (
+    <AttemptCommitNote
+      commit={held.view}
+      retrying={holdCommands.retryCommit.isPending}
+      error={holdCommands.retryCommit.error}
+      onRetry={() =>
+        holdCommands.retryCommit.mutate({ step: held.hold.step, attempt: held.hold.attempt })
+      }
+    />
+  ) : null;
+  // The confirmation's own note already speaks for its attempt's commit.
+  const heldElsewhere =
+    held !== undefined &&
+    !(
+      position.kind === 'awaiting-confirmation' &&
+      held.hold.subject.taskId === subject.taskId &&
+      held.hold.step === position.step.id &&
+      held.hold.attempt === position.attempt.number
+    );
   usePolling(needsPolling(projection), commands.refresh);
   const [rejecting, setRejecting] = useState(false);
   const [takingOver, setTakingOver] = useState(false);
-  const { position, agentAttempt: view, actions } = projection;
   const when = (at: string, timeOnlyToday = false) =>
     formatWhen(t, at, i18n.language, { timeOnlyToday });
   const line = (text: string, view: AgentAttemptView) => (
@@ -301,6 +341,7 @@ export function useAgentAttemptNow({
         <div className="grid gap-3">
           <ProposalQuote proposal={proposal} agent={agentName(attempt.actor)} />
           <ConfirmApplies confirmation={position} links={links} />
+          {heldElsewhere ? heldNote : null}
           {confirmationCommit ? (
             <AttemptCommitNote
               commit={confirmationCommit}
@@ -367,6 +408,11 @@ export function useAgentAttemptNow({
       keepsMenu: true,
       showHandoff: false,
     };
+  }
+
+  if (heldElsewhere && (!view || position.kind !== 'active')) {
+    // One notice for the whole block: nothing of the workflow changes until the commit ran.
+    return { note: heldNote, keepsMenu: true, showHandoff: true };
   }
 
   if (!view || position.kind !== 'active') {

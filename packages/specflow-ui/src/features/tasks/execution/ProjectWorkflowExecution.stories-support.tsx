@@ -103,7 +103,8 @@ export type AgentStoryScenario = `agent-${AgentCase}` | 'agent-refused';
 export type AttemptStoryScenario = `attempt-${AttemptCase}`;
 
 /** Review ready after an agent finished Implementation: its commit made, or failed (Retry commit). */
-export type FinishedStoryScenario = 'finished-committed' | 'finished-commit-failed';
+export type FinishedStoryScenario =
+  'finished-committed' | 'finished-commit-failed' | 'finished-commit-pending';
 
 /** The Task whose Implementation the owner took over from the agent, with its history. */
 export type HistoryStoryScenario = 'history-taken-over';
@@ -535,14 +536,23 @@ function services(scenario: WorkflowStoryScenario, confirmationCommit?: Confirma
               ? 'spike-gate-met'
               : 'spike-gate'
             : (scenario as TaskWorkflowScenario);
-  const finished = scenario === 'finished-committed' || scenario === 'finished-commit-failed';
+  const finished =
+    scenario === 'finished-committed' ||
+    scenario === 'finished-commit-failed' ||
+    scenario === 'finished-commit-pending';
   const attemptOf = (): AttemptCase | undefined =>
     scenario.startsWith('attempt-')
       ? (scenario.slice('attempt-'.length) as AttemptCase)
       : undefined;
   const taskProjection = (): WorkflowActionProjection =>
     finished
-      ? finishedAttemptProjection()
+      ? finishedAttemptProjection(
+          scenario === 'finished-commit-failed'
+            ? { reason: 'attempt-commit-failed', code: 'COMMIT_BLOCKED' }
+            : scenario === 'finished-commit-pending'
+              ? { reason: 'attempt-commit-pending' }
+              : undefined,
+        )
       : attemptOf()
         ? agentAttemptProjection(attemptOf()!)
         : scenario === 'history-taken-over'
@@ -595,7 +605,9 @@ function services(scenario: WorkflowStoryScenario, confirmationCommit?: Confirma
                 finishedAttemptHistory(
                   scenario === 'finished-committed'
                     ? { state: 'committed', sha: STORY_SHA, documents: 2, files: 3 }
-                    : { state: 'failed', code: 'COMMIT_BLOCKED' },
+                    : scenario === 'finished-commit-pending'
+                      ? { state: 'pending' }
+                      : { state: 'failed', code: 'COMMIT_BLOCKED' },
                 ) as never,
               )
             : never(),

@@ -294,14 +294,42 @@ export const HoldWorkingOnOtherSubject: Story = {
   },
 };
 
+/*
+ * The commit of the finished attempt failed, or is still being made: one notice on the block says
+ * nothing of the workflow can change until it is committed, with Start and Run with agent disabled;
+ * Retry commit inside it (a pending commit offers it once it stalls).
+ */
 export const FinishedCommitFailed: Story = {
   args: { scenario: 'finished-commit-failed' },
   play: async ({ canvasElement }) => {
     const now = await findNow(canvasElement);
     const alert = await within(now).findByRole('alert', {}, wait);
     await expect(within(alert).getByText('COMMIT_BLOCKED')).toBeVisible();
-    await expect(within(alert).getByText(/Run with agent cannot start Review/)).toBeVisible();
+    await expect(
+      within(alert).getByText(/nothing in this specification’s workflow can change/),
+    ).toBeVisible();
     await expect(within(alert).getByRole('button', { name: 'Retry commit' })).toBeVisible();
+    await expect(within(now).getByRole('button', { name: /^Start/ })).toBeDisabled();
+    await expect(within(now).getByRole('button', { name: 'Run with agent' })).toBeDisabled();
+  },
+};
+
+export const FinishedCommitPending: Story = {
+  args: { scenario: 'finished-commit-pending' },
+  play: async ({ canvasElement }) => {
+    const now = await findNow(canvasElement);
+    await expect(
+      await within(now).findByText(/SpecFlow is committing its work/, {}, wait),
+    ).toBeVisible();
+    await expect(within(now).getByRole('button', { name: /^Start/ })).toBeDisabled();
+    await expect(within(now).getByRole('button', { name: 'Run with agent' })).toBeDisabled();
+    await expect(within(now).queryByRole('button', { name: 'Retry commit' })).toBeNull();
+    const retry = await within(now).findByRole(
+      'button',
+      { name: 'Retry commit' },
+      { timeout: 20000 },
+    );
+    await expect(retry).toBeEnabled();
   },
 };
 

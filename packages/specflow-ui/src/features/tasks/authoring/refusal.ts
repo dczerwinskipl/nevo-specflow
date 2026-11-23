@@ -78,6 +78,8 @@ export function refusalMessageKey(refusal: TaskRefusal) {
     case 'WORKFLOW_SPECIFICATION_BUSY':
     case 'CONTROL_LOCK_BUSY':
       return 'taskAuthoring.refusal.busy';
+    case 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED':
+      return 'workflowExecution.refusal.attemptCommitRequired';
     case 'WORKFLOW_SPECIFICATION_ENDED':
       return 'taskAuthoring.refusal.specificationEnded';
     case 'WORKFLOW_INPUT_INVALID':

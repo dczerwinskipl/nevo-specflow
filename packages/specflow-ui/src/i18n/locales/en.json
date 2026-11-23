@@ -2439,6 +2439,7 @@
       "return": "Return to earlier step",
       "finishKept": "Your finish is kept: result, feedback and artifacts stay as you left them. Finish step continues it.",
       "postActionFailed": "The step is finished. Its workflow state was not committed ({{code}}): it stays uncommitted, and Close includes it.",
+      "postActionAttemptCommit": "The change is saved, but its commit waits for the agent’s work in this specification to be committed first. Retry that commit; the next commit then takes this change too.",
       "postActionHeld": "The step is finished. {{edited}} changed outside SpecFlow after SpecFlow wrote it, so the files of its Task, and of Tasks added or removed since, stay uncommitted; the rest of the workflow state is committed. Commit those files with Git; otherwise Close includes them.",
       "lastPrefix": "Last: {{step}} · ",
       "handoffFrom": "{{step}} · ",
@@ -2811,7 +2812,7 @@
       "draftConflict": "A draft you keep depends on a draft you unticked. Keep both, or untick both.",
       "tasksOpen": "The specification cannot complete while tasks are open: {{tasks}}. Finish or cancel them first.",
       "confirmationChanged": "What Confirm would apply changed since you opened this. Read the summary again, then confirm.",
-      "attemptCommitRequired": "The agent’s work is not committed yet. Confirm and Reject become possible once it is: retry the commit if it failed or does not finish.",
+      "attemptCommitRequired": "The agent’s work in this specification is not committed yet, so nothing in its workflow can change. Retry its commit (shown above), then try again.",
       "agentUnavailable": "The agent cannot continue now. The reason is shown above."
     },
     "time": {
@@ -2967,6 +2968,10 @@
       "blocksAgent": "Until then Run with agent cannot start the next step: an agent starts only from a committed checkout.",
       "blocksConfirm": "Confirm and Reject become possible once the agent’s work is committed: Retry commit makes the commit again after you fix the cause.",
       "stalled": "The commit has not finished. If it does not finish by itself, Retry commit makes it now; Confirm and Reject wait for it.",
+      "blocksWorkflow": "Until it is committed, nothing in this specification’s workflow can change: Start, Finish step, Return and Run with agent wait for it.",
+      "blocksWorkflowFailed": "Until it is committed, nothing in this specification’s workflow can change: Start, Finish step, Return and Run with agent wait for it. Fix the cause, then Retry commit.",
+      "stalledWorkflow": "The commit has not finished. If it does not finish by itself, Retry commit makes it now.",
+      "stepOfTask": "{{step}} of task {{task}}",
       "retry": "Retry commit",
       "retrying": "Retrying…"
     },

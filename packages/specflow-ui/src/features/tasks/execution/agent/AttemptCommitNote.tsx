@@ -57,7 +57,8 @@ function RetryButton({
 /**
  * What became of the work of an agent attempt that finished (the commit it makes when the agent
  * finishes, D15), as the Now block of the step that follows, or of the result waiting for the
- * owner's confirmation, says it. `waits: 'confirm'`: the owner's Confirm and Reject wait for the commit.
+ * owner's confirmation, says it. `waits: 'confirm'`: the owner's Confirm and Reject wait for the
+ * commit; `waits: 'workflow'`: nothing of the specification's workflow can change until it ran.
  */
 export type AttemptCommitView =
   | {
@@ -72,10 +73,11 @@ export type AttemptCommitView =
   | {
       readonly state: 'pending';
       readonly stepTitle: string;
+      readonly waits?: 'workflow';
     }
   | {
       readonly state: 'failed';
-      readonly waits?: 'confirm';
+      readonly waits?: 'confirm' | 'workflow';
       /** The attempt whose commit Retry commit makes again. */
       readonly step: string;
       readonly attempt: number;
@@ -158,10 +160,15 @@ function Pending({
     <div className="grid gap-2" data-now-attempt-commit="pending">
       <InlineNote tone="info" icon={GitCommitHorizontal} role="status">
         {t('workflowExecution.attemptCommit.pending', { step: commit.stepTitle })}
+        {commit.waits === 'workflow' ? (
+          <> {t('workflowExecution.attemptCommit.blocksWorkflow')}</>
+        ) : null}
         {stalled || retrying ? (
           <>
             {' '}
-            {t('workflowExecution.attemptCommit.stalled')}
+            {commit.waits === 'workflow'
+              ? t('workflowExecution.attemptCommit.stalledWorkflow')
+              : t('workflowExecution.attemptCommit.stalled')}
             <div className="mt-2">
               <RetryButton retrying={retrying} onRetry={onRetry} />
             </div>
@@ -210,9 +217,11 @@ function Failed({
         />{' '}
         {commit.waits === 'confirm'
           ? t('workflowExecution.attemptCommit.blocksConfirm')
-          : commit.nextTitle
-            ? t('workflowExecution.attemptCommit.blocksNext', { next: commit.nextTitle })
-            : t('workflowExecution.attemptCommit.blocksAgent')}
+          : commit.waits === 'workflow'
+            ? t('workflowExecution.attemptCommit.blocksWorkflowFailed')
+            : commit.nextTitle
+              ? t('workflowExecution.attemptCommit.blocksNext', { next: commit.nextTitle })
+              : t('workflowExecution.attemptCommit.blocksAgent')}
         <ul className="mt-1 grid list-disc gap-0.5 pl-5 text-body-sm marker:text-content-muted">
           {shown.map((path) => (
             <li key={path} className={MONO}>

@@ -95,7 +95,7 @@ interface CommitOf {
   readonly stepTitle: string;
   readonly branch?: string;
   readonly nextTitle?: string;
-  readonly waits?: 'confirm';
+  readonly waits?: 'confirm' | 'workflow';
   /** The code the projection names for a failed commit, before the history read has it. */
   readonly code?: string;
 }
@@ -191,4 +191,60 @@ export function useConfirmationAttemptCommit(
   const view = commitViewOf(work, of);
 
   return view?.state === 'committed' ? view : undefined;
+}
+
+/** The attempt whose commit holds the specification's workflow (`projection.attemptCommit`). */
+export type AttemptCommitHold = NonNullable<WorkflowActionProjection['attemptCommit']>;
+
+/**
+ * The one notice of a subject's workflow block while an agent attempt of its specification waits
+ * for its own commit (the projection's `attemptCommit`): nothing of the workflow can change until it
+ * ran. Pending: SpecFlow is committing (Retry commit once it stalls); failed: why, the files it holds
+ * (from the history of the attempt's subject) and Retry commit. `undefined` when none waits.
+ */
+export function useHeldAttemptCommit(
+  projection: WorkflowActionProjection,
+  stepTitle: (hold: AttemptCommitHold) => string,
+): { readonly hold: AttemptCommitHold; readonly view: AttemptCommitView } | undefined {
+  const { workflowExecutionApi, specificationApi } = useAppServices();
+  const hold = projection.attemptCommit;
+  const of: WorkflowSubjectRef = hold
+    ? {
+        specId: hold.subject.specId,
+        ...(hold.subject.taskId !== undefined ? { taskId: hold.subject.taskId } : {}),
+      }
+    : { specId: projection.subject.specId };
+  const history = useQuery({
+    queryKey: workflowHistoryKey(of.specId, of.taskId),
+    queryFn: ({ signal }) => workflowExecutionApi.history(of, signal),
+    enabled: hold?.reason === 'attempt-commit-failed',
+    retry: false,
+  });
+  const branch = useSpecificationWorkspace(of.specId, specificationApi).data?.repoContext?.branch;
+  if (!hold) {
+    return undefined;
+  }
+
+  const title = stepTitle(hold);
+  if (hold.reason === 'attempt-commit-pending') {
+    return { hold, view: { state: 'pending', stepTitle: title, waits: 'workflow' } };
+  }
+
+  const item = history.data?.items.find(
+    (candidate) =>
+      candidate.kind === 'attempt' &&
+      candidate.step === hold.step &&
+      candidate.attempt === hold.attempt,
+  );
+  const work = item?.kind === 'attempt' ? item.agent?.work : undefined;
+  const view = commitViewOf(work?.commit.state === 'failed' ? work : undefined, {
+    step: hold.step,
+    attempt: hold.attempt,
+    stepTitle: title,
+    waits: 'workflow',
+    code: hold.code ?? 'COMMIT_FAILED',
+    ...(branch ? { branch } : {}),
+  });
+
+  return view ? { hold, view } : undefined;
 }

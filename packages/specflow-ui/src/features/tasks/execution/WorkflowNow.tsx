@@ -164,11 +164,14 @@ export function WorkflowNow({
   const next =
     position.kind === 'not-started' || position.kind === 'ready' ? position.next : undefined;
   const step = position.kind === 'active' ? position.step : undefined;
+  // While an agent attempt's commit holds the specification, every workflow action waits for it;
+  // the block's notice (`useAgentAttemptNow`) says why and offers Retry commit.
   const busy =
     commands.start.isPending ||
     commands.finish.isPending ||
     commands.returnTo.isPending ||
-    commands.reevaluateWait.isPending;
+    commands.reevaluateWait.isPending ||
+    projection.attemptCommit !== undefined;
   const waitAttempt = subject.taskId === undefined ? projection.attention?.waitAttempt : undefined;
   // The read may already show a journaled transition whose publication still needs retrying.
   const submittedWait = commands.reevaluateWait.variables;
@@ -547,7 +550,9 @@ export function WorkflowNow({
       ) : null}
       {shownCommitNote?.failed.map((action) => (
         <InlineNote key={action.action} tone="attention">
-          {t('workflowExecution.now.postActionFailed', { code: action.code })}
+          {action.code === 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED'
+            ? t('workflowExecution.now.postActionAttemptCommit')
+            : t('workflowExecution.now.postActionFailed', { code: action.code })}
         </InlineNote>
       ))}
       {shownCommitNote?.held.map((action) => (

@@ -117,8 +117,8 @@ Disposition: **Keep** means no structural readability finding in this pass; **Re
 means a long or mixed rule needs clearer presentation; **Deduplicate** requires an authority
 check; **Move history** means non-current material should move to Ideas/ADR; **Split** is
 reserved for an independently owned subject. An unverified source-code contract is never
-silently treated as verified. The `Check` column records editorial parity where performed,
-not code-level agreement. All final link, index, source parity and retrieval checks remain
+silently treated as verified. The `Check` column identifies edited PRs or pending source verification; neither
+redaction nor the previous text-parity check proves contract agreement. All final link, index, source parity and retrieval checks remain
 tracked by #206/#207 until evidenced on the final PR HEAD.
 
 | Current document and primary owner                                                   | Disposition  | Evidence or follow-up                                           | Check              |
@@ -128,12 +128,12 @@ tracked by #206/#207 until evidenced on the final PR HEAD.
 | `architecture/ai/canonical-session-turn-work.md`                                     | Keep         | no overlong paragraph/bullet found                              | code check pending |
 | `architecture/ai/provider-boundary.md`                                               | Keep         | no overlong paragraph/bullet found                              | code check pending |
 | `architecture/ai/provider-process-ownership.md`                                      | Reformat     | 0 long paragraphs; 1 long bullets; max section 289 words        | code check pending |
-| `architecture/ai/session-admission-and-providers.md`                                 | Reformat     | 4 long paragraphs; 1 long bullets; max section 537 words        | text parity #209   |
-| `architecture/ai/session-association-and-list.md`                                    | Reformat     | 0 long paragraphs; 2 long bullets; max section 299 words        | text parity #209   |
-| `architecture/ai/session-commands.md`                                                | Reformat     | 2 long paragraphs; 1 long bullets; max section 446 words        | text parity #209   |
-| `architecture/ai/session-history-and-events.md`                                      | Reformat     | 5 long paragraphs; 0 long bullets; max section 426 words        | text parity #209   |
+| `architecture/ai/session-admission-and-providers.md`                                 | Reformat     | 4 long paragraphs; 1 long bullets; max section 537 words        | redacted in #209   |
+| `architecture/ai/session-association-and-list.md`                                    | Reformat     | 0 long paragraphs; 2 long bullets; max section 299 words        | redacted in #209   |
+| `architecture/ai/session-commands.md`                                                | Reformat     | 2 long paragraphs; 1 long bullets; max section 446 words        | redacted in #209   |
+| `architecture/ai/session-history-and-events.md`                                      | Reformat     | 5 long paragraphs; 0 long bullets; max section 426 words        | redacted in #209   |
 | `architecture/ai/session-storage-and-lifecycle.md`                                   | Reformat     | 11 long paragraphs; 2 long bullets; max section 545 words       | code check pending |
-| `architecture/ai/session-telemetry-observations.md`                                  | Reformat     | 0 long paragraphs; 4 long bullets; max section 409 words        | text parity #209   |
+| `architecture/ai/session-telemetry-observations.md`                                  | Reformat     | 0 long paragraphs; 4 long bullets; max section 409 words        | redacted in #209   |
 | `architecture/decisions/0001-record-architecture-decisions.md`                       | Keep         | no overlong paragraph/bullet found                              | code check pending |
 | `architecture/decisions/0003-branch-and-release-model.md`                            | Reformat     | 0 long paragraphs; 2 long bullets; max section 377 words        | code check pending |
 | `architecture/decisions/0004-mit-license.md`                                         | Keep         | no overlong paragraph/bullet found                              | code check pending |
@@ -167,12 +167,12 @@ tracked by #206/#207 until evidenced on the final PR HEAD.
 | `architecture/runtime/auth/README.md`                                                | Keep         | no long paragraph/bullet detected                               | code check pending |
 | `architecture/runtime/auth/authorization.md`                                         | Keep         | no long paragraph/bullet detected                               | code check pending |
 | `architecture/runtime/configuration.md`                                              | Reformat     | 2 long paragraphs, 1 long bullets; longest section 648 words    | code check pending |
-| `architecture/runtime/document-commit-policy.md`                                     | Reformat     | 5 long paragraphs, 2 long bullets; longest section 1044 words   | text parity #210   |
-| `architecture/runtime/document-definitions.md`                                       | Reformat     | 5 long paragraphs, 2 long bullets; longest section 1135 words   | text parity #210   |
+| `architecture/runtime/document-commit-policy.md`                                     | Reformat     | 5 long paragraphs, 2 long bullets; longest section 1044 words   | redacted in #210   |
+| `architecture/runtime/document-definitions.md`                                       | Reformat     | 5 long paragraphs, 2 long bullets; longest section 1135 words   | redacted in #210   |
 | `architecture/runtime/document-limits.md`                                            | Reformat     | one authoritative table, keep in place                          | code check pending |
-| `architecture/runtime/document-manifest-and-registry.md`                             | Reformat     | 1 long paragraphs, 4 long bullets; longest section 949 words    | text parity #210   |
-| `architecture/runtime/document-operation-transport.md`                               | Reformat     | 0 long paragraphs, 3 long bullets; longest section 369 words    | text parity #209   |
-| `architecture/runtime/document-write-and-commit-queue.md`                            | Reformat     | 7 long paragraphs, 4 long bullets; longest section 3782 words   | text parity #210   |
+| `architecture/runtime/document-manifest-and-registry.md`                             | Reformat     | 1 long paragraphs, 4 long bullets; longest section 949 words    | redacted in #210   |
+| `architecture/runtime/document-operation-transport.md`                               | Reformat     | 0 long paragraphs, 3 long bullets; longest section 369 words    | redacted in #209   |
+| `architecture/runtime/document-write-and-commit-queue.md`                            | Reformat     | 7 long paragraphs, 4 long bullets; longest section 3782 words   | redacted in #210   |
 | `architecture/runtime/endpoint-policy.md`                                            | Keep         | no long paragraph/bullet detected                               | code check pending |
 | `architecture/runtime/ownership-and-lifecycle.md`                                    | Reformat     | 1 long paragraphs, 0 long bullets; longest section 252 words    | code check pending |
 | `architecture/runtime/project-home-and-workspaces.md`                                | Reformat     | 3 long paragraphs, 0 long bullets; longest section 440 words    | code check pending |
@@ -187,18 +187,18 @@ tracked by #206/#207 until evidenced on the final PR HEAD.
 | `architecture/runtime/specification-worktree-integration.md`                         | Reformat     | 2 long paragraphs, 1 long bullets; longest section 1076 words   | code check pending |
 | `architecture/runtime/task-read-composition.md`                                      | Keep         | no long paragraph/bullet detected                               | code check pending |
 | `architecture/runtime/task-read-pagination-and-grouping.md`                          | Reformat     | 0 long paragraphs, 5 long bullets; longest section 296 words    | code check pending |
-| `architecture/runtime/workspace-documentation-corpus.md`                             | Reformat     | 0 long paragraphs, 3 long bullets; longest section 426 words    | text parity #209   |
+| `architecture/runtime/workspace-documentation-corpus.md`                             | Reformat     | 0 long paragraphs, 3 long bullets; longest section 426 words    | redacted in #209   |
 | `architecture/runtime/workspace-execution-claims.md`                                 | Reformat     | 1 long paragraphs, 1 long bullets; longest section 484 words    | code check pending |
 | `architecture/ui-application-composition.md`                                         | Reformat     | 2 long paragraphs, 3 long bullets; longest section 552 words    | code check pending |
 | `architecture/workflow/README.md`                                                    | Keep         | no long paragraph/bullet detected                               | code check pending |
 | `architecture/workflow/deterministic-workflow.md`                                    | Keep         | no long paragraph/bullet detected                               | code check pending |
-| `architecture/workflow/workflow-action-projections.md`                               | Reformat     | 0 long paragraphs, 4 long bullets; longest section 325 words    | text parity #209   |
+| `architecture/workflow/workflow-action-projections.md`                               | Reformat     | 0 long paragraphs, 4 long bullets; longest section 325 words    | redacted in #209   |
 | `architecture/workflow/workflow-continuation-and-attention.md`                       | Reformat     | 3 long paragraphs, 2 long bullets; longest section 1372 words   | code check pending |
-| `architecture/workflow/workflow-definitions-and-gates.md`                            | Reformat     | 0 long paragraphs, 2 long bullets; longest section 600 words    | text parity #210   |
+| `architecture/workflow/workflow-definitions-and-gates.md`                            | Reformat     | 0 long paragraphs, 2 long bullets; longest section 600 words    | redacted in #210   |
 | `architecture/workflow/workflow-kernel.md`                                           | Keep         | no long paragraph/bullet detected                               | code check pending |
-| `architecture/workflow/workflow-runs-and-handoffs.md`                                | Reformat     | 1 long paragraphs, 3 long bullets; longest section 655 words    | text parity #210   |
-| `architecture/workflow/workflow-storage-and-recovery.md`                             | Reformat     | 0 long paragraphs, 2 long bullets; longest section 728 words    | text parity #210   |
-| `architecture/workflow/workflow-tasks.md`                                            | Reformat     | 3 long paragraphs, 3 long bullets; longest section 557 words    | text parity #210   |
+| `architecture/workflow/workflow-runs-and-handoffs.md`                                | Reformat     | 1 long paragraphs, 3 long bullets; longest section 655 words    | redacted in #210   |
+| `architecture/workflow/workflow-storage-and-recovery.md`                             | Reformat     | 0 long paragraphs, 2 long bullets; longest section 728 words    | redacted in #210   |
+| `architecture/workflow/workflow-tasks.md`                                            | Reformat     | 3 long paragraphs, 3 long bullets; longest section 557 words    | redacted in #210   |
 | `design-system/README.md`                                                            | Keep         | no long paragraph/bullet detected                               | code check pending |
 | `design-system/figma/code-to-figma-projection.md`                                    | Keep         | no long paragraph/bullet detected                               | code check pending |
 | `design-system/implementation/library-packaging.md`                                  | Reformat     | 0 long paragraphs, 1 long bullets; longest section 277 words    | code check pending |
@@ -252,13 +252,13 @@ tracked by #206/#207 until evidenced on the final PR HEAD.
 | `product/specflow/ui/create-archetypes.md`                                           | Reformat     | 1 long paragraphs, 2 long bullets; longest section 392 words    | code check pending |
 | `product/specflow/ui/data-loading-and-integration.md`                                | Reformat     | 0 long paragraphs, 1 long bullets; longest section 359 words    | code check pending |
 | `product/specflow/ui/document-editor-client-behavior.md`                             | Reformat     | 0 long paragraphs, 3 long bullets; longest section 222 words    | code check pending |
-| `product/specflow/ui/documentation-reader-layout-and-states.md`                      | Reformat     | 0 long paragraphs, 4 long bullets; longest section 834 words    | text parity #210   |
-| `product/specflow/ui/documentation-reader-navigation.md`                             | Reformat     | 0 long paragraphs, 3 long bullets; longest section 1067 words   | text parity #210   |
-| `product/specflow/ui/documentation-reader-search.md`                                 | Reformat     | 1 long paragraphs, 3 long bullets; longest section 512 words    | text parity #210   |
+| `product/specflow/ui/documentation-reader-layout-and-states.md`                      | Reformat     | 0 long paragraphs, 4 long bullets; longest section 834 words    | redacted in #210   |
+| `product/specflow/ui/documentation-reader-navigation.md`                             | Reformat     | 0 long paragraphs, 3 long bullets; longest section 1067 words   | redacted in #210   |
+| `product/specflow/ui/documentation-reader-search.md`                                 | Reformat     | 1 long paragraphs, 3 long bullets; longest section 512 words    | redacted in #210   |
 | `product/specflow/ui/documentation-reader.md`                                        | Reformat     | 0 long paragraphs, 1 long bullets; longest section 190 words    | code check pending |
 | `product/specflow/ui/documents-archetypes-ui.md`                                     | Keep         | no long paragraph/bullet detected                               | code check pending |
-| `product/specflow/ui/documents-cross-screen-states.md`                               | Deduplicate  | same rule repeated in tree and editor                           | text parity #210   |
-| `product/specflow/ui/documents-tree.md`                                              | Reformat     | 7 long paragraphs, 4 long bullets; longest section 642 words    | text parity #210   |
+| `product/specflow/ui/documents-cross-screen-states.md`                               | Deduplicate  | same rule repeated in tree and editor                           | redacted in #210   |
+| `product/specflow/ui/documents-tree.md`                                              | Reformat     | 7 long paragraphs, 4 long bullets; longest section 642 words    | redacted in #210   |
 | `product/specflow/ui/full-session.md`                                                | Reformat     | 3 long paragraphs, 9 long bullets; longest section 1022 words   | code check pending |
 | `product/specflow/ui/shell-geometry.md`                                              | Reformat     | 0 long paragraphs, 1 long bullets; longest section 390 words    | code check pending |
 | `product/specflow/ui/specification-overview.md`                                      | Reformat     | 1 long paragraphs, 6 long bullets; longest section 1914 words   | code check pending |

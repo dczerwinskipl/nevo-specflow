@@ -114,7 +114,6 @@ Each kind declares its views and actions to the host; the rules for descriptors,
 The kinds are `documentContentKinds` in `features/documents/content-kinds`; the first kind that
 matches a document wins, plain text being the fallback.
 
-
 ### Markdown and source text
 
 - **Markdown.** Views preview and edit; opens in preview. Edit/Preview is one icon action that names
@@ -172,7 +171,6 @@ frames only.
 ## Document tab behavior and refusal states
 
 ### 5.1 Read-only on open
-
 
 #### Read-only policy
 

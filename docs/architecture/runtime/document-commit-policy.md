@@ -9,7 +9,7 @@ read_when:
   - changing git.commits.auto.documents, manual commit or the uncommitted ledger
   - reviewing workflow state commits and Close flush behavior
 summary: >-
-  Engine commit policy, manual commit selection, uncommitted ledger and workflow execution store commit boundaries.
+    Engine commit policy, manual commit selection, uncommitted ledger and workflow execution store commit boundaries.
 related:
   - architecture.runtime.specification-documents
   - architecture.runtime.document-write-and-commit-queue
@@ -179,24 +179,24 @@ published change is ONE document operation of action `workflow` (contract
   wrote it (an agent writing `tasks/<id>/task.md` directly) would refuse the manual commit, and every
   later one, since each takes all the execution state.
   - So before the commit the post action prunes the
-  ledger once (an edit already committed with Git is no edit), then leaves out the edited paths with
-  every path of their operations (`held` in the result) and commits the rest.
+    ledger once (an edit already committed with Git is no edit), then leaves out the edited paths with
+    every path of their operations (`held` in the result) and commits the rest.
   - The Task index
-  (`tasks/index.yaml`) joins no operations here: every Task create, edit and removal rewrites it, so
-  it would tie all Tasks into one and hold them all.
+    (`tasks/index.yaml`) joins no operations here: every Task create, edit and removal rewrites it, so
+    it would tie all Tasks into one and hold them all.
   - Only the edited Task's own files are held; the
-  other Tasks commit. The index commits with them unless it would register a held Task that HEAD does
-  not have (its creation is held) or drop one HEAD still has (its removal is held); then the index is
-  held too.
+    other Tasks commit. The index commits with them unless it would register a held Task that HEAD does
+    not have (its creation is held) or drop one HEAD still has (its removal is held); then the index is
+    held too.
   - While the index waits, every Task of the commit whose `task.yaml` exists in only one of
-  the working tree and HEAD (created or removed since) waits with it, with all paths of its
-  operations, so HEAD never holds a Task folder or run record its index does not list, nor an index
-  entry without its Task (no `unregistered`, `broken` or `dangling` Task read from HEAD). Edits of
-  Tasks HEAD already registers still commit.
+    the working tree and HEAD (created or removed since) waits with it, with all paths of its
+    operations, so HEAD never holds a Task folder or run record its index does not list, nor an index
+    entry without its Task (no `unregistered`, `broken` or `dangling` Task read from HEAD). Edits of
+    Tasks HEAD already registers still commit.
   - The next finish after the held Task is committed takes
-  the index and the waiting Tasks.
+    the index and the waiting Tasks.
   - The held paths stay uncommitted
-  until a person commits them with Git or a Close archives them.
+    until a person commits them with Git or a Close archives them.
 - **Workflow subjects** follow the same rule as document subjects: at most 72 characters and never cut. When
   `<summary> in <slug>` does not fit, the summary goes alone, then `change the workflow state`; the body then holds the
   summary and `Specification: <slug>`.

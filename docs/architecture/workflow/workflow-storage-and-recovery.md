@@ -28,7 +28,6 @@ related:
 | Task resources (index, manifests, docs) | `<specification>/tasks/`                               | Git (committed, see below) |
 | Change journal                          | `<stateRoot>/engine/operations/workflow/<specId>.json` | local                      |
 
-
 ### Storage layout and revisions
 
 - **Location.** `.execution/` starts with a dot, so the document tree never lists it. It moves with
